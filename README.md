@@ -1,5 +1,5 @@
 # Website pessoal
-https://www.diogopaulino.com.br
+www.diogopaulino.com.br
 
 Simples assim :)
 
