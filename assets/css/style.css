@@ -20,11 +20,10 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  transition: box-shadow 0.3s, transform 0.3s;
+  transition: box-shadow 0.3s;
 }
 .card-container.minimal:hover {
-  box-shadow: 0 12px 36px rgba(37,99,235,0.13), 0 2px 16px rgba(0,0,0,0.13);
-  transform: translateY(-4px) scale(1.012);
+  box-shadow: 0 16px 48px rgba(37,99,235,0.15), 0 2px 16px rgba(0,0,0,0.13);
 }
 .profile-pic-minimal {
   width: 100px;
@@ -71,27 +70,34 @@ body {
   justify-content: center;
 }
 .icon-github-outline, .icon-linkedin-outline {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   display: inline-block;
   background: none;
-  transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
+  transition: filter 0.2s, transform 0.2s, box-shadow 0.2s, background-image 0.2s;
 }
 .icon-github-outline {
-  background-image: url('data:image/svg+xml;utf8,<svg fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2.1c-3.2.7-3.9-1.5-3.9-1.5-.5-1.1-1.2-1.5-1.2-1.5-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 .1.8-.7.8-.7-.7-.1-1.2-.7-1.2-.7-.6-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1.9 1.6 2.3 1.1 2.8.8.1-.7.4-1.1.7-1.4-2.7-.3-5.5-1.3-5.5-5.7 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.1.8.9 1.2 1.9 1.2 3.2 0 4.4-2.8 5.4-5.5 5.7.4.3.8 1 .8 2.1v3.1c0 .4.2.7.8.6C20.2 21.4 23.5 17.1 23.5 12c0-6.3-5.2-11.5-11.5-11.5z"/></svg>');
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="black"/><path d="M16 9.5c-3.6 0-6.5 2.9-6.5 6.5 0 2.9 1.9 5.3 4.5 6.1.3.1.4-.1.4-.3v-1.1c-1.8.4-2.2-.8-2.2-.8-.3-.7-.8-.9-.8-.9-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.8 2.3.6.1-.5.3-.8.5-1-1.5-.2-3-.8-3-3.3 0-.7.2-1.2.6-1.7-.1-.2-.3-.9.1-1.7 0 0 .6-.2 1.9.7.6-.2 1.2-.3 1.8-.3s1.2.1 1.8.3c1.3-.9 1.9-.7 1.9-.7.4.8.2 1.5.1 1.7.4.5.6 1 .6 1.7 0 2.5-1.5 3.1-3 3.3.3.3.6.8.6 1.6v2.3c0 .2.1.4.4.3 2.6-.9 4.5-3.2 4.5-6.1 0-3.6-2.9-6.5-6.5-6.5z" fill="white"/></svg>');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
 }
 .icon-linkedin-outline {
-  background-image: url('data:image/svg+xml;utf8,<svg fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11v5"/><path d="M8 11v5"/><circle cx="12" cy="8" r="1.5"/></svg>');
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="black"/><path d="M10.7 13.3h-2.5v8.4h2.5v-8.4zm-1.2-1.2c.8 0 1.3-.6 1.3-1.3s-.6-1.3-1.3-1.3-1.3.6-1.3 1.3.6 1.3 1.3 1.3zm3.6 1.2v8.4h2.5v-4.6c0-1.2.4-1.9 1.5-1.9s1.3.9 1.3 2v4.5h2.5v-4.8c0-2.3-1.2-3.3-2.8-3.3-1.3 0-1.9.7-2.2 1.2h.1v-1h-2.4zm0 0" fill="white"/></svg>');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
 }
-.icon-github-outline:hover, .icon-linkedin-outline:hover {
-  filter: invert(27%) sepia(99%) saturate(7486%) hue-rotate(199deg) brightness(92%) contrast(101%);
-  transform: scale(1.13) rotate(-6deg);
+.icon-github-outline:hover {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="%232563eb"/><path d="M16 9.5c-3.6 0-6.5 2.9-6.5 6.5 0 2.9 1.9 5.3 4.5 6.1.3.1.4-.1.4-.3v-1.1c-1.8.4-2.2-.8-2.2-.8-.3-.7-.8-.9-.8-.9-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.8 2.3.6.1-.5.3-.8.5-1-1.5-.2-3-.8-3-3.3 0-.7.2-1.2.6-1.7-.1-.2-.3-.9.1-1.7 0 0 .6-.2 1.9.7.6-.2 1.2-.3 1.8-.3s1.2.1 1.8.3c1.3-.9 1.9-.7 1.9-.7.4.8.2 1.5.1 1.7.4.5.6 1 .6 1.7 0 2.5-1.5 3.1-3 3.3.3.3.6.8.6 1.6v2.3c0 .2.1.4.4.3 2.6-.9 4.5-3.2 4.5-6.1 0-3.6-2.9-6.5-6.5-6.5z" fill="white"/></svg>');
+  filter: brightness(1.15) drop-shadow(0 2px 8px #2563eb55);
+  transform: scale(1.13);
+  box-shadow: 0 2px 12px #2563eb22;
+}
+.icon-linkedin-outline:hover {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%232563eb"/><path d="M10.7 13.3h-2.5v8.4h2.5v-8.4zm-1.2-1.2c.8 0 1.3-.6 1.3-1.3s-.6-1.3-1.3-1.3-1.3.6-1.3 1.3.6 1.3 1.3 1.3zm3.6 1.2v8.4h2.5v-4.6c0-1.2.4-1.9 1.5-1.9s1.3.9 1.3 2v4.5h2.5v-4.8c0-2.3-1.2-3.3-2.8-3.3-1.3 0-1.9.7-2.2 1.2h.1v-1h-2.4zm0 0" fill="white"/></svg>');
+  filter: brightness(1.15) drop-shadow(0 2px 8px #2563eb55);
+  transform: scale(1.13);
   box-shadow: 0 2px 12px #2563eb22;
 }
 @media (max-width: 600px) {
@@ -124,7 +130,7 @@ body {
     gap: 0.7rem;
   }
   .icon-github-outline, .icon-linkedin-outline {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
   }
 }
