@@ -103,34 +103,34 @@ body {
 @media (max-width: 600px) {
   .card-container.minimal {
     margin: 0 2rem;
-    padding: 1rem 0.3rem;
+    padding: 1.2rem 0.5rem;
     max-width: 98vw;
     border-radius: 0.7rem;
-    gap: 1rem;
+    gap: 1.2rem;
   }
   .profile-pic-minimal {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 0.7rem;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
   }
   .main-name {
-    font-size: 1.45rem;
+    font-size: 1.8rem;
   }
   .subtitle {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
   }
   .subdesc {
-    font-size: 1.05rem;
-    margin-bottom: 0.7rem;
+    font-size: 1.18rem;
+    margin-bottom: 0.9rem;
   }
   .impact-phrase {
-    font-size: 1.08rem;
+    font-size: 1.22rem;
   }
   .social-icons.minimal {
-    gap: 0.7rem;
+    gap: 1.1rem;
   }
   .icon-github-outline, .icon-linkedin-outline {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
   }
 }
