@@ -20,14 +20,26 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.card-container.minimal:hover {
+  box-shadow: 0 12px 36px rgba(37,99,235,0.13), 0 2px 16px rgba(0,0,0,0.13);
+  transform: translateY(-4px) scale(1.012);
 }
 .profile-pic-minimal {
   width: 100px;
   height: 100px;
   object-fit: cover;
   border-radius: 50%;
-  box-shadow: 0 4px 16px rgba(60,60,60,0.13);
+  box-shadow: 0 6px 24px rgba(60,60,60,0.18), 0 1.5px 8px rgba(0,0,0,0.13);
   margin-bottom: 1.2rem;
+  transition: box-shadow 0.3s, transform 0.3s, filter 0.3s;
+}
+.profile-pic-minimal:hover {
+  box-shadow: 0 12px 36px rgba(37,99,235,0.18), 0 2px 16px rgba(0,0,0,0.18);
+  transform: scale(1.07) rotate(-2deg);
+  filter: brightness(1.08) saturate(1.2) drop-shadow(0 0 8px #2563eb33);
+  cursor: pointer;
 }
 .main-name {
   font-size: 2rem;
@@ -63,7 +75,7 @@ body {
   height: 26px;
   display: inline-block;
   background: none;
-  transition: filter 0.2s;
+  transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 .icon-github-outline {
   background-image: url('data:image/svg+xml;utf8,<svg fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2.1c-3.2.7-3.9-1.5-3.9-1.5-.5-1.1-1.2-1.5-1.2-1.5-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 .1.8-.7.8-.7-.7-.1-1.2-.7-1.2-.7-.6-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1.9 1.6 2.3 1.1 2.8.8.1-.7.4-1.1.7-1.4-2.7-.3-5.5-1.3-5.5-5.7 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.1.8.9 1.2 1.9 1.2 3.2 0 4.4-2.8 5.4-5.5 5.7.4.3.8 1 .8 2.1v3.1c0 .4.2.7.8.6C20.2 21.4 23.5 17.1 23.5 12c0-6.3-5.2-11.5-11.5-11.5z"/></svg>');
@@ -79,6 +91,8 @@ body {
 }
 .icon-github-outline:hover, .icon-linkedin-outline:hover {
   filter: invert(27%) sepia(99%) saturate(7486%) hue-rotate(199deg) brightness(92%) contrast(101%);
+  transform: scale(1.13) rotate(-6deg);
+  box-shadow: 0 2px 12px #2563eb22;
 }
 @media (max-width: 600px) {
   .card-container.minimal {
