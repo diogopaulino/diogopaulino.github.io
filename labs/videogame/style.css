@@ -12,18 +12,19 @@ main {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .home.hidden { display: none; }
 
 .play-section {
     display: flex;
-    flex-direction: column;
     gap: 0.75rem;
+    align-items: stretch;
 }
 
 .play-card {
+    flex: 1;
     position: relative;
     background: none;
     border: none;
@@ -42,7 +43,7 @@ main {
 
 .play-card img {
     width: 100%;
-    aspect-ratio: 16/9;
+    height: 100%;
     object-fit: cover;
     display: block;
 }
@@ -50,7 +51,7 @@ main {
 .play-card-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%, transparent 100%);
+    background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -65,16 +66,11 @@ main {
 .play-btn {
     background: #0066cc;
     color: #fff;
-    padding: 0.75rem 2rem;
+    padding: 0.6rem 1.5rem;
     border-radius: 50px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     box-shadow: 0 4px 20px rgba(0, 102, 204, 0.5);
-    transition: transform 0.15s;
-}
-
-.play-card:hover .play-btn {
-    transform: scale(1.05);
 }
 
 .play-card-info {
@@ -82,63 +78,85 @@ main {
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 1rem;
+    padding: 0.75rem;
     background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.15rem;
 }
 
 .play-card-info strong {
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.85rem;
 }
 
 .play-card-info span {
     color: rgba(255,255,255,0.7);
-    font-size: 0.8rem;
+    font-size: 0.7rem;
 }
 
-.upload-btn {
+.upload-card {
+    width: 120px;
+    flex-shrink: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.9rem 1.5rem;
+    padding: 1rem;
     background: var(--bg-secondary);
-    border: 2px dashed var(--border-color);
-    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    text-align: center;
 }
 
-.upload-btn:hover {
+.upload-card:hover {
     border-color: #0066cc;
     background: var(--bg-tertiary);
-    border-style: solid;
 }
 
-.upload-btn-icon {
-    font-size: 1.25rem;
+.upload-card-icon {
+    font-size: 1.5rem;
+    opacity: 0.6;
 }
 
-.upload-btn-text {
-    font-size: 0.9rem;
+.upload-card:hover .upload-card-icon {
+    opacity: 1;
+}
+
+.upload-card-text {
+    font-size: 0.75rem;
     color: var(--text-secondary);
     font-weight: 500;
+    line-height: 1.3;
 }
 
-.upload-btn:hover .upload-btn-text {
+.upload-card:hover .upload-card-text {
     color: var(--text-primary);
 }
 
-.settings-panel {
+.panel {
     background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem;
+}
+
+.panel-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.settings-rows {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.6rem;
 }
 
 .settings-row {
@@ -150,8 +168,7 @@ main {
 
 .settings-label {
     font-size: 0.85rem;
-    color: var(--text-secondary);
-    font-weight: 500;
+    color: var(--text-primary);
 }
 
 .btn-group {
@@ -163,20 +180,19 @@ main {
 }
 
 .btn-group button {
-    padding: 0.45rem 0.7rem;
+    padding: 0.4rem 0.65rem;
     background: transparent;
     border: none;
     border-radius: 6px;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
     transition: all 0.15s;
 }
 
 .btn-group button:hover {
     color: var(--text-primary);
-    background: var(--bg-secondary);
 }
 
 .btn-group button.active {
@@ -185,36 +201,21 @@ main {
     box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
 }
 
-.help-panel {
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 1rem;
-}
-
-.help-title {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin-bottom: 0.75rem;
-    font-weight: 600;
-}
-
-.help-grid {
+.controls-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+    gap: 0.4rem 1rem;
 }
 
-.help-item {
+.control-item {
     font-size: 0.8rem;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
 }
 
-.help-item kbd {
+.control-item kbd {
     background: var(--bg-tertiary);
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
@@ -222,6 +223,8 @@ main {
     font-size: 0.7rem;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
+    min-width: 20px;
+    text-align: center;
 }
 
 .player {
@@ -354,7 +357,9 @@ main {
 }
 
 @media (max-width: 500px) {
-    .home { padding: 1rem; gap: 1rem; }
-    .help-grid { grid-template-columns: 1fr; }
+    .home { padding: 1rem; gap: 0.75rem; }
+    .play-section { flex-direction: column; }
+    .upload-card { width: 100%; flex-direction: row; padding: 0.75rem 1rem; }
+    .controls-grid { grid-template-columns: 1fr; }
     .player-bar { opacity: 1; position: relative; background: #111; }
 }

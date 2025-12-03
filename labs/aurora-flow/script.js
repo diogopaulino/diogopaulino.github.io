@@ -538,7 +538,7 @@ document.getElementById('trailLength').addEventListener('input', (e) => {
 
 document.getElementById('interactionForce').addEventListener('input', (e) => {
     interactionForce = parseFloat(e.target.value);
-    document.getElementById('forceValue').textContent = interactionForce;
+    document.getElementById('forceValue').textContent = interactionForce.toFixed(1);
 });
 
 document.getElementById('blendMode').addEventListener('change', (e) => {
@@ -570,7 +570,7 @@ function randomize() {
     
     const modes = ['attract', 'repel', 'vortex'];
     interactionMode = modes[Math.floor(Math.random() * modes.length)];
-    document.querySelectorAll('[data-mode]').forEach(b => {
+    document.querySelectorAll('.interaction-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.mode === interactionMode);
     });
     
@@ -602,7 +602,7 @@ function randomize() {
     
     trailLength = Math.random() * 0.15 + 0.85;
     document.getElementById('trailLength').value = trailLength * 100;
-    document.getElementById('trailValue').textContent = Math.round(trailLength * 100);
+    document.getElementById('trailValue').textContent = Math.round(trailLength * 100) + '%';
     
     interactionForce = Math.random() * 7 + 2;
     document.getElementById('interactionForce').value = interactionForce;
@@ -641,9 +641,9 @@ function updateThemeColors() {
     }
 }
 
-document.querySelectorAll('[data-mode]').forEach(btn => {
+document.querySelectorAll('.interaction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.interaction-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         interactionMode = btn.dataset.mode;
     });

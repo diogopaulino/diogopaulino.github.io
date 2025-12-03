@@ -50,40 +50,43 @@
                         </div>
                     </button>
 
-                    <label class="upload-btn">
+                    <label class="upload-card">
                         <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.zip" hidden>
-                        <span class="upload-btn-icon">📂</span>
-                        <span class="upload-btn-text">Carregar ROM</span>
+                        <span class="upload-card-icon">📂</span>
+                        <span class="upload-card-text">Carregar<br>outra ROM</span>
                     </label>
                 </div>
 
-                <div class="settings-panel">
-                    <div class="settings-row">
-                        <span class="settings-label">Escala</span>
-                        <div class="btn-group" data-setting="scale">
-                            <button data-value="1">1x</button>
-                            <button data-value="2" class="active">2x</button>
-                            <button data-value="3">3x</button>
-                            <button data-value="4">4x</button>
+                <div class="panel">
+                    <div class="panel-title">Configurações de Vídeo</div>
+                    <div class="settings-rows">
+                        <div class="settings-row">
+                            <span class="settings-label">Escala</span>
+                            <div class="btn-group" data-setting="scale">
+                                <button data-value="1">1x</button>
+                                <button data-value="2" class="active">2x</button>
+                                <button data-value="3">3x</button>
+                                <button data-value="4">4x</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="settings-row">
-                        <span class="settings-label">Filtro</span>
-                        <div class="btn-group" data-setting="filter">
-                            <button data-value="sharp" class="active">Nítido</button>
-                            <button data-value="smooth">Suave</button>
-                            <button data-value="crt">CRT</button>
+                        <div class="settings-row">
+                            <span class="settings-label">Filtro</span>
+                            <div class="btn-group" data-setting="filter">
+                                <button data-value="sharp" class="active">Nítido</button>
+                                <button data-value="smooth">Suave</button>
+                                <button data-value="crt">CRT</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="help-panel">
-                    <div class="help-title">Controles do Teclado</div>
-                    <div class="help-grid">
-                        <div class="help-item"><kbd>↑↓←→</kbd> Movimento</div>
-                        <div class="help-item"><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Botões A B C</div>
-                        <div class="help-item"><kbd>Enter</kbd> Start</div>
-                        <div class="help-item"><kbd>Esc</kbd> Sair</div>
+                <div class="panel">
+                    <div class="panel-title">Controles do Teclado</div>
+                    <div class="controls-grid">
+                        <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                        <div class="control-item"><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Botões</div>
+                        <div class="control-item"><kbd>Enter</kbd> Start</div>
+                        <div class="control-item"><kbd>Esc</kbd> Voltar</div>
                     </div>
                 </div>
             </section>

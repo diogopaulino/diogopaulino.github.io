@@ -9,186 +9,383 @@ const LANGUAGES = {
     zh: { name: '中文', flag: '🇨🇳', voice: 'zh-CN' }
 };
 
-const VOCABULARY = {
+const LESSONS = {
     en: [
-        { word: 'hello', translation: 'olá', example: 'Hello, how are you?' },
-        { word: 'goodbye', translation: 'adeus', example: 'Goodbye, see you tomorrow!' },
-        { word: 'thank you', translation: 'obrigado', example: 'Thank you for your help.' },
-        { word: 'please', translation: 'por favor', example: 'Please sit down.' },
-        { word: 'water', translation: 'água', example: 'I need some water.' },
-        { word: 'food', translation: 'comida', example: 'The food is delicious.' },
-        { word: 'house', translation: 'casa', example: 'This is my house.' },
-        { word: 'friend', translation: 'amigo', example: 'She is my best friend.' },
-        { word: 'beautiful', translation: 'bonito', example: 'What a beautiful day!' },
-        { word: 'happy', translation: 'feliz', example: 'I am very happy today.' },
-        { word: 'love', translation: 'amor', example: 'Love conquers all.' },
-        { word: 'time', translation: 'tempo', example: 'Time flies when you have fun.' },
-        { word: 'work', translation: 'trabalho', example: 'I have a lot of work to do.' },
-        { word: 'family', translation: 'família', example: 'Family is important.' },
-        { word: 'morning', translation: 'manhã', example: 'Good morning!' },
-        { word: 'night', translation: 'noite', example: 'Good night, sleep well.' },
-        { word: 'book', translation: 'livro', example: 'I love reading books.' },
-        { word: 'music', translation: 'música', example: 'Music makes me happy.' },
-        { word: 'travel', translation: 'viajar', example: 'I want to travel the world.' },
-        { word: 'dream', translation: 'sonho', example: 'Follow your dreams.' }
+        {
+            word: 'hello',
+            translation: 'olá',
+            sentence: 'Hello, how are you?',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['Hello', 'how', 'are', 'you'],
+            fill: 'Hello, ___ are you?',
+            fillAnswer: 'how',
+            fillOptions: ['how', 'what', 'where', 'who']
+        },
+        {
+            word: 'goodbye',
+            translation: 'adeus',
+            sentence: 'Goodbye, see you tomorrow!',
+            sentenceTranslation: 'Adeus, vejo você amanhã!',
+            sentenceWords: ['Goodbye', 'see', 'you', 'tomorrow'],
+            fill: 'Goodbye, see you ___!',
+            fillAnswer: 'tomorrow',
+            fillOptions: ['tomorrow', 'yesterday', 'today', 'never']
+        },
+        {
+            word: 'thank you',
+            translation: 'obrigado',
+            sentence: 'Thank you very much!',
+            sentenceTranslation: 'Muito obrigado!',
+            sentenceWords: ['Thank', 'you', 'very', 'much'],
+            fill: 'Thank you very ___!',
+            fillAnswer: 'much',
+            fillOptions: ['much', 'more', 'less', 'many']
+        },
+        {
+            word: 'please',
+            translation: 'por favor',
+            sentence: 'Please sit down.',
+            sentenceTranslation: 'Por favor, sente-se.',
+            sentenceWords: ['Please', 'sit', 'down'],
+            fill: 'Please ___ down.',
+            fillAnswer: 'sit',
+            fillOptions: ['sit', 'stand', 'run', 'walk']
+        },
+        {
+            word: 'water',
+            translation: 'água',
+            sentence: 'I need some water.',
+            sentenceTranslation: 'Eu preciso de água.',
+            sentenceWords: ['I', 'need', 'some', 'water'],
+            fill: 'I need some ___.',
+            fillAnswer: 'water',
+            fillOptions: ['water', 'food', 'help', 'time']
+        },
+        {
+            word: 'food',
+            translation: 'comida',
+            sentence: 'The food is delicious.',
+            sentenceTranslation: 'A comida está deliciosa.',
+            sentenceWords: ['The', 'food', 'is', 'delicious'],
+            fill: 'The food is ___.',
+            fillAnswer: 'delicious',
+            fillOptions: ['delicious', 'terrible', 'cold', 'old']
+        },
+        {
+            word: 'house',
+            translation: 'casa',
+            sentence: 'This is my house.',
+            sentenceTranslation: 'Esta é minha casa.',
+            sentenceWords: ['This', 'is', 'my', 'house'],
+            fill: 'This is ___ house.',
+            fillAnswer: 'my',
+            fillOptions: ['my', 'your', 'his', 'her']
+        },
+        {
+            word: 'friend',
+            translation: 'amigo',
+            sentence: 'She is my best friend.',
+            sentenceTranslation: 'Ela é minha melhor amiga.',
+            sentenceWords: ['She', 'is', 'my', 'best', 'friend'],
+            fill: 'She is my ___ friend.',
+            fillAnswer: 'best',
+            fillOptions: ['best', 'good', 'old', 'new']
+        },
+        {
+            word: 'beautiful',
+            translation: 'bonito',
+            sentence: 'What a beautiful day!',
+            sentenceTranslation: 'Que dia lindo!',
+            sentenceWords: ['What', 'a', 'beautiful', 'day'],
+            fill: 'What a ___ day!',
+            fillAnswer: 'beautiful',
+            fillOptions: ['beautiful', 'ugly', 'bad', 'sad']
+        },
+        {
+            word: 'happy',
+            translation: 'feliz',
+            sentence: 'I am very happy today.',
+            sentenceTranslation: 'Estou muito feliz hoje.',
+            sentenceWords: ['I', 'am', 'very', 'happy', 'today'],
+            fill: 'I am very ___ today.',
+            fillAnswer: 'happy',
+            fillOptions: ['happy', 'sad', 'angry', 'tired']
+        },
+        {
+            word: 'love',
+            translation: 'amor',
+            sentence: 'I love my family.',
+            sentenceTranslation: 'Eu amo minha família.',
+            sentenceWords: ['I', 'love', 'my', 'family'],
+            fill: 'I ___ my family.',
+            fillAnswer: 'love',
+            fillOptions: ['love', 'hate', 'like', 'know']
+        },
+        {
+            word: 'time',
+            translation: 'tempo',
+            sentence: 'What time is it?',
+            sentenceTranslation: 'Que horas são?',
+            sentenceWords: ['What', 'time', 'is', 'it'],
+            fill: 'What ___ is it?',
+            fillAnswer: 'time',
+            fillOptions: ['time', 'day', 'date', 'year']
+        },
+        {
+            word: 'work',
+            translation: 'trabalho',
+            sentence: 'I go to work every day.',
+            sentenceTranslation: 'Eu vou trabalhar todos os dias.',
+            sentenceWords: ['I', 'go', 'to', 'work', 'every', 'day'],
+            fill: 'I go to work ___ day.',
+            fillAnswer: 'every',
+            fillOptions: ['every', 'some', 'no', 'any']
+        },
+        {
+            word: 'morning',
+            translation: 'manhã',
+            sentence: 'Good morning!',
+            sentenceTranslation: 'Bom dia!',
+            sentenceWords: ['Good', 'morning'],
+            fill: 'Good ___!',
+            fillAnswer: 'morning',
+            fillOptions: ['morning', 'night', 'evening', 'afternoon']
+        },
+        {
+            word: 'night',
+            translation: 'noite',
+            sentence: 'Good night, sleep well.',
+            sentenceTranslation: 'Boa noite, durma bem.',
+            sentenceWords: ['Good', 'night', 'sleep', 'well'],
+            fill: 'Good night, sleep ___.',
+            fillAnswer: 'well',
+            fillOptions: ['well', 'bad', 'fast', 'slow']
+        },
+        {
+            word: 'book',
+            translation: 'livro',
+            sentence: 'I am reading a book.',
+            sentenceTranslation: 'Estou lendo um livro.',
+            sentenceWords: ['I', 'am', 'reading', 'a', 'book'],
+            fill: 'I am ___ a book.',
+            fillAnswer: 'reading',
+            fillOptions: ['reading', 'writing', 'eating', 'watching']
+        },
+        {
+            word: 'music',
+            translation: 'música',
+            sentence: 'I love listening to music.',
+            sentenceTranslation: 'Eu amo ouvir música.',
+            sentenceWords: ['I', 'love', 'listening', 'to', 'music'],
+            fill: 'I love listening ___ music.',
+            fillAnswer: 'to',
+            fillOptions: ['to', 'at', 'in', 'on']
+        },
+        {
+            word: 'eat',
+            translation: 'comer',
+            sentence: 'I want to eat now.',
+            sentenceTranslation: 'Eu quero comer agora.',
+            sentenceWords: ['I', 'want', 'to', 'eat', 'now'],
+            fill: 'I want ___ eat now.',
+            fillAnswer: 'to',
+            fillOptions: ['to', 'for', 'at', 'in']
+        },
+        {
+            word: 'drink',
+            translation: 'beber',
+            sentence: 'Do you want to drink?',
+            sentenceTranslation: 'Você quer beber?',
+            sentenceWords: ['Do', 'you', 'want', 'to', 'drink'],
+            fill: '___ you want to drink?',
+            fillAnswer: 'Do',
+            fillOptions: ['Do', 'Does', 'Did', 'Are']
+        },
+        {
+            word: 'big',
+            translation: 'grande',
+            sentence: 'This house is very big.',
+            sentenceTranslation: 'Esta casa é muito grande.',
+            sentenceWords: ['This', 'house', 'is', 'very', 'big'],
+            fill: 'This house is ___ big.',
+            fillAnswer: 'very',
+            fillOptions: ['very', 'not', 'too', 'so']
+        }
     ],
     es: [
-        { word: 'hola', translation: 'olá', example: '¡Hola! ¿Cómo estás?' },
-        { word: 'adiós', translation: 'adeus', example: '¡Adiós, hasta mañana!' },
-        { word: 'gracias', translation: 'obrigado', example: 'Gracias por tu ayuda.' },
-        { word: 'por favor', translation: 'por favor', example: 'Por favor, siéntate.' },
-        { word: 'agua', translation: 'água', example: 'Necesito agua.' },
-        { word: 'comida', translation: 'comida', example: 'La comida está deliciosa.' },
-        { word: 'casa', translation: 'casa', example: 'Esta es mi casa.' },
-        { word: 'amigo', translation: 'amigo', example: 'Él es mi mejor amigo.' },
-        { word: 'hermoso', translation: 'bonito', example: '¡Qué día tan hermoso!' },
-        { word: 'feliz', translation: 'feliz', example: 'Estoy muy feliz hoy.' },
-        { word: 'amor', translation: 'amor', example: 'El amor lo conquista todo.' },
-        { word: 'tiempo', translation: 'tempo', example: 'El tiempo vuela.' },
-        { word: 'trabajo', translation: 'trabalho', example: 'Tengo mucho trabajo.' },
-        { word: 'familia', translation: 'família', example: 'La familia es importante.' },
-        { word: 'mañana', translation: 'manhã', example: '¡Buenos días!' },
-        { word: 'noche', translation: 'noite', example: 'Buenas noches.' },
-        { word: 'libro', translation: 'livro', example: 'Me encanta leer libros.' },
-        { word: 'música', translation: 'música', example: 'La música me hace feliz.' },
-        { word: 'viajar', translation: 'viajar', example: 'Quiero viajar por el mundo.' },
-        { word: 'sueño', translation: 'sonho', example: 'Sigue tus sueños.' }
+        {
+            word: 'hola',
+            translation: 'olá',
+            sentence: '¡Hola! ¿Cómo estás?',
+            sentenceTranslation: 'Olá! Como você está?',
+            sentenceWords: ['Hola', 'Cómo', 'estás'],
+            fill: '¡Hola! ¿___ estás?',
+            fillAnswer: 'Cómo',
+            fillOptions: ['Cómo', 'Qué', 'Dónde', 'Cuándo']
+        },
+        {
+            word: 'gracias',
+            translation: 'obrigado',
+            sentence: 'Muchas gracias por tu ayuda.',
+            sentenceTranslation: 'Muito obrigado pela sua ajuda.',
+            sentenceWords: ['Muchas', 'gracias', 'por', 'tu', 'ayuda'],
+            fill: 'Muchas gracias ___ tu ayuda.',
+            fillAnswer: 'por',
+            fillOptions: ['por', 'para', 'con', 'sin']
+        },
+        {
+            word: 'amor',
+            translation: 'amor',
+            sentence: 'Te quiero mucho, mi amor.',
+            sentenceTranslation: 'Te amo muito, meu amor.',
+            sentenceWords: ['Te', 'quiero', 'mucho', 'mi', 'amor'],
+            fill: 'Te quiero ___, mi amor.',
+            fillAnswer: 'mucho',
+            fillOptions: ['mucho', 'poco', 'nada', 'más']
+        },
+        {
+            word: 'casa',
+            translation: 'casa',
+            sentence: 'Mi casa es tu casa.',
+            sentenceTranslation: 'Minha casa é sua casa.',
+            sentenceWords: ['Mi', 'casa', 'es', 'tu', 'casa'],
+            fill: 'Mi casa ___ tu casa.',
+            fillAnswer: 'es',
+            fillOptions: ['es', 'está', 'son', 'están']
+        },
+        {
+            word: 'comer',
+            translation: 'comer',
+            sentence: 'Quiero comer algo.',
+            sentenceTranslation: 'Quero comer algo.',
+            sentenceWords: ['Quiero', 'comer', 'algo'],
+            fill: 'Quiero ___ algo.',
+            fillAnswer: 'comer',
+            fillOptions: ['comer', 'beber', 'dormir', 'hablar']
+        }
     ],
     fr: [
-        { word: 'bonjour', translation: 'olá', example: 'Bonjour, comment allez-vous?' },
-        { word: 'au revoir', translation: 'adeus', example: 'Au revoir, à demain!' },
-        { word: 'merci', translation: 'obrigado', example: 'Merci beaucoup.' },
-        { word: 's\'il vous plaît', translation: 'por favor', example: 'S\'il vous plaît, asseyez-vous.' },
-        { word: 'eau', translation: 'água', example: 'J\'ai besoin d\'eau.' },
-        { word: 'nourriture', translation: 'comida', example: 'La nourriture est délicieuse.' },
-        { word: 'maison', translation: 'casa', example: 'C\'est ma maison.' },
-        { word: 'ami', translation: 'amigo', example: 'C\'est mon meilleur ami.' },
-        { word: 'beau', translation: 'bonito', example: 'Quelle belle journée!' },
-        { word: 'heureux', translation: 'feliz', example: 'Je suis très heureux.' },
-        { word: 'amour', translation: 'amor', example: 'L\'amour conquiert tout.' },
-        { word: 'temps', translation: 'tempo', example: 'Le temps passe vite.' },
-        { word: 'travail', translation: 'trabalho', example: 'J\'ai beaucoup de travail.' },
-        { word: 'famille', translation: 'família', example: 'La famille est importante.' },
-        { word: 'matin', translation: 'manhã', example: 'Bon matin!' },
-        { word: 'nuit', translation: 'noite', example: 'Bonne nuit.' },
-        { word: 'livre', translation: 'livro', example: 'J\'aime lire des livres.' },
-        { word: 'musique', translation: 'música', example: 'La musique me rend heureux.' },
-        { word: 'voyager', translation: 'viajar', example: 'Je veux voyager.' },
-        { word: 'rêve', translation: 'sonho', example: 'Suivez vos rêves.' }
+        {
+            word: 'bonjour',
+            translation: 'olá/bom dia',
+            sentence: 'Bonjour, comment allez-vous?',
+            sentenceTranslation: 'Bom dia, como você está?',
+            sentenceWords: ['Bonjour', 'comment', 'allez', 'vous'],
+            fill: 'Bonjour, ___ allez-vous?',
+            fillAnswer: 'comment',
+            fillOptions: ['comment', 'où', 'quand', 'pourquoi']
+        },
+        {
+            word: 'merci',
+            translation: 'obrigado',
+            sentence: 'Merci beaucoup!',
+            sentenceTranslation: 'Muito obrigado!',
+            sentenceWords: ['Merci', 'beaucoup'],
+            fill: 'Merci ___!',
+            fillAnswer: 'beaucoup',
+            fillOptions: ['beaucoup', 'peu', 'très', 'trop']
+        },
+        {
+            word: 'amour',
+            translation: 'amor',
+            sentence: "L'amour est magnifique.",
+            sentenceTranslation: 'O amor é magnífico.',
+            sentenceWords: ["L'amour", 'est', 'magnifique'],
+            fill: "L'amour ___ magnifique.",
+            fillAnswer: 'est',
+            fillOptions: ['est', 'sont', 'es', 'êtes']
+        }
     ],
     de: [
-        { word: 'hallo', translation: 'olá', example: 'Hallo, wie geht es dir?' },
-        { word: 'auf wiedersehen', translation: 'adeus', example: 'Auf Wiedersehen!' },
-        { word: 'danke', translation: 'obrigado', example: 'Danke schön.' },
-        { word: 'bitte', translation: 'por favor', example: 'Bitte setzen Sie sich.' },
-        { word: 'wasser', translation: 'água', example: 'Ich brauche Wasser.' },
-        { word: 'essen', translation: 'comida', example: 'Das Essen ist lecker.' },
-        { word: 'haus', translation: 'casa', example: 'Das ist mein Haus.' },
-        { word: 'freund', translation: 'amigo', example: 'Er ist mein bester Freund.' },
-        { word: 'schön', translation: 'bonito', example: 'Was für ein schöner Tag!' },
-        { word: 'glücklich', translation: 'feliz', example: 'Ich bin sehr glücklich.' },
-        { word: 'liebe', translation: 'amor', example: 'Liebe überwindet alles.' },
-        { word: 'zeit', translation: 'tempo', example: 'Die Zeit vergeht schnell.' },
-        { word: 'arbeit', translation: 'trabalho', example: 'Ich habe viel Arbeit.' },
-        { word: 'familie', translation: 'família', example: 'Familie ist wichtig.' },
-        { word: 'morgen', translation: 'manhã', example: 'Guten Morgen!' },
-        { word: 'nacht', translation: 'noite', example: 'Gute Nacht.' },
-        { word: 'buch', translation: 'livro', example: 'Ich lese gern Bücher.' },
-        { word: 'musik', translation: 'música', example: 'Musik macht mich glücklich.' },
-        { word: 'reisen', translation: 'viajar', example: 'Ich will reisen.' },
-        { word: 'traum', translation: 'sonho', example: 'Folge deinen Träumen.' }
+        {
+            word: 'hallo',
+            translation: 'olá',
+            sentence: 'Hallo, wie geht es dir?',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['Hallo', 'wie', 'geht', 'es', 'dir'],
+            fill: 'Hallo, ___ geht es dir?',
+            fillAnswer: 'wie',
+            fillOptions: ['wie', 'was', 'wo', 'wann']
+        },
+        {
+            word: 'danke',
+            translation: 'obrigado',
+            sentence: 'Danke schön!',
+            sentenceTranslation: 'Muito obrigado!',
+            sentenceWords: ['Danke', 'schön'],
+            fill: 'Danke ___!',
+            fillAnswer: 'schön',
+            fillOptions: ['schön', 'gut', 'sehr', 'viel']
+        }
     ],
     it: [
-        { word: 'ciao', translation: 'olá', example: 'Ciao, come stai?' },
-        { word: 'arrivederci', translation: 'adeus', example: 'Arrivederci!' },
-        { word: 'grazie', translation: 'obrigado', example: 'Grazie mille.' },
-        { word: 'per favore', translation: 'por favor', example: 'Per favore, siediti.' },
-        { word: 'acqua', translation: 'água', example: 'Ho bisogno di acqua.' },
-        { word: 'cibo', translation: 'comida', example: 'Il cibo è delizioso.' },
-        { word: 'casa', translation: 'casa', example: 'Questa è la mia casa.' },
-        { word: 'amico', translation: 'amigo', example: 'È il mio migliore amico.' },
-        { word: 'bello', translation: 'bonito', example: 'Che bella giornata!' },
-        { word: 'felice', translation: 'feliz', example: 'Sono molto felice.' },
-        { word: 'amore', translation: 'amor', example: 'L\'amore vince tutto.' },
-        { word: 'tempo', translation: 'tempo', example: 'Il tempo vola.' },
-        { word: 'lavoro', translation: 'trabalho', example: 'Ho molto lavoro.' },
-        { word: 'famiglia', translation: 'família', example: 'La famiglia è importante.' },
-        { word: 'mattina', translation: 'manhã', example: 'Buon giorno!' },
-        { word: 'notte', translation: 'noite', example: 'Buona notte.' },
-        { word: 'libro', translation: 'livro', example: 'Mi piace leggere libri.' },
-        { word: 'musica', translation: 'música', example: 'La musica mi rende felice.' },
-        { word: 'viaggiare', translation: 'viajar', example: 'Voglio viaggiare.' },
-        { word: 'sogno', translation: 'sonho', example: 'Segui i tuoi sogni.' }
+        {
+            word: 'ciao',
+            translation: 'olá/tchau',
+            sentence: 'Ciao, come stai?',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['Ciao', 'come', 'stai'],
+            fill: 'Ciao, ___ stai?',
+            fillAnswer: 'come',
+            fillOptions: ['come', 'dove', 'quando', 'perché']
+        },
+        {
+            word: 'grazie',
+            translation: 'obrigado',
+            sentence: 'Grazie mille!',
+            sentenceTranslation: 'Muito obrigado!',
+            sentenceWords: ['Grazie', 'mille'],
+            fill: 'Grazie ___!',
+            fillAnswer: 'mille',
+            fillOptions: ['mille', 'tanto', 'molto', 'poco']
+        }
     ],
     ja: [
-        { word: 'こんにちは', translation: 'olá', example: 'こんにちは、お元気ですか？' },
-        { word: 'さようなら', translation: 'adeus', example: 'さようなら！' },
-        { word: 'ありがとう', translation: 'obrigado', example: 'ありがとうございます。' },
-        { word: 'お願いします', translation: 'por favor', example: 'お願いします。' },
-        { word: '水', translation: 'água', example: '水が必要です。' },
-        { word: '食べ物', translation: 'comida', example: '食べ物は美味しいです。' },
-        { word: '家', translation: 'casa', example: 'これは私の家です。' },
-        { word: '友達', translation: 'amigo', example: '彼は私の親友です。' },
-        { word: '美しい', translation: 'bonito', example: 'なんて美しい日だ！' },
-        { word: '幸せ', translation: 'feliz', example: '私はとても幸せです。' },
-        { word: '愛', translation: 'amor', example: '愛は全てを征服する。' },
-        { word: '時間', translation: 'tempo', example: '時間は速く過ぎる。' },
-        { word: '仕事', translation: 'trabalho', example: '仕事がたくさんあります。' },
-        { word: '家族', translation: 'família', example: '家族は大切です。' },
-        { word: '朝', translation: 'manhã', example: 'おはようございます！' },
-        { word: '夜', translation: 'noite', example: 'おやすみなさい。' },
-        { word: '本', translation: 'livro', example: '本を読むのが好きです。' },
-        { word: '音楽', translation: 'música', example: '音楽が好きです。' },
-        { word: '旅行', translation: 'viajar', example: '旅行したいです。' },
-        { word: '夢', translation: 'sonho', example: '夢を追いかけて。' }
+        {
+            word: 'こんにちは',
+            translation: 'olá',
+            sentence: 'こんにちは、お元気ですか？',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['こんにちは', 'お元気', 'ですか'],
+            fill: 'こんにちは、___ですか？',
+            fillAnswer: 'お元気',
+            fillOptions: ['お元気', 'お名前', 'お仕事', 'お天気']
+        }
     ],
     ko: [
-        { word: '안녕하세요', translation: 'olá', example: '안녕하세요, 어떻게 지내세요?' },
-        { word: '안녕히 가세요', translation: 'adeus', example: '안녕히 가세요!' },
-        { word: '감사합니다', translation: 'obrigado', example: '감사합니다.' },
-        { word: '제발', translation: 'por favor', example: '제발 앉으세요.' },
-        { word: '물', translation: 'água', example: '물이 필요해요.' },
-        { word: '음식', translation: 'comida', example: '음식이 맛있어요.' },
-        { word: '집', translation: 'casa', example: '이것은 제 집이에요.' },
-        { word: '친구', translation: 'amigo', example: '그는 제 친한 친구예요.' },
-        { word: '아름다운', translation: 'bonito', example: '정말 아름다운 날이에요!' },
-        { word: '행복한', translation: 'feliz', example: '저는 매우 행복해요.' },
-        { word: '사랑', translation: 'amor', example: '사랑은 모든 것을 이겨요.' },
-        { word: '시간', translation: 'tempo', example: '시간이 빨리 가요.' },
-        { word: '일', translation: 'trabalho', example: '일이 많아요.' },
-        { word: '가족', translation: 'família', example: '가족은 중요해요.' },
-        { word: '아침', translation: 'manhã', example: '좋은 아침이에요!' },
-        { word: '밤', translation: 'noite', example: '좋은 밤 되세요.' },
-        { word: '책', translation: 'livro', example: '책 읽는 것을 좋아해요.' },
-        { word: '음악', translation: 'música', example: '음악이 저를 행복하게 해요.' },
-        { word: '여행', translation: 'viajar', example: '여행하고 싶어요.' },
-        { word: '꿈', translation: 'sonho', example: '꿈을 따라가세요.' }
+        {
+            word: '안녕하세요',
+            translation: 'olá',
+            sentence: '안녕하세요, 어떻게 지내세요?',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['안녕하세요', '어떻게', '지내세요'],
+            fill: '안녕하세요, ___ 지내세요?',
+            fillAnswer: '어떻게',
+            fillOptions: ['어떻게', '어디서', '언제', '왜']
+        }
     ],
     zh: [
-        { word: '你好', translation: 'olá', example: '你好，你好吗？' },
-        { word: '再见', translation: 'adeus', example: '再见！' },
-        { word: '谢谢', translation: 'obrigado', example: '谢谢你。' },
-        { word: '请', translation: 'por favor', example: '请坐。' },
-        { word: '水', translation: 'água', example: '我需要水。' },
-        { word: '食物', translation: 'comida', example: '食物很好吃。' },
-        { word: '家', translation: 'casa', example: '这是我的家。' },
-        { word: '朋友', translation: 'amigo', example: '他是我最好的朋友。' },
-        { word: '美丽', translation: 'bonito', example: '多么美丽的一天！' },
-        { word: '快乐', translation: 'feliz', example: '我很快乐。' },
-        { word: '爱', translation: 'amor', example: '爱能战胜一切。' },
-        { word: '时间', translation: 'tempo', example: '时间过得很快。' },
-        { word: '工作', translation: 'trabalho', example: '我有很多工作。' },
-        { word: '家庭', translation: 'família', example: '家庭很重要。' },
-        { word: '早上', translation: 'manhã', example: '早上好！' },
-        { word: '晚上', translation: 'noite', example: '晚安。' },
-        { word: '书', translation: 'livro', example: '我喜欢读书。' },
-        { word: '音乐', translation: 'música', example: '音乐让我快乐。' },
-        { word: '旅行', translation: 'viajar', example: '我想旅行。' },
-        { word: '梦想', translation: 'sonho', example: '追随你的梦想。' }
+        {
+            word: '你好',
+            translation: 'olá',
+            sentence: '你好，你好吗？',
+            sentenceTranslation: 'Olá, como você está?',
+            sentenceWords: ['你好', '你', '好吗'],
+            fill: '你好，你___？',
+            fillAnswer: '好吗',
+            fillOptions: ['好吗', '是谁', '在哪', '什么']
+        }
     ]
 };
 
-const QUESTION_TYPES = ['translate', 'listen', 'meaning'];
+const EXERCISE_TYPES = [
+    'translate',
+    'fillBlank', 
+    'writeWord',
+    'orderWords',
+    'listenWrite',
+    'matchPairs'
+];
 
 class AudioManager {
     constructor() {
@@ -224,13 +421,13 @@ class AudioManager {
         if (this.enabled) {
             btn.classList.remove('muted');
             btn.title = 'Som ligado';
-            onIcon.style.display = 'block';
-            offIcon.style.display = 'none';
+            if (onIcon) onIcon.style.display = 'block';
+            if (offIcon) offIcon.style.display = 'none';
         } else {
             btn.classList.add('muted');
             btn.title = 'Som desligado';
-            onIcon.style.display = 'none';
-            offIcon.style.display = 'block';
+            if (onIcon) onIcon.style.display = 'none';
+            if (offIcon) offIcon.style.display = 'block';
         }
     }
 
@@ -297,7 +494,7 @@ class SpeechManager {
         
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
-        utterance.rate = 0.9;
+        utterance.rate = 0.85;
         utterance.pitch = 1;
         
         utterance.onstart = () => {
@@ -327,9 +524,11 @@ const gameState = {
     progress: 0,
     questionsAnswered: 0,
     totalQuestions: 10,
-    currentQuestion: null,
-    usedWords: new Set(),
-    isProcessing: false
+    currentExercise: null,
+    usedLessons: new Set(),
+    isProcessing: false,
+    selectedWords: [],
+    matchedPairs: new Set()
 };
 
 const audio = new AudioManager();
@@ -393,8 +592,10 @@ function initGame() {
     gameState.xp = 0;
     gameState.progress = 0;
     gameState.questionsAnswered = 0;
-    gameState.usedWords.clear();
+    gameState.usedLessons.clear();
     gameState.isProcessing = false;
+    gameState.selectedWords = [];
+    gameState.matchedPairs.clear();
     
     updateStats();
     
@@ -402,7 +603,7 @@ function initGame() {
     DOM.levelComplete.classList.add('hidden');
     DOM.gameArea.classList.remove('hidden');
     
-    loadNextQuestion();
+    loadNextExercise();
 }
 
 function updateStats() {
@@ -415,161 +616,513 @@ function updateStats() {
     DOM.progressText.textContent = `${gameState.questionsAnswered}/${gameState.totalQuestions}`;
 }
 
-function getRandomWord() {
-    const vocab = VOCABULARY[gameState.currentLang];
-    const availableWords = vocab.filter(w => !gameState.usedWords.has(w.word));
+function getRandomLesson() {
+    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
+    const availableLessons = lessons.filter((_, i) => !gameState.usedLessons.has(i));
     
-    if (availableWords.length === 0) {
-        gameState.usedWords.clear();
-        return vocab[Math.floor(Math.random() * vocab.length)];
+    if (availableLessons.length === 0) {
+        gameState.usedLessons.clear();
+        const idx = Math.floor(Math.random() * lessons.length);
+        gameState.usedLessons.add(idx);
+        return lessons[idx];
     }
     
-    const word = availableWords[Math.floor(Math.random() * availableWords.length)];
-    gameState.usedWords.add(word.word);
-    return word;
+    const randomIdx = Math.floor(Math.random() * availableLessons.length);
+    const originalIdx = lessons.indexOf(availableLessons[randomIdx]);
+    gameState.usedLessons.add(originalIdx);
+    return availableLessons[randomIdx];
 }
 
-function getDistractors(correctAnswer, field) {
-    const vocab = VOCABULARY[gameState.currentLang];
-    const distractors = [];
-    const used = new Set([correctAnswer]);
+function getRandomExerciseType() {
+    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
     
-    while (distractors.length < 3) {
-        const randomWord = vocab[Math.floor(Math.random() * vocab.length)];
-        const value = randomWord[field];
-        if (!used.has(value)) {
-            distractors.push(value);
-            used.add(value);
-        }
+    if (lessons.length < 4) {
+        return EXERCISE_TYPES.filter(t => t !== 'matchPairs')[Math.floor(Math.random() * 5)];
     }
     
-    return distractors;
+    return EXERCISE_TYPES[Math.floor(Math.random() * EXERCISE_TYPES.length)];
 }
 
-function loadNextQuestion() {
+function loadNextExercise() {
     DOM.feedbackArea.classList.add('hidden');
     DOM.feedbackArea.classList.remove('correct', 'wrong');
     gameState.isProcessing = false;
+    gameState.selectedWords = [];
+    gameState.matchedPairs.clear();
     
     if (gameState.questionsAnswered >= gameState.totalQuestions) {
         showLevelComplete();
         return;
     }
     
-    const word = getRandomWord();
-    const questionType = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
+    const lesson = getRandomLesson();
+    const exerciseType = getRandomExerciseType();
     
-    let question, correctAnswer, distractors, speakText;
+    gameState.currentExercise = { lesson, type: exerciseType };
     
-    switch (questionType) {
+    switch (exerciseType) {
         case 'translate':
-            question = `Como se diz "${word.translation}" em ${LANGUAGES[gameState.currentLang].name}?`;
-            correctAnswer = word.word;
-            distractors = getDistractors(word.word, 'word');
-            speakText = word.word;
-            DOM.questionType.textContent = 'Traduza';
+            renderTranslateExercise(lesson);
             break;
-            
-        case 'listen':
-            question = 'Ouça e escolha a tradução correta:';
-            correctAnswer = word.translation;
-            distractors = getDistractors(word.translation, 'translation');
-            speakText = word.word;
-            DOM.questionType.textContent = 'Ouça';
-            setTimeout(() => speakWord(speakText), 500);
+        case 'fillBlank':
+            renderFillBlankExercise(lesson);
             break;
-            
-        case 'meaning':
-            question = `O que significa "${word.word}"?`;
-            correctAnswer = word.translation;
-            distractors = getDistractors(word.translation, 'translation');
-            speakText = word.word;
-            DOM.questionType.textContent = 'Significado';
+        case 'writeWord':
+            renderWriteWordExercise(lesson);
+            break;
+        case 'orderWords':
+            renderOrderWordsExercise(lesson);
+            break;
+        case 'listenWrite':
+            renderListenWriteExercise(lesson);
+            break;
+        case 'matchPairs':
+            renderMatchPairsExercise();
             break;
     }
-    
-    gameState.currentQuestion = {
-        word,
-        type: questionType,
-        correctAnswer,
-        speakText
-    };
-    
-    DOM.questionText.textContent = question;
-    
-    const allOptions = [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
-    renderOptions(allOptions);
-    
-    setupKeyboardShortcuts(allOptions);
 }
 
-function renderOptions(options) {
-    DOM.optionsContainer.innerHTML = '';
+function renderTranslateExercise(lesson) {
+    DOM.questionType.textContent = 'Traduza esta palavra';
+    DOM.questionText.textContent = `Como se diz "${lesson.translation}" em ${LANGUAGES[gameState.currentLang].name}?`;
     
-    options.forEach((opt, index) => {
+    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
+    const distractors = lessons
+        .filter(l => l.word !== lesson.word)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(l => l.word);
+    
+    const options = [lesson.word, ...distractors].sort(() => Math.random() - 0.5);
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'options-grid';
+    
+    options.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'option-card';
-        btn.innerHTML = `
-            <span class="key-hint">${index + 1}</span>
-            <span class="option-text">${opt}</span>
-        `;
-        btn.onclick = () => checkAnswer(opt, btn);
+        btn.innerHTML = `<span class="key-hint">${i + 1}</span><span class="option-text">${opt}</span>`;
+        btn.onclick = () => checkTranslateAnswer(opt, lesson.word, btn);
         DOM.optionsContainer.appendChild(btn);
+    });
+    
+    setupKeyboardShortcuts(options.length, (i) => {
+        const btns = DOM.optionsContainer.querySelectorAll('.option-card');
+        if (btns[i]) btns[i].click();
     });
 }
 
-function setupKeyboardShortcuts(options) {
-    document.onkeydown = (e) => {
-        if (gameState.isProcessing) {
-            if (e.key === 'Enter' && !DOM.feedbackArea.classList.contains('hidden')) {
-                DOM.nextBtn.click();
-            }
-            return;
+function renderFillBlankExercise(lesson) {
+    DOM.questionType.textContent = 'Complete a frase';
+    DOM.questionText.innerHTML = lesson.fill.replace('___', '<span class="blank-space">______</span>');
+    
+    const options = [...lesson.fillOptions].sort(() => Math.random() - 0.5);
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'options-grid';
+    
+    options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-card';
+        btn.innerHTML = `<span class="key-hint">${i + 1}</span><span class="option-text">${opt}</span>`;
+        btn.onclick = () => checkFillBlankAnswer(opt, lesson.fillAnswer, btn);
+        DOM.optionsContainer.appendChild(btn);
+    });
+    
+    setupKeyboardShortcuts(options.length, (i) => {
+        const btns = DOM.optionsContainer.querySelectorAll('.option-card');
+        if (btns[i]) btns[i].click();
+    });
+}
+
+function renderWriteWordExercise(lesson) {
+    DOM.questionType.textContent = 'Escreva a tradução';
+    DOM.questionText.textContent = `Escreva "${lesson.translation}" em ${LANGUAGES[gameState.currentLang].name}:`;
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'write-exercise';
+    
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'input-wrapper';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'write-input';
+    input.placeholder = 'Digite aqui...';
+    input.autocomplete = 'off';
+    input.autocapitalize = 'off';
+    
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn-submit';
+    submitBtn.innerHTML = `Verificar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+    submitBtn.onclick = () => checkWriteAnswer(input.value, lesson.word);
+    
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter' && !gameState.isProcessing) {
+            submitBtn.click();
         }
-        
-        const key = e.key;
-        if (key >= '1' && key <= '4') {
-            const index = parseInt(key) - 1;
-            const buttons = DOM.optionsContainer.querySelectorAll('.option-card');
-            if (buttons[index]) {
-                audio.playClick();
-                buttons[index].click();
-            }
+    };
+    
+    inputWrapper.appendChild(input);
+    inputWrapper.appendChild(submitBtn);
+    DOM.optionsContainer.appendChild(inputWrapper);
+    
+    setTimeout(() => input.focus(), 100);
+    
+    document.onkeydown = null;
+}
+
+function renderOrderWordsExercise(lesson) {
+    DOM.questionType.textContent = 'Ordene as palavras';
+    DOM.questionText.textContent = `Monte a frase: "${lesson.sentenceTranslation}"`;
+    
+    const shuffledWords = [...lesson.sentenceWords].sort(() => Math.random() - 0.5);
+    gameState.selectedWords = [];
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'order-exercise';
+    
+    const selectedArea = document.createElement('div');
+    selectedArea.className = 'selected-words';
+    selectedArea.id = 'selected-words';
+    
+    const wordBank = document.createElement('div');
+    wordBank.className = 'word-bank';
+    wordBank.id = 'word-bank';
+    
+    shuffledWords.forEach((word, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'word-chip';
+        btn.textContent = word;
+        btn.dataset.word = word;
+        btn.dataset.index = i;
+        btn.onclick = () => toggleWord(btn, word);
+        wordBank.appendChild(btn);
+    });
+    
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn-submit';
+    submitBtn.innerHTML = `Verificar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+    submitBtn.onclick = () => checkOrderAnswer(lesson.sentenceWords);
+    
+    DOM.optionsContainer.appendChild(selectedArea);
+    DOM.optionsContainer.appendChild(wordBank);
+    DOM.optionsContainer.appendChild(submitBtn);
+    
+    document.onkeydown = (e) => {
+        if (e.key === 'Enter' && !gameState.isProcessing) {
+            submitBtn.click();
         }
     };
 }
 
-function speakWord(text) {
-    const langCode = LANGUAGES[gameState.currentLang].voice;
-    speech.speak(text, langCode);
+function toggleWord(btn, word) {
+    if (gameState.isProcessing) return;
+    audio.playClick();
+    
+    const selectedArea = document.getElementById('selected-words');
+    const wordBank = document.getElementById('word-bank');
+    
+    if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        const idx = gameState.selectedWords.indexOf(word);
+        if (idx > -1) gameState.selectedWords.splice(idx, 1);
+        wordBank.appendChild(btn);
+    } else {
+        btn.classList.add('selected');
+        gameState.selectedWords.push(word);
+        selectedArea.appendChild(btn);
+    }
 }
 
-function checkAnswer(selected, btnElement) {
+function renderListenWriteExercise(lesson) {
+    DOM.questionType.textContent = 'Ouça e escreva';
+    DOM.questionText.textContent = 'Ouça a frase e escreva o que você ouviu:';
+    
+    setTimeout(() => {
+        speech.speak(lesson.sentence, LANGUAGES[gameState.currentLang].voice);
+    }, 500);
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'write-exercise';
+    
+    const listenBtn = document.createElement('button');
+    listenBtn.className = 'btn-listen-large';
+    listenBtn.innerHTML = `
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        Ouvir novamente
+    `;
+    listenBtn.onclick = () => {
+        audio.playClick();
+        speech.speak(lesson.sentence, LANGUAGES[gameState.currentLang].voice);
+    };
+    
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'input-wrapper';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'write-input';
+    input.placeholder = 'Digite o que você ouviu...';
+    input.autocomplete = 'off';
+    input.autocapitalize = 'off';
+    
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn-submit';
+    submitBtn.innerHTML = `Verificar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+    submitBtn.onclick = () => checkListenAnswer(input.value, lesson.sentence);
+    
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter' && !gameState.isProcessing) {
+            submitBtn.click();
+        }
+    };
+    
+    inputWrapper.appendChild(input);
+    inputWrapper.appendChild(submitBtn);
+    
+    DOM.optionsContainer.appendChild(listenBtn);
+    DOM.optionsContainer.appendChild(inputWrapper);
+    
+    setTimeout(() => input.focus(), 100);
+    
+    document.onkeydown = null;
+}
+
+function renderMatchPairsExercise() {
+    DOM.questionType.textContent = 'Combine os pares';
+    DOM.questionText.textContent = 'Conecte cada palavra com sua tradução:';
+    
+    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
+    const selectedLessons = lessons.sort(() => Math.random() - 0.5).slice(0, 4);
+    
+    gameState.matchedPairs.clear();
+    gameState.currentExercise.pairs = selectedLessons;
+    gameState.currentExercise.selectedPair = null;
+    
+    const words = selectedLessons.map(l => ({ text: l.word, type: 'word', lesson: l }));
+    const translations = selectedLessons.map(l => ({ text: l.translation, type: 'translation', lesson: l }));
+    
+    const shuffledWords = words.sort(() => Math.random() - 0.5);
+    const shuffledTranslations = translations.sort(() => Math.random() - 0.5);
+    
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'match-exercise';
+    
+    const leftCol = document.createElement('div');
+    leftCol.className = 'match-column';
+    
+    const rightCol = document.createElement('div');
+    rightCol.className = 'match-column';
+    
+    shuffledWords.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'match-card';
+        btn.textContent = item.text;
+        btn.dataset.word = item.lesson.word;
+        btn.dataset.type = 'word';
+        btn.onclick = () => selectMatchCard(btn, item);
+        leftCol.appendChild(btn);
+    });
+    
+    shuffledTranslations.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'match-card';
+        btn.textContent = item.text;
+        btn.dataset.word = item.lesson.word;
+        btn.dataset.type = 'translation';
+        btn.onclick = () => selectMatchCard(btn, item);
+        rightCol.appendChild(btn);
+    });
+    
+    DOM.optionsContainer.appendChild(leftCol);
+    DOM.optionsContainer.appendChild(rightCol);
+    
+    document.onkeydown = null;
+}
+
+function selectMatchCard(btn, item) {
+    if (gameState.isProcessing || btn.classList.contains('matched')) return;
+    audio.playClick();
+    
+    const exercise = gameState.currentExercise;
+    
+    if (!exercise.selectedPair) {
+        document.querySelectorAll('.match-card').forEach(c => c.classList.remove('selected'));
+        btn.classList.add('selected');
+        exercise.selectedPair = { btn, item };
+    } else {
+        const first = exercise.selectedPair;
+        
+        if (first.btn === btn) {
+            btn.classList.remove('selected');
+            exercise.selectedPair = null;
+            return;
+        }
+        
+        if (first.item.type === item.type) {
+            first.btn.classList.remove('selected');
+            btn.classList.add('selected');
+            exercise.selectedPair = { btn, item };
+            return;
+        }
+        
+        if (first.item.lesson.word === item.lesson.word) {
+            first.btn.classList.add('matched', 'correct');
+            btn.classList.add('matched', 'correct');
+            first.btn.classList.remove('selected');
+            gameState.matchedPairs.add(first.item.lesson.word);
+            exercise.selectedPair = null;
+            
+            if (gameState.matchedPairs.size === exercise.pairs.length) {
+                setTimeout(() => {
+                    gameState.streak++;
+                    gameState.xp += 15 + (gameState.streak * 2);
+                    gameState.questionsAnswered++;
+                    audio.playCorrect();
+                    updateStats();
+                    showFeedback(true, 'Todos os pares combinados!');
+                }, 300);
+            }
+        } else {
+            first.btn.classList.add('wrong');
+            btn.classList.add('wrong');
+            first.btn.classList.remove('selected');
+            
+            setTimeout(() => {
+                first.btn.classList.remove('wrong');
+                btn.classList.remove('wrong');
+            }, 500);
+            
+            exercise.selectedPair = null;
+        }
+    }
+}
+
+function checkTranslateAnswer(selected, correct, btn) {
     if (gameState.isProcessing) return;
     gameState.isProcessing = true;
     
-    const isCorrect = selected === gameState.currentQuestion.correctAnswer;
+    const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+    markOptionCards(correct, btn, isCorrect);
+    processAnswer(isCorrect, correct);
+}
+
+function checkFillBlankAnswer(selected, correct, btn) {
+    if (gameState.isProcessing) return;
+    gameState.isProcessing = true;
     
+    const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+    markOptionCards(correct, btn, isCorrect);
+    processAnswer(isCorrect, correct);
+}
+
+function checkWriteAnswer(input, correct) {
+    if (gameState.isProcessing || !input.trim()) return;
+    gameState.isProcessing = true;
+    
+    const normalizedInput = input.trim().toLowerCase();
+    const normalizedCorrect = correct.toLowerCase();
+    const isCorrect = normalizedInput === normalizedCorrect;
+    
+    const inputEl = document.querySelector('.write-input');
+    if (inputEl) {
+        inputEl.classList.add(isCorrect ? 'correct' : 'wrong');
+        inputEl.disabled = true;
+    }
+    
+    processAnswer(isCorrect, correct);
+}
+
+function checkOrderAnswer(correctOrder) {
+    if (gameState.isProcessing) return;
+    gameState.isProcessing = true;
+    
+    const isCorrect = gameState.selectedWords.join(' ') === correctOrder.join(' ');
+    
+    const selectedArea = document.getElementById('selected-words');
+    if (selectedArea) {
+        selectedArea.classList.add(isCorrect ? 'correct' : 'wrong');
+    }
+    
+    processAnswer(isCorrect, correctOrder.join(' '));
+}
+
+function checkListenAnswer(input, correct) {
+    if (gameState.isProcessing || !input.trim()) return;
+    gameState.isProcessing = true;
+    
+    const normalizedInput = input.trim().toLowerCase().replace(/[.,!?]/g, '');
+    const normalizedCorrect = correct.toLowerCase().replace(/[.,!?¿¡]/g, '');
+    
+    const similarity = calculateSimilarity(normalizedInput, normalizedCorrect);
+    const isCorrect = similarity > 0.8;
+    
+    const inputEl = document.querySelector('.write-input');
+    if (inputEl) {
+        inputEl.classList.add(isCorrect ? 'correct' : 'wrong');
+        inputEl.disabled = true;
+    }
+    
+    processAnswer(isCorrect, correct);
+}
+
+function calculateSimilarity(str1, str2) {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const costs = [];
+    for (let i = 0; i <= longer.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= shorter.length; j++) {
+            if (i === 0) {
+                costs[j] = j;
+            } else if (j > 0) {
+                let newValue = costs[j - 1];
+                if (longer[i - 1] !== shorter[j - 1]) {
+                    newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                }
+                costs[j - 1] = lastValue;
+                lastValue = newValue;
+            }
+        }
+        if (i > 0) costs[shorter.length] = lastValue;
+    }
+    
+    return (longer.length - costs[shorter.length]) / longer.length;
+}
+
+function markOptionCards(correct, clickedBtn, isCorrect) {
     const buttons = DOM.optionsContainer.querySelectorAll('.option-card');
     buttons.forEach(b => {
-        const text = b.querySelector('.option-text').textContent;
-        if (text === gameState.currentQuestion.correctAnswer) {
+        const text = b.querySelector('.option-text')?.textContent;
+        if (text?.toLowerCase() === correct.toLowerCase()) {
             b.classList.add('correct');
-        } else if (b === btnElement && !isCorrect) {
+        } else if (b === clickedBtn && !isCorrect) {
             b.classList.add('wrong');
         }
         b.disabled = true;
     });
-    
+}
+
+function processAnswer(isCorrect, correctAnswer) {
     if (isCorrect) {
         gameState.streak++;
         gameState.xp += 10 + (gameState.streak * 2);
         gameState.questionsAnswered++;
         
         const miniAvatar = document.querySelector('.mini-avatar');
-        miniAvatar.style.animation = 'none';
-        miniAvatar.offsetHeight;
-        miniAvatar.style.animation = 'celebrate 0.5s ease';
+        if (miniAvatar) {
+            miniAvatar.style.animation = 'none';
+            miniAvatar.offsetHeight;
+            miniAvatar.style.animation = 'celebrate 0.5s ease';
+        }
         
         audio.playCorrect();
         showFeedback(true);
@@ -578,7 +1131,7 @@ function checkAnswer(selected, btnElement) {
         gameState.hearts--;
         gameState.questionsAnswered++;
         audio.playWrong();
-        showFeedback(false);
+        showFeedback(false, `Resposta correta: ${correctAnswer}`);
     }
     
     updateStats();
@@ -588,16 +1141,16 @@ function checkAnswer(selected, btnElement) {
     }
 }
 
-function showFeedback(isCorrect) {
+function showFeedback(isCorrect, message = '') {
     DOM.feedbackArea.classList.remove('hidden', 'correct', 'wrong');
     DOM.feedbackArea.classList.add(isCorrect ? 'correct' : 'wrong');
     
     DOM.feedbackTitle.textContent = isCorrect ? 'Correto!' : 'Incorreto';
     
     if (isCorrect) {
-        DOM.feedbackMessage.textContent = `+${10 + (gameState.streak * 2)} XP`;
+        DOM.feedbackMessage.textContent = message || `+${10 + (gameState.streak * 2)} XP`;
     } else {
-        DOM.feedbackMessage.textContent = `Resposta: ${gameState.currentQuestion.correctAnswer}`;
+        DOM.feedbackMessage.textContent = message;
     }
     
     DOM.nextBtn.focus();
@@ -626,6 +1179,7 @@ function showLevelComplete() {
 
 function createConfetti() {
     const container = document.getElementById('confetti');
+    if (!container) return;
     container.innerHTML = '';
     
     const colors = ['#667eea', '#f093fb', '#48bb78', '#ed8936', '#9f7aea', '#fbd38d'];
@@ -641,6 +1195,37 @@ function createConfetti() {
     }
 }
 
+function setupKeyboardShortcuts(count, callback) {
+    document.onkeydown = (e) => {
+        if (gameState.isProcessing) {
+            if (e.key === 'Enter' && !DOM.feedbackArea.classList.contains('hidden')) {
+                DOM.nextBtn.click();
+            }
+            return;
+        }
+        
+        const key = e.key;
+        if (key >= '1' && key <= String(count)) {
+            const index = parseInt(key) - 1;
+            audio.playClick();
+            callback(index);
+        }
+    };
+}
+
+function speakCurrentWord() {
+    const exercise = gameState.currentExercise;
+    if (!exercise) return;
+    
+    const langCode = LANGUAGES[gameState.currentLang].voice;
+    
+    if (exercise.type === 'listenWrite') {
+        speech.speak(exercise.lesson.sentence, langCode);
+    } else {
+        speech.speak(exercise.lesson.word, langCode);
+    }
+}
+
 DOM.languageGrid.querySelectorAll('.language-card').forEach(card => {
     card.addEventListener('click', () => {
         const lang = card.dataset.lang;
@@ -651,15 +1236,13 @@ DOM.languageGrid.querySelectorAll('.language-card').forEach(card => {
 DOM.btnBackLang.addEventListener('click', goBackToLanguageSelect);
 
 DOM.btnSpeak.addEventListener('click', () => {
-    if (gameState.currentQuestion) {
-        audio.playClick();
-        speakWord(gameState.currentQuestion.speakText);
-    }
+    audio.playClick();
+    speakCurrentWord();
 });
 
 DOM.nextBtn.addEventListener('click', () => {
     if (gameState.hearts > 0) {
-        loadNextQuestion();
+        loadNextExercise();
     } else {
         showGameOver();
     }
@@ -675,7 +1258,7 @@ DOM.continueBtn.addEventListener('click', () => {
     initGame();
 });
 
-document.getElementById('sound-toggle').addEventListener('click', () => {
+document.getElementById('sound-toggle')?.addEventListener('click', () => {
     audio.toggle();
 });
 
