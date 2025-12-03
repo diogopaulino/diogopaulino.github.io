@@ -59,10 +59,12 @@ header {
     grid-template-columns: auto 1fr auto !important;
     align-items: center !important;
     gap: 1rem !important;
+    pointer-events: none;
+    /* Allow clicks to pass through empty space */
 }
 
 /* Make children interactive */
-header > * {
+header>* {
     pointer-events: auto;
 }
 
@@ -169,7 +171,7 @@ header .app-logo {
     gap: 8px;
 }
 
-.control-group > label {
+.control-group>label {
     font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -247,7 +249,7 @@ header .app-logo {
 .preset-btn.active {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     border-color: #818cf8;
-    box-shadow: 
+    box-shadow:
         0 0 20px rgba(99, 102, 241, 0.6),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
     transform: scale(1.05);
@@ -507,19 +509,24 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @keyframes rainbow-glow {
-    0%, 100% { 
+
+    0%,
+    100% {
         border-color: #f472b6;
         box-shadow: 0 0 15px rgba(244, 114, 182, 0.3);
     }
-    25% { 
+
+    25% {
         border-color: #818cf8;
         box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
     }
-    50% { 
+
+    50% {
         border-color: #34d399;
         box-shadow: 0 0 15px rgba(52, 211, 153, 0.3);
     }
-    75% { 
+
+    75% {
         border-color: #fbbf24;
         box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
     }
@@ -569,10 +576,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 30px rgba(102, 126, 234, 0.4);
         border-color: rgba(165, 180, 252, 0.5);
     }
+
     50% {
         box-shadow: 0 0 50px rgba(118, 75, 162, 0.6);
         border-color: rgba(165, 180, 252, 0.8);
@@ -583,6 +593,7 @@ input[type="range"]::-moz-range-thumb {
     0% {
         opacity: 1;
     }
+
     100% {
         opacity: 0;
         visibility: hidden;

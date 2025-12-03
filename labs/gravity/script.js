@@ -134,6 +134,9 @@ class Particle {
 
 function init() {
     particles = [];
+    resize();
+    // Spawn some initial particles to show it works
+    spawnParticles(width / 2, height / 2, 50);
 }
 
 function animate() {
@@ -147,9 +150,14 @@ function animate() {
         ctx.fillRect(0, 0, width, height);
     }
 
+    // Enable additive blending for glow effect
+    ctx.globalCompositeOperation = 'screen';
+
     particles.forEach((particle) => {
         particle.update();
     });
+
+    ctx.globalCompositeOperation = 'source-over';
 
     if (particles.length > 800) {
         particles.splice(0, particles.length - 800);
@@ -184,6 +192,10 @@ function handleInput(x, y) {
 canvas.addEventListener('mousedown', (e) => {
     isMouseDown = true;
     handleInput(e.clientX, e.clientY);
+    // Burst on click
+    if (mouseMode === 'spawn') {
+        spawnParticles(e.clientX, e.clientY, 15);
+    }
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -330,11 +342,11 @@ fullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().then(() => {
             document.body.classList.add('fullscreen');
-        }).catch(() => {});
+        }).catch(() => { });
     } else {
         document.exitFullscreen().then(() => {
             document.body.classList.remove('fullscreen');
-        }).catch(() => {});
+        }).catch(() => { });
     }
 });
 
