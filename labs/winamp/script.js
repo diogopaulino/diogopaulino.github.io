@@ -1,44 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_PLAYLIST = [
         {
-            title: 'Ambient Relaxing Music - Chill Vibes',
-            url: 'https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3',
-            duration: '3:14'
+            title: 'Retro Synthwave - Night Drive',
+            url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_5c29ee7879.mp3',
+            duration: '2:38'
         },
         {
-            title: 'Lofi Study - Calm Afternoon',
-            url: 'https://cdn.pixabay.com/audio/2024/11/01/audio_4956b4edd1.mp3',
-            duration: '2:35'
-        },
-        {
-            title: 'Smooth Jazz - Late Night Session',
+            title: 'Chill 90s Groove - Sunset Boulevard',
             url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_715e43bd13.mp3',
             duration: '2:17'
         },
         {
-            title: 'Piano Dreams - Soft Melody',
-            url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3',
-            duration: '2:29'
+            title: 'Lo-Fi Hip Hop - Rainy Day',
+            url: 'https://cdn.pixabay.com/audio/2024/11/01/audio_4956b4edd1.mp3',
+            duration: '2:35'
         },
         {
-            title: 'Chillhop Beats - Coffee Break',
+            title: 'Vaporwave Dreams - Mall Memories',
+            url: 'https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3',
+            duration: '3:14'
+        },
+        {
+            title: 'Smooth Bass - Late Night Jam',
             url: 'https://cdn.pixabay.com/audio/2023/07/30/audio_e6d0f98a2e.mp3',
             duration: '1:41'
         },
         {
-            title: 'Ambient Soundscape - Ocean Waves',
+            title: '90s Ambient - City Lights',
+            url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3',
+            duration: '2:29'
+        },
+        {
+            title: 'Chillwave - Ocean Breeze',
             url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
             duration: '3:46'
         },
         {
-            title: 'Relaxing Guitar - Sunday Morning',
+            title: 'Retro Beats - Neon Streets',
             url: 'https://cdn.pixabay.com/audio/2023/09/25/audio_ef7223c00d.mp3',
             duration: '2:05'
-        },
-        {
-            title: 'Soft Electronic - Nostalgia 90s',
-            url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_5c29ee7879.mp3',
-            duration: '2:38'
         }
     ];
 
@@ -47,10 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let gainNode = null;
     let panNode = null;
     let sourceNode = null;
+    let audioConnected = false;
 
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
-    audio.preload = 'metadata';
+    audio.preload = 'auto';
 
     let playlist = [...DEFAULT_PLAYLIST];
     let currentTrackIndex = 0;
@@ -58,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isShuffle = false;
     let repeatMode = 0;
     let visMode = 0;
-    const visModes = ['spectrum', 'oscilloscope', 'bars'];
+    const visModes = ['spectrum', 'scope', 'bars'];
 
     const canvas = document.getElementById('vis-canvas');
     const ctx = canvas.getContext('2d');
@@ -102,17 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
         rock: [5, 4, 3, 1, -1, -1, 0, 2, 3, 4],
         pop: [-1, 2, 4, 5, 3, 0, -1, -1, -1, -1],
         classical: [0, 0, 0, 0, 0, 0, -3, -3, -3, -5],
-        bass: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
+        bass: [8, 6, 4, 2, 0, 0, 0, 0, 0, 0],
         treble: [0, 0, 0, 0, 0, 2, 4, 5, 6, 6]
     };
 
     function initAudioContext() {
-        if (audioContext) return;
+        if (audioContext && audioConnected) return;
 
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.8;
+        analyser.smoothingTimeConstant = 0.85;
 
         gainNode = audioContext.createGain();
         panNode = audioContext.createStereoPanner();
@@ -122,25 +126,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const filter = audioContext.createBiquadFilter();
             filter.type = i === 0 ? 'lowshelf' : i === frequencies.length - 1 ? 'highshelf' : 'peaking';
             filter.frequency.value = freq;
-            filter.Q.value = 1;
+            filter.Q.value = 1.4;
             filter.gain.value = 0;
             return filter;
         });
 
-        sourceNode = audioContext.createMediaElementSource(audio);
-        
-        let chain = sourceNode;
-        chain = chain.connect(gainNode);
-        chain = chain.connect(panNode);
-        
-        eqFilters.forEach(filter => {
-            chain = chain.connect(filter);
-        });
-        
-        chain.connect(analyser);
-        analyser.connect(audioContext.destination);
+        if (!audioConnected) {
+            sourceNode = audioContext.createMediaElementSource(audio);
+            
+            let chain = sourceNode;
+            chain = chain.connect(gainNode);
+            chain = chain.connect(panNode);
+            
+            eqFilters.forEach(filter => {
+                chain = chain.connect(filter);
+            });
+            
+            chain.connect(analyser);
+            analyser.connect(audioContext.destination);
+            audioConnected = true;
+        }
 
         gainNode.gain.value = volumeSlider.value / 100;
+        applyEQPreset('bass');
+        eqPresets.value = 'bass';
     }
 
     function loadTrack(index, autoPlay = false) {
@@ -150,6 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const track = playlist[index];
         
         showLoading(true);
+        
+        const wasPlaying = isPlaying;
+        if (isPlaying) {
+            audio.pause();
+        }
         
         audio.src = track.url;
         audio.load();
@@ -161,13 +175,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoading(false);
             seekBar.max = Math.floor(audio.duration);
             updateTrackInfo();
-            if (autoPlay) play();
+            
+            if (autoPlay || wasPlaying) {
+                play();
+            }
         };
         
-        audio.onerror = () => {
+        audio.onerror = (e) => {
             showLoading(false);
-            updateMarquee('Error loading: ' + track.title);
-            console.error('Failed to load:', track.url);
+            console.error('Error loading track:', track.url, e);
+            updateMarquee('Error: ' + track.title);
+            
+            setTimeout(() => {
+                if (playlist.length > 1) {
+                    nextTrack();
+                }
+            }, 2000);
         };
     }
 
@@ -183,9 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnPlay.classList.add('active');
             btnPause.classList.remove('active');
             document.querySelector('.marquee').classList.remove('paused');
-            drawVisualizer();
+            requestAnimationFrame(drawVisualizer);
         }).catch(err => {
-            console.error('Playback failed:', err);
+            console.error('Playback error:', err);
         });
     }
 
@@ -216,7 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let newIndex = currentTrackIndex - 1;
-        if (newIndex < 0) newIndex = playlist.length - 1;
+        if (newIndex < 0) {
+            newIndex = playlist.length - 1;
+        }
         loadTrack(newIndex, isPlaying);
     }
 
@@ -243,14 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatTime(seconds) {
-        if (isNaN(seconds)) return '00:00';
+        if (isNaN(seconds) || !isFinite(seconds)) return '00:00';
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
     function updateMarquee(text) {
-        marqueeText.textContent = text + ' *** ';
+        marqueeText.textContent = text + '  ***  ';
     }
 
     function updateTrackInfo() {
@@ -259,7 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showLoading(show) {
-        loadingOverlay.classList.toggle('show', show);
+        if (show) {
+            loadingOverlay.classList.add('show');
+        } else {
+            loadingOverlay.classList.remove('show');
+        }
     }
 
     function drawVisualizer() {
@@ -281,21 +310,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const step = Math.floor(bufferLength / barCount);
             
             for (let i = 0; i < barCount; i++) {
-                const value = dataArray[i * step];
+                let value = dataArray[i * step];
+                value = Math.pow(value / 255, 0.8) * 255;
                 const barHeight = (value / 255) * canvas.height;
                 const x = i * (barWidth + gap);
                 
                 const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
-                gradient.addColorStop(0, '#00ff00');
-                gradient.addColorStop(0.5, '#00cc00');
-                gradient.addColorStop(1, '#009900');
+                gradient.addColorStop(0, '#00cc00');
+                gradient.addColorStop(0.6, '#00ff00');
+                gradient.addColorStop(1, '#88ff88');
                 
                 ctx.fillStyle = gradient;
                 ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
                 
-                if (barHeight > 2) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(x, canvas.height - barHeight - 1, barWidth, 1);
+                if (barHeight > 3) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, 1);
                 }
             }
         } else if (visMode === 1) {
@@ -303,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 1;
-            ctx.shadowBlur = 2;
+            ctx.shadowBlur = 3;
             ctx.shadowColor = '#00ff00';
             ctx.beginPath();
             
@@ -331,12 +361,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const step = Math.floor(bufferLength / barCount);
             
             for (let i = 0; i < barCount; i++) {
-                const value = dataArray[i * step];
+                let value = dataArray[i * step];
+                value = Math.pow(value / 255, 0.8) * 255;
                 const barHeight = (value / 255) * canvas.height;
                 const x = i * barWidth;
                 
-                const hue = (i / barCount) * 60;
-                ctx.fillStyle = `hsl(${120 - hue}, 100%, ${40 + (value / 255) * 30}%)`;
+                const hue = 120 - (i / barCount) * 40;
+                const light = 40 + (value / 255) * 20;
+                ctx.fillStyle = `hsl(${hue}, 100%, ${light}%)`;
                 ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
             }
         }
@@ -360,14 +392,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isPlaying) item.classList.add('playing');
             }
             
-            const num = (index + 1).toString().padStart(2, '0');
+            const num = (index + 1).toString();
             item.innerHTML = `
                 <span class="track-title">${num}. ${track.title}</span>
                 <span class="track-duration">${track.duration || '--:--'}</span>
             `;
             
-            item.addEventListener('click', () => {
+            item.addEventListener('dblclick', () => {
                 loadTrack(index, true);
+            });
+            
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
             });
             
             playlistContainer.appendChild(item);
@@ -379,8 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function updatePlaylistUI() {
         const items = playlistContainer.querySelectorAll('.playlist-item');
         items.forEach((item, index) => {
-            item.classList.toggle('active', index === currentTrackIndex);
-            item.classList.toggle('playing', index === currentTrackIndex && isPlaying);
+            item.classList.remove('active', 'playing');
+            if (index === currentTrackIndex) {
+                item.classList.add('active');
+                if (isPlaying) item.classList.add('playing');
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         });
     }
 
@@ -395,22 +436,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        const hours = Math.floor(totalSeconds / 3600);
-        const mins = Math.floor((totalSeconds % 3600) / 60);
-        const secs = totalSeconds % 60;
-        
-        if (hours > 0) {
-            playlistDuration.textContent = `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        } else {
-            playlistDuration.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
+        playlistDuration.textContent = formatTime(totalSeconds);
     }
 
     function setVolume(value) {
+        const vol = value / 100;
+        audio.volume = vol;
         if (gainNode) {
-            gainNode.gain.value = value / 100;
+            gainNode.gain.value = vol;
         }
-        audio.volume = value / 100;
         volumeDisplay.textContent = `${value}%`;
     }
 
@@ -447,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 2:
                 btnRepeat.classList.add('active');
-                btnRepeat.textContent = 'REPA';
+                btnRepeat.textContent = 'ALL';
                 break;
         }
     }
@@ -488,6 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleFileSelect(files) {
+        const newTracks = [];
+        
         Array.from(files).forEach(file => {
             if (file.type.startsWith('audio/')) {
                 const url = URL.createObjectURL(file);
@@ -498,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     isLocal: true
                 };
                 
-                playlist.push(track);
+                newTracks.push(track);
                 
                 const tempAudio = new Audio(url);
                 tempAudio.onloadedmetadata = () => {
@@ -508,10 +544,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        renderPlaylist();
-        
-        if (playlist.length === 1 || !isPlaying) {
-            loadTrack(playlist.length - files.length, false);
+        if (newTracks.length > 0) {
+            playlist = [...playlist, ...newTracks];
+            renderPlaylist();
+            
+            if (!isPlaying) {
+                loadTrack(playlist.length - newTracks.length, false);
+            }
         }
     }
 
@@ -523,22 +562,26 @@ document.addEventListener('DOMContentLoaded', () => {
     btnShuffle.addEventListener('click', toggleShuffle);
     btnRepeat.addEventListener('click', toggleRepeat);
     
-    btnEject.addEventListener('click', () => {
-        fileInput.click();
-    });
+    btnEject.addEventListener('click', () => fileInput.click());
     
     fileInput.addEventListener('change', (e) => {
         handleFileSelect(e.target.files);
         e.target.value = '';
     });
 
-    volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
-    balanceSlider.addEventListener('input', (e) => setBalance(e.target.value));
+    volumeSlider.addEventListener('input', (e) => setVolume(parseInt(e.target.value)));
+    balanceSlider.addEventListener('input', (e) => setBalance(parseInt(e.target.value)));
 
-    seekBar.addEventListener('input', () => {
+    let isSeeking = false;
+    seekBar.addEventListener('mousedown', () => isSeeking = true);
+    seekBar.addEventListener('mouseup', () => {
+        isSeeking = false;
         if (audio.duration) {
             audio.currentTime = seekBar.value;
         }
+    });
+    seekBar.addEventListener('input', () => {
+        timeElapsed.textContent = formatTime(seekBar.value);
     });
 
     visContainer.addEventListener('click', cycleVisMode);
@@ -558,18 +601,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pl-add').addEventListener('click', () => fileInput.click());
     
     document.getElementById('pl-rem').addEventListener('click', () => {
-        if (playlist.length > 1) {
-            const removedIndex = currentTrackIndex;
-            playlist.splice(removedIndex, 1);
-            
-            if (removedIndex >= playlist.length) {
-                currentTrackIndex = playlist.length - 1;
-            }
-            
-            renderPlaylist();
-            
-            if (removedIndex === currentTrackIndex && isPlaying) {
-                loadTrack(currentTrackIndex, true);
+        const selected = document.querySelector('.playlist-item.selected');
+        if (selected) {
+            const index = Array.from(playlistContainer.children).indexOf(selected);
+            if (index !== -1 && playlist.length > 1) {
+                playlist.splice(index, 1);
+                if (index === currentTrackIndex) {
+                    currentTrackIndex = Math.min(index, playlist.length - 1);
+                    loadTrack(currentTrackIndex, isPlaying);
+                } else if (index < currentTrackIndex) {
+                    currentTrackIndex--;
+                }
+                renderPlaylist();
             }
         }
     });
@@ -583,14 +626,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.getElementById('pl-sort').addEventListener('click', () => {
-        const currentTrack = playlist[currentTrackIndex];
+        const currentUrl = playlist[currentTrackIndex]?.url;
         playlist.sort((a, b) => a.title.localeCompare(b.title));
-        currentTrackIndex = playlist.findIndex(t => t.url === currentTrack.url);
+        currentTrackIndex = playlist.findIndex(t => t.url === currentUrl);
+        if (currentTrackIndex === -1) currentTrackIndex = 0;
         renderPlaylist();
     });
 
     audio.addEventListener('timeupdate', () => {
-        if (!isNaN(audio.duration)) {
+        if (!isSeeking && !isNaN(audio.duration)) {
             timeElapsed.textContent = formatTime(audio.currentTime);
             seekBar.value = Math.floor(audio.currentTime);
         }
@@ -638,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.winamp-wrapper > div').forEach(div => {
                 div.style.zIndex = 1;
             });
-            element.style.zIndex = 2;
+            element.style.zIndex = 10;
         }
 
         function elementDrag(e) {
@@ -659,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT') return;
+        if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
         
         switch (e.code) {
             case 'Space':
@@ -668,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'ArrowLeft':
                 e.preventDefault();
-                if (e.shiftKey) {
+                if (e.ctrlKey || e.metaKey) {
                     prevTrack();
                 } else {
                     audio.currentTime = Math.max(0, audio.currentTime - 5);
@@ -676,32 +720,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'ArrowRight':
                 e.preventDefault();
-                if (e.shiftKey) {
+                if (e.ctrlKey || e.metaKey) {
                     nextTrack();
                 } else {
-                    audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+                    audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
                 }
                 break;
             case 'ArrowUp':
                 e.preventDefault();
                 volumeSlider.value = Math.min(100, parseInt(volumeSlider.value) + 5);
-                setVolume(volumeSlider.value);
+                setVolume(parseInt(volumeSlider.value));
                 break;
             case 'ArrowDown':
                 e.preventDefault();
                 volumeSlider.value = Math.max(0, parseInt(volumeSlider.value) - 5);
-                setVolume(volumeSlider.value);
+                setVolume(parseInt(volumeSlider.value));
                 break;
             case 'KeyS':
-                toggleShuffle();
+                if (!e.ctrlKey && !e.metaKey) toggleShuffle();
                 break;
             case 'KeyR':
-                toggleRepeat();
+                if (!e.ctrlKey && !e.metaKey) toggleRepeat();
                 break;
             case 'KeyV':
-                cycleVisMode();
+                if (!e.ctrlKey && !e.metaKey) cycleVisMode();
+                break;
+            case 'KeyZ':
+                if (!e.ctrlKey && !e.metaKey) prevTrack();
+                break;
+            case 'KeyX':
+                if (!e.ctrlKey && !e.metaKey) play();
+                break;
+            case 'KeyC':
+                if (!e.ctrlKey && !e.metaKey) pause();
+                break;
+            case 'KeyB':
+                if (!e.ctrlKey && !e.metaKey) nextTrack();
                 break;
         }
+    });
+
+    const wrapper = document.querySelector('.winamp-wrapper');
+    
+    wrapper.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        wrapper.style.opacity = '0.8';
+    });
+    
+    wrapper.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        wrapper.style.opacity = '1';
+    });
+    
+    wrapper.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        wrapper.style.opacity = '1';
+        handleFileSelect(e.dataTransfer.files);
     });
 
     document.querySelector('.marquee').classList.add('paused');
@@ -710,20 +787,4 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPlaylist();
     loadTrack(0, false);
     clearVisualizer();
-
-    const wrapper = document.querySelector('.winamp-wrapper');
-    wrapper.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        wrapper.style.opacity = '0.7';
-    });
-    
-    wrapper.addEventListener('dragleave', () => {
-        wrapper.style.opacity = '1';
-    });
-    
-    wrapper.addEventListener('drop', (e) => {
-        e.preventDefault();
-        wrapper.style.opacity = '1';
-        handleFileSelect(e.dataTransfer.files);
-    });
 });

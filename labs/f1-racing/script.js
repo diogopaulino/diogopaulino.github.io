@@ -6,12 +6,12 @@ const minimapCtx = minimapCanvas.getContext('2d');
 const CONFIG = {
     TOTAL_LAPS: 3,
     MAX_SPEED: 340,
-    ACCELERATION: 0.6,
-    BRAKE_FORCE: 1.2,
-    FRICTION: 0.15,
-    TURN_RATE: 0.055,
-    SPEED_TURN_FACTOR: 0.4,
-    OFF_TRACK_SPEED: 0.4,
+    ACCELERATION: 0.65,
+    BRAKE_FORCE: 1.3,
+    FRICTION: 0.12,
+    TURN_RATE: 0.06,
+    SPEED_TURN_FACTOR: 0.35,
+    WALL_BOUNCE: 0.6,
     AI_COUNT: 4,
     GEAR_SPEEDS: [0, 50, 95, 145, 195, 245, 295, 320, 340],
     RPM_MIN: 5000,
@@ -35,14 +35,14 @@ const AI_COLORS = ['#00d2be', '#3671c6', '#ff8000', '#0090ff', '#b6babd'];
 class Track {
     constructor() {
         this.points = [];
-        this.width = 100;
+        this.width = 95;
         this.innerPoints = [];
         this.outerPoints = [];
         this.generateTrack();
     }
 
     generateTrack() {
-        const padding = 60;
+        const padding = 70;
         const cx = canvas.width / 2;
         const cy = canvas.height / 2;
         const maxRadiusX = (canvas.width / 2) - padding - this.width / 2;
@@ -51,11 +51,11 @@ class Track {
 
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const noiseX = Math.sin(angle * 2) * 0.2 + Math.cos(angle * 3) * 0.12;
-            const noiseY = Math.cos(angle * 2) * 0.2 + Math.sin(angle * 4) * 0.1;
+            const noiseX = Math.sin(angle * 2) * 0.18 + Math.cos(angle * 3) * 0.1;
+            const noiseY = Math.cos(angle * 2) * 0.18 + Math.sin(angle * 4) * 0.08;
             
-            const radiusX = maxRadiusX * (0.75 + noiseX * 0.25);
-            const radiusY = maxRadiusY * (0.75 + noiseY * 0.25);
+            const radiusX = maxRadiusX * (0.78 + noiseX * 0.22);
+            const radiusY = maxRadiusY * (0.78 + noiseY * 0.22);
             
             this.points.push({
                 x: cx + Math.cos(angle) * radiusX,
@@ -97,7 +97,7 @@ class Track {
     calculateBoundaries() {
         this.innerPoints = [];
         this.outerPoints = [];
-        const halfWidth = this.width / 2;
+        const halfWidth = this.width / 2 - 5;
 
         for (let i = 0; i < this.points.length; i++) {
             const prev = this.points[(i - 1 + this.points.length) % this.points.length];
@@ -146,23 +146,66 @@ class Track {
         return { ...this.points[0], angle: 0 };
     }
 
-    isOnTrack(x, y) {
+    getClosestTrackPoint(x, y) {
         let minDist = Infinity;
+        let closestPoint = { x: this.points[0].x, y: this.points[0].y };
+        let closestIndex = 0;
+        
         for (let i = 0; i < this.points.length; i++) {
             const next = (i + 1) % this.points.length;
-            const dist = this.pointToSegmentDist(x, y, this.points[i], this.points[next]);
-            if (dist < minDist) minDist = dist;
+            const result = this.closestPointOnSegment(x, y, this.points[i], this.points[next]);
+            if (result.dist < minDist) {
+                minDist = result.dist;
+                closestPoint = result.point;
+                closestIndex = i;
+            }
         }
-        return minDist < this.width / 2;
+        
+        const prev = this.points[(closestIndex - 1 + this.points.length) % this.points.length];
+        const next = this.points[(closestIndex + 1) % this.points.length];
+        const trackAngle = Math.atan2(next.y - prev.y, next.x - prev.x);
+        
+        return { point: closestPoint, dist: minDist, angle: trackAngle };
     }
 
-    pointToSegmentDist(px, py, p1, p2) {
+    closestPointOnSegment(px, py, p1, p2) {
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         const lenSq = dx * dx + dy * dy;
-        if (lenSq === 0) return Math.hypot(px - p1.x, py - p1.y);
+        
+        if (lenSq === 0) return { point: { x: p1.x, y: p1.y }, dist: Math.hypot(px - p1.x, py - p1.y) };
+        
         const t = Math.max(0, Math.min(1, ((px - p1.x) * dx + (py - p1.y) * dy) / lenSq));
-        return Math.hypot(px - (p1.x + t * dx), py - (p1.y + t * dy));
+        const closestX = p1.x + t * dx;
+        const closestY = p1.y + t * dy;
+        
+        return { 
+            point: { x: closestX, y: closestY }, 
+            dist: Math.hypot(px - closestX, py - closestY) 
+        };
+    }
+
+    constrainToTrack(x, y) {
+        const closest = this.getClosestTrackPoint(x, y);
+        const halfWidth = this.width / 2 - 8;
+        
+        if (closest.dist > halfWidth) {
+            const dx = x - closest.point.x;
+            const dy = y - closest.point.y;
+            const dist = Math.hypot(dx, dy);
+            
+            if (dist > 0) {
+                const pushX = closest.point.x + (dx / dist) * halfWidth;
+                const pushY = closest.point.y + (dy / dist) * halfWidth;
+                return { x: pushX, y: pushY, hit: true, angle: closest.angle };
+            }
+        }
+        return { x, y, hit: false, angle: closest.angle };
+    }
+
+    isOnTrack(x, y) {
+        const closest = this.getClosestTrackPoint(x, y);
+        return closest.dist < this.width / 2;
     }
 
     getProgressAtPoint(x, y) {
@@ -183,8 +226,8 @@ class Track {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        ctx.strokeStyle = '#0f0f12';
-        ctx.lineWidth = this.width + 25;
+        ctx.strokeStyle = '#0a0a0d';
+        ctx.lineWidth = this.width + 20;
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
         for (const point of this.points) ctx.lineTo(point.x, point.y);
@@ -193,7 +236,7 @@ class Track {
 
         this.drawKerbs(ctx);
 
-        ctx.strokeStyle = '#2d2d35';
+        ctx.strokeStyle = '#2a2a32';
         ctx.lineWidth = this.width;
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
@@ -201,9 +244,9 @@ class Track {
         ctx.closePath();
         ctx.stroke();
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 2;
-        ctx.setLineDash([12, 20]);
+        ctx.setLineDash([10, 18]);
         ctx.beginPath();
         ctx.moveTo(this.points[0].x, this.points[0].y);
         for (const point of this.points) ctx.lineTo(point.x, point.y);
@@ -247,7 +290,7 @@ class Track {
         const start = this.startLine;
         const perpAngle = start.angle + Math.PI / 2;
         const halfWidth = this.width / 2;
-        const squareSize = 8;
+        const squareSize = 7;
         
         const x1 = start.x + Math.cos(perpAngle) * halfWidth;
         const y1 = start.y + Math.sin(perpAngle) * halfWidth;
@@ -300,8 +343,8 @@ class Car {
         this.speed = 0;
         this.color = color;
         this.isPlayer = isPlayer;
-        this.width = 18;
-        this.height = 36;
+        this.width = 16;
+        this.height = 34;
         
         this.gear = 1;
         this.rpm = CONFIG.RPM_MIN;
@@ -312,30 +355,42 @@ class Car {
         this.lap = 0;
         this.finished = false;
         
-        this.aiAggression = 0.8 + Math.random() * 0.2;
-        this.aiLineOffset = (Math.random() - 0.5) * 20;
+        this.aiAggression = 0.85 + Math.random() * 0.15;
+        this.aiLineOffset = (Math.random() - 0.5) * 15;
     }
 
     update(dt, track) {
         if (this.finished) return;
         
-        const onTrack = track.isOnTrack(this.x, this.y);
-        
         if (this.isPlayer) {
-            this.handleInput(dt, onTrack);
+            this.handleInput(dt);
         } else {
-            this.updateAI(dt, track, onTrack);
+            this.updateAI(dt, track);
         }
 
         this.move(dt);
+        
+        const constrained = track.constrainToTrack(this.x, this.y);
+        if (constrained.hit) {
+            this.x = constrained.x;
+            this.y = constrained.y;
+            this.speed *= CONFIG.WALL_BOUNCE;
+            
+            const wallNormal = Math.atan2(this.y - constrained.y, this.x - constrained.x);
+            let angleDiff = this.angle - constrained.angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            
+            if (Math.abs(angleDiff) > Math.PI / 4) {
+                this.angle = constrained.angle + Math.sign(angleDiff) * Math.PI / 6;
+            }
+        }
+        
         this.updateGear();
         this.updateProgress(track);
-        
-        this.x = Math.max(15, Math.min(canvas.width - 15, this.x));
-        this.y = Math.max(15, Math.min(canvas.height - 15, this.y));
     }
 
-    handleInput(dt, onTrack) {
+    handleInput(dt) {
         if (keys.up) {
             this.speed += CONFIG.ACCELERATION * dt;
         }
@@ -343,27 +398,17 @@ class Car {
             this.speed -= CONFIG.BRAKE_FORCE * dt;
         }
         
-        this.speed -= CONFIG.FRICTION * dt * this.speed * 0.01;
-        
-        if (!onTrack) {
-            this.speed = Math.min(this.speed, CONFIG.MAX_SPEED * CONFIG.OFF_TRACK_SPEED);
-            this.speed -= CONFIG.FRICTION * dt * 2;
-        }
-        
+        this.speed -= CONFIG.FRICTION * dt * this.speed * 0.008;
         this.speed = Math.max(0, Math.min(CONFIG.MAX_SPEED, this.speed));
         
         const turnAmount = CONFIG.TURN_RATE * dt * (1 - this.speed / CONFIG.MAX_SPEED * CONFIG.SPEED_TURN_FACTOR);
         
-        if (keys.left) {
-            this.angle -= turnAmount;
-        }
-        if (keys.right) {
-            this.angle += turnAmount;
-        }
+        if (keys.left) this.angle -= turnAmount;
+        if (keys.right) this.angle += turnAmount;
     }
 
-    updateAI(dt, track, onTrack) {
-        const lookAhead = 60 + this.speed * 1.2;
+    updateAI(dt, track) {
+        const lookAhead = 50 + this.speed * 1.0;
         const currentProgress = track.getProgressAtPoint(this.x, this.y);
         const targetDist = currentProgress * track.totalLength + lookAhead;
         const targetPoint = track.getPointAtDistance(targetDist);
@@ -378,38 +423,37 @@ class Car {
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         
         const turnAmount = CONFIG.TURN_RATE * dt * (1 - this.speed / CONFIG.MAX_SPEED * CONFIG.SPEED_TURN_FACTOR);
-        this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnAmount) * this.aiAggression;
+        this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnAmount * 1.2) * this.aiAggression;
         
-        const cornerFactor = 1 - Math.abs(angleDiff) * 0.8;
+        const cornerFactor = 1 - Math.abs(angleDiff) * 0.7;
         const targetSpeed = CONFIG.MAX_SPEED * cornerFactor * this.aiAggression;
         
         if (this.speed < targetSpeed) {
             this.speed += CONFIG.ACCELERATION * dt * this.aiAggression;
         } else {
-            this.speed -= CONFIG.BRAKE_FORCE * dt * 0.5;
+            this.speed -= CONFIG.BRAKE_FORCE * dt * 0.6;
         }
         
-        this.speed -= CONFIG.FRICTION * dt * this.speed * 0.01;
-        if (!onTrack) this.speed = Math.min(this.speed, CONFIG.MAX_SPEED * CONFIG.OFF_TRACK_SPEED);
+        this.speed -= CONFIG.FRICTION * dt * this.speed * 0.008;
         this.speed = Math.max(0, Math.min(CONFIG.MAX_SPEED, this.speed));
         
         for (const car of [playerCar, ...aiCars]) {
-            if (car === this) continue;
+            if (car === this || !car) continue;
             const dist = Math.hypot(car.x - this.x, car.y - this.y);
-            if (dist < 40 && dist > 0) {
+            if (dist < 35 && dist > 0) {
                 const avoidAngle = Math.atan2(car.y - this.y, car.x - this.x);
                 let avoidDiff = avoidAngle - this.angle;
                 while (avoidDiff > Math.PI) avoidDiff -= Math.PI * 2;
                 while (avoidDiff < -Math.PI) avoidDiff += Math.PI * 2;
                 if (Math.abs(avoidDiff) < Math.PI / 2) {
-                    this.angle -= Math.sign(avoidDiff) * 0.03 * dt;
+                    this.angle -= Math.sign(avoidDiff) * 0.04 * dt;
                 }
             }
         }
     }
 
     move(dt) {
-        const moveSpeed = this.speed * 0.15 * dt;
+        const moveSpeed = this.speed * 0.14 * dt;
         this.x += Math.cos(this.angle) * moveSpeed;
         this.y += Math.sin(this.angle) * moveSpeed;
     }
@@ -470,37 +514,30 @@ class Car {
         
         ctx.fillStyle = '#111';
         ctx.beginPath();
-        ctx.ellipse(-this.width / 2 - 2, this.height * 0.28, 4, 6, 0, 0, Math.PI * 2);
-        ctx.ellipse(this.width / 2 + 2, this.height * 0.28, 4, 6, 0, 0, Math.PI * 2);
-        ctx.ellipse(-this.width / 2 - 2, -this.height * 0.3, 5, 7, 0, 0, Math.PI * 2);
-        ctx.ellipse(this.width / 2 + 2, -this.height * 0.3, 5, 7, 0, 0, Math.PI * 2);
+        ctx.ellipse(-this.width / 2 - 1, this.height * 0.26, 3, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(this.width / 2 + 1, this.height * 0.26, 3, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(-this.width / 2 - 1, -this.height * 0.28, 4, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(this.width / 2 + 1, -this.height * 0.28, 4, 6, 0, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.moveTo(0, -this.height / 2);
-        ctx.lineTo(-this.width / 2 + 2, this.height / 4);
+        ctx.lineTo(-this.width / 2 + 1, this.height / 4);
         ctx.quadraticCurveTo(-this.width / 3, this.height / 2, 0, this.height / 2);
-        ctx.quadraticCurveTo(this.width / 3, this.height / 2, this.width / 2 - 2, this.height / 4);
+        ctx.quadraticCurveTo(this.width / 3, this.height / 2, this.width / 2 - 1, this.height / 4);
         ctx.closePath();
         ctx.fill();
         
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.beginPath();
-        ctx.ellipse(0, -this.height * 0.05, this.width * 0.25, this.height * 0.15, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, -this.height * 0.04, this.width * 0.22, this.height * 0.13, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        const wingWidth = this.width * 0.85;
+        const wingWidth = this.width * 0.8;
         ctx.fillStyle = this.color;
-        ctx.fillRect(-wingWidth / 2, -this.height / 2 - 4, wingWidth, 5);
-        ctx.fillRect(-wingWidth / 2, this.height / 2 - 2, wingWidth, 4);
-        
-        if (this.isPlayer) {
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 5px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('1', 0, 2);
-        }
+        ctx.fillRect(-wingWidth / 2, -this.height / 2 - 3, wingWidth, 4);
+        ctx.fillRect(-wingWidth / 2, this.height / 2 - 1, wingWidth, 3);
         
         ctx.restore();
     }
@@ -515,9 +552,9 @@ class Car {
         
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.moveTo(0, -4);
-        ctx.lineTo(-2, 3);
-        ctx.lineTo(2, 3);
+        ctx.moveTo(0, -3);
+        ctx.lineTo(-2, 2);
+        ctx.lineTo(2, 2);
         ctx.closePath();
         ctx.fill();
         
@@ -577,8 +614,8 @@ function initGame() {
     const perpAngle = startPos.angle + Math.PI / 2;
     
     playerCar = new Car(
-        startPos.x + Math.cos(perpAngle) * 18,
-        startPos.y + Math.sin(perpAngle) * 18,
+        startPos.x + Math.cos(perpAngle) * 15,
+        startPos.y + Math.sin(perpAngle) * 15,
         startPos.angle,
         selectedTeamColor,
         true
@@ -588,8 +625,8 @@ function initGame() {
     const availableColors = AI_COLORS.filter(c => c !== selectedTeamColor);
     
     for (let i = 0; i < CONFIG.AI_COUNT; i++) {
-        const offset = -(i + 1) * 45;
-        const rowOffset = i % 2 === 0 ? -20 : 20;
+        const offset = -(i + 1) * 40;
+        const rowOffset = i % 2 === 0 ? -18 : 18;
         const pos = track.getPointAtDistance(track.totalLength + offset);
         const perpAngle = pos.angle + Math.PI / 2;
         
@@ -639,15 +676,15 @@ function startCountdown() {
                 gameState = 'racing';
                 lastFrameTime = performance.now();
                 requestAnimationFrame(gameLoop);
-            }, 400);
+            }, 350);
         }
-    }, 700);
+    }, 600);
 }
 
 function gameLoop(timestamp) {
     if (gameState !== 'racing') return;
     
-    const deltaTime = Math.min(timestamp - lastFrameTime, 33);
+    const deltaTime = Math.min(timestamp - lastFrameTime, 32);
     lastFrameTime = timestamp;
     const dt = deltaTime / 16.67;
     
@@ -761,8 +798,8 @@ canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (!isTouching) return;
     const deltaX = e.touches[0].clientX - touchStartX;
-    keys.left = deltaX < -20;
-    keys.right = deltaX > 20;
+    keys.left = deltaX < -15;
+    keys.right = deltaX > 15;
 }, { passive: false });
 
 canvas.addEventListener('touchend', (e) => {
