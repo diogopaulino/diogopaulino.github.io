@@ -39,16 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             dropZone.classList.add('hidden');
             emulatorContainer.classList.add('active');
+            emulatorContainer.innerHTML = '';
 
             if (nostalgist) {
                 try { await nostalgist.exit(); } catch (e) {}
                 nostalgist = null;
             }
-
-            emulatorContainer.innerHTML = '';
-            const canvas = document.createElement('canvas');
-            canvas.id = 'emulator-canvas';
-            emulatorContainer.appendChild(canvas);
 
             showLoading('Loading emulator...');
 
@@ -56,12 +52,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const basePath = href.substring(0, href.lastIndexOf('/') + 1);
             
             nostalgist = await Nostalgist.launch({
-                element: canvas,
                 core: 'genesis_plus_gx',
                 rom: file,
                 resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
                 resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm'
             });
+            
+            const canvas = nostalgist.getCanvas();
+            if (canvas && canvas.parentNode !== emulatorContainer) {
+                emulatorContainer.appendChild(canvas);
+            }
             
             hideLoading();
 
@@ -73,10 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showLoading(msg) {
-        const loading = document.createElement('div');
-        loading.className = 'loading-overlay';
+        let loading = emulatorContainer.querySelector('.loading-overlay');
+        if (!loading) {
+            loading = document.createElement('div');
+            loading.className = 'loading-overlay';
+            emulatorContainer.appendChild(loading);
+        }
         loading.innerHTML = `<div class="spinner"></div><div>${msg}</div>`;
-        emulatorContainer.appendChild(loading);
     }
 
     function hideLoading() {

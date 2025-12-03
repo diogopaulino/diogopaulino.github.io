@@ -1,44 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_PLAYLIST = [
         {
-            title: 'BeatMachine - Electronic Vibes',
-            url: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_8cb749d484.mp3',
-            duration: '2:31'
+            title: 'Ambient Relaxing Music - Chill Vibes',
+            url: 'https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3',
+            duration: '3:14'
         },
         {
-            title: 'SoulProdMusic - Chill Lofi Beat',
-            url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
-            duration: '2:14'
+            title: 'Lofi Study - Calm Afternoon',
+            url: 'https://cdn.pixabay.com/audio/2024/11/01/audio_4956b4edd1.mp3',
+            duration: '2:35'
         },
         {
-            title: 'Lexin Music - Upbeat Energy',
-            url: 'https://cdn.pixabay.com/download/audio/2022/10/25/audio_946b0939c8.mp3',
-            duration: '2:07'
+            title: 'Smooth Jazz - Late Night Session',
+            url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_715e43bd13.mp3',
+            duration: '2:17'
         },
         {
-            title: 'FASSounds - Happy Clappy',
-            url: 'https://cdn.pixabay.com/download/audio/2021/11/25/audio_91b32e02f9.mp3',
-            duration: '2:23'
+            title: 'Piano Dreams - Soft Melody',
+            url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3',
+            duration: '2:29'
         },
         {
-            title: 'GoodBMusic - Synthwave Dreams',
-            url: 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3',
-            duration: '3:41'
+            title: 'Chillhop Beats - Coffee Break',
+            url: 'https://cdn.pixabay.com/audio/2023/07/30/audio_e6d0f98a2e.mp3',
+            duration: '1:41'
         },
         {
-            title: 'Coma-Media - Epic Cinematic',
-            url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff1bab.mp3',
-            duration: '2:19'
+            title: 'Ambient Soundscape - Ocean Waves',
+            url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
+            duration: '3:46'
         },
         {
-            title: 'AlexiAction - Groovy Ambient',
-            url: 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3',
-            duration: '2:52'
+            title: 'Relaxing Guitar - Sunday Morning',
+            url: 'https://cdn.pixabay.com/audio/2023/09/25/audio_ef7223c00d.mp3',
+            duration: '2:05'
         },
         {
-            title: 'Musictown - Summer Vibes',
-            url: 'https://cdn.pixabay.com/download/audio/2022/04/27/audio_67bcb4a86f.mp3',
-            duration: '2:14'
+            title: 'Soft Electronic - Nostalgia 90s',
+            url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_5c29ee7879.mp3',
+            duration: '2:38'
         }
     ];
 
