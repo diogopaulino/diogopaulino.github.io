@@ -220,6 +220,11 @@ main {
     background: #333;
 }
 
+.player-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
 #game-name {
     flex: 1;
     text-align: center;
@@ -288,10 +293,143 @@ main {
     cursor: pointer;
 }
 
+.settings-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(17, 17, 17, 0.98);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    z-index: 100;
+    min-width: 280px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.settings-panel.hidden { display: none; }
+
+.settings-panel h3 {
+    margin: 0 0 1.25rem 0;
+    color: #fff;
+    font-size: 1.1rem;
+    text-align: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #333;
+}
+
+.setting-group {
+    margin-bottom: 1rem;
+}
+
+.setting-group label {
+    display: block;
+    color: #888;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.setting-options {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.setting-options button {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+}
+
+.setting-options button:hover {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+.setting-options button.active {
+    background: #0066cc;
+    border-color: #0066cc;
+    color: #fff;
+}
+
+#btn-close-settings {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.6rem;
+    background: #333;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+#btn-close-settings:hover {
+    background: #444;
+}
+
+#screen canvas.filter-pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#screen canvas.filter-smooth {
+    image-rendering: auto;
+}
+
+#screen canvas.filter-crt {
+    image-rendering: auto;
+    filter: contrast(1.1) brightness(0.95);
+}
+
+#screen.aspect-4-3 canvas {
+    aspect-ratio: 4/3;
+    width: auto;
+    height: 100%;
+    max-height: 100%;
+}
+
+#screen.aspect-16-9 canvas {
+    aspect-ratio: 16/9;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+}
+
+#screen.aspect-stretch canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none;
+    max-height: none;
+}
+
+.crt-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.15),
+            rgba(0, 0, 0, 0.15) 1px,
+            transparent 1px,
+            transparent 2px
+        );
+    z-index: 5;
+}
+
 @media (max-width: 500px) {
     .home { padding: 1rem; }
     .games-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     .player-bar { flex-wrap: wrap; }
     #game-name { order: -1; width: 100%; margin-bottom: 0.5rem; }
     .controls-list { gap: 0.5rem 1rem; }
+    .settings-panel { min-width: 260px; padding: 1rem; }
 }

@@ -4,9 +4,16 @@ const $ = id => document.getElementById(id);
 const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
+const settings = {
+    scale: localStorage.getItem('emu-scale') || '2',
+    filter: localStorage.getItem('emu-filter') || 'pixelated',
+    aspect: localStorage.getItem('emu-aspect') || '4:3'
+};
+
 function showHome() {
     $('home').classList.remove('hidden');
     $('player').classList.add('hidden');
+    $('settings-panel').classList.add('hidden');
     stopEmulator();
 }
 
@@ -20,6 +27,10 @@ function showLoader(show) {
     $('loader').classList.toggle('hidden', !show);
 }
 
+function toggleSettings() {
+    $('settings-panel').classList.toggle('hidden');
+}
+
 async function stopEmulator() {
     if (emulator) {
         try { await emulator.exit(); } catch (e) {}
@@ -27,7 +38,62 @@ async function stopEmulator() {
     }
     const screen = $('screen');
     const canvas = screen.querySelector('canvas');
+    const crtOverlay = screen.querySelector('.crt-overlay');
     if (canvas) canvas.remove();
+    if (crtOverlay) crtOverlay.remove();
+}
+
+function applySettings() {
+    const screen = $('screen');
+    const canvas = screen.querySelector('canvas');
+    if (!canvas) return;
+
+    canvas.classList.remove('filter-pixelated', 'filter-smooth', 'filter-crt');
+    canvas.classList.add(`filter-${settings.filter}`);
+
+    screen.classList.remove('aspect-4-3', 'aspect-16-9', 'aspect-stretch');
+    const aspectClass = settings.aspect === '4:3' ? 'aspect-4-3' : 
+                        settings.aspect === '16:9' ? 'aspect-16-9' : 'aspect-stretch';
+    screen.classList.add(aspectClass);
+
+    const baseWidth = 320;
+    const baseHeight = 224;
+    const scale = parseInt(settings.scale);
+    
+    if (settings.aspect !== 'stretch') {
+        canvas.style.width = `${baseWidth * scale}px`;
+        canvas.style.height = `${baseHeight * scale}px`;
+    } else {
+        canvas.style.width = '';
+        canvas.style.height = '';
+    }
+
+    let crtOverlay = screen.querySelector('.crt-overlay');
+    if (settings.filter === 'crt') {
+        if (!crtOverlay) {
+            crtOverlay = document.createElement('div');
+            crtOverlay.className = 'crt-overlay';
+            screen.appendChild(crtOverlay);
+        }
+    } else if (crtOverlay) {
+        crtOverlay.remove();
+    }
+}
+
+function updateSettingsUI() {
+    document.querySelectorAll('.setting-options').forEach(group => {
+        const settingName = group.dataset.setting;
+        group.querySelectorAll('button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === settings[settingName]);
+        });
+    });
+}
+
+function saveSetting(name, value) {
+    settings[name] = value;
+    localStorage.setItem(`emu-${name}`, value);
+    applySettings();
+    updateSettingsUI();
 }
 
 async function startGame(rom, name) {
@@ -50,6 +116,7 @@ async function startGame(rom, name) {
         const canvas = emulator.getCanvas();
         if (canvas) {
             $('screen').appendChild(canvas);
+            applySettings();
         }
 
         showLoader(false);
@@ -71,6 +138,8 @@ function init() {
     });
 
     $('btn-back').addEventListener('click', showHome);
+    $('btn-settings').addEventListener('click', toggleSettings);
+    $('btn-close-settings').addEventListener('click', toggleSettings);
 
     $('btn-fullscreen').addEventListener('click', () => {
         const screen = $('screen');
@@ -89,11 +158,26 @@ function init() {
         }
     });
 
+    document.querySelectorAll('.setting-options').forEach(group => {
+        const settingName = group.dataset.setting;
+        group.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                saveSetting(settingName, btn.dataset.value);
+            });
+        });
+    });
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !$('player').classList.contains('hidden')) {
-            showHome();
+            if (!$('settings-panel').classList.contains('hidden')) {
+                toggleSettings();
+            } else {
+                showHome();
+            }
         }
     });
+
+    updateSettingsUI();
 }
 
 document.addEventListener('DOMContentLoaded', init);

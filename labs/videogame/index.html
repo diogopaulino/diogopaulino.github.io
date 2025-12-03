@@ -84,13 +84,45 @@
                 <div class="player-bar">
                     <button id="btn-back">← Voltar</button>
                     <span id="game-name">-</span>
-                    <button id="btn-fullscreen">⛶ Fullscreen</button>
+                    <div class="player-actions">
+                        <button id="btn-settings" title="Configurações">⚙️</button>
+                        <button id="btn-fullscreen" title="Tela cheia">⛶</button>
+                    </div>
                 </div>
                 <div id="screen">
                     <div id="loader" class="hidden">
                         <div class="spinner"></div>
                         <span>Carregando...</span>
                     </div>
+                </div>
+                <div id="settings-panel" class="settings-panel hidden">
+                    <h3>Configurações</h3>
+                    <div class="setting-group">
+                        <label>Escala</label>
+                        <div class="setting-options" data-setting="scale">
+                            <button data-value="1">1x</button>
+                            <button data-value="2" class="active">2x</button>
+                            <button data-value="3">3x</button>
+                            <button data-value="4">4x</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label>Filtro</label>
+                        <div class="setting-options" data-setting="filter">
+                            <button data-value="pixelated" class="active">Pixel</button>
+                            <button data-value="smooth">Suave</button>
+                            <button data-value="crt">CRT</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label>Proporção</label>
+                        <div class="setting-options" data-setting="aspect">
+                            <button data-value="4:3" class="active">4:3</button>
+                            <button data-value="16:9">16:9</button>
+                            <button data-value="stretch">Stretch</button>
+                        </div>
+                    </div>
+                    <button id="btn-close-settings">Fechar</button>
                 </div>
             </section>
         </main>
