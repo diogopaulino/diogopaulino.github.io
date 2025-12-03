@@ -37,11 +37,14 @@ async function startGame(rom, name) {
     try {
         await stopEmulator();
 
+        const romUrl = typeof rom === 'string' ? rom : rom;
+        
         emulator = await Nostalgist.launch({
             core: 'genesis_plus_gx',
-            rom: rom,
+            rom: romUrl,
             resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
-            resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm'
+            resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm',
+            resolveRom: (file) => typeof file === 'string' && file.startsWith('http') ? file : basePath + file
         });
 
         const canvas = emulator.getCanvas();
