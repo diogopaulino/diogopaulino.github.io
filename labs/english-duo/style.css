@@ -1080,6 +1080,231 @@ body {
     }
 }
 
+.blank-space {
+    display: inline-block;
+    min-width: 80px;
+    border-bottom: 3px solid var(--talk-primary);
+    margin: 0 4px;
+    color: var(--talk-primary);
+    font-weight: 700;
+}
+
+.write-exercise {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.write-input {
+    flex: 1;
+    padding: 1rem 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 2px solid var(--border-subtle);
+    border-radius: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.write-input:focus {
+    border-color: var(--talk-primary);
+    box-shadow: 0 0 0 4px var(--glow-primary);
+}
+
+.write-input.correct {
+    border-color: var(--talk-success);
+    background: rgba(72, 187, 120, 0.1);
+}
+
+.write-input.wrong {
+    border-color: var(--talk-danger);
+    background: rgba(252, 129, 129, 0.1);
+}
+
+.btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    background: var(--avatar-bg);
+    color: white;
+    border: none;
+    border-radius: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-submit:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px var(--glow-primary);
+}
+
+.btn-listen-large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 1.25rem;
+    background: var(--bg-card);
+    border: 2px solid var(--talk-primary);
+    border-radius: 1rem;
+    color: var(--talk-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-listen-large:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: scale(1.02);
+}
+
+.btn-listen-large svg {
+    flex-shrink: 0;
+}
+
+.order-exercise {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.selected-words {
+    min-height: 60px;
+    padding: 1rem;
+    background: var(--bg-card);
+    border: 2px dashed var(--border-subtle);
+    border-radius: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.selected-words:empty::before {
+    content: 'Toque nas palavras para formar a frase...';
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.selected-words.correct {
+    border-color: var(--talk-success);
+    border-style: solid;
+    background: rgba(72, 187, 120, 0.1);
+}
+
+.selected-words.wrong {
+    border-color: var(--talk-danger);
+    border-style: solid;
+    background: rgba(252, 129, 129, 0.1);
+}
+
+.word-bank {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.word-chip {
+    padding: 0.75rem 1.25rem;
+    background: var(--bg-card);
+    border: 2px solid var(--border-subtle);
+    border-radius: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.word-chip:hover {
+    border-color: var(--talk-primary);
+    transform: translateY(-2px);
+}
+
+.word-chip.selected {
+    background: var(--talk-primary);
+    border-color: var(--talk-primary);
+    color: white;
+}
+
+.match-exercise {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    width: 100%;
+}
+
+.match-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.match-card {
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border: 2px solid var(--border-subtle);
+    border-radius: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.match-card:hover:not(.matched) {
+    border-color: var(--talk-primary);
+    transform: scale(1.02);
+}
+
+.match-card.selected {
+    border-color: var(--talk-primary);
+    background: rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px var(--glow-primary);
+}
+
+.match-card.matched {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.match-card.matched.correct {
+    border-color: var(--talk-success);
+    background: rgba(72, 187, 120, 0.15);
+}
+
+.match-card.wrong {
+    border-color: var(--talk-danger);
+    background: rgba(252, 129, 129, 0.15);
+    animation: shake 0.4s ease;
+}
+
+@keyframes celebrate {
+    0%, 100% { transform: scale(1) rotate(0); }
+    25% { transform: scale(1.1) rotate(-5deg); }
+    75% { transform: scale(1.1) rotate(5deg); }
+}
+
 .hidden {
     display: none !important;
 }
