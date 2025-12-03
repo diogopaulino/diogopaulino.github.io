@@ -4,16 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LingoQuest - Labs</title>
+    <title>Talk - Labs</title>
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
+    <div class="ambient-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
     <div class="container">
         <header>
             <a href="../index.html" class="back-link">
@@ -24,7 +29,22 @@
                 Labs
             </a>
             <div class="app-logo">
-                🗣️ LingoQuest
+                <div class="logo-icon">
+                    <svg viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="20" fill="url(#logoGrad)"/>
+                        <path d="M16 20c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="18" cy="22" r="2.5" fill="white"/>
+                        <circle cx="30" cy="22" r="2.5" fill="white"/>
+                        <path d="M18 30c0 0 3 4 6 4s6-4 6-4" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="logoGrad" x1="4" y1="4" x2="44" y2="44">
+                                <stop offset="0%" stop-color="#667eea"/>
+                                <stop offset="100%" stop-color="#f093fb"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                Talk
             </div>
             <button class="theme-toggle" aria-label="Toggle theme">
                 <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -48,60 +68,232 @@
         </header>
 
         <main class="game-wrapper">
-            <div class="game-header">
-                <div class="progress-container">
-                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
-                </div>
-                <div class="stats">
-                    <span class="streak" title="Current Streak"><i class="fas fa-fire"></i> <span
-                            id="streak-count">0</span></span>
-                    <span class="hearts" title="Lives Remaining"><i class="fas fa-heart"></i> <span
-                            id="hearts-count">3</span></span>
-                </div>
-            </div>
-
-            <div id="game-area" class="game-area">
-                <div class="mascot-container">
-                    <div class="mascot">
-                        <div class="mascot-body"></div>
-                        <div class="mascot-eyes">
-                            <div class="eye left"></div>
-                            <div class="eye right"></div>
+            <div id="language-select" class="language-select-screen">
+                <div class="welcome-avatar">
+                    <div class="avatar-container">
+                        <div class="avatar-ring"></div>
+                        <div class="avatar-face">
+                            <div class="avatar-eyes">
+                                <div class="avatar-eye left">
+                                    <div class="pupil"></div>
+                                </div>
+                                <div class="avatar-eye right">
+                                    <div class="pupil"></div>
+                                </div>
+                            </div>
+                            <div class="avatar-mouth happy"></div>
                         </div>
-                        <div class="mascot-beak"></div>
+                        <div class="avatar-glow"></div>
                     </div>
-                    <div class="speech-bubble" id="question-text">
-                        Loading your challenge...
+                    <div class="avatar-speech">
+                        <span class="typing-text">Olá! Qual idioma você quer aprender?</span>
                     </div>
                 </div>
 
-                <div class="options-grid" id="options-container">
-                    <!-- Options will be injected here -->
+                <div class="language-grid" id="language-grid">
+                    <button class="language-card" data-lang="en">
+                        <span class="lang-flag">🇺🇸</span>
+                        <span class="lang-name">English</span>
+                        <span class="lang-native">Inglês</span>
+                    </button>
+                    <button class="language-card" data-lang="es">
+                        <span class="lang-flag">🇪🇸</span>
+                        <span class="lang-name">Español</span>
+                        <span class="lang-native">Espanhol</span>
+                    </button>
+                    <button class="language-card" data-lang="fr">
+                        <span class="lang-flag">🇫🇷</span>
+                        <span class="lang-name">Français</span>
+                        <span class="lang-native">Francês</span>
+                    </button>
+                    <button class="language-card" data-lang="de">
+                        <span class="lang-flag">🇩🇪</span>
+                        <span class="lang-name">Deutsch</span>
+                        <span class="lang-native">Alemão</span>
+                    </button>
+                    <button class="language-card" data-lang="it">
+                        <span class="lang-flag">🇮🇹</span>
+                        <span class="lang-name">Italiano</span>
+                        <span class="lang-native">Italiano</span>
+                    </button>
+                    <button class="language-card" data-lang="ja">
+                        <span class="lang-flag">🇯🇵</span>
+                        <span class="lang-name">日本語</span>
+                        <span class="lang-native">Japonês</span>
+                    </button>
+                    <button class="language-card" data-lang="ko">
+                        <span class="lang-flag">🇰🇷</span>
+                        <span class="lang-name">한국어</span>
+                        <span class="lang-native">Coreano</span>
+                    </button>
+                    <button class="language-card" data-lang="zh">
+                        <span class="lang-flag">🇨🇳</span>
+                        <span class="lang-name">中文</span>
+                        <span class="lang-native">Mandarim</span>
+                    </button>
                 </div>
             </div>
 
-            <div id="feedback-area" class="feedback-area hidden">
-                <div class="feedback-content">
-                    <div class="feedback-status">
-                        <div class="feedback-icon" id="feedback-icon">
-                            <i class="fas fa-check"></i>
+            <div id="game-screen" class="game-screen hidden">
+                <div class="game-header">
+                    <button class="btn-back-lang" id="btn-back-lang" title="Trocar idioma">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <div class="current-lang" id="current-lang">
+                        <span class="current-flag">🇺🇸</span>
+                        <span class="current-name">English</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                        <span class="progress-text" id="progress-text">0/10</span>
+                    </div>
+                    <div class="stats">
+                        <div class="stat streak" title="Sequência">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2c.4 2.5 1.5 4.5 3.5 6 2 1.5 3.5 3.5 3.5 6.5 0 4-3.5 7.5-7.5 7.5S4 18.5 4 14.5c0-3 1.5-5 3.5-6.5 2-1.5 3.1-3.5 3.5-6h1z"/>
+                            </svg>
+                            <span id="streak-count">0</span>
+                        </div>
+                        <div class="stat hearts" title="Vidas">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>
+                            <span id="hearts-count">5</span>
+                        </div>
+                        <div class="stat xp" title="Experiência">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+                            </svg>
+                            <span id="xp-count">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="game-area" class="game-area">
+                    <div class="question-container">
+                        <div class="question-avatar">
+                            <div class="mini-avatar">
+                                <div class="mini-eyes">
+                                    <div class="mini-eye"></div>
+                                    <div class="mini-eye"></div>
+                                </div>
+                                <div class="mini-mouth"></div>
+                            </div>
+                        </div>
+                        <div class="question-bubble">
+                            <div class="question-type" id="question-type">Traduza</div>
+                            <div class="question-text" id="question-text">Carregando...</div>
+                            <button class="btn-speak" id="btn-speak" title="Ouvir pronúncia">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="options-grid" id="options-container"></div>
+                </div>
+
+                <div id="feedback-area" class="feedback-area hidden">
+                    <div class="feedback-content">
+                        <div class="feedback-icon-wrapper">
+                            <div class="feedback-icon" id="feedback-icon">
+                                <svg class="icon-correct" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                                <svg class="icon-wrong" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                            </div>
                         </div>
                         <div class="feedback-text">
-                            <h3 id="feedback-title">Correct!</h3>
+                            <h3 id="feedback-title">Correto!</h3>
                             <p id="feedback-message"></p>
                         </div>
+                        <button id="next-btn" class="btn-next">
+                            Continuar
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button id="next-btn" class="btn-primary">Continue</button>
                 </div>
-            </div>
 
-            <div id="game-over" class="game-over hidden">
-                <h2>Game Over!</h2>
-                <p>You ran out of hearts.</p>
-                <div class="final-score">
-                    <p>Streak: <span id="final-streak">0</span></p>
+                <div id="game-over" class="game-over hidden">
+                    <div class="game-over-content">
+                        <div class="game-over-avatar">
+                            <div class="avatar-container large">
+                                <div class="avatar-ring"></div>
+                                <div class="avatar-face">
+                                    <div class="avatar-eyes">
+                                        <div class="avatar-eye left">
+                                            <div class="pupil"></div>
+                                        </div>
+                                        <div class="avatar-eye right">
+                                            <div class="pupil"></div>
+                                        </div>
+                                    </div>
+                                    <div class="avatar-mouth sad"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <h2>Sem vidas!</h2>
+                        <p>Não desista, você está aprendendo!</p>
+                        <div class="final-stats">
+                            <div class="final-stat">
+                                <span class="final-stat-value" id="final-streak">0</span>
+                                <span class="final-stat-label">Sequência</span>
+                            </div>
+                            <div class="final-stat">
+                                <span class="final-stat-value" id="final-xp">0</span>
+                                <span class="final-stat-label">XP Ganho</span>
+                            </div>
+                        </div>
+                        <button id="restart-btn" class="btn-restart">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 4v6h6M23 20v-6h-6"/>
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                            </svg>
+                            Tentar Novamente
+                        </button>
+                    </div>
                 </div>
-                <button id="restart-btn" class="btn-primary">Try Again</button>
+
+                <div id="level-complete" class="level-complete hidden">
+                    <div class="level-complete-content">
+                        <div class="confetti-container" id="confetti"></div>
+                        <div class="level-avatar">
+                            <div class="avatar-container large celebrating">
+                                <div class="avatar-ring"></div>
+                                <div class="avatar-face">
+                                    <div class="avatar-eyes closed">
+                                        <div class="avatar-eye left"></div>
+                                        <div class="avatar-eye right"></div>
+                                    </div>
+                                    <div class="avatar-mouth big-smile"></div>
+                                </div>
+                                <div class="celebration-particles"></div>
+                            </div>
+                        </div>
+                        <h2>Parabéns!</h2>
+                        <p>Você completou a lição!</p>
+                        <div class="rewards">
+                            <div class="reward">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+                                </svg>
+                                <span id="reward-xp">+50 XP</span>
+                            </div>
+                        </div>
+                        <button id="continue-btn" class="btn-continue">
+                            Nova Lição
+                        </button>
+                    </div>
+                </div>
             </div>
         </main>
 

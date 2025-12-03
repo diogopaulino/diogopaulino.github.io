@@ -6,16 +6,32 @@ let particles = [];
 let gravity = 0.5;
 let friction = 0.98;
 let particleSize = 3;
-let mouseMode = 'spawn'; // spawn, attract, repel, blackhole
+let initialVelocity = 10;
+let mouseMode = 'spawn';
 let currentTheme = 'neon';
+let enableTrails = true;
+let enableGlow = true;
+let enableBounce = true;
 
-// Themes
 const themes = {
     neon: ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'],
     fire: ['#ff0000', '#ff4d00', '#ff9900', '#ffcc00', '#ffff00'],
     ice: ['#00ffff', '#00ccff', '#0099ff', '#0066ff', '#0033ff'],
     matrix: ['#00ff00', '#00cc00', '#009900', '#006600', '#003300'],
-    rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']
+    rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3'],
+    sunset: ['#ff6b6b', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'],
+    ocean: ['#0077b6', '#00b4d8', '#90e0ef', '#caf0f8', '#03045e'],
+    galaxy: ['#9d4edd', '#c77dff', '#e0aaff', '#3c096c', '#240046'],
+    aurora: ['#00f5d4', '#00bbf9', '#9b5de5', '#f15bb5', '#fee440'],
+    candy: ['#ff6b9d', '#c44569', '#f8b500', '#00d4aa', '#7c3aed']
+};
+
+const gravityPresets = {
+    '0': { name: 'Sem Gravidade', emoji: '🚀' },
+    '0.16': { name: 'Lua', emoji: '🌙' },
+    '0.38': { name: 'Marte', emoji: '🔴' },
+    '0.5': { name: 'Terra', emoji: '🌍' },
+    '0.9': { name: 'Júpiter', emoji: '🟤' }
 };
 
 function resize() {
@@ -38,14 +54,10 @@ class Particle {
     }
 
     update() {
-        // Apply gravity
         this.dy += gravity;
-
-        // Apply friction
         this.dx *= friction;
         this.dy *= friction;
 
-        // Mouse Interaction
         if (isMouseDown && mouseMode !== 'spawn') {
             const dx = mouseX - this.x;
             const dy = mouseY - this.y;
@@ -55,7 +67,6 @@ class Particle {
                 const force = 2000 / (distance * distance + 100);
                 this.dx += dx * force;
                 this.dy += dy * force;
-                // Suck particles in
                 if (distance < 20) {
                     this.x = mouseX + (Math.random() - 0.5) * 10;
                     this.y = mouseY + (Math.random() - 0.5) * 10;
@@ -63,7 +74,7 @@ class Particle {
                     this.dy = (Math.random() - 0.5) * 20;
                 }
             } else {
-                const force = 500 / (distance * distance + 100); // Inverse square law with dampening
+                const force = 500 / (distance * distance + 100);
                 if (mouseMode === 'attract') {
                     this.dx += dx * force * 0.5;
                     this.dy += dy * force * 0.5;
@@ -74,27 +85,30 @@ class Particle {
             }
         }
 
-        // Update position
         this.x += this.dx;
         this.y += this.dy;
 
-        // Bounce off floor
-        if (this.y + this.radius > height) {
-            this.y = height - this.radius;
-            this.dy = -this.dy * 0.7;
-        }
+        if (enableBounce) {
+            if (this.y + this.radius > height) {
+                this.y = height - this.radius;
+                this.dy = -this.dy * 0.7;
+            }
 
-        // Bounce off walls
-        if (this.x + this.radius > width || this.x - this.radius < 0) {
-            this.dx = -this.dx * 0.7;
-            if (this.x + this.radius > width) this.x = width - this.radius;
-            if (this.x - this.radius < 0) this.x = this.radius;
-        }
+            if (this.x + this.radius > width || this.x - this.radius < 0) {
+                this.dx = -this.dx * 0.7;
+                if (this.x + this.radius > width) this.x = width - this.radius;
+                if (this.x - this.radius < 0) this.x = this.radius;
+            }
 
-        // Bounce off ceiling
-        if (this.y - this.radius < 0) {
-            this.y = this.radius;
-            this.dy = -this.dy * 0.7;
+            if (this.y - this.radius < 0) {
+                this.y = this.radius;
+                this.dy = -this.dy * 0.7;
+            }
+        } else {
+            if (this.x < -this.radius) this.x = width + this.radius;
+            if (this.x > width + this.radius) this.x = -this.radius;
+            if (this.y < -this.radius) this.y = height + this.radius;
+            if (this.y > height + this.radius) this.y = -this.radius;
         }
 
         this.draw();
@@ -105,8 +119,7 @@ class Particle {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
 
-        // Glow effect (expensive, so keep blur low)
-        if (particles.length < 400) {
+        if (enableGlow && particles.length < 400) {
             ctx.shadowBlur = 10;
             ctx.shadowColor = this.color;
         } else {
@@ -114,7 +127,7 @@ class Particle {
         }
 
         ctx.fill();
-        ctx.shadowBlur = 0; // Reset
+        ctx.shadowBlur = 0;
         ctx.closePath();
     }
 }
@@ -126,24 +139,25 @@ function init() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Clear canvas with trail effect
-    ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
-    ctx.fillRect(0, 0, width, height);
+    if (enableTrails) {
+        ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
+        ctx.fillRect(0, 0, width, height);
+    } else {
+        ctx.fillStyle = 'rgb(10, 10, 10)';
+        ctx.fillRect(0, 0, width, height);
+    }
 
-    particles.forEach((particle, index) => {
+    particles.forEach((particle) => {
         particle.update();
     });
 
-    // Limit particles for performance
     if (particles.length > 800) {
         particles.splice(0, particles.length - 800);
     }
 
-    // Update count
     document.getElementById('count').innerText = particles.length;
 }
 
-// Interaction
 let isMouseDown = false;
 let mouseX = 0;
 let mouseY = 0;
@@ -153,8 +167,8 @@ function spawnParticles(x, y, count = 1) {
     for (let i = 0; i < count; i++) {
         const radius = Math.random() * particleSize + 2;
         const color = colors[Math.floor(Math.random() * colors.length)];
-        const dx = (Math.random() - 0.5) * 10;
-        const dy = (Math.random() - 0.5) * 10;
+        const dx = (Math.random() - 0.5) * initialVelocity;
+        const dy = (Math.random() - 0.5) * initialVelocity;
         particles.push(new Particle(x, y, dx, dy, radius, color));
     }
 }
@@ -197,16 +211,23 @@ canvas.addEventListener('touchend', () => {
     isMouseDown = false;
 });
 
-// Controls
 const gravityInput = document.getElementById('gravity');
 const frictionInput = document.getElementById('friction');
 const sizeInput = document.getElementById('size');
+const velocityInput = document.getElementById('velocity');
 const clearBtn = document.getElementById('clear');
+const randomBtn = document.getElementById('random');
 const themeSelect = document.getElementById('theme-select');
 const modeBtns = document.querySelectorAll('.toggle-btn');
+const presetBtns = document.querySelectorAll('.preset-btn');
+const trailsCheckbox = document.getElementById('trails');
+const glowCheckbox = document.getElementById('glow');
+const bounceCheckbox = document.getElementById('bounce');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
 
 gravityInput.addEventListener('input', (e) => {
     gravity = parseFloat(e.target.value);
+    updatePresetActiveState();
 });
 
 frictionInput.addEventListener('input', (e) => {
@@ -215,6 +236,10 @@ frictionInput.addEventListener('input', (e) => {
 
 sizeInput.addEventListener('input', (e) => {
     particleSize = parseFloat(e.target.value);
+});
+
+velocityInput.addEventListener('input', (e) => {
+    initialVelocity = parseFloat(e.target.value);
 });
 
 clearBtn.addEventListener('click', () => {
@@ -227,15 +252,97 @@ themeSelect.addEventListener('change', (e) => {
 
 modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-        // Update active state
         modeBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
-        // Set mode
         mouseMode = btn.dataset.mode;
     });
 });
 
-// Start
+presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const gravityValue = parseFloat(btn.dataset.gravity);
+        gravity = gravityValue;
+        gravityInput.value = gravityValue;
+        updatePresetActiveState();
+    });
+});
+
+function updatePresetActiveState() {
+    presetBtns.forEach(btn => {
+        const presetValue = parseFloat(btn.dataset.gravity);
+        if (Math.abs(gravity - presetValue) < 0.02) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+trailsCheckbox.addEventListener('change', (e) => {
+    enableTrails = e.target.checked;
+});
+
+glowCheckbox.addEventListener('change', (e) => {
+    enableGlow = e.target.checked;
+});
+
+bounceCheckbox.addEventListener('change', (e) => {
+    enableBounce = e.target.checked;
+});
+
+randomBtn.addEventListener('click', () => {
+    const themeKeys = Object.keys(themes);
+    const randomTheme = themeKeys[Math.floor(Math.random() * themeKeys.length)];
+    currentTheme = randomTheme;
+    themeSelect.value = randomTheme;
+
+    gravity = Math.random() * 1.5 - 0.5;
+    gravityInput.value = gravity;
+    updatePresetActiveState();
+
+    friction = 0.9 + Math.random() * 0.099;
+    frictionInput.value = friction;
+
+    particleSize = 1 + Math.floor(Math.random() * 14);
+    sizeInput.value = particleSize;
+
+    initialVelocity = 1 + Math.floor(Math.random() * 29);
+    velocityInput.value = initialVelocity;
+
+    enableTrails = Math.random() > 0.3;
+    trailsCheckbox.checked = enableTrails;
+
+    enableGlow = Math.random() > 0.3;
+    glowCheckbox.checked = enableGlow;
+
+    enableBounce = Math.random() > 0.3;
+    bounceCheckbox.checked = enableBounce;
+
+    const modes = ['spawn', 'attract', 'repel', 'blackhole'];
+    const randomMode = modes[Math.floor(Math.random() * modes.length)];
+    mouseMode = randomMode;
+    modeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === randomMode);
+    });
+});
+
+fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+            document.body.classList.add('fullscreen');
+        }).catch(() => {});
+    } else {
+        document.exitFullscreen().then(() => {
+            document.body.classList.remove('fullscreen');
+        }).catch(() => {});
+    }
+});
+
+document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+        document.body.classList.remove('fullscreen');
+    }
+});
+
 init();
 animate();

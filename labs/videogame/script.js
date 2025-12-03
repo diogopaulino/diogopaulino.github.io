@@ -13,7 +13,9 @@ const settings = {
 function showHome() {
     $('home').classList.remove('hidden');
     $('player').classList.add('hidden');
-    $('settings-panel').classList.add('hidden');
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    }
     stopEmulator();
 }
 
@@ -25,10 +27,6 @@ function showPlayer(name) {
 
 function showLoader(show) {
     $('loader').classList.toggle('hidden', !show);
-}
-
-function toggleSettings() {
-    $('settings-panel').classList.toggle('hidden');
 }
 
 async function stopEmulator() {
@@ -138,15 +136,13 @@ function init() {
     });
 
     $('btn-back').addEventListener('click', showHome);
-    $('btn-settings').addEventListener('click', toggleSettings);
-    $('btn-close-settings').addEventListener('click', toggleSettings);
 
     $('btn-fullscreen').addEventListener('click', () => {
-        const screen = $('screen');
+        const player = $('player');
         if (document.fullscreenElement) {
             document.exitFullscreen();
         } else {
-            screen.requestFullscreen?.();
+            player.requestFullscreen?.();
         }
     });
 
@@ -169,11 +165,18 @@ function init() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !$('player').classList.contains('hidden')) {
-            if (!$('settings-panel').classList.contains('hidden')) {
-                toggleSettings();
-            } else {
-                showHome();
-            }
+            showHome();
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        const btn = $('btn-fullscreen');
+        if (document.fullscreenElement) {
+            btn.textContent = '✕ Sair';
+            btn.title = 'Sair da tela cheia';
+        } else {
+            btn.textContent = '⛶';
+            btn.title = 'Tela cheia';
         }
     });
 

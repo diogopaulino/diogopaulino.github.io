@@ -12,6 +12,12 @@ let flowSpeed = 1;
 let particleCount = 2000;
 let turbulence = 0.004;
 let interactionMode = 'attract';
+let interactionForce = 3;
+let particleSize = 1.5;
+let trailLength = 0.95;
+let blendMode = 'source-over';
+let particleShape = 'line';
+let bgEffect = 'stars';
 
 let mouseX = -1000;
 let mouseY = -1000;
@@ -20,6 +26,10 @@ let lastMouseX = 0;
 let lastMouseY = 0;
 let mouseVelocityX = 0;
 let mouseVelocityY = 0;
+
+let stars = [];
+let rainDrops = [];
+let nebulaOffset = 0;
 
 const colorThemes = {
     aurora: {
@@ -46,6 +56,21 @@ const colorThemes = {
         colors: ['#39ff14', '#ff073a', '#00fff7', '#f5d300', '#ff6ec7'],
         bg: 'rgba(5, 5, 10, 1)',
         glow: 'rgba(57, 255, 20, 0.15)'
+    },
+    fire: {
+        colors: ['#ff4500', '#ff8c00', '#ffd700', '#ff6347', '#ffcc00'],
+        bg: 'rgba(15, 5, 0, 1)',
+        glow: 'rgba(255, 69, 0, 0.15)'
+    },
+    forest: {
+        colors: ['#228b22', '#32cd32', '#7cfc00', '#90ee90', '#00fa9a'],
+        bg: 'rgba(0, 10, 5, 1)',
+        glow: 'rgba(50, 205, 50, 0.15)'
+    },
+    candy: {
+        colors: ['#ff69b4', '#ba55d3', '#00ced1', '#ff1493', '#9400d3'],
+        bg: 'rgba(10, 5, 15, 1)',
+        glow: 'rgba(255, 105, 180, 0.15)'
     }
 };
 
@@ -62,6 +87,104 @@ function resize() {
     rows = Math.floor(height / scale);
     flowField = new Array(cols * rows);
     initParticles();
+    initStars();
+    initRain();
+}
+
+function initStars() {
+    stars = [];
+    const starCount = Math.floor((width * height) / 5000);
+    for (let i = 0; i < starCount; i++) {
+        stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 1.5 + 0.5,
+            twinkle: Math.random() * Math.PI * 2,
+            speed: Math.random() * 0.02 + 0.01
+        });
+    }
+}
+
+function initRain() {
+    rainDrops = [];
+    const rainCount = 100;
+    for (let i = 0; i < rainCount; i++) {
+        rainDrops.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            speed: Math.random() * 5 + 3,
+            length: Math.random() * 20 + 10,
+            char: String.fromCharCode(0x30A0 + Math.random() * 96)
+        });
+    }
+}
+
+function drawBackgroundEffect() {
+    const theme = colorThemes[currentTheme];
+    
+    if (bgEffect === 'stars') {
+        ctx.save();
+        for (const star of stars) {
+            star.twinkle += star.speed;
+            const alpha = (Math.sin(star.twinkle) + 1) / 2 * 0.8 + 0.2;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    } else if (bgEffect === 'grid') {
+        ctx.save();
+        ctx.strokeStyle = `${theme.colors[0]}15`;
+        ctx.lineWidth = 1;
+        const gridSize = 50;
+        for (let x = 0; x < width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+    } else if (bgEffect === 'nebula') {
+        nebulaOffset += 0.002;
+        ctx.save();
+        const gradient = ctx.createRadialGradient(
+            width / 2 + Math.sin(nebulaOffset) * 100,
+            height / 2 + Math.cos(nebulaOffset * 0.7) * 100,
+            0,
+            width / 2,
+            height / 2,
+            Math.max(width, height) / 2
+        );
+        gradient.addColorStop(0, `${theme.colors[0]}08`);
+        gradient.addColorStop(0.3, `${theme.colors[1]}05`);
+        gradient.addColorStop(0.6, `${theme.colors[2]}03`);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+    } else if (bgEffect === 'rain') {
+        ctx.save();
+        ctx.fillStyle = `${theme.colors[0]}30`;
+        ctx.font = '14px monospace';
+        for (const drop of rainDrops) {
+            drop.y += drop.speed;
+            if (drop.y > height) {
+                drop.y = -20;
+                drop.x = Math.random() * width;
+                drop.char = String.fromCharCode(0x30A0 + Math.random() * 96);
+            }
+            ctx.globalAlpha = 0.5;
+            ctx.fillText(drop.char, drop.x, drop.y);
+        }
+        ctx.restore();
+    }
 }
 
 function noise3D(x, y, z) {
@@ -134,9 +257,10 @@ class Particle {
         const theme = colorThemes[currentTheme];
         this.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
         this.alpha = Math.random() * 0.5 + 0.3;
-        this.size = Math.random() * 1.5 + 0.5;
+        this.size = (Math.random() * 1.5 + 0.5) * particleSize;
         this.life = Math.random() * 200 + 100;
         this.maxLife = this.life;
+        this.rotation = Math.random() * Math.PI * 2;
     }
     
     update() {
@@ -149,6 +273,7 @@ class Particle {
             const force = 0.5 * flowSpeed;
             this.vx += Math.cos(angle) * force;
             this.vy += Math.sin(angle) * force;
+            this.rotation = angle;
         }
         
         if (mouseActive) {
@@ -158,7 +283,7 @@ class Particle {
             const maxDist = 200;
             
             if (dist < maxDist) {
-                const strength = (1 - dist / maxDist) * 3;
+                const strength = (1 - dist / maxDist) * interactionForce;
                 const nx = dx / (dist || 1);
                 const ny = dy / (dist || 1);
                 
@@ -201,15 +326,71 @@ class Particle {
         const lifeRatio = this.life / this.maxLife;
         const alpha = this.alpha * lifeRatio;
         
-        ctx.beginPath();
-        ctx.moveTo(this.prevX, this.prevY);
-        ctx.lineTo(this.x, this.y);
-        ctx.strokeStyle = this.color;
         ctx.globalAlpha = alpha;
+        ctx.strokeStyle = this.color;
+        ctx.fillStyle = this.color;
         ctx.lineWidth = this.size;
         ctx.lineCap = 'round';
-        ctx.stroke();
+        
+        if (particleShape === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(this.prevX, this.prevY);
+            ctx.lineTo(this.x, this.y);
+            ctx.stroke();
+        } else if (particleShape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (particleShape === 'star') {
+            this.drawStar(this.x, this.y, 5, this.size * 3, this.size * 1.5);
+        } else if (particleShape === 'spark') {
+            const len = this.size * 4;
+            ctx.beginPath();
+            ctx.moveTo(this.x - len, this.y);
+            ctx.lineTo(this.x + len, this.y);
+            ctx.moveTo(this.x, this.y - len);
+            ctx.lineTo(this.x, this.y + len);
+            ctx.moveTo(this.x - len * 0.7, this.y - len * 0.7);
+            ctx.lineTo(this.x + len * 0.7, this.y + len * 0.7);
+            ctx.moveTo(this.x + len * 0.7, this.y - len * 0.7);
+            ctx.lineTo(this.x - len * 0.7, this.y + len * 0.7);
+            ctx.stroke();
+        } else if (particleShape === 'glow') {
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 6);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.5, this.color + '40');
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
         ctx.globalAlpha = 1;
+    }
+    
+    drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+        
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+            
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.fill();
     }
 }
 
@@ -241,10 +422,15 @@ function animate() {
     
     const theme = colorThemes[currentTheme];
     
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = theme.bg;
-    ctx.globalAlpha = 0.05;
+    ctx.globalAlpha = 1 - trailLength;
     ctx.fillRect(0, 0, width, height);
     ctx.globalAlpha = 1;
+    
+    drawBackgroundEffect();
+    
+    ctx.globalCompositeOperation = blendMode;
     
     updateFlowField();
     
@@ -252,6 +438,8 @@ function animate() {
         particle.update();
         particle.draw();
     }
+    
+    ctx.globalCompositeOperation = 'source-over';
     
     if (mouseActive) {
         drawMouseGlow();
@@ -314,6 +502,7 @@ canvas.addEventListener('touchend', () => {
 
 document.getElementById('flowSpeed').addEventListener('input', (e) => {
     flowSpeed = parseFloat(e.target.value);
+    document.getElementById('speedValue').textContent = flowSpeed;
 });
 
 document.getElementById('density').addEventListener('input', (e) => {
@@ -326,10 +515,38 @@ document.getElementById('density').addEventListener('input', (e) => {
         particles.length = newCount;
     }
     particleCount = newCount;
+    document.getElementById('densityValue').textContent = newCount;
 });
 
 document.getElementById('turbulence').addEventListener('input', (e) => {
     turbulence = parseFloat(e.target.value);
+    document.getElementById('turbValue').textContent = turbulence;
+});
+
+document.getElementById('particleSize').addEventListener('input', (e) => {
+    particleSize = parseFloat(e.target.value);
+    document.getElementById('sizeValue').textContent = particleSize;
+    for (const particle of particles) {
+        particle.size = (Math.random() * 1.5 + 0.5) * particleSize;
+    }
+});
+
+document.getElementById('trailLength').addEventListener('input', (e) => {
+    trailLength = parseInt(e.target.value) / 100;
+    document.getElementById('trailValue').textContent = e.target.value;
+});
+
+document.getElementById('interactionForce').addEventListener('input', (e) => {
+    interactionForce = parseFloat(e.target.value);
+    document.getElementById('forceValue').textContent = interactionForce;
+});
+
+document.getElementById('blendMode').addEventListener('change', (e) => {
+    blendMode = e.target.value;
+});
+
+document.getElementById('bgEffect').addEventListener('change', (e) => {
+    bgEffect = e.target.value;
 });
 
 document.getElementById('reset').addEventListener('click', () => {
@@ -339,11 +556,104 @@ document.getElementById('reset').addEventListener('click', () => {
     zoff = 0;
 });
 
-document.querySelectorAll('.toggle-btn').forEach(btn => {
+document.getElementById('random').addEventListener('click', randomize);
+
+function randomize() {
+    const themes = Object.keys(colorThemes);
+    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+    currentTheme = randomTheme;
+    
+    document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('active', s.dataset.theme === randomTheme);
+    });
+    updateThemeColors();
+    
+    const modes = ['attract', 'repel', 'vortex'];
+    interactionMode = modes[Math.floor(Math.random() * modes.length)];
+    document.querySelectorAll('[data-mode]').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === interactionMode);
+    });
+    
+    const shapes = ['line', 'circle', 'star', 'spark', 'glow'];
+    particleShape = shapes[Math.floor(Math.random() * shapes.length)];
+    document.querySelectorAll('[data-shape]').forEach(b => {
+        b.classList.toggle('active', b.dataset.shape === particleShape);
+    });
+    
+    const blendModes = ['lighter', 'source-over', 'screen', 'overlay', 'color-dodge'];
+    blendMode = blendModes[Math.floor(Math.random() * blendModes.length)];
+    document.getElementById('blendMode').value = blendMode;
+    
+    const bgEffects = ['none', 'stars', 'grid', 'nebula', 'rain'];
+    bgEffect = bgEffects[Math.floor(Math.random() * bgEffects.length)];
+    document.getElementById('bgEffect').value = bgEffect;
+    
+    flowSpeed = Math.random() * 2.5 + 0.5;
+    document.getElementById('flowSpeed').value = flowSpeed;
+    document.getElementById('speedValue').textContent = flowSpeed.toFixed(1);
+    
+    turbulence = Math.random() * 0.012 + 0.002;
+    document.getElementById('turbulence').value = turbulence;
+    document.getElementById('turbValue').textContent = turbulence.toFixed(3);
+    
+    particleSize = Math.random() * 3.5 + 1;
+    document.getElementById('particleSize').value = particleSize;
+    document.getElementById('sizeValue').textContent = particleSize.toFixed(1);
+    
+    trailLength = Math.random() * 0.15 + 0.85;
+    document.getElementById('trailLength').value = trailLength * 100;
+    document.getElementById('trailValue').textContent = Math.round(trailLength * 100);
+    
+    interactionForce = Math.random() * 7 + 2;
+    document.getElementById('interactionForce').value = interactionForce;
+    document.getElementById('forceValue').textContent = interactionForce.toFixed(1);
+    
+    const newCount = Math.floor(Math.random() * 5000 + 1000);
+    if (newCount > particleCount) {
+        for (let i = particleCount; i < newCount; i++) {
+            particles.push(new Particle());
+        }
+    } else {
+        particles.length = newCount;
+    }
+    particleCount = newCount;
+    document.getElementById('density').value = newCount;
+    document.getElementById('densityValue').textContent = newCount;
+    
+    for (const particle of particles) {
+        particle.color = colorThemes[currentTheme].colors[Math.floor(Math.random() * colorThemes[currentTheme].colors.length)];
+        particle.size = (Math.random() * 1.5 + 0.5) * particleSize;
+    }
+    
+    ctx.fillStyle = colorThemes[currentTheme].bg;
+    ctx.fillRect(0, 0, width, height);
+}
+
+function updateThemeColors() {
+    const theme = colorThemes[currentTheme];
+    document.documentElement.style.setProperty('--aurora-1', theme.colors[0]);
+    document.documentElement.style.setProperty('--aurora-2', theme.colors[1]);
+    document.documentElement.style.setProperty('--aurora-3', theme.colors[2]);
+    document.documentElement.style.setProperty('--glow-color', theme.glow);
+    
+    for (const particle of particles) {
+        particle.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
+    }
+}
+
+document.querySelectorAll('[data-mode]').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         interactionMode = btn.dataset.mode;
+    });
+});
+
+document.querySelectorAll('[data-shape]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-shape]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        particleShape = btn.dataset.shape;
     });
 });
 
@@ -352,21 +662,45 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
         document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
         swatch.classList.add('active');
         currentTheme = swatch.dataset.theme;
-        
-        const theme = colorThemes[currentTheme];
-        document.documentElement.style.setProperty('--aurora-1', theme.colors[0]);
-        document.documentElement.style.setProperty('--aurora-2', theme.colors[1]);
-        document.documentElement.style.setProperty('--aurora-3', theme.colors[2]);
-        document.documentElement.style.setProperty('--glow-color', theme.glow);
-        
-        for (const particle of particles) {
-            particle.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
-        }
+        updateThemeColors();
     });
+});
+
+document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.querySelector('.fullscreen-enter').style.display = 'none';
+        document.querySelector('.fullscreen-exit').style.display = 'block';
+    } else {
+        document.exitFullscreen();
+        document.querySelector('.fullscreen-enter').style.display = 'block';
+        document.querySelector('.fullscreen-exit').style.display = 'none';
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+        document.querySelector('.fullscreen-enter').style.display = 'block';
+        document.querySelector('.fullscreen-exit').style.display = 'none';
+    }
+});
+
+const controls = document.querySelector('.controls');
+const toggleBtn = document.getElementById('toggleControls');
+const closeBtn = document.getElementById('closeControls');
+
+toggleBtn.addEventListener('click', () => {
+    controls.classList.add('visible');
+    toggleBtn.classList.add('hidden');
+});
+
+closeBtn.addEventListener('click', () => {
+    controls.classList.remove('visible');
+    toggleBtn.classList.remove('hidden');
 });
 
 window.addEventListener('resize', resize);
 resize();
 animate();
-
-
