@@ -27,7 +27,7 @@ const MAX_SPEED = 340;
 const ACCELERATION = 0.4;
 const BRAKING = 0.8;
 const FRICTION = 0.15;
-const TURN_SPEED = 0.045;
+const TURN_SPEED = 0.085;
 const MAX_RPM = 15000;
 
 let gameState = 'menu';
@@ -230,12 +230,15 @@ function updatePlayer(deltaTime) {
     
     player.speed = Math.max(-50, Math.min(MAX_SPEED, player.speed));
     
-    const turnMultiplier = Math.min(1, player.speed / 100);
+    const absSpeed = Math.abs(player.speed);
+    const turnMultiplier = Math.max(0.5, Math.min(1, absSpeed / 50));
+    const turnDirection = player.speed >= 0 ? 1 : -1;
+    
     if (keys.left) {
-        player.angle -= TURN_SPEED * turnMultiplier * dt;
+        player.angle -= TURN_SPEED * turnMultiplier * turnDirection * dt;
     }
     if (keys.right) {
-        player.angle += TURN_SPEED * turnMultiplier * dt;
+        player.angle += TURN_SPEED * turnMultiplier * turnDirection * dt;
     }
     
     const moveSpeed = player.speed * 0.5 * dt;
