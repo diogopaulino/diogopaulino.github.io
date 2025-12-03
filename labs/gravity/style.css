@@ -169,16 +169,13 @@ header .app-logo {
     gap: 8px;
 }
 
-.control-group label {
-    font-size: 0.75rem;
+.control-group > label {
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    opacity: 0.9;
+    color: #a5b4fc;
+    text-shadow: 0 0 10px rgba(165, 180, 252, 0.3);
 }
 
 /* Toggle Buttons */
@@ -196,9 +193,9 @@ header .app-logo {
     flex: 1;
     background: transparent;
     border: none;
-    color: var(--text-secondary);
+    color: #c7d2fe;
     padding: 10px 14px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -221,8 +218,8 @@ header .app-logo {
 }
 
 .toggle-btn:hover {
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
     transform: translateY(-1px);
 }
 
@@ -305,13 +302,14 @@ header .app-logo {
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
+    font-size: 0.9rem;
+    color: #e0e7ff;
     transition: color 0.2s ease;
+    font-weight: 500;
 }
 
 .checkbox-label:hover {
-    color: var(--text-primary);
+    color: #ffffff;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -345,9 +343,9 @@ header .app-logo {
 
 /* Select Input */
 select {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-    border: 1.5px solid rgba(102, 126, 234, 0.3);
-    color: var(--text-primary);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 1.5px solid rgba(102, 126, 234, 0.4);
+    color: #e0e7ff;
     padding: 10px 14px;
     border-radius: 10px;
     font-size: 0.9rem;
@@ -358,7 +356,7 @@ select {
     -webkit-appearance: none;
     width: 100%;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 select:hover {
@@ -529,39 +527,68 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .particle-count {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     text-align: center;
     font-variant-numeric: tabular-nums;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+    padding: 10px 16px;
     border-radius: 8px;
-    border: 1px solid rgba(102, 126, 234, 0.3);
+    border: 1px solid rgba(102, 126, 234, 0.4);
     font-weight: 600;
+    color: #e0e7ff;
 }
 
 .particle-count span {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #a5b4fc;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    text-shadow: 0 0 10px rgba(165, 180, 252, 0.5);
 }
 
 .instructions {
-    position: absolute;
-    bottom: 100px;
-    width: 100%;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
     text-align: center;
     pointer-events: none;
-    opacity: 0.5;
-    font-size: 0.9rem;
-    animation: fadeOut 3s forwards 2s;
+    font-size: 1rem;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 14px 28px;
+    border-radius: 30px;
+    border: 2px solid rgba(165, 180, 252, 0.6);
+    backdrop-filter: blur(10px);
+    animation: pulse 2s ease-in-out infinite, fadeOutSlow 6s forwards 4s;
+    z-index: 100;
+    max-width: 90%;
+    white-space: nowrap;
 }
 
-@keyframes fadeOut {
-    to {
+.instructions p {
+    margin: 0;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.4);
+        border-color: rgba(165, 180, 252, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 50px rgba(118, 75, 162, 0.6);
+        border-color: rgba(165, 180, 252, 0.8);
+    }
+}
+
+@keyframes fadeOutSlow {
+    0% {
+        opacity: 1;
+    }
+    100% {
         opacity: 0;
+        visibility: hidden;
     }
 }
 

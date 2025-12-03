@@ -125,6 +125,48 @@ body {
     height: 100%;
 }
 
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sound-toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
+    color: var(--talk-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.sound-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--talk-primary);
+}
+
+.sound-toggle.muted {
+    color: var(--text-tertiary);
+}
+
+.sound-toggle.muted:hover {
+    color: var(--talk-danger);
+    border-color: var(--talk-danger);
+}
+
+.sound-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
 .language-select-screen {
     display: flex;
     flex-direction: column;
