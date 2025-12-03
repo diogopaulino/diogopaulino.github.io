@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Genesis Emulator - Labs</title>
+    <title>Genesis Vault - Labs</title>
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="lib/nostalgist.umd.js"></script>
 </head>
 <body>
@@ -18,7 +21,8 @@
                 Labs
             </a>
             <div class="app-logo">
-                🕹️ Genesis Emulator
+                <span class="logo-icon">▶</span>
+                <span class="logo-text">GENESIS<span class="logo-accent">VAULT</span></span>
             </div>
             <button class="theme-toggle" aria-label="Toggle theme">
                 <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -40,26 +44,76 @@
             </button>
         </header>
 
-    <div class="emulator-wrapper">
-        <div id="drop-zone" class="drop-zone">
-            <div class="upload-prompt">
-                <div class="icon">🎮</div>
-                <h2>Sega Genesis / Mega Drive Emulator</h2>
-                <p>Drag & drop ROM file or click to browse</p>
-                <p class="formats">.md .bin .gen .smd .zip</p>
-                <input type="file" id="rom-input" accept=".md,.bin,.gen,.smd,.zip" hidden>
-                <button class="load-btn" onclick="document.getElementById('rom-input').click()">
-                    Load ROM
-                </button>
-            </div>
-        </div>
-        <div id="emulator-container"></div>
-    </div>
+        <main id="app">
+            <section id="catalog" class="catalog">
+                <div class="catalog-filters">
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                    <button class="filter-btn" data-filter="action">Ação</button>
+                    <button class="filter-btn" data-filter="platform">Plataforma</button>
+                    <button class="filter-btn" data-filter="fighting">Luta</button>
+                    <button class="filter-btn" data-filter="rpg">RPG</button>
+                    <button class="filter-btn" data-filter="sports">Esportes</button>
+                </div>
 
-    <footer>
-        <span>criado com ajuda da IA :) •</span>
-        <a href="/">← voltar para home</a>
-    </footer>
+                <div class="games-grid" id="games-grid"></div>
+
+                <div class="custom-rom-section">
+                    <div class="divider">
+                        <span>ou</span>
+                    </div>
+                    <div class="custom-rom-box" id="drop-zone">
+                        <div class="custom-rom-content">
+                            <span class="custom-rom-icon">📁</span>
+                            <p>Carregar ROM personalizada</p>
+                            <span class="formats">.md .bin .gen .smd .zip</span>
+                        </div>
+                        <input type="file" id="rom-input" accept=".md,.bin,.gen,.smd,.zip" hidden>
+                    </div>
+                </div>
+            </section>
+
+            <section id="player" class="player hidden">
+                <div class="player-header">
+                    <button class="back-to-catalog" id="back-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        <span>Voltar</span>
+                    </button>
+                    <div class="now-playing">
+                        <span class="now-playing-label">Jogando:</span>
+                        <span class="now-playing-title" id="game-title"></span>
+                    </div>
+                    <div class="player-controls">
+                        <button class="control-btn" id="fullscreen-btn" title="Tela cheia">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="emulator-wrapper">
+                    <div id="emulator-container"></div>
+                    <div class="loading-screen" id="loading-screen">
+                        <div class="loading-content">
+                            <div class="loading-cover" id="loading-cover"></div>
+                            <div class="loading-info">
+                                <h2 id="loading-title">Carregando...</h2>
+                                <div class="loading-bar">
+                                    <div class="loading-progress"></div>
+                                </div>
+                                <p class="loading-tip">Dica: Use as setas para mover e Z/X para A/B</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>criado com ajuda da IA :)</span>
+            <a href="/">← voltar para home</a>
+        </footer>
     </div>
 
     <script src="../shared.js"></script>

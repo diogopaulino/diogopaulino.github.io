@@ -58,13 +58,13 @@
                 <div class="main-body">
                     <div class="display-area">
                         <div class="visualization" id="visualizer">
-                            <canvas id="vis-canvas" width="76" height="32"></canvas>
-                            <div class="vis-mode" title="Click to change visualization">SPECTRUM</div>
+                            <canvas id="vis-canvas" width="75" height="38"></canvas>
+                            <div class="vis-mode">SPECTRUM</div>
                         </div>
                         <div class="info-panel">
                             <div class="song-info">
                                 <div class="marquee-container">
-                                    <span class="marquee" id="marquee-text">Loading tracks...</span>
+                                    <span class="marquee" id="marquee-text">Winamp JS - Ready to play...</span>
                                 </div>
                             </div>
                             <div class="info-row">
@@ -72,8 +72,8 @@
                                     <span id="time-elapsed">00:00</span>
                                 </div>
                                 <div class="kbps-khz">
-                                    <div class="kbps" id="kbps">---</div>
-                                    <div class="khz" id="khz">--</div>
+                                    <div class="kbps" id="kbps">128</div>
+                                    <div class="khz" id="khz">44</div>
                                 </div>
                                 <div class="mono-stereo">
                                     <div class="stereo active">STEREO</div>
@@ -85,32 +85,31 @@
 
                     <div class="seek-bar-container">
                         <input type="range" min="0" max="100" value="0" class="seek-bar" id="seek-bar">
-                        <div class="seek-progress" id="seek-progress"></div>
                     </div>
 
                     <div class="controls-area">
                         <div class="sliders">
                             <div class="volume-slider-container">
                                 <label>VOL</label>
-                                <input type="range" min="0" max="100" value="80" class="winamp-range volume" id="volume">
+                                <input type="range" min="0" max="100" value="80" class="winamp-range" id="volume">
                                 <div class="slider-value" id="volume-display">80%</div>
                             </div>
                             <div class="balance-slider-container">
                                 <label>BAL</label>
-                                <input type="range" min="-100" max="100" value="0" class="winamp-range balance" id="balance">
+                                <input type="range" min="-100" max="100" value="0" class="winamp-range" id="balance">
                                 <div class="slider-value" id="balance-display">C</div>
                             </div>
                         </div>
 
                         <div class="main-buttons">
-                            <button class="btn-prev" id="btn-prev" title="Previous"></button>
-                            <button class="btn-play" id="btn-play" title="Play"></button>
-                            <button class="btn-pause" id="btn-pause" title="Pause"></button>
-                            <button class="btn-stop" id="btn-stop" title="Stop"></button>
-                            <button class="btn-next" id="btn-next" title="Next"></button>
+                            <button class="btn-prev" id="btn-prev" title="Previous [Z]"></button>
+                            <button class="btn-play" id="btn-play" title="Play [X]"></button>
+                            <button class="btn-pause" id="btn-pause" title="Pause [C]"></button>
+                            <button class="btn-stop" id="btn-stop" title="Stop [V]"></button>
+                            <button class="btn-next" id="btn-next" title="Next [B]"></button>
                         </div>
                         
-                        <button class="btn-eject" id="btn-eject" title="Open File"></button>
+                        <button class="btn-eject" id="btn-eject" title="Open File [L]"></button>
                         
                         <div class="shuffle-repeat">
                             <button class="btn-shuffle" id="btn-shuffle">SHUF</button>
@@ -139,55 +138,25 @@
                         <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" id="preamp">
                     </div>
                     <div class="eq-bands">
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="60">
-                            <label>60</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="170">
-                            <label>170</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="310">
-                            <label>310</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="600">
-                            <label>600</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="2" class="eq-slider vertical" data-freq="1000">
-                            <label>1K</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="3000">
-                            <label>3K</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="6000">
-                            <label>6K</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="12000">
-                            <label>12K</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="14000">
-                            <label>14K</label>
-                        </div>
-                        <div class="eq-band">
-                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="16000">
-                            <label>16K</label>
-                        </div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="8" class="eq-slider vertical" data-freq="60"><label>60</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="6" class="eq-slider vertical" data-freq="170"><label>170</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="4" class="eq-slider vertical" data-freq="310"><label>310</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="2" class="eq-slider vertical" data-freq="600"><label>600</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="1000"><label>1K</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="3000"><label>3K</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="6000"><label>6K</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="12000"><label>12K</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="14000"><label>14K</label></div>
+                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="16000"><label>16K</label></div>
                     </div>
                     <div class="eq-presets">
                         <select id="eq-presets">
+                            <option value="bass" selected>Bass Boost</option>
                             <option value="flat">Flat</option>
                             <option value="rock">Rock</option>
                             <option value="pop">Pop</option>
                             <option value="classical">Classical</option>
-                            <option value="bass">Bass Boost</option>
-                            <option value="treble">Treble Boost</option>
+                            <option value="treble">Treble</option>
                         </select>
                     </div>
                 </div>
@@ -202,17 +171,16 @@
                     </div>
                 </div>
                 <div class="playlist-body">
-                    <div class="playlist-content" id="playlist">
-                    </div>
+                    <div class="playlist-content" id="playlist"></div>
                     <div class="playlist-info">
                         <span id="playlist-count">0 tracks</span>
                         <span id="playlist-duration">00:00</span>
                     </div>
                     <div class="playlist-controls">
                         <div class="left-btns">
-                            <button id="pl-add" title="Add local file">+ ADD</button>
+                            <button id="pl-add" title="Add files">+ ADD</button>
                             <button id="pl-rem" title="Remove selected">- REM</button>
-                            <button id="pl-clear" title="Clear playlist">CLR</button>
+                            <button id="pl-clear" title="Reset playlist">CLR</button>
                         </div>
                         <div class="right-btns">
                             <button id="pl-sort">SORT</button>
@@ -226,7 +194,7 @@
 
         <div class="loading-overlay" id="loading">
             <div class="loading-spinner"></div>
-            <div class="loading-text">Loading audio...</div>
+            <div class="loading-text">Loading...</div>
         </div>
 
         <footer>
