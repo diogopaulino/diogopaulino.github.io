@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Retro': 'game',
         'Neon': 'game',
         'PixiJS': 'game',
+        'Emulator': 'game',
 
         // Utilities
         'Utility': 'utility',

@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Videogame - Labs</title>
+    <meta name="description" content="Emulador de jogos clássicos no navegador. Jogue Sonic e outros títulos retrô.">
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
     <script src="lib/nostalgist.umd.js"></script>
 </head>
+
 <body>
     <div class="app-container">
         <header>
@@ -19,7 +22,8 @@
             </a>
             <div class="app-logo">🎮 Videogame</div>
             <button class="theme-toggle" aria-label="Toggle theme">
-                <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
                     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -30,7 +34,8 @@
                     <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
                     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                 </svg>
-                <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" style="display:none">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
@@ -40,7 +45,8 @@
             <section id="home" class="home">
                 <div class="play-section">
                     <button id="play-sonic" class="play-card">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Sonic_the_Hedgehog_1_Genesis_box_art.jpg" alt="Sonic The Hedgehog">
+                        <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Sonic_the_Hedgehog_1_Genesis_box_art.jpg"
+                            alt="Sonic The Hedgehog">
                         <div class="play-card-overlay">
                             <span class="play-btn">▶ Jogar</span>
                         </div>
@@ -59,7 +65,8 @@
 
                 <div class="panel">
                     <div class="panel-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                             <line x1="8" y1="21" x2="16" y2="21"></line>
                             <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -89,7 +96,8 @@
 
                 <div class="panel">
                     <div class="panel-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                             <path d="M6 12h4m-2-2v4"></path>
                             <circle cx="17" cy="12" r="2"></circle>
@@ -108,7 +116,8 @@
             <section id="player" class="player hidden">
                 <div class="player-bar">
                     <button id="btn-back" title="Voltar (Esc)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
                         Voltar
@@ -116,14 +125,18 @@
                     <span id="game-name">-</span>
                     <div style="display: flex; gap: 0.5rem;">
                         <button id="btn-controls" title="Ver Controles">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                                 <path d="M6 12h4m-2-2v4"></path>
                             </svg>
                         </button>
                         <button id="btn-fullscreen" title="Tela cheia">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                                </path>
                             </svg>
                         </button>
                     </div>
@@ -144,4 +157,5 @@
     <script src="../shared.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

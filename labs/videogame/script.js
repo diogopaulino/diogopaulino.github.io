@@ -154,25 +154,21 @@ async function startGame(rom, name) {
     try {
         await stopEmulator();
 
+        // Create a canvas for the emulator
+        const canvas = document.createElement('canvas');
+        $('screen').appendChild(canvas);
+
         emulator = await Nostalgist.launch({
             core: 'genesis_plus_gx',
             rom: rom,
             resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
             resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm',
             resolveRom: (file) => typeof file === 'string' && file.startsWith('http') ? file : basePath + file,
-            element: $('screen').querySelector('canvas') // This might be wrong, Nostalgist creates canvas usually
+            element: canvas
         });
 
-        // Nostalgist creates its own canvas or uses the one provided. 
-        // Let's get the canvas it created/used.
-        const canvas = emulator.getCanvas();
-        if (canvas) {
-            // Ensure canvas is in #screen if it wasn't already
-            if (canvas.parentElement !== $('screen')) {
-                $('screen').appendChild(canvas);
-            }
-            applySettings();
-        }
+        // Ensure settings are applied to the active canvas
+        applySettings();
 
         showLoader(false);
     } catch (error) {

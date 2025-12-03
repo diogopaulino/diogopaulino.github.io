@@ -5,12 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculator - Labs</title>
+    <meta name="description"
+        content="Calculadora online com modos simples, científico e conversor de moedas em tempo real.">
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 
 <body>
@@ -24,7 +26,7 @@
                 Labs
             </a>
             <div class="app-logo">
-                <i class="fas fa-calculator"></i>
+                <i class="ph ph-calculator"></i>
                 Calculator
             </div>
             <button class="theme-toggle" aria-label="Toggle theme">
@@ -50,13 +52,13 @@
         <div class="calculator-wrapper">
             <div class="mode-switch">
                 <button class="mode-btn active" data-mode="calculator">
-                    <i class="fas fa-calculator"></i> Simple
+                    <i class="ph ph-calculator"></i> Simple
                 </button>
                 <button class="mode-btn" data-mode="scientific">
-                    <i class="fas fa-flask"></i> Scientific
+                    <i class="ph ph-flask"></i> Scientific
                 </button>
                 <button class="mode-btn" data-mode="currency">
-                    <i class="fas fa-coins"></i> Currency
+                    <i class="ph ph-coins"></i> Currency
                 </button>
             </div>
 
@@ -68,7 +70,7 @@
                 </div>
                 <div class="buttons">
                     <button class="btn function" data-action="clear">AC</button>
-                    <button class="btn function" data-action="delete"><i class="fas fa-backspace"></i></button>
+                    <button class="btn function" data-action="delete"><i class="ph ph-backspace"></i></button>
                     <button class="btn operator" data-action="percent">%</button>
                     <button class="btn operator" data-action="divide">÷</button>
                     <button class="btn number">7</button>
@@ -98,7 +100,7 @@
                 <div class="buttons scientific-grid">
                     <!-- Row 1 -->
                     <button class="btn function" data-action="sci-clear">AC</button>
-                    <button class="btn function" data-action="sci-delete"><i class="fas fa-backspace"></i></button>
+                    <button class="btn function" data-action="sci-delete"><i class="ph ph-backspace"></i></button>
                     <button class="btn sci-func" data-action="sin">sin</button>
                     <button class="btn sci-func" data-action="cos">cos</button>
                     <button class="btn sci-func" data-action="tan">tan</button>
@@ -177,7 +179,7 @@
 
                 <div class="swap-container">
                     <button class="btn-swap" id="swap">
-                        <i class="fas fa-exchange-alt"></i>
+                        <i class="ph ph-arrows-left-right"></i>
                     </button>
                     <div class="rate-info" id="rate">1 USD = ...</div>
                 </div>
