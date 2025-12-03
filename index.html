@@ -11,6 +11,7 @@
 </head>
 <body>
   <div class="card-container minimal">
+    <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema"></button>
     <img src="assets/img/diogo.jpeg" alt="Diogo Paulino" class="profile-pic-minimal">
     <h1 class="main-name">Diogo Paulino</h1>
     <div class="subtitle">Tech Manager</div>
@@ -21,5 +22,19 @@
       <a href="https://br.linkedin.com/in/diogopaulino" target="_blank" aria-label="LinkedIn" class="icon-linkedin-outline" rel="noopener noreferrer"></a>
     </div>
   </div>
+  <script>
+    const toggle = document.querySelector('.theme-toggle');
+    const html = document.documentElement;
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+
+    toggle.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  </script>
 </body>
 </html>
