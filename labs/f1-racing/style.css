@@ -153,6 +153,11 @@ canvas#gameCanvas {
 .time-value {
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing: 0.02em;
+    min-width: 5.5em;
+    display: inline-block;
+    text-align: right;
 }
 
 .hud-center {
