@@ -6,12 +6,16 @@ const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
 const settings = {
     scale: localStorage.getItem('emu-scale') || 'max',
-    filter: localStorage.getItem('emu-filter') || 'sharp'
+    filter: localStorage.getItem('emu-filter') || 'sharp',
+    brightness: localStorage.getItem('emu-brightness') || '100',
+    contrast: localStorage.getItem('emu-contrast') || '100'
 };
 
 function showHome() {
     $('home').classList.remove('hidden');
     $('player').classList.add('hidden');
+    document.querySelector('header').style.display = 'flex';
+    document.querySelector('footer').style.display = 'block';
     if (document.fullscreenElement) {
         document.exitFullscreen();
     }
@@ -21,6 +25,8 @@ function showHome() {
 function showPlayer(name) {
     $('home').classList.add('hidden');
     $('player').classList.remove('hidden');
+    document.querySelector('header').style.display = 'none';
+    document.querySelector('footer').style.display = 'none';
     $('game-name').textContent = name;
 }
 
@@ -52,8 +58,31 @@ function applySettings() {
     if (settings.filter === 'sharp') canvas.classList.add('filter-sharp');
     else if (settings.filter === 'smooth') canvas.classList.add('filter-smooth');
     else if (settings.filter === 'crt') canvas.classList.add('filter-crt');
-    else if (settings.filter === 'retro') canvas.classList.add('filter-retro');
-    else if (settings.filter === 'mono') canvas.classList.add('filter-mono');
+
+    // Apply Brightness & Contrast
+    const brightness = settings.brightness / 100;
+    const contrast = settings.contrast / 100;
+
+    // Combine with filter-specific styles if needed, but for now apply via style
+    // Note: This might override class filters if they use 'filter' property.
+    // The CRT class uses 'filter', so we need to be careful.
+    // We will append brightness/contrast to the filter string.
+
+    let filterString = `brightness(${brightness}) contrast(${contrast})`;
+
+    if (settings.filter === 'crt') {
+        // CRT has its own values, we multiply or append?
+        // CRT class: filter: contrast(1.2) brightness(1.1) saturate(1.2);
+        // Let's manually construct the CRT filter string + user adjustments
+        filterString = `contrast(${1.2 * contrast}) brightness(${1.1 * brightness}) saturate(1.2)`;
+        // Remove class to avoid conflict, apply inline
+        canvas.classList.remove('filter-crt');
+    } else {
+        // For non-CRT, just apply brightness/contrast
+        // Sharp/Smooth don't use 'filter' property, they use 'image-rendering'
+    }
+
+    canvas.style.filter = filterString;
 
     // Scale logic
     if (settings.scale === 'max') {
@@ -87,12 +116,26 @@ function applySettings() {
 }
 
 function updateSettingsUI() {
+    // Buttons
     document.querySelectorAll('.btn-group').forEach(group => {
         const settingName = group.dataset.setting;
         if (settings[settingName]) {
             group.querySelectorAll('button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === settings[settingName]);
             });
+        }
+    });
+
+    // Sliders
+    document.querySelectorAll('input[type="range"]').forEach(input => {
+        const settingName = input.dataset.setting;
+        if (settings[settingName]) {
+            input.value = settings[settingName];
+            // Update label if exists
+            const label = input.nextElementSibling;
+            if (label && label.classList.contains('value-label')) {
+                label.textContent = settings[settingName] + '%';
+            }
         }
     });
 }
@@ -152,6 +195,12 @@ function showControls() {
     $('player').appendChild(overlay);
 }
 
+function getCore(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (['sfc', 'smc'].includes(ext)) return 'snes9x';
+    return 'genesis_plus_gx';
+}
+
 async function startGame(rom, name) {
     showPlayer(name);
     showLoader(true);
@@ -163,8 +212,10 @@ async function startGame(rom, name) {
         const canvas = document.createElement('canvas');
         $('screen').appendChild(canvas);
 
+        const core = getCore(typeof rom === 'string' ? rom : rom.name);
+
         emulator = await Nostalgist.launch({
-            core: 'genesis_plus_gx',
+            core: core,
             rom: rom,
             resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
             resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm',
@@ -242,6 +293,13 @@ function init() {
     const style = document.createElement('style');
     style.textContent = `@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`;
     document.head.appendChild(style);
+
+    document.querySelectorAll('input[type="range"]').forEach(input => {
+        const settingName = input.dataset.setting;
+        input.addEventListener('input', (e) => {
+            saveSetting(settingName, e.target.value);
+        });
+    });
 
     // Key remapping for A/S/D -> Z/X/C
     const keyMap = {
