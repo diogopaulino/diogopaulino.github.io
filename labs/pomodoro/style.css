@@ -198,8 +198,9 @@ button {
     color: var(--text-primary);
 }
 
-/* Header Controls */
-.header-controls {
+.header-actions {
+    grid-column: 3;
+    justify-self: end;
     display: flex;
     gap: 0.5rem;
     align-items: center;

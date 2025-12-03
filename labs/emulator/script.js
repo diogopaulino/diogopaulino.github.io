@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 element: emulatorContainer,
                 rom: file,
                 core: 'genesis_plus_gx',
-                resolveCoreJs: 'lib/genesis_plus_gx_libretro.js',
-                resolveCoreWasm: 'lib/genesis_plus_gx_libretro.wasm',
+                resolveCoreJs: (core) => `lib/${core}_libretro.js`,
+                resolveCoreWasm: (core) => `lib/${core}_libretro.wasm`,
                 style: {
                     width: '100%',
                     height: '100%'
