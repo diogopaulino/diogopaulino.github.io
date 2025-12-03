@@ -5,10 +5,8 @@ const basePath = window.location.href.substring(0, window.location.href.lastInde
 const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
 const settings = {
-    scale: localStorage.getItem('emu-scale') || 'max',
-    filter: localStorage.getItem('emu-filter') || 'sharp',
-    brightness: localStorage.getItem('emu-brightness') || '100',
-    contrast: localStorage.getItem('emu-contrast') || '100'
+    scale: ['max', 'stretch'].includes(localStorage.getItem('emu-scale')) ? localStorage.getItem('emu-scale') : 'max',
+    filter: ['sharp', 'smooth'].includes(localStorage.getItem('emu-filter')) ? localStorage.getItem('emu-filter') : 'sharp'
 };
 
 function showHome() {
@@ -41,9 +39,7 @@ async function stopEmulator() {
     }
     const screen = $('screen');
     const canvas = screen.querySelector('canvas');
-    const crtOverlay = screen.querySelector('.crt-overlay');
     if (canvas) canvas.remove();
-    if (crtOverlay) crtOverlay.remove();
 }
 
 function applySettings() {
@@ -53,36 +49,11 @@ function applySettings() {
 
     // Reset classes
     canvas.className = '';
+    canvas.style.filter = '';
 
     // Apply Filter Class
     if (settings.filter === 'sharp') canvas.classList.add('filter-sharp');
     else if (settings.filter === 'smooth') canvas.classList.add('filter-smooth');
-    else if (settings.filter === 'crt') canvas.classList.add('filter-crt');
-
-    // Apply Brightness & Contrast
-    const brightness = settings.brightness / 100;
-    const contrast = settings.contrast / 100;
-
-    // Combine with filter-specific styles if needed, but for now apply via style
-    // Note: This might override class filters if they use 'filter' property.
-    // The CRT class uses 'filter', so we need to be careful.
-    // We will append brightness/contrast to the filter string.
-
-    let filterString = `brightness(${brightness}) contrast(${contrast})`;
-
-    if (settings.filter === 'crt') {
-        // CRT has its own values, we multiply or append?
-        // CRT class: filter: contrast(1.2) brightness(1.1) saturate(1.2);
-        // Let's manually construct the CRT filter string + user adjustments
-        filterString = `contrast(${1.2 * contrast}) brightness(${1.1 * brightness}) saturate(1.2)`;
-        // Remove class to avoid conflict, apply inline
-        canvas.classList.remove('filter-crt');
-    } else {
-        // For non-CRT, just apply brightness/contrast
-        // Sharp/Smooth don't use 'filter' property, they use 'image-rendering'
-    }
-
-    canvas.style.filter = filterString;
 
     // Scale logic
     if (settings.scale === 'max') {
@@ -93,25 +64,6 @@ function applySettings() {
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.objectFit = 'fill';
-    } else {
-        const baseWidth = 320;
-        const baseHeight = 224;
-        const scale = parseInt(settings.scale);
-        canvas.style.width = `${baseWidth * scale}px`;
-        canvas.style.height = `${baseHeight * scale}px`;
-        canvas.style.objectFit = 'contain';
-    }
-
-    // CRT Overlay
-    let crtOverlay = screen.querySelector('.crt-overlay');
-    if (settings.filter === 'crt') {
-        if (!crtOverlay) {
-            crtOverlay = document.createElement('div');
-            crtOverlay.className = 'crt-overlay';
-            screen.appendChild(crtOverlay);
-        }
-    } else if (crtOverlay) {
-        crtOverlay.remove();
     }
 }
 
@@ -126,18 +78,8 @@ function updateSettingsUI() {
         }
     });
 
-    // Sliders
-    document.querySelectorAll('input[type="range"]').forEach(input => {
-        const settingName = input.dataset.setting;
-        if (settings[settingName]) {
-            input.value = settings[settingName];
-            // Update label if exists
-            const label = input.nextElementSibling;
-            if (label && label.classList.contains('value-label')) {
-                label.textContent = settings[settingName] + '%';
-            }
-        }
-    });
+    // Sliders removed
+
 }
 
 function saveSetting(name, value) {
@@ -294,12 +236,7 @@ function init() {
     style.textContent = `@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`;
     document.head.appendChild(style);
 
-    document.querySelectorAll('input[type="range"]').forEach(input => {
-        const settingName = input.dataset.setting;
-        input.addEventListener('input', (e) => {
-            saveSetting(settingName, e.target.value);
-        });
-    });
+    // Sliders listeners removed
 
     // Key remapping for A/S/D -> Z/X/C
     const keyMap = {

@@ -321,7 +321,8 @@ body {
     }
 }
 
-/* Responsive@media (max-width: 480px) {
+/* Responsive */
+@media (max-width: 480px) {
     .calculator-wrapper {
         padding: 20px;
     }

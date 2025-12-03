@@ -127,7 +127,8 @@ button.active {
 }
 
 .primary-btn:hover {
-    background: var(--accent-hover);
+    background: var(--accent);
+    filter: brightness(1.1);
 }
 
 /* Theme Toggle overrides for toolbar context */

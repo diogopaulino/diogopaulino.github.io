@@ -11,33 +11,37 @@ Construindo experiências digitais simples com design, código, música e um pou
 
 ---
 
-## Labs
+## 🧪 Labs
 
 Uma coleção de experimentos interativos e projetos criativos, explorando o que é possível com HTML, CSS e JavaScript puro.
 
 **[Acessar Labs →](https://diogopaulino.com.br/labs/)**
 
-### Games
+### 🎮 Games
 
 | Projeto | Descrição |
 |---------|-----------|
+| **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de consoles clássicos no navegador com suporte a ROMs e filtros |
 | **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Corrida de Fórmula 1 com pista dinâmica, oponentes IA e sistema de voltas |
+| **[Retro Racer](https://diogopaulino.com.br/labs/racing/)** | Jogo de corrida arcade estilo retrô onde você deve desviar do tráfego |
+| **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Aventura de plataforma inspirada em clássicos como Pitfall |
 | **[Neon Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Arcade clássico com visual cyberpunk, partículas e efeitos neon |
 | **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | O clássico jogo de blocos com visual retrô de Game Boy |
 | **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Clássico jogo da cobrinha com visual de console portátil dos anos 90 |
 | **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Clássico jogo de estratégia com estética retrô do Windows 95 |
 | **[LingoQuest](https://diogopaulino.com.br/labs/english-duo/)** | Jogo de inglês estilo Duolingo com desafios dinâmicos de vocabulário |
 
-### Creative & Visual
+### 🎨 Creative & Visual
 
 | Projeto | Descrição |
 |---------|-----------|
-| **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Visualização hipnotizante de aurora boreal com partículas e campos de fluxo interativos |
+| **[AI Evolution](https://diogopaulino.com.br/labs/ai-evolution/)** | Simulação interativa de algoritmo genético onde a IA aprende a navegar |
+| **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Visualização hipnotizante de aurora boreal com partículas e campos de fluxo |
 | **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital completo com pincéis, formas e histórico |
 | **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Simulação de partículas com física, gravidade e colisões interativas |
 | **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Editor de fotos estilo Instagram com filtros e ajustes profissionais |
 
-### Tools & Utilities
+### 🛠️ Tools & Utilities
 
 | Projeto | Descrição |
 |---------|-----------|
@@ -45,22 +49,16 @@ Uma coleção de experimentos interativos e projetos criativos, explorando o que
 | **[Fun Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora moderna com conversão de moedas em tempo real |
 | **[AI Focus](https://diogopaulino.com.br/labs/pomodoro/)** | Pomodoro timer futurista com sons suaves e notificações inteligentes |
 
-### Music & Audio
+### 🎵 Music & Audio
 
 | Projeto | Descrição |
 |---------|-----------|
 | **[Piano](https://diogopaulino.com.br/labs/piano/)** | Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain |
 | **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Clone do lendário player MP3 com visual clássico e equalizador |
 
-### Emulation
-
-| Projeto | Descrição |
-|---------|-----------|
-| **[Genesis Emu](https://diogopaulino.com.br/labs/emulator/)** | Emulador de Mega Drive online com suporte a ROMs e efeitos CRT |
-
 ---
 
-## Tech Stack
+## ⚡ Tech Stack
 
 - HTML5 / CSS3 / JavaScript (Vanilla)
 - Canvas API & Web Audio API
@@ -69,7 +67,7 @@ Uma coleção de experimentos interativos e projetos criativos, explorando o que
 
 ---
 
-## Features
+## ✨ Features
 
 - Dark/Light theme
 - Mobile responsive
@@ -78,12 +76,10 @@ Uma coleção de experimentos interativos e projetos criativos, explorando o que
 
 ---
 
-## License
+## 📄 License
 
 Este projeto é open source e está disponível sob a [MIT License](LICENSE).
 
 ---
 
-<p align="center">
-  <sub>Criado com ajuda da IA :)</sub>
-</p>
+
