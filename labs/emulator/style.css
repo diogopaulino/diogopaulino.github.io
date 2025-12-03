@@ -6,148 +6,186 @@ main {
 
 .home {
     flex: 1;
-    padding: 2rem;
-    max-width: 600px;
+    padding: 1.5rem;
+    max-width: 800px;
     margin: 0 auto;
     width: 100%;
 }
 
 .home.hidden { display: none; }
 
-.intro {
-    text-align: center;
-    margin-bottom: 2rem;
+.catalog-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
 }
 
-.intro h2 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+.catalog-header h2 {
+    font-size: 1.4rem;
+    margin: 0;
     color: var(--text-primary);
 }
 
-.intro p {
-    color: var(--text-secondary);
-}
-
-h3 {
+.game-count {
     font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
     color: var(--text-secondary);
-    margin-bottom: 0.75rem;
 }
 
-.game-section {
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.25rem;
     margin-bottom: 2rem;
 }
 
-.game-btn {
+.game-card {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.2s;
+}
+
+.game-card:hover {
+    transform: translateY(-4px);
+}
+
+.game-cover {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    margin-bottom: 0.6rem;
+}
+
+.game-cover img {
     width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.play-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-.game-btn:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--accent-color, #0066cc);
-    transform: translateY(-2px);
+.game-card:hover .play-overlay {
+    opacity: 1;
 }
 
-.game-icon {
-    font-size: 2.5rem;
+.play-btn {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-color, #0066cc);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 102, 204, 0.5);
 }
 
-.game-info {
-    flex: 1;
+.game-details {
     display: flex;
     flex-direction: column;
+    gap: 0.15rem;
 }
 
-.game-info strong {
+.game-details strong {
+    font-size: 0.95rem;
     color: var(--text-primary);
-    font-size: 1.1rem;
 }
 
-.game-info small {
+.game-details span {
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.play-icon {
-    font-size: 1.5rem;
-    color: var(--accent-color, #0066cc);
 }
 
 .upload-section {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
-.upload-btn {
+.upload-box {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    padding: 1.5rem;
+    gap: 0.4rem;
+    padding: 1.25rem;
     background: var(--bg-secondary);
     border: 2px dashed var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
-    color: var(--text-primary);
 }
 
-.upload-btn:hover {
+.upload-box:hover {
     border-color: var(--accent-color, #0066cc);
     background: var(--bg-tertiary);
 }
 
-.upload-btn small {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
+.upload-icon {
+    font-size: 1.5rem;
+    opacity: 0.7;
 }
 
-.controls-info {
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 1.25rem;
-}
-
-.controls-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-}
-
-.control-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    text-align: center;
-}
-
-.control-item kbd {
-    background: var(--bg-tertiary);
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.85rem;
+.upload-text {
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
 }
 
-.control-item span {
+.upload-formats {
     font-size: 0.75rem;
     color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.controls-section {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.controls-section h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem 0;
+}
+
+.controls-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.25rem;
+}
+
+.control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.control kbd {
+    background: var(--bg-tertiary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .player {
@@ -163,16 +201,16 @@ h3 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 1rem;
     background: #111;
     gap: 1rem;
 }
 
 .player-bar button {
-    padding: 0.5rem 1rem;
+    padding: 0.45rem 0.9rem;
     background: #222;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     color: #fff;
     cursor: pointer;
     font-size: 0.85rem;
@@ -187,6 +225,7 @@ h3 {
     text-align: center;
     color: #fff;
     font-weight: 500;
+    font-size: 0.9rem;
 }
 
 #screen {
@@ -222,8 +261,8 @@ h3 {
 #loader.hidden { display: none; }
 
 .spinner {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border: 3px solid #333;
     border-top-color: #0066cc;
     border-radius: 50%;
@@ -238,22 +277,21 @@ h3 {
     padding: 2rem;
 }
 
-.error p {
-    margin-bottom: 1rem;
-}
+.error p { margin-bottom: 1rem; }
 
 .error button {
-    padding: 0.6rem 1.2rem;
+    padding: 0.5rem 1rem;
     background: #0066cc;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     color: #fff;
     cursor: pointer;
 }
 
 @media (max-width: 500px) {
     .home { padding: 1rem; }
-    .controls-grid { grid-template-columns: repeat(2, 1fr); }
+    .games-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     .player-bar { flex-wrap: wrap; }
     #game-name { order: -1; width: 100%; margin-bottom: 0.5rem; }
+    .controls-list { gap: 0.5rem 1rem; }
 }
