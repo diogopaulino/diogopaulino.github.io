@@ -5,7 +5,7 @@ const basePath = window.location.href.substring(0, window.location.href.lastInde
 const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
 const settings = {
-    scale: localStorage.getItem('emu-scale') || '2',
+    scale: localStorage.getItem('emu-scale') || 'max',
     filter: localStorage.getItem('emu-filter') || 'sharp'
 };
 
@@ -30,7 +30,7 @@ function showLoader(show) {
 
 async function stopEmulator() {
     if (emulator) {
-        try { await emulator.exit(); } catch (e) {}
+        try { await emulator.exit(); } catch (e) { }
         emulator = null;
     }
     const screen = $('screen');
@@ -45,20 +45,30 @@ function applySettings() {
     const canvas = screen.querySelector('canvas');
     if (!canvas) return;
 
+    // Filter logic
     canvas.style.imageRendering = settings.filter === 'smooth' ? 'auto' : 'pixelated';
-    
+
     if (settings.filter === 'crt') {
-        canvas.style.filter = 'contrast(1.1) brightness(0.95)';
+        canvas.style.filter = 'contrast(1.2) brightness(1.1) saturate(1.2)';
     } else {
         canvas.style.filter = '';
     }
 
-    const baseWidth = 320;
-    const baseHeight = 224;
-    const scale = parseInt(settings.scale);
-    canvas.style.width = `${baseWidth * scale}px`;
-    canvas.style.height = `${baseHeight * scale}px`;
+    // Scale logic
+    if (settings.scale === 'max') {
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.objectFit = 'contain';
+    } else {
+        const baseWidth = 320;
+        const baseHeight = 224;
+        const scale = parseInt(settings.scale);
+        canvas.style.width = `${baseWidth * scale}px`;
+        canvas.style.height = `${baseHeight * scale}px`;
+        canvas.style.objectFit = 'contain';
+    }
 
+    // CRT Overlay
     let crtOverlay = screen.querySelector('.crt-overlay');
     if (settings.filter === 'crt') {
         if (!crtOverlay) {
@@ -89,6 +99,54 @@ function saveSetting(name, value) {
     updateSettingsUI();
 }
 
+function showControls() {
+    const existing = $('controls-overlay');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'controls-overlay';
+    overlay.style.cssText = `
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 60;
+        animation: fadeIn 0.2s;
+    `;
+
+    overlay.innerHTML = `
+        <div class="panel" style="max-width: 400px; width: 90%; pointer-events: auto;">
+            <div class="panel-title" style="justify-content: space-between;">
+                <span>Controles</span>
+                <button onclick="this.closest('#controls-overlay').remove()" style="background:none;border:none;color:white;cursor:pointer;">✕</button>
+            </div>
+            <div class="controls-grid">
+                <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                <div class="control-item"><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Botões A/B/C</div>
+                <div class="control-item"><kbd>Enter</kbd> Start</div>
+                <div class="control-item"><kbd>Shift</kbd> Select</div>
+                <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
+                <div class="control-item"><kbd>Esc</kbd> Sair</div>
+            </div>
+            <div style="margin-top: 1rem; text-align: center; font-size: 0.8rem; color: var(--text-secondary);">
+                Clique em qualquer lugar para fechar
+            </div>
+        </div>
+    `;
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    $('player').appendChild(overlay);
+}
+
 async function startGame(rom, name) {
     showPlayer(name);
     showLoader(true);
@@ -101,12 +159,18 @@ async function startGame(rom, name) {
             rom: rom,
             resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
             resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm',
-            resolveRom: (file) => typeof file === 'string' && file.startsWith('http') ? file : basePath + file
+            resolveRom: (file) => typeof file === 'string' && file.startsWith('http') ? file : basePath + file,
+            element: $('screen').querySelector('canvas') // This might be wrong, Nostalgist creates canvas usually
         });
 
+        // Nostalgist creates its own canvas or uses the one provided. 
+        // Let's get the canvas it created/used.
         const canvas = emulator.getCanvas();
         if (canvas) {
-            $('screen').appendChild(canvas);
+            // Ensure canvas is in #screen if it wasn't already
+            if (canvas.parentElement !== $('screen')) {
+                $('screen').appendChild(canvas);
+            }
             applySettings();
         }
 
@@ -129,6 +193,8 @@ function init() {
     });
 
     $('btn-back').addEventListener('click', showHome);
+
+    $('btn-controls').addEventListener('click', showControls);
 
     $('btn-fullscreen').addEventListener('click', () => {
         const player = $('player');
@@ -157,10 +223,24 @@ function init() {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !$('player').classList.contains('hidden')) {
-            showHome();
+        if (e.key === 'Escape') {
+            if ($('controls-overlay')) {
+                $('controls-overlay').remove();
+            } else if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else if (!$('player').classList.contains('hidden')) {
+                showHome();
+            }
+        }
+        if (e.key.toLowerCase() === 'f' && !$('player').classList.contains('hidden')) {
+            $('btn-fullscreen').click();
         }
     });
+
+    // Add animation style for fade in
+    const style = document.createElement('style');
+    style.textContent = `@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`;
+    document.head.appendChild(style);
 
     updateSettingsUI();
 }

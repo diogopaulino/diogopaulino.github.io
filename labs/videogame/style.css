@@ -2,43 +2,47 @@ main {
     flex: 1;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 }
 
 .home {
     flex: 1;
     padding: 1.5rem;
-    max-width: 480px;
+    max-width: 600px;
     margin: 0 auto;
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
+    overflow-y: auto;
 }
 
 .home.hidden { display: none; }
 
 .play-section {
-    display: flex;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
     align-items: stretch;
 }
 
 .play-card {
-    flex: 1;
     position: relative;
     background: none;
     border: none;
     padding: 0;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+    aspect-ratio: 16/9;
 }
 
 .play-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(1.02) translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .play-card img {
@@ -46,17 +50,23 @@ main {
     height: 100%;
     object-fit: cover;
     display: block;
+    transition: transform 0.5s;
+}
+
+.play-card:hover img {
+    transform: scale(1.1);
 }
 
 .play-card-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(2px);
 }
 
 .play-card:hover .play-card-overlay {
@@ -66,11 +76,17 @@ main {
 .play-btn {
     background: #0066cc;
     color: #fff;
-    padding: 0.6rem 1.5rem;
+    padding: 0.8rem 2rem;
     border-radius: 50px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    box-shadow: 0 4px 20px rgba(0, 102, 204, 0.5);
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0, 102, 204, 0.6);
+    transform: translateY(10px);
+    transition: transform 0.3s;
+}
+
+.play-card:hover .play-btn {
+    transform: translateY(0);
 }
 
 .play-card-info {
@@ -78,35 +94,42 @@ main {
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0.75rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    padding: 1.5rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.25rem;
+    transform: translateY(100%);
+    transition: transform 0.3s;
+}
+
+.play-card:hover .play-card-info {
+    transform: translateY(0);
 }
 
 .play-card-info strong {
     color: #fff;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .play-card-info span {
-    color: rgba(255,255,255,0.7);
-    font-size: 0.7rem;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.85rem;
 }
 
 .upload-card {
-    width: 120px;
+    width: 140px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     padding: 1rem;
     background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border: 2px dashed var(--border-color);
+    border-radius: 16px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
@@ -115,21 +138,24 @@ main {
 .upload-card:hover {
     border-color: #0066cc;
     background: var(--bg-tertiary);
+    transform: translateY(-2px);
 }
 
 .upload-card-icon {
-    font-size: 1.5rem;
-    opacity: 0.6;
+    font-size: 2rem;
+    opacity: 0.7;
+    transition: transform 0.3s;
 }
 
 .upload-card:hover .upload-card-icon {
     opacity: 1;
+    transform: scale(1.1);
 }
 
 .upload-card-text {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.3;
 }
 
@@ -140,23 +166,27 @@ main {
 .panel {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1rem;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .panel-title {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     color: var(--text-secondary);
-    margin-bottom: 0.75rem;
-    font-weight: 600;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .settings-rows {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.75rem;
 }
 
 .settings-row {
@@ -167,32 +197,34 @@ main {
 }
 
 .settings-label {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: var(--text-primary);
+    font-weight: 500;
 }
 
 .btn-group {
     display: flex;
     gap: 0.25rem;
     background: var(--bg-tertiary);
-    padding: 0.2rem;
-    border-radius: 8px;
+    padding: 0.25rem;
+    border-radius: 10px;
 }
 
 .btn-group button {
-    padding: 0.4rem 0.65rem;
+    padding: 0.5rem 0.85rem;
     background: transparent;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 500;
-    transition: all 0.15s;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
 .btn-group button:hover {
     color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
 }
 
 .btn-group button.active {
@@ -203,36 +235,38 @@ main {
 
 .controls-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.4rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem 1.5rem;
 }
 
 .control-item {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
 }
 
 .control-item kbd {
     background: var(--bg-tertiary);
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    min-width: 20px;
+    min-width: 24px;
     text-align: center;
+    box-shadow: 0 2px 0 var(--border-color);
 }
 
 .player {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: #000;
+    background: #050505;
     position: relative;
+    overflow: hidden;
 }
 
 .player.hidden { display: none; }
@@ -245,43 +279,54 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.6rem 1rem;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+    padding: 1rem;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
     gap: 1rem;
-    z-index: 20;
+    z-index: 50;
     opacity: 0;
     transition: opacity 0.3s;
+    pointer-events: none; /* Let clicks pass through if not on buttons */
 }
 
 .player:hover .player-bar,
-.player-bar:hover {
+.player-bar:hover,
+.player-bar:focus-within {
     opacity: 1;
 }
 
+.player-bar > * {
+    pointer-events: auto;
+}
+
 .player-bar button {
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.15);
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    border: none;
-    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
     color: #fff;
     cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .player-bar button:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
 }
 
 #game-name {
     flex: 1;
     text-align: center;
-    color: #fff;
-    font-weight: 500;
-    font-size: 0.9rem;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
+    font-size: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 0.5px;
 }
 
 #screen {
@@ -291,12 +336,17 @@ main {
     justify-content: center;
     background: #000;
     position: relative;
-    min-height: 300px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 #screen canvas {
+    display: block;
     max-width: 100%;
     max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
 }
 
 #loader {
@@ -306,21 +356,21 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.95);
+    background: #000;
     color: #fff;
-    gap: 1rem;
-    z-index: 10;
+    gap: 1.5rem;
+    z-index: 100;
 }
 
 #loader.hidden { display: none; }
 
 .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid #333;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
     border-top-color: #0066cc;
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -329,37 +379,88 @@ main {
     text-align: center;
     color: #fff;
     padding: 2rem;
+    background: rgba(255,0,0,0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255,0,0,0.2);
 }
 
 .error p { margin-bottom: 1rem; }
 
 .error button {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.5rem;
     background: #0066cc;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     color: #fff;
     cursor: pointer;
+    font-weight: 600;
 }
 
+/* CRT Effect */
 .crt-overlay {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.15),
-        rgba(0, 0, 0, 0.15) 1px,
-        transparent 1px,
-        transparent 2px
-    );
-    z-index: 5;
+    background: 
+        /* Scanlines */
+        linear-gradient(
+            rgba(18, 16, 16, 0) 50%, 
+            rgba(0, 0, 0, 0.25) 50%
+        ),
+        /* Vignette */
+        radial-gradient(
+            circle at center,
+            transparent 60%,
+            rgba(0,0,0,0.4) 100%
+        );
+    background-size: 100% 4px, 100% 100%;
+    z-index: 50;
+    mix-blend-mode: overlay;
 }
 
-@media (max-width: 500px) {
-    .home { padding: 1rem; gap: 0.75rem; }
-    .play-section { flex-direction: column; }
-    .upload-card { width: 100%; flex-direction: row; padding: 0.75rem 1rem; }
+.crt-overlay::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: rgba(18, 16, 16, 0.1);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+    0% { opacity: 0.027906; }
+    5% { opacity: 0.048949; }
+    10% { opacity: 0.023013; }
+    15% { opacity: 0.040026; }
+    20% { opacity: 0.028174; }
+    25% { opacity: 0.043898; }
+    30% { opacity: 0.027906; }
+    35% { opacity: 0.048949; }
+    40% { opacity: 0.023013; }
+    45% { opacity: 0.040026; }
+    50% { opacity: 0.028174; }
+    55% { opacity: 0.043898; }
+    60% { opacity: 0.027906; }
+    65% { opacity: 0.048949; }
+    70% { opacity: 0.023013; }
+    75% { opacity: 0.040026; }
+    80% { opacity: 0.028174; }
+    85% { opacity: 0.043898; }
+    90% { opacity: 0.027906; }
+    95% { opacity: 0.048949; }
+    100% { opacity: 0.023013; }
+}
+
+@media (max-width: 600px) {
+    .home { padding: 1rem; gap: 1rem; }
+    .play-section { grid-template-columns: 1fr; }
+    .upload-card { width: 100%; flex-direction: row; padding: 1rem; aspect-ratio: auto; }
     .controls-grid { grid-template-columns: 1fr; }
-    .player-bar { opacity: 1; position: relative; background: #111; }
+    .player-bar { opacity: 1; background: rgba(0,0,0,0.8); }
 }

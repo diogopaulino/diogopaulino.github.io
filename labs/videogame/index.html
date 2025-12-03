@@ -58,15 +58,22 @@
                 </div>
 
                 <div class="panel">
-                    <div class="panel-title">Configurações de Vídeo</div>
+                    <div class="panel-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Configurações de Vídeo
+                    </div>
                     <div class="settings-rows">
                         <div class="settings-row">
                             <span class="settings-label">Escala</span>
                             <div class="btn-group" data-setting="scale">
                                 <button data-value="1">1x</button>
-                                <button data-value="2" class="active">2x</button>
+                                <button data-value="2">2x</button>
                                 <button data-value="3">3x</button>
-                                <button data-value="4">4x</button>
+                                <button data-value="max" class="active">Max</button>
                             </div>
                         </div>
                         <div class="settings-row">
@@ -81,7 +88,14 @@
                 </div>
 
                 <div class="panel">
-                    <div class="panel-title">Controles do Teclado</div>
+                    <div class="panel-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                            <path d="M6 12h4m-2-2v4"></path>
+                            <circle cx="17" cy="12" r="2"></circle>
+                        </svg>
+                        Controles do Teclado
+                    </div>
                     <div class="controls-grid">
                         <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
                         <div class="control-item"><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Botões</div>
@@ -93,9 +107,26 @@
 
             <section id="player" class="player hidden">
                 <div class="player-bar">
-                    <button id="btn-back" title="Voltar (Esc)">← Voltar</button>
+                    <button id="btn-back" title="Voltar (Esc)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        Voltar
+                    </button>
                     <span id="game-name">-</span>
-                    <button id="btn-fullscreen" title="Tela cheia">⛶</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button id="btn-controls" title="Ver Controles">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                                <path d="M6 12h4m-2-2v4"></path>
+                            </svg>
+                        </button>
+                        <button id="btn-fullscreen" title="Tela cheia">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div id="screen">
                     <div id="loader" class="hidden">
