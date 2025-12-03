@@ -6,8 +6,7 @@ const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
 const settings = {
     scale: localStorage.getItem('emu-scale') || '2',
-    filter: localStorage.getItem('emu-filter') || 'pixelated',
-    aspect: localStorage.getItem('emu-aspect') || '4:3'
+    filter: localStorage.getItem('emu-filter') || 'sharp'
 };
 
 function showHome() {
@@ -46,25 +45,19 @@ function applySettings() {
     const canvas = screen.querySelector('canvas');
     if (!canvas) return;
 
-    canvas.classList.remove('filter-pixelated', 'filter-smooth', 'filter-crt');
-    canvas.classList.add(`filter-${settings.filter}`);
-
-    screen.classList.remove('aspect-4-3', 'aspect-16-9', 'aspect-stretch');
-    const aspectClass = settings.aspect === '4:3' ? 'aspect-4-3' : 
-                        settings.aspect === '16:9' ? 'aspect-16-9' : 'aspect-stretch';
-    screen.classList.add(aspectClass);
+    canvas.style.imageRendering = settings.filter === 'smooth' ? 'auto' : 'pixelated';
+    
+    if (settings.filter === 'crt') {
+        canvas.style.filter = 'contrast(1.1) brightness(0.95)';
+    } else {
+        canvas.style.filter = '';
+    }
 
     const baseWidth = 320;
     const baseHeight = 224;
     const scale = parseInt(settings.scale);
-    
-    if (settings.aspect !== 'stretch') {
-        canvas.style.width = `${baseWidth * scale}px`;
-        canvas.style.height = `${baseHeight * scale}px`;
-    } else {
-        canvas.style.width = '';
-        canvas.style.height = '';
-    }
+    canvas.style.width = `${baseWidth * scale}px`;
+    canvas.style.height = `${baseHeight * scale}px`;
 
     let crtOverlay = screen.querySelector('.crt-overlay');
     if (settings.filter === 'crt') {
@@ -81,9 +74,11 @@ function applySettings() {
 function updateSettingsUI() {
     document.querySelectorAll('.setting-options').forEach(group => {
         const settingName = group.dataset.setting;
-        group.querySelectorAll('button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.value === settings[settingName]);
-        });
+        if (settings[settingName]) {
+            group.querySelectorAll('button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === settings[settingName]);
+            });
+        }
     });
 }
 
@@ -101,11 +96,9 @@ async function startGame(rom, name) {
     try {
         await stopEmulator();
 
-        const romUrl = typeof rom === 'string' ? rom : rom;
-        
         emulator = await Nostalgist.launch({
             core: 'genesis_plus_gx',
-            rom: romUrl,
+            rom: rom,
             resolveCoreJs: (core) => basePath + 'lib/' + core + '_libretro.js',
             resolveCoreWasm: (core) => basePath + 'lib/' + core + '_libretro.wasm',
             resolveRom: (file) => typeof file === 'string' && file.startsWith('http') ? file : basePath + file
@@ -166,17 +159,6 @@ function init() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !$('player').classList.contains('hidden')) {
             showHome();
-        }
-    });
-
-    document.addEventListener('fullscreenchange', () => {
-        const btn = $('btn-fullscreen');
-        if (document.fullscreenElement) {
-            btn.textContent = '✕ Sair';
-            btn.title = 'Sair da tela cheia';
-        } else {
-            btn.textContent = '⛶';
-            btn.title = 'Tela cheia';
         }
     });
 

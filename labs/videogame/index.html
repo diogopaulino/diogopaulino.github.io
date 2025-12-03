@@ -38,82 +38,95 @@
 
         <main id="main">
             <section id="home" class="home">
-                <div class="catalog-header">
-                    <h2>Catalogo</h2>
-                    <span class="game-count">1 jogo</span>
+                <div class="section-header">
+                    <h2>🎮 Jogos</h2>
                 </div>
 
-                <div class="games-grid">
+                <div class="games-row">
                     <button id="play-sonic" class="game-card">
                         <div class="game-cover">
                             <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Sonic_the_Hedgehog_1_Genesis_box_art.jpg" alt="Sonic The Hedgehog" loading="lazy">
                             <div class="play-overlay">
-                                <span class="play-btn">▶</span>
+                                <span class="play-icon">▶</span>
                             </div>
                         </div>
-                        <div class="game-details">
+                        <div class="game-info">
                             <strong>Sonic The Hedgehog</strong>
-                            <span>Sega • 1991</span>
+                            <span>Sega Genesis • 1991</span>
                         </div>
                     </button>
-                </div>
 
-                <div class="upload-section">
-                    <label class="upload-box">
+                    <label class="game-card upload-card">
                         <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.zip" hidden>
-                        <span class="upload-icon">📁</span>
-                        <span class="upload-text">Carregar outra ROM</span>
-                        <span class="upload-formats">.md .bin .gen .smd .zip</span>
+                        <div class="upload-content">
+                            <span class="upload-icon">📂</span>
+                            <strong>Carregar ROM</strong>
+                            <span class="upload-hint">.md .bin .gen .smd .zip</span>
+                        </div>
                     </label>
                 </div>
 
-                <div class="settings-section">
-                    <h3>Configurações de Vídeo</h3>
-                    <div class="settings-grid">
-                        <div class="setting-group">
-                            <label>Escala</label>
-                            <div class="setting-options" data-setting="scale">
-                                <button data-value="1">1x</button>
-                                <button data-value="2" class="active">2x</button>
-                                <button data-value="3">3x</button>
-                                <button data-value="4">4x</button>
-                            </div>
+                <div class="cards-row">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">⚙️</span>
+                            <h3>Escala</h3>
                         </div>
-                        <div class="setting-group">
-                            <label>Filtro</label>
-                            <div class="setting-options" data-setting="filter">
-                                <button data-value="pixelated" class="active">Pixel</button>
-                                <button data-value="smooth">Suave</button>
-                                <button data-value="crt">CRT</button>
-                            </div>
+                        <div class="setting-options" data-setting="scale">
+                            <button data-value="1">1x</button>
+                            <button data-value="2" class="active">2x</button>
+                            <button data-value="3">3x</button>
+                            <button data-value="4">4x</button>
                         </div>
-                        <div class="setting-group">
-                            <label>Proporção</label>
-                            <div class="setting-options" data-setting="aspect">
-                                <button data-value="4:3" class="active">4:3</button>
-                                <button data-value="16:9">16:9</button>
-                                <button data-value="stretch">Stretch</button>
-                            </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🖼️</span>
+                            <h3>Filtro</h3>
+                        </div>
+                        <div class="setting-options" data-setting="filter">
+                            <button data-value="sharp" class="active">Nítido</button>
+                            <button data-value="smooth">Suave</button>
+                            <button data-value="crt">CRT</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="controls-section">
-                    <h3>Controles</h3>
-                    <div class="controls-list">
-                        <div class="control"><kbd>↑↓←→</kbd> Direcional</div>
-                        <div class="control"><kbd>Z</kbd> A</div>
-                        <div class="control"><kbd>X</kbd> B</div>
-                        <div class="control"><kbd>C</kbd> C</div>
-                        <div class="control"><kbd>Enter</kbd> Start</div>
-                        <div class="control"><kbd>Esc</kbd> Voltar</div>
+                <div class="card controls-card">
+                    <div class="card-header">
+                        <span class="card-icon">🎮</span>
+                        <h3>Controles</h3>
+                    </div>
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <div class="control-title">Movimento</div>
+                            <div class="control-keys">
+                                <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="control-title">Botões</div>
+                            <div class="control-keys">
+                                <kbd>Z</kbd><span>A</span>
+                                <kbd>X</kbd><span>B</span>
+                                <kbd>C</kbd><span>C</span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="control-title">Sistema</div>
+                            <div class="control-keys">
+                                <kbd>Enter</kbd><span>Start</span>
+                                <kbd>Esc</kbd><span>Sair</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <section id="player" class="player hidden">
                 <div class="player-bar">
-                    <button id="btn-back" class="btn-exit" title="Sair (Esc)">✕ Sair</button>
+                    <button id="btn-back" title="Voltar (Esc)">← Voltar</button>
                     <span id="game-name">-</span>
                     <button id="btn-fullscreen" title="Tela cheia">⛶</button>
                 </div>

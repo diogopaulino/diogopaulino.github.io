@@ -129,6 +129,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    grid-column: 3;
+    justify-self: end;
 }
 
 .sound-toggle {
@@ -1076,6 +1078,14 @@ body {
     
     .language-card {
         padding: 1rem 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-buttons {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: end;
     }
 }
 

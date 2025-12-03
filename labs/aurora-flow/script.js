@@ -576,7 +576,7 @@ function randomize() {
     
     const shapes = ['line', 'circle', 'star', 'spark', 'glow'];
     particleShape = shapes[Math.floor(Math.random() * shapes.length)];
-    document.querySelectorAll('[data-shape]').forEach(b => {
+    document.querySelectorAll('.shape-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.shape === particleShape);
     });
     
@@ -649,9 +649,9 @@ document.querySelectorAll('[data-mode]').forEach(btn => {
     });
 });
 
-document.querySelectorAll('[data-shape]').forEach(btn => {
+document.querySelectorAll('.shape-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-shape]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         particleShape = btn.dataset.shape;
     });
