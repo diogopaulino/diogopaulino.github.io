@@ -3,23 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diogo Paulino - Portfolio</title>
-  <meta name="description" content="Diogo Paulino - Web, design & code minimalism.">
+  <title>Diogo Paulino - Tech Manager | Design & Code Lover</title>
+  <meta name="description" content="Diogo Paulino - Tech Manager especializado em design e código. Construindo experiências digitais simples com design, código e IA.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://www.diogopaulino.com.br/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.diogopaulino.com.br/">
+  <meta property="og:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
+  <meta property="og:description" content="Construindo experiências digitais simples com design, código e um pouco de IA">
+  <meta property="og:image" content="https://www.diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:url" content="https://www.diogopaulino.com.br/">
+  <meta name="twitter:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
+  <meta name="twitter:description" content="Construindo experiências digitais simples com design, código e um pouco de IA">
+  <meta name="twitter:image" content="https://www.diogopaulino.com.br/assets/img/diogo.jpeg">
+
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://github.com">
+  <link rel="preconnect" href="https://linkedin.com">
+
   <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Diogo Paulino",
+    "jobTitle": "Tech Manager",
+    "description": "Design & Code lover - Construindo experiências digitais simples com design, código e um pouco de IA",
+    "url": "https://www.diogopaulino.com.br",
+    "image": "https://www.diogopaulino.com.br/assets/img/diogo.jpeg",
+    "sameAs": [
+      "https://github.com/diogopaulino",
+      "https://br.linkedin.com/in/diogopaulino"
+    ]
+  }
+  </script>
 </head>
 <body>
-  <div class="card-container minimal">
-    <img src="assets/img/diogo.jpeg" alt="Diogo Paulino" class="profile-pic-minimal">
-    <h1 class="main-name">Diogo Paulino</h1>
-    <div class="subtitle">Tech Manager</div>
-    <div class="subdesc">Design & Code lover</div>
-    <p class="impact-phrase">Construindo experiências digitais simples com design, código e um pouco de IA :)</p>
-    <div class="social-icons minimal">
-      <a href="https://github.com/diogopaulino" target="_blank" aria-label="GitHub" class="icon-github-outline" rel="noopener noreferrer"></a>
-      <a href="https://br.linkedin.com/in/diogopaulino" target="_blank" aria-label="LinkedIn" class="icon-linkedin-outline" rel="noopener noreferrer"></a>
-    </div>
-  </div>
+  <main>
+    <article class="card-container minimal" itemscope itemtype="https://schema.org/Person">
+      <img src="assets/img/diogo.jpeg" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal" itemprop="image" loading="lazy">
+      <h1 class="main-name" itemprop="name">Diogo Paulino</h1>
+      <div class="subtitle" itemprop="jobTitle">Tech Manager</div>
+      <div class="subdesc">Design & Code lover</div>
+      <p class="impact-phrase" itemprop="description">Construindo experiências digitais simples com design, código e um pouco de IA :)</p>
+      <nav class="social-icons minimal" aria-label="Links de redes sociais">
+        <a href="https://github.com/diogopaulino" target="_blank" aria-label="Perfil no GitHub de Diogo Paulino" class="icon-github-outline" rel="noopener noreferrer" itemprop="sameAs" title="GitHub"></a>
+        <a href="https://br.linkedin.com/in/diogopaulino" target="_blank" aria-label="Perfil no LinkedIn de Diogo Paulino" class="icon-linkedin-outline" rel="noopener noreferrer" itemprop="sameAs" title="LinkedIn"></a>
+      </nav>
+    </article>
+  </main>
 </body>
 </html>
