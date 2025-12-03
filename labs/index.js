@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Arcade': 'game',
         'Action': 'game',
         'Puzzle': 'game',
-        'Emulator': 'game',
+        'Videogame': 'game',
         'Sega': 'game',
         'GameBoy': 'game',
         'Nokia': 'game',
