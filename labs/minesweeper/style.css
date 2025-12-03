@@ -1,0 +1,354 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+    --bg-body: #fafbfc;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --shadow-sm: rgba(15, 23, 42, 0.04);
+    --shadow-md: rgba(15, 23, 42, 0.08);
+    --shadow-lg: rgba(15, 23, 42, 0.12);
+    --shadow-xl: rgba(15, 23, 42, 0.16);
+    --shadow-accent: rgba(37, 99, 235, 0.2);
+    --border-subtle: rgba(15, 23, 42, 0.06);
+    --icon-default: #1e293b;
+    --icon-hover: #ffffff;
+
+    /* Retro specific */
+    --win-gray: #c0c0c0;
+    --win-dark: #808080;
+    --win-light: #ffffff;
+    --win-black: #000000;
+    --win-blue: #000080;
+}
+
+[data-theme="dark"] {
+    --bg-body: #0a0a0a;
+    --bg-card: #171717;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --accent: #60a5fa;
+    --accent-hover: #3b82f6;
+    --shadow-sm: rgba(0, 0, 0, 0.2);
+    --shadow-md: rgba(0, 0, 0, 0.3);
+    --shadow-lg: rgba(0, 0, 0, 0.4);
+    --shadow-xl: rgba(0, 0, 0, 0.5);
+    --shadow-accent: rgba(96, 165, 250, 0.25);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --icon-default: #e2e8f0;
+    --icon-hover: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-body);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 2rem;
+    transition: all 0.2s;
+    font-weight: 500;
+    background: var(--bg-card);
+    box-shadow: 0 1px 2px var(--shadow-sm);
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    text-shadow: none;
+}
+
+.back-link svg {
+    width: 14px;
+    height: 14px;
+}
+
+.back-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    transform: translateY(-50%) translateX(-2px);
+    box-shadow: 0 4px 12px var(--shadow-md);
+    text-decoration: none;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
+    opacity: 0.6;
+    color: var(--icon-default);
+}
+
+.theme-toggle:hover {
+    opacity: 1;
+    background: var(--bg-card);
+    box-shadow: 0 2px 8px var(--shadow-md);
+    color: var(--accent);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: all 0.3s;
+}
+
+.theme-toggle:hover svg {
+    transform: rotate(-10deg);
+}
+
+.theme-toggle:active {
+    transform: scale(0.92);
+}
+
+header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+header h1 {
+    display: none;
+}
+
+.back-link,
+.theme-toggle {
+    pointer-events: auto;
+}
+
+/* Windows 95 Window Style */
+.window {
+    background-color: var(--win-gray);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);
+    padding: 3px;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
+    min-width: 200px;
+}
+
+.title-bar {
+    background: var(--win-blue);
+    padding: 3px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.title-bar-text {
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.title-bar-controls {
+    display: flex;
+    gap: 2px;
+}
+
+.title-bar-controls button {
+    width: 16px;
+    height: 14px;
+    background: var(--win-gray);
+    border: 1px solid;
+    border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);
+    padding: 0;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.window-body {
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    padding: 6px;
+}
+
+/* Game Status Bar */
+.status-bar {
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    padding: 4px 7px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--win-gray);
+}
+
+.counter {
+    background: black;
+    color: red;
+    font-family: 'Courier New', monospace;
+    /* Fallback */
+    font-family: 'Press Start 2P', cursive;
+    /* Digital look */
+    font-size: 20px;
+    padding: 2px 4px;
+    border: 1px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    min-width: 60px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.face-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 18px;
+    background: var(--win-gray);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.face-btn:active {
+    border-color: var(--win-black) var(--win-light) var(--win-light) var(--win-black);
+    padding: 1px 0 0 1px;
+    /* Shift content */
+}
+
+/* Game Board */
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(9, 24px);
+    /* Default beginner */
+    grid-template-rows: repeat(9, 24px);
+    border: 3px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+}
+
+.cell {
+    width: 24px;
+    height: 24px;
+    background: var(--win-gray);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    cursor: default;
+    font-family: sans-serif;
+}
+
+.cell:active:not(.revealed) {
+    border: none;
+    padding: 2px;
+    /* Simulate pressed */
+    border-top: 1px solid var(--win-dark);
+    border-left: 1px solid var(--win-dark);
+}
+
+.cell.revealed {
+    border: 1px solid var(--win-dark);
+    /* Flat look */
+    border-color: var(--win-dark);
+    border-width: 1px;
+    padding: 0;
+}
+
+.cell.mine {
+    background: red;
+    /* Hit mine */
+}
+
+/* Number colors */
+.cell[data-num="1"] {
+    color: blue;
+}
+
+.cell[data-num="2"] {
+    color: green;
+}
+
+.cell[data-num="3"] {
+    color: red;
+}
+
+.cell[data-num="4"] {
+    color: darkblue;
+}
+
+.cell[data-num="5"] {
+    color: darkred;
+}
+
+.cell[data-num="6"] {
+    color: teal;
+}
+
+.cell[data-num="7"] {
+    color: black;
+}
+
+.cell[data-num="8"] {
+    color: gray;
+}
+
+.instructions {
+    color: var(--text-secondary);
+    font-family: sans-serif;
+    font-size: 12px;
+    text-shadow: none;
+}

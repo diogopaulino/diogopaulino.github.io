@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fun Calculator & Currency Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        (function () {
+            try {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch (e) { }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Voltar
+            </a>
+
+            <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <circle cx="12" cy="12" r="4" />
+                    <path
+                        d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </header>
+        <div class="calculator-wrapper">
+            <div class="mode-switch">
+                <button class="mode-btn active" data-mode="calculator">
+                    <i class="fas fa-calculator"></i> Calc
+                </button>
+                <button class="mode-btn" data-mode="currency">
+                    <i class="fas fa-coins"></i> Currency
+                </button>
+            </div>
+
+            <!-- Calculator Section -->
+            <div class="calculator-section active" id="calculator">
+                <div class="display">
+                    <div class="previous-operand"></div>
+                    <div class="current-operand">0</div>
+                </div>
+                <div class="buttons">
+                    <button class="btn function" data-action="clear">AC</button>
+                    <button class="btn function" data-action="delete"><i class="fas fa-backspace"></i></button>
+                    <button class="btn operator" data-action="percent">%</button>
+                    <button class="btn operator" data-action="divide">÷</button>
+                    <button class="btn number">7</button>
+                    <button class="btn number">8</button>
+                    <button class="btn number">9</button>
+                    <button class="btn operator" data-action="multiply">×</button>
+                    <button class="btn number">4</button>
+                    <button class="btn number">5</button>
+                    <button class="btn number">6</button>
+                    <button class="btn operator" data-action="subtract">-</button>
+                    <button class="btn number">1</button>
+                    <button class="btn number">2</button>
+                    <button class="btn number">3</button>
+                    <button class="btn operator" data-action="add">+</button>
+                    <button class="btn number zero">0</button>
+                    <button class="btn number">.</button>
+                    <button class="btn equals" data-action="calculate">=</button>
+                </div>
+            </div>
+
+            <!-- Currency Converter Section -->
+            <div class="currency-section" id="currency">
+                <div class="currency-header">
+                    <h3>Real-time Converter</h3>
+                    <div class="last-updated">Updating...</div>
+                </div>
+
+                <div class="converter-box">
+                    <div class="input-group">
+                        <label>Amount</label>
+                        <input type="number" id="amount-one" value="1" placeholder="0">
+                    </div>
+                    <div class="select-group">
+                        <select id="currency-one">
+                            <option value="USD" selected>🇺🇸 USD</option>
+                            <option value="EUR">🇪🇺 EUR</option>
+                            <option value="BRL">🇧🇷 BRL</option>
+                            <option value="GBP">🇬🇧 GBP</option>
+                            <option value="JPY">🇯🇵 JPY</option>
+                            <option value="CAD">🇨🇦 CAD</option>
+                            <option value="AUD">🇦🇺 AUD</option>
+                            <option value="CHF">🇨🇭 CHF</option>
+                            <option value="CNY">🇨🇳 CNY</option>
+                            <option value="INR">🇮🇳 INR</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="swap-container">
+                    <button class="btn-swap" id="swap">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                    <div class="rate-info" id="rate">1 USD = ...</div>
+                </div>
+
+                <div class="converter-box">
+                    <div class="input-group">
+                        <label>Converted</label>
+                        <input type="number" id="amount-two" placeholder="0" readonly>
+                    </div>
+                    <div class="select-group">
+                        <select id="currency-two">
+                            <option value="USD">🇺🇸 USD</option>
+                            <option value="EUR">🇪🇺 EUR</option>
+                            <option value="BRL" selected>🇧🇷 BRL</option>
+                            <option value="GBP">🇬🇧 GBP</option>
+                            <option value="JPY">🇯🇵 JPY</option>
+                            <option value="CAD">🇨🇦 CAD</option>
+                            <option value="AUD">🇦🇺 AUD</option>
+                            <option value="CHF">🇨🇭 CHF</option>
+                            <option value="CNY">🇨🇳 CNY</option>
+                            <option value="INR">🇮🇳 INR</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+    <script src="script.js"></script>
+    <script>
+        const toggle = document.querySelector('.theme-toggle');
+        const html = document.documentElement;
+        const sunIcon = document.querySelector('.sun-icon');
+        const moonIcon = document.querySelector('.moon-icon');
+
+        function updateIcons(theme) {
+            if (theme === 'dark') {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+        }
+
+        // Init icons
+        updateIcons(html.getAttribute('data-theme') || 'light');
+
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                updateIcons(next);
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,17 +9,41 @@
   <title>Piano - Diogo Paulino</title>
   <meta name="description" content="Piano minimalista com sons ultra realistas. 4 oitavas completas.">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      try {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } catch (e) { }
+    })();
+  </script>
 </head>
+
 <body>
   <div class="container">
     <header>
-      <h1>Piano</h1>
       <a href="../index.html" class="back-link">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
         Voltar
       </a>
+
+      <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema">
+        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+          <circle cx="12" cy="12" r="4" />
+          <path
+            d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
+        </svg>
+        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+
+      <h1>Piano</h1>
     </header>
 
     <div class="piano-wrapper">
@@ -29,7 +54,8 @@
       <div class="control-item sustain-control">
         <button id="sustain-btn" class="sustain-btn" aria-label="Sustain Pedal">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="sustain-icon">
-            <path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" />
           </svg>
           <span class="sustain-label">Sustain</span>
         </button>
@@ -38,8 +64,11 @@
       <div class="control-item volume-control-wrapper">
         <div class="volume-control">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="volume-icon">
-            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path
+              d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
           <span id="volume-value">70%</span>
@@ -49,13 +78,13 @@
       <div class="control-item octave-control">
         <button id="octave-down" class="octave-btn" aria-label="Diminuir Oitava">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
         </button>
         <span id="octave-display">0</span>
         <button id="octave-up" class="octave-btn" aria-label="Aumentar Oitava">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
         </button>
       </div>
@@ -67,5 +96,36 @@
   </div>
 
   <script src="script.js"></script>
+  <script>
+    const toggle = document.querySelector('.theme-toggle');
+    const html = document.documentElement;
+    const sunIcon = document.querySelector('.sun-icon');
+    const moonIcon = document.querySelector('.moon-icon');
+
+    function updateIcons(theme) {
+      if (theme === 'dark') {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      } else {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      }
+    }
+
+    // Init icons
+    updateIcons(html.getAttribute('data-theme') || 'light');
+
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const current = html.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        updateIcons(next);
+      });
+    }
+  </script>
 </body>
+
 </html>
