@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Piano - Diogo Paulino</title>
+  <meta name="description" content="Piano minimalista com sons ultra realistas. 4 oitavas completas.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Piano</h1>
+      <a href="../index.html" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Voltar
+      </a>
+    </header>
+
+    <div class="piano-wrapper">
+      <div class="piano" id="piano"></div>
+    </div>
+
+    <div class="controls">
+      <div class="control-item sustain-control">
+        <button id="sustain-btn" class="sustain-btn" aria-label="Sustain Pedal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="sustain-icon">
+            <path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="sustain-label">Sustain</span>
+        </button>
+      </div>
+
+      <div class="control-item volume-control-wrapper">
+        <div class="volume-control">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="volume-icon">
+            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
+          <span id="volume-value">70%</span>
+        </div>
+      </div>
+
+      <div class="control-item octave-control">
+        <button id="octave-down" class="octave-btn" aria-label="Diminuir Oitava">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <span id="octave-display">0</span>
+        <button id="octave-up" class="octave-btn" aria-label="Aumentar Oitava">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <p>Toque • Sustain (espaço) • Oitava (← →)</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
