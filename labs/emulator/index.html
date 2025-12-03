@@ -1,108 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Genesis Emulator</title>
+    <title>Genesis Emulator</title>
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
-    <!-- Load Nostalgist from CDN -->
-    <script src="https://unpkg.com/nostalgist@0.5.0/dist/nostalgist.umd.js"></script>
+    <script src="lib/nostalgist.umd.js"></script>
 </head>
-
 <body>
-    <header>
-        <a href="../index.html" class="back-link">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Labs
-        </a>
-        <h1>Retro Genesis</h1>
-        <button class="theme-toggle" aria-label="Toggle theme">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                style="display: none;">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-        </button>
-    </header>
-
-    <div class="app-container">
-        <div class="crt-monitor">
-            <div class="screen-bezel">
-                <div class="screen-content" id="emulator-target">
-                    <div class="intro-screen" id="intro-screen">
-                        <div class="logo-container">
-                            <h1 class="sega-font">GENESIS</h1>
-                            <div class="subtitle">WEB EMULATOR</div>
-                        </div>
-
-                        <div class="upload-area" id="drop-zone">
-                            <div class="icon">🎮</div>
-                            <p>Drag & Drop ROM file here</p>
-                            <p class="sub-text">Supports .md, .bin, .gen, .zip</p>
-
-                            <div class="file-input-wrapper">
-                                <label for="rom-input" class="retro-btn">Load Cartridge</label>
-                                <input type="file" id="rom-input" accept=".md,.bin,.gen,.zip,.smd">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="scanlines"></div>
-                <div class="screen-glow"></div>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <div class="app-logo">
+                🕹️ Genesis Emulator
             </div>
-            <div class="monitor-controls">
-                <div class="brand">SEGA</div>
-                <div class="power-led"></div>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+    <div class="emulator-wrapper">
+        <div id="drop-zone" class="drop-zone">
+            <div class="upload-prompt">
+                <div class="icon">🎮</div>
+                <h2>Sega Genesis / Mega Drive Emulator</h2>
+                <p>Drag & drop ROM file or click to browse</p>
+                <p class="formats">.md .bin .gen .smd .zip</p>
+                <input type="file" id="rom-input" accept=".md,.bin,.gen,.smd,.zip" hidden>
+                <button class="load-btn" onclick="document.getElementById('rom-input').click()">
+                    Load ROM
+                </button>
             </div>
         </div>
+        <div id="emulator-container"></div>
+    </div>
 
-        <div class="controls-guide">
-            <h3>Controls</h3>
-            <div class="keys-grid">
-                <div class="key-group">
-                    <span class="key">↑</span><span class="key">↓</span><span class="key">←</span><span
-                        class="key">→</span>
-                    <span class="label">D-Pad</span>
-                </div>
-                <div class="key-group">
-                    <span class="key">Enter</span>
-                    <span class="label">Start</span>
-                </div>
-                <div class="key-group">
-                    <span class="key">Z</span>
-                    <span class="label">A</span>
-                </div>
-                <div class="key-group">
-                    <span class="key">X</span>
-                    <span class="label">B</span>
-                </div>
-                <div class="key-group">
-                    <span class="key">C</span>
-                    <span class="label">C</span>
-                </div>
-            </div>
-        </div>
+    <footer>
+        <span>criado com ajuda da IA :) •</span>
+        <a href="/">← voltar para home</a>
+    </footer>
     </div>
 
     <script src="../shared.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>

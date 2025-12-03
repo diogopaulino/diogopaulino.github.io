@@ -1,68 +1,94 @@
+// Clean Genesis Emulator with Nostalgist
 document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('rom-input');
-    const emulatorTarget = document.getElementById('emulator-target');
-    const introScreen = document.getElementById('intro-screen');
-    let nostalgistInstance = null;
+    const emulatorContainer = document.getElementById('emulator-container');
 
-    // Handle File Selection
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            loadRom(e.target.files[0]);
-        }
+    // Debug: Check if elements exist
+    console.log('Elements found:', {
+        dropZone: !!dropZone,
+        fileInput: !!fileInput,
+        emulatorContainer: !!emulatorContainer
     });
 
-    // Handle Drag and Drop
+    if (!dropZone || !fileInput || !emulatorContainer) {
+        console.error('Missing elements!');
+        return;
+    }
+
+    let nostalgist = null;
+
+    // File input handler
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) loadROM(e.target.files[0]);
+    });
+
+    // Drag & drop handlers
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.classList.add('drag-over');
     });
 
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
+    dropZone.addEventListener('dragleave', () => {
         dropZone.classList.remove('drag-over');
     });
 
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
-        if (e.dataTransfer.files.length > 0) {
-            loadRom(e.dataTransfer.files[0]);
-        }
+        if (e.dataTransfer.files[0]) loadROM(e.dataTransfer.files[0]);
     });
 
-    async function loadRom(file) {
-        // Show loading state
+    async function loadROM(file) {
+        console.log('loadROM called with:', file.name, file.type, file.size);
+
+        // Validate file
+        const validExts = ['.md', '.bin', '.gen', '.smd', '.zip'];
+        if (!validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+            alert('Invalid file! Use: .md, .bin, .gen, .smd, .zip');
+            return;
+        }
+
+        console.log('File validated, showing loading...');
         showLoading();
 
         try {
-            // If an instance already exists, exit it
-            if (nostalgistInstance) {
-                await nostalgistInstance.exit();
+            // Hide drop zone, show emulator
+            dropZone.classList.add('hidden');
+            emulatorContainer.classList.add('active');
+            console.log('UI updated, launching Nostalgist...');
+
+            // Clean previous instance
+            if (nostalgist) {
+                console.log('Cleaning previous instance...');
+                await nostalgist.exit();
+                emulatorContainer.innerHTML = '';
             }
 
             // Launch Nostalgist
-            nostalgistInstance = await Nostalgist.launch({
-                element: emulatorTarget,
+            console.log('Launching Nostalgist with:', emulatorContainer);
+            nostalgist = await Nostalgist.launch({
+                element: emulatorContainer,
                 rom: file,
-                core: 'genesis_plus_gx', // Reliable Genesis core
+                core: 'genesis_plus_gx',
+                resolveCoreJs: 'lib/genesis_plus_gx_libretro.js',
+                resolveCoreWasm: 'lib/genesis_plus_gx_libretro.wasm',
                 style: {
                     width: '100%',
-                    height: '100%',
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    zIndex: '5' // Below scanlines
+                    height: '100%'
                 }
             });
 
-            // Hide intro screen if successful
-            introScreen.style.display = 'none';
+            hideLoading();
+            console.log('✓ ROM loaded successfully:', file.name);
 
         } catch (error) {
-            console.error('Failed to load ROM:', error);
-            alert('Error loading ROM. Please try another file or check your internet connection (needed to download the emulator core).');
+            console.error('✗ Error loading ROM:', error);
+            console.error('Error stack:', error.stack);
+            alert('Failed to load ROM:\n' + error.message);
             hideLoading();
+            dropZone.classList.remove('hidden');
+            emulatorContainer.classList.remove('active');
         }
     }
 
@@ -71,15 +97,15 @@ document.addEventListener('DOMContentLoaded', () => {
         loading.className = 'loading-overlay';
         loading.innerHTML = `
             <div class="spinner"></div>
-            <div>LOADING SYSTEM...</div>
+            <div>Loading ROM...</div>
         `;
-        emulatorTarget.appendChild(loading);
+        emulatorContainer.appendChild(loading);
     }
 
     function hideLoading() {
-        const loading = emulatorTarget.querySelector('.loading-overlay');
-        if (loading) {
-            loading.remove();
-        }
+        const loading = emulatorContainer.querySelector('.loading-overlay');
+        if (loading) setTimeout(() => loading.remove(), 1000);
     }
+
+    console.log('Genesis Emulator ready');
 });

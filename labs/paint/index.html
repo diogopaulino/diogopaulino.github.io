@@ -12,20 +12,42 @@
 
 <body>
     <div class="app-container">
-        <header class="toolbar top-bar">
-            <div class="left-section">
-                <a href="../index.html" class="back-link" title="Voltar para Labs">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 12H5M12 19l-7-7 7-7" />
-                    </svg>
-                    Labs
-                </a>
-                <div class="logo">
-                    <i class="ph ph-paint-brush-broad"></i>
-                    <span>Paint Lab</span>
-                </div>
+        <header>
+            <a href="../index.html" class="back-link" title="Voltar para Labs">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <div class="app-logo">
+                <i class="ph ph-paint-brush-broad"></i>
+                Paint Lab
             </div>
+            <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="toolbar top-bar">
+            <div class="left-section"></div>
 
             <div class="actions">
                 <button id="undoBtn" title="Desfazer (Ctrl+Z)">
@@ -33,27 +55,6 @@
                 </button>
                 <button id="redoBtn" title="Refazer (Ctrl+Y)">
                     <i class="ph ph-arrow-u-up-right"></i>
-                </button>
-                <div class="separator"></div>
-                <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema">
-                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" style="display: none;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
                 </button>
                 <div class="separator"></div>
                 <button id="clearBtn" title="Limpar Tela">
@@ -135,6 +136,11 @@
                 </div>
             </aside>
         </main>
+
+        <footer>
+            <span>criado com ajuda da IA :) •</span>
+            <a href="/">← voltar para home</a>
+        </footer>
     </div>
     <script src="../shared.js"></script>
     <script src="script.js"></script>

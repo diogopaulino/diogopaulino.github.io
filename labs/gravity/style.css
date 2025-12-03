@@ -41,20 +41,23 @@ header {
     width: 100%;
     z-index: 20;
     padding: 1rem;
-    pointer-events: none;
-    /* Let clicks pass through to canvas where possible */
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
     margin-bottom: 0 !important;
+    /* Restore grid layout from shared.css */
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    align-items: center !important;
+    gap: 1rem !important;
 }
 
-header h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    letter-spacing: -1px;
+/* Make children interactive */
+header > * {
+    pointer-events: auto;
+}
+
+header .app-logo {
+    grid-column: 2;
+    justify-self: center;
 }
 
 /* Toggle Buttons */

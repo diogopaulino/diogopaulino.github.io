@@ -109,11 +109,30 @@ body {
 header {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
+    gap: 1rem;
     margin-bottom: 3rem;
     padding: 0 1rem;
     max-width: 1200px;
+}
+
+header .app-logo {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+header .app-logo i,
+header .app-logo svg {
+    font-size: 1.5rem;
+    color: var(--accent);
 }
 
 .back-link {
@@ -173,10 +192,8 @@ header h1 {
 
 /* Theme Toggle */
 .theme-toggle {
-    position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
-    z-index: 100;
+    grid-column: 3;
+    justify-self: end;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -211,6 +228,33 @@ header h1 {
     transition: all 0.3s;
 }
 
+/* Footer */
+footer {
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 3rem;
+    padding: 1.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-align: center;
+    border-top: 1px solid var(--border-subtle);
+}
+
+footer a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: var(--accent-hover);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     body {
@@ -220,28 +264,33 @@ header h1 {
     header {
         margin-bottom: 2rem;
         padding: 0;
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
-    header h1 {
-        position: static;
-        transform: none;
-        margin-top: 1rem;
-        order: 3;
-        width: 100%;
-        font-size: 1.75rem;
+    header .back-link {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
     }
 
-    header {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
+    header .app-logo {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: center;
     }
 
-    .back-link {
-        order: 1;
+    header .theme-toggle {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: end;
     }
 
-    .theme-toggle {
-        order: 2;
+    footer {
+        margin-top: 2rem;
+        padding: 1rem;
+        font-size: 0.8rem;
+        flex-direction: column;
+        gap: 0.25rem;
     }
 }
