@@ -413,6 +413,7 @@ main {
 .filter-sharp {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    filter: contrast(1.05) saturate(1.05);
 }
 
 .filter-smooth {
