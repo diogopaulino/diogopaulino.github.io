@@ -1,39 +1,10 @@
 :root {
-    --bg-body: #fafbfc;
-    --bg-card: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --shadow-sm: rgba(15, 23, 42, 0.04);
-    --shadow-md: rgba(15, 23, 42, 0.08);
-    --shadow-lg: rgba(15, 23, 42, 0.12);
-    --shadow-xl: rgba(15, 23, 42, 0.16);
-    --shadow-accent: rgba(37, 99, 235, 0.2);
-    --border-subtle: rgba(15, 23, 42, 0.06);
-    --icon-default: #1e293b;
-    --icon-hover: #ffffff;
+    /* Game specific */
     --panel-bg: rgba(255, 255, 255, 0.8);
     --panel-border: rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"] {
-    --bg-body: #0a0a0a;
-    --bg-card: #171717;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-tertiary: #94a3b8;
-    --accent: #60a5fa;
-    --accent-hover: #3b82f6;
-    --shadow-sm: rgba(0, 0, 0, 0.2);
-    --shadow-md: rgba(0, 0, 0, 0.3);
-    --shadow-lg: rgba(0, 0, 0, 0.4);
-    --shadow-xl: rgba(0, 0, 0, 0.5);
-    --shadow-accent: rgba(96, 165, 250, 0.25);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --icon-default: #e2e8f0;
-    --icon-hover: #ffffff;
     --panel-bg: rgba(20, 20, 20, 0.8);
     --panel-border: rgba(255, 255, 255, 0.1);
 }
@@ -46,17 +17,21 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-body);
-    color: var(--text-primary);
-    height: 100vh;
+    /* Override shared.css body styles for full screen app */
+    padding: 0 !important;
+    display: block !important;
     overflow: hidden;
-    transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100vw;
+    height: 100vh;
 }
 
 .container {
     position: relative;
     width: 100%;
     height: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 header {
@@ -64,144 +39,31 @@ header {
     top: 0;
     left: 0;
     width: 100%;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 10;
+    z-index: 20;
+    padding: 1rem;
     pointer-events: none;
+    /* Let clicks pass through to canvas where possible */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+    margin-bottom: 0 !important;
 }
 
 header h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    pointer-events: auto;
-}
-
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.875rem;
-    border: 1px solid var(--border-subtle);
-    border-radius: 2rem;
-    transition: all 0.2s;
-    font-weight: 500;
-    background: var(--bg-card);
-    box-shadow: 0 1px 2px var(--shadow-sm);
-    pointer-events: auto;
-}
-
-.back-link svg {
-    width: 14px;
-    height: 14px;
-}
-
-.back-link:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    transform: translateX(-2px);
-    box-shadow: 0 4px 12px var(--shadow-md);
-}
-
-/* Theme Toggle */
-.theme-toggle {
-    pointer-events: auto;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 0;
-    opacity: 0.6;
-    color: var(--icon-default);
-}
-
-.theme-toggle:hover {
-    opacity: 1;
-    background: var(--bg-card);
-    box-shadow: 0 2px 8px var(--shadow-md);
-    color: var(--accent);
-}
-
-.theme-toggle svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: all 0.3s;
-}
-
-.theme-toggle:hover svg {
-    transform: rotate(-10deg);
-}
-
-.theme-toggle:active {
-    transform: scale(0.92);
-}
-
-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-.controls {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--panel-bg);
-    backdrop-filter: blur(10px);
-    padding: 20px;
-    border-radius: 16px;
-    display: flex;
-    gap: 30px;
-    align-items: flex-start;
-    border: 1px solid var(--panel-border);
-    z-index: 10;
-    box-shadow: 0 10px 30px var(--shadow-lg);
-}
-
-.control-column {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.control-group label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.8;
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    letter-spacing: -1px;
 }
 
 /* Toggle Buttons */
 .toggle-group {
     display: flex;
-    background: var(--bg-body);
-    border-radius: 6px;
-    padding: 2px;
-    gap: 2px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 4px;
+    gap: 4px;
     border: 1px solid var(--border-subtle);
 }
 
@@ -210,41 +72,45 @@ canvas {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
 }
 
 .toggle-btn:hover {
     color: var(--text-primary);
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .toggle-btn.active {
     background: var(--accent);
     color: #ffffff;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 4px 12px var(--shadow-color, rgba(0, 0, 0, 0.2));
 }
 
 /* Select Input */
 select {
-    background: var(--bg-body);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 0.9rem;
     outline: none;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
+    transition: all 0.2s;
 }
 
 select:hover {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
 }
 
 /* Range Input */
@@ -252,25 +118,26 @@ input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 140px;
-    height: 4px;
-    background: var(--bg-body);
-    border-radius: 2px;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
     outline: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     background: var(--accent);
     border-radius: 50%;
     cursor: pointer;
     transition: transform 0.1s;
-    border: 2px solid var(--bg-card);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.1);
 }
 
 /* Actions */
@@ -284,20 +151,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 #clear {
-    background: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    padding: 8px 16px;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: 10px 16px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
     transition: all 0.2s;
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 #clear:hover {
-    background: rgba(239, 68, 68, 0.3);
-    color: white;
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    transform: translateY(-1px);
 }
 
 .particle-count {

@@ -1,0 +1,328 @@
+/* Retro Genesis Theme */
+:root {
+    --sega-blue: #0050b3;
+    --neon-blue: #00f3ff;
+    --neon-pink: #ff00ff;
+    --crt-bg: #111;
+    --monitor-frame: #222;
+}
+
+body {
+    background-color: #050505;
+    background-image:
+        linear-gradient(rgba(0, 20, 40, 0.9), rgba(0, 10, 20, 0.95)),
+        url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h40v40H0z" fill="none"/><path d="M0 40L40 0H20L0 20M40 40V20L20 40" stroke="%23222" stroke-width="1"/></svg>');
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    /* height: 100vh; handled by shared.css */
+    /* display: flex; handled by shared.css */
+    /* flex-direction: column; handled by shared.css */
+}
+
+.app-container {
+    /* Inherits flex column and 100vh from shared.css */
+    /* We need to center the monitor */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 30px;
+    width: 100%;
+}
+
+/* CRT Monitor Styling */
+.crt-monitor {
+    background: var(--monitor-frame);
+    padding: 30px 30px 50px 30px;
+    border-radius: 20px;
+    box-shadow:
+        0 0 0 5px #333,
+        0 0 50px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(0, 0, 0, 1);
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    aspect-ratio: 4/3;
+}
+
+.screen-bezel {
+    background: #000;
+    width: 100%;
+    height: 100%;
+    border-radius: 60% / 5%;
+    /* Slight curvature */
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #333;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 1);
+}
+
+.screen-content {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Intro Screen */
+.intro-screen {
+    text-align: center;
+    color: var(--neon-blue);
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+}
+
+.sega-font {
+    font-size: 4rem;
+    margin: 0;
+    letter-spacing: 5px;
+    text-shadow:
+        3px 3px 0px var(--sega-blue),
+        0 0 20px var(--neon-blue);
+    font-family: 'Arial Black', sans-serif;
+    /* Fallback */
+    font-style: italic;
+    transform: skewX(-10deg);
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    letter-spacing: 8px;
+    color: var(--neon-pink);
+    margin-bottom: 40px;
+    text-shadow: 0 0 10px var(--neon-pink);
+}
+
+.upload-area {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    padding: 40px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.upload-area.drag-over {
+    border-color: var(--neon-blue);
+    background: rgba(0, 243, 255, 0.1);
+    transform: scale(1.02);
+}
+
+.icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.sub-text {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-bottom: 20px;
+}
+
+.file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.file-input-wrapper input[type=file] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.retro-btn {
+    background: var(--sega-blue);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 2px solid #fff;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: transform 0.1s;
+    display: inline-block;
+}
+
+.retro-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* CRT Effects */
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom,
+            rgba(255, 255, 255, 0),
+            rgba(255, 255, 255, 0) 50%,
+            rgba(0, 0, 0, 0.2) 50%,
+            rgba(0, 0, 0, 0.2));
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.6;
+}
+
+.screen-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%);
+    pointer-events: none;
+    z-index: 6;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
+/* Monitor Details */
+.monitor-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding: 0 20px;
+}
+
+.brand {
+    font-family: 'Arial Black', sans-serif;
+    font-style: italic;
+    color: #666;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    text-shadow: -1px -1px 0 #000;
+}
+
+.power-led {
+    width: 8px;
+    height: 8px;
+    background: #f00;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #f00;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 10px #f00;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Controls Guide */
+.controls-guide {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    text-align: center;
+}
+
+.controls-guide h3 {
+    margin: 0 0 15px 0;
+    color: #888;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+}
+
+.keys-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.key-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.key {
+    background: #333;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border-bottom: 2px solid #111;
+    min-width: 20px;
+    display: inline-block;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: #aaa;
+}
+
+/* Canvas override for Nostalgist */
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+/* Loading State */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    color: var(--neon-blue);
+    font-size: 1.5rem;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 243, 255, 0.3);
+    border-top-color: var(--neon-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

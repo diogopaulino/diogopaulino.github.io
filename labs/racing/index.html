@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campo Minado 95 - Labs</title>
+    <title>Retro Racer - Labs</title>
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -19,7 +20,7 @@
                 </svg>
                 Labs
             </a>
-            <h1>Campo Minado</h1>
+            <h1>Retro Racer</h1>
             <button class="theme-toggle" aria-label="Toggle theme">
                 <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -41,52 +42,28 @@
             </button>
         </header>
 
-        <div class="window">
-            <div class="title-bar">
-                <div class="title-bar-text">Campo Minado</div>
-                <div class="title-bar-controls">
-                    <button aria-label="Minimize"></button>
-                    <button aria-label="Maximize"></button>
-                    <button aria-label="Close"></button>
-                </div>
+        <div class="game-wrapper">
+            <div class="ui-panel">
+                <div class="score-display">SCORE: <span id="score">0</span></div>
+                <div class="speed-display">SPEED: <span id="speed">0</span> KM/H</div>
             </div>
-            <div class="window-body">
-                <div class="menu-bar">
-                    <select id="difficulty-select">
-                        <option value="beginner">Iniciante (9x9)</option>
-                        <option value="intermediate">Intermediário (16x16)</option>
-                        <option value="expert">Especialista (30x16)</option>
-                    </select>
-                </div>
-                <div class="status-bar">
-                    <div class="counter" id="mine-count">010</div>
-                    <button class="face-btn" id="reset-btn">🙂</button>
-                    <div class="counter" id="timer">000</div>
-                </div>
-                <div class="game-board" id="board"></div>
+            <canvas id="gameCanvas"></canvas>
+            <div id="startScreen" class="overlay">
+                <h2>READY TO RACE?</h2>
+                <p>Arrow Keys to Steer</p>
+                <p>Avoid Traffic!</p>
+                <button id="startBtn">START ENGINE</button>
             </div>
-        </div>
-
-        <div class="instructions-card">
-            <h3>Instruções</h3>
-            <div class="instruction-row">
-                <div class="key-combo">
-                    <span class="mouse-btn">Botão Esquerdo</span>
-                    <span>Revelar</span>
-                </div>
-                <div class="key-combo">
-                    <span class="mouse-btn">Botão Direito</span>
-                    <span>Bandeira</span>
-                </div>
+            <div id="gameOverScreen" class="overlay hidden">
+                <h2>CRASHED!</h2>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <button id="restartBtn">TRY AGAIN</button>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
     <script src="../shared.js"></script>
-    <script>
-        // Inline script removed, using shared.js
-    </script>
+    <script src="script.js"></script>
 </body>
 
 </html>

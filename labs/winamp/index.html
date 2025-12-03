@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winamp JS - Labs</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <h1>Winamp JS</h1>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="winamp-wrapper">
+            <!-- Main Window -->
+            <div class="main-window">
+                <div class="title-bar">
+                    <div class="title-bar-icon"></div>
+                    <div class="title-bar-text">WINAMP 2.91</div>
+                    <div class="title-bar-controls">
+                        <button class="minimize" title="Minimize">_</button>
+                        <button class="close" title="Close">x</button>
+                    </div>
+                </div>
+
+                <div class="main-body">
+                    <div class="display-area">
+                        <div class="visualization" id="visualizer">
+                            <canvas id="vis-canvas" width="76" height="16"></canvas>
+                        </div>
+                        <div class="song-info">
+                            <div class="marquee-container">
+                                <span class="marquee">Diogo Paulino - Retro Vibes (Demo).mp3 *** 128kbps ***
+                                    44kHz</span>
+                            </div>
+                        </div>
+                        <div class="kbps-khz">
+                            <div class="kbps">128</div>
+                            <div class="khz">44</div>
+                        </div>
+                        <div class="mono-stereo">
+                            <div class="stereo active">STEREO</div>
+                            <div class="mono">MONO</div>
+                        </div>
+                        <div class="time-display">
+                            <span id="time">00:00</span>
+                        </div>
+                    </div>
+
+                    <div class="controls-area">
+                        <div class="sliders">
+                            <div class="volume-slider-container">
+                                <label>VOLUME</label>
+                                <input type="range" min="0" max="100" value="80" class="winamp-range volume">
+                            </div>
+                            <div class="balance-slider-container">
+                                <label>BALANCE</label>
+                                <input type="range" min="-100" max="100" value="0" class="winamp-range balance">
+                            </div>
+                        </div>
+
+                        <div class="main-buttons">
+                            <button class="btn-prev" title="Previous"></button>
+                            <button class="btn-play" title="Play"></button>
+                            <button class="btn-pause" title="Pause"></button>
+                            <button class="btn-stop" title="Stop"></button>
+                            <button class="btn-next" title="Next"></button>
+                        </div>
+                        <button class="btn-eject" title="Open File"></button>
+                        <div class="shuffle-repeat">
+                            <button class="btn-shuffle">SHUFFLE</button>
+                            <button class="btn-repeat">REPEAT</button>
+                        </div>
+                    </div>
+
+                    <div class="branding">WINAMP</div>
+                </div>
+            </div>
+
+            <!-- Playlist Window -->
+            <div class="playlist-window">
+                <div class="title-bar">
+                    <div class="title-bar-text">WINAMP PLAYLIST</div>
+                    <div class="title-bar-controls">
+                        <button class="close" title="Close">x</button>
+                    </div>
+                </div>
+                <div class="playlist-body">
+                    <div class="playlist-content">
+                        <div class="playlist-item active">1. Diogo Paulino - Retro Vibes (Demo)</div>
+                        <div class="playlist-item">2. Loading...</div>
+                        <div class="playlist-item">3. Loading...</div>
+                        <div class="playlist-item">4. Loading...</div>
+                    </div>
+                    <div class="playlist-controls">
+                        <div class="left-btns">
+                            <button>ADD</button>
+                            <button>REM</button>
+                            <button>SEL</button>
+                            <button>MISC</button>
+                        </div>
+                        <div class="right-btns">
+                            <button>LIST OPTS</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script src="../shared.js"></script>
+</body>
+
+</html>

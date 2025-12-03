@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Snake - Labs</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <h1>Retro Snake</h1>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <main class="game-container">
+            <div class="handheld-device">
+                <div class="screen-bezel">
+                    <div class="screen-glass">
+                        <canvas id="gameCanvas" width="400" height="400"></canvas>
+                        <div class="ui-overlay" id="startScreen">
+                            <h2>SNAKE</h2>
+                            <p>Pressione Start</p>
+                        </div>
+                        <div class="ui-overlay hidden" id="gameOverScreen">
+                            <h2>FIM DE JOGO</h2>
+                            <p>Pontos: <span id="finalScore">0</span></p>
+                            <p>Pressione Start</p>
+                        </div>
+                        <div class="scanlines"></div>
+                    </div>
+                    <div class="power-led"></div>
+                    <div class="brand-text">NINTENDO-ISH</div>
+                </div>
+
+                <div class="controls-area">
+                    <div class="d-pad">
+                        <div class="d-pad-up" data-key="ArrowUp"></div>
+                        <div class="d-pad-right" data-key="ArrowRight"></div>
+                        <div class="d-pad-down" data-key="ArrowDown"></div>
+                        <div class="d-pad-left" data-key="ArrowLeft"></div>
+                        <div class="d-pad-center"></div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <div class="btn-group">
+                            <button class="btn-b" id="btnB">B</button>
+                            <div class="label">B</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-a" id="btnA">A</button>
+                            <div class="label">A</div>
+                        </div>
+                    </div>
+
+                    <div class="meta-controls">
+                        <div class="meta-btn-group">
+                            <button class="btn-select" id="btnSelect"></button>
+                            <div class="label">SELECT</div>
+                        </div>
+                        <div class="meta-btn-group">
+                            <button class="btn-start" id="btnStart"></button>
+                            <div class="label">START</div>
+                        </div>
+                    </div>
+
+                    <div class="speaker-grill">
+                        <span></span><span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <p>Use as <strong>Setas</strong> ou o <strong>D-Pad</strong> para mover</p>
+                <p>Pressione <strong>Enter</strong> ou <strong>Start</strong> para Jogar/Pausar</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

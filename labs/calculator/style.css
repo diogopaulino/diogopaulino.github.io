@@ -1,20 +1,4 @@
 :root {
-    --bg-body: #fafbfc;
-    --bg-card: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --shadow-sm: rgba(15, 23, 42, 0.04);
-    --shadow-md: rgba(15, 23, 42, 0.08);
-    --shadow-lg: rgba(15, 23, 42, 0.12);
-    --shadow-xl: rgba(15, 23, 42, 0.16);
-    --shadow-accent: rgba(37, 99, 235, 0.2);
-    --border-subtle: rgba(15, 23, 42, 0.06);
-    --icon-default: #1e293b;
-    --icon-hover: #ffffff;
-
     /* Calculator specific */
     --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     --secondary-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
@@ -27,22 +11,6 @@
 }
 
 [data-theme="dark"] {
-    --bg-body: #0a0a0a;
-    --bg-card: #171717;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-tertiary: #94a3b8;
-    --accent: #60a5fa;
-    --accent-hover: #3b82f6;
-    --shadow-sm: rgba(0, 0, 0, 0.2);
-    --shadow-md: rgba(0, 0, 0, 0.3);
-    --shadow-lg: rgba(0, 0, 0, 0.4);
-    --shadow-xl: rgba(0, 0, 0, 0.5);
-    --shadow-accent: rgba(96, 165, 250, 0.25);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --icon-default: #e2e8f0;
-    --icon-hover: #ffffff;
-
     --secondary-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
 }
 
@@ -55,22 +23,19 @@
 
 body {
     background: radial-gradient(circle at 50% -20%, var(--shadow-accent), transparent 70%), var(--bg-body);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    /* min-height: 100vh; handled by shared.css */
+    /* display: flex; handled by shared.css */
+    /* justify-content: center; handled by shared.css */
+    /* align-items: center; handled by shared.css */
     color: var(--text-primary);
     transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .container {
-    display: flex;
-    flex-direction: column;
+    /* Inherits flex column and 100vh from shared.css */
     align-items: center;
-    gap: 20px;
-    width: 100%;
-    max-width: 400px;
-    padding: 20px;
+    justify-content: center;
+    /* Center calculator vertically */
 }
 
 .calculator-wrapper {
@@ -79,6 +44,8 @@ body {
     box-shadow: 0 20px 50px var(--shadow-xl);
     padding: 25px;
     width: 100%;
+    max-width: 400px;
+    /* Restrict width */
     overflow: hidden;
     position: relative;
     border: 1px solid var(--border-subtle);
@@ -342,92 +309,6 @@ body {
     border: 1px solid var(--border-subtle);
 }
 
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.875rem;
-    border: 1px solid var(--border-subtle);
-    border-radius: 2rem;
-    transition: all 0.2s;
-    font-weight: 500;
-    background: var(--bg-card);
-    box-shadow: 0 1px 2px var(--shadow-sm);
-    position: absolute;
-    left: 0;
-    top: 0;
-}
-
-.back-link svg {
-    width: 14px;
-    height: 14px;
-}
-
-.back-link:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    transform: translateX(-2px);
-    box-shadow: 0 4px 12px var(--shadow-md);
-}
-
-/* Theme Toggle */
-.theme-toggle {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 0;
-    opacity: 0.6;
-    color: var(--icon-default);
-}
-
-.theme-toggle:hover {
-    opacity: 1;
-    background: var(--bg-card);
-    transform: scale(1.1) rotate(10deg);
-    box-shadow: 0 2px 8px var(--shadow-md);
-    color: var(--accent);
-}
-
-.theme-toggle svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: all 0.3s;
-}
-
-.theme-toggle:hover svg {
-    transform: rotate(-10deg);
-}
-
-.theme-toggle:active {
-    transform: scale(0.92);
-}
-
-header {
-    text-align: center;
-    margin-bottom: 2rem;
-    position: relative;
-    width: 100%;
-    max-width: 400px;
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -440,8 +321,7 @@ header {
     }
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+/* Responsive@media (max-width: 480px) {
     .calculator-wrapper {
         padding: 20px;
     }
@@ -450,4 +330,54 @@ header {
         padding: 15px 0;
         font-size: 1.3rem;
     }
+}
+
+/* Scientific Calculator Styles */
+.calculator-wrapper.scientific-mode {
+    max-width: 500px;
+}
+
+.scientific-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.scientific-grid .btn {
+    padding: 15px 0;
+    font-size: 1.1rem;
+    border-radius: 15px;
+}
+
+.btn.sci-func {
+    background: var(--bg-body);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.btn.sci-func:hover {
+    background: var(--bg-card);
+    color: var(--accent);
+}
+
+/* Adjust display for scientific mode */
+#scientific-calculator .display {
+    min-height: 120px;
+}
+
+#scientific-calculator .current-operand-sci {
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    font-weight: 700;
+    word-wrap: break-word;
+    word-break: break-all;
+    line-height: 1.1;
+}
+
+#scientific-calculator .previous-operand-sci {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    min-height: 1.5rem;
+    margin-bottom: 5px;
 }

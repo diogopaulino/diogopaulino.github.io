@@ -6,7 +6,7 @@ let particles = [];
 let gravity = 0.5;
 let friction = 0.98;
 let particleSize = 3;
-let mouseMode = 'spawn'; // spawn, attract, repel
+let mouseMode = 'spawn'; // spawn, attract, repel, blackhole
 let currentTheme = 'neon';
 
 // Themes
@@ -14,7 +14,8 @@ const themes = {
     neon: ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'],
     fire: ['#ff0000', '#ff4d00', '#ff9900', '#ffcc00', '#ffff00'],
     ice: ['#00ffff', '#00ccff', '#0099ff', '#0066ff', '#0033ff'],
-    matrix: ['#00ff00', '#00cc00', '#009900', '#006600', '#003300']
+    matrix: ['#00ff00', '#00cc00', '#009900', '#006600', '#003300'],
+    rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']
 };
 
 function resize() {
@@ -49,14 +50,27 @@ class Particle {
             const dx = mouseX - this.x;
             const dy = mouseY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            const force = 500 / (distance * distance + 100); // Inverse square law with dampening
 
-            if (mouseMode === 'attract') {
-                this.dx += dx * force * 0.5;
-                this.dy += dy * force * 0.5;
-            } else if (mouseMode === 'repel') {
-                this.dx -= dx * force * 2;
-                this.dy -= dy * force * 2;
+            if (mouseMode === 'blackhole') {
+                const force = 2000 / (distance * distance + 100);
+                this.dx += dx * force;
+                this.dy += dy * force;
+                // Suck particles in
+                if (distance < 20) {
+                    this.x = mouseX + (Math.random() - 0.5) * 10;
+                    this.y = mouseY + (Math.random() - 0.5) * 10;
+                    this.dx = (Math.random() - 0.5) * 20;
+                    this.dy = (Math.random() - 0.5) * 20;
+                }
+            } else {
+                const force = 500 / (distance * distance + 100); // Inverse square law with dampening
+                if (mouseMode === 'attract') {
+                    this.dx += dx * force * 0.5;
+                    this.dy += dy * force * 0.5;
+                } else if (mouseMode === 'repel') {
+                    this.dx -= dx * force * 2;
+                    this.dy -= dy * force * 2;
+                }
             }
         }
 
@@ -90,7 +104,17 @@ class Particle {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
+
+        // Glow effect (expensive, so keep blur low)
+        if (particles.length < 400) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+        } else {
+            ctx.shadowBlur = 0;
+        }
+
         ctx.fill();
+        ctx.shadowBlur = 0; // Reset
         ctx.closePath();
     }
 }

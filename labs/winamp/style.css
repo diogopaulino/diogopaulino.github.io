@@ -1,0 +1,421 @@
+:root {
+    --winamp-bg: #191919;
+    --winamp-face: #2b2b2b;
+    --winamp-text: #00ff00;
+    --winamp-gold: #d4b06a;
+    --winamp-border-light: #5a5a5a;
+    --winamp-border-dark: #000000;
+}
+
+
+
+
+
+/* Winamp Wrapper */
+.winamp-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transform: scale(1.5);
+    /* Make it bigger for modern screens */
+    transform-origin: top center;
+}
+
+/* Main Window */
+.main-window {
+    width: 275px;
+    height: 116px;
+    background-color: var(--winamp-face);
+    border-top: 1px solid #5a5a5a;
+    border-left: 1px solid #5a5a5a;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    position: relative;
+    user-select: none;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Title Bar */
+.title-bar {
+    height: 14px;
+    background: linear-gradient(to right, #000080, #2b2b2b);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+    cursor: grab;
+}
+
+.title-bar-text {
+    color: #fff;
+    font-size: 9px;
+    font-family: 'Pixel', sans-serif;
+    /* Fallback */
+    margin-left: 4px;
+    flex-grow: 1;
+}
+
+.title-bar-controls {
+    display: flex;
+    gap: 2px;
+}
+
+.title-bar-controls button {
+    width: 9px;
+    height: 9px;
+    background: #c0c0c0;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+    font-size: 8px;
+    line-height: 7px;
+    padding: 0;
+    cursor: pointer;
+}
+
+/* Main Body */
+.main-body {
+    padding: 5px;
+    position: relative;
+}
+
+/* Display Area */
+.display-area {
+    background: #000;
+    height: 40px;
+    margin-bottom: 5px;
+    border: 1px solid #5a5a5a;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+    position: relative;
+    display: flex;
+}
+
+.visualization {
+    width: 76px;
+    height: 100%;
+    border-right: 1px solid #5a5a5a;
+}
+
+.song-info {
+    flex-grow: 1;
+    padding: 2px;
+    overflow: hidden;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.marquee-container {
+    overflow: hidden;
+}
+
+.marquee {
+    display: inline-block;
+    animation: marquee 5s linear infinite;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.time-display {
+    position: absolute;
+    bottom: 2px;
+    left: 80px;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+}
+
+.kbps-khz {
+    position: absolute;
+    top: 18px;
+    left: 150px;
+    font-size: 9px;
+    color: #00ff00;
+    font-family: monospace;
+}
+
+.mono-stereo {
+    position: absolute;
+    top: 18px;
+    left: 200px;
+    font-size: 9px;
+    color: #00ff00;
+    font-family: monospace;
+    display: flex;
+    gap: 4px;
+}
+
+.active {
+    color: #00ff00;
+    text-shadow: 0 0 2px #00ff00;
+}
+
+.mono-stereo div:not(.active) {
+    color: #003300;
+}
+
+/* Controls Area */
+.controls-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.volume-slider-container,
+.balance-slider-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.volume-slider-container label,
+.balance-slider-container label {
+    font-size: 8px;
+    color: #c0c0c0;
+    margin-bottom: 2px;
+}
+
+.winamp-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 60px;
+    height: 4px;
+    background: #000;
+    border: 1px solid #5a5a5a;
+    outline: none;
+}
+
+.winamp-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 8px;
+    background: #c0c0c0;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+    cursor: pointer;
+}
+
+.main-buttons {
+    display: flex;
+    gap: 2px;
+    margin-top: 5px;
+}
+
+.main-buttons button {
+    width: 22px;
+    height: 18px;
+    background: linear-gradient(to bottom, #c0c0c0, #808080);
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+    cursor: pointer;
+    position: relative;
+}
+
+.main-buttons button:active {
+    border: 1px solid #000;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: #808080;
+}
+
+/* Button Icons (CSS Shapes) */
+.btn-play::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    border-left: 6px solid #000;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+}
+
+.btn-pause::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 7px;
+    width: 2px;
+    height: 8px;
+    background: #000;
+    box-shadow: 4px 0 0 #000;
+}
+
+.btn-stop::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 7px;
+    width: 6px;
+    height: 6px;
+    background: #000;
+}
+
+.btn-prev::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    border-right: 4px solid #000;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    box-shadow: -2px 0 0 #000;
+    /* Vertical bar */
+}
+
+/* Fix prev icon */
+.btn-prev::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 2px;
+    height: 6px;
+    background: #000;
+}
+
+
+.btn-next::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 8px;
+    border-left: 4px solid #000;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+}
+
+.btn-next::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 13px;
+    width: 2px;
+    height: 6px;
+    background: #000;
+}
+
+.btn-eject {
+    width: 18px;
+    height: 14px;
+    background: #c0c0c0;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+    margin-top: 7px;
+    position: relative;
+}
+
+.btn-eject::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 4px;
+    width: 8px;
+    height: 2px;
+    background: #000;
+}
+
+.btn-eject::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    border-bottom: 4px solid #000;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+}
+
+
+.branding {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-family: sans-serif;
+    font-style: italic;
+    font-weight: bold;
+    color: #5a5a5a;
+    font-size: 12px;
+}
+
+/* Playlist Window */
+.playlist-window {
+    width: 275px;
+    height: 116px;
+    /* Same as main */
+    background-color: var(--winamp-face);
+    border-top: 1px solid #5a5a5a;
+    border-left: 1px solid #5a5a5a;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.playlist-body {
+    flex-grow: 1;
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+}
+
+.playlist-content {
+    background: #000;
+    flex-grow: 1;
+    border: 1px solid #5a5a5a;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 10px;
+    padding: 2px;
+    overflow-y: auto;
+}
+
+.playlist-item {
+    padding: 1px;
+    cursor: pointer;
+}
+
+.playlist-item.active {
+    background: #000080;
+    color: #fff;
+}
+
+.playlist-controls {
+    height: 18px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+}
+
+.playlist-controls button {
+    background: #c0c0c0;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+    font-size: 8px;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .winamp-wrapper {
+        transform: scale(1);
+    }
+}

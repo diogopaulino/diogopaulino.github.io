@@ -7,6 +7,8 @@ let score = 0;
 let lives = 3;
 let animationId;
 let lastTime = 0;
+let gameWidth = 0;
+let gameHeight = 0;
 
 // Entities
 const player = {
@@ -76,18 +78,30 @@ function playSound(type) {
 
 // Initialization
 function resize() {
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
-    player.y = canvas.height - player.height - 20;
-    player.x = canvas.width / 2 - player.width / 2;
+    const parent = canvas.parentElement;
+    gameWidth = parent.clientWidth;
+    gameHeight = parent.clientHeight;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.style.width = `${gameWidth}px`;
+    canvas.style.height = `${gameHeight}px`;
+
+    canvas.width = Math.floor(gameWidth * dpr);
+    canvas.height = Math.floor(gameHeight * dpr);
+
+    ctx.scale(dpr, dpr);
+
+    player.y = gameHeight - player.height - 20;
+    player.x = gameWidth / 2 - player.width / 2;
 }
 
 function initStars() {
     stars = [];
     for (let i = 0; i < 100; i++) {
         stars.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
+            x: Math.random() * gameWidth,
+            y: Math.random() * gameHeight,
             size: Math.random() * 2,
             speed: Math.random() * 0.5 + 0.1
         });
@@ -96,7 +110,7 @@ function initStars() {
 
 function initEnemies() {
     enemies = [];
-    const startX = (canvas.width - (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_PADDING))) / 2;
+    const startX = (gameWidth - (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_PADDING))) / 2;
     const startY = 50;
 
     for (let row = 0; row < ENEMY_ROWS; row++) {
@@ -166,7 +180,7 @@ function update(dt) {
     player.x += player.dx * dt;
     // Clamp player to screen
     if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+    if (player.x + player.width > gameWidth) player.x = gameWidth - player.width;
 
     // Bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -178,7 +192,7 @@ function update(dt) {
     let hitWall = false;
     enemies.forEach(enemy => {
         enemy.x += enemySpeed * enemyDirection * dt;
-        if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+        if (enemy.x <= 0 || enemy.x + enemy.width >= gameWidth) {
             hitWall = true;
         }
     });
@@ -239,13 +253,13 @@ function update(dt) {
     // Stars
     stars.forEach(star => {
         star.y += star.speed;
-        if (star.y > canvas.height) star.y = 0;
+        if (star.y > gameHeight) star.y = 0;
     });
 }
 
 function draw() {
     ctx.fillStyle = '#050510';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, gameWidth, gameHeight);
 
     // Draw Stars
     ctx.fillStyle = '#ffffff';

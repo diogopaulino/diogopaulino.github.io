@@ -3,10 +3,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const mineCountElement = document.getElementById('mine-count');
     const timerElement = document.getElementById('timer');
     const resetBtn = document.getElementById('reset-btn');
+    const difficultySelect = document.getElementById('difficulty-select');
 
-    const ROWS = 9;
-    const COLS = 9;
-    const MINES = 10;
+    const DIFFICULTIES = {
+        beginner: { rows: 9, cols: 9, mines: 10 },
+        intermediate: { rows: 16, cols: 16, mines: 40 },
+        expert: { rows: 16, cols: 30, mines: 99 }
+    };
+
+    let ROWS = 9;
+    let COLS = 9;
+    let MINES = 10;
 
     let board = [];
     let gameOver = false;
@@ -16,6 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let firstClick = true;
 
     function initGame() {
+        // Set difficulty
+        const difficulty = difficultySelect.value;
+        const config = DIFFICULTIES[difficulty];
+        ROWS = config.rows;
+        COLS = config.cols;
+        MINES = config.mines;
+
+        // Update Grid CSS
+        boardElement.style.gridTemplateColumns = `repeat(${COLS}, 24px)`;
+        boardElement.style.gridTemplateRows = `repeat(${ROWS}, 24px)`;
+
         // Reset state
         board = [];
         gameOver = false;
@@ -245,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     resetBtn.addEventListener('click', initGame);
+    difficultySelect.addEventListener('change', initGame);
 
     initGame();
 });

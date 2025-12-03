@@ -1,0 +1,347 @@
+/* Retro Snake Styles */
+
+:root {
+    --gb-body: #c0c0c0;
+    --gb-body-shadow: #9a9a9a;
+    --gb-screen-bezel: #777777;
+    --gb-screen-bg: #9bbc0f;
+    /* Classic GB Green */
+    --gb-pixel-dark: #0f380f;
+    --gb-pixel-light: #9bbc0f;
+    --gb-btn-dpad: #333333;
+    --gb-btn-action: #8b0000;
+    --gb-btn-meta: #666666;
+}
+
+[data-theme="dark"] {
+    --gb-body: #4a4a4a;
+    --gb-body-shadow: #2a2a2a;
+    --gb-screen-bezel: #222222;
+    --gb-screen-bg: #4b5c07;
+    /* Darker green for dark mode comfort */
+    --gb-pixel-dark: #ccffcc;
+    /* Inverted/glowing for dark mode */
+    --gb-pixel-light: #4b5c07;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+/* Handheld Device Body */
+.handheld-device {
+    background-color: var(--gb-body);
+    width: 320px;
+    height: 540px;
+    border-radius: 15px 15px 40px 15px;
+    padding: 20px;
+    box-shadow:
+        inset 4px 4px 10px rgba(255, 255, 255, 0.5),
+        inset -4px -4px 10px rgba(0, 0, 0, 0.2),
+        5px 5px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+}
+
+/* Screen Area */
+.screen-bezel {
+    background-color: var(--gb-screen-bezel);
+    width: 100%;
+    height: 240px;
+    border-radius: 10px 10px 30px 10px;
+    padding: 20px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.screen-glass {
+    background-color: var(--gb-screen-bg);
+    width: 100%;
+    height: 100%;
+    border: 2px solid #555;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    display: block;
+}
+
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom,
+            rgba(255, 255, 255, 0),
+            rgba(255, 255, 255, 0) 50%,
+            rgba(0, 0, 0, 0.1) 50%,
+            rgba(0, 0, 0, 0.1));
+    background-size: 100% 4px;
+    pointer-events: none;
+}
+
+.ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(155, 188, 15, 0.8);
+    color: var(--gb-pixel-dark);
+    font-family: 'Press Start 2P', cursive;
+    text-align: center;
+    z-index: 10;
+}
+
+.ui-overlay.hidden {
+    display: none;
+}
+
+.ui-overlay h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.ui-overlay p {
+    font-size: 12px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+.power-led {
+    width: 8px;
+    height: 8px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    position: absolute;
+    top: 40%;
+    left: 10px;
+    box-shadow: 0 0 5px #ff0000;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+
+.power-led.on {
+    opacity: 1;
+    box-shadow: 0 0 8px #ff3333;
+}
+
+.brand-text {
+    color: #aaa;
+    font-family: sans-serif;
+    font-weight: bold;
+    font-style: italic;
+    font-size: 10px;
+    margin-top: 5px;
+    align-self: flex-start;
+    margin-left: 10px;
+}
+
+/* Controls Area */
+.controls-area {
+    width: 100%;
+    flex: 1;
+    position: relative;
+    margin-top: 20px;
+}
+
+/* D-Pad */
+.d-pad {
+    width: 90px;
+    height: 90px;
+    position: absolute;
+    top: 30px;
+    left: 20px;
+}
+
+.d-pad div {
+    background-color: var(--gb-btn-dpad);
+    position: absolute;
+    border-radius: 3px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+}
+
+.d-pad div:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+}
+
+.d-pad-center {
+    width: 30px;
+    height: 30px;
+    top: 30px;
+    left: 30px;
+    z-index: 2;
+}
+
+.d-pad-up {
+    width: 30px;
+    height: 30px;
+    top: 0;
+    left: 30px;
+    border-radius: 3px 3px 0 0;
+}
+
+.d-pad-down {
+    width: 30px;
+    height: 30px;
+    bottom: 0;
+    left: 30px;
+    border-radius: 0 0 3px 3px;
+}
+
+.d-pad-left {
+    width: 30px;
+    height: 30px;
+    top: 30px;
+    left: 0;
+    border-radius: 3px 0 0 3px;
+}
+
+.d-pad-right {
+    width: 30px;
+    height: 30px;
+    top: 30px;
+    right: 0;
+    border-radius: 0 3px 3px 0;
+}
+
+/* Action Buttons */
+.action-buttons {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    display: flex;
+    gap: 15px;
+    transform: rotate(-15deg);
+}
+
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-a,
+.btn-b {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: var(--gb-btn-action);
+    border: none;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.btn-a:active,
+.btn-b:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+}
+
+.label {
+    font-family: sans-serif;
+    font-weight: bold;
+    font-size: 12px;
+    color: var(--gb-btn-dpad);
+}
+
+/* Meta Buttons (Start/Select) */
+.meta-controls {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+}
+
+.meta-btn-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-select,
+.btn-start {
+    width: 50px;
+    height: 12px;
+    border-radius: 10px;
+    background-color: var(--gb-btn-meta);
+    border: none;
+    transform: rotate(-15deg);
+    box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.btn-select:active,
+.btn-start:active {
+    transform: rotate(-15deg) translate(1px, 1px);
+    box-shadow: 0px 0px 0px rgba(0, 0, 0, 0.3);
+}
+
+/* Speaker */
+.speaker-grill {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    display: flex;
+    gap: 5px;
+    transform: rotate(-15deg);
+}
+
+.speaker-grill span {
+    width: 4px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+}
+
+.instructions {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 400px) {
+    .handheld-device {
+        transform: scale(0.9);
+    }
+}

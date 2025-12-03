@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor Lab</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <h1>Image Editor</h1>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <main class="editor-container">
+            <div class="editor-wrapper">
+                <div class="preview-area">
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <p>Click or drag image to upload</p>
+                        <input type="file" id="fileInput" accept="image/*" hidden>
+                    </div>
+                    <canvas id="canvas"></canvas>
+                </div>
+
+                <div class="controls-area" id="controlsArea">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="adjust">Adjust</button>
+                        <button class="tab-btn" data-tab="filters">Filters</button>
+                        <button class="tab-btn" data-tab="transform">Transform</button>
+                    </div>
+
+                    <div class="tab-content active" id="adjust-tab">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Brightness</label>
+                                <span class="value">100%</span>
+                            </div>
+                            <input type="range" id="brightness" min="0" max="200" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Contrast</label>
+                                <span class="value">100%</span>
+                            </div>
+                            <input type="range" id="contrast" min="0" max="200" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Saturation</label>
+                                <span class="value">100%</span>
+                            </div>
+                            <input type="range" id="saturation" min="0" max="200" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Blur</label>
+                                <span class="value">0px</span>
+                            </div>
+                            <input type="range" id="blur" min="0" max="10" value="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="filters-tab">
+                        <div class="filters-grid">
+                            <button class="filter-btn active" data-filter="none">Original</button>
+                            <button class="filter-btn" data-filter="grayscale">Grayscale</button>
+                            <button class="filter-btn" data-filter="sepia">Sepia</button>
+                            <button class="filter-btn" data-filter="invert">Invert</button>
+                            <button class="filter-btn" data-filter="vintage">Vintage</button>
+                            <button class="filter-btn" data-filter="kodachrome">Kodachrome</button>
+                            <button class="filter-btn" data-filter="technicolor">Technicolor</button>
+                            <button class="filter-btn" data-filter="polaroid">Polaroid</button>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="transform-tab">
+                        <div class="transform-controls">
+                            <button class="tool-btn" id="rotateLeft" title="Rotate Left">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                    <path d="M3 3v5h5" />
+                                </svg>
+                                Rotate Left
+                            </button>
+                            <button class="tool-btn" id="rotateRight" title="Rotate Right">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                    <path d="M21 3v5h-5" />
+                                </svg>
+                                Rotate Right
+                            </button>
+                            <button class="tool-btn" id="flipHorizontal" title="Flip Horizontal">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="16 3 21 3 21 8" />
+                                    <line x1="4" y1="20" x2="21" y2="3" />
+                                    <polyline points="21 16 21 21 16 21" />
+                                    <line x1="15" y1="15" x2="21" y2="21" />
+                                    <line x1="4" y1="4" x2="9" y2="9" />
+                                </svg>
+                                Flip H
+                            </button>
+                            <button class="tool-btn" id="flipVertical" title="Flip Vertical">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="16 3 21 3 21 8" />
+                                    <line x1="4" y1="20" x2="21" y2="3" />
+                                    <polyline points="21 16 21 21 16 21" />
+                                    <line x1="15" y1="15" x2="21" y2="21" />
+                                    <line x1="4" y1="4" x2="9" y2="9" />
+                                </svg>
+                                Flip V
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn secondary" id="resetBtn">Reset</button>
+                        <button class="btn primary" id="saveBtn">Save Image</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

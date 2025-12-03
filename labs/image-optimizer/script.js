@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFiles = validFiles;
-        controlsPanel.style.display = 'grid';
+        controlsPanel.style.display = 'flex';
 
         // Clear previous results
         resultsGrid.innerHTML = '';

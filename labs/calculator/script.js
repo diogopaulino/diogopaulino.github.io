@@ -93,16 +93,84 @@ class Calculator {
     }
 }
 
-// Calculator Setup
-const numberButtons = document.querySelectorAll('[data-number]'); // Note: I used class .number in HTML, need to select by class or add data attribute
-const operationButtons = document.querySelectorAll('[data-operation]'); // Same here
+class ScientificCalculator extends Calculator {
+    constructor(previousOperandTextElement, currentOperandTextElement) {
+        super(previousOperandTextElement, currentOperandTextElement);
+    }
 
-// Let's use the classes from HTML
-const numberBtns = document.querySelectorAll('.btn.number');
-const operatorBtns = document.querySelectorAll('.btn.operator');
-const equalsBtn = document.querySelector('.btn.equals');
-const deleteBtn = document.querySelector('[data-action="delete"]');
-const clearBtn = document.querySelector('[data-action="clear"]');
+    computeScientific(action) {
+        let current = parseFloat(this.currentOperand);
+        if (isNaN(current) && action !== 'pi' && action !== 'e' && action !== 'rand') return;
+
+        let result;
+        switch (action) {
+            case 'sin': result = Math.sin(current); break;
+            case 'cos': result = Math.cos(current); break;
+            case 'tan': result = Math.tan(current); break;
+            case 'log': result = Math.log10(current); break;
+            case 'ln': result = Math.log(current); break;
+            case 'sqrt': result = Math.sqrt(current); break;
+            case 'square': result = Math.pow(current, 2); break;
+            case 'inv': result = 1 / current; break;
+            case 'abs': result = Math.abs(current); break;
+            case 'fact': result = this.factorial(current); break;
+            case 'pi':
+                this.currentOperand = Math.PI;
+                this.operation = undefined;
+                this.previousOperand = '';
+                return;
+            case 'e':
+                this.currentOperand = Math.E;
+                this.operation = undefined;
+                this.previousOperand = '';
+                return;
+            case 'rand':
+                this.currentOperand = Math.random();
+                this.operation = undefined;
+                this.previousOperand = '';
+                return;
+        }
+
+        if (result !== undefined) {
+            this.currentOperand = result;
+            this.operation = undefined;
+            this.previousOperand = '';
+        }
+    }
+
+    factorial(n) {
+        if (n < 0) return NaN;
+        if (n === 0 || n === 1) return 1;
+        let result = 1;
+        for (let i = 2; i <= n; i++) result *= i;
+        return result;
+    }
+
+    compute() {
+        let computation;
+        const prev = parseFloat(this.previousOperand);
+        const current = parseFloat(this.currentOperand);
+        if (isNaN(prev) || isNaN(current)) return;
+        switch (this.operation) {
+            case '^':
+                computation = Math.pow(prev, current);
+                break;
+            default:
+                super.compute();
+                return;
+        }
+        this.currentOperand = computation;
+        this.operation = undefined;
+        this.previousOperand = '';
+    }
+}
+
+// Simple Calculator Setup
+const numberBtns = document.querySelectorAll('#calculator .btn.number');
+const operatorBtns = document.querySelectorAll('#calculator .btn.operator');
+const equalsBtn = document.querySelector('#calculator .btn.equals');
+const deleteBtn = document.querySelector('#calculator [data-action="delete"]');
+const clearBtn = document.querySelector('#calculator [data-action="clear"]');
 const previousOperandTextElement = document.querySelector('.previous-operand');
 const currentOperandTextElement = document.querySelector('.current-operand');
 
@@ -137,10 +205,66 @@ deleteBtn.addEventListener('click', button => {
     calculator.updateDisplay();
 });
 
+// Scientific Calculator Setup
+const sciNumberBtns = document.querySelectorAll('#scientific-calculator .btn.number');
+const sciOperatorBtns = document.querySelectorAll('#scientific-calculator .btn.operator');
+const sciFuncBtns = document.querySelectorAll('.btn.sci-func');
+const sciEqualsBtn = document.querySelector('[data-action="sci-calculate"]');
+const sciClearBtn = document.querySelector('[data-action="sci-clear"]');
+const sciDeleteBtn = document.querySelector('[data-action="sci-delete"]');
+const prevOperandSci = document.querySelector('.previous-operand-sci');
+const currOperandSci = document.querySelector('.current-operand-sci');
+
+const sciCalculator = new ScientificCalculator(prevOperandSci, currOperandSci);
+
+sciNumberBtns.forEach(button => {
+    button.addEventListener('click', () => {
+        sciCalculator.appendNumber(button.innerText);
+        sciCalculator.updateDisplay();
+    });
+});
+
+sciOperatorBtns.forEach(button => {
+    button.addEventListener('click', () => {
+        sciCalculator.chooseOperation(button.innerText);
+        sciCalculator.updateDisplay();
+    });
+});
+
+sciFuncBtns.forEach(button => {
+    button.addEventListener('click', () => {
+        const action = button.dataset.action;
+        if (action === 'pow') {
+            sciCalculator.chooseOperation('^');
+        } else {
+            sciCalculator.computeScientific(action);
+        }
+        sciCalculator.updateDisplay();
+    });
+});
+
+sciEqualsBtn.addEventListener('click', () => {
+    sciCalculator.compute();
+    sciCalculator.updateDisplay();
+});
+
+sciClearBtn.addEventListener('click', () => {
+    sciCalculator.clear();
+    sciCalculator.updateDisplay();
+});
+
+sciDeleteBtn.addEventListener('click', () => {
+    sciCalculator.delete();
+    sciCalculator.updateDisplay();
+});
+
+
 // Mode Switching
 const modeBtns = document.querySelectorAll('.mode-btn');
 const calculatorSection = document.getElementById('calculator');
+const scientificSection = document.getElementById('scientific-calculator');
 const currencySection = document.getElementById('currency');
+const wrapper = document.querySelector('.calculator-wrapper');
 
 modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -150,11 +274,19 @@ modeBtns.forEach(btn => {
         btn.classList.add('active');
 
         const mode = btn.dataset.mode;
+
+        // Hide all sections
+        calculatorSection.classList.remove('active');
+        scientificSection.classList.remove('active');
+        currencySection.classList.remove('active');
+        wrapper.classList.remove('scientific-mode');
+
         if (mode === 'calculator') {
             calculatorSection.classList.add('active');
-            currencySection.classList.remove('active');
+        } else if (mode === 'scientific') {
+            scientificSection.classList.add('active');
+            wrapper.classList.add('scientific-mode');
         } else {
-            calculatorSection.classList.remove('active');
             currencySection.classList.add('active');
         }
     });

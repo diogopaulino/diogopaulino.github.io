@@ -6,15 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Labs - Diogo Paulino</title>
   <meta name="description" content="Experimentos e projetos interativos. Design, código e criatividade.">
+  <link rel="stylesheet" href="shared.css">
   <link rel="stylesheet" href="style.css">
-  <script>
-    (function () {
-      try {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-      } catch (e) { }
-    })();
-  </script>
 </head>
 
 <body>
@@ -44,6 +37,10 @@
       <h1>Labs</h1>
       <p class="subtitle">Experimentos interativos</p>
     </header>
+
+    <div class="filters-container">
+      <button class="filter-btn active" data-filter="all">Todos</button>
+    </div>
 
     <div class="projects-grid">
       <a href="paint/" class="project-card">
@@ -172,6 +169,25 @@
           </div>
         </div>
       </a>
+      <a href="street-rage/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+            <path d="M2 2l7.586 7.586"></path>
+            <circle cx="11" cy="11" r="2"></circle>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Street Rage</h2>
+          <p>Beat 'em up estilo anos 90 com pancadaria pixel art</p>
+          <div class="project-tags">
+            <span class="tag">Game</span>
+            <span class="tag">Action</span>
+            <span class="tag">90s</span>
+          </div>
+        </div>
+      </a>
       <a href="calculator/" class="project-card">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -196,38 +212,144 @@
           </div>
         </div>
       </a>
+      <a href="english-duo/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>LingoQuest</h2>
+          <p>Jogo de inglês estilo Duolingo com desafios dinâmicos de vocabulário</p>
+          <div class="project-tags">
+            <span class="tag">Game</span>
+            <span class="tag">Education</span>
+            <span class="tag">API</span>
+          </div>
+        </div>
+      </a>
+      <a href="tetris/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10h4v4H3z" />
+            <path d="M7 10h4v4H7z" />
+            <path d="M11 10h4v4h-4z" />
+            <path d="M7 6h4v4H7z" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Tetris 90s</h2>
+          <p>O clássico jogo de blocos com visual retrô de Game Boy</p>
+          <div class="project-tags">
+            <span class="tag">Game</span>
+            <span class="tag">Retro</span>
+            <span class="tag">GameBoy</span>
+          </div>
+        </div>
+      </a>
+      <a href="snake/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
+            <rect x="6" y="6" width="12" height="8" rx="1" ry="1"></rect>
+            <path d="M8 18h.01"></path>
+            <path d="M12 18h.01"></path>
+            <path d="M16 18h.01"></path>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Retro Snake</h2>
+          <p>Clássico jogo da cobrinha com visual de console portátil dos anos 90</p>
+          <div class="project-tags">
+            <span class="tag">Game</span>
+            <span class="tag">Retro</span>
+            <span class="tag">Nokia</span>
+          </div>
+        </div>
+      </a>
+      <a href="winamp/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Winamp JS</h2>
+          <p>Clone do lendário player MP3 com visual clássico e equalizador</p>
+          <div class="project-tags">
+            <span class="tag">Audio</span>
+            <span class="tag">Retro</span>
+            <span class="tag">Winamp</span>
+          </div>
+        </div>
+      </a>
+      <a href="emulator/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="6" width="20" height="12" rx="2" />
+            <path d="M6 12h4" />
+            <path d="M8 10v4" />
+            <circle cx="17" cy="12" r="1" />
+            <circle cx="15" cy="12" r="1" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Genesis Emu</h2>
+          <p>Emulador de Mega Drive online com suporte a ROMs e efeitos CRT</p>
+          <div class="project-tags">
+            <span class="tag">Emulator</span>
+            <span class="tag">Sega</span>
+            <span class="tag">Retro</span>
+          </div>
+        </div>
+      </a>
+      <a href="image-editor/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Image Editor</h2>
+          <p>Editor de fotos estilo Instagram com filtros e ajustes profissionais</p>
+          <div class="project-tags">
+            <span class="tag">Canvas</span>
+            <span class="tag">Filters</span>
+            <span class="tag">Editor</span>
+          </div>
+        </div>
+      </a>
+      <a href="pomodoro/" class="project-card">
+        <div class="project-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>AI Focus</h2>
+          <p>Pomodoro timer futurista com sons suaves e notificações inteligentes</p>
+          <div class="project-tags">
+            <span class="tag">Productivity</span>
+            <span class="tag">AI</span>
+          </div>
+        </div>
+      </a>
     </div>
   </div>
-  <script>
-    const toggle = document.querySelector('.theme-toggle');
-    const html = document.documentElement;
-    const sunIcon = document.querySelector('.sun-icon');
-    const moonIcon = document.querySelector('.moon-icon');
-
-    function updateIcons(theme) {
-      if (theme === 'dark') {
-        sunIcon.style.display = 'block';
-        moonIcon.style.display = 'none';
-      } else {
-        sunIcon.style.display = 'none';
-        moonIcon.style.display = 'block';
-      }
-    }
-
-    // Init icons
-    updateIcons(html.getAttribute('data-theme') || 'light');
-
-    if (toggle) {
-      toggle.addEventListener('click', () => {
-        const current = html.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateIcons(next);
-      });
-    }
-  </script>
+  <script src="shared.js"></script>
+  <script src="index.js"></script>
 </body>
 
 </html>

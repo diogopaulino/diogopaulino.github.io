@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Evolution - Genetic Algorithm | Diogo Paulino</title>
+    <meta name="description" content="Interactive Genetic Algorithm simulation. Watch AI learn to navigate obstacles.">
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <a href="../index.html" class="back-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back to Labs
+            </a>
+            <h1>AI Evolution <span class="badge">Gen <span id="gen-count">0</span></span></h1>
+        </header>
+
+        <main class="canvas-wrapper">
+            <canvas id="simulation"></canvas>
+
+            <div class="controls-panel">
+                <div class="stat-group">
+                    <div class="stat-item">
+                        <span class="label">Alive</span>
+                        <span class="value" id="alive-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Best Fitness</span>
+                        <span class="value" id="best-fitness">0%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="speed-slider">Simulation Speed</label>
+                    <input type="range" id="speed-slider" min="1" max="10" value="1">
+                </div>
+
+                <div class="control-group">
+                    <button id="reset-btn" class="btn-primary">Reset Population</button>
+                    <button id="clear-obstacles-btn" class="btn-secondary">Clear Obstacles</button>
+                </div>
+
+                <div class="instructions">
+                    <p><strong>Draw on canvas</strong> to create obstacles.</p>
+                    <p>The particles will evolve to find the target.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
