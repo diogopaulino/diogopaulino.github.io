@@ -1,8 +1,8 @@
-const SONIC_ROM = 'roms/mega-drive/Sonic The Hedgehog (USA, Europe).md';
-
 let emulator = null;
 
 const $ = id => document.getElementById(id);
+const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+const SONIC_ROM = basePath + 'roms/mega-drive/sonic.md';
 
 function showHome() {
     $('home').classList.remove('hidden');
@@ -36,8 +36,6 @@ async function startGame(rom, name) {
 
     try {
         await stopEmulator();
-
-        const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
         emulator = await Nostalgist.launch({
             core: 'genesis_plus_gx',

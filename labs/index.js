@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Win95': 'game',
         'Retro': 'game',
         'Neon': 'game',
+        'PixiJS': 'game',
 
         // Utilities
         'Utility': 'utility',

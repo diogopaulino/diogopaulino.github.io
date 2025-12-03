@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Run - Labs</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://pixijs.download/v8.6.6/pixi.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <div class="app-logo">
+                🌴 Jungle Run
+            </div>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="game-wrapper">
+            <div class="game-container">
+                <div class="ui-layer">
+                    <div class="stat-box score-box">
+                        <span class="stat-icon">💎</span>
+                        <span class="stat-label">SCORE</span>
+                        <span class="stat-value" id="score">0</span>
+                    </div>
+                    <div class="stat-box lives-box">
+                        <span class="stat-icon">❤️</span>
+                        <span class="stat-label">LIVES</span>
+                        <span class="stat-value" id="lives">3</span>
+                    </div>
+                    <div class="stat-box distance-box">
+                        <span class="stat-icon">📍</span>
+                        <span class="stat-label">DISTANCE</span>
+                        <span class="stat-value" id="distance">0m</span>
+                    </div>
+                </div>
+
+                <canvas id="gameCanvas"></canvas>
+
+                <div id="startScreen" class="overlay">
+                    <div class="overlay-content">
+                        <h1>🌴 JUNGLE RUN 🌴</h1>
+                        <p class="tagline">A Tribute to Pitfall</p>
+                        <div class="controls-info">
+                            <div class="control-item">
+                                <span class="key">← →</span>
+                                <span>Move</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="key">SPACE</span>
+                                <span>Jump</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="key">↑</span>
+                                <span>Grab Vine</span>
+                            </div>
+                        </div>
+                        <button id="startBtn" class="game-btn">START ADVENTURE</button>
+                        <p class="mobile-hint">On mobile: Use touch controls</p>
+                    </div>
+                </div>
+
+                <div id="gameOverScreen" class="overlay hidden">
+                    <div class="overlay-content">
+                        <h1>💀 GAME OVER 💀</h1>
+                        <div class="final-stats">
+                            <div class="final-stat">
+                                <span>Final Score</span>
+                                <span id="finalScore">0</span>
+                            </div>
+                            <div class="final-stat">
+                                <span>Distance</span>
+                                <span id="finalDistance">0m</span>
+                            </div>
+                        </div>
+                        <button id="restartBtn" class="game-btn">TRY AGAIN</button>
+                    </div>
+                </div>
+
+                <div class="mobile-controls">
+                    <div class="control-left">
+                        <button class="mobile-btn" id="leftBtn">◀</button>
+                        <button class="mobile-btn" id="rightBtn">▶</button>
+                    </div>
+                    <div class="control-right">
+                        <button class="mobile-btn jump-btn" id="jumpBtn">⬆</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <span>criado com ajuda da IA :) •</span>
+            <a href="/">← voltar para home</a>
+        </footer>
+    </div>
+
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
+
