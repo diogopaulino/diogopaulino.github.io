@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'GameBoy': 'game',
         'Nokia': 'game',
         'Win95': 'game',
+        'Retro': 'game',
+        'Neon': 'game',
 
         // Utilities
         'Utility': 'utility',
@@ -36,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Creative': 'utility',
         'Física': 'utility',
         'Interativo': 'utility',
+        'Simulation': 'utility',
         'Education': 'utility',
         'AI': 'utility',
         'Filters': 'utility',

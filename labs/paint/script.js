@@ -312,11 +312,36 @@ const rgbToHex = (r, g, b) => {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 };
 
-// Event Listeners
+const getTouchCoords = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0] || e.changedTouches[0];
+    return {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    };
+};
+
 canvas.addEventListener('mousedown', startDrawFixed);
 canvas.addEventListener('mousemove', drawingFixed);
 canvas.addEventListener('mouseup', stopDraw);
 canvas.addEventListener('mouseout', stopDraw);
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const coords = getTouchCoords(e);
+    startDrawFixed({ clientX: coords.clientX, clientY: coords.clientY });
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const coords = getTouchCoords(e);
+    drawingFixed({ clientX: coords.clientX, clientY: coords.clientY });
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    stopDraw();
+}, { passive: false });
 
 toolBtns.forEach(btn => {
     btn.addEventListener('click', () => {

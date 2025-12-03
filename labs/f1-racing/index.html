@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>F1 Grand Prix - Labs</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <div class="app-logo">
+                <span class="f1-logo">F1</span> Grand Prix
+            </div>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="game-wrapper">
+            <div class="hud">
+                <div class="hud-left">
+                    <div class="position-display">
+                        <span class="label">POS</span>
+                        <span id="position" class="value">1</span>
+                        <span class="total">/5</span>
+                    </div>
+                    <div class="lap-display">
+                        <span class="label">LAP</span>
+                        <span id="lap" class="value">0</span>
+                        <span class="total">/3</span>
+                    </div>
+                </div>
+                <div class="hud-center">
+                    <div class="telemetry-panel">
+                        <div class="speedometer">
+                            <div class="speed-ring">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="speed-bg" cx="60" cy="60" r="54" />
+                                    <circle id="speedArc" class="speed-fill" cx="60" cy="60" r="54" />
+                                </svg>
+                                <div class="speed-value">
+                                    <span id="speed">0</span>
+                                    <span class="unit">KM/H</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gear-display">
+                            <span class="gear-label">GEAR</span>
+                            <span id="gear" class="gear-value">1</span>
+                        </div>
+                        <div class="rpm-display">
+                            <div class="rpm-bar-container">
+                                <div id="rpmBar" class="rpm-bar"></div>
+                            </div>
+                            <div class="rpm-labels">
+                                <span>4</span>
+                                <span>8</span>
+                                <span>12</span>
+                                <span>15K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hud-right">
+                    <div class="time-display">
+                        <span class="label">TIME</span>
+                        <span id="time" class="value time-value">0:00.00</span>
+                    </div>
+                    <div class="best-display">
+                        <span class="label">BEST</span>
+                        <span id="bestLap" class="value time-value">--:--.--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <canvas id="gameCanvas"></canvas>
+            
+            <div class="minimap-container">
+                <canvas id="minimapCanvas"></canvas>
+            </div>
+
+            <div id="startScreen" class="overlay">
+                <div class="overlay-content">
+                    <div class="f1-title">
+                        <span class="f1-red">F1</span>
+                        <span class="f1-white">GRAND PRIX</span>
+                    </div>
+                    <div class="car-select">
+                        <span class="select-label">SELECT YOUR TEAM</span>
+                        <div class="team-options">
+                            <button class="team-btn selected" data-color="#e10600" data-name="Ferrari">
+                                <span class="team-color" style="background: #e10600"></span>
+                                Ferrari
+                            </button>
+                            <button class="team-btn" data-color="#00d2be" data-name="Mercedes">
+                                <span class="team-color" style="background: #00d2be"></span>
+                                Mercedes
+                            </button>
+                            <button class="team-btn" data-color="#3671c6" data-name="Red Bull">
+                                <span class="team-color" style="background: #3671c6"></span>
+                                Red Bull
+                            </button>
+                            <button class="team-btn" data-color="#ff8000" data-name="McLaren">
+                                <span class="team-color" style="background: #ff8000"></span>
+                                McLaren
+                            </button>
+                        </div>
+                    </div>
+                    <div class="controls-info">
+                        <div class="control-item">
+                            <span class="key">W / ↑</span>
+                            <span>Acelerar</span>
+                        </div>
+                        <div class="control-item">
+                            <span class="key">S / ↓</span>
+                            <span>Frear</span>
+                        </div>
+                        <div class="control-item">
+                            <span class="key">A D / ← →</span>
+                            <span>Virar</span>
+                        </div>
+                    </div>
+                    <button id="startBtn" class="start-button">
+                        <span class="btn-text">INICIAR CORRIDA</span>
+                        <div class="lights">
+                            <span class="light"></span>
+                            <span class="light"></span>
+                            <span class="light"></span>
+                            <span class="light"></span>
+                            <span class="light"></span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="countdownOverlay" class="overlay countdown-overlay hidden">
+                <div class="countdown-lights">
+                    <span class="countdown-light"></span>
+                    <span class="countdown-light"></span>
+                    <span class="countdown-light"></span>
+                    <span class="countdown-light"></span>
+                    <span class="countdown-light"></span>
+                </div>
+                <div id="countdownText" class="countdown-text"></div>
+            </div>
+
+            <div id="finishScreen" class="overlay hidden">
+                <div class="overlay-content finish-content">
+                    <div class="checkered-flag"></div>
+                    <h2 id="finishTitle">CORRIDA FINALIZADA!</h2>
+                    <div class="results">
+                        <div class="result-item">
+                            <span class="result-label">Posição Final</span>
+                            <span id="finalPosition" class="result-value position-value">1º</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Melhor Volta</span>
+                            <span id="finalBestLap" class="result-value">--:--.--</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Tempo Total</span>
+                            <span id="finalTime" class="result-value">0:00.00</span>
+                        </div>
+                    </div>
+                    <button id="restartBtn" class="start-button">
+                        <span class="btn-text">NOVA CORRIDA</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <span>criado com ajuda da IA :)</span> •
+            <a href="/">← voltar para home</a>
+        </footer>
+    </div>
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
+

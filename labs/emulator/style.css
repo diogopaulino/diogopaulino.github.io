@@ -104,22 +104,19 @@ header {
     left: 0;
     display: none;
     background: #000;
+    align-items: center;
+    justify-content: center;
 }
 
 #emulator-container.active {
-    display: block;
+    display: flex;
 }
 
-/* Canvas full screen */
+/* Canvas styling */
+#emulator-canvas,
 #emulator-container canvas {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
     max-width: 100% !important;
     max-height: 100% !important;
-    width: auto !important;
-    height: auto !important;
     image-rendering: pixelated !important;
     image-rendering: crisp-edges !important;
 }

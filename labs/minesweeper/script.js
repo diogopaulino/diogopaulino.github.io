@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 cell.addEventListener('mousedown', (e) => {
                     if (gameOver) return;
-                    if (e.button === 0) { // Left click
+                    if (e.button === 0) {
                         resetBtn.innerText = '😮';
                     }
                 });
@@ -89,8 +89,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // Prevent context menu on right click
                 cell.addEventListener('contextmenu', e => e.preventDefault());
+
+                let touchTimer = null;
+                let touchMoved = false;
+
+                cell.addEventListener('touchstart', (e) => {
+                    if (gameOver) return;
+                    touchMoved = false;
+                    resetBtn.innerText = '😮';
+                    touchTimer = setTimeout(() => {
+                        if (!touchMoved) {
+                            handleRightClick(r, c);
+                            touchTimer = null;
+                        }
+                    }, 500);
+                }, { passive: true });
+
+                cell.addEventListener('touchmove', () => {
+                    touchMoved = true;
+                    if (touchTimer) {
+                        clearTimeout(touchTimer);
+                        touchTimer = null;
+                    }
+                }, { passive: true });
+
+                cell.addEventListener('touchend', (e) => {
+                    if (gameOver) return;
+                    resetBtn.innerText = '🙂';
+                    if (touchTimer) {
+                        clearTimeout(touchTimer);
+                        touchTimer = null;
+                        if (!touchMoved) {
+                            e.preventDefault();
+                            handleClick(r, c);
+                        }
+                    }
+                });
 
                 boardElement.appendChild(cell);
             }

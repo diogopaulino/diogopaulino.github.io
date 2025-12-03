@@ -1,0 +1,719 @@
+:root {
+    --f1-red: #e10600;
+    --f1-black: #15151e;
+    --f1-white: #ffffff;
+    --f1-gray: #38383f;
+    --track-color: #2d2d35;
+    --grass-color: #0d1a0d;
+    --hud-bg: rgba(15, 15, 20, 0.85);
+    --glow-red: rgba(225, 6, 0, 0.5);
+}
+
+[data-theme="dark"] {
+    --grass-color: #080f08;
+    --track-color: #1a1a22;
+}
+
+* {
+    user-select: none;
+    -webkit-user-select: none;
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    touch-action: none;
+    height: 100%;
+}
+
+body {
+    background: var(--grass-color);
+}
+
+.container {
+    max-width: 100%;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: linear-gradient(to bottom, rgba(15, 15, 20, 0.9), transparent);
+    padding: 0.8rem 1rem !important;
+    margin-bottom: 0 !important;
+}
+
+.app-logo {
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 1rem !important;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.f1-logo {
+    background: var(--f1-red);
+    color: white;
+    padding: 0.15rem 0.4rem;
+    font-weight: 900;
+    border-radius: 3px;
+    font-size: 0.9rem;
+}
+
+.game-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--grass-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+canvas#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: var(--grass-color);
+}
+
+.hud {
+    position: absolute;
+    top: 55px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.hud-left,
+.hud-right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.position-display,
+.lap-display,
+.time-display,
+.best-display {
+    background: var(--hud-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(225, 6, 0, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.label {
+    font-size: 0.55rem;
+    color: var(--f1-red);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+}
+
+.value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--f1-white);
+}
+
+.total {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.time-value {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.hud-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+}
+
+.telemetry-panel {
+    background: var(--hud-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(225, 6, 0, 0.25);
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.speedometer {
+    position: relative;
+}
+
+.speed-ring {
+    width: 90px;
+    height: 90px;
+    position: relative;
+}
+
+.speed-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.speed-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.08);
+    stroke-width: 6;
+}
+
+.speed-fill {
+    fill: none;
+    stroke: var(--f1-red);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 339.292;
+    stroke-dashoffset: 339.292;
+    transition: stroke-dashoffset 0.05s linear;
+    filter: drop-shadow(0 0 6px var(--glow-red));
+}
+
+.speed-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+}
+
+.speed-value span:first-child {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: block;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.speed-value .unit {
+    font-size: 0.45rem;
+    opacity: 0.5;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.1em;
+}
+
+.gear-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gear-label {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.15em;
+}
+
+.gear-value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--f1-white);
+    text-shadow: 0 0 15px var(--glow-red);
+    min-width: 30px;
+    text-align: center;
+}
+
+.rpm-display {
+    width: 100%;
+}
+
+.rpm-bar-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.rpm-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00d2be, #00d2be 70%, #ff8000 85%, #e10600 100%);
+    border-radius: 4px;
+    transition: width 0.05s linear, background 0.1s ease;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.rpm-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3px;
+    font-size: 0.4rem;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0;
+}
+
+.minimap-container {
+    position: absolute;
+    bottom: 60px;
+    right: 10px;
+    width: 120px;
+    height: 120px;
+    background: var(--hud-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
+    border: 1px solid rgba(225, 6, 0, 0.25);
+    padding: 6px;
+    z-index: 10;
+}
+
+#minimapCanvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 15, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay-content {
+    text-align: center;
+    max-width: 450px;
+    padding: 1.5rem;
+}
+
+.f1-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.05em;
+}
+
+.f1-red {
+    color: var(--f1-red);
+    text-shadow: 0 0 25px var(--glow-red);
+}
+
+.f1-white {
+    color: var(--f1-white);
+    margin-left: 0.4rem;
+}
+
+.car-select {
+    margin-bottom: 1.5rem;
+}
+
+.select-label {
+    display: block;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.2em;
+}
+
+.team-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+}
+
+.team-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid transparent;
+    padding: 0.7rem 0.8rem;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.team-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.team-btn.selected {
+    border-color: var(--f1-red);
+    background: rgba(225, 6, 0, 0.1);
+}
+
+.team-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.controls-info {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.control-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.key {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.35rem 0.7rem;
+    border-radius: 5px;
+    font-weight: 600;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.start-button {
+    background: var(--f1-red);
+    border: none;
+    padding: 0.9rem 2rem;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    letter-spacing: 0.1em;
+    pointer-events: auto;
+}
+
+.start-button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 25px var(--glow-red);
+}
+
+.start-button:active {
+    transform: scale(0.98);
+}
+
+.lights {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 0.6rem;
+}
+
+.light {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.start-button:hover .light {
+    background: var(--f1-red);
+    box-shadow: 0 0 8px var(--f1-red);
+}
+
+.countdown-overlay {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.countdown-lights {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 1.5rem;
+}
+
+.countdown-light {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #222;
+    border: 3px solid #444;
+    transition: all 0.3s ease;
+}
+
+.countdown-light.active {
+    background: var(--f1-red);
+    box-shadow: 0 0 25px var(--f1-red), 0 0 50px var(--glow-red);
+}
+
+.countdown-light.go {
+    background: #00ff00;
+    box-shadow: 0 0 25px #00ff00, 0 0 50px rgba(0, 255, 0, 0.5);
+}
+
+.countdown-text {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.1em;
+}
+
+.finish-content {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(25px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.checkered-flag {
+    width: 70px;
+    height: 50px;
+    margin: 0 auto 1.2rem;
+    background: repeating-conic-gradient(#000 0deg 90deg, #fff 90deg 180deg) 0 0/16px 16px;
+    border-radius: 3px;
+}
+
+.finish-content h2 {
+    font-size: 1.6rem;
+    color: white;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.05em;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.result-label {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.1em;
+}
+
+.result-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+}
+
+.position-value {
+    color: var(--f1-red);
+    font-size: 1.3rem;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(15, 15, 20, 0.9), transparent);
+    padding: 0.8rem !important;
+    margin-top: 0 !important;
+    border-top: none !important;
+    z-index: 10;
+    font-size: 0.75rem;
+}
+
+@media (max-width: 700px) {
+    header {
+        padding: 0.6rem !important;
+    }
+    
+    .hud {
+        top: 50px;
+        left: 8px;
+        right: 8px;
+    }
+    
+    .hud-center {
+        position: static;
+        transform: none;
+        order: -1;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .hud {
+        flex-wrap: wrap;
+    }
+    
+    .hud-left, .hud-right {
+        flex-direction: row;
+        gap: 6px;
+    }
+    
+    .telemetry-panel {
+        flex-direction: row;
+        padding: 8px 12px;
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .speed-ring {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .speed-value span:first-child {
+        font-size: 1rem;
+    }
+    
+    .gear-value {
+        font-size: 1.5rem;
+    }
+    
+    .rpm-display {
+        width: 80px;
+    }
+    
+    .position-display,
+    .lap-display,
+    .time-display,
+    .best-display {
+        padding: 5px 8px;
+    }
+    
+    .value {
+        font-size: 0.9rem;
+    }
+    
+    .time-value {
+        font-size: 0.7rem;
+    }
+    
+    .minimap-container {
+        width: 90px;
+        height: 90px;
+        bottom: 50px;
+    }
+    
+    .f1-title {
+        font-size: 1.6rem;
+    }
+    
+    .team-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .controls-info {
+        gap: 0.8rem;
+    }
+    
+    .countdown-light {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .countdown-text {
+        font-size: 2.5rem;
+    }
+    
+    footer {
+        padding: 0.6rem !important;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .hud-right {
+        display: none;
+    }
+    
+    .app-logo {
+        font-size: 0.85rem !important;
+    }
+    
+    .minimap-container {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .telemetry-panel {
+        padding: 6px 10px;
+    }
+    
+    .rpm-display {
+        display: none;
+    }
+}
+
+@media (min-width: 1200px) {
+    .speed-ring {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .speed-value span:first-child {
+        font-size: 1.5rem;
+    }
+    
+    .gear-value {
+        font-size: 2.5rem;
+    }
+    
+    .minimap-container {
+        width: 140px;
+        height: 140px;
+    }
+}

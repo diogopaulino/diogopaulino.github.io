@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Flow - Diogo Paulino</title>
+    <meta name="description" content="Visualização interativa de aurora boreal com partículas e campos de fluxo.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+            <div class="app-logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+                    <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
+                    <path d="M19 11h2m-1 -1v2" />
+                </svg>
+                Aurora Flow
+            </div>
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <canvas id="canvas"></canvas>
+
+        <div class="controls">
+            <div class="control-column">
+                <div class="control-group">
+                    <label>Tema de Cores</label>
+                    <div class="color-swatches">
+                        <button class="color-swatch active" data-theme="aurora" title="Aurora">
+                            <span style="background: linear-gradient(135deg, #00ff88, #00d4ff, #8b5cf6)"></span>
+                        </button>
+                        <button class="color-swatch" data-theme="sunset" title="Sunset">
+                            <span style="background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3)"></span>
+                        </button>
+                        <button class="color-swatch" data-theme="ocean" title="Ocean">
+                            <span style="background: linear-gradient(135deg, #0066ff, #00ffff, #00ff99)"></span>
+                        </button>
+                        <button class="color-swatch" data-theme="cosmic" title="Cosmic">
+                            <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899, #f43f5e)"></span>
+                        </button>
+                        <button class="color-swatch" data-theme="neon" title="Neon">
+                            <span style="background: linear-gradient(135deg, #39ff14, #ff073a, #00fff7)"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Modo de Interação</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" data-mode="attract">Atrair</button>
+                        <button class="toggle-btn" data-mode="repel">Repelir</button>
+                        <button class="toggle-btn" data-mode="vortex">Vórtex</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-column">
+                <div class="control-group">
+                    <label>Velocidade do Fluxo</label>
+                    <input type="range" id="flowSpeed" min="0.1" max="3" step="0.1" value="1">
+                </div>
+                <div class="control-group">
+                    <label>Densidade</label>
+                    <input type="range" id="density" min="500" max="5000" step="100" value="2000">
+                </div>
+                <div class="control-group">
+                    <label>Turbulência</label>
+                    <input type="range" id="turbulence" min="0.001" max="0.01" step="0.001" value="0.004">
+                </div>
+            </div>
+
+            <div class="control-actions">
+                <button id="reset">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    Reiniciar
+                </button>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Partículas</span>
+                        <span class="stat-value" id="particleCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">FPS</span>
+                        <span class="stat-value" id="fps">60</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <p>Mova o mouse para interagir com as partículas</p>
+        </div>
+
+        <footer>
+            <span>criado com ajuda da IA :) •</span>
+            <a href="/">← voltar para home</a>
+        </footer>
+    </div>
+
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
+
