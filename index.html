@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diogo Paulino - Tech Manager | Design & Code Lover</title>
-  <meta name="description" content="Diogo Paulino - Tech Manager especializado em design e código. Construindo experiências digitais simples com design, código e IA.">
+  <meta name="description"
+    content="Diogo Paulino - Tech Manager especializado em design e código. Construindo experiências digitais simples com design, código e IA.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://www.diogopaulino.com.br/">
 
@@ -12,7 +14,8 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.diogopaulino.com.br/">
   <meta property="og:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
-  <meta property="og:description" content="Construindo experiências digitais simples com design, código e um pouco de IA">
+  <meta property="og:description"
+    content="Construindo experiências digitais simples com design, código e um pouco de IA">
   <meta property="og:image" content="https://www.diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta property="og:locale" content="pt_BR">
 
@@ -20,7 +23,8 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:url" content="https://www.diogopaulino.com.br/">
   <meta name="twitter:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
-  <meta name="twitter:description" content="Construindo experiências digitais simples com design, código e um pouco de IA">
+  <meta name="twitter:description"
+    content="Construindo experiências digitais simples com design, código e um pouco de IA">
   <meta name="twitter:image" content="https://www.diogopaulino.com.br/assets/img/diogo.jpeg">
 
   <!-- Preconnect for performance -->
@@ -40,17 +44,17 @@
   <!-- Theme Initialization (Prevents FOUC) -->
   <meta name="theme-color" content="#fafbfc">
   <script>
-    (function() {
+    (function () {
       try {
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        
+
         // Update theme-color meta tag
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
           metaThemeColor.setAttribute('content', savedTheme === 'dark' ? '#0a0a0a' : '#fafbfc');
         }
-      } catch (e) {}
+      } catch (e) { }
     })();
   </script>
 
@@ -71,29 +75,33 @@
   }
   </script>
 </head>
+
 <body>
   <main>
     <article class="card-container minimal" itemscope itemtype="https://schema.org/Person">
       <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema"></button>
-      <img src="assets/img/diogo.jpeg" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal" id="profile-pic" itemprop="image" loading="lazy">
+      <img src="assets/img/diogo.jpeg" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal"
+        id="profile-pic" itemprop="image" loading="lazy">
       <h1 class="main-name" itemprop="name">Diogo Paulino</h1>
       <div class="subtitle" itemprop="jobTitle">Tech Manager</div>
       <div class="subdesc">Design & Code lover</div>
-      <p class="impact-phrase" itemprop="description">Construindo experiências digitais simples com design, código e um pouco de IA :)</p>
+      <p class="impact-phrase" itemprop="description">Construindo experiências digitais simples com design, código e um
+        pouco de IA :)</p>
       <nav class="social-icons minimal" aria-label="Links de redes sociais">
-        <a href="https://github.com/diogopaulino" target="_blank" aria-label="Perfil no GitHub de Diogo Paulino" class="icon-github-outline" rel="noopener noreferrer" itemprop="sameAs" title="GitHub"></a>
-        <a href="https://br.linkedin.com/in/diogopaulino" target="_blank" aria-label="Perfil no LinkedIn de Diogo Paulino" class="icon-linkedin-outline" rel="noopener noreferrer" itemprop="sameAs" title="LinkedIn"></a>
+        <a href="https://github.com/diogopaulino" target="_blank" aria-label="Perfil no GitHub de Diogo Paulino"
+          class="icon-github-outline" rel="noopener noreferrer" itemprop="sameAs" title="GitHub"></a>
+        <a href="https://br.linkedin.com/in/diogopaulino" target="_blank"
+          aria-label="Perfil no LinkedIn de Diogo Paulino" class="icon-linkedin-outline" rel="noopener noreferrer"
+          itemprop="sameAs" title="LinkedIn"></a>
       </nav>
       <div class="labs-easter-egg" id="labs-easter-egg">
         <a href="labs/index.html" class="labs-badge" aria-label="Labs">
-          <svg class="labs-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M9 3v8l-3 4.5V21h12v-5.5L15 11V3h-6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M9 3h6M7 21h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
-            <circle cx="9.5" cy="15" r="0.8" fill="currentColor" opacity="0.6"/>
-            <circle cx="14.5" cy="15.5" r="0.7" fill="currentColor" opacity="0.4"/>
-          </svg>
           <span class="labs-text">labs</span>
+          <svg class="labs-sparkles" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
+            <path d="M19 15L20 18L23 19L20 20L19 23L18 20L15 19L18 18L19 15Z" />
+            <path d="M5 16L6 19L9 20L6 21L5 24L4 21L1 20L4 19L5 16Z" />
+          </svg>
         </a>
       </div>
     </article>
@@ -101,4 +109,5 @@
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/easter-egg.js"></script>
 </body>
+
 </html>

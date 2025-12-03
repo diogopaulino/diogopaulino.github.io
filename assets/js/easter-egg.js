@@ -42,7 +42,17 @@
     setTimeout(hide, 500);
   });
 
-  pic.addEventListener('click', reveal);
+  function spin() {
+    pic.classList.remove('coin-spin');
+    void pic.offsetWidth; // Force reflow
+    pic.classList.add('coin-spin');
+    setTimeout(() => pic.classList.remove('coin-spin'), 1500);
+  }
+
+  pic.addEventListener('click', () => {
+    reveal();
+    spin();
+  });
 
   let touchTimer = null;
   let touchDur = 0;
@@ -60,7 +70,10 @@
 
   pic.addEventListener('touchend', () => {
     clearInterval(touchTimer);
-    if (touchDur < 300) reveal();
+    if (touchDur < 300) {
+      reveal();
+      spin();
+    }
   }, { passive: true });
 
   pic.addEventListener('touchcancel', () => clearInterval(touchTimer));
