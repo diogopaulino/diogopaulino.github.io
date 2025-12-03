@@ -5,6 +5,8 @@ const ctx = canvas.getContext('2d');
 let gameRunning = false;
 let score = 0;
 let lives = 3;
+let level = 1;
+let bulletLevel = 1;
 let animationId;
 let lastTime = 0;
 let gameWidth = 0;
@@ -126,7 +128,7 @@ function initEnemies() {
             });
         }
     }
-    enemySpeed = ENEMY_SPEED_BASE + (score / 100); // Increase speed with score
+    enemySpeed = ENEMY_SPEED_BASE + (level * 10) + (score / 200);
 }
 
 function createParticles(x, y, color) {
@@ -144,6 +146,9 @@ function createParticles(x, y, color) {
 
 // Input Handling
 window.addEventListener('keydown', e => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
     if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = true;
     if (e.key === ' ' && gameRunning) fireBullet();
 });
@@ -158,14 +163,60 @@ canvas.addEventListener('mousedown', () => {
 });
 
 function fireBullet() {
-    if (bullets.length < 5) { // Max bullets on screen
-        bullets.push({
-            x: player.x + player.width / 2 - 2,
-            y: player.y,
-            width: 4,
-            height: 10,
-            color: '#fff'
-        });
+    const maxBullets = 5 + bulletLevel * 2;
+    if (bullets.length < maxBullets) {
+        if (bulletLevel === 1) {
+            bullets.push({
+                x: player.x + player.width / 2 - 2,
+                y: player.y,
+                width: 4,
+                height: 10,
+                color: '#fff',
+                vx: 0
+            });
+        } else if (bulletLevel === 2) {
+            bullets.push({
+                x: player.x + 5,
+                y: player.y,
+                width: 4,
+                height: 10,
+                color: '#00ff00',
+                vx: 0
+            });
+            bullets.push({
+                x: player.x + player.width - 9,
+                y: player.y,
+                width: 4,
+                height: 10,
+                color: '#00ff00',
+                vx: 0
+            });
+        } else {
+            bullets.push({
+                x: player.x + player.width / 2 - 2,
+                y: player.y,
+                width: 4,
+                height: 10,
+                color: '#ff00ff',
+                vx: 0
+            });
+            bullets.push({
+                x: player.x,
+                y: player.y + 5,
+                width: 4,
+                height: 10,
+                color: '#ff00ff',
+                vx: -50
+            });
+            bullets.push({
+                x: player.x + player.width - 4,
+                y: player.y + 5,
+                width: 4,
+                height: 10,
+                color: '#ff00ff',
+                vx: 50
+            });
+        }
         playSound('shoot');
     }
 }
@@ -185,22 +236,31 @@ function update(dt) {
     // Bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
         bullets[i].y -= BULLET_SPEED * dt;
+        if (bullets[i].vx) bullets[i].x += bullets[i].vx * dt;
         if (bullets[i].y < 0) bullets.splice(i, 1);
     }
 
     // Enemies
-    let hitWall = false;
+    let hitRight = false;
+    let hitLeft = false;
+
     enemies.forEach(enemy => {
         enemy.x += enemySpeed * enemyDirection * dt;
-        if (enemy.x <= 0 || enemy.x + enemy.width >= gameWidth) {
-            hitWall = true;
-        }
+        if (enemy.x <= 0) hitLeft = true;
+        if (enemy.x + enemy.width >= gameWidth) hitRight = true;
     });
 
-    if (hitWall) {
-        enemyDirection *= -1;
+    if (hitLeft && enemyDirection === -1) {
+        enemyDirection = 1;
         enemies.forEach(enemy => {
-            enemy.y += 20; // Move down
+            enemy.y += 20;
+            enemy.x += 5; // Push away from wall
+        });
+    } else if (hitRight && enemyDirection === 1) {
+        enemyDirection = -1;
+        enemies.forEach(enemy => {
+            enemy.y += 20;
+            enemy.x -= 5; // Push away from wall
         });
     }
 
@@ -226,9 +286,14 @@ function update(dt) {
 
                 // Check win/respawn
                 if (enemies.length === 0) {
+                    level++;
                     initEnemies();
-                    enemySpeed += 20;
                 }
+
+                // Level up bullets
+                if (score >= 500 && bulletLevel < 2) bulletLevel = 2;
+                if (score >= 1500 && bulletLevel < 3) bulletLevel = 3;
+
                 break;
             }
         }
@@ -333,6 +398,8 @@ function startGame() {
     gameRunning = true;
     score = 0;
     lives = 3;
+    level = 1;
+    bulletLevel = 1;
     document.getElementById('score').innerText = score;
     document.getElementById('lives').innerText = lives;
     document.getElementById('startScreen').classList.add('hidden');
