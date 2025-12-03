@@ -72,7 +72,7 @@ function applySettings() {
 }
 
 function updateSettingsUI() {
-    document.querySelectorAll('.setting-options').forEach(group => {
+    document.querySelectorAll('.btn-group').forEach(group => {
         const settingName = group.dataset.setting;
         if (settings[settingName]) {
             group.querySelectorAll('button').forEach(btn => {
@@ -147,7 +147,7 @@ function init() {
         }
     });
 
-    document.querySelectorAll('.setting-options').forEach(group => {
+    document.querySelectorAll('.btn-group').forEach(group => {
         const settingName = group.dataset.setting;
         group.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', () => {

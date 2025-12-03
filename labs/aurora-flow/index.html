@@ -83,183 +83,224 @@
             
             <div class="controls-scroll">
                 <div class="control-section">
-                    <div class="section-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/>
-                            <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/>
-                            <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/>
-                            <circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/>
-                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z"/>
-                        </svg>
-                        Cores
-                    </div>
-                    <div class="color-swatches">
+                    <div class="section-title">Tema de Cores</div>
+                    <div class="color-grid">
                         <button class="color-swatch active" data-theme="aurora" title="Aurora">
                             <span style="background: linear-gradient(135deg, #00ff88, #00d4ff, #8b5cf6)"></span>
+                            <small>Aurora</small>
                         </button>
                         <button class="color-swatch" data-theme="sunset" title="Sunset">
                             <span style="background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3)"></span>
+                            <small>Sunset</small>
                         </button>
                         <button class="color-swatch" data-theme="ocean" title="Ocean">
                             <span style="background: linear-gradient(135deg, #0066ff, #00ffff, #00ff99)"></span>
+                            <small>Ocean</small>
                         </button>
                         <button class="color-swatch" data-theme="cosmic" title="Cosmic">
                             <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899, #f43f5e)"></span>
+                            <small>Cosmic</small>
                         </button>
                         <button class="color-swatch" data-theme="neon" title="Neon">
                             <span style="background: linear-gradient(135deg, #39ff14, #ff073a, #00fff7)"></span>
+                            <small>Neon</small>
                         </button>
                         <button class="color-swatch" data-theme="fire" title="Fire">
                             <span style="background: linear-gradient(135deg, #ff4500, #ff8c00, #ffd700)"></span>
+                            <small>Fire</small>
                         </button>
                         <button class="color-swatch" data-theme="forest" title="Forest">
                             <span style="background: linear-gradient(135deg, #228b22, #32cd32, #7cfc00)"></span>
+                            <small>Forest</small>
                         </button>
                         <button class="color-swatch" data-theme="candy" title="Candy">
                             <span style="background: linear-gradient(135deg, #ff69b4, #ba55d3, #00ced1)"></span>
+                            <small>Candy</small>
                         </button>
                     </div>
                 </div>
 
                 <div class="control-section">
-                    <div class="section-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                        Aparência
-                    </div>
-                    <div class="control-group">
-                        <label>Forma da Partícula</label>
-                        <div class="shape-buttons">
-                            <button class="shape-btn active" data-shape="line">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="5" y1="19" x2="19" y2="5"/>
+                    <div class="section-title">Forma da Partícula</div>
+                    <div class="shape-grid">
+                        <button class="shape-btn active" data-shape="line">
+                            <div class="shape-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="4" y1="20" x2="20" y2="4"/>
                                 </svg>
-                                <span>Linha</span>
-                            </button>
-                            <button class="shape-btn" data-shape="circle">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="6"/>
+                            </div>
+                            <span>Linha</span>
+                        </button>
+                        <button class="shape-btn" data-shape="circle">
+                            <div class="shape-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="7" fill="currentColor" opacity="0.3"/>
+                                    <circle cx="12" cy="12" r="7"/>
                                 </svg>
-                                <span>Círculo</span>
-                            </button>
-                            <button class="shape-btn" data-shape="star">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="12,2 15,8.5 22,9.3 17,14 18.2,21 12,17.8 5.8,21 7,14 2,9.3 9,8.5"/>
+                            </div>
+                            <span>Círculo</span>
+                        </button>
+                        <button class="shape-btn" data-shape="star">
+                            <div class="shape-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" opacity="0.8">
+                                    <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9"/>
                                 </svg>
-                                <span>Estrela</span>
-                            </button>
-                            <button class="shape-btn" data-shape="spark">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2l2.8 2.8M5.6 18.4l2.8-2.8m7.2-7.2l2.8-2.8"/>
+                            </div>
+                            <span>Estrela</span>
+                        </button>
+                        <button class="shape-btn" data-shape="spark">
+                            <div class="shape-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v6m0 8v6M2 12h6m8 0h6"/>
+                                    <path d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24" opacity="0.6"/>
                                 </svg>
-                                <span>Faísca</span>
-                            </button>
-                            <button class="shape-btn" data-shape="glow">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="4" fill="currentColor"/>
-                                    <circle cx="12" cy="12" r="8" opacity="0.3"/>
+                            </div>
+                            <span>Faísca</span>
+                        </button>
+                        <button class="shape-btn" data-shape="glow">
+                            <div class="shape-icon glow-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="12" r="4"/>
+                                    <circle cx="12" cy="12" r="7" opacity="0.3"/>
+                                    <circle cx="12" cy="12" r="10" opacity="0.1"/>
                                 </svg>
-                                <span>Brilho</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <label>Modo de Mistura</label>
-                        <select id="blendMode">
-                            <option value="lighter">Aditivo (Brilhante)</option>
-                            <option value="source-over" selected>Normal</option>
-                            <option value="screen">Screen</option>
-                            <option value="overlay">Overlay</option>
-                            <option value="multiply">Multiply</option>
-                            <option value="color-dodge">Color Dodge</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label>Efeito de Fundo</label>
-                        <select id="bgEffect">
-                            <option value="none">Nenhum</option>
-                            <option value="stars" selected>Estrelas</option>
-                            <option value="grid">Grade</option>
-                            <option value="nebula">Nebulosa</option>
-                            <option value="rain">Chuva Digital</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label>Tamanho: <span id="sizeValue">1.5</span></label>
-                        <input type="range" id="particleSize" min="0.5" max="5" step="0.1" value="1.5">
-                    </div>
-                    <div class="control-group">
-                        <label>Rastro: <span id="trailValue">95</span>%</label>
-                        <input type="range" id="trailLength" min="80" max="100" step="1" value="95">
+                            </div>
+                            <span>Brilho</span>
+                        </button>
                     </div>
                 </div>
 
                 <div class="control-section">
-                    <div class="section-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                        </svg>
-                        Comportamento
+                    <div class="section-title">Interação</div>
+                    <div class="interaction-grid">
+                        <button class="interaction-btn active" data-mode="attract">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+                            </svg>
+                            <span>Atrair</span>
+                        </button>
+                        <button class="interaction-btn" data-mode="repel">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 2l2 2m-2-2l-2 2m2 18l2-2m-2 2l-2-2M2 12l2 2m-2-2l2-2m18 2l-2 2m2-2l-2-2"/>
+                            </svg>
+                            <span>Repelir</span>
+                        </button>
+                        <button class="interaction-btn" data-mode="vortex">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0"/>
+                                <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0"/>
+                                <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            </svg>
+                            <span>Vórtex</span>
+                        </button>
                     </div>
-                    <div class="control-group">
-                        <label>Modo de Interação</label>
-                        <div class="toggle-group">
-                            <button class="toggle-btn active" data-mode="attract">Atrair</button>
-                            <button class="toggle-btn" data-mode="repel">Repelir</button>
-                            <button class="toggle-btn" data-mode="vortex">Vórtex</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="section-title">Efeitos</div>
+                    <div class="effects-row">
+                        <div class="select-group">
+                            <label>Mistura</label>
+                            <select id="blendMode">
+                                <option value="lighter">Aditivo</option>
+                                <option value="source-over" selected>Normal</option>
+                                <option value="screen">Screen</option>
+                                <option value="color-dodge">Dodge</option>
+                            </select>
+                        </div>
+                        <div class="select-group">
+                            <label>Fundo</label>
+                            <select id="bgEffect">
+                                <option value="none">Nenhum</option>
+                                <option value="stars" selected>Estrelas</option>
+                                <option value="grid">Grade</option>
+                                <option value="nebula">Nebulosa</option>
+                                <option value="rain">Matrix</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="control-group">
-                        <label>Velocidade: <span id="speedValue">1</span>x</label>
-                        <input type="range" id="flowSpeed" min="0.1" max="3" step="0.1" value="1">
-                    </div>
-                    <div class="control-group">
-                        <label>Densidade: <span id="densityValue">2000</span></label>
-                        <input type="range" id="density" min="500" max="8000" step="100" value="2000">
-                    </div>
-                    <div class="control-group">
-                        <label>Turbulência: <span id="turbValue">0.004</span></label>
-                        <input type="range" id="turbulence" min="0.001" max="0.015" step="0.001" value="0.004">
-                    </div>
-                    <div class="control-group">
-                        <label>Força de Interação: <span id="forceValue">3</span></label>
-                        <input type="range" id="interactionForce" min="1" max="10" step="0.5" value="3">
+                </div>
+
+                <div class="control-section">
+                    <div class="section-title">Ajustes</div>
+                    <div class="sliders-grid">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Velocidade</label>
+                                <span class="slider-value" id="speedValue">1.0</span>
+                            </div>
+                            <input type="range" id="flowSpeed" min="0.1" max="3" step="0.1" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Tamanho</label>
+                                <span class="slider-value" id="sizeValue">1.5</span>
+                            </div>
+                            <input type="range" id="particleSize" min="0.5" max="5" step="0.1" value="1.5">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Densidade</label>
+                                <span class="slider-value" id="densityValue">2000</span>
+                            </div>
+                            <input type="range" id="density" min="500" max="8000" step="100" value="2000">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Rastro</label>
+                                <span class="slider-value" id="trailValue">95%</span>
+                            </div>
+                            <input type="range" id="trailLength" min="80" max="100" step="1" value="95">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Turbulência</label>
+                                <span class="slider-value" id="turbValue">0.004</span>
+                            </div>
+                            <input type="range" id="turbulence" min="0.001" max="0.015" step="0.001" value="0.004">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Força</label>
+                                <span class="slider-value" id="forceValue">3.0</span>
+                            </div>
+                            <input type="range" id="interactionForce" min="1" max="10" step="0.5" value="3">
+                        </div>
                     </div>
                 </div>
 
-                <div class="control-actions">
-                    <button id="random" class="action-btn random-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 3h5v5"/>
-                            <path d="M21 3l-7.5 7.5"/>
-                            <path d="M8 3H3v5"/>
-                            <path d="M3 3l7.5 7.5"/>
-                            <path d="M16 21h5v-5"/>
-                            <path d="M21 21l-7.5-7.5"/>
-                            <path d="M8 21H3v-5"/>
-                            <path d="M3 21l7.5-7.5"/>
-                        </svg>
-                        Random
-                    </button>
-                    <button id="reset" class="action-btn reset-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
-                        </svg>
-                        Reiniciar
-                    </button>
-                </div>
-
-                <div class="stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Partículas</span>
-                        <span class="stat-value" id="particleCount">0</span>
+                <div class="control-footer">
+                    <div class="action-buttons">
+                        <button id="random" class="action-btn random-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/>
+                                <path d="m18 2 4 4-4 4"/>
+                                <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/>
+                                <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>
+                                <path d="m18 14 4 4-4 4"/>
+                            </svg>
+                            Random
+                        </button>
+                        <button id="reset" class="action-btn reset-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                            Reset
+                        </button>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">FPS</span>
-                        <span class="stat-value" id="fps">60</span>
+                    <div class="stats-bar">
+                        <div class="stat">
+                            <span class="stat-value" id="particleCount">0</span>
+                            <span class="stat-label">partículas</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <span class="stat-value" id="fps">60</span>
+                            <span class="stat-label">fps</span>
+                        </div>
                     </div>
                 </div>
             </div>

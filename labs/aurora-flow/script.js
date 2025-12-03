@@ -502,7 +502,7 @@ canvas.addEventListener('touchend', () => {
 
 document.getElementById('flowSpeed').addEventListener('input', (e) => {
     flowSpeed = parseFloat(e.target.value);
-    document.getElementById('speedValue').textContent = flowSpeed;
+    document.getElementById('speedValue').textContent = flowSpeed.toFixed(1);
 });
 
 document.getElementById('density').addEventListener('input', (e) => {
@@ -533,7 +533,7 @@ document.getElementById('particleSize').addEventListener('input', (e) => {
 
 document.getElementById('trailLength').addEventListener('input', (e) => {
     trailLength = parseInt(e.target.value) / 100;
-    document.getElementById('trailValue').textContent = e.target.value;
+    document.getElementById('trailValue').textContent = e.target.value + '%';
 });
 
 document.getElementById('interactionForce').addEventListener('input', (e) => {
