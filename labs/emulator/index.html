@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Genesis Vault - Labs</title>
+    <title>Emulator - Labs</title>
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="lib/nostalgist.umd.js"></script>
 </head>
 <body>
@@ -20,13 +17,9 @@
                 </svg>
                 Labs
             </a>
-            <div class="app-logo">
-                <span class="logo-icon">▶</span>
-                <span class="logo-text">GENESIS<span class="logo-accent">VAULT</span></span>
-            </div>
+            <h1 class="app-logo">Emulator</h1>
             <button class="theme-toggle" aria-label="Toggle theme">
-                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
                     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -37,75 +30,35 @@
                     <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
                     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                 </svg>
-                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
         </header>
 
-        <main id="app">
-            <section id="catalog" class="catalog">
-                <div class="catalog-filters">
-                    <button class="filter-btn active" data-filter="all">Todos</button>
-                    <button class="filter-btn" data-filter="action">Ação</button>
-                    <button class="filter-btn" data-filter="platform">Plataforma</button>
-                    <button class="filter-btn" data-filter="fighting">Luta</button>
-                    <button class="filter-btn" data-filter="rpg">RPG</button>
-                    <button class="filter-btn" data-filter="sports">Esportes</button>
-                </div>
-
-                <div class="games-grid" id="games-grid"></div>
-
-                <div class="custom-rom-section">
-                    <div class="divider">
-                        <span>ou</span>
-                    </div>
-                    <div class="custom-rom-box" id="drop-zone">
-                        <div class="custom-rom-content">
-                            <span class="custom-rom-icon">📁</span>
-                            <p>Carregar ROM personalizada</p>
-                            <span class="formats">.md .bin .gen .smd .zip</span>
-                        </div>
-                        <input type="file" id="rom-input" accept=".md,.bin,.gen,.smd,.zip" hidden>
-                    </div>
+        <main>
+            <section id="catalog">
+                <nav class="tabs">
+                    <button class="tab active" data-console="megadrive">Mega Drive</button>
+                    <button class="tab" data-console="snes">Super Nintendo</button>
+                </nav>
+                <div id="games" class="games"></div>
+                <div class="upload">
+                    <p>ou arraste sua ROM aqui</p>
+                    <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.sfc,.smc,.zip">
                 </div>
             </section>
 
-            <section id="player" class="player hidden">
-                <div class="player-header">
-                    <button class="back-to-catalog" id="back-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                        <span>Voltar</span>
-                    </button>
-                    <div class="now-playing">
-                        <span class="now-playing-label">Jogando:</span>
-                        <span class="now-playing-title" id="game-title"></span>
-                    </div>
-                    <div class="player-controls">
-                        <button class="control-btn" id="fullscreen-btn" title="Tela cheia">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                            </svg>
-                        </button>
-                    </div>
+            <section id="player" class="hidden">
+                <div class="player-bar">
+                    <button id="btn-back">← Voltar</button>
+                    <span id="game-name"></span>
+                    <button id="btn-fs">Fullscreen</button>
                 </div>
-                <div class="emulator-wrapper">
-                    <div id="emulator-container"></div>
-                    <div class="loading-screen" id="loading-screen">
-                        <div class="loading-content">
-                            <div class="loading-cover" id="loading-cover"></div>
-                            <div class="loading-info">
-                                <h2 id="loading-title">Carregando...</h2>
-                                <div class="loading-bar">
-                                    <div class="loading-progress"></div>
-                                </div>
-                                <p class="loading-tip">Dica: Use as setas para mover e Z/X para A/B</p>
-                            </div>
-                        </div>
-                    </div>
+                <div id="screen"></div>
+                <div id="loader" class="hidden">
+                    <div class="spin"></div>
+                    <span>Carregando...</span>
                 </div>
             </section>
         </main>
@@ -115,7 +68,6 @@
             <a href="/">← voltar para home</a>
         </footer>
     </div>
-
     <script src="../shared.js"></script>
     <script src="script.js"></script>
 </body>
