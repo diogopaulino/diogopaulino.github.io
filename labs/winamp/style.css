@@ -610,8 +610,8 @@
 .eq-slider.vertical {
     writing-mode: vertical-lr;
     direction: rtl;
-    width: 14px;
-    height: 38px;
+    width: 12px;
+    height: 36px;
     background: linear-gradient(180deg, 
         #00ff00 0%, 
         #00dd00 15%,
@@ -630,8 +630,8 @@
 
 .eq-slider.vertical::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px;
-    height: 6px;
+    width: 14px;
+    height: 5px;
     background: linear-gradient(180deg, #c0c0c0 0%, #909090 40%, #707070 60%, #909090 100%);
     border: 1px solid;
     border-color: #e0e0e0 #505050 #404040 #d0d0d0;
@@ -641,8 +641,8 @@
 }
 
 .eq-slider.vertical::-moz-range-thumb {
-    width: 16px;
-    height: 6px;
+    width: 14px;
+    height: 5px;
     background: linear-gradient(180deg, #c0c0c0 0%, #909090 40%, #707070 60%, #909090 100%);
     border: 1px solid;
     border-color: #e0e0e0 #505050 #404040 #d0d0d0;
@@ -657,16 +657,16 @@
 }
 
 .eq-presets select {
-    width: 56px;
-    height: 14px;
-    font-size: 7px;
+    width: 44px;
+    height: 13px;
+    font-size: 5px;
     background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
     color: var(--win-text);
     border: 1px solid;
     border-color: #0a0a0a #3a3a3a #3a3a3a #0a0a0a;
     cursor: pointer;
-    padding: 0 2px;
-    border-radius: 2px;
+    padding: 0 1px;
+    border-radius: 1px;
 }
 
 .eq-presets select:focus {
