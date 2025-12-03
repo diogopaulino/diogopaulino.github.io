@@ -360,16 +360,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isPlaying) item.classList.add('playing');
             }
             
+            const num = (index + 1).toString().padStart(2, '0');
             item.innerHTML = `
-                <span class="track-title">${index + 1}. ${track.title}</span>
+                <span class="track-title">${num}. ${track.title}</span>
                 <span class="track-duration">${track.duration || '--:--'}</span>
             `;
             
             item.addEventListener('click', () => {
-                loadTrack(index, true);
-            });
-            
-            item.addEventListener('dblclick', () => {
                 loadTrack(index, true);
             });
             
