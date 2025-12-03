@@ -74,12 +74,6 @@ Uma coleção de experimentos interativos e projetos criativos, explorando o que
 - Keyboard shortcuts
 - Easter eggs escondidos
 
----
 
-## 📄 License
-
-Este projeto é open source e está disponível sob a [MIT License](LICENSE).
-
----
 
 
