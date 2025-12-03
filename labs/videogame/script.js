@@ -45,20 +45,25 @@ function applySettings() {
     const canvas = screen.querySelector('canvas');
     if (!canvas) return;
 
-    // Filter logic
-    canvas.style.imageRendering = settings.filter === 'smooth' ? 'auto' : 'pixelated';
+    // Reset classes
+    canvas.className = '';
 
-    if (settings.filter === 'crt') {
-        canvas.style.filter = 'contrast(1.2) brightness(1.1) saturate(1.2)';
-    } else {
-        canvas.style.filter = '';
-    }
+    // Apply Filter Class
+    if (settings.filter === 'sharp') canvas.classList.add('filter-sharp');
+    else if (settings.filter === 'smooth') canvas.classList.add('filter-smooth');
+    else if (settings.filter === 'crt') canvas.classList.add('filter-crt');
+    else if (settings.filter === 'retro') canvas.classList.add('filter-retro');
+    else if (settings.filter === 'mono') canvas.classList.add('filter-mono');
 
     // Scale logic
     if (settings.scale === 'max') {
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.objectFit = 'contain';
+    } else if (settings.scale === 'stretch') {
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.objectFit = 'fill';
     } else {
         const baseWidth = 320;
         const baseHeight = 224;
@@ -128,7 +133,7 @@ function showControls() {
             </div>
             <div class="controls-grid">
                 <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
-                <div class="control-item"><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Botões A/B/C</div>
+                <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Botões A/B/C</div>
                 <div class="control-item"><kbd>Enter</kbd> Start</div>
                 <div class="control-item"><kbd>Shift</kbd> Select</div>
                 <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
@@ -237,6 +242,38 @@ function init() {
     const style = document.createElement('style');
     style.textContent = `@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`;
     document.head.appendChild(style);
+
+    // Key remapping for A/S/D -> Z/X/C
+    const keyMap = {
+        'a': { key: 'z', code: 'KeyZ', keyCode: 90 },
+        's': { key: 'x', code: 'KeyX', keyCode: 88 },
+        'd': { key: 'c', code: 'KeyC', keyCode: 67 },
+    };
+
+    const remapHandler = (e) => {
+        if ($('player').classList.contains('hidden')) return;
+
+        const mapping = keyMap[e.key.toLowerCase()];
+        if (mapping && e.isTrusted) {
+            const newEvent = new KeyboardEvent(e.type, {
+                key: mapping.key,
+                code: mapping.code,
+                keyCode: mapping.keyCode,
+                which: mapping.keyCode,
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+
+            Object.defineProperty(newEvent, 'keyCode', { value: mapping.keyCode });
+            Object.defineProperty(newEvent, 'which', { value: mapping.keyCode });
+
+            window.dispatchEvent(newEvent);
+        }
+    };
+
+    window.addEventListener('keydown', remapHandler);
+    window.addEventListener('keyup', remapHandler);
 
     updateSettingsUI();
 }

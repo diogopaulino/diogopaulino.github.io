@@ -18,7 +18,9 @@ main {
     overflow-y: auto;
 }
 
-.home.hidden { display: none; }
+.home.hidden {
+    display: none;
+}
 
 .play-section {
     display: grid;
@@ -60,7 +62,7 @@ main {
 .play-card-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -95,7 +97,7 @@ main {
     left: 0;
     right: 0;
     padding: 1.5rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
@@ -110,11 +112,11 @@ main {
 .play-card-info strong {
     color: #fff;
     font-size: 1.1rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .play-card-info span {
-    color: rgba(255,255,255,0.8);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.85rem;
 }
 
@@ -168,7 +170,7 @@ main {
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 1.25rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .panel-title {
@@ -224,7 +226,7 @@ main {
 
 .btn-group button:hover {
     color: var(--text-primary);
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .btn-group button.active {
@@ -269,7 +271,9 @@ main {
     overflow: hidden;
 }
 
-.player.hidden { display: none; }
+.player.hidden {
+    display: none;
+}
 
 .player-bar {
     position: absolute;
@@ -285,7 +289,8 @@ main {
     z-index: 50;
     opacity: 0;
     transition: opacity 0.3s;
-    pointer-events: none; /* Let clicks pass through if not on buttons */
+    pointer-events: none;
+    /* Let clicks pass through if not on buttons */
 }
 
 .player:hover .player-bar,
@@ -294,7 +299,7 @@ main {
     opacity: 1;
 }
 
-.player-bar > * {
+.player-bar>* {
     pointer-events: auto;
 }
 
@@ -302,7 +307,7 @@ main {
     padding: 0.6rem 1rem;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: #fff;
     cursor: pointer;
@@ -322,7 +327,7 @@ main {
 #game-name {
     flex: 1;
     text-align: center;
-    color: rgba(255,255,255,0.9);
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
     font-size: 1rem;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -346,7 +351,7 @@ main {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
 }
 
 #loader {
@@ -362,29 +367,37 @@ main {
     z-index: 100;
 }
 
-#loader.hidden { display: none; }
+#loader.hidden {
+    display: none;
+}
 
 .spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid rgba(255,255,255,0.1);
+    border: 3px solid rgba(255, 255, 255, 0.1);
     border-top-color: #0066cc;
     border-radius: 50%;
     animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 
 .error {
     text-align: center;
     color: #fff;
     padding: 2rem;
-    background: rgba(255,0,0,0.1);
+    background: rgba(255, 0, 0, 0.1);
     border-radius: 12px;
-    border: 1px solid rgba(255,0,0,0.2);
+    border: 1px solid rgba(255, 0, 0, 0.2);
 }
 
-.error p { margin-bottom: 1rem; }
+.error p {
+    margin-bottom: 1rem;
+}
 
 .error button {
     padding: 0.5rem 1.5rem;
@@ -396,26 +409,44 @@ main {
     font-weight: 600;
 }
 
-/* CRT Effect */
+/* Filters */
+.filter-sharp {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.filter-smooth {
+    image-rendering: auto;
+}
+
+.filter-crt {
+    filter: contrast(1.2) brightness(1.1) saturate(1.2);
+}
+
+.filter-retro {
+    filter: sepia(0.8) contrast(1.1) brightness(0.9) saturate(0.8);
+}
+
+.filter-mono {
+    filter: grayscale(1) contrast(1.2) brightness(1.1);
+}
+
+/* CRT Overlay Effect */
 .crt-overlay {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: 
-        /* Scanlines */
-        linear-gradient(
-            rgba(18, 16, 16, 0) 50%, 
-            rgba(0, 0, 0, 0.25) 50%
-        ),
-        /* Vignette */
-        radial-gradient(
-            circle at center,
-            transparent 60%,
-            rgba(0,0,0,0.4) 100%
-        );
-    background-size: 100% 4px, 100% 100%;
+    background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%,
+            rgba(0, 0, 0, 0.1) 50%),
+        linear-gradient(90deg,
+            rgba(255, 0, 0, 0.06),
+            rgba(0, 255, 0, 0.02),
+            rgba(0, 0, 255, 0.06));
+    background-size: 100% 3px, 6px 100%;
     z-index: 50;
     mix-blend-mode: overlay;
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
 }
 
 .crt-overlay::after {
@@ -434,33 +465,114 @@ main {
 }
 
 @keyframes flicker {
-    0% { opacity: 0.027906; }
-    5% { opacity: 0.048949; }
-    10% { opacity: 0.023013; }
-    15% { opacity: 0.040026; }
-    20% { opacity: 0.028174; }
-    25% { opacity: 0.043898; }
-    30% { opacity: 0.027906; }
-    35% { opacity: 0.048949; }
-    40% { opacity: 0.023013; }
-    45% { opacity: 0.040026; }
-    50% { opacity: 0.028174; }
-    55% { opacity: 0.043898; }
-    60% { opacity: 0.027906; }
-    65% { opacity: 0.048949; }
-    70% { opacity: 0.023013; }
-    75% { opacity: 0.040026; }
-    80% { opacity: 0.028174; }
-    85% { opacity: 0.043898; }
-    90% { opacity: 0.027906; }
-    95% { opacity: 0.048949; }
-    100% { opacity: 0.023013; }
+    0% {
+        opacity: 0.027906;
+    }
+
+    5% {
+        opacity: 0.048949;
+    }
+
+    10% {
+        opacity: 0.023013;
+    }
+
+    15% {
+        opacity: 0.040026;
+    }
+
+    20% {
+        opacity: 0.028174;
+    }
+
+    25% {
+        opacity: 0.043898;
+    }
+
+    30% {
+        opacity: 0.027906;
+    }
+
+    35% {
+        opacity: 0.048949;
+    }
+
+    40% {
+        opacity: 0.023013;
+    }
+
+    45% {
+        opacity: 0.040026;
+    }
+
+    50% {
+        opacity: 0.028174;
+    }
+
+    55% {
+        opacity: 0.043898;
+    }
+
+    60% {
+        opacity: 0.027906;
+    }
+
+    65% {
+        opacity: 0.048949;
+    }
+
+    70% {
+        opacity: 0.023013;
+    }
+
+    75% {
+        opacity: 0.040026;
+    }
+
+    80% {
+        opacity: 0.028174;
+    }
+
+    85% {
+        opacity: 0.043898;
+    }
+
+    90% {
+        opacity: 0.027906;
+    }
+
+    95% {
+        opacity: 0.048949;
+    }
+
+    100% {
+        opacity: 0.023013;
+    }
 }
 
 @media (max-width: 600px) {
-    .home { padding: 1rem; gap: 1rem; }
-    .play-section { grid-template-columns: 1fr; }
-    .upload-card { width: 100%; flex-direction: row; padding: 1rem; aspect-ratio: auto; }
-    .controls-grid { grid-template-columns: 1fr; }
-    .player-bar { opacity: 1; background: rgba(0,0,0,0.8); }
+    .home {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .play-section {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-card {
+        width: 100%;
+        flex-direction: row;
+        padding: 1rem;
+        aspect-ratio: auto;
+    }
+
+    .controls-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .player-bar {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.8);
+    }
 }
