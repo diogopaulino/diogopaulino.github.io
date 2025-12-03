@@ -9,7 +9,7 @@
     <script src="lib/nostalgist.umd.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <header>
             <a href="../index.html" class="back-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -17,7 +17,7 @@
                 </svg>
                 Labs
             </a>
-            <h1 class="app-logo">Emulator</h1>
+            <div class="app-logo">🎮 Emulator</div>
             <button class="theme-toggle" aria-label="Toggle theme">
                 <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -36,29 +36,76 @@
             </button>
         </header>
 
-        <main>
-            <section id="catalog">
-                <nav class="tabs">
-                    <button class="tab active" data-console="megadrive">Mega Drive</button>
-                    <button class="tab" data-console="snes">Super Nintendo</button>
-                </nav>
-                <div id="games" class="games"></div>
-                <div class="upload">
-                    <p>ou arraste sua ROM aqui</p>
-                    <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.sfc,.smc,.zip">
+        <main id="main">
+            <section id="home" class="home">
+                <div class="intro">
+                    <h2>Mega Drive Emulator</h2>
+                    <p>Emulador de Sega Genesis/Mega Drive no navegador</p>
+                </div>
+
+                <div class="game-section">
+                    <h3>Jogo Disponivel</h3>
+                    <button id="play-sonic" class="game-btn">
+                        <span class="game-icon">🦔</span>
+                        <span class="game-info">
+                            <strong>Sonic The Hedgehog</strong>
+                            <small>Sega, 1991</small>
+                        </span>
+                        <span class="play-icon">▶</span>
+                    </button>
+                </div>
+
+                <div class="upload-section">
+                    <h3>Ou carregue sua ROM</h3>
+                    <label class="upload-btn">
+                        <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.zip" hidden>
+                        <span>📁 Selecionar arquivo</span>
+                        <small>.md .bin .gen .smd .zip</small>
+                    </label>
+                </div>
+
+                <div class="controls-info">
+                    <h3>Controles</h3>
+                    <div class="controls-grid">
+                        <div class="control-item">
+                            <kbd>↑ ↓ ← →</kbd>
+                            <span>Direcional</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>Z</kbd>
+                            <span>Botao A</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>X</kbd>
+                            <span>Botao B</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>C</kbd>
+                            <span>Botao C</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>Enter</kbd>
+                            <span>Start</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>Esc</kbd>
+                            <span>Voltar</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section id="player" class="hidden">
+            <section id="player" class="player hidden">
                 <div class="player-bar">
-                    <button id="btn-back">← Voltar</button>
-                    <span id="game-name"></span>
-                    <button id="btn-fs">Fullscreen</button>
+                    <button id="btn-back" class="btn-secondary">← Voltar</button>
+                    <span id="game-name">-</span>
+                    <button id="btn-fullscreen" class="btn-secondary">⛶ Fullscreen</button>
                 </div>
-                <div id="screen"></div>
-                <div id="loader" class="hidden">
-                    <div class="spin"></div>
-                    <span>Carregando...</span>
+                <div id="screen">
+                    <div id="loader" class="hidden">
+                        <div class="spinner"></div>
+                        <span>Carregando emulador...</span>
+                    </div>
                 </div>
             </section>
         </main>
