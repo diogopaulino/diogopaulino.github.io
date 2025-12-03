@@ -27,8 +27,32 @@
   <link rel="preconnect" href="https://github.com">
   <link rel="preconnect" href="https://linkedin.com">
 
+  <!-- DNS prefetch -->
+  <link rel="dns-prefetch" href="https://br.linkedin.com">
+
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="manifest" href="manifest.json">
+
+  <!-- Preload critical scripts -->
+  <link rel="preload" href="assets/js/theme.js" as="script">
+  <link rel="preload" href="assets/js/easter-egg.js" as="script">
+
+  <!-- Theme Initialization (Prevents FOUC) -->
+  <meta name="theme-color" content="#fafbfc">
+  <script>
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // Update theme-color meta tag
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', savedTheme === 'dark' ? '#0a0a0a' : '#fafbfc');
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Structured Data -->
   <script type="application/ld+json">
@@ -74,20 +98,7 @@
       </div>
     </article>
   </main>
-  <script>
-    const toggle = document.querySelector('.theme-toggle');
-    const html = document.documentElement;
-
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    html.setAttribute('data-theme', savedTheme);
-
-    toggle.addEventListener('click', () => {
-      const current = html.getAttribute('data-theme');
-      const next = current === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-    });
-  </script>
+  <script src="assets/js/theme.js"></script>
   <script src="assets/js/easter-egg.js"></script>
 </body>
 </html>

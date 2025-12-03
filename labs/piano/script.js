@@ -2,6 +2,9 @@
 // PIANO MINIMALISTA - SONS ULTRA REALISTAS
 // ============================================================================
 
+(function() {
+  'use strict';
+
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 // ============================================================================
@@ -10,7 +13,6 @@ const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const OCTAVES = [2, 3, 4, 5];
-const WHITE_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const BLACK_KEYS = ['C#', 'D#', 'F#', 'G#', 'A#'];
 
 function getNoteFrequency(note, octave) {
@@ -227,8 +229,8 @@ function playNote(noteName, velocity = 0.7) {
     audioContext.resume();
   }
 
-  const [note, octaveStr] = [noteName.slice(0, -1), noteName.slice(-1)];
-  const octave = parseInt(octaveStr) + octaveShift;
+  const note = noteName.slice(0, -1);
+  const octave = parseInt(noteName.slice(-1)) + octaveShift;
 
   if (octave < 0 || octave > 8) return;
 
@@ -429,7 +431,7 @@ function setupControls() {
     toggleSustain(false);
   });
 
-  sustainBtn.addEventListener('mouseleave', (e) => {
+  sustainBtn.addEventListener('mouseleave', () => {
     if (sustainActive) {
       toggleSustain(false);
     }
@@ -509,12 +511,6 @@ function setupKeyboardEvents() {
       stopNote(noteName);
     }
   });
-
-  window.addEventListener('keydown', (e) => {
-    if ([' ', 'ArrowLeft', 'ArrowRight'].includes(e.key) || KEYBOARD_MAP[e.key.toLowerCase()]) {
-      e.preventDefault();
-    }
-  });
 }
 
 // ============================================================================
@@ -546,3 +542,5 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+})();

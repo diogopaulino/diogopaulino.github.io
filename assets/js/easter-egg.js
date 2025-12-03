@@ -1,4 +1,4 @@
-(function() {
+(function () {
   'use strict';
 
   const pic = document.getElementById('profile-pic');
@@ -15,13 +15,13 @@
     egg.classList.add('revealed');
     try {
       localStorage.setItem('labsRevealed', '1');
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function hide() {
     try {
       if (localStorage.getItem('labsRevealed') === '1') return;
-    } catch (e) {}
+    } catch (e) { }
     if (revealed) {
       revealed = false;
       egg.classList.remove('revealed');
@@ -30,7 +30,7 @@
 
   try {
     if (localStorage.getItem('labsRevealed') === '1') reveal();
-  } catch (e) {}
+  } catch (e) { }
 
   pic.addEventListener('mouseenter', () => {
     clearTimeout(timer);
@@ -56,12 +56,12 @@
         reveal();
       }
     }, 100);
-  });
+  }, { passive: true });
 
   pic.addEventListener('touchend', () => {
     clearInterval(touchTimer);
     if (touchDur < 300) reveal();
-  });
+  }, { passive: true });
 
   pic.addEventListener('touchcancel', () => clearInterval(touchTimer));
 
