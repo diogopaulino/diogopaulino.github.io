@@ -129,7 +129,7 @@ function showControls() {
 
     overlay.querySelector('.controls-modal-close').addEventListener('click', () => overlay.remove());
 
-    document.body.appendChild(overlay);
+    $('player').appendChild(overlay);
 }
 
 function getCore(filename) {

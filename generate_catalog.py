@@ -117,46 +117,10 @@ NAME_MAP = {
     "GARG": "Gargoyles",
     "GAUNTLET": "Gauntlet IV",
     "GAUNTL": "Gauntlet IV",
-    "ARCAD~12": "Arcade Classics",
-    "BATWINGS": "Batman Forever",
-    "BB-ROAR": "The Berenstain Bears' Camping Adventure",
-    "CANN~154": "Cannon Fodder",
-    "CHIC~170": "Chicago Syndicate",
-    "DANG~194": "Dangerous Seed",
-    "FATA~214": "Fatal Fury",
-    "GARG~226": "Gargoyles",
-    "GAUNTL~1": "Gauntlet IV",
-    "KLAX_~36": "Klax",
-    "LEMMIN~1": "Lemmings 2 - The Tribes",
-    "LOST~270": "The Lost Vikings",
-    "MAZI~280": "Mazin Saga - Mutant Fighter",
-    "MICK~286": "Mickey Mania - The Timeless Adventures of Mickey Mouse",
-    "MSFRANK": "Mary Shelley's Frankenstein",
-    "NBAL~300": "NBA Live 95",
-    "PINO~316": "Pinocchio",
-    "PIRA~318": "The Pirates of Dark Water",
-    "PITFIG~1": "Pit-Fighter",
-    "POPU~322": "Populous",
-    "RMON~346": "Rocket Knight Adventures",
-    "ROLL~350": "Rolling Thunder 2",
-    "SHADOW~1": "Shadow of the Beast",
-    "SPAC~388": "Space Harrier II",
-    "SPEEDY~1": "Speedy Gonzales - Cheez Cat-astrophe",
-    "STORM~62": "Stormlord",
-    "SUPERH~1": "Super Hang-On",
-    "SYND~404": "Syndicate",
-    "TOM&~422": "Tom and Jerry - Frantic Antics",
-    "TTAL~430": "Tiny Toon Adventures - Acme All-Stars",
-    "TURRI~66": "Turrican",
-    "VIRTU~68": "Virtua Racing",
-    "WOLF~450": "Wolfchild",
     "GHOULS": "Ghouls 'n Ghosts",
     "GLOC": "G-LOC - Air Battle",
     "GODS": "Gods",
     "GOLDEN": "Golden Axe",
-    "GOLDE~28": "Golden Axe",
-    "GOLDE~30": "Golden Axe II",
-    "GOLDE~32": "Golden Axe III",
     "GOLDE": "Golden Axe",
     "GOLDEN2": "Golden Axe II",
     "GOLDEN3": "Golden Axe III",
@@ -218,7 +182,7 @@ NAME_MAP = {
     "MK3": "Mortal Kombat 3",
     "MONOPOLY": "Monopoly",
     "MOONWALK": "Michael Jackson's Moonwalker",
-    "MSFRANK": "The Adventures of Mighty Max",
+    "MSFRANK": "Mary Shelley's Frankenstein",
     "MSPACMAN": "Ms. Pac-Man",
     "MUSHA": "M.U.S.H.A.",
     "NBA": "NBA Jam",
@@ -238,7 +202,7 @@ NAME_MAP = {
     "PHANTASY": "Phantasy Star IV",
     "PHELIOS": "Phelios",
     "PINO": "Pinocchio",
-    "PIRA": "Pirates of Dark Water",
+    "PIRA": "The Pirates of Dark Water",
     "PITFALL": "Pitfall! - The Mayan Adventure",
     "PITFIG": "Pit-Fighter",
     "POCAHON": "Pocahontas",
@@ -347,7 +311,7 @@ NAME_MAP = {
     "TTAL": "Tiny Toon Adventures - Acme All-Stars",
     "TURRICAN": "Turrican",
     "TURRI": "Turrican",
-    "TWINHAWK": "Twin Cobra",
+    "TWINHAWK": "Twin Hawk",
     "UMK3": "Ultimate Mortal Kombat 3",
     "UNDEADLI": "Undead Line",
     "URBAN": "Urban Strike",
@@ -377,8 +341,38 @@ NAME_MAP = {
     "ZERO": "Zero Wing",
     "ZEROWING": "Zero Wing",
     "ZOMBIES": "Zombies Ate My Neighbors",
-    "ZOOL": "Zool",
-    "ZOOP": "Zoop"
+    "ZOOL": "Zool - Ninja of the 'Nth' Dimension",
+    "ZOOP": "Zoop",
+    
+    # Specific file overrides
+    "GOLDE~28": "Golden Axe",
+    "GOLDE~30": "Golden Axe II",
+    "GOLDE~32": "Golden Axe III",
+    "LEMMIN~1": "Lemmings 2 - The Tribes",
+    "SHADOW~1": "Shadow of the Beast",
+    "SONIC1": "Sonic The Hedgehog",
+}
+
+# Region mapping for games that might not have a (USA) cover or are exclusive
+REGION_MAP = {
+    "Alien Soldier": "Europe",
+    "Mega Man - The Wily Wars": "Europe",
+    "Golden Axe III": "Japan",
+    "Pulseman": "Japan",
+    "Cannon Fodder": "Europe",
+    "Worms": "Europe",
+    "The Smurfs": "Europe",
+    "The Smurfs 2": "Europe",
+    "Asterix and the Power of the Gods": "Europe",
+    "Daffy Duck in Hollywood": "Europe",
+    "Xenon 2 - Megablast": "Europe",
+    "Zero Wing": "Europe",
+    "Second Samurai": "Europe",
+    "Undead Line": "Japan",
+    "Dangerous Seed": "Japan",
+    "Curse": "Japan",
+    "Twin Hawk": "Europe",
+    "Thunder Force IV": "Europe", # Often listed as Europe for this title, or Lightening Force for USA
 }
 
 def clean_name(filename):
@@ -389,7 +383,7 @@ def clean_name(filename):
     sorted_keys = sorted(NAME_MAP.keys(), key=len, reverse=True)
     
     for key in sorted_keys:
-        if base.startswith(key) or base_clean.startswith(key):
+        if base == key or base.startswith(key) or base_clean == key or base_clean.startswith(key):
             return NAME_MAP[key]
 
     name = os.path.splitext(filename)[0]
@@ -402,16 +396,16 @@ def get_cover_url(title):
     # Use Libretro Thumbnails
     # Correct format: "Name (Region)" with SPACE before parenthesis.
     # Special chars: : -> _, / -> _, ? -> _
-    # Single quotes are usually KEPT in Libretro filenames (e.g. Disney's Aladdin)
     
     safe_title = title.replace(':', '_').replace('/', '_').replace('?', '_')
     
-    # URL Encode the title (spaces become %20, ' becomes %27 or stays ' depending on implementation, 
-    # but we want to be careful. urllib.parse.quote does NOT encode ' by default)
+    # URL Encode the title
     encoded_title = urllib.parse.quote(safe_title)
     
-    # Append region. Note the space before (USA).
-    return f"https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/{encoded_title}%20(USA).png"
+    # Determine region
+    region = REGION_MAP.get(title, "USA")
+    
+    return f"https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/{encoded_title}%20({region}).png"
 
 # Create game list directly
 final_games = []

@@ -563,3 +563,35 @@ body.game-mode {
         opacity: 1;
     }
 }
+
+/* Force dark theme for controls inside player to match game environment */
+#player .controls-modal {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+#player .controls-modal-title {
+    color: #fff;
+}
+
+#player .control-item {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#player .control-item kbd {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+#player .controls-modal-close {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#player .controls-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
