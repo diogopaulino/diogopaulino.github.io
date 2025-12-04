@@ -9,6 +9,7 @@ const settings = {
 };
 
 function showHome() {
+    document.body.classList.remove('game-mode');
     $('home').classList.remove('hidden');
     $('player').classList.add('hidden');
     document.querySelector('header').style.display = 'flex';
@@ -20,6 +21,7 @@ function showHome() {
 }
 
 function showPlayer(name) {
+    document.body.classList.add('game-mode');
     $('home').classList.add('hidden');
     $('player').classList.remove('hidden');
     document.querySelector('header').style.display = 'none';

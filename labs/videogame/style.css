@@ -34,7 +34,13 @@ main {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 100;
+    z-index: 9999;
+}
+
+body.game-mode {
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #000 !important;
 }
 
 .player.active {
