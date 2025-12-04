@@ -69,7 +69,6 @@ function applySettings() {
 }
 
 function updateSettingsUI() {
-    // Buttons
     document.querySelectorAll('.btn-group').forEach(group => {
         const settingName = group.dataset.setting;
         if (settings[settingName]) {
@@ -78,9 +77,6 @@ function updateSettingsUI() {
             });
         }
     });
-
-    // Sliders removed
-
 }
 
 function saveSetting(name, value) {
@@ -160,9 +156,7 @@ async function startGame(rom, name) {
             element: canvas
         });
 
-        // Ensure settings are applied to the active canvas
         applySettings();
-
         showLoader(false);
     } catch (error) {
         console.error('Erro:', error);
@@ -177,8 +171,8 @@ async function startGame(rom, name) {
 }
 
 function init() {
+    // UI Event Listeners
     $('btn-back').addEventListener('click', showHome);
-
     $('btn-controls').addEventListener('click', showControls);
 
     const btnShowControls = $('btn-show-controls');
@@ -193,11 +187,10 @@ function init() {
         } else {
             player.requestFullscreen?.();
         }
-        this.blur(); // Remove focus to prevent Enter key from triggering it again
+        this.blur();
     });
 
-    // Removed old rom-file listener as it is now dynamic
-
+    // Settings Buttons
     document.querySelectorAll('.btn-group').forEach(group => {
         const settingName = group.dataset.setting;
         group.querySelectorAll('button').forEach(btn => {
@@ -207,6 +200,7 @@ function init() {
         });
     });
 
+    // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if ($('controls-overlay')) {
@@ -222,9 +216,27 @@ function init() {
         }
     });
 
+    // ROM File Input
+    const romInput = document.getElementById('rom-file-input');
+    if (romInput) {
+        romInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const name = file.name.replace(/\.[^/.]+$/, '');
+                startGame(file, name);
+            }
+        });
+    }
 
-
-    // Sliders listeners removed
+    // Search Input
+    const searchInput = $('game-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allGames.filter(g => g.title.toLowerCase().includes(term));
+            renderGames(filtered);
+        });
+    }
 
     // Key remapping for A/S/D -> Z/X/C
     const keyMap = {
@@ -268,44 +280,13 @@ async function loadCatalog() {
     const grid = $('games-grid');
     if (!grid) return;
 
-    // Attach listener to upload button
-    const input = document.getElementById('rom-file-input');
-    if (input) {
-        // Remove old listeners to avoid duplicates if called multiple times
-        const newClone = input.cloneNode(true);
-        input.parentNode.replaceChild(newClone, input);
-        newClone.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const name = file.name.replace(/\.[^/.]+$/, '');
-                startGame(file, name);
-            }
-        });
-    }
-
     try {
-        // Use global catalog if available
         if (typeof gamesCatalog !== 'undefined') {
             allGames = gamesCatalog;
             renderGames(allGames);
         } else {
             throw new Error('Catálogo de jogos não encontrado (games.js)');
         }
-
-        // Search functionality
-        const searchInput = $('game-search');
-        if (searchInput) {
-            // Remove old listeners
-            const newSearch = searchInput.cloneNode(true);
-            searchInput.parentNode.replaceChild(newSearch, searchInput);
-
-            newSearch.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase();
-                const filtered = allGames.filter(g => g.title.toLowerCase().includes(term));
-                renderGames(filtered);
-            });
-        }
-
     } catch (error) {
         console.error('Erro ao carregar catálogo:', error);
         grid.innerHTML = '<p style="color:var(--text-secondary); text-align:center; grid-column: 1/-1;">Erro ao carregar lista de jogos.</p>';
@@ -332,9 +313,7 @@ function renderGames(games) {
     }
 
     grid.innerHTML = games.map(game => {
-        // Safe title for HTML attribute (only double quotes need escaping in attribute)
         const safeTitle = game.title.replace(/"/g, '&quot;');
-
         return `
         <button class="game-card" onclick="startGameById('${game.id}')">
             <div class="game-cover">
@@ -361,74 +340,44 @@ function renderGames(games) {
 // Global handler for image errors to try multiple sources
 window.handleImageError = function (img, title) {
     const attempts = parseInt(img.dataset.attempts || '0');
-
     const base = 'https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/';
     const enc = (s) => encodeURIComponent(s);
 
-    // 1. Clean the title for Libretro (standard chars)
-    // Libretro replaces : / ? with _
+    // Clean the title for Libretro (standard chars)
     const cleanBase = title.replace(/:/g, '_').replace(/\//g, '_').replace(/\?/g, '_');
 
     // Generate Title Variations
     const titleVars = [
-        cleanBase,                                      // 1. Original: "Disney's Aladdin"
-        cleanBase.replace(/'/g, '_'),                   // 2. Underscore quote: "Disney_s Aladdin"
-        cleanBase.replace(/'/g, ''),                    // 3. Remove quote: "Disneys Aladdin"
-        cleanBase.replace(/^The\s+/, ''),               // 4. Remove "The ": "Addams Family"
-        cleanBase.replace(/^Disney's\s+/, ''),          // 5. Remove "Disney's ": "Aladdin"
-        cleanBase.replace(/^The\s+(.+)/, '$1, The'),    // 6. Swap The: "Addams Family, The"
-        cleanBase.replace(/\s-\s/g, ': '),              // 7. Subtitle colon: "Game: Subtitle"
-        cleanBase.replace(/:\s/g, ' - '),               // 8. Subtitle dash: "Game - Subtitle"
-        // 9. Force Title Case (capitalize every word)
+        cleanBase,
+        cleanBase.replace(/'/g, '_'),
+        cleanBase.replace(/'/g, ''),
+        cleanBase.replace(/^The\s+/, ''),
+        cleanBase.replace(/^Disney's\s+/, ''),
+        cleanBase.replace(/^The\s+(.+)/, '$1, The'),
+        cleanBase.replace(/\s-\s/g, ': '),
+        cleanBase.replace(/:\s/g, ' - '),
         cleanBase.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
-        // 10. Replace & with and
         cleanBase.replace(/&/g, 'and'),
-        // 11. Replace and with &
         cleanBase.replace(/\sand\s/g, ' & '),
-        // 12. Truncate at " - " (Get main title only)
         cleanBase.split(' - ')[0],
-        // 13. Truncate at ": " (Get main title only)
         cleanBase.split(': ')[0]
     ];
 
-    // Generate Region Variations
-    const regions = [
-        '(USA)',
-        '(USA, Europe)',
-        '(World)',
-        '(Europe)',
-        '(Japan)',
-        ''
-    ];
-
-    // Create all combinations
+    const regions = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(Japan)', ''];
     let variations = [];
-
-    // Prioritize specific known tricky ones
-    // e.g. "Altered Beast" often needs (USA, Europe)
-    // e.g. "The Addams Family" often needs "Addams Family, The (USA)" or "(Europe)"
 
     titleVars.forEach(t => {
         regions.forEach(r => {
-            // Construct filename: Title (Region).png or Title.png
-            const filename = r ? `${t} ${r}.png` : `${t}.png`;
-            // Encode ONLY the filename parts, but keep the structure
-            // Actually, we just encode the whole thing because / is not allowed in filenames anyway
             variations.push(`${base}${enc(t)}${r ? '%20' + enc(r) : ''}.png`);
         });
     });
 
-    // Remove duplicates
     const uniqueVariations = [...new Set(variations)];
-    const maxAttempts = uniqueVariations.length;
 
-    if (attempts >= maxAttempts) {
-        // All attempts failed, show the CSS placeholder
+    if (attempts >= uniqueVariations.length) {
         img.style.display = 'none';
         const placeholder = img.nextElementSibling;
-        if (placeholder) {
-            placeholder.style.display = 'flex';
-        }
+        if (placeholder) placeholder.style.display = 'flex';
         return;
     }
 

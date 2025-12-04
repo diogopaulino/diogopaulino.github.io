@@ -3,6 +3,8 @@ import json
 import re
 import urllib.parse
 
+
+
 ROM_DIR = 'labs/videogame/roms/mega-drive'
 OUTPUT_FILE = 'labs/videogame/games.js'
 
@@ -467,6 +469,8 @@ seen_titles = set()
 
 # Load existing games to preserve file URLs
 existing_files = {}
+existing_games = []
+
 if os.path.exists(OUTPUT_FILE):
     try:
         with open(OUTPUT_FILE, 'r') as f:
@@ -475,6 +479,7 @@ if os.path.exists(OUTPUT_FILE):
             existing_games = json.loads(json_str)
             for g in existing_games:
                 existing_files[g['id']] = g['file']
+                existing_files[g['id'].lower()] = g['file']
     except Exception as e:
         print(f"Warning: Could not read existing games.js: {e}")
 
@@ -503,7 +508,7 @@ if os.path.exists(ROM_DIR):
         title = cand['title']
         
         # Create game object
-        file_url = existing_files.get(filename, f"roms/mega-drive/{filename}")
+        file_url = existing_files.get(filename, existing_files.get(filename.lower(), f"roms/mega-drive/{filename}"))
         game = {
             "id": filename,
             "title": title,
@@ -515,20 +520,21 @@ if os.path.exists(ROM_DIR):
         
         final_games.append(game)
 
-    # Third pass: Add missing games from NAME_MAP
-    # This ensures the catalog is full even if local files were deleted/moved
-    for key, title in NAME_MAP.items():
-        if title in seen_titles:
-            continue
-            
+# Third pass: Add missing games from NAME_MAP
+# This ensures the catalog is full even if local files were deleted/moved
+for key, title in NAME_MAP.items():
+    if title in seen_titles:
+        continue
+        
+    # Assume .zip for missing files as that was the original format
+    filename = f"{key.lower()}.zip"
+    
+    # Check if we have an existing URL for this ID
+    file_url = existing_files.get(filename, existing_files.get(filename.lower(), f"roms/mega-drive/{filename}"))
+    
+    # Only add if it's a remote URL or the file actually exists locally
+    if file_url.startswith(('http:', 'https:')) or (os.path.exists(ROM_DIR) and os.path.exists(os.path.join(ROM_DIR, filename))):
         seen_titles.add(title)
-        # Assume .zip for missing files as that was the original format
-        filename = f"{key.lower()}.zip"
-        
-        # Check if we have an existing URL for this ID (case insensitive check might be needed but let's try direct)
-        # We try both upper and lower case key for existing file lookup
-        file_url = existing_files.get(filename, existing_files.get(key + ".zip", f"roms/mega-drive/{filename}"))
-        
         game = {
             "id": filename,
             "title": title,
@@ -538,6 +544,17 @@ if os.path.exists(ROM_DIR):
             "cover": get_cover_url(title)
         }
         final_games.append(game)
+
+# Fourth pass: Preserve existing games that are not in local ROMs or NAME_MAP
+# This ensures we don't lose games that were manually added or have IDs not in NAME_MAP
+for g in existing_games:
+    if g['title'] in seen_titles:
+        continue
+    
+    # Only preserve if it has a remote URL
+    if g['file'].startswith(('http:', 'https:')):
+        seen_titles.add(g['title'])
+        final_games.append(g)
 
 # Sort alphabetically
 final_games.sort(key=lambda x: x['title'])
