@@ -327,16 +327,13 @@ async function loadCatalog() {
     }
 
     try {
-        // Use global catalog if available (avoids CORS on local files)
+        // Use global catalog if available
         if (typeof gamesCatalog !== 'undefined') {
             allGames = gamesCatalog;
+            renderGames(allGames);
         } else {
-            // Fallback to fetch if variable not found
-            const response = await fetch('games.json');
-            allGames = await response.json();
+            throw new Error('Catálogo de jogos não encontrado (games.js)');
         }
-
-        renderGames(allGames);
 
         // Search functionality
         const searchInput = $('game-search');
