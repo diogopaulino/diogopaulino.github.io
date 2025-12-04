@@ -116,7 +116,7 @@ const gamesCatalog = [
         "title": "Asterix and the Power of the Gods",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/astpgod.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/ast-pgod.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Asterix%20and%20the%20Power%20of%20the%20Gods%20(Europe).png"
     },
     {
@@ -196,7 +196,7 @@ const gamesCatalog = [
         "title": "Blades of Vengeance",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bldveng.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bld-veng.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Blades%20of%20Vengeance%20(USA).png"
     },
     {
@@ -324,7 +324,7 @@ const gamesCatalog = [
         "title": "Championship Pro-Am",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/cproam.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/c-proam.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Championship%20Pro-Am%20(USA).png"
     },
     {
@@ -516,7 +516,7 @@ const gamesCatalog = [
         "title": "ESWAT - City Under Siege",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/eswat.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/e-swat.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/ESWAT%20-%20City%20Under%20Siege%20(USA).png"
     },
     {
@@ -636,7 +636,7 @@ const gamesCatalog = [
         "title": "Golden Axe",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golde.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golden_axe.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20(USA).png"
     },
     {
@@ -644,7 +644,7 @@ const gamesCatalog = [
         "title": "Golden Axe II",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golde2.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golden_axe_2.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20II%20(USA).png"
     },
     {
@@ -652,7 +652,7 @@ const gamesCatalog = [
         "title": "Golden Axe III",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golde3.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golden_axe_3.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20III%20(Japan).png"
     },
     {
@@ -764,7 +764,7 @@ const gamesCatalog = [
         "title": "Klax",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/klax_.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/klax.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Klax%20(USA).png"
     },
     {
@@ -844,7 +844,7 @@ const gamesCatalog = [
         "title": "Mega Bomberman",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/mbomb.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/m-bomb.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Mega%20Bomberman%20(USA).png"
     },
     {
@@ -1388,7 +1388,7 @@ const gamesCatalog = [
         "title": "The Berenstain Bears' Camping Adventure",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bbroar.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bb-roar.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Berenstain%20Bears%27%20Camping%20Adventure%20(USA).png"
     },
     {
@@ -1460,7 +1460,7 @@ const gamesCatalog = [
         "title": "The NewZealand Story",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/nzstory.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/nz-story.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20NewZealand%20Story%20(USA).png"
     },
     {
@@ -1580,7 +1580,7 @@ const gamesCatalog = [
         "title": "Tom and Jerry - Frantic Antics",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/tom.zip",
+        "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/tom_and_jerry.zip",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tom%20and%20Jerry%20-%20Frantic%20Antics%20(USA).png"
     },
     {
