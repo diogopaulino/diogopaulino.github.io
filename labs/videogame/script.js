@@ -194,22 +194,14 @@ function init() {
         btnShowControls.addEventListener('click', showControls);
     }
 
-    $('btn-fullscreen').addEventListener('click', () => {
+    $('btn-fullscreen').addEventListener('click', function () {
         const player = $('player');
         if (document.fullscreenElement) {
             document.exitFullscreen();
         } else {
             player.requestFullscreen?.();
         }
-    });
-
-    $('btn-fullscreen').addEventListener('click', () => {
-        const player = $('player');
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        } else {
-            player.requestFullscreen?.();
-        }
+        this.blur(); // Remove focus to prevent Enter key from triggering it again
     });
 
     // Removed old rom-file listener as it is now dynamic
