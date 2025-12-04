@@ -768,6 +768,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Lemmings%20(USA).png"
     },
     {
+        "id": "LEMMIN~1.ZIP",
+        "title": "Lemmings 2 - The Tribes",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/LEMMIN~1.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Lemmings%202%20-%20The%20Tribes%20(USA).png"
+    },
+    {
         "id": "LETHAL.ZIP",
         "title": "Lethal Enforcers",
         "platform": "Mega Drive",
@@ -873,11 +881,11 @@ const gamesCatalog = [
     },
     {
         "id": "NBAL~300.ZIP",
-        "title": "NBA Jam",
+        "title": "NBA Live 95",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/NBAL~300.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NBA%20Jam%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NBA%20Live%2095%20(USA).png"
     },
     {
         "id": "NHL97.ZIP",
@@ -934,14 +942,6 @@ const gamesCatalog = [
         "year": "199X",
         "file": "roms/mega-drive/PINO~316.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Pinocchio%20(USA).png"
-    },
-    {
-        "id": "PIRA~318.ZIP",
-        "title": "Pirates of Dark Water",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/PIRA~318.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Pirates%20of%20Dark%20Water%20(USA).png"
     },
     {
         "id": "PITFIG~1.ZIP",
@@ -1096,12 +1096,20 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Second%20Samurai%20(USA).png"
     },
     {
-        "id": "SHADOW~1.ZIP",
+        "id": "SHDANCER.ZIP",
         "title": "Shadow Dancer - The Secret of Shinobi",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "roms/mega-drive/SHADOW~1.ZIP",
+        "file": "roms/mega-drive/SHDANCER.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Shadow%20Dancer%20-%20The%20Secret%20of%20Shinobi%20(USA).png"
+    },
+    {
+        "id": "SHADOW~1.ZIP",
+        "title": "Shadow of the Beast",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SHADOW~1.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Shadow%20of%20the%20Beast%20(USA).png"
     },
     {
         "id": "SBEAST2.ZIP",
@@ -1465,11 +1473,11 @@ const gamesCatalog = [
     },
     {
         "id": "TOM&~422.ZIP",
-        "title": "Tom and Jerry",
+        "title": "Tom and Jerry - Frantic Antics",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/TOM&~422.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tom%20and%20Jerry%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tom%20and%20Jerry%20-%20Frantic%20Antics%20(USA).png"
     },
     {
         "id": "TOYSTORY.ZIP",
