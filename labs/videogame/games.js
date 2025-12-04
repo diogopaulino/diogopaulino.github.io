@@ -312,14 +312,6 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Castlevania%20-%20Bloodlines%20(USA).png"
     },
     {
-        "id": "CAST~160.ZIP",
-        "title": "Castlevania - Bloodlines",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/CAST~160.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Castlevania%20-%20Bloodlines%20(USA).png"
-    },
-    {
         "id": "CHAKAN.ZIP",
         "title": "Chakan - The Forever Man",
         "platform": "Mega Drive",
@@ -509,14 +501,6 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/PUYO.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dr.%20Robotnik%27s%20Mean%20Bean%20Machine%20(USA).png"
-    },
-    {
-        "id": "ROBOTNIK.ZIP",
-        "title": "Dr. Robotnik's Mean Bean Machine",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/ROBOTNIK.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dr.%20Robotnik%27s%20Mean%20Bean%20Machine%20(USA).png"
     },
     {
@@ -821,14 +805,6 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/ALESTE.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/M.U.S.H.A.%20(USA).png"
-    },
-    {
-        "id": "MUSHA.ZIP",
-        "title": "M.U.S.H.A.",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/MUSHA.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/M.U.S.H.A.%20(USA).png"
     },
     {
@@ -1233,35 +1209,27 @@ const gamesCatalog = [
     },
     {
         "id": "SONIC1.ZIP",
-        "title": "Sonic the Hedgehog",
+        "title": "Sonic The Hedgehog",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/SONIC1.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%20(USA).png"
-    },
-    {
-        "id": "sonic.md",
-        "title": "Sonic the Hedgehog",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/sonic.md",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20The%20Hedgehog%20(USA).png"
     },
     {
         "id": "SONIC2.ZIP",
-        "title": "Sonic the Hedgehog 2",
+        "title": "Sonic The Hedgehog 2",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/SONIC2.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%202%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20The%20Hedgehog%202%20(USA).png"
     },
     {
         "id": "SONIC3.ZIP",
-        "title": "Sonic the Hedgehog 3",
+        "title": "Sonic The Hedgehog 3",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/SONIC3.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%203%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20The%20Hedgehog%203%20(USA).png"
     },
     {
         "id": "SHARRIE2.ZIP",
@@ -1269,14 +1237,6 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/SHARRIE2.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(USA).png"
-    },
-    {
-        "id": "SPAC~388.ZIP",
-        "title": "Space Harrier II",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/SPAC~388.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(USA).png"
     },
     {
@@ -1496,14 +1456,6 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Lost%20Vikings%20(USA).png"
     },
     {
-        "id": "LVIKINGS.ZIP",
-        "title": "The Lost Vikings",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/LVIKINGS.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Lost%20Vikings%20(USA).png"
-    },
-    {
         "id": "NZ-STORY.ZIP",
         "title": "The NewZealand Story",
         "platform": "Mega Drive",
@@ -1517,14 +1469,6 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/DARKWATR.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Pirates%20of%20Dark%20Water%20(USA).png"
-    },
-    {
-        "id": "PIRA~318.ZIP",
-        "title": "The Pirates of Dark Water",
-        "platform": "Mega Drive",
-        "year": "199X",
-        "file": "roms/mega-drive/PIRA~318.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Pirates%20of%20Dark%20Water%20(USA).png"
     },
     {

@@ -289,10 +289,10 @@ NAME_MAP = {
     "SMURFS2": "The Smurfs 2",
     "SNOWBRO": "Snow Bros. - Nick & Tom",
     "SOLDEACE": "Sol-Deace",
-    "SONIC": "Sonic the Hedgehog",
-    "SONIC1": "Sonic the Hedgehog",
-    "SONIC2": "Sonic the Hedgehog 2",
-    "SONIC3": "Sonic the Hedgehog 3",
+    "SONIC": "Sonic The Hedgehog",
+    "SONIC1": "Sonic The Hedgehog",
+    "SONIC2": "Sonic The Hedgehog 2",
+    "SONIC3": "Sonic The Hedgehog 3",
     "SONIC3D": "Sonic 3D Blast",
     "SONICK": "Sonic & Knuckles",
     "SONICSB": "Sonic Spinball",
@@ -415,23 +415,43 @@ def get_cover_url(title):
 
 # Create game list directly
 final_games = []
+seen_titles = set()
 
 if os.path.exists(ROM_DIR):
+    # First pass: Collect all potential games
+    candidates = []
     for filename in sorted(os.listdir(ROM_DIR)):
         if filename.lower().endswith(('.zip', '.md', '.bin', '.smd', '.gen')):
             title = clean_name(filename)
-            
-            # Create game object
-            game = {
-                "id": filename,
+            candidates.append({
+                "filename": filename,
                 "title": title,
-                "platform": "Mega Drive",
-                "year": "199X",
-                "file": f"roms/mega-drive/{filename}",
-                "cover": get_cover_url(title)
-            }
+                "is_zip": filename.lower().endswith('.zip')
+            })
+
+    # Second pass: Filter duplicates, preferring ZIPs
+    # Sort by is_zip (True first) so we process ZIPs first
+    candidates.sort(key=lambda x: x['is_zip'], reverse=True)
+
+    for cand in candidates:
+        if cand['title'] in seen_titles:
+            continue
             
-            final_games.append(game)
+        seen_titles.add(cand['title'])
+        filename = cand['filename']
+        title = cand['title']
+        
+        # Create game object
+        game = {
+            "id": filename,
+            "title": title,
+            "platform": "Mega Drive",
+            "year": "199X",
+            "file": f"roms/mega-drive/{filename}",
+            "cover": get_cover_url(title)
+        }
+        
+        final_games.append(game)
 
 # Sort alphabetically
 final_games.sort(key=lambda x: x['title'])

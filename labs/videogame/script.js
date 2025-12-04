@@ -409,7 +409,17 @@ window.handleImageError = function (img, title) {
         cleanBase.replace(/^Disney's\s+/, ''),          // 5. Remove "Disney's ": "Aladdin"
         cleanBase.replace(/^The\s+(.+)/, '$1, The'),    // 6. Swap The: "Addams Family, The"
         cleanBase.replace(/\s-\s/g, ': '),              // 7. Subtitle colon: "Game: Subtitle"
-        cleanBase.replace(/:\s/g, ' - ')                // 8. Subtitle dash: "Game - Subtitle"
+        cleanBase.replace(/:\s/g, ' - '),               // 8. Subtitle dash: "Game - Subtitle"
+        // 9. Force Title Case (capitalize every word)
+        cleanBase.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
+        // 10. Replace & with and
+        cleanBase.replace(/&/g, 'and'),
+        // 11. Replace and with &
+        cleanBase.replace(/\sand\s/g, ' & '),
+        // 12. Truncate at " - " (Get main title only)
+        cleanBase.split(' - ')[0],
+        // 13. Truncate at ": " (Get main title only)
+        cleanBase.split(': ')[0]
     ];
 
     // Generate Region Variations
