@@ -351,6 +351,16 @@ async function loadCatalog() {
     }
 }
 
+// Helper to start game by ID to avoid escaping issues in HTML
+window.startGameById = function (id) {
+    const game = gamesCatalog.find(g => g.id === id);
+    if (game) {
+        startGame(game.file, game.title);
+    } else {
+        console.error('Jogo não encontrado:', id);
+    }
+};
+
 function renderGames(games) {
     const grid = $('games-grid');
     if (!grid) return;
@@ -360,22 +370,24 @@ function renderGames(games) {
         return;
     }
 
-    const gamesHTML = games.map(game => {
-        // We will try to load the image. If it fails, the global handleImageError will take over.
-        // We encode the title for the initial attempt.
+    grid.innerHTML = games.map(game => {
+        // Safe title for HTML attribute (only double quotes need escaping in attribute)
+        const safeTitle = game.title.replace(/"/g, '&quot;');
+
         return `
-        <button class="game-card" onclick="startGame('${game.file}', '${game.title.replace(/'/g, "\\'")}')">
+        <button class="game-card" onclick="startGameById('${game.id}')">
             <div class="game-cover">
                 <img src="${game.cover}" 
-                     alt="${game.title}" 
+                     alt="${safeTitle}" 
                      loading="lazy" 
-                     onerror="handleImageError(this, '${game.title.replace(/'/g, "\\'")}')">
+                     data-title="${safeTitle}"
+                     onerror="handleImageError(this, this.dataset.title)">
                 <div class="cover-placeholder">
                     <span>${game.title}</span>
                 </div>
             </div>
             <div class="game-info">
-                <div class="game-title" title="${game.title}">${game.title}</div>
+                <div class="game-title" title="${safeTitle}">${game.title}</div>
                 <div class="game-meta">
                     <span class="game-platform">${game.platform}</span>
                 </div>
@@ -383,8 +395,6 @@ function renderGames(games) {
         </button>
         `;
     }).join('');
-
-    grid.innerHTML = gamesHTML;
 }
 
 // Global handler for image errors to try multiple sources
