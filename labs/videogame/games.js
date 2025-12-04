@@ -257,11 +257,11 @@ const gamesCatalog = [
     },
     {
         "id": "BUBSY2.ZIP",
-        "title": "Bubsy in Claws Encounters of the Furred Kind",
+        "title": "Bubsy II",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/BUBSY2.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Bubsy%20in%20Claws%20Encounters%20of%20the%20Furred%20Kind%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Bubsy%20II%20(USA).png"
     },
     {
         "id": "BUGSDUFF.ZIP",
@@ -312,6 +312,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Castlevania%20-%20Bloodlines%20(USA).png"
     },
     {
+        "id": "CAST~160.ZIP",
+        "title": "Castlevania - Bloodlines",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/CAST~160.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Castlevania%20-%20Bloodlines%20(USA).png"
+    },
+    {
         "id": "CHAKAN.ZIP",
         "title": "Chakan - The Forever Man",
         "platform": "Mega Drive",
@@ -352,12 +360,20 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Chuck%20Rock%20(USA).png"
     },
     {
+        "id": "CHUCKR2.ZIP",
+        "title": "Chuck Rock II - Son of Chuck",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/CHUCKR2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Chuck%20Rock%20II%20-%20Son%20of%20Chuck%20(USA).png"
+    },
+    {
         "id": "COLUMNS3.ZIP",
-        "title": "Columns",
+        "title": "Columns III",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/COLUMNS3.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Columns%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Columns%20III%20(USA).png"
     },
     {
         "id": "COMBATCA.ZIP",
@@ -496,6 +512,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dr.%20Robotnik%27s%20Mean%20Bean%20Machine%20(USA).png"
     },
     {
+        "id": "ROBOTNIK.ZIP",
+        "title": "Dr. Robotnik's Mean Bean Machine",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/ROBOTNIK.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dr.%20Robotnik%27s%20Mean%20Bean%20Machine%20(USA).png"
+    },
+    {
         "id": "DEVILCRA.ZIP",
         "title": "Dragon's Fury",
         "platform": "Mega Drive",
@@ -521,11 +545,11 @@ const gamesCatalog = [
     },
     {
         "id": "ECCOJR.ZIP",
-        "title": "Ecco the Dolphin",
+        "title": "Ecco Jr.",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/ECCOJR.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Ecco%20the%20Dolphin%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Ecco%20Jr.%20(USA).png"
     },
     {
         "id": "ELVIENTO.ZIP",
@@ -785,11 +809,11 @@ const gamesCatalog = [
     },
     {
         "id": "LOTUS2.ZIP",
-        "title": "Lotus Turbo Challenge",
+        "title": "Lotus II",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/LOTUS2.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Lotus%20Turbo%20Challenge%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Lotus%20II%20(USA).png"
     },
     {
         "id": "ALESTE.ZIP",
@@ -797,6 +821,14 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/ALESTE.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/M.U.S.H.A.%20(USA).png"
+    },
+    {
+        "id": "MUSHA.ZIP",
+        "title": "M.U.S.H.A.",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/MUSHA.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/M.U.S.H.A.%20(USA).png"
     },
     {
@@ -832,12 +864,20 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Mega%20Bomberman%20(USA).png"
     },
     {
-        "id": "MEGAPANL.ZIP",
+        "id": "WILYWARS.ZIP",
         "title": "Mega Man - The Wily Wars",
         "platform": "Mega Drive",
         "year": "199X",
-        "file": "roms/mega-drive/MEGAPANL.ZIP",
+        "file": "roms/mega-drive/WILYWARS.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Mega%20Man%20-%20The%20Wily%20Wars%20(USA).png"
+    },
+    {
+        "id": "MEGAPANL.ZIP",
+        "title": "Mega Panel",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/MEGAPANL.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Mega%20Panel%20(USA).png"
     },
     {
         "id": "MERCS.ZIP",
@@ -889,11 +929,11 @@ const gamesCatalog = [
     },
     {
         "id": "NHL97.ZIP",
-        "title": "NHL Hockey",
+        "title": "NHL 97",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/NHL97.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NHL%20Hockey%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NHL%2097%20(USA).png"
     },
     {
         "id": "NORMY.ZIP",
@@ -1128,6 +1168,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Shining%20Force%20II%20(USA).png"
     },
     {
+        "id": "SHINOBI3.ZIP",
+        "title": "Shinobi III - Return of the Ninja Master",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SHINOBI3.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Shinobi%20III%20-%20Return%20of%20the%20Ninja%20Master%20(USA).png"
+    },
+    {
         "id": "SKELETON.ZIP",
         "title": "Skeleton Krew",
         "platform": "Mega Drive",
@@ -1160,6 +1208,30 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sol-Deace%20(USA).png"
     },
     {
+        "id": "SONICK.ZIP",
+        "title": "Sonic & Knuckles",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SONICK.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20%26%20Knuckles%20(USA).png"
+    },
+    {
+        "id": "SONIC3D.ZIP",
+        "title": "Sonic 3D Blast",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SONIC3D.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%203D%20Blast%20(USA).png"
+    },
+    {
+        "id": "SONICSB.ZIP",
+        "title": "Sonic Spinball",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SONICSB.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20Spinball%20(USA).png"
+    },
+    {
         "id": "SONIC1.ZIP",
         "title": "Sonic the Hedgehog",
         "platform": "Mega Drive",
@@ -1168,11 +1240,43 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%20(USA).png"
     },
     {
+        "id": "sonic.md",
+        "title": "Sonic the Hedgehog",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/sonic.md",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%20(USA).png"
+    },
+    {
+        "id": "SONIC2.ZIP",
+        "title": "Sonic the Hedgehog 2",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SONIC2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%202%20(USA).png"
+    },
+    {
+        "id": "SONIC3.ZIP",
+        "title": "Sonic the Hedgehog 3",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SONIC3.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20the%20Hedgehog%203%20(USA).png"
+    },
+    {
         "id": "SHARRIE2.ZIP",
         "title": "Space Harrier II",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/SHARRIE2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(USA).png"
+    },
+    {
+        "id": "SPAC~388.ZIP",
+        "title": "Space Harrier II",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SPAC~388.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(USA).png"
     },
     {
@@ -1190,6 +1294,14 @@ const gamesCatalog = [
         "year": "199X",
         "file": "roms/mega-drive/SPEEDY~1.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Speedy%20Gonzales%20-%20Cheez%20Cat-astrophe%20(USA).png"
+    },
+    {
+        "id": "SPOTHOLL.ZIP",
+        "title": "Spot Goes to Hollywood",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SPOTHOLL.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Spot%20Goes%20to%20Hollywood%20(USA).png"
     },
     {
         "id": "STAR_CON.ZIP",
@@ -1214,6 +1326,14 @@ const gamesCatalog = [
         "year": "199X",
         "file": "roms/mega-drive/STRIDER.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Strider%20(USA).png"
+    },
+    {
+        "id": "STRIDER2.ZIP",
+        "title": "Strider II",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/STRIDER2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Strider%20II%20(USA).png"
     },
     {
         "id": "SUBTE.ZIP",
@@ -1376,6 +1496,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Lost%20Vikings%20(USA).png"
     },
     {
+        "id": "LVIKINGS.ZIP",
+        "title": "The Lost Vikings",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/LVIKINGS.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Lost%20Vikings%20(USA).png"
+    },
+    {
         "id": "NZ-STORY.ZIP",
         "title": "The NewZealand Story",
         "platform": "Mega Drive",
@@ -1389,6 +1517,14 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/DARKWATR.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Pirates%20of%20Dark%20Water%20(USA).png"
+    },
+    {
+        "id": "PIRA~318.ZIP",
+        "title": "The Pirates of Dark Water",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/PIRA~318.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Pirates%20of%20Dark%20Water%20(USA).png"
     },
     {
@@ -1424,6 +1560,14 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Smurfs%20(USA).png"
     },
     {
+        "id": "SMURFS2.ZIP",
+        "title": "The Smurfs 2",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/SMURFS2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Smurfs%202%20(USA).png"
+    },
+    {
         "id": "THEMEPRK.ZIP",
         "title": "Theme Park",
         "platform": "Mega Drive",
@@ -1438,6 +1582,22 @@ const gamesCatalog = [
         "year": "199X",
         "file": "roms/mega-drive/THUNDER2.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Thunder%20Force%20II%20(USA).png"
+    },
+    {
+        "id": "THUNDER3.ZIP",
+        "title": "Thunder Force III",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/THUNDER3.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Thunder%20Force%20III%20(USA).png"
+    },
+    {
+        "id": "THUNDER4.ZIP",
+        "title": "Thunder Force IV",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/THUNDER4.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Thunder%20Force%20IV%20(USA).png"
     },
     {
         "id": "TTAL~430.ZIP",
@@ -1529,11 +1689,11 @@ const gamesCatalog = [
     },
     {
         "id": "VECTOR2.ZIP",
-        "title": "Vectorman",
+        "title": "Vectorman 2",
         "platform": "Mega Drive",
         "year": "199X",
         "file": "roms/mega-drive/VECTOR2.ZIP",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Vectorman%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Vectorman%202%20(USA).png"
     },
     {
         "id": "VIEWPOIN.ZIP",
@@ -1622,6 +1782,14 @@ const gamesCatalog = [
         "year": "199X",
         "file": "roms/mega-drive/XMEN.ZIP",
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/X-Men%20(USA).png"
+    },
+    {
+        "id": "XMEN2.ZIP",
+        "title": "X-Men 2 - Clone Wars",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/XMEN2.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/X-Men%202%20-%20Clone%20Wars%20(USA).png"
     },
     {
         "id": "XENON_2.ZIP",

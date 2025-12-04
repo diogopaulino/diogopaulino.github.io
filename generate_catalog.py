@@ -385,9 +385,12 @@ def clean_name(filename):
     base = os.path.splitext(filename)[0].upper()
     base_clean = re.sub(r'~\d+', '', base)
     
-    for key, val in NAME_MAP.items():
+    # Sort keys by length descending to match longest prefix first
+    sorted_keys = sorted(NAME_MAP.keys(), key=len, reverse=True)
+    
+    for key in sorted_keys:
         if base.startswith(key) or base_clean.startswith(key):
-            return val
+            return NAME_MAP[key]
 
     name = os.path.splitext(filename)[0]
     name = re.sub(r'~\d+', '', name)
@@ -410,8 +413,8 @@ def get_cover_url(title):
     # Append region. Note the space before (USA).
     return f"https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/{encoded_title}%20(USA).png"
 
-# Group games by title to remove duplicates
-games_by_title = {}
+# Create game list directly
+final_games = []
 
 if os.path.exists(ROM_DIR):
     for filename in sorted(os.listdir(ROM_DIR)):
@@ -428,41 +431,7 @@ if os.path.exists(ROM_DIR):
                 "cover": get_cover_url(title)
             }
             
-            if title not in games_by_title:
-                games_by_title[title] = []
-            
-            games_by_title[title].append(game)
-
-# Select the best version for each title
-final_games = []
-
-for title, candidates in games_by_title.items():
-    if len(candidates) == 1:
-        final_games.append(candidates[0])
-    else:
-        # Heuristic to pick best version
-        # 1. Prefer filenames with (USA) or (U)
-        # 2. Prefer filenames with (World) or (W)
-        # 3. Prefer filenames with [!] (GoodDump)
-        # 4. Prefer latest revision (Rev 1, Rev A) - hard to detect in 8.3 but we try
-        
-        best = candidates[0]
-        best_score = -1
-        
-        for cand in candidates:
-            score = 0
-            fname = cand['id'].upper()
-            
-            if '(USA)' in fname or '(U)' in fname: score += 10
-            if '(WORLD)' in fname or '(W)' in fname: score += 8
-            if '(EUROPE)' in fname or '(E)' in fname: score += 5
-            if '[!]' in fname: score += 2
-            
-            if score > best_score:
-                best_score = score
-                best = cand
-        
-        final_games.append(best)
+            final_games.append(game)
 
 # Sort alphabetically
 final_games.sort(key=lambda x: x['title'])
