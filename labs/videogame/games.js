@@ -632,6 +632,22 @@ const gamesCatalog = [
         "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20(USA).png"
     },
     {
+        "id": "GOLDE~30.ZIP",
+        "title": "Golden Axe II",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/GOLDE~30.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20II%20(USA).png"
+    },
+    {
+        "id": "GOLDE~32.ZIP",
+        "title": "Golden Axe III",
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": "roms/mega-drive/GOLDE~32.ZIP",
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20III%20(USA).png"
+    },
+    {
         "id": "GOOFY.ZIP",
         "title": "Goofy's Hysterical History Tour",
         "platform": "Mega Drive",
