@@ -99,23 +99,13 @@ function showControls() {
 
     const overlay = document.createElement('div');
     overlay.id = 'controls-overlay';
-    overlay.style.cssText = `
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(5px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        animation: fadeIn 0.2s;
-    `;
+    overlay.className = 'controls-overlay';
 
     overlay.innerHTML = `
-        <div class="panel" style="max-width: 400px; width: 90%; pointer-events: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-            <div class="panel-title" style="justify-content: space-between; margin-bottom: 1.5rem;">
-                <span style="font-size: 1rem;">Controles</span>
-                <button class="close-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:0.5rem;">
+        <div class="controls-modal">
+            <div class="controls-modal-header">
+                <span class="controls-modal-title">Controles</span>
+                <button class="controls-modal-close">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -127,7 +117,7 @@ function showControls() {
                 <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
                 <div class="control-item"><kbd>Esc</kbd> Sair/Voltar</div>
             </div>
-            <div style="margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: var(--text-secondary);">
+            <div class="controls-modal-footer">
                 Clique fora para fechar
             </div>
         </div>
@@ -137,7 +127,7 @@ function showControls() {
         if (e.target === overlay) overlay.remove();
     });
 
-    overlay.querySelector('.close-btn').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('.controls-modal-close').addEventListener('click', () => overlay.remove());
 
     document.body.appendChild(overlay);
 }
@@ -232,10 +222,7 @@ function init() {
         }
     });
 
-    // Add animation style for fade in
-    const style = document.createElement('style');
-    style.textContent = `@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`;
-    document.head.appendChild(style);
+
 
     // Sliders listeners removed
 
@@ -281,43 +268,19 @@ async function loadCatalog() {
     const grid = $('games-grid');
     if (!grid) return;
 
-    // Add Library Header (Search Only) if not exists
-    if (!document.querySelector('.library-header')) {
-        const header = document.createElement('div');
-        header.className = 'library-header';
-        header.innerHTML = `
-            <div class="search-container">
-                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input">
-            </div>
-        `;
-        grid.parentNode.insertBefore(header, grid);
-    }
-
-    // Add Footer with Upload Button if not exists
-    if (!document.querySelector('.library-footer')) {
-        const footer = document.createElement('div');
-        footer.className = 'library-footer';
-        footer.innerHTML = `
-            <label class="upload-btn-footer">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Carregar ROM Local (.zip, .md, .gen)
-                <input type="file" id="rom-file-footer" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
-            </label>
-        `;
-        grid.parentNode.appendChild(footer);
-
-        // Attach listener to the new footer upload button
-        const input = document.getElementById('rom-file-footer');
-        if (input) {
-            input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const name = file.name.replace(/\.[^/.]+$/, '');
-                    startGame(file, name);
-                }
-            });
-        }
+    // Attach listener to upload button
+    const input = document.getElementById('rom-file-input');
+    if (input) {
+        // Remove old listeners to avoid duplicates if called multiple times
+        const newClone = input.cloneNode(true);
+        input.parentNode.replaceChild(newClone, input);
+        newClone.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const name = file.name.replace(/\.[^/.]+$/, '');
+                startGame(file, name);
+            }
+        });
     }
 
     try {
@@ -332,7 +295,11 @@ async function loadCatalog() {
         // Search functionality
         const searchInput = $('game-search');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
+            // Remove old listeners
+            const newSearch = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newSearch, searchInput);
+
+            newSearch.addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
                 const filtered = allGames.filter(g => g.title.toLowerCase().includes(term));
                 renderGames(filtered);

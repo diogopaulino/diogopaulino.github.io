@@ -42,96 +42,121 @@
         </header>
 
         <main id="main">
-            <section id="home" class="home">
-                <div id="games-grid" class="games-grid">
-                    <!-- Games will be loaded here dynamically -->
-                </div>
-
-                <div class="panel">
-                    <div class="panel-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        Visual
+            <main id="main">
+                <section id="home" class="home">
+                    <div class="library-toolbar">
+                        <div class="search-container">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input">
+                        </div>
+                        <label class="upload-btn-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Carregar ROM
+                            <input type="file" id="rom-file-input" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
+                        </label>
                     </div>
-                    <div class="settings-rows">
-                        <div class="settings-row">
-                            <span class="settings-label">Tela</span>
-                            <div class="btn-group" data-setting="scale">
-                                <button data-value="max" class="active">Padrão</button>
-                                <button data-value="stretch">Esticar</button>
+
+                    <div id="games-grid" class="games-grid">
+                        <!-- Games will be loaded here dynamically -->
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="panel">
+                            <div class="panel-title">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                                </svg>
+                                Visual
+                            </div>
+                            <div class="settings-rows">
+                                <div class="settings-row">
+                                    <span class="settings-label">Tela</span>
+                                    <div class="btn-group" data-setting="scale">
+                                        <button data-value="max" class="active">Padrão</button>
+                                        <button data-value="stretch">Esticar</button>
+                                    </div>
+                                </div>
+                                <div class="settings-row">
+                                    <span class="settings-label">Filtro</span>
+                                    <div class="btn-group" data-setting="filter">
+                                        <button data-value="sharp" class="active">Padrão</button>
+                                        <button data-value="smooth">Suave</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-label">Filtro</span>
-                            <div class="btn-group" data-setting="filter">
-                                <button data-value="sharp" class="active">Padrão</button>
-                                <button data-value="smooth">Suave</button>
+                        <div class="panel">
+                            <div class="panel-title">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                                    <path d="M6 12h4m-2-2v4"></path>
+                                </svg>
+                                Controles
+                            </div>
+                            <div class="controls-grid">
+                                <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                                <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A/B/C</div>
+                                <div class="control-item"><kbd>Enter</kbd> Start</div>
+                                <div class="control-item"><kbd>Shift</kbd> Select</div>
+                                <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
+                                <div class="control-item"><kbd>Esc</kbd> Sair</div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="panel" style="margin-top: 1.5rem;">
-                    <div class="panel-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                            <path d="M6 12h4m-2-2v4"></path>
-                        </svg>
-                        Controles
-                    </div>
-                    <div class="controls-grid">
-                        <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
-                        <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A/B/C</div>
-                        <div class="control-item"><kbd>Enter</kbd> Start</div>
-                        <div class="control-item"><kbd>Shift</kbd> Select</div>
-                        <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
-                        <div class="control-item"><kbd>Esc</kbd> Sair</div>
-                    </div>
-                </div>
-    </div>
-    </div>
-    </div>
-    </section>
+                </section>
 
-    <section id="player" class="player hidden">
-        <div class="player-bar">
-            <button id="btn-back" title="Voltar (Esc)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Voltar
-            </button>
-            <span id="game-name">-</span>
-            <div style="display: flex; gap: 0.5rem;">
-                <button id="btn-controls" title="Ver Controles">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                        <path d="M6 12h4m-2-2v4"></path>
-                    </svg>
-                </button>
-                <button id="btn-fullscreen" title="Tela cheia">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                        </path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <div id="loader" class="hidden">
-            <div class="spinner"></div>
-            <span>Carregando...</span>
-        </div>
-        <div id="screen"></div>
-    </section>
-    </main>
+                <section id="player" class="player hidden">
+                    <div class="player-bar">
+                        <button id="btn-back" title="Voltar (Esc)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                            Voltar
+                        </button>
+                        <span id="game-name">-</span>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="btn-controls" title="Ver Controles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                                    <path d="M6 12h4m-2-2v4"></path>
+                                </svg>
+                            </button>
+                            <button id="btn-fullscreen" title="Tela cheia">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path
+                                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="loader" class="hidden">
+                        <div class="spinner"></div>
+                        <span>Carregando...</span>
+                    </div>
+                    <div id="screen"></div>
+                </section>
+            </main>
 
-    <footer>
-        <a href="/">← voltar para home</a>
-    </footer>
+            <footer>
+                <a href="/">← voltar para home</a>
+            </footer>
     </div>
     <script src="../shared.js"></script>
     <script src="games.js"></script>
