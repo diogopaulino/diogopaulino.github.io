@@ -2,8 +2,8 @@ main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+    /* height: 100%; removed to allow natural scroll */
+    /* overflow: hidden; removed to allow natural scroll */
 }
 
 .home {
@@ -15,7 +15,7 @@ main {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    overflow-y: auto;
+    /* overflow-y: auto; removed to allow natural scroll */
 }
 
 .home.hidden {
@@ -582,6 +582,7 @@ main {
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    /* Changed from height to min-height */
+    /* overflow: hidden; removed */
 }
