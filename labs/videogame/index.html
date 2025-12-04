@@ -44,32 +44,43 @@
         <main id="main">
             <main id="main">
                 <section id="home" class="home">
-                    <div class="library-toolbar">
-                        <div class="search-container">
-                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input">
-                        </div>
-                        <label class="upload-btn-header">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    <!-- Controls Section (Top) -->
+                    <div class="panel">
+                        <div class="panel-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
+                                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                                <path d="M6 12h4m-2-2v4"></path>
                             </svg>
-                            Carregar ROM
-                            <input type="file" id="rom-file-input" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
-                        </label>
+                            Controles
+                        </div>
+                        <div class="controls-grid">
+                            <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                            <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A/B/C</div>
+                            <div class="control-item"><kbd>Enter</kbd> Start</div>
+                            <div class="control-item"><kbd>Shift</kbd> Select</div>
+                            <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
+                            <div class="control-item"><kbd>Esc</kbd> Sair</div>
+                        </div>
                     </div>
 
+                    <!-- Search (Middle) -->
+                    <div class="search-container" style="max-width: 100%;">
+                        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input">
+                    </div>
+
+                    <!-- Games Grid -->
                     <div id="games-grid" class="games-grid">
                         <!-- Games will be loaded here dynamically -->
                     </div>
 
-                    <div class="info-grid">
+                    <!-- Bottom Section (Visuals + Upload) -->
+                    <div class="bottom-section">
                         <div class="panel">
                             <div class="panel-title">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -97,24 +108,17 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="panel">
-                            <div class="panel-title">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                                    <path d="M6 12h4m-2-2v4"></path>
-                                </svg>
-                                Controles
-                            </div>
-                            <div class="controls-grid">
-                                <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
-                                <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A/B/C</div>
-                                <div class="control-item"><kbd>Enter</kbd> Start</div>
-                                <div class="control-item"><kbd>Shift</kbd> Select</div>
-                                <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
-                                <div class="control-item"><kbd>Esc</kbd> Sair</div>
-                            </div>
-                        </div>
+
+                        <label class="upload-btn-header" style="justify-content: center; width: 100%;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Carregar ROM Local
+                            <input type="file" id="rom-file-input" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
+                        </label>
                     </div>
                 </section>
 

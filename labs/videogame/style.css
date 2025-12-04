@@ -21,34 +21,21 @@ main {
 }
 
 /* Toolbar (Search & Upload) */
-.library-toolbar {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--bg-card);
-    padding: 1rem;
-    border-radius: 1rem;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-subtle);
-    flex-wrap: wrap;
-}
-
 .search-container {
     position: relative;
-    flex: 1;
-    min-width: 200px;
+    width: 100%;
 }
 
 .search-input {
     width: 100%;
-    padding: 0.75rem 1rem 0.75rem 2.75rem;
-    background: var(--bg-body);
+    padding: 1rem 1rem 1rem 3rem;
+    background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: 0.75rem;
+    border-radius: 1rem;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 1rem;
     transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
 }
 
 .search-input:focus {
@@ -70,20 +57,23 @@ main {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 1rem;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    box-shadow: var(--shadow-sm);
 }
 
 .upload-btn-header:hover {
-    background: var(--accent-hover);
+    background: var(--bg-body);
+    border-color: var(--accent);
+    color: var(--accent);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
@@ -91,8 +81,14 @@ main {
 /* Games Grid */
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .games-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
 }
 
 .game-card {
@@ -106,6 +102,22 @@ main {
     text-align: left;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+}
+
+/* Bottom Section */
+.bottom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+    .bottom-section {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        align-items: start;
+    }
 }
 
 .game-cover {
