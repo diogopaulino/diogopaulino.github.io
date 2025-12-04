@@ -5,7 +5,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/aeroblst.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters%20(Japan).png"
     },
     {
         "id": "AEROACR2.ZIP",
@@ -77,7 +77,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/another.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Another%20World%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Another%20World%20(Europe).png"
     },
     {
         "id": "ARCAD~12.ZIP",
@@ -85,7 +85,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/arcad.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Arcade%20Classics%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Arcade%20Classics%20(Europe).png"
     },
     {
         "id": "ARIEL.ZIP",
@@ -157,7 +157,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/batwings.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Batman%20Forever%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Batman%20Forever%20(Europe).png"
     },
     {
         "id": "BTLSQUAD.ZIP",
@@ -197,7 +197,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bld-veng.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Blades%20of%20Vengeance%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Blades%20of%20Vengeance%20(Europe).png"
     },
     {
         "id": "BLAS~130.ZIP",
@@ -261,7 +261,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bubsy2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Bubsy%20II%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Bubsy%20II%20(Europe).png"
     },
     {
         "id": "BUGSDUFF.ZIP",
@@ -373,7 +373,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/combatca.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Combat%20Cars%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Combat%20Cars%20(Europe).png"
     },
     {
         "id": "COMIX.ZIP",
@@ -405,7 +405,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/cospaceh.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cosmic%20Spacehead%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cosmic%20Spacehead%20(Europe).png"
     },
     {
         "id": "CROSFIRE.ZIP",
@@ -509,7 +509,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/devilcra.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dragon%27s%20Fury%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Dragon%27s%20Fury%20(Europe).png"
     },
     {
         "id": "E-SWAT.ZIP",
@@ -581,7 +581,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/fworlds.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Forgotten%20Worlds%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Forgotten%20Worlds%20(Europe).png"
     },
     {
         "id": "GLOC.ZIP",
@@ -589,7 +589,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/gloc.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/G-LOC%20-%20Air%20Battle%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/G-LOC%20-%20Air%20Battle%20(World).png"
     },
     {
         "id": "GALAHAD.ZIP",
@@ -637,7 +637,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/golden_axe.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Golden%20Axe%20(Europe).png"
     },
     {
         "id": "GOLDE~30.ZIP",
@@ -693,7 +693,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/haunting.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Haunting%20Starring%20Polterguy%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Haunting%20Starring%20Polterguy%20(Europe).png"
     },
     {
         "id": "HELLFIRE.ZIP",
@@ -749,7 +749,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/joemac.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Joe%20%26%20Mac%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Joe%20_%20Mac%20(USA).png"
     },
     {
         "id": "KIDC.ZIP",
@@ -765,7 +765,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/klax.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Klax%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Klax%20(Europe).png"
     },
     {
         "id": "LEMMINGS.ZIP",
@@ -813,7 +813,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/marblem.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Marble%20Madness%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Marble%20Madness%20(Europe).png"
     },
     {
         "id": "MARVEL.ZIP",
@@ -909,7 +909,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/nbal.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NBA%20Live%2095%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NBA%20Live%2095%20(Europe).png"
     },
     {
         "id": "NHL97.ZIP",
@@ -917,7 +917,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/nhl97.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NHL%2097%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NHL%2097%20(Europe).png"
     },
     {
         "id": "NORMY.ZIP",
@@ -973,7 +973,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/pitfig.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Pit-Fighter%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Pit-Fighter%20(Japan).png"
     },
     {
         "id": "POCAHON.ZIP",
@@ -1021,7 +1021,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/quakshot.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/QuackShot%20Starring%20Donald%20Duck%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/QuackShot%20Starring%20Donald%20Duck%20(World).png"
     },
     {
         "id": "RAIDENTR.ZIP",
@@ -1181,7 +1181,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/snowbro.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Snow%20Bros.%20-%20Nick%20%26%20Tom%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Snow%20Bros.%20-%20Nick%20_%20Tom%20(Japan).png"
     },
     {
         "id": "SOLDEACE.ZIP",
@@ -1197,7 +1197,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/sonick.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20%26%20Knuckles%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Sonic%20_%20Knuckles%20(Europe).png"
     },
     {
         "id": "SONIC3D.ZIP",
@@ -1245,7 +1245,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/sharrie2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Space%20Harrier%20II%20(Europe).png"
     },
     {
         "id": "SPARKSTR.ZIP",
@@ -1301,7 +1301,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/strider2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Strider%20II%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Strider%20II%20(Europe).png"
     },
     {
         "id": "SUBTE.ZIP",
@@ -1317,7 +1317,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/superh.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Super%20Hang-On%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Super%20Hang-On%20(Japan).png"
     },
     {
         "id": "SWORDOFS.ZIP",
@@ -1341,7 +1341,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/synd.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Syndicate%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Syndicate%20(Europe).png"
     },
     {
         "id": "TAZMANIA.ZIP",
@@ -1349,7 +1349,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/tazmania.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Taz-Mania%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Taz-Mania%20(Europe).png"
     },
     {
         "id": "TETRISBL.ZIP",
@@ -1357,7 +1357,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/tetrisbl.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tetris%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tetris%20(Japan).png"
     },
     {
         "id": "ADDAM~74.ZIP",
@@ -1365,7 +1365,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/addam.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%2C%20The%20(Europe).png"
     },
     {
         "id": "BATNROB.ZIP",
@@ -1389,7 +1389,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/bb-roar.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Berenstain%20Bears%27%20Camping%20Adventure%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Berenstain%20Bears%27%20Camping%20Adventure%2C%20The%20(USA).png"
     },
     {
         "id": "CHAOSENG.ZIP",
@@ -1397,7 +1397,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/chaoseng.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Chaos%20Engine%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Chaos%20Engine%2C%20The%20(Europe).png"
     },
     {
         "id": "CHAOS_E2.ZIP",
@@ -1413,7 +1413,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/fstones.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Flintstones%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Flintstones%2C%20The%20(USA).png"
     },
     {
         "id": "HUMANS.ZIP",
@@ -1421,7 +1421,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/humans.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Humans%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Humans%2C%20The%20(USA).png"
     },
     {
         "id": "IMMORTAL.ZIP",
@@ -1429,7 +1429,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/immortal.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Immortal%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Immortal%2C%20The%20(USA).png"
     },
     {
         "id": "HULK.ZIP",
@@ -1437,7 +1437,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/hulk.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Incredible%20Hulk%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Incredible%20Hulk%2C%20The%20(Europe).png"
     },
     {
         "id": "JUNGLEBO.ZIP",
@@ -1445,7 +1445,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/junglebo.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Jungle%20Book%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Jungle%20Book%2C%20The%20(USA).png"
     },
     {
         "id": "LOST~270.ZIP",
@@ -1453,7 +1453,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/lost.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Lost%20Vikings%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Lost%20Vikings%2C%20The%20(USA).png"
     },
     {
         "id": "NZ-STORY.ZIP",
@@ -1461,7 +1461,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/nz-story.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20NewZealand%20Story%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/NewZealand%20Story%2C%20The%20(Japan).png"
     },
     {
         "id": "DARKWATR.ZIP",
@@ -1469,7 +1469,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/darkwatr.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Pirates%20of%20Dark%20Water%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Pirates%20of%20Dark%20Water%2C%20The%20(USA).png"
     },
     {
         "id": "RSHINOBI.ZIP",
@@ -1477,7 +1477,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/rshinobi.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Revenge%20of%20Shinobi%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Revenge%20of%20Shinobi%2C%20The%20(USA).png"
     },
     {
         "id": "BARTVSSM.ZIP",
@@ -1501,7 +1501,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/smurfs.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Smurfs%20(Europe).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Smurfs%2C%20The%20(Europe).png"
     },
     {
         "id": "SMURFS2.ZIP",
@@ -1509,7 +1509,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/smurfs2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Smurfs%202%20(Europe).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Smurfs%202%2C%20The%20(Europe).png"
     },
     {
         "id": "THEMEPRK.ZIP",
@@ -1517,7 +1517,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/themeprk.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Theme%20Park%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Theme%20Park%20(Europe).png"
     },
     {
         "id": "THUNDER2.ZIP",
@@ -1525,7 +1525,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/thunder2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Thunder%20Force%20II%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Thunder%20Force%20II%20(Europe).png"
     },
     {
         "id": "THUNDER3.ZIP",
@@ -1549,7 +1549,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/ttal.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tiny%20Toon%20Adventures%20-%20Acme%20All-Stars%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Tiny%20Toon%20Adventures%20-%20Acme%20All-Stars%20(Europe).png"
     },
     {
         "id": "TINYTOON.ZIP",
@@ -1597,7 +1597,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/truelies.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/True%20Lies%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/True%20Lies%20(Europe).png"
     },
     {
         "id": "TRUXTON.ZIP",
@@ -1605,7 +1605,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/truxton.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Truxton%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Truxton%20(Europe).png"
     },
     {
         "id": "TURRI~66.ZIP",
@@ -1709,7 +1709,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/mikywrld.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/World%20of%20Illusion%20Starring%20Mickey%20Mouse%20and%20Donald%20Duck%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/World%20of%20Illusion%20Starring%20Mickey%20Mouse%20and%20Donald%20Duck%20(Europe).png"
     },
     {
         "id": "WORMS.ZIP",
@@ -1733,7 +1733,7 @@ const gamesCatalog = [
         "platform": "Mega Drive",
         "year": "199X",
         "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/xmen2.zip",
-        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/X-Men%202%20-%20Clone%20Wars%20(USA).png"
+        "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/X-Men%202%20-%20Clone%20Wars%20(Europe).png"
     },
     {
         "id": "XENON_2.ZIP",

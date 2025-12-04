@@ -212,7 +212,7 @@ NAME_MAP = {
     "PRINCE": "Prince of Persia",
     "PUGGSY": "Puggsy",
     "PULSEMAN": "Pulseman",
-    "PUNISHER": "The Punisher",
+    "PUNISHER": "Punisher, The",
     "PUYO": "Dr. Robotnik's Mean Bean Machine",
     "QUACK": "QuackShot Starring Donald Duck",
     "QUAKSHOT": "QuackShot Starring Donald Duck",
@@ -286,7 +286,7 @@ NAME_MAP = {
     "TAZ": "Taz-Mania",
     "TAZMANIA": "Taz-Mania",
     "TEENAGE": "Teenage Mutant Ninja Turtles - The Hyperstone Heist",
-    "TERMINAT": "The Terminator",
+    "TERMINAT": "Terminator, The",
     "TETRIS": "Tetris",
     "TETRISBL": "Tetris",
     "THEME": "Theme Park",
@@ -413,6 +413,20 @@ REGION_MAP = {
     "Sonic _ Knuckles": "Europe",
     "Smurfs, The": "Europe",
     "Smurfs 2, The": "Europe",
+    "Bubsy in Claws Encounters of the Furred Kind": "Europe",
+    "Fantasia": "Japan",
+    "Granada": "Japan",
+    "Herzog Zwei": "Europe",
+    "Lotus Turbo Challenge": "Europe",
+    "Madden NFL '94": "Europe",
+    "Mortal Kombat": "Europe",
+    "Mortal Kombat II": "Europe",
+    "Ms. Pac-Man": "Europe",
+    "NBA Jam": "Japan",
+    "Paperboy": "Europe",
+    "Predator 2": "Europe",
+    "Spider-Man": "World",
+    "Vectorman": "Europe",
 }
 
 def clean_name(filename):
@@ -499,6 +513,30 @@ if os.path.exists(ROM_DIR):
             "cover": get_cover_url(title)
         }
         
+        final_games.append(game)
+
+    # Third pass: Add missing games from NAME_MAP
+    # This ensures the catalog is full even if local files were deleted/moved
+    for key, title in NAME_MAP.items():
+        if title in seen_titles:
+            continue
+            
+        seen_titles.add(title)
+        # Assume .zip for missing files as that was the original format
+        filename = f"{key.lower()}.zip"
+        
+        # Check if we have an existing URL for this ID (case insensitive check might be needed but let's try direct)
+        # We try both upper and lower case key for existing file lookup
+        file_url = existing_files.get(filename, existing_files.get(key + ".zip", f"roms/mega-drive/{filename}"))
+        
+        game = {
+            "id": filename,
+            "title": title,
+            "platform": "Mega Drive",
+            "year": "199X",
+            "file": file_url,
+            "cover": get_cover_url(title)
+        }
         final_games.append(game)
 
 # Sort alphabetically
