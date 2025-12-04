@@ -43,24 +43,8 @@
 
         <main id="main">
             <section id="home" class="home">
-                <div class="play-section">
-                    <button id="play-sonic" class="play-card">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Sonic_the_Hedgehog_1_Genesis_box_art.jpg"
-                            alt="Sonic The Hedgehog">
-                        <div class="play-card-overlay">
-                            <span class="play-btn">▶ Jogar</span>
-                        </div>
-                        <div class="play-card-info">
-                            <strong>Sonic The Hedgehog</strong>
-                            <span>Mega Drive • 1991</span>
-                        </div>
-                    </button>
-
-                    <label class="upload-card">
-                        <input type="file" id="rom-file" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
-                        <span class="upload-card-icon">📂</span>
-                        <span class="upload-card-text">Carregar<br>outra ROM</span>
-                    </label>
+                <div id="games-grid" class="games-grid">
+                    <!-- Games will be loaded here dynamically -->
                 </div>
 
                 <div class="panel">
@@ -71,41 +55,34 @@
                             <line x1="8" y1="21" x2="16" y2="21"></line>
                             <line x1="12" y1="17" x2="12" y2="21"></line>
                         </svg>
-                        Configurações de Vídeo
+                        Visual
                     </div>
-                    <div class="settings-row">
-                        <span class="settings-label">Escala</span>
-                        <div class="btn-group" data-setting="scale">
-                            <button data-value="max" class="active">4K (Fit)</button>
-                            <button data-value="stretch">Esticar</button>
+                    <div class="settings-rows">
+                        <div class="settings-row">
+                            <span class="settings-label">Tela</span>
+                            <div class="btn-group" data-setting="scale">
+                                <button data-value="max" class="active">Padrão</button>
+                                <button data-value="stretch">Esticar</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="settings-row">
-                        <span class="settings-label">Filtro</span>
-                        <div class="btn-group" data-setting="filter">
-                            <button data-value="sharp" class="active">4K (Sharp)</button>
-                            <button data-value="smooth">Suave</button>
+                        <div class="settings-row">
+                            <span class="settings-label">Filtro</span>
+                            <div class="btn-group" data-setting="filter">
+                                <button data-value="sharp" class="active">Padrão</button>
+                                <button data-value="smooth">Suave</button>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <div
+                    style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); text-align: center;">
+                    <button id="btn-show-controls"
+                        style="background: none; border: none; color: var(--text-secondary); font-size: 0.8rem; cursor: pointer; text-decoration: underline;">
+                        Ver Controles
+                    </button>
+                </div>
     </div>
     </div>
-
-    <div class="panel">
-        <div class="panel-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                <path d="M6 12h4m-2-2v4"></path>
-                <circle cx="17" cy="12" r="2"></circle>
-            </svg>
-            Controles do Teclado
-        </div>
-        <div class="controls-grid">
-            <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
-            <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Botões</div>
-            <div class="control-item"><kbd>Enter</kbd> Start</div>
-            <div class="control-item"><kbd>Esc</kbd> Voltar</div>
-        </div>
     </div>
     </section>
 
@@ -148,6 +125,7 @@
     </footer>
     </div>
     <script src="../shared.js"></script>
+    <script src="games.js"></script>
     <script src="script.js"></script>
 </body>
 
