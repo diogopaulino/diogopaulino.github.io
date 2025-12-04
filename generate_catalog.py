@@ -8,7 +8,7 @@ OUTPUT_FILE = 'labs/videogame/games.js'
 
 # Massive mapping based on common 8.3 filenames found in ROM sets
 NAME_MAP = {
-    "ADDAM": "The Addams Family",
+    "ADDAM": "Addams Family, The",
     "AEROACR2": "Aero the Acro-Bat 2",
     "AEROBLST": "Aero Blasters",
     "AFLASH": "Arrow Flash",
@@ -36,7 +36,7 @@ NAME_MAP = {
     "BATNROB": "The Adventures of Batman & Robin",
     "BATTLE": "Battletoads",
     "BATWINGS": "Batman Forever",
-    "BB-ROAR": "The Berenstain Bears' Camping Adventure",
+    "BB-ROAR": "Berenstain Bears' Camping Adventure, The",
     "BEAVBUT": "Beavis and Butt-Head",
     "BIOHAZ": "Bio-Hazard Battle",
     "BIOSHIPP": "Bio-Ship Paladin",
@@ -62,7 +62,7 @@ NAME_MAP = {
     "CASTLEVN": "Castlevania - Bloodlines",
     "CAST": "Castlevania - Bloodlines",
     "CHAKAN": "Chakan - The Forever Man",
-    "CHAOSENG": "The Chaos Engine",
+    "CHAOSENG": "Chaos Engine, The",
     "CHAOS_E2": "The Chaos Engine 2",
     "CHESTER": "Chester Cheetah - Too Cool to Fool",
     "CHIC": "Chicago Syndicate",
@@ -84,7 +84,7 @@ NAME_MAP = {
     "DAFFY": "Daffy Duck in Hollywood",
     "DANG": "Dangerous Seed",
     "DARIUS2": "Sagaia",
-    "DARKWATR": "The Pirates of Dark Water",
+    "DARKWATR": "Pirates of Dark Water, The",
     "DASHINDE": "Dashin' Desperadoes",
     "DECAPATK": "Decap Attack",
     "DESERT": "Desert Strike - Return to the Gulf",
@@ -108,8 +108,8 @@ NAME_MAP = {
     "FIDO": "Fido Dido",
     "FIFA": "FIFA International Soccer",
     "FLASHBCK": "Flashback - The Quest for Identity",
-    "FLINT": "The Flintstones",
-    "FSTONES": "The Flintstones",
+    "FLINT": "Flintstones, The",
+    "FSTONES": "Flintstones, The",
     "FROGGER": "Frogger",
     "FWORLDS": "Forgotten Worlds",
     "GAIARES": "Gaiares",
@@ -136,17 +136,17 @@ NAME_MAP = {
     "HERZOG": "Herzog Zwei",
     "HITHEICE": "Hit the Ice",
     "HOOK": "Hook",
-    "HULK": "The Incredible Hulk",
-    "HUMANS": "The Humans",
-    "IMMORTAL": "The Immortal",
+    "HULK": "Incredible Hulk, The",
+    "HUMANS": "Humans, The",
+    "IMMORTAL": "Immortal, The",
     "INSECTOR": "Insector X",
     "INSECTOX": "Insector X",
     "JAMES": "James Pond",
     "JIMPOWER": "Jim Power - The Arcade Game",
     "JOE": "Joe & Mac",
-    "JOEMAC": "Joe & Mac",
-    "JUNGLE": "The Jungle Book",
-    "JUNGLEBO": "The Jungle Book",
+    "JOEMAC": "Joe _ Mac",
+    "JUNGLE": "Jungle Book, The",
+    "JUNGLEBO": "Jungle Book, The",
     "JURASSIC": "Jurassic Park",
     "J_POND2": "James Pond II - Codename RoboCod",
     "KIDCHAM": "Kid Chameleon",
@@ -157,10 +157,10 @@ NAME_MAP = {
     "LEMMIN": "Lemmings",
     "LETHAL": "Lethal Enforcers",
     "LIONKING": "Disney's The Lion King",
-    "LOST": "The Lost Vikings",
+    "LOST": "Lost Vikings, The",
     "LOTUS": "Lotus Turbo Challenge",
     "LOTUS2": "Lotus II",
-    "LVIKINGS": "The Lost Vikings",
+    "LVIKINGS": "Lost Vikings, The",
     "M-BOMB": "Mega Bomberman",
     "MADDEN": "Madden NFL '94",
     "MARBLE": "Marble Madness",
@@ -189,9 +189,9 @@ NAME_MAP = {
     "NBAL": "NBA Live 95",
     "NHL": "NHL Hockey",
     "NHL97": "NHL 97",
-    "NINJA": "The Revenge of Shinobi",
+    "NINJA": "Revenge of Shinobi, The",
     "NORMY": "Normy's Beach Babe-O-Rama",
-    "NZ-STORY": "The NewZealand Story",
+    "NZ-STORY": "NewZealand Story, The",
     "OLYMPIC": "Olympic Gold",
     "OUTR2019": "OutRun 2019",
     "OUTRUN": "OutRun",
@@ -202,7 +202,7 @@ NAME_MAP = {
     "PHANTASY": "Phantasy Star IV",
     "PHELIOS": "Phelios",
     "PINO": "Pinocchio",
-    "PIRA": "The Pirates of Dark Water",
+    "PIRA": "Pirates of Dark Water, The",
     "PITFALL": "Pitfall! - The Mayan Adventure",
     "PITFIG": "Pit-Fighter",
     "POCAHON": "Pocahontas",
@@ -235,7 +235,7 @@ NAME_MAP = {
     "ROLL": "Rolling Thunder 2",
     "ROLLING": "Rolling Thunder 2",
     "ROLO": "Rolo to the Rescue",
-    "RSHINOBI": "The Revenge of Shinobi",
+    "RSHINOBI": "Revenge of Shinobi, The",
     "SAMURAI": "Samurai Shodown",
     "SBEAST2": "Shadow of the Beast II",
     "SECSAMUR": "Second Samurai",
@@ -244,21 +244,21 @@ NAME_MAP = {
     "SHARRIE2": "Space Harrier II",
     "SHDANCER": "Shadow Dancer - The Secret of Shinobi",
     "SHINING": "Shining Force",
-    "SHINOBI": "The Revenge of Shinobi",
+    "SHINOBI": "Revenge of Shinobi, The",
     "SHINOBI3": "Shinobi III - Return of the Ninja Master",
     "SKELETON": "Skeleton Krew",
     "SKITCHIN": "Skitchin'",
     "SMASHTV": "Smash TV",
-    "SMURFS": "The Smurfs",
-    "SMURFS2": "The Smurfs 2",
-    "SNOWBRO": "Snow Bros. - Nick & Tom",
+    "SMURFS": "Smurfs, The",
+    "SMURFS2": "Smurfs 2, The",
+    "SNOWBRO": "Snow Bros. - Nick _ Tom",
     "SOLDEACE": "Sol-Deace",
     "SONIC": "Sonic The Hedgehog",
     "SONIC1": "Sonic The Hedgehog",
     "SONIC2": "Sonic The Hedgehog 2",
     "SONIC3": "Sonic The Hedgehog 3",
     "SONIC3D": "Sonic 3D Blast",
-    "SONICK": "Sonic & Knuckles",
+    "SONICK": "Sonic _ Knuckles",
     "SONICSB": "Sonic Spinball",
     "SPAC": "Space Harrier II",
     "SPARKSTR": "Sparkster",
@@ -373,6 +373,46 @@ REGION_MAP = {
     "Curse": "Japan",
     "Twin Hawk": "Europe",
     "Thunder Force IV": "Europe", # Often listed as Europe for this title, or Lightening Force for USA
+    "Aero Blasters": "Japan",
+    "Another World": "Europe",
+    "Arcade Classics": "Europe",
+    "Batman Forever": "Europe",
+    "Blades of Vengeance": "Europe",
+    "Bubsy II": "Europe",
+    "Combat Cars": "Europe",
+    "Cosmic Spacehead": "Europe",
+    "Dragon's Fury": "Europe",
+    "Forgotten Worlds": "Europe",
+    "G-LOC - Air Battle": "World",
+    "Golden Axe": "Europe",
+    "Haunting Starring Polterguy": "Europe",
+    "Klax": "Europe",
+    "Marble Madness": "Europe",
+    "NBA Live 95": "Europe",
+    "NHL 97": "Europe",
+    "Pit-Fighter": "Japan",
+    "QuackShot Starring Donald Duck": "World",
+    "Space Harrier II": "Europe",
+    "Strider II": "Europe",
+    "Super Hang-On": "Japan",
+    "Syndicate": "Europe",
+    "Taz-Mania": "Europe",
+    "Tetris": "Japan",
+    "Theme Park": "Europe",
+    "Thunder Force II": "Europe",
+    "Tiny Toon Adventures - Acme All-Stars": "Europe",
+    "True Lies": "Europe",
+    "Truxton": "Europe",
+    "World of Illusion Starring Mickey Mouse and Donald Duck": "Europe",
+    "X-Men 2 - Clone Wars": "Europe",
+    "Addams Family, The": "Europe",
+    "Chaos Engine, The": "Europe",
+    "Incredible Hulk, The": "Europe",
+    "NewZealand Story, The": "Japan",
+    "Snow Bros. - Nick _ Tom": "Japan",
+    "Sonic _ Knuckles": "Europe",
+    "Smurfs, The": "Europe",
+    "Smurfs 2, The": "Europe",
 }
 
 def clean_name(filename):
@@ -411,6 +451,19 @@ def get_cover_url(title):
 final_games = []
 seen_titles = set()
 
+# Load existing games to preserve file URLs
+existing_files = {}
+if os.path.exists(OUTPUT_FILE):
+    try:
+        with open(OUTPUT_FILE, 'r') as f:
+            content = f.read()
+            json_str = re.sub(r'^const gamesCatalog = ', '', content).strip().rstrip(';')
+            existing_games = json.loads(json_str)
+            for g in existing_games:
+                existing_files[g['id']] = g['file']
+    except Exception as e:
+        print(f"Warning: Could not read existing games.js: {e}")
+
 if os.path.exists(ROM_DIR):
     # First pass: Collect all potential games
     candidates = []
@@ -436,12 +489,13 @@ if os.path.exists(ROM_DIR):
         title = cand['title']
         
         # Create game object
+        file_url = existing_files.get(filename, f"roms/mega-drive/{filename}")
         game = {
             "id": filename,
             "title": title,
             "platform": "Mega Drive",
             "year": "199X",
-            "file": f"roms/mega-drive/{filename}",
+            "file": file_url,
             "cover": get_cover_url(title)
         }
         
