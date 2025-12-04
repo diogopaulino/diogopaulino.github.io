@@ -367,7 +367,7 @@ function renderGames(games) {
         // We will try to load the image. If it fails, the global handleImageError will take over.
         // We encode the title for the initial attempt.
         return `
-        <button class="game-card" onclick="startGame('${game.file}', '${game.title}')">
+        <button class="game-card" onclick="startGame('${game.file}', '${game.title.replace(/'/g, "\\'")}')">
             <div class="game-cover">
                 <img src="${game.cover}" 
                      alt="${game.title}" 
