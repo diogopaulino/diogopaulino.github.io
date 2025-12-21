@@ -341,18 +341,40 @@ const App = {
     handleKeyRemap(e) {
         if (this.ui.player.classList.contains('hidden')) return;
         if (!this.currentCore) return;
-        const map = {
-            's': {
-                key: 'z',
-                code: 'KeyZ',
-                keyCode: 90
-            },
-            'd': {
-                key: 'x',
-                code: 'KeyX',
-                keyCode: 88
+        
+        const key = e.key.toLowerCase();
+        let map = null;
+        
+        if (this.currentCore === 'genesis_plus_gx') {
+            if (key === 's') {
+                map = {
+                    key: 'z',
+                    code: 'KeyZ',
+                    keyCode: 90
+                };
+            } else if (key === 'd') {
+                map = {
+                    key: 'x',
+                    code: 'KeyX',
+                    keyCode: 88
+                };
             }
-        }[e.key.toLowerCase()];
+        } else if (this.currentCore === 'snes9x') {
+            if (key === 's') {
+                map = {
+                    key: 'z',
+                    code: 'KeyZ',
+                    keyCode: 90
+                };
+            } else if (key === 'd') {
+                map = {
+                    key: 'x',
+                    code: 'KeyX',
+                    keyCode: 88
+                };
+            }
+        }
+        
         if (map && e.isTrusted) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -366,12 +388,20 @@ const App = {
                 view: window
             });
             Object.defineProperty(evt, 'keyCode', {
-                value: map.keyCode
+                value: map.keyCode,
+                writable: false
             });
             Object.defineProperty(evt, 'which', {
-                value: map.keyCode
+                value: map.keyCode,
+                writable: false
             });
-            window.dispatchEvent(evt)
+            const canvas = this.ui.screen.querySelector('canvas');
+            if (canvas) {
+                canvas.dispatchEvent(evt);
+                canvas.focus();
+            }
+            document.dispatchEvent(evt);
+            window.dispatchEvent(evt);
         }
     },
     async startGame(rom, name) {
