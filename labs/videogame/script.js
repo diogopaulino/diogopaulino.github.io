@@ -18,6 +18,7 @@ const App = {
     init() {
         this.setupEventListeners();
         this.setupSettings();
+        this.setupMobileControls();
         this.loadCatalog();
         window.startGameById = id => this.startGameById(id);
         window.handleImageError = (img, title) => this.handleImageError(img, title)
@@ -26,6 +27,8 @@ const App = {
         document.getElementById('btn-back')?.addEventListener('click', () => this.showHome());
         document.getElementById('btn-controls')?.addEventListener('click', () => this.showControls());
         document.getElementById('btn-fullscreen')?.addEventListener('click', () => this.toggleFullscreen());
+        document.getElementById('btn-save')?.addEventListener('click', () => this.saveGame());
+        document.getElementById('btn-load')?.addEventListener('click', () => this.loadGame());
         this.ui.grid?.addEventListener('click', e => {
             const card = e.target.closest('.game-card');
             if (card && card.dataset.id) this.startGameById(card.dataset.id)
@@ -39,18 +42,118 @@ const App = {
         window.addEventListener('keydown', e => this.handleKeyRemap(e));
         window.addEventListener('keyup', e => this.handleKeyRemap(e))
     },
+    setupMobileControls() {
+        const keyMap = {
+            'ArrowUp': { code: 'ArrowUp', keyCode: 38 },
+            'ArrowDown': { code: 'ArrowDown', keyCode: 40 },
+            'ArrowLeft': { code: 'ArrowLeft', keyCode: 37 },
+            'ArrowRight': { code: 'ArrowRight', keyCode: 39 },
+            'Enter': { code: 'Enter', keyCode: 13 },
+            'Shift': { code: 'ShiftLeft', keyCode: 16 },
+            'a': { code: 'KeyA', keyCode: 65 },
+            's': { code: 'KeyS', keyCode: 83 },
+            'd': { code: 'KeyD', keyCode: 68 },
+            'q': { code: 'KeyQ', keyCode: 81 },
+            'w': { code: 'KeyW', keyCode: 87 },
+            'e': { code: 'KeyE', keyCode: 69 },
+            'Escape': { code: 'Escape', keyCode: 27 }
+        };
+
+        const activeTouches = new Map(); // touchId -> keyName
+
+        const handleTouch = (e) => {
+            e.preventDefault();
+            const controlsRect = document.getElementById('mobile-controls').getBoundingClientRect();
+
+            // Process all changed touches
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const touchId = touch.identifier;
+
+                // Find element under touch
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                const btn = element?.closest('[data-key]');
+                const keyName = btn ? btn.dataset.key : null;
+
+                // Handle Touch End / Cancel
+                if (e.type === 'touchend' || e.type === 'touchcancel') {
+                    const activeKey = activeTouches.get(touchId);
+                    if (activeKey) {
+                        const mapping = keyMap[activeKey];
+                        if (mapping) this.triggerKey(activeKey, mapping.code, mapping.keyCode, 'keyup');
+                        const el = document.querySelector(`[data-key="${activeKey}"]`);
+                        if (el) el.classList.remove('active');
+                        activeTouches.delete(touchId);
+                    }
+                    continue;
+                }
+
+                // Handle Touch Start / Move
+                const currentKey = activeTouches.get(touchId);
+
+                // If we moved to a new key (or no key)
+                if (currentKey !== keyName) {
+                    // Release old key if it existed
+                    if (currentKey) {
+                        const mapping = keyMap[currentKey];
+                        if (mapping) this.triggerKey(currentKey, mapping.code, mapping.keyCode, 'keyup');
+                        const el = document.querySelector(`[data-key="${currentKey}"]`);
+                        if (el) el.classList.remove('active');
+                    }
+
+                    // Press new key if valid
+                    if (keyName) {
+                        const mapping = keyMap[keyName];
+                        if (mapping) this.triggerKey(keyName, mapping.code, mapping.keyCode, 'keydown');
+                        btn.classList.add('active');
+                        activeTouches.set(touchId, keyName);
+                    } else {
+                        activeTouches.delete(touchId);
+                    }
+                }
+            }
+        };
+
+        const container = document.getElementById('mobile-controls');
+        if (!container) return;
+
+        container.addEventListener('touchstart', handleTouch, { passive: false });
+        container.addEventListener('touchmove', handleTouch, { passive: false });
+        container.addEventListener('touchend', handleTouch, { passive: false });
+        container.addEventListener('touchcancel', handleTouch, { passive: false });
+        container.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+    },
+
+    triggerKey(key, code, keyCode, type) {
+        const evt = new KeyboardEvent(type, {
+            key: key,
+            code: code,
+            keyCode: keyCode,
+            which: keyCode,
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
+        Object.defineProperty(evt, 'keyCode', { value: keyCode });
+        Object.defineProperty(evt, 'which', { value: keyCode });
+        document.dispatchEvent(evt); // Global listener often on document
+        window.dispatchEvent(evt);   // Backup
+    },
     setupSettings() {
         document.querySelectorAll('.btn-group').forEach(group => {
-            const name = group.dataset.setting;
-            if (this.settings[name]) group.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn.dataset.value === this.settings[name]));
-            group.querySelectorAll('button').forEach(btn => {
+            const setting = group.dataset.setting;
+            const buttons = group.querySelectorAll('button');
+
+            // Set initial state
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === this.settings[setting]);
+
                 btn.addEventListener('click', () => {
-                    this.saveSetting(name, btn.dataset.value);
-                    group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active')
-                })
-            })
-        })
+                    this.saveSetting(setting, btn.dataset.value);
+                    buttons.forEach(b => b.classList.toggle('active', b === btn));
+                });
+            });
+        });
     },
     saveSetting(name, value) {
         this.settings[name] = value;
@@ -94,7 +197,32 @@ const App = {
         this.ui.gameName.textContent = name
     },
     toggleFullscreen() {
-        document.fullscreenElement ? document.exitFullscreen() : this.ui.player.requestFullscreen?.()
+        const elem = this.ui.player;
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+        if (!isFullscreen) {
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
     },
     showControls() {
         if (document.getElementById('controls-overlay')) return document.getElementById('controls-overlay').remove();
@@ -153,6 +281,7 @@ const App = {
         }
     },
     async startGame(rom, name) {
+        this.currentRomId = typeof rom === 'string' ? rom : rom.name;
         this.showPlayer(name);
         this.ui.loader.classList.remove('hidden');
         try {
@@ -179,6 +308,102 @@ const App = {
     startGameById(id) {
         const game = this.allGames.find(g => g.id === id);
         game ? this.startGame(game.file, game.title) : console.error('Jogo não encontrado:', id)
+    },
+    async saveGame() {
+        if (!this.emulator) return;
+        try {
+            const state = await this.emulator.saveState();
+            if (state) {
+                const blob = new Blob([state.state]);
+                await this.db.put(this.currentRomId, blob);
+                this.showToast('Jogo salvo com sucesso!', 'success');
+            }
+        } catch (e) {
+            console.error(e);
+            this.showToast('Erro ao salvar jogo.', 'error');
+        }
+    },
+    async loadGame() {
+        if (!this.emulator) return;
+        try {
+            const state = await this.db.get(this.currentRomId);
+            if (state) {
+                await this.emulator.loadState(state);
+                this.showToast('Jogo carregado!', 'success');
+            } else {
+                this.showToast('Nenhum save encontrado.', 'info');
+            }
+        } catch (e) {
+            console.error(e);
+            this.showToast('Erro ao carregar jogo.', 'error');
+        }
+    },
+    showToast(msg, type = 'info') {
+        const existing = document.getElementById('toast-msg');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'toast-msg';
+        toast.className = `toast-msg ${type}`;
+
+        let icon = '';
+        if (type === 'success') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+        else if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        else if (type === 'info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+        toast.innerHTML = `${icon}<span>${msg}</span>`;
+        Object.assign(toast.style, {
+            position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(20, 20, 20, 0.9)', color: '#fff', padding: '0.75rem 1.25rem',
+            borderRadius: '99px', zIndex: '10000', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            fontSize: '0.9rem', fontWeight: '500', opacity: '0', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none'
+        });
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        });
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(10px)';
+            setTimeout(() => toast.remove(), 300)
+        }, 3000)
+    },
+    db: {
+        _db: null,
+        async open() {
+            if (this._db) return this._db;
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('emu_saves', 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(this._db = request.result);
+                request.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('states')) db.createObjectStore('states');
+                };
+            });
+        },
+        async put(key, blob) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('states', 'readwrite');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+                tx.objectStore('states').put(blob, key);
+            });
+        },
+        async get(key) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('states', 'readonly');
+                const req = tx.objectStore('states').get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
     },
     async stopEmulator() {
         if (this.emulator) {
@@ -212,25 +437,51 @@ const App = {
         }).join('')
     },
     handleImageError(img, title) {
-        let v = img.variationsList,
-            a = parseInt(img.dataset.attempts || '0');
-        if (!v) {
-            const b = 'https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/',
-                e = s => encodeURIComponent(s),
-                c = title.replace(/[:\/\?]/g, '_');
-            const t = [c, c.replace(/'/g, '_'), c.replace(/'/g, ''), c.replace(/^The\s+/, ''), c.replace(/^Disney's\s+/, ''), c.replace(/^The\s+(.+)/, '$1, The'), c.replace(/\s-\s/g, ': '), c.replace(/:\s/g, ' - '), c.replace(/\w\S*/g, x => x.charAt(0).toUpperCase() + x.substr(1).toLowerCase()), c.replace(/&/g, 'and'), c.replace(/\sand\s/g, ' & '), c.split(' - ')[0], c.split(': ')[0]];
-            const r = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(Japan)', ''];
-            let g = [];
-            t.forEach(x => r.forEach(y => g.push(`${b}${e(x)}${y ? '%20' + e(y) : ''}.png`)));
-            img.variationsList = v = [...new Set(g)]
+        let variations = img.variationsList;
+        const attempts = parseInt(img.dataset.attempts || '0');
+
+        if (!variations) {
+            const baseUrl = 'https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/';
+            const cleanTitle = title.replace(/[:\/\?]/g, '_');
+
+            // Generate title variations for cover search
+            const titleVariants = [
+                cleanTitle,
+                cleanTitle.replace(/'/g, '_'),
+                cleanTitle.replace(/'/g, ''),
+                cleanTitle.replace(/^The\s+/, ''),
+                cleanTitle.replace(/^Disney's\s+/, ''),
+                cleanTitle.replace(/^The\s+(.+)/, '$1, The'),
+                cleanTitle.replace(/\s-\s/g, ': '),
+                cleanTitle.replace(/:\s/g, ' - '),
+                cleanTitle.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
+                cleanTitle.replace(/&/g, 'and'),
+                cleanTitle.replace(/\sand\s/g, ' & '),
+                cleanTitle.split(' - ')[0],
+                cleanTitle.split(': ')[0]
+            ];
+
+            const regions = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(Japan)', ''];
+            const urls = [];
+
+            titleVariants.forEach(variant => {
+                regions.forEach(region => {
+                    const suffix = region ? ` ${region}` : '';
+                    urls.push(`${baseUrl}${encodeURIComponent(variant)}${encodeURIComponent(suffix)}.png`);
+                });
+            });
+
+            img.variationsList = variations = [...new Set(urls)];
         }
-        if (a >= v.length) {
+
+        if (attempts >= variations.length) {
             img.style.display = 'none';
-            img.nextElementSibling && (img.nextElementSibling.style.display = 'flex');
-            return
+            if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+            return;
         }
-        img.dataset.attempts = a + 1;
-        img.src = v[a]
+
+        img.dataset.attempts = attempts + 1;
+        img.src = variations[attempts];
     }
 };
 document.addEventListener('DOMContentLoaded', () => App.init());

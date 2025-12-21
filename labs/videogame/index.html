@@ -8,6 +8,7 @@
     <meta name="description" content="Emulador de jogos clássicos no navegador. Jogue Sonic e outros títulos retrô.">
     <link rel="stylesheet" href="../shared.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="mobile.css">
     <script src="lib/nostalgist.umd.js" defer></script>
     <script src="../shared.js" defer></script>
     <script src="games.js" defer></script>
@@ -124,6 +125,22 @@
                     </button>
                     <span id="game-name">-</span>
                     <div class="player-controls">
+                        <button id="btn-save" title="Salvar Jogo">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                        </button>
+                        <button id="btn-load" title="Carregar Jogo">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
                         <button id="btn-controls" title="Ver Controles">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
@@ -146,6 +163,30 @@
                     <span>Carregando...</span>
                 </div>
                 <div id="screen"></div>
+                <div id="mobile-controls" class="mobile-controls">
+                    <div class="dpad-container">
+                        <div class="dpad-btn dpad-up" data-key="ArrowUp"></div>
+                        <div class="dpad-btn dpad-right" data-key="ArrowRight"></div>
+                        <div class="dpad-btn dpad-down" data-key="ArrowDown"></div>
+                        <div class="dpad-btn dpad-left" data-key="ArrowLeft"></div>
+                        <div class="dpad-center"></div>
+                    </div>
+
+                    <div class="center-controls">
+                        <button class="ctrl-btn select-btn" data-key="Shift">SELECT</button>
+                        <button class="ctrl-btn menu-btn" data-key="Escape">MENU</button>
+                        <button class="ctrl-btn start-btn" data-key="Enter">START</button>
+                    </div>
+
+                    <div class="action-buttons">
+
+                        <div class="action-row">
+                            <button class="action-btn btn-a" data-key="a">A</button>
+                            <button class="action-btn btn-b" data-key="s">B</button>
+                            <button class="action-btn btn-c" data-key="d">C</button>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
         <footer><a href="/">← voltar para home</a></footer>

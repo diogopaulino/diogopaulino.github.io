@@ -1,0 +1,384 @@
+/* Mobile Controls & Layout Revised */
+
+/* Only show on touch devices */
+.mobile-controls {
+    display: none;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+@media (pointer: coarse) {
+
+    /* Global Mobile Adjustments */
+    .player-bar {
+        display: none !important;
+    }
+
+    #loader {
+        z-index: 200;
+    }
+
+    /* --- PORTRAIT MODE: GameBoy Style --- */
+    @media (orientation: portrait) {
+        #screen {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 48vh !important;
+            background: #000;
+            z-index: 50;
+            padding: 0;
+            border-bottom: 2px solid #333;
+        }
+
+        #screen canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+        }
+
+        .mobile-controls {
+            display: block;
+            position: fixed;
+            top: 48vh;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            z-index: 100;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: absolute;
+            top: 45%;
+            transform: translateY(-50%);
+            width: 100%;
+            padding: 0 10px;
+            pointer-events: none;
+        }
+
+        .dpad-container {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 130px;
+            height: 130px;
+            pointer-events: auto;
+        }
+
+        .action-buttons {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: auto;
+            align-items: flex-end;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            width: 52px;
+            height: 52px;
+            font-size: 1.2rem;
+        }
+
+
+
+        .center-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+            width: 100%;
+            justify-content: center;
+            z-index: 110;
+        }
+    }
+
+    /* --- LANDSCAPE MODE: Handheld Console Style --- */
+    @media (orientation: landscape) {
+        #screen {
+            position: fixed !important;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+            background: #000;
+            z-index: 10;
+        }
+
+        #screen canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            padding: 0;
+        }
+
+        .mobile-controls {
+            display: block;
+            pointer-events: none;
+        }
+
+        .dpad-container {
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            width: 160px;
+            height: 160px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .action-buttons {
+            position: absolute;
+            bottom: 40px;
+            right: 30px;
+            pointer-events: auto;
+            z-index: 100;
+            gap: 16px;
+        }
+
+        .center-controls {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            bottom: auto;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+            z-index: 100;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .center-controls:active,
+        .center-controls:hover {
+            opacity: 1;
+        }
+
+        .center-controls .ctrl-btn {
+            font-size: 10px;
+            padding: 6px 12px;
+            min-width: auto;
+            background: rgba(50, 50, 50, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    }
+}
+
+/* --- COMMON CONTROLS STYLING (Mega Drive Aesthetic) --- */
+
+.dpad-container {
+    background: rgba(40, 40, 40, 0.4);
+    border-radius: 50%;
+    backdrop-filter: blur(2px);
+}
+
+.dpad-btn {
+    position: absolute;
+    background: #151515;
+    border: 1px solid #333;
+    box-sizing: border-box;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.dpad-btn:active,
+.dpad-btn.active {
+    background: #333;
+    box-shadow: inset 0 0 10px #000;
+    border-color: #555;
+}
+
+.dpad-left,
+.dpad-right {
+    top: 33.33%;
+    height: 33.33%;
+    width: 33.33%;
+}
+
+.dpad-up,
+.dpad-down {
+    left: 33.33%;
+    width: 33.33%;
+    height: 33.33%;
+}
+
+.dpad-up {
+    top: 0;
+    border-radius: 6px 6px 0 0;
+}
+
+.dpad-down {
+    bottom: 0;
+    border-radius: 0 0 6px 6px;
+}
+
+.dpad-left {
+    left: 0;
+    border-radius: 6px 0 0 6px;
+}
+
+.dpad-right {
+    right: 0;
+    border-radius: 0 6px 6px 0;
+}
+
+.dpad-center {
+    position: absolute;
+    top: 33.33%;
+    left: 33.33%;
+    width: 33.33%;
+    height: 33.33%;
+    background: #111;
+    border-radius: 50%;
+    transform: scale(0.6);
+}
+
+.dpad-up::after {
+    content: '▲';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #555;
+    font-size: 14px;
+}
+
+.dpad-down::after {
+    content: '▼';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #555;
+    font-size: 14px;
+}
+
+.dpad-left::after {
+    content: '◀';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #555;
+    font-size: 14px;
+}
+
+.dpad-right::after {
+    content: '▶';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #555;
+    font-size: 14px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.action-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.action-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    border: 2px solid #444;
+    color: #ddd;
+    font-weight: 700;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 0 #000;
+    transition: transform 0.05s, box-shadow 0.05s;
+}
+
+.action-btn:active,
+.action-btn.active {
+    transform: translateY(5px);
+    box-shadow: 0 0 0 #000;
+    background: #444;
+    color: #fff;
+    border-color: #888;
+}
+
+.btn-a {
+    color: #ddd;
+}
+
+.btn-b {
+    color: #ddd;
+}
+
+.btn-c {
+    color: #ddd;
+}
+
+
+
+.ctrl-btn {
+    background: #333;
+    border: none;
+    color: #ccc;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 3px 0 #000;
+    transition: all 0.05s;
+    min-width: 60px;
+}
+
+.start-btn {
+    background: #444;
+    color: #fff;
+}
+
+.menu-btn {
+    background: #882222;
+    color: #fff;
+}
+
+.ctrl-btn:active,
+.ctrl-btn.active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #000;
+    filter: brightness(1.3);
+}
