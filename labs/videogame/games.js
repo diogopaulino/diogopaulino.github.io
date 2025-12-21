@@ -16,15 +16,6 @@ const gamesCatalog = [
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%2C%20The%20%28World%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%2C%20The%20%28World%2C%20En%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%2C%20The.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Europe%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Europe%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28USA%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28USA%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Japan%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Japan%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28World%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28World%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28Europe%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28Europe%2C%20En%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28USA%29.png",
@@ -33,7 +24,16 @@ const gamesCatalog = [
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28Japan%2C%20En%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28World%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family%20%28World%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family.png"
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Addams%20Family.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Europe%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Europe%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28USA%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28USA%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Japan%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28Japan%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28World%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family%20%28World%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/The%20Addams%20Family.png"
         ]
     },
     {
@@ -52,7 +52,16 @@ const gamesCatalog = [
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters%20%28Europe%2C%20En%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters%20%28World%29.png",
             "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters%20%28World%2C%20En%29.png",
-            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters.png"
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20Blasters.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28Japan%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28Japan%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28USA%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28USA%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28Europe%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28Europe%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28World%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat%20%28World%2C%20En%29.png",
+            "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Aero%20the%20Acro-Bat.png"
         ]
     },
     {

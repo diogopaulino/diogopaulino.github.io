@@ -1,5 +1,6 @@
 const App = {
     emulator: null,
+    currentCore: null,
     basePath: window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1),
     settings: {
         scale: localStorage.getItem('emu-scale') || 'max',
@@ -332,6 +333,7 @@ const App = {
     },
     handleKeyRemap(e) {
         if (this.ui.player.classList.contains('hidden')) return;
+        if (!this.currentCore) return;
         const map = {
             's': {
                 key: 'z',
@@ -373,30 +375,82 @@ const App = {
             await this.stopEmulator();
             const canvas = document.createElement('canvas');
             this.ui.screen.appendChild(canvas);
-            const core = this.getCore(typeof rom === 'string' ? rom : rom.name);
-            this.emulator = await Nostalgist.launch({
-                core,
-                rom,
-                resolveCoreJs: c => this.basePath + 'lib/' + c + '_libretro.js',
-                resolveCoreWasm: c => this.basePath + 'lib/' + c + '_libretro.wasm',
-                resolveRom: f => {
-                    if (typeof f === 'string' && f.startsWith('http')) {
+            
+            const romFile = typeof rom === 'string' ? rom : rom.name;
+            const core = this.getCore(romFile);
+            this.currentCore = core;
+            
+            const resolveRom = (f, options) => {
+                if (!f) return f;
+                if (typeof f === 'string') {
+                    if (f.startsWith('http://') || f.startsWith('https://')) {
                         if (f.includes('cdn.jsdelivr.net/gh/')) {
                             const githubUrl = f.replace('https://cdn.jsdelivr.net/gh/', 'https://raw.githubusercontent.com/').replace('@master', '/master');
                             return githubUrl;
                         }
-                        return f;
+                        try {
+                            const url = new URL(f);
+                            return url.href;
+                        } catch (e) {
+                            console.warn('URL inválida:', f);
+                            return f;
+                        }
                     }
                     return this.basePath + f;
-                },
-                element: canvas
-            });
+                }
+                return f;
+            };
+            
+            const romToLoad = typeof rom === 'string' ? rom : (rom instanceof File ? rom : (rom.file || rom.name));
+            
+            if (typeof romToLoad === 'string' && (romToLoad.startsWith('http://') || romToLoad.startsWith('https://'))) {
+                try {
+                    const testUrl = new URL(romToLoad);
+                    if (!testUrl.hostname || !testUrl.pathname) {
+                        throw new Error('URL inválida');
+                    }
+                } catch (urlError) {
+                    throw new Error(`URL do jogo inválida: ${romToLoad}`);
+                }
+            }
+            
+            this.emulator = await Promise.race([
+                Nostalgist.launch({
+                    core,
+                    rom: romToLoad,
+                    resolveCoreJs: c => this.basePath + 'lib/' + c + '_libretro.js',
+                    resolveCoreWasm: c => this.basePath + 'lib/' + c + '_libretro.wasm',
+                    resolveRom: resolveRom,
+                    element: canvas
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout ao carregar o jogo. Tente novamente.')), 60000)
+                )
+            ]);
+            
             this.applySettings();
             this.ui.loader.classList.add('hidden')
         } catch (e) {
-            console.error(e);
+            console.error('Erro ao carregar jogo:', e);
             this.ui.loader.classList.add('hidden');
-            this.ui.screen.innerHTML = `<div class="error"><p>Erro ao carregar: ${e.message}</p><button onclick="App.showHome()">Voltar</button></div>`
+            let errorMessage = 'Erro desconhecido ao carregar o jogo.';
+            
+            if (e.message) {
+                const msg = e.message.toLowerCase();
+                if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) {
+                    errorMessage = 'Erro ao carregar o arquivo do jogo. Verifique sua conexão ou tente novamente.';
+                } else if (msg.includes('404') || msg.includes('not found')) {
+                    errorMessage = 'Arquivo do jogo não encontrado.';
+                } else if (msg.includes('cors') || msg.includes('cross-origin')) {
+                    errorMessage = 'Erro de permissão ao acessar o arquivo do jogo.';
+                } else if (msg.includes('invalid url') || msg.includes('url inválida')) {
+                    errorMessage = 'URL do jogo inválida.';
+                } else {
+                    errorMessage = `Erro: ${e.message}`;
+                }
+            }
+            
+            this.ui.screen.innerHTML = `<div class="error"><p>${errorMessage}</p><button onclick="App.showHome()">Voltar</button></div>`
         }
     },
     startGameById(id) {
@@ -506,6 +560,7 @@ const App = {
             } catch (e) { }
             this.emulator = null
         }
+        this.currentCore = null;
         this.ui.screen.querySelector('canvas')?.remove()
     },
     getCore(f) {

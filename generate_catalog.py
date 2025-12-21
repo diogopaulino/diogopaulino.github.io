@@ -592,6 +592,8 @@ def get_cover_urls(title):
         "Bio-Ship Paladin": ["Bio Ship Paladin", "Bio-Ship Paladin"],
         "M.U.S.H.A.": ["M.U.S.H.A", "M.U.S.H.A.", "MUSHA"],
         "James Pond II - Codename RoboCod": ["James Pond II Codename RoboCod", "James Pond II - Codename RoboCod"],
+        "Addams Family, The": ["Addams Family, The", "Addams Family", "The Addams Family"],
+        "Aero Blasters": ["Aero Blasters", "Aero the Acro-Bat"],
     }
     
     special_variations = []
