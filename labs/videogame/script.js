@@ -3,7 +3,7 @@ const App = {
     basePath: window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1),
     settings: {
         scale: localStorage.getItem('emu-scale') || 'max',
-        filter: localStorage.getItem('emu-filter') || 'sharp'
+        filter: localStorage.getItem('emu-filter') || 'hd'
     },
     ui: {
         home: document.getElementById('home'),
@@ -21,7 +21,6 @@ const App = {
         this.setupMobileControls();
         this.loadCatalog();
         window.startGameById = id => this.startGameById(id);
-        window.handleImageError = (img, title) => this.handleImageError(img, title)
     },
     setupEventListeners() {
         document.getElementById('btn-back')?.addEventListener('click', () => this.showHome());
@@ -40,7 +39,36 @@ const App = {
         });
         document.addEventListener('keydown', e => this.handleGlobalKeys(e));
         window.addEventListener('keydown', e => this.handleKeyRemap(e));
-        window.addEventListener('keyup', e => this.handleKeyRemap(e))
+        window.addEventListener('keyup', e => this.handleKeyRemap(e));
+        document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('mozfullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('MSFullscreenChange', () => this.handleFullscreenChange());
+        this.setupMobileActionButtons();
+    },
+    setupMobileActionButtons() {
+        const container = document.getElementById('mobile-controls');
+        if (!container) return;
+        container.addEventListener('click', e => {
+            const btn = e.target.closest('[data-action]');
+            if (btn && btn.dataset.action === 'save') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveGame();
+            } else if (btn && btn.dataset.action === 'load') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.loadGame();
+            }
+        });
+    },
+    handleFullscreenChange() {
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        document.body.classList.toggle('is-fullscreen', !!isFullscreen);
+        const mobileControls = document.getElementById('mobile-controls');
+        if (mobileControls) {
+            mobileControls.classList.toggle('fullscreen-mode', !!isFullscreen);
+        }
     },
     setupMobileControls() {
         const keyMap = {
@@ -63,8 +91,6 @@ const App = {
 
         const handleTouch = (e) => {
             e.preventDefault();
-            const controlsRect = document.getElementById('mobile-controls').getBoundingClientRect();
-
             // Process all changed touches
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const touch = e.changedTouches[i];
@@ -73,12 +99,36 @@ const App = {
                 // Find element under touch
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 const btn = element?.closest('[data-key]');
+                const actionBtn = element?.closest('[data-action]');
                 const keyName = btn ? btn.dataset.key : null;
+                const actionName = actionBtn ? actionBtn.dataset.action : null;
 
                 // Handle Touch End / Cancel
                 if (e.type === 'touchend' || e.type === 'touchcancel') {
                     const activeKey = activeTouches.get(touchId);
                     if (activeKey) {
+                        if (activeKey === 'FULL') {
+                            this.toggleFullscreen();
+                            const el = document.querySelector(`[data-key="${activeKey}"]`);
+                            if (el) el.classList.remove('active');
+                            activeTouches.delete(touchId);
+                            continue;
+                        }
+                        if (activeKey === 'SAVE') {
+                            this.saveGame();
+                            const el = document.querySelector('[data-action="save"]');
+                            if (el) el.classList.remove('active');
+                            activeTouches.delete(touchId);
+                            continue;
+                        }
+                        if (activeKey === 'LOAD') {
+                            this.loadGame();
+                            const el = document.querySelector('[data-action="load"]');
+                            if (el) el.classList.remove('active');
+                            activeTouches.delete(touchId);
+                            continue;
+                        }
+
                         const mapping = keyMap[activeKey];
                         if (mapping) this.triggerKey(activeKey, mapping.code, mapping.keyCode, 'keyup');
                         const el = document.querySelector(`[data-key="${activeKey}"]`);
@@ -90,23 +140,44 @@ const App = {
 
                 // Handle Touch Start / Move
                 const currentKey = activeTouches.get(touchId);
+                const isCurrentAction = currentKey === 'SAVE' || currentKey === 'LOAD';
+                const newIdentifier = actionName ? (actionName.toUpperCase()) : keyName;
 
-                // If we moved to a new key (or no key)
-                if (currentKey !== keyName) {
+                    // If we moved to a new key/action (or no key)
+                if (currentKey !== newIdentifier) {
                     // Release old key if it existed
                     if (currentKey) {
-                        const mapping = keyMap[currentKey];
-                        if (mapping) this.triggerKey(currentKey, mapping.code, mapping.keyCode, 'keyup');
-                        const el = document.querySelector(`[data-key="${currentKey}"]`);
-                        if (el) el.classList.remove('active');
+                        if (currentKey === 'FULL') {
+                            const el = document.querySelector(`[data-key="${currentKey}"]`);
+                            if (el) el.classList.remove('active');
+                        } else if (isCurrentAction) {
+                            const el = document.querySelector(`[data-action="${currentKey.toLowerCase()}"]`);
+                            if (el) el.classList.remove('active');
+                        } else {
+                            const mapping = keyMap[currentKey];
+                            if (mapping) this.triggerKey(currentKey, mapping.code, mapping.keyCode, 'keyup');
+                            const el = document.querySelector(`[data-key="${currentKey}"]`);
+                            if (el) el.classList.remove('active');
+                        }
                     }
 
-                    // Press new key if valid
-                    if (keyName) {
-                        const mapping = keyMap[keyName];
-                        if (mapping) this.triggerKey(keyName, mapping.code, mapping.keyCode, 'keydown');
-                        btn.classList.add('active');
-                        activeTouches.set(touchId, keyName);
+                        // Press new key/action if valid
+                    if (actionName) {
+                        const actionElement = element?.closest('[data-action]');
+                        if (actionElement) {
+                            actionElement.classList.add('active');
+                            activeTouches.set(touchId, actionName.toUpperCase());
+                        }
+                    } else if (keyName) {
+                        if (keyName === 'FULL') {
+                            btn.classList.add('active');
+                            activeTouches.set(touchId, keyName);
+                        } else {
+                            const mapping = keyMap[keyName];
+                            if (mapping) this.triggerKey(keyName, mapping.code, mapping.keyCode, 'keydown');
+                            btn.classList.add('active');
+                            activeTouches.set(touchId, keyName);
+                        }
                     } else {
                         activeTouches.delete(touchId);
                     }
@@ -165,16 +236,30 @@ const App = {
         if (!canvas) return;
         canvas.className = '';
         canvas.style.filter = '';
-        if (this.settings.filter === 'sharp') canvas.classList.add('filter-sharp');
-        else if (this.settings.filter === 'smooth') canvas.classList.add('filter-smooth');
+        canvas.style.imageRendering = '';
+        
+        if (this.settings.filter === 'hd') {
+            canvas.classList.add('filter-hd');
+            canvas.style.imageRendering = 'pixelated';
+            canvas.style.imageRendering = '-moz-crisp-edges';
+            canvas.style.imageRendering = 'crisp-edges';
+        } else if (this.settings.filter === 'smooth') {
+            canvas.classList.add('filter-smooth');
+            canvas.style.imageRendering = 'auto';
+        } else if (this.settings.filter === 'light') {
+            canvas.classList.add('filter-light');
+            canvas.style.imageRendering = 'auto';
+            canvas.style.filter = 'contrast(1.05)';
+        }
+        
         if (this.settings.scale === 'max') {
             canvas.style.width = '100%';
             canvas.style.height = '100%';
-            canvas.style.objectFit = 'contain'
+            canvas.style.objectFit = 'contain';
         } else if (this.settings.scale === 'stretch') {
             canvas.style.width = '100%';
             canvas.style.height = '100%';
-            canvas.style.objectFit = 'fill'
+            canvas.style.objectFit = 'fill';
         }
     },
     showHome() {
@@ -294,7 +379,16 @@ const App = {
                 rom,
                 resolveCoreJs: c => this.basePath + 'lib/' + c + '_libretro.js',
                 resolveCoreWasm: c => this.basePath + 'lib/' + c + '_libretro.wasm',
-                resolveRom: f => typeof f === 'string' && f.startsWith('http') ? f : this.basePath + f,
+                resolveRom: f => {
+                    if (typeof f === 'string' && f.startsWith('http')) {
+                        if (f.includes('cdn.jsdelivr.net/gh/')) {
+                            const githubUrl = f.replace('https://cdn.jsdelivr.net/gh/', 'https://raw.githubusercontent.com/').replace('@master', '/master');
+                            return githubUrl;
+                        }
+                        return f;
+                    }
+                    return this.basePath + f;
+                },
                 element: canvas
             });
             this.applySettings();
@@ -428,60 +522,142 @@ const App = {
             this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;">Erro ao carregar lista.</p>'
         }
     },
+    async loadImageWithFallback(img, urls, placeholder, skipUrl = null) {
+        if (!img || !urls || urls.length === 0) {
+            if (placeholder) placeholder.style.display = 'flex';
+            return;
+        }
+        
+        const validUrls = urls.filter(url => url && typeof url === 'string' && url.startsWith('http'));
+        const filteredUrls = skipUrl ? validUrls.filter(url => url !== skipUrl) : validUrls;
+        
+        if (filteredUrls.length === 0) {
+            img.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+            return;
+        }
+        
+        let currentIndex = 0;
+        const maxAttempts = Math.min(filteredUrls.length, 15);
+        let isResolved = false;
+        
+        const tryNext = () => {
+            if (isResolved || currentIndex >= maxAttempts) {
+                if (!isResolved) {
+                    img.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'flex';
+                }
+                return;
+            }
+            
+            const url = filteredUrls[currentIndex];
+            if (!url) {
+                currentIndex++;
+                setTimeout(tryNext, 25);
+                return;
+            }
+            
+            const testImg = new Image();
+            let timeoutId = null;
+            
+            const cleanup = () => {
+                if (timeoutId) clearTimeout(timeoutId);
+                testImg.onload = null;
+                testImg.onerror = null;
+            };
+            
+            timeoutId = setTimeout(() => {
+                cleanup();
+                if (!isResolved) {
+                    currentIndex++;
+                    if (currentIndex < maxAttempts) {
+                        setTimeout(tryNext, 25);
+                    } else {
+                        img.style.display = 'none';
+                        if (placeholder) placeholder.style.display = 'flex';
+                    }
+                }
+            }, 2000);
+            
+            testImg.onload = () => {
+                if (isResolved) return;
+                cleanup();
+                isResolved = true;
+                img.src = url;
+                img.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+            };
+            
+            testImg.onerror = () => {
+                if (isResolved) return;
+                cleanup();
+                currentIndex++;
+                if (currentIndex < maxAttempts) {
+                    setTimeout(tryNext, 25);
+                } else {
+                    img.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'flex';
+                }
+            };
+            
+            testImg.src = url;
+        };
+        
+        tryNext();
+    },
     renderGames(games) {
         if (!this.ui.grid) return;
         if (games.length === 0) return this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;padding:2rem;">Nenhum jogo encontrado.</p>';
+        
         this.ui.grid.innerHTML = games.map(g => {
             const t = g.title.replace(/"/g, '&quot;');
-            return `<button class="game-card" data-id="${g.id}"><div class="game-cover"><img src="${g.cover}" alt="${t}" loading="lazy" data-title="${t}" onerror="handleImageError(this,this.dataset.title)"><div class="cover-placeholder"><span>${g.title}</span></div></div><div class="game-info"><div class="game-title" title="${t}">${g.title}</div><div class="game-meta"><span class="game-platform">${g.platform}</span></div></div></button>`
-        }).join('')
-    },
-    handleImageError(img, title) {
-        let variations = img.variationsList;
-        const attempts = parseInt(img.dataset.attempts || '0');
-
-        if (!variations) {
-            const baseUrl = 'https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/';
-            const cleanTitle = title.replace(/[:\/\?]/g, '_');
-
-            // Generate title variations for cover search
-            const titleVariants = [
-                cleanTitle,
-                cleanTitle.replace(/'/g, '_'),
-                cleanTitle.replace(/'/g, ''),
-                cleanTitle.replace(/^The\s+/, ''),
-                cleanTitle.replace(/^Disney's\s+/, ''),
-                cleanTitle.replace(/^The\s+(.+)/, '$1, The'),
-                cleanTitle.replace(/\s-\s/g, ': '),
-                cleanTitle.replace(/:\s/g, ' - '),
-                cleanTitle.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
-                cleanTitle.replace(/&/g, 'and'),
-                cleanTitle.replace(/\sand\s/g, ' & '),
-                cleanTitle.split(' - ')[0],
-                cleanTitle.split(': ')[0]
-            ];
-
-            const regions = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(Japan)', ''];
-            const urls = [];
-
-            titleVariants.forEach(variant => {
-                regions.forEach(region => {
-                    const suffix = region ? ` ${region}` : '';
-                    urls.push(`${baseUrl}${encodeURIComponent(variant)}${encodeURIComponent(suffix)}.png`);
+            const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+            return `<button class="game-card" data-id="${g.id}" id="${cardId}"><div class="game-cover"><img src="${g.cover}" alt="${t}" loading="lazy" data-title="${g.title}"><div class="cover-placeholder"><span>${g.title}</span></div></div><div class="game-info"><div class="game-title" title="${t}">${g.title}</div><div class="game-meta"><span class="game-platform">${g.platform}</span></div></div></button>`
+        }).join('');
+        
+        games.forEach(g => {
+            const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+            const card = document.getElementById(cardId);
+            if (!card) return;
+            
+            const img = card.querySelector('.game-cover img');
+            const placeholder = card.querySelector('.cover-placeholder');
+            
+            if (img && placeholder) {
+                placeholder.style.display = 'none';
+                
+                const coverUrls = Array.isArray(g.coverUrls) ? g.coverUrls : [];
+                
+                const urlSet = new Set();
+                if (g.cover) urlSet.add(g.cover);
+                coverUrls.forEach(url => {
+                    if (url && typeof url === 'string') {
+                        urlSet.add(url);
+                    }
                 });
-            });
-
-            img.variationsList = variations = [...new Set(urls)];
-        }
-
-        if (attempts >= variations.length) {
-            img.style.display = 'none';
-            if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
-            return;
-        }
-
-        img.dataset.attempts = attempts + 1;
-        img.src = variations[attempts];
-    }
+                
+                const allUrls = Array.from(urlSet);
+                
+                if (allUrls.length === 0) {
+                    placeholder.style.display = 'flex';
+                    return;
+                }
+                
+                img.addEventListener('error', () => {
+                    this.loadImageWithFallback(img, allUrls, placeholder, g.cover);
+                }, { once: true });
+                
+                const testImg = new Image();
+                testImg.onload = () => {
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                testImg.onerror = () => {
+                    this.loadImageWithFallback(img, allUrls, placeholder, g.cover);
+                };
+                testImg.src = g.cover;
+            }
+        });
+    },
 };
 document.addEventListener('DOMContentLoaded', () => App.init());

@@ -49,9 +49,14 @@
                 <div class="panel">
                     <div class="panel-title">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                            <path d="M6 12h4m-2-2v4"></path>
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M2 13c0-3 3-5 5-5h10c2 0 5 2 5 5v3c0 1.5-1.5 3-3 3h-3l-1-2h-6l-1 2H5c-1.5 0-3-1.5-3-3v-3Z">
+                            </path>
+                            <path d="M6 12h2"></path>
+                            <path d="M7 11v2"></path>
+                            <line x1="15" y1="13" x2="15.01" y2="13"></line>
+                            <line x1="18" y1="13" x2="18.01" y2="13"></line>
                         </svg>
                         Controles
                     </div>
@@ -89,14 +94,15 @@
                             <div class="settings-row">
                                 <span class="settings-label">Tela</span>
                                 <div class="btn-group" data-setting="scale">
-                                    <button data-value="max" class="active">Padrão</button>
-                                    <button data-value="stretch">Esticar</button>
+                                    <button data-value="max" class="active">Proporcional</button>
+                                    <button data-value="stretch">Tela Cheia</button>
                                 </div>
                             </div>
                             <div class="settings-row">
                                 <span class="settings-label">Filtro</span>
                                 <div class="btn-group" data-setting="filter">
-                                    <button data-value="sharp" class="active">Padrão</button>
+                                    <button data-value="hd" class="active">HD</button>
+                                    <button data-value="light">Leve</button>
                                     <button data-value="smooth">Suave</button>
                                 </div>
                             </div>
@@ -143,9 +149,14 @@
                         </button>
                         <button id="btn-controls" title="Ver Controles">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                                <path d="M6 12h4m-2-2v4"></path>
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M2 13c0-3 3-5 5-5h10c2 0 5 2 5 5v3c0 1.5-1.5 3-3 3h-3l-1-2h-6l-1 2H5c-1.5 0-3-1.5-3-3v-3Z">
+                                </path>
+                                <path d="M6 12h2"></path>
+                                <path d="M7 11v2"></path>
+                                <line x1="15" y1="13" x2="15.01" y2="13"></line>
+                                <line x1="18" y1="13" x2="18.01" y2="13"></line>
                             </svg>
                         </button>
                         <button id="btn-fullscreen" title="Tela cheia">
@@ -173,9 +184,37 @@
                     </div>
 
                     <div class="center-controls">
-                        <button class="ctrl-btn select-btn" data-key="Shift">SELECT</button>
-                        <button class="ctrl-btn menu-btn" data-key="Escape">MENU</button>
-                        <button class="ctrl-btn start-btn" data-key="Enter">START</button>
+                        <div class="game-controls-row">
+                            <button class="ctrl-btn select-btn" data-key="Shift">SELECT</button>
+                            <button class="ctrl-btn start-btn" data-key="Enter">START</button>
+                        </div>
+                        <div class="system-controls-row">
+                            <button class="ctrl-btn back-btn" data-key="Escape" title="Voltar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button class="ctrl-btn save-btn" data-action="save" title="Salvar Jogo">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                            </button>
+                            <button class="ctrl-btn load-btn" data-action="load" title="Carregar Jogo">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    <path d="M3 12h18"></path>
+                                </svg>
+                            </button>
+                            <button class="ctrl-btn full-btn" data-key="FULL" title="Tela Cheia">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="action-buttons">

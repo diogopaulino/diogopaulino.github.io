@@ -392,10 +392,19 @@ body.game-mode {
 
 #screen canvas {
     display: block;
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    outline: 0
+    outline: 0;
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
 }
 
 #loader {
@@ -451,13 +460,28 @@ body.game-mode {
     font-weight: 600
 }
 
-.filter-sharp {
+.filter-hd {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: crisp-edges;
     image-rendering: pixelated;
-    image-rendering: crisp-edges
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+}
+
+.filter-light {
+    image-rendering: auto;
+    filter: contrast(1.05) brightness(1.02);
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .filter-smooth {
-    image-rendering: auto
+    image-rendering: auto;
+    filter: blur(0.5px);
+    transform: translateZ(0);
 }
 
 .controls-overlay {

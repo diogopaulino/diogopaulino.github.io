@@ -146,7 +146,7 @@ NAME_MAP = {
     "JAMES": "James Pond",
     "JIMPOWER": "Jim Power - The Arcade Game",
     "JOE": "Joe & Mac",
-    "JOEMAC": "Joe _ Mac",
+    "JOEMAC": "Joe & Mac",
     "JUNGLE": "Jungle Book, The",
     "JUNGLEBO": "Jungle Book, The",
     "JURASSIC": "Jurassic Park",
@@ -251,9 +251,9 @@ NAME_MAP = {
     "SKELETON": "Skeleton Krew",
     "SKITCHIN": "Skitchin'",
     "SMASHTV": "Smash TV",
-    "SMURFS": "Smurfs, The",
-    "SMURFS2": "Smurfs 2, The",
-    "SNOWBRO": "Snow Bros. - Nick _ Tom",
+    "SMURFS": "The Smurfs",
+    "SMURFS2": "The Smurfs 2",
+    "SNOWBRO": "Snow Bros. - Nick & Tom",
     "SOLDEACE": "Sol-Deace",
     "SONIC": "Sonic The Hedgehog",
     "SONIC1": "Sonic The Hedgehog",
@@ -304,7 +304,7 @@ NAME_MAP = {
     "TOEJAM": "ToeJam & Earl",
     "TOKI": "Toki - Going Ape Spit",
     "TOM": "Tom and Jerry",
-    "TOM&": "Tom and Jerry - Frantic Antics",
+    "TOM&": "Tom & Jerry - Frantic Antics",
     "TOY": "Toy Story",
     "TOYSTORY": "Toy Story",
     "TRUE": "True Lies",
@@ -353,6 +353,37 @@ NAME_MAP = {
     "LEMMIN~1": "Lemmings 2 - The Tribes",
     "SHADOW~1": "Shadow of the Beast",
     "SONIC1": "Sonic The Hedgehog",
+    "SONICK": "Sonic & Knuckles",
+    "ARCAD~12": "Arcade Classics",
+    "BLAS~130": "Blaster Master 2",
+    "BOOG~140": "Boogerman - A Pick and Flick Adventure",
+    "BUBB~144": "Bubble and Squeak",
+    "CANN~154": "Cannon Fodder",
+    "CHIC~170": "Chicago Syndicate",
+    "DANG~194": "Dangerous Seed",
+    "FATA~214": "Fatal Fury",
+    "GARG~226": "Gargoyles",
+    "GAUNTL~1": "Gauntlet IV",
+    "MAZI~280": "Mazin Saga - Mutant Fighter",
+    "MICK~286": "Mickey Mania - The Timeless Adventures of Mickey Mouse",
+    "NBAL~300": "NBA Live 95",
+    "PINO~316": "Pinocchio",
+    "PITFIG~1": "Pit-Fighter",
+    "POPU~322": "Populous",
+    "RMON~346": "Rocket Knight Adventures",
+    "ROLL~350": "Rolling Thunder 2",
+    "SPEEDY~1": "Speedy Gonzales - Cheez Cat-astrophe",
+    "STORM~62": "Stormlord",
+    "SUPERH~1": "Super Hang-On",
+    "SYND~404": "Syndicate",
+    "ADDAM~74": "Addams Family, The",
+    "TTAL~430": "Tiny Toon Adventures - Acme All-Stars",
+    "TOEJ~418": "ToeJam & Earl",
+    "TOM&~422": "Tom & Jerry - Frantic Antics",
+    "VIRTU~68": "Virtua Racing",
+    "WOLF~450": "Wolfchild",
+    "KLAX_~36": "Klax",
+    "LOST~270": "Lost Vikings, The",
 }
 
 # Region mapping for games that might not have a (USA) cover or are exclusive
@@ -429,6 +460,17 @@ REGION_MAP = {
     "Predator 2": "Europe",
     "Spider-Man": "World",
     "Vectorman": "Europe",
+    "Bloodshot": "Europe",
+    "Mega Panel": "Japan",
+    "El Viento": "USA", # Verify if USA exists, else Japan
+    "Daffy Duck in Hollywood": "Europe", # Already there
+    "Twin Hawk": "Europe", # Already there
+    "Smurfs, The": "Europe",
+    "The Smurfs": "Europe",
+    "Smurfs 2, The": "Europe",
+    "The Smurfs 2": "Europe",
+    "Baby's Day Out": "USA",
+    "Bio-Hazard Battle": "USA",
 }
 
 def clean_name(filename):
@@ -448,20 +490,141 @@ def clean_name(filename):
     name = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', name)
     return name.title()
 
-def get_cover_url(title):
-    # Use Libretro Thumbnails
-    # Correct format: "Name (Region)" with SPACE before parenthesis.
-    # Special chars: : -> _, / -> _, ? -> _
+def get_cover_urls(title):
+    base_url = 'https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/'
     
-    safe_title = title.replace(':', '_').replace('/', '_').replace('?', '_')
+    safe_title = title.replace(':', '_').replace('/', '_').replace('?', '_').replace('*', '_')
     
-    # URL Encode the title
-    encoded_title = urllib.parse.quote(safe_title)
+    title_variations = [safe_title]
     
-    # Determine region
-    region = REGION_MAP.get(title, "USA")
+    if "&" in safe_title:
+        title_variations.append(safe_title.replace("&", " and "))
+        title_variations.append(safe_title.replace("&", " _ "))
     
-    return f"https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/{encoded_title}%20({region}).png"
+    if " _ " in safe_title:
+        title_variations.append(safe_title.replace(" _ ", " & "))
+        title_variations.append(safe_title.replace(" _ ", " and "))
+        title_variations.append(safe_title.replace(" _ ", " "))
+    
+    if safe_title.endswith('.'):
+        title_variations.append(safe_title.rstrip('.'))
+    
+    if '.' in safe_title:
+        title_variations.append(safe_title.replace('.', ''))
+        title_variations.append(safe_title.replace('.', ' '))
+    
+    if "Disney's" in safe_title:
+        without_disney = safe_title.replace("Disney's ", "").replace("Disney's", "").strip()
+        title_variations.append(without_disney)
+        title_variations.append(safe_title.replace("Disney's ", "Disney "))
+        if without_disney.startswith("The "):
+            title_variations.append(without_disney[4:] + ", The")
+            title_variations.append(without_disney[4:])
+        elif without_disney.endswith(", The"):
+            title_variations.append("The " + without_disney[:-5])
+            title_variations.append(without_disney[:-5])
+    
+    if safe_title.startswith("The "):
+        without_the = safe_title[4:].strip()
+        title_variations.append(without_the + ", The")
+        title_variations.append(without_the)
+    
+    if safe_title.endswith(", The"):
+        with_the = "The " + safe_title[:-5].strip()
+        title_variations.append(with_the)
+        title_variations.append(safe_title[:-5].strip())
+    
+    if " and " in safe_title:
+        title_variations.append(safe_title.replace(" and ", " & "))
+    
+    if " & " in safe_title:
+        title_variations.append(safe_title.replace(" & ", " and "))
+    
+    if "-" in safe_title:
+        title_variations.append(safe_title.replace(" - ", " ").replace("-", " "))
+        title_variations.append(safe_title.replace(" - ", ": ").replace("-", ":"))
+        title_variations.append(safe_title.replace(" - ", "").replace("-", ""))
+    
+    if ":" in safe_title:
+        title_variations.append(safe_title.replace(":", " -").replace(" -", " - "))
+        title_variations.append(safe_title.replace(":", ""))
+    
+    if " vs. " in safe_title:
+        title_variations.append(safe_title.replace(" vs. ", " vs "))
+        title_variations.append(safe_title.replace(" vs. ", " vs. "))
+    
+    if " vs " in safe_title:
+        title_variations.append(safe_title.replace(" vs ", " vs. "))
+    
+    title_variations = list(dict.fromkeys([v for v in title_variations if v]))
+    
+    special_cases = {
+        "Power Rangers": ["Mighty Morphin Power Rangers", "Power Rangers - The Movie", "Mighty Morphin' Power Rangers"],
+        "Super Mario Bros.": ["Super Mario Bros", "Super Mario World", "Mario Bros"],
+        "Super Mario Bros": ["Super Mario World", "Mario Bros"],
+        "Alien 3": ["Alien 3", "Alien³", "Alien III"],
+        "Altered Beast": ["Altered Beast"],
+        "Chakan - The Forever Man": ["Chakan The Forever Man", "Chakan - The Forever Man"],
+        "ESWAT - City Under Siege": ["ESWAT City Under Siege", "ESWAT - City Under Siege"],
+        "Desert Strike - Return to the Gulf": ["Desert Strike Return to the Gulf", "Desert Strike - Return to the Gulf"],
+        "Caliber .50": ["Caliber 50", "Caliber .50", "Caliber 50"],
+        "B.O.B.": ["B.O.B", "B.O.B.", "BOB"],
+        "Ecco Jr.": ["Ecco Jr", "Ecco Jr."],
+        "Snow Bros. - Nick _ Tom": ["Snow Bros. - Nick & Tom", "Snow Bros - Nick & Tom", "Snow Bros - Nick and Tom"],
+        "The Smurfs": ["Smurfs, The", "The Smurfs", "Smurfs"],
+        "The Smurfs 2": ["Smurfs 2, The", "The Smurfs 2", "Smurfs 2"],
+        "The Chaos Engine 2": ["Chaos Engine 2, The", "The Chaos Engine 2", "Chaos Engine 2"],
+        "The Aquatic Games": ["Aquatic Games, The", "The Aquatic Games", "Aquatic Games"],
+        "The Simpsons - Bart's Nightmare": ["Simpsons - Bart's Nightmare, The", "The Simpsons - Bart's Nightmare"],
+        "The Simpsons - Bart vs. the Space Mutants": ["Simpsons - Bart vs. the Space Mutants, The", "The Simpsons - Bart vs. the Space Mutants"],
+        "The Lion King": ["Lion King, The", "The Lion King", "Lion King"],
+        "The Adventures of Batman _ Robin": ["Adventures of Batman & Robin, The", "The Adventures of Batman & Robin"],
+        "Tom _ Jerry": ["Tom & Jerry", "Tom and Jerry"],
+        "Tom _ Jerry - Frantic Antics": ["Tom & Jerry - Frantic Antics", "Tom and Jerry - Frantic Antics"],
+        "Sylvester and Tweety in Cagey Capers": ["Sylvester & Tweety in Cagey Capers", "Sylvester and Tweety in Cagey Capers"],
+        "Speedy Gonzales - Cheez Cat-astrophe": ["Speedy Gonzales Cheez Cat astrophe", "Speedy Gonzales - Cheez Cat-astrophe"],
+        "RoboCop vs. The Terminator": ["RoboCop vs The Terminator", "RoboCop vs. The Terminator"],
+        "Street Fighter II - Special Champion Edition": ["Street Fighter II Special Champion Edition", "Street Fighter II - Special Champion Edition"],
+        "Rainbow Islands - The Story of Bubble Bobble 2": ["Rainbow Islands The Story of Bubble Bobble 2", "Rainbow Islands - The Story of Bubble Bobble 2"],
+        "Pitfall! - The Mayan Adventure": ["Pitfall! The Mayan Adventure", "Pitfall! - The Mayan Adventure"],
+        "Jim Power - The Arcade Game": ["Jim Power The Arcade Game", "Jim Power - The Arcade Game"],
+        "Contra - Hard Corps": ["Contra Hard Corps", "Contra - Hard Corps"],
+        "Bio-Ship Paladin": ["Bio Ship Paladin", "Bio-Ship Paladin"],
+        "M.U.S.H.A.": ["M.U.S.H.A", "M.U.S.H.A.", "MUSHA"],
+        "James Pond II - Codename RoboCod": ["James Pond II Codename RoboCod", "James Pond II - Codename RoboCod"],
+    }
+    
+    special_variations = []
+    for key, variations in special_cases.items():
+        if key.lower() in title.lower():
+            special_variations.extend(variations)
+    
+    if special_variations:
+        title_variations = special_variations + title_variations
+    
+    title_variations = list(dict.fromkeys([v for v in title_variations if v]))
+    
+    primary_region = REGION_MAP.get(title, "USA")
+    all_regions = [primary_region, "USA", "Europe", "Japan", "World"]
+    unique_regions = []
+    for r in all_regions:
+        if r not in unique_regions:
+            unique_regions.append(r)
+    
+    urls = []
+    for title_var in title_variations:
+        for region in unique_regions:
+            full_name = f"{title_var} ({region})"
+            encoded_name = urllib.parse.quote(full_name, safe='')
+            urls.append(f"{base_url}{encoded_name}.png")
+            
+            full_name_en = f"{title_var} ({region}, En)"
+            encoded_name_en = urllib.parse.quote(full_name_en, safe='')
+            urls.append(f"{base_url}{encoded_name_en}.png")
+        
+        urls.append(f"{base_url}{urllib.parse.quote(title_var, safe='')}.png")
+    
+    return list(dict.fromkeys(urls))
 
 # Create game list directly
 final_games = []
@@ -475,11 +638,18 @@ if os.path.exists(OUTPUT_FILE):
     try:
         with open(OUTPUT_FILE, 'r') as f:
             content = f.read()
-            json_str = re.sub(r'^const gamesCatalog = ', '', content).strip().rstrip(';')
+            json_str = re.sub(r'^const\s+gamesCatalog\s*=\s*', '', content).strip().rstrip(';')
             existing_games = json.loads(json_str)
             for g in existing_games:
-                existing_files[g['id']] = g['file']
-                existing_files[g['id'].lower()] = g['file']
+                file_url = g['file']
+                if 'cdn.jsdelivr.net/gh/' in file_url:
+                    file_url = file_url.replace('https://cdn.jsdelivr.net/gh/', 'https://raw.githubusercontent.com/').replace('@master', '/master')
+                if 'raw.githubusercontent.com/retrobrews/md-games' in file_url:
+                    supabase_base = "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive"
+                    filename = g['id']
+                    file_url = f"{supabase_base}/{urllib.parse.quote(filename)}"
+                existing_files[g['id']] = file_url
+                existing_files[g['id'].lower()] = file_url
     except Exception as e:
         print(f"Warning: Could not read existing games.js: {e}")
 
@@ -509,13 +679,15 @@ if os.path.exists(ROM_DIR):
         
         # Create game object
         file_url = existing_files.get(filename, existing_files.get(filename.lower(), f"roms/mega-drive/{filename}"))
+        cover_urls = get_cover_urls(title)
         game = {
             "id": filename,
             "title": title,
             "platform": "Mega Drive",
             "year": "199X",
             "file": file_url,
-            "cover": get_cover_url(title)
+            "cover": cover_urls[0] if cover_urls else "",
+            "coverUrls": cover_urls
         }
         
         final_games.append(game)
@@ -526,24 +698,26 @@ for key, title in NAME_MAP.items():
     if title in seen_titles:
         continue
         
-    # Assume .zip for missing files as that was the original format
     filename = f"{key.lower()}.zip"
     
-    # Check if we have an existing URL for this ID
-    file_url = existing_files.get(filename, existing_files.get(filename.lower(), f"roms/mega-drive/{filename}"))
+    file_url = existing_files.get(filename, existing_files.get(filename.lower()))
     
-    # Only add if it's a remote URL or the file actually exists locally
-    if file_url.startswith(('http:', 'https:')) or (os.path.exists(ROM_DIR) and os.path.exists(os.path.join(ROM_DIR, filename))):
-        seen_titles.add(title)
-        game = {
-            "id": filename,
-            "title": title,
-            "platform": "Mega Drive",
-            "year": "199X",
-            "file": file_url,
-            "cover": get_cover_url(title)
-        }
-        final_games.append(game)
+    if not file_url:
+        supabase_base = "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive"
+        file_url = f"{supabase_base}/{urllib.parse.quote(filename)}"
+    
+    seen_titles.add(title)
+    cover_urls = get_cover_urls(title)
+    game = {
+        "id": filename,
+        "title": title,
+        "platform": "Mega Drive",
+        "year": "199X",
+        "file": file_url,
+        "cover": cover_urls[0] if cover_urls else "",
+        "coverUrls": cover_urls
+    }
+    final_games.append(game)
 
 # Fourth pass: Preserve existing games that are not in local ROMs or NAME_MAP
 # This ensures we don't lose games that were manually added or have IDs not in NAME_MAP
@@ -553,6 +727,11 @@ for g in existing_games:
     
     # Only preserve if it has a remote URL
     if g['file'].startswith(('http:', 'https:')):
+        if 'coverUrls' not in g:
+            cover_urls = get_cover_urls(g['title'])
+            g['coverUrls'] = cover_urls
+            if not g.get('cover') and cover_urls:
+                g['cover'] = cover_urls[0]
         seen_titles.add(g['title'])
         final_games.append(g)
 
