@@ -19,8 +19,67 @@ def test_url(url):
     except:
         return False
 
+SPECIAL_MAPPINGS = {
+    "Alien 3": ["Alien³", "Alien III", "Alien 3"],
+    "Altered Beast": ["Altered Beast"],
+    "Asterix and the Power of the Gods": ["Asterix & the Power of the Gods", "Asterix and the Power of the Gods"],
+    "Awesome Possum": ["Awesome Possum"],
+    "B.O.B.": ["B.O.B", "B.O.B.", "BOB"],
+    "Baby's Day Out": ["Baby's Day Out"],
+    "Battle Squadron": ["Battle Squadron"],
+    "Battletoads": ["Battletoads"],
+    "Bio-Hazard Battle": ["Bio-Hazard Battle", "Bio Hazard Battle"],
+    "Bio-Ship Paladin": ["Bio Ship Paladin", "Bio-Ship Paladin"],
+    "Bloodshot": ["Bloodshot"],
+    "Bonkers": ["Bonkers"],
+    "Caliber .50": ["Caliber 50", "Caliber .50"],
+    "Chakan - The Forever Man": ["Chakan The Forever Man", "Chakan - The Forever Man"],
+    "Chicago Syndicate": ["Chicago Syndicate"],
+    "Contra - Hard Corps": ["Contra Hard Corps", "Contra - Hard Corps"],
+    "Crüe Ball": ["Crüe Ball", "Crue Ball"],
+    "Daffy Duck in Hollywood": ["Daffy Duck in Hollywood"],
+    "Decap Attack": ["Decap Attack"],
+    "Desert Strike - Return to the Gulf": ["Desert Strike Return to the Gulf", "Desert Strike - Return to the Gulf"],
+    "Disney's Aladdin": ["Aladdin", "Disney's Aladdin"],
+    "Disney's The Lion King": ["Lion King, The", "The Lion King", "Lion King"],
+    "ESWAT - City Under Siege": ["ESWAT City Under Siege", "ESWAT - City Under Siege"],
+    "Ecco Jr.": ["Ecco Jr", "Ecco Jr."],
+    "El Viento": ["El Viento"],
+    "Fido Dido": ["Fido Dido"],
+    "Galahad": ["Galahad"],
+    "Gauntlet IV": ["Gauntlet IV", "Gauntlet 4"],
+    "Ghouls 'n Ghosts": ["Ghouls 'n Ghosts", "Ghouls n Ghosts"],
+    "Hit the Ice": ["Hit the Ice"],
+    "James Pond": ["James Pond"],
+    "James Pond II - Codename RoboCod": ["James Pond II Codename RoboCod", "James Pond II - Codename RoboCod"],
+    "Jim Power - The Arcade Game": ["Jim Power The Arcade Game", "Jim Power - The Arcade Game"],
+    "Joe & Mac": ["Joe and Mac", "Joe & Mac"],
+    "M.U.S.H.A.": ["M.U.S.H.A", "M.U.S.H.A.", "MUSHA"],
+    "Mega Panel": ["Mega Panel"],
+    "Power Rangers": ["Mighty Morphin Power Rangers", "Power Rangers"],
+    "Ren & Stimpy": ["Ren and Stimpy", "Ren & Stimpy"],
+    "Snow Bros. - Nick & Tom": ["Snow Bros. - Nick & Tom", "Snow Bros - Nick & Tom"],
+    "Sonic & Knuckles": ["Sonic and Knuckles", "Sonic & Knuckles"],
+    "Speedy Gonzales - Cheez Cat-astrophe": ["Speedy Gonzales Cheez Cat astrophe", "Speedy Gonzales - Cheez Cat-astrophe"],
+    "Street Fighter II - Special Champion Edition": ["Street Fighter II Special Champion Edition", "Street Fighter II - Special Champion Edition"],
+    "Super Mario Bros.": ["Super Mario Bros", "Super Mario Bros."],
+    "The Adventures of Batman & Robin": ["Adventures of Batman & Robin, The", "The Adventures of Batman & Robin"],
+    "The Aquatic Games": ["Aquatic Games, The", "The Aquatic Games"],
+    "The Chaos Engine 2": ["Chaos Engine 2, The", "The Chaos Engine 2"],
+    "The Simpsons - Bart vs. the Space Mutants": ["Simpsons - Bart vs. the Space Mutants, The", "The Simpsons - Bart vs. the Space Mutants"],
+    "The Simpsons - Bart's Nightmare": ["Simpsons - Bart's Nightmare, The", "The Simpsons - Bart's Nightmare"],
+    "The Smurfs": ["Smurfs, The", "The Smurfs"],
+    "The Smurfs 2": ["Smurfs 2, The", "The Smurfs 2"],
+    "Tom & Jerry": ["Tom and Jerry", "Tom & Jerry"],
+    "Tom & Jerry - Frantic Antics": ["Tom and Jerry - Frantic Antics", "Tom & Jerry - Frantic Antics"],
+    "ToeJam & Earl": ["ToeJam and Earl", "ToeJam & Earl"],
+}
+
 def find_working_url_comprehensive(title):
     variations = []
+    
+    if title in SPECIAL_MAPPINGS:
+        variations.extend(SPECIAL_MAPPINGS[title])
     
     variations.append(title)
     
@@ -74,6 +133,10 @@ def find_working_url_comprehensive(title):
     
     if ' vs ' in title:
         variations.append(title.replace(' vs ', ' vs. '))
+    
+    if "'" in title:
+        variations.append(title.replace("'", ""))
+        variations.append(title.replace("'", " "))
     
     variations = list(set([v for v in variations if v and v.strip()]))
     

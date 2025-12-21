@@ -330,6 +330,13 @@ const App = {
             else if (!this.ui.player.classList.contains('hidden')) this.showHome()
         }
         if (e.key.toLowerCase() === 'f' && !this.ui.player.classList.contains('hidden')) this.toggleFullscreen()
+        if (e.key === 'Enter' && !this.ui.player.classList.contains('hidden')) {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (isFullscreen) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
     },
     handleKeyRemap(e) {
         if (this.ui.player.classList.contains('hidden')) return;
