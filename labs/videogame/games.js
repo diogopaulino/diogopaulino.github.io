@@ -1584,8 +1584,9 @@ const gamesCatalog = [
     "platform": "Mega Drive",
     "year": "199X",
     "file": "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/crueball.zip",
-    "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cr%C3%BCe%20Ball%20%28USA%29.png",
+    "cover": "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Crue%20Ball%20%28Japan%29.png",
     "coverUrls": [
+      "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Crue%20Ball%20%28Japan%29.png",
       "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cr%C3%BCe%20Ball%20%28USA%29.png",
       "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cr%C3%BCe%20Ball%20%28USA%2C%20En%29.png",
       "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/Cr%C3%BCe%20Ball%20%28Europe%29.png",
