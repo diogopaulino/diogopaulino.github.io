@@ -1,11 +1,12 @@
 :root {
-    --win-bg: #3a3a3a;
-    --win-dark: #232323;
-    --win-light: #4a4a4a;
-    --win-text: #00ff00;
-    --win-text-dim: #006600;
-    --title-start: #000080;
-    --title-end: #1084d0;
+    --win-bg: #202020;
+    --win-dark: #000000;
+    --win-light: #484848;
+    --win-text: #00E000;
+    --win-text-dim: #008000;
+    --win-hl: #a0a0a0;
+    --title-start: #000050;
+    --title-end: #0000A0;
 }
 
 * {
@@ -16,7 +17,7 @@
 
 .winamp-wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0;
     transform: scale(2);
     transform-origin: top center;
@@ -24,6 +25,14 @@
     margin-bottom: 300px;
     font-family: Arial, sans-serif;
     image-rendering: pixelated;
+    background-color: transparent;
+    justify-content: center;
+}
+
+.left-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .main-window,
@@ -31,37 +40,81 @@
 .playlist-window {
     width: 275px;
     background: var(--win-bg);
-    border: 2px solid;
-    border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
     position: relative;
     user-select: none;
 }
 
+/* Borders logic to match Winamp Skin */
+.main-window,
+.equalizer-window {
+    border-top: 1px solid #555;
+    border-left: 1px solid #555;
+    border-right: 1px solid #202020;
+    border-bottom: 1px solid #202020;
+}
+
 .title-bar {
     height: 14px;
-    background: linear-gradient(90deg, var(--title-start) 0%, var(--title-end) 100%);
+    background: #000000;
     display: flex;
     align-items: center;
-    padding: 0 3px;
+    padding: 0 2px;
     cursor: move;
+    position: relative;
+    border-bottom: 1px solid #000;
+}
+
+/* Main Title Bar Gradient */
+.title-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #000030 0%, #000090 100%);
+    z-index: 0;
+    margin: 1px;
+}
+
+.title-bar>* {
+    z-index: 1;
 }
 
 .title-bar-icon {
     width: 9px;
     height: 9px;
-    background: radial-gradient(circle at 35% 35%, #ffd700 0%, #ff8c00 50%, #cc4400 100%);
-    border-radius: 50%;
-    flex-shrink: 0;
+    background: radial-gradient(circle at 30% 30%, #e0e0e0 0%, #808080 100%);
+    margin-right: 2px;
+    clip-path: polygon(10% 0, 100% 0, 60% 100%, 0% 50%);
+    /* Abstract shape attempt */
+    background: transparent;
+    /* Use actual sprite or generic shape */
+    /* Approximation for the little diamond/logo */
+    width: 9px;
+    height: 9px;
+    position: relative;
+}
+
+.title-bar-icon::before {
+    content: '#';
+    color: #ccc;
+    font-size: 8px;
+    position: absolute;
+    top: -2px;
+    left: 1px;
 }
 
 .title-bar-text {
     color: #fff;
-    font-size: 8px;
+    font-size: 6px;
     font-weight: bold;
+    /* Pixel font simulation */
     flex-grow: 1;
-    margin-left: 3px;
-    letter-spacing: 0.5px;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+    margin-left: 2px;
+    letter-spacing: 0px;
+    font-family: 'Pixel', sans-serif;
+    /* Fallback */
 }
 
 .title-bar-controls {
@@ -73,42 +126,48 @@
     width: 9px;
     height: 9px;
     background: #c0c0c0;
-    border: 1px solid;
-    border-color: #fff #808080 #808080 #fff;
-    font-size: 6px;
-    line-height: 6px;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
+    font-size: 7px;
+    line-height: 7px;
     padding: 0;
     cursor: pointer;
     color: #000;
+    font-family: sans-serif;
     font-weight: bold;
+    text-align: center;
 }
 
 .title-bar-controls button:active {
-    border-color: #808080 #fff #fff #808080;
+    border-color: #555 #fff #fff #555;
 }
 
 .main-body {
-    padding: 3px;
-    background: var(--win-dark);
+    padding: 4px;
+    background: #202020;
+    position: relative;
 }
 
 .display-area {
     background: #000;
-    height: 40px;
-    margin-bottom: 2px;
-    border: 1px solid;
-    border-color: #0a0a0a #4a4a4a #4a4a4a #0a0a0a;
+    height: 43px;
+    margin-bottom: 3px;
     display: flex;
     position: relative;
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #555;
+    border-bottom: 1px solid #555;
 }
 
 .visualization {
-    width: 75px;
+    width: 76px;
     height: 100%;
-    border-right: 1px solid #2a2a2a;
     background: #000;
     cursor: pointer;
     position: relative;
+    border-right: 1px solid #333;
 }
 
 #vis-canvas {
@@ -119,13 +178,13 @@
 
 .vis-mode {
     position: absolute;
-    bottom: 1px;
-    left: 2px;
-    font-size: 5px;
-    color: var(--win-text);
-    opacity: 0.5;
-    text-transform: uppercase;
-    pointer-events: none;
+    top: 1px;
+    left: 1px;
+    width: 3px;
+    height: 3px;
+    background: #fff;
+    /* generic small indicator */
+    display: none;
 }
 
 .info-panel {
@@ -135,68 +194,89 @@
     padding: 2px 4px;
     min-width: 0;
     overflow: hidden;
+    position: relative;
 }
 
 .song-info {
-    height: 11px;
-    overflow: hidden;
-}
-
-.marquee-container {
-    overflow: hidden;
-    white-space: nowrap;
+    height: 10px;
+    margin-bottom: 2px;
 }
 
 .marquee {
     display: inline-block;
     color: var(--win-text);
-    font-size: 7px;
-    animation: marquee 18s linear infinite;
-    text-shadow: 0 0 3px var(--win-text);
+    font-size: 6px;
+    font-family: monospace;
+    /* approximates pixel font */
+    text-transform: uppercase;
     white-space: nowrap;
-}
-
-.marquee.paused {
-    animation-play-state: paused;
+    animation: marquee 10s linear infinite;
 }
 
 @keyframes marquee {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
 }
 
 .info-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 3px;
+    align-items: flex-start;
+    height: 28px;
+    position: relative;
 }
 
 .time-display {
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 18px;
-    font-weight: bold;
+    background: #000;
+    width: 45px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+}
+
+#time-elapsed {
+    font-family: sans-serif;
+    /* We need a 7-segment approximation ideally */
+    font-size: 22px;
     color: var(--win-text);
-    text-shadow: 0 0 8px var(--win-text), 0 0 2px var(--win-text);
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    line-height: 22px;
 }
 
 .kbps-khz {
     display: flex;
     flex-direction: column;
-    font-size: 7px;
+    font-size: 6px;
     color: var(--win-text);
-    line-height: 1.2;
-    text-align: right;
+    line-height: 8px;
+    margin-top: 2px;
+    width: 65px;
 }
 
-.kbps::after { content: ' kbps'; color: var(--win-text-dim); }
-.khz::after { content: ' kHz'; color: var(--win-text-dim); }
+.kbps::after {
+    content: ' kbps';
+    color: var(--win-text-dim);
+}
+
+.khz::after {
+    content: ' kHz';
+    color: var(--win-text-dim);
+}
 
 .mono-stereo {
+    position: absolute;
+    right: 0;
+    top: 2px;
     display: flex;
-    gap: 3px;
-    font-size: 7px;
+    flex-direction: column;
+    font-size: 6px;
+    gap: 1px;
 }
 
 .mono-stereo div {
@@ -205,156 +285,118 @@
 
 .mono-stereo div.active {
     color: var(--win-text);
-    text-shadow: 0 0 4px var(--win-text);
+    text-shadow: 0 0 2px #0f0;
 }
 
 .seek-bar-container {
     height: 10px;
-    margin: 2px 0;
-    padding: 0 2px;
+    margin: 3px 0;
+    padding: 0 5px;
+    background: transparent;
+    display: flex;
+    align-items: center;
 }
 
 .seek-bar {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 6px;
-    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
-    border: 1px solid;
-    border-color: #0a0a0a #3a3a3a #3a3a3a #0a0a0a;
+    height: 5px;
+    background: #000;
+    border-bottom: 1px solid #333;
+    border-right: 1px solid #333;
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
     cursor: pointer;
 }
 
 .seek-bar::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 28px;
-    height: 8px;
-    background: linear-gradient(180deg, #9a9a9a 0%, #5a5a5a 50%, #8a8a8a 100%);
-    border: 1px solid;
-    border-color: #c0c0c0 #3a3a3a #3a3a3a #c0c0c0;
-    cursor: pointer;
-}
-
-.seek-bar::-moz-range-thumb {
-    width: 28px;
-    height: 8px;
-    background: linear-gradient(180deg, #9a9a9a 0%, #5a5a5a 50%, #8a8a8a 100%);
-    border: 1px solid;
-    border-color: #c0c0c0 #3a3a3a #3a3a3a #c0c0c0;
+    width: 25px;
+    height: 7px;
+    background: #d0a000;
+    /* Gold-ish slider */
+    border: 1px solid #ffcc00;
+    box-shadow: inset 1px 1px 0 #ffe060, inset -1px -1px 0 #806000;
     cursor: pointer;
 }
 
 .controls-area {
     display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 2px 0;
+    height: 40px;
+    padding-top: 2px;
+    position: relative;
 }
 
 .sliders {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    flex-shrink: 0;
+    gap: 3px;
+    margin-right: 15px;
+    width: 70px;
 }
 
 .volume-slider-container,
 .balance-slider-container {
     display: flex;
     align-items: center;
-    gap: 2px;
 }
 
 .volume-slider-container label,
 .balance-slider-container label {
-    font-size: 6px;
-    color: #707070;
+    font-size: 5px;
+    color: #fff;
     width: 14px;
-}
-
-.slider-value {
-    font-size: 6px;
-    color: var(--win-text);
-    width: 16px;
-    text-align: right;
+    text-align: center;
 }
 
 .winamp-range {
     -webkit-appearance: none;
     appearance: none;
-    width: 44px;
-    height: 6px;
-    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
-    border: 1px solid;
-    border-color: #0a0a0a #3a3a3a #3a3a3a #0a0a0a;
+    width: 48px;
+    height: 5px;
+    background: #000;
+    border: 1px solid #333;
 }
 
 .winamp-range::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 14px;
-    height: 10px;
-    background: linear-gradient(180deg, #c0c0c0 0%, #808080 50%, #a0a0a0 100%);
-    border: 1px solid;
-    border-color: #d0d0d0 #404040 #303030 #c0c0c0;
-    cursor: pointer;
-}
-
-.winamp-range::-moz-range-thumb {
-    width: 14px;
-    height: 10px;
-    background: linear-gradient(180deg, #c0c0c0 0%, #808080 50%, #a0a0a0 100%);
-    border: 1px solid;
-    border-color: #d0d0d0 #404040 #303030 #c0c0c0;
-    cursor: pointer;
+    width: 10px;
+    height: 7px;
+    background: #777;
+    border: 1px solid #aaa;
+    border-bottom-color: #333;
+    border-right-color: #333;
 }
 
 .main-buttons {
     display: flex;
     gap: 0;
-    flex-shrink: 0;
+    margin-top: 10px;
 }
 
 .main-buttons button {
-    width: 22px;
+    width: 23px;
     height: 18px;
-    background: linear-gradient(180deg, #a8a8a8 0%, #787878 100%);
-    border: 1px solid;
-    border-color: #c8c8c8 #484848 #484848 #c8c8c8;
-    cursor: pointer;
-    position: relative;
+    background: linear-gradient(to bottom, #dedede 0%, #a0a0a0 100%);
+    border: none;
 }
 
-.main-buttons button:hover {
-    background: linear-gradient(180deg, #b8b8b8 0%, #888888 100%);
+.main-buttons button:active {
+    background: #808080;
 }
 
-.main-buttons button:active,
-.main-buttons button.active {
-    border-color: #484848 #c8c8c8 #c8c8c8 #484848;
-    background: linear-gradient(180deg, #686868 0%, #888888 100%);
-}
-
+/* Button glyphs simulated via pseudo elements */
 .btn-prev::after {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    margin-left: 2px;
-    border-right: 5px solid #1a1a1a;
-    border-top: 4px solid transparent;
-    border-bottom: 4px solid transparent;
-}
-
-.btn-prev::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 5px;
-    transform: translateY(-50%);
-    width: 2px;
-    height: 8px;
-    background: #1a1a1a;
+    border-right: 4px solid #000;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    box-shadow: -2px 0 0 #000;
 }
 
 .btn-play::after {
@@ -362,10 +404,16 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-35%, -50%);
-    border-left: 7px solid #1a1a1a;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
+    transform: translate(-30%, -50%);
+    border-left: 6px solid #000;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+}
+
+.btn-play.active::after {
+    border-left-color: #00e000;
+    /* Green LED-ish when playing if desired, but user wants Classic look */
+    /* Classic Winamp didn't change button color, maybe active pressed state */
 }
 
 .btn-pause::after {
@@ -374,10 +422,10 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 3px;
-    height: 9px;
-    background: #1a1a1a;
-    box-shadow: 5px 0 0 #1a1a1a;
+    width: 2px;
+    height: 7px;
+    background: #000;
+    box-shadow: 4px 0 0 #000;
 }
 
 .btn-stop::after {
@@ -386,9 +434,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 8px;
-    height: 8px;
-    background: #1a1a1a;
+    width: 6px;
+    height: 6px;
+    background: #000;
 }
 
 .btn-next::after {
@@ -397,345 +445,383 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    margin-left: -2px;
-    border-left: 5px solid #1a1a1a;
-    border-top: 4px solid transparent;
-    border-bottom: 4px solid transparent;
-}
-
-.btn-next::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-    width: 2px;
-    height: 8px;
-    background: #1a1a1a;
+    border-left: 4px solid #000;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    box-shadow: 2px 0 0 #000;
 }
 
 .btn-eject {
-    width: 22px;
-    height: 16px;
-    background: linear-gradient(180deg, #a8a8a8 0%, #787878 100%);
-    border: 1px solid;
-    border-color: #c8c8c8 #484848 #484848 #c8c8c8;
-    cursor: pointer;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.btn-eject:hover {
-    background: linear-gradient(180deg, #b8b8b8 0%, #888888 100%);
-}
-
-.btn-eject:active {
-    border-color: #484848 #c8c8c8 #c8c8c8 #484848;
-}
-
-.btn-eject::before {
-    content: '';
     position: absolute;
-    top: 3px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-bottom: 5px solid #1a1a1a;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
+    right: 50px;
+    bottom: 8px;
+    width: 18px;
+    height: 14px;
+    background: #ccc;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
 }
 
 .btn-eject::after {
-    content: '';
+    content: '⏏';
+    font-size: 8px;
     position: absolute;
-    bottom: 2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 10px;
-    height: 2px;
-    background: #1a1a1a;
+    top: 0;
+    left: 4px;
+    color: #000;
 }
 
 .shuffle-repeat {
+    position: absolute;
+    right: 5px;
+    bottom: 12px;
     display: flex;
-    flex-direction: row;
-    gap: 1px;
-    margin-left: auto;
-    flex-shrink: 0;
+    gap: 4px;
 }
 
 .shuffle-repeat button {
-    width: 18px;
-    height: 14px;
-    background: var(--win-dark);
-    border: 1px solid;
-    border-color: var(--win-bg) #1a1a1a #1a1a1a var(--win-bg);
-    color: #505050;
+    width: 26px;
+    height: 12px;
+    background: #202020;
+    color: #404040;
+    border: none;
     font-size: 5px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.shuffle-repeat button:hover {
-    color: #808080;
+    line-height: 12px;
+    text-align: center;
+    border: 1px solid #484848;
+    border-right-color: #202020;
+    border-bottom-color: #202020;
 }
 
 .shuffle-repeat button.active {
-    color: var(--win-text);
-    text-shadow: 0 0 4px var(--win-text);
+    color: #00e000;
+    text-shadow: 0 0 2px #0f0;
+}
+
+/* .shuffle-repeat button::after { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; border-radius:3px; } */
+
+.clutter-bar {
+    position: absolute;
+    top: 15px;
+    left: 80px;
+    display: flex;
+    gap: 1px;
+    background: #000;
+    padding: 1px;
+    border: 1px solid #333;
+}
+
+.clutter-bar div {
+    font-size: 5px;
+    color: #00e000;
+    width: 6px;
+    text-align: center;
+    opacity: 0.3;
+}
+
+.clutter-bar div.active {
+    opacity: 1;
 }
 
 .branding {
     position: absolute;
-    bottom: 4px;
     right: 5px;
-    font-family: 'Arial Black', sans-serif;
+    top: 5px;
+    font-family: Arial black, sans-serif;
     font-style: italic;
     font-weight: 900;
     color: #353535;
     font-size: 10px;
     letter-spacing: -1px;
+    user-select: none;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* EQUALIZER */
+.equalizer-window {
+    height: 116px;
+    margin-top: 0;
+    border-top: none;
+    /* Merged visually */
 }
 
 .eq-toggle {
     display: flex;
-    gap: 1px;
-    margin-left: auto;
-    margin-right: 4px;
+    margin-right: auto;
+    margin-left: 10px;
+    gap: 2px;
 }
 
 .eq-toggle button {
-    width: 18px;
-    height: 9px;
-    background: var(--win-dark);
-    border: 1px solid #1a1a1a;
-    color: #404040;
-    font-size: 5px;
-    cursor: pointer;
-}
-
-.eq-toggle button.active {
-    color: var(--win-text);
-    text-shadow: 0 0 3px var(--win-text);
+    width: 24px;
+    height: 10px;
+    font-size: 6px;
+    background: #202020;
+    color: #00e000;
+    border: 1px solid #444;
 }
 
 .eq-body {
+    padding: 10px 15px;
     display: flex;
     align-items: flex-end;
-    gap: 4px;
-    padding: 5px;
-    background: var(--win-dark);
-    height: 58px;
+    gap: 6px;
+    background: #202020;
+    height: 80px;
+    /* adjusted */
     position: relative;
+    top: 2px;
 }
 
 .eq-preamp {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    margin-right: 5px;
 }
 
 .eq-preamp label {
     font-size: 5px;
-    color: #707070;
+    color: #aaa;
+    margin-bottom: 2px;
 }
 
 .eq-bands {
     display: flex;
-    gap: 2px;
-    flex: 1;
+    gap: 3px;
 }
 
 .eq-band {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1px;
 }
 
 .eq-band label {
-    font-size: 5px;
-    color: #505050;
+    font-size: 4px;
+    color: #888;
+    margin-top: 2px;
 }
 
 .eq-slider.vertical {
+    -webkit-appearance: none;
+    appearance: slider-vertical;
     writing-mode: vertical-lr;
-    direction: rtl;
+    /* Not fully supported for range input orientation everywhere, strict layout needed */
     width: 10px;
-    height: 36px;
-    background: linear-gradient(180deg, #00cc00 0%, #009900 40%, #006600 70%, #003300 100%);
-    border: 1px solid #0a0a0a;
-    -webkit-appearance: none;
-    appearance: none;
+    height: 50px;
+    background: repeating-linear-gradient(to top,
+            #202020 0px, #202020 1px,
+            #000 2px, #000 3px);
+    border: 1px solid #444;
 }
 
-.eq-slider.vertical::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px;
-    height: 4px;
-    background: linear-gradient(180deg, #b0b0b0 0%, #707070 100%);
-    border: 1px solid;
-    border-color: #d0d0d0 #404040 #404040 #d0d0d0;
-    cursor: pointer;
+/* For WebKit, rotate range */
+.eq-slider.vertical {
+    -webkit-appearance: slider-vertical;
 }
 
-.eq-slider.vertical::-moz-range-thumb {
-    width: 12px;
-    height: 4px;
-    background: linear-gradient(180deg, #b0b0b0 0%, #707070 100%);
-    border: 1px solid;
-    border-color: #d0d0d0 #404040 #404040 #d0d0d0;
-    cursor: pointer;
+.db-markers {
+    position: absolute;
+    left: 45px;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 50px;
+    font-size: 4px;
+    color: #666;
+    pointer-events: none;
+    user-select: none;
 }
 
 .eq-presets {
-    margin-left: auto;
+    position: absolute;
+    top: 15px;
+    right: 20px;
 }
 
-.eq-presets select {
-    width: 45px;
-    height: 12px;
+.presets-btn {
+    width: 40px;
+    height: 10px;
     font-size: 6px;
-    background: #1a1a1a;
-    color: var(--win-text);
-    border: 1px solid var(--win-bg);
+    background: #333;
+    color: #bbb;
+    border: 1px solid #555;
     cursor: pointer;
 }
 
-.eq-presets select:focus {
-    outline: none;
-}
-
+/* PLAYLIST */
 .playlist-window {
-    height: 116px;
+    width: 275px;
+    height: 232px;
+    /* Matches Main+EQ height (116+116) */
     display: flex;
     flex-direction: column;
+    border-left: none;
+    /* Attached */
+    background: #202020;
+    border-top: 1px solid #555;
+    border-right: 1px solid #202020;
+    border-bottom: 1px solid #202020;
 }
 
 .playlist-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 3px;
-    background: var(--win-dark);
+    padding: 4px;
+    padding-top: 0;
 }
 
 .playlist-content {
     flex: 1;
     background: #000;
-    border: 1px solid;
-    border-color: #0a0a0a var(--win-bg) var(--win-bg) #0a0a0a;
-    overflow-y: auto;
+    border-left: 1px solid #555;
+    border-top: 1px solid #000;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    margin-bottom: 3px;
+    font-family: monospace;
     font-size: 8px;
+    overflow-y: scroll;
+    padding: 2px;
 }
 
 .playlist-content::-webkit-scrollbar {
-    width: 10px;
-}
-
-.playlist-content::-webkit-scrollbar-track {
-    background: #1a1a1a;
-    border: 1px solid #0a0a0a;
+    width: 8px;
+    background: #202020;
 }
 
 .playlist-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #707070 0%, #4a4a4a 100%);
-    border: 1px solid;
-    border-color: #909090 #2a2a2a #2a2a2a #909090;
+    background: #555;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
 }
 
 .playlist-item {
-    padding: 1px 4px;
-    color: var(--win-text);
-    cursor: default;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.playlist-item:hover {
-    background: #0a1520;
+    color: #00E000;
+    padding: 1px 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 10px;
 }
 
 .playlist-item.selected {
-    background: #102030;
-}
-
-.playlist-item.active {
-    background: #000080;
+    background: #0000A0;
     color: #fff;
 }
 
-.playlist-item.playing .track-title::before {
-    content: '► ';
-    color: var(--win-text);
-}
-
-.track-title {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.playlist-item.playing {
+    color: #fff;
 }
 
 .track-duration {
-    color: var(--win-text-dim);
-    margin-left: 8px;
-    font-size: 7px;
-    flex-shrink: 0;
+    float: right;
 }
 
-.playlist-info {
+.playlist-controls-row {
     display: flex;
-    justify-content: space-between;
-    padding: 2px 4px;
-    font-size: 7px;
-    color: var(--win-text);
-    background: #1a1a1a;
-    border: 1px solid #0a0a0a;
-    margin-top: 2px;
+    align-items: center;
+    height: 14px;
+    margin-bottom: 2px;
 }
 
-.playlist-controls {
+.playlist-actions {
     display: flex;
-    justify-content: space-between;
-    margin-top: 2px;
 }
 
-.playlist-controls button {
-    background: linear-gradient(180deg, var(--win-bg) 0%, var(--win-dark) 100%);
-    border: 1px solid;
-    border-color: var(--win-light) #1a1a1a #1a1a1a var(--win-light);
-    color: #909090;
-    font-size: 6px;
-    padding: 2px 5px;
+.pl-btn {
+    height: 14px;
+    font-size: 9px;
+    min-width: 22px;
+    background: #202020;
+    color: #fff;
+    border: 1px solid #666;
+    border-right-color: #202020;
+    border-bottom-color: #202020;
+    /* Winamp buttons are text only usually in bottom area */
+    font-family: Arial Narrow, sans-serif;
+    transform: scale(0.65);
+    /* HACK: make text tiny */
     cursor: pointer;
 }
 
-.playlist-controls button:hover {
-    color: #c0c0c0;
+.pl-list-opts {
+    margin-left: auto;
 }
 
-.playlist-controls button:active {
-    border-color: #1a1a1a var(--win-light) var(--win-light) #1a1a1a;
+.playlist-time-display {
+    flex: 1;
+    margin: 0 4px;
+    background: #000;
+    height: 14px;
+    border: 1px solid #444;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+    color: #00E000;
+    font-size: 7px;
+    line-height: 14px;
+    text-align: center;
 }
 
-.left-btns,
-.right-btns {
+.playlist-nav-row {
+    display: flex;
+    height: 14px;
+    align-items: center;
+    background: #202020;
+    justify-content: space-between;
+}
+
+.pl-nav-controls {
     display: flex;
     gap: 1px;
 }
 
+.pl-nav-controls button {
+    width: 8px;
+    height: 8px;
+    background: #ccc;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
+    cursor: pointer;
+}
+
+/* Use CSS shapes or SVG for these tiny buttons if possible, or just colors for now */
+.pl-prev::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border: 2px solid transparent;
+    border-right-color: #000;
+    margin-left: -1px;
+}
+
+.pl-current-time {
+    font-size: 16px;
+    color: #00E000;
+    font-family: 'Courier New', monospace;
+    /* Digital look */
+    background: #000;
+    padding: 0 4px;
+    line-height: 14px;
+    border: 1px solid #444;
+}
+
+/* Loading Overlay */
 .loading-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.9);
+    background: rgba(0, 0, 0, 0.9);
     display: none;
     justify-content: center;
     align-items: center;
@@ -758,7 +844,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-text {
@@ -766,28 +854,14 @@
     font-size: 11px;
 }
 
-.logo-icon {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background: radial-gradient(circle at 35% 35%, #ffd700 0%, #ff8c00 50%, #cc4400 100%);
-    border-radius: 50%;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-
 @media (max-width: 800px) {
     .winamp-wrapper {
-        transform: scale(1.5);
-        margin-top: 80px;
-        margin-bottom: 200px;
+        transform: scale(1.0);
+        flex-direction: column;
     }
-}
 
-@media (max-width: 500px) {
-    .winamp-wrapper {
-        transform: scale(1.1);
-        margin-top: 40px;
-        margin-bottom: 120px;
+    .winamp-wrapper .playlist-window {
+        width: 275px;
+        border-left: 1px solid #555;
     }
 }

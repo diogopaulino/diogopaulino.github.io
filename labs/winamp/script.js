@@ -1,45 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_PLAYLIST = [
-        {
-            title: 'Retro Synthwave - Night Drive',
-            url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_5c29ee7879.mp3',
-            duration: '2:38'
-        },
-        {
-            title: 'Chill 90s Groove - Sunset Boulevard',
-            url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_715e43bd13.mp3',
-            duration: '2:17'
-        },
-        {
-            title: 'Lo-Fi Hip Hop - Rainy Day',
-            url: 'https://cdn.pixabay.com/audio/2024/11/01/audio_4956b4edd1.mp3',
-            duration: '2:35'
-        },
-        {
-            title: 'Vaporwave Dreams - Mall Memories',
-            url: 'https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3',
-            duration: '3:14'
-        },
-        {
-            title: 'Smooth Bass - Late Night Jam',
-            url: 'https://cdn.pixabay.com/audio/2023/07/30/audio_e6d0f98a2e.mp3',
-            duration: '1:41'
-        },
-        {
-            title: '90s Ambient - City Lights',
-            url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3',
-            duration: '2:29'
-        },
-        {
-            title: 'Chillwave - Ocean Breeze',
-            url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
-            duration: '3:46'
-        },
-        {
-            title: 'Retro Beats - Neon Streets',
-            url: 'https://cdn.pixabay.com/audio/2023/09/25/audio_ef7223c00d.mp3',
-            duration: '2:05'
-        }
+        { title: 'Depeche Mode - Never Let Me Down Again', url: '', duration: '4:47' },
+        { title: 'Depeche Mode - The Things You Said', url: '', duration: '4:02' },
+        { title: 'Depeche Mode - Strangelove', url: '', duration: '4:54' },
+        { title: 'Depeche Mode - Sacred', url: '', duration: '4:48' },
+        { title: 'Depeche Mode - Little 15', url: '', duration: '4:18' },
+        { title: 'Depeche Mode - Behind The Wheel', url: '', duration: '5:17' },
+        { title: 'Depeche Mode - I Want You Now', url: '', duration: '3:38' },
+        { title: 'Depeche Mode - To Have And To Hold', url: '', duration: '2:56' },
+        { title: 'Depeche Mode - Nothing', url: '', duration: '4:17' },
+        { title: 'Depeche Mode - Pimpf', url: '', duration: '5:25' },
+        { title: 'Depeche Mode - Agent Orange', url: '', duration: '5:04' },
+        { title: 'Depeche Mode - Never Let Me Down Again ...', url: '', duration: '4:56' }
     ];
 
     let audioContext = null;
@@ -147,26 +119,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadTrack(index, autoPlay = false) {
         if (index < 0 || index >= playlist.length) return;
-        
+
         currentTrackIndex = index;
         const track = playlist[index];
-        
+
         showLoading(true);
         const wasPlaying = isPlaying;
         if (isPlaying) audio.pause();
-        
+
         audio.src = track.url;
         audio.load();
-        
+
         updateMarquee(track.title);
         updatePlaylistUI();
-        
+
         audio.onloadedmetadata = () => {
             showLoading(false);
             seekBar.max = Math.floor(audio.duration);
             if (autoPlay || wasPlaying) play();
         };
-        
+
         audio.onerror = () => {
             showLoading(false);
             updateMarquee('Error: ' + track.title);
@@ -177,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function play() {
         initAudioContext();
         if (audioContext.state === 'suspended') audioContext.resume();
-        
+
         audio.play().then(() => {
             isPlaying = true;
             btnPlay.classList.add('active');
@@ -217,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function nextTrack() {
         let newIndex;
         if (isShuffle) {
-            do { newIndex = Math.floor(Math.random() * playlist.length); } 
+            do { newIndex = Math.floor(Math.random() * playlist.length); }
             while (newIndex === currentTrackIndex && playlist.length > 1);
         } else {
             newIndex = currentTrackIndex + 1;
@@ -244,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-        
+
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -254,20 +226,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const barWidth = 3;
             const gap = 1;
             const step = Math.floor(bufferLength / barCount);
-            
+
             for (let i = 0; i < barCount; i++) {
                 let value = Math.pow(dataArray[i * step] / 255, 0.8) * 255;
                 const barHeight = (value / 255) * canvas.height;
                 const x = i * (barWidth + gap);
-                
+
                 const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
                 gradient.addColorStop(0, '#00cc00');
                 gradient.addColorStop(0.6, '#00ff00');
                 gradient.addColorStop(1, '#88ff88');
-                
+
                 ctx.fillStyle = gradient;
                 ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                
+
                 if (barHeight > 3) {
                     ctx.fillStyle = '#fff';
                     ctx.fillRect(x, canvas.height - barHeight, barWidth, 1);

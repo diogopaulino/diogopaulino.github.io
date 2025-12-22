@@ -1,0 +1,235 @@
+@charset "UTF-8";
+
+body {
+    background-color: #222;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.game-area {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Windows 3.1 Window Style */
+.win31-window {
+    background-color: #c0c0c0;
+    /* Classic Win Gray */
+    border: 2px solid;
+    border-color: #dfdfdf #404040 #404040 #dfdfdf;
+    /* Bevel */
+    width: 640px;
+    max-width: 100%;
+    box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
+    font-family: Arial, sans-serif;
+}
+
+.title-bar {
+    background-color: #000080;
+    /* Win Blue */
+    color: white;
+    padding: 2px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.title-text {
+    margin-left: 4px;
+}
+
+.window-controls {
+    display: flex;
+    gap: 2px;
+}
+
+.win-btn {
+    background-color: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #808080 #808080 #fff;
+    width: 20px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    color: black;
+}
+
+.win-btn:active {
+    border-color: #808080 #fff #fff #808080;
+    padding-top: 1px;
+    padding-left: 1px;
+}
+
+.menu-bar {
+    background-color: white;
+    padding: 2px 8px;
+    border-bottom: 1px solid #808080;
+    font-size: 14px;
+}
+
+.menu-item {
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background-color: #000080;
+    color: white;
+}
+
+.game-viewport {
+    position: relative;
+    background-color: black;
+    border: 1px solid #808080;
+    /* Inset look */
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+    height: 400px;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* HUD Overlay */
+.hud-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass to canvas if needed, mostly for touch buttons */
+}
+
+.hud-stats {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    text-align: right;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    /* Fallback */
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.stat-row .label {
+    opacity: 1;
+}
+
+/* On-Screen Controls - Strictly matching image */
+.onscreen-controls {
+    position: absolute;
+    top: 150px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    pointer-events: auto;
+}
+
+.onscreen-controls .row {
+    display: flex;
+    gap: 5px;
+}
+
+.control-btn {
+    width: 42px;
+    height: 42px;
+    background-color: #c0c0c0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    box-shadow: 1px 1px 0 #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.control-btn:active,
+.control-btn.active {
+    border-top: 2px solid #000;
+    border-left: 2px solid #000;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translate(1px, 1px);
+    box-shadow: none;
+}
+
+.control-btn svg {
+    fill: #000;
+    width: 24px;
+    height: 24px;
+}
+
+.thrust-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.thrust-lines {
+    width: 16px;
+    height: 2px;
+    background: #000;
+    box-shadow: 0 4px 0 #000, 0 8px 0 #000;
+}
+
+.center-msg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    text-align: center;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .win31-window {
+        width: 100%;
+    }
+
+    .hud-stats {
+        font-size: 16px;
+        top: 10px;
+        right: 10px;
+    }
+
+    .onscreen-controls {
+        top: auto;
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .game-viewport {
+        height: 60vh;
+    }
+}

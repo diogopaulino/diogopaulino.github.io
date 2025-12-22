@@ -45,119 +45,138 @@
         </header>
 
         <div class="winamp-wrapper">
-            <div class="main-window">
-                <div class="title-bar">
-                    <div class="title-bar-icon"></div>
-                    <div class="title-bar-text">WINAMP 2.91</div>
-                    <div class="title-bar-controls">
-                        <button class="minimize" title="Minimize">_</button>
-                        <button class="close" title="Close">x</button>
+            <div class="left-stack">
+                <div class="main-window">
+                    <div class="title-bar">
+                        <div class="title-bar-icon"></div>
+                        <div class="title-bar-text">WINAMP 2.91</div>
+                        <div class="title-bar-controls">
+                            <button class="minimize" title="Minimize">_</button>
+                            <button class="close" title="Close">x</button>
+                        </div>
+                    </div>
+
+                    <div class="main-body">
+                        <div class="display-area">
+                            <div class="visualization" id="visualizer">
+                                <canvas id="vis-canvas" width="75" height="40"></canvas>
+                                <div class="vis-mode"></div>
+                            </div>
+                            <div class="info-panel">
+                                <div class="song-info">
+                                    <div class="marquee-container">
+                                        <span class="marquee" id="marquee-text">1. Depeche Mode - Never Let Me Down
+                                            Again</span>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="time-display">
+                                        <span id="time-elapsed">01:08</span>
+                                    </div>
+                                    <div class="kbps-khz">
+                                        <div class="kbps" id="kbps">128</div>
+                                        <div class="khz" id="khz">44</div>
+                                    </div>
+                                    <div class="mono-stereo">
+                                        <div class="mono">MONO</div>
+                                        <div class="stereo active">STEREO</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="seek-bar-container">
+                            <input type="range" min="0" max="100" value="23" class="seek-bar" id="seek-bar">
+                        </div>
+
+                        <div class="controls-area">
+                            <div class="sliders">
+                                <div class="volume-slider-container">
+                                    <label>VOL</label>
+                                    <input type="range" min="0" max="100" value="48" class="winamp-range" id="volume">
+                                    <div class="slider-value" id="volume-display">48%</div>
+                                </div>
+                                <div class="balance-slider-container">
+                                    <label>BAL</label>
+                                    <input type="range" min="-100" max="100" value="0" class="winamp-range"
+                                        id="balance">
+                                    <div class="slider-value" id="balance-display">C</div>
+                                </div>
+                            </div>
+
+                            <div class="main-buttons">
+                                <button class="btn-prev" id="btn-prev" title="Previous [Z]"></button>
+                                <button class="btn-play active" id="btn-play" title="Play [X]"></button>
+                                <button class="btn-pause" id="btn-pause" title="Pause [C]"></button>
+                                <button class="btn-stop" id="btn-stop" title="Stop [V]"></button>
+                                <button class="btn-next" id="btn-next" title="Next [B]"></button>
+                            </div>
+
+                            <button class="btn-eject" id="btn-eject" title="Open File [L]"></button>
+
+                            <div class="shuffle-repeat">
+                                <button class="btn-shuffle" id="btn-shuffle">SHUF</button>
+                                <button class="btn-repeat" id="btn-repeat">REP</button>
+                            </div>
+                        </div>
+
+                        <div class="branding">WINAMP</div>
+                        <div class="clutter-bar">
+                            <div class="clutter-o">O</div>
+                            <div class="clutter-a active">A</div>
+                            <div class="clutter-i">I</div>
+                            <div class="clutter-d active">D</div>
+                            <div class="clutter-v active">V</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="main-body">
-                    <div class="display-area">
-                        <div class="visualization" id="visualizer">
-                            <canvas id="vis-canvas" width="75" height="38"></canvas>
-                            <div class="vis-mode">SPECTRUM</div>
+                <div class="equalizer-window">
+                    <div class="title-bar">
+                        <div class="title-bar-text">WINAMP EQUALIZER</div>
+                        <div class="eq-toggle">
+                            <button class="eq-on active" id="eq-toggle">ON</button>
+                            <button class="eq-auto">AUTO</button>
                         </div>
-                        <div class="info-panel">
-                            <div class="song-info">
-                                <div class="marquee-container">
-                                    <span class="marquee" id="marquee-text">Winamp JS - Ready to play...</span>
-                                </div>
-                            </div>
-                            <div class="info-row">
-                                <div class="time-display">
-                                    <span id="time-elapsed">00:00</span>
-                                </div>
-                                <div class="kbps-khz">
-                                    <div class="kbps" id="kbps">128</div>
-                                    <div class="khz" id="khz">44</div>
-                                </div>
-                                <div class="mono-stereo">
-                                    <div class="stereo active">STEREO</div>
-                                    <div class="mono">MONO</div>
-                                </div>
+                        <div class="title-bar-controls">
+                            <button class="close" title="Close">x</button>
+                        </div>
+                    </div>
+                    <div class="eq-body">
+                        <div class="eq-preamp">
+                            <label>PREAMP</label>
+                            <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" id="preamp">
+                            <div class="db-markers">
+                                <span>+12db</span>
+                                <span>0db</span>
+                                <span>-12db</span>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="seek-bar-container">
-                        <input type="range" min="0" max="100" value="0" class="seek-bar" id="seek-bar">
-                    </div>
-
-                    <div class="controls-area">
-                        <div class="sliders">
-                            <div class="volume-slider-container">
-                                <label>VOL</label>
-                                <input type="range" min="0" max="100" value="80" class="winamp-range" id="volume">
-                                <div class="slider-value" id="volume-display">80%</div>
-                            </div>
-                            <div class="balance-slider-container">
-                                <label>BAL</label>
-                                <input type="range" min="-100" max="100" value="0" class="winamp-range" id="balance">
-                                <div class="slider-value" id="balance-display">C</div>
-                            </div>
+                        <div class="eq-bands">
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="8"
+                                    class="eq-slider vertical" data-freq="60"><label>60</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="6"
+                                    class="eq-slider vertical" data-freq="170"><label>170</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="4"
+                                    class="eq-slider vertical" data-freq="310"><label>310</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="2"
+                                    class="eq-slider vertical" data-freq="600"><label>600</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="1000"><label>1K</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="3000"><label>3K</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="6000"><label>6K</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="12000"><label>12K</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="14000"><label>14K</label></div>
+                            <div class="eq-band"><input type="range" min="-12" max="12" value="0"
+                                    class="eq-slider vertical" data-freq="16000"><label>16K</label></div>
                         </div>
-
-                        <div class="main-buttons">
-                            <button class="btn-prev" id="btn-prev" title="Previous [Z]"></button>
-                            <button class="btn-play" id="btn-play" title="Play [X]"></button>
-                            <button class="btn-pause" id="btn-pause" title="Pause [C]"></button>
-                            <button class="btn-stop" id="btn-stop" title="Stop [V]"></button>
-                            <button class="btn-next" id="btn-next" title="Next [B]"></button>
+                        <div class="eq-presets">
+                            <button class="presets-btn">PRESETS</button>
                         </div>
-                        
-                        <button class="btn-eject" id="btn-eject" title="Open File [L]"></button>
-                        
-                        <div class="shuffle-repeat">
-                            <button class="btn-shuffle" id="btn-shuffle">SHUF</button>
-                            <button class="btn-repeat" id="btn-repeat">REP</button>
-                        </div>
-                    </div>
-
-                    <div class="branding">WINAMP</div>
-                </div>
-            </div>
-
-            <div class="equalizer-window">
-                <div class="title-bar">
-                    <div class="title-bar-text">WINAMP EQUALIZER</div>
-                    <div class="eq-toggle">
-                        <button class="eq-on active" id="eq-toggle">ON</button>
-                        <button class="eq-auto">AUTO</button>
-                    </div>
-                    <div class="title-bar-controls">
-                        <button class="close" title="Close">x</button>
-                    </div>
-                </div>
-                <div class="eq-body">
-                    <div class="eq-preamp">
-                        <label>PRE</label>
-                        <input type="range" min="-12" max="12" value="0" class="eq-slider vertical" id="preamp">
-                    </div>
-                    <div class="eq-bands">
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="8" class="eq-slider vertical" data-freq="60"><label>60</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="6" class="eq-slider vertical" data-freq="170"><label>170</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="4" class="eq-slider vertical" data-freq="310"><label>310</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="2" class="eq-slider vertical" data-freq="600"><label>600</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="1000"><label>1K</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="3000"><label>3K</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="6000"><label>6K</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="12000"><label>12K</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="14000"><label>14K</label></div>
-                        <div class="eq-band"><input type="range" min="-12" max="12" value="0" class="eq-slider vertical" data-freq="16000"><label>16K</label></div>
-                    </div>
-                    <div class="eq-presets">
-                        <select id="eq-presets">
-                            <option value="bass" selected>BASS</option>
-                            <option value="flat">FLAT</option>
-                            <option value="rock">ROCK</option>
-                            <option value="pop">POP</option>
-                            <option value="classical">CLASS</option>
-                            <option value="treble">TREB</option>
-                        </select>
                     </div>
                 </div>
             </div>
@@ -166,25 +185,34 @@
                 <div class="title-bar">
                     <div class="title-bar-text">WINAMP PLAYLIST</div>
                     <div class="title-bar-controls">
-                        <button class="shade" title="Shade">s</button>
+                        <button class="shade" title="Shade">_</button>
                         <button class="close" title="Close">x</button>
                     </div>
                 </div>
                 <div class="playlist-body">
                     <div class="playlist-content" id="playlist"></div>
-                    <div class="playlist-info">
-                        <span id="playlist-count">0 tracks</span>
-                        <span id="playlist-duration">00:00</span>
+                    <div class="playlist-controls-row">
+                        <div class="playlist-actions">
+                            <button class="pl-btn" id="pl-add">ADD</button>
+                            <button class="pl-btn" id="pl-rem">REM</button>
+                            <button class="pl-btn" id="pl-sel">SEL</button>
+                            <button class="pl-btn" id="pl-misc">MISC</button>
+                        </div>
+                        <div class="playlist-time-display">
+                            <div class="pl-time-text" id="playlist-duration">0:00/54:22+</div>
+                        </div>
+                        <button class="pl-btn pl-list-opts" id="pl-opts">LIST OPTS</button>
                     </div>
-                    <div class="playlist-controls">
-                        <div class="left-btns">
-                            <button id="pl-add" title="Add files">+ ADD</button>
-                            <button id="pl-rem" title="Remove selected">- REM</button>
-                            <button id="pl-clear" title="Reset playlist">CLR</button>
+                    <div class="playlist-nav-row">
+                        <div class="pl-nav-controls">
+                            <button class="pl-prev" title="Previous"></button>
+                            <button class="pl-play" title="Play"></button>
+                            <button class="pl-pause" title="Pause"></button>
+                            <button class="pl-stop" title="Stop"></button>
+                            <button class="pl-next" title="Next"></button>
+                            <button class="pl-eject" title="Open"></button>
                         </div>
-                        <div class="right-btns">
-                            <button id="pl-sort">SORT</button>
-                        </div>
+                        <div class="pl-current-time">01:08</div>
                     </div>
                 </div>
             </div>

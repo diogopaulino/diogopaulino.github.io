@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lander - Labs</title>
+    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Courier Prime or VT323 for the retro feel -->
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Labs
+            </a>
+        </header>
+
+        <main class="game-area">
+            <!-- Windows 3.1 Window Frame -->
+            <div class="win31-window">
+                <div class="title-bar">
+                    <div class="title-text">Lander</div>
+                    <div class="window-controls">
+                        <button class="win-btn minimize">▼</button>
+                        <button class="win-btn maximize">▲</button>
+                    </div>
+                </div>
+                <div class="menu-bar">
+                    <span class="menu-item"><u>G</u>ame</span>
+                </div>
+                <div class="game-viewport">
+                    <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+                    <!-- HUD Overlay -->
+                    <div class="hud-layer">
+                        <div class="hud-stats">
+                            <div class="stat-row">
+                                <span class="label">Altitude</span>
+                                <span class="value" id="hudAlt">1000.00</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="label">Velocity X</span>
+                                <span class="value" id="hudHSpeed">0.00</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="label">Velocity Y</span>
+                                <span class="value" id="hudVSpeed">0.00</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="label">Fuel</span>
+                                <span class="value" id="hudFuel">1000.00</span>
+                            </div>
+                            <div class="stat-row" style="margin-top: 20px; color: #aaa; font-size: 14px;">
+                                <span class="label">Controls: Arrows / Space</span>
+                            </div>
+                        </div>
+
+                        <!-- On-Screen Controls (Visual overlay matching screenshot) -->
+                        <div class="onscreen-controls">
+                            <div class="row">
+                                <button id="btnLeft" class="win-btn control-btn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M14 7l-5 5 5 5V7z" />
+                                    </svg>
+                                </button>
+                                <button id="btnRight" class="win-btn control-btn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M10 17l5-5-5-5v10z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="row">
+                                <button id="btnThrust" class="win-btn control-btn">
+                                    <!-- A down arrow with lines usually implies "Thrusting Down" (pushing up) in these old games UI -->
+                                    <div class="thrust-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 17L7 12h10l-5 5z" />
+                                        </svg>
+                                        <div class="thrust-lines">=</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="startMsg" class="center-msg">PRESS SPACE TO START</div>
+                        <div id="gameOverMsg" class="center-msg hidden">GAME OVER<br><small>Press Space</small></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <a href="/">← voltar para home</a>
+        </footer>
+    </div>
+
+    <script src="../shared.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
