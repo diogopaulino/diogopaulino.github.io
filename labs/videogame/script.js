@@ -16,12 +16,30 @@ const App = {
         screen: document.getElementById('screen'),
         grid: document.getElementById('games-grid')
     },
+    activeTouches: new Map(),
+    keyMap: {
+        'ArrowUp': { code: 'ArrowUp', keyCode: 38 },
+        'ArrowDown': { code: 'ArrowDown', keyCode: 40 },
+        'ArrowLeft': { code: 'ArrowLeft', keyCode: 37 },
+        'ArrowRight': { code: 'ArrowRight', keyCode: 39 },
+        'Enter': { code: 'Enter', keyCode: 13 },
+        'Shift': { code: 'ShiftLeft', keyCode: 16 },
+        'a': { code: 'KeyA', keyCode: 65 },
+        's': { code: 'KeyS', keyCode: 83 },
+        'd': { code: 'KeyD', keyCode: 68 },
+        'q': { code: 'KeyQ', keyCode: 81 },
+        'w': { code: 'KeyW', keyCode: 87 },
+        'e': { code: 'KeyE', keyCode: 69 },
+        'Escape': { code: 'Escape', keyCode: 27 },
+        'FULL': { code: 'F', keyCode: 70 }, // Added helper
+        'SAVE': { code: 'Save', keyCode: 0 },
+        'LOAD': { code: 'Load', keyCode: 0 }
+    },
     init() {
         this.setupEventListeners();
         this.setupSettings();
         this.setupMobileControls();
         this.loadCatalog();
-        window.startGameById = id => this.startGameById(id);
     },
     setupEventListeners() {
         document.getElementById('btn-back')?.addEventListener('click', () => this.showHome());
@@ -33,7 +51,14 @@ const App = {
             const card = e.target.closest('.game-card');
             if (card && card.dataset.id) this.startGameById(card.dataset.id)
         });
-        document.getElementById('game-search')?.addEventListener('input', e => this.renderGames(this.allGames.filter(g => g.title.toLowerCase().includes(e.target.value.toLowerCase()))));
+        let searchTimeout;
+        document.getElementById('game-search')?.addEventListener('input', e => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const term = e.target.value.toLowerCase();
+                this.renderGames(this.allGames.filter(g => g.title.toLowerCase().includes(term)));
+            }, 300);
+        });
         document.getElementById('rom-file-input')?.addEventListener('change', e => {
             const file = e.target.files[0];
             if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''))
@@ -41,28 +66,9 @@ const App = {
         document.addEventListener('keydown', e => this.handleGlobalKeys(e));
         window.addEventListener('keydown', e => this.handleKeyRemap(e));
         window.addEventListener('keyup', e => this.handleKeyRemap(e));
-        document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
-        document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
-        document.addEventListener('mozfullscreenchange', () => this.handleFullscreenChange());
-        document.addEventListener('MSFullscreenChange', () => this.handleFullscreenChange());
-        this.setupMobileActionButtons();
+        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(e => document.addEventListener(e, () => this.handleFullscreenChange()));
     },
-    setupMobileActionButtons() {
-        const container = document.getElementById('mobile-controls');
-        if (!container) return;
-        container.addEventListener('click', e => {
-            const btn = e.target.closest('[data-action]');
-            if (btn && btn.dataset.action === 'save') {
-                e.preventDefault();
-                e.stopPropagation();
-                this.saveGame();
-            } else if (btn && btn.dataset.action === 'load') {
-                e.preventDefault();
-                e.stopPropagation();
-                this.loadGame();
-            }
-        });
-    },
+
     handleFullscreenChange() {
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
         document.body.classList.toggle('is-fullscreen', !!isFullscreen);
@@ -72,128 +78,83 @@ const App = {
         }
     },
     setupMobileControls() {
-        const keyMap = {
-            'ArrowUp': { code: 'ArrowUp', keyCode: 38 },
-            'ArrowDown': { code: 'ArrowDown', keyCode: 40 },
-            'ArrowLeft': { code: 'ArrowLeft', keyCode: 37 },
-            'ArrowRight': { code: 'ArrowRight', keyCode: 39 },
-            'Enter': { code: 'Enter', keyCode: 13 },
-            'Shift': { code: 'ShiftLeft', keyCode: 16 },
-            'a': { code: 'KeyA', keyCode: 65 },
-            's': { code: 'KeyS', keyCode: 83 },
-            'd': { code: 'KeyD', keyCode: 68 },
-            'q': { code: 'KeyQ', keyCode: 81 },
-            'w': { code: 'KeyW', keyCode: 87 },
-            'e': { code: 'KeyE', keyCode: 69 },
-            'Escape': { code: 'Escape', keyCode: 27 }
-        };
-
-        const activeTouches = new Map(); // touchId -> keyName
-
-        const handleTouch = (e) => {
-            e.preventDefault();
-            // Process all changed touches
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                const touch = e.changedTouches[i];
-                const touchId = touch.identifier;
-
-                // Find element under touch
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                const btn = element?.closest('[data-key]');
-                const actionBtn = element?.closest('[data-action]');
-                const keyName = btn ? btn.dataset.key : null;
-                const actionName = actionBtn ? actionBtn.dataset.action : null;
-
-                // Handle Touch End / Cancel
-                if (e.type === 'touchend' || e.type === 'touchcancel') {
-                    const activeKey = activeTouches.get(touchId);
-                    if (activeKey) {
-                        if (activeKey === 'FULL') {
-                            this.toggleFullscreen();
-                            const el = document.querySelector(`[data-key="${activeKey}"]`);
-                            if (el) el.classList.remove('active');
-                            activeTouches.delete(touchId);
-                            continue;
-                        }
-                        if (activeKey === 'SAVE') {
-                            this.saveGame();
-                            const el = document.querySelector('[data-action="save"]');
-                            if (el) el.classList.remove('active');
-                            activeTouches.delete(touchId);
-                            continue;
-                        }
-                        if (activeKey === 'LOAD') {
-                            this.loadGame();
-                            const el = document.querySelector('[data-action="load"]');
-                            if (el) el.classList.remove('active');
-                            activeTouches.delete(touchId);
-                            continue;
-                        }
-
-                        const mapping = keyMap[activeKey];
-                        if (mapping) this.triggerKey(activeKey, mapping.code, mapping.keyCode, 'keyup');
-                        const el = document.querySelector(`[data-key="${activeKey}"]`);
-                        if (el) el.classList.remove('active');
-                        activeTouches.delete(touchId);
-                    }
-                    continue;
-                }
-
-                // Handle Touch Start / Move
-                const currentKey = activeTouches.get(touchId);
-                const isCurrentAction = currentKey === 'SAVE' || currentKey === 'LOAD';
-                const newIdentifier = actionName ? (actionName.toUpperCase()) : keyName;
-
-                    // If we moved to a new key/action (or no key)
-                if (currentKey !== newIdentifier) {
-                    // Release old key if it existed
-                    if (currentKey) {
-                        if (currentKey === 'FULL') {
-                            const el = document.querySelector(`[data-key="${currentKey}"]`);
-                            if (el) el.classList.remove('active');
-                        } else if (isCurrentAction) {
-                            const el = document.querySelector(`[data-action="${currentKey.toLowerCase()}"]`);
-                            if (el) el.classList.remove('active');
-                        } else {
-                            const mapping = keyMap[currentKey];
-                            if (mapping) this.triggerKey(currentKey, mapping.code, mapping.keyCode, 'keyup');
-                            const el = document.querySelector(`[data-key="${currentKey}"]`);
-                            if (el) el.classList.remove('active');
-                        }
-                    }
-
-                        // Press new key/action if valid
-                    if (actionName) {
-                        const actionElement = element?.closest('[data-action]');
-                        if (actionElement) {
-                            actionElement.classList.add('active');
-                            activeTouches.set(touchId, actionName.toUpperCase());
-                        }
-                    } else if (keyName) {
-                        if (keyName === 'FULL') {
-                            btn.classList.add('active');
-                            activeTouches.set(touchId, keyName);
-                        } else {
-                            const mapping = keyMap[keyName];
-                            if (mapping) this.triggerKey(keyName, mapping.code, mapping.keyCode, 'keydown');
-                            btn.classList.add('active');
-                            activeTouches.set(touchId, keyName);
-                        }
-                    } else {
-                        activeTouches.delete(touchId);
-                    }
-                }
-            }
-        };
-
         const container = document.getElementById('mobile-controls');
         if (!container) return;
 
-        container.addEventListener('touchstart', handleTouch, { passive: false });
-        container.addEventListener('touchmove', handleTouch, { passive: false });
-        container.addEventListener('touchend', handleTouch, { passive: false });
-        container.addEventListener('touchcancel', handleTouch, { passive: false });
+        const options = { passive: false };
+        ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(e =>
+            container.addEventListener(e, evt => this.handleTouch(evt), options)
+        );
         container.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+    },
+
+    handleTouch(e) {
+        if (e.type !== 'touchend') e.preventDefault();
+
+        const touches = e.changedTouches;
+
+        for (let i = 0; i < touches.length; i++) {
+            const touch = touches[i];
+            const id = touch.identifier;
+
+            // Determine target functionality
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            const btnKey = el?.closest('[data-key]');
+            const btnAction = el?.closest('[data-action]');
+
+            const keyName = btnKey?.dataset.key;
+            const actionName = btnAction?.dataset.action?.toUpperCase();
+
+            // Logic for Touch End
+            if (e.type === 'touchend' || e.type === 'touchcancel') {
+                const active = this.activeTouches.get(id);
+                if (active) {
+                    this.processButtonRelease(active);
+                    this.activeTouches.delete(id);
+                }
+                continue;
+            }
+
+            // Logic for Start/Move
+            const current = this.activeTouches.get(id);
+            const target = actionName || keyName;
+
+            if (current !== target) {
+                if (current) this.processButtonRelease(current);
+                if (target) {
+                    this.processButtonPress(target);
+                    this.activeTouches.set(id, target);
+                } else {
+                    this.activeTouches.delete(id);
+                }
+            }
+        }
+    },
+
+    processButtonPress(key) {
+        // Visual Feedback
+        const selector = this.keyMap[key] ? `[data-key="${key}"]` : `[data-action="${key.toLowerCase()}"]`;
+        document.querySelector(selector)?.classList.add('active');
+
+        // Logic
+        if (key === 'FULL') return this.toggleFullscreen();
+        if (key === 'SAVE') return this.saveGame();
+        if (key === 'LOAD') return this.loadGame();
+
+        const map = this.keyMap[key];
+        if (map) this.triggerKey(key, map.code, map.keyCode, 'keydown');
+    },
+
+    processButtonRelease(key) {
+        // Visual Feedback
+        const selector = this.keyMap[key] ? `[data-key="${key}"]` : `[data-action="${key.toLowerCase()}"]`;
+        document.querySelector(selector)?.classList.remove('active');
+
+        // Logic (actions trigger on press, so mostly for keys)
+        const map = this.keyMap[key];
+        if (map && key !== 'FULL' && key !== 'SAVE' && key !== 'LOAD') {
+            this.triggerKey(key, map.code, map.keyCode, 'keyup');
+        }
     },
 
     triggerKey(key, code, keyCode, type) {
@@ -238,7 +199,7 @@ const App = {
         canvas.className = '';
         canvas.style.filter = '';
         canvas.style.imageRendering = '';
-        
+
         if (this.settings.filter === 'hd') {
             canvas.classList.add('filter-hd');
             canvas.style.imageRendering = 'pixelated';
@@ -252,7 +213,7 @@ const App = {
             canvas.style.imageRendering = 'auto';
             canvas.style.filter = 'contrast(1.05)';
         }
-        
+
         if (this.settings.scale === 'max') {
             canvas.style.width = '100%';
             canvas.style.height = '100%';
@@ -341,40 +302,13 @@ const App = {
     handleKeyRemap(e) {
         if (this.ui.player.classList.contains('hidden')) return;
         if (!this.currentCore) return;
-        
+
         const key = e.key.toLowerCase();
         let map = null;
-        
-        if (this.currentCore === 'genesis_plus_gx') {
-            if (key === 's') {
-                map = {
-                    key: 'z',
-                    code: 'KeyZ',
-                    keyCode: 90
-                };
-            } else if (key === 'd') {
-                map = {
-                    key: 'x',
-                    code: 'KeyX',
-                    keyCode: 88
-                };
-            }
-        } else if (this.currentCore === 'snes9x') {
-            if (key === 's') {
-                map = {
-                    key: 'z',
-                    code: 'KeyZ',
-                    keyCode: 90
-                };
-            } else if (key === 'd') {
-                map = {
-                    key: 'x',
-                    code: 'KeyX',
-                    keyCode: 88
-                };
-            }
-        }
-        
+
+        if (key === 's') map = { key: 'z', code: 'KeyZ', keyCode: 90 };
+        else if (key === 'd') map = { key: 'x', code: 'KeyX', keyCode: 88 };
+
         if (map && e.isTrusted) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -387,10 +321,7 @@ const App = {
                 cancelable: true,
                 view: window
             });
-            Object.defineProperty(evt, 'keyCode', {
-                value: map.keyCode,
-                writable: false
-            });
+            Object.defineProperty(evt, 'keyCode', { value: map.keyCode, writable: false });
             Object.defineProperty(evt, 'which', {
                 value: map.keyCode,
                 writable: false
@@ -412,11 +343,11 @@ const App = {
             await this.stopEmulator();
             const canvas = document.createElement('canvas');
             this.ui.screen.appendChild(canvas);
-            
+
             const romFile = typeof rom === 'string' ? rom : rom.name;
             const core = this.getCore(romFile);
             this.currentCore = core;
-            
+
             const resolveRom = (f, options) => {
                 if (!f) return f;
                 if (typeof f === 'string') {
@@ -437,9 +368,9 @@ const App = {
                 }
                 return f;
             };
-            
+
             const romToLoad = typeof rom === 'string' ? rom : (rom instanceof File ? rom : (rom.file || rom.name));
-            
+
             if (typeof romToLoad === 'string' && (romToLoad.startsWith('http://') || romToLoad.startsWith('https://'))) {
                 try {
                     const testUrl = new URL(romToLoad);
@@ -450,7 +381,7 @@ const App = {
                     throw new Error(`URL do jogo inválida: ${romToLoad}`);
                 }
             }
-            
+
             this.emulator = await Promise.race([
                 Nostalgist.launch({
                     core,
@@ -460,18 +391,18 @@ const App = {
                     resolveRom: resolveRom,
                     element: canvas
                 }),
-                new Promise((_, reject) => 
+                new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Timeout ao carregar o jogo. Tente novamente.')), 60000)
                 )
             ]);
-            
+
             this.applySettings();
             this.ui.loader.classList.add('hidden')
         } catch (e) {
             console.error('Erro ao carregar jogo:', e);
             this.ui.loader.classList.add('hidden');
             let errorMessage = 'Erro desconhecido ao carregar o jogo.';
-            
+
             if (e.message) {
                 const msg = e.message.toLowerCase();
                 if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) {
@@ -486,7 +417,7 @@ const App = {
                     errorMessage = `Erro: ${e.message}`;
                 }
             }
-            
+
             this.ui.screen.innerHTML = `<div class="error"><p>${errorMessage}</p><button onclick="App.showHome()">Voltar</button></div>`
         }
     },
@@ -533,29 +464,17 @@ const App = {
         let icon = '';
         if (type === 'success') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
         else if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-        else if (type === 'info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+        else icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
 
         toast.innerHTML = `${icon}<span>${msg}</span>`;
-        Object.assign(toast.style, {
-            position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(20, 20, 20, 0.9)', color: '#fff', padding: '0.75rem 1.25rem',
-            borderRadius: '99px', zIndex: '10000', backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-            fontSize: '0.9rem', fontWeight: '500', opacity: '0', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none'
-        });
         document.body.appendChild(toast);
 
-        requestAnimationFrame(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(-50%) translateY(0)';
-        });
+        requestAnimationFrame(() => toast.classList.add('visible'));
 
         setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(10px)';
-            setTimeout(() => toast.remove(), 300)
-        }, 3000)
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     },
     db: {
         _db: null,
@@ -615,139 +534,87 @@ const App = {
         }
     },
     async loadImageWithFallback(img, urls, placeholder, skipUrl = null) {
-        if (!img || !urls || urls.length === 0) {
+        if (!img || !urls?.length) {
             if (placeholder) placeholder.style.display = 'flex';
             return;
         }
-        
-        const validUrls = urls.filter(url => url && typeof url === 'string' && url.startsWith('http'));
-        const filteredUrls = skipUrl ? validUrls.filter(url => url !== skipUrl) : validUrls;
-        
-        if (filteredUrls.length === 0) {
-            img.style.display = 'none';
-            if (placeholder) placeholder.style.display = 'flex';
-            return;
-        }
-        
-        let currentIndex = 0;
-        const maxAttempts = Math.min(filteredUrls.length, 15);
-        let isResolved = false;
-        
-        const tryNext = () => {
-            if (isResolved || currentIndex >= maxAttempts) {
-                if (!isResolved) {
-                    img.style.display = 'none';
-                    if (placeholder) placeholder.style.display = 'flex';
-                }
-                return;
-            }
-            
-            const url = filteredUrls[currentIndex];
-            if (!url) {
-                currentIndex++;
-                setTimeout(tryNext, 25);
-                return;
-            }
-            
-            const testImg = new Image();
-            let timeoutId = null;
-            
-            const cleanup = () => {
-                if (timeoutId) clearTimeout(timeoutId);
-                testImg.onload = null;
-                testImg.onerror = null;
-            };
-            
-            timeoutId = setTimeout(() => {
-                cleanup();
-                if (!isResolved) {
-                    currentIndex++;
-                    if (currentIndex < maxAttempts) {
-                        setTimeout(tryNext, 25);
-                    } else {
-                        img.style.display = 'none';
-                        if (placeholder) placeholder.style.display = 'flex';
-                    }
-                }
+
+        const candidates = urls.filter(u => u && typeof u === 'string' && u.startsWith('http') && u !== skipUrl);
+        const maxAttempts = Math.min(candidates.length, 30);
+
+        const loadOne = (src) => new Promise((resolve, reject) => {
+            const temp = new Image();
+            const timer = setTimeout(() => {
+                temp.onload = null;
+                temp.onerror = null;
+                reject('timeout');
             }, 2000);
-            
-            testImg.onload = () => {
-                if (isResolved) return;
-                cleanup();
-                isResolved = true;
-                img.src = url;
+
+            temp.onload = () => {
+                clearTimeout(timer);
+                resolve(src);
+            };
+            temp.onerror = () => {
+                clearTimeout(timer);
+                reject('error');
+            };
+            temp.src = src;
+        });
+
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                const src = candidates[i];
+                if (!src) continue;
+                await loadOne(src);
+
+                img.src = src;
                 img.style.display = 'block';
                 if (placeholder) placeholder.style.display = 'none';
-            };
-            
-            testImg.onerror = () => {
-                if (isResolved) return;
-                cleanup();
-                currentIndex++;
-                if (currentIndex < maxAttempts) {
-                    setTimeout(tryNext, 25);
-                } else {
-                    img.style.display = 'none';
-                    if (placeholder) placeholder.style.display = 'flex';
-                }
-            };
-            
-            testImg.src = url;
-        };
-        
-        tryNext();
+                return;
+            } catch (e) {
+                // Continue to next, small delay to separate requests slightly
+                if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 25));
+            }
+        }
+
+        // All failed
+        img.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
     },
     renderGames(games) {
         if (!this.ui.grid) return;
         if (games.length === 0) return this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;padding:2rem;">Nenhum jogo encontrado.</p>';
-        
+
         this.ui.grid.innerHTML = games.map(g => {
             const t = g.title.replace(/"/g, '&quot;');
             const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-            return `<button class="game-card" data-id="${g.id}" id="${cardId}"><div class="game-cover"><img src="${g.cover}" alt="${t}" loading="lazy" data-title="${g.title}"><div class="cover-placeholder"><span>${g.title}</span></div></div><div class="game-info"><div class="game-title" title="${t}">${g.title}</div><div class="game-meta"><span class="game-platform">${g.platform}</span></div></div></button>`
+            const hasCover = !!g.cover;
+            return `<button class="game-card" data-id="${g.id}" id="${cardId}">
+                <div class="game-cover">
+                    ${hasCover ? `<img src="${g.cover}" alt="${t}" loading="lazy" data-title="${g.title}">` : ''}
+                    <div class="cover-placeholder" style="${hasCover ? 'display:none' : 'display:flex'}">
+                        <span>${g.title}</span>
+                    </div>
+                </div>
+                <div class="game-info">
+                    <div class="game-title" title="${t}">${g.title}</div>
+                    <div class="game-meta"><span class="game-platform">${g.platform}</span></div>
+                </div>
+            </button>`;
         }).join('');
-        
+
         games.forEach(g => {
+            if (!g.cover) return;
             const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
             const card = document.getElementById(cardId);
             if (!card) return;
-            
+
             const img = card.querySelector('.game-cover img');
             const placeholder = card.querySelector('.cover-placeholder');
-            
             if (img && placeholder) {
-                placeholder.style.display = 'none';
-                
                 const coverUrls = Array.isArray(g.coverUrls) ? g.coverUrls : [];
-                
-                const urlSet = new Set();
-                if (g.cover) urlSet.add(g.cover);
-                coverUrls.forEach(url => {
-                    if (url && typeof url === 'string') {
-                        urlSet.add(url);
-                    }
-                });
-                
-                const allUrls = Array.from(urlSet);
-                
-                if (allUrls.length === 0) {
-                    placeholder.style.display = 'flex';
-                    return;
-                }
-                
-                img.addEventListener('error', () => {
-                    this.loadImageWithFallback(img, allUrls, placeholder, g.cover);
-                }, { once: true });
-                
-                const testImg = new Image();
-                testImg.onload = () => {
-                    img.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
-                testImg.onerror = () => {
-                    this.loadImageWithFallback(img, allUrls, placeholder, g.cover);
-                };
-                testImg.src = g.cover;
+                const urlSet = new Set([g.cover, ...coverUrls.filter(Boolean)]);
+                this.loadImageWithFallback(img, Array.from(urlSet), placeholder, null);
             }
         });
     },
