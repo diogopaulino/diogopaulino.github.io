@@ -4,7 +4,7 @@ const App = {
     basePath: window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1),
     settings: {
         scale: localStorage.getItem('emu-scale') || 'max',
-        filter: localStorage.getItem('emu-filter') || 'hd'
+        filter: localStorage.getItem('emu-filter') || 'pixel'
     },
     ui: {
         home: document.getElementById('home'),
@@ -196,22 +196,19 @@ const App = {
     applySettings() {
         const canvas = this.ui.screen.querySelector('canvas');
         if (!canvas) return;
-        canvas.className = '';
-        canvas.style.filter = '';
-        canvas.style.imageRendering = '';
+        // Remove previous classes
+        this.ui.screen.classList.remove('scanlines');
 
-        if (this.settings.filter === 'hd') {
-            canvas.classList.add('filter-hd');
+        if (this.settings.filter === 'pixel') {
+            canvas.classList.add('filter-pixel');
             canvas.style.imageRendering = 'pixelated';
-            canvas.style.imageRendering = '-moz-crisp-edges';
-            canvas.style.imageRendering = 'crisp-edges';
         } else if (this.settings.filter === 'smooth') {
             canvas.classList.add('filter-smooth');
             canvas.style.imageRendering = 'auto';
-        } else if (this.settings.filter === 'light') {
-            canvas.classList.add('filter-light');
-            canvas.style.imageRendering = 'auto';
-            canvas.style.filter = 'contrast(1.05)';
+        } else if (this.settings.filter === 'retro') {
+            canvas.classList.add('filter-retro');
+            canvas.style.imageRendering = 'pixelated'; // Keep pixels sharp under scanlines
+            this.ui.screen.classList.add('scanlines'); // Add scanlines to container
         }
 
         if (this.settings.scale === 'max') {

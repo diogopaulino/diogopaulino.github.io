@@ -460,28 +460,44 @@ body.game-mode {
     font-weight: 600
 }
 
-.filter-hd {
+.filter-pixel {
     image-rendering: -moz-crisp-edges;
     image-rendering: -webkit-crisp-edges;
     image-rendering: crisp-edges;
     image-rendering: pixelated;
     transform: translateZ(0);
     backface-visibility: hidden;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: unset;
 }
 
-.filter-light {
-    image-rendering: auto;
-    filter: contrast(1.05) brightness(1.02);
+.filter-retro {
+    image-rendering: pixelated;
+    /* Sharp pixels behind scanlines looks better for retro */
+    filter: contrast(1.1) brightness(1.1);
+    /* Slight boost */
     transform: translateZ(0);
     backface-visibility: hidden;
 }
 
 .filter-smooth {
     image-rendering: auto;
-    filter: blur(0.5px);
+    filter: none;
     transform: translateZ(0);
+}
+
+.scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+            rgba(255, 255, 255, 0),
+            rgba(255, 255, 255, 0) 50%,
+            rgba(0, 0, 0, 0.25) 50%,
+            rgba(0, 0, 0, 0.25));
+    background-size: 100% 4px;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+    /* Slight vignette */
 }
 
 .controls-overlay {
@@ -632,6 +648,14 @@ body.game-mode {
     transform: translateX(-50%) translateY(0);
 }
 
-.toast-msg.success { border-color: rgba(74, 222, 128, 0.3); }
-.toast-msg.error { border-color: rgba(248, 113, 113, 0.3); }
-.toast-msg.info { border-color: rgba(96, 165, 250, 0.3); }
+.toast-msg.success {
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.toast-msg.error {
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.toast-msg.info {
+    border-color: rgba(96, 165, 250, 0.3);
+}
