@@ -18,10 +18,13 @@ body {
     border: 2px solid;
     border-color: #dfdfdf #404040 #404040 #dfdfdf;
     /* Bevel */
-    width: 640px;
+    width: 840px;
+    /* Increased width */
     max-width: 100%;
     box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
     font-family: Arial, sans-serif;
+    margin: 0 auto;
+    /* Center it */
 }
 
 .title-bar {
@@ -91,7 +94,9 @@ body {
     border-left-color: #404040;
     border-bottom-color: #fff;
     border-right-color: #fff;
-    height: 400px;
+    /* Height is controlled by canvas now aspect ratio, let it flow */
+    aspect-ratio: 4/3;
+    overflow: hidden;
 }
 
 canvas {

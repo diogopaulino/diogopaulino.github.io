@@ -33,7 +33,9 @@ const App = {
         'Escape': { code: 'Escape', keyCode: 27 },
         'FULL': { code: 'F', keyCode: 70 }, // Added helper
         'SAVE': { code: 'Save', keyCode: 0 },
-        'LOAD': { code: 'Load', keyCode: 0 }
+        'LOAD': { code: 'Load', keyCode: 0 },
+        'z': { code: 'KeyZ', keyCode: 90 },
+        'x': { code: 'KeyX', keyCode: 88 }
     },
     init() {
         this.setupEventListeners();
@@ -228,7 +230,8 @@ const App = {
         this.ui.player.setAttribute('aria-hidden', 'true');
         this.ui.header.style.display = 'flex';
         this.ui.footer.style.display = 'block';
-        if (document.fullscreenElement) document.exitFullscreen();
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+        this.exitManualFullscreen();
         this.stopEmulator()
     },
     showPlayer(name) {
@@ -242,54 +245,111 @@ const App = {
     },
     toggleFullscreen() {
         const elem = this.ui.player;
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || this.isManualFullscreen;
 
         if (!isFullscreen) {
+            // Tenta API nativa primeiro
             if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
+                elem.requestFullscreen().then(() => {
+                    this.isManualFullscreen = false;
+                }).catch(err => {
+                    console.warn('Fullscreen nativo falhou, usando fallback:', err);
+                    this.enterManualFullscreen();
                 });
             } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
+                try {
+                    elem.webkitRequestFullscreen();
+                } catch (e) {
+                    this.enterManualFullscreen();
+                }
             } else if (elem.mozRequestFullScreen) {
                 elem.mozRequestFullScreen();
             } else if (elem.msRequestFullscreen) {
                 elem.msRequestFullscreen();
+            } else {
+                this.enterManualFullscreen();
             }
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+
+            this.exitManualFullscreen();
         }
+    },
+    enterManualFullscreen() {
+        this.isManualFullscreen = true;
+        document.body.classList.add('is-fullscreen');
+        const mobileControls = document.getElementById('mobile-controls');
+        if (mobileControls) mobileControls.classList.add('fullscreen-mode');
+        window.scrollTo(0, 1);
+    },
+    exitManualFullscreen() {
+        this.isManualFullscreen = false;
+        document.body.classList.remove('is-fullscreen');
+        const mobileControls = document.getElementById('mobile-controls');
+        if (mobileControls) mobileControls.classList.remove('fullscreen-mode');
     },
     showControls() {
         if (document.getElementById('controls-overlay')) return document.getElementById('controls-overlay').remove();
         const overlay = document.createElement('div');
         overlay.id = 'controls-overlay';
         overlay.className = 'controls-overlay';
-        overlay.innerHTML = `<div class="controls-modal"><div class="controls-modal-header"><span class="controls-modal-title">Controles</span><button class="controls-modal-close" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div class="controls-grid"><div class="control-item"><kbd>↑↓←→</kbd> Movimento</div><div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Botões A/B/C</div><div class="control-item"><kbd>Enter</kbd> Start</div><div class="control-item"><kbd>Shift</kbd> Select</div><div class="control-item"><kbd>F</kbd> Tela Cheia</div><div class="control-item"><kbd>Esc</kbd> Sair/Voltar</div></div><div class="controls-modal-footer">Clique fora para fechar</div></div>`;
+        overlay.innerHTML = `<div class="controls-modal">
+            <div class="controls-modal-header">
+                <span class="controls-modal-title">Controles & Saves</span>
+                <button class="controls-modal-close" aria-label="Fechar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="controls-grid">
+                <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Botões A/B/C</div>
+                <div class="control-item"><kbd>Enter</kbd> Start</div>
+                <div class="control-item"><kbd>Shift</kbd> Select</div>
+                <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
+                <div class="control-item"><kbd>Esc</kbd> Sair/Voltar</div>
+            </div>
+            <div class="controls-actions" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;justify-content:center;">
+                <button id="btn-export-save" class="btn-secondary" style="font-size:0.9rem;padding:0.5rem 1rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Baixar Save
+                </button>
+                <button id="btn-import-save" class="btn-secondary" style="font-size:0.9rem;padding:0.5rem 1rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Carregar Save
+                </button>
+            </div>
+            <div class="controls-modal-footer">Clique fora para fechar</div>
+        </div>`;
+
         overlay.addEventListener('click', e => {
             if (e.target === overlay) overlay.remove()
         });
         overlay.querySelector('.controls-modal-close').addEventListener('click', () => overlay.remove());
+
+        const btnExport = overlay.querySelector('#btn-export-save');
+        if (btnExport) btnExport.addEventListener('click', () => this.exportSave());
+
+        const btnImport = overlay.querySelector('#btn-import-save');
+        if (btnImport) btnImport.addEventListener('click', () => {
+            this.importSave();
+            overlay.remove();
+        });
+
         this.ui.player.appendChild(overlay)
     },
     handleGlobalKeys(e) {
         if (e.key === 'Escape') {
             const overlay = document.getElementById('controls-overlay');
             if (overlay) overlay.remove();
-            else if (document.fullscreenElement) document.exitFullscreen();
+            else if (document.fullscreenElement || this.isManualFullscreen) this.toggleFullscreen();
             else if (!this.ui.player.classList.contains('hidden')) this.showHome()
         }
         if (e.key.toLowerCase() === 'f' && !this.ui.player.classList.contains('hidden')) this.toggleFullscreen()
         if (e.key === 'Enter' && !this.ui.player.classList.contains('hidden')) {
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || this.isManualFullscreen;
             if (isFullscreen) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -428,12 +488,18 @@ const App = {
             const state = await this.emulator.saveState();
             if (state) {
                 const blob = new Blob([state.state]);
-                await this.db.put(this.currentRomId, blob);
-                this.showToast('Jogo salvo com sucesso!', 'success');
+                try {
+                    await this.db.put(this.currentRomId, blob);
+                    this.showToast('Jogo salvo com sucesso!', 'success');
+                } catch (e) {
+                    console.warn('Save failed, attempting download...', e);
+                    this.exportSave();
+                    this.showToast('Erro ao salvar no navegador. Baixando arquivo...', 'warning');
+                }
             }
         } catch (e) {
             console.error(e);
-            this.showToast('Erro ao salvar jogo.', 'error');
+            this.showToast('Erro ao criar save.', 'error');
         }
     },
     async loadGame() {
@@ -441,7 +507,12 @@ const App = {
         try {
             const state = await this.db.get(this.currentRomId);
             if (state) {
-                await this.emulator.loadState(state);
+                let stateBlob = state;
+                if (typeof state === 'string') {
+                    const res = await fetch(state);
+                    stateBlob = await res.blob();
+                }
+                await this.emulator.loadState(stateBlob);
                 this.showToast('Jogo carregado!', 'success');
             } else {
                 this.showToast('Nenhum save encontrado.', 'info');
@@ -450,6 +521,40 @@ const App = {
             console.error(e);
             this.showToast('Erro ao carregar jogo.', 'error');
         }
+    },
+    exportSave() {
+        if (!this.emulator) return;
+        this.emulator.saveState().then(state => {
+            if (state) {
+                const blob = new Blob([state.state]);
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${this.currentRomId}.sav`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+                this.showToast('Save baixado!', 'success');
+            }
+        });
+    },
+    importSave() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.sav,.state';
+        input.onchange = async e => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    await this.emulator.loadState(file);
+                    this.showToast('Save carregado do arquivo!', 'success');
+                } catch (err) {
+                    console.error(err);
+                    this.showToast('Erro ao ler arquivo.', 'error');
+                }
+            }
+        };
+        input.click();
     },
     showToast(msg, type = 'info') {
         const existing = document.getElementById('toast-msg');
@@ -461,6 +566,7 @@ const App = {
         let icon = '';
         if (type === 'success') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
         else if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        else if (type === 'warning') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
         else icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
 
         toast.innerHTML = `${icon}<span>${msg}</span>`;
@@ -477,33 +583,74 @@ const App = {
         _db: null,
         async open() {
             if (this._db) return this._db;
+            if (typeof indexedDB === 'undefined') return null;
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('emu_saves', 1);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(this._db = request.result);
-                request.onupgradeneeded = e => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains('states')) db.createObjectStore('states');
-                };
+                try {
+                    const request = indexedDB.open('emu_saves', 1);
+                    request.onerror = () => resolve(null);
+                    request.onsuccess = () => resolve(this._db = request.result);
+                    request.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('states')) db.createObjectStore('states');
+                    };
+                } catch (e) { resolve(null); }
             });
         },
         async put(key, blob) {
-            const db = await this.open();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction('states', 'readwrite');
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-                tx.objectStore('states').put(blob, key);
-            });
+            let db = await this.open();
+            if (db) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const tx = db.transaction('states', 'readwrite');
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = () => reject(tx.error);
+                        tx.objectStore('states').put(blob, key);
+                    } catch (err) { reject(err); }
+                }).catch(async (err) => {
+                    return this.putLocalStorage(key, blob);
+                });
+            } else {
+                return this.putLocalStorage(key, blob);
+            }
         },
         async get(key) {
-            const db = await this.open();
+            let db = await this.open();
+            if (db) {
+                try {
+                    const res = await new Promise((resolve, reject) => {
+                        const tx = db.transaction('states', 'readonly');
+                        const req = tx.objectStore('states').get(key);
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => reject(req.error);
+                    });
+                    if (res) return res;
+                    return this.getLocalStorage(key);
+                } catch (e) {
+                    return this.getLocalStorage(key);
+                }
+            } else {
+                return this.getLocalStorage(key);
+            }
+        },
+        async putLocalStorage(key, blob) {
             return new Promise((resolve, reject) => {
-                const tx = db.transaction('states', 'readonly');
-                const req = tx.objectStore('states').get(key);
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    try {
+                        localStorage.setItem('save_' + key, reader.result);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
+        },
+        getLocalStorage(key) {
+            const data = localStorage.getItem('save_' + key);
+            if (!data) return null;
+            return data;
         }
     },
     async stopEmulator() {

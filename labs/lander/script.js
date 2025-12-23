@@ -11,15 +11,18 @@ let score = 0;
 let level = 1;
 let lastTime = 0;
 
-// Physics - Optimized for Realistic Moon Gravity (Slow, deliberate)
-const GRAVITY = 0.0015; // Very low gravity (Moon is 1/6th Earth)
-const THRUST_POWER = 0.0035; // Gentle thrust for fine control
-const ROTATION_SPEED = 0.03; // Slower rotation
-const LANDING_MAX_SPEED = 0.3; // Strict landing speed
-const LANDING_MAX_ANGLE = 0.15; // Strict landing angle
+// Physics - Tuned for "Classic Arcade" Feel (Balanced)
+const GRAVITY = 0.0023;
+const THRUST_POWER = 0.006;
+const ROTATION_SPEED = 0.04;
+const LANDING_MAX_SPEED = 0.35;
+const LANDING_MAX_ANGLE = 0.2;
 
 // Colors
 const COLOR_BG = '#000000';
+const COLOR_STARS = '#ffffff';
+
+let stars = []; // Background stars
 const COLOR_TERRAIN = '#ffffff';
 const COLOR_SHIP_BODY = '#ffffff';
 const COLOR_SHIP_LEGS = '#ffff00';
@@ -63,6 +66,7 @@ const lander = {
         else this.fuel = Math.min(this.fuel + 500, this.maxFuel);
 
         particles = [];
+        generateStars(); // Refresh stars
         updateHUD();
     },
 
@@ -89,18 +93,17 @@ const lander = {
             const ty = Math.sin(this.angle) * THRUST_POWER * dt;
             this.vx += tx;
             this.vy += ty;
-            this.fuel -= 0.5 * dt;
+            this.fuel -= 0.8 * dt; // slightly more fuel usage
 
-            // Simple white/grey/yellow pixel particles usually
-            // User requested "fire" so we use red/yellow pixels
+            // fire particles
             for (let i = 0; i < 3; i++) {
                 particles.push({
                     x: this.x - Math.cos(this.angle) * 10,
                     y: this.y - Math.sin(this.angle) * 10,
-                    vx: this.vx - Math.cos(this.angle) * (1 + Math.random()),
-                    vy: this.vy - Math.sin(this.angle) * (1 + Math.random()),
+                    vx: this.vx - Math.cos(this.angle) * (2 + Math.random()),
+                    vy: this.vy - Math.sin(this.angle) * (2 + Math.random()),
                     life: 1.0,
-                    color: Math.random() > 0.5 ? '#ffff00' : '#ff0000'
+                    color: Math.random() > 0.3 ? '#ffcc00' : '#ff0000' // More yellow/fire
                 });
             }
         }
@@ -194,6 +197,25 @@ function drawParticles(ctx) {
     });
 }
 
+// Stars
+function generateStars() {
+    stars = [];
+    for (let i = 0; i < 50; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() > 0.9 ? 2 : 1
+        });
+    }
+}
+
+function drawStars(ctx) {
+    ctx.fillStyle = COLOR_STARS;
+    stars.forEach(s => {
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+    });
+}
+
 // Map Logic
 function generateTerrain(lvl) {
     terrain = [];
@@ -202,33 +224,34 @@ function generateTerrain(lvl) {
     const h = canvas.height;
 
     // Simple jagged terrain
-    let pts = 20;
     let x = 0;
     let y = h * 0.85;
 
     // Start Pad
-    landingPads.push({ x1: 20, x2: 80, y: h * 0.8, multiplier: 0 });
+    landingPads.push({ x1: 20, x2: 100, y: h * 0.8, multiplier: 0 });
     terrain.push({ x: 0, y: h });
     terrain.push({ x: 0, y: h * 0.8 });
     terrain.push({ x: 20, y: h * 0.8 });
-    terrain.push({ x: 80, y: h * 0.8 });
-    x = 80;
+    terrain.push({ x: 100, y: h * 0.8 });
+    x = 100;
     y = h * 0.8;
 
     // Random segments
     while (x < w - 20) {
         // Chance for pad
-        if (Math.random() < 0.2 && x > 100 && x < w - 100) {
-            let nextX = Math.min(x + 50, w);
+        if (Math.random() < 0.25 && x > 150 && x < w - 100) {
+            let nextX = Math.min(x + (60 - lvl * 2), w); // Pads get smaller
+            if (nextX - x < 30) nextX = x + 30; // Min size
+
             // Pad is flat
             landingPads.push({ x1: x, x2: nextX, y: y, multiplier: Math.floor(Math.random() * 4) + 2 });
             terrain.push({ x: nextX, y: y });
             x = nextX;
         } else {
-            let nextX = Math.min(x + Math.random() * 40 + 10, w);
-            let nextY = y + (Math.random() - 0.5) * 60;
+            let nextX = Math.min(x + Math.random() * 50 + 20, w);
+            let nextY = y + (Math.random() - 0.5) * 80;
             if (nextY > h - 10) nextY = h - 10;
-            if (nextY < h * 0.4) nextY = h * 0.4;
+            if (nextY < h * 0.3) nextY = h * 0.3; // Higher mountains
 
             terrain.push({ x: nextX, y: nextY });
             x = nextX;
@@ -324,23 +347,35 @@ function land(mult) {
     gameState = 'LANDED';
     lander.landed = true;
     score += (mult || 1) * 50;
-    if (mult === 0) lander.fuel = lander.maxFuel; // Refuel at home
+    if (mult === 0) lander.fuel = lander.maxFuel;
 
-    // Update Score display instantly
     updateHUD();
+
+    // VICTORY PARTICLES (Confetti)
+    if (mult > 0) {
+        for (let i = 0; i < 50; i++) {
+            particles.push({
+                x: lander.x,
+                y: lander.y,
+                vx: (Math.random() - 0.5) * 5,
+                vy: (Math.random() - 2) * 5,
+                life: 2.0,
+                color: `hsl(${Math.random() * 360}, 100%, 50%)`
+            });
+        }
+    }
 
     setTimeout(() => {
         if (mult > 0) {
             level++;
-            // alert("Safe Landing! Next Level..."); // Removed alert for smoother flow
             startGame();
         } else {
             // Landed on start pad, allow taking off again
             lander.onGround = true;
-            lander.landed = false; // logic fix: allow update() to run again
+            lander.landed = false;
             gameState = 'PLAYING';
         }
-    }, 1000);
+    }, 2000); // Longer pause to enjoy particles
 }
 
 function startGame() {
@@ -379,6 +414,7 @@ function gameLoop(ts) {
     ctx.fillStyle = COLOR_BG;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    drawStars(ctx);
     drawTerrain(ctx);
     drawParticles(ctx);
     lander.draw(ctx);
