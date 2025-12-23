@@ -569,27 +569,43 @@ if (trailLengthEl) {
     });
 }
 
-document.getElementById('interactionForce').addEventListener('input', (e) => {
-    interactionForce = parseFloat(e.target.value);
-    document.getElementById('forceValue').textContent = interactionForce.toFixed(1);
-});
+const interactionForceEl = document.getElementById('interactionForce');
+if (interactionForceEl) {
+    interactionForceEl.addEventListener('input', (e) => {
+        interactionForce = parseFloat(e.target.value);
+        const forceValue = document.getElementById('forceValue');
+        if (forceValue) forceValue.textContent = interactionForce.toFixed(1);
+    });
+}
 
-document.getElementById('blendMode').addEventListener('change', (e) => {
-    blendMode = e.target.value;
-});
+const blendModeEl = document.getElementById('blendMode');
+if (blendModeEl) {
+    blendModeEl.addEventListener('change', (e) => {
+        blendMode = e.target.value;
+    });
+}
 
-document.getElementById('bgEffect').addEventListener('change', (e) => {
-    bgEffect = e.target.value;
-});
+const bgEffectEl = document.getElementById('bgEffect');
+if (bgEffectEl) {
+    bgEffectEl.addEventListener('change', (e) => {
+        bgEffect = e.target.value;
+    });
+}
 
-document.getElementById('reset').addEventListener('click', () => {
-    ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
-    ctx.fillRect(0, 0, width, height);
-    initParticles();
-    zoff = 0;
-});
+const resetEl = document.getElementById('reset');
+if (resetEl) {
+    resetEl.addEventListener('click', () => {
+        ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
+        ctx.fillRect(0, 0, width, height);
+        initParticles();
+        zoff = 0;
+    });
+}
 
-document.getElementById('random').addEventListener('click', randomize);
+const randomEl = document.getElementById('random');
+if (randomEl) {
+    randomEl.addEventListener('click', randomize);
+}
 
 function randomize() {
     const themes = Object.keys(colorThemes);
@@ -699,7 +715,10 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
     });
 });
 
-document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+const fullscreenEl = document.getElementById('fullscreen');
+if (fullscreenEl) {
+    fullscreenEl.addEventListener('click', toggleFullscreen);
+}
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -724,15 +743,17 @@ const controls = document.querySelector('.controls');
 const toggleBtn = document.getElementById('toggleControls');
 const closeBtn = document.getElementById('closeControls');
 
-toggleBtn.addEventListener('click', () => {
-    controls.classList.add('visible');
-    toggleBtn.classList.add('hidden');
-});
+if (toggleBtn && closeBtn) {
+    toggleBtn.addEventListener('click', () => {
+        controls.classList.add('visible');
+        toggleBtn.classList.add('hidden');
+    });
 
-closeBtn.addEventListener('click', () => {
-    controls.classList.remove('visible');
-    toggleBtn.classList.remove('hidden');
-});
+    closeBtn.addEventListener('click', () => {
+        controls.classList.remove('visible');
+        toggleBtn.classList.remove('hidden');
+    });
+}
 
 // Listen for theme changes (dark/light mode)
 const themeObserver = new MutationObserver((mutations) => {
