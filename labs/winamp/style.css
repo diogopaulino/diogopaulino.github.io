@@ -151,6 +151,7 @@ body {
 }
 
 /* Info Panel (Song Ticker + Bitrate) : Middle area */
+/* Info Panel (Song Ticker + Bitrate) : Middle area */
 .info-display {
     position: absolute;
     top: 0;
@@ -173,15 +174,17 @@ body {
     white-space: nowrap;
 }
 
+/* MOVED UP - to avoid Volume Slider overlap */
 .song-stats {
     position: absolute;
-    bottom: 3px;
+    top: 18px;
     left: 3px;
     display: flex;
     gap: 5px;
     color: #00e000;
     font-family: monospace;
     font-size: 9px;
+    z-index: 10;
 }
 
 .bitrate::after {
@@ -198,10 +201,10 @@ body {
     font-size: 8px;
 }
 
-/* Audio Status (Mono/Stereo) */
+/* Audio Status (Mono/Stereo) MOVED UP */
 .audio-status {
     position: absolute;
-    bottom: 3px;
+    top: 18px;
     right: 3px;
     display: flex;
     flex-direction: column;
@@ -229,18 +232,18 @@ body {
     position: absolute;
     top: 0;
     right: 0;
-    width: 60px;
+    width: 55px;
     height: 43px;
     background: #000;
     color: #00e000;
     font-family: 'Courier New', monospace;
-    /* Fallback for digital */
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     display: flex;
     justify-content: center;
     align-items: center;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    z-index: 10;
 }
 
 
@@ -259,6 +262,21 @@ body {
     top: 28px;
     left: 3px;
 }
+
+.clutter-bar .letter {
+    color: #00e000;
+    font-size: 7px;
+    font-family: monospace;
+    line-height: 8px;
+    opacity: 0.6;
+}
+
+.clutter-bar .letter.selected {
+    opacity: 1;
+    color: #fff;
+}
+
+
 
 .clutter-bar .letter {
     color: #00e000;
