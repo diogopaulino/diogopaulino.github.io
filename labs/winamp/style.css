@@ -1,35 +1,29 @@
-/* RESET & BASICS */
-:root {
-    --win-bg: #202020;
-    --win-border-light: #5a5a5a;
-    --win-border-dark: #101010;
-    --text-green: #00e000;
-    --text-gold: #d2b48c;
-    --title-blue-start: #000030;
-    --title-blue-end: #000090;
-    --pixel-font: 'Consolas', 'Lucida Console', monospace;
+/* UNIVERSAL RESET */
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 body {
     background: #000;
+    font-family: 'Arial', sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
-    /* Center vertically if deck height is small */
     height: 100vh;
     margin: 0;
-    font-family: Arial, sans-serif;
-    user-select: none;
-    -webkit-font-smoothing: none;
+    overflow: hidden;
 }
 
+/* APP SCALING */
 #app {
     display: flex;
     transform: scale(2);
-    /* Scale up like specific high-DPI mod */
+    /* 2x Scale as requested */
     transform-origin: center;
     image-rendering: pixelated;
-    background: transparent;
+    /* Crucial for crispy lines */
 }
 
 .deck {
@@ -37,88 +31,73 @@ body {
     flex-direction: column;
 }
 
+/* WINDOW BASE STYLE */
 .window {
     width: 275px;
-    background: var(--win-bg);
+    background-color: #202020;
+    /* Winamp Grey */
     position: relative;
-    /* Main Window Borders */
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-}
-
-#main-window {
-    height: 116px;
-    margin-bottom: 0;
-    position: relative;
-    z-index: 10;
-}
-
-#equalizer-window {
-    height: 116px;
-    position: relative;
-    z-index: 5;
-}
-
-#playlist-window {
-    width: 275px;
-    height: 232px;
-    z-index: 5;
+    /* 3D Border Effect */
+    border-top: 1px solid #5d5d5d;
+    border-left: 1px solid #5d5d5d;
+    border-right: 1px solid #292929;
+    border-bottom: 1px solid #292929;
 }
 
 /* TITLE BAR */
 .title-bar {
     height: 14px;
-    background: #000;
+    background: #333;
+    /* Default inactive */
     display: flex;
     align-items: center;
-    cursor: default;
     position: relative;
-    border-top: 1px solid #666;
-    border-left: 1px solid #666;
-    border-right: 1px solid #202020;
-    border-bottom: 1px solid #202020;
+    border-bottom: 1px solid #000;
 }
 
-.title-bar.selected::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to right, var(--title-blue-start), var(--title-blue-end));
-    z-index: 0;
-    margin: 1px;
+.title-bar.selected {
+    background: linear-gradient(to right, #000030, #0000c0);
+    /* Classic Blue */
+}
+
+.title-bar .icon {
+    width: 9px;
+    height: 9px;
+    margin: 2px;
+    background: #ccc;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    /* Diamond */
 }
 
 .title-bar .title {
-    flex: 1;
-    color: #fff;
-    font-size: 6px;
-    font-family: var(--pixel-font);
+    flex-grow: 1;
+    color: white;
+    font-size: 8px;
+    /* Pixel font size */
+    font-family: monospace;
     font-weight: bold;
-    z-index: 1;
-    margin-left: 3px;
-    letter-spacing: 0.5px;
+    line-height: 14px;
+    margin-left: 2px;
 }
 
 .title-bar .controls {
     display: flex;
-    z-index: 1;
-    gap: 1px;
     margin-right: 2px;
 }
 
-.title-bar button {
+.title-bar button,
+.title-bar .minimize,
+.title-bar .close,
+.title-bar .shade {
     width: 9px;
     height: 9px;
     background: #ccc;
     border: 1px solid #fff;
     border-right-color: #555;
     border-bottom-color: #555;
+    margin-left: 1px;
     padding: 0;
-    margin: 0;
-    cursor: pointer;
+    appearance: none;
 }
 
 .title-bar button:active {
@@ -127,78 +106,233 @@ body {
     border-bottom-color: #fff;
 }
 
-.title-bar .icon {
-    width: 9px;
-    height: 9px;
-    background: #ccc;
-    /* Placeholder for logo */
-    margin-left: 2px;
-    z-index: 1;
-    /* Diamond shape approx */
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-    background: radial-gradient(circle, #fff, #b8860b);
+
+/* ===========================
+   MAIN WINDOW (275 x 116)
+   =========================== */
+#main-window {
+    height: 116px;
+    z-index: 100;
 }
 
-/* MAIN WINDOW CONTENT */
 .window-content {
-    padding: 0;
     position: relative;
     height: 100%;
     top: -1px;
 }
 
-/* COORDINATE FIXES */
+/* DISPLAY AREA (Vis + Timer + Ticker) */
 .display-container {
     position: absolute;
     top: 24px;
-    left: 10px;
-    width: 255px;
+    left: 11px;
+    width: 254px;
     height: 43px;
+    /* Framed nicely */
+    background: #000;
+    /* Black glass */
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #5d5d5d;
+    border-bottom: 1px solid #5d5d5d;
     pointer-events: none;
 }
 
-/* Visualization */
+/* Visualization: 76x43 area at 0,0 of display */
 .visualization {
     position: absolute;
     top: 0;
     left: 0;
     width: 76px;
     height: 43px;
-    border: none;
+    border-right: 1px solid #333;
     pointer-events: auto;
-    background-image: linear-gradient(to top,
-            #00e000 0px, #00e000 10px,
-            #000 10px, #000 38px);
-    background-size: 3px 100%;
-    background-repeat: repeat-x;
+    /* Allow clicking vis */
 }
 
+/* Info Panel (Song Ticker + Bitrate) : Middle area */
 .info-display {
     position: absolute;
     top: 0;
-    left: 79px;
-    width: 112px;
+    left: 76px;
+    width: 108px;
     height: 43px;
-    border: none;
+    /* background: #000; */
 }
 
-/* Timer */
+.song-ticker {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 100px;
+    height: 13px;
+    overflow: hidden;
+    color: #00e000;
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.song-stats {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    display: flex;
+    gap: 5px;
+    color: #00e000;
+    font-family: monospace;
+    font-size: 9px;
+}
+
+.bitrate::after {
+    content: 'kbps';
+    color: #008000;
+    margin-left: 1px;
+    font-size: 8px;
+}
+
+.sample-rate::after {
+    content: 'kHz';
+    color: #008000;
+    margin-left: 1px;
+    font-size: 8px;
+}
+
+/* Audio Status (Mono/Stereo) */
+.audio-status {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    display: flex;
+    flex-direction: column;
+    font-size: 8px;
+    font-family: monospace;
+    color: #008000;
+    line-height: 8px;
+}
+
+.audio-status .active {
+    color: #00e000;
+    text-shadow: 0 0 2px #0f0;
+}
+
+.audio-status .mono::before {
+    content: 'MONO';
+}
+
+.audio-status .stereo::before {
+    content: 'STEREO';
+}
+
+/* TIMER: Right side of display */
 .timer {
     position: absolute;
     top: 0;
-    left: 194px;
-    width: 59px;
+    right: 0;
+    width: 60px;
     height: 43px;
-    border: none;
     background: #000;
     color: #00e000;
     font-family: 'Courier New', monospace;
+    /* Fallback for digital */
+    font-size: 24px;
     font-weight: bold;
-    font-size: 21px;
-    line-height: 43px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     letter-spacing: 2px;
-    text-align: center;
-    z-index: 20;
+}
+
+
+/* MAIN SLIDERS & CONTROLS */
+
+/* Clutter Bar (OAIDV) */
+.clutter-bar {
+    position: absolute;
+    top: 24px;
+    left: 11px;
+    z-index: 10;
+    width: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    top: 28px;
+    left: 3px;
+}
+
+.clutter-bar .letter {
+    color: #00e000;
+    font-size: 7px;
+    font-family: monospace;
+    line-height: 8px;
+    opacity: 0.4;
+}
+
+.clutter-bar .letter.selected {
+    opacity: 1;
+    text-shadow: 0 0 2px #00e000;
+}
+
+
+/* Volume & Balance : Located ABOVE the Seek bar */
+.volume-balance {
+    position: absolute;
+    top: 58px;
+    left: 107px;
+    width: 156px;
+    height: 13px;
+}
+
+/* Volume Slider */
+.volume-slider {
+    position: absolute;
+    top: 1px;
+    left: 0;
+    width: 68px;
+    height: 11px;
+    background: #000;
+    /* Track background */
+    border-bottom: 1px solid #5d5d5d;
+}
+
+/* Thumb - simulated with ::after */
+.volume-slider::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 12px;
+    height: 9px;
+    background: #ccc;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
+    box-shadow: inset 1px 1px #eee;
+}
+
+/* Balance Slider */
+.balance-slider {
+    position: absolute;
+    top: 1px;
+    left: 88px;
+    width: 38px;
+    height: 11px;
+    background: #000;
+    border-bottom: 1px solid #5d5d5d;
+}
+
+.balance-slider::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 12px;
+    height: 9px;
+    background: #ccc;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
+    box-shadow: inset 1px 1px #eee;
 }
 
 /* Seek Slider */
@@ -208,313 +342,437 @@ body {
     left: 16px;
     width: 248px;
     height: 10px;
-    border: 1px solid #444;
-    border-top-color: #000;
-    border-left-color: #000;
-    z-index: 20;
+    background: #000;
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-bottom: 1px solid #5d5d5d;
+    border-right: 1px solid #5d5d5d;
 }
 
-/* Main Control Buttons Row */
+.slider-thumb {
+    position: absolute;
+    top: 1px;
+    left: 20px;
+    width: 28px;
+    height: 7px;
+    background: #d4ac0d;
+    /* Gold/Orange */
+    border: 1px solid #fff;
+    border-right-color: #8e6e2e;
+    border-bottom-color: #8e6e2e;
+}
+
+
+/* Playback Buttons */
 .main-controls {
     position: absolute;
     top: 88px;
     left: 16px;
-    width: 248px;
-    height: 18px;
+    /* Height 18px */
 }
 
 .playback-buttons {
-    position: absolute;
-    top: 0;
-    left: 0;
     display: flex;
-    gap: 0;
 }
 
 .playback-buttons button {
     height: 18px;
     width: 23px;
-    background: linear-gradient(#ccc, #999);
+    padding: 0;
+    border: none;
+    appearance: none;
+    background: #ccc;
+    /* Fallback */
+    /* Use linear gradient to simulate button face */
+    background: linear-gradient(to bottom, #fff 0%, #ccc 10%, #ccc 90%, #999 100%);
     border: 1px solid #fff;
     border-right-color: #555;
     border-bottom-color: #555;
     position: relative;
+    cursor: pointer;
 }
 
 .playback-buttons button:active {
-    border-color: #555 #fff #fff #555;
+    border: 1px solid #555;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: #aaa;
 }
 
-.playback-buttons .prev {
-    width: 23px;
+/* Glyphs */
+.prev::after {
+    content: '|<<';
+    font-size: 6px;
+    position: absolute;
+    top: 3px;
+    left: 5px;
 }
 
-.playback-buttons .play {
-    width: 23px;
+.play::after {
+    content: '>';
+    font-size: 8px;
+    font-weight: bold;
+    position: absolute;
+    top: 3px;
+    left: 8px;
 }
 
-.playback-buttons .pause {
-    width: 23px;
+.pause::after {
+    content: '||';
+    font-size: 6px;
+    font-weight: bold;
+    position: absolute;
+    top: 4px;
+    left: 8px;
 }
 
-.playback-buttons .stop {
-    width: 23px;
+.stop::after {
+    content: '[]';
+    font-size: 6px;
+    position: absolute;
+    top: 4px;
+    left: 8px;
 }
 
-.playback-buttons .next {
-    width: 22px;
+.next::after {
+    content: '>>|';
+    font-size: 6px;
+    position: absolute;
+    top: 3px;
+    left: 5px;
 }
 
+
+/* Extra Buttons (Eject + Shuff/Rep + EQ/PL) */
 .eject {
     position: absolute;
     top: 0;
-    left: 121px;
-    /* Correct pos */
+    left: 119px;
+    /* After Next */
+    height: 16px;
+    width: 22px;
+    top: 89px;
+    left: 137px;
+    /* Adjusted: Next ends at 16+23*4+22 = 130? No. 
+       Starts at 16. 
+       Prev(23) + Play(23) + Pause(23) + Stop(23) + Next(22). Total 114.
+       End X = 16 + 114 = 130.
+       Eject usually has a gap. Let's put at 136 roughly.
+    */
+    /* Actually structure is flat. absolute inside .main-controls?
+       HTML: .main-controls contains .playback-buttons AND .eject.
+    */
+}
+
+.main-controls .eject {
+    position: absolute;
+    top: 1px;
+    left: 116px;
     width: 22px;
     height: 16px;
     background: #ccc;
     border: 1px solid #fff;
     border-right-color: #555;
     border-bottom-color: #555;
-    z-index: 10;
+    font-size: 8px;
+    text-align: center;
+    line-height: 14px;
 }
 
 .eject::after {
     content: '⏏';
-    font-size: 9px;
-    position: absolute;
-    left: 6px;
-    top: -1px;
 }
+
 
 .shuffle-repeat {
     position: absolute;
-    top: 0px;
-    left: 146px;
-    /* Correct pos */
+    top: 89px;
+    left: 164px;
     display: flex;
     gap: 2px;
 }
 
-.shuffle {
-    width: 47px;
-    height: 15px;
+.shuffle,
+.repeat {
+    width: 46px;
+    height: 14px;
+    background: #202020;
+    /* Dark button */
+    border: 1px solid #555;
+    border-top-color: #111;
+    border-left-color: #111;
+    color: #ccc;
     font-size: 9px;
-    line-height: 13px;
+    font-family: sans-serif;
+    padding: 0;
+}
+
+.shuffle::before {
+    content: 'SHUFFLE';
 }
 
 .repeat {
     width: 28px;
-    height: 15px;
-    font-size: 9px;
-    line-height: 13px;
 }
 
-.shuffle::after {
-    content: 'SHUFFLE';
-    top: 0;
-}
-
-.repeat::after {
+.repeat::before {
     content: 'REPEAT';
-    top: 0;
 }
 
 
-.volume-balance {
-    position: absolute;
-    top: 57px;
-    left: 107px;
-    /* Correct pos */
-    width: 158px;
-    height: 13px;
-    display: block;
-    right: auto;
-}
-
-.volume-slider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 68px;
-    height: 13px;
-    background: #000;
-}
-
-.balance-slider {
-    position: absolute;
-    top: 0;
-    left: 88px;
-    width: 38px;
-    height: 13px;
-    background: #000;
-}
-
-.volume-slider::before {
-    content: 'VOL';
-    left: -25px;
-    top: 3px;
-    font-size: 9px;
-    color: #000;
-    font-weight: bold;
-    text-shadow: 0 1px #fff;
-}
-
-/* Actually Winamp text is roughly there but let's stick to safe CSS */
-.volume-slider::after {
-    left: 40px;
-    top: 1px;
-}
-
-/* Thumb */
-.balance-slider::after {
-    left: 15px;
-    top: 1px;
-}
-
-/* Thumb */
-
-
-/* EQ / PL buttons */
 .eq-pl-buttons {
     position: absolute;
     top: 58px;
     left: 219px;
-    /* Correct pos */
     display: flex;
-    flex-direction: row;
     gap: 1px;
-    right: auto;
 }
 
 .eq-btn,
 .pl-btn {
     width: 23px;
     height: 12px;
+    background: #202020;
+    border: 1px solid #5d5d5d;
+    border-right-color: #202020;
+    border-bottom-color: #202020;
+    color: #00e000;
     font-size: 8px;
-    border: 1px solid #666;
+    font-family: monospace;
+    padding: 0;
 }
 
-.eq-btn::after {
+.eq-btn::before {
     content: 'EQ';
 }
 
-.pl-btn::after {
+.pl-btn::before {
     content: 'PL';
 }
 
 
-/* Clutter Bar OAIDV */
-.clutter-bar {
-    position: absolute;
-    top: 24px;
-    left: 11px;
-    z-index: 25;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    left: 8px;
-    top: 25px;
-    /* Adjust to left of Vis */
+/* ===========================
+   EQUALIZER WINDOW (275 x 116)
+   =========================== */
+#equalizer-window {
+    height: 116px;
+    margin-top: 0;
 }
 
-.clutter-bar .letter {
-    font-size: 6px;
-    width: 8px;
+.eq-top-row {
+    position: absolute;
+    top: 14px;
+    left: 0;
+    width: 100%;
+    padding: 5px 12px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.on-auto button,
+.presets {
+    background: #202020;
+    width: 30px;
+    height: 12px;
+    border: 1px solid #555;
+    color: #00e000;
+    font-size: 9px;
+    font-family: monospace;
+    padding: 0;
+}
+
+.on-auto button.selected {
+    background: #111;
+    color: #0f0;
+}
+
+.eq-graph {
+    position: absolute;
+    top: 35px;
+    left: 13px;
+    width: 247px;
+    height: 63px;
+    background: #101010;
+    /* Dark background for sliders */
+    border: 1px solid #444;
+    border-top-color: #000;
+    border-left-color: #000;
+    display: flex;
+    padding: 10px 5px;
+    gap: 1px;
+}
+
+.slider-vertical {
+    flex: 1;
+    position: relative;
+    background: repeating-linear-gradient(to top, #202020 0, #202020 1px, #000 2px, #000 3px);
+    margin: 0 1px;
+    width: 14px;
+}
+
+/* Slider Thumb Vertical */
+.slider-vertical::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    width: 10px;
+    height: 6px;
+    background: #aaa;
+    border: 1px solid #fff;
+    border-right-color: #555;
+    border-bottom-color: #555;
+    top: 50%;
+}
+
+.eq-labels {
+    position: absolute;
+    bottom: 4px;
+    left: 14px;
+    display: flex;
+    width: 246px;
+    justify-content: space-between;
+    font-size: 8px;
+    color: #aaa;
+    font-family: monospace;
+}
+
+.eq-labels span {
+    width: 18px;
     text-align: center;
 }
 
 
-/* EQUALIZER TWEAKS */
-.eq-graph {
-    height: 62px;
+/* ===========================
+   PLAYLIST WINDOW (275 x 232)
+   =========================== */
+#playlist-window {
+    width: 275px;
+    height: 116px;
+    /* User wanted side-by-side but stack height? Re-check. 
+    Image shows Playlist is TALLER than one window. It matches 2 stacked windows height roughly.
+    2x116 = 232.
+    */
+    height: 232px;
 }
 
-.slider-vertical {
-    height: 53px;
+.playlist-entries {
+    position: absolute;
+    top: 20px;
+    left: 10px;
+    width: 255px;
+    height: 178px;
+    border: 1px solid #444;
+    border-top-color: #000;
+    border-left-color: #000;
+    background: #000;
+    overflow-y: scroll;
+    padding: 2px;
 }
 
-/* PLAYLIST TWEAKS to match image */
-.playlist-footer {
-    height: 30px;
-    /* Taller area at bottom */
-    position: relative;
+/* Scrollbar */
+.playlist-entries::-webkit-scrollbar {
+    width: 9px;
     background: #202020;
-    margin: 0;
-    padding: 0;
+}
+
+.playlist-entries::-webkit-scrollbar-thumb {
+    background: #505050;
+    border: 1px solid #fff;
+    border-right-color: #000;
+    border-bottom-color: #000;
+}
+
+.entry {
+    color: #00e000;
+    font-family: 'Winamp', 'Consolas', monospace;
+    font-size: 9px;
+    line-height: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.entry.selected {
+    background: #0000a8;
+    color: #fff;
+}
+
+.entry .time {
+    float: right;
+    color: inherit;
+}
+
+/* Playlist Footer Controls */
+.playlist-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    right: 12px;
+    height: 20px;
+    display: flex;
+    align-items: flex-end;
 }
 
 .playlist-buttons-left {
     position: absolute;
-    bottom: 12px;
-    left: 12px;
+    left: 0;
+    bottom: 0;
     display: flex;
-    gap: 4px;
+    gap: 2px;
 }
 
 .playlist-buttons-left button {
     width: 22px;
     height: 18px;
     font-size: 8px;
+    padding: 0;
+    background: #202020;
+    border: 1px solid #555;
+    color: #ccc;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
 }
 
 .playlist-buttons-right {
     position: absolute;
-    bottom: 12px;
-    right: 90px;
+    right: 80px;
+    bottom: 1px;
 }
 
 .playlist-buttons-right button {
     width: 44px;
     height: 18px;
-    font-size: 8px;
+    font-size: 9px;
+    padding: 0;
+    background: #202020;
+    border: 1px solid #555;
+    color: #ccc;
 }
 
 .playlist-summary {
     position: absolute;
-    bottom: 12px;
-    right: 12px;
-    width: 70px;
+    right: 0;
+    bottom: 1px;
+    width: 75px;
     height: 18px;
-    border: 1px solid #666;
-    font-size: 8px;
+    border: 1px solid #444;
+    border-top-color: #000;
+    border-left-color: #000;
+    background: #000;
     color: #00e000;
+    font-size: 9px;
+    line-height: 18px;
+    text-align: center;
 }
 
 .playlist-transport {
+    /* Minimal controls in PL window - per screenshot they exist */
     position: absolute;
-    bottom: 4px;
-    left: 160px;
-    /* Approx */
-    display: flex;
-}
-
-.current-time-display {
-    position: absolute;
-    bottom: 4px;
-    right: 12px;
-    width: 60px;
-    height: 14px;
-    font-size: 16px;
-    color: #00e000;
-    background: #000;
-    border: 1px solid #444;
-}
-
-/* Recalibrating Playlist Height to match */
-#playlist-window {
-    height: 232px;
-    /* 116*2 */
-}
-
-.playlist-entries {
-    height: 180px;
-    /* Maximize space */
-}
-
-/* Adjust scale for smaller screens if needed */
-@media (max-width: 800px) {
-    #app {
-        transform: scale(1);
-    }
+    bottom: 30px;
+    right: 15px;
+    /* Wait, screenshot shows a second row of buttons? 
+       No, "LIST OPTS" row is the bottom row.
+       The "buttons" in JS might be for hidden transport.
+    */
+    display: none;
+    /* Hide for now as they break layout until needed */
 }
