@@ -4,189 +4,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winamp 2.91</title>
+    <title>Winamp 2.91 - Labs</title>
+    <link rel="stylesheet" href="/labs/shared.css?v=2">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        @font-face {
-            font-family: 'Winamp';
-            src: url('https://db.onlinewebfonts.com/t/056353a27c68233bc7a61d1fd7520c43.woff2') format('woff2');
-            /* Fallback or specific pixel font if widely available, otherwise system stack */
-        }
-    </style>
 </head>
 
 <body>
-    <div id="app">
-        <div class="deck">
-            <!-- MAIN WINDOW -->
-            <div id="main-window" class="window">
-                <div class="title-bar selected">
-                    <div class="icon"></div>
-                    <div class="title">WINAMP 2.91</div>
-                    <div class="controls">
-                        <button class="minimize"></button>
-                        <button class="close"></button>
-                    </div>
+    <div class="container">
+        <header data-lab-header data-title="Winamp">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    ⚡ Winamp 2.91
                 </div>
-                <div class="window-content">
-                    <div class="display-container">
-                        <div class="visualization"></div>
-                        <div class="info-display">
-                            <div class="song-ticker">
-                                <div class="text">1. Depeche Mode - Never Let Me Down Again</div>
-                            </div>
-                            <div class="song-stats">
-                                <div class="bitrate">128</div>
-                                <div class="sample-rate">44</div>
-                            </div>
-                            <div class="audio-status">
-                                <div class="mono"></div>
-                                <div class="stereo active"></div>
-                            </div>
-                        </div>
-                        <div class="timer">
-                            <div class="minute-first digit-0"></div>
-                            <div class="minute-second digit-1"></div>
-                            <div class="colon"></div>
-                            <div class="second-first digit-0"></div>
-                            <div class="second-second digit-8"></div>
+            </template>
+        </header>
+
+        <div id="winamp">
+            <div class="winamp-left">
+                <!-- Main Window -->
+                <div id="main-window" class="window">
+                    <div class="titlebar">
+                        <span class="title">Winamp v2.91</span>
+                        <div class="titlebar-buttons">
+                            <button class="btn-minimize"></button>
+                            <button class="btn-shade"></button>
+                            <button class="btn-close"></button>
                         </div>
                     </div>
 
-                    <div class="seek-slider">
-                        <div class="slider-thumb"></div>
+                    <div class="main-display">
+                        <div class="visualizer">
+                            <div class="vis-bar" style="height: 10px;"></div>
+                            <div class="vis-bar" style="height: 15px;"></div>
+                            <div class="vis-bar" style="height: 25px;"></div>
+                            <div class="vis-bar" style="height: 18px;"></div>
+                            <div class="vis-bar" style="height: 12px;"></div>
+                            <div class="vis-bar" style="height: 22px;"></div>
+                            <div class="vis-bar" style="height: 30px;"></div>
+                            <div class="vis-bar" style="height: 14px;"></div>
+                            <div class="vis-bar" style="height: 8px;"></div>
+                        </div>
+                        <div class="info-area">
+                            <div class="song-title">1. Depeche Mode - Never Let Me Down Again</div>
+                            <div class="track-info">
+                                <span class="bitrate">128</span>
+                                <span class="khz">44</span>
+                            </div>
+                        </div>
+                        <div class="time-display">-1:08</div>
                     </div>
 
-                    <div class="main-controls">
-                        <div class="eq-pl-buttons">
-                            <button class="eq-btn" title="Equalizer"></button>
-                            <button class="pl-btn" title="Playlist"></button>
-                        </div>
-                        <div class="playback-buttons">
-                            <button class="prev"></button>
-                            <button class="play"></button>
-                            <button class="pause"></button>
-                            <button class="stop"></button>
-                            <button class="next"></button>
-                        </div>
-                        <button class="eject"></button>
-                        <div class="shuffle-repeat">
-                            <button class="shuffle"></button>
-                            <button class="repeat"></button>
-                        </div>
+                    <div class="clutter-bar">
+                        <span class="led">O</span>
+                        <span class="led">A</span>
+                        <span class="led active">I</span>
+                        <span class="led">D</span>
+                        <span class="led">V</span>
                     </div>
 
-                    <div class="volume-balance">
+                    <div class="position-slider"></div>
+
+                    <div class="controls">
+                        <button class="btn-prev">|◄◄</button>
+                        <button class="btn-play">►</button>
+                        <button class="btn-pause">❚❚</button>
+                        <button class="btn-stop">■</button>
+                        <button class="btn-next">►►|</button>
+                        <button class="btn-eject">⏏</button>
+                    </div>
+
+                    <div class="volume-area">
                         <div class="volume-slider"></div>
                         <div class="balance-slider"></div>
                     </div>
 
-                    <div class="branding">WINAMP</div>
-                    <div class="clutter-bar">
-                        <div class="letter o">O</div>
-                        <div class="letter a selected">A</div>
-                        <div class="letter i">I</div>
-                        <div class="letter d selected">D</div>
-                        <div class="letter v selected">V</div>
+                    <div class="eq-pl-buttons">
+                        <button class="btn-eq active">EQ</button>
+                        <button class="btn-pl active">PL</button>
+                    </div>
+
+                    <div class="shuffle-repeat">
+                        <button class="btn-shuffle active">SHUFFLE</button>
+                        <button class="btn-repeat">REPEAT</button>
+                    </div>
+                </div>
+
+                <!-- Equalizer Window -->
+                <div id="equalizer-window" class="window">
+                    <div class="titlebar">
+                        <span class="title">Winamp Equalizer</span>
+                        <div class="titlebar-buttons">
+                            <button class="btn-close"></button>
+                        </div>
+                    </div>
+
+                    <div class="eq-controls">
+                        <button class="btn-on">ON</button>
+                        <button class="btn-auto">AUTO</button>
+                        <button class="btn-presets">PRESETS</button>
+                    </div>
+
+                    <div class="eq-sliders">
+                        <div class="slider-group">
+                            <div class="eq-slider preamp"></div>
+                            <span class="label">PREAMP</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">60</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">170</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">310</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">600</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">1K</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">3K</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">6K</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">12K</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">14K</span>
+                        </div>
+                        <div class="slider-group">
+                            <div class="eq-slider"></div>
+                            <span class="label">16K</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- EQUALIZER -->
-            <div id="equalizer-window" class="window">
-                <div class="title-bar">
-                    <div class="title">WINAMP EQUALIZER</div>
-                    <div class="controls">
-                        <button class="close"></button>
+            <!-- Playlist Window -->
+            <div id="playlist-window" class="window">
+                <div class="titlebar">
+                    <span class="title">Winamp Playlist Editor</span>
+                    <div class="titlebar-buttons">
+                        <button class="btn-shade"></button>
+                        <button class="btn-close"></button>
                     </div>
                 </div>
-                <div class="window-content">
-                    <div class="eq-top-row">
-                        <div class="on-auto">
-                            <button class="on selected">ON</button>
-                            <button class="auto">AUTO</button>
-                        </div>
-                        <button class="presets">PRESETS</button>
+
+                <div class="playlist-content">
+                    <div class="playlist-item selected">1. Depeche Mode - Never Let Me Down Again <span
+                            class="duration">4:47</span></div>
+                    <div class="playlist-item">2. Depeche Mode - The Things You Said <span class="duration">4:02</span>
                     </div>
-                    <div class="eq-graph">
-                        <div class="preamp-slider slider-vertical"></div>
-                        <div class="bands">
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                            <div class="band slider-vertical"></div>
-                        </div>
+                    <div class="playlist-item">3. Depeche Mode - Strangelove <span class="duration">4:54</span></div>
+                    <div class="playlist-item">4. Depeche Mode - Sacred <span class="duration">4:48</span></div>
+                    <div class="playlist-item">5. Depeche Mode - Little 15 <span class="duration">4:18</span></div>
+                    <div class="playlist-item">6. Depeche Mode - Behind The Wheel <span class="duration">5:17</span>
                     </div>
-                    <div class="eq-labels">
-                        <span>PREAMP</span>
-                        <span>60</span><span>170</span><span>310</span><span>600</span><span>1K</span><span>3K</span><span>6K</span><span>12K</span><span>14K</span><span>16K</span>
+                    <div class="playlist-item">7. Depeche Mode - I Want You Now <span class="duration">3:38</span></div>
+                    <div class="playlist-item">8. Depeche Mode - To Have And To Hold <span class="duration">2:56</span>
                     </div>
+                    <div class="playlist-item">9. Depeche Mode - Nothing <span class="duration">4:17</span></div>
+                    <div class="playlist-item">10. Depeche Mode - Pimpf <span class="duration">5:25</span></div>
                 </div>
+
+                <div class="playlist-buttons">
+                    <button>+ADD</button>
+                    <button>-REM</button>
+                    <button>SEL</button>
+                    <button>MISC</button>
+                    <button>LIST</button>
+                </div>
+
+                <div class="playlist-info">0:00 / 44:22</div>
             </div>
         </div>
 
-        <!-- PLAYLIST -->
-        <div id="playlist-window" class="window">
-            <div class="title-bar">
-                <div class="title">WINAMP PLAYLIST</div>
-                <div class="controls">
-                    <button class="shade"></button>
-                    <button class="close"></button>
-                </div>
-            </div>
-            <div class="window-content">
-                <div class="playlist-entries">
-                    <div class="entry selected">1. Depeche Mode - Never Let Me Down Again <span class="time">4:47</span>
-                    </div>
-                    <div class="entry">2. Depeche Mode - The Things You Said <span class="time">4:02</span></div>
-                    <div class="entry">3. Depeche Mode - Strangelove <span class="time">4:54</span></div>
-                    <div class="entry">4. Depeche Mode - Sacred <span class="time">4:48</span></div>
-                    <div class="entry">5. Depeche Mode - Little 15 <span class="time">4:18</span></div>
-                    <div class="entry">6. Depeche Mode - Behind The Wheel <span class="time">5:17</span></div>
-                    <div class="entry">7. Depeche Mode - I Want You Now <span class="time">3:38</span></div>
-                    <div class="entry">8. Depeche Mode - To Have And To Hold <span class="time">2:56</span></div>
-                    <div class="entry">9. Depeche Mode - Nothing <span class="time">4:17</span></div>
-                    <div class="entry">10. Depeche Mode - Pimpf <span class="time">5:25</span></div>
-                    <div class="entry">11. Depeche Mode - Agent Orange <span class="time">5:04</span></div>
-                    <div class="entry active">12. Depeche Mode - Never Let Me Down Again ... <span
-                            class="time">4:56</span></div>
-                </div>
-                <div class="playlist-footer">
-                    <div class="playlist-buttons-left">
-                        <button class="add">ADD</button>
-                        <button class="rem">REM</button>
-                        <button class="sel">SEL</button>
-                        <button class="misc">MISC</button>
-                    </div>
-                    <div class="playlist-buttons-right">
-                        <button class="algo">LIST OPTS</button>
-                    </div>
-                    <div class="playlist-summary">
-                        0:00/54:22+
-                    </div>
-                </div>
-                <div class="playlist-transport">
-                    <button class="prev"></button>
-                    <button class="play"></button>
-                    <button class="pause"></button>
-                    <button class="stop"></button>
-                    <button class="next"></button>
-                    <button class="eject"></button>
-                    <div class="current-time-display">
-                        00:00
-                    </div>
-                </div>
-            </div>
-        </div>
+        <footer data-lab-footer data-home-href="/"></footer>
     </div>
-    <script src="script.js"></script>
+    <script src="/labs/chrome.js?v=2" defer></script>
+    <script src="/labs/shared.js" defer></script>
+    <script src="script.js" defer></script>
 </body>
 
 </html>

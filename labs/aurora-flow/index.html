@@ -9,65 +9,46 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../shared.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=2">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <a href="../index.html" class="back-link">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Labs
-            </a>
-            <div class="app-logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
-                    <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
-                    <path d="M19 11h2m-1 -1v2" />
-                </svg>
-                Aurora Flow
-            </div>
-            <div class="header-actions">
+        <header data-lab-header data-title="Aurora Flow">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+                        <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
+                        <path d="M19 11h2m-1 -1v2" />
+                    </svg>
+                    Aurora Flow
+                </div>
+            </template>
+            <template data-slot="actions">
                 <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia">
-                    <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                     </svg>
-                    <svg class="fullscreen-exit" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-                    </svg>
-                </button>
-                <button class="theme-toggle" aria-label="Toggle theme">
-                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        style="display: none;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    <svg class="fullscreen-exit" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" style="display:none">
+                        <path
+                            d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
                     </svg>
                 </button>
-            </div>
+            </template>
         </header>
 
         <canvas id="canvas"></canvas>
 
         <button id="toggleControls" class="toggle-controls-btn" aria-label="Mostrar/esconder controles">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                <circle cx="12" cy="12" r="3"/>
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
             </svg>
         </button>
 
@@ -76,11 +57,11 @@
                 <span>Configurações</span>
                 <button id="closeControls" class="close-btn" aria-label="Fechar">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6L6 18M6 6l12 12"/>
+                        <path d="M18 6L6 18M6 6l12 12" />
                     </svg>
                 </button>
             </div>
-            
+
             <div class="controls-scroll">
                 <div class="control-section">
                     <div class="section-title">Tema de Cores</div>
@@ -125,17 +106,19 @@
                     <div class="shape-grid">
                         <button class="shape-btn active" data-shape="line">
                             <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <line x1="4" y1="20" x2="20" y2="4"/>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="4" y1="20" x2="20" y2="4" />
                                 </svg>
                             </div>
                             <span>Linha</span>
                         </button>
                         <button class="shape-btn" data-shape="circle">
                             <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="7" fill="currentColor" opacity="0.3"/>
-                                    <circle cx="12" cy="12" r="7"/>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="7" fill="currentColor" opacity="0.3" />
+                                    <circle cx="12" cy="12" r="7" />
                                 </svg>
                             </div>
                             <span>Círculo</span>
@@ -143,16 +126,19 @@
                         <button class="shape-btn" data-shape="star">
                             <div class="shape-icon">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" opacity="0.8">
-                                    <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9"/>
+                                    <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
                                 </svg>
                             </div>
                             <span>Estrela</span>
                         </button>
                         <button class="shape-btn" data-shape="spark">
                             <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 2v6m0 8v6M2 12h6m8 0h6"/>
-                                    <path d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24" opacity="0.6"/>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 2v6m0 8v6M2 12h6m8 0h6" />
+                                    <path
+                                        d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"
+                                        opacity="0.6" />
                                 </svg>
                             </div>
                             <span>Faísca</span>
@@ -160,9 +146,9 @@
                         <button class="shape-btn" data-shape="glow">
                             <div class="shape-icon glow-icon">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="12" r="4"/>
-                                    <circle cx="12" cy="12" r="7" opacity="0.3"/>
-                                    <circle cx="12" cy="12" r="10" opacity="0.1"/>
+                                    <circle cx="12" cy="12" r="4" />
+                                    <circle cx="12" cy="12" r="7" opacity="0.3" />
+                                    <circle cx="12" cy="12" r="10" opacity="0.1" />
                                 </svg>
                             </div>
                             <span>Brilho</span>
@@ -174,24 +160,27 @@
                     <div class="section-title">Interação</div>
                     <div class="interaction-grid">
                         <button class="interaction-btn active" data-mode="attract">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
                             </svg>
                             <span>Atrair</span>
                         </button>
                         <button class="interaction-btn" data-mode="repel">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M12 2l2 2m-2-2l-2 2m2 18l2-2m-2 2l-2-2M2 12l2 2m-2-2l2-2m18 2l-2 2m2-2l-2-2"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 2l2 2m-2-2l-2 2m2 18l2-2m-2 2l-2-2M2 12l2 2m-2-2l2-2m18 2l-2 2m2-2l-2-2" />
                             </svg>
                             <span>Repelir</span>
                         </button>
                         <button class="interaction-btn" data-mode="vortex">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0"/>
-                                <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0"/>
-                                <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0" />
+                                <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0" />
+                                <circle cx="12" cy="12" r="2" fill="currentColor" />
                             </svg>
                             <span>Vórtex</span>
                         </button>
@@ -274,19 +263,21 @@
                 <div class="control-footer">
                     <div class="action-buttons">
                         <button id="random" class="action-btn random-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/>
-                                <path d="m18 2 4 4-4 4"/>
-                                <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/>
-                                <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>
-                                <path d="m18 14 4 4-4 4"/>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+                                <path d="m18 2 4 4-4 4" />
+                                <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+                                <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+                                <path d="m18 14 4 4-4 4" />
                             </svg>
                             Random
                         </button>
                         <button id="reset" class="action-btn reset-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                <path d="M3 3v5h5"/>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                <path d="M3 3v5h5" />
                             </svg>
                             Reset
                         </button>
@@ -310,13 +301,12 @@
             <p>Mova o mouse para interagir com as partículas</p>
         </div>
 
-        <footer>
-            <a href="/">← voltar para home</a>
-        </footer>
+        <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
-    <script src="../shared.js"></script>
-    <script src="script.js"></script>
+    <script src="/labs/chrome.js?v=2" defer></script>
+    <script src="/labs/shared.js" defer></script>
+    <script src="script.js" defer></script>
 </body>
 
 </html>

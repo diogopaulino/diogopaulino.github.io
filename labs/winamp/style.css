@@ -1,543 +1,340 @@
-/* UNIVERSAL RESET */
+/* ============================================
+   WINAMP 2.91 - PIXEL PERFECT RECREATION
+   ============================================ */
+
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
     user-select: none;
-    -webkit-user-drag: none;
 }
 
 body {
-    background: #000;
-    font-family: 'Arial', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    overflow: hidden;
-}
-
-/* APP SCALING */
-#app {
-    display: flex;
-    transform: scale(2);
-    /* 2x Scale as requested */
-    transform-origin: center;
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font-family: 'Tahoma', 'Arial', sans-serif;
     image-rendering: pixelated;
-    /* Crucial for crispy lines */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    transition: background 0.4s ease, color 0.4s ease;
 }
 
-.deck {
+#winamp {
+    display: flex;
+    width: 550px;
+    gap: 0;
+    transform: scale(1.5);
+    transform-origin: top center;
+    margin: 50px auto;
+}
+
+.winamp-left {
     display: flex;
     flex-direction: column;
-}
-
-/* WINDOW BASE STYLE */
-.window {
     width: 275px;
-    background-color: #202020;
-    /* Winamp Grey */
-    position: relative;
-    /* 3D Border Effect */
-    border-top: 1px solid #5d5d5d;
-    border-left: 1px solid #5d5d5d;
-    border-right: 1px solid #292929;
-    border-bottom: 1px solid #292929;
 }
 
-/* TITLE BAR */
-.title-bar {
-    height: 14px;
-    background: #333;
-    /* Default inactive */
+/* ============================================
+   WINDOW BASE STYLES
+   ============================================ */
+
+.window {
+    background: #3c3c44;
+    border: 1px solid;
+    border-color: #606068 #101010 #101010 #606068;
+    position: relative;
+}
+
+.titlebar {
+    height: 13px;
+    background: linear-gradient(90deg, #244e94 0%, #2456a4 50%, #1c4e8c 100%);
     display: flex;
     align-items: center;
-    position: relative;
-    border-bottom: 1px solid #000;
+    justify-content: space-between;
+    padding: 0 3px;
+    border-bottom: 1px solid #1a1a1a;
 }
 
-.title-bar.selected {
-    background: linear-gradient(to right, #000030, #0000c0);
-    /* Classic Blue */
-}
-
-.title-bar .icon {
-    width: 9px;
-    height: 9px;
-    margin: 2px;
-    background: #ccc;
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-    /* Diamond */
-}
-
-.title-bar .title {
-    flex-grow: 1;
-    color: white;
+.title {
+    color: #fff;
     font-size: 8px;
-    /* Pixel font size */
-    font-family: monospace;
     font-weight: bold;
-    line-height: 14px;
-    margin-left: 2px;
+    letter-spacing: 0.5px;
 }
 
-.title-bar .controls {
+.titlebar-buttons {
     display: flex;
-    margin-right: 2px;
+    gap: 2px;
 }
 
-.title-bar button,
-.title-bar .minimize,
-.title-bar .close,
-.title-bar .shade {
+.titlebar-buttons button {
     width: 9px;
     height: 9px;
-    background: #ccc;
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    margin-left: 1px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
     padding: 0;
-    appearance: none;
-}
-
-.title-bar button:active {
-    border: 1px solid #555;
-    border-right-color: #fff;
-    border-bottom-color: #fff;
-}
-
-
-/* ===========================
-   MAIN WINDOW (275 x 116)
-   =========================== */
-#main-window {
-    height: 116px;
-    z-index: 100;
-}
-
-.window-content {
+    cursor: pointer;
     position: relative;
-    height: 100%;
-    top: -1px;
 }
 
-/* DISPLAY AREA (Vis + Timer + Ticker) */
-.display-container {
+.btn-minimize::after {
+    content: '_';
+    font-size: 6px;
+    position: absolute;
+    top: -2px;
+    left: 1px;
+    color: #000;
+}
+
+.btn-shade::after {
+    content: '=';
+    font-size: 6px;
+    position: absolute;
+    top: -1px;
+    left: 1px;
+    color: #000;
+}
+
+.btn-close::after {
+    content: 'x';
+    font-size: 6px;
+    position: absolute;
+    top: -1px;
+    left: 2px;
+    color: #000;
+}
+
+.titlebar-buttons button:active {
+    border-color: #555 #fff #fff #555;
+    background: #a0a0a0;
+}
+
+/* ============================================
+   MAIN WINDOW - 275x116px
+   ============================================ */
+
+#main-window {
+    grid-column: 1;
+    grid-row: 1;
+    width: 275px;
+    height: 116px;
+}
+
+/* Display Area */
+.main-display {
     position: absolute;
     top: 24px;
     left: 11px;
     width: 254px;
-    height: 43px;
-    /* Framed nicely */
+    height: 41px;
     background: #000;
-    /* Black glass */
-    border-top: 1px solid #000;
-    border-left: 1px solid #000;
-    border-right: 1px solid #5d5d5d;
-    border-bottom: 1px solid #5d5d5d;
-    pointer-events: none;
+    border: 1px solid #1a1a1a;
+    display: flex;
+    overflow: hidden;
 }
 
-/* Visualization: 76x43 area at 0,0 of display */
-.visualization {
-    position: absolute;
-    top: 0;
-    left: 0;
+.visualizer {
     width: 76px;
     height: 43px;
-    border-right: 1px solid #333;
-    pointer-events: auto;
-    /* Allow clicking vis */
-}
-
-/* Info Panel (Song Ticker + Bitrate) : Middle area */
-/* Info Panel (Song Ticker + Bitrate) : Middle area */
-.info-display {
-    position: absolute;
-    top: 0;
-    left: 76px;
-    width: 108px;
-    height: 43px;
-    /* background: #000; */
-}
-
-.song-ticker {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 100px;
-    height: 13px;
-    overflow: hidden;
-    color: #00e000;
-    font-family: 'Consolas', monospace;
-    font-size: 9px;
-    white-space: nowrap;
-}
-
-/* MOVED UP - to avoid Volume Slider overlap */
-.song-stats {
-    position: absolute;
-    top: 18px;
-    left: 3px;
+    background: #000;
     display: flex;
-    gap: 5px;
-    color: #00e000;
-    font-family: monospace;
-    font-size: 9px;
-    z-index: 10;
+    align-items: flex-end;
+    padding: 0 2px;
+    gap: 1px;
+}
+
+.vis-bar {
+    flex: 1;
+    background: linear-gradient(to top, #00ff00 0%, #00ff00 50%, #ffff00 70%, #ff0000 100%);
+    min-height: 2px;
+}
+
+.info-area {
+    flex: 1;
+    padding: 4px;
+    position: relative;
+}
+
+.song-title {
+    color: #00ff19;
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-shadow: 0 0 2px #00ff19;
+}
+
+.track-info {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    font-size: 7px;
+    color: #00ff19;
+    text-shadow: 0 0 2px #00ff19;
+}
+
+.track-info span::after {
+    font-size: 6px;
+    color: #00aa00;
 }
 
 .bitrate::after {
     content: 'kbps';
-    color: #008000;
     margin-left: 1px;
-    font-size: 8px;
 }
 
-.sample-rate::after {
+.khz::after {
     content: 'kHz';
-    color: #008000;
-    margin-left: 1px;
-    font-size: 8px;
+    margin-left: 2px;
 }
 
-/* Audio Status (Mono/Stereo) MOVED UP */
-.audio-status {
-    position: absolute;
-    top: 18px;
-    right: 3px;
-    display: flex;
-    flex-direction: column;
-    font-size: 8px;
-    font-family: monospace;
-    color: #008000;
-    line-height: 8px;
-}
-
-.audio-status .active {
-    color: #00e000;
-    text-shadow: 0 0 2px #0f0;
-}
-
-.audio-status .mono::before {
-    content: 'MONO';
-}
-
-.audio-status .stereo::before {
-    content: 'STEREO';
-}
-
-/* TIMER: Right side of display */
-.timer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 55px;
-    height: 43px;
+.time-display {
+    width: 60px;
+    height: 36px;
     background: #000;
-    color: #00e000;
-    font-family: 'Courier New', monospace;
-    font-size: 20px;
+    color: #00ff00;
+    font-size: 22px;
     font-weight: bold;
     display: flex;
-    justify-content: center;
     align-items: center;
-    letter-spacing: 1px;
-    z-index: 10;
+    justify-content: flex-end;
+    padding-right: 4px;
+    letter-spacing: -1px;
+    font-family: 'Courier New', monospace;
+    position: absolute;
+    right: 2px;
+    top: 2px;
 }
 
-
-/* MAIN SLIDERS & CONTROLS */
-
-/* Clutter Bar (OAIDV) */
+/* Clutter Bar */
 .clutter-bar {
     position: absolute;
-    top: 24px;
-    left: 11px;
-    z-index: 10;
-    width: 8px;
+    top: 28px;
+    left: 4px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    top: 28px;
-    left: 3px;
+    gap: 0px;
 }
 
-.clutter-bar .letter {
-    color: #00e000;
-    font-size: 7px;
-    font-family: monospace;
-    line-height: 8px;
-    opacity: 0.6;
+.clutter-bar .led {
+    font-size: 8px;
+    font-family: 'Arial', sans-serif;
+    color: #303030;
+    line-height: 9px;
+    font-weight: bold;
 }
 
-.clutter-bar .letter.selected {
-    opacity: 1;
-    color: #fff;
+.clutter-bar .led.active {
+    color: #ffffff;
+    text-shadow: 0 0 2px #fff;
 }
 
-
-
-.clutter-bar .letter {
-    color: #00e000;
-    font-size: 7px;
-    font-family: monospace;
-    line-height: 8px;
-    opacity: 0.4;
-}
-
-.clutter-bar .letter.selected {
-    opacity: 1;
-    text-shadow: 0 0 2px #00e000;
-}
-
-
-/* Volume & Balance : Located ABOVE the Seek bar */
-.volume-balance {
+/* Position Slider */
+.position-slider {
     position: absolute;
-    top: 58px;
-    left: 107px;
-    width: 156px;
-    height: 13px;
+    top: 72px;
+    left: 11px;
+    width: 254px;
+    height: 10px;
+    background: #111;
+    border: 1px solid #333;
 }
 
-/* Volume Slider */
-.volume-slider {
-    position: absolute;
-    top: 1px;
-    left: 0;
-    width: 68px;
-    height: 11px;
-    background: #000;
-    /* Track background */
-    border-bottom: 1px solid #5d5d5d;
-}
-
-/* Thumb - simulated with ::after */
-.volume-slider::after {
+.position-slider::after {
     content: '';
     position: absolute;
     top: 0;
-    left: 50%;
-    width: 12px;
-    height: 9px;
-    background: #ccc;
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    box-shadow: inset 1px 1px #eee;
+    left: var(--handle-pos, 60px);
+    width: 28px;
+    height: 8px;
+    background: #b2b2b2;
+    border: 1px solid #777;
+    pointer-events: none;
 }
 
-/* Balance Slider */
-.balance-slider {
+/* Controls */
+.controls {
     position: absolute;
-    top: 1px;
-    left: 88px;
-    width: 38px;
-    height: 11px;
+    top: 88px;
+    left: 16px;
+    display: flex;
+    gap: 0;
+}
+
+.controls button {
+    width: 23px;
+    height: 18px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
+    font-size: 7px;
+    padding: 0;
+    cursor: pointer;
+}
+
+.controls button:active {
+    border-color: #555 #fff #fff #555;
+    background: #a0a0a0;
+}
+
+.btn-eject {
+    position: absolute;
+    left: 120px;
+    width: 22px !important;
+    height: 16px !important;
+}
+
+/* Volume Area */
+.volume-area {
+    position: absolute;
+    top: 58px;
+    left: 107px;
+}
+
+.volume-slider,
+.balance-slider {
+    width: 68px;
+    height: 13px;
     background: #000;
-    border-bottom: 1px solid #5d5d5d;
+    border: 1px solid #333;
+    position: relative;
+    margin-bottom: 2px;
+}
+
+.balance-slider {
+    width: 38px;
+    position: absolute;
+    left: 72px;
+    top: 0;
+}
+
+.volume-slider::after {
+    content: '';
+    position: absolute;
+    top: 0px;
+    left: var(--vol-pos, 30px);
+    width: 14px;
+    height: 9px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
+    pointer-events: none;
 }
 
 .balance-slider::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 50%;
-    width: 12px;
+    top: 0px;
+    left: 11px;
+    width: 14px;
     height: 9px;
-    background: #ccc;
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    box-shadow: inset 1px 1px #eee;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
+    pointer-events: none;
 }
 
-/* Seek Slider */
-.seek-slider {
-    position: absolute;
-    top: 72px;
-    left: 16px;
-    width: 248px;
-    height: 10px;
-    background: #000;
-    border-top: 1px solid #000;
-    border-left: 1px solid #000;
-    border-bottom: 1px solid #5d5d5d;
-    border-right: 1px solid #5d5d5d;
-}
-
-.slider-thumb {
-    position: absolute;
-    top: 1px;
-    left: 20px;
-    width: 28px;
-    height: 7px;
-    background: #d4ac0d;
-    /* Gold/Orange */
-    border: 1px solid #fff;
-    border-right-color: #8e6e2e;
-    border-bottom-color: #8e6e2e;
-}
-
-
-/* Playback Buttons */
-.main-controls {
-    position: absolute;
-    top: 88px;
-    left: 16px;
-    /* Height 18px */
-}
-
-.playback-buttons {
-    display: flex;
-}
-
-.playback-buttons button {
-    height: 18px;
-    width: 23px;
-    padding: 0;
-    border: none;
-    appearance: none;
-    background: #ccc;
-    /* Fallback */
-    /* Use linear gradient to simulate button face */
-    background: linear-gradient(to bottom, #fff 0%, #ccc 10%, #ccc 90%, #999 100%);
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    position: relative;
-    cursor: pointer;
-}
-
-.playback-buttons button:active {
-    border: 1px solid #555;
-    border-right-color: #fff;
-    border-bottom-color: #fff;
-    background: #aaa;
-}
-
-/* Glyphs */
-.prev::after {
-    content: '|<<';
-    font-size: 6px;
-    position: absolute;
-    top: 3px;
-    left: 5px;
-}
-
-.play::after {
-    content: '>';
-    font-size: 8px;
-    font-weight: bold;
-    position: absolute;
-    top: 3px;
-    left: 8px;
-}
-
-.pause::after {
-    content: '||';
-    font-size: 6px;
-    font-weight: bold;
-    position: absolute;
-    top: 4px;
-    left: 8px;
-}
-
-.stop::after {
-    content: '[]';
-    font-size: 6px;
-    position: absolute;
-    top: 4px;
-    left: 8px;
-}
-
-.next::after {
-    content: '>>|';
-    font-size: 6px;
-    position: absolute;
-    top: 3px;
-    left: 5px;
-}
-
-
-/* Extra Buttons (Eject + Shuff/Rep + EQ/PL) */
-.eject {
-    position: absolute;
-    top: 0;
-    left: 119px;
-    /* After Next */
-    height: 16px;
-    width: 22px;
-    top: 89px;
-    left: 137px;
-    /* Adjusted: Next ends at 16+23*4+22 = 130? No. 
-       Starts at 16. 
-       Prev(23) + Play(23) + Pause(23) + Stop(23) + Next(22). Total 114.
-       End X = 16 + 114 = 130.
-       Eject usually has a gap. Let's put at 136 roughly.
-    */
-    /* Actually structure is flat. absolute inside .main-controls?
-       HTML: .main-controls contains .playback-buttons AND .eject.
-    */
-}
-
-.main-controls .eject {
-    position: absolute;
-    top: 1px;
-    left: 116px;
-    width: 22px;
-    height: 16px;
-    background: #ccc;
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    font-size: 8px;
-    text-align: center;
-    line-height: 14px;
-}
-
-.eject::after {
-    content: '⏏';
-}
-
-
-.shuffle-repeat {
-    position: absolute;
-    top: 89px;
-    left: 164px;
-    display: flex;
-    gap: 2px;
-}
-
-.shuffle,
-.repeat {
-    width: 46px;
-    height: 14px;
-    background: #202020;
-    /* Dark button */
-    border: 1px solid #555;
-    border-top-color: #111;
-    border-left-color: #111;
-    color: #ccc;
-    font-size: 9px;
-    font-family: sans-serif;
-    padding: 0;
-}
-
-.shuffle::before {
-    content: 'SHUFFLE';
-}
-
-.repeat {
-    width: 28px;
-}
-
-.repeat::before {
-    content: 'REPEAT';
-}
-
-
+/* EQ/PL Buttons */
 .eq-pl-buttons {
     position: absolute;
     top: 58px;
@@ -546,251 +343,248 @@ body {
     gap: 1px;
 }
 
-.eq-btn,
-.pl-btn {
+.btn-eq,
+.btn-pl {
     width: 23px;
     height: 12px;
-    background: #202020;
-    border: 1px solid #5d5d5d;
-    border-right-color: #202020;
-    border-bottom-color: #202020;
-    color: #00e000;
-    font-size: 8px;
-    font-family: monospace;
+    background: #3c3c44;
+    border: 1px solid;
+    border-color: #606068 #000 #000 #606068;
+    color: #00ff00;
+    font-size: 7px;
+    font-weight: bold;
     padding: 0;
+    cursor: pointer;
 }
 
-.eq-btn::before {
-    content: 'EQ';
+.btn-eq.active,
+.btn-pl.active {
+    color: #ffffff;
+    text-shadow: 0 0 2px #fff;
 }
 
-.pl-btn::before {
-    content: 'PL';
-}
-
-
-/* ===========================
-   EQUALIZER WINDOW (275 x 116)
-   =========================== */
-#equalizer-window {
-    height: 116px;
-    margin-top: 0;
-}
-
-.eq-top-row {
+/* Shuffle/Repeat */
+.shuffle-repeat {
     position: absolute;
-    top: 14px;
-    left: 0;
-    width: 100%;
-    padding: 5px 12px;
+    top: 89px;
+    left: 164px;
     display: flex;
-    justify-content: space-between;
+    gap: 4px;
 }
 
-.on-auto button,
-.presets {
-    background: #202020;
+.btn-shuffle,
+.btn-repeat {
+    height: 15px;
+    background: #3c3c44;
+    border: 1px solid;
+    border-color: #606068 #000 #000 #606068;
+    color: #444;
+    font-size: 7px;
+    font-weight: bold;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+.btn-shuffle.active,
+.btn-repeat.active {
+    color: #00ff00;
+    text-shadow: 0 0 2px #00ff00;
+}
+
+.btn-shuffle {
+    width: 48px;
+}
+
+.btn-repeat {
     width: 30px;
-    height: 12px;
-    border: 1px solid #555;
-    color: #00e000;
-    font-size: 9px;
-    font-family: monospace;
-    padding: 0;
 }
 
-.on-auto button.selected {
-    background: #111;
-    color: #0f0;
-}
+/* ============================================
+   EQUALIZER WINDOW - 275x116px
+   ============================================ */
 
-.eq-graph {
-    position: absolute;
-    top: 35px;
-    left: 13px;
-    width: 247px;
-    height: 63px;
-    background: #101010;
-    /* Dark background for sliders */
-    border: 1px solid #444;
-    border-top-color: #000;
-    border-left-color: #000;
-    display: flex;
-    padding: 10px 5px;
-    gap: 1px;
-}
-
-.slider-vertical {
-    flex: 1;
-    position: relative;
-    background: repeating-linear-gradient(to top, #202020 0, #202020 1px, #000 2px, #000 3px);
-    margin: 0 1px;
-    width: 14px;
-}
-
-/* Slider Thumb Vertical */
-.slider-vertical::after {
-    content: '';
-    position: absolute;
-    left: 2px;
-    width: 10px;
-    height: 6px;
-    background: #aaa;
-    border: 1px solid #fff;
-    border-right-color: #555;
-    border-bottom-color: #555;
-    top: 50%;
-}
-
-.eq-labels {
-    position: absolute;
-    bottom: 4px;
-    left: 14px;
-    display: flex;
-    width: 246px;
-    justify-content: space-between;
-    font-size: 8px;
-    color: #aaa;
-    font-family: monospace;
-}
-
-.eq-labels span {
-    width: 18px;
-    text-align: center;
-}
-
-
-/* ===========================
-   PLAYLIST WINDOW (275 x 232)
-   =========================== */
-#playlist-window {
+#equalizer-window {
     width: 275px;
     height: 116px;
-    /* User wanted side-by-side but stack height? Re-check. 
-    Image shows Playlist is TALLER than one window. It matches 2 stacked windows height roughly.
-    2x116 = 232.
-    */
-    height: 232px;
 }
 
-.playlist-entries {
+.eq-controls {
     position: absolute;
     top: 20px;
-    left: 10px;
-    width: 255px;
-    height: 178px;
-    border: 1px solid #444;
-    border-top-color: #000;
-    border-left-color: #000;
-    background: #000;
-    overflow-y: scroll;
-    padding: 2px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
 }
 
-/* Scrollbar */
-.playlist-entries::-webkit-scrollbar {
-    width: 9px;
-    background: #202020;
+.btn-on,
+.btn-auto,
+.btn-presets {
+    width: 30px;
+    height: 12px;
+    background: #2c2c34;
+    border: 1px solid;
+    border-color: #606068 #000 #000 #606068;
+    color: #00ff19;
+    font-size: 8px;
+    font-weight: bold;
+    padding: 0;
+    cursor: pointer;
+    text-shadow: 0 0 2px #00ff19;
 }
 
-.playlist-entries::-webkit-scrollbar-thumb {
-    background: #505050;
-    border: 1px solid #fff;
-    border-right-color: #000;
-    border-bottom-color: #000;
+.btn-presets {
+    width: 50px;
 }
 
-.entry {
-    color: #00e000;
-    font-family: 'Winamp', 'Consolas', monospace;
-    font-size: 9px;
-    line-height: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.entry.selected {
-    background: #0000a8;
-    color: #fff;
-}
-
-.entry .time {
-    float: right;
-    color: inherit;
-}
-
-/* Playlist Footer Controls */
-.playlist-footer {
+.eq-sliders {
     position: absolute;
-    bottom: 8px;
+    top: 38px;
+    left: 14px;
+    right: 14px;
+    height: 65px;
+    background: #000;
+    border: 1px solid #333;
+    display: flex;
+    padding: 6px 2px;
+    gap: 0;
+    justify-content: space-between;
+}
+
+.slider-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.eq-slider {
+    width: 12px;
+    height: 48px;
+    background: repeating-linear-gradient(to top,
+            #1a1a1a 0px,
+            #1a1a1a 1px,
+            #000 1px,
+            #000 2px);
+    position: relative;
+    border: 1px solid #222;
+}
+
+.eq-slider::after {
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: 0;
+    width: 10px;
+    height: 6px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
+}
+
+.slider-group .label {
+    font-size: 6px;
+    color: #888;
+    text-align: center;
+    margin-top: 2px;
+    transform: scale(0.9);
+}
+
+/* ============================================
+   PLAYLIST WINDOW - 275x232px
+   ============================================ */
+
+#playlist-window {
+    width: 275px;
+    height: 232px;
+    margin-left: 0;
+}
+
+.playlist-content {
+    position: absolute;
+    top: 20px;
     left: 12px;
     right: 12px;
-    height: 20px;
-    display: flex;
-    align-items: flex-end;
+    height: 172px;
+    background: #000;
+    border: 1px solid #333;
+    overflow-y: scroll;
+    padding: 0;
 }
 
-.playlist-buttons-left {
+.playlist-content::-webkit-scrollbar {
+    width: 10px;
+    background: #3c3c44;
+}
+
+.playlist-content::-webkit-scrollbar-thumb {
+    background: #909090;
+    border: 1px solid;
+    border-color: #fff #303030 #303030 #fff;
+}
+
+.playlist-item {
+    color: #00ff19;
+    font-size: 8px;
+    line-height: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 1px 4px;
+    font-family: 'Arial', sans-serif;
+    cursor: pointer;
+    letter-spacing: 0.2px;
+}
+
+.playlist-item.selected {
+    background: #244e94;
+    color: #fff;
+    text-shadow: none;
+}
+
+.playlist-item .duration {
+    float: right;
+}
+
+.playlist-buttons {
     position: absolute;
-    left: 0;
-    bottom: 0;
+    bottom: 32px;
+    left: 12px;
     display: flex;
     gap: 2px;
 }
 
-.playlist-buttons-left button {
-    width: 22px;
+.playlist-buttons button {
+    width: 32px;
     height: 18px;
-    font-size: 8px;
-    padding: 0;
-    background: #202020;
-    border: 1px solid #555;
-    color: #ccc;
-    font-family: Arial, sans-serif;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #555 #555 #fff;
+    font-size: 7px;
     font-weight: bold;
-}
-
-.playlist-buttons-right {
-    position: absolute;
-    right: 80px;
-    bottom: 1px;
-}
-
-.playlist-buttons-right button {
-    width: 44px;
-    height: 18px;
-    font-size: 9px;
     padding: 0;
-    background: #202020;
-    border: 1px solid #555;
-    color: #ccc;
+    cursor: pointer;
+    color: #000;
 }
 
-.playlist-summary {
+.playlist-buttons button:active {
+    border-color: #555 #fff #fff #555;
+    background: #a0a0a0;
+}
+
+.playlist-info {
     position: absolute;
-    right: 0;
-    bottom: 1px;
+    bottom: 32px;
+    right: 12px;
     width: 75px;
     height: 18px;
-    border: 1px solid #444;
-    border-top-color: #000;
-    border-left-color: #000;
     background: #000;
-    color: #00e000;
-    font-size: 9px;
-    line-height: 18px;
-    text-align: center;
-}
-
-.playlist-transport {
-    /* Minimal controls in PL window - per screenshot they exist */
-    position: absolute;
-    bottom: 30px;
-    right: 15px;
-    /* Wait, screenshot shows a second row of buttons? 
-       No, "LIST OPTS" row is the bottom row.
-       The "buttons" in JS might be for hidden transport.
-    */
-    display: none;
-    /* Hide for now as they break layout until needed */
+    border: 1px solid;
+    border-color: #000 #606068 #606068 #000;
+    color: #00ff19;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 0 2px #00ff19;
 }

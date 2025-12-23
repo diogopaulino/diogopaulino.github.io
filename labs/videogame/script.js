@@ -1,10 +1,16 @@
 const App = {
     emulator: null,
     currentCore: null,
+    currentRomId: null,
+    isManualFullscreen: false,
     basePath: window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1),
+    allGames: [],
+    coverCache: new Map(),
+    imageObserver: null,
+    preconnectedHosts: new Set(),
     settings: {
-        scale: localStorage.getItem('emu-scale') || 'max',
-        filter: localStorage.getItem('emu-filter') || 'pixel'
+        scale: 'max',
+        filter: 'pixel'
     },
     ui: {
         home: document.getElementById('home'),
@@ -14,7 +20,17 @@ const App = {
         gameName: document.getElementById('game-name'),
         loader: document.getElementById('loader'),
         screen: document.getElementById('screen'),
-        grid: document.getElementById('games-grid')
+        grid: document.getElementById('games-grid'),
+        searchInput: document.getElementById('game-search'),
+        romInput: document.getElementById('rom-file-input'),
+        mobileControls: document.getElementById('mobile-controls'),
+        buttons: {
+            back: document.getElementById('btn-back'),
+            controls: document.getElementById('btn-controls'),
+            fullscreen: document.getElementById('btn-fullscreen'),
+            save: document.getElementById('btn-save'),
+            load: document.getElementById('btn-load')
+        }
     },
     activeTouches: new Map(),
     keyMap: {
@@ -38,30 +54,108 @@ const App = {
         'x': { code: 'KeyX', keyCode: 88 }
     },
     init() {
+        this.loadSettings();
+        this.setupImageObserver();
         this.setupEventListeners();
         this.setupSettings();
         this.setupMobileControls();
         this.loadCatalog();
+        this.db.open().catch(() => { });
+    },
+    loadSettings() {
+        this.settings.scale = this.getStoredSetting('scale', 'max', ['max', 'stretch']);
+        this.settings.filter = this.getStoredSetting('filter', 'pixel', ['pixel', 'retro', 'smooth']);
+    },
+    setupImageObserver() {
+        // Intersection Observer para lazy loading inteligente
+        if ('IntersectionObserver' in window) {
+            this.imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const card = entry.target;
+                        const gameId = card.dataset.id;
+                        if (gameId && !this.coverCache.has(gameId)) {
+                            const game = this.allGames.find(g => g.id === gameId);
+                            if (game) {
+                                this.prepareCover(game);
+                                this.imageObserver.unobserve(card);
+                            }
+                        }
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '200px', // Carrega imagens 200px antes de aparecerem
+                threshold: 0.01
+            });
+        }
+    },
+    preconnectToImageHosts(games) {
+        // Preconnect para CDNs de imagens para estabelecer conexão antecipada
+        const hosts = new Set();
+        games.slice(0, 20).forEach(game => { // Apenas os primeiros 20 jogos
+            const urls = this.buildCoverUrlList(game);
+            urls.forEach(url => {
+                try {
+                    const hostname = new URL(url).hostname;
+                    if (!this.preconnectedHosts.has(hostname)) {
+                        hosts.add(hostname);
+                        this.preconnectedHosts.add(hostname);
+                    }
+                } catch (e) { }
+            });
+        });
+
+        hosts.forEach(host => {
+            const link = document.createElement('link');
+            link.rel = 'preconnect';
+            link.href = `https://${host}`;
+            link.crossOrigin = 'anonymous';
+            document.head.appendChild(link);
+        });
+    },
+    preloadPriorityImages(games) {
+        // Preload das primeiras imagens visíveis com alta prioridade
+        const visibleGames = games.slice(0, 6); // Primeiros 6 jogos
+        visibleGames.forEach(game => {
+            const urls = this.buildCoverUrlList(game);
+            if (urls.length > 0) {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = urls[0];
+                link.fetchPriority = 'high';
+                document.head.appendChild(link);
+            }
+        });
+    },
+    getStoredSetting(name, fallback, allowedValues) {
+        const stored = localStorage.getItem(`emu-${name}`);
+        return stored && allowedValues.includes(stored) ? stored : fallback;
     },
     setupEventListeners() {
-        document.getElementById('btn-back')?.addEventListener('click', () => this.showHome());
-        document.getElementById('btn-controls')?.addEventListener('click', () => this.showControls());
-        document.getElementById('btn-fullscreen')?.addEventListener('click', () => this.toggleFullscreen());
-        document.getElementById('btn-save')?.addEventListener('click', () => this.saveGame());
-        document.getElementById('btn-load')?.addEventListener('click', () => this.loadGame());
-        this.ui.grid?.addEventListener('click', e => {
+        const { buttons, grid, searchInput, romInput } = this.ui;
+        const { back, controls, fullscreen, save, load } = buttons || {};
+
+        back?.addEventListener('click', () => this.showHome());
+        controls?.addEventListener('click', () => this.showControls());
+        fullscreen?.addEventListener('click', () => this.toggleFullscreen());
+        save?.addEventListener('click', () => this.saveGame());
+        load?.addEventListener('click', () => this.loadGame());
+
+        grid?.addEventListener('click', e => {
             const card = e.target.closest('.game-card');
             if (card && card.dataset.id) this.startGameById(card.dataset.id)
         });
         let searchTimeout;
-        document.getElementById('game-search')?.addEventListener('input', e => {
+        searchInput?.addEventListener('input', e => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 const term = e.target.value.toLowerCase();
                 this.renderGames(this.allGames.filter(g => g.title.toLowerCase().includes(term)));
             }, 300);
         });
-        document.getElementById('rom-file-input')?.addEventListener('change', e => {
+        romInput?.addEventListener('change', e => {
             const file = e.target.files[0];
             if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''))
         });
@@ -72,15 +166,21 @@ const App = {
     },
 
     handleFullscreenChange() {
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-        document.body.classList.toggle('is-fullscreen', !!isFullscreen);
-        const mobileControls = document.getElementById('mobile-controls');
-        if (mobileControls) {
-            mobileControls.classList.toggle('fullscreen-mode', !!isFullscreen);
+        const isFullscreen = this.isFullscreenActive();
+        document.body.classList.toggle('is-fullscreen', isFullscreen);
+        this.setMobileControlsFullscreen(isFullscreen);
+        if (!this.isNativeFullscreenActive()) {
+            this.isManualFullscreen = false;
         }
     },
+    isNativeFullscreenActive() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    },
+    isFullscreenActive() {
+        return this.isManualFullscreen || this.isNativeFullscreenActive();
+    },
     setupMobileControls() {
-        const container = document.getElementById('mobile-controls');
+        const container = this.ui.mobileControls;
         if (!container) return;
 
         const options = { passive: false };
@@ -160,19 +260,28 @@ const App = {
     },
 
     triggerKey(key, code, keyCode, type) {
+        const targets = new Set([
+            document.activeElement && document.activeElement !== document.body ? document.activeElement : null,
+            this.ui.screen.querySelector('canvas'),
+            document,
+            window
+        ]);
+        targets.forEach(target => this.fireKeyboardEvent(target, type, key, code, keyCode));
+    },
+    fireKeyboardEvent(target, type, key, code, keyCode) {
+        if (!target || typeof target.dispatchEvent !== 'function') return;
         const evt = new KeyboardEvent(type, {
-            key: key,
-            code: code,
-            keyCode: keyCode,
+            key,
+            code,
+            keyCode,
             which: keyCode,
             bubbles: true,
             cancelable: true,
             view: window
         });
-        Object.defineProperty(evt, 'keyCode', { value: keyCode });
-        Object.defineProperty(evt, 'which', { value: keyCode });
-        document.dispatchEvent(evt); // Global listener often on document
-        window.dispatchEvent(evt);   // Backup
+        Object.defineProperty(evt, 'keyCode', { value: keyCode, writable: false });
+        Object.defineProperty(evt, 'which', { value: keyCode, writable: false });
+        target.dispatchEvent(evt);
     },
     setupSettings() {
         document.querySelectorAll('.btn-group').forEach(group => {
@@ -191,15 +300,28 @@ const App = {
         });
     },
     saveSetting(name, value) {
+        if (!this.isValidSetting(name, value)) return;
         this.settings[name] = value;
         localStorage.setItem(`emu-${name}`, value);
         this.applySettings()
+    },
+    isValidSetting(name, value) {
+        const allowed = {
+            scale: ['max', 'stretch'],
+            filter: ['pixel', 'retro', 'smooth']
+        };
+        return allowed[name]?.includes(value) ?? false;
     },
     applySettings() {
         const canvas = this.ui.screen.querySelector('canvas');
         if (!canvas) return;
         // Remove previous classes
         this.ui.screen.classList.remove('scanlines');
+        canvas.classList.remove('filter-pixel', 'filter-smooth', 'filter-retro');
+        canvas.style.imageRendering = '';
+        canvas.style.width = '';
+        canvas.style.height = '';
+        canvas.style.objectFit = '';
 
         if (this.settings.filter === 'pixel') {
             canvas.classList.add('filter-pixel');
@@ -223,16 +345,16 @@ const App = {
             canvas.style.objectFit = 'fill';
         }
     },
-    showHome() {
+    async showHome() {
         document.body.classList.remove('game-mode');
         this.ui.home.classList.remove('hidden');
         this.ui.player.classList.add('hidden');
         this.ui.player.setAttribute('aria-hidden', 'true');
         this.ui.header.style.display = 'flex';
         this.ui.footer.style.display = 'block';
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
-        this.exitManualFullscreen();
-        this.stopEmulator()
+        if (this.isNativeFullscreenActive()) this.exitFullscreenSafe();
+        if (this.isManualFullscreen) this.exitManualFullscreen();
+        await this.stopEmulator()
     },
     showPlayer(name) {
         document.body.classList.add('game-mode');
@@ -243,53 +365,69 @@ const App = {
         this.ui.footer.style.display = 'none';
         this.ui.gameName.textContent = name
     },
+    resetScreen() {
+        if (!this.ui.screen) return;
+        this.ui.screen.innerHTML = '';
+        this.ui.screen.classList.remove('scanlines');
+    },
     toggleFullscreen() {
         const elem = this.ui.player;
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || this.isManualFullscreen;
+        if (!elem) return;
 
-        if (!isFullscreen) {
-            // Tenta API nativa primeiro
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().then(() => {
-                    this.isManualFullscreen = false;
-                }).catch(err => {
+        if (!this.isFullscreenActive()) {
+            const requested = this.requestFullscreenSafe(elem);
+            if (!requested) this.enterManualFullscreen();
+        } else {
+            if (this.isManualFullscreen) this.exitManualFullscreen();
+            else if (!this.exitFullscreenSafe()) this.exitManualFullscreen();
+        }
+    },
+    requestFullscreenSafe(elem) {
+        const request = elem?.requestFullscreen || elem?.webkitRequestFullscreen || elem?.mozRequestFullScreen || elem?.msRequestFullscreen;
+        if (!request) return false;
+        try {
+            const result = request.call(elem);
+            this.isManualFullscreen = false;
+            if (result && typeof result.catch === 'function') {
+                result.catch(err => {
                     console.warn('Fullscreen nativo falhou, usando fallback:', err);
                     this.enterManualFullscreen();
                 });
-            } else if (elem.webkitRequestFullscreen) {
-                try {
-                    elem.webkitRequestFullscreen();
-                } catch (e) {
-                    this.enterManualFullscreen();
-                }
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            } else {
-                this.enterManualFullscreen();
             }
-        } else {
-            if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
-
-            this.exitManualFullscreen();
+            return true;
+        } catch (error) {
+            console.warn('Fullscreen nativo indisponível:', error);
+            return false;
+        }
+    },
+    exitFullscreenSafe() {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (!exit) return false;
+        try {
+            const result = exit.call(document);
+            if (result && typeof result.catch === 'function') {
+                result.catch(() => { });
+            }
+            return true;
+        } catch (error) {
+            console.warn('Erro ao sair do fullscreen nativo:', error);
+            return false;
         }
     },
     enterManualFullscreen() {
         this.isManualFullscreen = true;
         document.body.classList.add('is-fullscreen');
-        const mobileControls = document.getElementById('mobile-controls');
-        if (mobileControls) mobileControls.classList.add('fullscreen-mode');
+        this.setMobileControlsFullscreen(true);
         window.scrollTo(0, 1);
     },
     exitManualFullscreen() {
         this.isManualFullscreen = false;
         document.body.classList.remove('is-fullscreen');
-        const mobileControls = document.getElementById('mobile-controls');
-        if (mobileControls) mobileControls.classList.remove('fullscreen-mode');
+        this.setMobileControlsFullscreen(false);
+    },
+    setMobileControlsFullscreen(isFullscreen) {
+        const mobileControls = this.ui.mobileControls;
+        if (mobileControls) mobileControls.classList.toggle('fullscreen-mode', !!isFullscreen);
     },
     showControls() {
         if (document.getElementById('controls-overlay')) return document.getElementById('controls-overlay').remove();
@@ -344,12 +482,12 @@ const App = {
         if (e.key === 'Escape') {
             const overlay = document.getElementById('controls-overlay');
             if (overlay) overlay.remove();
-            else if (document.fullscreenElement || this.isManualFullscreen) this.toggleFullscreen();
+            else if (this.isFullscreenActive()) this.toggleFullscreen();
             else if (!this.ui.player.classList.contains('hidden')) this.showHome()
         }
         if (e.key.toLowerCase() === 'f' && !this.ui.player.classList.contains('hidden')) this.toggleFullscreen()
         if (e.key === 'Enter' && !this.ui.player.classList.contains('hidden')) {
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || this.isManualFullscreen;
+            const isFullscreen = this.isFullscreenActive();
             if (isFullscreen) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -358,7 +496,7 @@ const App = {
     },
     handleKeyRemap(e) {
         if (this.ui.player.classList.contains('hidden')) return;
-        if (!this.currentCore) return;
+        if (!this.currentCore || !e.isTrusted) return;
 
         const key = e.key.toLowerCase();
         let map = null;
@@ -366,124 +504,139 @@ const App = {
         if (key === 's') map = { key: 'z', code: 'KeyZ', keyCode: 90 };
         else if (key === 'd') map = { key: 'x', code: 'KeyX', keyCode: 88 };
 
-        if (map && e.isTrusted) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            const evt = new KeyboardEvent(e.type, {
-                key: map.key,
-                code: map.code,
-                keyCode: map.keyCode,
-                which: map.keyCode,
-                bubbles: true,
-                cancelable: true,
-                view: window
-            });
-            Object.defineProperty(evt, 'keyCode', { value: map.keyCode, writable: false });
-            Object.defineProperty(evt, 'which', {
-                value: map.keyCode,
-                writable: false
-            });
-            const canvas = this.ui.screen.querySelector('canvas');
-            if (canvas) {
-                canvas.dispatchEvent(evt);
-                canvas.focus();
-            }
-            document.dispatchEvent(evt);
-            window.dispatchEvent(evt);
-        }
+        if (!map) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const canvas = this.ui.screen.querySelector('canvas');
+        if (canvas && document.activeElement !== canvas) canvas.focus();
+
+        this.triggerKey(map.key, map.code, map.keyCode, e.type);
     },
     async startGame(rom, name) {
-        this.currentRomId = typeof rom === 'string' ? rom : rom.name;
-        this.showPlayer(name);
+        const romKey = this.getRomKey(rom);
+        this.currentRomId = romKey || name || `rom-${Date.now()}`;
+        this.showPlayer(name || romKey || 'Jogo');
         this.ui.loader.classList.remove('hidden');
+
         try {
             await this.stopEmulator();
             const canvas = document.createElement('canvas');
             this.ui.screen.appendChild(canvas);
 
-            const romFile = typeof rom === 'string' ? rom : rom.name;
-            const core = this.getCore(romFile);
-            this.currentCore = core;
+            const romToLoad = this.getRomSource(rom);
+            if (!romToLoad) throw new Error('Arquivo do jogo inválido.');
 
-            const resolveRom = (f, options) => {
-                if (!f) return f;
-                if (typeof f === 'string') {
-                    if (f.startsWith('http://') || f.startsWith('https://')) {
-                        if (f.includes('cdn.jsdelivr.net/gh/')) {
-                            const githubUrl = f.replace('https://cdn.jsdelivr.net/gh/', 'https://raw.githubusercontent.com/').replace('@master', '/master');
-                            return githubUrl;
-                        }
-                        try {
-                            const url = new URL(f);
-                            return url.href;
-                        } catch (e) {
-                            console.warn('URL inválida:', f);
-                            return f;
-                        }
-                    }
-                    return this.basePath + f;
-                }
-                return f;
-            };
-
-            const romToLoad = typeof rom === 'string' ? rom : (rom instanceof File ? rom : (rom.file || rom.name));
-
-            if (typeof romToLoad === 'string' && (romToLoad.startsWith('http://') || romToLoad.startsWith('https://'))) {
-                try {
-                    const testUrl = new URL(romToLoad);
-                    if (!testUrl.hostname || !testUrl.pathname) {
-                        throw new Error('URL inválida');
-                    }
-                } catch (urlError) {
-                    throw new Error(`URL do jogo inválida: ${romToLoad}`);
-                }
+            if (typeof romToLoad === 'string' && /^https?:\/\//.test(romToLoad)) {
+                this.validateRomUrl(romToLoad);
             }
+
+            const core = this.getCore(romKey);
 
             this.emulator = await Promise.race([
                 Nostalgist.launch({
                     core,
                     rom: romToLoad,
-                    resolveCoreJs: c => this.basePath + 'lib/' + c + '_libretro.js',
-                    resolveCoreWasm: c => this.basePath + 'lib/' + c + '_libretro.wasm',
-                    resolveRom: resolveRom,
+                    resolveCoreJs: c => `${this.basePath}lib/${c}_libretro.js`,
+                    resolveCoreWasm: c => `${this.basePath}lib/${c}_libretro.wasm`,
+                    resolveRom: resource => this.resolveRomPath(resource),
                     element: canvas
                 }),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout ao carregar o jogo. Tente novamente.')), 60000)
-                )
+                this.createTimeoutPromise(60000, 'Timeout ao carregar o jogo. Tente novamente.')
             ]);
 
+            this.currentCore = core;
             this.applySettings();
-            this.ui.loader.classList.add('hidden')
-        } catch (e) {
-            console.error('Erro ao carregar jogo:', e);
+        } catch (error) {
+            console.error('Erro ao carregar jogo:', error);
+            this.currentCore = null;
+            this.showScreenError(this.getFriendlyErrorMessage(error));
+        } finally {
             this.ui.loader.classList.add('hidden');
-            let errorMessage = 'Erro desconhecido ao carregar o jogo.';
-
-            if (e.message) {
-                const msg = e.message.toLowerCase();
-                if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) {
-                    errorMessage = 'Erro ao carregar o arquivo do jogo. Verifique sua conexão ou tente novamente.';
-                } else if (msg.includes('404') || msg.includes('not found')) {
-                    errorMessage = 'Arquivo do jogo não encontrado.';
-                } else if (msg.includes('cors') || msg.includes('cross-origin')) {
-                    errorMessage = 'Erro de permissão ao acessar o arquivo do jogo.';
-                } else if (msg.includes('invalid url') || msg.includes('url inválida')) {
-                    errorMessage = 'URL do jogo inválida.';
-                } else {
-                    errorMessage = `Erro: ${e.message}`;
-                }
-            }
-
-            this.ui.screen.innerHTML = `<div class="error"><p>${errorMessage}</p><button onclick="App.showHome()">Voltar</button></div>`
         }
+    },
+    getFriendlyErrorMessage(error) {
+        if (!error || !error.message) return 'Erro desconhecido ao carregar o jogo.';
+        const msg = error.message.toLowerCase();
+        if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) return 'Erro ao carregar o arquivo do jogo. Verifique sua conexão ou tente novamente.';
+        if (msg.includes('404') || msg.includes('not found')) return 'Arquivo do jogo não encontrado.';
+        if (msg.includes('cors') || msg.includes('cross-origin')) return 'Erro de permissão ao acessar o arquivo do jogo.';
+        if (msg.includes('invalid url') || msg.includes('url inválida')) return 'URL do jogo inválida.';
+        return `Erro: ${error.message}`;
+    },
+    showScreenError(message) {
+        if (!this.ui.screen) return;
+        this.resetScreen();
+        const container = document.createElement('div');
+        container.className = 'error';
+
+        const text = document.createElement('p');
+        text.textContent = message;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Voltar';
+        button.addEventListener('click', () => this.showHome());
+
+        container.appendChild(text);
+        container.appendChild(button);
+        this.ui.screen.appendChild(container);
+    },
+    resolveRomPath(resource) {
+        if (!resource || typeof resource !== 'string') return resource;
+        if (/^https?:\/\//.test(resource)) {
+            if (resource.includes('cdn.jsdelivr.net/gh/')) {
+                return resource.replace('https://cdn.jsdelivr.net/gh/', 'https://raw.githubusercontent.com/').replace('@master', '/master');
+            }
+            try {
+                const url = new URL(resource);
+                return url.href;
+            } catch (err) {
+                console.warn('URL inválida:', resource);
+                return resource;
+            }
+        }
+        return this.basePath + resource;
+    },
+    getRomSource(rom) {
+        if (rom instanceof File) return rom;
+        if (typeof rom === 'string') return rom;
+        if (rom && typeof rom === 'object') return rom.file || rom.name || null;
+        return null;
+    },
+    getRomKey(rom) {
+        if (typeof rom === 'string') return rom;
+        if (rom instanceof File) return rom.name;
+        if (rom && typeof rom === 'object') return rom.name || rom.file || '';
+        return '';
+    },
+    validateRomUrl(url) {
+        try {
+            const parsed = new URL(url);
+            if (!parsed.hostname || !parsed.pathname) throw new Error('URL inválida');
+        } catch (error) {
+            throw new Error(`URL do jogo inválida: ${url}`);
+        }
+    },
+    createTimeoutPromise(timeout, message) {
+        return new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(message)), timeout);
+        });
     },
     startGameById(id) {
         const game = this.allGames.find(g => g.id === id);
         game ? this.startGame(game.file, game.title) : console.error('Jogo não encontrado:', id)
     },
+    ensureEmulator(message) {
+        if (!this.emulator) {
+            if (message) this.showToast(message, 'info');
+            return false;
+        }
+        return true;
+    },
     async saveGame() {
-        if (!this.emulator) return;
+        if (!this.ensureEmulator('Abra um jogo para salvar.')) return;
         try {
             const state = await this.emulator.saveState();
             if (state) {
@@ -493,7 +646,7 @@ const App = {
                     this.showToast('Jogo salvo com sucesso!', 'success');
                 } catch (e) {
                     console.warn('Save failed, attempting download...', e);
-                    this.exportSave();
+                    await this.exportSave({ silent: true });
                     this.showToast('Erro ao salvar no navegador. Baixando arquivo...', 'warning');
                 }
             }
@@ -503,14 +656,21 @@ const App = {
         }
     },
     async loadGame() {
-        if (!this.emulator) return;
+        if (!this.ensureEmulator('Abra um jogo para carregar um save.')) return;
         try {
             const state = await this.db.get(this.currentRomId);
             if (state) {
                 let stateBlob = state;
                 if (typeof state === 'string') {
-                    const res = await fetch(state);
-                    stateBlob = await res.blob();
+                    if (state.startsWith('data:')) stateBlob = this.dataURLToBlob(state);
+                    else {
+                        const res = await fetch(state);
+                        stateBlob = await res.blob();
+                    }
+                    if (!stateBlob) {
+                        this.showToast('Save inválido.', 'error');
+                        return;
+                    }
                 }
                 await this.emulator.loadState(stateBlob);
                 this.showToast('Jogo carregado!', 'success');
@@ -522,29 +682,67 @@ const App = {
             this.showToast('Erro ao carregar jogo.', 'error');
         }
     },
-    exportSave() {
-        if (!this.emulator) return;
-        this.emulator.saveState().then(state => {
-            if (state) {
-                const blob = new Blob([state.state]);
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `${this.currentRomId}.sav`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
-                this.showToast('Save baixado!', 'success');
+    async exportSave(options = {}) {
+        if (!this.ensureEmulator('Abra um jogo para baixar o save.')) return;
+        try {
+            const state = await this.emulator.saveState();
+            if (!state) {
+                this.showToast('Não foi possível gerar o save.', 'warning');
+                return;
             }
-        });
+            const blob = new Blob([state.state]);
+            this.downloadBlob(blob, `${this.currentRomId}.sav`);
+            if (!options.silent) this.showToast('Save baixado!', 'success');
+        } catch (error) {
+            console.error('Erro ao exportar save:', error);
+            if (!options.silent) this.showToast('Erro ao exportar save.', 'error');
+        }
+    },
+    downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const supportsDownload = 'download' in link;
+        if (supportsDownload) {
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            const opened = window.open(url, '_blank');
+            if (!opened) window.location.href = url;
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    },
+    dataURLToBlob(dataUrl) {
+        try {
+            const parts = dataUrl.split(',');
+            if (parts.length < 2) return null;
+            const meta = parts[0];
+            const base64 = parts[1];
+            const mimeMatch = meta.match(/data:(.*?);base64/);
+            const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+            const binary = atob(base64);
+            const buffer = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
+            return new Blob([buffer], { type: mime });
+        } catch (error) {
+            console.warn('Erro ao converter save local:', error);
+            return null;
+        }
     },
     importSave() {
+        if (!this.ensureEmulator('Abra um jogo para carregar um save.')) return;
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.sav,.state';
         input.onchange = async e => {
             const file = e.target.files[0];
             if (file) {
+                if (!this.emulator) {
+                    this.showToast('Abra um jogo para carregar um save.', 'info');
+                    return;
+                }
                 try {
                     await this.emulator.loadState(file);
                     this.showToast('Save carregado do arquivo!', 'success');
@@ -657,14 +855,18 @@ const App = {
         if (this.emulator) {
             try {
                 await this.emulator.exit()
-            } catch (e) { }
+            } catch (e) {
+                console.warn('Erro ao encerrar emulador:', e);
+            }
             this.emulator = null
         }
         this.currentCore = null;
-        this.ui.screen.querySelector('canvas')?.remove()
+        this.resetScreen()
     },
     getCore(f) {
-        return ['sfc', 'smc'].includes(f.split('.').pop().toLowerCase()) ? 'snes9x' : 'genesis_plus_gx'
+        if (!f || typeof f !== 'string') return 'genesis_plus_gx';
+        const ext = f.split('.').pop().toLowerCase();
+        return ['sfc', 'smc'].includes(ext) ? 'snes9x' : 'genesis_plus_gx'
     },
     async loadCatalog() {
         try {
@@ -677,66 +879,145 @@ const App = {
             this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;">Erro ao carregar lista.</p>'
         }
     },
-    async loadImageWithFallback(img, urls, placeholder, skipUrl = null) {
+    async loadImageWithFallback(gameId, img, placeholder, urls) {
         if (!img || !urls?.length) {
-            if (placeholder) placeholder.style.display = 'flex';
+            this.coverCache.set(gameId, null);
+            this.showPlaceholder(placeholder, img);
             return;
         }
 
-        const candidates = urls.filter(u => u && typeof u === 'string' && u.startsWith('http') && u !== skipUrl);
-        const maxAttempts = Math.min(candidates.length, 30);
-
-        const loadOne = (src) => new Promise((resolve, reject) => {
-            const temp = new Image();
-            const timer = setTimeout(() => {
-                temp.onload = null;
-                temp.onerror = null;
-                reject('timeout');
-            }, 2000);
-
-            temp.onload = () => {
-                clearTimeout(timer);
-                resolve(src);
-            };
-            temp.onerror = () => {
-                clearTimeout(timer);
-                reject('error');
-            };
-            temp.src = src;
-        });
-
+        const maxAttempts = Math.min(urls.length, 30);
         for (let i = 0; i < maxAttempts; i++) {
+            const src = urls[i];
+            if (!src) continue;
             try {
-                const src = candidates[i];
-                if (!src) continue;
-                await loadOne(src);
-
-                img.src = src;
-                img.style.display = 'block';
-                if (placeholder) placeholder.style.display = 'none';
+                await this.preloadImage(src);
+                this.coverCache.set(gameId, src);
+                this.showCoverImage(img, placeholder, src);
                 return;
-            } catch (e) {
-                // Continue to next, small delay to separate requests slightly
+            } catch (err) {
                 if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 25));
             }
         }
 
-        // All failed
-        img.style.display = 'none';
-        if (placeholder) placeholder.style.display = 'flex';
+        this.coverCache.set(gameId, null);
+        this.showPlaceholder(placeholder, img);
+    },
+    preloadImage(src) {
+        return new Promise((resolve, reject) => {
+            const temp = new Image();
+            temp.decoding = 'async'; // Decodificação assíncrona nativa
+            temp.loading = 'lazy'; // Lazy loading nativo
+
+            const timer = setTimeout(() => {
+                temp.onload = null;
+                temp.onerror = null;
+                reject(new Error('timeout'));
+            }, 4000);
+
+            temp.onload = () => {
+                clearTimeout(timer);
+                // Aguarda decodificação completa antes de resolver
+                if (temp.decode) {
+                    temp.decode()
+                        .then(() => resolve(src))
+                        .catch(() => resolve(src)); // Fallback se decode falhar
+                } else {
+                    resolve(src);
+                }
+            };
+            temp.onerror = () => {
+                clearTimeout(timer);
+                reject(new Error('error'));
+            };
+            temp.src = src;
+        });
+    },
+    prepareCover(game) {
+        const card = document.getElementById(this.getGameCardId(game.id));
+        if (!card) return;
+
+        const img = card.querySelector('.game-cover img');
+        const placeholder = card.querySelector('.cover-placeholder');
+        const urls = this.buildCoverUrlList(game);
+
+        if (!urls.length) {
+            this.coverCache.set(game.id, null);
+            this.showPlaceholder(placeholder, img);
+            return;
+        }
+
+        this.showPlaceholder(placeholder, img);
+        this.loadImageWithFallback(game.id, img, placeholder, urls);
+    },
+    buildCoverUrlList(game) {
+        const urls = [];
+        if (game.cover) urls.push(game.cover);
+        if (Array.isArray(game.coverUrls)) urls.push(...game.coverUrls);
+        return [...new Set(urls.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)))];
+    },
+    getGameCardId(id) {
+        return `game-card-${id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    },
+    showCoverImage(img, placeholder, src) {
+        if (!img) return;
+        img.src = src;
+
+        // Usar decode() nativo para decodificação assíncrona antes de exibir
+        if (img.decode) {
+            img.decode()
+                .then(() => {
+                    img.style.display = 'block';
+                    if (placeholder) placeholder.classList.remove('is-visible');
+                })
+                .catch(() => {
+                    // Fallback se decode falhar
+                    img.style.display = 'block';
+                    if (placeholder) placeholder.classList.remove('is-visible');
+                });
+        } else {
+            // Fallback para navegadores sem suporte a decode()
+            img.style.display = 'block';
+            if (placeholder) placeholder.classList.remove('is-visible');
+        }
+    },
+    showPlaceholder(placeholder, img) {
+        if (img) img.style.display = 'none';
+        if (placeholder) placeholder.classList.add('is-visible');
     },
     renderGames(games) {
         if (!this.ui.grid) return;
         if (games.length === 0) return this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;padding:2rem;">Nenhum jogo encontrado.</p>';
 
-        this.ui.grid.innerHTML = games.map(g => {
+        // Preconnect para CDNs de imagens
+        this.preconnectToImageHosts(games);
+
+        this.ui.grid.innerHTML = games.map((g, index) => {
             const t = g.title.replace(/"/g, '&quot;');
-            const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-            const hasCover = !!g.cover;
+            const cardId = this.getGameCardId(g.id);
+            const hasCache = this.coverCache.has(g.id);
+            const cachedCover = hasCache ? this.coverCache.get(g.id) : null;
+
+            // Atributos otimizados para imagens
+            const imgAttributes = [
+                `alt="${t}"`,
+                'loading="lazy"', // Lazy loading nativo
+                'decoding="async"', // Decodificação assíncrona
+                `data-game="${g.id}"`,
+                index < 6 ? 'fetchpriority="high"' : 'fetchpriority="low"' // Prioridade para primeiras imagens
+            ];
+
+            if (cachedCover) {
+                imgAttributes.push(`src="${cachedCover}"`);
+            } else {
+                imgAttributes.push('style="display:none"');
+            }
+
+            const placeholderClass = `cover-placeholder${cachedCover ? '' : ' is-visible'}`;
             return `<button class="game-card" data-id="${g.id}" id="${cardId}">
                 <div class="game-cover">
-                    ${hasCover ? `<img src="${g.cover}" alt="${t}" loading="lazy" data-title="${g.title}">` : ''}
-                    <div class="cover-placeholder" style="${hasCover ? 'display:none' : 'display:flex'}">
+                    <img ${imgAttributes.join(' ')} data-title="${t}">
+                    <div class="${placeholderClass}">
                         <span>${g.title}</span>
                     </div>
                 </div>
@@ -747,20 +1028,23 @@ const App = {
             </button>`;
         }).join('');
 
-        games.forEach(g => {
-            if (!g.cover) return;
-            const cardId = `game-card-${g.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-            const card = document.getElementById(cardId);
-            if (!card) return;
+        // Preload das primeiras imagens com alta prioridade
+        this.preloadPriorityImages(games);
 
-            const img = card.querySelector('.game-cover img');
-            const placeholder = card.querySelector('.cover-placeholder');
-            if (img && placeholder) {
-                const coverUrls = Array.isArray(g.coverUrls) ? g.coverUrls : [];
-                const urlSet = new Set([g.cover, ...coverUrls.filter(Boolean)]);
-                this.loadImageWithFallback(img, Array.from(urlSet), placeholder, null);
-            }
-        });
+        // Usar Intersection Observer para carregar imagens sob demanda
+        if (this.imageObserver) {
+            games.forEach(g => {
+                const card = document.getElementById(this.getGameCardId(g.id));
+                if (card && !this.coverCache.has(g.id)) {
+                    this.imageObserver.observe(card);
+                }
+            });
+        } else {
+            // Fallback para navegadores sem Intersection Observer
+            games.forEach(g => {
+                if (!this.coverCache.has(g.id)) this.prepareCover(g);
+            });
+        }
     },
 };
 document.addEventListener('DOMContentLoaded', () => App.init());

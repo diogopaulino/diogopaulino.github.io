@@ -1,5 +1,8 @@
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', {
+    alpha: false,  // Não precisa de transparência
+    desynchronized: true  // Melhor performance em animações
+});
 
 let width, height;
 let particles = [];
@@ -58,13 +61,15 @@ class Particle {
         this.dx *= friction;
         this.dy *= friction;
 
+        // Otimizado: early return se mouse não está ativo
         if (isMouseDown && mouseMode !== 'spawn') {
             const dx = mouseX - this.x;
             const dy = mouseY - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distSq = dx * dx + dy * dy;  // Usar distância ao quadrado evita sqrt
+            const distance = Math.sqrt(distSq);
 
             if (mouseMode === 'blackhole') {
-                const force = 2000 / (distance * distance + 100);
+                const force = 2000 / (distSq + 100);
                 this.dx += dx * force;
                 this.dy += dy * force;
                 if (distance < 20) {
@@ -74,7 +79,7 @@ class Particle {
                     this.dy = (Math.random() - 0.5) * 20;
                 }
             } else {
-                const force = 500 / (distance * distance + 100);
+                const force = 500 / (distSq + 100);
                 if (mouseMode === 'attract') {
                     this.dx += dx * force * 0.5;
                     this.dy += dy * force * 0.5;
@@ -119,8 +124,9 @@ class Particle {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
 
-        if (enableGlow && particles.length < 400) {
-            ctx.shadowBlur = 10;
+        // Otimizado: glow apenas para partículas maiores e com limite menor
+        if (enableGlow && this.radius > 3 && particles.length < 200) {
+            ctx.shadowBlur = 8;
             ctx.shadowColor = this.color;
         } else {
             ctx.shadowBlur = 0;
@@ -135,8 +141,8 @@ class Particle {
 function init() {
     particles = [];
     resize();
-    // Spawn some initial particles to show it works
-    spawnParticles(width / 2, height / 2, 50);
+    // Otimizado: reduzido de 50 para 30 partículas iniciais
+    spawnParticles(width / 2, height / 2, 30);
 }
 
 function animate() {
@@ -150,17 +156,14 @@ function animate() {
         ctx.fillRect(0, 0, width, height);
     }
 
-    // Enable additive blending for glow effect
-    ctx.globalCompositeOperation = 'screen';
-
+    // Removido modo de composição 'screen' para melhor performance
     particles.forEach((particle) => {
         particle.update();
     });
 
-    ctx.globalCompositeOperation = 'source-over';
-
-    if (particles.length > 800) {
-        particles.splice(0, particles.length - 800);
+    // Otimizado: limite reduzido de 800 para 500 partículas
+    if (particles.length > 500) {
+        particles.splice(0, particles.length - 500);
     }
 
     document.getElementById('count').innerText = particles.length;
@@ -185,16 +188,17 @@ function handleInput(x, y) {
     mouseX = x;
     mouseY = y;
     if (isMouseDown && mouseMode === 'spawn') {
-        spawnParticles(x, y, 5);
+        // Otimizado: reduzido de 5 para 2 partículas por frame
+        spawnParticles(x, y, 2);
     }
 }
 
 canvas.addEventListener('mousedown', (e) => {
     isMouseDown = true;
     handleInput(e.clientX, e.clientY);
-    // Burst on click
+    // Otimizado: burst reduzido de 15 para 10 partículas
     if (mouseMode === 'spawn') {
-        spawnParticles(e.clientX, e.clientY, 15);
+        spawnParticles(e.clientX, e.clientY, 10);
     }
 });
 

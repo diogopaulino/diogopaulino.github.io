@@ -6,44 +6,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Labs - Diogo Paulino</title>
   <meta name="description" content="Experimentos e projetos interativos. Design, código e criatividade.">
-  <link rel="stylesheet" href="shared.css">
-  <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#fafbfc">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Labs - Diogo Paulino">
+  <meta property="og:description"
+    content="Coleção de jogos, ferramentas e experimentos visuais construídos com HTML, CSS e JavaScript puro.">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/">
+  <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Labs - Diogo Paulino">
+  <meta name="twitter:description" content="Explorações criativas entre música, jogos e utilidades web.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/labs/shared.css?v=2">
+  <link rel="stylesheet" href="/labs/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Labs - Diogo Paulino",
+    "url": "https://diogopaulino.com.br/labs/",
+    "description": "Experimentos interativos com HTML5, CSS e JavaScript.",
+    "creator": {
+      "@type": "Person",
+      "name": "Diogo Paulino"
+    }
+  }
+  </script>
 </head>
 
 <body>
   <div class="container">
-    <header>
-      <a href="../index.html" class="back-link">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Voltar
-      </a>
-
-      <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema">
-        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-          <circle cx="12" cy="12" r="4" />
-          <path
-            d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
-        </svg>
-        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      </button>
-
-      <h1>Labs</h1>
-      <p class="subtitle">Experimentos interativos</p>
+    <header data-lab-header data-title="Labs" data-subtitle="Experimentos interativos" data-back-href="../index.html"
+      data-back-label="Voltar">
+      <template data-slot="logo">
+        <h1>Labs</h1>
+      </template>
     </header>
 
-    <div class="filters-container">
-      <button class="filter-btn active" data-filter="all">Todos</button>
+    <div class="filters-container" role="toolbar" aria-label="Filtrar projetos">
+      <button class="filter-btn" data-filter="all" aria-pressed="true">Todos</button>
+      <button class="filter-btn" data-filter="game" aria-pressed="false">Games</button>
+      <button class="filter-btn" data-filter="creative" aria-pressed="false">Experimentos</button>
+      <button class="filter-btn" data-filter="tools" aria-pressed="false">Ferramentas</button>
+      <button class="filter-btn" data-filter="music" aria-pressed="false">Música</button>
     </div>
 
     <div class="projects-grid">
-      <a href="videogame/" class="project-card">
+      <a href="/labs/videogame/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -64,7 +77,7 @@
           </div>
         </div>
       </a>
-      <a href="lander/" class="project-card">
+      <a href="/labs/lander/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -84,7 +97,7 @@
           </div>
         </div>
       </a>
-      <a href="aurora-flow/" class="project-card">
+      <a href="/labs/aurora-flow/" class="project-card" data-groups="creative">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -103,7 +116,7 @@
           </div>
         </div>
       </a>
-      <a href="paint/" class="project-card">
+      <a href="/labs/paint/" class="project-card" data-groups="creative,tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -123,7 +136,7 @@
           </div>
         </div>
       </a>
-      <a href="piano/" class="project-card">
+      <a href="/labs/piano/" class="project-card" data-groups="music">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <rect x="8" y="12" width="6" height="24" rx="1" fill="currentColor" />
@@ -145,7 +158,7 @@
         </div>
       </a>
 
-      <a href="gravity/" class="project-card">
+      <a href="/labs/gravity/" class="project-card" data-groups="creative">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10" />
@@ -164,7 +177,7 @@
         </div>
       </a>
 
-      <a href="minesweeper/" class="project-card">
+      <a href="/labs/minesweeper/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -189,7 +202,7 @@
           </div>
         </div>
       </a>
-      <a href="image-optimizer/" class="project-card">
+      <a href="/labs/image-optimizer/" class="project-card" data-groups="tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -208,7 +221,7 @@
           </div>
         </div>
       </a>
-      <a href="space-shooter/" class="project-card">
+      <a href="/labs/space-shooter/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -229,7 +242,7 @@
           </div>
         </div>
       </a>
-      <a href="calculator/" class="project-card">
+      <a href="/labs/calculator/" class="project-card" data-groups="tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -253,7 +266,7 @@
           </div>
         </div>
       </a>
-      <a href="english-duo/" class="project-card">
+      <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2" />
@@ -274,7 +287,7 @@
           </div>
         </div>
       </a>
-      <a href="tetris/" class="project-card">
+      <a href="/labs/tetris/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -294,7 +307,7 @@
           </div>
         </div>
       </a>
-      <a href="snake/" class="project-card">
+      <a href="/labs/snake/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -315,7 +328,7 @@
           </div>
         </div>
       </a>
-      <a href="winamp/" class="project-card">
+      <a href="/labs/winamp/" class="project-card" data-groups="music">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -334,7 +347,7 @@
           </div>
         </div>
       </a>
-      <a href="image-editor/" class="project-card">
+      <a href="/labs/image-editor/" class="project-card" data-groups="tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -352,7 +365,7 @@
           </div>
         </div>
       </a>
-      <a href="pomodoro/" class="project-card">
+      <a href="/labs/pomodoro/" class="project-card" data-groups="tools">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -369,7 +382,7 @@
           </div>
         </div>
       </a>
-      <a href="jungle-run/" class="project-card">
+      <a href="/labs/jungle-run/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -392,7 +405,7 @@
           </div>
         </div>
       </a>
-      <a href="f1-racing/" class="project-card">
+      <a href="/labs/f1-racing/" class="project-card" data-groups="game">
         <div class="project-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -414,11 +427,11 @@
       </a>
     </div>
   </div>
-  <footer>
-    <a href="/">← voltar para home</a>
-  </footer>
-  <script src="shared.js"></script>
-  <script src="index.js"></script>
+  <footer data-lab-footer data-home-href="/"></footer>
+  </div>
+  <script src="/labs/chrome.js?v=2"></script>
+  <script src="/labs/shared.js"></script>
+  <script src="/labs/index.js"></script>
 </body>
 
 </html>

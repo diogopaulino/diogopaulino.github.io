@@ -44,7 +44,8 @@ const filters = {
     vintage: 'sepia(50%) contrast(120%) brightness(90%)',
     kodachrome: 'sepia(30%) contrast(120%) saturate(130%)',
     technicolor: 'contrast(150%) saturate(150%) hue-rotate(-10deg)',
-    polaroid: 'sepia(20%) brightness(110%) contrast(90%) saturate(80%)'
+    polaroid: 'sepia(20%) brightness(110%) contrast(90%) saturate(80%)',
+    'vintage-80s': 'sepia(40%) contrast(120%) brightness(110%) saturate(150%)'
 };
 
 // Initialize
@@ -167,12 +168,6 @@ function render() {
     ctx.save();
 
     // Handle Rotation and Flip
-    // To rotate around center, we need to translate to center, rotate, then translate back
-    // However, canvas dimensions might need to swap if rotated 90/270 degrees
-    // For simplicity in this "lab", we will keep canvas size fixed to image size
-    // and just rotate the drawing context.
-    // A more robust solution would resize the canvas.
-
     // Let's implement proper canvas resizing for rotation
     const angleInRadians = state.rotate * Math.PI / 180;
     const absSin = Math.abs(Math.sin(angleInRadians));
@@ -194,13 +189,44 @@ function render() {
     ctx.scale(state.flipH, state.flipV);
 
     // Apply Filters
-    // Combine manual adjustments with preset filters
     const adjustments = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%) blur(${state.blur}px)`;
     const preset = filters[state.filter];
     ctx.filter = `${adjustments} ${preset}`.trim();
 
     // Draw image centered
     ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+
+    // Apply Overlays (Vintage 80s)
+    if (state.filter === 'vintage-80s') {
+        // We need to disable the filter for the overlays
+        ctx.filter = 'none';
+
+        // Calculate dimensions relative to the image size
+        const w = originalImage.width;
+        const h = originalImage.height;
+        const borderSize = Math.min(w, h) * 0.05; // 5% border
+
+        // Draw Frame (White Border)
+        ctx.lineWidth = borderSize;
+        ctx.strokeStyle = '#f0f0f0'; // Slightly off-white
+        ctx.strokeRect((-w / 2) + (borderSize / 2), (-h / 2) + (borderSize / 2), w - borderSize, h - borderSize);
+
+        // Draw Date Stamp
+        // Bottom right corner, taking rotation/flip into account relative to the *image* coordinates
+        const fontSize = Math.min(w, h) * 0.05;
+        ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+        ctx.fillStyle = '#ff9933'; // Digital orange
+        ctx.shadowColor = '#ff3300';
+        ctx.shadowBlur = 5;
+
+        const date = "'87 5 24"; // Retro date
+        const padding = borderSize * 1.5;
+
+        // Position at bottom right of the image
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(date, (w / 2) - padding, (h / 2) - padding);
+    }
 
     ctx.restore();
 }

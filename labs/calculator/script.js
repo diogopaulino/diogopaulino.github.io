@@ -297,44 +297,128 @@ const currencyOne = document.getElementById('currency-one');
 const amountOne = document.getElementById('amount-one');
 const currencyTwo = document.getElementById('currency-two');
 const amountTwo = document.getElementById('amount-two');
+const searchOne = document.getElementById('search-one');
+const searchTwo = document.getElementById('search-two');
 const rateEl = document.getElementById('rate');
 const swap = document.getElementById('swap');
 const lastUpdatedEl = document.querySelector('.last-updated');
+const refreshBtn = document.getElementById('refresh-rates');
+
+let allCurrencies = [];
+let exchangeRates = {};
+
+// Fetch all available currencies and initial rates from Coinbase
+async function initCurrencyConverter() {
+    try {
+        refreshBtn.classList.add('loading');
+
+        // Coinbase rates for USD base
+        const response = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
+        const data = await response.json();
+
+        if (data && data.data && data.data.rates) {
+            exchangeRates = data.data.rates;
+            allCurrencies = Object.keys(exchangeRates).sort();
+
+            populateSelects();
+            calculate();
+
+            lastUpdatedEl.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+    } catch (err) {
+        console.error('Error fetching currency data:', err);
+        rateEl.innerText = 'Error fetching rates';
+    } finally {
+        refreshBtn.classList.remove('loading');
+    }
+}
+
+function populateSelects() {
+    const val1 = currencyOne.value || 'USD';
+    const val2 = currencyTwo.value || 'BRL';
+
+    currencyOne.innerHTML = '';
+    currencyTwo.innerHTML = '';
+
+    allCurrencies.forEach(currency => {
+        const option1 = document.createElement('option');
+        option1.value = currency;
+        option1.innerText = currency;
+        if (currency === val1) option1.selected = true;
+        currencyOne.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = currency;
+        option2.innerText = currency;
+        if (currency === val2) option2.selected = true;
+        currencyTwo.appendChild(option2);
+    });
+}
+
+function filterCurrencies(searchTerm, selectElement) {
+    const term = searchTerm.toLowerCase();
+    const options = selectElement.options;
+
+    let firstVisible = null;
+    for (let i = 0; i < options.length; i++) {
+        const txt = options[i].text.toLowerCase();
+        const display = txt.includes(term);
+        options[i].style.display = display ? '' : 'none';
+        if (display && !firstVisible) firstVisible = options[i];
+    }
+
+    if (firstVisible && term !== '') {
+        // We don't auto-select because it would trigger a calculation prematurely
+    }
+}
 
 // Fetch exchange rates and update the DOM
-function calculate() {
-    const currency_one = currencyOne.value;
-    const currency_two = currencyTwo.value;
+function calculate(direction = 'one-to-two') {
+    const from = currencyOne.value;
+    const to = currencyTwo.value;
 
-    fetch(`https://open.er-api.com/v6/latest/${currency_one}`)
-        .then(res => res.json())
-        .then(data => {
-            const rate = data.rates[currency_two];
-            rateEl.innerText = `1 ${currency_one} = ${rate.toFixed(4)} ${currency_two}`;
-            amountTwo.value = (amountOne.value * rate).toFixed(2);
+    if (!exchangeRates[from] || !exchangeRates[to]) return;
 
-            // Update last updated time
-            const date = new Date(data.time_last_update_utc);
-            lastUpdatedEl.innerText = `Last updated: ${date.toLocaleTimeString()}`;
-        })
-        .catch(err => {
-            console.error('Error fetching currency data:', err);
-            rateEl.innerText = 'Error fetching rates';
-        });
+    // Convert everything through USD (base)
+    // from_rate = value_in_usd * rate_from
+    // 1 USD = rate_from FROM
+    // value_in_usd = amount_from / rate_from
+    // amount_to = value_in_usd * rate_to
+
+    const rateFrom = parseFloat(exchangeRates[from]);
+    const rateTo = parseFloat(exchangeRates[to]);
+
+    const crossRate = rateTo / rateFrom;
+    rateEl.innerText = `1 ${from} = ${crossRate.toFixed(6)} ${to}`;
+
+    if (direction === 'one-to-two') {
+        const result = (parseFloat(amountOne.value) * crossRate);
+        amountTwo.value = isNaN(result) ? '' : result.toFixed(parseFloat(amountOne.value) < 1 ? 6 : 2);
+    } else {
+        const reverseRate = rateFrom / rateTo;
+        const result = (parseFloat(amountTwo.value) * reverseRate);
+        amountOne.value = isNaN(result) ? '' : result.toFixed(parseFloat(amountTwo.value) < 1 ? 6 : 2);
+    }
 }
 
 // Event listeners
-currencyOne.addEventListener('change', calculate);
-amountOne.addEventListener('input', calculate);
-currencyTwo.addEventListener('change', calculate);
-amountTwo.addEventListener('input', calculate);
+currencyOne.addEventListener('change', () => calculate('one-to-two'));
+currencyTwo.addEventListener('change', () => calculate('one-to-two'));
+
+amountOne.addEventListener('input', () => calculate('one-to-two'));
+amountTwo.addEventListener('input', () => calculate('two-to-one'));
+
+searchOne.addEventListener('input', (e) => filterCurrencies(e.target.value, currencyOne));
+searchTwo.addEventListener('input', (e) => filterCurrencies(e.target.value, currencyTwo));
+
+refreshBtn.addEventListener('click', initCurrencyConverter);
 
 swap.addEventListener('click', () => {
     const temp = currencyOne.value;
     currencyOne.value = currencyTwo.value;
     currencyTwo.value = temp;
-    calculate();
+    calculate('one-to-two');
 });
 
-// Initial calculation
-calculate();
+// Initial load
+initCurrencyConverter();

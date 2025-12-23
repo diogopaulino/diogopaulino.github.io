@@ -1,39 +1,3 @@
-:root {
-  --bg-body: #fafbfc;
-  --bg-card: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #64748b;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --shadow-sm: rgba(15, 23, 42, 0.04);
-  --shadow-md: rgba(15, 23, 42, 0.08);
-  --shadow-lg: rgba(15, 23, 42, 0.12);
-  --shadow-xl: rgba(15, 23, 42, 0.16);
-  --shadow-accent: rgba(37, 99, 235, 0.2);
-  --border-subtle: rgba(15, 23, 42, 0.06);
-  --icon-default: #1e293b;
-  --icon-hover: #ffffff;
-}
-
-[data-theme="dark"] {
-  --bg-body: #0a0a0a;
-  --bg-card: #171717;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
-  --accent: #60a5fa;
-  --accent-hover: #3b82f6;
-  --shadow-sm: rgba(0, 0, 0, 0.2);
-  --shadow-md: rgba(0, 0, 0, 0.3);
-  --shadow-lg: rgba(0, 0, 0, 0.4);
-  --shadow-xl: rgba(0, 0, 0, 0.5);
-  --shadow-accent: rgba(96, 165, 250, 0.25);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --icon-default: #e2e8f0;
-  --icon-hover: #ffffff;
-}
-
 *,
 *::before,
 *::after {
@@ -107,46 +71,71 @@ body {
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
-  opacity: 0.6;
+  color: var(--icon-default);
+  opacity: 0.75;
 }
 
 .theme-toggle:hover {
   opacity: 1;
   background: var(--accent);
-  transform: scale(1.1) rotate(10deg);
-}
-
-.theme-toggle::before {
-  content: '';
-  width: 20px;
-  height: 20px;
-  background: var(--icon-default);
-  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>') center/contain no-repeat;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-[data-theme="dark"] .theme-toggle::before {
-  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>') center/contain no-repeat;
-}
-
-.theme-toggle:hover::before {
-  background: var(--icon-hover);
-  transform: rotate(-10deg);
+  color: var(--icon-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--shadow-accent);
 }
 
 .theme-toggle:active {
-  transform: scale(0.92);
+  transform: translateY(0) scale(0.95);
+}
+
+.theme-toggle-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+}
+
+.theme-toggle .icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle .icon-moon {
+  display: none;
+}
+
+[data-theme="dark"] .theme-toggle .icon-sun {
+  display: none;
+}
+
+[data-theme="dark"] .theme-toggle .icon-moon {
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 .profile-pic-minimal {
@@ -502,11 +491,12 @@ body {
     right: 1rem;
     width: 44px;
     height: 44px;
+    border-width: 1px;
   }
 
-  .theme-toggle::before {
-    width: 22px;
-    height: 22px;
+  .theme-toggle .icon {
+    width: 24px;
+    height: 24px;
   }
 
   .profile-pic-minimal {
@@ -591,11 +581,12 @@ body {
   .theme-toggle {
     width: 40px;
     height: 40px;
+    border-width: 1px;
   }
 
-  .theme-toggle::before {
-    width: 20px;
-    height: 20px;
+  .theme-toggle .icon {
+    width: 22px;
+    height: 22px;
   }
 
   .profile-pic-minimal {

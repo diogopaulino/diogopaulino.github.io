@@ -1,0 +1,45 @@
+:root {
+  --bg-body: #fafbfc;
+  --bg-card: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-muted: #dbeafe;
+  --shadow-sm: rgba(15, 23, 42, 0.04);
+  --shadow-md: rgba(15, 23, 42, 0.08);
+  --shadow-lg: rgba(15, 23, 42, 0.12);
+  --shadow-xl: rgba(15, 23, 42, 0.16);
+  --shadow-accent: rgba(37, 99, 235, 0.2);
+  --shadow-glow: rgba(37, 99, 235, 0.35);
+  --accent-glow: rgba(37, 99, 235, 0.3);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.12);
+  --icon-default: #1e293b;
+  --icon-hover: #ffffff;
+  --focus-ring: #93c5fd;
+}
+
+[data-theme="dark"] {
+  --bg-body: #0a0a0a;
+  --bg-card: #171717;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --accent: #60a5fa;
+  --accent-hover: #3b82f6;
+  --accent-muted: rgba(96, 165, 250, 0.12);
+  --shadow-sm: rgba(0, 0, 0, 0.2);
+  --shadow-md: rgba(0, 0, 0, 0.3);
+  --shadow-lg: rgba(0, 0, 0, 0.4);
+  --shadow-xl: rgba(0, 0, 0, 0.5);
+  --shadow-accent: rgba(96, 165, 250, 0.25);
+  --shadow-glow: rgba(96, 165, 250, 0.45);
+  --accent-glow: rgba(96, 165, 250, 0.25);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --icon-default: #e2e8f0;
+  --icon-hover: #ffffff;
+  --focus-ring: #2563eb;
+}

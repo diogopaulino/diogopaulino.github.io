@@ -34,6 +34,7 @@
   <!-- DNS prefetch -->
   <link rel="dns-prefetch" href="https://br.linkedin.com">
 
+  <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="manifest" href="manifest.json">
 
@@ -80,7 +81,18 @@
 <body>
   <main>
     <article class="card-container minimal" itemscope itemtype="https://schema.org/Person">
-      <button class="theme-toggle" aria-label="Toggle theme" title="Alternar tema"></button>
+      <button class="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
+        <span class="theme-toggle-icon" aria-hidden="true">
+          <svg class="icon icon-sun" viewBox="0 0 24 24" role="presentation">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
+          </svg>
+          <svg class="icon icon-moon" viewBox="0 0 24 24" role="presentation">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </span>
+        <span class="sr-only">Alternar tema</span>
+      </button>
       <img src="assets/img/diogo.jpeg" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal"
         id="profile-pic" itemprop="image" loading="lazy">
       <h1 class="main-name" itemprop="name">Diogo Paulino</h1>

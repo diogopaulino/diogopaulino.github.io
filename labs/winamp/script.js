@@ -1,11 +1,221 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Window Dragging Logic
+    // State
+    let isPlaying = false;
+    let currentTrackIndex = 0;
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    let audioContext, analyser, dataArray, source;
+
+    const tracks = [
+        { title: "1. Depeche Mode - Never Let Me Down Again", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", duration: "6:12" },
+        { title: "2. Depeche Mode - The Things You Said", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", duration: "7:05" },
+        { title: "3. Depeche Mode - Strangelove", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", duration: "5:12" },
+        { title: "4. Depeche Mode - Sacred", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3", duration: "6:20" },
+        { title: "5. Depeche Mode - Little 15", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3", duration: "6:54" }
+    ];
+
+    // Selectors
+    const playBtn = document.querySelector('.btn-play');
+    const pauseBtn = document.querySelector('.btn-pause');
+    const stopBtn = document.querySelector('.btn-stop');
+    const prevBtn = document.querySelector('.btn-prev');
+    const nextBtn = document.querySelector('.btn-next');
+    const ejectBtn = document.querySelector('.btn-eject');
+
+    const timeDisplay = document.querySelector('.time-display');
+    const songTitle = document.querySelector('.song-title');
+    const playlistContent = document.querySelector('.playlist-content');
+    const positionSlider = document.querySelector('.position-slider');
+    const volumeSlider = document.querySelector('.volume-slider');
+    const visBars = document.querySelectorAll('.vis-bar');
+
+    // Initialize Playlist
+    function initPlaylist() {
+        playlistContent.innerHTML = '';
+        tracks.forEach((track, index) => {
+            const item = document.createElement('div');
+            item.className = 'playlist-item' + (index === currentTrackIndex ? ' selected' : '');
+            item.innerHTML = `${track.title} <span class="duration">${track.duration}</span>`;
+            item.onclick = () => selectTrack(index);
+            item.ondblclick = () => {
+                selectTrack(index);
+                playTrack();
+            };
+            playlistContent.appendChild(item);
+        });
+    }
+
+    function selectTrack(index) {
+        currentTrackIndex = index;
+        const items = document.querySelectorAll('.playlist-item');
+        items.forEach((item, i) => {
+            item.classList.toggle('selected', i === index);
+        });
+        updateSongInfo();
+        audio.src = tracks[currentTrackIndex].url;
+        if (isPlaying) {
+            playTrack();
+        }
+    }
+
+    function updateSongInfo() {
+        songTitle.textContent = tracks[currentTrackIndex].title;
+    }
+
+    // Audio Logic
+    function playTrack() {
+        if (!audio.src || audio.src === "") {
+            audio.src = tracks[currentTrackIndex].url;
+        }
+
+        if (!audioContext) {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                source = audioContext.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                analyser.fftSize = 64;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                drawVisualizer();
+            } catch (e) {
+                console.error("Visualizer failed to init", e);
+            }
+        }
+
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
+        audio.play().then(() => {
+            isPlaying = true;
+            updatePlayState(true);
+        }).catch(e => {
+            console.error("Playback failed", e);
+            isPlaying = false;
+        });
+    }
+
+    function updatePlayState(playing) {
+        // Toggle LEDs
+        document.querySelectorAll('.led').forEach(led => led.classList.remove('active'));
+        if (playing) {
+            document.querySelector('.led:nth-child(3)')?.classList.add('active'); // 'I'
+        }
+    }
+
+    function pauseTrack() {
+        audio.pause();
+        isPlaying = false;
+        updatePlayState(false);
+    }
+
+    function stopTrack() {
+        audio.pause();
+        audio.currentTime = 0;
+        isPlaying = false;
+        updatePlayState(false);
+        timeDisplay.textContent = "0:00";
+    }
+
+    function nextTrack() {
+        currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+        selectTrack(currentTrackIndex);
+        playTrack();
+    }
+
+    function prevTrack() {
+        currentTrackIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+        selectTrack(currentTrackIndex);
+        playTrack();
+    }
+
+    function drawVisualizer() {
+        requestAnimationFrame(drawVisualizer);
+        if (!isPlaying || !analyser) {
+            visBars.forEach(bar => bar.style.height = '2px');
+            return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+
+        visBars.forEach((bar, i) => {
+            const val = dataArray[i] || 0;
+            const height = (val / 255) * 40;
+            bar.style.height = Math.max(2, height) + 'px';
+        });
+    }
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // Event Listeners
+    playBtn.onclick = () => playTrack();
+    pauseBtn.onclick = () => pauseTrack();
+    stopBtn.onclick = () => stopTrack();
+    nextBtn.onclick = () => nextTrack();
+    prevBtn.onclick = () => prevTrack();
+
+    ejectBtn.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                tracks.unshift({ title: file.name, url: url, duration: "??" });
+                currentTrackIndex = 0;
+                initPlaylist();
+                selectTrack(0);
+                playTrack();
+            }
+        };
+        input.click();
+    };
+
+    audio.ontimeupdate = () => {
+        timeDisplay.textContent = formatTime(audio.currentTime);
+        if (audio.duration) {
+            const sliderWidth = positionSlider.offsetWidth;
+            const handleWidth = 28;
+            const pos = (audio.currentTime / audio.duration) * (sliderWidth - handleWidth);
+            positionSlider.style.setProperty('--handle-pos', pos + 'px');
+        }
+    };
+
+    audio.onended = () => nextTrack();
+
+    positionSlider.onclick = (e) => {
+        if (!audio.duration) return;
+        const rect = positionSlider.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = x / rect.width;
+        audio.currentTime = pct * audio.duration;
+    };
+
+    volumeSlider.onclick = (e) => {
+        const rect = volumeSlider.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const vol = Math.max(0, Math.min(1, x / rect.width));
+        audio.volume = vol;
+        volumeSlider.style.setProperty('--vol-pos', (x - 7) + 'px');
+    };
+
+    // Window Dragging Logic (Optimized for Scale)
     const windows = document.querySelectorAll('.window');
     windows.forEach(win => {
-        const titleBar = win.querySelector('.title-bar');
+        const titleBar = win.querySelector('.titlebar');
+        if (!titleBar) return;
 
         let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
+        let startX, startY;
+        let initialLeft, initialTop;
 
         titleBar.addEventListener('mousedown', (e) => {
             if (e.target.tagName === 'BUTTON') return;
@@ -13,162 +223,38 @@ document.addEventListener('DOMContentLoaded', () => {
             startX = e.clientX;
             startY = e.clientY;
 
-            // Get computed style for relative/absolute positioning
-            const style = window.getComputedStyle(win);
-            // If it's static, make it relative or absolute to move it? 
-            // The HTML structure has them in flex containers. 
-            // For true dragging we might need absolute positioning, but let's just use transform translate for demo smoothness
-            // or switch to absolute.
-            // Given the requested "clone" nature, usually windows are absolute.
-            // But CSS Flexbox structure was used for layout.
-            // Let's just implement click-to-activate for now.
-            windows.forEach(w => w.querySelector('.title-bar').classList.remove('selected'));
-            titleBar.classList.add('selected');
+            const rect = win.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            // Shift to fixed positioning for dragging
+            win.style.position = 'fixed';
+            win.style.left = initialLeft + 'px';
+            win.style.top = initialTop + 'px';
+            win.style.margin = '0';
+            win.style.transform = 'scale(1.5)';
+            win.style.transformOrigin = 'top left';
+
+            windows.forEach(w => w.style.zIndex = '100');
+            win.style.zIndex = '1000';
+
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            win.style.left = (initialLeft + dx) + 'px';
+            win.style.top = (initialTop + dy) + 'px';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
         });
     });
 
-    // Audio & Playlist Logic (Simplified for Demo)
-    const playBtn = document.querySelector('.main-controls .play');
-    const pauseBtn = document.querySelector('.main-controls .pause');
-    const stopBtn = document.querySelector('.main-controls .stop');
-    const timeDisplay = document.querySelector('.timer');
-    const songTicker = document.querySelector('.song-ticker .text');
-
-    let isPlaying = false;
-    let timerInterval;
-    let currentSeconds = 0;
-
-    function formatTime(totalSeconds) {
-        const m = Math.floor(totalSeconds / 60);
-        const s = totalSeconds % 60;
-        return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-    }
-
-    function startPlayback() {
-        if (isPlaying) return;
-        isPlaying = true;
-        playBtn.style.borderStyle = 'inset';
-        // In real winamp, buttons don't stay pressed, but the display changes.
-        // Let's simulate the timer.
-        timerInterval = setInterval(() => {
-            currentSeconds++;
-            updateTimerDisplay();
-        }, 1000);
-    }
-
-    function pausePlayback() {
-        isPlaying = false;
-        clearInterval(timerInterval);
-    }
-
-    function stopPlayback() {
-        isPlaying = false;
-        clearInterval(timerInterval);
-        currentSeconds = 0;
-        updateTimerDisplay();
-    }
-
-    // Timer is implemented with div digits in HTML: .minute-first, etc.
-    // For this strict clone, let's just update valid classes or innerText if fallback
-    function updateTimerDisplay() {
-        // Since we are using CSS sprites for digits normally, but here we used text-content or empty divs
-        // Let's use text content for the fallback .timer style we wrote (Courier New)
-        timeDisplay.textContent = formatTime(currentSeconds);
-    }
-
-    playBtn.addEventListener('click', startPlayback);
-    pauseBtn.addEventListener('click', pausePlayback);
-    stopBtn.addEventListener('click', stopPlayback);
-
-    // Initial State
-    currentSeconds = 68; // 1:08
-    updateTimerDisplay();
-
-    // Playlist Interaction
-    const entries = document.querySelectorAll('.entry');
-    entries.forEach(entry => {
-        entry.addEventListener('click', () => {
-            entries.forEach(e => e.classList.remove('selected'));
-            entry.classList.add('selected');
-        });
-        entry.addEventListener('dblclick', () => {
-            entries.forEach(e => { e.classList.remove('active'); e.classList.remove('selected'); });
-            entry.classList.add('selected');
-            entry.classList.add('active');
-            stopPlayback();
-            currentSeconds = 0;
-            startPlayback();
-            // Update Marquee Text
-            const text = entry.childNodes[0].nodeValue; // Get text without the span
-            songTicker.textContent = text + " *** ";
-        });
-    });
-
-    // Initialize Real Visualizer
-    const visContainer = document.querySelector('.visualization');
-    if (visContainer) {
-        // Remove static background
-        visContainer.style.backgroundImage = 'none';
-        visContainer.style.backgroundColor = '#000';
-        visContainer.innerHTML = '';
-
-        // Create 19 bars (76px width / 4px per bar)
-        for (let i = 0; i < 19; i++) {
-            const bar = document.createElement('div');
-            Object.assign(bar.style, {
-                position: 'absolute',
-                bottom: '0',
-                left: (i * 4) + 'px',
-                width: '3px',
-                height: '2px', // Start low
-                background: 'linear-gradient(to bottom, #888 0%, #888 2px, #000 2px, #000 100%)' // Default "off" look
-            });
-            visContainer.appendChild(bar);
-        }
-    }
-
-    const bars = visContainer ? Array.from(visContainer.children) : [];
-
-    // Animation Loop
-    let tickerX = 0;
-    let frame = 0;
-
-    function animate() {
-        if (isPlaying) {
-            // Update Spectrum
-            // Update every 3 frames to slow down jitter
-            if (frame % 3 === 0) {
-                bars.forEach(bar => {
-                    const h = Math.floor(Math.random() * 34) + 2; // 2 to 36px
-                    // Classic Winamp Spectrum Colors: Top Grey/White peak, then Green
-                    // We'll mimic with gradient
-                    bar.style.height = h + 'px';
-                    // Dynamic gradient based on height? 
-                    // Simpler: fixed gradient that reveals itself
-                    bar.style.background = `linear-gradient(to bottom, 
-                        #ccc 0%, #ccc 2px, 
-                        #000 2px, #000 4px,
-                        #00e000 4px, #00e000 100%)`;
-                });
-            }
-
-            // Marquee (Pixel Scroll)
-            if (frame % 10 === 0) { // Slow scroll
-                const tickerText = document.querySelector('.song-ticker .text');
-                if (tickerText) {
-                    // This is a simple reset scroll. 
-                    // For perfect marquee we need to clone text or use CSS. 
-                    // Let's just do a simple string rotation if strictly JS
-                    // Or keep it static to avoid glitchiness as User requested "Clone" (often implies Look).
-                    // Leaving marquee static for stability.
-                }
-            }
-            frame++;
-        } else {
-            // Reset bars when stopped
-            bars.forEach(bar => bar.style.height = '2px');
-        }
-        requestAnimationFrame(animate);
-    }
-    animate();
+    initPlaylist();
+    updateSongInfo();
+    audio.src = tracks[currentTrackIndex].url;
 });

@@ -1,63 +1,17 @@
+@import url('/assets/css/tokens.css');
+
 :root {
-    /* Core Colors */
-    --bg-body: #fafbfc;
-    --bg-card: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
-
-    /* Accents */
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-glow: rgba(37, 99, 235, 0.3);
-
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08);
-    --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.12);
-    --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.16);
-    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-
-    /* Borders & Glass */
-    --border-subtle: rgba(15, 23, 42, 0.08);
     --glass-bg: rgba(255, 255, 255, 0.7);
     --glass-border: rgba(255, 255, 255, 0.5);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-
-    /* Icons */
-    --icon-default: #1e293b;
-    --icon-hover: #0f172a;
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="dark"] {
-    /* Core Colors */
-    --bg-body: #0a0a0a;
-    --bg-card: #171717;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-tertiary: #94a3b8;
-
-    /* Accents */
-    --accent: #60a5fa;
-    --accent-hover: #3b82f6;
-    --accent-glow: rgba(96, 165, 250, 0.25);
-
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
-    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.5);
-
-    /* Borders & Glass */
-    --border-subtle: rgba(255, 255, 255, 0.08);
     --glass-bg: rgba(23, 23, 23, 0.7);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-
-    /* Icons */
-    --icon-default: #e2e8f0;
-    --icon-hover: #ffffff;
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.5);
 }
 
 *,
@@ -67,6 +21,17 @@
     padding: 0;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
 }
 
 body {
@@ -106,10 +71,14 @@ body {
 }
 
 /* Header & Navigation */
+/* Header & Navigation */
 header {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
+    grid-template-areas:
+        "back logo actions"
+        "subtitle subtitle subtitle";
     align-items: center;
     gap: 1rem;
     margin-bottom: 3rem;
@@ -118,7 +87,7 @@ header {
 }
 
 header .app-logo {
-    grid-column: 2;
+    grid-area: logo;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -137,7 +106,7 @@ header .app-logo svg {
 }
 
 .header-actions {
-    grid-column: 3;
+    grid-area: actions;
     justify-self: end;
     display: flex;
     align-items: center;
@@ -145,6 +114,7 @@ header .app-logo svg {
 }
 
 .back-link {
+    grid-area: back;
     justify-self: start;
     display: inline-flex;
     align-items: center;
@@ -179,7 +149,7 @@ header .app-logo svg {
 }
 
 header h1 {
-    grid-column: 2;
+    grid-area: logo;
     font-size: 2rem;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -190,7 +160,7 @@ header h1 {
 }
 
 .subtitle {
-    grid-column: 1 / -1;
+    grid-area: subtitle;
     justify-self: center;
     text-align: center;
     font-size: 1rem;
@@ -199,40 +169,85 @@ header h1 {
     margin-top: 0.25rem;
 }
 
-/* Theme Toggle */
-.theme-toggle {
-    grid-column: 3;
+/* Theme Toggle - Modern Switch */
+.theme-switch-wrapper {
+    grid-area: actions;
     justify-self: end;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid transparent;
-    background: transparent;
-    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle {
+    width: 64px;
+    height: 32px;
     padding: 0;
-    color: var(--text-secondary);
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-inner);
 }
 
 .theme-toggle:hover {
-    background: var(--bg-card);
-    transform: rotate(15deg);
-    color: var(--text-primary);
+    border-color: var(--accent);
+    transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
+.theme-toggle-track {
+    position: absolute;
+    inset: 3px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.theme-toggle-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .theme-toggle-thumb {
+    transform: translateX(32px);
+    background: var(--text-primary);
+}
+
 .theme-toggle svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: all 0.3s;
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    transition: opacity 0.3s ease, transform 0.3s ease, color 0.3s ease;
+    stroke-width: 2.5;
+}
+
+.theme-toggle .sun-icon {
+    color: #fff;
+    opacity: 1;
+}
+
+.theme-toggle .moon-icon {
+    color: var(--bg-body);
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+}
+
+[data-theme="dark"] .theme-toggle .sun-icon {
+    opacity: 0;
+    transform: scale(0.5) rotate(45deg);
+}
+
+[data-theme="dark"] .theme-toggle .moon-icon {
+    opacity: 1;
+    transform: scale(1) rotate(0);
 }
 
 /* Footer */
@@ -276,8 +291,6 @@ footer a:hover {
     }
 
     header .back-link {
-        grid-column: 1;
-        grid-row: 1;
         padding: 0.5rem;
         width: 36px;
         height: 36px;
@@ -290,16 +303,12 @@ footer a:hover {
     }
 
     header .app-logo {
-        grid-column: 2;
-        grid-row: 1;
         justify-self: center;
         font-size: 1.1rem;
     }
 
     header .theme-toggle,
     header .header-actions {
-        grid-column: 3;
-        grid-row: 1;
         justify-self: end;
     }
 

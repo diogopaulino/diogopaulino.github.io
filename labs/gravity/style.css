@@ -86,9 +86,6 @@ header .header-actions {
     align-items: center;
 }
 
-header .theme-toggle {
-    justify-self: end;
-}
 
 header .app-logo {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
@@ -611,6 +608,18 @@ body.fullscreen header {
 
 body.fullscreen:hover header {
     opacity: 1;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+    padding: 1rem !important;
+    margin: 0 !important;
+    border: none !important;
 }
 
 body.fullscreen .instructions,

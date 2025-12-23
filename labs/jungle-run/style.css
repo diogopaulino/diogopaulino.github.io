@@ -16,6 +16,13 @@
     --jungle-light: #1a3a1a;
 }
 
+[data-theme="light"] {
+    --jungle-dark: #e8f5e8;
+    --jungle-green: #c8e6c8;
+    --jungle-light: #a8d6a8;
+    --jungle-accent: #4a8f4a;
+}
+
 body {
     background: linear-gradient(180deg, var(--jungle-dark) 0%, var(--jungle-green) 50%, var(--jungle-light) 100%);
     background-attachment: fixed;
@@ -32,15 +39,14 @@ body {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 10;
-    background: linear-gradient(180deg, 
-        #1a0a2e 0%, 
-        #16213e 20%, 
-        #1a3a1a 60%, 
-        #0d1f0d 100%
-    );
+    background: linear-gradient(180deg,
+            #1a0a2e 0%,
+            #16213e 20%,
+            #1a3a1a 60%,
+            #0d1f0d 100%);
     border-radius: 1rem;
     overflow: hidden;
-    box-shadow: 
+    box-shadow:
         0 0 0 4px var(--wood-dark),
         0 0 0 8px var(--wood),
         0 10px 40px rgba(0, 0, 0, 0.5),
@@ -103,10 +109,9 @@ body {
 .overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, 
-        rgba(13, 31, 13, 0.95) 0%, 
-        rgba(26, 58, 26, 0.95) 100%
-    );
+    background: linear-gradient(180deg,
+            rgba(13, 31, 13, 0.95) 0%,
+            rgba(26, 58, 26, 0.95) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -128,7 +133,7 @@ body {
     font-size: clamp(1.8rem, 5vw, 3rem);
     font-weight: 800;
     margin-bottom: 0.5rem;
-    text-shadow: 
+    text-shadow:
         0 0 10px var(--gold),
         0 0 20px var(--gold-dark),
         0 4px 8px rgba(0, 0, 0, 0.5);
@@ -186,7 +191,7 @@ body {
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    box-shadow: 
+    box-shadow:
         0 4px 0 #8b6914,
         0 6px 20px rgba(0, 0, 0, 0.4);
     transition: all 0.1s ease;
@@ -194,14 +199,14 @@ body {
 
 .game-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
         0 6px 0 #8b6914,
         0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .game-btn:active {
     transform: translateY(2px);
-    box-shadow: 
+    box-shadow:
         0 2px 0 #8b6914,
         0 4px 10px rgba(0, 0, 0, 0.4);
 }
@@ -338,17 +343,17 @@ body {
 }
 
 @keyframes pulse-gold {
-    0%, 100% { 
-        box-shadow: 0 0 5px var(--gold), 0 0 10px var(--gold-dark); 
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px var(--gold), 0 0 10px var(--gold-dark);
     }
-    50% { 
-        box-shadow: 0 0 15px var(--gold), 0 0 25px var(--gold-dark); 
+
+    50% {
+        box-shadow: 0 0 15px var(--gold), 0 0 25px var(--gold-dark);
     }
 }
 
 .score-box {
     animation: pulse-gold 2s ease-in-out infinite;
 }
-
-
-

@@ -10,6 +10,30 @@
     --accent-gradient: linear-gradient(135deg, var(--aurora-1), var(--aurora-2));
 }
 
+[data-theme="dark"] {
+    --aurora-1: #00ff88;
+    --aurora-2: #00d4ff;
+    --aurora-3: #8b5cf6;
+    --panel-bg: rgba(8, 12, 20, 0.92);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --glow-color: rgba(0, 255, 136, 0.3);
+    --text-primary: rgba(255, 255, 255, 0.95);
+    --text-secondary: rgba(255, 255, 255, 0.5);
+    --accent-gradient: linear-gradient(135deg, var(--aurora-1), var(--aurora-2));
+}
+
+[data-theme="light"] {
+    --aurora-1: #00cc6a;
+    --aurora-2: #0099ff;
+    --aurora-3: #7c3aed;
+    --panel-bg: rgba(255, 255, 255, 0.92);
+    --panel-border: rgba(0, 0, 0, 0.08);
+    --glow-color: rgba(0, 204, 106, 0.3);
+    --text-primary: rgba(0, 0, 0, 0.95);
+    --text-secondary: rgba(0, 0, 0, 0.5);
+    --accent-gradient: linear-gradient(135deg, var(--aurora-1), var(--aurora-2));
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -61,7 +85,7 @@ header {
     width: auto !important;
 }
 
-header > * {
+header>* {
     pointer-events: auto;
 }
 
@@ -103,8 +127,7 @@ header .app-logo svg {
     gap: 0.5rem;
 }
 
-.icon-btn,
-header .theme-toggle {
+.icon-btn {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--panel-border);
     color: var(--text-secondary);
@@ -117,8 +140,7 @@ header .theme-toggle {
     justify-content: center;
 }
 
-.icon-btn:hover,
-header .theme-toggle:hover {
+.icon-btn:hover {
     background: rgba(0, 255, 136, 0.15);
     border-color: rgba(0, 255, 136, 0.3);
     color: var(--aurora-1);
@@ -661,9 +683,18 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @keyframes instructionsFade {
-    0% { opacity: 1; }
-    70% { opacity: 1; }
-    100% { opacity: 0; visibility: hidden; }
+    0% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
 }
 
 footer {

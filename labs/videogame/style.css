@@ -100,7 +100,11 @@ main {
     cursor: pointer;
     text-align: left;
     transition: all .3s cubic-bezier(.4, 0, .2, 1);
-    position: relative
+    position: relative;
+
+    /* Otimizações de rendering */
+    content-visibility: auto;
+    contain: layout style paint;
 }
 
 .game-cover {
@@ -120,7 +124,17 @@ main {
     height: 100%;
     object-fit: cover;
     transition: transform .5s cubic-bezier(.4, 0, .2, 1);
-    background: var(--bg-card)
+    background: var(--bg-card);
+
+    /* Otimizações nativas de performance */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+
+    /* Content visibility para melhor performance */
+    content-visibility: auto;
+    contain: layout style paint;
 }
 
 .cover-placeholder {
@@ -133,6 +147,10 @@ main {
     padding: 1rem;
     background: linear-gradient(135deg, var(--bg-card) 0, var(--bg-body) 100%);
     text-align: center
+}
+
+.cover-placeholder.is-visible {
+    display: flex
 }
 
 .cover-placeholder span {
@@ -674,4 +692,24 @@ body.game-mode {
 #player .controls-actions button:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-body);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 5px;
+    border: 2px solid var(--bg-body);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
 }

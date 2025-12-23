@@ -1,8 +1,10 @@
 @charset "UTF-8";
 
 body {
-    background-color: #222;
+    background-color: var(--bg-body);
+    color: var(--text-primary);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 .game-area {

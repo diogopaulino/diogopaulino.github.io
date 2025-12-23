@@ -131,22 +131,6 @@ button.active {
     filter: brightness(1.1);
 }
 
-/* Theme Toggle overrides for toolbar context */
-.theme-toggle {
-    position: static !important;
-    width: 32px !important;
-    height: 32px !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    transform: none !important;
-}
-
-.theme-toggle:hover {
-    background: var(--surface-hover) !important;
-    box-shadow: none !important;
-    color: var(--text-primary) !important;
-}
 
 .separator {
     width: 1px;

@@ -14,13 +14,20 @@
     --track-color: #1a1a22;
 }
 
+[data-theme="light"] {
+    --grass-color: #90c090;
+    --track-color: #606070;
+    --hud-bg: rgba(255, 255, 255, 0.85);
+}
+
 * {
     user-select: none;
     -webkit-user-select: none;
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     overflow: hidden;
@@ -515,8 +522,15 @@ canvas#gameCanvas {
 }
 
 @keyframes slideIn {
-    from { transform: translateY(25px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(25px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .checkered-flag {
@@ -584,13 +598,13 @@ footer {
     header {
         padding: 0.6rem !important;
     }
-    
+
     .hud {
         top: 50px;
         left: 8px;
         right: 8px;
     }
-    
+
     .hud-center {
         position: static;
         transform: none;
@@ -598,82 +612,83 @@ footer {
         width: 100%;
         margin-bottom: 8px;
     }
-    
+
     .hud {
         flex-wrap: wrap;
     }
-    
-    .hud-left, .hud-right {
+
+    .hud-left,
+    .hud-right {
         flex-direction: row;
         gap: 6px;
     }
-    
+
     .telemetry-panel {
         flex-direction: row;
         padding: 8px 12px;
         width: 100%;
         justify-content: space-between;
     }
-    
+
     .speed-ring {
         width: 60px;
         height: 60px;
     }
-    
+
     .speed-value span:first-child {
         font-size: 1rem;
     }
-    
+
     .gear-value {
         font-size: 1.5rem;
     }
-    
+
     .rpm-display {
         width: 80px;
     }
-    
+
     .position-display,
     .lap-display,
     .time-display,
     .best-display {
         padding: 5px 8px;
     }
-    
+
     .value {
         font-size: 0.9rem;
     }
-    
+
     .time-value {
         font-size: 0.7rem;
     }
-    
+
     .minimap-container {
         width: 90px;
         height: 90px;
         bottom: 50px;
     }
-    
+
     .f1-title {
         font-size: 1.6rem;
     }
-    
+
     .team-options {
         grid-template-columns: 1fr;
     }
-    
+
     .controls-info {
         gap: 0.8rem;
     }
-    
+
     .countdown-light {
         width: 35px;
         height: 35px;
     }
-    
+
     .countdown-text {
         font-size: 2.5rem;
     }
-    
+
     footer {
         padding: 0.6rem !important;
         font-size: 0.7rem;
@@ -684,20 +699,20 @@ footer {
     .hud-right {
         display: none;
     }
-    
+
     .app-logo {
         font-size: 0.85rem !important;
     }
-    
+
     .minimap-container {
         width: 70px;
         height: 70px;
     }
-    
+
     .telemetry-panel {
         padding: 6px 10px;
     }
-    
+
     .rpm-display {
         display: none;
     }
@@ -708,15 +723,15 @@ footer {
         width: 100px;
         height: 100px;
     }
-    
+
     .speed-value span:first-child {
         font-size: 1.5rem;
     }
-    
+
     .gear-value {
         font-size: 2.5rem;
     }
-    
+
     .minimap-container {
         width: 140px;
         height: 140px;
