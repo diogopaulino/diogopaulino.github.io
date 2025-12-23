@@ -101,10 +101,6 @@ main {
     text-align: left;
     transition: all .3s cubic-bezier(.4, 0, .2, 1);
     position: relative;
-
-    /* Otimizações de rendering */
-    content-visibility: auto;
-    contain: layout style paint;
 }
 
 .game-cover {
@@ -123,18 +119,7 @@ main {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform .5s cubic-bezier(.4, 0, .2, 1);
     background: var(--bg-card);
-
-    /* Otimizações nativas de performance */
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-
-    /* Content visibility para melhor performance */
-    content-visibility: auto;
-    contain: layout style paint;
 }
 
 .cover-placeholder {

@@ -5,9 +5,6 @@ const App = {
     isManualFullscreen: false,
     basePath: window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1),
     allGames: [],
-    coverCache: new Map(),
-    imageObserver: null,
-    preconnectedHosts: new Set(),
     settings: {
         scale: 'max',
         filter: 'pixel'
@@ -55,7 +52,6 @@ const App = {
     },
     init() {
         this.loadSettings();
-        this.setupImageObserver();
         this.setupEventListeners();
         this.setupSettings();
         this.setupMobileControls();
@@ -66,69 +62,7 @@ const App = {
         this.settings.scale = this.getStoredSetting('scale', 'max', ['max', 'stretch']);
         this.settings.filter = this.getStoredSetting('filter', 'pixel', ['pixel', 'retro', 'smooth']);
     },
-    setupImageObserver() {
-        // Intersection Observer para lazy loading inteligente
-        if ('IntersectionObserver' in window) {
-            this.imageObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const card = entry.target;
-                        const gameId = card.dataset.id;
-                        if (gameId && !this.coverCache.has(gameId)) {
-                            const game = this.allGames.find(g => g.id === gameId);
-                            if (game) {
-                                this.prepareCover(game);
-                                this.imageObserver.unobserve(card);
-                            }
-                        }
-                    }
-                });
-            }, {
-                root: null,
-                rootMargin: '200px', // Carrega imagens 200px antes de aparecerem
-                threshold: 0.01
-            });
-        }
-    },
-    preconnectToImageHosts(games) {
-        // Preconnect para CDNs de imagens para estabelecer conexão antecipada
-        const hosts = new Set();
-        games.slice(0, 20).forEach(game => { // Apenas os primeiros 20 jogos
-            const urls = this.buildCoverUrlList(game);
-            urls.forEach(url => {
-                try {
-                    const hostname = new URL(url).hostname;
-                    if (!this.preconnectedHosts.has(hostname)) {
-                        hosts.add(hostname);
-                        this.preconnectedHosts.add(hostname);
-                    }
-                } catch (e) { }
-            });
-        });
 
-        hosts.forEach(host => {
-            const link = document.createElement('link');
-            link.rel = 'preconnect';
-            link.href = `https://${host}`;
-            link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
-        });
-    },
-    preloadPriorityImages(games) {
-        // Preload das primeiras imagens visíveis com alta prioridade
-        const visibleGames = games.slice(0, 6); // Primeiros 6 jogos
-        visibleGames.forEach(game => {
-            const urls = this.buildCoverUrlList(game);
-            if (urls.length > 0) {
-                const link = document.createElement('link');
-                link.rel = 'preload';
-                link.as = 'image';
-                link.href = urls[0];
-                link.fetchPriority = 'high';
-                document.head.appendChild(link);
-            }
-        });
-    },
     getStoredSetting(name, fallback, allowedValues) {
         const stored = localStorage.getItem(`emu-${name}`);
         return stored && allowedValues.includes(stored) ? stored : fallback;
@@ -879,172 +813,61 @@ const App = {
             this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;">Erro ao carregar lista.</p>'
         }
     },
-    async loadImageWithFallback(gameId, img, placeholder, urls) {
-        if (!img || !urls?.length) {
-            this.coverCache.set(gameId, null);
-            this.showPlaceholder(placeholder, img);
-            return;
-        }
 
-        const maxAttempts = Math.min(urls.length, 30);
-        for (let i = 0; i < maxAttempts; i++) {
-            const src = urls[i];
-            if (!src) continue;
-            try {
-                await this.preloadImage(src);
-                this.coverCache.set(gameId, src);
-                this.showCoverImage(img, placeholder, src);
-                return;
-            } catch (err) {
-                if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 25));
-            }
-        }
 
-        this.coverCache.set(gameId, null);
-        this.showPlaceholder(placeholder, img);
-    },
-    preloadImage(src) {
-        return new Promise((resolve, reject) => {
-            const temp = new Image();
-            temp.decoding = 'async'; // Decodificação assíncrona nativa
-            temp.loading = 'lazy'; // Lazy loading nativo
-
-            const timer = setTimeout(() => {
-                temp.onload = null;
-                temp.onerror = null;
-                reject(new Error('timeout'));
-            }, 4000);
-
-            temp.onload = () => {
-                clearTimeout(timer);
-                // Aguarda decodificação completa antes de resolver
-                if (temp.decode) {
-                    temp.decode()
-                        .then(() => resolve(src))
-                        .catch(() => resolve(src)); // Fallback se decode falhar
-                } else {
-                    resolve(src);
-                }
-            };
-            temp.onerror = () => {
-                clearTimeout(timer);
-                reject(new Error('error'));
-            };
-            temp.src = src;
-        });
-    },
-    prepareCover(game) {
-        const card = document.getElementById(this.getGameCardId(game.id));
-        if (!card) return;
-
-        const img = card.querySelector('.game-cover img');
-        const placeholder = card.querySelector('.cover-placeholder');
-        const urls = this.buildCoverUrlList(game);
-
-        if (!urls.length) {
-            this.coverCache.set(game.id, null);
-            this.showPlaceholder(placeholder, img);
-            return;
-        }
-
-        this.showPlaceholder(placeholder, img);
-        this.loadImageWithFallback(game.id, img, placeholder, urls);
-    },
     buildCoverUrlList(game) {
         const urls = [];
         if (game.cover) urls.push(game.cover);
         if (Array.isArray(game.coverUrls)) urls.push(...game.coverUrls);
         return [...new Set(urls.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)))];
     },
-    getGameCardId(id) {
-        return `game-card-${id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    },
-    showCoverImage(img, placeholder, src) {
-        if (!img) return;
-        img.src = src;
-
-        // Usar decode() nativo para decodificação assíncrona antes de exibir
-        if (img.decode) {
-            img.decode()
-                .then(() => {
-                    img.style.display = 'block';
-                    if (placeholder) placeholder.classList.remove('is-visible');
-                })
-                .catch(() => {
-                    // Fallback se decode falhar
-                    img.style.display = 'block';
-                    if (placeholder) placeholder.classList.remove('is-visible');
-                });
+    handleImageError(img) {
+        const fallbacks = JSON.parse(img.dataset.fallbacks || '[]');
+        if (fallbacks.length > 0) {
+            const next = fallbacks.shift();
+            img.dataset.fallbacks = JSON.stringify(fallbacks);
+            img.src = next;
         } else {
-            // Fallback para navegadores sem suporte a decode()
-            img.style.display = 'block';
-            if (placeholder) placeholder.classList.remove('is-visible');
+            img.style.display = 'none';
+            img.nextElementSibling?.classList.add('is-visible');
         }
-    },
-    showPlaceholder(placeholder, img) {
-        if (img) img.style.display = 'none';
-        if (placeholder) placeholder.classList.add('is-visible');
     },
     renderGames(games) {
         if (!this.ui.grid) return;
-        if (games.length === 0) return this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;padding:2rem;">Nenhum jogo encontrado.</p>';
-
-        // Preconnect para CDNs de imagens
-        this.preconnectToImageHosts(games);
+        if (games.length === 0) {
+            this.ui.grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center;grid-column:1/-1;padding:2rem;">Nenhum jogo encontrado.</p>';
+            return;
+        }
 
         this.ui.grid.innerHTML = games.map((g, index) => {
             const t = g.title.replace(/"/g, '&quot;');
-            const cardId = this.getGameCardId(g.id);
-            const hasCache = this.coverCache.has(g.id);
-            const cachedCover = hasCache ? this.coverCache.get(g.id) : null;
+            const urls = this.buildCoverUrlList(g);
+            const first = urls.shift() || '';
+            const fallbacks = JSON.stringify(urls);
 
-            // Atributos otimizados para imagens
-            const imgAttributes = [
-                `alt="${t}"`,
-                'loading="lazy"', // Lazy loading nativo
-                'decoding="async"', // Decodificação assíncrona
-                `data-game="${g.id}"`,
-                index < 6 ? 'fetchpriority="high"' : 'fetchpriority="low"' // Prioridade para primeiras imagens
-            ];
-
-            if (cachedCover) {
-                imgAttributes.push(`src="${cachedCover}"`);
-            } else {
-                imgAttributes.push('style="display:none"');
-            }
-
-            const placeholderClass = `cover-placeholder${cachedCover ? '' : ' is-visible'}`;
-            return `<button class="game-card" data-id="${g.id}" id="${cardId}">
-                <div class="game-cover">
-                    <img ${imgAttributes.join(' ')} data-title="${t}">
-                    <div class="${placeholderClass}">
-                        <span>${g.title}</span>
+            return `
+                <button class="game-card" data-id="${g.id}">
+                    <div class="game-cover">
+                        <img alt="${t}" 
+                             src="${first}" 
+                             loading="lazy" 
+                             decoding="async" 
+                             ${index < 12 ? 'fetchpriority="high"' : 'fetchpriority="low"'}
+                             data-fallbacks='${fallbacks.replace(/'/g, "&#39;")}'
+                             onerror="App.handleImageError(this)">
+                        <div class="cover-placeholder ${first ? '' : 'is-visible'}">
+                            <span>${g.title}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="game-info">
-                    <div class="game-title" title="${t}">${g.title}</div>
-                    <div class="game-meta"><span class="game-platform">${g.platform}</span></div>
-                </div>
-            </button>`;
+                    <div class="game-info">
+                        <div class="game-title" title="${t}">${g.title}</div>
+                        <div class="game-meta">
+                            <span class="game-platform">${g.platform}</span>
+                        </div>
+                    </div>
+                </button>
+            `;
         }).join('');
-
-        // Preload das primeiras imagens com alta prioridade
-        this.preloadPriorityImages(games);
-
-        // Usar Intersection Observer para carregar imagens sob demanda
-        if (this.imageObserver) {
-            games.forEach(g => {
-                const card = document.getElementById(this.getGameCardId(g.id));
-                if (card && !this.coverCache.has(g.id)) {
-                    this.imageObserver.observe(card);
-                }
-            });
-        } else {
-            // Fallback para navegadores sem Intersection Observer
-            games.forEach(g => {
-                if (!this.coverCache.has(g.id)) this.prepareCover(g);
-            });
-        }
     },
 };
 document.addEventListener('DOMContentLoaded', () => App.init());
