@@ -709,7 +709,7 @@ body.is-fullscreen .mobile-controls.fullscreen-mode:active {
 @media (pointer: coarse) {
     @media (orientation: landscape) {
         body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container {
-            opacity: 0.4;
+            opacity: 0.7;
         }
 
         body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container:active,
@@ -720,10 +720,13 @@ body.is-fullscreen .mobile-controls.fullscreen-mode:active {
         body.is-fullscreen .mobile-controls.fullscreen-mode .dpad-container,
         body.is-fullscreen .mobile-controls.fullscreen-mode .action-buttons,
         body.is-fullscreen .mobile-controls.fullscreen-mode .start-select-container {
-            opacity: 0.5;
+            opacity: 0.8;
             transition: opacity 0.3s ease;
         }
 
+        body.is-fullscreen .mobile-controls.fullscreen-mode .dpad-container:active,
+        body.is-fullscreen .mobile-controls.fullscreen-mode .action-buttons:active,
+        body.is-fullscreen .mobile-controls.fullscreen-mode .start-select-container:active,
         body.is-fullscreen .mobile-controls.fullscreen-mode:active .dpad-container,
         body.is-fullscreen .mobile-controls.fullscreen-mode:active .action-buttons,
         body.is-fullscreen .mobile-controls.fullscreen-mode:active .start-select-container {
@@ -733,7 +736,7 @@ body.is-fullscreen .mobile-controls.fullscreen-mode:active {
 
     @media (orientation: portrait) {
         body.is-fullscreen .mobile-controls.fullscreen-mode {
-            opacity: 0.4;
+            opacity: 0.7;
         }
 
         body.is-fullscreen .mobile-controls.fullscreen-mode:active {

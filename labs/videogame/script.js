@@ -304,9 +304,25 @@ const App = {
         this.ui.screen.innerHTML = '';
         this.ui.screen.classList.remove('scanlines');
     },
+    isSafariMobile() {
+        const ua = navigator.userAgent || '';
+        const isIOS = /iPhone|iPad|iPod/.test(ua);
+        const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
+        return isIOS || (isSafari && 'ontouchstart' in window);
+    },
     toggleFullscreen() {
         const elem = this.ui.player;
         if (!elem) return;
+
+        // Safari mobile doesn't support fullscreen API reliably, use manual fallback
+        if (this.isSafariMobile()) {
+            if (!this.isManualFullscreen) {
+                this.enterManualFullscreen();
+            } else {
+                this.exitManualFullscreen();
+            }
+            return;
+        }
 
         if (!this.isFullscreenActive()) {
             const requested = this.requestFullscreenSafe(elem);
