@@ -310,6 +310,13 @@ body.game-mode {
     background: #000
 }
 
+body.is-fullscreen {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
 .player {
     position: fixed;
     inset: 0;
@@ -317,6 +324,18 @@ body.game-mode {
     background: #000;
     display: flex;
     flex-direction: column
+}
+
+body.is-fullscreen .player {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important; /* Dynamic viewport height for mobile */
+    z-index: 999999 !important;
 }
 
 .player.hidden {
@@ -391,6 +410,15 @@ body.game-mode {
     position: relative;
     width: 100%;
     height: 100%
+}
+
+body.is-fullscreen #screen {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 10 !important;
 }
 
 #screen canvas {

@@ -368,12 +368,38 @@ const App = {
         this.isManualFullscreen = true;
         document.body.classList.add('is-fullscreen');
         this.setMobileControlsFullscreen(true);
-        window.scrollTo(0, 1);
+
+        // Safari iOS specific: hide address bar and maximize viewport
+        if (this.isSafariMobile()) {
+            // Scroll to hide address bar
+            setTimeout(() => window.scrollTo(0, 1), 100);
+            setTimeout(() => window.scrollTo(0, 0), 200);
+
+            // Lock scroll on body
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+
+            // Prevent bounce scroll on iOS
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.body.style.height = '100%';
+        } else {
+            window.scrollTo(0, 1);
+        }
     },
     exitManualFullscreen() {
         this.isManualFullscreen = false;
         document.body.classList.remove('is-fullscreen');
         this.setMobileControlsFullscreen(false);
+
+        // Restore iOS styles
+        if (this.isSafariMobile()) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
+        }
     },
     setMobileControlsFullscreen(isFullscreen) {
         const mobileControls = this.ui.mobileControls;
