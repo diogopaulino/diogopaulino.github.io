@@ -699,14 +699,6 @@ body.is-fullscreen .mobile-controls {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-body.is-fullscreen .mobile-controls.fullscreen-mode {
-    opacity: 0.3;
-}
-
-body.is-fullscreen .mobile-controls.fullscreen-mode:active {
-    opacity: 1;
-}
-
 @media (pointer: coarse) {
     @media (orientation: landscape) {
         body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container {
