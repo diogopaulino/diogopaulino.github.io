@@ -203,6 +203,7 @@
             right: 20px;
             pointer-events: auto;
             gap: 16px;
+            z-index: 100;
             bottom: calc(20px + env(safe-area-inset-bottom));
             right: calc(20px + env(safe-area-inset-right));
         }
