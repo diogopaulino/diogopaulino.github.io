@@ -1,5 +1,5 @@
 const B = "https://raw.githubusercontent.com/libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/master/Named_Boxarts/";
-const S = "https://qfsxjpxkihnrcqpomrkw.supabase.co/storage/v1/object/public/game/mega-drive/";
+const S = "https://vfmlitsrpwzpgifhknvo.supabase.co/storage/v1/object/public/game/mega-drive/";
 
 const encodeName = (s) =>
   s
