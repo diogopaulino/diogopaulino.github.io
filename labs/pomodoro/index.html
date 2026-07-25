@@ -1,15 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pomodoro - Labs</title>
+    <meta name="description" content="Timer Pomodoro simples para alternar períodos de foco e descanso.">
+    <meta name="theme-color" content="#fafbfc">
+    <title>Pomodoro — Labs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
@@ -17,93 +20,171 @@
         <header data-lab-header data-title="Pomodoro">
             <template data-slot="logo">
                 <div class="app-logo">
-                    ⏱️ Pomodoro
+                    <span class="logo-mark" aria-hidden="true"></span>
+                    Pomodoro
                 </div>
             </template>
             <template data-slot="actions">
-                <button id="btn-settings" class="icon-btn" aria-label="Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button id="btn-settings" class="icon-btn" type="button" aria-label="Abrir configurações"
+                    aria-haspopup="dialog" aria-controls="settings-modal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        <path
+                            d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z">
+                        </path>
                     </svg>
                 </button>
             </template>
         </header>
 
-        <main>
-            <div class="timer-circle-container">
-                <svg class="timer-svg" viewBox="0 0 100 100">
+        <main class="pomodoro-card">
+            <div class="session-heading">
+                <div>
+                    <p class="eyebrow" id="session-label">Hora de focar</p>
+                    <h1 id="session-title">Sessão de foco</h1>
+                </div>
+                <span class="cycle-pill">Ciclo <strong id="cycle-count">1</strong> de 4</span>
+            </div>
+
+            <div class="modes" role="tablist" aria-label="Tipo de sessão">
+                <button class="mode-btn active" type="button" role="tab" aria-selected="true"
+                    data-mode="focus">Foco</button>
+                <button class="mode-btn" type="button" role="tab" aria-selected="false"
+                    data-mode="short">Pausa curta</button>
+                <button class="mode-btn" type="button" role="tab" aria-selected="false"
+                    data-mode="long">Pausa longa</button>
+            </div>
+
+            <div class="timer-circle-container" aria-labelledby="session-title" aria-describedby="timer-description">
+                <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
                     <circle class="timer-bg" cx="50" cy="50" r="45"></circle>
                     <circle class="timer-progress" cx="50" cy="50" r="45"></circle>
                 </svg>
                 <div class="timer-display">
-                    <div class="status-badge" id="status-badge">FOCUS</div>
-                    <div class="time" id="time-display">25:00</div>
-                    <div class="cycle-info">Cycle <span id="cycle-count">1</span>/4</div>
+                    <div class="status-badge" id="status-badge">FOCO</div>
+                    <div class="time" id="time-display" role="timer" aria-live="off">25:00</div>
+                    <p id="timer-description">Prepare-se e comece quando quiser.</p>
                 </div>
             </div>
 
             <div class="controls">
-                <button id="btn-toggle" class="btn-primary">
-                    <span class="icon-play">▶</span> Start
+                <button id="btn-toggle" class="btn-primary" type="button">
+                    <span class="control-icon" aria-hidden="true">▶</span>
+                    <span class="control-label">Começar</span>
                 </button>
-                <button id="btn-reset" class="btn-secondary">
-                    <span class="icon-reset">↻</span>
+                <button id="btn-reset" class="btn-secondary" type="button" aria-label="Reiniciar sessão"
+                    title="Reiniciar sessão">
+                    <span aria-hidden="true">↻</span>
                 </button>
             </div>
 
-            <div class="modes">
-                <button class="mode-btn active" data-mode="focus">Focus</button>
-                <button class="mode-btn" data-mode="short">Short Break</button>
-                <button class="mode-btn" data-mode="long">Long Break</button>
-            </div>
+            <button class="signal-status" id="signal-status" type="button"
+                aria-label="Configurar som e notificações">
+                <span><span class="status-dot" aria-hidden="true"></span><span id="sound-status">Som ligado</span></span>
+                <span class="status-divider" aria-hidden="true"></span>
+                <span id="notification-status">Notificações desligadas</span>
+            </button>
+            <p class="sr-only" id="timer-announcement" aria-live="assertive"></p>
         </main>
+
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
+    <div class="toast" id="settings-toast" role="status" aria-live="polite" aria-atomic="true">
+        <span class="toast-check" aria-hidden="true">✓</span>
+        Configurações salvas neste navegador
+    </div>
+
+    <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title"
+        aria-hidden="true">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Settings</h2>
-                <button id="btn-close-settings" class="close-btn">&times;</button>
+                <div>
+                    <p class="eyebrow">Personalize seu ritmo</p>
+                    <h2 id="settings-title">Configurações</h2>
+                </div>
+                <button id="btn-close-settings" class="close-btn" type="button"
+                    aria-label="Fechar configurações">&times;</button>
             </div>
+
             <div class="modal-body">
-                <div class="setting-group">
-                    <h3>Timer (minutes)</h3>
-                    <div class="setting-row">
-                        <label>Focus</label>
-                        <input type="number" id="setting-focus" value="25" min="1" max="60">
+                <fieldset class="setting-group">
+                    <legend>Duração das sessões</legend>
+                    <div class="duration-grid">
+                        <label>
+                            <span>Foco</span>
+                            <span class="number-field"><input type="number" id="setting-focus" value="25" min="1"
+                                    max="120" inputmode="numeric"><small>min</small></span>
+                        </label>
+                        <label>
+                            <span>Pausa curta</span>
+                            <span class="number-field"><input type="number" id="setting-short" value="5" min="1"
+                                    max="60" inputmode="numeric"><small>min</small></span>
+                        </label>
+                        <label>
+                            <span>Pausa longa</span>
+                            <span class="number-field"><input type="number" id="setting-long" value="15" min="1"
+                                    max="120" inputmode="numeric"><small>min</small></span>
+                        </label>
                     </div>
-                    <div class="setting-row">
-                        <label>Short Break</label>
-                        <input type="number" id="setting-short" value="5" min="1" max="30">
+                </fieldset>
+
+                <fieldset class="setting-group">
+                    <legend>Sinais</legend>
+                    <div class="sound-controls">
+                        <label class="select-field" for="setting-sound">
+                            <span>Toque ao terminar</span>
+                            <select id="setting-sound">
+                                <option value="soft">Suave</option>
+                                <option value="digital">Digital</option>
+                                <option value="bell">Sino</option>
+                            </select>
+                        </label>
+                        <button id="btn-test-sound" class="btn-quiet" type="button">Ouvir</button>
                     </div>
-                    <div class="setting-row">
-                        <label>Long Break</label>
-                        <input type="number" id="setting-long" value="15" min="1" max="60">
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <h3>Options</h3>
-                    <div class="setting-row toggle-row">
-                        <label>Auto-start Breaks</label>
+                    <label class="range-field" for="setting-volume">
+                        <span>Volume</span>
+                        <input type="range" id="setting-volume" min="0" max="100" value="65">
+                        <output id="volume-value" for="setting-volume">65%</output>
+                    </label>
+                    <label class="switch-row">
+                        <span><strong>Som</strong><small>Toca mesmo com a aba aberta.</small></span>
+                        <input type="checkbox" id="setting-sound-enabled" checked>
+                        <span class="switch" aria-hidden="true"></span>
+                    </label>
+                    <label class="switch-row">
+                        <span><strong>Notificações</strong><small id="notification-help">Avise quando a sessão
+                                terminar.</small></span>
+                        <input type="checkbox" id="setting-notifications">
+                        <span class="switch" aria-hidden="true"></span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="setting-group">
+                    <legend>Automação</legend>
+                    <label class="switch-row">
+                        <span><strong>Iniciar pausas</strong><small>Começa a pausa automaticamente.</small></span>
                         <input type="checkbox" id="setting-auto-break">
-                    </div>
-                    <div class="setting-row toggle-row">
-                        <label>Auto-start Pomodoros</label>
+                        <span class="switch" aria-hidden="true"></span>
+                    </label>
+                    <label class="switch-row">
+                        <span><strong>Iniciar focos</strong><small>Começa o próximo foco automaticamente.</small></span>
                         <input type="checkbox" id="setting-auto-pomodoro">
-                    </div>
-                </div>
+                        <span class="switch" aria-hidden="true"></span>
+                    </label>
+                </fieldset>
             </div>
+
             <div class="modal-footer">
-                <button id="btn-save-settings" class="btn-primary">Save Changes</button>
+                <span>As preferências ficam salvas neste navegador.</span>
+                <button id="btn-save-settings" class="btn-primary" type="button">Salvar configurações</button>
             </div>
         </div>
     </div>
+
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

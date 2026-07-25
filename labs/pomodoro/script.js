@@ -1,81 +1,218 @@
 class PomodoroApp {
     constructor() {
-        // Default Settings
-        this.settings = {
+        this.defaults = {
             focus: 25,
             short: 5,
             long: 15,
             autoBreak: false,
-            autoPomodoro: false
+            autoPomodoro: false,
+            soundEnabled: true,
+            sound: 'soft',
+            volume: 65,
+            notifications: false
         };
 
-        this.loadSettings();
-
-        this.timeLeft = this.settings.focus * 60;
-        this.totalTime = this.settings.focus * 60;
-        this.timerId = null;
-        this.isRunning = false;
+        this.settings = this.loadSettings();
+        this.mode = 'focus';
         this.cycleCount = 1;
-        this.mode = 'focus'; // focus, short, long
+        this.timeLeft = this.settings.focus * 60;
+        this.totalTime = this.timeLeft;
+        this.timerId = null;
+        this.targetTime = null;
+        this.isRunning = false;
+        this.audioCtx = null;
+        this.lastFocusedElement = null;
+        this.toastTimer = null;
 
-        // DOM Elements
+        this.cacheElements();
+        this.init();
+    }
+
+    cacheElements() {
         this.timeDisplay = document.getElementById('time-display');
         this.progressCircle = document.querySelector('.timer-progress');
         this.statusBadge = document.getElementById('status-badge');
+        this.sessionLabel = document.getElementById('session-label');
+        this.sessionTitle = document.getElementById('session-title');
+        this.timerDescription = document.getElementById('timer-description');
+        this.timerAnnouncement = document.getElementById('timer-announcement');
+        this.pomodoroCard = document.querySelector('.pomodoro-card');
         this.cycleDisplay = document.getElementById('cycle-count');
         this.toggleBtn = document.getElementById('btn-toggle');
+        this.toggleIcon = this.toggleBtn.querySelector('.control-icon');
+        this.toggleLabel = this.toggleBtn.querySelector('.control-label');
         this.resetBtn = document.getElementById('btn-reset');
         this.modeBtns = document.querySelectorAll('.mode-btn');
+        this.signalStatus = document.getElementById('signal-status');
+        this.soundStatus = document.getElementById('sound-status');
+        this.notificationStatus = document.getElementById('notification-status');
+        this.settingsToast = document.getElementById('settings-toast');
 
-        // Settings DOM
         this.settingsBtn = document.getElementById('btn-settings');
         this.settingsModal = document.getElementById('settings-modal');
         this.closeSettingsBtn = document.getElementById('btn-close-settings');
         this.saveSettingsBtn = document.getElementById('btn-save-settings');
+        this.testSoundBtn = document.getElementById('btn-test-sound');
 
-        // Inputs
         this.inputFocus = document.getElementById('setting-focus');
         this.inputShort = document.getElementById('setting-short');
         this.inputLong = document.getElementById('setting-long');
         this.inputAutoBreak = document.getElementById('setting-auto-break');
         this.inputAutoPomodoro = document.getElementById('setting-auto-pomodoro');
-
-        // Audio Context
-        this.audioCtx = null;
-
-        this.init();
+        this.inputSoundEnabled = document.getElementById('setting-sound-enabled');
+        this.inputSound = document.getElementById('setting-sound');
+        this.inputVolume = document.getElementById('setting-volume');
+        this.volumeValue = document.getElementById('volume-value');
+        this.inputNotifications = document.getElementById('setting-notifications');
+        this.notificationHelp = document.getElementById('notification-help');
     }
 
     init() {
-        this.updateDisplay();
         this.setupEventListeners();
-        this.requestNotificationPermission();
+        this.updateModeUI();
+        this.updateDisplay();
+        this.updateSignalStatus();
     }
 
     loadSettings() {
-        const saved = localStorage.getItem('pomodoro-settings');
-        if (saved) {
-            this.settings = JSON.parse(saved);
+        try {
+            const saved = JSON.parse(localStorage.getItem('pomodoro-settings') || '{}');
+            return this.normalizeSettings(saved);
+        } catch (error) {
+            return { ...this.defaults };
         }
     }
 
-    saveSettings() {
-        this.settings = {
-            focus: parseInt(this.inputFocus.value) || 25,
-            short: parseInt(this.inputShort.value) || 5,
-            long: parseInt(this.inputLong.value) || 15,
-            autoBreak: this.inputAutoBreak.checked,
-            autoPomodoro: this.inputAutoPomodoro.checked
+    normalizeSettings(settings = {}) {
+        const numberInRange = (value, fallback, min, max) => {
+            const number = Number.parseInt(value, 10);
+            return Math.min(max, Math.max(min, Number.isFinite(number) ? number : fallback));
         };
-        localStorage.setItem('pomodoro-settings', JSON.stringify(this.settings));
+        const sounds = ['soft', 'digital', 'bell'];
 
-        // Close modal
-        this.settingsModal.classList.remove('open');
+        return {
+            focus: numberInRange(settings.focus, this.defaults.focus, 1, 120),
+            short: numberInRange(settings.short, this.defaults.short, 1, 60),
+            long: numberInRange(settings.long, this.defaults.long, 1, 120),
+            autoBreak: settings.autoBreak === true,
+            autoPomodoro: settings.autoPomodoro === true,
+            soundEnabled: settings.soundEnabled !== false,
+            sound: sounds.includes(settings.sound) ? settings.sound : this.defaults.sound,
+            volume: numberInRange(settings.volume, this.defaults.volume, 0, 100),
+            notifications: settings.notifications === true
+        };
+    }
 
-        // Reset timer to apply new settings if not running
-        if (!this.isRunning) {
-            this.resetTimer();
+    persistSettings() {
+        try {
+            localStorage.setItem('pomodoro-settings', JSON.stringify(this.settings));
+        } catch (error) {
+            // The timer still works when storage is unavailable.
         }
+    }
+
+    setupEventListeners() {
+        this.toggleBtn.addEventListener('click', () => this.toggleTimer());
+        this.resetBtn.addEventListener('click', () => this.resetTimer());
+
+        this.modeBtns.forEach((button) => {
+            button.addEventListener('click', () => this.switchMode(button.dataset.mode));
+            button.addEventListener('keydown', (event) => this.handleModeNavigation(event));
+        });
+
+        this.settingsBtn.addEventListener('click', () => this.openSettings());
+        this.signalStatus.addEventListener('click', () => this.openSettings());
+        this.closeSettingsBtn.addEventListener('click', () => this.closeSettings());
+        this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+        this.testSoundBtn.addEventListener('click', () => this.previewSound());
+
+        this.inputVolume.addEventListener('input', () => {
+            this.volumeValue.textContent = `${this.inputVolume.value}%`;
+        });
+
+        this.inputNotifications.addEventListener('change', () => this.handleNotificationToggle());
+
+        this.settingsModal.addEventListener('click', (event) => {
+            if (event.target === this.settingsModal) this.closeSettings();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Tab' && this.settingsModal.classList.contains('open')) {
+                this.keepFocusInSettings(event);
+            }
+
+            if (event.key === 'Escape' && this.settingsModal.classList.contains('open')) {
+                this.closeSettings();
+            }
+
+            if (event.code === 'Space' && !this.settingsModal.classList.contains('open')
+                && !['INPUT', 'BUTTON', 'SELECT'].includes(document.activeElement.tagName)) {
+                event.preventDefault();
+                this.toggleTimer();
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (this.isRunning && document.visibilityState === 'visible') this.tick();
+        });
+
+        window.addEventListener('storage', (event) => {
+            if (event.key !== 'pomodoro-settings') return;
+            this.settings = this.loadSettings();
+            this.updateSignalStatus();
+            if (!this.isRunning) this.resetTimer();
+        });
+    }
+
+    openSettings() {
+        this.populateSettings();
+        this.lastFocusedElement = document.activeElement;
+        this.settingsModal.classList.add('open');
+        this.settingsModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        this.closeSettingsBtn.focus();
+    }
+
+    closeSettings() {
+        this.settingsModal.classList.remove('open');
+        this.settingsModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        this.lastFocusedElement?.focus();
+    }
+
+    keepFocusInSettings(event) {
+        const focusable = Array.from(this.settingsModal.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter((element) => element.offsetParent !== null);
+
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    handleModeNavigation(event) {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+
+        const buttons = Array.from(this.modeBtns);
+        const currentIndex = buttons.indexOf(event.currentTarget);
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % buttons.length;
+        if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = buttons.length - 1;
+
+        buttons[nextIndex].focus();
+        this.switchMode(buttons[nextIndex].dataset.mode);
     }
 
     populateSettings() {
@@ -84,194 +221,337 @@ class PomodoroApp {
         this.inputLong.value = this.settings.long;
         this.inputAutoBreak.checked = this.settings.autoBreak;
         this.inputAutoPomodoro.checked = this.settings.autoPomodoro;
+        this.inputSoundEnabled.checked = this.settings.soundEnabled;
+        this.inputSound.value = this.settings.sound;
+        this.inputVolume.value = this.settings.volume;
+        this.volumeValue.textContent = `${this.settings.volume}%`;
+
+        const notificationSupported = 'Notification' in window;
+        const permission = notificationSupported ? Notification.permission : 'unsupported';
+        this.inputNotifications.disabled = !notificationSupported || permission === 'denied';
+        this.inputNotifications.checked = this.settings.notifications && permission === 'granted';
+
+        if (!notificationSupported) {
+            this.notificationHelp.textContent = 'Este navegador não oferece notificações.';
+        } else if (permission === 'denied') {
+            this.notificationHelp.textContent = 'Bloqueadas nas configurações do navegador.';
+        } else if (permission === 'granted') {
+            this.notificationHelp.textContent = 'Aviso liberado para esta página.';
+        } else {
+            this.notificationHelp.textContent = 'O navegador pedirá sua permissão.';
+        }
     }
 
-    setupEventListeners() {
-        this.toggleBtn.addEventListener('click', () => this.toggleTimer());
-        this.resetBtn.addEventListener('click', () => this.resetTimer());
-
-        this.modeBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const newMode = e.target.dataset.mode;
-                this.switchMode(newMode);
-            });
-        });
-
-        // Settings Modal
-        this.settingsBtn.addEventListener('click', () => {
-            this.populateSettings();
-            this.settingsModal.classList.add('open');
-        });
-
-        this.closeSettingsBtn.addEventListener('click', () => {
-            this.settingsModal.classList.remove('open');
-        });
-
-        this.saveSettingsBtn.addEventListener('click', () => {
-            this.saveSettings();
-        });
-
-        // Close modal on outside click
-        this.settingsModal.addEventListener('click', (e) => {
-            if (e.target === this.settingsModal) {
-                this.settingsModal.classList.remove('open');
-            }
-        });
+    clampNumber(input, fallback, min, max) {
+        const value = Number.parseInt(input.value, 10);
+        return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
     }
 
-    requestNotificationPermission() {
-        if ("Notification" in window && Notification.permission !== "granted") {
-            Notification.requestPermission();
+    saveSettings() {
+        const previousDuration = this.settings[this.mode];
+
+        this.settings = {
+            focus: this.clampNumber(this.inputFocus, 25, 1, 120),
+            short: this.clampNumber(this.inputShort, 5, 1, 60),
+            long: this.clampNumber(this.inputLong, 15, 1, 120),
+            autoBreak: this.inputAutoBreak.checked,
+            autoPomodoro: this.inputAutoPomodoro.checked,
+            soundEnabled: this.inputSoundEnabled.checked,
+            sound: this.inputSound.value,
+            volume: Number.parseInt(this.inputVolume.value, 10),
+            notifications: this.inputNotifications.checked && this.hasNotificationPermission()
+        };
+
+        this.persistSettings();
+        this.closeSettings();
+        this.updateSignalStatus();
+        this.showToast();
+
+        if (!this.isRunning && previousDuration !== this.settings[this.mode]) {
+            this.resetTimer();
+        } else {
+            this.updateDisplay();
+        }
+    }
+
+    showToast() {
+        window.clearTimeout(this.toastTimer);
+        this.settingsToast.classList.add('visible');
+        this.toastTimer = window.setTimeout(() => {
+            this.settingsToast.classList.remove('visible');
+        }, 2600);
+    }
+
+    async handleNotificationToggle() {
+        if (!this.inputNotifications.checked || !('Notification' in window)) return;
+
+        if (Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            this.inputNotifications.checked = permission === 'granted';
+        } else if (Notification.permission !== 'granted') {
+            this.inputNotifications.checked = false;
+        }
+
+        this.populateNotificationHelp();
+    }
+
+    populateNotificationHelp() {
+        if (!('Notification' in window)) {
+            this.notificationHelp.textContent = 'Este navegador não oferece notificações.';
+        } else if (Notification.permission === 'granted') {
+            this.notificationHelp.textContent = 'Aviso liberado para esta página.';
+        } else if (Notification.permission === 'denied') {
+            this.notificationHelp.textContent = 'Bloqueadas nas configurações do navegador.';
+            this.inputNotifications.disabled = true;
+        } else {
+            this.notificationHelp.textContent = 'O navegador pedirá sua permissão.';
+        }
+    }
+
+    hasNotificationPermission() {
+        return 'Notification' in window && Notification.permission === 'granted';
+    }
+
+    updateSignalStatus() {
+        this.soundStatus.textContent = this.settings.soundEnabled ? 'Som ligado' : 'Som desligado';
+        this.signalStatus.classList.toggle('sound-off', !this.settings.soundEnabled);
+
+        if (!('Notification' in window)) {
+            this.notificationStatus.textContent = 'Notificações indisponíveis';
+        } else if (Notification.permission === 'denied') {
+            this.notificationStatus.textContent = 'Notificações bloqueadas';
+        } else if (this.settings.notifications && Notification.permission === 'granted') {
+            this.notificationStatus.textContent = 'Notificações ligadas';
+        } else {
+            this.notificationStatus.textContent = 'Notificações desligadas';
         }
     }
 
     toggleTimer() {
-        if (this.isRunning) {
-            this.pauseTimer();
-        } else {
-            this.startTimer();
-        }
+        this.isRunning ? this.pauseTimer() : this.startTimer();
     }
 
     startTimer() {
-        if (!this.isRunning) {
-            this.isRunning = true;
-            this.toggleBtn.innerHTML = '<span class="icon-pause">⏸</span> Pause';
-            this.toggleBtn.classList.add('active');
+        if (this.isRunning || this.timeLeft <= 0) return;
+        this.ensureAudioContext();
+        this.isRunning = true;
+        this.targetTime = Date.now() + this.timeLeft * 1000;
+        this.setControlState();
+        this.timerDescription.textContent = this.mode === 'focus' ? 'Mantenha o foco. Você consegue.' : 'Respire e recarregue a energia.';
+        this.timerId = window.setInterval(() => this.tick(), 250);
+    }
 
-            // Initialize audio context on first user interaction
-            if (!this.audioCtx) {
-                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+    tick() {
+        if (!this.isRunning) return;
 
-            this.lastTime = Date.now();
-            this.timerId = setInterval(() => {
-                const now = Date.now();
-                const delta = Math.floor((now - this.lastTime) / 1000);
+        this.timeLeft = Math.max(0, Math.ceil((this.targetTime - Date.now()) / 1000));
+        this.updateDisplay();
 
-                if (delta >= 1) {
-                    this.timeLeft -= delta;
-                    this.lastTime = now;
-                    this.updateDisplay();
-
-                    if (this.timeLeft <= 0) {
-                        this.completeTimer();
-                    }
-                }
-            }, 100);
-        }
+        if (this.timeLeft <= 0) this.completeTimer();
     }
 
     pauseTimer() {
+        if (this.isRunning && this.targetTime) {
+            this.timeLeft = Math.max(0, Math.ceil((this.targetTime - Date.now()) / 1000));
+        }
         this.isRunning = false;
-        clearInterval(this.timerId);
-        this.toggleBtn.innerHTML = '<span class="icon-play">▶</span> Start';
-        this.toggleBtn.classList.remove('active');
+        this.targetTime = null;
+        window.clearInterval(this.timerId);
+        this.timerId = null;
+        this.setControlState();
+        this.timerDescription.textContent = this.timeLeft === this.totalTime
+            ? 'Prepare-se e comece quando quiser.'
+            : 'Pausado. Continue quando estiver pronto.';
+        this.updateDisplay();
+    }
+
+    setControlState() {
+        this.toggleIcon.textContent = this.isRunning ? 'Ⅱ' : '▶';
+        this.toggleLabel.textContent = this.isRunning ? 'Pausar' : (this.timeLeft < this.totalTime ? 'Continuar' : 'Começar');
+        this.toggleBtn.setAttribute('aria-label', this.toggleLabel.textContent);
     }
 
     resetTimer() {
         this.pauseTimer();
         this.timeLeft = this.settings[this.mode] * 60;
-        this.totalTime = this.settings[this.mode] * 60;
+        this.totalTime = this.timeLeft;
+        this.timerDescription.textContent = 'Prepare-se e comece quando quiser.';
+        this.setControlState();
         this.updateDisplay();
     }
 
-    switchMode(mode) {
-        this.mode = mode;
+    switchMode(mode, shouldAutoStart = false) {
         this.pauseTimer();
+        this.mode = mode;
         this.timeLeft = this.settings[mode] * 60;
-        this.totalTime = this.settings[mode] * 60;
-
-        // Update UI
-        this.modeBtns.forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
-
-        if (mode === 'focus') {
-            document.body.classList.remove('break-mode');
-            this.statusBadge.textContent = 'FOCUS';
-        } else {
-            document.body.classList.add('break-mode');
-            this.statusBadge.textContent = mode === 'short' ? 'SHORT BREAK' : 'LONG BREAK';
-        }
-
+        this.totalTime = this.timeLeft;
+        this.updateModeUI();
         this.updateDisplay();
+        this.setControlState();
+
+        if (shouldAutoStart) this.startTimer();
+    }
+
+    updateModeUI() {
+        const content = {
+            focus: {
+                badge: 'FOCO',
+                label: 'Hora de focar',
+                title: 'Sessão de foco'
+            },
+            short: {
+                badge: 'PAUSA',
+                label: 'Pausa rápida',
+                title: 'Pausa curta'
+            },
+            long: {
+                badge: 'DESCANSO',
+                label: 'Recupere a energia',
+                title: 'Pausa longa'
+            }
+        }[this.mode];
+
+        document.body.classList.toggle('break-mode', this.mode !== 'focus');
+        this.statusBadge.textContent = content.badge;
+        this.sessionLabel.textContent = content.label;
+        this.sessionTitle.textContent = content.title;
+        this.cycleDisplay.textContent = this.cycleCount;
+
+        this.modeBtns.forEach((button) => {
+            const active = button.dataset.mode === this.mode;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', String(active));
+            button.tabIndex = active ? 0 : -1;
+        });
     }
 
     completeTimer() {
-        this.pauseTimer();
-        this.playSound();
-        this.sendNotification();
+        const completedMode = this.mode;
+        this.isRunning = false;
+        this.targetTime = null;
+        window.clearInterval(this.timerId);
+        this.timerId = null;
 
-        if (this.mode === 'focus') {
-            if (this.cycleCount % 4 === 0) {
-                this.switchMode('long');
-            } else {
-                this.switchMode('short');
-            }
-            this.cycleCount++;
-            this.cycleDisplay.textContent = this.cycleCount;
+        this.playSound(this.settings.sound, this.settings.volume);
+        this.sendNotification(completedMode);
+        this.pomodoroCard.classList.remove('session-complete');
+        window.requestAnimationFrame(() => this.pomodoroCard.classList.add('session-complete'));
+        window.setTimeout(() => this.pomodoroCard.classList.remove('session-complete'), 760);
 
-            if (this.settings.autoBreak) {
-                this.startTimer();
-            }
+        let nextMode;
+        let autoStart;
+        if (completedMode === 'focus') {
+            nextMode = this.cycleCount === 4 ? 'long' : 'short';
+            this.cycleCount = this.cycleCount === 4 ? 1 : this.cycleCount + 1;
+            autoStart = this.settings.autoBreak;
         } else {
-            this.switchMode('focus');
-
-            if (this.settings.autoPomodoro) {
-                this.startTimer();
-            }
+            nextMode = 'focus';
+            autoStart = this.settings.autoPomodoro;
         }
+
+        const message = completedMode === 'focus'
+            ? 'Sessão de foco concluída. Hora de fazer uma pausa.'
+            : 'Pausa concluída. Hora de voltar ao foco.';
+        this.timerAnnouncement.textContent = message;
+        this.switchMode(nextMode, autoStart);
+        if (!autoStart) this.timerDescription.textContent = message;
     }
 
     updateDisplay() {
         const minutes = Math.floor(this.timeLeft / 60);
         const seconds = this.timeLeft % 60;
-        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
         this.timeDisplay.textContent = timeString;
-        document.title = `${timeString} - Pomodoro`;
+        this.timeDisplay.setAttribute('aria-label', `${minutes} minutos e ${seconds} segundos restantes`);
+        document.title = `${timeString} · ${this.sessionTitle.textContent} — Pomodoro`;
 
-        // Update Progress Circle
-        const circumference = 2 * Math.PI * 45; // r=45
-        const offset = circumference - (this.timeLeft / this.totalTime) * circumference;
-        this.progressCircle.style.strokeDashoffset = offset;
+        const circumference = 2 * Math.PI * 45;
+        const ratio = this.totalTime > 0 ? this.timeLeft / this.totalTime : 0;
+        this.progressCircle.style.strokeDashoffset = String(circumference * (1 - ratio));
     }
 
-    playSound() {
-        if (!this.audioCtx) return;
+    ensureAudioContext() {
+        if (!this.audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) this.audioCtx = new AudioContextClass();
+        }
 
-        const oscillator = this.audioCtx.createOscillator();
-        const gainNode = this.audioCtx.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioCtx.destination);
-
-        // Gentle chime
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, this.audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(880, this.audioCtx.currentTime + 0.1);
-
-        gainNode.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.5);
-
-        oscillator.start();
-        oscillator.stop(this.audioCtx.currentTime + 0.5);
+        if (this.audioCtx?.state === 'suspended') this.audioCtx.resume();
+        return this.audioCtx;
     }
 
-    sendNotification() {
-        if (Notification.permission === "granted") {
-            const title = this.mode === 'focus' ? "Focus Session Complete" : "Break Over";
-            const body = this.mode === 'focus' ? "Time to take a break." : "Ready to focus again?";
+    previewSound() {
+        this.ensureAudioContext();
+        this.playSound(this.inputSound.value, Number.parseInt(this.inputVolume.value, 10), true);
+    }
 
-            new Notification(title, {
-                body: body,
-                icon: '/assets/images/favicon.png'
-            });
+    playSound(sound = 'soft', volume = 65, force = false) {
+        if (!force && !this.settings.soundEnabled) return;
+        if (volume <= 0) return;
+        const context = this.ensureAudioContext();
+        if (!context) return;
+
+        const sequences = {
+            soft: [
+                { frequency: 523.25, delay: 0, duration: 0.5 },
+                { frequency: 659.25, delay: 0.18, duration: 0.7 }
+            ],
+            digital: [
+                { frequency: 784, delay: 0, duration: 0.12, type: 'square' },
+                { frequency: 988, delay: 0.16, duration: 0.12, type: 'square' },
+                { frequency: 1318, delay: 0.32, duration: 0.22, type: 'square' }
+            ],
+            bell: [
+                { frequency: 659.25, delay: 0, duration: 1.2 },
+                { frequency: 987.77, delay: 0.04, duration: 1.05 },
+                { frequency: 1318.51, delay: 0.08, duration: 0.9 }
+            ]
+        };
+
+        const masterVolume = Math.min(1, volume / 100) * 0.18;
+        (sequences[sound] || sequences.soft).forEach((note) => {
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            const start = context.currentTime + note.delay;
+            const end = start + note.duration;
+
+            oscillator.type = note.type || 'sine';
+            oscillator.frequency.setValueAtTime(note.frequency, start);
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.exponentialRampToValueAtTime(masterVolume, start + 0.025);
+            gain.gain.exponentialRampToValueAtTime(0.001, end);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start(start);
+            oscillator.stop(end + 0.03);
+        });
+    }
+
+    sendNotification(completedMode) {
+        if (!this.settings.notifications || !this.hasNotificationPermission()) return;
+
+        const focusCompleted = completedMode === 'focus';
+        try {
+            const notification = new Notification(
+                focusCompleted ? 'Foco concluído' : 'Pausa concluída',
+                {
+                    body: focusCompleted ? 'Ótimo trabalho. Hora de respirar um pouco.' : 'Pronto para mais uma sessão?',
+                    icon: '/favicon.ico',
+                    tag: 'pomodoro-session',
+                    renotify: true
+                }
+            );
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+        } catch (error) {
+            // Some browsers expose the API but restrict desktop notifications.
         }
     }
 }
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new PomodoroApp();
+    window.pomodoroApp = new PomodoroApp();
 });
