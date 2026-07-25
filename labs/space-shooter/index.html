@@ -7,7 +7,7 @@
     <title>Neon Invaders - Labs</title>
     <meta name="description" content="Jogo de tiro espacial estilo arcade com gráficos neon.">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
@@ -16,37 +16,115 @@
     <div class="container">
         <header data-lab-header data-title="Neon Invaders">
             <template data-slot="logo">
-                🚀 Neon Invaders
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">N</span>
+                    <span>Neon Invaders</span>
+                </div>
             </template>
         </header>
 
-        <div class="game-container">
-            <div class="ui-layer">
-                <div class="score-board">SCORE: <span id="score">0</span></div>
-                <div class="lives-board">LIVES: <span id="lives">3</span></div>
-            </div>
+        <main class="arcade-shell">
+            <section class="game-panel" aria-label="Área do jogo">
+                <div class="game-container">
+                    <div class="ui-layer" aria-live="polite">
+                        <div class="hud-item score-board">
+                            <span class="hud-label">Pontos</span>
+                            <strong id="score">000000</strong>
+                        </div>
+                        <div class="hud-item level-board">
+                            <span class="hud-label">Nível</span>
+                            <strong id="level">01</strong>
+                        </div>
+                        <div class="hud-item lives-board">
+                            <span class="hud-label">Vidas</span>
+                            <strong id="lives">♥ ♥ ♥</strong>
+                        </div>
+                    </div>
 
-            <canvas id="gameCanvas"></canvas>
+                    <canvas id="gameCanvas" aria-label="Neon Invaders"></canvas>
 
-            <div id="startScreen" class="overlay">
-                <h1>NEON INVADERS</h1>
-                <p>WASD / ARROWS to Move</p>
-                <p>SPACE / CLICK to Shoot</p>
-                <button id="startBtn">INSERT COIN (START)</button>
-            </div>
+                    <div id="startScreen" class="overlay">
+                        <div class="eyebrow">SINAL DETECTADO · SETOR 09</div>
+                        <h1>NEON<br><span>INVADERS</span></h1>
+                        <p class="lead">Defenda a órbita. Destrua a frota invasora e evolua seu arsenal.</p>
+                        <div class="quick-controls" aria-label="Controles">
+                            <span><kbd>←</kbd><kbd>→</kbd> mover</span>
+                            <span><kbd>ESPAÇO</kbd> disparar</span>
+                        </div>
+                        <button id="startBtn" class="primary-action">
+                            <span>Iniciar missão</span>
+                            <span aria-hidden="true">↗</span>
+                        </button>
+                    </div>
 
-            <div id="gameOverScreen" class="overlay hidden">
-                <h1>GAME OVER</h1>
-                <p>FINAL SCORE: <span id="finalScore">0</span></p>
-                <button id="restartBtn">TRY AGAIN</button>
-            </div>
-        </div>
+                    <div id="gameOverScreen" class="overlay hidden">
+                        <div class="eyebrow danger">CONEXÃO ENCERRADA</div>
+                        <h1>FIM DE<br><span>JOGO</span></h1>
+                        <div class="result-card">
+                            <span>Pontuação final</span>
+                            <strong id="finalScore">000000</strong>
+                        </div>
+                        <button id="restartBtn" class="primary-action">
+                            <span>Tentar novamente</span>
+                            <span aria-hidden="true">↻</span>
+                        </button>
+                    </div>
+
+                    <div class="touch-controls" aria-label="Controles por toque">
+                        <div class="direction-controls">
+                            <button id="moveLeft" type="button" aria-label="Mover para esquerda">←</button>
+                            <button id="moveRight" type="button" aria-label="Mover para direita">→</button>
+                        </div>
+                        <button id="shootBtn" class="shoot-control" type="button" aria-label="Disparar">
+                            <span>●</span>
+                            FIRE
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="mission-panel" aria-label="Informações da missão">
+                <div class="mission-status">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    MISSÃO ATIVA
+                </div>
+
+                <div class="mission-copy">
+                    <span class="panel-kicker">NEON DEFENSE</span>
+                    <h2>Proteja o último corredor orbital.</h2>
+                    <p>Elimine cada formação antes que ela alcance sua nave.</p>
+                </div>
+
+                <div class="panel-stats">
+                    <div>
+                        <span>Recorde local</span>
+                        <strong id="highScore">000000</strong>
+                    </div>
+                    <div>
+                        <span>Arsenal</span>
+                        <strong id="weaponLevel">LASER I</strong>
+                    </div>
+                </div>
+
+                <div class="desktop-controls">
+                    <span class="panel-kicker">CONTROLES</span>
+                    <div><span><kbd>A</kbd><kbd>D</kbd></span><p>Mover nave</p></div>
+                    <div><span><kbd>←</kbd><kbd>→</kbd></span><p>Mover nave</p></div>
+                    <div><span><kbd>ESPAÇO</kbd></span><p>Disparar</p></div>
+                </div>
+
+                <button id="soundToggle" class="sound-toggle" type="button" aria-pressed="true">
+                    <span aria-hidden="true">◉</span>
+                    <span>Som ativado</span>
+                </button>
+            </aside>
+        </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=2" defer></script>
 </body>
 
 </html>

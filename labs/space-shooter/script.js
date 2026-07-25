@@ -11,6 +11,8 @@ let animationId;
 let lastTime = 0;
 let gameWidth = 0;
 let gameHeight = 0;
+let soundEnabled = true;
+let highScore = Number(localStorage.getItem('neonInvadersHighScore') || 0);
 
 // Entities
 const player = {
@@ -50,9 +52,11 @@ let enemyDirection = 1; // 1 right, -1 left
 
 // Audio Context (Simple synth for beeps)
 const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+let audioCtx;
 
 function playSound(type) {
+    if (!soundEnabled) return;
+    if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -81,6 +85,7 @@ function playSound(type) {
 // Initialization
 function resize() {
     const parent = canvas.parentElement;
+    const previousWidth = gameWidth;
     gameWidth = parent.clientWidth;
     gameHeight = parent.clientHeight;
 
@@ -94,8 +99,10 @@ function resize() {
 
     ctx.scale(dpr, dpr);
 
-    player.y = gameHeight - player.height - 20;
-    player.x = gameWidth / 2 - player.width / 2;
+    player.y = gameHeight - player.height - 26;
+    player.x = previousWidth
+        ? Math.min(gameWidth - player.width, Math.max(0, player.x * (gameWidth / previousWidth)))
+        : gameWidth / 2 - player.width / 2;
 }
 
 function initStars() {
@@ -112,16 +119,20 @@ function initStars() {
 
 function initEnemies() {
     enemies = [];
-    const startX = (gameWidth - (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_PADDING))) / 2;
-    const startY = 50;
+    const enemyPadding = Math.max(6, Math.min(ENEMY_PADDING, gameWidth * 0.025));
+    const enemyWidth = Math.max(18, Math.min(ENEMY_WIDTH, (gameWidth - 28 - (ENEMY_COLS - 1) * enemyPadding) / ENEMY_COLS));
+    const enemyHeight = enemyWidth;
+    const formationWidth = ENEMY_COLS * enemyWidth + (ENEMY_COLS - 1) * enemyPadding;
+    const startX = Math.max(10, (gameWidth - formationWidth) / 2);
+    const startY = Math.max(64, gameHeight * .1);
 
     for (let row = 0; row < ENEMY_ROWS; row++) {
         for (let col = 0; col < ENEMY_COLS; col++) {
             enemies.push({
-                x: startX + col * (ENEMY_WIDTH + ENEMY_PADDING),
-                y: startY + row * (ENEMY_HEIGHT + ENEMY_PADDING),
-                width: ENEMY_WIDTH,
-                height: ENEMY_HEIGHT,
+                x: startX + col * (enemyWidth + enemyPadding),
+                y: startY + row * (enemyHeight + enemyPadding),
+                width: enemyWidth,
+                height: enemyHeight,
                 row: row,
                 col: col,
                 color: row === 0 ? '#ff00ff' : (row === 1 ? '#00ff00' : '#00f3ff')
@@ -160,6 +171,12 @@ window.addEventListener('keyup', e => {
 // Touch/Mouse support for shooting
 canvas.addEventListener('mousedown', () => {
     if (gameRunning) fireBullet();
+});
+
+canvas.addEventListener('pointermove', e => {
+    if (!gameRunning || e.pointerType === 'mouse') return;
+    const rect = canvas.getBoundingClientRect();
+    player.x = Math.max(0, Math.min(gameWidth - player.width, e.clientX - rect.left - player.width / 2));
 });
 
 function fireBullet() {
@@ -282,17 +299,24 @@ function update(dt) {
                 enemies.splice(j, 1);
                 bullets.splice(i, 1);
                 score += 10;
-                document.getElementById('score').innerText = score;
+                updateHud();
 
                 // Check win/respawn
                 if (enemies.length === 0) {
                     level++;
+                    updateHud();
                     initEnemies();
                 }
 
                 // Level up bullets
-                if (score >= 500 && bulletLevel < 2) bulletLevel = 2;
-                if (score >= 1500 && bulletLevel < 3) bulletLevel = 3;
+                if (score >= 500 && bulletLevel < 2) {
+                    bulletLevel = 2;
+                    updateHud();
+                }
+                if (score >= 1500 && bulletLevel < 3) {
+                    bulletLevel = 3;
+                    updateHud();
+                }
 
                 break;
             }
@@ -323,8 +347,28 @@ function update(dt) {
 }
 
 function draw() {
-    ctx.fillStyle = '#050510';
+    const spaceGradient = ctx.createLinearGradient(0, 0, 0, gameHeight);
+    spaceGradient.addColorStop(0, '#060714');
+    spaceGradient.addColorStop(.55, '#03040a');
+    spaceGradient.addColorStop(1, '#080510');
+    ctx.fillStyle = spaceGradient;
     ctx.fillRect(0, 0, gameWidth, gameHeight);
+
+    ctx.strokeStyle = 'rgba(89, 243, 255, .045)';
+    ctx.lineWidth = 1;
+    const horizon = gameHeight * .64;
+    for (let y = horizon; y < gameHeight; y += 28) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(gameWidth, y);
+        ctx.stroke();
+    }
+    for (let x = -gameWidth; x < gameWidth * 2; x += 56) {
+        ctx.beginPath();
+        ctx.moveTo(gameWidth / 2, horizon);
+        ctx.lineTo(x, gameHeight);
+        ctx.stroke();
+    }
 
     // Draw Stars
     ctx.fillStyle = '#ffffff';
@@ -400,8 +444,7 @@ function startGame() {
     lives = 3;
     level = 1;
     bulletLevel = 1;
-    document.getElementById('score').innerText = score;
-    document.getElementById('lives').innerText = lives;
+    updateHud();
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
 
@@ -415,13 +458,59 @@ function startGame() {
 function gameOver() {
     gameRunning = false;
     cancelAnimationFrame(animationId);
-    document.getElementById('finalScore').innerText = score;
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('neonInvadersHighScore', String(highScore));
+    }
+    updateHud();
+    document.getElementById('finalScore').innerText = formatScore(score);
     document.getElementById('gameOverScreen').classList.remove('hidden');
 }
 
 // Event Listeners for UI
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
+
+function formatScore(value) {
+    return String(value).padStart(6, '0');
+}
+
+function updateHud() {
+    document.getElementById('score').innerText = formatScore(score);
+    document.getElementById('level').innerText = String(level).padStart(2, '0');
+    document.getElementById('lives').innerText = Array(lives).fill('♥').join(' ');
+    document.getElementById('highScore').innerText = formatScore(Math.max(highScore, score));
+    document.getElementById('weaponLevel').innerText = `LASER ${['I', 'II', 'III'][bulletLevel - 1]}`;
+}
+
+function bindHoldControl(element, keyName) {
+    const activate = e => {
+        e.preventDefault();
+        keys[keyName] = true;
+    };
+    const deactivate = e => {
+        e.preventDefault();
+        keys[keyName] = false;
+    };
+    element.addEventListener('pointerdown', activate);
+    element.addEventListener('pointerup', deactivate);
+    element.addEventListener('pointercancel', deactivate);
+    element.addEventListener('pointerleave', deactivate);
+}
+
+bindHoldControl(document.getElementById('moveLeft'), 'ArrowLeft');
+bindHoldControl(document.getElementById('moveRight'), 'ArrowRight');
+
+document.getElementById('shootBtn').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (gameRunning) fireBullet();
+});
+
+document.getElementById('soundToggle').addEventListener('click', e => {
+    soundEnabled = !soundEnabled;
+    e.currentTarget.setAttribute('aria-pressed', String(soundEnabled));
+    e.currentTarget.lastElementChild.textContent = soundEnabled ? 'Som ativado' : 'Som desativado';
+});
 
 // Initial Resize
 window.addEventListener('resize', () => {
@@ -434,4 +523,5 @@ window.addEventListener('resize', () => {
 
 resize();
 initStars();
+updateHud();
 draw(); // Initial draw
