@@ -42,11 +42,12 @@
   const ctx = gameCanvas.getContext('2d');
   const faceImages = {};
   const spriteCanvases = {};
+  const stageSprites = {};
   const keys = {};
   const touch = {};
   let pick1 = null;
   let pick2 = null;
-  let currentStage = 'stadium'; // 'stadium' or 'club'
+  let currentStage = 'woodstock'; // 'woodstock', 'stadium', or 'club'
   let muted = false;
   let audio = null;
   let distortionNode = null;
@@ -84,7 +85,7 @@
     return false;
   }
 
-  // --- PERFECT ALPHA TRANSLUCENT PNG PREPROCESSOR ---
+  // --- PERFECT ALPHA TRANSLUCENT PNG PREPROCESSOR & ANTI-ALIASING ---
   function createPerfectTransparentCanvas(img) {
     const c = document.createElement('canvas');
     c.width = img.naturalWidth || img.width || 300;
@@ -96,10 +97,19 @@
       const imgData = cx.getImageData(0, 0, c.width, c.height);
       const data = imgData.data;
       for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i + 1], b = data[i + 2];
-        // Clean any accidental chroma key green fringe (G >> R and G >> B) while preserving dark leather clothes & shadows!
-        if (g > 145 && g > r * 1.55 && g > b * 1.55) {
-          data[i + 3] = 0;
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+        if (a === 0) continue;
+        // High-precision chroma green edge feathering and spill suppression
+        if (g > 130 && g > r * 1.35 && g > b * 1.35) {
+          if (g > 160 && g > r * 1.6 && g > b * 1.6) {
+            data[i + 3] = 0;
+          } else {
+            const excess = g - Math.max(r, b);
+            data[i + 3] = Math.max(0, Math.min(255, a - Math.floor(excess * 2)));
+            data[i + 1] = Math.min(g, Math.max(r, b) + 15);
+          }
+        } else if (g > r + 35 && g > b + 35 && a < 250) {
+          data[i + 1] = Math.floor((r + b) / 2 + 10);
         }
       }
       cx.putImageData(imgData, 0, 0);
@@ -120,7 +130,7 @@
     img.src = srcUrl;
   }
 
-  // Preload UI & Active Realist Sprite Assets in True Transparent PNG
+  // Preload UI & Active Realist Sprite Assets in True Transparent PNG (Streets of Rage Full Roster)
   fighters.forEach(f => {
     const portraitImg = new Image();
     portraitImg.decoding = 'async';
@@ -128,9 +138,13 @@
     faceImages[f.id] = portraitImg;
 
     loadSpritePose(f.id, 'idle', `assets/sprite-${f.id}.png`);
+    loadSpritePose(f.id, 'walk1', `assets/sprite-${f.id}-walk1.png`);
+    loadSpritePose(f.id, 'walk2', `assets/sprite-${f.id}-walk2.png`);
     loadSpritePose(f.id, 'punch', `assets/sprite-${f.id}-punch.png`);
     loadSpritePose(f.id, 'kick', `assets/sprite-${f.id}-kick.png`);
     loadSpritePose(f.id, 'special', `assets/sprite-${f.id}-special.png`);
+    loadSpritePose(f.id, 'block', `assets/sprite-${f.id}-block.png`);
+    loadSpritePose(f.id, 'hit', `assets/sprite-${f.id}-hit.png`);
   });
 
   // Stage Fog & Crowd Effects
@@ -155,6 +169,138 @@
       alpha: 0.06 + Math.random() * 0.08
     });
   }
+
+  // --- GERADOR DE SPRITES REALISTAS E TRANSPARENTES PARA CENÁRIOS (WOODSTOCK '69 & ARENAS) ---
+  function initRealisticStageSprites() {
+    // 1. Marshall 4x12 Amp Full-Stack Sprite (Transparente)
+    const ampC = document.createElement('canvas');
+    ampC.width = 140; ampC.height = 240;
+    const ax = ampC.getContext('2d');
+    const shadowG = ax.createRadialGradient(70, 232, 5, 70, 232, 60);
+    shadowG.addColorStop(0, 'rgba(0,0,0,0.65)'); shadowG.addColorStop(1, 'transparent');
+    ax.fillStyle = shadowG; ax.fillRect(0, 215, 140, 25);
+    [70, 150].forEach((y, idx) => {
+      ax.fillStyle = '#110c14'; ax.fillRect(15, y, 110, 75);
+      ax.strokeStyle = '#2b2133'; ax.lineWidth = 2; ax.strokeRect(15, y, 110, 75);
+      ax.fillStyle = '#1d1722'; ax.fillRect(21, y + 6, 98, 63);
+      ax.fillStyle = '#0f0a13';
+      [42, 88].forEach(sx => {
+        [y + 24, y + 54].forEach(sy => {
+          ax.beginPath(); ax.arc(sx, sy, 13, 0, Math.PI * 2); ax.fill();
+          ax.strokeStyle = '#32253b'; ax.lineWidth = 1; ax.stroke();
+          ax.fillStyle = '#40324a'; ax.beginPath(); ax.arc(sx, sy, 4, 0, Math.PI * 2); ax.fill();
+          ax.fillStyle = '#0f0a13';
+        });
+      });
+      ax.fillStyle = idx === 0 ? '#ffffff' : '#ffd56b';
+      ax.font = 'italic bold 11px "Barlow Condensed", Inter, sans-serif';
+      ax.fillText('Marshall', 48, y + 20);
+    });
+    ax.fillStyle = '#140f1a'; ax.fillRect(20, 25, 100, 42);
+    ax.strokeStyle = '#382a45'; ax.lineWidth = 2; ax.strokeRect(20, 25, 100, 42);
+    const goldPanel = ax.createLinearGradient(25, 0, 115, 0);
+    goldPanel.addColorStop(0, '#e6a100'); goldPanel.addColorStop(0.5, '#ffee82'); goldPanel.addColorStop(1, '#c98600');
+    ax.fillStyle = goldPanel; ax.fillRect(25, 45, 90, 16);
+    ax.fillStyle = '#1a110a';
+    for (let k = 0; k < 6; k++) { ax.beginPath(); ax.arc(38 + k * 12, 53, 3, 0, Math.PI * 2); ax.fill(); }
+    ax.fillStyle = '#ff2e78'; ax.shadowColor = '#ff2e78'; ax.shadowBlur = 6;
+    ax.beginPath(); ax.arc(108, 53, 3.5, 0, Math.PI * 2); ax.fill(); ax.shadowBlur = 0;
+    stageSprites.marshallStack = ampC;
+
+    // 2. Bateria Realista Woodstock com Bumbo "Peace ☮️" (Transparente)
+    const drumC = document.createElement('canvas');
+    drumC.width = 280; drumC.height = 200;
+    const dx = drumC.getContext('2d');
+    dx.fillStyle = 'rgba(75, 15, 25, 0.85)'; dx.fillRect(10, 165, 260, 28);
+    dx.strokeStyle = 'rgba(215, 155, 65, 0.5)'; dx.lineWidth = 2; dx.strokeRect(10, 165, 260, 28);
+    const kickG = dx.createRadialGradient(140, 125, 15, 140, 125, 52);
+    kickG.addColorStop(0, '#f8f4f0'); kickG.addColorStop(0.85, '#dfd6cb'); kickG.addColorStop(1, '#8e7968');
+    dx.fillStyle = kickG; dx.beginPath(); dx.arc(140, 130, 50, 0, Math.PI * 2); dx.fill();
+    dx.strokeStyle = '#382a20'; dx.lineWidth = 6; dx.stroke();
+    dx.strokeStyle = '#c42045'; dx.lineWidth = 5;
+    dx.beginPath(); dx.arc(140, 130, 32, 0, Math.PI * 2); dx.stroke();
+    dx.beginPath(); dx.moveTo(140, 98); dx.lineTo(140, 162);
+    dx.moveTo(140, 130); dx.lineTo(116, 154);
+    dx.moveTo(140, 130); dx.lineTo(164, 154); dx.stroke();
+    [{x: 95, y: 110, r: 28, h: 22}, {x: 185, y: 110, r: 28, h: 24}, {x: 65, y: 140, r: 30, h: 20}].forEach(d => {
+      dx.fillStyle = '#221820'; dx.fillRect(d.x - d.r, d.y, d.r * 2, d.h);
+      dx.fillStyle = '#dedce4'; dx.beginPath(); dx.ellipse(d.x, d.y, d.r, d.r * 0.45, 0, 0, Math.PI * 2); dx.fill();
+      dx.strokeStyle = '#cccccc'; dx.lineWidth = 3; dx.stroke();
+    });
+    [{x: 45, y: 75, r: 35}, {x: 105, y: 55, r: 32}, {x: 180, y: 50, r: 34}, {x: 235, y: 75, r: 38}].forEach(cym => {
+      const cG = dx.createRadialGradient(cym.x, cym.y, 2, cym.x, cym.y, cym.r);
+      cG.addColorStop(0, '#ffffff'); cG.addColorStop(0.3, '#ffde59'); cG.addColorStop(0.8, '#c99618'); cG.addColorStop(1, '#664906');
+      dx.fillStyle = cG;
+      dx.beginPath(); dx.ellipse(cym.x, cym.y, cym.r, cym.r * 0.28, -0.15, 0, Math.PI * 2); dx.fill();
+      dx.strokeStyle = '#aaaaaa'; dx.lineWidth = 3;
+      dx.beginPath(); dx.moveTo(cym.x, cym.y + 6); dx.lineTo(cym.x + 4, 175); dx.stroke();
+    });
+    stageSprites.woodstockDrumKit = drumC;
+
+    // 3. Estrutura Rústica Woodstock '69 e Canhão de Luz (Rigging) Esquerda & Direita
+    [true, false].forEach(isLeft => {
+      const rigC = document.createElement('canvas');
+      rigC.width = 220; rigC.height = 420;
+      const rx = rigC.getContext('2d');
+      rx.fillStyle = '#301d14'; rx.fillRect(isLeft ? 20 : 160, 0, 40, 420);
+      rx.fillStyle = '#4a2c1e'; rx.fillRect(isLeft ? 0 : 180, 0, 22, 420);
+      for (let y = 40; y < 400; y += 80) {
+        rx.fillStyle = '#26160f'; rx.fillRect(isLeft ? 0 : 160, y, 60, 18);
+        rx.fillStyle = '#b89b80';
+        rx.beginPath(); rx.arc(isLeft ? 10 : 170, y + 9, 3, 0, Math.PI * 2); rx.fill();
+        rx.beginPath(); rx.arc(isLeft ? 50 : 210, y + 9, 3, 0, Math.PI * 2); rx.fill();
+      }
+      const paX = isLeft ? 65 : 45;
+      for (let box = 0; box < 3; box++) {
+        const by = 180 + box * 75;
+        rx.fillStyle = '#1c1720'; rx.fillRect(paX, by, 110, 70);
+        rx.strokeStyle = '#382f3d'; rx.lineWidth = 2; rx.strokeRect(paX, by, 110, 70);
+        rx.fillStyle = '#100b14'; rx.fillRect(paX + 8, by + 10, 94, 50);
+        rx.fillStyle = '#2b2133';
+        rx.fillRect(paX + 16, by + 18, 78, 12);
+        rx.fillRect(paX + 16, by + 38, 78, 12);
+      }
+      const flagG = rx.createLinearGradient(isLeft ? 55 : 35, 30, isLeft ? 55 : 35, 170);
+      if (isLeft) {
+        flagG.addColorStop(0, '#c42045'); flagG.addColorStop(0.5, '#f59e0b'); flagG.addColorStop(1, '#6b21a8');
+      } else {
+        flagG.addColorStop(0, '#1e3a8a'); flagG.addColorStop(0.5, '#0d9488'); flagG.addColorStop(1, '#db2777');
+      }
+      rx.fillStyle = flagG;
+      rx.fillRect(isLeft ? 60 : 40, 25, 120, 135);
+      rx.strokeStyle = '#f8fafc'; rx.lineWidth = 2; rx.strokeRect(isLeft ? 60 : 40, 25, 120, 135);
+      rx.fillStyle = '#ffffff'; rx.textAlign = 'center';
+      rx.font = '900 13px "Barlow Condensed", sans-serif';
+      rx.fillText(isLeft ? "WOODSTOCK '69" : "3 DAYS OF PEACE", isLeft ? 120 : 100, 55);
+      rx.font = 'bold 26px sans-serif';
+      rx.fillText(isLeft ? "☮️" : "🕊️🎸", isLeft ? 120 : 100, 105);
+      rx.font = '800 11px Inter, sans-serif';
+      rx.fillText(isLeft ? "PEACE & MUSIC" : "ROCK LEGENDS", isLeft ? 120 : 100, 142);
+      
+      rx.fillStyle = '#0f0a13';
+      rx.beginPath(); rx.arc(isLeft ? 110 : 110, 15, 18, 0, Math.PI * 2); rx.fill();
+      const glowG = rx.createRadialGradient(isLeft ? 110 : 110, 15, 2, isLeft ? 110 : 110, 15, 22);
+      glowG.addColorStop(0, '#ffffff'); glowG.addColorStop(0.3, '#ffbe3b'); glowG.addColorStop(1, 'transparent');
+      rx.fillStyle = glowG;
+      rx.beginPath(); rx.arc(isLeft ? 110 : 110, 15, 22, 0, Math.PI * 2); rx.fill();
+      stageSprites[isLeft ? 'woodstockRigLeft' : 'woodstockRigRight'] = rigC;
+    });
+
+    // 4. Amplificador Valvulado para Underground Club (Transparente)
+    const clubC = document.createElement('canvas');
+    clubC.width = 160; clubC.height = 160;
+    const cx = clubC.getContext('2d');
+    cx.fillStyle = '#3a2a1d'; cx.fillRect(15, 30, 130, 115);
+    cx.strokeStyle = '#1f140c'; cx.lineWidth = 3; cx.strokeRect(15, 30, 130, 115);
+    cx.fillStyle = '#140c08'; cx.fillRect(25, 45, 110, 85);
+    cx.fillStyle = '#ff7b00'; cx.shadowColor = '#ff6200'; cx.shadowBlur = 10;
+    [50, 75, 100].forEach(tx => { cx.fillRect(tx, 35, 8, 16); });
+    cx.shadowBlur = 0;
+    cx.fillStyle = '#b51a30'; cx.fillRect(95, 135, 32, 22);
+    cx.fillStyle = '#ff1a1a'; cx.beginPath(); cx.arc(111, 140, 2.5, 0, Math.PI * 2); cx.fill();
+    stageSprites.clubTubeAmp = clubC;
+  }
+  initRealisticStageSprites();
 
   const $ = (selector) => document.querySelector(selector);
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -732,10 +878,121 @@
     }
   }
 
-  // --- STAGE RENDERER (STADIUM vs UNDERGROUND CLUB) ---
+  // --- STAGE RENDERER REALISTA COM SPRITES TRANSPARENTES (WOODSTOCK '69, STADIUM, UNDERGROUND CLUB) ---
   function drawStage(c, frame) {
+    if (currentStage === 'woodstock') {
+      // ☮️ CENÁRIO 1: WOODSTOCK '69 - OPEN-AIR FESTIVAL SUNSET
+      const bg = c.createLinearGradient(0, -50, 0, 540);
+      bg.addColorStop(0, '#100726');
+      bg.addColorStop(0.35, '#381442');
+      bg.addColorStop(0.7, '#8f2440');
+      bg.addColorStop(1, '#f27838');
+      c.fillStyle = bg;
+      c.fillRect(-200, -50, 1360, 600);
+
+      c.save();
+      const sunG = c.createRadialGradient(480, 350, 20, 480, 350, 220);
+      sunG.addColorStop(0, '#fff3bc');
+      sunG.addColorStop(0.25, '#ffae3d');
+      sunG.addColorStop(0.6, 'rgba(242, 100, 48, 0.45)');
+      sunG.addColorStop(1, 'transparent');
+      c.fillStyle = sunG;
+      c.beginPath(); c.arc(480, 350, 220, 0, Math.PI * 2); c.fill();
+      c.restore();
+
+      c.fillStyle = '#220e2e';
+      c.beginPath();
+      c.moveTo(-100, 420);
+      c.lineTo(-100, 360);
+      c.bezierCurveTo(100, 330, 250, 380, 450, 365);
+      c.bezierCurveTo(680, 345, 820, 380, 1060, 355);
+      c.lineTo(1060, 420); c.closePath(); c.fill();
+
+      c.fillStyle = '#14071c';
+      c.beginPath();
+      for (let i = -60; i < 1040; i += 18) {
+        const headY = 382 + Math.sin(i * 0.18 + frame * 0.05) * 6 + Math.cos(i * 0.09) * 4;
+        c.arc(i, headY, 12, Math.PI, 0);
+        c.fillRect(i - 12, headY, 24, 40);
+      }
+      c.fill();
+
+      crowdLights.forEach(light => {
+        light.phase += light.speed;
+        const alpha = 0.35 + Math.sin(light.phase) * 0.35;
+        c.save();
+        c.globalAlpha = alpha;
+        c.fillStyle = '#ffcc54';
+        c.shadowColor = '#ffb324';
+        c.shadowBlur = 10;
+        c.beginPath();
+        c.arc(light.x, light.y - 8 + Math.sin(light.phase * 0.5) * 5, light.size * 1.3, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      });
+
+      c.save();
+      c.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 5; i++) {
+        const baseX = 120 + i * 190;
+        const sweep = Math.sin(frame * 0.02 + i * 1.3) * 75;
+        const spotG = c.createLinearGradient(baseX, 20, baseX + sweep, 440);
+        spotG.addColorStop(0, 'rgba(255, 215, 135, 0.28)');
+        spotG.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = spotG;
+        c.beginPath();
+        c.moveTo(baseX - 16, 20); c.lineTo(baseX + sweep - 85, 440); c.lineTo(baseX + sweep + 85, 440); c.lineTo(baseX + 16, 20);
+        c.closePath(); c.fill();
+      }
+      c.restore();
+
+      if (stageSprites.woodstockDrumKit) {
+        c.drawImage(stageSprites.woodstockDrumKit, 340, 235);
+      }
+      if (stageSprites.marshallStack) {
+        c.drawImage(stageSprites.marshallStack, 170, 195);
+        c.drawImage(stageSprites.marshallStack, 650, 195);
+      }
+      if (stageSprites.woodstockRigLeft) {
+        c.drawImage(stageSprites.woodstockRigLeft, -30, 20);
+      }
+      if (stageSprites.woodstockRigRight) {
+        c.drawImage(stageSprites.woodstockRigRight, 770, 20);
+      }
+
+      const floorG = c.createLinearGradient(0, 420, 0, 540);
+      floorG.addColorStop(0, '#422416');
+      floorG.addColorStop(0.2, '#2b160c');
+      floorG.addColorStop(1, '#0e0603');
+      c.fillStyle = floorG;
+      c.fillRect(-200, 420, 1360, 120);
+
+      c.strokeStyle = 'rgba(235, 150, 80, 0.22)';
+      c.lineWidth = 1;
+      for (let y = 432; y < 540; y += 16) {
+        c.beginPath(); c.moveTo(-100, y); c.lineTo(1060, y); c.stroke();
+      }
+      for (let x = -100; x <= 1060; x += 90) {
+        c.beginPath(); c.moveTo(480, 420); c.lineTo(x, 540); c.stroke();
+      }
+      c.strokeStyle = '#ffae3d';
+      c.lineWidth = 3;
+      c.shadowColor = '#ffae3d';
+      c.shadowBlur = 14;
+      c.beginPath(); c.moveTo(-100, 420); c.lineTo(1060, 420); c.stroke();
+      c.shadowBlur = 0;
+
+      c.save();
+      stageFog.forEach(fog => {
+        c.fillStyle = `rgba(255, 185, 125, ${fog.alpha * 1.2})`;
+        c.beginPath(); c.arc(fog.x, fog.y, fog.radius, 0, Math.PI * 2); c.fill();
+      });
+      c.restore();
+      return;
+    }
+
     if (currentStage === 'club') {
-      // 🎸 STAGE 2: UNDERGROUND ROCK CLUB
+      // 🎸 CENÁRIO 2: UNDERGROUND ROCK CLUB
       const bg = c.createLinearGradient(0, -50, 0, 540);
       bg.addColorStop(0, '#0d0408');
       bg.addColorStop(0.5, '#240813');
@@ -743,7 +1000,6 @@
       c.fillStyle = bg;
       c.fillRect(-200, -50, 1360, 600);
 
-      // Gritty Red Brick Wall Pattern
       c.strokeStyle = 'rgba(75, 25, 35, 0.4)';
       c.lineWidth = 2;
       for (let y = 30; y < 420; y += 22) {
@@ -754,7 +1010,6 @@
         }
       }
 
-      // Red Velvet Side Stage Curtains
       const curtainG1 = c.createLinearGradient(-100, 0, 120, 0);
       curtainG1.addColorStop(0, '#590a18'); curtainG1.addColorStop(1, 'transparent');
       c.fillStyle = curtainG1; c.fillRect(-100, 0, 220, 420);
@@ -763,7 +1018,6 @@
       curtainG2.addColorStop(0, '#590a18'); curtainG2.addColorStop(1, 'transparent');
       c.fillStyle = curtainG2; c.fillRect(840, 0, 220, 420);
 
-      // Pulsing Neon Sign "ROCK CELLAR"
       c.save();
       c.font = 'italic 900 36px "Barlow Condensed"';
       c.textAlign = 'center';
@@ -773,7 +1027,6 @@
       c.fillText('⚡ UNDERGROUND ROCK CLUB ⚡', 480, 100);
       c.restore();
 
-      // Warm Amber Spotlights
       c.save();
       c.globalCompositeOperation = 'screen';
       for (let i = 0; i < 4; i++) {
@@ -793,7 +1046,18 @@
       }
       c.restore();
 
-      // Vintage Dark Wooden Stage Floor
+      if (stageSprites.woodstockDrumKit) {
+        c.drawImage(stageSprites.woodstockDrumKit, 350, 238);
+      }
+      if (stageSprites.clubTubeAmp) {
+        c.drawImage(stageSprites.clubTubeAmp, 140, 260);
+        c.drawImage(stageSprites.clubTubeAmp, 680, 260);
+      }
+      if (stageSprites.marshallStack) {
+        c.drawImage(stageSprites.marshallStack, -10, 190);
+        c.drawImage(stageSprites.marshallStack, 820, 190);
+      }
+
       const floorG = c.createLinearGradient(0, 420, 0, 540);
       floorG.addColorStop(0, '#36141a');
       floorG.addColorStop(0.2, '#1b090d');
@@ -809,7 +1073,7 @@
       return;
     }
 
-    // 🏟️ STAGE 1: NEON STADIUM ARENA
+    // 🏟️ CENÁRIO 3: STADIUM ARENA
     const bg = c.createLinearGradient(0, -50, 0, 540);
     bg.addColorStop(0, '#06040d');
     bg.addColorStop(0.45, '#1b0826');
@@ -861,34 +1125,16 @@
     }
     c.restore();
 
-    for (let side = 0; side < 2; side++) {
-      const startX = side === 0 ? -40 : 880;
-      for (let stack = 0; stack < 3; stack++) {
-        const x = startX + stack * 34;
-        const y = 250 + (stack % 2) * 15;
-        c.fillStyle = '#110c18';
-        c.fillRect(x, y, 92, 125);
-        c.strokeStyle = '#322240';
-        c.lineWidth = 3;
-        c.strokeRect(x, y, 92, 125);
-
-        c.fillStyle = '#221910';
-        c.fillRect(x + 8, y + 12, 76, 98);
-
-        c.fillStyle = '#ffc44d';
-        c.font = 'bold 9px Inter';
-        c.fillText('MARSHALL', x + 22, y + 25);
-
-        c.fillStyle = '#08050c';
-        for (let sp = 0; sp < 4; sp++) {
-          const cx = x + 26 + (sp % 2) * 40;
-          const cy = y + 46 + Math.floor(sp / 2) * 42;
-          c.beginPath(); c.arc(cx, cy, 14, 0, Math.PI * 2); c.fill();
-          c.strokeStyle = '#443252'; c.lineWidth = 1.5; c.stroke();
-          c.fillStyle = '#ff2e78';
-          c.beginPath(); c.arc(cx, cy, 3, 0, Math.PI * 2); c.fill();
-        }
-      }
+    if (stageSprites.woodstockDrumKit) {
+      c.drawImage(stageSprites.woodstockDrumKit, 340, 232);
+    }
+    if (stageSprites.marshallStack) {
+      [-20, 75, 170].forEach((ax, idx) => {
+        c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12);
+      });
+      [650, 745, 840].forEach((ax, idx) => {
+        c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12);
+      });
     }
 
     c.fillStyle = '#050308';
@@ -960,31 +1206,35 @@
     const vx = motionData?.vx || 0;
     const squash = motionData?.landSquash ? Math.sin((motionData.landSquash / 8) * Math.PI) * 0.08 : 0;
 
-    // --- STEP-BY-STEP WALKING KINEMATICS & FOOTSTEPS ---
+    // --- STREETS OF RAGE REALISTIC WALKING & STRIDE ENGINE ---
     let walkBob = 0;
     let walkTilt = 0;
     let walkStrideX = 0;
+    let stepFrame = 0;
     if (state === 'walk') {
       const isForward = (vx * facing) > 0;
-      // Multi-phase stride cadency
-      const stepPhase = Math.sin(frame * 0.42);
-      walkBob = Math.abs(Math.cos(frame * 0.42)) * 11; // Dynamic footstep vertical oscillation
-      walkStrideX = stepPhase * 7; // Leg shift along ground
-      walkTilt = isForward ? (0.09 + stepPhase * 0.03) : (-0.06 + stepPhase * 0.02); // Aggressive forward tilt vs defensive backstep
+      stepFrame = Math.floor((x / 18) + frame * 0.25) % 4;
+      if (stepFrame < 0) stepFrame += 4;
 
-      // Footstep friction dust on ground contact during steps
-      if (Math.abs(stepPhase) < 0.25 && alpha === 1) {
+      // Authentic beat-'em-up vertical bob and weight transfer
+      const stepPhase = Math.sin(frame * 0.48);
+      walkBob = Math.abs(Math.cos(frame * 0.48)) * 9;
+      walkStrideX = stepPhase * 5;
+      walkTilt = isForward ? (0.05 + stepPhase * 0.02) : (-0.03 + stepPhase * 0.015);
+
+      // Grounded footstep dust clouds on impact
+      if (Math.abs(stepPhase) < 0.28 && alpha === 1) {
         c.save();
-        c.fillStyle = 'rgba(180, 200, 220, 0.28)';
+        c.fillStyle = 'rgba(190, 210, 230, 0.32)';
         c.beginPath();
-        c.ellipse(-12 + walkStrideX, 2, 14 + Math.abs(vx) * 3, 5, 0, 0, Math.PI * 2);
+        c.ellipse(-8 + walkStrideX, 4, 16 + Math.abs(vx) * 3, 5, 0, 0, Math.PI * 2);
         c.fill();
         c.restore();
       }
     }
 
-    const idleBounce = state === 'idle' ? Math.sin(frame * 0.12) * 3.5 : 0;
-    const crouchShift = state === 'block' ? 22 : 0;
+    const idleBounce = state === 'idle' ? Math.sin(frame * 0.12) * 3.2 : 0;
+    const crouchShift = state === 'block' ? 16 : 0;
 
     c.translate(walkStrideX, idleBounce - walkBob);
     c.rotate(walkTilt);
@@ -994,9 +1244,9 @@
     
     // Step-by-step Hit Stagger & Knockback
     if (state === 'hit') {
-      const hitShake = Math.sin(frame * 1.8) * 8;
-      c.translate(-14 + hitShake, -4);
-      c.rotate(-0.22);
+      const hitShake = Math.sin(frame * 2.2) * 9;
+      c.translate(-16 + hitShake, -6);
+      c.rotate(-0.15);
     }
 
     // --- STEP-BY-STEP FIGHTING CHOREOGRAPHY (WINDUP -> STRIKE -> RECOVERY) ---
@@ -1017,7 +1267,7 @@
         isWindup = true;
         const p = phase / 0.22;
         lungeX = -16 * Math.pow(p, 2);
-        lungeY = 6 * p; // Crouch down to store power
+        lungeY = 6 * p;
         attackRot = -0.09 * p;
       } else if (phase < 0.65) {
         // Step 2: APICE & IMPACTO (Explosive burst forward)
@@ -1032,22 +1282,28 @@
         const p = (phase - 0.65) / 0.35;
         const easeIn = Math.cos(p * Math.PI * 0.5);
         lungeX = maxLunge * 0.85 * easeIn;
-        lungeY = Math.sin(p * Math.PI) * -6; // Absorption hop
+        lungeY = Math.sin(p * Math.PI) * -6;
         attackRot = (state === 'kick' ? -0.15 : -0.08) * easeIn;
       }
     }
 
-    // Dynamic Realistic Shadow (expands with lunge and walk strides)
-    c.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    // Dynamic Realistic Ground Shadow (expands with step stance and combat lunge)
+    c.fillStyle = 'rgba(0, 0, 0, 0.68)';
     c.beginPath();
-    c.ellipse(lungeX * 0.4, 4 + walkBob * 0.2, 58 + Math.abs(lungeX) * 0.35 + Math.abs(walkStrideX) * 1.2, 13, 0, 0, Math.PI * 2);
+    c.ellipse(lungeX * 0.4, 4 + walkBob * 0.2, 58 + Math.abs(lungeX) * 0.35 + Math.abs(walkStrideX) * 1.4, 13, 0, 0, Math.PI * 2);
     c.fill();
 
-    // SELECT TRANSPARENT REALISTIC SPRITE POSE
+    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Streets of Rage Multi-Frame Cycling)
     let poseKey = `${f.id}_idle`;
     if (state === 'punch') poseKey = `${f.id}_punch`;
     else if (state === 'kick') poseKey = `${f.id}_kick`;
     else if (state === 'special') poseKey = `${f.id}_special`;
+    else if (state === 'block') poseKey = `${f.id}_block`;
+    else if (state === 'hit') poseKey = `${f.id}_hit`;
+    else if (state === 'walk') {
+      if (stepFrame === 0 || stepFrame === 1) poseKey = `${f.id}_walk1`;
+      else if (stepFrame === 2 || stepFrame === 3) poseKey = `${f.id}_walk2`;
+    }
 
     const poseCanvas = spriteCanvases[poseKey] || spriteCanvases[`${f.id}_idle`];
 
@@ -1056,8 +1312,9 @@
       c.translate(lungeX, lungeY);
       c.rotate(attackRot);
     } else if (state === 'block') {
-      c.translate(-14, crouchShift * 0.6);
-      c.rotate(-0.08); // Defensive guard brace
+      c.translate(-12, crouchShift * 0.5);
+      c.rotate(-0.06); // Defensive shield posture
+      if (alpha === 1) { c.shadowColor = '#23d7ef'; c.shadowBlur = 28; }
     }
 
     if (poseCanvas) {
