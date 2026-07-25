@@ -13,7 +13,7 @@
   <meta property="og:title" content="Riff Rumble — Rock Legends Fighting Game">
   <meta property="og:description" content="O palco virou arena. Escolha sua lenda e domine o encore.">
   <meta property="og:image"
-    content="https://diogopaulino.com.br/labs/riff-rumble/assets/riff-rumble-key-art.jpg">
+    content="https://diogopaulino.com.br/labs/riff-rumble/assets/riff-rumble-fighters-v2.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,8 +41,8 @@
 
   <main>
     <section class="screen hero-screen is-active" id="hero-screen" aria-labelledby="hero-title">
-      <img class="hero-art" src="assets/riff-rumble-key-art.jpg"
-        alt="Lendas do rock em uma arena de luta sobre um palco iluminado">
+      <img class="hero-art" src="assets/riff-rumble-fighters-v2.jpg"
+        alt="Oito lutadores do rock, de corpo inteiro, em uma arena de show iluminada">
       <div class="hero-scrim"></div>
       <div class="hero-content">
         <p class="eyebrow"><span></span> WORLD TOUR '94 <span></span></p>
@@ -52,7 +52,7 @@
         <button class="primary-btn" id="enter-game" type="button">
           <span>PRESS START</span><small>ENTRAR NA ARENA</small>
         </button>
-        <p class="hero-tip">TECLADO · CONTROLE TOUCH · 1–2 JOGADORES</p>
+        <p class="hero-tip">TECLADO (SETAS / ASD + Q,E,R) · CONTROLE TOUCH</p>
       </div>
     </section>
 
@@ -63,9 +63,17 @@
         <p>Cada artista tem atributos, ritmo e um golpe especial exclusivo.</p>
       </div>
 
-      <div class="mode-switch" role="group" aria-label="Modo de jogo">
-        <button class="mode-btn is-active" data-mode="cpu" type="button">1P <span>vs CPU</span></button>
-        <button class="mode-btn" data-mode="local" type="button">2P <span>versus local</span></button>
+      <div class="stage-switch" role="group" aria-label="Escolha do Palco">
+        <button class="stage-btn is-active" data-stage="stadium" type="button">🏟️ STADIUM ARENA</button>
+        <button class="stage-btn" data-stage="club" type="button">🎸 UNDERGROUND CLUB</button>
+      </div>
+
+      <div class="quick-guide" aria-label="Passos para jogar">
+        <div><b>1</b><span><strong>ESCOLHA</strong>um artista</span></div>
+        <i>→</i>
+        <div><b>2</b><span><strong>ATAQUE</strong>quando chegar perto</span></div>
+        <i>→</i>
+        <div><b>3</b><span><strong>ESPECIAL</strong>com a barra amarela cheia</span></div>
       </div>
 
       <div class="versus-picks">
@@ -96,7 +104,7 @@
           <div class="hud-player">
             <div class="hud-row"><strong id="p1-name">KURT</strong><span>P1</span></div>
             <div class="health-track left"><i id="p1-health"></i></div>
-            <div class="special-track"><i id="p1-meter"></i></div>
+            <div class="special-line"><small>ESPECIAL</small><div class="special-track"><i id="p1-meter"></i></div><b id="p1-ready">CARREGANDO</b></div>
           </div>
           <div class="round-center">
             <span id="round-label">ROUND 1</span>
@@ -105,7 +113,7 @@
           <div class="hud-player right">
             <div class="hud-row"><span id="opponent-label">CPU</span><strong id="p2-name">AXL</strong></div>
             <div class="health-track right"><i id="p2-health"></i></div>
-            <div class="special-track right"><i id="p2-meter"></i></div>
+            <div class="special-line right"><b id="p2-ready">CARREGANDO</b><div class="special-track"><i id="p2-meter"></i></div><small>ESPECIAL</small></div>
           </div>
         </div>
 
@@ -113,6 +121,12 @@
           <canvas id="game" width="960" height="540" aria-label="Jogo Riff Rumble"></canvas>
           <div class="announcer" id="announcer" aria-live="assertive"></div>
           <button class="pause-btn" id="pause-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
+        </div>
+
+        <div class="coach-bar" aria-live="polite">
+          <span class="coach-label">DICA</span>
+          <strong id="coach-text">Aproxime-se do rival usando A / D ou as Setas.</strong>
+          <button id="open-guide-arena" type="button">VER TODOS OS COMANDOS</button>
         </div>
 
         <div class="mobile-controls" aria-label="Controles touch">
@@ -130,8 +144,8 @@
         </div>
 
         <div class="desktop-controls">
-          <span><b>P1</b> A D mover · W pular · S defender · F/G atacar · H especial</span>
-          <span id="p2-controls"><b>P2</b> ← → mover · ↑ pular · ↓ defender · J/K atacar · L especial</span>
+          <span><b>MOVER</b> <kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> · <b>PULAR</b> <kbd>W</kbd> ou <kbd>↑</kbd> · <b>DEFENDER</b> <kbd>S</kbd> ou <kbd>↓</kbd></span>
+          <span><b>SOCO</b> <kbd>Q</kbd> · <b>CHUTE</b> <kbd>E</kbd> · <b>ESPECIAL</b> <kbd>R</kbd> ou <kbd>ESPAÇO</kbd></span>
         </div>
       </div>
     </section>
@@ -159,29 +173,21 @@
         seu especial para virar a luta.</p>
 
       <div class="control-guides">
-        <article>
-          <span class="guide-player p1">PLAYER 1</span>
-          <div class="key-row"><kbd>A</kbd><kbd>D</kbd><p>Mover</p></div>
-          <div class="key-row"><kbd>W</kbd><p>Pular</p></div>
-          <div class="key-row"><kbd>S</kbd><p>Defender</p></div>
-          <div class="key-row"><kbd>F</kbd><kbd>G</kbd><p>Soco / chute</p></div>
-          <div class="key-row special-key"><kbd>H</kbd><p>Especial</p></div>
-        </article>
-        <article>
-          <span class="guide-player p2">PLAYER 2</span>
-          <div class="key-row"><kbd>←</kbd><kbd>→</kbd><p>Mover</p></div>
-          <div class="key-row"><kbd>↑</kbd><p>Pular</p></div>
-          <div class="key-row"><kbd>↓</kbd><p>Defender</p></div>
-          <div class="key-row"><kbd>J</kbd><kbd>K</kbd><p>Soco / chute</p></div>
-          <div class="key-row special-key"><kbd>L</kbd><p>Especial</p></div>
+        <article style="grid-column: 1 / -1;">
+          <span class="guide-player p1">COMANDOS DO JOGADOR</span>
+          <div class="key-row"><kbd>A</kbd><kbd>D</kbd><p>Mover para Esquerda / Direita (ou setas <kbd>←</kbd> <kbd>→</kbd>)</p></div>
+          <div class="key-row"><kbd>W</kbd><p>Pular (ou seta <kbd>↑</kbd>)</p></div>
+          <div class="key-row"><kbd>S</kbd><p>Defender / Bloquear (ou seta <kbd>↓</kbd>)</p></div>
+          <div class="key-row"><kbd>Q</kbd><kbd>E</kbd><p>Golpe de Soco (<kbd>Q</kbd> ou <kbd>F</kbd>) / Golpe de Chute (<kbd>E</kbd> ou <kbd>G</kbd>)</p></div>
+          <div class="key-row special-key"><kbd>R</kbd><p>Golpe Especial (<kbd>R</kbd> / <kbd>Espaço</kbd> / <kbd>H</kbd> quando a barra estiver 100%)</p></div>
         </article>
       </div>
 
       <div class="how-rules">
-        <div><b>01</b><p><strong>FAÇA COMBOS</strong>Alterne soco e chute quando estiver perto.</p></div>
+        <div><b>01</b><p><strong>FAÇA COMBOS</strong>Alterne soco (<kbd>Q</kbd>) e chute (<kbd>E</kbd>) quando estiver perto.</p></div>
         <div><b>02</b><p><strong>ENCHA O MEDIDOR</strong>Acerte golpes ou receba dano para carregar a barra amarela.</p></div>
-        <div><b>03</b><p><strong>SOLTE O ESPECIAL</strong>Quando a barra chegar a 100%, use o golpe único do artista.</p></div>
-        <div><b>04</b><p><strong>NO CELULAR</strong>Use os botões que aparecem abaixo da arena.</p></div>
+        <div><b>03</b><p><strong>SOLTE O ESPECIAL</strong>Quando a barra chegar a 100%, aperte <kbd>R</kbd> ou <kbd>Espaço</kbd>.</p></div>
+        <div><b>04</b><p><strong>NO CELULAR</strong>Use os botões touch que aparecem abaixo da arena.</p></div>
       </div>
     </div>
   </div>
