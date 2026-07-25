@@ -57,7 +57,7 @@ O **Labs** reúne jogos, ferramentas e experimentos interativos feitos para expl
 |---------|-----------|
 | **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Minificador e conversor de imagens com suporte a múltiplos formatos |
 | **[Fun Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora moderna com conversão de moedas em tempo real |
-| **[AI Focus](https://diogopaulino.com.br/labs/pomodoro/)** | Pomodoro timer futurista com sons suaves e notificações inteligentes |
+| **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com tarefas, estatísticas, sons e notificações do navegador |
 
 ### 🎵 Music & Audio — som também é interface
 
