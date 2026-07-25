@@ -1,201 +1,186 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winamp 2.91 - Labs</title>
-    <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=2">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#008080">
+    <meta name="description"
+        content="Winamp 2.91 no navegador: player clássico completo, equalizador, playlist, visualizador, skins e músicas demo.">
+    <title>Winamp 2.91 — Diogo Labs</title>
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
-    <div class="container">
-        <header data-lab-header data-title="Winamp">
-            <template data-slot="logo">
-                <div class="app-logo">
-                    ⚡ Winamp 2.91
-                </div>
-            </template>
-        </header>
+    <a class="skip-link" href="#winamp-stage">Pular para o Winamp</a>
 
-        <div id="winamp">
-            <div class="winamp-left">
-                <!-- Main Window -->
-                <div id="main-window" class="window">
-                    <div class="titlebar">
-                        <span class="title">Winamp v2.91</span>
-                        <div class="titlebar-buttons">
-                            <button class="btn-minimize"></button>
-                            <button class="btn-shade"></button>
-                            <button class="btn-close"></button>
-                        </div>
-                    </div>
+    <div class="desktop" id="desktop">
+        <nav class="desktop-icons" aria-label="Atalhos da área de trabalho">
+            <a class="desktop-icon" href="/labs/" aria-label="Voltar para todos os Labs">
+                <span class="icon-art icon-computer" aria-hidden="true">
+                    <span class="computer-screen"></span>
+                    <span class="computer-base"></span>
+                </span>
+                <span>Diogo Labs</span>
+            </a>
 
-                    <div class="main-display">
-                        <div class="visualizer">
-                            <div class="vis-bar" style="height: 10px;"></div>
-                            <div class="vis-bar" style="height: 15px;"></div>
-                            <div class="vis-bar" style="height: 25px;"></div>
-                            <div class="vis-bar" style="height: 18px;"></div>
-                            <div class="vis-bar" style="height: 12px;"></div>
-                            <div class="vis-bar" style="height: 22px;"></div>
-                            <div class="vis-bar" style="height: 30px;"></div>
-                            <div class="vis-bar" style="height: 14px;"></div>
-                            <div class="vis-bar" style="height: 8px;"></div>
-                        </div>
-                        <div class="info-area">
-                            <div class="song-title">1. Depeche Mode - Never Let Me Down Again</div>
-                            <div class="track-info">
-                                <span class="bitrate">128</span>
-                                <span class="khz">44</span>
-                            </div>
-                        </div>
-                        <div class="time-display">-1:08</div>
-                    </div>
+            <button class="desktop-icon" type="button" data-action="open-files">
+                <span class="icon-art icon-folder" aria-hidden="true"></span>
+                <span>Minhas músicas</span>
+            </button>
 
-                    <div class="clutter-bar">
-                        <span class="led">O</span>
-                        <span class="led">A</span>
-                        <span class="led active">I</span>
-                        <span class="led">D</span>
-                        <span class="led">V</span>
-                    </div>
+            <button class="desktop-icon" type="button" data-action="open-skins">
+                <span class="icon-art icon-palette" aria-hidden="true">
+                    <i></i><i></i><i></i>
+                </span>
+                <span>Skins</span>
+            </button>
 
-                    <div class="position-slider"></div>
+            <button class="desktop-icon" type="button" data-action="open-help">
+                <span class="icon-art icon-help" aria-hidden="true">?</span>
+                <span>Leia-me</span>
+            </button>
+        </nav>
 
-                    <div class="controls">
-                        <button class="btn-prev">|◄◄</button>
-                        <button class="btn-play">►</button>
-                        <button class="btn-pause">❚❚</button>
-                        <button class="btn-stop">■</button>
-                        <button class="btn-next">►►|</button>
-                        <button class="btn-eject">⏏</button>
-                    </div>
-
-                    <div class="volume-area">
-                        <div class="volume-slider"></div>
-                        <div class="balance-slider"></div>
-                    </div>
-
-                    <div class="eq-pl-buttons">
-                        <button class="btn-eq active">EQ</button>
-                        <button class="btn-pl active">PL</button>
-                    </div>
-
-                    <div class="shuffle-repeat">
-                        <button class="btn-shuffle active">SHUFFLE</button>
-                        <button class="btn-repeat">REPEAT</button>
-                    </div>
-                </div>
-
-                <!-- Equalizer Window -->
-                <div id="equalizer-window" class="window">
-                    <div class="titlebar">
-                        <span class="title">Winamp Equalizer</span>
-                        <div class="titlebar-buttons">
-                            <button class="btn-close"></button>
+        <main class="player-workspace" aria-label="Winamp 2.91">
+            <div class="player-scale-wrap" id="player-scale-wrap">
+                <div id="winamp-stage" tabindex="-1">
+                    <div class="loading-window" id="loading-window" role="status">
+                        <div class="window-titlebar">
+                            <span>Winamp</span>
+                            <span class="window-controls" aria-hidden="true">×</span>
                         </div>
-                    </div>
-
-                    <div class="eq-controls">
-                        <button class="btn-on">ON</button>
-                        <button class="btn-auto">AUTO</button>
-                        <button class="btn-presets">PRESETS</button>
-                    </div>
-
-                    <div class="eq-sliders">
-                        <div class="slider-group">
-                            <div class="eq-slider preamp"></div>
-                            <span class="label">PREAMP</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">60</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">170</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">310</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">600</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">1K</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">3K</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">6K</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">12K</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">14K</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="eq-slider"></div>
-                            <span class="label">16K</span>
+                        <div class="loading-window-body">
+                            <span class="hourglass" aria-hidden="true">⌛</span>
+                            <p>Iniciando o Winamp 2.91...</p>
                         </div>
                     </div>
                 </div>
             </div>
+        </main>
 
-            <!-- Playlist Window -->
-            <div id="playlist-window" class="window">
-                <div class="titlebar">
-                    <span class="title">Winamp Playlist Editor</span>
-                    <div class="titlebar-buttons">
-                        <button class="btn-shade"></button>
-                        <button class="btn-close"></button>
-                    </div>
-                </div>
+        <div class="desktop-tip" id="desktop-tip" role="status" aria-live="polite">
+            Dica: dê dois cliques em uma faixa para começar.
+        </div>
 
-                <div class="playlist-content">
-                    <div class="playlist-item selected">1. Depeche Mode - Never Let Me Down Again <span
-                            class="duration">4:47</span></div>
-                    <div class="playlist-item">2. Depeche Mode - The Things You Said <span class="duration">4:02</span>
-                    </div>
-                    <div class="playlist-item">3. Depeche Mode - Strangelove <span class="duration">4:54</span></div>
-                    <div class="playlist-item">4. Depeche Mode - Sacred <span class="duration">4:48</span></div>
-                    <div class="playlist-item">5. Depeche Mode - Little 15 <span class="duration">4:18</span></div>
-                    <div class="playlist-item">6. Depeche Mode - Behind The Wheel <span class="duration">5:17</span>
-                    </div>
-                    <div class="playlist-item">7. Depeche Mode - I Want You Now <span class="duration">3:38</span></div>
-                    <div class="playlist-item">8. Depeche Mode - To Have And To Hold <span class="duration">2:56</span>
-                    </div>
-                    <div class="playlist-item">9. Depeche Mode - Nothing <span class="duration">4:17</span></div>
-                    <div class="playlist-item">10. Depeche Mode - Pimpf <span class="duration">5:25</span></div>
-                </div>
-
-                <div class="playlist-buttons">
-                    <button>+ADD</button>
-                    <button>-REM</button>
-                    <button>SEL</button>
-                    <button>MISC</button>
-                    <button>LIST</button>
-                </div>
-
-                <div class="playlist-info">0:00 / 44:22</div>
+        <div class="drop-overlay" id="drop-overlay" aria-hidden="true">
+            <div class="drop-window">
+                <span class="drop-icon" aria-hidden="true">♫</span>
+                <strong>Solte suas músicas aqui</strong>
+                <span>MP3, WAV, OGG, M4A e outros formatos do navegador</span>
             </div>
         </div>
 
-        <footer data-lab-footer data-home-href="/"></footer>
+        <dialog class="retro-dialog" id="skins-dialog" aria-labelledby="skins-title">
+            <div class="dialog-titlebar">
+                <h2 id="skins-title">Propriedades de Skins</h2>
+                <button type="button" class="dialog-close" data-close-dialog aria-label="Fechar">×</button>
+            </div>
+            <div class="dialog-body">
+                <p class="dialog-intro">Escolha uma skin clássica. O player troca sem parar a música.</p>
+                <div class="skin-list">
+                    <button type="button" class="skin-choice is-selected" data-skin="classic">
+                        <span class="skin-swatch skin-classic" aria-hidden="true"></span>
+                        <span><strong>Winamp Base 2.91</strong><small>O clássico original</small></span>
+                    </button>
+                    <button type="button" class="skin-choice" data-skin="green">
+                        <span class="skin-swatch skin-green" aria-hidden="true"></span>
+                        <span><strong>Green Dimension V2</strong><small>Verde sci-fi</small></span>
+                    </button>
+                    <button type="button" class="skin-choice" data-skin="aqua">
+                        <span class="skin-swatch skin-aqua" aria-hidden="true"></span>
+                        <span><strong>Mac OS X Aqua</strong><small>Brilho dos anos 2000</small></span>
+                    </button>
+                    <button type="button" class="skin-choice" data-skin="zelda">
+                        <span class="skin-swatch skin-zelda" aria-hidden="true"></span>
+                        <span><strong>Zelda Amp</strong><small>Aventura 16-bit</small></span>
+                    </button>
+                </div>
+                <div class="dialog-actions">
+                    <button type="button" data-close-dialog>Fechar</button>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog class="retro-dialog help-dialog" id="help-dialog" aria-labelledby="help-title">
+            <div class="dialog-titlebar">
+                <h2 id="help-title">Sobre esta experiência</h2>
+                <button type="button" class="dialog-close" data-close-dialog aria-label="Fechar">×</button>
+            </div>
+            <div class="dialog-body">
+                <div class="about-row">
+                    <span class="about-bolt" aria-hidden="true">⚡</span>
+                    <div>
+                        <h3>Winamp 2.91 no navegador</h3>
+                        <p>Player real com playlist, equalizador de 10 bandas, skins, arquivos locais, atalhos e
+                            visualizador MilkDrop.</p>
+                    </div>
+                </div>
+
+                <fieldset>
+                    <legend>Atalhos clássicos</legend>
+                    <dl class="hotkeys">
+                        <div><dt>Z</dt><dd>Anterior</dd></div>
+                        <div><dt>X</dt><dd>Play</dd></div>
+                        <div><dt>C</dt><dd>Pausa</dd></div>
+                        <div><dt>V</dt><dd>Stop</dd></div>
+                        <div><dt>B</dt><dd>Próxima</dd></div>
+                        <div><dt>L</dt><dd>Abrir música</dd></div>
+                    </dl>
+                </fieldset>
+
+                <p><strong>Experimente:</strong> clique com o botão direito no player para abrir o menu completo.
+                    Em <em>Windows</em>, ative o MilkDrop; em <em>Options → Skins</em>, troque a aparência.</p>
+                <p>Você também pode arrastar músicas e arquivos <code>.wsz</code> diretamente para o Winamp.</p>
+
+                <fieldset class="credits">
+                    <legend>Créditos e licenças</legend>
+                    <p>Interface reproduzida por <a href="https://github.com/captbaritone/webamp" target="_blank"
+                            rel="noopener noreferrer">Webamp</a> 2.3.1 (MIT). Músicas demo do álbum
+                        <a href="https://blocsonic.com/releases/track/bscomp0024-disc-1-1-diablo-swing-orchestra-heroines/"
+                            target="_blank" rel="noopener noreferrer">netBloc Vol. 24</a>, disponibilizadas
+                        gratuitamente; cada faixa mantém sua licença Creative Commons original.
+                    </p>
+                </fieldset>
+
+                <div class="dialog-actions">
+                    <a class="button-link" href="/labs/">Voltar aos Labs</a>
+                    <button type="button" data-close-dialog>OK</button>
+                </div>
+            </div>
+        </dialog>
+
+        <input id="audio-file-input" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac" multiple hidden>
+
+        <footer class="taskbar" aria-label="Barra de tarefas">
+            <button class="start-button" id="start-button" type="button" aria-haspopup="dialog">
+                <span class="windows-flag" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                <strong>Iniciar</strong>
+            </button>
+            <span class="taskbar-divider" aria-hidden="true"></span>
+            <button class="task-button is-active" id="winamp-task" type="button">
+                <span aria-hidden="true">⚡</span>
+                <span>Winamp 2.91</span>
+            </button>
+            <div class="taskbar-spacer"></div>
+            <div class="system-tray">
+                <span class="tray-speaker" aria-hidden="true">🔊</span>
+                <time id="system-clock" aria-label="Hora atual">--:--</time>
+            </div>
+        </footer>
     </div>
-    <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+
+    <noscript>Ative o JavaScript para usar o player.</noscript>
+    <script>
+        window.__winampBootTimer = window.setTimeout(function () {
+            var message = document.querySelector("#loading-window p");
+            if (message) {
+                message.textContent =
+                    "O player demorou mais que o esperado. Atualize a página ou verifique sua conexão.";
+            }
+        }, 15000);
+    </script>
+    <script type="module" src="script.js?v=4"></script>
 </body>
 
 </html>

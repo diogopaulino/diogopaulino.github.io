@@ -3,101 +3,200 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Jungle Run - Labs</title>
-    <meta name="description" content="Corra pela selva, pule obstáculos e colete diamantes neste jogo de aventura.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#07150f">
+    <meta name="description"
+        content="Jungle Run: uma aventura retrô pela selva. Corra, salte, balance em cipós e descubra relíquias.">
+    <meta property="og:title" content="Jungle Run — Uma aventura retrô">
+    <meta property="og:description" content="Até onde você consegue chegar na selva?">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://diogopaulino.com.br/labs/jungle-run/og-jungle-run.jpg">
+    <title>Jungle Run — Labs</title>
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <script src="https://pixijs.download/v8.6.6/pixi.min.js" defer></script>
 </head>
 
-<body>
+<body class="jungle-lab">
+    <div class="ambient-glow ambient-glow-one" aria-hidden="true"></div>
+    <div class="ambient-glow ambient-glow-two" aria-hidden="true"></div>
+
     <div class="container">
         <header data-lab-header data-title="Jungle Run">
             <template data-slot="logo">
-                🌴 Jungle Run
+                <div class="app-logo">
+                    <span class="logo-mark" aria-hidden="true">✦</span>
+                    Jungle Run
+                </div>
             </template>
         </header>
 
-        <div class="game-wrapper">
-            <div class="game-container">
-                <div class="ui-layer">
-                    <div class="stat-box score-box">
-                        <span class="stat-icon">💎</span>
-                        <span class="stat-label">SCORE</span>
-                        <span class="stat-value" id="score">0</span>
-                    </div>
-                    <div class="stat-box lives-box">
-                        <span class="stat-icon">❤️</span>
-                        <span class="stat-label">LIVES</span>
-                        <span class="stat-value" id="lives">3</span>
-                    </div>
-                    <div class="stat-box distance-box">
-                        <span class="stat-icon">📍</span>
-                        <span class="stat-label">DISTANCE</span>
-                        <span class="stat-value" id="distance">0m</span>
-                    </div>
+        <main class="game-wrapper">
+            <section class="game-frame" aria-label="Jogo Jungle Run">
+                <div class="frame-top" aria-hidden="true">
+                    <span></span>
+                    <strong>JR—84</strong>
+                    <span></span>
                 </div>
 
-                <canvas id="gameCanvas"></canvas>
+                <div class="game-container" id="gameContainer">
+                    <canvas id="gameCanvas" width="960" height="600" aria-label="Área do jogo Jungle Run">
+                        Seu navegador não oferece suporte ao canvas.
+                    </canvas>
 
-                <div id="startScreen" class="overlay">
-                    <div class="overlay-content">
-                        <h1>🌴 JUNGLE RUN 🌴</h1>
-                        <p class="tagline">A Tribute to Pitfall</p>
-                        <div class="controls-info">
-                            <div class="control-item">
-                                <span class="key">← →</span>
-                                <span>Move</span>
+                    <div class="vignette" aria-hidden="true"></div>
+                    <div class="scanlines" aria-hidden="true"></div>
+
+                    <div class="hud" id="hud" aria-label="Status da expedição">
+                        <div class="hud-group">
+                            <div class="stat-box score-box">
+                                <span class="stat-icon gem-icon" aria-hidden="true"></span>
+                                <span class="stat-copy">
+                                    <span class="stat-label">Relíquias</span>
+                                    <strong class="stat-value" id="score">0000</strong>
+                                </span>
                             </div>
-                            <div class="control-item">
-                                <span class="key">SPACE</span>
-                                <span>Jump</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="key">↑</span>
-                                <span>Grab Vine</span>
+                            <div class="stat-box lives-box">
+                                <span class="stat-label">Vidas</span>
+                                <span class="hearts" id="lives" aria-label="3 vidas">● ● ●</span>
                             </div>
                         </div>
-                        <button id="startBtn" class="game-btn">START ADVENTURE</button>
-                        <p class="mobile-hint">On mobile: Use touch controls</p>
-                    </div>
-                </div>
 
-                <div id="gameOverScreen" class="overlay hidden">
-                    <div class="overlay-content">
-                        <h1>💀 GAME OVER 💀</h1>
-                        <div class="final-stats">
-                            <div class="final-stat">
-                                <span>Final Score</span>
-                                <span id="finalScore">0</span>
-                            </div>
-                            <div class="final-stat">
-                                <span>Distance</span>
-                                <span id="finalDistance">0m</span>
+                        <div class="hud-center">
+                            <span class="biome-label" id="biomeLabel">Trilha do Alvorecer</span>
+                            <div class="progress-track" aria-hidden="true">
+                                <span id="progressFill"></span>
                             </div>
                         </div>
-                        <button id="restartBtn" class="game-btn">TRY AGAIN</button>
+
+                        <div class="hud-group hud-group-right">
+                            <div class="stat-box distance-box">
+                                <span class="stat-copy">
+                                    <span class="stat-label">Distância</span>
+                                    <strong class="stat-value" id="distance">000m</strong>
+                                </span>
+                            </div>
+                            <button class="icon-btn sound-btn" id="soundBtn" type="button" aria-label="Desativar som"
+                                aria-pressed="false">
+                                <span aria-hidden="true">♪</span>
+                            </button>
+                            <button class="icon-btn pause-btn" id="pauseBtn" type="button" aria-label="Pausar jogo">
+                                <span aria-hidden="true">Ⅱ</span>
+                            </button>
+                        </div>
                     </div>
+
+                    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+                    <div class="countdown hidden" id="countdown" aria-live="assertive"></div>
+
+                    <div id="startScreen" class="overlay intro-overlay">
+                        <div class="overlay-foliage overlay-foliage-left" aria-hidden="true"></div>
+                        <div class="overlay-foliage overlay-foliage-right" aria-hidden="true"></div>
+                        <div class="overlay-content intro-content">
+                            <p class="eyebrow"><span></span> EXPEDIÇÃO 01 <span></span></p>
+                            <div class="title-lockup">
+                                <span class="title-kicker">THE LOST TEMPLE</span>
+                                <h1>JUNGLE<br><em>RUN</em></h1>
+                            </div>
+                            <p class="tagline">A selva muda a cada passo. Continue em frente.</p>
+
+                            <div class="controls-info" aria-label="Controles">
+                                <div class="control-item">
+                                    <span class="key">A</span><span class="key">D</span>
+                                    <span>mover</span>
+                                </div>
+                                <div class="control-item">
+                                    <span class="key key-wide">ESPAÇO</span>
+                                    <span>saltar</span>
+                                </div>
+                                <div class="control-item">
+                                    <span class="key">W</span>
+                                    <span>agarrar cipó</span>
+                                </div>
+                            </div>
+
+                            <button id="startBtn" class="game-btn primary-btn" type="button" disabled>
+                                <span>Entrar na selva</span>
+                                <span class="btn-arrow" aria-hidden="true">→</span>
+                            </button>
+                            <div class="intro-meta">
+                                <span>RECORDE <strong id="bestScore">0000</strong></span>
+                                <span class="mobile-hint">controles por toque disponíveis</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pauseScreen" class="overlay pause-overlay hidden" aria-hidden="true">
+                        <div class="overlay-content pause-content">
+                            <p class="eyebrow">EXPEDIÇÃO EM ESPERA</p>
+                            <h2>Pausa</h2>
+                            <p>Respire. A selva continua ouvindo.</p>
+                            <div class="overlay-actions">
+                                <button id="resumeBtn" class="game-btn primary-btn" type="button">
+                                    <span>Continuar</span><span class="btn-arrow" aria-hidden="true">→</span>
+                                </button>
+                                <button id="pauseRestartBtn" class="text-btn" type="button">Recomeçar expedição</button>
+                            </div>
+                            <span class="keyboard-hint">pressione <kbd>ESC</kbd> para voltar</span>
+                        </div>
+                    </div>
+
+                    <div id="gameOverScreen" class="overlay game-over-overlay hidden" aria-hidden="true">
+                        <div class="overlay-content game-over-content">
+                            <p class="eyebrow" id="resultEyebrow">FIM DA EXPEDIÇÃO</p>
+                            <h2>A selva venceu<br><em>desta vez.</em></h2>
+                            <div class="final-stats">
+                                <div class="final-stat">
+                                    <span>Relíquias</span>
+                                    <strong id="finalScore">0000</strong>
+                                </div>
+                                <div class="final-stat">
+                                    <span>Distância</span>
+                                    <strong id="finalDistance">000m</strong>
+                                </div>
+                                <div class="final-stat">
+                                    <span>Melhor marca</span>
+                                    <strong id="finalBest">000m</strong>
+                                </div>
+                            </div>
+                            <button id="restartBtn" class="game-btn primary-btn" type="button">
+                                <span>Tentar novamente</span><span class="btn-arrow" aria-hidden="true">↻</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mobile-controls" id="mobileControls" aria-label="Controles por toque">
+                        <div class="control-left">
+                            <button class="mobile-btn" id="leftBtn" type="button" aria-label="Mover para esquerda">
+                                <span aria-hidden="true">←</span>
+                            </button>
+                            <button class="mobile-btn" id="rightBtn" type="button" aria-label="Mover para direita">
+                                <span aria-hidden="true">→</span>
+                            </button>
+                        </div>
+                        <button class="mobile-btn jump-btn" id="jumpBtn" type="button"
+                            aria-label="Saltar ou agarrar cipó">
+                            <span aria-hidden="true">↑</span>
+                            <small>PULAR</small>
+                        </button>
+                    </div>
+
+                    <p class="sr-only" id="gameAnnouncer" aria-live="assertive"></p>
                 </div>
 
-                <div class="mobile-controls">
-                    <div class="control-left">
-                        <button class="mobile-btn" id="leftBtn">◀</button>
-                        <button class="mobile-btn" id="rightBtn">▶</button>
-                    </div>
-                    <div class="control-right">
-                        <button class="mobile-btn jump-btn" id="jumpBtn">⬆</button>
-                    </div>
+                <div class="frame-bottom">
+                    <span class="status-light" aria-hidden="true"></span>
+                    <p><strong>DICA</strong> Segure o salto perto de um cipó para agarrá-lo.</p>
+                    <span class="frame-signature">DIOGO LABS</span>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

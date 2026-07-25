@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Riff Rumble — Rock Legends Fighting Game</title>
+  <meta name="description"
+    content="Riff Rumble é um jogo de luta arcade com lendas do rock, golpes especiais, modo versus e controles mobile.">
+  <meta name="theme-color" content="#09030f">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/riff-rumble/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Riff Rumble — Rock Legends Fighting Game">
+  <meta property="og:description" content="O palco virou arena. Escolha sua lenda e domine o encore.">
+  <meta property="og:image"
+    content="https://diogopaulino.com.br/labs/riff-rumble/assets/riff-rumble-key-art.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,800&family=Inter:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="back-link" href="/labs/" aria-label="Voltar para Labs">
+      <span aria-hidden="true">←</span> LABS
+    </a>
+    <div class="brand" aria-label="Riff Rumble">
+      <span>RIFF</span><strong>RUMBLE</strong>
+    </div>
+    <div class="header-tools">
+      <button class="icon-btn how-btn" id="how-to-play" type="button">? COMO JOGAR</button>
+      <button class="icon-btn" id="sound-toggle" type="button" aria-label="Ativar ou desativar som">SOM: ON</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="screen hero-screen is-active" id="hero-screen" aria-labelledby="hero-title">
+      <img class="hero-art" src="assets/riff-rumble-key-art.jpg"
+        alt="Lendas do rock em uma arena de luta sobre um palco iluminado">
+      <div class="hero-scrim"></div>
+      <div class="hero-content">
+        <p class="eyebrow"><span></span> WORLD TOUR '94 <span></span></p>
+        <h1 id="hero-title"><span>RIFF</span> RUMBLE</h1>
+        <p class="hero-copy">O palco virou arena. O amplificador está no máximo.<br>Escolha sua lenda e domine o
+          encore.</p>
+        <button class="primary-btn" id="enter-game" type="button">
+          <span>PRESS START</span><small>ENTRAR NA ARENA</small>
+        </button>
+        <p class="hero-tip">TECLADO · CONTROLE TOUCH · 1–2 JOGADORES</p>
+      </div>
+    </section>
+
+    <section class="screen select-screen" id="select-screen" aria-labelledby="select-title">
+      <div class="section-heading">
+        <p class="kicker">SELECT YOUR FIGHTER</p>
+        <h2 id="select-title">ESCOLHA SUA <em>LENDA</em></h2>
+        <p>Cada artista tem atributos, ritmo e um golpe especial exclusivo.</p>
+      </div>
+
+      <div class="mode-switch" role="group" aria-label="Modo de jogo">
+        <button class="mode-btn is-active" data-mode="cpu" type="button">1P <span>vs CPU</span></button>
+        <button class="mode-btn" data-mode="local" type="button">2P <span>versus local</span></button>
+      </div>
+
+      <div class="versus-picks">
+        <div class="pick-slot" id="p1-pick">
+          <span class="player-tag">PLAYER 1</span>
+          <strong>ESCOLHA</strong>
+        </div>
+        <div class="vs-burst">VS</div>
+        <div class="pick-slot opponent" id="p2-pick">
+          <span class="player-tag">CPU</span>
+          <strong>ALEATÓRIO</strong>
+        </div>
+      </div>
+
+      <div class="roster" id="roster" role="list" aria-label="Personagens disponíveis"></div>
+
+      <div class="select-actions">
+        <button class="text-btn" id="back-to-hero" type="button">← VOLTAR</button>
+        <button class="fight-btn" id="start-fight" type="button" disabled>
+          <span>LET'S ROCK</span><small>COMEÇAR LUTA</small>
+        </button>
+      </div>
+    </section>
+
+    <section class="screen arena-screen" id="arena-screen" aria-label="Arena de luta">
+      <div class="arena-shell">
+        <div class="fight-hud" aria-live="polite">
+          <div class="hud-player">
+            <div class="hud-row"><strong id="p1-name">KURT</strong><span>P1</span></div>
+            <div class="health-track left"><i id="p1-health"></i></div>
+            <div class="special-track"><i id="p1-meter"></i></div>
+          </div>
+          <div class="round-center">
+            <span id="round-label">ROUND 1</span>
+            <strong id="timer">60</strong>
+          </div>
+          <div class="hud-player right">
+            <div class="hud-row"><span id="opponent-label">CPU</span><strong id="p2-name">AXL</strong></div>
+            <div class="health-track right"><i id="p2-health"></i></div>
+            <div class="special-track right"><i id="p2-meter"></i></div>
+          </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="game" width="960" height="540" aria-label="Jogo Riff Rumble"></canvas>
+          <div class="announcer" id="announcer" aria-live="assertive"></div>
+          <button class="pause-btn" id="pause-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
+        </div>
+
+        <div class="mobile-controls" aria-label="Controles touch">
+          <div class="d-pad">
+            <button data-touch="left" type="button" aria-label="Esquerda">←</button>
+            <button data-touch="jump" type="button" aria-label="Pular">↑</button>
+            <button data-touch="right" type="button" aria-label="Direita">→</button>
+            <button data-touch="block" type="button" aria-label="Defender">↓</button>
+          </div>
+          <div class="action-pad">
+            <button class="action kick" data-touch="kick" type="button"><span>K</span>CHUTE</button>
+            <button class="action punch" data-touch="punch" type="button"><span>P</span>SOCO</button>
+            <button class="action special" data-touch="special" type="button"><span>★</span>ESPECIAL</button>
+          </div>
+        </div>
+
+        <div class="desktop-controls">
+          <span><b>P1</b> A D mover · W pular · S defender · F/G atacar · H especial</span>
+          <span id="p2-controls"><b>P2</b> ← → mover · ↑ pular · ↓ defender · J/K atacar · L especial</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
+      <div class="result-card">
+        <p class="kicker" id="result-kicker">KNOCKOUT</p>
+        <h2 id="result-title">KURT <em>VENCEU!</em></h2>
+        <div class="winner-portrait" id="winner-portrait"></div>
+        <p id="result-quote">“Melhor que queimar o palco.”</p>
+        <div class="result-actions">
+          <button class="fight-btn" id="rematch" type="button"><span>REMATCH</span><small>JOGAR NOVAMENTE</small></button>
+          <button class="text-btn" id="change-fighter" type="button">TROCAR LUTADOR</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="how-modal" id="how-modal" role="dialog" aria-modal="true" aria-labelledby="how-title" hidden>
+    <div class="how-card">
+      <button class="modal-close" id="close-how" type="button" aria-label="Fechar instruções">×</button>
+      <p class="kicker">PLAYER'S GUIDE</p>
+      <h2 id="how-title">COMO <em>JOGAR</em></h2>
+      <p class="how-intro">Esvazie a barra de energia do rival antes que o tempo acabe. Ataque, defenda e carregue
+        seu especial para virar a luta.</p>
+
+      <div class="control-guides">
+        <article>
+          <span class="guide-player p1">PLAYER 1</span>
+          <div class="key-row"><kbd>A</kbd><kbd>D</kbd><p>Mover</p></div>
+          <div class="key-row"><kbd>W</kbd><p>Pular</p></div>
+          <div class="key-row"><kbd>S</kbd><p>Defender</p></div>
+          <div class="key-row"><kbd>F</kbd><kbd>G</kbd><p>Soco / chute</p></div>
+          <div class="key-row special-key"><kbd>H</kbd><p>Especial</p></div>
+        </article>
+        <article>
+          <span class="guide-player p2">PLAYER 2</span>
+          <div class="key-row"><kbd>←</kbd><kbd>→</kbd><p>Mover</p></div>
+          <div class="key-row"><kbd>↑</kbd><p>Pular</p></div>
+          <div class="key-row"><kbd>↓</kbd><p>Defender</p></div>
+          <div class="key-row"><kbd>J</kbd><kbd>K</kbd><p>Soco / chute</p></div>
+          <div class="key-row special-key"><kbd>L</kbd><p>Especial</p></div>
+        </article>
+      </div>
+
+      <div class="how-rules">
+        <div><b>01</b><p><strong>FAÇA COMBOS</strong>Alterne soco e chute quando estiver perto.</p></div>
+        <div><b>02</b><p><strong>ENCHA O MEDIDOR</strong>Acerte golpes ou receba dano para carregar a barra amarela.</p></div>
+        <div><b>03</b><p><strong>SOLTE O ESPECIAL</strong>Quando a barra chegar a 100%, use o golpe único do artista.</p></div>
+        <div><b>04</b><p><strong>NO CELULAR</strong>Use os botões que aparecem abaixo da arena.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pause-modal" id="pause-modal" hidden>
+    <div>
+      <p class="kicker">INTERMISSION</p>
+      <h2>PAUSADO</h2>
+      <button class="fight-btn" id="resume" type="button"><span>CONTINUAR</span></button>
+      <button class="text-btn" id="quit-fight" type="button">SAIR DA LUTA</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
