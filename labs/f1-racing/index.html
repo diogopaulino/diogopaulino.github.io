@@ -1,150 +1,205 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>F1 Grand Prix - Labs</title>
-    <meta name="description" content="Simulador de corrida de Fórmula 1 com telemetria e escolha de equipes.">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#08090d">
+    <meta name="description"
+        content="Uma experiência de corrida de Fórmula 1 no navegador, com cinco pilotos, telemetria e controles para teclado e toque.">
+    <title>F1 Grand Prix — Racing Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap"
+    <link rel="stylesheet" href="style.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&display=swap"
         rel="stylesheet">
 </head>
 
 <body>
-    <div class="container">
-        <header data-lab-header data-title="F1 Grand Prix">
+    <main class="game-shell">
+        <header data-lab-header data-title="F1 Grand Prix" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="f1-logo">F1</span> Grand Prix
+                    <span class="f1-logo">F1</span>
+                    <span>Grand Prix</span>
+                    <span class="logo-status"><i></i> Racing Lab</span>
                 </div>
             </template>
         </header>
 
-        <div class="game-wrapper">
-            <div class="hud">
-                <div class="hud-left">
-                    <div class="position-display">
-                        <span class="label">POS</span>
-                        <span id="position" class="value">1</span>
-                        <span class="total">/5</span>
+        <section class="game-wrapper" aria-label="Simulador de corrida">
+            <canvas id="gameCanvas" aria-label="Pista de corrida vista de cima"></canvas>
+
+            <div class="ambient-vignette" aria-hidden="true"></div>
+
+            <div class="hud" id="raceHud" aria-label="Telemetria da corrida">
+                <div class="hud-cluster hud-left">
+                    <div class="metric-card position-display">
+                        <span class="metric-label">POSIÇÃO</span>
+                        <span class="metric-line">
+                            <strong id="position">1</strong>
+                            <span>/ 5</span>
+                        </span>
                     </div>
-                    <div class="lap-display">
-                        <span class="label">LAP</span>
-                        <span id="lap" class="value">0</span>
-                        <span class="total">/3</span>
+                    <div class="metric-card lap-display">
+                        <span class="metric-label">VOLTA</span>
+                        <span class="metric-line">
+                            <strong id="lap">1</strong>
+                            <span>/ 3</span>
+                        </span>
                     </div>
                 </div>
+
                 <div class="hud-center">
                     <div class="telemetry-panel">
-                        <div class="speedometer">
-                            <div class="speed-ring">
-                                <svg viewBox="0 0 120 120">
-                                    <circle class="speed-bg" cx="60" cy="60" r="54" />
-                                    <circle id="speedArc" class="speed-fill" cx="60" cy="60" r="54" />
+                        <div class="rpm-lights" id="rpmLights" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                        </div>
+                        <div class="telemetry-main">
+                            <div class="speedometer">
+                                <svg viewBox="0 0 120 120" aria-hidden="true">
+                                    <circle class="speed-bg" cx="60" cy="60" r="52"></circle>
+                                    <circle id="speedArc" class="speed-fill" cx="60" cy="60" r="52"></circle>
                                 </svg>
                                 <div class="speed-value">
-                                    <span id="speed">0</span>
-                                    <span class="unit">KM/H</span>
+                                    <strong id="speed">0</strong>
+                                    <span>KM/H</span>
                                 </div>
                             </div>
-                        </div>
-                        <div class="gear-display">
-                            <span class="gear-label">GEAR</span>
-                            <span id="gear" class="gear-value">1</span>
-                        </div>
-                        <div class="rpm-display">
-                            <div class="rpm-bar-container">
-                                <div id="rpmBar" class="rpm-bar"></div>
+                            <div class="gear-display">
+                                <span>MARCHA</span>
+                                <strong id="gear">N</strong>
                             </div>
-                            <div class="rpm-labels">
-                                <span>4</span>
-                                <span>8</span>
-                                <span>12</span>
-                                <span>15K</span>
-                            </div>
+                        </div>
+                        <div class="rpm-track">
+                            <span id="rpmBar"></span>
                         </div>
                     </div>
                 </div>
-                <div class="hud-right">
-                    <div class="time-display">
-                        <span class="label">TIME</span>
-                        <span id="time" class="value time-value">0:00.00</span>
+
+                <div class="hud-cluster hud-right">
+                    <div class="metric-card time-display">
+                        <span class="metric-label">TEMPO</span>
+                        <strong id="time" class="time-value">0:00.00</strong>
                     </div>
-                    <div class="best-display">
-                        <span class="label">BEST</span>
-                        <span id="bestLap" class="value time-value">--:--.--</span>
+                    <div class="metric-card best-display">
+                        <span class="metric-label">MELHOR</span>
+                        <strong id="bestLap" class="time-value">--:--.--</strong>
                     </div>
+                </div>
+
+                <div class="race-progress" aria-hidden="true">
+                    <span id="raceProgress"></span>
                 </div>
             </div>
 
-            <canvas id="gameCanvas"></canvas>
+            <button id="pauseBtn" class="pause-button" type="button" aria-label="Pausar corrida"
+                title="Pausar corrida (P)">
+                <span></span><span></span>
+            </button>
 
             <div class="minimap-container">
-                <canvas id="minimapCanvas"></canvas>
+                <div class="minimap-heading">
+                    <span>CIRCUITO</span>
+                    <strong>GP LABS</strong>
+                </div>
+                <canvas id="minimapCanvas" aria-label="Mapa do circuito"></canvas>
             </div>
 
-            <div id="startScreen" class="overlay">
-                <div class="overlay-content">
-                    <div class="f1-title">
-                        <span class="f1-red">F1</span>
-                        <span class="f1-white">GRAND PRIX</span>
-                    </div>
-                    <div class="car-select">
-                        <span class="select-label">SELECT YOUR TEAM</span>
-                        <div class="team-options">
-                            <button class="team-btn selected" data-color="#e10600" data-name="Ferrari">
-                                <span class="team-color" style="background: #e10600"></span>
-                                Ferrari
-                            </button>
-                            <button class="team-btn" data-color="#00d2be" data-name="Mercedes">
-                                <span class="team-color" style="background: #00d2be"></span>
-                                Mercedes
-                            </button>
-                            <button class="team-btn" data-color="#3671c6" data-name="Red Bull">
-                                <span class="team-color" style="background: #3671c6"></span>
-                                Red Bull
-                            </button>
-                            <button class="team-btn" data-color="#ff8000" data-name="McLaren">
-                                <span class="team-color" style="background: #ff8000"></span>
-                                McLaren
-                            </button>
-                        </div>
-                    </div>
-                    <div class="controls-info">
-                        <div class="control-item">
-                            <span class="key">↑</span>
-                            <span>Acelerar</span>
-                        </div>
-                        <div class="control-item">
-                            <span class="key">↓</span>
-                            <span>Frear</span>
-                        </div>
-                        <div class="control-item">
-                            <span class="key">←</span>
-                            <span>Esquerda</span>
-                        </div>
-                        <div class="control-item">
-                            <span class="key">→</span>
-                            <span>Direita</span>
-                        </div>
-                    </div>
-                    <button id="startBtn" class="start-button">
-                        <span class="btn-text">INICIAR CORRIDA</span>
-                        <div class="lights">
-                            <span class="light"></span>
-                            <span class="light"></span>
-                            <span class="light"></span>
-                            <span class="light"></span>
-                            <span class="light"></span>
-                        </div>
+            <div id="mobileControls" class="mobile-controls" aria-label="Controles da corrida">
+                <div class="steering-controls">
+                    <button type="button" class="control-pad" data-control="left" aria-label="Virar para esquerda">
+                        <span>←</span>
+                    </button>
+                    <button type="button" class="control-pad" data-control="right" aria-label="Virar para direita">
+                        <span>→</span>
+                    </button>
+                </div>
+                <div class="pedal-controls">
+                    <button type="button" class="control-pad brake-pad" data-control="down" aria-label="Frear">
+                        <span>FREIO</span>
+                    </button>
+                    <button type="button" class="control-pad throttle-pad" data-control="up" aria-label="Acelerar">
+                        <span>ACELERAR</span>
                     </button>
                 </div>
             </div>
 
-            <div id="countdownOverlay" class="overlay countdown-overlay hidden">
+            <div id="startScreen" class="overlay start-overlay">
+                <div class="start-decoration start-decoration-left" aria-hidden="true"></div>
+                <div class="start-decoration start-decoration-right" aria-hidden="true"></div>
+
+                <div class="overlay-content start-card">
+                    <p class="eyebrow"><span></span> Racing simulator</p>
+                    <h1 class="f1-title">
+                        <span class="f1-red">F1</span>
+                        <span>Grand Prix</span>
+                    </h1>
+                    <p class="start-copy">Escolha sua equipe, domine cada curva e cruze a bandeirada antes dos rivais.</p>
+
+                    <div class="race-specs" aria-label="Informações da corrida">
+                        <div><strong>03</strong><span>Voltas</span></div>
+                        <div><strong>05</strong><span>Pilotos</span></div>
+                        <div><strong>340</strong><span>KM/H</span></div>
+                    </div>
+
+                    <fieldset class="car-select">
+                        <legend>ESCOLHA SUA EQUIPE</legend>
+                        <div class="team-options">
+                            <button class="team-btn selected" type="button" data-color="#ff2b24" data-name="Ferrari"
+                                aria-pressed="true" style="--team-color: #ff2b24">
+                                <span class="team-number">16</span>
+                                <span class="team-name">Ferrari</span>
+                                <span class="team-color"></span>
+                            </button>
+                            <button class="team-btn" type="button" data-color="#27f4d2" data-name="Mercedes"
+                                aria-pressed="false" style="--team-color: #27f4d2">
+                                <span class="team-number">63</span>
+                                <span class="team-name">Mercedes</span>
+                                <span class="team-color"></span>
+                            </button>
+                            <button class="team-btn" type="button" data-color="#4f75ff" data-name="Red Bull"
+                                aria-pressed="false" style="--team-color: #4f75ff">
+                                <span class="team-number">01</span>
+                                <span class="team-name">Red Bull</span>
+                                <span class="team-color"></span>
+                            </button>
+                            <button class="team-btn" type="button" data-color="#ff8700" data-name="McLaren"
+                                aria-pressed="false" style="--team-color: #ff8700">
+                                <span class="team-number">04</span>
+                                <span class="team-name">McLaren</span>
+                                <span class="team-color"></span>
+                            </button>
+                        </div>
+                    </fieldset>
+
+                    <div class="controls-info">
+                        <span class="controls-label">CONTROLES</span>
+                        <div class="keyboard-hints">
+                            <span><kbd>W</kbd><kbd>↑</kbd> Acelerar</span>
+                            <span><kbd>S</kbd><kbd>↓</kbd> Frear</span>
+                            <span><kbd>A</kbd><kbd>D</kbd> Direção</span>
+                        </div>
+                        <p class="touch-hint">Use os controles na tela durante a corrida.</p>
+                    </div>
+
+                    <button id="startBtn" class="start-button" type="button">
+                        <span class="btn-label">Largar agora</span>
+                        <span class="btn-arrow" aria-hidden="true">→</span>
+                        <span class="start-lights" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i><i></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="countdownOverlay" class="overlay countdown-overlay hidden" aria-live="assertive">
+                <p>Prepare-se</p>
                 <div class="countdown-lights">
+                    <span class="countdown-light"></span>
+                    <span class="countdown-light"></span>
                     <span class="countdown-light"></span>
                     <span class="countdown-light"></span>
                     <span class="countdown-light"></span>
@@ -152,35 +207,52 @@
                 <div id="countdownText" class="countdown-text"></div>
             </div>
 
-            <div id="finishScreen" class="overlay hidden">
-                <div class="overlay-content finish-content">
-                    <div class="checkered-flag"></div>
-                    <h2 id="finishTitle">CORRIDA FINALIZADA!</h2>
-                    <div class="results">
-                        <div class="result-item">
-                            <span class="result-label">Posição Final</span>
-                            <span id="finalPosition" class="result-value position-value">1º</span>
-                        </div>
-                        <div class="result-item">
-                            <span class="result-label">Melhor Volta</span>
-                            <span id="finalBestLap" class="result-value">--:--.--</span>
-                        </div>
-                        <div class="result-item">
-                            <span class="result-label">Tempo Total</span>
-                            <span id="finalTime" class="result-value">0:00.00</span>
-                        </div>
-                    </div>
-                    <button id="restartBtn" class="start-button">
-                        <span class="btn-text">NOVA CORRIDA</span>
+            <div id="pauseScreen" class="overlay pause-overlay hidden">
+                <div class="overlay-content compact-card">
+                    <p class="eyebrow"><span></span> Corrida pausada</p>
+                    <h2>Respire.<br>Volte mais rápido.</h2>
+                    <button id="resumeBtn" class="start-button" type="button">
+                        <span class="btn-label">Continuar corrida</span>
+                        <span class="btn-arrow" aria-hidden="true">→</span>
                     </button>
+                    <button id="quitBtn" class="text-button" type="button">Voltar ao grid</button>
                 </div>
             </div>
-        </div>
 
-        <footer data-lab-footer data-home-href="/"></footer>
-    </div>
+            <div id="finishScreen" class="overlay finish-overlay hidden" aria-live="polite">
+                <div class="overlay-content finish-card">
+                    <div class="finish-flag" aria-hidden="true"></div>
+                    <p class="eyebrow"><span></span> Resultado oficial</p>
+                    <h2 id="finishTitle">CORRIDA FINALIZADA</h2>
+                    <p id="finishTeam" class="finish-team">Ferrari · GP Labs</p>
+                    <div class="results">
+                        <div class="result-item featured-result">
+                            <span>Posição final</span>
+                            <strong id="finalPosition">1º</strong>
+                        </div>
+                        <div class="result-item">
+                            <span>Melhor volta</span>
+                            <strong id="finalBestLap">--:--.--</strong>
+                        </div>
+                        <div class="result-item">
+                            <span>Tempo total</span>
+                            <strong id="finalTime">0:00.00</strong>
+                        </div>
+                    </div>
+                    <button id="restartBtn" class="start-button" type="button">
+                        <span class="btn-label">Correr novamente</span>
+                        <span class="btn-arrow" aria-hidden="true">↻</span>
+                    </button>
+                    <button id="changeTeamBtn" class="text-button" type="button">Trocar equipe</button>
+                </div>
+            </div>
+
+            <div id="raceAnnouncement" class="sr-only" aria-live="polite"></div>
+        </section>
+    </main>
+
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=2" defer></script>
 </body>
 
 </html>
