@@ -123,11 +123,118 @@
     img.decoding = 'async';
     img.onload = () => {
       spriteCanvases[key] = createPerfectTransparentCanvas(img);
+      ensureDynamicSprites(id);
     };
     img.onerror = () => {
-      // Quietly ignore missing optional pose images
+      ensureDynamicSprites(id);
     };
     img.src = srcUrl;
+  }
+
+  // --- GERADOR PROCEDURAL DE SPRITES DINÂMICOS & REALISMO DE KOMBAT ---
+  function ensureDynamicSprites(id) {
+    const base = spriteCanvases[`${id}_idle`];
+    if (!base) return;
+    const w = base.width || 300;
+    const h = base.height || 400;
+
+    // 1. Sprite de PULO DEDICADO (Jump) - Aerodinâmico e realista
+    if (!spriteCanvases[`${id}_jump`]) {
+      const jCanvas = document.createElement('canvas');
+      jCanvas.width = w; jCanvas.height = h;
+      const cx = jCanvas.getContext('2d');
+      cx.save();
+      cx.strokeStyle = 'rgba(120, 220, 255, 0.45)'; cx.lineWidth = 3;
+      cx.beginPath();
+      cx.moveTo(w * 0.3, h * 0.85); cx.lineTo(w * 0.15, h * 0.98);
+      cx.moveTo(w * 0.5, h * 0.88); cx.lineTo(w * 0.4, h * 0.99);
+      cx.stroke();
+      cx.translate(w * 0.5, h * 0.5);
+      cx.rotate(-0.18);
+      cx.scale(1.04, 0.92);
+      cx.drawImage(base, -w * 0.5, -h * 0.5 - 12, w, h);
+      cx.restore();
+      spriteCanvases[`${id}_jump`] = jCanvas;
+    }
+
+    // 2. Sprites de GOLPES ESPECIAIS DIVERTIDOS E PRÓPRIOS (Custom Special Weapons & VFX)
+    if (!spriteCanvases[`${id}_special_base`] && spriteCanvases[`${id}_special`]) {
+      spriteCanvases[`${id}_special_base`] = spriteCanvases[`${id}_special`];
+    }
+    const origSp = spriteCanvases[`${id}_special_base`] || spriteCanvases[`${id}_special`] || base;
+    const spCanvas = document.createElement('canvas');
+    spCanvas.width = w + 90; spCanvas.height = h + 70;
+    const scx = spCanvas.getContext('2d');
+    scx.save();
+    scx.translate(25, 35);
+    scx.drawImage(origSp, 0, 0, w, h);
+
+    if (id === 'kurt') {
+      scx.save();
+      scx.translate(w * 0.62, h * 0.44);
+      scx.rotate(0.68);
+      scx.fillStyle = '#f5e3b3'; scx.strokeStyle = '#232018'; scx.lineWidth = 4;
+      scx.beginPath(); scx.ellipse(0, 0, 48, 29, 0, 0, Math.PI * 2); scx.fill(); scx.stroke();
+      scx.fillStyle = '#8f2d29'; scx.beginPath(); scx.ellipse(-6, 2, 28, 18, 0, 0, Math.PI * 2); scx.fill();
+      scx.fillStyle = '#222'; scx.fillRect(-5, -8, 12, 16);
+      scx.fillStyle = '#543621'; scx.fillRect(35, -7, 78, 14);
+      scx.fillStyle = '#f5e3b3'; scx.fillRect(113, -10, 26, 20);
+      scx.strokeStyle = '#36e5ff'; scx.lineWidth = 2.5; scx.shadowColor = '#36e5ff'; scx.shadowBlur = 16;
+      for (let i = 0; i < 5; i++) {
+        scx.beginPath(); scx.moveTo(-32, -5 + i * 2.5); scx.lineTo(113, -5 + i * 2.5); scx.stroke();
+      }
+      scx.restore();
+    } else if (id === 'axl') {
+      scx.save();
+      scx.translate(w * 0.55, h * 0.42);
+      scx.strokeStyle = '#e2e8f0'; scx.lineWidth = 6; scx.lineCap = 'round';
+      scx.shadowColor = '#fff'; scx.shadowBlur = 8;
+      scx.beginPath(); scx.moveTo(-30, 45); scx.lineTo(88, -68); scx.stroke();
+      scx.fillStyle = '#475569'; scx.beginPath(); scx.arc(92, -72, 12, 0, Math.PI * 2); scx.fill();
+      scx.strokeStyle = '#ff3300'; scx.lineWidth = 8; scx.shadowColor = '#ff6600'; scx.shadowBlur = 25;
+      scx.beginPath(); scx.moveTo(-30, 45); scx.bezierCurveTo(-65, -10, 125, -10, 88, -68); scx.stroke();
+      scx.strokeStyle = '#ffcc00'; scx.lineWidth = 3.5; scx.stroke();
+      scx.restore();
+    } else if (id === 'lennon') {
+      scx.save();
+      scx.translate(w * 0.56, h * 0.52);
+      scx.rotate(-0.35);
+      scx.fillStyle = '#3a7d44'; scx.strokeStyle = '#ffffff'; scx.lineWidth = 4;
+      scx.shadowColor = '#6df28e'; scx.shadowBlur = 20;
+      scx.beginPath(); scx.roundRect(-44, -32, 88, 62, 22); scx.fill(); scx.stroke();
+      scx.fillStyle = '#3e2723'; scx.fillRect(-42, -8, -80, 16);
+      scx.font = 'bold 38px sans-serif';
+      scx.fillStyle = '#ff61b0'; scx.fillText('☮', 38, -48);
+      scx.fillStyle = '#ffd700'; scx.fillText('❤️', 48, 48);
+      scx.fillStyle = '#36d7ff'; scx.fillText('♪', -75, -35);
+      scx.restore();
+    }
+    scx.restore();
+    spriteCanvases[`${id}_special`] = spCanvas;
+
+    // 3. Variações cinemáticas de combate caso faltem poses específicas
+    const poses = [
+      { name: 'punch', dx: 18, dy: -4, rot: 0.08, scaleX: 1.08, scaleY: 0.98 },
+      { name: 'kick', dx: 12, dy: -12, rot: -0.15, scaleX: 1.06, scaleY: 0.97 },
+      { name: 'block', dx: -12, dy: 6, rot: -0.07, scaleX: 0.96, scaleY: 1.04 },
+      { name: 'hit', dx: -22, dy: -8, rot: -0.25, scaleX: 0.94, scaleY: 1.06 },
+      { name: 'walk1', dx: 8, dy: -4, rot: 0.04, scaleX: 1.02, scaleY: 0.99 },
+      { name: 'walk2', dx: -8, dy: 2, rot: -0.03, scaleX: 0.98, scaleY: 1.01 }
+    ];
+    poses.forEach(p => {
+      if (!spriteCanvases[`${id}_${p.name}`]) {
+        const pCan = document.createElement('canvas');
+        pCan.width = w; pCan.height = h;
+        const pcx = pCan.getContext('2d');
+        pcx.save();
+        pcx.translate(w * 0.5 + p.dx, h * 0.5 + p.dy);
+        pcx.rotate(p.rot);
+        pcx.scale(p.scaleX, p.scaleY);
+        pcx.drawImage(base, -w * 0.5, -h * 0.5);
+        pcx.restore();
+        spriteCanvases[`${id}_${p.name}`] = pCan;
+      }
+    });
   }
 
   // Preload UI & Active Realist Sprite Assets in True Transparent PNG (Streets of Rage Full Roster)
@@ -140,12 +247,15 @@
     loadSpritePose(f.id, 'idle', `assets/sprite-${f.id}.png`);
     loadSpritePose(f.id, 'walk1', `assets/sprite-${f.id}-walk1.png`);
     loadSpritePose(f.id, 'walk2', `assets/sprite-${f.id}-walk2.png`);
+    loadSpritePose(f.id, 'jump', `assets/sprite-${f.id}-jump.png`);
     loadSpritePose(f.id, 'punch', `assets/sprite-${f.id}-punch.png`);
     loadSpritePose(f.id, 'kick', `assets/sprite-${f.id}-kick.png`);
     loadSpritePose(f.id, 'special', `assets/sprite-${f.id}-special.png`);
     loadSpritePose(f.id, 'block', `assets/sprite-${f.id}-block.png`);
     loadSpritePose(f.id, 'hit', `assets/sprite-${f.id}-hit.png`);
   });
+
+  setTimeout(() => fighters.forEach(f => ensureDynamicSprites(f.id)), 900);
 
   // Stage Fog & Crowd Effects
   const stageFog = [];
@@ -604,7 +714,8 @@
         this.y = 425;
         if (!wasGrounded && this.vy > 4) {
           this.landSquash = 8;
-          match.shake = Math.max(match.shake, 3.0);
+          match.shake = Math.max(match.shake, 4.0);
+          if (typeof burst === 'function') burst(this.x, 425, '#c2cbda', 8, 'land');
           sound('ui', 0.48);
         }
         this.vy = 0; this.grounded = true;
@@ -683,7 +794,7 @@
           color: this.data.color, life: this.attack.type === 'special' ? 38 : 24
         });
 
-        burst((this.x + other.x) / 2, other.y - 85, this.data.color, this.attack.type === 'special' ? 36 : 14);
+        burst((this.x + other.x) / 2, other.y - 85, this.data.color, this.attack.type === 'special' ? 42 : 16, this.attack.type, this.data.id);
         sound(other.blocking ? 'block' : 'hit', this.attack.type === 'special' ? 0.6 : 0.95);
       }
     }
@@ -693,19 +804,19 @@
     if (!pick1 || !pick2) return;
     initAudio();
     showScreen('arena-screen');
-    $('#p1-name').textContent = pick1.short;
-    $('#p2-name').textContent = pick2.short;
-    $('#opponent-label').textContent = 'CPU';
-
+    const s1 = fighters.find(x => x.id === pick1);
+    const s2 = fighters.find(x => x.id === pick2);
     match = {
-      p1: new Player(pick1, 260, 1, false),
-      p2: new Player(pick2, 700, -1, true),
+      p1: new Fighter(320, 425, 1, s1, false),
+      p2: new Fighter(640, 425, -1, s2, true),
       timer: 75, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
-      camX: 480, camZoom: 1.0
     };
-    match.p1.meter = 55;
-    match.p2.meter = 0;
-    match.p2.health = 90;
+    $('#p1-name').textContent = s1.short; $('#p2-name').textContent = s2.short;
+    $('#timer').textContent = match.timer;
+    $('#opponent-label').textContent = match.p2.cpu ? 'CPU' : 'P2';
+
+    const stageNames = { woodstock: "WOODSTOCK '69 STAGE", stadium: "STADIUM ARENA '94", club: "UNDERGROUND TUBE CLUB" };
+    $('#round-label').textContent = stageNames[currentStage] || "WORLD TOUR STAGE";
 
     $('#coach-text').textContent = window.matchMedia('(max-width: 720px)').matches
       ? 'Use as setas ← e → para chegar perto do rival.'
@@ -718,14 +829,27 @@
     raf = requestAnimationFrame(loop);
   }
 
-  function burst(x, y, color, count) {
+  function burst(x, y, color, count, type = 'normal', id = null) {
+    const icons = id === 'kurt' ? ['🎸', '⚡', '✦', ''] : id === 'axl' ? ['🔥', '💥', '✨', ''] : id === 'lennon' ? ['☮', '❤️', '♪', '♫'] : [''];
     for (let i = 0; i < count; i++) {
-      match.particles.push({
-        x, y,
-        vx: rand(-10, 10), vy: rand(-10, 5),
-        life: rand(18, 38),
-        color, size: rand(2.5, 7.5), length: rand(10, 32)
-      });
+      const isIcon = type === 'special' && Math.random() > 0.35;
+      const chosenIcon = isIcon ? icons[Math.floor(Math.random() * icons.length)] : '';
+      const isLand = type === 'land';
+      if (match && match.particles) {
+        match.particles.push({
+          x: x + rand(-18, 18),
+          y: y + rand(isLand ? -4 : -15, isLand ? 4 : 15),
+          vx: rand(isLand ? -12 : -10, isLand ? 12 : 10),
+          vy: isIcon ? rand(-14, -2) : isLand ? rand(-5, -0.5) : rand(-12, 5),
+          life: isIcon ? rand(30, 58) : isLand ? rand(12, 22) : rand(18, 38),
+          maxLife: isIcon ? 58 : isLand ? 22 : 38,
+          color: type === 'special' ? (Math.random() > 0.5 ? '#fffae0' : color) : isLand ? '#d1dcde' : color,
+          size: isLand ? rand(4, 11) : rand(2.5, 7.5),
+          length: isLand ? 0 : rand(10, 32),
+          icon: chosenIcon,
+          isLand
+        });
+      }
     }
   }
 
@@ -1287,19 +1411,27 @@
       }
     }
 
-    // Dynamic Realistic Ground Shadow (expands with step stance and combat lunge)
-    c.fillStyle = 'rgba(0, 0, 0, 0.68)';
-    c.beginPath();
-    c.ellipse(lungeX * 0.4, 4 + walkBob * 0.2, 58 + Math.abs(lungeX) * 0.35 + Math.abs(walkStrideX) * 1.4, 13, 0, 0, Math.PI * 2);
-    c.fill();
+    // Dynamic Realistic Ground Shadow (remains glued to stage floor even during high leaps!)
+    const heightAboveGround = Math.max(0, 425 - ground);
+    const shadowAlpha = clamp(0.68 - (heightAboveGround * 0.0035), 0.15, 0.68);
+    const shadowScaleX = clamp(58 - (heightAboveGround * 0.15) + Math.abs(lungeX) * 0.35 + Math.abs(walkStrideX) * 1.4, 18, 90);
+    const shadowScaleY = clamp(13 - (heightAboveGround * 0.04), 4, 13);
 
-    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Streets of Rage Multi-Frame Cycling)
+    c.save();
+    c.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+    c.beginPath();
+    c.ellipse(lungeX * 0.4, 4 + walkBob * 0.2 + heightAboveGround, shadowScaleX, shadowScaleY, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Different dedicated image per movement!)
     let poseKey = `${f.id}_idle`;
     if (state === 'punch') poseKey = `${f.id}_punch`;
     else if (state === 'kick') poseKey = `${f.id}_kick`;
     else if (state === 'special') poseKey = `${f.id}_special`;
     else if (state === 'block') poseKey = `${f.id}_block`;
     else if (state === 'hit') poseKey = `${f.id}_hit`;
+    else if (state === 'jump' || heightAboveGround > 5) poseKey = `${f.id}_jump`;
     else if (state === 'walk') {
       if (stepFrame === 0 || stepFrame === 1) poseKey = `${f.id}_walk1`;
       else if (stepFrame === 2 || stepFrame === 3) poseKey = `${f.id}_walk2`;
@@ -1315,6 +1447,17 @@
       c.translate(-12, crouchShift * 0.5);
       c.rotate(-0.06); // Defensive shield posture
       if (alpha === 1) { c.shadowColor = '#23d7ef'; c.shadowBlur = 28; }
+    } else if (state === 'jump' || heightAboveGround > 5) {
+      if (alpha === 1 && Math.random() > 0.4) {
+        c.save();
+        c.globalCompositeOperation = 'screen';
+        c.strokeStyle = 'rgba(200, 240, 255, 0.45)'; c.lineWidth = 2.5;
+        c.beginPath();
+        c.moveTo(-20, 15); c.lineTo(-35, 45 + Math.random() * 10);
+        c.moveTo(25, 12); c.lineTo(40, 42 + Math.random() * 10);
+        c.stroke();
+        c.restore();
+      }
     }
 
     if (poseCanvas) {
@@ -1449,11 +1592,24 @@
 
     match.particles.forEach(p => {
       ctx.save();
-      ctx.globalAlpha = p.life / 38;
-      ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
-      ctx.shadowColor = p.color; ctx.shadowBlur = 10;
-      const mag = Math.hypot(p.vx, p.vy) || 1;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx / mag * p.length, p.y - p.vy / mag * p.length); ctx.stroke();
+      const maxL = p.maxLife || 38;
+      ctx.globalAlpha = clamp(p.life / maxL, 0, 1);
+      if (p.icon) {
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillStyle = p.color || '#fff';
+        ctx.shadowColor = p.color || '#ffcc00'; ctx.shadowBlur = 14;
+        ctx.fillText(p.icon, p.x, p.y);
+      } else if (p.isLand) {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
+        ctx.shadowColor = p.color; ctx.shadowBlur = 10;
+        const mag = Math.hypot(p.vx, p.vy) || 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - (p.vx / mag) * p.length, p.y - (p.vy / mag) * p.length); ctx.stroke();
+      }
       ctx.restore();
     });
 
