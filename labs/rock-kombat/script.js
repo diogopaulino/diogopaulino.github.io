@@ -131,6 +131,62 @@
     img.src = srcUrl;
   }
 
+  // --- NANO BANANA 16-BIT HD SPRITE SHEET PARSER (ESTILO MEGA DRIVE / STREETS OF RAGE) ---
+  // Quando as novas Master Sprite Sheets geradas por IA no Nano Banana forem adicionadas na pasta assets/
+  // (ex: assets/kurt_sprite_sheet.png, axl_sprite_sheet.png, lennon_sprite_sheet.png), esta função recorta
+  // automaticamente a grade 6x5 e extrae os ~29 quadros animados para combates ultradinâmicos de 60 FPS!
+  function loadMegaDriveSpriteSheet(id, filename) {
+    const sheetImg = new Image();
+    sheetImg.decoding = 'async';
+    sheetImg.onload = () => {
+      console.log(`[Nano Banana Parser] Master Sprite Sheet 16-bit carregada para: ${id}`);
+      // Grade padrão do estilo 16-Bit Mega Drive: 6 colunas por 5 linhas
+      const cols = 6;
+      const rows = 5;
+      const cellW = Math.floor(sheetImg.width / cols);
+      const cellH = Math.floor(sheetImg.height / rows);
+      
+      const animMap = {
+        idle:    { row: 0, count: 3 },
+        walk:    { row: 1, count: 4 },
+        punch:   { row: 2, count: 3 },
+        kick:    { row: 3, count: 3 },
+        special: { row: 4, count: 4 },
+        hit:     { row: 4, count: 2, offsetCol: 4 }
+      };
+
+      Object.entries(animMap).forEach(([action, meta]) => {
+        for (let i = 0; i < meta.count; i++) {
+          const col = (meta.offsetCol || 0) + i;
+          if (col >= cols) continue;
+          
+          const sliceCan = document.createElement('canvas');
+          sliceCan.width = cellW;
+          sliceCan.height = cellH;
+          const scx = sliceCan.getContext('2d');
+          scx.drawImage(sheetImg, col * cellW, meta.row * cellH, cellW, cellH, 0, 0, cellW, cellH);
+          
+          const cleanCanvas = createPerfectTransparentCanvas(sliceCan);
+          const frameKey = `${id}_${action}_f${i}`;
+          spriteCanvases[frameKey] = cleanCanvas;
+          
+          // O quadro zero vira também o padrão de fallback principal!
+          if (i === 0) {
+            if (action === 'walk') {
+              spriteCanvases[`${id}_walk1`] = cleanCanvas;
+            } else {
+              spriteCanvases[`${id}_${action}`] = cleanCanvas;
+            }
+          } else if (i === 1 && action === 'walk') {
+            spriteCanvases[`${id}_walk2`] = cleanCanvas;
+          }
+        }
+      });
+      ensureDynamicSprites(id);
+    };
+    sheetImg.src = `assets/${filename}`;
+  }
+
   // --- GERADOR PROCEDURAL DE SPRITES DINÂMICOS & REALISMO DE KOMBAT ---
   function ensureDynamicSprites(id) {
     const base = spriteCanvases[`${id}_idle`];
@@ -239,6 +295,9 @@
 
   // Preload UI & Active Realist Sprite Assets in True Transparent PNG (Streets of Rage Full Roster)
   fighters.forEach(f => {
+    // 1. Tenta carregar e recortar automaticamente a nova Master Sprite Sheet 16-Bit (Nano Banana)
+    loadMegaDriveSpriteSheet(f.id, `${f.id}_sprite_sheet.png`);
+
     const portraitImg = new Image();
     portraitImg.decoding = 'async';
     portraitImg.src = `assets/${f.portrait}`;
@@ -1425,17 +1484,39 @@
     c.fill();
     c.restore();
 
-    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Different dedicated image per movement!)
+    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Ou recortes sequenciais automáticos da Master Sprite Sheet Nano Banana!)
     let poseKey = `${f.id}_idle`;
-    if (state === 'punch') poseKey = `${f.id}_punch`;
-    else if (state === 'kick') poseKey = `${f.id}_kick`;
-    else if (state === 'special') poseKey = `${f.id}_special`;
-    else if (state === 'block') poseKey = `${f.id}_block`;
-    else if (state === 'hit') poseKey = `${f.id}_hit`;
-    else if (state === 'jump' || heightAboveGround > 5) poseKey = `${f.id}_jump`;
-    else if (state === 'walk') {
-      if (stepFrame === 0 || stepFrame === 1) poseKey = `${f.id}_walk1`;
-      else if (stepFrame === 2 || stepFrame === 3) poseKey = `${f.id}_walk2`;
+    if (state === 'punch') {
+      const pFrame = Math.min(2, Math.floor((18 - Math.max(0, attackTimer)) / 6));
+      poseKey = spriteCanvases[`${f.id}_punch_f${pFrame}`] ? `${f.id}_punch_f${pFrame}` : `${f.id}_punch`;
+    } else if (state === 'kick') {
+      const kFrame = Math.min(2, Math.floor((25 - Math.max(0, attackTimer)) / 8));
+      poseKey = spriteCanvases[`${f.id}_kick_f${kFrame}`] ? `${f.id}_kick_f${kFrame}` : `${f.id}_kick`;
+    } else if (state === 'special') {
+      const sFrame = Math.min(3, Math.floor((55 - Math.max(0, attackTimer)) / 14));
+      poseKey = spriteCanvases[`${f.id}_special_f${sFrame}`] ? `${f.id}_special_f${sFrame}` : `${f.id}_special`;
+    } else if (state === 'block') {
+      poseKey = `${f.id}_block`;
+    } else if (state === 'hit') {
+      const hFrame = Math.min(1, Math.floor(Math.max(0, 16 - f.stun) / 8));
+      poseKey = spriteCanvases[`${f.id}_hit_f${hFrame}`] ? `${f.id}_hit_f${hFrame}` : `${f.id}_hit`;
+    } else if (state === 'jump' || heightAboveGround > 5) {
+      poseKey = `${f.id}_jump`;
+    } else if (state === 'walk') {
+      const wFrame = Math.floor((match.frames / 8) % 4);
+      if (spriteCanvases[`${f.id}_walk_f${wFrame}`]) {
+        poseKey = `${f.id}_walk_f${wFrame}`;
+      } else if (stepFrame === 0 || stepFrame === 1) {
+        poseKey = `${f.id}_walk1`;
+      } else {
+        poseKey = `${f.id}_walk2`;
+      }
+    } else if (state === 'idle') {
+      // Loop em ping-pong estilo Mega Drive (0 -> 1 -> 2 -> 1) se houver sprite sheet
+      const idleIdx = [0, 1, 2, 1][Math.floor((match.frames / 16) % 4)];
+      if (spriteCanvases[`${f.id}_idle_f${idleIdx}`]) {
+        poseKey = `${f.id}_idle_f${idleIdx}`;
+      }
     }
 
     const poseCanvas = spriteCanvases[poseKey] || spriteCanvases[`${f.id}_idle`];
