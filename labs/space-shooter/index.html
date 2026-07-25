@@ -7,7 +7,7 @@
     <title>Neon Invaders - Labs</title>
     <meta name="description" content="Jogo de tiro espacial estilo arcade com gráficos neon.">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
@@ -43,30 +43,37 @@
 
                     <canvas id="gameCanvas" aria-label="Neon Invaders"></canvas>
 
-                    <div id="startScreen" class="overlay">
-                        <div class="eyebrow">SINAL DETECTADO · SETOR 09</div>
+                    <div id="startScreen" class="overlay start-overlay">
+                        <div class="eyebrow">ARCADE · 01</div>
                         <h1>NEON<br><span>INVADERS</span></h1>
-                        <p class="lead">Defenda a órbita. Destrua a frota invasora e evolua seu arsenal.</p>
+                        <p class="lead">A última linha de defesa é você.</p>
                         <div class="quick-controls" aria-label="Controles">
                             <span><kbd>←</kbd><kbd>→</kbd> mover</span>
                             <span><kbd>ESPAÇO</kbd> disparar</span>
                         </div>
-                        <button id="startBtn" class="primary-action">
-                            <span>Iniciar missão</span>
-                            <span aria-hidden="true">↗</span>
+                        <button id="startBtn" class="primary-action" type="button">
+                            <span class="action-icon" aria-hidden="true">▶</span>
+                            <span class="action-copy">
+                                <small>1 JOGADOR</small>
+                                <strong>JOGAR AGORA</strong>
+                            </span>
+                            <span class="action-key" aria-hidden="true">ENTER</span>
                         </button>
                     </div>
 
-                    <div id="gameOverScreen" class="overlay hidden">
-                        <div class="eyebrow danger">CONEXÃO ENCERRADA</div>
+                    <div id="gameOverScreen" class="overlay game-over-overlay hidden">
+                        <div class="eyebrow danger">FROTA PERDIDA</div>
                         <h1>FIM DE<br><span>JOGO</span></h1>
                         <div class="result-card">
                             <span>Pontuação final</span>
                             <strong id="finalScore">000000</strong>
                         </div>
-                        <button id="restartBtn" class="primary-action">
-                            <span>Tentar novamente</span>
-                            <span aria-hidden="true">↻</span>
+                        <button id="restartBtn" class="primary-action" type="button">
+                            <span class="action-icon" aria-hidden="true">↻</span>
+                            <span class="action-copy">
+                                <small>NOVA TENTATIVA</small>
+                                <strong>JOGAR DE NOVO</strong>
+                            </span>
                         </button>
                     </div>
 
@@ -77,7 +84,7 @@
                         </div>
                         <button id="shootBtn" class="shoot-control" type="button" aria-label="Disparar">
                             <span>●</span>
-                            FIRE
+                            ATIRAR
                         </button>
                     </div>
                 </div>
@@ -86,13 +93,13 @@
             <aside class="mission-panel" aria-label="Informações da missão">
                 <div class="mission-status">
                     <span class="status-dot" aria-hidden="true"></span>
-                    MISSÃO ATIVA
+                    SISTEMA ONLINE
                 </div>
 
                 <div class="mission-copy">
-                    <span class="panel-kicker">NEON DEFENSE</span>
-                    <h2>Proteja o último corredor orbital.</h2>
-                    <p>Elimine cada formação antes que ela alcance sua nave.</p>
+                    <span class="panel-kicker">OBJETIVO</span>
+                    <h2>Não deixe ninguém passar.</h2>
+                    <p>Destrua a formação antes que ela alcance sua nave.</p>
                 </div>
 
                 <div class="panel-stats">
@@ -124,7 +131,7 @@
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>

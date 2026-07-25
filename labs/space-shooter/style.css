@@ -225,24 +225,25 @@ canvas {
 .overlay h1 {
     margin: 0;
     color: #fff;
-    font-size: clamp(28px, 5.2vw, 62px);
-    line-height: 1.02;
-    letter-spacing: -.08em;
+    font-size: clamp(30px, 4.7vw, 56px);
+    line-height: .96;
+    letter-spacing: -.065em;
     text-shadow: 0 0 38px rgba(255,255,255,.18);
 }
 
 .overlay h1 span {
-    color: transparent;
-    -webkit-text-stroke: 1px var(--neon-pink);
-    text-shadow: 0 0 28px rgba(255,79,216,.34);
+    color: var(--neon-pink);
+    font-size: .72em;
+    letter-spacing: .035em;
+    text-shadow: 0 0 28px rgba(255,79,216,.42);
 }
 
 .overlay .lead {
     width: min(100%, 430px);
-    margin: clamp(18px, 4vh, 34px) auto 0;
-    color: rgba(255,255,255,.62);
+    margin: clamp(20px, 3.6vh, 30px) auto 0;
+    color: rgba(255,255,255,.68);
     font-family: 'Outfit', sans-serif;
-    font-size: clamp(13px, 1.4vw, 16px);
+    font-size: clamp(14px, 1.35vw, 16px);
     line-height: 1.55;
 }
 
@@ -272,27 +273,90 @@ kbd {
 }
 
 .primary-action {
-    width: min(100%, 390px);
-    min-height: 54px;
-    margin-top: clamp(22px, 4vh, 38px);
-    padding: 0 20px;
+    width: min(100%, 330px);
+    min-height: 64px;
+    margin-top: clamp(24px, 4vh, 34px);
+    padding: 9px 10px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    border: 1px solid var(--neon-green);
-    border-radius: 10px;
-    color: #071003;
-    background: var(--neon-green);
+    gap: 12px;
+    border: 1px solid rgba(183,255,74,.5);
+    border-radius: 14px;
+    color: #fff;
+    background:
+        linear-gradient(120deg, rgba(183,255,74,.13), rgba(183,255,74,.035)),
+        rgba(5,7,12,.88);
     font-family: 'Press Start 2P', cursive;
-    font-size: clamp(8px, 1vw, 11px);
     cursor: pointer;
-    box-shadow: 0 0 28px rgba(183,255,74,.2);
-    transition: transform .2s ease, box-shadow .2s ease;
+    box-shadow:
+        0 0 0 1px rgba(183,255,74,.04),
+        0 0 26px rgba(183,255,74,.1);
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
 
 .primary-action:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 36px rgba(183,255,74,.3);
+    border-color: var(--neon-green);
+    background:
+        linear-gradient(120deg, rgba(183,255,74,.2), rgba(183,255,74,.07)),
+        rgba(5,7,12,.9);
+    box-shadow: 0 10px 36px rgba(183,255,74,.16);
+}
+
+.action-icon {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #071003;
+    background: var(--neon-green);
+    font-size: 10px;
+    box-shadow: 0 0 18px rgba(183,255,74,.22);
+}
+
+.action-copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    text-align: left;
+}
+
+.action-copy small {
+    color: rgba(255,255,255,.38);
+    font-size: 5px;
+    letter-spacing: .15em;
+}
+
+.action-copy strong {
+    color: #fff;
+    font-size: clamp(8px, .85vw, 10px);
+    letter-spacing: .02em;
+}
+
+.action-key {
+    padding: 8px 7px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 7px;
+    color: rgba(255,255,255,.42);
+    background: rgba(255,255,255,.04);
+    font-size: 5px;
+}
+
+.game-over-overlay .action-icon {
+    color: #170212;
+    background: var(--neon-pink);
+    box-shadow: 0 0 18px rgba(255,79,216,.22);
+}
+
+.game-over-overlay .primary-action {
+    border-color: rgba(255,79,216,.42);
+    background:
+        linear-gradient(120deg, rgba(255,79,216,.12), rgba(255,79,216,.025)),
+        rgba(5,7,12,.88);
 }
 
 .primary-action:focus-visible,
@@ -363,7 +427,7 @@ kbd {
     margin: 14px 0;
     color: #fff;
     font-family: 'Outfit', sans-serif;
-    font-size: clamp(24px, 2.5vw, 38px);
+    font-size: clamp(24px, 2.35vw, 36px);
     font-weight: 600;
     line-height: 1.04;
     letter-spacing: -.045em;
@@ -410,7 +474,8 @@ kbd {
 
 .desktop-controls > div {
     display: grid;
-    grid-template-columns: 100px 1fr;
+    grid-template-columns: 116px minmax(0, 1fr);
+    column-gap: 8px;
     align-items: center;
     padding-top: 12px;
 }
@@ -491,6 +556,10 @@ footer a {
     }
 
     .quick-controls {
+        display: none;
+    }
+
+    .action-key {
         display: none;
     }
 
@@ -580,7 +649,7 @@ footer a {
     }
 
     .primary-action {
-        min-height: 44px;
+        min-height: 54px;
         margin-top: 14px;
     }
 

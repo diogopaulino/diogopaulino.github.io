@@ -160,6 +160,10 @@ window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
     }
+    if (e.key === 'Enter' && !gameRunning) {
+        if (document.activeElement?.tagName !== 'BUTTON') startGame();
+        return;
+    }
     if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = true;
     if (e.key === ' ' && gameRunning) fireBullet();
 });
