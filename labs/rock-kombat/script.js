@@ -779,10 +779,11 @@
         other.meter = clamp(other.meter + (other.cpu ? 6 : 14), 0, 100);
         this.combo++; this.comboTimer = 65;
 
-        match.shake = this.attack.type === 'special' ? 18 : 6;
-        match.flash = this.attack.type === 'special' ? 8 : 2;
-        match.hitStop = other.blocking ? 3 : this.attack.type === 'special' ? 11 : this.attack.type === 'kick' ? 6 : 4;
-        match.zoomPulse = this.attack.type === 'special' ? 0.07 : 0.02;
+        // Estilo Mega Drive / Streets of Rage: Hitstop mais estalado e tremedeira pesada!
+        match.shake = this.attack.type === 'special' ? 24 : this.attack.type === 'kick' ? 14 : 9;
+        match.flash = this.attack.type === 'special' ? 10 : 3;
+        match.hitStop = other.blocking ? 4 : this.attack.type === 'special' ? 14 : this.attack.type === 'kick' ? 8 : 5;
+        match.zoomPulse = this.attack.type === 'special' ? 0.09 : 0.035;
 
         const impactText = this.attack.type === 'special'
           ? (this.data.id === 'kurt' ? 'GUITARRADA SMASH!' : this.data.id === 'axl' ? 'SERPENT SCREAM!' : 'PEACE & LOVE PULSE!')
@@ -1458,6 +1459,15 @@
         c.stroke();
         c.restore();
       }
+    } else if (state === 'idle') {
+      // Estilo Mega Drive / Streets of Rage 2: Ping-Pong Breathing Loop & Combat Bounce!
+      const pingPong = Math.floor((match.frames / 10) % 4);
+      const breathScaleY = pingPong === 0 ? 1.0 : (pingPong === 1 || pingPong === 3) ? 1.02 : 1.035;
+      const breathShiftY = pingPong === 0 ? 0 : (pingPong === 1 || pingPong === 3) ? -1.8 : -3.6;
+      const stanceTilt = (pingPong === 1 ? 0.015 : pingPong === 3 ? -0.015 : 0);
+      c.translate(0, breathShiftY);
+      c.scale(1.0, breathScaleY);
+      c.rotate(stanceTilt);
     }
 
     if (poseCanvas) {
