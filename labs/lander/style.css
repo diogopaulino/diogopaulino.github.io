@@ -11,6 +11,8 @@ body {
     display: flex;
     justify-content: center;
     padding: 20px;
+    width: 100%;
+    min-width: 0;
 }
 
 /* Windows 3.1 Window Style */
@@ -23,6 +25,7 @@ body {
     width: 840px;
     /* Increased width */
     max-width: 100%;
+    min-width: 0;
     box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
     font-family: Arial, sans-serif;
     margin: 0 auto;
@@ -220,6 +223,10 @@ canvas {
 }
 
 @media (max-width: 600px) {
+    .game-area {
+        padding: 0;
+    }
+
     .win31-window {
         width: 100%;
     }
@@ -237,6 +244,8 @@ canvas {
     }
 
     .game-viewport {
-        height: 60vh;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
     }
 }

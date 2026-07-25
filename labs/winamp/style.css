@@ -588,3 +588,12 @@ body {
     justify-content: center;
     text-shadow: 0 0 2px #00ff19;
 }
+
+@media (max-width: 600px) {
+    #winamp {
+        flex-direction: column;
+        width: 275px;
+        margin: 1rem auto 7rem;
+        transform: scale(1.2);
+    }
+}

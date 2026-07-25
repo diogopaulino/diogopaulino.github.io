@@ -1,6 +1,7 @@
 @import url('/assets/css/tokens.css');
 
 :root {
+    color-scheme: light;
     --glass-bg: rgba(255, 255, 255, 0.7);
     --glass-border: rgba(255, 255, 255, 0.5);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
@@ -8,6 +9,7 @@
 }
 
 [data-theme="dark"] {
+    color-scheme: dark;
     --glass-bg: rgba(23, 23, 23, 0.7);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
@@ -70,7 +72,6 @@ body {
     border-radius: 1.5rem;
 }
 
-/* Header & Navigation */
 /* Header & Navigation */
 header {
     width: 100%;
@@ -146,6 +147,12 @@ header .app-logo svg {
 
 .back-link:hover svg {
     transform: translateX(-3px);
+}
+
+.back-link:focus-visible,
+.theme-toggle:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
 }
 
 header h1 {
@@ -286,7 +293,7 @@ footer a:hover {
     header {
         margin-bottom: 2rem;
         padding: 0;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.5rem;
     }
 
@@ -305,6 +312,10 @@ footer a:hover {
     header .app-logo {
         justify-self: center;
         font-size: 1.1rem;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     header .theme-toggle,
@@ -318,5 +329,20 @@ footer a:hover {
         font-size: 0.8rem;
         flex-direction: column;
         gap: 0.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
     }
 }

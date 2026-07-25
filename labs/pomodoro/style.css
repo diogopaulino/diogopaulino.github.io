@@ -25,6 +25,8 @@ body {
     align-items: center;
     gap: 2rem;
     position: relative;
+    overflow: hidden;
+    overflow: clip;
 }
 
 /* Background ambient glow */
