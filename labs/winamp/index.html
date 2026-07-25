@@ -8,13 +8,22 @@
     <meta name="description"
         content="Winamp 2.91 no navegador: player clássico completo, equalizador, playlist, visualizador, skins e músicas demo.">
     <title>Winamp 2.91 — Diogo Labs</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="/labs/shared.css?v=5">
+    <link rel="stylesheet" href="style.css?v=5">
+    <script src="/labs/shared.js?v=6" defer></script>
 </head>
 
 <body>
     <a class="skip-link" href="#winamp-stage">Pular para o Winamp</a>
 
     <div class="desktop" id="desktop">
+        <header class="winamp-lab-header" data-lab-header data-title="Winamp 2.91"
+            data-back-href="/labs/">
+            <template data-slot="logo">
+                <div class="app-logo">⚡ Winamp 2.91</div>
+            </template>
+        </header>
+
         <nav class="desktop-icons" aria-label="Atalhos da área de trabalho">
             <a class="desktop-icon" href="/labs/" aria-label="Voltar para todos os Labs">
                 <span class="icon-art icon-computer" aria-hidden="true">

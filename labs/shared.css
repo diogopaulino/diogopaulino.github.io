@@ -73,7 +73,7 @@ body {
 }
 
 /* Header & Navigation */
-header {
+[data-lab-header] {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -87,7 +87,7 @@ header {
     max-width: 1200px;
 }
 
-header .app-logo {
+[data-lab-header] .app-logo {
     grid-area: logo;
     display: flex;
     align-items: center;
@@ -100,8 +100,8 @@ header .app-logo {
     white-space: nowrap;
 }
 
-header .app-logo i,
-header .app-logo svg {
+[data-lab-header] .app-logo i,
+[data-lab-header] .app-logo svg {
     font-size: 1.5rem;
     color: var(--accent);
 }
@@ -155,7 +155,7 @@ header .app-logo svg {
     outline-offset: 3px;
 }
 
-header h1 {
+[data-lab-header] h1 {
     grid-area: logo;
     font-size: 2rem;
     font-weight: 700;
@@ -258,7 +258,7 @@ header h1 {
 }
 
 /* Footer */
-footer {
+[data-lab-footer] {
     width: 100%;
     max-width: 1200px;
     margin-top: 3rem;
@@ -273,14 +273,14 @@ footer {
     border-top: 1px solid var(--border-subtle);
 }
 
-footer a {
+[data-lab-footer] a {
     color: var(--accent);
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
-footer a:hover {
+[data-lab-footer] a:hover {
     color: var(--accent-hover);
 }
 
@@ -290,14 +290,14 @@ footer a:hover {
         padding: 1rem;
     }
 
-    header {
+    [data-lab-header] {
         margin-bottom: 2rem;
         padding: 0;
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.5rem;
     }
 
-    header .back-link {
+    [data-lab-header] .back-link {
         padding: 0.5rem;
         width: 36px;
         height: 36px;
@@ -305,11 +305,11 @@ footer a:hover {
         border-radius: 50%;
     }
 
-    header .back-link span {
+    [data-lab-header] .back-link span {
         display: none;
     }
 
-    header .app-logo {
+    [data-lab-header] .app-logo {
         justify-self: center;
         font-size: 1.1rem;
         max-width: 100%;
@@ -318,12 +318,12 @@ footer a:hover {
         text-overflow: ellipsis;
     }
 
-    header .theme-toggle,
-    header .header-actions {
+    [data-lab-header] .theme-toggle,
+    [data-lab-header] .header-actions {
         justify-self: end;
     }
 
-    footer {
+    [data-lab-footer] {
         margin-top: 2rem;
         padding: 1rem;
         font-size: 0.8rem;

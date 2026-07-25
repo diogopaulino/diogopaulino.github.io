@@ -284,7 +284,7 @@ const App = {
         this.ui.home.classList.remove('hidden');
         this.ui.player.classList.add('hidden');
         this.ui.player.setAttribute('aria-hidden', 'true');
-        this.ui.header.style.display = 'flex';
+        this.ui.header.style.removeProperty('display');
         this.ui.footer.style.display = 'block';
         if (this.isNativeFullscreenActive()) this.exitFullscreenSafe();
         if (this.isManualFullscreen) this.exitManualFullscreen();

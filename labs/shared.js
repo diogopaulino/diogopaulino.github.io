@@ -61,6 +61,7 @@
         const backLabel = header.getAttribute('data-back-label') || 'Labs';
         const title = header.getAttribute('data-title') || document.title || 'Labs';
         const subtitle = header.getAttribute('data-subtitle');
+        const logoHeadingLevel = header.getAttribute('data-logo-heading-level') || '1';
         const logoMarkup = extractSlotMarkup(header, 'logo');
         const actionsMarkup = extractSlotMarkup(header, 'actions');
         const renderedLogo = logoMarkup
@@ -86,7 +87,7 @@
         const logo = header.querySelector('.app-logo');
         if (logo && !logo.matches('h1, [role="heading"]')) {
             logo.setAttribute('role', 'heading');
-            logo.setAttribute('aria-level', '1');
+            logo.setAttribute('aria-level', logoHeadingLevel);
         }
 
         header.dataset.labReady = 'true';

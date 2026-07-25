@@ -31,10 +31,77 @@ body {
 body {
     background: var(--desktop);
     color: #000;
+    display: block;
+    padding: 0;
+    align-items: initial;
     font-family: "MS Sans Serif", Tahoma, Geneva, sans-serif;
     font-size: 12px;
     -webkit-font-smoothing: none;
     image-rendering: pixelated;
+}
+
+.winamp-lab-header {
+    position: absolute;
+    z-index: 30;
+    top: 10px;
+    right: 18px;
+    left: 112px;
+    width: auto;
+    max-width: none;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+}
+
+.winamp-lab-header .back-link,
+.winamp-lab-header .theme-toggle {
+    border: 2px outset var(--win-light);
+    border-radius: 0;
+    background: var(--win-gray);
+    color: #000;
+    box-shadow: none;
+}
+
+.winamp-lab-header .back-link {
+    height: 32px;
+    padding: 4px 10px;
+}
+
+.winamp-lab-header .back-link:hover,
+.winamp-lab-header .theme-toggle:hover {
+    border-color: var(--win-light);
+    color: #000;
+    transform: none;
+    box-shadow: none;
+}
+
+.winamp-lab-header .app-logo {
+    color: #fff;
+    font-family: "MS Sans Serif", Tahoma, Geneva, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-shadow: 1px 1px #000;
+}
+
+.winamp-lab-header .theme-toggle {
+    width: 50px;
+    height: 30px;
+}
+
+.winamp-lab-header .theme-toggle-track {
+    inset: 2px;
+}
+
+.winamp-lab-header .theme-toggle-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 0;
+    background: var(--win-blue);
+}
+
+[data-theme="dark"] .winamp-lab-header .theme-toggle-thumb {
+    transform: translateX(20px);
+    background: #000;
 }
 
 button,
@@ -236,7 +303,7 @@ a:focus-visible {
 .player-workspace {
     position: absolute;
     z-index: 10;
-    inset: 10px 18px calc(var(--taskbar-height) + 14px) 112px;
+    inset: 58px 18px calc(var(--taskbar-height) + 14px) 112px;
     display: grid;
     place-items: center;
 }
@@ -726,7 +793,13 @@ noscript {
     }
 
     .player-workspace {
-        inset: 7px 7px calc(var(--taskbar-height) + 10px) 77px;
+        inset: 55px 7px calc(var(--taskbar-height) + 10px) 77px;
+    }
+
+    .winamp-lab-header {
+        top: 7px;
+        right: 7px;
+        left: 77px;
     }
 
     .desktop-tip {

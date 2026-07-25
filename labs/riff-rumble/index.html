@@ -20,23 +20,25 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,800&family=Inter:wght@500;600;700;800&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=5">
   <link rel="stylesheet" href="style.css">
+  <script src="/labs/shared.js?v=6" defer></script>
 </head>
 
 <body>
   <div class="noise" aria-hidden="true"></div>
 
-  <header class="topbar">
-    <a class="back-link" href="/labs/" aria-label="Voltar para Labs">
-      <span aria-hidden="true">←</span> LABS
-    </a>
-    <div class="brand" aria-label="Riff Rumble">
-      <span>RIFF</span><strong>RUMBLE</strong>
-    </div>
-    <div class="header-tools">
+  <header class="topbar" data-lab-header data-title="Riff Rumble" data-back-href="/labs/"
+    data-logo-heading-level="2">
+    <template data-slot="logo">
+      <div class="app-logo brand" aria-label="Riff Rumble">
+        <span>RIFF</span><strong>RUMBLE</strong>
+      </div>
+    </template>
+    <template data-slot="actions">
       <button class="icon-btn how-btn" id="how-to-play" type="button">? COMO JOGAR</button>
       <button class="icon-btn" id="sound-toggle" type="button" aria-label="Ativar ou desativar som">SOM: ON</button>
-    </div>
+    </template>
   </header>
 
   <main>
@@ -195,7 +197,7 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js" defer></script>
 </body>
 
 </html>
