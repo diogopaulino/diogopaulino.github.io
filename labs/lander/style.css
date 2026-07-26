@@ -22,8 +22,7 @@ body {
     border: 2px solid;
     border-color: #dfdfdf #404040 #404040 #dfdfdf;
     /* Bevel */
-    width: 840px;
-    /* Increased width */
+    width: 820px;
     max-width: 100%;
     min-width: 0;
     box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
@@ -64,14 +63,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 0;
-    cursor: pointer;
     color: black;
-}
-
-.win-btn:active {
-    border-color: #808080 #fff #fff #808080;
-    padding-top: 1px;
-    padding-left: 1px;
 }
 
 .menu-bar {
@@ -79,15 +71,32 @@ body {
     padding: 2px 8px;
     border-bottom: 1px solid #808080;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .menu-item {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: #000;
+    font: inherit;
+    padding: 1px 4px;
     cursor: pointer;
 }
 
-.menu-item:hover {
+.menu-item:hover,
+.menu-item:focus-visible {
     background-color: #000080;
     color: white;
+    outline: none;
+}
+
+.menu-help {
+    color: #555;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
 }
 
 .game-viewport {
@@ -123,15 +132,16 @@ canvas {
 
 .hud-stats {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 18px;
     text-align: right;
     color: white;
     font-family: 'Courier New', Courier, monospace;
     /* Fallback */
     font-family: 'VT323', monospace;
-    font-size: 20px;
-    line-height: 1.2;
+    font-size: 18px;
+    line-height: 1.15;
+    min-width: 210px;
 }
 
 .stat-row {
@@ -144,11 +154,66 @@ canvas {
     opacity: 1;
 }
 
+.stat-row .value {
+    min-width: 70px;
+}
+
+.stat-row .value.caution {
+    color: #ff0;
+}
+
+.stat-row .value.danger {
+    color: #ff5050;
+}
+
+.stat-row.meta {
+    color: #ccc;
+    font-size: 16px;
+}
+
+.hud-separator {
+    border-top: 1px dotted #666;
+    margin: 5px 0;
+}
+
+.flight-status {
+    border: 1px solid #777;
+    color: #ddd;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin-top: 8px;
+    padding: 3px 5px 2px;
+    text-align: center;
+}
+
+.flight-status[data-tone="safe"] {
+    border-color: #0f0;
+    color: #0f0;
+}
+
+.flight-status[data-tone="caution"] {
+    border-color: #ff0;
+    color: #ff0;
+}
+
+.flight-status[data-tone="danger"] {
+    border-color: #f33;
+    color: #f33;
+}
+
+.safe-readout {
+    color: #888;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    margin-top: 6px;
+    white-space: nowrap;
+}
+
 /* On-Screen Controls - Strictly matching image */
 .onscreen-controls {
     position: absolute;
-    top: 150px;
-    right: 30px;
+    top: 220px;
+    right: 74px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -174,6 +239,7 @@ canvas {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    touch-action: none;
 }
 
 .control-btn:active,
@@ -213,9 +279,72 @@ canvas {
     transform: translate(-50%, -50%);
     color: white;
     font-family: 'VT323', monospace;
-    font-size: 24px;
+    font-size: 26px;
     text-align: center;
     text-shadow: 2px 2px 0 #000;
+    width: min(420px, 80%);
+}
+
+.center-msg > strong {
+    display: block;
+}
+
+.center-msg > strong {
+    font-size: 38px;
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+}
+
+.start-button {
+    appearance: none;
+    animation: blink 1s steps(1) infinite;
+    background: transparent;
+    border: 0;
+    color: #ff0;
+    cursor: pointer;
+    display: block;
+    font: inherit;
+    font-size: 22px;
+    margin-top: 16px;
+    padding: 0;
+    pointer-events: auto;
+    text-shadow: inherit;
+    width: 100%;
+}
+
+.start-button:focus-visible {
+    outline: 1px dotted #ff0;
+    outline-offset: 4px;
+}
+
+.game-viewport[data-state="start"] .hud-stats,
+.game-viewport[data-state="start"] .onscreen-controls {
+    display: none;
+}
+
+.center-msg small {
+    color: #bbb;
+    display: block;
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.center-msg[data-tone="success"] {
+    color: #0f0;
+}
+
+.center-msg[data-tone="danger"] {
+    color: #f55;
+}
+
+.center-msg strong {
+    font-weight: normal;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.25;
+    }
 }
 
 .hidden {
@@ -232,20 +361,60 @@ canvas {
     }
 
     .hud-stats {
-        font-size: 16px;
-        top: 10px;
-        right: 10px;
+        font-size: 14px;
+        min-width: 168px;
+        right: 8px;
+        top: 8px;
+    }
+
+    .stat-row.meta {
+        font-size: 13px;
+    }
+
+    .flight-status {
+        font-size: 11px;
+    }
+
+    .safe-readout {
+        display: none;
     }
 
     .onscreen-controls {
         top: auto;
-        bottom: 20px;
-        right: 20px;
+        bottom: 2px;
+        right: 14px;
+    }
+
+    .control-btn {
+        height: 48px;
+        width: 48px;
+    }
+
+    .center-msg {
+        font-size: 20px;
+    }
+
+    .center-msg > strong {
+        font-size: 30px;
+    }
+
+    .center-msg small {
+        font-size: 13px;
+    }
+
+    .start-button {
+        font-size: 18px;
     }
 
     .game-viewport {
         width: 100%;
         height: auto;
         aspect-ratio: 4 / 3;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .start-button {
+        animation: none;
     }
 }

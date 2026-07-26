@@ -1,45 +1,64 @@
 /**
- * Lunar Lander - Retro Win3.1 Style
+ * Lander — classic DOS-inspired arcade flight.
+ *
+ * All motion uses pixels/second and a fixed timestep. This keeps the controls
+ * responsive and deterministic without tying the game speed to the frame rate.
  */
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game State
+const PHYSICS = Object.freeze({
+    gravity: 24,
+    thrust: 72,
+    rotation: 2.1,
+    fuelBurn: 30,
+    safeHorizontalSpeed: 24,
+    safeVerticalSpeed: 34,
+    safeAngle: 0.18,
+    fixedStep: 1 / 120,
+    maxFrameTime: 0.1
+});
+
+const INITIAL_FUEL = 1000;
+const LANDER_FOOT_OFFSET = 12;
+const LANDER_HALF_WIDTH = 13;
+const CEILING = 30;
+const COLORS = Object.freeze({
+    background: '#000',
+    terrain: '#fff',
+    stars: '#fff',
+    ship: '#fff',
+    legs: '#ff0',
+    pad: '#ff0',
+    danger: '#f33'
+});
+
 let gameState = 'START';
-let score = 0;
 let level = 1;
+let score = 0;
 let lastTime = 0;
-
-// Physics - Tuned for "Classic Arcade" Feel (Balanced)
-const GRAVITY = 0.0023;
-const THRUST_POWER = 0.006;
-const ROTATION_SPEED = 0.04;
-const LANDING_MAX_SPEED = 0.35;
-const LANDING_MAX_ANGLE = 0.2;
-
-// Colors
-const COLOR_BG = '#000000';
-const COLOR_STARS = '#ffffff';
-
-let stars = []; // Background stars
-const COLOR_TERRAIN = '#ffffff';
-const COLOR_SHIP_BODY = '#ffffff';
-const COLOR_SHIP_LEGS = '#ffff00';
-const COLOR_SHIP_DETAIL = '#000000'; // Or grey
-
-let particles = [];
+let accumulator = 0;
 let terrain = [];
 let landingPads = [];
+let stars = [];
+let particles = [];
+let engineParticleBudget = 0;
+
+const keys = {};
+
+function setGameState(nextState) {
+    gameState = nextState;
+    document.querySelector('.game-viewport').dataset.state = nextState.toLowerCase();
+}
 
 const lander = {
     x: 0,
     y: 0,
     vx: 0,
     vy: 0,
-    angle: -Math.PI / 2, // Upright
-    fuel: 1000,
-    maxFuel: 1000,
+    angle: 0,
+    fuel: INITIAL_FUEL,
     thrusting: false,
     rotatingLeft: false,
     rotatingRight: false,
@@ -47,423 +66,533 @@ const lander = {
     crashed: false,
     landed: false,
 
-    reset: function () {
+    reset() {
         const homePad = landingPads[0];
         this.x = (homePad.x1 + homePad.x2) / 2;
-        this.y = homePad.y - 12; // Adjusted for new sprite height ~24px total
-
+        this.y = homePad.y - LANDER_FOOT_OFFSET;
         this.vx = 0;
         this.vy = 0;
-        this.angle = -Math.PI / 2;
+        this.angle = 0;
+        this.fuel = INITIAL_FUEL;
         this.thrusting = false;
         this.rotatingLeft = false;
         this.rotatingRight = false;
+        this.onGround = true;
         this.crashed = false;
         this.landed = false;
-        this.onGround = true;
-
-        if (level === 1) this.fuel = this.maxFuel;
-        else this.fuel = Math.min(this.fuel + 500, this.maxFuel);
-
+        accumulator = 0;
         particles = [];
-        generateStars(); // Refresh stars
+        engineParticleBudget = 0;
+        clearKeys();
         updateHUD();
     },
 
-    update: function (dt) {
+    update(dt) {
         if (this.crashed || this.landed) return;
 
         if (this.onGround) {
             this.vx = 0;
             this.vy = 0;
-            this.angle = -Math.PI / 2;
+            this.angle = 0;
 
-            if (this.thrusting && this.fuel > 0) {
-                this.onGround = false;
-                this.vy -= 0.05;
-            } else {
-                return;
-            }
+            if (!this.thrusting || this.fuel <= 0) return;
+            this.onGround = false;
         }
 
-        this.vy += GRAVITY * dt;
+        if (this.rotatingLeft) this.angle -= PHYSICS.rotation * dt;
+        if (this.rotatingRight) this.angle += PHYSICS.rotation * dt;
+        this.angle = normalizeAngle(this.angle);
+
+        this.vy += PHYSICS.gravity * dt;
 
         if (this.thrusting && this.fuel > 0) {
-            const tx = Math.cos(this.angle) * THRUST_POWER * dt;
-            const ty = Math.sin(this.angle) * THRUST_POWER * dt;
-            this.vx += tx;
-            this.vy += ty;
-            this.fuel -= 0.8 * dt; // slightly more fuel usage
+            const requestedFuel = PHYSICS.fuelBurn * dt;
+            const usedFuel = Math.min(this.fuel, requestedFuel);
+            const thrustFraction = usedFuel / requestedFuel;
+            const acceleration = PHYSICS.thrust * thrustFraction * dt;
 
-            // fire particles
-            for (let i = 0; i < 3; i++) {
-                particles.push({
-                    x: this.x - Math.cos(this.angle) * 10,
-                    y: this.y - Math.sin(this.angle) * 10,
-                    vx: this.vx - Math.cos(this.angle) * (2 + Math.random()),
-                    vy: this.vy - Math.sin(this.angle) * (2 + Math.random()),
-                    life: 1.0,
-                    color: Math.random() > 0.3 ? '#ffcc00' : '#ff0000' // More yellow/fire
-                });
-            }
+            this.vx += Math.sin(this.angle) * acceleration;
+            this.vy -= Math.cos(this.angle) * acceleration;
+            this.fuel -= usedFuel;
+            emitEngineParticles(dt);
         }
-
-        if (this.rotatingLeft) this.angle -= ROTATION_SPEED;
-        if (this.rotatingRight) this.angle += ROTATION_SPEED;
 
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // Wrap
-        if (this.x < 0) this.x = canvas.width;
-        if (this.x > canvas.width) this.x = 0;
+        if (this.x < -LANDER_HALF_WIDTH) this.x = canvas.width + LANDER_HALF_WIDTH;
+        if (this.x > canvas.width + LANDER_HALF_WIDTH) this.x = -LANDER_HALF_WIDTH;
+
+        if (this.y < CEILING) {
+            this.y = CEILING;
+            if (this.vy < 0) this.vy = 0;
+        }
     },
 
-    draw: function (ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle + Math.PI / 2);
+    draw(target) {
+        target.save();
+        target.translate(this.x, this.y);
+        target.rotate(this.angle);
 
         if (this.crashed) {
-            // Debris
-            ctx.fillStyle = '#fff';
-            for (let i = 0; i < 8; i++) {
-                let r = Math.random() * 20;
-                let a = Math.random() * Math.PI * 2;
-                ctx.fillRect(Math.cos(a) * r, Math.sin(a) * r, 2, 2);
-            }
-        } else {
-            // Recreating the Sprite from Image 
-            // Yellow Legs (Curve)
-            ctx.fillStyle = COLOR_SHIP_LEGS;
-
-            // Left leg
-            ctx.beginPath();
-            ctx.moveTo(-8, 5);
-            ctx.quadraticCurveTo(-12, 12, -14, 12);
-            ctx.lineTo(-10, 12); // Foot
-            ctx.lineTo(-6, 8);
-            ctx.fill();
-
-            // Right leg
-            ctx.beginPath();
-            ctx.moveTo(8, 5);
-            ctx.quadraticCurveTo(12, 12, 14, 12);
-            ctx.lineTo(10, 12);
-            ctx.lineTo(6, 8);
-            ctx.fill();
-
-            // Body: White Sphere/Dome
-            ctx.fillStyle = COLOR_SHIP_BODY;
-            ctx.beginPath();
-            ctx.arc(0, 0, 7, Math.PI, 0); // Top half circle
-            ctx.lineTo(7, 3);
-            ctx.lineTo(-7, 3);
-            ctx.fill();
-
-            // Base of body (darker or metallic?)
-            // Image shows it kind of spherical.
-
-            // Windows/Detail: Black pixels
-            ctx.fillStyle = '#000';
-            // Cockpit eyes/window
-            ctx.fillRect(-3, -4, 2, 2);
-            ctx.fillRect(1, -4, 2, 2);
-
-            // Thruster nozzle
-            ctx.fillStyle = '#888';
-            ctx.fillRect(-3, 3, 6, 3);
+            target.fillStyle = COLORS.danger;
+            target.fillRect(-2, -2, 4, 4);
+            target.restore();
+            return;
         }
-        ctx.restore();
+
+        target.fillStyle = COLORS.legs;
+        target.beginPath();
+        target.moveTo(-8, 5);
+        target.quadraticCurveTo(-12, 12, -14, 12);
+        target.lineTo(-10, 12);
+        target.lineTo(-6, 8);
+        target.fill();
+
+        target.beginPath();
+        target.moveTo(8, 5);
+        target.quadraticCurveTo(12, 12, 14, 12);
+        target.lineTo(10, 12);
+        target.lineTo(6, 8);
+        target.fill();
+
+        target.fillStyle = COLORS.ship;
+        target.beginPath();
+        target.arc(0, 0, 7, Math.PI, 0);
+        target.lineTo(7, 3);
+        target.lineTo(-7, 3);
+        target.fill();
+
+        target.fillStyle = '#000';
+        target.fillRect(-3, -4, 2, 2);
+        target.fillRect(1, -4, 2, 2);
+
+        target.fillStyle = '#888';
+        target.fillRect(-3, 3, 6, 3);
+        target.restore();
     }
 };
 
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.05;
-        if (p.life <= 0) particles.splice(i, 1);
-    }
-}
-
-function drawParticles(ctx) {
-    if (!particles.length) return;
-    particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        const s = Math.ceil(p.life * 3);
-        ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+function clearKeys() {
+    Object.keys(keys).forEach(code => {
+        keys[code] = false;
+    });
+    document.querySelectorAll('.control-btn.active').forEach(button => {
+        button.classList.remove('active');
     });
 }
 
-// Stars
+function normalizeAngle(angle) {
+    let normalized = angle;
+    while (normalized > Math.PI) normalized -= Math.PI * 2;
+    while (normalized < -Math.PI) normalized += Math.PI * 2;
+    return normalized;
+}
+
+function handleInput() {
+    lander.rotatingLeft = Boolean(keys.ArrowLeft || keys.KeyA);
+    lander.rotatingRight = Boolean(keys.ArrowRight || keys.KeyD);
+    lander.thrusting = Boolean(keys.ArrowUp || keys.KeyW || keys.Space);
+}
+
 function generateStars() {
-    stars = [];
-    for (let i = 0; i < 50; i++) {
-        stars.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() > 0.9 ? 2 : 1
+    stars = Array.from({ length: 65 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height * 0.78,
+        size: Math.random() > 0.88 ? 2 : 1,
+        alpha: 0.45 + Math.random() * 0.55
+    }));
+}
+
+function generateTerrain() {
+    const homeY = canvas.height * 0.82;
+    terrain = [
+        { x: 0, y: canvas.height },
+        { x: 0, y: homeY },
+        { x: 20, y: homeY },
+        { x: 110, y: homeY }
+    ];
+    landingPads = [{
+        x1: 20,
+        x2: 110,
+        y: homeY,
+        home: true,
+        multiplier: 1,
+        visited: false
+    }];
+
+    let x = 110;
+    let y = homeY;
+
+    while (x < canvas.width - 35) {
+        const roughEnd = Math.min(x + 42 + Math.random() * 68, canvas.width);
+        y += (Math.random() - 0.5) * (82 + level * 3);
+        y = Math.max(canvas.height * 0.48, Math.min(canvas.height * 0.91, y));
+        terrain.push({ x: roughEnd, y });
+        x = roughEnd;
+
+        if (x >= canvas.width - 65) break;
+
+        const baseWidth = Math.max(40, 74 - level * 2);
+        const padWidth = Math.round(baseWidth - Math.random() * 22);
+        const padEnd = Math.min(x + padWidth, canvas.width - 8);
+        const multiplier = padWidth <= 46 ? 5 : padWidth <= 59 ? 3 : 2;
+
+        landingPads.push({
+            x1: x,
+            x2: padEnd,
+            y,
+            home: false,
+            multiplier,
+            visited: false
         });
-    }
-}
-
-function drawStars(ctx) {
-    ctx.fillStyle = COLOR_STARS;
-    stars.forEach(s => {
-        ctx.fillRect(s.x, s.y, s.size, s.size);
-    });
-}
-
-// Map Logic
-function generateTerrain(lvl) {
-    terrain = [];
-    landingPads = [];
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Simple jagged terrain
-    let x = 0;
-    let y = h * 0.85;
-
-    // Start Pad
-    landingPads.push({ x1: 20, x2: 100, y: h * 0.8, multiplier: 0 });
-    terrain.push({ x: 0, y: h });
-    terrain.push({ x: 0, y: h * 0.8 });
-    terrain.push({ x: 20, y: h * 0.8 });
-    terrain.push({ x: 100, y: h * 0.8 });
-    x = 100;
-    y = h * 0.8;
-
-    // Random segments
-    while (x < w - 20) {
-        // Chance for pad
-        if (Math.random() < 0.25 && x > 150 && x < w - 100) {
-            let nextX = Math.min(x + (60 - lvl * 2), w); // Pads get smaller
-            if (nextX - x < 30) nextX = x + 30; // Min size
-
-            // Pad is flat
-            landingPads.push({ x1: x, x2: nextX, y: y, multiplier: Math.floor(Math.random() * 4) + 2 });
-            terrain.push({ x: nextX, y: y });
-            x = nextX;
-        } else {
-            let nextX = Math.min(x + Math.random() * 50 + 20, w);
-            let nextY = y + (Math.random() - 0.5) * 80;
-            if (nextY > h - 10) nextY = h - 10;
-            if (nextY < h * 0.3) nextY = h * 0.3; // Higher mountains
-
-            terrain.push({ x: nextX, y: nextY });
-            x = nextX;
-            y = nextY;
-        }
+        terrain.push({ x: padEnd, y });
+        x = padEnd;
     }
 
-    terrain.push({ x: w, y: h * 0.8 }); // End flat
-    terrain.push({ x: w, y: h });
+    if (x < canvas.width) terrain.push({ x: canvas.width, y: canvas.height * 0.82 });
+    terrain.push({ x: canvas.width, y: canvas.height });
 }
 
-function drawTerrain(ctx) {
-    ctx.fillStyle = COLOR_TERRAIN;
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height); // Start bottom left
-    terrain.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.fill();
+function getGroundY(screenX) {
+    const wrappedX = ((screenX % canvas.width) + canvas.width) % canvas.width;
 
-    // Highlight Pads? In the screenshot they look white too, maybe just flat areas.
-    // We can add small text x2 under gravity? 
-    // Or maybe just draw small indicator lines
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1;
-    landingPads.forEach(pad => {
-        if (pad.multiplier > 0) {
-            ctx.strokeRect(pad.x1, pad.y, pad.x2 - pad.x1, 2);
-            ctx.fillStyle = '#fff';
-            ctx.font = '10px monospace';
-            ctx.fillText('x' + pad.multiplier, pad.x1 + 10, pad.y + 12);
-        }
-    });
+    for (let i = 0; i < terrain.length - 1; i++) {
+        const current = terrain[i];
+        const next = terrain[i + 1];
+        if (current.x === next.x || wrappedX < current.x || wrappedX > next.x) continue;
+
+        const progress = (wrappedX - current.x) / (next.x - current.x);
+        return current.y + progress * (next.y - current.y);
+    }
+
+    return canvas.height;
+}
+
+function getCurrentAltitude() {
+    return Math.max(0, getGroundY(lander.x) - (lander.y + LANDER_FOOT_OFFSET));
+}
+
+function findPadAt(screenX) {
+    return landingPads.find(pad => (
+        screenX - LANDER_HALF_WIDTH >= pad.x1
+        && screenX + LANDER_HALF_WIDTH <= pad.x2
+    ));
 }
 
 function checkCollision() {
-    // Check floor
-    // Simplification: Point sample feet
+    if (lander.onGround || lander.crashed || lander.landed) return;
 
-    // Find terrain segment below lander
-    // ... (Similar logic to previous, omitted for brevity, trust simple proximity)
+    const footY = lander.y + LANDER_FOOT_OFFSET;
+    const collisionY = Math.min(
+        getGroundY(lander.x - LANDER_HALF_WIDTH + 2),
+        getGroundY(lander.x),
+        getGroundY(lander.x + LANDER_HALF_WIDTH - 2)
+    );
 
-    // Simple check: Just check Y vs nearby terrain points
-    // This is a "lab" game, robust collision is good but pixel perfect not strictly req.
-    // Let's use the segment logic again for correctness.
+    if (footY < collisionY) return;
 
-    if (lander.y < 0) return; // Space is safe
+    const pad = findPadAt(lander.x);
+    const safeHorizontal = Math.abs(lander.vx) <= PHYSICS.safeHorizontalSpeed;
+    const safeVertical = lander.vy >= 0 && lander.vy <= PHYSICS.safeVerticalSpeed;
+    const safeAngle = Math.abs(normalizeAngle(lander.angle)) <= PHYSICS.safeAngle;
 
-    // Check pads first (Priority land)
-    for (let pad of landingPads) {
-        if (lander.x > pad.x1 && lander.x < pad.x2 && Math.abs((lander.y + 12) - pad.y) < 5) {
-            // Legs touching pad Y
-            if (lander.vy > 0) { // Moving down
-                checkLanding(pad.multiplier);
-                return;
-            }
-        }
-    }
-
-    // Check Terrain Lines
-    for (let i = 0; i < terrain.length - 1; i++) {
-        let p1 = terrain[i];
-        let p2 = terrain[i + 1];
-        if (lander.x >= p1.x && lander.x <= p2.x) {
-            // Lerp Y
-            let t = (lander.x - p1.x) / (p2.x - p1.x);
-            let groundY = p1.y + t * (p2.y - p1.y);
-
-            if (lander.y + 10 > groundY) {
-                crash(); // Hit non-pad ground
-                return;
-            }
-        }
-    }
-
-    if (lander.y > canvas.height) crash();
-}
-
-function checkLanding(mult) {
-    if (Math.abs(lander.vy) < LANDING_MAX_SPEED && Math.abs(lander.vx) < LANDING_MAX_SPEED) { // Add drift check
-        land(mult);
+    if (pad && safeHorizontal && safeVertical && safeAngle) {
+        land(pad);
     } else {
         crash();
     }
 }
 
-function crash() {
-    gameState = 'GAMEOVER';
-    lander.crashed = true;
-    document.getElementById('gameOverMsg').classList.remove('hidden');
-}
+function land(pad) {
+    const landingVerticalSpeed = lander.vy;
+    lander.x = Math.max(pad.x1 + LANDER_HALF_WIDTH, Math.min(pad.x2 - LANDER_HALF_WIDTH, lander.x));
+    lander.y = pad.y - LANDER_FOOT_OFFSET;
+    lander.vx = 0;
+    lander.vy = 0;
+    lander.angle = 0;
+    lander.thrusting = false;
 
-function land(mult) {
-    gameState = 'LANDED';
-    lander.landed = true;
-    score += (mult || 1) * 50;
-    if (mult === 0) lander.fuel = lander.maxFuel;
-
-    updateHUD();
-
-    // VICTORY PARTICLES (Confetti)
-    if (mult > 0) {
-        for (let i = 0; i < 50; i++) {
-            particles.push({
-                x: lander.x,
-                y: lander.y,
-                vx: (Math.random() - 0.5) * 5,
-                vy: (Math.random() - 2) * 5,
-                life: 2.0,
-                color: `hsl(${Math.random() * 360}, 100%, 50%)`
-            });
-        }
+    if (pad.home) {
+        lander.onGround = true;
+        lander.fuel = INITIAL_FUEL;
+        setFlightStatus('REFUELED', 'safe');
+        return;
     }
 
-    setTimeout(() => {
-        if (mult > 0) {
-            level++;
-            startGame();
-        } else {
-            // Landed on start pad, allow taking off again
-            lander.onGround = true;
-            lander.landed = false;
-            gameState = 'PLAYING';
-        }
-    }, 2000); // Longer pause to enjoy particles
+    const softness = Math.max(0, 1 - landingVerticalSpeed / PHYSICS.safeVerticalSpeed);
+    const landingPoints = Math.round(100 * pad.multiplier * (1 + softness));
+    score += landingPoints;
+    pad.visited = true;
+    lander.landed = true;
+    setGameState('LANDED');
+
+    setStatusMessage(
+        `SAFE LANDING<br><strong>+${landingPoints} POINTS</strong><small>Press Space for the next mission</small>`,
+        'success'
+    );
+    setFlightStatus('LANDED', 'safe');
 }
 
-function startGame() {
-    gameState = 'PLAYING';
+function crash() {
+    setGameState('CRASHED');
+    lander.crashed = true;
+    lander.thrusting = false;
+    createCrashDebris();
+    setStatusMessage('CRASHED<br><small>Press Space to try again</small>', 'danger');
+    setFlightStatus('HULL LOST', 'danger');
+}
+
+function setStatusMessage(html, tone) {
+    const message = document.getElementById('gameOverMsg');
+    message.innerHTML = html;
+    message.dataset.tone = tone;
+    message.classList.remove('hidden');
+}
+
+function setFlightStatus(text, tone = '') {
+    const status = document.getElementById('hudStatus');
+    status.innerText = text;
+    status.dataset.tone = tone;
+}
+
+function startMission({ nextLevel = false, newGame = false } = {}) {
+    if (newGame) {
+        level = 1;
+        score = 0;
+    } else if (nextLevel) {
+        level++;
+    }
+
+    if (newGame || nextLevel) generateTerrain();
+
+    setGameState('PLAYING');
     document.getElementById('startMsg').classList.add('hidden');
     document.getElementById('gameOverMsg').classList.add('hidden');
-    generateTerrain(level);
     lander.reset();
-    // Do NOT call requestAnimationFrame here, loop is always running
+    setFlightStatus('READY');
+}
+
+function emitEngineParticles(dt) {
+    engineParticleBudget += 70 * dt;
+    const count = Math.floor(engineParticleBudget);
+    engineParticleBudget -= count;
+    if (count === 0) return;
+
+    const exhaustX = -Math.sin(lander.angle);
+    const exhaustY = Math.cos(lander.angle);
+
+    for (let i = 0; i < count; i++) {
+        const speed = 58 + Math.random() * 32;
+        particles.push({
+            x: lander.x + exhaustX * 9 + (Math.random() - 0.5) * 4,
+            y: lander.y + 5 + exhaustY * 8,
+            vx: exhaustX * speed + lander.vx * 0.15,
+            vy: exhaustY * speed + lander.vy * 0.15,
+            life: 0.2 + Math.random() * 0.18,
+            color: Math.random() > 0.3 ? '#ff0' : '#f30',
+            debris: false
+        });
+    }
+}
+
+function createCrashDebris() {
+    for (let i = 0; i < 18; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 35 + Math.random() * 80;
+        particles.push({
+            x: lander.x,
+            y: lander.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 25,
+            life: 1.1 + Math.random() * 1.1,
+            color: i % 4 === 0 ? '#ff0' : '#fff',
+            debris: true
+        });
+    }
+}
+
+function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        if (particle.debris) particle.vy += PHYSICS.gravity * 1.6 * dt;
+        particle.life -= dt;
+        if (particle.life <= 0) particles.splice(i, 1);
+    }
+}
+
+function setReadoutState(element, value, safeLimit) {
+    const ratio = Math.abs(value) / safeLimit;
+    element.classList.toggle('danger', ratio > 1);
+    element.classList.toggle('caution', ratio > 0.72 && ratio <= 1);
 }
 
 function updateHUD() {
-    // Top right format "Altitude   1000.00"
-    const alt = Math.max(0, canvas.height - lander.y - 12 - 2).toFixed(2); // precise altitude
-    document.getElementById('hudAlt').innerText = alt;
-    document.getElementById('hudHSpeed').innerText = lander.vx.toFixed(2);
-    document.getElementById('hudVSpeed').innerText = (-lander.vy).toFixed(2);
-    document.getElementById('hudFuel').innerText = lander.fuel.toFixed(2);
+    const altitude = getCurrentAltitude();
+    const angleDegrees = normalizeAngle(lander.angle) * 180 / Math.PI;
+    const horizontal = lander.vx;
+    const vertical = -lander.vy;
+
+    document.getElementById('hudMission').innerText = String(level).padStart(2, '0');
+    document.getElementById('hudScore').innerText = String(score).padStart(6, '0');
+    document.getElementById('hudAlt').innerText = altitude.toFixed(0);
+    document.getElementById('hudHSpeed').innerText = horizontal.toFixed(1);
+    document.getElementById('hudVSpeed').innerText = vertical.toFixed(1);
+    document.getElementById('hudAngle').innerText = `${angleDegrees >= 0 ? '+' : ''}${angleDegrees.toFixed(0)}°`;
+    document.getElementById('hudFuel').innerText = Math.max(0, lander.fuel).toFixed(0);
+
+    setReadoutState(document.getElementById('hudHSpeed'), horizontal, PHYSICS.safeHorizontalSpeed);
+    setReadoutState(document.getElementById('hudVSpeed'), lander.vy, PHYSICS.safeVerticalSpeed);
+    setReadoutState(document.getElementById('hudAngle'), angleDegrees, PHYSICS.safeAngle * 180 / Math.PI);
+
+    const fuel = document.getElementById('hudFuel');
+    fuel.classList.toggle('danger', lander.fuel <= 100);
+    fuel.classList.toggle('caution', lander.fuel > 100 && lander.fuel <= 250);
+
+    if (gameState === 'PLAYING' && !lander.onGround) {
+        setFlightStatus(altitude < 90 ? 'FINAL APPROACH' : 'IN FLIGHT', altitude < 90 ? 'caution' : '');
+    }
 }
 
-function gameLoop(ts) {
-    let dt = ts - lastTime;
-    lastTime = ts;
-    if (dt > 50) dt = 50;
+function drawStars(target) {
+    stars.forEach(star => {
+        target.globalAlpha = star.alpha;
+        target.fillStyle = COLORS.stars;
+        target.fillRect(star.x, star.y, star.size, star.size);
+    });
+    target.globalAlpha = 1;
+}
 
-    if (gameState === 'PLAYING' || gameState === 'LANDED') {
-        handleInput();
-        lander.update(dt);
-        updateParticles();
-        checkCollision();
-    }
+function drawTerrain(target) {
+    target.fillStyle = COLORS.terrain;
+    target.beginPath();
+    target.moveTo(0, canvas.height);
+    terrain.forEach(point => target.lineTo(point.x, point.y));
+    target.lineTo(canvas.width, canvas.height);
+    target.fill();
 
-    updateHUD();
+    const beaconPulse = 2 + Math.sin(performance.now() / 180) * 1.5;
+    landingPads.forEach(pad => {
+        target.fillStyle = COLORS.pad;
+        target.fillRect(pad.x1, pad.y - 2, pad.x2 - pad.x1, 3);
 
-    // Draw
-    ctx.fillStyle = COLOR_BG;
+        target.font = '12px "Courier New", monospace';
+        target.textAlign = 'center';
+        target.fillStyle = '#000';
+        target.fillText(
+            pad.home ? 'BASE' : `×${pad.multiplier}`,
+            (pad.x1 + pad.x2) / 2,
+            pad.y + 14
+        );
+
+        if (!pad.home) {
+            target.fillStyle = COLORS.pad;
+            target.fillRect(pad.x1 - beaconPulse / 2, pad.y - 7, beaconPulse, 5);
+            target.fillRect(pad.x2 - beaconPulse / 2, pad.y - 7, beaconPulse, 5);
+        }
+    });
+}
+
+function drawParticles(target) {
+    particles.forEach(particle => {
+        target.fillStyle = particle.color;
+        const size = particle.debris ? 3 : Math.max(1, Math.ceil(particle.life * 7));
+        target.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
+    });
+}
+
+function draw() {
+    ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     drawStars(ctx);
     drawTerrain(ctx);
     drawParticles(ctx);
     lander.draw(ctx);
+}
 
+function gameLoop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const frameTime = Math.min((timestamp - lastTime) / 1000, PHYSICS.maxFrameTime);
+    lastTime = timestamp;
+
+    if (gameState === 'PLAYING') {
+        accumulator += frameTime;
+        handleInput();
+
+        while (accumulator >= PHYSICS.fixedStep) {
+            lander.update(PHYSICS.fixedStep);
+            updateParticles(PHYSICS.fixedStep);
+            checkCollision();
+            accumulator -= PHYSICS.fixedStep;
+            if (gameState !== 'PLAYING') break;
+        }
+    } else {
+        updateParticles(frameTime);
+    }
+
+    updateHUD();
+    draw();
     requestAnimationFrame(gameLoop);
 }
 
-// Input
-const keys = {};
-window.onkeydown = e => {
-    // Prevent default scrolling for game keys
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
-        e.preventDefault();
+window.addEventListener('keydown', event => {
+    const gameCodes = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyD'];
+    if (gameCodes.includes(event.code)) event.preventDefault();
+
+    if (event.code === 'KeyR' && !event.repeat) {
+        startMission({ newGame: true });
+    } else if (event.code === 'Space' && !event.repeat && gameState !== 'PLAYING') {
+        startMission({ nextLevel: gameState === 'LANDED' });
     }
 
-    keys[e.code] = true;
+    keys[event.code] = true;
+});
 
-    if (e.code === 'Space') {
-        if (gameState === 'START' || gameState === 'GAMEOVER') startGame();
-    }
-}
-window.onkeyup = e => keys[e.code] = false;
+window.addEventListener('keyup', event => {
+    keys[event.code] = false;
+});
 
-function handleInput() {
-    lander.rotatingLeft = keys['ArrowLeft'];
-    lander.rotatingRight = keys['ArrowRight'];
-    lander.thrusting = keys['ArrowUp'] || keys['ArrowDown'] || keys['Space']; // Added Space for thrust
-}
+window.addEventListener('blur', clearKeys);
 
-// Touch Handling for On Screen Controls
-const bindBtn = (id, code) => {
-    const el = document.getElementById(id);
-    const setKey = (val) => {
-        if (code === 'ArrowUp') { keys['ArrowUp'] = val; keys['ArrowDown'] = val; } // map both for thrust
-        else keys[code] = val;
+function bindButton(id, code) {
+    const element = document.getElementById(id);
+
+    const setPressed = pressed => {
+        keys[code] = pressed;
+        element.classList.toggle('active', pressed);
     };
 
-    el.onmousedown = e => { setKey(true); el.classList.add('active'); }
-    el.onmouseup = e => { setKey(false); el.classList.remove('active'); }
-    el.onmouseleave = e => { setKey(false); el.classList.remove('active'); }
-    el.ontouchstart = e => { e.preventDefault(); setKey(true); el.classList.add('active'); }
-    el.ontouchend = e => { e.preventDefault(); setKey(false); el.classList.remove('active'); }
+    element.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        element.setPointerCapture?.(event.pointerId);
+        if (gameState !== 'PLAYING') {
+            startMission({ nextLevel: gameState === 'LANDED' });
+        }
+        setPressed(true);
+    });
+    element.addEventListener('pointerup', () => setPressed(false));
+    element.addEventListener('pointercancel', () => setPressed(false));
+    element.addEventListener('lostpointercapture', () => setPressed(false));
 }
-bindBtn('btnLeft', 'ArrowLeft');
-bindBtn('btnRight', 'ArrowRight');
-bindBtn('btnThrust', 'ArrowUp');
 
-// Start
-generateTerrain(1);
+document.getElementById('btnNewGame').addEventListener('click', () => {
+    startMission({ newGame: true });
+});
+
+document.getElementById('btnStart').addEventListener('click', () => {
+    startMission({ newGame: true });
+});
+
+bindButton('btnLeft', 'ArrowLeft');
+bindButton('btnRight', 'ArrowRight');
+bindButton('btnThrust', 'ArrowUp');
+
+generateStars();
+generateTerrain();
 lander.reset();
-lander.draw(ctx); // Initial draw
-requestAnimationFrame(gameLoop); // Start loop ONCE
+setGameState('START');
+setFlightStatus('READY');
+draw();
+requestAnimationFrame(gameLoop);

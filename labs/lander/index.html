@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lander - Labs</title>
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <!-- Courier Prime or VT323 for the retro feel -->
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 </head>
@@ -24,13 +24,14 @@
             <div class="win31-window">
                 <div class="title-bar">
                     <div class="title-text">Lander</div>
-                    <div class="window-controls">
-                        <button class="win-btn minimize">▼</button>
-                        <button class="win-btn maximize">▲</button>
+                    <div class="window-controls" aria-hidden="true">
+                        <span class="win-btn minimize">▼</span>
+                        <span class="win-btn maximize">▲</span>
                     </div>
                 </div>
                 <div class="menu-bar">
-                    <span class="menu-item"><u>G</u>ame</span>
+                    <button id="btnNewGame" class="menu-item" type="button"><u>N</u>ew game</button>
+                    <span class="menu-help">R: restart</span>
                 </div>
                 <div class="game-viewport">
                     <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -38,9 +39,18 @@
                     <!-- HUD Overlay -->
                     <div class="hud-layer">
                         <div class="hud-stats">
+                            <div class="stat-row meta">
+                                <span class="label">Mission</span>
+                                <span class="value" id="hudMission">01</span>
+                            </div>
+                            <div class="stat-row meta">
+                                <span class="label">Score</span>
+                                <span class="value" id="hudScore">000000</span>
+                            </div>
+                            <div class="hud-separator"></div>
                             <div class="stat-row">
                                 <span class="label">Altitude</span>
-                                <span class="value" id="hudAlt">1000.00</span>
+                                <span class="value" id="hudAlt">0</span>
                             </div>
                             <div class="stat-row">
                                 <span class="label">Velocity X</span>
@@ -51,30 +61,39 @@
                                 <span class="value" id="hudVSpeed">0.00</span>
                             </div>
                             <div class="stat-row">
+                                <span class="label">Angle</span>
+                                <span class="value" id="hudAngle">+0°</span>
+                            </div>
+                            <div class="stat-row">
                                 <span class="label">Fuel</span>
                                 <span class="value" id="hudFuel">1000.00</span>
                             </div>
-                            <div class="stat-row" style="margin-top: 20px; color: #aaa; font-size: 14px;">
-                                <span class="label">Controls: Arrows / Space</span>
-                            </div>
+                            <div id="hudStatus" class="flight-status">READY</div>
+                            <div class="safe-readout">SAFE: VX ≤ 24 · VY ≤ 34 · ±10°</div>
                         </div>
 
                         <!-- On-Screen Controls (Visual overlay matching screenshot) -->
                         <div class="onscreen-controls">
                             <div class="row">
-                                <button id="btnLeft" class="win-btn control-btn">
+                                <button id="btnLeft" class="win-btn control-btn"
+                                    aria-label="Girar para a esquerda"
+                                    title="Girar para a esquerda">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M14 7l-5 5 5 5V7z" />
                                     </svg>
                                 </button>
-                                <button id="btnRight" class="win-btn control-btn">
+                                <button id="btnRight" class="win-btn control-btn"
+                                    aria-label="Girar para a direita"
+                                    title="Girar para a direita">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M10 17l5-5-5-5v10z" />
                                     </svg>
                                 </button>
                             </div>
                             <div class="row">
-                                <button id="btnThrust" class="win-btn control-btn">
+                                <button id="btnThrust" class="win-btn control-btn"
+                                    aria-label="Propulsor principal"
+                                    title="Propulsor principal">
                                     <!-- A down arrow with lines usually implies "Thrusting Down" (pushing up) in these old games UI -->
                                     <div class="thrust-icon">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -86,8 +105,13 @@
                             </div>
                         </div>
 
-                        <div id="startMsg" class="center-msg">PRESS SPACE TO START</div>
-                        <div id="gameOverMsg" class="center-msg hidden">GAME OVER<br><small>Press Space</small></div>
+                        <div id="startMsg" class="center-msg">
+                            <strong>LANDER</strong>
+                            <small>↑/W/SPACE thrust · ←/→ rotate</small>
+                            <small>Land level on a marked platform</small>
+                            <button id="btnStart" class="start-button" type="button">PRESS SPACE / TAP TO START</button>
+                        </div>
+                        <div id="gameOverMsg" class="center-msg hidden">CRASHED<br><small>Press Space to restart</small></div>
                     </div>
                 </div>
             </div>
@@ -97,7 +121,7 @@
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>
