@@ -11,7 +11,7 @@
       special: 'Guitarrada Smash',
       quote: 'Melhor que queimar o palco.',
       color: '#e8d574', accent: '#49684e', hair: '#d8bf79', outfit: '#394b38', skin: '#e2b48e',
-      power: 5, speed: 4, defense: 3, style: 'grunge', portrait: 'portrait-kurt.png'
+      power: 5, speed: 4, defense: 3, style: 'grunge', portrait: 'portrait-kurt.webp'
     },
     {
       id: 'axl',
@@ -21,7 +21,7 @@
       special: 'Serpent Mic-Stand',
       quote: 'Você quis o melhor? Agora aguenta.',
       color: '#ff435f', accent: '#8e183a', hair: '#b72b27', outfit: '#17141b', skin: '#e6ae80',
-      power: 4, speed: 5, defense: 3, style: 'glam', portrait: 'portrait-axl.png'
+      power: 4, speed: 5, defense: 3, style: 'glam', portrait: 'portrait-axl.webp'
     },
     {
       id: 'lennon',
@@ -31,7 +31,7 @@
       special: 'Peace & Love Pulse',
       quote: 'Dê uma chance ao contra-ataque.',
       color: '#6acfa0', accent: '#27463a', hair: '#34251e', outfit: '#314d3f', skin: '#e1b08a',
-      power: 4, speed: 3, defense: 5, style: 'moptop', portrait: 'portrait-lennon.png'
+      power: 4, speed: 3, defense: 5, style: 'moptop', portrait: 'portrait-lennon.webp'
     }
   ];
 
@@ -40,17 +40,15 @@
   const roster = document.querySelector('#roster');
   const gameCanvas = document.querySelector('#game');
   const ctx = gameCanvas.getContext('2d');
-  const faceImages = {};
-  const spriteCanvases = {};
   const stageSprites = {};
   const keys = {};
   const touch = {};
   let pick1 = null;
   let pick2 = null;
-  let currentStage = 'woodstock'; // 'woodstock', 'stadium', or 'club'
+  let currentStage = 'stadium'; // 'woodstock', 'stadium', or 'club' -- keep in sync with the .stage-btn.is-active default in index.html
   let muted = false;
   let audio = null;
-  let distortionNode = null;
+  let distortionCurve = null;
   let match = null;
   let raf = 0;
   let lastFrameTime = 0;
@@ -85,236 +83,24 @@
     return false;
   }
 
-  // --- PERFECT ALPHA TRANSLUCENT PNG PREPROCESSOR & ANTI-ALIASING ---
-  function createPerfectTransparentCanvas(img) {
-    const c = document.createElement('canvas');
-    c.width = img.naturalWidth || img.width || 300;
-    c.height = img.naturalHeight || img.height || 400;
-    const cx = c.getContext('2d');
-    cx.drawImage(img, 0, 0);
+  // --- SKELETAL SPRITE RIG ---
+  // Fighters are drawn from `assets/atlas-*.webp`: eleven body parts per fighter
+  // posed as a bone chain by rig.js. See tools/build-sprites.py for the pipeline
+  // that produces them from the source art.
+  let rigs = null;
+  let rigClips = null;
+  let rigError = null;
 
-    try {
-      const imgData = cx.getImageData(0, 0, c.width, c.height);
-      const data = imgData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-        if (a === 0) continue;
-        // High-precision chroma green edge feathering and spill suppression
-        if (g > 130 && g > r * 1.35 && g > b * 1.35) {
-          if (g > 160 && g > r * 1.6 && g > b * 1.6) {
-            data[i + 3] = 0;
-          } else {
-            const excess = g - Math.max(r, b);
-            data[i + 3] = Math.max(0, Math.min(255, a - Math.floor(excess * 2)));
-            data[i + 1] = Math.min(g, Math.max(r, b) + 15);
-          }
-        } else if (g > r + 35 && g > b + 35 && a < 250) {
-          data[i + 1] = Math.floor((r + b) / 2 + 10);
-        }
-      }
-      cx.putImageData(imgData, 0, 0);
-    } catch (e) {}
-    return c;
-  }
-
-  function loadSpritePose(id, poseName, srcUrl) {
-    const key = `${id}_${poseName}`;
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      spriteCanvases[key] = createPerfectTransparentCanvas(img);
-      ensureDynamicSprites(id);
-    };
-    img.onerror = () => {
-      ensureDynamicSprites(id);
-    };
-    img.src = srcUrl;
-  }
-
-  // --- NANO BANANA 16-BIT HD SPRITE SHEET PARSER (ESTILO MEGA DRIVE / STREETS OF RAGE) ---
-  // Quando as novas Master Sprite Sheets geradas por IA no Nano Banana forem adicionadas na pasta assets/
-  // (ex: assets/kurt_sprite_sheet.png, axl_sprite_sheet.png, lennon_sprite_sheet.png), esta função recorta
-  // automaticamente a grade 6x5 e extrae os ~29 quadros animados para combates ultradinâmicos de 60 FPS!
-  function loadMegaDriveSpriteSheet(id, filename) {
-    const sheetImg = new Image();
-    sheetImg.decoding = 'async';
-    sheetImg.onload = () => {
-      console.log(`[Nano Banana Parser] Master Sprite Sheet 16-bit carregada para: ${id}`);
-      // Grade padrão do estilo 16-Bit Mega Drive: 6 colunas por 5 linhas
-      const cols = 6;
-      const rows = 5;
-      const cellW = Math.floor(sheetImg.width / cols);
-      const cellH = Math.floor(sheetImg.height / rows);
-      
-      const animMap = {
-        idle:    { row: 0, count: 3 },
-        walk:    { row: 1, count: 4 },
-        punch:   { row: 2, count: 3 },
-        kick:    { row: 3, count: 3 },
-        special: { row: 4, count: 4 },
-        hit:     { row: 4, count: 2, offsetCol: 4 }
-      };
-
-      Object.entries(animMap).forEach(([action, meta]) => {
-        for (let i = 0; i < meta.count; i++) {
-          const col = (meta.offsetCol || 0) + i;
-          if (col >= cols) continue;
-          
-          const sliceCan = document.createElement('canvas');
-          sliceCan.width = cellW;
-          sliceCan.height = cellH;
-          const scx = sliceCan.getContext('2d');
-          scx.drawImage(sheetImg, col * cellW, meta.row * cellH, cellW, cellH, 0, 0, cellW, cellH);
-          
-          const cleanCanvas = createPerfectTransparentCanvas(sliceCan);
-          const frameKey = `${id}_${action}_f${i}`;
-          spriteCanvases[frameKey] = cleanCanvas;
-          
-          // O quadro zero vira também o padrão de fallback principal!
-          if (i === 0) {
-            if (action === 'walk') {
-              spriteCanvases[`${id}_walk1`] = cleanCanvas;
-            } else {
-              spriteCanvases[`${id}_${action}`] = cleanCanvas;
-            }
-          } else if (i === 1 && action === 'walk') {
-            spriteCanvases[`${id}_walk2`] = cleanCanvas;
-          }
-        }
-      });
-      ensureDynamicSprites(id);
-    };
-    sheetImg.src = `assets/${filename}`;
-  }
-
-  // --- GERADOR PROCEDURAL DE SPRITES DINÂMICOS & REALISMO DE KOMBAT ---
-  function ensureDynamicSprites(id) {
-    const base = spriteCanvases[`${id}_idle`];
-    if (!base) return;
-    const w = base.width || 300;
-    const h = base.height || 400;
-
-    // 1. Sprite de PULO DEDICADO (Jump) - Aerodinâmico e realista
-    if (!spriteCanvases[`${id}_jump`]) {
-      const jCanvas = document.createElement('canvas');
-      jCanvas.width = w; jCanvas.height = h;
-      const cx = jCanvas.getContext('2d');
-      cx.save();
-      cx.strokeStyle = 'rgba(120, 220, 255, 0.45)'; cx.lineWidth = 3;
-      cx.beginPath();
-      cx.moveTo(w * 0.3, h * 0.85); cx.lineTo(w * 0.15, h * 0.98);
-      cx.moveTo(w * 0.5, h * 0.88); cx.lineTo(w * 0.4, h * 0.99);
-      cx.stroke();
-      cx.translate(w * 0.5, h * 0.5);
-      cx.rotate(-0.18);
-      cx.scale(1.04, 0.92);
-      cx.drawImage(base, -w * 0.5, -h * 0.5 - 12, w, h);
-      cx.restore();
-      spriteCanvases[`${id}_jump`] = jCanvas;
-    }
-
-    // 2. Sprites de GOLPES ESPECIAIS DIVERTIDOS E PRÓPRIOS (Custom Special Weapons & VFX)
-    if (!spriteCanvases[`${id}_special_base`] && spriteCanvases[`${id}_special`]) {
-      spriteCanvases[`${id}_special_base`] = spriteCanvases[`${id}_special`];
-    }
-    const origSp = spriteCanvases[`${id}_special_base`] || spriteCanvases[`${id}_special`] || base;
-    const spCanvas = document.createElement('canvas');
-    spCanvas.width = w + 90; spCanvas.height = h + 70;
-    const scx = spCanvas.getContext('2d');
-    scx.save();
-    scx.translate(25, 35);
-    scx.drawImage(origSp, 0, 0, w, h);
-
-    if (id === 'kurt') {
-      scx.save();
-      scx.translate(w * 0.62, h * 0.44);
-      scx.rotate(0.68);
-      scx.fillStyle = '#f5e3b3'; scx.strokeStyle = '#232018'; scx.lineWidth = 4;
-      scx.beginPath(); scx.ellipse(0, 0, 48, 29, 0, 0, Math.PI * 2); scx.fill(); scx.stroke();
-      scx.fillStyle = '#8f2d29'; scx.beginPath(); scx.ellipse(-6, 2, 28, 18, 0, 0, Math.PI * 2); scx.fill();
-      scx.fillStyle = '#222'; scx.fillRect(-5, -8, 12, 16);
-      scx.fillStyle = '#543621'; scx.fillRect(35, -7, 78, 14);
-      scx.fillStyle = '#f5e3b3'; scx.fillRect(113, -10, 26, 20);
-      scx.strokeStyle = '#36e5ff'; scx.lineWidth = 2.5; scx.shadowColor = '#36e5ff'; scx.shadowBlur = 16;
-      for (let i = 0; i < 5; i++) {
-        scx.beginPath(); scx.moveTo(-32, -5 + i * 2.5); scx.lineTo(113, -5 + i * 2.5); scx.stroke();
-      }
-      scx.restore();
-    } else if (id === 'axl') {
-      scx.save();
-      scx.translate(w * 0.55, h * 0.42);
-      scx.strokeStyle = '#e2e8f0'; scx.lineWidth = 6; scx.lineCap = 'round';
-      scx.shadowColor = '#fff'; scx.shadowBlur = 8;
-      scx.beginPath(); scx.moveTo(-30, 45); scx.lineTo(88, -68); scx.stroke();
-      scx.fillStyle = '#475569'; scx.beginPath(); scx.arc(92, -72, 12, 0, Math.PI * 2); scx.fill();
-      scx.strokeStyle = '#ff3300'; scx.lineWidth = 8; scx.shadowColor = '#ff6600'; scx.shadowBlur = 25;
-      scx.beginPath(); scx.moveTo(-30, 45); scx.bezierCurveTo(-65, -10, 125, -10, 88, -68); scx.stroke();
-      scx.strokeStyle = '#ffcc00'; scx.lineWidth = 3.5; scx.stroke();
-      scx.restore();
-    } else if (id === 'lennon') {
-      scx.save();
-      scx.translate(w * 0.56, h * 0.52);
-      scx.rotate(-0.35);
-      scx.fillStyle = '#3a7d44'; scx.strokeStyle = '#ffffff'; scx.lineWidth = 4;
-      scx.shadowColor = '#6df28e'; scx.shadowBlur = 20;
-      scx.beginPath(); scx.roundRect(-44, -32, 88, 62, 22); scx.fill(); scx.stroke();
-      scx.fillStyle = '#3e2723'; scx.fillRect(-42, -8, -80, 16);
-      scx.font = 'bold 38px sans-serif';
-      scx.fillStyle = '#ff61b0'; scx.fillText('☮', 38, -48);
-      scx.fillStyle = '#ffd700'; scx.fillText('❤️', 48, 48);
-      scx.fillStyle = '#36d7ff'; scx.fillText('♪', -75, -35);
-      scx.restore();
-    }
-    scx.restore();
-    spriteCanvases[`${id}_special`] = spCanvas;
-
-    // 3. Variações cinemáticas de combate caso faltem poses específicas
-    const poses = [
-      { name: 'punch', dx: 18, dy: -4, rot: 0.08, scaleX: 1.08, scaleY: 0.98 },
-      { name: 'kick', dx: 12, dy: -12, rot: -0.15, scaleX: 1.06, scaleY: 0.97 },
-      { name: 'block', dx: -12, dy: 6, rot: -0.07, scaleX: 0.96, scaleY: 1.04 },
-      { name: 'hit', dx: -22, dy: -8, rot: -0.25, scaleX: 0.94, scaleY: 1.06 },
-      { name: 'walk1', dx: 8, dy: -4, rot: 0.04, scaleX: 1.02, scaleY: 0.99 },
-      { name: 'walk2', dx: -8, dy: 2, rot: -0.03, scaleX: 0.98, scaleY: 1.01 }
-    ];
-    poses.forEach(p => {
-      if (!spriteCanvases[`${id}_${p.name}`]) {
-        const pCan = document.createElement('canvas');
-        pCan.width = w; pCan.height = h;
-        const pcx = pCan.getContext('2d');
-        pcx.save();
-        pcx.translate(w * 0.5 + p.dx, h * 0.5 + p.dy);
-        pcx.rotate(p.rot);
-        pcx.scale(p.scaleX, p.scaleY);
-        pcx.drawImage(base, -w * 0.5, -h * 0.5);
-        pcx.restore();
-        spriteCanvases[`${id}_${p.name}`] = pCan;
-      }
+  const rigReady = RockKombatRig.load('assets/atlas.json', 'assets/')
+    .then(loaded => {
+      rigs = loaded.fighters;
+      rigClips = loaded.clips;
+    })
+    .catch(err => {
+      rigError = err;
+      console.error('[Rock Kombat] sprite atlas failed to load:', err);
     });
-  }
 
-  // Preload UI & Active Realist Sprite Assets in True Transparent PNG (Streets of Rage Full Roster)
-  fighters.forEach(f => {
-    // 1. Tenta carregar e recortar automaticamente a nova Master Sprite Sheet 16-Bit (Nano Banana)
-    loadMegaDriveSpriteSheet(f.id, `${f.id}_sprite_sheet.png`);
-
-    const portraitImg = new Image();
-    portraitImg.decoding = 'async';
-    portraitImg.src = `assets/${f.portrait}`;
-    faceImages[f.id] = portraitImg;
-
-    loadSpritePose(f.id, 'idle', `assets/sprite-${f.id}.png`);
-    loadSpritePose(f.id, 'walk1', `assets/sprite-${f.id}-walk1.png`);
-    loadSpritePose(f.id, 'walk2', `assets/sprite-${f.id}-walk2.png`);
-    loadSpritePose(f.id, 'jump', `assets/sprite-${f.id}-jump.png`);
-    loadSpritePose(f.id, 'punch', `assets/sprite-${f.id}-punch.png`);
-    loadSpritePose(f.id, 'kick', `assets/sprite-${f.id}-kick.png`);
-    loadSpritePose(f.id, 'special', `assets/sprite-${f.id}-special.png`);
-    loadSpritePose(f.id, 'block', `assets/sprite-${f.id}-block.png`);
-    loadSpritePose(f.id, 'hit', `assets/sprite-${f.id}-hit.png`);
-  });
-
-  setTimeout(() => fighters.forEach(f => ensureDynamicSprites(f.id)), 900);
 
   // Stage Fog & Crowd Effects
   const stageFog = [];
@@ -476,19 +262,42 @@
   const rand = (min, max) => Math.random() * (max - min) + min;
 
   // --- CANVAS HIGH-DPI RESIZING ---
-  function resizeCanvas() {
+  // Driven by a ResizeObserver rather than measured every frame: reading
+  // getBoundingClientRect inside the render loop forces a layout each tick.
+  function resizeCanvas(width, height) {
     if (!gameCanvas) return;
+    // A 0 (or missing) measurement means the box was caught mid-layout -- e.g.
+    // canvas-wrap flipping from display:none to flex fires the observer before
+    // the browser has sized it. Falling back to a 960x540 default in that case
+    // would leave the canvas stuck at the wrong size until something else
+    // happens to trigger another resize, so just skip and wait for the next
+    // observer callback (which fires as soon as the real size is known) rather
+    // than committing to a guess.
+    const w = width || gameCanvas.clientWidth;
+    const h = height || gameCanvas.clientHeight;
+    if (!w || !h) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const rect = gameCanvas.getBoundingClientRect();
-    const targetW = rect.width || 960;
-    const targetH = rect.height || 540;
-
-    if (gameCanvas.width !== Math.round(targetW * dpr) || gameCanvas.height !== Math.round(targetH * dpr)) {
-      gameCanvas.width = Math.round(targetW * dpr);
-      gameCanvas.height = Math.round(targetH * dpr);
+    const targetW = Math.round(w * dpr);
+    const targetH = Math.round(h * dpr);
+    if (gameCanvas.width !== targetW || gameCanvas.height !== targetH) {
+      gameCanvas.width = targetW;
+      gameCanvas.height = targetH;
     }
   }
-  window.addEventListener('resize', resizeCanvas);
+
+  // Observe the wrapper, not the canvas itself: canvas-wrap carries the
+  // aspect-ratio/layout CSS, so its box is the source of truth. (Observing the
+  // canvas works too since it fills the wrapper, but one extra layer of
+  // indirection is one less thing to reason about if that CSS ever changes.)
+  const canvasWrapEl = $('#canvas-wrap');
+  if (typeof ResizeObserver === 'function' && canvasWrapEl) {
+    new ResizeObserver(entries => {
+      const box = entries[0].contentRect;
+      resizeCanvas(box.width, box.height);
+    }).observe(canvasWrapEl);
+  } else {
+    window.addEventListener('resize', () => resizeCanvas());
+  }
 
   function showScreen(id) {
     screens.forEach(screen => screen.classList.toggle('is-active', screen.id === id));
@@ -515,9 +324,7 @@
     if (muted) return;
     if (!audio) {
       audio = new (window.AudioContext || window.webkitAudioContext)();
-      distortionNode = audio.createWaveShaper();
-      distortionNode.curve = makeDistortionCurve(75);
-      distortionNode.oversample = '4x';
+      distortionCurve = makeDistortionCurve(75);
     }
     if (audio.state === 'suspended') audio.resume();
   }
@@ -528,29 +335,42 @@
     const now = audio.currentTime;
     const freqs = [rootFreq, rootFreq * 1.498, rootFreq * 2.0];
 
-    const masterGain = audio.createGain();
+    // Each chord gets its own distortion stage. Sharing one waveshaper meant
+    // every chord re-wired it into a new filter chain without ever
+    // disconnecting the last, so connections piled up for the whole session.
+    const shaper = audio.createWaveShaper();
+    shaper.curve = distortionCurve;
+    shaper.oversample = '4x';
+
     const cabinetFilter = audio.createBiquadFilter();
     cabinetFilter.type = 'lowpass';
     cabinetFilter.frequency.value = type === 'special' ? 3600 : 2300;
 
+    const masterGain = audio.createGain();
     masterGain.gain.setValueAtTime(0.15, now);
     masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    freqs.forEach((freq, idx) => {
+    shaper.connect(cabinetFilter);
+    cabinetFilter.connect(masterGain);
+    masterGain.connect(audio.destination);
+
+    const oscillators = freqs.map((freq, idx) => {
       const osc = audio.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq * (idx === 0 ? 1 : 1.002), now);
       osc.frequency.exponentialRampToValueAtTime(freq * 0.98, now + duration);
-      osc.connect(distortionNode);
+      osc.connect(shaper);
+      osc.start(now);
+      osc.stop(now + duration + 0.05);
+      return osc;
     });
 
-    distortionNode.connect(cabinetFilter);
-    cabinetFilter.connect(masterGain);
-    masterGain.connect(audio.destination);
-
-    setTimeout(() => {
-      try { masterGain.disconnect(); } catch (e) {}
-    }, duration * 1000 + 100);
+    // Tear the whole chain down once the tail has rung out.
+    oscillators[oscillators.length - 1].onended = () => {
+      masterGain.disconnect();
+      cabinetFilter.disconnect();
+      shaper.disconnect();
+    };
   }
 
   function sound(type, pitch = 1) {
@@ -684,6 +504,29 @@
       this.hitFlash = 0; this.stun = 0; this.blocking = false; this.aiTimer = 0;
       this.afterimages = []; this.combo = 0; this.comboTimer = 0; this.animFrame = 0;
       this.landSquash = 0; this.bufferedAttack = null;
+      this.anim = rigClips ? new RockKombatRig.Animator(rigClips) : null;
+      this.animState = 'idle';
+    }
+
+    /** Which clip the current physics state should be playing. */
+    clipName() {
+      if (this.attack) return this.attack.type;
+      if (this.stun > 0) return 'hit';
+      if (this.blocking) return 'block';
+      if (!this.grounded) return 'jump';
+      return Math.abs(this.vx) > 0.55 ? 'walk' : 'idle';
+    }
+
+    /** Advance the skeleton one 60 Hz step, restarting one-shot clips on entry. */
+    updateAnimation() {
+      if (!this.anim && rigClips) this.anim = new RockKombatRig.Animator(rigClips);
+      if (!this.anim) return;
+      const next = this.clipName();
+      const restart = next !== this.animState && (next === 'punch' || next === 'kick'
+        || next === 'special' || next === 'hit' || next === 'jump');
+      this.anim.play(next, restart);
+      this.animState = next;
+      this.anim.update();
     }
 
     input(other) {
@@ -781,6 +624,7 @@
       }
       this.x = clamp(this.x, 70, 890);
       this.facing = other.x >= this.x ? 1 : -1;
+      this.updateAnimation();
 
       if (this.attackTimer > 0) {
         this.attackTimer--;
@@ -862,14 +706,21 @@
 
   function startMatch() {
     if (!pick1 || !pick2) return;
+    // The skeletons have to be in memory before the first frame is composed.
+    if (!rigs && !rigError) {
+      $('#start-fight').disabled = true;
+      rigReady.then(() => { $('#start-fight').disabled = false; startMatch(); });
+      return;
+    }
     initAudio();
     showScreen('arena-screen');
-    const s1 = fighters.find(x => x.id === pick1);
-    const s2 = fighters.find(x => x.id === pick2);
+    const s1 = pick1;
+    const s2 = pick2;
     match = {
-      p1: new Fighter(320, 425, 1, s1, false),
-      p2: new Fighter(640, 425, -1, s2, true),
+      p1: new Player(s1, 320, 1, false),
+      p2: new Player(s2, 640, -1, true),
       timer: 75, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
+      camX: 480, camZoom: 1,
     };
     $('#p1-name').textContent = s1.short; $('#p2-name').textContent = s2.short;
     $('#timer').textContent = match.timer;
@@ -920,6 +771,9 @@
     match.frames++;
     if (match.state === 'intro') {
       match.intro--;
+      // Keep both fighters breathing while the announcer runs.
+      match.p1.updateAnimation();
+      match.p2.updateAnimation();
       if (match.intro === 72) announce('FIGHT!', 800);
       if (match.intro <= 35) match.state = 'fight';
     } else {
@@ -1010,9 +864,6 @@
     ctx.save();
     ctx.scale(canvasW / 960, canvasH / 540);
 
-    const renderState = p => p.blocking ? 'block' : p.attack?.type || (p.stun > 0 ? 'hit' : !p.grounded ? 'jump' : Math.abs(p.vx) > 0.55 ? 'walk' : 'idle');
-    const motionData = p => ({ vx: p.vx, vy: p.vy, animFrame: p.animFrame, landSquash: p.landSquash });
-
     const targetCamX = (match.p1.x + match.p2.x) / 2;
     match.camX += (targetCamX - match.camX) * 0.08;
     const dist = Math.abs(match.p1.x - match.p2.x);
@@ -1032,24 +883,36 @@
       ctx.translate(480 - match.camX, 0);
     }
 
-    // 1. Draw Selected Stage
+    // 1. Stage
     drawStage(ctx, match.frames);
 
-    // 2. Glossy Stage Floor Reflections (100% Transparent Sprites)
+    // Pose both skeletons once; every pass below reuses these buffers.
+    composeFighter(match.p1);
+    composeFighter(match.p2);
+
+    // 2. Floor reflections, mirrored about the stage floor line
     ctx.save();
+    ctx.globalAlpha = 0.2;
     ctx.scale(1, -1);
     ctx.translate(0, -850);
-    ctx.globalAlpha = 0.24;
-    drawTransparentSprite(ctx, match.p1.data, match.p1.x, match.p1.y, match.p1.facing, renderState(match.p1), match.p1.attackTimer, 1, 0, motionData(match.p1));
-    drawTransparentSprite(ctx, match.p2.data, match.p2.x, match.p2.y, match.p2.facing, renderState(match.p2), match.p2.attackTimer, 1, 0, motionData(match.p2));
+    drawFighter(ctx, match.p1, match.p1.x, match.p1.y, 1, 0);
+    drawFighter(ctx, match.p2, match.p2.x, match.p2.y, 1, 0);
     ctx.restore();
 
-    // 3. Draw Fighter After-images & Main 100% Transparent Sprites
-    match.p1.afterimages.forEach(a => drawTransparentSprite(ctx, match.p1.data, a.x, a.y, match.p1.facing, match.p1.attack?.type || 'idle', match.p1.attackTimer, 0.18 * a.life / 24, 0));
-    match.p2.afterimages.forEach(a => drawTransparentSprite(ctx, match.p2.data, a.x, a.y, match.p2.facing, match.p2.attack?.type || 'idle', match.p2.attackTimer, 0.18 * a.life / 24, 0));
+    // 3. Contact shadows, after-images, then the fighters themselves
+    drawFighterShadow(ctx, match.p1);
+    drawFighterShadow(ctx, match.p2);
 
-    drawTransparentSprite(ctx, match.p1.data, match.p1.x, match.p1.y, match.p1.facing, renderState(match.p1), match.p1.attackTimer, 1, match.p1.hitFlash, motionData(match.p1));
-    drawTransparentSprite(ctx, match.p2.data, match.p2.x, match.p2.y, match.p2.facing, renderState(match.p2), match.p2.attackTimer, 1, match.p2.hitFlash, motionData(match.p2));
+    match.p1.afterimages.forEach(a => drawFighter(ctx, match.p1, a.x, a.y, 0.2 * a.life / 24, 0));
+    match.p2.afterimages.forEach(a => drawFighter(ctx, match.p2, a.x, a.y, 0.2 * a.life / 24, 0));
+
+    drawFighter(ctx, match.p1, match.p1.x, match.p1.y, 1, match.p1.hitFlash);
+    drawFighter(ctx, match.p2, match.p2.x, match.p2.y, 1, match.p2.hitFlash);
+
+    drawStrikeTrail(ctx, match.p1);
+    drawStrikeTrail(ctx, match.p2);
+    drawSpecialFx(ctx, match.p1);
+    drawSpecialFx(ctx, match.p2);
 
     // 4. Draw Particle Effects, Combos & Text Impacts
     drawEffects();
@@ -1062,19 +925,49 @@
     }
   }
 
-  // --- STAGE RENDERER REALISTA COM SPRITES TRANSPARENTES (WOODSTOCK '69, STADIUM, UNDERGROUND CLUB) ---
-  function drawStage(c, frame) {
+  // --- STAGE RENDERER ---
+  // The backdrop splits in two: everything that never changes is painted once
+  // into an offscreen canvas and blitted, while only the crowd, lights, fog and
+  // EQ bars are redrawn per frame. That removes several hundred path operations
+  // and a fistful of gradient allocations from every tick of the render loop.
+  const STAGE_W = 1360;
+  const STAGE_H = 600;
+  const STAGE_X = -200;
+  const STAGE_Y = -50;
+
+  const stageCache = { canvas: null, ctx: null, stage: null, dirty: true };
+
+  function stageLayer() {
+    if (!stageCache.canvas) {
+      stageCache.canvas = document.createElement('canvas');
+      stageCache.canvas.width = STAGE_W;
+      stageCache.canvas.height = STAGE_H;
+      stageCache.ctx = stageCache.canvas.getContext('2d');
+    }
+    if (stageCache.stage !== currentStage || stageCache.dirty) {
+      const c = stageCache.ctx;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, STAGE_W, STAGE_H);
+      // Paint in stage coordinates so the drawing code below reads naturally.
+      c.translate(-STAGE_X, -STAGE_Y);
+      drawStageStatic(c);
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      stageCache.stage = currentStage;
+      stageCache.dirty = false;
+    }
+    return stageCache.canvas;
+  }
+
+  function drawStageStatic(c) {
     if (currentStage === 'woodstock') {
-      // ☮️ CENÁRIO 1: WOODSTOCK '69 - OPEN-AIR FESTIVAL SUNSET
       const bg = c.createLinearGradient(0, -50, 0, 540);
       bg.addColorStop(0, '#100726');
       bg.addColorStop(0.35, '#381442');
       bg.addColorStop(0.7, '#8f2440');
       bg.addColorStop(1, '#f27838');
       c.fillStyle = bg;
-      c.fillRect(-200, -50, 1360, 600);
+      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
 
-      c.save();
       const sunG = c.createRadialGradient(480, 350, 20, 480, 350, 220);
       sunG.addColorStop(0, '#fff3bc');
       sunG.addColorStop(0.25, '#ffae3d');
@@ -1082,7 +975,6 @@
       sunG.addColorStop(1, 'transparent');
       c.fillStyle = sunG;
       c.beginPath(); c.arc(480, 350, 220, 0, Math.PI * 2); c.fill();
-      c.restore();
 
       c.fillStyle = '#220e2e';
       c.beginPath();
@@ -1092,57 +984,13 @@
       c.bezierCurveTo(680, 345, 820, 380, 1060, 355);
       c.lineTo(1060, 420); c.closePath(); c.fill();
 
-      c.fillStyle = '#14071c';
-      c.beginPath();
-      for (let i = -60; i < 1040; i += 18) {
-        const headY = 382 + Math.sin(i * 0.18 + frame * 0.05) * 6 + Math.cos(i * 0.09) * 4;
-        c.arc(i, headY, 12, Math.PI, 0);
-        c.fillRect(i - 12, headY, 24, 40);
-      }
-      c.fill();
-
-      crowdLights.forEach(light => {
-        light.phase += light.speed;
-        const alpha = 0.35 + Math.sin(light.phase) * 0.35;
-        c.save();
-        c.globalAlpha = alpha;
-        c.fillStyle = '#ffcc54';
-        c.shadowColor = '#ffb324';
-        c.shadowBlur = 10;
-        c.beginPath();
-        c.arc(light.x, light.y - 8 + Math.sin(light.phase * 0.5) * 5, light.size * 1.3, 0, Math.PI * 2);
-        c.fill();
-        c.restore();
-      });
-
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      for (let i = 0; i < 5; i++) {
-        const baseX = 120 + i * 190;
-        const sweep = Math.sin(frame * 0.02 + i * 1.3) * 75;
-        const spotG = c.createLinearGradient(baseX, 20, baseX + sweep, 440);
-        spotG.addColorStop(0, 'rgba(255, 215, 135, 0.28)');
-        spotG.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = spotG;
-        c.beginPath();
-        c.moveTo(baseX - 16, 20); c.lineTo(baseX + sweep - 85, 440); c.lineTo(baseX + sweep + 85, 440); c.lineTo(baseX + 16, 20);
-        c.closePath(); c.fill();
-      }
-      c.restore();
-
-      if (stageSprites.woodstockDrumKit) {
-        c.drawImage(stageSprites.woodstockDrumKit, 340, 235);
-      }
+      if (stageSprites.woodstockDrumKit) c.drawImage(stageSprites.woodstockDrumKit, 340, 235);
       if (stageSprites.marshallStack) {
         c.drawImage(stageSprites.marshallStack, 170, 195);
         c.drawImage(stageSprites.marshallStack, 650, 195);
       }
-      if (stageSprites.woodstockRigLeft) {
-        c.drawImage(stageSprites.woodstockRigLeft, -30, 20);
-      }
-      if (stageSprites.woodstockRigRight) {
-        c.drawImage(stageSprites.woodstockRigRight, 770, 20);
-      }
+      if (stageSprites.woodstockRigLeft) c.drawImage(stageSprites.woodstockRigLeft, -30, 20);
+      if (stageSprites.woodstockRigRight) c.drawImage(stageSprites.woodstockRigRight, 770, 20);
 
       const floorG = c.createLinearGradient(0, 420, 0, 540);
       floorG.addColorStop(0, '#422416');
@@ -1165,24 +1013,16 @@
       c.shadowBlur = 14;
       c.beginPath(); c.moveTo(-100, 420); c.lineTo(1060, 420); c.stroke();
       c.shadowBlur = 0;
-
-      c.save();
-      stageFog.forEach(fog => {
-        c.fillStyle = `rgba(255, 185, 125, ${fog.alpha * 1.2})`;
-        c.beginPath(); c.arc(fog.x, fog.y, fog.radius, 0, Math.PI * 2); c.fill();
-      });
-      c.restore();
       return;
     }
 
     if (currentStage === 'club') {
-      // 🎸 CENÁRIO 2: UNDERGROUND ROCK CLUB
       const bg = c.createLinearGradient(0, -50, 0, 540);
       bg.addColorStop(0, '#0d0408');
       bg.addColorStop(0.5, '#240813');
       bg.addColorStop(1, '#080205');
       c.fillStyle = bg;
-      c.fillRect(-200, -50, 1360, 600);
+      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
 
       c.strokeStyle = 'rgba(75, 25, 35, 0.4)';
       c.lineWidth = 2;
@@ -1202,37 +1042,7 @@
       curtainG2.addColorStop(0, '#590a18'); curtainG2.addColorStop(1, 'transparent');
       c.fillStyle = curtainG2; c.fillRect(840, 0, 220, 420);
 
-      c.save();
-      c.font = 'italic 900 36px "Barlow Condensed"';
-      c.textAlign = 'center';
-      c.shadowColor = '#ff2e78';
-      c.shadowBlur = 18 + Math.sin(frame * 0.1) * 8;
-      c.fillStyle = '#ff2e78';
-      c.fillText('⚡ UNDERGROUND ROCK CLUB ⚡', 480, 100);
-      c.restore();
-
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      for (let i = 0; i < 4; i++) {
-        const baseX = 140 + i * 230;
-        const sweep = Math.sin(frame * 0.02 + i * 1.5) * 80;
-        const spotG = c.createLinearGradient(baseX, 30, baseX + sweep, 425);
-        spotG.addColorStop(0, 'rgba(255, 196, 77, 0.32)');
-        spotG.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = spotG;
-        c.beginPath();
-        c.moveTo(baseX - 12, 30);
-        c.lineTo(baseX + sweep - 80, 425);
-        c.lineTo(baseX + sweep + 80, 425);
-        c.lineTo(baseX + 12, 30);
-        c.closePath();
-        c.fill();
-      }
-      c.restore();
-
-      if (stageSprites.woodstockDrumKit) {
-        c.drawImage(stageSprites.woodstockDrumKit, 350, 238);
-      }
+      if (stageSprites.woodstockDrumKit) c.drawImage(stageSprites.woodstockDrumKit, 350, 238);
       if (stageSprites.clubTubeAmp) {
         c.drawImage(stageSprites.clubTubeAmp, 140, 260);
         c.drawImage(stageSprites.clubTubeAmp, 680, 260);
@@ -1257,25 +1067,13 @@
       return;
     }
 
-    // 🏟️ CENÁRIO 3: STADIUM ARENA
+    // Stadium
     const bg = c.createLinearGradient(0, -50, 0, 540);
     bg.addColorStop(0, '#06040d');
     bg.addColorStop(0.45, '#1b0826');
     bg.addColorStop(0.8, '#0b0612');
     c.fillStyle = bg;
-    c.fillRect(-200, -50, 1360, 600);
-
-    c.save();
-    c.globalAlpha = 0.18;
-    for (let x = -50; x < 1010; x += 28) {
-      const eqHeight = 80 + Math.sin(x * 0.05 + frame * 0.1) * 60 + Math.cos(x * 0.1) * 30;
-      const ledG = c.createLinearGradient(0, 200 - eqHeight, 0, 200);
-      ledG.addColorStop(0, '#ff2e78');
-      ledG.addColorStop(1, '#23d7ef');
-      c.fillStyle = ledG;
-      c.fillRect(x, 220 - eqHeight, 22, eqHeight);
-    }
-    c.restore();
+    c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
 
     c.strokeStyle = '#271b33';
     c.lineWidth = 4;
@@ -1288,61 +1086,11 @@
     }
     c.stroke();
 
-    c.save();
-    c.globalCompositeOperation = 'screen';
-    for (let i = 0; i < 6; i++) {
-      const baseX = 60 + i * 160;
-      const sweep = Math.sin(frame * 0.03 + i * 1.2) * 110;
-      const spotG = c.createLinearGradient(baseX, 30, baseX + sweep, 425);
-      const color = i % 3 === 0 ? 'rgba(35, 215, 239, 0.28)' : i % 3 === 1 ? 'rgba(255, 46, 120, 0.28)' : 'rgba(255, 196, 77, 0.24)';
-      spotG.addColorStop(0, color);
-      spotG.addColorStop(1, 'rgba(0,0,0,0)');
-
-      c.fillStyle = spotG;
-      c.beginPath();
-      c.moveTo(baseX - 15, 30);
-      c.lineTo(baseX + sweep - 90, 425);
-      c.lineTo(baseX + sweep + 90, 425);
-      c.lineTo(baseX + 15, 30);
-      c.closePath();
-      c.fill();
-    }
-    c.restore();
-
-    if (stageSprites.woodstockDrumKit) {
-      c.drawImage(stageSprites.woodstockDrumKit, 340, 232);
-    }
+    if (stageSprites.woodstockDrumKit) c.drawImage(stageSprites.woodstockDrumKit, 340, 232);
     if (stageSprites.marshallStack) {
-      [-20, 75, 170].forEach((ax, idx) => {
-        c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12);
-      });
-      [650, 745, 840].forEach((ax, idx) => {
-        c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12);
-      });
+      [-20, 75, 170].forEach((ax, idx) => c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12));
+      [650, 745, 840].forEach((ax, idx) => c.drawImage(stageSprites.marshallStack, ax, 190 + (idx % 2) * 12));
     }
-
-    c.fillStyle = '#050308';
-    c.beginPath();
-    for (let i = -50; i < 1010; i += 22) {
-      const armY = 385 + Math.sin(i * 0.15 + frame * 0.08) * 8;
-      c.arc(i, armY, 14, Math.PI, 0);
-      c.fillRect(i - 14, armY, 28, 45);
-    }
-    c.fill();
-
-    crowdLights.forEach(light => {
-      light.phase += light.speed;
-      const alpha = 0.4 + Math.sin(light.phase) * 0.4;
-      c.save();
-      c.globalAlpha = alpha;
-      c.fillStyle = light.color;
-      c.shadowColor = light.color;
-      c.shadowBlur = 8;
-      c.beginPath();
-      c.arc(light.x, light.y + Math.sin(light.phase * 0.5) * 4, light.size, 0, Math.PI * 2);
-      c.fill();
-      c.restore();
-    });
 
     const floorG = c.createLinearGradient(0, 420, 0, 540);
     floorG.addColorStop(0, '#2b1035');
@@ -1368,285 +1116,256 @@
     c.moveTo(-100, 420); c.lineTo(1060, 420);
     c.stroke();
     c.shadowBlur = 0;
-
-    c.save();
-    stageFog.forEach(fog => {
-      c.fillStyle = `rgba(220, 180, 240, ${fog.alpha})`;
-      c.beginPath();
-      c.arc(fog.x, fog.y, fog.radius, 0, Math.PI * 2);
-      c.fill();
-    });
-    c.restore();
   }
 
-  // --- DYNAMIC STEP-BY-STEP REALISTIC FIGHTER RENDERER ---
-  function drawTransparentSprite(c, f, x, ground, facing = 1, state = 'idle', timer = 0, alpha = 1, flash = 0, motionData = null) {
+  /** Crowd, lights, fog and EQ bars -- the parts that actually animate. */
+  function drawStage(c, frame) {
+    c.drawImage(stageLayer(), STAGE_X, STAGE_Y);
+
+    if (currentStage === 'stadium') {
+      c.save();
+      c.globalAlpha = 0.18;
+      for (let x = -50; x < 1010; x += 28) {
+        const eqHeight = 80 + Math.sin(x * 0.05 + frame * 0.1) * 60 + Math.cos(x * 0.1) * 30;
+        const ledG = c.createLinearGradient(0, 200 - eqHeight, 0, 200);
+        ledG.addColorStop(0, '#ff2e78');
+        ledG.addColorStop(1, '#23d7ef');
+        c.fillStyle = ledG;
+        c.fillRect(x, 220 - eqHeight, 22, eqHeight);
+      }
+      c.restore();
+    }
+
+    if (currentStage === 'club') {
+      c.save();
+      c.font = 'italic 900 36px "Barlow Condensed"';
+      c.textAlign = 'center';
+      c.shadowColor = '#ff2e78';
+      c.shadowBlur = 18 + Math.sin(frame * 0.1) * 8;
+      c.fillStyle = '#ff2e78';
+      c.fillText('⚡ UNDERGROUND ROCK CLUB ⚡', 480, 100);
+      c.restore();
+    }
+
+    // Silhouetted crowd, swaying with the beat.
+    if (currentStage !== 'club') {
+      const woodstock = currentStage === 'woodstock';
+      c.fillStyle = woodstock ? '#14071c' : '#050308';
+      c.beginPath();
+      const step = woodstock ? 18 : 22;
+      const radius = woodstock ? 12 : 14;
+      for (let i = -60; i < 1040; i += step) {
+        const headY = woodstock
+          ? 382 + Math.sin(i * 0.18 + frame * 0.05) * 6 + Math.cos(i * 0.09) * 4
+          : 385 + Math.sin(i * 0.15 + frame * 0.08) * 8;
+        c.arc(i, headY, radius, Math.PI, 0);
+        c.rect(i - radius, headY, radius * 2, woodstock ? 40 : 45);
+      }
+      c.fill();
+
+      crowdLights.forEach(light => {
+        light.phase += light.speed;
+        const alpha = (woodstock ? 0.35 : 0.4) + Math.sin(light.phase) * (woodstock ? 0.35 : 0.4);
+        c.save();
+        c.globalAlpha = alpha;
+        c.fillStyle = woodstock ? '#ffcc54' : light.color;
+        c.shadowColor = woodstock ? '#ffb324' : light.color;
+        c.shadowBlur = woodstock ? 10 : 8;
+        c.beginPath();
+        c.arc(light.x, light.y + Math.sin(light.phase * 0.5) * (woodstock ? 5 : 4) - (woodstock ? 8 : 0),
+          light.size * (woodstock ? 1.3 : 1), 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      });
+    }
+
+    // Sweeping spotlights.
+    const beams = currentStage === 'woodstock' ? 5 : currentStage === 'club' ? 4 : 6;
+    c.save();
+    c.globalCompositeOperation = 'screen';
+    for (let i = 0; i < beams; i++) {
+      const spacing = currentStage === 'woodstock' ? 190 : currentStage === 'club' ? 230 : 160;
+      const baseX = (currentStage === 'stadium' ? 60 : currentStage === 'club' ? 140 : 120) + i * spacing;
+      const sweep = Math.sin(frame * (currentStage === 'stadium' ? 0.03 : 0.02) + i * 1.3) *
+        (currentStage === 'stadium' ? 110 : currentStage === 'club' ? 80 : 75);
+      const top = currentStage === 'woodstock' ? 20 : 30;
+      const spotG = c.createLinearGradient(baseX, top, baseX + sweep, currentStage === 'woodstock' ? 440 : 425);
+      const color = currentStage === 'stadium'
+        ? (i % 3 === 0 ? 'rgba(35, 215, 239, 0.28)' : i % 3 === 1 ? 'rgba(255, 46, 120, 0.28)' : 'rgba(255, 196, 77, 0.24)')
+        : currentStage === 'club' ? 'rgba(255, 196, 77, 0.32)' : 'rgba(255, 215, 135, 0.28)';
+      spotG.addColorStop(0, color);
+      spotG.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = spotG;
+      const spread = currentStage === 'stadium' ? 90 : currentStage === 'club' ? 80 : 85;
+      const bottom = currentStage === 'woodstock' ? 440 : 425;
+      c.beginPath();
+      c.moveTo(baseX - 15, top);
+      c.lineTo(baseX + sweep - spread, bottom);
+      c.lineTo(baseX + sweep + spread, bottom);
+      c.lineTo(baseX + 15, top);
+      c.closePath();
+      c.fill();
+    }
+    c.restore();
+
+    // Drifting haze.
+    if (currentStage !== 'club') {
+      const warm = currentStage === 'woodstock';
+      stageFog.forEach(fog => {
+        c.fillStyle = warm
+          ? `rgba(255, 185, 125, ${fog.alpha * 1.2})`
+          : `rgba(220, 180, 240, ${fog.alpha})`;
+        c.beginPath(); c.arc(fog.x, fog.y, fog.radius, 0, Math.PI * 2); c.fill();
+      });
+    }
+  }
+
+  // --- FIGHTER RENDERER ---
+  // Characters render at this height in the 960x540 stage space; the atlas art
+  // is authored taller so it stays sharp on high-DPI displays.
+  const FIGHTER_HEIGHT = 232;
+
+  /**
+   * Compose a fighter's skeleton into its offscreen buffer for this frame.
+   * Called once per character; the result is reused for the sprite itself, its
+   * floor reflection and its after-images.
+   */
+  function composeFighter(player) {
+    const rig = rigs && rigs[player.data.id];
+    if (!rig || !player.anim) return null;
+
+    // Attacks read their pose straight off the hit timer so the visual
+    // extension always lines up with the frame the hitbox goes active on.
+    let progress;
+    if (player.attack) {
+      progress = 1 - player.attackTimer / player.attack.duration;
+    }
+    const sample = player.anim.sample(progress);
+    rig.compose(sample.pose, sample.front);
+    return rig;
+  }
+
+  /** Blit a composed fighter buffer onto the stage. */
+  function drawFighter(c, player, x, ground, alpha = 1, flash = 0) {
+    const rig = rigs && rigs[player.data.id];
+    if (!rig) return;
+
+    const scale = FIGHTER_HEIGHT / rig.baseH;
     c.save();
     c.globalAlpha = alpha;
     c.translate(x, ground);
-    c.scale(facing, 1);
+    c.scale(player.facing * scale, scale);
 
-    const frame = motionData?.animFrame || 0;
-    const vx = motionData?.vx || 0;
-    const squash = motionData?.landSquash ? Math.sin((motionData.landSquash / 8) * Math.PI) * 0.08 : 0;
-
-    // --- STREETS OF RAGE REALISTIC WALKING & STRIDE ENGINE ---
-    let walkBob = 0;
-    let walkTilt = 0;
-    let walkStrideX = 0;
-    let stepFrame = 0;
-    if (state === 'walk') {
-      const isForward = (vx * facing) > 0;
-      stepFrame = Math.floor((x / 18) + frame * 0.25) % 4;
-      if (stepFrame < 0) stepFrame += 4;
-
-      // Authentic beat-'em-up vertical bob and weight transfer
-      const stepPhase = Math.sin(frame * 0.48);
-      walkBob = Math.abs(Math.cos(frame * 0.48)) * 9;
-      walkStrideX = stepPhase * 5;
-      walkTilt = isForward ? (0.05 + stepPhase * 0.02) : (-0.03 + stepPhase * 0.015);
-
-      // Grounded footstep dust clouds on impact
-      if (Math.abs(stepPhase) < 0.28 && alpha === 1) {
-        c.save();
-        c.fillStyle = 'rgba(190, 210, 230, 0.32)';
-        c.beginPath();
-        c.ellipse(-8 + walkStrideX, 4, 16 + Math.abs(vx) * 3, 5, 0, 0, Math.PI * 2);
-        c.fill();
-        c.restore();
-      }
+    // Landing squash keeps impacts weighty without needing extra art.
+    if (player.landSquash > 0) {
+      const squash = Math.sin((player.landSquash / 8) * Math.PI) * 0.09;
+      c.scale(1 + squash, 1 - squash);
     }
 
-    const idleBounce = state === 'idle' ? Math.sin(frame * 0.12) * 3.2 : 0;
-    const crouchShift = state === 'block' ? 16 : 0;
-
-    c.translate(walkStrideX, idleBounce - walkBob);
-    c.rotate(walkTilt);
-    c.scale(1 + squash, 1 - squash);
-
-    if (flash) { c.shadowColor = '#ffffff'; c.shadowBlur = 38; }
-    
-    // Step-by-step Hit Stagger & Knockback
-    if (state === 'hit') {
-      const hitShake = Math.sin(frame * 2.2) * 9;
-      c.translate(-16 + hitShake, -6);
-      c.rotate(-0.15);
+    if (flash) {
+      c.shadowColor = '#ffffff';
+      c.shadowBlur = 30 / scale;
     }
 
-    // --- STEP-BY-STEP FIGHTING CHOREOGRAPHY (WINDUP -> STRIKE -> RECOVERY) ---
-    const attackDuration = state === 'punch' ? 18 : state === 'kick' ? 25 : state === 'special' ? 55 : 1;
-    const phase = timer ? clamp(1 - timer / attackDuration, 0, 1) : 0;
-    
-    let lungeX = 0;
-    let lungeY = 0;
-    let attackRot = 0;
-    let isWindup = false;
-    let isStrike = false;
+    c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
+    c.restore();
+  }
 
-    if (state === 'punch' || state === 'kick' || state === 'special') {
-      const maxLunge = state === 'punch' ? 65 : state === 'kick' ? 85 : 115;
-      
-      if (phase < 0.22) {
-        // Step 1: WINDUP & ANTECIPACAO (Pull back before launching)
-        isWindup = true;
-        const p = phase / 0.22;
-        lungeX = -16 * Math.pow(p, 2);
-        lungeY = 6 * p;
-        attackRot = -0.09 * p;
-      } else if (phase < 0.65) {
-        // Step 2: APICE & IMPACTO (Explosive burst forward)
-        isStrike = true;
-        const p = (phase - 0.22) / 0.43;
-        const easeOut = 1 - Math.pow(1 - p, 3);
-        lungeX = maxLunge * easeOut;
-        lungeY = -12 * easeOut;
-        attackRot = (state === 'kick' ? -0.15 : -0.08) * easeOut;
-      } else {
-        // Step 3: RECUPERACAO PASSO A PASSO (Return and re-balance)
-        const p = (phase - 0.65) / 0.35;
-        const easeIn = Math.cos(p * Math.PI * 0.5);
-        lungeX = maxLunge * 0.85 * easeIn;
-        lungeY = Math.sin(p * Math.PI) * -6;
-        attackRot = (state === 'kick' ? -0.15 : -0.08) * easeIn;
-      }
-    }
-
-    // Dynamic Realistic Ground Shadow (remains glued to stage floor even during high leaps!)
-    const heightAboveGround = Math.max(0, 425 - ground);
-    const shadowAlpha = clamp(0.68 - (heightAboveGround * 0.0035), 0.15, 0.68);
-    const shadowScaleX = clamp(58 - (heightAboveGround * 0.15) + Math.abs(lungeX) * 0.35 + Math.abs(walkStrideX) * 1.4, 18, 90);
-    const shadowScaleY = clamp(13 - (heightAboveGround * 0.04), 4, 13);
-
+  /** Contact shadow, sized by how far off the ground the fighter is. */
+  function drawFighterShadow(c, player) {
+    const height = Math.max(0, 425 - player.y);
+    const alpha = clamp(0.62 - height * 0.0035, 0.12, 0.62);
+    const rx = clamp(52 - height * 0.14, 16, 60);
+    const ry = clamp(11 - height * 0.035, 3.5, 11);
     c.save();
-    c.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+    c.fillStyle = `rgba(0, 0, 0, ${alpha})`;
     c.beginPath();
-    c.ellipse(lungeX * 0.4, 4 + walkBob * 0.2 + heightAboveGround, shadowScaleX, shadowScaleY, 0, 0, Math.PI * 2);
+    c.ellipse(player.x, 428, rx, ry, 0, 0, Math.PI * 2);
     c.fill();
     c.restore();
+  }
 
-    // SELECT TRANSPARENT REALISTIC SPRITE POSE (Ou recortes sequenciais automáticos da Master Sprite Sheet Nano Banana!)
-    let poseKey = `${f.id}_idle`;
-    if (state === 'punch') {
-      const pFrame = Math.min(2, Math.floor((18 - Math.max(0, attackTimer)) / 6));
-      poseKey = spriteCanvases[`${f.id}_punch_f${pFrame}`] ? `${f.id}_punch_f${pFrame}` : `${f.id}_punch`;
-    } else if (state === 'kick') {
-      const kFrame = Math.min(2, Math.floor((25 - Math.max(0, attackTimer)) / 8));
-      poseKey = spriteCanvases[`${f.id}_kick_f${kFrame}`] ? `${f.id}_kick_f${kFrame}` : `${f.id}_kick`;
-    } else if (state === 'special') {
-      const sFrame = Math.min(3, Math.floor((55 - Math.max(0, attackTimer)) / 14));
-      poseKey = spriteCanvases[`${f.id}_special_f${sFrame}`] ? `${f.id}_special_f${sFrame}` : `${f.id}_special`;
-    } else if (state === 'block') {
-      poseKey = `${f.id}_block`;
-    } else if (state === 'hit') {
-      const hFrame = Math.min(1, Math.floor(Math.max(0, 16 - f.stun) / 8));
-      poseKey = spriteCanvases[`${f.id}_hit_f${hFrame}`] ? `${f.id}_hit_f${hFrame}` : `${f.id}_hit`;
-    } else if (state === 'jump' || heightAboveGround > 5) {
-      poseKey = `${f.id}_jump`;
-    } else if (state === 'walk') {
-      const wFrame = Math.floor((match.frames / 8) % 4);
-      if (spriteCanvases[`${f.id}_walk_f${wFrame}`]) {
-        poseKey = `${f.id}_walk_f${wFrame}`;
-      } else if (stepFrame === 0 || stepFrame === 1) {
-        poseKey = `${f.id}_walk1`;
-      } else {
-        poseKey = `${f.id}_walk2`;
-      }
-    } else if (state === 'idle') {
-      // Loop em ping-pong estilo Mega Drive (0 -> 1 -> 2 -> 1) se houver sprite sheet
-      const idleIdx = [0, 1, 2, 1][Math.floor((match.frames / 16) % 4)];
-      if (spriteCanvases[`${f.id}_idle_f${idleIdx}`]) {
-        poseKey = `${f.id}_idle_f${idleIdx}`;
-      }
-    }
+  /** Signature weapon/energy effects layered over a special. */
+  function drawSpecialFx(c, player) {
+    if (!player.attack || player.attack.type !== 'special') return;
+    const phase = 1 - player.attackTimer / player.attack.duration;
+    if (phase < 0.28) return;
 
-    const poseCanvas = spriteCanvases[poseKey] || spriteCanvases[`${f.id}_idle`];
-
+    const f = player.data;
     c.save();
-    if (state === 'punch' || state === 'kick' || state === 'special') {
-      c.translate(lungeX, lungeY);
-      c.rotate(attackRot);
-    } else if (state === 'block') {
-      c.translate(-12, crouchShift * 0.5);
-      c.rotate(-0.06); // Defensive shield posture
-      if (alpha === 1) { c.shadowColor = '#23d7ef'; c.shadowBlur = 28; }
-    } else if (state === 'jump' || heightAboveGround > 5) {
-      if (alpha === 1 && Math.random() > 0.4) {
-        c.save();
-        c.globalCompositeOperation = 'screen';
-        c.strokeStyle = 'rgba(200, 240, 255, 0.45)'; c.lineWidth = 2.5;
-        c.beginPath();
-        c.moveTo(-20, 15); c.lineTo(-35, 45 + Math.random() * 10);
-        c.moveTo(25, 12); c.lineTo(40, 42 + Math.random() * 10);
-        c.stroke();
-        c.restore();
-      }
-    } else if (state === 'idle') {
-      // Estilo Mega Drive / Streets of Rage 2: Ping-Pong Breathing Loop & Combat Bounce!
-      const pingPong = Math.floor((match.frames / 10) % 4);
-      const breathScaleY = pingPong === 0 ? 1.0 : (pingPong === 1 || pingPong === 3) ? 1.02 : 1.035;
-      const breathShiftY = pingPong === 0 ? 0 : (pingPong === 1 || pingPong === 3) ? -1.8 : -3.6;
-      const stanceTilt = (pingPong === 1 ? 0.015 : pingPong === 3 ? -0.015 : 0);
-      c.translate(0, breathShiftY);
-      c.scale(1.0, breathScaleY);
-      c.rotate(stanceTilt);
-    }
+    c.globalCompositeOperation = 'screen';
+    c.translate(player.x, player.y);
+    c.scale(player.facing, 1);
 
-    if (poseCanvas) {
-      const sprW = 180;
-      const sprH = 235;
-      c.drawImage(poseCanvas, -sprW / 2, -sprH + 14, sprW, sprH);
-
-      // Windup Energy Charge Flare (Step 1 Visual Feedback)
-      if (isWindup && alpha === 1) {
-        c.save();
-        c.globalCompositeOperation = 'screen';
-        c.fillStyle = '#ffffff';
-        c.shadowColor = f.color; c.shadowBlur = 25;
-        c.beginPath();
-        c.arc(35, -130, 14 + Math.random() * 8, 0, Math.PI * 2);
-        c.fill();
-        c.restore();
-      }
-
-      // Character Rim Light Highlight
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      c.fillStyle = f.color;
-      c.globalAlpha = 0.24;
-      c.fillRect(-sprW / 2, -sprH + 14, sprW, sprH);
-      c.restore();
-    }
-    c.restore();
-
-    // SIGNATURE SPECIAL POWER VISUAL EFFECTS (KURT, AXL, LENNON - Step 2 Active Impact)
-    if (f.id === 'kurt' && state === 'special' && phase >= 0.22) {
-      // Kurt: GUITARRADA SMASH! Explosive Fender Mustang Guitar Lightning Strike
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.translate(lungeX * 0.6, lungeY);
-      c.strokeStyle = '#23d7ef'; c.lineWidth = 12; c.shadowColor = '#23d7ef'; c.shadowBlur = 36;
+    if (f.id === 'kurt') {
+      c.strokeStyle = '#23d7ef'; c.lineWidth = 11;
+      c.shadowColor = '#23d7ef'; c.shadowBlur = 34;
       c.beginPath();
       for (let i = 0; i < 8; i++) {
         const ang = i * Math.PI / 4 + match.frames * 0.25;
-        c.moveTo(0, -95);
-        c.lineTo(Math.cos(ang) * 210, -95 + Math.sin(ang) * 165);
+        c.moveTo(40, -95);
+        c.lineTo(40 + Math.cos(ang) * 190, -95 + Math.sin(ang) * 150);
+      }
+      c.stroke();
+      c.strokeStyle = '#ffc44d'; c.lineWidth = 5; c.stroke();
+    } else if (f.id === 'axl') {
+      c.strokeStyle = '#ff2e78'; c.lineWidth = 14;
+      c.shadowColor = '#ff2e78'; c.shadowBlur = 36;
+      c.beginPath();
+      for (let i = 0; i < 6; i++) {
+        c.moveTo(30, -100);
+        c.quadraticCurveTo(90 + i * 34, -140 + Math.sin(i * 1.5 + match.frames * 0.45) * 46, 190 + i * 38, -100);
       }
       c.stroke();
       c.strokeStyle = '#ffc44d'; c.lineWidth = 6; c.stroke();
-      c.restore();
-    }
-    else if (f.id === 'axl' && state === 'special' && phase >= 0.22) {
-      // Axl: SERPENT MIC-STAND SCREAM! Roaring Flaming Fire Dragon Waves
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.translate(lungeX * 0.5, lungeY);
-      c.strokeStyle = '#ff2e78'; c.lineWidth = 15; c.shadowColor = '#ff2e78'; c.shadowBlur = 38;
+    } else {
+      c.strokeStyle = '#6acfa0'; c.lineWidth = 13;
+      c.shadowColor = '#6acfa0'; c.shadowBlur = 38;
+      const r = 90 + Math.sin(phase * 14) * 38;
       c.beginPath();
-      for (let i = 0; i < 6; i++) {
-        c.moveTo(15, -100);
-        c.quadraticCurveTo(85 + i * 38, -145 + Math.sin(i * 1.5 + match.frames * 0.45) * 50, 195 + i * 42, -100);
-      }
+      c.arc(20, -110, r, 0, Math.PI * 2);
+      c.moveTo(20, -110 - r); c.lineTo(20, -110 + r);
+      c.moveTo(20, -110); c.lineTo(20 - r * 0.72, -110 + r * 0.72);
+      c.moveTo(20, -110); c.lineTo(20 + r * 0.72, -110 + r * 0.72);
       c.stroke();
-      c.strokeStyle = '#ffc44d'; c.lineWidth = 7; c.stroke();
-      c.restore();
     }
-    else if (f.id === 'lennon' && state === 'special' && phase >= 0.22) {
-      // Lennon: PEACE & LOVE PULSE! Expanding Emerald Peace Sign Barrier
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.translate(lungeX * 0.5, lungeY);
-      c.strokeStyle = '#6acfa0'; c.lineWidth = 14; c.shadowColor = '#6acfa0'; c.shadowBlur = 40;
-      c.beginPath();
-      const r = 95 + Math.sin(phase * 14) * 40;
-      c.arc(0, -110, r, 0, Math.PI * 2);
-      c.moveTo(0, -110 - r); c.lineTo(0, -110 + r);
-      c.moveTo(0, -110); c.lineTo(-r * 0.72, -110 + r * 0.72);
-      c.moveTo(0, -110); c.lineTo(r * 0.72, -110 + r * 0.72);
-      c.stroke();
-      c.restore();
-    }
+    c.restore();
+  }
 
-    // Step-by-Step Strike Trails & Kinetic Impact Shockwaves (Step 2 Active)
-    if ((state === 'punch' || state === 'special') && isStrike) {
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.82; c.strokeStyle = f.color; c.lineWidth = 9;
-      c.shadowColor = f.color; c.shadowBlur = 25;
-      for (let i = 0; i < 4; i++) {
-        c.beginPath(); c.moveTo(25 + lungeX * 0.5 - i * 14, -115 + i * 11); c.lineTo(95 + lungeX, -105 + i * 6); c.stroke();
-      }
-      c.restore();
-    }
+  /** Speed streaks trailing a committed strike. */
+  function drawStrikeTrail(c, player) {
+    const attack = player.attack;
+    if (!attack || attack.type === 'special') return;
+    const phase = 1 - player.attackTimer / attack.duration;
+    if (phase < 0.25 || phase > 0.7) return;
 
-    if (state === 'kick' && isStrike) {
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.85; c.strokeStyle = f.color; c.lineWidth = 10;
-      c.shadowColor = f.color; c.shadowBlur = 25;
+    const f = player.data;
+    c.save();
+    c.globalCompositeOperation = 'screen';
+    c.globalAlpha = 0.8;
+    c.translate(player.x, player.y);
+    c.scale(player.facing, 1);
+    c.strokeStyle = f.color;
+    c.shadowColor = f.color;
+    c.shadowBlur = 22;
+
+    if (attack.type === 'kick') {
+      c.lineWidth = 9;
       for (let i = 0; i < 5; i++) {
         c.beginPath();
-        c.moveTo(15 - i * 11, -55 + i * 13);
-        c.quadraticCurveTo(65 + lungeX * 0.6, -85 + i * 5, 118 + lungeX, -115 + i * 9);
+        c.moveTo(20 - i * 10, -60 + i * 12);
+        c.quadraticCurveTo(70, -80 + i * 5, 122, -96 + i * 8);
         c.stroke();
       }
-      c.restore();
+    } else {
+      c.lineWidth = 8;
+      for (let i = 0; i < 4; i++) {
+        c.beginPath();
+        c.moveTo(24 - i * 13, -118 + i * 10);
+        c.lineTo(96, -110 + i * 6);
+        c.stroke();
+      }
     }
-
     c.restore();
   }
 
