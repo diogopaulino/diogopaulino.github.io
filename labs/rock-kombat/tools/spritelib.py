@@ -81,28 +81,69 @@ def load_base(who, assets_dir):
     return im.resize((max(1, round(im.width * scale)), TARGET_HEIGHT), Image.LANCZOS), scale
 
 
+def _box_mask(w, h, box):
+    """Near-hard-edged mask for a normalised (x0,y0,x1,y1) box.
+
+    A 1px blur plus a smoothstep collapses what used to be an 8-10px feather
+    ramp down to about a pixel, so two overlapping parts read as one opaque
+    surface instead of both fading to 75% where they meet.
+    """
+    x0, y0, x1, y1 = box
+    bx0, by0 = int(w * x0), int(h * y0)
+    bx1, by1 = int(w * x1), int(h * y1)
+    m = np.zeros((h, w), dtype=np.float32)
+    m[by0:by1, bx0:bx1] = 1.0
+    soft = Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0))
+    soft = np.array(soft).astype(np.float32) / 255.0
+    return np.clip((soft - 0.35) / 0.30, 0.0, 1.0)
+
+
+def _disk_mask(w, h, cx, cy, radius):
+    yy, xx = np.mgrid[0:h, 0:w]
+    return (((xx - cx) ** 2 + (yy - cy) ** 2) <= radius ** 2).astype(np.float32)
+
+
 def cut_parts(who, base):
     """Slice the base pose into rig parts.
 
     Each part comes back as a full-canvas RGBA layer so later affine transforms
-    can be expressed in one shared coordinate space. Cut edges are feathered so
-    neighbouring parts blend instead of showing a seam.
+    can be expressed in one shared coordinate space. Parts are only allowed to
+    overlap their parent and direct children (sharing a joint) -- everyone else
+    is clipped out of the layer except in a small disc around *their own*
+    pivot, which is what stopped e.g. the torso from carrying a baked-in copy
+    of the forearm that then doubled up once the real forearm rotated away.
     """
     w, h = base.size
-    src_alpha = np.array(base)[..., 3]
+    src_alpha = np.array(base)[..., 3].astype(np.float32)
+    parts_spec = RIGS[who]['parts']
+    joint_radius = 0.07 * min(w, h)
+    box_masks = {name: _box_mask(w, h, spec['box']) for name, spec in parts_spec.items()}
     layers = {}
 
-    for name, spec in RIGS[who]['parts'].items():
-        x0, y0, x1, y1 = spec['box']
-        box_mask = np.zeros((h, w), dtype=np.float32)
-        bx0, by0 = int(w * x0), int(h * y0)
-        bx1, by1 = int(w * x1), int(h * y1)
-        box_mask[by0:by1, bx0:bx1] = 1.0
+    # A flat pose only has one pixel value per coordinate: wherever two parts'
+    # boxes overlap, that pixel is really whichever part paints on top in the
+    # final rig (its higher z). So for each part we clip out the footprint of
+    # every part drawn *after* it, keeping a small disc around the pivot only
+    # when the two are directly jointed (parent/child) -- that disc is the
+    # actual shared joint, everything else is the other part's content baked
+    # into a layer that will never legitimately show it.
+    for name, spec in parts_spec.items():
+        mask = box_masks[name].copy()
 
-        soft = Image.fromarray((box_mask * 255).astype(np.uint8)).filter(
-            ImageFilter.GaussianBlur(max(2.0, min(w, h) * 0.012))
-        )
-        combined = (np.array(soft).astype(np.float32) / 255.0) * src_alpha.astype(np.float32)
+        for other_name, other_spec in parts_spec.items():
+            if other_name == name or other_spec['z'] <= spec['z']:
+                continue
+            direct = other_spec['parent'] == name or spec['parent'] == other_name
+            exclude = box_masks[other_name]
+            if direct:
+                child_spec = other_spec if other_spec['parent'] == name else spec
+                px = child_spec['pivot'][0] * w
+                py = child_spec['pivot'][1] * h
+                disk = _disk_mask(w, h, px, py, joint_radius)
+                exclude = exclude * (1.0 - disk)
+            mask = np.clip(mask - exclude, 0.0, 1.0)
+
+        combined = mask * src_alpha
 
         layer = np.array(base).copy()
         layer[..., 3] = np.clip(combined, 0, 255).astype(np.uint8)

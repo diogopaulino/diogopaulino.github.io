@@ -1,6 +1,10 @@
 (() => {
   'use strict';
 
+  // Matches the "60" the HUD starts with in index.html -- keep both in sync.
+  const ROUND_TIME = 60;
+  const STAGE_NAMES = { woodstock: "WOODSTOCK '69 STAGE", stadium: "STADIUM ARENA '94", club: "UNDERGROUND TUBE CLUB" };
+
   // --- THE 3 OFFICIAL ROCK LEGENDS (KURT, AXL, LENNON) ---
   const fighters = [
     {
@@ -46,9 +50,19 @@
   let pick1 = null;
   let pick2 = null;
   let currentStage = 'woodstock'; // 'woodstock', 'stadium', or 'club' -- keep in sync with the .stage-btn.is-active default in index.html
+
+  // Every dial the CPU's difficulty turns: how long it waits before reacting
+  // to an incoming attack (in frames -- this delay is what actually reads as
+  // "skill" rather than raw stat inflation), how often it blocks/attacks/
+  // specials/retreats, and how hard its hits land vs. how hard it takes them.
+  const DIFFICULTY = {
+    easy: { reactionDelay: [22, 36], blockChance: 0.32, aggression: 0.30, specialChance: 0.45, retreatChance: 0.30, jumpChance: 0.03, cpuDamageMult: 0.55, playerDamageMult: 1.15 },
+    normal: { reactionDelay: [14, 28], blockChance: 0.55, aggression: 0.55, specialChance: 0.65, retreatChance: 0.22, jumpChance: 0.04, cpuDamageMult: 0.75, playerDamageMult: 1.0 },
+    hard: { reactionDelay: [5, 14], blockChance: 0.80, aggression: 0.85, specialChance: 0.85, retreatChance: 0.15, jumpChance: 0.06, cpuDamageMult: 1.0, playerDamageMult: 0.9 },
+  };
+  let difficulty = ['easy', 'normal', 'hard'].includes(localStorage.getItem('rk-difficulty')) ? localStorage.getItem('rk-difficulty') : 'normal';
+
   let muted = false;
-  let audio = null;
-  let distortionCurve = null;
   let match = null;
   let raf = 0;
   let lastFrameTime = 0;
@@ -90,6 +104,17 @@
   let rigs = null;
   let rigClips = null;
   let rigError = null;
+
+  // Real concert photos (blurred, colour-graded, darkened -- see
+  // tools/build-stages.py) sit behind the procedural floor/props/crowd
+  // layers. Each stage falls back to the old flat gradient if its photo
+  // fails to load, so a missing asset never breaks the backdrop.
+  const stagePhotos = {};
+  ['stadium', 'club', 'woodstock'].forEach(name => {
+    const img = new Image();
+    img.src = `assets/stage-${name}.webp`;
+    img.onload = () => { stagePhotos[name] = img; stageCache.dirty = true; };
+  });
 
   const rigReady = RockKombatRig.load('assets/atlas.json', 'assets/')
     .then(loaded => {
@@ -355,145 +380,9 @@
     }
   }
 
-  // --- WEB AUDIO SYNTHESIZER ---
-  function makeDistortionCurve(amount = 50) {
-    const k = amount;
-    const n_samples = 44100;
-    const curve = new Float32Array(n_samples);
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i) {
-      const x = (i * 2) / n_samples - 1;
-      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-  }
-
-  function initAudio() {
-    if (muted) return;
-    if (!audio) {
-      audio = new (window.AudioContext || window.webkitAudioContext)();
-      distortionCurve = makeDistortionCurve(75);
-    }
-    if (audio.state === 'suspended') audio.resume();
-  }
-
-  function playPowerChord(rootFreq, duration = 0.5, type = 'heavy') {
-    if (muted) return;
-    initAudio();
-    const now = audio.currentTime;
-    const freqs = [rootFreq, rootFreq * 1.498, rootFreq * 2.0];
-
-    // Each chord gets its own distortion stage. Sharing one waveshaper meant
-    // every chord re-wired it into a new filter chain without ever
-    // disconnecting the last, so connections piled up for the whole session.
-    const shaper = audio.createWaveShaper();
-    shaper.curve = distortionCurve;
-    shaper.oversample = '4x';
-
-    const cabinetFilter = audio.createBiquadFilter();
-    cabinetFilter.type = 'lowpass';
-    cabinetFilter.frequency.value = type === 'special' ? 3600 : 2300;
-
-    const masterGain = audio.createGain();
-    masterGain.gain.setValueAtTime(0.15, now);
-    masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-    shaper.connect(cabinetFilter);
-    cabinetFilter.connect(masterGain);
-    masterGain.connect(audio.destination);
-
-    const oscillators = freqs.map((freq, idx) => {
-      const osc = audio.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq * (idx === 0 ? 1 : 1.002), now);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.98, now + duration);
-      osc.connect(shaper);
-      osc.start(now);
-      osc.stop(now + duration + 0.05);
-      return osc;
-    });
-
-    // Tear the whole chain down once the tail has rung out.
-    oscillators[oscillators.length - 1].onended = () => {
-      masterGain.disconnect();
-      cabinetFilter.disconnect();
-      shaper.disconnect();
-    };
-  }
-
-  function sound(type, pitch = 1) {
-    if (muted) return;
-    initAudio();
-    const now = audio.currentTime;
-
-    if (type === 'special') {
-      playPowerChord(146.83 * pitch, 0.9, 'special');
-      return;
-    }
-
-    if (type === 'hit') {
-      const osc = audio.createOscillator();
-      const gain = audio.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(135 * pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(25, now + 0.18);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.connect(gain).connect(audio.destination);
-      osc.start(now); osc.stop(now + 0.22);
-
-      playPowerChord(98.0 * pitch, 0.28, 'heavy');
-      return;
-    }
-
-    if (type === 'block') {
-      const osc = audio.createOscillator();
-      const gain = audio.createGain();
-      const filter = audio.createBiquadFilter();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(350 * pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
-      filter.type = 'bandpass';
-      filter.frequency.value = 1500;
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-      osc.connect(filter).connect(gain).connect(audio.destination);
-      osc.start(now); osc.stop(now + 0.15);
-      return;
-    }
-
-    if (type === 'crowd') {
-      const bufferSize = audio.sampleRate * 0.6;
-      const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
-      const output = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
-      const whiteNoise = audio.createBufferSource();
-      whiteNoise.buffer = buffer;
-      const filter = audio.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(850, now);
-      filter.frequency.exponentialRampToValueAtTime(1700, now + 0.3);
-      filter.Q.value = 3;
-      const gain = audio.createGain();
-      gain.gain.setValueAtTime(0.09, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      whiteNoise.connect(filter).connect(gain).connect(audio.destination);
-      whiteNoise.start(now);
-      return;
-    }
-
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(270 * pitch, now);
-    osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-    osc.connect(gain).connect(audio.destination);
-    osc.start(now); osc.stop(now + 0.15);
-  }
+  // --- AUDIO -- delegates to the FM synth engine in audio.js ---
+  function initAudio() { if (!muted) RockKombatAudio.init(); }
+  function sound(type, pitch = 1) { if (!muted) RockKombatAudio.sfx(type, pitch); }
 
   function stat(label, value) {
     return `<div class="stats"><b>${label}</b><span class="stat-dots">${[1,2,3,4,5].map(i => `<i class="${i <= value ? 'on' : ''}"></i>`).join('')}</span></div>`;
@@ -534,13 +423,34 @@
     $('#start-fight').disabled = !(pick1 && pick2);
   }
 
-  // Stage Switcher Listener
-  document.querySelectorAll('.stage-btn').forEach(btn => {
+  // Stage Switcher Listener -- scoped to each button's own group since the
+  // stage and difficulty pickers share the `.stage-btn` class/styling but
+  // must stay independently exclusive.
+  document.querySelectorAll('[data-stage]').forEach(btn => {
     btn.addEventListener('click', () => {
       currentStage = btn.dataset.stage;
-      document.querySelectorAll('.stage-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+      localStorage.setItem('rk-stage', currentStage);
+      document.querySelectorAll('[data-stage]').forEach(b => b.classList.toggle('is-active', b === btn));
     });
   });
+
+  document.querySelectorAll('[data-difficulty]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficulty = btn.dataset.difficulty;
+      localStorage.setItem('rk-difficulty', difficulty);
+      document.querySelectorAll('[data-difficulty]').forEach(b => b.classList.toggle('is-active', b === btn));
+    });
+  });
+
+  // Restore persisted stage/difficulty picks on load.
+  {
+    const savedStage = localStorage.getItem('rk-stage');
+    if (savedStage && document.querySelector(`[data-stage="${savedStage}"]`)) {
+      currentStage = savedStage;
+      document.querySelectorAll('[data-stage]').forEach(b => b.classList.toggle('is-active', b.dataset.stage === savedStage));
+    }
+    document.querySelectorAll('[data-difficulty]').forEach(b => b.classList.toggle('is-active', b.dataset.difficulty === difficulty));
+  }
 
   // --- PLAYER ENTITY CLASS ---
   class Player {
@@ -550,6 +460,7 @@
       this.health = 100; this.meter = 20; this.width = 75; this.height = 160;
       this.grounded = true; this.attack = null; this.attackTimer = 0; this.cooldown = 0;
       this.hitFlash = 0; this.stun = 0; this.blocking = false; this.aiTimer = 0;
+      this.aiReactingTo = null; this.aiReactionTimer = 0;
       this.afterimages = []; this.combo = 0; this.comboTimer = 0; this.animFrame = 0;
       this.landSquash = 0; this.bufferedAttack = null;
       this.anim = rigClips ? new RockKombatRig.Animator(rigClips) : null;
@@ -591,31 +502,61 @@
         };
       }
 
+      const tune = DIFFICULTY[difficulty];
       this.aiTimer--;
       const distance = Math.abs(other.x - this.x);
       const input = { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false };
 
-      // A tougher defense stat reads the incoming swing better; a faster
-      // fighter recovers and re-engages sooner. Both stats were previously
-      // decorative -- this is what makes the roster actually fight differently.
-      const blockChance = clamp(0.72 + (this.data.defense - 3) * 0.06, 0.45, 0.92);
+      // DEFEND: an incoming attack only gets blocked after `reactionDelay`
+      // frames of "seeing" it -- that delay (short on hard, long on easy) is
+      // what makes higher difficulties feel sharper without just hitting
+      // harder. `aiReactingTo` tracks the attack instance so a new swing
+      // resets the clock instead of block reacting instantly to everything.
+      // A tougher defense stat nudges the difficulty's own block chance up;
+      // a faster fighter recovers and re-engages sooner (cadenceFactor,
+      // used below). Both stats were previously decorative.
+      const blockChance = clamp(tune.blockChance + (this.data.defense - 3) * 0.05, 0.15, 0.95);
       const cadenceFactor = clamp(1 - (this.data.speed - 3) * 0.08, 0.65, 1.25);
 
-      if (other.attack && distance < 145 && Math.random() < blockChance) {
-        input.block = true;
-      }
-      if (distance > 115) {
-        input[other.x < this.x ? 'left' : 'right'] = true;
-      } else if (distance < 65 && Math.random() < 0.25) {
-        input[other.x < this.x ? 'right' : 'left'] = true;
+      if (other.attack && distance < 150) {
+        if (this.aiReactingTo !== other.attack) {
+          this.aiReactingTo = other.attack;
+          this.aiReactionTimer = Math.round(rand(tune.reactionDelay[0], tune.reactionDelay[1]));
+        }
+        if (this.aiReactionTimer > 0) this.aiReactionTimer--;
+        if (this.aiReactionTimer <= 0 && Math.random() < blockChance) input.block = true;
+      } else {
+        this.aiReactingTo = null;
       }
 
-      if (distance < 145 && this.cooldown <= 0 && this.aiTimer <= 0) {
-        if (this.meter >= 100 && Math.random() < 0.78) {
+      // RETREAT: low on health and in range, sometimes back off to buy
+      // space instead of always trading blows.
+      const retreating = this.health < 30 && distance < 110 && Math.random() < tune.retreatChance;
+
+      if (retreating) {
+        input[other.x < this.x ? 'right' : 'left'] = true;
+      } else if (distance > 115) {
+        input[other.x < this.x ? 'left' : 'right'] = true; // APPROACH
+      } else if (distance < 65 && Math.random() < 0.25) {
+        input[other.x < this.x ? 'right' : 'left'] = true; // give a hair of spacing back
+      }
+
+      // PUNISH: the opponent just whiffed (attack lingering past its active
+      // window with nothing landed) -- jump straight into an attack instead
+      // of waiting out the normal timer, scaled by aggression.
+      const punishWhiff = other.attack && !other.attack.hit && other.attackTimer < other.attack.activeAt - 4
+        && distance < 145 && Math.random() < tune.aggression;
+
+      // Power favors the harder-hitting kick; speed favors the quicker jab.
+      const kickBias = clamp(0.38 + (this.data.power - this.data.speed) * 0.06, 0.2, 0.6);
+
+      if (distance < 145 && this.cooldown <= 0 && (punishWhiff || this.aiTimer <= 0)) {
+        if (this.meter >= 100 && Math.random() < tune.specialChance) {
           input.special = true;
+        } else if (Math.random() < tune.aggression || punishWhiff) {
+          // PRESSURE
+          input[Math.random() < kickBias ? 'kick' : 'punch'] = true;
         } else {
-          // Power favors the harder-hitting kick; speed favors the quicker jab.
-          const kickBias = clamp(0.38 + (this.data.power - this.data.speed) * 0.06, 0.2, 0.6);
           const randAttack = Math.random();
           if (randAttack < 1 - kickBias - 0.12) input.punch = true;
           else if (randAttack < 1 - 0.12) input.kick = true;
@@ -623,7 +564,7 @@
         }
         this.aiTimer = rand(12, 34) * cadenceFactor;
       }
-      if (distance > 210 && Math.random() < 0.04) input.jump = true;
+      if (distance > 210 && Math.random() < tune.jumpChance) input.jump = true;
       return input;
     }
 
@@ -728,8 +669,12 @@
       if (inFront && distance < reach && vertical) {
         this.attack.hit = true;
         let damage = this.attack.damage;
-        if (this.cpu) damage *= 0.65;
-        else if (other.cpu) damage *= 1.15;
+        // Difficulty lives here and in the CPU's reaction speed/aggression,
+        // not as a silent always-on handicap -- easy hits softer and takes
+        // more, hard is closer to an even fight.
+        const tune = DIFFICULTY[difficulty];
+        if (this.cpu) damage *= tune.cpuDamageMult;
+        else if (other.cpu) damage *= tune.playerDamageMult;
         // Defense was purely cosmetic before -- now a tankier fighter (Lennon)
         // actually shrugs off more damage than a glass cannon (Axl).
         damage *= clamp(1 - (other.data.defense - 3) * 0.055, 0.78, 1.22);
@@ -772,7 +717,17 @@
     // The skeletons have to be in memory before the first frame is composed.
     if (!rigs && !rigError) {
       $('#start-fight').disabled = true;
-      rigReady.then(() => { $('#start-fight').disabled = false; startMatch(); });
+      rigReady.then(() => startMatch());
+      return;
+    }
+    if (rigError || !rigs) {
+      // Fighting with no rig loaded means an invisible match -- refuse to
+      // start and tell the player instead, rather than silently running it.
+      const btn = $('#start-fight');
+      btn.disabled = true;
+      btn.textContent = 'ERRO AO CARREGAR SPRITES';
+      const coach = $('#coach-text');
+      if (coach) coach.textContent = 'Não foi possível carregar os lutadores. Recarregue a página.';
       return;
     }
     initAudio();
@@ -780,27 +735,88 @@
     const s1 = pick1;
     const s2 = pick2;
     match = {
+      s1, s2,
       p1: new Player(s1, 320, 1, false),
       p2: new Player(s2, 640, -1, true),
-      timer: 75, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
+      timer: ROUND_TIME, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
       camX: 480, camZoom: 1,
+      round: 1, wins: { p1: 0, p2: 0 }, roundOver: false,
     };
     $('#p1-name').textContent = s1.short; $('#p2-name').textContent = s2.short;
     $('#timer').textContent = match.timer;
     $('#opponent-label').textContent = match.p2.cpu ? 'CPU' : 'P2';
-
-    const stageNames = { woodstock: "WOODSTOCK '69 STAGE", stadium: "STADIUM ARENA '94", club: "UNDERGROUND TUBE CLUB" };
-    $('#round-label').textContent = stageNames[currentStage] || "WORLD TOUR STAGE";
+    $('#round-label').textContent = `ROUND ${match.round}`;
+    updateRoundPips();
 
     $('#coach-text').textContent = window.matchMedia('(max-width: 720px)').matches
       ? 'Use as setas ← e → para chegar perto do rival.'
       : 'Use A/D ou Setas. Q é Soco, E é Chute, R é Golpe Especial!';
 
-    announce('ROUND 1', 800);
+    announce(STAGE_NAMES[currentStage] || 'WORLD TOUR STAGE', 900);
     sound('crowd');
+    if (!muted) RockKombatAudio.music.play(currentStage);
     cancelAnimationFrame(raf);
     lastFrameTime = 0; accumulator = 0;
     raf = requestAnimationFrame(loop);
+  }
+
+  function updateRoundPips() {
+    if (!match) return;
+    const fill = (id, wins) => {
+      const pips = $(id).children;
+      for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('won', i < wins);
+    };
+    fill('#p1-pips', match.wins.p1);
+    fill('#p2-pips', match.wins.p2);
+  }
+
+  /** Wipes health/position/effects for a fresh round while keeping the
+   *  overall match score (wins) and picks intact. */
+  function resetRoundState() {
+    match.p1 = new Player(match.s1, 320, 1, false);
+    match.p2 = new Player(match.s2, 640, -1, true);
+    match.timer = ROUND_TIME;
+    match.particles = []; match.impacts = [];
+    match.shake = 0; match.flash = 0; match.hitStop = 0; match.zoomPulse = 0;
+    match.camX = 480; match.camZoom = 1;
+    match.state = 'intro'; match.intro = 90;
+  }
+
+  /** A round ended (KO or time-out) -- score it, then either start the next
+   *  round or, once someone has 2 round wins, finish the match. */
+  function endRound() {
+    if (match.roundOver || match.ended) return;
+    match.roundOver = true;
+    // Freeze the render loop during the round-break pause rather than
+    // letting it keep ticking no-op frames -- endRound's own setTimeout
+    // restarts it, and without this a second rAF chain would stack on top
+    // of the one that's still (harmlessly, but wastefully) running.
+    cancelAnimationFrame(raf);
+    RockKombatAudio.music.stop();
+
+    const isDraw = match.p1.health === match.p2.health;
+    const winner = isDraw ? null : (match.p1.health > match.p2.health ? match.p1 : match.p2);
+    if (winner === match.p1) match.wins.p1++;
+    else if (winner === match.p2) match.wins.p2++;
+    updateRoundPips();
+
+    sound('special', 0.5);
+    sound('crowd');
+    announce(isDraw ? 'EMPATE NO ROUND!' : `${winner.data.short} VENCE O ROUND!`, 1200);
+
+    const matchOver = match.wins.p1 >= 2 || match.wins.p2 >= 2;
+    setTimeout(() => {
+      if (matchOver) { finishMatch(); return; }
+      match.round++;
+      resetRoundState();
+      $('#round-label').textContent = `ROUND ${match.round}`;
+      $('#timer').textContent = match.timer;
+      announce(`ROUND ${match.round}... FIGHT!`, 800);
+      if (!muted) RockKombatAudio.music.play(currentStage);
+      match.roundOver = false;
+      lastFrameTime = 0; accumulator = 0;
+      raf = requestAnimationFrame(loop);
+    }, 1500);
   }
 
   function burst(x, y, color, count, type = 'normal', id = null) {
@@ -828,7 +844,7 @@
   }
 
   function update() {
-    if (!match || match.paused || match.ended) return;
+    if (!match || match.paused || match.ended || match.roundOver) return;
     if (match.hitStop > 0) { match.hitStop--; return; }
 
     match.frames++;
@@ -837,13 +853,13 @@
       // Keep both fighters breathing while the announcer runs.
       match.p1.updateAnimation();
       match.p2.updateAnimation();
-      if (match.intro === 72) announce('FIGHT!', 800);
+      if (match.intro === 72) announce(`ROUND ${match.round}... FIGHT!`, 800);
       if (match.intro <= 35) match.state = 'fight';
     } else {
       match.p1.update(match.p2);
       match.p2.update(match.p1);
       if (match.frames % 60 === 0) match.timer--;
-      if (match.p1.health <= 0 || match.p2.health <= 0 || match.timer <= 0) endMatch();
+      if (match.p1.health <= 0 || match.p2.health <= 0 || match.timer <= 0) endRound();
     }
 
     match.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; p.life--; });
@@ -920,9 +936,14 @@
   function draw() {
     if (!match) return;
 
-    resizeCanvas();
     const canvasW = gameCanvas.width;
     const canvasH = gameCanvas.height;
+
+    // Camera shake + pan can expose slivers of whatever was drawn last frame
+    // around the letterboxed edges; the stage layer is opaque everywhere
+    // else, so this only has to cover the margin, but it's cheap either way.
+    ctx.fillStyle = '#09050d';
+    ctx.fillRect(0, 0, canvasW, canvasH);
 
     ctx.save();
     ctx.scale(canvasW / 960, canvasH / 540);
@@ -1021,91 +1042,105 @@
     return stageCache.canvas;
   }
 
+  /** Draws the backing photo for `stage`, scaled to fill the stage canvas.
+   *  Returns true if a photo was drawn, false if the caller should fall back
+   *  to its procedural gradient. */
+  function drawStagePhoto(c, stage) {
+    const img = stagePhotos[stage];
+    if (!img) return false;
+    c.drawImage(img, STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+    return true;
+  }
+
   function drawStageStatic(c) {
     if (currentStage === 'woodstock') {
-      // Dusk sky over the festival field: deep violet night bleeding into a
-      // warm, low sunset band on the horizon.
-      const bg = c.createLinearGradient(0, -50, 0, 460);
-      bg.addColorStop(0, '#120a2c');
-      bg.addColorStop(0.3, '#3a1442');
-      bg.addColorStop(0.56, '#8a2b46');
-      bg.addColorStop(0.78, '#e15a3a');
-      bg.addColorStop(1, '#ffb14d');
-      c.fillStyle = bg;
-      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, 510);
+      if (!drawStagePhoto(c, 'woodstock')) {
+        // Dusk sky over the festival field: deep violet night bleeding into a
+        // warm, low sunset band on the horizon.
+        const bg = c.createLinearGradient(0, -50, 0, 460);
+        bg.addColorStop(0, '#120a2c');
+        bg.addColorStop(0.3, '#3a1442');
+        bg.addColorStop(0.56, '#8a2b46');
+        bg.addColorStop(0.78, '#e15a3a');
+        bg.addColorStop(1, '#ffb14d');
+        c.fillStyle = bg;
+        c.fillRect(STAGE_X, STAGE_Y, STAGE_W, 510);
 
-      c.fillStyle = 'rgba(255,255,255,0.55)';
-      [[40, 10], [130, 40], [260, 5], [610, 15], [760, 45], [900, 10], [980, 30]].forEach(([sx, sy]) => {
-        c.beginPath(); c.arc(sx, sy, 1.4, 0, Math.PI * 2); c.fill();
-      });
+        c.fillStyle = 'rgba(255,255,255,0.55)';
+        [[40, 10], [130, 40], [260, 5], [610, 15], [760, 45], [900, 10], [980, 30]].forEach(([sx, sy]) => {
+          c.beginPath(); c.arc(sx, sy, 1.4, 0, Math.PI * 2); c.fill();
+        });
 
-      // Low setting sun with soft rays, backlighting the stage rig.
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      c.strokeStyle = 'rgba(255, 214, 140, 0.1)';
-      c.lineWidth = 10;
-      for (let r = 0; r < 14; r++) {
-        const ang = (r / 14) * Math.PI * 2;
+        // Low setting sun with soft rays, backlighting the stage rig.
+        c.save();
+        c.globalCompositeOperation = 'screen';
+        c.strokeStyle = 'rgba(255, 214, 140, 0.1)';
+        c.lineWidth = 10;
+        for (let r = 0; r < 14; r++) {
+          const ang = (r / 14) * Math.PI * 2;
+          c.beginPath();
+          c.moveTo(480, 340);
+          c.lineTo(480 + Math.cos(ang) * 260, 340 + Math.sin(ang) * 260);
+          c.stroke();
+        }
+        c.restore();
+        const sunG = c.createRadialGradient(480, 340, 15, 480, 340, 210);
+        sunG.addColorStop(0, '#fff6d8');
+        sunG.addColorStop(0.3, '#ffcf6b');
+        sunG.addColorStop(0.65, 'rgba(240, 100, 55, 0.4)');
+        sunG.addColorStop(1, 'transparent');
+        c.fillStyle = sunG;
+        c.beginPath(); c.arc(480, 340, 210, 0, Math.PI * 2); c.fill();
+
+        // Rolling hills, layered for depth.
+        c.fillStyle = '#4a2a52';
         c.beginPath();
-        c.moveTo(480, 340);
-        c.lineTo(480 + Math.cos(ang) * 260, 340 + Math.sin(ang) * 260);
+        c.moveTo(-100, 400); c.lineTo(-100, 340);
+        c.bezierCurveTo(80, 300, 260, 350, 480, 330);
+        c.bezierCurveTo(700, 310, 860, 345, 1060, 320);
+        c.lineTo(1060, 400); c.closePath(); c.fill();
+
+        c.fillStyle = '#2a1530';
+        c.beginPath();
+        c.moveTo(-100, 420); c.lineTo(-100, 368);
+        c.bezierCurveTo(100, 338, 250, 385, 450, 370);
+        c.bezierCurveTo(680, 350, 820, 385, 1060, 360);
+        c.lineTo(1060, 420); c.closePath(); c.fill();
+
+        // A broad sunset glow behind the hillside so the crowd silhouette in
+        // front of it actually reads as backlit shapes rather than melting
+        // into the hill color.
+        c.save();
+        c.globalCompositeOperation = 'screen';
+        const crowdGlow = c.createRadialGradient(480, 380, 20, 480, 380, 420);
+        crowdGlow.addColorStop(0, 'rgba(255, 190, 120, 0.4)');
+        crowdGlow.addColorStop(0.55, 'rgba(220, 110, 70, 0.16)');
+        crowdGlow.addColorStop(1, 'transparent');
+        c.fillStyle = crowdGlow;
+        c.fillRect(-200, 300, 1360, 170);
+        c.restore();
+
+        // Packed hillside crowd, painted once (see initRealisticStageSprites).
+        if (stageSprites.woodstockCrowd) c.drawImage(stageSprites.woodstockCrowd, -100, 320);
+
+        // Sagging string lights strung between the two rig towers.
+        c.strokeStyle = 'rgba(255, 210, 140, 0.5)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(60, 60);
+        c.quadraticCurveTo(480, 130, 900, 60);
         c.stroke();
-      }
-      c.restore();
-      const sunG = c.createRadialGradient(480, 340, 15, 480, 340, 210);
-      sunG.addColorStop(0, '#fff6d8');
-      sunG.addColorStop(0.3, '#ffcf6b');
-      sunG.addColorStop(0.65, 'rgba(240, 100, 55, 0.4)');
-      sunG.addColorStop(1, 'transparent');
-      c.fillStyle = sunG;
-      c.beginPath(); c.arc(480, 340, 210, 0, Math.PI * 2); c.fill();
-
-      // Rolling hills, layered for depth.
-      c.fillStyle = '#4a2a52';
-      c.beginPath();
-      c.moveTo(-100, 400); c.lineTo(-100, 340);
-      c.bezierCurveTo(80, 300, 260, 350, 480, 330);
-      c.bezierCurveTo(700, 310, 860, 345, 1060, 320);
-      c.lineTo(1060, 400); c.closePath(); c.fill();
-
-      c.fillStyle = '#2a1530';
-      c.beginPath();
-      c.moveTo(-100, 420); c.lineTo(-100, 368);
-      c.bezierCurveTo(100, 338, 250, 385, 450, 370);
-      c.bezierCurveTo(680, 350, 820, 385, 1060, 360);
-      c.lineTo(1060, 420); c.closePath(); c.fill();
-
-      // A broad sunset glow behind the hillside so the crowd silhouette in
-      // front of it actually reads as backlit shapes rather than melting
-      // into the hill color.
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      const crowdGlow = c.createRadialGradient(480, 380, 20, 480, 380, 420);
-      crowdGlow.addColorStop(0, 'rgba(255, 190, 120, 0.4)');
-      crowdGlow.addColorStop(0.55, 'rgba(220, 110, 70, 0.16)');
-      crowdGlow.addColorStop(1, 'transparent');
-      c.fillStyle = crowdGlow;
-      c.fillRect(-200, 300, 1360, 170);
-      c.restore();
-
-      // Packed hillside crowd, painted once (see initRealisticStageSprites).
-      if (stageSprites.woodstockCrowd) c.drawImage(stageSprites.woodstockCrowd, -100, 320);
-
-      // Sagging string lights strung between the two rig towers.
-      c.strokeStyle = 'rgba(255, 210, 140, 0.5)';
-      c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(60, 60);
-      c.quadraticCurveTo(480, 130, 900, 60);
-      c.stroke();
-      const bulbColors = ['#ffd97a', '#ff8f6b', '#8fe3c0'];
-      for (let x = 60, i = 0; x <= 900; x += 42, i++) {
-        const t = (x - 60) / 840;
-        const y = 60 + Math.sin(t * Math.PI) * 70;
-        c.fillStyle = bulbColors[i % 3];
-        c.beginPath(); c.arc(x, y, 2.6, 0, Math.PI * 2); c.fill();
+        const bulbColors = ['#ffd97a', '#ff8f6b', '#8fe3c0'];
+        for (let x = 60, i = 0; x <= 900; x += 42, i++) {
+          const t = (x - 60) / 840;
+          const y = 60 + Math.sin(t * Math.PI) * 70;
+          c.fillStyle = bulbColors[i % 3];
+          c.beginPath(); c.arc(x, y, 2.6, 0, Math.PI * 2); c.fill();
+        }
       }
 
+      // Props stay on top either way -- real photo or procedural fallback --
+      // for stage identity.
       if (stageSprites.woodstockDrumKit) c.drawImage(stageSprites.woodstockDrumKit, 340, 235);
       if (stageSprites.marshallStack) {
         c.drawImage(stageSprites.marshallStack, 170, 195);
@@ -1113,6 +1148,7 @@
       }
       if (stageSprites.woodstockRigLeft) c.drawImage(stageSprites.woodstockRigLeft, -30, 20);
       if (stageSprites.woodstockRigRight) c.drawImage(stageSprites.woodstockRigRight, 770, 20);
+
 
       // Rough-plank wooden stage floor.
       const floorG = c.createLinearGradient(0, 420, 0, 540);
@@ -1152,12 +1188,14 @@
     }
 
     if (currentStage === 'club') {
-      const bg = c.createLinearGradient(0, -50, 0, 540);
-      bg.addColorStop(0, '#0d0408');
-      bg.addColorStop(0.5, '#240813');
-      bg.addColorStop(1, '#080205');
-      c.fillStyle = bg;
-      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+      if (!drawStagePhoto(c, 'club')) {
+        const bg = c.createLinearGradient(0, -50, 0, 540);
+        bg.addColorStop(0, '#0d0408');
+        bg.addColorStop(0.5, '#240813');
+        bg.addColorStop(1, '#080205');
+        c.fillStyle = bg;
+        c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+      }
 
       c.strokeStyle = 'rgba(75, 25, 35, 0.4)';
       c.lineWidth = 2;
@@ -1203,12 +1241,14 @@
     }
 
     // Stadium
-    const bg = c.createLinearGradient(0, -50, 0, 540);
-    bg.addColorStop(0, '#06040d');
-    bg.addColorStop(0.45, '#1b0826');
-    bg.addColorStop(0.8, '#0b0612');
-    c.fillStyle = bg;
-    c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+    if (!drawStagePhoto(c, 'stadium')) {
+      const bg = c.createLinearGradient(0, -50, 0, 540);
+      bg.addColorStop(0, '#06040d');
+      bg.addColorStop(0.45, '#1b0826');
+      bg.addColorStop(0.8, '#0b0612');
+      c.fillStyle = bg;
+      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+    }
 
     c.strokeStyle = '#271b33';
     c.lineWidth = 4;
@@ -1253,6 +1293,25 @@
     c.shadowBlur = 0;
   }
 
+  // A single pink-to-cyan gradient bar, pre-rendered once. Stretching it to
+  // each EQ bar's own height with drawImage reproduces the same top-to-
+  // bottom gradient a fresh createLinearGradient would, without paying for
+  // ~38 gradient allocations every frame.
+  let eqBarSprite = null;
+  function getEqBarSprite() {
+    if (eqBarSprite) return eqBarSprite;
+    eqBarSprite = document.createElement('canvas');
+    eqBarSprite.width = 1;
+    eqBarSprite.height = 200;
+    const g = eqBarSprite.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, '#ff2e78');
+    grad.addColorStop(1, '#23d7ef');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 1, 200);
+    return eqBarSprite;
+  }
+
   /** Crowd, lights, fog and EQ bars -- the parts that actually animate. */
   function drawStage(c, frame) {
     c.drawImage(stageLayer(), STAGE_X, STAGE_Y);
@@ -1260,13 +1319,10 @@
     if (currentStage === 'stadium') {
       c.save();
       c.globalAlpha = 0.18;
+      const sprite = getEqBarSprite();
       for (let x = -50; x < 1010; x += 28) {
         const eqHeight = 80 + Math.sin(x * 0.05 + frame * 0.1) * 60 + Math.cos(x * 0.1) * 30;
-        const ledG = c.createLinearGradient(0, 200 - eqHeight, 0, 200);
-        ledG.addColorStop(0, '#ff2e78');
-        ledG.addColorStop(1, '#23d7ef');
-        c.fillStyle = ledG;
-        c.fillRect(x, 220 - eqHeight, 22, eqHeight);
+        c.drawImage(sprite, 0, 0, 1, 200, x, 220 - eqHeight, 22, eqHeight);
       }
       c.restore();
     }
@@ -1302,15 +1358,14 @@
       crowdLights.forEach(light => {
         light.phase += light.speed;
         const alpha = (woodstock ? 0.35 : 0.4) + Math.sin(light.phase) * (woodstock ? 0.35 : 0.4);
+        const color = woodstock ? '#ffcc54' : light.color;
+        const ly = light.y + Math.sin(light.phase * 0.5) * (woodstock ? 5 : 4) - (woodstock ? 8 : 0);
+        const r = light.size * (woodstock ? 1.3 : 1);
         c.save();
+        c.fillStyle = color;
         c.globalAlpha = alpha;
-        c.fillStyle = woodstock ? '#ffcc54' : light.color;
-        c.shadowColor = woodstock ? '#ffb324' : light.color;
-        c.shadowBlur = woodstock ? 10 : 8;
-        c.beginPath();
-        c.arc(light.x, light.y + Math.sin(light.phase * 0.5) * (woodstock ? 5 : 4) - (woodstock ? 8 : 0),
-          light.size * (woodstock ? 1.3 : 1), 0, Math.PI * 2);
-        c.fill();
+        c.beginPath(); c.arc(light.x, ly, r, 0, Math.PI * 2); c.fill();
+        drawGlow(c, light.x, ly, r * (woodstock ? 3.2 : 2.6), color, alpha);
         c.restore();
       });
     }
@@ -1388,7 +1443,10 @@
 
     const scale = FIGHTER_HEIGHT / rig.baseH;
     c.save();
-    c.globalAlpha = alpha;
+    // Multiply into the caller's alpha (e.g. the 0.2 the floor reflection
+    // sets) instead of stomping it -- otherwise the reflection renders as a
+    // fully opaque inverted clone instead of a faint ghost.
+    c.globalAlpha = c.globalAlpha * alpha;
     c.translate(x, ground);
     c.scale(player.facing * scale, scale);
 
@@ -1398,12 +1456,18 @@
       c.scale(1 + squash, 1 - squash);
     }
 
+    c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
+
     if (flash) {
-      c.shadowColor = '#ffffff';
-      c.shadowBlur = 30 / scale;
+      // A hit-flash used to blur-glow the whole ~550x600 buffer every frame
+      // it was active -- shadowBlur re-runs a full blur pass on an image
+      // that size. Compositing the same buffer again with 'lighter' plus a
+      // white tint reads as the same white-hot flash without the blur cost.
+      c.globalCompositeOperation = 'lighter';
+      c.globalAlpha = Math.min(1, c.globalAlpha + flash * 0.12);
+      c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
     }
 
-    c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
     c.restore();
   }
 
@@ -1511,6 +1575,41 @@
     setTimeout(() => el.classList.remove('show'), duration);
   }
 
+  // Pre-rendered radial-gradient glow dots, one per colour actually used.
+  // `shadowBlur` re-runs a blur pass on the whole canvas for every glowing
+  // shape it touches; with 40 crowd lights and a few dozen particles alive
+  // during a special, that adds up to a lot of full-canvas blurs a frame.
+  // Blitting a cached sprite with `globalCompositeOperation: 'lighter'`
+  // reads the same (a soft additive glow) for a fraction of the cost.
+  const glowSpriteCache = {};
+  function glowSprite(color) {
+    let sprite = glowSpriteCache[color];
+    if (sprite) return sprite;
+    const size = 64;
+    sprite = document.createElement('canvas');
+    sprite.width = sprite.height = size;
+    const g = sprite.getContext('2d');
+    const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, color);
+    grad.addColorStop(0.4, color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, size, size);
+    glowSpriteCache[color] = sprite;
+    return sprite;
+  }
+
+  /** Blits a glow sprite centred at (x, y) with the given on-canvas radius. */
+  function drawGlow(c, x, y, radius, color, alpha = 1) {
+    const sprite = glowSprite(color);
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha *= alpha;
+    const d = radius * 2;
+    c.drawImage(sprite, x - radius, y - radius, d, d);
+    c.restore();
+  }
+
   function drawEffects() {
     const players = [match.p1, match.p2];
     players.forEach(p => {
@@ -1541,9 +1640,9 @@
       const maxL = p.maxLife || 38;
       ctx.globalAlpha = clamp(p.life / maxL, 0, 1);
       if (p.icon) {
+        drawGlow(ctx, p.x, p.y, 20, p.color || '#ffcc00');
         ctx.font = 'bold 30px sans-serif';
         ctx.fillStyle = p.color || '#fff';
-        ctx.shadowColor = p.color || '#ffcc00'; ctx.shadowBlur = 14;
         ctx.fillText(p.icon, p.x, p.y);
       } else if (p.isLand) {
         ctx.fillStyle = p.color;
@@ -1551,9 +1650,9 @@
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
-        ctx.shadowColor = p.color; ctx.shadowBlur = 10;
         const mag = Math.hypot(p.vx, p.vy) || 1;
+        drawGlow(ctx, p.x, p.y, p.size * 2.2, p.color);
+        ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - (p.vx / mag) * p.length, p.y - (p.vy / mag) * p.length); ctx.stroke();
       }
       ctx.restore();
@@ -1579,19 +1678,23 @@
     });
   }
 
-  function endMatch() {
+  /** Called once a player has taken 2 round wins -- ends the whole match. */
+  function finishMatch() {
     if (match.ended) return;
     match.ended = true;
-    const winner = match.p1.health === match.p2.health ? match.p1 : (match.p1.health > match.p2.health ? match.p1 : match.p2);
-    announce('K.O.!', 1000);
+    RockKombatAudio.music.stop();
+    const winner = match.wins.p1 > match.wins.p2 ? match.p1 : match.p2;
+    const score = `${Math.max(match.wins.p1, match.wins.p2)}-${Math.min(match.wins.p1, match.wins.p2)}`;
+    announce('VITÓRIA!', 1000);
     sound('special', 0.45);
     sound('crowd');
     setTimeout(() => {
-      $('#result-kicker').textContent = match.timer <= 0 ? 'TIME OVER' : 'KNOCKOUT';
+      $('#result-kicker').textContent = `VITÓRIA POR ${score}`;
+      const portrait = $('#winner-portrait'); portrait.innerHTML = '';
       $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU!</em>`;
       $('#result-quote').textContent = `“${winner.data.quote}”`;
-      const portrait = $('#winner-portrait'); portrait.innerHTML = '';
       portrait.style.setProperty('--portrait-image', `url("assets/${winner.data.portrait}")`);
+      RockKombatAudio.jingle('victory');
       showScreen('result-screen');
     }, 1000);
   }
@@ -1624,7 +1727,11 @@
     if (!match) return;
     match.paused = typeof force === 'boolean' ? force : !match.paused;
     $('#pause-modal').hidden = !match.paused;
-    if (!match.paused && !match.ended) { lastFrameTime = 0; accumulator = 0; raf = requestAnimationFrame(loop); }
+    if (match.paused) RockKombatAudio.music.stop();
+    else if (!match.ended) {
+      lastFrameTime = 0; accumulator = 0; raf = requestAnimationFrame(loop);
+      if (!muted) RockKombatAudio.music.play(currentStage);
+    }
   }
 
   function openHow() {
@@ -1644,8 +1751,20 @@
   $('#change-fighter').addEventListener('click', () => { pick1 = null; pick2 = null; updatePicks(); showScreen('select-screen'); });
   $('#pause-btn').addEventListener('click', () => togglePause());
   $('#resume').addEventListener('click', () => togglePause(false));
-  $('#quit-fight').addEventListener('click', () => { match.ended = true; $('#pause-modal').hidden = true; showScreen('select-screen'); });
-  $('#sound-toggle').addEventListener('click', e => { muted = !muted; e.currentTarget.textContent = `SOM: ${muted ? 'OFF' : 'ON'}`; if (!muted) { initAudio(); sound('ui'); } });
+  $('#quit-fight').addEventListener('click', () => { match.ended = true; RockKombatAudio.music.stop(); $('#pause-modal').hidden = true; showScreen('select-screen'); });
+  $('#sound-toggle').addEventListener('click', e => {
+    muted = !muted;
+    localStorage.setItem('rk-muted', muted ? '1' : '0');
+    e.currentTarget.textContent = `SOM: ${muted ? 'OFF' : 'ON'}`;
+    RockKombatAudio.setMuted(muted);
+    if (muted) RockKombatAudio.music.stop();
+    else { initAudio(); sound('ui'); if (match && !match.ended && !match.paused) RockKombatAudio.music.play(currentStage); }
+  });
+  if (localStorage.getItem('rk-muted') === '1') {
+    muted = true;
+    RockKombatAudio.setMuted(true);
+    $('#sound-toggle').textContent = 'SOM: OFF';
+  }
   $('#how-to-play').addEventListener('click', openHow);
   $('#open-guide-arena').addEventListener('click', openHow);
   $('#close-how').addEventListener('click', closeHow);

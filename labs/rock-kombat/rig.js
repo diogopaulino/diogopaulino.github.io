@@ -15,22 +15,23 @@
   // Headroom around the base pose so an extended kick or punch is not clipped.
   const PAD = { left: 150, top: 120, right: 150, bottom: 40 };
 
-  /** 3x3 affine: rotate `deg` about (px,py), then translate by (dx,dy). */
-  function jointMatrix(deg, dx, dy, px, py) {
+  /** 3x3 affine: rotate `deg` about (px,py), then translate by (dx,dy).
+   *  Writes into `out` (a 6-number array/typed array) instead of allocating,
+   *  so posing a fighter doesn't create ~20 short-lived arrays every frame. */
+  function jointMatrix(deg, dx, dy, px, py, out) {
     const t = deg * Math.PI / 180;
     const cos = Math.cos(t);
     const sin = Math.sin(t);
-    return [
-      cos, -sin, px + dx - cos * px + sin * py,
-      sin, cos, py + dy - sin * px - cos * py,
-    ];
+    out[0] = cos; out[1] = -sin; out[2] = px + dx - cos * px + sin * py;
+    out[3] = sin; out[4] = cos; out[5] = py + dy - sin * px - cos * py;
+    return out;
   }
 
-  function multiply(a, b) {
-    return [
-      a[0] * b[0] + a[1] * b[3], a[0] * b[1] + a[1] * b[4], a[0] * b[2] + a[1] * b[5] + a[2],
-      a[3] * b[0] + a[4] * b[3], a[3] * b[1] + a[4] * b[4], a[3] * b[2] + a[4] * b[5] + a[5],
-    ];
+  function multiply(a, b, out) {
+    const a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3], a4 = a[4], a5 = a[5];
+    out[0] = a0 * b[0] + a1 * b[3]; out[1] = a0 * b[1] + a1 * b[4]; out[2] = a0 * b[2] + a1 * b[5] + a2;
+    out[3] = a3 * b[0] + a4 * b[3]; out[4] = a3 * b[1] + a4 * b[4]; out[5] = a3 * b[2] + a4 * b[5] + a5;
+    return out;
   }
 
   const IDENTITY = [1, 0, 0, 0, 1, 0];
@@ -55,27 +56,49 @@
       this.buffer.height = this.height;
       this.bufferCtx = this.buffer.getContext('2d');
 
-      this._matrices = Object.create(null);
+      // One persistent 6-number matrix per part, refilled in place every
+      // frame, plus a single shared scratch for the local (pre-parent)
+      // matrix -- it's only ever read immediately after being written, so
+      // every part can safely reuse the same scratch space in turn.
+      this._world = Object.create(null);
+      for (const name in this.parts) this._world[name] = new Float64Array(6);
+      this._localScratch = new Float64Array(6);
+      this._resolvedFlags = Object.create(null);
     }
 
     /** Resolve every part's world matrix for `pose`. */
     _resolve(pose) {
-      const mats = this._matrices;
-      for (const name in this.parts) mats[name] = null;
+      const world = this._world;
+      const localScratch = this._localScratch;
+      const resolvedFlags = this._resolvedFlags;
+      for (const name in this.parts) resolvedFlags[name] = false;
 
       const build = (name) => {
-        if (mats[name]) return mats[name];
+        if (resolvedFlags[name]) return world[name];
         const part = this.parts[name];
         const p = pose[name];
-        const local = p
-          ? jointMatrix(p[0], p[1], p[2], part.px, part.py)
-          : IDENTITY;
-        mats[name] = part.parent ? multiply(build(part.parent), local) : local;
-        return mats[name];
+        const out = world[name];
+
+        if (part.parent) {
+          const parentM = build(part.parent);
+          if (p) {
+            jointMatrix(p[0], p[1], p[2], part.px, part.py, localScratch);
+            multiply(parentM, localScratch, out);
+          } else {
+            out.set(parentM);
+          }
+        } else if (p) {
+          jointMatrix(p[0], p[1], p[2], part.px, part.py, out);
+        } else {
+          out.set(IDENTITY);
+        }
+
+        resolvedFlags[name] = true;
+        return out;
       };
 
       for (const name in this.parts) build(name);
-      return mats;
+      return world;
     }
 
     /**
