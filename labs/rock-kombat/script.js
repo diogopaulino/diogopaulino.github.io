@@ -460,7 +460,7 @@
     card.style.setProperty('--fighter', fighter.color);
     card.setAttribute('role', 'listitem');
     card.setAttribute('aria-label', `Selecionar ${fighter.name}, especial ${fighter.special}`);
-    card.innerHTML = `<div class="portrait"></div><div class="fighter-info"><h3>${fighter.name}</h3><p>${fighter.special}</p>${stat('PWR',fighter.power)}${stat('SPD',fighter.speed)}</div>`;
+    card.innerHTML = `<div class="portrait"></div><div class="fighter-info"><h3>${fighter.name}</h3><p>${fighter.special}</p>${stat('PWR',fighter.power)}${stat('SPD',fighter.speed)}${stat('DEF',fighter.defense)}</div>`;
     const portrait = card.querySelector('.portrait');
     portrait.style.setProperty('--portrait-image', `url("assets/${fighter.portrait}")`);
     card.addEventListener('click', () => selectFighter(fighter));
@@ -547,7 +547,13 @@
       const distance = Math.abs(other.x - this.x);
       const input = { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false };
 
-      if (other.attack && distance < 145 && Math.random() < 0.85) {
+      // A tougher defense stat reads the incoming swing better; a faster
+      // fighter recovers and re-engages sooner. Both stats were previously
+      // decorative -- this is what makes the roster actually fight differently.
+      const blockChance = clamp(0.72 + (this.data.defense - 3) * 0.06, 0.45, 0.92);
+      const cadenceFactor = clamp(1 - (this.data.speed - 3) * 0.08, 0.65, 1.25);
+
+      if (other.attack && distance < 145 && Math.random() < blockChance) {
         input.block = true;
       }
       if (distance > 115) {
@@ -560,12 +566,14 @@
         if (this.meter >= 100 && Math.random() < 0.78) {
           input.special = true;
         } else {
+          // Power favors the harder-hitting kick; speed favors the quicker jab.
+          const kickBias = clamp(0.38 + (this.data.power - this.data.speed) * 0.06, 0.2, 0.6);
           const randAttack = Math.random();
-          if (randAttack < 0.50) input.punch = true;
-          else if (randAttack < 0.88) input.kick = true;
+          if (randAttack < 1 - kickBias - 0.12) input.punch = true;
+          else if (randAttack < 1 - 0.12) input.kick = true;
           else input.block = true;
         }
-        this.aiTimer = rand(12, 34);
+        this.aiTimer = rand(12, 34) * cadenceFactor;
       }
       if (distance > 210 && Math.random() < 0.04) input.jump = true;
       return input;
@@ -644,7 +652,11 @@
 
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
-      this.cooldown = (type === 'special' ? 55 : config.duration + 2) + (this.cpu ? 5 : 0);
+      // Faster fighters shake off their own recovery quicker -- speed now
+      // shapes how often a character can swing, not just how fast it walks.
+      const baseCooldown = (type === 'special' ? 55 : config.duration + 2) + (this.cpu ? 5 : 0);
+      const recoveryBonus = type === 'special' ? 0 : Math.round((this.data.speed - 3) * 1.5);
+      this.cooldown = Math.max(config.duration - 2, baseCooldown - recoveryBonus);
       this.vx += this.facing * (type === 'special' ? 4.8 : type === 'kick' ? 3.0 : 2.0);
 
       if (type === 'special') {
@@ -670,6 +682,9 @@
         let damage = this.attack.damage;
         if (this.cpu) damage *= 0.65;
         else if (other.cpu) damage *= 1.15;
+        // Defense was purely cosmetic before -- now a tankier fighter (Lennon)
+        // actually shrugs off more damage than a glass cannon (Axl).
+        damage *= clamp(1 - (other.data.defense - 3) * 0.055, 0.78, 1.22);
         if (other.blocking) damage *= 0.15;
 
         other.health = clamp(other.health - damage, 0, 100);
