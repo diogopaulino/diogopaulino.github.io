@@ -194,6 +194,10 @@ h1 span { color: var(--pink); }
 .round-center { text-align: center; }
 .round-center span { font: 800 8px Inter; color: var(--gold); letter-spacing: .18em; }
 .round-center strong { display: block; font: italic 900 44px/.8 "Barlow Condensed"; }
+.round-pips { display: flex; justify-content: space-between; gap: 60px; margin-top: 6px; }
+.round-pips-side { display: flex; gap: 5px; }
+.round-pips-side i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; transform: rotate(45deg); background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); transition: background .2s, box-shadow .2s; }
+.round-pips-side i.won { background: var(--gold); box-shadow: 0 0 8px var(--gold); border-color: var(--gold); }
 .canvas-wrap { position: relative; aspect-ratio: 16/9; border: 2px solid #3a2f40; background: #09050d; box-shadow: 0 24px 80px #000; overflow: hidden; }
 #game { display: block; width: 100%; height: 100%; touch-action: none; }
 .announcer { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font: italic 900 clamp(58px, 12vw, 130px)/1 "Barlow Condensed"; color: var(--gold); -webkit-text-stroke: 3px #21000f; text-shadow: 8px 8px 0 var(--pink-dark); opacity: 0; transform: scale(.4) rotate(-8deg); }

@@ -29,6 +29,10 @@ from spritelib import cut_parts, load_base
 
 ATLAS_MAX_WIDTH = 1024
 PADDING = 2
+# Lossless + exact: cutout edges keep clean alpha with no dark/light fringe.
+# Lossy WebP recompresses RGB under transparent pixels, which bleeds into the
+# antialiased rim once the browser blends it -- a halo around every part.
+WEBP_LOSSLESS = True
 WEBP_QUALITY = 82
 
 
@@ -128,7 +132,8 @@ def main():
     for who in RIGS:
         atlas, meta = build_fighter(who, source)
         out = assets / f'atlas-{who}.webp'
-        atlas.save(out, 'WEBP', quality=WEBP_QUALITY, method=6)
+        atlas.save(out, 'WEBP', lossless=WEBP_LOSSLESS, quality=100 if WEBP_LOSSLESS else WEBP_QUALITY,
+                   method=6, exact=True)
         size = out.stat().st_size
         total += size
         manifest['fighters'][who] = meta

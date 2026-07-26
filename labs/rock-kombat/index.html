@@ -66,6 +66,13 @@
       <div class="stage-switch" role="group" aria-label="Escolha do Palco">
         <button class="stage-btn is-active" data-stage="stadium" type="button">🏟️ STADIUM ARENA</button>
         <button class="stage-btn" data-stage="club" type="button">🎸 UNDERGROUND CLUB</button>
+        <button class="stage-btn" data-stage="woodstock" type="button">🌅 WOODSTOCK '69</button>
+      </div>
+
+      <div class="stage-switch" role="group" aria-label="Dificuldade">
+        <button class="stage-btn" data-difficulty="easy" type="button">😌 FÁCIL</button>
+        <button class="stage-btn is-active" data-difficulty="normal" type="button">🎸 NORMAL</button>
+        <button class="stage-btn" data-difficulty="hard" type="button">🔥 DIFÍCIL</button>
       </div>
 
       <div class="quick-guide" aria-label="Passos para jogar">
@@ -109,6 +116,10 @@
           <div class="round-center">
             <span id="round-label">ROUND 1</span>
             <strong id="timer">60</strong>
+            <div class="round-pips">
+              <div class="round-pips-side" id="p1-pips"><i></i><i></i></div>
+              <div class="round-pips-side" id="p2-pips"><i></i><i></i></div>
+            </div>
           </div>
           <div class="hud-player right">
             <div class="hud-row"><span id="opponent-label">CPU</span><strong id="p2-name">AXL</strong></div>
@@ -202,6 +213,7 @@
   </div>
 
   <script src="rig.js"></script>
+  <script src="audio.js"></script>
   <script src="script.js"></script>
 </body>
 
