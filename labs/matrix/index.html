@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Matrix - Diogo Paulino</title>
+    <meta name="description"
+        content="Simulação fiel da chuva digital de Matrix: glifos katakana espelhados, bloom CRT, scanlines e controles completos.">
+    <meta name="theme-color" content="#000000">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=4">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <canvas id="matrix"></canvas>
+
+        <header data-lab-header data-title="Matrix">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" aria-hidden="true">
+                        <path d="M4 3v9" />
+                        <path d="M9 3v15" />
+                        <path d="M14 3v7" />
+                        <path d="M19 3v12" />
+                        <path d="M4 15v2" opacity="0.5" />
+                        <path d="M14 13v2" opacity="0.5" />
+                        <path d="M19 18v2" opacity="0.5" />
+                    </svg>
+                    MATRIX
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="cinema" class="icon-btn" aria-label="Modo cinema" title="Modo cinema (H)" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
+                <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia (F)" type="button">
+                    <svg class="fs-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                    <svg class="fs-exit" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" hidden>
+                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                    </svg>
+                </button>
+            </template>
+        </header>
+
+        <button id="cinemaExit" class="cinema-exit" type="button">sair [esc]</button>
+
+        <button id="toggleControls" class="toggle-controls-btn" type="button"
+            aria-label="Mostrar configurações" title="Configurações (C)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+        </button>
+
+        <aside class="controls" id="controls" aria-label="Configurações da simulação">
+            <div class="controls-header">
+                <span>&gt; config.sys</span>
+                <button id="closeControls" class="close-btn" type="button" aria-label="Fechar configurações">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="controls-scroll">
+                <section class="control-section">
+                    <h2 class="section-title">Modo</h2>
+                    <div class="preset-grid" id="presetGrid">
+                        <button class="preset-btn is-active" data-preset="matrix" type="button">
+                            <span style="background:#00ff41"></span><small>1999</small>
+                        </button>
+                        <button class="preset-btn" data-preset="reloaded" type="button">
+                            <span style="background:#8fff2b"></span><small>Reloaded</small>
+                        </button>
+                        <button class="preset-btn" data-preset="nabucodonosor" type="button">
+                            <span style="background:#ffb000"></span><small>Nabucco</small>
+                        </button>
+                        <button class="preset-btn" data-preset="sentinela" type="button">
+                            <span style="background:#ff2d2d"></span><small>Sentinela</small>
+                        </button>
+                        <button class="preset-btn" data-preset="pilulaazul" type="button">
+                            <span style="background:#2ea8ff"></span><small>Azul</small>
+                        </button>
+                        <button class="preset-btn" data-preset="fantasma" type="button">
+                            <span style="background:#c8f7ff"></span><small>Fantasma</small>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Código-fonte</h2>
+                    <div class="glyph-grid" id="glyphGrid">
+                        <button class="glyph-btn is-active" data-glyphs="matrix" type="button">
+                            <em class="glyph-sample">ﾊﾐ7</em><span>Filme</span>
+                        </button>
+                        <button class="glyph-btn" data-glyphs="kana" type="button">
+                            <em class="glyph-sample">ｱｲｳ</em><span>Kana</span>
+                        </button>
+                        <button class="glyph-btn" data-glyphs="binary" type="button">
+                            <em class="glyph-sample">010</em><span>Binário</span>
+                        </button>
+                        <button class="glyph-btn" data-glyphs="latin" type="button">
+                            <em class="glyph-sample">A9Z</em><span>Latino</span>
+                        </button>
+                        <button class="glyph-btn" data-glyphs="terminal" type="button">
+                            <em class="glyph-sample">&lt;#&gt;</em><span>Terminal</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Profundidade</h2>
+                    <div class="depth-grid" id="depthGrid">
+                        <button class="depth-btn" data-depth="1" type="button">1 camada</button>
+                        <button class="depth-btn is-active" data-depth="2" type="button">2 camadas</button>
+                        <button class="depth-btn" data-depth="3" type="button">3 camadas</button>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Ajustes</h2>
+                    <div class="sliders-grid">
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="speed">Velocidade</label><span class="slider-value"
+                                    id="speedValue">1.0x</span></div>
+                            <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="fontSize">Tamanho</label><span class="slider-value"
+                                    id="fontSizeValue">16px</span></div>
+                            <input type="range" id="fontSize" min="8" max="34" step="1" value="16">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="trail">Rastro</label><span class="slider-value"
+                                    id="trailValue">1.0x</span></div>
+                            <input type="range" id="trail" min="0.3" max="2.5" step="0.1" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="density">Densidade</label><span class="slider-value"
+                                    id="densityValue">100%</span></div>
+                            <input type="range" id="density" min="20" max="200" step="5" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="mutation">Mutação</label><span class="slider-value"
+                                    id="mutationValue">1.0x</span></div>
+                            <input type="range" id="mutation" min="0" max="4" step="0.1" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header"><label for="glow">Brilho</label><span class="slider-value"
+                                    id="glowValue">1.0x</span></div>
+                            <input type="range" id="glow" min="0" max="2" step="0.05" value="1">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Efeitos</h2>
+                    <div class="switch-list">
+                        <label class="switch-row">
+                            <span>Glifos espelhados</span>
+                            <input type="checkbox" id="mirror" checked>
+                            <i class="switch" aria-hidden="true"></i>
+                        </label>
+                        <label class="switch-row">
+                            <span>Cintilação</span>
+                            <input type="checkbox" id="flicker" checked>
+                            <i class="switch" aria-hidden="true"></i>
+                        </label>
+                        <label class="switch-row">
+                            <span>Scanlines CRT</span>
+                            <input type="checkbox" id="scanlines" checked>
+                            <i class="switch" aria-hidden="true"></i>
+                        </label>
+                        <label class="switch-row">
+                            <span>Vinheta</span>
+                            <input type="checkbox" id="vignette" checked>
+                            <i class="switch" aria-hidden="true"></i>
+                        </label>
+                        <label class="switch-row">
+                            <span>Zumbido do sistema</span>
+                            <input type="checkbox" id="sound">
+                            <i class="switch" aria-hidden="true"></i>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Mensagem no código</h2>
+                    <div class="message-row">
+                        <input type="text" id="message" maxlength="42" placeholder="WAKE UP NEO" autocomplete="off"
+                            spellcheck="false" aria-label="Mensagem injetada no código">
+                        <button id="injectMessage" class="mini-btn" type="button" title="Injetar agora">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round">
+                                <path d="M12 5v14M5 12l7 7 7-7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="hint">A frase desce entre os glifos, legível, a cada poucos segundos.</p>
+                </section>
+
+                <section class="control-section">
+                    <h2 class="section-title">Sistema</h2>
+                    <button id="replayIntro" class="wide-btn" type="button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+                            <path d="M8 9l3 3-3 3M13 15h4" />
+                        </svg>
+                        Rodar sequência de abertura
+                    </button>
+                </section>
+            </div>
+
+            <div class="control-footer">
+                <div class="action-buttons">
+                    <button id="random" class="action-btn random-btn" type="button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+                            <path d="m18 2 4 4-4 4" />
+                            <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+                            <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+                            <path d="m18 14 4 4-4 4" />
+                        </svg>
+                        Anomalia
+                    </button>
+                    <button id="reset" class="action-btn reset-btn" type="button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+                <div class="stats-bar">
+                    <div class="stat"><span class="stat-value" id="fps">60</span><span class="stat-label">fps</span></div>
+                    <div class="stat-divider"></div>
+                    <div class="stat"><span class="stat-value" id="streamCount">0</span><span
+                            class="stat-label">streams</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="hud" id="hud" aria-hidden="true">
+            <span><b>C</b> config</span>
+            <span><b>H</b> cinema</span>
+            <span><b>F</b> tela cheia</span>
+            <span><b>Espaço</b> pausar</span>
+            <span><b>Clique</b> pulso</span>
+        </div>
+
+        <div class="boot" id="boot" hidden>
+            <pre class="boot-text" id="bootText"></pre>
+            <button class="boot-skip" id="bootSkip" type="button">pular [esc]</button>
+        </div>
+
+        <footer data-lab-footer data-home-href="/"></footer>
+    </div>
+
+    <script src="/labs/shared.js?v=5" defer></script>
+    <script src="script.js" defer></script>
+</body>
+
+</html>
