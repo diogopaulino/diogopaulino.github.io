@@ -45,7 +45,7 @@
   const touch = {};
   let pick1 = null;
   let pick2 = null;
-  let currentStage = 'stadium'; // 'woodstock', 'stadium', or 'club' -- keep in sync with the .stage-btn.is-active default in index.html
+  let currentStage = 'woodstock'; // 'woodstock', 'stadium', or 'club' -- keep in sync with the .stage-btn.is-active default in index.html
   let muted = false;
   let audio = null;
   let distortionCurve = null;
@@ -254,6 +254,54 @@
     cx.fillStyle = '#b51a30'; cx.fillRect(95, 135, 32, 22);
     cx.fillStyle = '#ff1a1a'; cx.beginPath(); cx.arc(111, 140, 2.5, 0, Math.PI * 2); cx.fill();
     stageSprites.clubTubeAmp = clubC;
+
+    // 5. Packed Woodstock hillside crowd, painted once and reused every frame.
+    // Redrawing ~200 silhouette shapes per tick was a real cost for a backdrop
+    // that barely changes; baking it removes that entirely from the render loop.
+    const crowdC = document.createElement('canvas');
+    crowdC.width = 1300; crowdC.height = 170;
+    const gx = crowdC.getContext('2d');
+    // Warm, near-black silhouette tones (not the cool purple of the hills
+    // behind them) so the crowd reads as backlit shapes against the sunset
+    // glow instead of blending into the hillside.
+    const palette = ['#160a08', '#1e0d09', '#130a12', '#20130a', '#160c16', '#0e0808'];
+    const rows = [
+      { y: 6, n: 48, r: 5, alpha: 0.7 },
+      { y: 24, n: 44, r: 6, alpha: 0.78 },
+      { y: 46, n: 40, r: 7.2, alpha: 0.86 },
+      { y: 72, n: 35, r: 8.6, alpha: 0.93 },
+      { y: 100, n: 31, r: 10.2, alpha: 0.98 },
+      { y: 132, n: 27, r: 12, alpha: 1 }
+    ];
+    rows.forEach(row => {
+      const spacing = crowdC.width / row.n;
+      for (let i = 0; i < row.n; i++) {
+        const x = i * spacing + spacing * 0.5 + Math.sin(i * 12.9 + row.y) * spacing * 0.28;
+        gx.globalAlpha = row.alpha;
+        gx.fillStyle = palette[(i + Math.floor(row.y)) % palette.length];
+        gx.beginPath();
+        gx.arc(x, row.y, row.r, Math.PI, 0);
+        gx.rect(x - row.r, row.y, row.r * 2, row.r * 2.2);
+        gx.fill();
+        // Thin sunset rim-light along the top of each head -- the detail
+        // that actually sells "backlit crowd at dusk" versus a flat blob.
+        gx.strokeStyle = 'rgba(255, 196, 130, 0.45)';
+        gx.lineWidth = 1;
+        gx.beginPath(); gx.arc(x, row.y, row.r, Math.PI * 1.08, Math.PI * 1.92); gx.stroke();
+        if ((i * 7 + row.y) % 11 === 0) {
+          gx.fillRect(x + row.r * 0.35, row.y - row.r * 1.7, row.r * 0.3, row.r * 1.7);
+        }
+        if ((i * 13 + row.y) % 37 === 0) {
+          gx.strokeStyle = 'rgba(255, 220, 150, 0.55)';
+          gx.lineWidth = 1;
+          gx.beginPath(); gx.moveTo(x, row.y - row.r); gx.lineTo(x, row.y - row.r * 3); gx.stroke();
+          gx.fillStyle = 'rgba(255, 196, 120, 0.65)';
+          gx.beginPath(); gx.arc(x, row.y - row.r * 3, 3, 0, Math.PI * 2); gx.fill();
+        }
+      }
+    });
+    gx.globalAlpha = 1;
+    stageSprites.woodstockCrowd = crowdC;
   }
   initRealisticStageSprites();
 
@@ -960,29 +1008,88 @@
 
   function drawStageStatic(c) {
     if (currentStage === 'woodstock') {
-      const bg = c.createLinearGradient(0, -50, 0, 540);
-      bg.addColorStop(0, '#100726');
-      bg.addColorStop(0.35, '#381442');
-      bg.addColorStop(0.7, '#8f2440');
-      bg.addColorStop(1, '#f27838');
+      // Dusk sky over the festival field: deep violet night bleeding into a
+      // warm, low sunset band on the horizon.
+      const bg = c.createLinearGradient(0, -50, 0, 460);
+      bg.addColorStop(0, '#120a2c');
+      bg.addColorStop(0.3, '#3a1442');
+      bg.addColorStop(0.56, '#8a2b46');
+      bg.addColorStop(0.78, '#e15a3a');
+      bg.addColorStop(1, '#ffb14d');
       c.fillStyle = bg;
-      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, STAGE_H);
+      c.fillRect(STAGE_X, STAGE_Y, STAGE_W, 510);
 
-      const sunG = c.createRadialGradient(480, 350, 20, 480, 350, 220);
-      sunG.addColorStop(0, '#fff3bc');
-      sunG.addColorStop(0.25, '#ffae3d');
-      sunG.addColorStop(0.6, 'rgba(242, 100, 48, 0.45)');
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      [[40, 10], [130, 40], [260, 5], [610, 15], [760, 45], [900, 10], [980, 30]].forEach(([sx, sy]) => {
+        c.beginPath(); c.arc(sx, sy, 1.4, 0, Math.PI * 2); c.fill();
+      });
+
+      // Low setting sun with soft rays, backlighting the stage rig.
+      c.save();
+      c.globalCompositeOperation = 'screen';
+      c.strokeStyle = 'rgba(255, 214, 140, 0.1)';
+      c.lineWidth = 10;
+      for (let r = 0; r < 14; r++) {
+        const ang = (r / 14) * Math.PI * 2;
+        c.beginPath();
+        c.moveTo(480, 340);
+        c.lineTo(480 + Math.cos(ang) * 260, 340 + Math.sin(ang) * 260);
+        c.stroke();
+      }
+      c.restore();
+      const sunG = c.createRadialGradient(480, 340, 15, 480, 340, 210);
+      sunG.addColorStop(0, '#fff6d8');
+      sunG.addColorStop(0.3, '#ffcf6b');
+      sunG.addColorStop(0.65, 'rgba(240, 100, 55, 0.4)');
       sunG.addColorStop(1, 'transparent');
       c.fillStyle = sunG;
-      c.beginPath(); c.arc(480, 350, 220, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(480, 340, 210, 0, Math.PI * 2); c.fill();
 
-      c.fillStyle = '#220e2e';
+      // Rolling hills, layered for depth.
+      c.fillStyle = '#4a2a52';
       c.beginPath();
-      c.moveTo(-100, 420);
-      c.lineTo(-100, 360);
-      c.bezierCurveTo(100, 330, 250, 380, 450, 365);
-      c.bezierCurveTo(680, 345, 820, 380, 1060, 355);
+      c.moveTo(-100, 400); c.lineTo(-100, 340);
+      c.bezierCurveTo(80, 300, 260, 350, 480, 330);
+      c.bezierCurveTo(700, 310, 860, 345, 1060, 320);
+      c.lineTo(1060, 400); c.closePath(); c.fill();
+
+      c.fillStyle = '#2a1530';
+      c.beginPath();
+      c.moveTo(-100, 420); c.lineTo(-100, 368);
+      c.bezierCurveTo(100, 338, 250, 385, 450, 370);
+      c.bezierCurveTo(680, 350, 820, 385, 1060, 360);
       c.lineTo(1060, 420); c.closePath(); c.fill();
+
+      // A broad sunset glow behind the hillside so the crowd silhouette in
+      // front of it actually reads as backlit shapes rather than melting
+      // into the hill color.
+      c.save();
+      c.globalCompositeOperation = 'screen';
+      const crowdGlow = c.createRadialGradient(480, 380, 20, 480, 380, 420);
+      crowdGlow.addColorStop(0, 'rgba(255, 190, 120, 0.4)');
+      crowdGlow.addColorStop(0.55, 'rgba(220, 110, 70, 0.16)');
+      crowdGlow.addColorStop(1, 'transparent');
+      c.fillStyle = crowdGlow;
+      c.fillRect(-200, 300, 1360, 170);
+      c.restore();
+
+      // Packed hillside crowd, painted once (see initRealisticStageSprites).
+      if (stageSprites.woodstockCrowd) c.drawImage(stageSprites.woodstockCrowd, -100, 320);
+
+      // Sagging string lights strung between the two rig towers.
+      c.strokeStyle = 'rgba(255, 210, 140, 0.5)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(60, 60);
+      c.quadraticCurveTo(480, 130, 900, 60);
+      c.stroke();
+      const bulbColors = ['#ffd97a', '#ff8f6b', '#8fe3c0'];
+      for (let x = 60, i = 0; x <= 900; x += 42, i++) {
+        const t = (x - 60) / 840;
+        const y = 60 + Math.sin(t * Math.PI) * 70;
+        c.fillStyle = bulbColors[i % 3];
+        c.beginPath(); c.arc(x, y, 2.6, 0, Math.PI * 2); c.fill();
+      }
 
       if (stageSprites.woodstockDrumKit) c.drawImage(stageSprites.woodstockDrumKit, 340, 235);
       if (stageSprites.marshallStack) {
@@ -992,21 +1099,34 @@
       if (stageSprites.woodstockRigLeft) c.drawImage(stageSprites.woodstockRigLeft, -30, 20);
       if (stageSprites.woodstockRigRight) c.drawImage(stageSprites.woodstockRigRight, 770, 20);
 
+      // Rough-plank wooden stage floor.
       const floorG = c.createLinearGradient(0, 420, 0, 540);
-      floorG.addColorStop(0, '#422416');
-      floorG.addColorStop(0.2, '#2b160c');
-      floorG.addColorStop(1, '#0e0603');
+      floorG.addColorStop(0, '#5a3a20');
+      floorG.addColorStop(0.25, '#3c2513');
+      floorG.addColorStop(1, '#160d06');
       c.fillStyle = floorG;
       c.fillRect(-200, 420, 1360, 120);
 
-      c.strokeStyle = 'rgba(235, 150, 80, 0.22)';
-      c.lineWidth = 1;
-      for (let y = 432; y < 540; y += 16) {
+      c.strokeStyle = 'rgba(20, 10, 4, 0.5)';
+      c.lineWidth = 2;
+      for (let y = 432; y < 540; y += 15) {
         c.beginPath(); c.moveTo(-100, y); c.lineTo(1060, y); c.stroke();
       }
-      for (let x = -100; x <= 1060; x += 90) {
-        c.beginPath(); c.moveTo(480, 420); c.lineTo(x, 540); c.stroke();
+      c.strokeStyle = 'rgba(255, 200, 130, 0.14)';
+      c.lineWidth = 1;
+      for (let x = -100; x <= 1060; x += 46) {
+        c.beginPath(); c.moveTo(x, 420); c.lineTo(x + 6, 540); c.stroke();
       }
+
+      // Hay bales bracketing the front edge of the stage.
+      [[-70, 470], [980, 470]].forEach(([hx, hy]) => {
+        c.fillStyle = '#c99a3c';
+        c.fillRect(hx, hy, 70, 44);
+        c.strokeStyle = '#8a6420'; c.lineWidth = 2;
+        for (let i = 12; i < 70; i += 16) { c.beginPath(); c.moveTo(hx + i, hy); c.lineTo(hx + i, hy + 44); c.stroke(); }
+        c.beginPath(); c.moveTo(hx, hy + 14); c.lineTo(hx + 70, hy + 14); c.moveTo(hx, hy + 30); c.lineTo(hx + 70, hy + 30); c.stroke();
+      });
+
       c.strokeStyle = '#ffae3d';
       c.lineWidth = 3;
       c.shadowColor = '#ffae3d';
@@ -1147,22 +1267,23 @@
       c.restore();
     }
 
-    // Silhouetted crowd, swaying with the beat.
-    if (currentStage !== 'club') {
-      const woodstock = currentStage === 'woodstock';
-      c.fillStyle = woodstock ? '#14071c' : '#050308';
+    // Silhouetted crowd, swaying with the beat. Woodstock's hillside crowd is
+    // baked into the static layer (drawStageStatic) instead of being redrawn
+    // here every frame -- ~200 arc/rect ops per tick for a backdrop that
+    // barely changes was pure waste.
+    if (currentStage === 'stadium') {
+      c.fillStyle = '#050308';
       c.beginPath();
-      const step = woodstock ? 18 : 22;
-      const radius = woodstock ? 12 : 14;
-      for (let i = -60; i < 1040; i += step) {
-        const headY = woodstock
-          ? 382 + Math.sin(i * 0.18 + frame * 0.05) * 6 + Math.cos(i * 0.09) * 4
-          : 385 + Math.sin(i * 0.15 + frame * 0.08) * 8;
-        c.arc(i, headY, radius, Math.PI, 0);
-        c.rect(i - radius, headY, radius * 2, woodstock ? 40 : 45);
+      for (let i = -60; i < 1040; i += 22) {
+        const headY = 385 + Math.sin(i * 0.15 + frame * 0.08) * 8;
+        c.arc(i, headY, 14, Math.PI, 0);
+        c.rect(i - 14, headY, 28, 45);
       }
       c.fill();
+    }
 
+    if (currentStage !== 'club') {
+      const woodstock = currentStage === 'woodstock';
       crowdLights.forEach(light => {
         light.phase += light.speed;
         const alpha = (woodstock ? 0.35 : 0.4) + Math.sin(light.phase) * (woodstock ? 0.35 : 0.4);
