@@ -62,11 +62,15 @@
 
     function lerpColor(hexA, hexB, t) {
         const a = hexToRgb(hexA), b = hexToRgb(hexB);
-        const r = Math.round(a.r + (b.r - a.r) * t);
-        const g = Math.round(a.g + (b.g - a.g) * t);
-        const bl = Math.round(a.b + (b.b - a.b) * t);
-        return `rgb(${r}, ${g}, ${bl})`;
+        return {
+            r: Math.round(a.r + (b.r - a.r) * t),
+            g: Math.round(a.g + (b.g - a.g) * t),
+            b: Math.round(a.b + (b.b - a.b) * t)
+        };
     }
+
+    function rgbStr(c) { return `rgb(${c.r}, ${c.g}, ${c.b})`; }
+    function rgbaStr(c, a) { return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`; }
 
     function colorForT(t) {
         const stops = THEMES[state.themeKey] || THEMES.nebula;
@@ -93,6 +97,7 @@
         document.documentElement.style.setProperty('--p-1', stops[0]);
         document.documentElement.style.setProperty('--p-2', stops[1]);
         document.documentElement.style.setProperty('--p-3', stops[2]);
+        document.documentElement.style.setProperty('--glow-color', rgbaStr(hexToRgb(stops[1]), 0.32));
     }
 
     function retuneAll() {
@@ -458,8 +463,8 @@
                 const alpha = clamp(1 - d / reach, 0, 1) * 0.28;
                 if (alpha <= 0.01) continue;
                 const grad = ctx2d.createLinearGradient(a.x, a.y, b.x, b.y);
-                grad.addColorStop(0, a.color.replace('rgb', 'rgba').replace(')', `, ${alpha})`));
-                grad.addColorStop(1, b.color.replace('rgb', 'rgba').replace(')', `, ${alpha})`));
+                grad.addColorStop(0, rgbaStr(a.color, alpha));
+                grad.addColorStop(1, rgbaStr(b.color, alpha));
                 ctx2d.strokeStyle = grad;
                 ctx2d.lineWidth = 1;
                 ctx2d.beginPath();
@@ -478,8 +483,8 @@
             const glowR = r + 10 + burst * 22;
 
             const grad = ctx2d.createRadialGradient(o.x, o.y, 0, o.x, o.y, glowR);
-            grad.addColorStop(0, o.color.replace('rgb', 'rgba').replace(')', `, ${0.55 + burst * 0.35})`));
-            grad.addColorStop(1, o.color.replace('rgb', 'rgba').replace(')', ', 0)'));
+            grad.addColorStop(0, rgbaStr(o.color, 0.55 + burst * 0.35));
+            grad.addColorStop(1, rgbaStr(o.color, 0));
             ctx2d.fillStyle = grad;
             ctx2d.beginPath();
             ctx2d.arc(o.x, o.y, glowR, 0, Math.PI * 2);
@@ -487,7 +492,7 @@
 
             ctx2d.beginPath();
             ctx2d.arc(o.x, o.y, r, 0, Math.PI * 2);
-            ctx2d.fillStyle = o.color;
+            ctx2d.fillStyle = rgbStr(o.color);
             ctx2d.fill();
             ctx2d.lineWidth = 1.5;
             ctx2d.strokeStyle = 'rgba(255,255,255,0.6)';
@@ -505,7 +510,7 @@
             ctx2d.beginPath();
             ctx2d.arc(rp.x, rp.y, r, 0, Math.PI * 2);
             ctx2d.lineWidth = 1.5;
-            ctx2d.strokeStyle = rp.color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+            ctx2d.strokeStyle = rgbaStr(rp.color, alpha);
             ctx2d.stroke();
         }
     }
@@ -758,22 +763,6 @@
             const span = droneBtn.querySelector('span');
             if (span) span.textContent = state.droneOn ? 'Desligar camada de fundo' : 'Ligar camada de fundo';
             if (state.droneOn) AudioEngine.startDrone(); else AudioEngine.stopDrone();
-        });
-    }
-
-    const randomBtn = document.getElementById('random');
-    if (randomBtn) {
-        randomBtn.addEventListener('click', function () {
-            AudioEngine.resume();
-            clearOrbs();
-            const count = 7 + Math.floor(Math.random() * 6);
-            for (let i = 0; i < count; i++) {
-                const x = width * (0.15 + Math.random() * 0.7);
-                const y = height * (0.15 + Math.random() * 0.7);
-                const orb = addOrb(x, y, true);
-                orb.nextPulseTime = clock() + Math.random() * 2 + 0.5;
-            }
-            scheduleSave();
         });
     }
 

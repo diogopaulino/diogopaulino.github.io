@@ -524,7 +524,7 @@ input[type="range"]::-moz-range-thumb {
 
 .action-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
 }
 
@@ -547,23 +547,6 @@ input[type="range"]::-moz-range-thumb {
 
 .action-btn svg {
     transition: transform 0.3s ease;
-}
-
-.random-btn {
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(168, 85, 247, 0.15));
-    border-color: rgba(168, 85, 247, 0.3);
-    color: #c084fc;
-}
-
-.random-btn:hover {
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(168, 85, 247, 0.25));
-    border-color: rgba(168, 85, 247, 0.5);
-    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.2);
-    transform: translateY(-1px);
-}
-
-.random-btn:hover svg {
-    transform: rotate(180deg);
 }
 
 .reset-btn {
