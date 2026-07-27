@@ -44,6 +44,13 @@
                 </div>
             </template>
             <template data-slot="actions">
+                <button class="trophy-toggle" id="trophy-toggle" aria-label="Conquistas" title="Conquistas">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z" />
+                        <path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4" />
+                    </svg>
+                </button>
                 <button class="sound-toggle" id="sound-toggle" aria-label="Toggle sound" title="Som ligado">
                     <svg class="sound-on-icon" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -64,6 +71,27 @@
 
         <main class="game-wrapper">
             <div id="language-select" class="language-select-screen">
+                <div class="daily-card" id="daily-card">
+                    <div class="daily-streak">
+                        <span class="streak-flame">🔥</span>
+                        <div class="daily-streak-info">
+                            <span class="daily-streak-value" id="daily-streak-value">0</span>
+                            <span class="daily-streak-label">dias seguidos</span>
+                        </div>
+                    </div>
+                    <div class="daily-week" id="daily-week"></div>
+                    <div class="daily-goal">
+                        <svg class="goal-ring" viewBox="0 0 60 60">
+                            <circle class="goal-ring-bg" cx="30" cy="30" r="26"></circle>
+                            <circle class="goal-ring-fill" id="goal-ring-fill" cx="30" cy="30" r="26"></circle>
+                        </svg>
+                        <div class="goal-ring-text">
+                            <span id="goal-ring-value">0/30</span>
+                            <span class="goal-ring-label">XP hoje</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="welcome-avatar">
                     <div class="avatar-container">
                         <div class="avatar-ring"></div>
@@ -140,6 +168,9 @@
                     <div class="current-lang" id="current-lang">
                         <span class="current-flag">🇺🇸</span>
                         <span class="current-name">English</span>
+                    </div>
+                    <div class="ai-badge" id="ai-badge" title="IA adaptativa: as perguntas se ajustam às palavras que você mais erra">
+                        <span>🧠</span> IA
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar" id="progress-bar"></div>
@@ -307,6 +338,23 @@
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
+
+    <div id="achievements-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🏆 Conquistas</h2>
+                <button class="modal-close" id="achievements-close" aria-label="Fechar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="achievements-grid" id="achievements-grid"></div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
     <script src="/labs/shared.js?v=5" defer></script>
     <script src="script.js" defer></script>
 </body>
