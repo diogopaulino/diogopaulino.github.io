@@ -1,6 +1,6 @@
 /* ============================================================
    RAKURAKU DINOKUN / DINKIE DINO — hardware 1997
-   Oval largo, 5 botões na base, ícones laterais no LCD
+   Bean/egg shell · ◄► laterais · Esc/Enter/Clock na base
    ============================================================ */
 
 :root {
@@ -66,8 +66,8 @@
 .setup-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
 .setup-box {
-  background: linear-gradient(160deg, #2a3228, #161a14);
-  border: 1px solid rgba(246, 200, 54, 0.25);
+  background: linear-gradient(160deg, #1e3a38, #122220);
+  border: 1px solid rgba(46, 196, 182, 0.3);
   box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
   border-radius: 16px;
   max-width: 460px;
@@ -81,7 +81,7 @@
   display: inline-block;
   font-family: 'Press Start 2P', monospace;
   font-size: 0.5rem;
-  color: #1a1a12;
+  color: #122220;
   background: #f6c836;
   padding: 0.3rem 0.6rem;
   border-radius: 3px;
@@ -91,7 +91,7 @@
   font-family: 'Chewy', cursive, sans-serif;
   font-size: 1.9rem;
   margin: 0 0 0.35rem;
-  color: #f6c836;
+  color: #5fd9cc;
 }
 .setup-header p { margin: 0; font-size: 0.85rem; color: rgba(255,255,255,0.65); }
 
@@ -142,7 +142,7 @@
 .ghost-btn.hidden { display: none; }
 
 /* ============================================================
-   CARCAÇA — oval LARGO (mais largo que alto), base ondulada
+   CARCAÇA — oval LARGO (mais largo que alto) · ◄ LCD ►
    ============================================================ */
 .device-stage {
   position: relative;
@@ -153,13 +153,13 @@
 .tama-shell {
   position: relative;
   width: 420px;
-  height: 290px;
+  height: 310px;
   background:
     radial-gradient(ellipse 80% 60% at 30% 22%, var(--shell-light) 0%, transparent 55%),
     linear-gradient(160deg, var(--shell-light) 0%, var(--shell-color) 48%, var(--shell-dark) 100%);
-  /* Oval largo (mais largo que alto), base arredondada que envolve os botões */
-  border-radius: 50% 50% 46% 46% / 62% 62% 44% 44%;
-  padding: 34px 42px 36px;
+  /* Oval largo / bean — formato anterior estável */
+  border-radius: 48% 48% 44% 44% / 55% 55% 48% 48%;
+  padding: 28px 22px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -169,21 +169,6 @@
     inset -10px -12px 24px rgba(0, 0, 0, 0.22);
   z-index: 5;
   overflow: visible;
-}
-
-/* Ondulação inferior da carcaça (lóbulos dos 5 botões) */
-.tama-shell::after {
-  content: '';
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: -2px;
-  height: 28px;
-  background: inherit;
-  background-image: none;
-  background-color: var(--shell-dark);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .tama-cap {
@@ -223,7 +208,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.15rem;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   z-index: 4;
   position: relative;
 }
@@ -233,29 +218,81 @@
   line-height: 1;
   text-shadow: 0 1px 0 rgba(255,255,255,0.4), 0 -1px 0 rgba(0,0,0,0.15);
 }
-.brand-left { color: #6b1f9a; transform: rotate(-6deg) translateY(2px); }
-.brand-right { color: #1a3a8a; transform: rotate(6deg) translateY(2px); }
+.brand-left { color: #e85aad; transform: rotate(-5deg) translateY(2px); }
+.brand-right { color: #3a6fd4; transform: rotate(5deg) translateY(2px); }
 .brand-mascot {
   display: flex;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.1);
   overflow: hidden;
 }
 
+/* Faceplate: ◄ LCD ► */
+.tama-faceplate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  position: relative;
+  z-index: 4;
+}
+
+.tama-side-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 44px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: linear-gradient(165deg, var(--accent-light), var(--accent-color) 45%, var(--accent-dark));
+  box-shadow:
+    inset 1px 2px 3px rgba(255, 255, 255, 0.4),
+    inset -1px -2px 4px rgba(0, 0, 0, 0.28),
+    0 3px 6px rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.06s, box-shadow 0.06s;
+  color: rgba(40, 30, 10, 0.45);
+}
+.tama-side-left {
+  border-radius: 4px;
+  clip-path: polygon(100% 8%, 100% 92%, 8% 50%);
+}
+.tama-side-right {
+  border-radius: 4px;
+  clip-path: polygon(0% 8%, 92% 50%, 0% 92%);
+}
+.tama-side-btn:active,
+.tama-side-btn.pressed {
+  transform: scale(0.94);
+  filter: brightness(0.92);
+  box-shadow:
+    inset 1px 2px 4px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.side-chevron {
+  font-size: 0.55rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
 /* ---------- LCD ---------- */
 .tama-screen-bezel {
-  width: 100%;
-  max-width: 300px;
+  flex: 1;
+  max-width: 268px;
   background: linear-gradient(165deg, #3a4034, #1a1e18);
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: 8px;
+  padding: 5px;
   box-shadow:
     inset 0 4px 10px rgba(0, 0, 0, 0.6),
     0 2px 3px rgba(0, 0, 0, 0.12);
-  z-index: 4;
   position: relative;
 }
 
@@ -263,9 +300,9 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  height: 132px;
+  height: 138px;
   background: linear-gradient(180deg, var(--screen-color), var(--screen-dark));
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
 }
@@ -274,7 +311,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
-  width: 20px;
+  width: 22px;
   padding: 2px 0;
   flex-shrink: 0;
   z-index: 5;
@@ -283,8 +320,8 @@
 .lcd-icons-right { align-items: center; }
 
 .lcd-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,16 +329,17 @@
   border: none;
   background: transparent;
   color: var(--ink-color);
-  opacity: 0.3;
+  opacity: 0.28;
   cursor: pointer;
   border-radius: 1px;
 }
 .lcd-icon svg {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
   display: block;
-  fill: currentColor;
+  overflow: visible;
 }
+.lcd-icon svg rect { fill: currentColor; }
 .lcd-icon.selected {
   opacity: 1;
   box-shadow: 0 0 0 1px var(--ink-color);
@@ -325,12 +363,12 @@
   z-index: 2;
 }
 
-/* Fundo "eyes" impresso no vidro LCD (marcador de autenticidade) */
+/* Fundo "eyes" impresso no vidro LCD */
 .lcd-eyes-bg {
   position: absolute;
   inset: 0;
   z-index: 1;
-  opacity: 0.07;
+  opacity: 0.08;
   background:
     radial-gradient(circle at 38% 42%, var(--ink-color) 0 4px, transparent 5px),
     radial-gradient(circle at 62% 42%, var(--ink-color) 0 4px, transparent 5px),
@@ -397,13 +435,12 @@
 .tama-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ============================================================
-   5 BOTÕES NA BASE — dentro da carcaça (não laterais)
-   ◄  Esc  Enter  Clock  ►
+   3 BOTÕES NA BASE — Esc · Enter · Clock
    ============================================================ */
 .tama-bottom-buttons {
-  width: 88%;
-  margin-top: 8px;
-  padding: 4px 0 2px;
+  width: 62%;
+  margin-top: 10px;
+  padding: 2px 0 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -415,50 +452,40 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   flex: 1;
 }
 
-.btn-center { transform: translateY(5px); }
+.btn-center { transform: translateY(3px); }
 
 .script-label {
   font-family: 'Caveat', cursive, sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1e14;
+  color: rgba(20, 24, 18, 0.78);
   line-height: 1;
-  opacity: 0.85;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
 }
-.btn-unit:nth-child(2) .script-label { transform: rotate(-4deg); }
-.btn-unit:nth-child(3) .script-label { transform: rotate(1deg); }
-.btn-unit:nth-child(4) .script-label { transform: rotate(5deg); }
-
-.btn-mark.arrow {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: var(--accent-dark);
-  line-height: 1;
-  height: 1.15rem;
-  display: flex;
-  align-items: center;
-}
+.btn-unit:nth-child(1) .script-label { transform: rotate(-4deg); }
+.btn-unit:nth-child(2) .script-label { transform: rotate(1deg); }
+.btn-unit:nth-child(3) .script-label { transform: rotate(5deg); }
 
 .tama-btn {
   width: 34px;
-  height: 22px;
+  height: 26px;
   border: none;
-  border-radius: 14px;
+  border-radius: 50% / 46%;
   background: linear-gradient(165deg, var(--accent-light), var(--accent-color) 45%, var(--accent-dark));
   cursor: pointer;
   box-shadow:
-    inset 1px 2px 3px rgba(255, 255, 255, 0.35),
-    inset -1px -2px 3px rgba(0, 0, 0, 0.3),
+    inset 1px 2px 3px rgba(255, 255, 255, 0.4),
+    inset -1px -2px 3px rgba(0, 0, 0, 0.28),
     0 3px 5px rgba(0, 0, 0, 0.22);
   transition: transform 0.06s, box-shadow 0.06s;
 }
 .tama-btn-enter {
   width: 38px;
-  height: 24px;
+  height: 28px;
 }
 .tama-btn:active,
 .tama-btn.pressed {
@@ -550,7 +577,7 @@
   background: rgba(246, 200, 54, 0.12);
   border-color: rgba(246, 200, 54, 0.35);
 }
-.guide-panel h4 { margin: 0 0 0.55rem; font-size: 0.95rem; color: #f6c836; }
+.guide-panel h4 { margin: 0 0 0.55rem; font-size: 0.95rem; color: #5fd9cc; }
 .controls-list {
   margin: 0; padding: 0 0 0 1rem;
   display: flex; flex-direction: column; gap: 0.3rem;
@@ -572,9 +599,12 @@
 }
 
 @media (max-width: 440px) {
-  .tama-shell { width: min(380px, 96vw); height: 265px; padding: 28px 32px 28px; }
-  .tama-lcd { height: 118px; }
-  .brand-text { font-size: 1.05rem; }
-  .tama-btn { width: 30px; height: 20px; }
-  .tama-btn-enter { width: 34px; height: 22px; }
+  .tama-shell { width: min(360px, 96vw); height: 285px; padding: 24px 12px 18px; }
+  .tama-lcd { height: 114px; }
+  .tama-screen-bezel { max-width: 230px; }
+  .brand-text { font-size: 1rem; }
+  .tama-side-btn { width: 30px; height: 36px; }
+  .tama-btn { width: 30px; height: 22px; }
+  .tama-btn-enter { width: 34px; height: 24px; }
+  .tama-bottom-buttons { width: 70%; }
 }
