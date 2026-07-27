@@ -7,9 +7,10 @@ let flowField = [];
 let cols, rows;
 let scale = 20;
 let zoff = 0;
+let curtainTime = 0;
 
 let flowSpeed = 1;
-let particleCount = 2000;
+let particleCount = 2500;
 let turbulence = 0.004;
 let interactionMode = 'attract';
 let interactionForce = 3;
@@ -18,6 +19,8 @@ let trailLength = 0.95;
 let blendMode = 'source-over';
 let particleShape = 'line';
 let bgEffect = 'stars';
+let auroraIntensity = 70;
+let paused = false;
 
 let mouseX = -1000;
 let mouseY = -1000;
@@ -29,7 +32,9 @@ let mouseVelocityY = 0;
 
 let stars = [];
 let rainDrops = [];
+let ripples = [];
 let nebulaOffset = 0;
+const isMobile = window.innerWidth < 768;
 
 const colorThemes = {
     aurora: {
@@ -81,6 +86,21 @@ const colorThemes = {
         glow: 'rgba(255, 105, 180, 0.15)'
     }
 };
+
+const scenes = {
+    aurora: { name: 'Aurora Boreal', theme: 'aurora', shape: 'line', interaction: 'attract', blend: 'lighter', bg: 'stars', speed: 1, size: 1.5, density: 2500, trail: 95, turbulence: 0.004, force: 3, aurora: 70 },
+    sunset: { name: 'Pôr do Sol Cósmico', theme: 'sunset', shape: 'glow', interaction: 'vortex', blend: 'screen', bg: 'nebula', speed: 1.2, size: 2, density: 2000, trail: 93, turbulence: 0.006, force: 4, aurora: 50 },
+    ocean: { name: 'Profundezas Oceânicas', theme: 'ocean', shape: 'circle', interaction: 'attract', blend: 'lighter', bg: 'none', speed: 0.7, size: 1.8, density: 3000, trail: 96, turbulence: 0.003, force: 3, aurora: 40 },
+    cosmic: { name: 'Nebulosa Cósmica', theme: 'cosmic', shape: 'star', interaction: 'vortex', blend: 'screen', bg: 'nebula', speed: 1.5, size: 2.2, density: 1800, trail: 92, turbulence: 0.008, force: 5, aurora: 60 },
+    neonCity: { name: 'Cidade Neon', theme: 'neon', shape: 'spark', interaction: 'repel', blend: 'color-dodge', bg: 'grid', speed: 1.8, size: 1.5, density: 2200, trail: 90, turbulence: 0.01, force: 6, aurora: 0 },
+    volcano: { name: 'Núcleo Vulcânico', theme: 'fire', shape: 'glow', interaction: 'attract', blend: 'lighter', bg: 'none', speed: 1.3, size: 2.5, density: 1500, trail: 94, turbulence: 0.005, force: 4, aurora: 30 },
+    forest: { name: 'Floresta Mística', theme: 'forest', shape: 'line', interaction: 'vortex', blend: 'source-over', bg: 'stars', speed: 0.8, size: 1.4, density: 2600, trail: 95, turbulence: 0.004, force: 3, aurora: 50 },
+    candy: { name: 'Doce Fantasia', theme: 'candy', shape: 'star', interaction: 'attract', blend: 'screen', bg: 'stars', speed: 1, size: 2, density: 2000, trail: 93, turbulence: 0.006, force: 4, aurora: 40 },
+    matrix: { name: 'Chuva Digital', theme: 'neon', shape: 'line', interaction: 'repel', blend: 'source-over', bg: 'rain', speed: 2, size: 1, density: 1200, trail: 88, turbulence: 0.012, force: 5, aurora: 0 },
+    solarStorm: { name: 'Tempestade Solar', theme: 'fire', shape: 'spark', interaction: 'vortex', blend: 'lighter', bg: 'nebula', speed: 2.2, size: 2, density: 2400, trail: 90, turbulence: 0.009, force: 7, aurora: 20 }
+};
+
+let currentSceneKey = 'aurora';
 
 function getThemeBackground(theme) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -198,6 +218,90 @@ function drawBackgroundEffect() {
         }
         ctx.restore();
     }
+}
+
+function drawAuroraCurtains() {
+    if (auroraIntensity <= 0) return;
+    const theme = colorThemes[currentTheme];
+    const intensity = auroraIntensity / 100;
+    curtainTime += 0.0025 * flowSpeed;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+
+    const bandCount = 3;
+    const step = Math.max(10, Math.round(width / 140));
+
+    for (let b = 0; b < bandCount; b++) {
+        const baseY = height * (0.02 + b * 0.16);
+        const amplitude = (55 + b * 20) * (0.6 + intensity * 0.6);
+        const curtainHeight = height * (0.24 + b * 0.05);
+        const color = theme.colors[b % theme.colors.length];
+
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += step) {
+            const n = noise3D(x * 0.0022 + b * 20, curtainTime + b * 5, 0);
+            const wave = Math.sin(x * 0.0026 + curtainTime * 1.6 + b * 2) * amplitude * 0.5;
+            const y = baseY + n * amplitude + wave;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, baseY + curtainHeight);
+        ctx.lineTo(0, baseY + curtainHeight);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, baseY - amplitude, 0, baseY + curtainHeight);
+        gradient.addColorStop(0, color + '99');
+        gradient.addColorStop(0.45, color + '33');
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = intensity * (0.6 - b * 0.12);
+        ctx.shadowBlur = 45;
+        ctx.shadowColor = color;
+        ctx.fill();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+}
+
+function spawnRipple(x, y) {
+    ripples.push({ x, y, radius: 4, maxRadius: 240, alpha: 0.9 });
+    const burstRadius = 240;
+    for (const particle of particles) {
+        const dx = particle.x - x;
+        const dy = particle.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (dist < burstRadius) {
+            const strength = (1 - dist / burstRadius) * 16;
+            particle.vx += (dx / dist) * strength;
+            particle.vy += (dy / dist) * strength;
+        }
+    }
+}
+
+function updateAndDrawRipples() {
+    if (ripples.length === 0) return;
+    const theme = colorThemes[currentTheme];
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i];
+        r.radius += (r.maxRadius - r.radius) * 0.1 + 3;
+        r.alpha *= 0.92;
+        if (r.alpha < 0.02) {
+            ripples.splice(i, 1);
+            continue;
+        }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = theme.colors[0];
+        ctx.globalAlpha = r.alpha * 0.5;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+    ctx.restore();
 }
 
 function noise3D(x, y, z) {
@@ -414,6 +518,21 @@ function initParticles() {
     }
 }
 
+function setDensity(newCount) {
+    if (newCount > particleCount) {
+        for (let i = particleCount; i < newCount; i++) {
+            particles.push(new Particle());
+        }
+    } else {
+        particles.length = newCount;
+    }
+    particleCount = newCount;
+    const densityEl = document.getElementById('density');
+    const densityValue = document.getElementById('densityValue');
+    if (densityEl) densityEl.value = newCount;
+    if (densityValue) densityValue.textContent = newCount;
+}
+
 function updateFlowField() {
     let yoff = 0;
     for (let y = 0; y < rows; y++) {
@@ -432,6 +551,7 @@ function updateFlowField() {
 
 function animate() {
     requestAnimationFrame(animate);
+    if (paused) return;
 
     const theme = colorThemes[currentTheme];
 
@@ -442,6 +562,7 @@ function animate() {
     ctx.globalAlpha = 1;
 
     drawBackgroundEffect();
+    drawAuroraCurtains();
 
     ctx.globalCompositeOperation = blendMode;
 
@@ -454,6 +575,8 @@ function animate() {
 
     ctx.globalCompositeOperation = 'source-over';
 
+    updateAndDrawRipples();
+
     if (mouseActive) {
         drawMouseGlow();
     }
@@ -462,12 +585,20 @@ function animate() {
     const now = performance.now();
     if (now - lastTime >= 1000) {
         fps = Math.round(frameCount * 1000 / (now - lastTime));
-        document.getElementById('fps').textContent = fps;
+        const fpsEl = document.getElementById('fps');
+        const fpsDot = document.getElementById('fpsDot');
+        if (fpsEl) fpsEl.textContent = fps;
+        if (fpsDot) {
+            fpsDot.classList.remove('fps-mid', 'fps-low');
+            if (fps < 30) fpsDot.classList.add('fps-low');
+            else if (fps < 50) fpsDot.classList.add('fps-mid');
+        }
         frameCount = 0;
         lastTime = now;
     }
 
-    document.getElementById('particleCount').textContent = particles.length;
+    const particleCountEl = document.getElementById('particleCount');
+    if (particleCountEl) particleCountEl.textContent = particles.length;
 }
 
 function drawMouseGlow() {
@@ -497,21 +628,164 @@ canvas.addEventListener('mouseleave', () => {
     mouseActive = false;
 });
 
+canvas.addEventListener('click', (e) => {
+    spawnRipple(e.clientX, e.clientY);
+});
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchMoved = false;
     handleMouseMove(touch.clientX, touch.clientY);
 }, { passive: false });
 
 canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     const touch = e.touches[0];
+    if (Math.abs(touch.clientX - touchStartX) > 8 || Math.abs(touch.clientY - touchStartY) > 8) {
+        touchMoved = true;
+    }
     handleMouseMove(touch.clientX, touch.clientY);
 }, { passive: false });
 
 canvas.addEventListener('touchend', () => {
+    if (!touchMoved) {
+        spawnRipple(lastMouseX || mouseX, lastMouseY || mouseY);
+    }
     mouseActive = false;
-});
+}, { passive: true });
+
+function showToast(message) {
+    let toast = document.querySelector('.toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    clearTimeout(toast._hideTimeout);
+    toast._hideTimeout = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function updateThemeColors() {
+    const theme = colorThemes[currentTheme];
+    document.documentElement.style.setProperty('--aurora-1', theme.colors[0]);
+    document.documentElement.style.setProperty('--aurora-2', theme.colors[1]);
+    document.documentElement.style.setProperty('--aurora-3', theme.colors[2]);
+    document.documentElement.style.setProperty('--glow-color', theme.glow);
+
+    for (const particle of particles) {
+        particle.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
+    }
+}
+
+function applyScene(key, silent) {
+    const scene = scenes[key];
+    if (!scene) return;
+    currentSceneKey = key;
+
+    currentTheme = scene.theme;
+    particleShape = scene.shape;
+    interactionMode = scene.interaction;
+    blendMode = scene.blend;
+    bgEffect = scene.bg;
+    flowSpeed = scene.speed;
+    particleSize = scene.size;
+    trailLength = scene.trail / 100;
+    turbulence = scene.turbulence;
+    interactionForce = scene.force;
+    auroraIntensity = scene.aurora;
+
+    const density = isMobile ? Math.max(500, Math.round(scene.density * 0.55)) : scene.density;
+    setDensity(density);
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+    setVal('blendMode', blendMode);
+    setVal('bgEffect', bgEffect);
+    setVal('flowSpeed', flowSpeed);
+    setText('speedValue', flowSpeed.toFixed(1));
+    setVal('particleSize', particleSize);
+    setText('sizeValue', particleSize.toFixed(1));
+    setVal('trailLength', scene.trail);
+    setText('trailValue', scene.trail + '%');
+    setVal('turbulence', turbulence);
+    setText('turbValue', turbulence.toFixed(3));
+    setVal('interactionForce', interactionForce);
+    setText('forceValue', interactionForce.toFixed(1));
+    setVal('auroraIntensity', auroraIntensity);
+    setText('auroraValue', auroraIntensity + '%');
+
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s.dataset.theme === currentTheme));
+    document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === particleShape));
+    document.querySelectorAll('.interaction-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === interactionMode));
+    document.querySelectorAll('.scene-card').forEach(c => c.classList.toggle('active', c.dataset.scene === key));
+
+    updateThemeColors();
+    for (const particle of particles) {
+        particle.color = colorThemes[currentTheme].colors[Math.floor(Math.random() * colorThemes[currentTheme].colors.length)];
+        particle.size = (Math.random() * 1.5 + 0.5) * particleSize;
+    }
+
+    ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
+    ctx.fillRect(0, 0, width, height);
+
+    if (!silent) showToast(scene.name);
+}
+
+function buildSceneGrid() {
+    const grid = document.getElementById('sceneGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.entries(scenes).forEach(([key, scene]) => {
+        const theme = colorThemes[scene.theme];
+        const card = document.createElement('button');
+        card.className = 'scene-card' + (key === currentSceneKey ? ' active' : '');
+        card.dataset.scene = key;
+        card.style.setProperty('--scene-gradient', `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]}, ${theme.colors[2]})`);
+        card.innerHTML = `<span class="scene-name">${scene.name}</span>`;
+        card.addEventListener('click', () => applyScene(key));
+        grid.appendChild(card);
+    });
+}
+
+function randomize() {
+    const keys = Object.keys(scenes);
+    let key = keys[Math.floor(Math.random() * keys.length)];
+    if (keys.length > 1) {
+        while (key === currentSceneKey) {
+            key = keys[Math.floor(Math.random() * keys.length)];
+        }
+    }
+    applyScene(key);
+}
+
+const randomEl = document.getElementById('random');
+if (randomEl) {
+    randomEl.addEventListener('click', randomize);
+}
+
+const resetEl = document.getElementById('reset');
+if (resetEl) {
+    resetEl.addEventListener('click', () => {
+        ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
+        ctx.fillRect(0, 0, width, height);
+        initParticles();
+        zoff = 0;
+        ripples = [];
+        showToast('Reiniciado');
+    });
+}
 
 const flowSpeedEl = document.getElementById('flowSpeed');
 if (flowSpeedEl) {
@@ -525,17 +799,7 @@ if (flowSpeedEl) {
 const densityEl = document.getElementById('density');
 if (densityEl) {
     densityEl.addEventListener('input', (e) => {
-        const newCount = parseInt(e.target.value);
-        if (newCount > particleCount) {
-            for (let i = particleCount; i < newCount; i++) {
-                particles.push(new Particle());
-            }
-        } else {
-            particles.length = newCount;
-        }
-        particleCount = newCount;
-        const densityValue = document.getElementById('densityValue');
-        if (densityValue) densityValue.textContent = newCount;
+        setDensity(parseInt(e.target.value));
     });
 }
 
@@ -578,6 +842,15 @@ if (interactionForceEl) {
     });
 }
 
+const auroraIntensityEl = document.getElementById('auroraIntensity');
+if (auroraIntensityEl) {
+    auroraIntensityEl.addEventListener('input', (e) => {
+        auroraIntensity = parseFloat(e.target.value);
+        const auroraValue = document.getElementById('auroraValue');
+        if (auroraValue) auroraValue.textContent = e.target.value + '%';
+    });
+}
+
 const blendModeEl = document.getElementById('blendMode');
 if (blendModeEl) {
     blendModeEl.addEventListener('change', (e) => {
@@ -590,104 +863,6 @@ if (bgEffectEl) {
     bgEffectEl.addEventListener('change', (e) => {
         bgEffect = e.target.value;
     });
-}
-
-const resetEl = document.getElementById('reset');
-if (resetEl) {
-    resetEl.addEventListener('click', () => {
-        ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
-        ctx.fillRect(0, 0, width, height);
-        initParticles();
-        zoff = 0;
-    });
-}
-
-const randomEl = document.getElementById('random');
-if (randomEl) {
-    randomEl.addEventListener('click', randomize);
-}
-
-function randomize() {
-    const themes = Object.keys(colorThemes);
-    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-    currentTheme = randomTheme;
-
-    document.querySelectorAll('.color-swatch').forEach(s => {
-        s.classList.toggle('active', s.dataset.theme === randomTheme);
-    });
-    updateThemeColors();
-
-    const modes = ['attract', 'repel', 'vortex'];
-    interactionMode = modes[Math.floor(Math.random() * modes.length)];
-    document.querySelectorAll('.interaction-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.mode === interactionMode);
-    });
-
-    const shapes = ['line', 'circle', 'star', 'spark', 'glow'];
-    particleShape = shapes[Math.floor(Math.random() * shapes.length)];
-    document.querySelectorAll('.shape-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.shape === particleShape);
-    });
-
-    const blendModes = ['lighter', 'source-over', 'screen', 'overlay', 'color-dodge'];
-    blendMode = blendModes[Math.floor(Math.random() * blendModes.length)];
-    document.getElementById('blendMode').value = blendMode;
-
-    const bgEffects = ['none', 'stars', 'grid', 'nebula', 'rain'];
-    bgEffect = bgEffects[Math.floor(Math.random() * bgEffects.length)];
-    document.getElementById('bgEffect').value = bgEffect;
-
-    flowSpeed = Math.random() * 2.5 + 0.5;
-    document.getElementById('flowSpeed').value = flowSpeed;
-    document.getElementById('speedValue').textContent = flowSpeed.toFixed(1);
-
-    turbulence = Math.random() * 0.012 + 0.002;
-    document.getElementById('turbulence').value = turbulence;
-    document.getElementById('turbValue').textContent = turbulence.toFixed(3);
-
-    particleSize = Math.random() * 3.5 + 1;
-    document.getElementById('particleSize').value = particleSize;
-    document.getElementById('sizeValue').textContent = particleSize.toFixed(1);
-
-    trailLength = Math.random() * 0.15 + 0.85;
-    document.getElementById('trailLength').value = trailLength * 100;
-    document.getElementById('trailValue').textContent = Math.round(trailLength * 100) + '%';
-
-    interactionForce = Math.random() * 7 + 2;
-    document.getElementById('interactionForce').value = interactionForce;
-    document.getElementById('forceValue').textContent = interactionForce.toFixed(1);
-
-    const newCount = Math.floor(Math.random() * 5000 + 1000);
-    if (newCount > particleCount) {
-        for (let i = particleCount; i < newCount; i++) {
-            particles.push(new Particle());
-        }
-    } else {
-        particles.length = newCount;
-    }
-    particleCount = newCount;
-    document.getElementById('density').value = newCount;
-    document.getElementById('densityValue').textContent = newCount;
-
-    for (const particle of particles) {
-        particle.color = colorThemes[currentTheme].colors[Math.floor(Math.random() * colorThemes[currentTheme].colors.length)];
-        particle.size = (Math.random() * 1.5 + 0.5) * particleSize;
-    }
-
-    ctx.fillStyle = getThemeBackground(colorThemes[currentTheme]);
-    ctx.fillRect(0, 0, width, height);
-}
-
-function updateThemeColors() {
-    const theme = colorThemes[currentTheme];
-    document.documentElement.style.setProperty('--aurora-1', theme.colors[0]);
-    document.documentElement.style.setProperty('--aurora-2', theme.colors[1]);
-    document.documentElement.style.setProperty('--aurora-3', theme.colors[2]);
-    document.documentElement.style.setProperty('--glow-color', theme.glow);
-
-    for (const particle of particles) {
-        particle.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
-    }
 }
 
 document.querySelectorAll('.interaction-btn').forEach(btn => {
@@ -714,6 +889,50 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
         updateThemeColors();
     });
 });
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        const targetTab = btn.dataset.tab;
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.dataset.tabPanel === targetTab);
+        });
+    });
+});
+
+function togglePause() {
+    paused = !paused;
+    const pauseIcon = document.querySelector('.pause-icon');
+    const playIcon = document.querySelector('.play-icon');
+    if (pauseIcon && playIcon) {
+        pauseIcon.style.display = paused ? 'none' : 'block';
+        playIcon.style.display = paused ? 'block' : 'none';
+    }
+    showToast(paused ? 'Pausado' : 'Retomado');
+}
+
+const playPauseEl = document.getElementById('playPause');
+if (playPauseEl) {
+    playPauseEl.addEventListener('click', togglePause);
+}
+
+function saveImage() {
+    const link = document.createElement('a');
+    link.download = `aurora-flow-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Imagem salva');
+}
+
+const saveImageEl = document.getElementById('saveImage');
+if (saveImageEl) {
+    saveImageEl.addEventListener('click', saveImage);
+}
 
 const fullscreenEl = document.getElementById('fullscreen');
 if (fullscreenEl) {
@@ -743,23 +962,51 @@ const controls = document.querySelector('.controls');
 const toggleBtn = document.getElementById('toggleControls');
 const closeBtn = document.getElementById('closeControls');
 
-if (toggleBtn && closeBtn) {
-    toggleBtn.addEventListener('click', () => {
-        controls.classList.add('visible');
-        toggleBtn.classList.add('hidden');
-    });
-
-    closeBtn.addEventListener('click', () => {
-        controls.classList.remove('visible');
-        toggleBtn.classList.remove('hidden');
-    });
+function openControls() {
+    controls.classList.add('visible');
+    toggleBtn.classList.add('hidden');
 }
 
-// Listen for theme changes (dark/light mode)
+function closeControls() {
+    controls.classList.remove('visible');
+    toggleBtn.classList.remove('hidden');
+}
+
+if (toggleBtn && closeBtn) {
+    toggleBtn.addEventListener('click', openControls);
+    closeBtn.addEventListener('click', closeControls);
+}
+
+document.addEventListener('keydown', (e) => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+    switch (e.key.toLowerCase()) {
+        case ' ':
+            e.preventDefault();
+            togglePause();
+            break;
+        case 'r':
+            randomize();
+            break;
+        case 's':
+            saveImage();
+            break;
+        case 'f':
+            toggleFullscreen();
+            break;
+        case 'c':
+            if (controls.classList.contains('visible')) closeControls(); else openControls();
+            break;
+        case 'escape':
+            closeControls();
+            break;
+    }
+});
+
 const themeObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-            // Force a redraw with the new theme background
             const theme = colorThemes[currentTheme];
             ctx.fillStyle = getThemeBackground(theme);
             ctx.fillRect(0, 0, width, height);
@@ -773,5 +1020,8 @@ themeObserver.observe(document.documentElement, {
 });
 
 window.addEventListener('resize', resize);
+
+buildSceneGrid();
 resize();
+applyScene(currentSceneKey, true);
 animate();

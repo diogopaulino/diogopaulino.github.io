@@ -5,7 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gravity - Diogo Paulino</title>
-    <meta name="description" content="Simulação de física de partículas interativa.">
+    <meta name="description" content="Simulação gravitacional interativa: sistemas solares, estrelas binárias, buracos negros e colisões galácticas em tempo real.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -14,10 +17,25 @@
     <div class="container">
         <header data-lab-header data-title="Gravity">
             <template data-slot="logo">
-                🪐 Gravity
+                <div class="app-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="4" />
+                        <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-20 12 12)" />
+                    </svg>
+                    Gravity
+                </div>
             </template>
             <template data-slot="actions">
-                <button id="fullscreen-btn" class="icon-btn" aria-label="Fullscreen">
+                <button id="playPauseBtn" class="icon-btn" aria-label="Pausar" title="Pausar (Espaço)">
+                    <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="6" y="4" width="4" height="16" rx="1"/>
+                        <rect x="14" y="4" width="4" height="16" rx="1"/>
+                    </svg>
+                    <svg class="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <polygon points="6 3 20 12 6 21 6 3" />
+                    </svg>
+                </button>
+                <button id="fullscreen-btn" class="icon-btn" aria-label="Tela cheia" title="Tela cheia (F)">
                     <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path
@@ -35,60 +53,157 @@
 
         <canvas id="canvas"></canvas>
 
-        <div class="controls">
-            <div class="control-column">
-                <div class="control-group">
-                    <label>Modo do Mouse</label>
-                    <div class="toggle-group">
-                        <button class="toggle-btn active" data-mode="spawn">Criar</button>
-                        <button class="toggle-btn" data-mode="attract">Atrair</button>
-                        <button class="toggle-btn" data-mode="repel">Repelir</button>
-                        <button class="toggle-btn" data-mode="blackhole">Buraco Negro</button>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <label>Tema</label>
-                    <select id="theme-select">
-                        <option value="neon">Neon</option>
-                        <option value="fire">Fogo</option>
-                        <option value="ice">Gelo</option>
-                        <option value="matrix">Matrix</option>
-                        <option value="rainbow">Rainbow</option>
-                        <option value="sunset">Pôr do Sol</option>
-                        <option value="ocean">Oceano</option>
-                        <option value="galaxy">Galáxia</option>
-                        <option value="aurora">Aurora</option>
-                        <option value="candy">Candy</option>
-                    </select>
-                </div>
+        <div class="slingshot-hint" id="slingshotHint"></div>
+
+        <button id="toggleControls" class="toggle-controls-btn" aria-label="Mostrar/esconder controles" title="Controles">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+        </button>
+
+        <div class="controls" id="controlsPanel">
+            <div class="controls-header">
+                <span>Controles</span>
+                <button id="closeControls" class="close-btn" aria-label="Fechar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
-            <div class="control-column">
-                <div class="control-group">
-                    <label>Gravidade</label>
-                    <div class="preset-group">
-                        <button class="preset-btn" data-gravity="0" title="Sem Gravidade">🚀</button>
-                        <button class="preset-btn" data-gravity="0.16" title="Lua">🌙</button>
-                        <button class="preset-btn" data-gravity="0.38" title="Marte">🔴</button>
-                        <button class="preset-btn active" data-gravity="0.5" title="Terra">🌍</button>
-                        <button class="preset-btn" data-gravity="0.9" title="Júpiter">🟤</button>
+            <div class="controls-scroll">
+                <div class="control-section">
+                    <div class="section-title">Cenários</div>
+                    <div class="scenario-grid">
+                        <button class="scenario-btn active" data-scenario="solar" title="Sistema Solar">
+                            <span class="scenario-icon">☀️</span><small>Sistema Solar</small>
+                        </button>
+                        <button class="scenario-btn" data-scenario="binary" title="Estrelas Binárias">
+                            <span class="scenario-icon">💫</span><small>Binárias</small>
+                        </button>
+                        <button class="scenario-btn" data-scenario="blackhole" title="Buraco Negro">
+                            <span class="scenario-icon">🕳️</span><small>Buraco Negro</small>
+                        </button>
+                        <button class="scenario-btn" data-scenario="galaxy" title="Colisão Galáctica">
+                            <span class="scenario-icon">🌌</span><small>Colisão</small>
+                        </button>
+                        <button class="scenario-btn" data-scenario="chaos" title="Caos">
+                            <span class="scenario-icon">⚡</span><small>Caos</small>
+                        </button>
+                        <button class="scenario-btn" data-scenario="classic" title="Chuva Clássica">
+                            <span class="scenario-icon">🌧️</span><small>Clássico</small>
+                        </button>
                     </div>
-                    <input type="range" id="gravity" min="-0.5" max="1" step="0.01" value="0.5">
                 </div>
-                <div class="control-group">
-                    <label>Fricção</label>
-                    <input type="range" id="friction" min="0.9" max="0.999" step="0.001" value="0.98">
-                </div>
-                <div class="control-group">
-                    <label>Tamanho</label>
-                    <input type="range" id="size" min="1" max="15" step="1" value="3">
-                </div>
-            </div>
 
-            <div class="control-column">
-                <div class="control-group">
-                    <label>Efeitos</label>
-                    <div class="checkbox-group">
+                <div class="control-section">
+                    <div class="section-title">Modo do Mouse</div>
+                    <div class="mode-grid">
+                        <button class="mode-btn active" data-mode="spawn" title="Criar Partículas">
+                            <span>✨</span><small>Criar</small>
+                        </button>
+                        <button class="mode-btn" data-mode="body" title="Lançar corpo com estilingue">
+                            <span>🪐</span><small>Corpo</small>
+                        </button>
+                        <button class="mode-btn" data-mode="attract" title="Atrair partículas">
+                            <span>🧲</span><small>Atrair</small>
+                        </button>
+                        <button class="mode-btn" data-mode="repel" title="Repelir partículas">
+                            <span>💨</span><small>Repelir</small>
+                        </button>
+                        <button class="mode-btn" data-mode="blackhole" title="Sugar partículas">
+                            <span>🕳️</span><small>Sugar</small>
+                        </button>
+                        <button class="mode-btn" data-mode="erase" title="Apagar">
+                            <span>🧹</span><small>Apagar</small>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="section-title">Física</div>
+                    <div class="sliders-grid">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Gravidade Vertical</label>
+                                <span class="slider-value" id="gravityValue">0.00</span>
+                            </div>
+                            <input type="range" id="gravity" min="-0.5" max="1" step="0.01" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Força Gravitacional</label>
+                                <span class="slider-value" id="gStrengthValue">1.0</span>
+                            </div>
+                            <input type="range" id="gStrength" min="0.2" max="3" step="0.1" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Fricção</label>
+                                <span class="slider-value" id="frictionValue">1.000</span>
+                            </div>
+                            <input type="range" id="friction" min="0.95" max="1" step="0.001" value="1">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Tamanho do Corpo</label>
+                                <span class="slider-value" id="bodySizeValue">18</span>
+                            </div>
+                            <input type="range" id="bodySize" min="6" max="45" step="1" value="18">
+                        </div>
+                    </div>
+                    <div class="toggle-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="bodiesAttract">
+                            <span>Corpos se atraem</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="absorb" checked>
+                            <span>Corpos absorvem partículas</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="section-title">Partículas</div>
+                    <div class="sliders-grid">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Tamanho</label>
+                                <span class="slider-value" id="sizeValue">3</span>
+                            </div>
+                            <input type="range" id="size" min="1" max="15" step="1" value="3">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>Velocidade Inicial</label>
+                                <span class="slider-value" id="velocityValue">10</span>
+                            </div>
+                            <input type="range" id="velocity" min="1" max="30" step="1" value="10">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="section-title">Visual</div>
+                    <div class="select-group">
+                        <label>Tema de Cor</label>
+                        <select id="theme-select">
+                            <option value="neon">Neon</option>
+                            <option value="fire">Fogo</option>
+                            <option value="ice">Gelo</option>
+                            <option value="matrix">Matrix</option>
+                            <option value="rainbow">Rainbow</option>
+                            <option value="sunset">Pôr do Sol</option>
+                            <option value="ocean">Oceano</option>
+                            <option value="galaxy">Galáxia</option>
+                            <option value="aurora">Aurora</option>
+                            <option value="candy">Candy</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-grid">
                         <label class="checkbox-label">
                             <input type="checkbox" id="trails" checked>
                             <span>Rastros</span>
@@ -99,25 +214,65 @@
                         </label>
                         <label class="checkbox-label">
                             <input type="checkbox" id="bounce" checked>
-                            <span>Colisão</span>
+                            <span>Quicar nas bordas</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="stars" checked>
+                            <span>Estrelas de fundo</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="velocityColor">
+                            <span>Cor por velocidade</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="additive">
+                            <span>Mistura aditiva</span>
                         </label>
                     </div>
                 </div>
-                <div class="control-group">
-                    <label>Velocidade Inicial</label>
-                    <input type="range" id="velocity" min="1" max="30" step="1" value="10">
-                </div>
             </div>
 
-            <div class="control-actions">
-                <button id="random" class="action-btn rainbow-btn">🎲 Random</button>
-                <button id="clear" class="action-btn">Limpar Tela</button>
-                <div class="particle-count">Partículas: <span id="count">0</span></div>
+            <div class="control-footer">
+                <div class="action-buttons">
+                    <button id="random" class="action-btn random-btn" title="Cenário aleatório">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+                            <path d="m18 2 4 4-4 4" />
+                            <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+                            <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+                            <path d="m18 14 4 4-4 4" />
+                        </svg>
+                        Random
+                    </button>
+                    <button id="clear" class="action-btn clear-btn" title="Limpar tudo">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
+                        </svg>
+                        Limpar
+                    </button>
+                </div>
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="stat-value" id="count">0</span>
+                        <span class="stat-label">partículas</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat">
+                        <span class="stat-value" id="bodyCount">0</span>
+                        <span class="stat-label">corpos</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat">
+                        <span class="stat-value" id="fps">60</span>
+                        <span class="stat-label">fps</span>
+                    </div>
+                </div>
+                <div class="shortcuts-hint">Espaço pausa · C limpa · F tela cheia · 1–6 cenários</div>
             </div>
         </div>
 
         <div class="instructions">
-            <p>Clique e arraste para criar partículas • Use o mouse para interagir</p>
+            <p>Arraste para criar partículas · Modo <strong>Corpo</strong>: arraste e solte para lançar um planeta</p>
         </div>
 
         <footer data-lab-footer data-home-href="/"></footer>
