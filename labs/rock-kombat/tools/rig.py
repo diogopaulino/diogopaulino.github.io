@@ -11,9 +11,10 @@ numbers stay valid if the source art is ever re-exported at another resolution.
 Parts overlap generously towards their pivot: the extra material is what keeps a
 rotated limb from tearing a hole open at the joint.
 
-All three base poses face the viewer's LEFT. Viewer-right limbs (`armBack*`,
-`legBack*`) become the lead after the arena flips the sprite to face the
-opponent -- those boxes must capture a real forearm/shin, not the face.
+All three base poses face the viewer's LEFT. Viewer-left limbs (`armFront*`,
+`legFront*`) are the lead limbs toward the opponent; the arena flips the
+sprite when a fighter faces right. Back-limb boxes still need real
+forearms/shins so idle/block/hit poses stay solid.
 """
 
 CLEANUP = {

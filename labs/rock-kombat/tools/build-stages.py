@@ -24,39 +24,29 @@ STAGE_W = 1360
 STAGE_H = 600
 ASPECT = STAGE_W / STAGE_H
 
-STAGES = {
     'stadium': {
         'src': 'stadium-src.jpg',
-        # Cool magenta/cyan arena wash.
-        'tint': (150, 90, 220), 'tint_amount': 0.22,
-        'darken': 0.42, 'blur': 2.4,
-        # Bias the crop up a touch: the source's best light-rig detail sits
-        # above centre, and the crowd (which fades into shadow anyway) can
-        # afford to lose a bit more off the bottom.
+        # Cool magenta/cyan arena wash — keep photos readable (MK digitized stages).
+        'tint': (150, 90, 220), 'tint_amount': 0.14,
+        'darken': 0.32, 'blur': 0.8,
         'crop_bias_y': -0.06,
-        # This photo's performers are tiny and lost in the light rig already,
-        # so the fighters don't need extra help reading against them.
         'center_dim': 0.0,
     },
     'club': {
         'src': 'club-src.jpg',
         # Warm amber/red dive-bar wash.
-        'tint': (255, 90, 60), 'tint_amount': 0.26,
-        'darken': 0.56, 'blur': 4.2,
+        'tint': (255, 90, 60), 'tint_amount': 0.16,
+        'darken': 0.40, 'blur': 1.4,
         'crop_bias_y': -0.10,
-        # The source band is full-height and dead centre -- without this the
-        # blurred musicians silently double as a second pair of "fighters"
-        # standing exactly where the real ones will be posed.
-        'center_dim': 0.45,
+        'center_dim': 0.35,
     },
     'woodstock': {
         'src': 'woodstock-src.jpg',
-        # Golden-hour push -- the source is already warm, so this just seats
-        # it next to the procedural sunset gradient the crowd/fog layer uses.
-        'tint': (255, 150, 60), 'tint_amount': 0.20,
-        'darken': 0.48, 'blur': 3.6,
+        # Golden-hour push — source is already warm.
+        'tint': (255, 150, 60), 'tint_amount': 0.12,
+        'darken': 0.34, 'blur': 1.2,
         'crop_bias_y': -0.08,
-        'center_dim': 0.4,
+        'center_dim': 0.30,
     },
 }
 
@@ -134,15 +124,16 @@ def build_stage(name, cfg, source_dir, out_dir):
     im = crop_to_aspect(im, ASPECT, cfg.get('crop_bias_y', 0.0))
     im = im.resize((STAGE_W, STAGE_H), Image.LANCZOS)
     im = im.filter(ImageFilter.GaussianBlur(cfg['blur']))
-    im = ImageEnhance.Contrast(im).enhance(1.08)
-    im = ImageEnhance.Color(im).enhance(1.12)
+    im = ImageEnhance.Contrast(im).enhance(1.12)
+    im = ImageEnhance.Color(im).enhance(1.15)
+    im = ImageEnhance.Sharpness(im).enhance(1.25)
     im = tint_and_darken(im, cfg['tint'], cfg['tint_amount'], cfg['darken'])
     im = center_dim(im, cfg.get('center_dim', 0.0))
-    im = vignette(im, 0.30)
+    im = vignette(im, 0.26)
     im = darken_floor_band(im)
 
     out = out_dir / f'stage-{name}.webp'
-    im.save(out, 'WEBP', quality=82, method=6)
+    im.save(out, 'WEBP', quality=88, method=6)
     return out
 
 
