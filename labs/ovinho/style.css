@@ -1,8 +1,15 @@
 /* Ovinho - Retro Virtual Pet */
 
 :root {
-    --shell-color: #e8536b;
-    --accent-color: #3a3a3a;
+    --shell-color: #f2c94c;
+    --shell-light: #f8dd85;
+    --shell-dark: #caa02e;
+    --accent-color: #ef7d3b;
+    --accent-light: #f6a874;
+    --accent-dark: #c85a1f;
+    --cap-color: #4d7fc4;
+    --cap-light: #7ba3db;
+    --cap-dark: #345a91;
     --screen-color: #9bbc0f;
 }
 
@@ -16,109 +23,118 @@
     width: 100%;
 }
 
-/* ============ EGG SHELL ============ */
+/* ============ SHELL ============ */
 .tama-shell {
     position: relative;
-    width: 300px;
-    background: linear-gradient(160deg,
-            color-mix(in srgb, var(--shell-color) 100%, white 18%) 0%,
-            var(--shell-color) 45%,
-            color-mix(in srgb, var(--shell-color) 100%, black 20%) 100%);
-    border-radius: 46% 46% 42% 42% / 52% 52% 40% 40%;
-    padding: 36px 26px 30px;
+    width: 340px;
+    background: var(--shell-color);
+    background: linear-gradient(160deg, var(--shell-light) 0%, var(--shell-color) 45%, var(--shell-dark) 100%);
+    border-radius: 120px 120px 96px 96px / 92px 92px 76px 76px;
+    padding: 46px 34px 26px;
     display: flex;
     flex-direction: column;
     align-items: center;
     user-select: none;
     box-shadow:
-        inset -8px -10px 20px rgba(0, 0, 0, 0.18),
-        inset 8px 10px 16px rgba(255, 255, 255, 0.35),
-        0 18px 40px rgba(0, 0, 0, 0.25);
+        inset -8px -10px 20px rgba(0, 0, 0, 0.15),
+        inset 8px 10px 16px rgba(255, 255, 255, 0.4),
+        0 18px 40px rgba(0, 0, 0, 0.22);
     transition: background 0.4s ease;
 }
 
-.tama-shell::before,
-.tama-shell::after {
-    content: '';
+.tama-cap {
     position: absolute;
-    top: 34%;
-    width: 60px;
-    height: 60px;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 64px;
+    height: 40px;
+    background: var(--cap-color);
+    background: linear-gradient(160deg, var(--cap-light), var(--cap-color) 60%, var(--cap-dark));
+    border-radius: 30px 30px 8px 8px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    z-index: 3;
+}
+
+.tama-ring {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 16px;
+    border: 5px solid #8a8f98;
     border-radius: 50%;
-    background: linear-gradient(160deg,
-            color-mix(in srgb, var(--accent-color) 100%, white 20%) 0%,
-            var(--accent-color) 55%,
-            color-mix(in srgb, var(--accent-color) 100%, black 25%) 100%);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3);
+}
+
+.tama-ear {
+    position: absolute;
+    top: 38%;
+    width: 64px;
+    height: 50px;
+    background: var(--accent-color);
+    background: linear-gradient(160deg, var(--accent-light), var(--accent-color) 55%, var(--accent-dark));
     box-shadow:
-        inset -5px -6px 10px rgba(0, 0, 0, 0.25),
-        inset 5px 5px 8px rgba(255, 255, 255, 0.25),
-        0 6px 12px rgba(0, 0, 0, 0.2);
+        inset -4px -5px 8px rgba(0, 0, 0, 0.2),
+        inset 4px 4px 6px rgba(255, 255, 255, 0.3),
+        0 5px 10px rgba(0, 0, 0, 0.18);
     z-index: 0;
 }
 
-.tama-shell::before {
-    left: -24px;
+.tama-ear-left {
+    left: -30px;
+    border-radius: 60% 20% 20% 60% / 55% 45% 55% 45%;
 }
 
-.tama-shell::after {
-    right: -24px;
+.tama-ear-right {
+    right: -30px;
+    border-radius: 20% 60% 60% 20% / 45% 55% 45% 55%;
 }
 
-.tama-loop,
-.tama-top-label,
+.tama-name-arc,
 .tama-screen-bezel,
-.tama-speaker,
-.tama-buttons,
-.tama-brand {
+.tama-buttons {
     position: relative;
     z-index: 1;
 }
 
-.tama-loop {
-    position: absolute;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 34px;
-    height: 22px;
-    border: 7px solid color-mix(in srgb, var(--shell-color) 70%, black 25%);
-    border-radius: 50%;
-    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
-    z-index: 2;
+.tama-name-arc {
+    position: relative;
+    height: 30px;
+    width: 100%;
+    margin-bottom: 14px;
 }
 
-.tama-top-label {
+.tama-name-arc span {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform-origin: 0 130px;
     font-family: 'Press Start 2P', cursive;
-    font-size: 9px;
-    letter-spacing: 1px;
-    color: color-mix(in srgb, var(--shell-color) 40%, black 55%);
-    margin-bottom: 10px;
-    text-align: center;
-    max-width: 90%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 11px;
+    color: var(--accent-dark);
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* ============ SCREEN ============ */
 .tama-screen-bezel {
     width: 100%;
-    background: #4a4a4a;
-    background: color-mix(in srgb, var(--accent-color) 60%, #555 40%);
-    border-radius: 22% / 30%;
-    padding: 16px 18px;
+    background: #2b2b2b;
+    border-radius: 20px;
+    padding: 14px 16px;
     box-shadow:
         inset 0 3px 6px rgba(0, 0, 0, 0.4),
-        inset 0 -2px 4px rgba(255, 255, 255, 0.08);
+        inset 0 -2px 4px rgba(255, 255, 255, 0.06);
 }
 
 .tama-screen {
     position: relative;
     width: 100%;
     aspect-ratio: 8 / 5;
-    background: color-mix(in srgb, var(--screen-color) 55%, #cfe8a0 15%);
-    border: 3px solid #2b2b2b;
-    border-radius: 16% / 22%;
+    background: var(--screen-color);
+    border: 3px solid #1a1a1a;
+    border-radius: 8px;
     overflow: hidden;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
 }
@@ -155,17 +171,6 @@
     pointer-events: none;
 }
 
-.bezel-dot {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.3);
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
-}
-
 .tama-overlay {
     position: absolute;
     inset: 0;
@@ -177,7 +182,7 @@
     gap: 6px;
     text-align: center;
     padding: 10px;
-    background: color-mix(in srgb, var(--screen-color) 55%, #cfe8a0 15%);
+    background: var(--screen-color);
     font-family: 'Press Start 2P', cursive;
     color: #1a2e05;
 }
@@ -224,80 +229,55 @@
     text-align: left;
 }
 
-.bezel-dot-left {
-    left: 4px;
-}
-
-.bezel-dot-right {
-    right: 4px;
-}
-
-/* ============ SPEAKER ============ */
-.tama-speaker {
-    display: flex;
-    gap: 5px;
-    margin: 14px 0 6px;
-}
-
-.tama-speaker span {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--shell-color) 40%, black 45%);
-    opacity: 0.6;
-}
-
 /* ============ BUTTONS ============ */
 .tama-buttons {
     display: flex;
-    gap: 28px;
-    margin-top: 8px;
+    gap: 26px;
+    margin-top: 16px;
 }
 
 .btn-col {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 4px;
+}
+
+.btn-tag {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 7px;
+    color: var(--accent-dark);
+    opacity: 0.85;
 }
 
 .tama-btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+    width: 44px;
+    height: 38px;
+    border-radius: 50% 50% 45% 45%;
     border: none;
-    background: linear-gradient(160deg,
-            color-mix(in srgb, var(--accent-color) 100%, white 20%),
-            var(--accent-color));
+    background: var(--accent-color);
+    background: linear-gradient(160deg, var(--accent-light), var(--accent-color) 55%, var(--accent-dark));
     color: #fff;
     font-family: 'Press Start 2P', cursive;
     font-size: 12px;
     cursor: pointer;
     box-shadow:
-        0 3px 0 color-mix(in srgb, var(--accent-color) 100%, black 35%),
-        0 5px 8px rgba(0, 0, 0, 0.3);
+        0 4px 0 var(--accent-dark),
+        0 6px 8px rgba(0, 0, 0, 0.3);
     transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
 .tama-btn:active,
 .tama-btn.pressed {
-    transform: translateY(3px);
+    transform: translateY(4px);
     box-shadow:
-        0 0 0 color-mix(in srgb, var(--accent-color) 100%, black 35%),
+        0 0 0 var(--accent-dark),
         0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .tama-btn:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 3px;
-}
-
-.tama-brand {
-    margin-top: 16px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 7px;
-    letter-spacing: 1px;
-    color: color-mix(in srgb, var(--shell-color) 30%, black 60%);
-    opacity: 0.75;
 }
 
 /* ============ SIDE PANELS ============ */
@@ -573,17 +553,30 @@
     }
 
     .tama-shell {
-        width: 260px;
-        padding: 28px 20px 24px;
+        width: 280px;
+        padding: 40px 26px 22px;
+    }
+
+    .tama-ear {
+        width: 50px;
+        height: 40px;
+    }
+
+    .tama-ear-left {
+        left: -22px;
+    }
+
+    .tama-ear-right {
+        right: -22px;
     }
 
     .tama-buttons {
-        gap: 20px;
+        gap: 18px;
     }
 }
 
 @media (max-width: 360px) {
     .tama-shell {
-        width: 92vw;
+        width: 90vw;
     }
 }
