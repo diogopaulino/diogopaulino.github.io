@@ -5,6 +5,10 @@
   const ROUND_TIME = 90;
   const STAGE_NAMES = { woodstock: "WOODSTOCK '69 STAGE", stadium: "STADIUM ARENA '94", club: "UNDERGROUND TUBE CLUB" };
 
+  // Characters render at this height in the 960x540 stage space; the atlas art
+  // is authored taller so it stays sharp on high-DPI displays.
+  const FIGHTER_HEIGHT = 248;
+
   // --- THE 3 OFFICIAL ROCK LEGENDS (KURT, AXL, LENNON) ---
   const fighters = [
     {
@@ -116,12 +120,12 @@
     img.onload = () => { stagePhotos[name] = img; stageCache.dirty = true; };
   });
 
-  const realAmpImg = new Image(); realAmpImg.src = 'assets/real-amp.png';
-  const realDrumsImg = new Image(); realDrumsImg.src = 'assets/real-drums.png';
-  const realTrussImg = new Image(); realTrussImg.src = 'assets/real-truss.png';
-  const weaponGuitarImg = new Image(); weaponGuitarImg.src = 'assets/weapon-guitar.png';
-  const weaponMicImg = new Image(); weaponMicImg.src = 'assets/weapon-mic.png';
-  const weaponDoveImg = new Image(); weaponDoveImg.src = 'assets/weapon-dove.png';
+  const realAmpImg = new Image(); realAmpImg.src = 'assets/real-amp.webp';
+  const realDrumsImg = new Image(); realDrumsImg.src = 'assets/real-drums.webp';
+  const realTrussImg = new Image(); realTrussImg.src = 'assets/real-truss.webp';
+  const weaponGuitarImg = new Image(); weaponGuitarImg.src = 'assets/weapon-guitar.webp';
+  const weaponMicImg = new Image(); weaponMicImg.src = 'assets/weapon-mic.webp';
+  const weaponDoveImg = new Image(); weaponDoveImg.src = 'assets/weapon-dove.webp';
 
   [realAmpImg, realDrumsImg, realTrussImg].forEach(img => {
     img.onload = () => {
@@ -194,7 +198,7 @@
           });
         });
         ax.fillStyle = idx === 0 ? '#ffffff' : '#ffd56b';
-        ax.font = 'italic bold 11px "Barlow Condensed", Inter, sans-serif';
+        ax.font = 'italic bold 11px "Barlow Condensed", Oswald, sans-serif';
         ax.fillText('Marshall', 48, y + 20);
       });
       ax.fillStyle = '#140f1a'; ax.fillRect(20, 25, 100, 42);
@@ -287,9 +291,9 @@
       rx.fillStyle = '#ffffff'; rx.textAlign = 'center';
       rx.font = '900 13px "Barlow Condensed", sans-serif';
       rx.fillText(isLeft ? "WOODSTOCK '69" : "3 DAYS OF PEACE", isLeft ? 120 : 100, 55);
-      rx.font = 'bold 26px sans-serif';
-      rx.fillText(isLeft ? "☮️" : "🕊️🎸", isLeft ? 120 : 100, 105);
-      rx.font = '800 11px Inter, sans-serif';
+      rx.font = '900 28px "Barlow Condensed", sans-serif';
+      rx.fillText(isLeft ? "PEACE" : "ROCK", isLeft ? 120 : 100, 105);
+      rx.font = '700 12px Oswald, sans-serif';
       rx.fillText(isLeft ? "PEACE & MUSIC" : "ROCK LEGENDS", isLeft ? 120 : 100, 142);
       
       rx.fillStyle = '#0f0a13';
@@ -496,7 +500,7 @@
   class Player {
     constructor(data, x, facing, isCpu = false) {
       this.data = data; this.x = x; this.y = 425; this.vx = 0; this.vy = 0;
-      this.facing = facing; this.cpu = isCpu;
+      this.facing = facing; this.attackFacing = facing; this.cpu = isCpu;
       this.health = 100; this.meter = 20; this.width = 70; this.height = 150;
       this.grounded = true; this.attack = null; this.attackTimer = 0; this.cooldown = 0;
       this.hitFlash = 0; this.stun = 0; this.blocking = false; this.aiTimer = 0;
@@ -505,6 +509,12 @@
       this.landSquash = 0; this.bufferedAttack = null;
       this.anim = rigClips ? new RockKombatRig.Animator(rigClips) : null;
       this.animState = 'idle';
+    }
+
+    /** Facing locked for the duration of an attack so mid-swing crossovers
+     *  don't reverse the hitbox, flip the sprite, or invert knockback. */
+    faceDir() {
+      return this.attack ? this.attackFacing : this.facing;
     }
 
     /** Which clip the current physics state should be playing. */
@@ -633,13 +643,14 @@
       }
 
       this.blocking = input.block && this.grounded && !this.attack;
-      const speed = (2.4 + this.data.speed * 0.20) * (this.cpu ? 0.92 : 1);
+      // Snappier arcade walk: Streets of Rage / SF spacing, not ice-skating.
+      const speed = (2.85 + this.data.speed * 0.22) * (this.cpu ? 0.92 : 1);
 
       if (!this.attack && !this.blocking && this.stun <= 0) {
         const targetSpeed = input.left ? -speed : input.right ? speed : 0;
-        const control = this.grounded ? 0.42 : 0.18;
+        const control = this.grounded ? 0.58 : 0.24;
         this.vx += (targetSpeed - this.vx) * control;
-        if (!input.left && !input.right) this.vx *= this.grounded ? 0.68 : 0.96;
+        if (!input.left && !input.right) this.vx *= this.grounded ? 0.78 : 0.94;
         if (input.jump && this.grounded) {
           this.vy = -10.5; this.grounded = false; sound('ui', 0.65);
         }
@@ -650,7 +661,7 @@
           else if (this.meter >= 50) this.startAttack('mini_special');
         }
       } else if (this.attack) {
-        this.vx *= 0.80;
+        this.vx *= 0.72;
       }
 
       const wasGrounded = this.grounded;
@@ -668,13 +679,14 @@
         this.vy = 0; this.grounded = true;
       }
       this.x = clamp(this.x, 80, 880);
-      this.facing = other.x >= this.x ? 1 : -1;
+      // Never flip mid-attack — that was the main "hits go the wrong way" bug.
+      if (!this.attack) this.facing = other.x >= this.x ? 1 : -1;
 
       // Soft body separation so fighters don't occupy the same spot.
       const gap = other.x - this.x;
-      const minGap = 58;
+      const minGap = 62;
       if (Math.abs(gap) < minGap && Math.abs(other.y - this.y) < 90) {
-        const push = (minGap - Math.abs(gap)) * 0.22 * Math.sign(gap || this.facing);
+        const push = (minGap - Math.abs(gap)) * 0.28 * Math.sign(gap || this.faceDir());
         this.x -= push;
       }
 
@@ -683,33 +695,33 @@
       if (this.attackTimer > 0) {
         this.attackTimer--;
         if (this.attack && this.attackTimer === this.attack.activeAt) {
-          // Spawn visual projectiles for mini specials!
+          const dir = this.faceDir();
+          // Spawn visual projectiles for mini specials (arcade sparks, no emoji).
           if (this.attack.type === 'mini_special') {
             if (this.data.id === 'lennon') {
               match.particles.push({
-                x: this.x + 50 * this.facing,
+                x: this.x + 50 * dir,
                 y: this.y - 100,
-                vx: 11 * this.facing,
+                vx: 11 * dir,
                 vy: -0.8,
                 life: 38,
                 maxLife: 38,
                 color: '#ffffff',
-                size: 15,
-                icon: '🕊️'
+                size: 10,
+                shape: 'ring'
               });
             } else if (this.data.id === 'kurt') {
-              // Riff wave particles
               for (let i = 0; i < 5; i++) {
                 match.particles.push({
-                  x: this.x + (40 + i * 15) * this.facing,
+                  x: this.x + (40 + i * 15) * dir,
                   y: this.y - 90 + rand(-15, 15),
-                  vx: (10 + rand(-2, 2)) * this.facing,
+                  vx: (10 + rand(-2, 2)) * dir,
                   vy: rand(-3, 3),
                   life: 25,
                   maxLife: 25,
                   color: '#23d7ef',
-                  size: 10,
-                  icon: ['🎵', '🎶', '⚡', ''][i % 4]
+                  size: 8,
+                  shape: 'star'
                 });
               }
             }
@@ -723,76 +735,88 @@
 
     startAttack(type) {
       if (this.cooldown > 0) return;
+      // Durations track clip hold totals; ranges stay close to real limb reach.
       const config = {
-        // Durations track the clip hold totals so the pose extension lands
-        // on the same tick the hitbox goes active.
-        punch: { duration: 15, activeAt: 8, range: 98 + (this.cpu ? 0 : 10), damage: 2.6 + this.data.power * 0.28, knock: 3.8 },
-        kick: { duration: 17, activeAt: 10, range: 118 + (this.cpu ? 0 : 12), damage: 3.6 + this.data.power * 0.36, knock: 5.8 },
-        mini_special: { duration: 28, activeAt: 14, range: 155 + (this.cpu ? 0 : 12), damage: 6.0 + this.data.power * 0.4, knock: 7.5 },
-        special: { duration: 42, activeAt: 22, range: 210 + (this.cpu ? 0 : 16), damage: 11.0 + this.data.power * 0.65, knock: 12 }
+        punch: { duration: 15, activeAt: 8, range: 72, damage: 2.6 + this.data.power * 0.28, knock: 3.4, radius: 38 },
+        kick: { duration: 17, activeAt: 10, range: 88, damage: 3.6 + this.data.power * 0.36, knock: 5.2, radius: 42 },
+        mini_special: { duration: 25, activeAt: 12, range: 120, damage: 6.0 + this.data.power * 0.4, knock: 7.0, radius: 52 },
+        special: { duration: 25, activeAt: 12, range: 150, damage: 11.0 + this.data.power * 0.65, knock: 11, radius: 64 }
       }[type];
 
+      this.attackFacing = this.facing;
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
-      // Faster fighters shake off their own recovery quicker -- speed now
-      // shapes how often a character can swing, not just how fast it walks.
-      const baseCooldown = (type === 'special' ? 42 : type === 'mini_special' ? 28 : config.duration + 3) + (this.cpu ? 5 : 0);
+      const baseCooldown = (type === 'special' ? 36 : type === 'mini_special' ? 26 : config.duration + 2) + (this.cpu ? 5 : 0);
       const recoveryBonus = (type === 'special' || type === 'mini_special') ? 0 : Math.round((this.data.speed - 3) * 1.5);
       this.cooldown = Math.max(config.duration - 1, baseCooldown - recoveryBonus);
-      this.vx += this.facing * (type === 'special' ? 4.2 : type === 'mini_special' ? 3.0 : type === 'kick' ? 2.6 : 1.8);
+      // Short lunge — enough commitment without crossing through the rival.
+      this.vx += this.attackFacing * (type === 'special' ? 2.4 : type === 'mini_special' ? 1.8 : type === 'kick' ? 1.5 : 1.0);
 
       if (type === 'special') {
         this.meter = 0;
-        this.afterimages.push({ x: this.x - 20 * this.facing, y: this.y, life: 25 });
+        this.afterimages.push({ x: this.x - 20 * this.attackFacing, y: this.y, life: 25 });
         announce(this.data.special.toUpperCase(), 780);
         sound('special', 1 + this.data.speed * 0.05);
         sound('crowd');
-        // Trigger screen freeze and camera zoom
         match.specialFreeze = 28;
         match.specialAttacker = this;
       } else if (type === 'mini_special') {
         this.meter = Math.max(0, this.meter - 50);
-        this.afterimages.push({ x: this.x - 10 * this.facing, y: this.y, life: 15 });
+        this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 15 });
         announce("MINI " + this.data.special.toUpperCase(), 600);
         sound('special', 1.2 + this.data.speed * 0.05);
       } else {
-        if (type === 'kick') this.afterimages.push({ x: this.x - 10 * this.facing, y: this.y, life: 12 });
+        if (type === 'kick') this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 12 });
         sound('ui', type === 'kick' ? 0.75 : 1.1);
       }
     }
 
     checkHit(other) {
+      const dir = this.faceDir();
       const reach = this.attack.range;
-      const inFront = (other.x - this.x) * this.facing > -18;
-      const distance = Math.abs(other.x - this.x);
-      // Tighter vertical window so jumping over a low kick actually works.
-      const vertical = Math.abs(other.y - this.y) < (this.attack.type === 'kick' ? 95 : 105);
+      const radius = this.attack.radius || 40;
 
-      if (inFront && distance < reach && vertical) {
+      // Prefer the actual swinging limb when the rig is available.
+      let strikeX = this.x + dir * (reach * 0.55);
+      let strikeY = this.y - (this.attack.type === 'kick' ? 70 : 95);
+      const rig = rigs && rigs[this.data.id];
+      if (rig) {
+        const limb = this.attack.type === 'kick' ? 'legFrontLower' : 'armFrontLower';
+        const m = rig._world[limb] || rig._world['armBackLower'] || rig._world['legBackLower'];
+        if (m) {
+          const scale = FIGHTER_HEIGHT / rig.baseH;
+          // Buffer X → stage X: art faces left, canvas flips with facing.
+          const localX = (m[2] + RockKombatRig.PAD.left) - rig.anchorX;
+          const localY = (m[5] + RockKombatRig.PAD.top) - rig.anchorY;
+          strikeX = this.x - dir * localX * scale;
+          strikeY = this.y + localY * scale;
+        }
+      }
+
+      const dx = other.x - strikeX;
+      const dy = (other.y - 85) - strikeY;
+      const inFront = (other.x - this.x) * dir > -12;
+      const closeEnough = Math.hypot(dx, dy) < radius || (inFront && Math.abs(other.x - this.x) < reach && Math.abs(other.y - this.y) < (this.attack.type === 'kick' ? 90 : 100));
+
+      if (inFront && closeEnough) {
         this.attack.hit = true;
         let damage = this.attack.damage;
-        // Difficulty lives here and in the CPU's reaction speed/aggression,
-        // not as a silent always-on handicap -- easy hits softer and takes
-        // more, hard is closer to an even fight.
         const tune = DIFFICULTY[difficulty];
         if (this.cpu) damage *= tune.cpuDamageMult;
         else if (other.cpu) damage *= tune.playerDamageMult;
-        // Defense was purely cosmetic before -- now a tankier fighter (Lennon)
-        // actually shrugs off more damage than a glass cannon (Axl).
         damage *= clamp(1 - (other.data.defense - 3) * 0.055, 0.78, 1.22);
         if (other.blocking) damage *= 0.15;
 
         other.health = clamp(other.health - damage, 0, 100);
         other.hitFlash = 9;
         other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 30 : this.attack.type === 'mini_special' ? 18 : 12;
-        other.vx = this.attack.knock * this.facing * (other.blocking ? 0.35 : 1);
+        other.vx = this.attack.knock * dir * (other.blocking ? 0.35 : 1);
         if (this.attack.type === 'special') other.vy = -6.5;
 
         this.meter = clamp(this.meter + ((this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0 : this.cpu ? 11 : 24), 0, 100);
         other.meter = clamp(other.meter + (other.cpu ? 6 : 14), 0, 100);
         this.combo++; this.comboTimer = 65;
 
-        // Estilo Mega Drive / Streets of Rage: Hitstop mais estalado e tremedeira pesada!
         match.shake = this.attack.type === 'special' ? 24 : this.attack.type === 'mini_special' ? 16 : this.attack.type === 'kick' ? 14 : 9;
         match.flash = this.attack.type === 'special' ? 10 : this.attack.type === 'mini_special' ? 5 : 3;
         match.hitStop = other.blocking ? 4 : this.attack.type === 'special' ? 14 : this.attack.type === 'mini_special' ? 10 : this.attack.type === 'kick' ? 8 : 5;
@@ -804,23 +828,25 @@
             ? 'MINI SPECIAL!'
             : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'THUD!' : 'POW!');
 
+        const impactX = (strikeX + other.x) / 2;
+        const impactY = (strikeY + other.y - 95) / 2;
+
         match.impacts.push({
-          x: (this.x + other.x) / 2, y: other.y - 95,
+          x: impactX, y: impactY,
           text: impactText,
           color: this.data.color, life: (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 38 : 24
         });
 
-        // Spawn hit spark
         match.hitSparks.push({
-          x: (this.x + other.x) / 2,
-          y: other.y - 85,
+          x: impactX,
+          y: impactY,
           color: this.data.color,
           life: 14,
           maxLife: 14,
           type: this.attack.type
         });
 
-        burst((this.x + other.x) / 2, other.y - 85, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'mini_special' ? 25 : 16, this.attack.type, this.data.id);
+        burst(impactX, impactY, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'mini_special' ? 25 : 16, this.attack.type, this.data.id);
         sound(other.blocking ? 'block' : 'hit', (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0.6 : 0.95);
       }
     }
@@ -935,23 +961,21 @@
   }
 
   function burst(x, y, color, count, type = 'normal', id = null) {
-    const icons = id === 'kurt' ? ['🎸', '⚡', '✦', ''] : id === 'axl' ? ['🔥', '💥', '✨', ''] : id === 'lennon' ? ['☮', '❤️', '♪', '♫'] : [''];
     for (let i = 0; i < count; i++) {
-      const isIcon = (type === 'special' || type === 'mini_special') && Math.random() > 0.35;
-      const chosenIcon = isIcon ? icons[Math.floor(Math.random() * icons.length)] : '';
+      const isSpark = (type === 'special' || type === 'mini_special') && Math.random() > 0.35;
       const isLand = type === 'land';
       if (match && match.particles) {
         match.particles.push({
           x: x + rand(-18, 18),
           y: y + rand(isLand ? -4 : -15, isLand ? 4 : 15),
           vx: rand(isLand ? -12 : -10, isLand ? 12 : 10),
-          vy: isIcon ? rand(-14, -2) : isLand ? rand(-5, -0.5) : rand(-12, 5),
-          life: isIcon ? rand(30, 58) : isLand ? rand(12, 22) : rand(18, 38),
-          maxLife: isIcon ? 58 : isLand ? 22 : 38,
+          vy: isSpark ? rand(-14, -2) : isLand ? rand(-5, -0.5) : rand(-12, 5),
+          life: isSpark ? rand(30, 58) : isLand ? rand(12, 22) : rand(18, 38),
+          maxLife: isSpark ? 58 : isLand ? 22 : 38,
           color: type === 'special' ? (Math.random() > 0.5 ? '#fffae0' : color) : isLand ? '#d1dcde' : color,
           size: isLand ? rand(4, 11) : rand(2.5, 7.5),
           length: isLand ? 0 : rand(10, 32),
-          icon: chosenIcon,
+          shape: isSpark ? (Math.random() > 0.5 ? 'star' : 'ring') : null,
           isLand
         });
       }
@@ -1192,6 +1216,25 @@
       ctx.fillStyle = `rgba(255,255,255,${match.flash / 9})`;
       ctx.fillRect(0, 0, canvasW, canvasH);
     }
+
+    // Arcade CRT scanlines — Mortal Kombat / SoR cabinet feel on photo sprites.
+    drawCrtOverlay(ctx, canvasW, canvasH);
+  }
+
+  function drawCrtOverlay(c, w, h) {
+    c.save();
+    c.fillStyle = 'rgba(0, 0, 0, 0.14)';
+    const step = Math.max(2, Math.round(h / 270));
+    for (let y = 0; y < h; y += step * 2) {
+      c.fillRect(0, y, w, step);
+    }
+    // Soft vignette like a curved tube.
+    const g = c.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.78);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.28)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, w, h);
+    c.restore();
   }
 
   // --- STAGE RENDERER ---
@@ -1597,9 +1640,7 @@
   }
 
   // --- FIGHTER RENDERER ---
-  // Characters render at this height in the 960x540 stage space; the atlas art
-  // is authored taller so it stays sharp on high-DPI displays.
-  const FIGHTER_HEIGHT = 248;
+  // FIGHTER_HEIGHT is declared near the top (shared with hitbox math).
 
   /**
    * Compose a fighter's skeleton into its offscreen buffer for this frame.
@@ -1619,11 +1660,14 @@
     const sample = player.anim.sample(progress);
     rig.compose(sample.pose, sample.front);
 
-    // Draw weapons on the lead (viewer-right / armBack) fist — after the
-    // facing flip that arm is the one swinging toward the opponent.
+    // Weapons attach to the lead fist (armFront* in left-facing art).
     if (player.attack) {
       const ctx = rig.bufferCtx;
-      const m = rig._world['armBackLower'] || rig._world['armFrontLower'];
+      const front = sample.front || [];
+      const leadName = front.includes('armFrontLower') ? 'armFrontLower'
+        : front.includes('armBackLower') ? 'armBackLower'
+          : 'armFrontLower';
+      const m = rig._world[leadName] || rig._world['armFrontLower'] || rig._world['armBackLower'];
       if (m) {
         ctx.save();
         ctx.setTransform(m[0], m[3], m[1], m[4], m[2] + RockKombatRig.PAD.left, m[5] + RockKombatRig.PAD.top);
@@ -1652,15 +1696,16 @@
     if (!rig) return;
 
     const scale = FIGHTER_HEIGHT / rig.baseH;
+    const facing = player.faceDir ? player.faceDir() : player.facing;
     c.save();
     // Multiply into the caller's alpha (e.g. the 0.2 the floor reflection
     // sets) instead of stomping it -- otherwise the reflection renders as a
     // fully opaque inverted clone instead of a faint ghost.
     c.globalAlpha = c.globalAlpha * alpha;
     c.translate(x, ground);
-    // Source art faces left; facing=+1 means "opponent is to the right", so
+    // Source art faces left; facing=+1 means opponent is to the right, so
     // flip when facing right so both fighters look at each other.
-    c.scale(-player.facing * scale, scale);
+    c.scale(-facing * scale, scale);
 
     // Landing squash keeps impacts weighty without needing extra art.
     if (player.landSquash > 0) {
@@ -1671,10 +1716,6 @@
     c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
 
     if (flash) {
-      // A hit-flash used to blur-glow the whole ~550x600 buffer every frame
-      // it was active -- shadowBlur re-runs a full blur pass on an image
-      // that size. Compositing the same buffer again with 'lighter' plus a
-      // white tint reads as the same white-hot flash without the blur cost.
       c.globalCompositeOperation = 'lighter';
       c.globalAlpha = Math.min(1, c.globalAlpha + flash * 0.12);
       c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
@@ -1704,10 +1745,11 @@
     if (phase < 0.20) return;
 
     const f = player.data;
+    const facing = player.faceDir();
     c.save();
     c.globalCompositeOperation = 'screen';
     c.translate(player.x, player.y);
-    c.scale(-player.facing, 1);
+    c.scale(-facing, 1);
 
     if (player.attack.type === 'special') {
       if (f.id === 'kurt') {
@@ -1777,11 +1819,12 @@
     if (phase < 0.25 || phase > 0.7) return;
 
     const f = player.data;
+    const facing = player.faceDir();
     c.save();
     c.globalCompositeOperation = 'screen';
     c.globalAlpha = 0.8;
     c.translate(player.x, player.y);
-    c.scale(-player.facing, 1);
+    c.scale(-facing, 1);
     c.strokeStyle = f.color;
     c.shadowColor = f.color;
     c.shadowBlur = 22;
@@ -1852,8 +1895,9 @@
     players.forEach(p => {
       if (p.attack?.type === 'special' && p.attackTimer > 8) {
         const life = p.attackTimer / 55;
+        const dir = p.faceDir();
         ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.8 * life;
-        const x = p.x + p.facing * 85; const y = p.y - 85;
+        const x = p.x + dir * 85; const y = p.y - 85;
         ctx.strokeStyle = p.data.color; ctx.lineWidth = 14; ctx.shadowColor = p.data.color; ctx.shadowBlur = 34;
         ctx.beginPath();
         for (let r = 20; r < 180; r += 32) { ctx.arc(x, y, r, 0, Math.PI * 2); }
@@ -1876,7 +1920,28 @@
       ctx.save();
       const maxL = p.maxLife || 38;
       ctx.globalAlpha = clamp(p.life / maxL, 0, 1);
-      if (p.icon) {
+      if (p.shape === 'ring') {
+        drawGlow(ctx, p.x, p.y, 18, p.color || '#ffcc00');
+        ctx.strokeStyle = p.color || '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (p.shape === 'star') {
+        drawGlow(ctx, p.x, p.y, 16, p.color || '#ffcc00');
+        ctx.fillStyle = p.color || '#fff';
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + p.life * 0.12;
+          const r = i % 2 === 0 ? p.size : p.size * 0.35;
+          const px = p.x + Math.cos(a) * r;
+          const py = p.y + Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else if (p.icon) {
+        // Legacy path — keep readable if an old particle is still alive.
         drawGlow(ctx, p.x, p.y, 20, p.color || '#ffcc00');
         ctx.font = 'bold 30px sans-serif';
         ctx.fillStyle = p.color || '#fff';
