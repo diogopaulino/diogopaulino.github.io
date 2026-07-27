@@ -307,27 +307,86 @@ const refreshBtn = document.getElementById('refresh-rates');
 let allCurrencies = [];
 let exchangeRates = {};
 
-// Fetch all available currencies and initial rates from Coinbase
-async function initCurrencyConverter() {
+const RATES_CACHE_KEY = 'calculator_exchange_rates_v1';
+
+function normalizeRates(rates) {
+    const normalized = {};
+    Object.keys(rates).forEach(code => {
+        normalized[code.toUpperCase()] = parseFloat(rates[code]);
+    });
+    normalized.USD = 1;
+    return normalized;
+}
+
+// Primary provider: dedicated FX API, no key required
+async function fetchFromPrimary() {
+    const response = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await response.json();
+    if (!data || data.result !== 'success' || !data.rates) throw new Error('Primary provider returned no rates');
+    return normalizeRates(data.rates);
+}
+
+// Fallback provider: served from a CDN, works even when finance/crypto domains are blocked
+async function fetchFromFallback() {
+    const response = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+    const data = await response.json();
+    if (!data || !data.usd) throw new Error('Fallback provider returned no rates');
+    return normalizeRates(data.usd);
+}
+
+function loadCachedRates() {
     try {
-        refreshBtn.classList.add('loading');
+        const cached = JSON.parse(localStorage.getItem(RATES_CACHE_KEY));
+        if (cached && cached.rates && cached.timestamp) return cached;
+    } catch (err) {
+        // Corrupt or unavailable cache — ignore and fetch fresh
+    }
+    return null;
+}
 
-        // Coinbase rates for USD base
-        const response = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
-        const data = await response.json();
+function saveCachedRates(rates) {
+    try {
+        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, timestamp: Date.now() }));
+    } catch (err) {
+        // Storage unavailable/full — non-fatal, just skip caching
+    }
+}
 
-        if (data && data.data && data.data.rates) {
-            exchangeRates = data.data.rates;
-            allCurrencies = Object.keys(exchangeRates).sort();
+// Fetch all available currencies and rates, with cache + fallback provider for reliability
+async function initCurrencyConverter() {
+    const cached = loadCachedRates();
+    if (cached) {
+        exchangeRates = cached.rates;
+        allCurrencies = Object.keys(exchangeRates).sort();
+        populateSelects();
+        calculate();
+        lastUpdatedEl.innerText = `Last updated: ${new Date(cached.timestamp).toLocaleTimeString()}`;
+    }
 
-            populateSelects();
-            calculate();
-
-            lastUpdatedEl.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+    refreshBtn.classList.add('loading');
+    try {
+        let rates;
+        try {
+            rates = await fetchFromPrimary();
+        } catch (primaryErr) {
+            rates = await fetchFromFallback();
         }
+
+        exchangeRates = rates;
+        allCurrencies = Object.keys(exchangeRates).sort();
+        saveCachedRates(rates);
+
+        populateSelects();
+        calculate();
+        lastUpdatedEl.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
     } catch (err) {
         console.error('Error fetching currency data:', err);
-        rateEl.innerText = 'Error fetching rates';
+        if (cached) {
+            lastUpdatedEl.innerText = `Showing cached rates from ${new Date(cached.timestamp).toLocaleTimeString()}`;
+        } else {
+            rateEl.innerText = 'Unable to load rates. Check your connection and try again.';
+            lastUpdatedEl.innerText = 'Update failed';
+        }
     } finally {
         refreshBtn.classList.remove('loading');
     }
@@ -337,22 +396,27 @@ function populateSelects() {
     const val1 = currencyOne.value || 'USD';
     const val2 = currencyTwo.value || 'BRL';
 
-    currencyOne.innerHTML = '';
-    currencyTwo.innerHTML = '';
+    const fragmentOne = document.createDocumentFragment();
+    const fragmentTwo = document.createDocumentFragment();
 
     allCurrencies.forEach(currency => {
         const option1 = document.createElement('option');
         option1.value = currency;
-        option1.innerText = currency;
+        option1.textContent = currency;
         if (currency === val1) option1.selected = true;
-        currencyOne.appendChild(option1);
+        fragmentOne.appendChild(option1);
 
         const option2 = document.createElement('option');
         option2.value = currency;
-        option2.innerText = currency;
+        option2.textContent = currency;
         if (currency === val2) option2.selected = true;
-        currencyTwo.appendChild(option2);
+        fragmentTwo.appendChild(option2);
     });
+
+    currencyOne.innerHTML = '';
+    currencyTwo.innerHTML = '';
+    currencyOne.appendChild(fragmentOne);
+    currencyTwo.appendChild(fragmentTwo);
 }
 
 function filterCurrencies(searchTerm, selectElement) {

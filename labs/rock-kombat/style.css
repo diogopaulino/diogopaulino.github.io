@@ -188,8 +188,9 @@ h1 span { color: var(--pink); }
 .special-line small, .special-line b { font:800 7px Inter; letter-spacing:.08em; color:#8f8695; }
 .special-line b { color:var(--gold); opacity:0; transition:opacity .2s; }
 .special-line b.is-ready { opacity:1; animation:readyPulse .8s ease-in-out infinite alternate; }
-.special-track { width: 48%; max-width:180px; height: 6px; background: #2a2330; border:1px solid rgba(255,255,255,.12); }
-.special-track i { display: block; width: 0; height: 100%; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.special-track { position: relative; width: 48%; max-width:180px; height: 6px; background: #2a2330; border:1px solid rgba(255,255,255,.12); }
+.special-track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.4); z-index: 2; }
+.special-track i { display: block; width: 0; height: 100%; background: var(--gold); box-shadow: 0 0 8px var(--gold); transition: background 0.2s, box-shadow 0.2s; }
 @keyframes readyPulse { to { color:#fff; text-shadow:0 0 10px var(--gold); } }
 .round-center { text-align: center; }
 .round-center span { font: 800 8px Inter; color: var(--gold); letter-spacing: .18em; }

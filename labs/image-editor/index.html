@@ -20,7 +20,7 @@
 
         <main class="editor-container">
             <div class="editor-wrapper">
-                <div class="preview-area">
+                <div class="preview-area" id="previewArea">
                     <div class="upload-placeholder" id="uploadPlaceholder">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -28,44 +28,64 @@
                             <circle cx="8.5" cy="8.5" r="1.5" />
                             <polyline points="21 15 16 10 5 21" />
                         </svg>
-                        <p>Click or drag image to upload</p>
+                        <p>Clique ou arraste uma imagem</p>
+                        <span class="upload-hint">ou cole com Ctrl+V</span>
                         <input type="file" id="fileInput" accept="image/*" hidden>
+
+                        <div class="sample-gallery">
+                            <span class="sample-gallery-label">ou experimente um exemplo</span>
+                            <div class="sample-list" id="sampleList">
+                                <button type="button" class="sample-item" data-sample="samples/sunset-horizon.jpg"
+                                    style="background-image:url('samples/sunset-horizon.jpg')"
+                                    aria-label="Carregar exemplo: pôr do sol"></button>
+                                <button type="button" class="sample-item" data-sample="samples/city-dusk.jpg"
+                                    style="background-image:url('samples/city-dusk.jpg')"
+                                    aria-label="Carregar exemplo: skyline ao entardecer"></button>
+                                <button type="button" class="sample-item" data-sample="samples/portrait-bust.jpg"
+                                    style="background-image:url('samples/portrait-bust.jpg')"
+                                    aria-label="Carregar exemplo: retrato"></button>
+                                <button type="button" class="sample-item" data-sample="samples/abstract-blobs.jpg"
+                                    style="background-image:url('samples/abstract-blobs.jpg')"
+                                    aria-label="Carregar exemplo: abstrato"></button>
+                            </div>
+                        </div>
                     </div>
                     <canvas id="canvas"></canvas>
+                    <span class="compare-hint" id="compareHint">Segure a imagem para comparar com o original</span>
                 </div>
 
                 <div class="controls-area" id="controlsArea">
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="adjust">Adjust</button>
-                        <button class="tab-btn" data-tab="filters">Filters</button>
-                        <button class="tab-btn" data-tab="transform">Transform</button>
+                        <button class="tab-btn active" data-tab="adjust">Ajustes</button>
+                        <button class="tab-btn" data-tab="filters">Filtros</button>
+                        <button class="tab-btn" data-tab="transform">Transformar</button>
                     </div>
 
                     <div class="tab-content active" id="adjust-tab">
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label>Brightness</label>
+                                <label for="brightness">Brilho</label>
                                 <span class="value">100%</span>
                             </div>
                             <input type="range" id="brightness" min="0" max="200" value="100">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label>Contrast</label>
+                                <label for="contrast">Contraste</label>
                                 <span class="value">100%</span>
                             </div>
                             <input type="range" id="contrast" min="0" max="200" value="100">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label>Saturation</label>
+                                <label for="saturation">Saturação</label>
                                 <span class="value">100%</span>
                             </div>
                             <input type="range" id="saturation" min="0" max="200" value="100">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label>Blur</label>
+                                <label for="blur">Desfoque</label>
                                 <span class="value">0px</span>
                             </div>
                             <input type="range" id="blur" min="0" max="10" value="0" step="0.1">
@@ -73,38 +93,28 @@
                     </div>
 
                     <div class="tab-content" id="filters-tab">
-                        <div class="filters-grid">
-                            <button class="filter-btn active" data-filter="none">Original</button>
-                            <button class="filter-btn" data-filter="grayscale">Grayscale</button>
-                            <button class="filter-btn" data-filter="sepia">Sepia</button>
-                            <button class="filter-btn" data-filter="invert">Invert</button>
-                            <button class="filter-btn" data-filter="vintage">Vintage</button>
-                            <button class="filter-btn" data-filter="kodachrome">Kodachrome</button>
-                            <button class="filter-btn" data-filter="technicolor">Technicolor</button>
-                            <button class="filter-btn" data-filter="polaroid">Polaroid</button>
-                            <button class="filter-btn" data-filter="vintage-80s">1980s Retro</button>
-                        </div>
+                        <div class="filters-filmstrip" id="filtersFilmstrip"></div>
                     </div>
 
                     <div class="tab-content" id="transform-tab">
                         <div class="transform-controls">
-                            <button class="tool-btn" id="rotateLeft" title="Rotate Left">
+                            <button class="tool-btn" id="rotateLeft" title="Girar à esquerda">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                                     <path d="M3 3v5h5" />
                                 </svg>
-                                Rotate Left
+                                Girar Esq.
                             </button>
-                            <button class="tool-btn" id="rotateRight" title="Rotate Right">
+                            <button class="tool-btn" id="rotateRight" title="Girar à direita">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                                     <path d="M21 3v5h-5" />
                                 </svg>
-                                Rotate Right
+                                Girar Dir.
                             </button>
-                            <button class="tool-btn" id="flipHorizontal" title="Flip Horizontal">
+                            <button class="tool-btn" id="flipHorizontal" title="Espelhar horizontalmente">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <polyline points="16 3 21 3 21 8" />
@@ -113,9 +123,9 @@
                                     <line x1="15" y1="15" x2="21" y2="21" />
                                     <line x1="4" y1="4" x2="9" y2="9" />
                                 </svg>
-                                Flip H
+                                Espelhar H
                             </button>
-                            <button class="tool-btn" id="flipVertical" title="Flip Vertical">
+                            <button class="tool-btn" id="flipVertical" title="Espelhar verticalmente">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <polyline points="16 3 21 3 21 8" />
@@ -124,14 +134,18 @@
                                     <line x1="15" y1="15" x2="21" y2="21" />
                                     <line x1="4" y1="4" x2="9" y2="9" />
                                 </svg>
-                                Flip V
+                                Espelhar V
                             </button>
                         </div>
                     </div>
 
                     <div class="actions">
-                        <button class="btn secondary" id="resetBtn">Reset</button>
-                        <button class="btn primary" id="saveBtn">Save Image</button>
+                        <div class="actions-row">
+                            <button class="btn secondary" id="resetBtn">Reset</button>
+                            <button class="btn secondary" id="changeImageBtn">Trocar</button>
+                            <button class="btn secondary" id="copyBtn">Copiar</button>
+                        </div>
+                        <button class="btn primary" id="saveBtn">Baixar Imagem</button>
                     </div>
                 </div>
             </div>
