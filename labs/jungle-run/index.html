@@ -12,6 +12,9 @@
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://diogopaulino.com.br/labs/jungle-run/og-jungle-run.jpg">
     <title>Jungle Run — Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
     <link rel="stylesheet" href="style.css?v=3">
     <script src="https://pixijs.download/v8.6.6/pixi.min.js" defer></script>
@@ -93,44 +96,50 @@
                         <div class="overlay-foliage overlay-foliage-left" aria-hidden="true"></div>
                         <div class="overlay-foliage overlay-foliage-right" aria-hidden="true"></div>
                         <div class="overlay-content intro-content">
-                            <p class="eyebrow"><span></span> EXPEDIÇÃO 01 <span></span></p>
+                            <p class="eyebrow"><span></span> EXPEDIÇÃO JR-84 <span></span></p>
                             <div class="title-lockup">
-                                <span class="title-kicker">THE LOST TEMPLE</span>
+                                <span class="title-kicker">THE LOST RUN</span>
                                 <h1>JUNGLE<br><em>RUN</em></h1>
                             </div>
-                            <p class="tagline">A selva muda a cada passo. Continue em frente.</p>
+                            <p class="tagline">A selva o desafia a cada passo. Escolha sua expedição:</p>
+
+                            <div class="level-selector-container">
+                                <div class="level-grid" id="levelGrid">
+                                    <!-- Populated dynamically via JS -->
+                                </div>
+                            </div>
 
                             <div class="controls-info" aria-label="Controles">
                                 <div class="control-item">
                                     <span class="key">A</span><span class="key">D</span>
-                                    <span>mover</span>
+                                    <span>Mover</span>
                                 </div>
                                 <div class="control-item">
                                     <span class="key key-wide">ESPAÇO</span>
-                                    <span>saltar</span>
+                                    <span>Saltar / Soltar</span>
                                 </div>
                                 <div class="control-item">
-                                    <span class="key">W</span>
-                                    <span>agarrar cipó</span>
+                                    <span class="key">W</span><span class="key">S</span>
+                                    <span>Escalar / Cipó</span>
                                 </div>
                             </div>
 
                             <button id="startBtn" class="game-btn primary-btn" type="button" disabled>
-                                <span>Entrar na selva</span>
+                                <span>Iniciar Expedição</span>
                                 <span class="btn-arrow" aria-hidden="true">→</span>
                             </button>
                             <div class="intro-meta">
-                                <span>RECORDE <strong id="bestScore">0000</strong></span>
-                                <span class="mobile-hint">controles por toque disponíveis</span>
+                                <span>RECORDE GERAL <strong id="bestScore">0000</strong></span>
+                                <span class="mobile-hint">Toques na tela ativados</span>
                             </div>
                         </div>
                     </div>
 
                     <div id="pauseScreen" class="overlay pause-overlay hidden" aria-hidden="true">
                         <div class="overlay-content pause-content">
-                            <p class="eyebrow">EXPEDIÇÃO EM ESPERA</p>
+                            <p class="eyebrow">EXPEDIÇÃO EM PAUSA</p>
                             <h2>Pausa</h2>
-                            <p>Respire. A selva continua ouvindo.</p>
+                            <p>A selva observa o seu silêncio...</p>
                             <div class="overlay-actions">
                                 <button id="resumeBtn" class="game-btn primary-btn" type="button">
                                     <span>Continuar</span><span class="btn-arrow" aria-hidden="true">→</span>
@@ -162,6 +171,38 @@
                             <button id="restartBtn" class="game-btn primary-btn" type="button">
                                 <span>Tentar novamente</span><span class="btn-arrow" aria-hidden="true">↻</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <div id="levelCompleteScreen" class="overlay level-complete-overlay hidden" aria-hidden="true">
+                        <div class="overlay-content level-complete-content">
+                            <p class="eyebrow">OBJETIVO ALCANÇADO</p>
+                            <h2>Fase Concluída!<br><em id="completeLevelName">Trilha do Alvorecer</em></h2>
+                            <div class="stars-container" id="starsContainer">
+                                <span class="star" id="star1">★</span>
+                                <span class="star" id="idStar2">★</span>
+                                <span class="star" id="idStar3">★</span>
+                            </div>
+                            <div class="final-stats">
+                                <div class="final-stat">
+                                    <span>Moedas/Relíquias</span>
+                                    <strong id="completeScore">0000</strong>
+                                </div>
+                                <div class="final-stat">
+                                    <span>Distância</span>
+                                    <strong id="completeDistance">300m</strong>
+                                </div>
+                                <div class="final-stat">
+                                    <span>Vidas Restantes</span>
+                                    <strong id="completeLivesBonus">3/3</strong>
+                                </div>
+                            </div>
+                            <div class="overlay-actions">
+                                <button id="nextLevelBtn" class="game-btn primary-btn" type="button">
+                                    <span>Avançar</span><span class="btn-arrow" aria-hidden="true">→</span>
+                                </button>
+                                <button id="completeMenuBtn" class="text-btn" type="button">Voltar ao Menu</button>
+                            </div>
                         </div>
                     </div>
 
