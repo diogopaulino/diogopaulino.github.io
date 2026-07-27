@@ -63,6 +63,7 @@ O **Labs** reúne jogos, ferramentas e experimentos interativos feitos para expl
 
 | Projeto | Descrição |
 |---------|-----------|
+| **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento generativo: toque para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos |
 | **[Piano](https://diogopaulino.com.br/labs/piano/)** | Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain |
 | **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Clone do lendário player MP3 com visual clássico e equalizador |
 
