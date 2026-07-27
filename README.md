@@ -7,7 +7,7 @@
 *Meu portfólio pessoal e um playground de ideias vivas onde tecnologia, inteligência artificial, música e design se encontram.*
 
 [![Website](https://img.shields.io/badge/🌐_Website-diogopaulino.com.br-3B82F6?style=for-the-badge&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs Portal](https://img.shields.io/badge/🧪_Labs_Playground-21_Projetos-8B5CF6?style=for-the-badge&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs Portal](https://img.shields.io/badge/🧪_Labs_Playground-22_Projetos-8B5CF6?style=for-the-badge&logoColor=white)](https://diogopaulino.com.br/labs/)
 
 <br/>
 
@@ -31,7 +31,7 @@ Este repositório é mais do que um portfólio: é o meu **playground criativo**
 
 ## 🧪 O Playground (Labs)
 
-Explore **21 projetos e experimentos interativos** prontos para jogar e usar em **[diogopaulino.com.br/labs/](https://diogopaulino.com.br/labs/)**:
+Explore **22 projetos e experimentos interativos** prontos para jogar e usar em **[diogopaulino.com.br/labs/](https://diogopaulino.com.br/labs/)**:
 
 ### 🎮 Games & Simulações Retro
 
@@ -46,6 +46,7 @@ Explore **21 projetos e experimentos interativos** prontos para jogar e usar em 
 | 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | O clássico jogo de blocos com paleta de cores inspirada no Game Boy original. | `Game Boy Theme` `Matrix Grid` |
 | 🐍 **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha nostálgica com a estética de celulares clássicos dos anos 90 e filtro de tela LCD. | `Nokia 3310 Vibe` `LCD Filter` |
 | 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | O clássico jogo de lógica e estratégia com visual autêntico do Windows 95. | `Retro UI` `Windows 95` `Logic` |
+| 🥚 **[Ovinho](https://diogopaulino.com.br/labs/ovinho/)** | Bichinho virtual retrô inspirado nos clássicos anos 90 — alimente, cuide e veja evoluir. | `Virtual Pet` `Retro` `LocalStorage` |
 
 ### 🎨 Arte Visual, Física & Experimentos
 
