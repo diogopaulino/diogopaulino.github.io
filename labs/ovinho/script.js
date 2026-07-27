@@ -32,7 +32,7 @@
     };
 
     const SHELL_PRESETS = ['#f2c94c', '#e8536b', '#f6a63a', '#4ecb71', '#3aa6f6', '#a76ef4', '#ff8fc7', '#3a3a3a'];
-    const ACCENT_PRESETS = ['#e8544a', '#3a3a3a', '#2563eb', '#111827', '#f6a63a', '#ffffff'];
+    const ACCENT_PRESETS = ['#ef7d3b', '#3a3a3a', '#e8544a', '#2563eb', '#111827', '#ffffff'];
     const SCREEN_PRESETS = ['#9bbc0f', '#8fd3f4', '#f4a3c1', '#f7e07f', '#c3f7a3', '#dcdcdc'];
 
     const ICON_META = {
@@ -55,7 +55,7 @@
     const shellEl = document.getElementById('tamaShell');
     const overlayEl = document.getElementById('tamaOverlay');
     const toastEl = document.getElementById('tamaToast');
-    const nameLabel = document.getElementById('petNameLabel');
+    const nameArcEl = document.getElementById('petNameArc');
     const barHunger = document.getElementById('barHunger');
     const barHappiness = document.getElementById('barHappiness');
     const barHygiene = document.getElementById('barHygiene');
@@ -182,9 +182,25 @@
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     }
 
+    function shadeColor(hex, percent) {
+        const c = hex.replace('#', '');
+        const num = parseInt(c.length === 3 ? c.split('').map((x) => x + x).join('') : c, 16);
+        let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+        const target = percent < 0 ? 0 : 255;
+        const p = Math.abs(percent);
+        r = Math.round((target - r) * p) + r;
+        g = Math.round((target - g) * p) + g;
+        b = Math.round((target - b) * p) + b;
+        return '#' + [r, g, b].map((v) => clamp(v, 0, 255).toString(16).padStart(2, '0')).join('');
+    }
+
     function applyTheme() {
         shellEl.style.setProperty('--shell-color', theme.shell);
+        shellEl.style.setProperty('--shell-light', shadeColor(theme.shell, 0.28));
+        shellEl.style.setProperty('--shell-dark', shadeColor(theme.shell, -0.22));
         shellEl.style.setProperty('--accent-color', theme.accent);
+        shellEl.style.setProperty('--accent-light', shadeColor(theme.accent, 0.3));
+        shellEl.style.setProperty('--accent-dark', shadeColor(theme.accent, -0.3));
         shellEl.style.setProperty('--screen-color', theme.screen);
         shellColorInput.value = theme.shell;
         accentColorInput.value = theme.accent;
@@ -811,9 +827,26 @@
         return stage;
     }
 
+    let lastArcName = null;
+    function renderNameArc(text) {
+        if (text === lastArcName) return;
+        lastArcName = text;
+        nameArcEl.innerHTML = '';
+        const chars = text.split('');
+        const n = chars.length;
+        const step = n > 1 ? Math.min(11, 60 / (n - 1)) : 0;
+        const startAngle = -((n - 1) * step) / 2;
+        chars.forEach((ch, i) => {
+            const span = document.createElement('span');
+            span.textContent = ch === ' ' ? ' ' : ch;
+            span.style.transform = `rotate(${startAngle + i * step}deg)`;
+            nameArcEl.appendChild(span);
+        });
+    }
+
     function updateStaticUI() {
         if (!state) return;
-        nameLabel.textContent = state.isAlive ? state.name.toUpperCase() : `${state.name.toUpperCase()} ✝`;
+        renderNameArc(state.isAlive ? state.name.toUpperCase() : `${state.name.toUpperCase()} +`);
         setBar(barHunger, state.hunger);
         setBar(barHappiness, state.happiness);
         setBar(barHygiene, state.hygiene);
