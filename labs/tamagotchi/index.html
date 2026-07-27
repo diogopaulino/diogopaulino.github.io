@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi (Dinkie Dino Retrô) - Labs</title>
+  <meta name="description"
+    content="Réplica fiel dos bichinhos virtuais de bolso dos anos 90 (Rakuraku Dinokun / Dinkie Dino). Alimente, treine, brinque e veja seu dinossauro evoluir!">
+  <link rel="stylesheet" href="/labs/shared.css?v=4">
+  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Chewy&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <header data-lab-header data-title="Tamagotchi">
+      <template data-slot="logo">
+        🦖 Tamagotchi (Dinkie Dino)
+      </template>
+    </header>
+
+    <main class="game-container">
+      <!-- TELA DE PERSONALIZAÇÃO E SETUP INICIAL -->
+      <div class="setup-overlay hidden" id="setupScreen">
+        <div class="setup-box glass-panel">
+          <header class="setup-header">
+            <span class="setup-badge">EDITION 1997 🎮</span>
+            <h2>Setup Rakuraku DinoKun</h2>
+            <p>Personalize seu dispositivo e dê vida ao seu novo ovo de dinossauro!</p>
+          </header>
+
+          <div class="setup-content">
+            <div class="field-group">
+              <label for="petNameInput">Nome do seu Dinossauro</label>
+              <input type="text" id="petNameInput" maxlength="12" value="Dino" placeholder="Ex: Rex, Spike, Dino...">
+            </div>
+
+            <div class="field-group">
+              <label>Cor do Dispositivo (Carcaça Retrô)</label>
+              <div class="preset-row" id="shellPresets"></div>
+              <div class="color-picker-sub">
+                <span>Ou cor personalizada:</span>
+                <input type="color" id="shellColorInput" value="#f2c94c">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>Cor dos Botões Físicos</label>
+              <div class="preset-row" id="accentPresets"></div>
+              <div class="color-picker-sub">
+                <span>Ou cor personalizada:</span>
+                <input type="color" id="accentColorInput" value="#ef7d3b">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>Tom do Display LCD Monocromático</label>
+              <div class="preset-row" id="screenPresets"></div>
+              <div class="color-picker-sub">
+                <span>Ou cor personalizada:</span>
+                <input type="color" id="screenColorInput" value="#93a283">
+              </div>
+            </div>
+          </div>
+
+          <footer class="setup-footer">
+            <button class="start-journey-btn" id="btnStartJourney" type="button">
+              🚀 Ligar Dispositivo & Chocar Ovo
+            </button>
+            <button class="ghost-btn cancel-btn hidden" id="btnCancelSetup" type="button">Cancelar</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- DISPOSITIVO FÍSICO ANOS 90 -->
+      <div class="device-showcase">
+        <div class="tama-shell" id="tamaShell">
+          <!-- Chaveiro Superior -->
+          <div class="tama-cap">
+            <div class="tama-ring">
+              <div class="chain-link chain-1"></div>
+              <div class="chain-link chain-2"></div>
+            </div>
+          </div>
+
+          <!-- Botão Lateral Esquerdo (Navegação Esquerda) -->
+          <button class="tama-side-btn tama-arrow-left" data-btn="LEFT" aria-label="Navegar Esquerda" type="button">
+            <span class="arrow-triangle">◄</span>
+          </button>
+
+          <!-- Botão Lateral Direito (Navegação Direita) -->
+          <button class="tama-side-btn tama-arrow-right" data-btn="RIGHT" aria-label="Navegar Direita" type="button">
+            <span class="arrow-triangle">►</span>
+          </button>
+
+          <!-- Branding Curvo Anos 90 no Topo da Carcaça -->
+          <div class="tama-branding" aria-hidden="true">
+            <span class="brand-text brand-left">RakuRaku</span>
+            <span class="brand-mascot">🦖</span>
+            <span class="brand-text brand-right">DinoKun</span>
+          </div>
+
+          <!-- Bezel e Moldura Recessada do LCD -->
+          <div class="tama-screen-bezel">
+            <div class="tama-inner-rim">
+              <div class="tama-lcd-frame">
+                <!-- Coluna de ícones à esquerda -->
+                <div class="lcd-icons-col lcd-icons-left">
+                  <div class="lcd-icon" data-icon="feed" title="Alimentar (Carne/Cenoura/Água)">
+                    <span class="icon-sprite">🍗</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon" data-icon="train" title="Treinar / Estudar (Disciplina)">
+                    <span class="icon-sprite">📚</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon" data-icon="play" title="Brincar (Minigame Esquerda/Direita)">
+                    <span class="icon-sprite">🎮</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon" data-icon="doctor" title="Remédio / Medicina">
+                    <span class="icon-sprite">💉</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                </div>
+
+                <!-- Display LCD Central -->
+                <div class="tama-screen-canvas-wrap">
+                  <canvas id="petCanvas" width="280" height="200"></canvas>
+                  <div class="tama-dot-grid" aria-hidden="true"></div>
+                  <div class="tama-scanlines" aria-hidden="true"></div>
+                  <div class="tama-glass-glare" aria-hidden="true"></div>
+                  <div class="tama-overlay hidden" id="tamaOverlay"></div>
+                  <div class="tama-toast" id="tamaToast"></div>
+                </div>
+
+                <!-- Coluna de ícones à direita -->
+                <div class="lcd-icons-col lcd-icons-right">
+                  <div class="lcd-icon" data-icon="clean" title="Banho / Limpar Coco">
+                    <span class="icon-sprite">🚿</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon" data-icon="light" title="Ar Condicionado / Luz (Dormir)">
+                    <span class="icon-sprite">💡</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon" data-icon="stats" title="Medidor de Status">
+                    <span class="icon-sprite">📊</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                  <div class="lcd-icon icon-alert" data-icon="alert" title="Atenção (Bipa quando precisa)">
+                    <span class="icon-sprite">🔔</span>
+                    <span class="icon-dot"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Três Botões Inferiores com Marcações Manuscritas -->
+          <div class="tama-bottom-buttons">
+            <div class="btn-unit">
+              <button class="tama-btn btn-oval" data-btn="ESC" aria-label="Botão Esc - Cancelar ou Voltar" type="button"></button>
+              <span class="script-label">Esc</span>
+            </div>
+            <div class="btn-unit btn-center">
+              <button class="tama-btn btn-oval" data-btn="ENTER" aria-label="Botão Enter - Confirmar e Acionar" type="button"></button>
+              <span class="script-label">Enter</span>
+            </div>
+            <div class="btn-unit">
+              <button class="tama-btn btn-oval" data-btn="CLOCK" aria-label="Botão Clock - Alternar para Relógio" type="button"></button>
+              <span class="script-label">Clock</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAINEL DE STATUS E CONTROLE DISCRETO (SEM SELETORES DE COR INTRUSIVOS) -->
+        <div class="side-companion">
+          <section class="glass-panel stats-panel" aria-label="Monitor do Dinossauro">
+            <header class="panel-head">
+              <h3>📟 Status de <span id="petNameLabel">Dino</span></h3>
+              <span class="stage-tag" id="petStageLabel">Ovo Retrô</span>
+            </header>
+            <div class="stat-meters">
+              <div class="stat-row">
+                <span class="stat-label">🍗 Fome</span>
+                <div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">😊 Alegria</span>
+                <div class="stat-bar"><div class="stat-fill" id="barHappiness"></div></div>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">🧼 Higiene</span>
+                <div class="stat-bar"><div class="stat-fill" id="barHygiene"></div></div>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">❤️ Saúde</span>
+                <div class="stat-bar"><div class="stat-fill" id="barHealth"></div></div>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">📚 Disciplina</span>
+                <div class="stat-bar"><div class="stat-fill" id="barDiscipline"></div></div>
+              </div>
+            </div>
+            <div class="stat-meta">
+              <span class="meta-tag">⏳ <span id="petAgeLabel">Dia 0</span></span>
+              <span class="meta-tag" id="petStateLabel">🟢 Ativo</span>
+            </div>
+            <div class="companion-actions">
+              <button class="action-btn" id="muteBtn" type="button">🔊 Som Ligado</button>
+              <button class="action-btn config-btn" id="openSetupBtn" type="button">⚙️ Personalizar / Novo Ovo</button>
+            </div>
+          </section>
+
+          <section class="glass-panel guide-panel">
+            <h4>🕹️ Como Jogar (Controles Clássicos)</h4>
+            <ul class="controls-list">
+              <li><strong>Setas (◄ ► / Teclas ← →)</strong>: Escolhe um ícone nas bordas do display.</li>
+              <li><strong>Enter (Botão Central / Espaço)</strong>: Confirma a ação do ícone escolhido.</li>
+              <li><strong>Esc (Botão Esquerdo / Esc / Backspace)</strong>: Cancela ou fecha um menu.</li>
+              <li><strong>Clock (Botão Direito / Tecla C)</strong>: Alterna entre o dinossauro e o relógio.</li>
+            </ul>
+            <p class="guide-note">Seu progresso é salvo no navegador! Cuide com amor para não deixá-lo doente.</p>
+          </section>
+
+          <details class="history-panel glass-panel" id="historyPanel" hidden>
+            <summary>🏆 Memórias dos Dinossauros Passados</summary>
+            <ul id="historyList"></ul>
+          </details>
+        </div>
+      </div>
+    </main>
+
+    <footer data-lab-footer data-home-href="/"></footer>
+  </div>
+
+  <script src="/labs/shared.js?v=5" defer></script>
+  <script src="script.js?v=2" defer></script>
+</body>
+
+</html>

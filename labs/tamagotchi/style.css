@@ -1,0 +1,988 @@
+/* ============================================================
+   TAMAGOTCHI - RAKURAKU DINOKUN RETRO EDITION 1997
+   Estética fiel aos bichinhos virtuais de bolso dos anos 90
+   ============================================================ */
+
+:root {
+  /* Cores Padrão - Edição Clássica Amarela (Rakuraku Dinokun) */
+  --shell-color: #f6c836;
+  --shell-light: #fbe06e;
+  --shell-dark: #cc9b16;
+
+  --accent-color: #f06c30;
+  --accent-light: #f79664;
+  --accent-dark: #ba4716;
+
+  --cap-color: #2b70d4;
+  --cap-light: #5f9cf7;
+  --cap-dark: #194b9b;
+
+  --screen-color: #8c9e7a;
+  --screen-dark: #768666;
+  --ink-color: #1a2717;
+
+  /* Efeitos e Vidro */
+  --panel-bg: rgba(20, 26, 30, 0.75);
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --neon-green: #37d67a;
+  --neon-orange: #f59e0b;
+  --neon-red: #ef4444;
+}
+
+/* Reset Geral e Container Base */
+* {
+  box-sizing: border-box;
+}
+
+.game-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem 4rem;
+  width: 100%;
+  min-height: 85vh;
+  background: radial-gradient(circle at center 40%, rgba(55, 65, 80, 0.4) 0%, transparent 70%);
+  overflow-x: hidden;
+}
+
+.device-showcase {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 960px) {
+  .device-showcase {
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+}
+
+/* ============================================================
+   TELA DE PERSONALIZAÇÃO E SETUP INICIAL (1997 BLISTER VIBE)
+   ============================================================ */
+.setup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background: rgba(10, 14, 20, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 1;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.setup-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.setup-box {
+  background: linear-gradient(145deg, rgba(32, 42, 54, 0.95), rgba(18, 24, 32, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(246, 200, 54, 0.15);
+  border-radius: 24px;
+  max-width: 520px;
+  width: 100%;
+  padding: 2.5rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  animation: setupPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes setupPop {
+  from { transform: scale(0.92) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.setup-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 1.5rem;
+}
+
+.setup-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 99px;
+  margin-bottom: 0.75rem;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.setup-header h2 {
+  font-family: 'Chewy', cursive, sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin: 0 0 0.5rem;
+  background: linear-gradient(to right, #fbbf24, #f87171, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.setup-header p {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.setup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.field-group label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.field-group input[type="text"] {
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.field-group input[type="text"]:focus {
+  border-color: var(--shell-color);
+  box-shadow: 0 0 16px rgba(246, 200, 54, 0.25);
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.preset-swatch {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.preset-swatch:hover {
+  transform: scale(1.15);
+  border-color: #fff;
+  box-shadow: 0 6px 14px rgba(255, 255, 255, 0.3);
+}
+
+.preset-swatch.active {
+  transform: scale(1.15);
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 6px 16px rgba(0,0,0,0.5);
+}
+
+.color-picker-sub {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.color-picker-sub input[type="color"] {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.setup-footer {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.start-journey-btn {
+  background: linear-gradient(135deg, #37d67a, #059669);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 1.1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.start-journey-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #3eed87, #06b57e);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+}
+
+.start-journey-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ============================================================
+   CARCAÇA HARDWARE DO TAMAGOTCHI / DINKIE DINO (RAKURAKU)
+   ============================================================ */
+.tama-shell {
+  position: relative;
+  width: 380px;
+  height: 420px;
+  background: var(--shell-color);
+  background: linear-gradient(155deg, var(--shell-light) 0%, var(--shell-color) 45%, var(--shell-dark) 100%);
+  /* Silhueta autêntica: ovo abaulado inferior típico do Rakuraku Dinokun */
+  border-radius: 155px 155px 185px 185px / 145px 145px 195px 195px;
+  padding: 55px 32px 35px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  box-shadow:
+    inset -12px -15px 30px rgba(0, 0, 0, 0.25),
+    inset 12px 15px 25px rgba(255, 255, 255, 0.45),
+    0 24px 50px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.25);
+  transition: background 0.3s ease;
+  z-index: 5;
+}
+
+/* Cap e Chaveiro Superior */
+.tama-cap {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 44px;
+  background: var(--cap-color);
+  background: linear-gradient(160deg, var(--cap-light), var(--cap-color) 50%, var(--cap-dark));
+  border-radius: 36px 36px 12px 12px;
+  box-shadow:
+    inset 0 4px 6px rgba(255, 255, 255, 0.4),
+    inset 0 -4px 6px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+
+.tama-ring {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 24px;
+  border: 6px solid #b0b7c0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    0 2px 5px rgba(0, 0, 0, 0.3);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+}
+
+.chain-link {
+  position: absolute;
+  top: -16px;
+  width: 14px;
+  height: 22px;
+  border: 4px solid #9aa1aa;
+  border-radius: 8px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+}
+.chain-link.chain-1 { left: 4px; transform: rotate(-15deg); }
+.chain-link.chain-2 { right: 4px; transform: rotate(15deg); }
+
+/* Botões Laterais (Setas Esquerda/Direita para Navegação no LCD) */
+.tama-side-btn {
+  position: absolute;
+  top: 45%;
+  width: 36px;
+  height: 64px;
+  background: var(--accent-color);
+  background: linear-gradient(160deg, var(--accent-light), var(--accent-color) 50%, var(--accent-dark));
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+  box-shadow:
+    inset -3px -3px 6px rgba(0, 0, 0, 0.3),
+    inset 3px 3px 5px rgba(255, 255, 255, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.tama-arrow-left {
+  left: -20px;
+  border-radius: 20px 0 0 20px / 32px 0 0 32px;
+  padding-right: 4px;
+}
+
+.tama-arrow-right {
+  right: -20px;
+  border-radius: 0 20px 20px 0 / 0 32px 32px 0;
+  padding-left: 4px;
+}
+
+.tama-side-btn:hover {
+  filter: brightness(1.08);
+}
+
+.tama-side-btn:active,
+.tama-side-btn.pressed {
+  filter: brightness(0.92);
+}
+
+.tama-arrow-left:active,
+.tama-arrow-left.pressed {
+  transform: translate(3px, 0);
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4), 0 2px 5px rgba(0,0,0,0.25);
+}
+
+.tama-arrow-right:active,
+.tama-arrow-right.pressed {
+  transform: translate(-3px, 0);
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 2px 5px rgba(0,0,0,0.25);
+}
+
+.arrow-triangle {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* Typography de Branding Curva (RakuRaku DinoKun) */
+.tama-branding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.2rem;
+  z-index: 4;
+}
+
+.brand-text {
+  font-family: 'Chewy', cursive, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: capitalize;
+  line-height: 1;
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.4),
+    0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.brand-left {
+  color: #6b21a8; /* Roxo vibrante anos 90 */
+  transform: rotate(-6deg) translateY(2px);
+}
+
+.brand-right {
+  color: #1e3a8a; /* Azul real dinossauro */
+  transform: rotate(6deg) translateY(2px);
+}
+
+.brand-mascot {
+  font-size: 1.4rem;
+  background: rgba(255, 255, 255, 0.35);
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 2px 5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   DISPLAY LCD & BEZEL COM OS 8 ÍCONES CLÁSSICOS
+   ============================================================ */
+.tama-screen-bezel {
+  width: 100%;
+  max-width: 316px;
+  height: 220px;
+  background: #333930;
+  background: linear-gradient(160deg, #444b3f, #232721);
+  border-radius: 28px;
+  padding: 8px;
+  box-shadow:
+    inset 0 6px 12px rgba(0, 0, 0, 0.7),
+    inset 0 -3px 6px rgba(255, 255, 255, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 4;
+}
+
+.tama-inner-rim {
+  width: 100%;
+  height: 100%;
+  background: #1c201a;
+  border-radius: 22px;
+  padding: 4px;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.8);
+}
+
+.tama-lcd-frame {
+  width: 100%;
+  height: 100%;
+  background: var(--screen-color);
+  background: linear-gradient(175deg, var(--screen-color) 0%, var(--screen-dark) 100%);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 4px 10px rgba(0, 0, 0, 0.35),
+    inset 0 -2px 5px rgba(255, 255, 255, 0.25);
+}
+
+/* Colunas de Ícones Laterais no LCD */
+.lcd-icons-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: 100%;
+  width: 28px;
+  z-index: 5;
+  padding: 2px 0;
+}
+
+.lcd-icons-left { align-items: flex-start; padding-left: 3px; }
+.lcd-icons-right { align-items: flex-end; padding-right: 3px; }
+
+.lcd-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0.95rem;
+  opacity: 0.35;
+  filter: grayscale(100%) brightness(0.4) contrast(1.5);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.lcd-icon.selected {
+  opacity: 1;
+  filter: none;
+  background: rgba(26, 39, 23, 0.15);
+  box-shadow: 0 0 0 1.5px var(--ink-color);
+  transform: scale(1.1);
+}
+
+.lcd-icon.selected .icon-dot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+.lcd-icons-left .lcd-icon.selected .icon-dot {
+  right: -6px;
+  border-left: 5px solid var(--ink-color);
+}
+
+.lcd-icons-right .lcd-icon.selected .icon-dot {
+  left: -6px;
+  border-right: 5px solid var(--ink-color);
+}
+
+.lcd-icon.active {
+  opacity: 1;
+  filter: none;
+  animation: lcdBlink 0.35s infinite alternate;
+}
+
+@keyframes lcdBlink {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px #fff); }
+  100% { transform: scale(1.2); filter: drop-shadow(0 0 6px #ffd700); }
+}
+
+.icon-alert.alerting {
+  opacity: 1;
+  filter: none;
+  animation: alertPing 0.3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes alertPing {
+  0%, 100% { transform: rotate(-12deg) scale(1.15); color: #ef4444; }
+  50% { transform: rotate(12deg) scale(1.25); color: #dc2626; }
+}
+
+/* Área do Canvas LCD Central */
+.tama-screen-canvas-wrap {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#petCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  z-index: 2;
+}
+
+/* Efeito Grade Dot Matrix LCD */
+.tama-dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 0);
+  background-size: 4px 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tama-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0, 0, 0, 0.06) 50%,
+    rgba(0, 0, 0, 0.06)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tama-glass-glare {
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 150%;
+  height: 60%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 51%
+  );
+  pointer-events: none;
+  transform: rotate(-10deg);
+  z-index: 4;
+}
+
+.tama-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 39, 23, 0.9);
+  color: var(--screen-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 1rem;
+  z-index: 10;
+  backdrop-filter: blur(2px);
+}
+
+.tama-overlay.hidden {
+  display: none;
+}
+
+.tama-toast {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-30px);
+  background: var(--ink-color);
+  color: var(--screen-color);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  z-index: 20;
+  white-space: nowrap;
+}
+
+.tama-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ============================================================
+   BOTões INFERIORES COM FONTE MANUSCRITA (SCRIPT LABEL)
+   ============================================================ */
+.tama-bottom-buttons {
+  width: 88%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  margin-bottom: 5px;
+  z-index: 5;
+}
+
+.btn-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-center {
+  transform: translateY(8px); /* Curva rebaixada do meio idêntica ao Rakuraku Dinokun */
+}
+
+.tama-btn.btn-oval {
+  width: 44px;
+  height: 26px;
+  background: var(--accent-color);
+  background: linear-gradient(160deg, var(--accent-light), var(--accent-color) 45%, var(--accent-dark));
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow:
+    inset -3px -3px 5px rgba(0, 0, 0, 0.35),
+    inset 3px 3px 5px rgba(255, 255, 255, 0.4),
+    0 6px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.08s ease;
+  position: relative;
+}
+
+.tama-btn.btn-oval:hover {
+  filter: brightness(1.08);
+}
+
+.tama-btn.btn-oval:active,
+.tama-btn.btn-oval.pressed {
+  transform: translateY(3px);
+  box-shadow:
+    inset -2px -2px 4px rgba(0, 0, 0, 0.4),
+    inset 2px 2px 3px rgba(255, 255, 255, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.25);
+  filter: brightness(0.95);
+}
+
+/* Fonte Manuscrita (Script / Handwritten) exata do Dinkie Dino */
+.script-label {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #1a1e16;
+  line-height: 1;
+  transform: rotate(-4deg);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================================
+   PAINEL LÍVIDO DE MONITORAMENTO E COMANDO (SIDE COMPANION)
+   ============================================================ */
+.side-companion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  max-width: 440px;
+  width: 100%;
+  z-index: 5;
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  padding: 1.6rem;
+  color: #fff;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.85rem;
+}
+
+.panel-head h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stage-tag {
+  background: linear-gradient(135deg, #6366f1, #3b82f6);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.stat-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stat-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.stat-bar {
+  flex: 1;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px;
+}
+
+.stat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.4s ease;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.45);
+}
+
+.stat-fill.low {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+}
+
+.stat-fill.critical {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+  animation: pulseCritical 0.8s infinite alternate;
+}
+
+@keyframes pulseCritical {
+  from { opacity: 1; }
+  to { opacity: 0.45; }
+}
+
+.stat-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.meta-tag {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+}
+
+.companion-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+}
+
+.action-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.action-btn.config-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.action-btn.config-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(239, 68, 68, 0.35));
+  border-color: rgba(245, 158, 11, 0.7);
+}
+
+/* Guia de Comandos e Histórico */
+.guide-panel h4 {
+  margin: 0 0 0.8rem;
+  font-size: 1.1rem;
+  color: #fce7f3;
+}
+
+.controls-list {
+  margin: 0;
+  padding: 0 0 0 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.controls-list li strong {
+  color: #fbbf24;
+}
+
+.guide-note {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+.history-panel {
+  cursor: pointer;
+}
+
+.history-panel summary {
+  font-weight: 700;
+  font-size: 1rem;
+  outline: none;
+}
+
+#historyList {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+#historyList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  border-left: 4px solid #3b82f6;
+}
+
+#historyList li span:last-child {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
