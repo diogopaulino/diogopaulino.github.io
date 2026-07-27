@@ -17,11 +17,21 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Labs - Diogo Paulino">
   <meta name="twitter:description" content="Explorações criativas entre música, jogos e utilidades web.">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', t);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'dark' ? '#0a0a0a' : '#fafbfc');
+      } catch (e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/labs/shared.css?v=4">
-  <link rel="stylesheet" href="/labs/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=6">
+  <link rel="stylesheet" href="/labs/style.css?v=6">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -39,33 +49,49 @@
 
 <body>
   <div class="container">
-    <header data-lab-header data-title="Labs" data-subtitle="Experimentos interativos" data-back-href="../index.html"
+    <header data-lab-header data-title="Labs" data-subtitle="Experimentos interativos" data-back-href="/"
       data-back-label="Voltar">
       <template data-slot="logo">
         <h1>Labs</h1>
       </template>
     </header>
 
+    <p class="labs-meta" aria-live="polite">
+      <span data-labs-total>22</span> experimentos
+      <span class="labs-meta-dot" aria-hidden="true"></span>
+      <span data-labs-visible>22</span> visíveis
+    </p>
+
     <div class="filters-container" role="toolbar" aria-label="Filtrar projetos">
-      <button class="filter-btn" data-filter="all" aria-pressed="true">Todos</button>
-      <button class="filter-btn" data-filter="game" aria-pressed="false">Games</button>
-      <button class="filter-btn" data-filter="creative" aria-pressed="false">Experimentos</button>
-      <button class="filter-btn" data-filter="tools" aria-pressed="false">Ferramentas</button>
-      <button class="filter-btn" data-filter="music" aria-pressed="false">Música</button>
+      <button class="filter-btn" data-filter="all" aria-pressed="true">
+        Todos <span class="filter-count" data-count-for="all">0</span>
+      </button>
+      <button class="filter-btn" data-filter="game" aria-pressed="false">
+        Games <span class="filter-count" data-count-for="game">0</span>
+      </button>
+      <button class="filter-btn" data-filter="creative" aria-pressed="false">
+        Experimentos <span class="filter-count" data-count-for="creative">0</span>
+      </button>
+      <button class="filter-btn" data-filter="tools" aria-pressed="false">
+        Ferramentas <span class="filter-count" data-count-for="tools">0</span>
+      </button>
+      <button class="filter-btn" data-filter="music" aria-pressed="false">
+        Música <span class="filter-count" data-count-for="music">0</span>
+      </button>
     </div>
 
     <div class="projects-grid">
-      <a href="/labs/matrix/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 3v9" />
-            <path d="M9 3v15" />
-            <path d="M14 3v7" />
-            <path d="M19 3v12" />
-            <path d="M4 15v2" opacity="0.5" />
-            <path d="M14 13v2" opacity="0.5" />
-            <path d="M19 18v2" opacity="0.5" />
+      <a href="/labs/matrix/" class="project-card" data-groups="creative" data-accent="creative">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M5 3v7M5 14v7" />
+            <path d="M10 3v4M10 11v10" opacity=".72" />
+            <path d="M15 3v10M15 17v4" />
+            <path d="M20 3v5M20 12v9" opacity=".55" />
+            <circle cx="5" cy="12" r="1.15" fill="currentColor" stroke="none" />
+            <circle cx="10" cy="9" r="1.15" fill="currentColor" stroke="none" opacity=".72" />
+            <circle cx="15" cy="15" r="1.15" fill="currentColor" stroke="none" />
+            <circle cx="20" cy="10" r="1.15" fill="currentColor" stroke="none" opacity=".55" />
           </svg>
         </div>
         <div class="project-content">
@@ -77,15 +103,22 @@
             <span class="tag">Screensaver</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/rock-kombat/" class="project-card" data-groups="game,music">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 18V5l10-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="16" cy="16" r="3" />
-            <path d="M5 7 2 10l3 3M19 7l3 3-3 3" />
+
+      <a href="/labs/rock-kombat/" class="project-card" data-groups="game,music" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M8 18V7.5L18 5v11" />
+            <circle cx="6.2" cy="18" r="2.3" />
+            <circle cx="16.2" cy="16" r="2.3" />
+            <path d="M4.5 9.5 2.5 11.5l2 2M19.5 8l2 2-2 2" stroke-width="1.8" />
           </svg>
         </div>
         <div class="project-content">
@@ -97,16 +130,22 @@
             <span class="tag">Rock</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/videogame/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="6" width="20" height="12" rx="2" />
-            <path d="M6 12h4" />
-            <path d="M8 10v4" />
-            <circle cx="17" cy="12" r="1" />
-            <circle cx="15" cy="12" r="1" />
+
+      <a href="/labs/videogame/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="2.5" y="7" width="19" height="11" rx="3.5" />
+            <path d="M7.5 12.5h3.2M9.1 10.9v3.2" />
+            <circle cx="15.2" cy="11.2" r="1" fill="currentColor" stroke="none" />
+            <circle cx="17.6" cy="13.4" r="1" fill="currentColor" stroke="none" />
           </svg>
         </div>
         <div class="project-content">
@@ -118,15 +157,23 @@
             <span class="tag">Retro</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/lander/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2c0 0-3 6-3 10 0 .5.5 2 3 2s3-1.5 3-2c0-4-3-10-3-10z" />
-            <path d="M9 12h6" />
-            <path d="M5 21l3-4" />
-            <path d="M19 21l-3-4" />
+
+      <a href="/labs/lander/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 3.5c0 0-2.8 5.2-2.8 8.6c0 1.6 1.1 2.6 2.8 2.6s2.8-1 2.8-2.6C14.8 8.7 12 3.5 12 3.5z" />
+            <path d="M9.4 12.2h5.2" />
+            <path d="M7.2 20.5 9.6 15.8M16.8 20.5 14.4 15.8" />
+            <path d="M10.2 20.8h3.6" opacity=".5" />
+            <path d="M11.2 15.2l-.8 2.2M12.8 15.2l.8 2.2" opacity=".7" />
           </svg>
         </div>
         <div class="project-content">
@@ -138,14 +185,21 @@
             <span class="tag">Physics</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/aurora-flow/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
-            <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
-            <path d="M19 11h2m-1 -1v2" />
+
+      <a href="/labs/aurora-flow/" class="project-card" data-groups="creative" data-accent="creative">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M3 16c2.5-4 5-6 9-6s6.5 2 9 6" opacity=".45" />
+            <path d="M3 13c2.8-4.5 5.5-6.8 9-6.8S18.2 8.5 21 13" />
+            <path d="M3 19c2.2-3.2 4.8-4.8 9-4.8s6.8 1.6 9 4.8" opacity=".7" />
+            <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
           </svg>
         </div>
         <div class="project-content">
@@ -157,15 +211,21 @@
             <span class="tag">Interativo</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/paint/" class="project-card" data-groups="creative,tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-            <path d="M2 2l7.586 7.586"></path>
-            <circle cx="11" cy="11" r="2"></circle>
+
+      <a href="/labs/paint/" class="project-card" data-groups="creative,tools" data-accent="creative">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M14.5 4.5 19.5 9.5 9 20H4v-5z" />
+            <path d="m13.2 5.8 5 5" />
+            <circle cx="7.2" cy="16.8" r="1.4" fill="currentColor" stroke="none" />
           </svg>
         </div>
         <div class="project-content">
@@ -177,37 +237,50 @@
             <span class="tag">Creative</span>
           </div>
         </div>
-      </a>
-      <a href="/labs/piano/" class="project-card" data-groups="music">
-        <div class="project-icon">
+        <span class="project-arrow" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="15" rx="2" />
-            <path d="M7.5 5v9" />
-            <path d="M12 5v9" />
-            <path d="M16.5 5v9" />
-            <path d="M6 5v5" stroke-width="3.5" />
-            <path d="M10 5v5" stroke-width="3.5" />
-            <path d="M14.5 5v5" stroke-width="3.5" />
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
+      </a>
+
+      <a href="/labs/piano/" class="project-card" data-groups="music" data-accent="music">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M8 5v8.5M12 5v8.5M16 5v8.5" />
+            <rect x="7.1" y="5" width="1.8" height="6.2" rx=".3" fill="currentColor" stroke="none" />
+            <rect x="11.1" y="5" width="1.8" height="6.2" rx=".3" fill="currentColor" stroke="none" />
+            <rect x="15.1" y="5" width="1.8" height="6.2" rx=".3" fill="currentColor" stroke="none" />
           </svg>
         </div>
         <div class="project-content">
           <h2>Piano</h2>
           <p>Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain</p>
           <div class="project-tags">
-            <span class="tag">Web Audio API</span>
+            <span class="tag">Web Audio</span>
             <span class="tag">Síntese</span>
             <span class="tag">Mobile</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
 
-      <a href="/labs/gravity/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="4" fill="currentColor" />
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+      <a href="/labs/gravity/" class="project-card" data-groups="creative" data-accent="creative">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" />
+            <ellipse cx="12" cy="12" rx="8.5" ry="3.6" transform="rotate(-24 12 12)" opacity=".85" />
+            <ellipse cx="12" cy="12" rx="8.5" ry="3.6" transform="rotate(48 12 12)" opacity=".5" />
+            <circle cx="19.2" cy="9.2" r="1.1" fill="currentColor" stroke="none" />
+            <circle cx="6.5" cy="15.5" r=".85" fill="currentColor" stroke="none" opacity=".7" />
           </svg>
         </div>
         <div class="project-content">
@@ -219,21 +292,22 @@
             <span class="tag">Interativo</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
 
-      <a href="/labs/minesweeper/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="6" fill="currentColor" fill-opacity="0.2" />
-            <path d="M12 6V3" />
-            <path d="M16.2 7.8L18.4 5.6" />
-            <path d="M18 12h3" />
-            <path d="M16.2 16.2L18.4 18.4" />
-            <path d="M12 18v3" />
-            <path d="M7.8 16.2L5.6 18.4" />
-            <path d="M6 12H3" />
-            <path d="M7.8 7.8L5.6 5.6" />
+      <a href="/labs/minesweeper/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2.5" />
+            <path d="M12 8.2v4.2" />
+            <circle cx="12" cy="15.2" r="1" fill="currentColor" stroke="none" />
+            <path d="M8 4v-1.2M12 4v-1.2M16 4v-1.2" opacity=".55" />
           </svg>
         </div>
         <div class="project-content">
@@ -245,14 +319,22 @@
             <span class="tag">Win95</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/image-optimizer/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
+
+      <a href="/labs/image-optimizer/" class="project-card" data-groups="tools" data-accent="tools">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3.5" y="4.5" width="17" height="15" rx="2.2" />
+            <circle cx="9" cy="10" r="1.5" />
+            <path d="m7.5 16.5 3.2-3.2 2.2 2.2 3.6-3.8 2 2.1" />
+            <path d="M16.2 7.2h3.2M17.8 5.6v3.2" />
           </svg>
         </div>
         <div class="project-content">
@@ -264,16 +346,23 @@
             <span class="tag">Utility</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/space-shooter/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-            <path
-              d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+
+      <a href="/labs/space-shooter/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 3.5 15.5 14H8.5z" />
+            <path d="M8.8 14 6.5 19.5M15.2 14l2.3 5.5" />
+            <path d="M10.2 14h3.6" />
+            <circle cx="6" cy="7" r=".8" fill="currentColor" stroke="none" opacity=".55" />
+            <circle cx="18.5" cy="9" r=".7" fill="currentColor" stroke="none" opacity=".4" />
           </svg>
         </div>
         <div class="project-content">
@@ -285,19 +374,26 @@
             <span class="tag">Neon</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/calculator/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="4" y="2" width="16" height="20" rx="2" />
-            <line x1="8" y1="6" x2="16" y2="6" />
-            <line x1="16" y1="14" x2="16" y2="14" />
-            <line x1="8" y1="14" x2="8" y2="14" />
-            <line x1="12" y1="14" x2="12" y2="14" />
-            <line x1="16" y1="18" x2="16" y2="18" />
-            <line x1="8" y1="18" x2="8" y2="18" />
-            <line x1="12" y1="18" x2="12" y2="18" />
+
+      <a href="/labs/calculator/" class="project-card" data-groups="tools" data-accent="tools">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+            <rect x="7.5" y="5" width="9" height="3.2" rx="1" />
+            <circle cx="9" cy="12.2" r=".9" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12.2" r=".9" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="12.2" r=".9" fill="currentColor" stroke="none" />
+            <circle cx="9" cy="15.8" r=".9" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="15.8" r=".9" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="15.8" r=".9" fill="currentColor" stroke="none" />
           </svg>
         </div>
         <div class="project-content">
@@ -309,13 +405,20 @@
             <span class="tag">Finance</span>
           </div>
         </div>
-      </a>
-      <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools">
-        <div class="project-icon">
+        <span class="project-arrow" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
-            <path d="M14 9a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
-            <path d="M18 9h1a2 2 0 0 1 2 2v8l-3-3h-6a2 2 0 0 1-2-2v-1" />
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
+      </a>
+
+      <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools" data-accent="creative">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H13a2.5 2.5 0 0 1 2.5 2.5v4A2.5 2.5 0 0 1 13 13H8l-3.5 3v-3.2A2.5 2.5 0 0 1 4 10.5z" />
+            <path d="M14.5 10.5h1.2A2.3 2.3 0 0 1 18 12.8v3.5l-2.6-2.2H12.8A2.3 2.3 0 0 1 10.5 12v-.6" opacity=".7" />
           </svg>
         </div>
         <div class="project-content">
@@ -327,15 +430,21 @@
             <span class="tag">Audio</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/tetris/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 10h4v4H3z" />
-            <path d="M7 10h4v4H7z" />
-            <path d="M11 10h4v4h-4z" />
-            <path d="M7 6h4v4H7z" />
+
+      <a href="/labs/tetris/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+            <rect x="4" y="10" width="5" height="5" rx=".8" />
+            <rect x="9.5" y="10" width="5" height="5" rx=".8" />
+            <rect x="15" y="10" width="5" height="5" rx=".8" />
+            <rect x="9.5" y="4.5" width="5" height="5" rx=".8" fill="currentColor" fill-opacity=".18" />
           </svg>
         </div>
         <div class="project-content">
@@ -347,16 +456,24 @@
             <span class="tag">GameBoy</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/snake/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
-            <rect x="6" y="6" width="12" height="8" rx="1" ry="1"></rect>
-            <path d="M8 18h.01"></path>
-            <path d="M12 18h.01"></path>
-            <path d="M16 18h.01"></path>
+
+      <a href="/labs/snake/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+            <path d="M8 14.5h4.5V9.5h3.5" stroke-width="2.2" />
+            <circle cx="16" cy="9.5" r="1.15" fill="currentColor" stroke="none" />
+            <circle cx="8.2" cy="17.8" r=".55" fill="currentColor" stroke="none" opacity=".5" />
+            <circle cx="11" cy="17.8" r=".55" fill="currentColor" stroke="none" opacity=".5" />
+            <circle cx="13.8" cy="17.8" r=".55" fill="currentColor" stroke="none" opacity=".5" />
           </svg>
         </div>
         <div class="project-content">
@@ -368,14 +485,22 @@
             <span class="tag">Nokia</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/winamp/" class="project-card" data-groups="music">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 18V5l12-2v13"></path>
-            <circle cx="6" cy="18" r="3"></circle>
-            <circle cx="18" cy="16" r="3"></circle>
+
+      <a href="/labs/winamp/" class="project-card" data-groups="music" data-accent="music">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M6 16.5V8.5l2.2-1.1V15" />
+            <path d="M13 15.5V6.8l2.2-1.1V14" />
+            <circle cx="5.2" cy="16.8" r="2.1" />
+            <circle cx="12.2" cy="15.8" r="2.1" />
+            <path d="M17.5 9.2v6.2M19.5 10.6v3.4M21.2 11.6v1.4" />
           </svg>
         </div>
         <div class="project-content">
@@ -387,13 +512,22 @@
             <span class="tag">Winamp</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/image-editor/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
+
+      <a href="/labs/image-editor/" class="project-card" data-groups="tools" data-accent="tools">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3.5" y="5" width="17" height="14" rx="2.2" />
+            <circle cx="9" cy="11" r="2" />
+            <path d="m8 16.5 2.8-2.8 2 2 3.4-3.5 2.3 2.4" />
+            <path d="M15.8 7.2h3.2" />
           </svg>
         </div>
         <div class="project-content">
@@ -405,33 +539,49 @@
             <span class="tag">Editor</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/tamagotchi/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2C8 7 5 11.5 5 15a7 7 0 0 0 14 0c0-3.5-3-8-7-13z" />
-            <circle cx="9.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <circle cx="14.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <path d="M10 18h4" stroke-width="2" />
+      <a href="/labs/tamagotchi/" class="project-card" data-groups="game,creative" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 3c-3.4 4.6-5.8 8.4-5.8 11.6a5.8 5.8 0 0 0 11.6 0C17.8 11.4 15.4 7.6 12 3z" />
+            <circle cx="10" cy="14.2" r="1.05" fill="currentColor" stroke="none" />
+            <circle cx="14" cy="14.2" r="1.05" fill="currentColor" stroke="none" />
+            <path d="M10.4 17h3.2" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Tamagotchi (Dinkie Dino)</h2>
-          <p>Réplica fiel dos bichinhos virtuais de bolso dos anos 90 — Rakuraku Dinokun retrô interativo</p>
+          <h2>Tamagotchi</h2>
+          <p>Réplica dos bichinhos virtuais de bolso dos anos 90 — Rakuraku Dinokun / Dinkie Dino</p>
           <div class="project-tags">
             <span class="tag">Dinkie Dino</span>
             <span class="tag">Retrô 90s</span>
             <span class="tag">Virtual Pet</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/pomodoro/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
+
+      <a href="/labs/pomodoro/" class="project-card" data-groups="tools" data-accent="tools">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="13" r="7.5" />
+            <path d="M12 13V8.8" />
+            <path d="M12 13l3.2 2" />
+            <path d="M9.5 3.8h5" />
+            <path d="M12 3.8V5.2" />
           </svg>
         </div>
         <div class="project-content">
@@ -439,21 +589,24 @@
           <p>Timer de foco com tarefas, estatísticas, sons e notificações do navegador</p>
           <div class="project-tags">
             <span class="tag">Productivity</span>
-            <span class="tag">AI</span>
+            <span class="tag">Timer</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/jungle-run/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 22v-7l-2-2" />
-            <path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6 6 0 0 1 6.8 8.8V8a5 5 0 0 1 10 0Z" />
-            <path d="m14 14-2 2" />
-            <path d="M4 14h1" />
-            <path d="M19 14h1" />
-            <path d="m6 18 1-1" />
-            <path d="m17 17 1 1" />
+
+      <a href="/labs/jungle-run/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 21v-6.5" />
+            <path d="M8.2 8.2c0-2.5 1.6-4.7 3.8-4.7s3.8 2.2 3.8 4.7c0 3.4-2 6.2-3.8 8.3-1.8-2.1-3.8-4.9-3.8-8.3z" />
+            <path d="M7 12.5c1.2.4 2.4.4 3.5 0M13.5 12.5c1.1.4 2.3.4 3.5 0" opacity=".65" />
           </svg>
         </div>
         <div class="project-content">
@@ -465,15 +618,24 @@
             <span class="tag">PixiJS</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/f1-racing/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <ellipse cx="12" cy="17" rx="9" ry="4" />
-            <path d="M12 13V3" />
-            <path d="M5 10l7-7 7 7" />
-            <circle cx="12" cy="17" r="1" />
+
+      <a href="/labs/f1-racing/" class="project-card" data-groups="game" data-accent="game">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M4 15.5h16" />
+            <path d="M6.5 15.5 8 11.2h8l1.5 4.3" />
+            <path d="M9.2 11.2 10.2 8.5h3.6l1 2.7" />
+            <circle cx="8.2" cy="17.3" r="1.5" />
+            <circle cx="15.8" cy="17.3" r="1.5" />
+            <path d="M11.2 9.8h1.6" opacity=".55" />
           </svg>
         </div>
         <div class="project-content">
@@ -485,16 +647,21 @@
             <span class="tag">F1</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
-      <a href="/labs/pulsar/" class="project-card" data-groups="music,creative">
-        <div class="project-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="2.2" />
-            <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" opacity="0.85" />
-            <path d="M12 2a10 10 0 0 1 10 10" opacity="0.5" />
-            <path d="M5.5 12A6.5 6.5 0 0 1 12 5.5" opacity="0.85" />
-            <path d="M2 12A10 10 0 0 1 12 2" opacity="0.5" />
+
+      <a href="/labs/pulsar/" class="project-card" data-groups="music,creative" data-accent="music">
+        <div class="project-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="5.2" opacity=".85" />
+            <circle cx="12" cy="12" r="8.4" opacity=".45" />
+            <path d="M12 2.8v1.6M12 19.6v1.6M2.8 12h1.6M19.6 12h1.6" opacity=".55" />
           </svg>
         </div>
         <div class="project-content">
@@ -506,13 +673,21 @@
             <span class="tag">Web Audio</span>
           </div>
         </div>
+        <span class="project-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </a>
+
+      <p class="labs-empty" data-labs-empty hidden>Nenhum lab nesta categoria.</p>
     </div>
+
+    <footer data-lab-footer data-home-href="/"></footer>
   </div>
-  <footer data-lab-footer data-home-href="/"></footer>
-  </div>
-  <script src="/labs/shared.js?v=5"></script>
-  <script src="/labs/index.js"></script>
+  <script src="/labs/shared.js?v=6"></script>
+  <script src="/labs/index.js?v=6"></script>
 </body>
 
 </html>

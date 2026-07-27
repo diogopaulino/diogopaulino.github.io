@@ -81,9 +81,9 @@ header {
         "back logo actions"
         "subtitle subtitle subtitle";
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 3rem;
-    padding: 0 1rem;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    padding: 0 0.5rem;
     max-width: 1200px;
 }
 
@@ -126,7 +126,11 @@ header .app-logo svg {
     padding: 0.6rem 1.2rem;
     border: 1px solid var(--border-subtle);
     border-radius: 2rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+        color 0.25s ease,
+        border-color 0.25s ease,
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
     font-weight: 500;
     background: var(--bg-card);
     box-shadow: var(--shadow-sm);
@@ -193,7 +197,11 @@ header h1 {
     background: var(--bg-card);
     cursor: pointer;
     position: relative;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+        border-color 0.25s ease,
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
     box-shadow: var(--shadow-inner);
 }
 
