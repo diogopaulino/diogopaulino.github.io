@@ -497,7 +497,7 @@
     constructor(data, x, facing, isCpu = false) {
       this.data = data; this.x = x; this.y = 425; this.vx = 0; this.vy = 0;
       this.facing = facing; this.cpu = isCpu;
-      this.health = 100; this.meter = 20; this.width = 75; this.height = 160;
+      this.health = 100; this.meter = 20; this.width = 70; this.height = 150;
       this.grounded = true; this.attack = null; this.attackTimer = 0; this.cooldown = 0;
       this.hitFlash = 0; this.stun = 0; this.blocking = false; this.aiTimer = 0;
       this.aiReactingTo = null; this.aiReactionTimer = 0;
@@ -633,15 +633,15 @@
       }
 
       this.blocking = input.block && this.grounded && !this.attack;
-      const speed = (2.2 + this.data.speed * 0.18) * (this.cpu ? 0.92 : 1);
+      const speed = (2.4 + this.data.speed * 0.20) * (this.cpu ? 0.92 : 1);
 
       if (!this.attack && !this.blocking && this.stun <= 0) {
         const targetSpeed = input.left ? -speed : input.right ? speed : 0;
-        const control = this.grounded ? 0.40 : 0.18;
+        const control = this.grounded ? 0.42 : 0.18;
         this.vx += (targetSpeed - this.vx) * control;
-        if (!input.left && !input.right) this.vx *= this.grounded ? 0.70 : 0.96;
+        if (!input.left && !input.right) this.vx *= this.grounded ? 0.68 : 0.96;
         if (input.jump && this.grounded) {
-          this.vy = -11.0; this.grounded = false; sound('ui', 0.65);
+          this.vy = -10.5; this.grounded = false; sound('ui', 0.65);
         }
         if (input.punch) this.startAttack('punch');
         else if (input.kick) this.startAttack('kick');
@@ -667,8 +667,17 @@
         }
         this.vy = 0; this.grounded = true;
       }
-      this.x = clamp(this.x, 70, 890);
+      this.x = clamp(this.x, 80, 880);
       this.facing = other.x >= this.x ? 1 : -1;
+
+      // Soft body separation so fighters don't occupy the same spot.
+      const gap = other.x - this.x;
+      const minGap = 58;
+      if (Math.abs(gap) < minGap && Math.abs(other.y - this.y) < 90) {
+        const push = (minGap - Math.abs(gap)) * 0.22 * Math.sign(gap || this.facing);
+        this.x -= push;
+      }
+
       this.updateAnimation();
 
       if (this.attackTimer > 0) {
@@ -715,20 +724,22 @@
     startAttack(type) {
       if (this.cooldown > 0) return;
       const config = {
-        punch: { duration: 18, activeAt: 10, range: 108 + (this.cpu ? 0 : 14), damage: 2.5 + this.data.power * 0.25, knock: 4.0 },
-        kick: { duration: 25, activeAt: 14, range: 128 + (this.cpu ? 0 : 14), damage: 3.5 + this.data.power * 0.35, knock: 6.0 },
-        mini_special: { duration: 35, activeAt: 18, range: 180 + (this.cpu ? 0 : 15), damage: 6.0 + this.data.power * 0.4, knock: 8.0 },
-        special: { duration: 55, activeAt: 35, range: 280 + (this.cpu ? 0 : 20), damage: 11.0 + this.data.power * 0.65, knock: 13 }
+        // Durations track the clip hold totals so the pose extension lands
+        // on the same tick the hitbox goes active.
+        punch: { duration: 15, activeAt: 8, range: 98 + (this.cpu ? 0 : 10), damage: 2.6 + this.data.power * 0.28, knock: 3.8 },
+        kick: { duration: 17, activeAt: 10, range: 118 + (this.cpu ? 0 : 12), damage: 3.6 + this.data.power * 0.36, knock: 5.8 },
+        mini_special: { duration: 28, activeAt: 14, range: 155 + (this.cpu ? 0 : 12), damage: 6.0 + this.data.power * 0.4, knock: 7.5 },
+        special: { duration: 42, activeAt: 22, range: 210 + (this.cpu ? 0 : 16), damage: 11.0 + this.data.power * 0.65, knock: 12 }
       }[type];
 
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
       // Faster fighters shake off their own recovery quicker -- speed now
       // shapes how often a character can swing, not just how fast it walks.
-      const baseCooldown = (type === 'special' ? 55 : type === 'mini_special' ? 35 : config.duration + 2) + (this.cpu ? 5 : 0);
+      const baseCooldown = (type === 'special' ? 42 : type === 'mini_special' ? 28 : config.duration + 3) + (this.cpu ? 5 : 0);
       const recoveryBonus = (type === 'special' || type === 'mini_special') ? 0 : Math.round((this.data.speed - 3) * 1.5);
-      this.cooldown = Math.max(config.duration - 2, baseCooldown - recoveryBonus);
-      this.vx += this.facing * (type === 'special' ? 4.8 : type === 'mini_special' ? 3.5 : type === 'kick' ? 3.0 : 2.0);
+      this.cooldown = Math.max(config.duration - 1, baseCooldown - recoveryBonus);
+      this.vx += this.facing * (type === 'special' ? 4.2 : type === 'mini_special' ? 3.0 : type === 'kick' ? 2.6 : 1.8);
 
       if (type === 'special') {
         this.meter = 0;
@@ -737,7 +748,7 @@
         sound('special', 1 + this.data.speed * 0.05);
         sound('crowd');
         // Trigger screen freeze and camera zoom
-        match.specialFreeze = 45;
+        match.specialFreeze = 28;
         match.specialAttacker = this;
       } else if (type === 'mini_special') {
         this.meter = Math.max(0, this.meter - 50);
@@ -752,9 +763,10 @@
 
     checkHit(other) {
       const reach = this.attack.range;
-      const inFront = (other.x - this.x) * this.facing > -25;
+      const inFront = (other.x - this.x) * this.facing > -18;
       const distance = Math.abs(other.x - this.x);
-      const vertical = Math.abs(other.y - this.y) < 110;
+      // Tighter vertical window so jumping over a low kick actually works.
+      const vertical = Math.abs(other.y - this.y) < (this.attack.type === 'kick' ? 95 : 105);
 
       if (inFront && distance < reach && vertical) {
         this.attack.hit = true;
@@ -838,8 +850,8 @@
     const s2 = pick2;
     match = {
       s1, s2,
-      p1: new Player(s1, 320, 1, false),
-      p2: new Player(s2, 640, -1, true),
+      p1: new Player(s1, 250, 1, false),
+      p2: new Player(s2, 710, -1, true),
       timer: ROUND_TIME, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], hitSparks: [], specialFreeze: 0, specialAttacker: null, shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
       camX: 480, camZoom: 1,
       round: 1, wins: { p1: 0, p2: 0 }, roundOver: false,
@@ -875,8 +887,8 @@
   /** Wipes health/position/effects for a fresh round while keeping the
    *  overall match score (wins) and picks intact. */
   function resetRoundState() {
-    match.p1 = new Player(match.s1, 320, 1, false);
-    match.p2 = new Player(match.s2, 640, -1, true);
+    match.p1 = new Player(match.s1, 250, 1, false);
+    match.p2 = new Player(match.s2, 710, -1, true);
     match.timer = ROUND_TIME;
     match.particles = []; match.impacts = []; match.hitSparks = [];
     match.specialFreeze = 0; match.specialAttacker = null;
@@ -1587,7 +1599,7 @@
   // --- FIGHTER RENDERER ---
   // Characters render at this height in the 960x540 stage space; the atlas art
   // is authored taller so it stays sharp on high-DPI displays.
-  const FIGHTER_HEIGHT = 232;
+  const FIGHTER_HEIGHT = 248;
 
   /**
    * Compose a fighter's skeleton into its offscreen buffer for this frame.
@@ -1607,24 +1619,25 @@
     const sample = player.anim.sample(progress);
     rig.compose(sample.pose, sample.front);
 
-    // Draw weapons only during attacks!
+    // Draw weapons on the lead (viewer-right / armBack) fist — after the
+    // facing flip that arm is the one swinging toward the opponent.
     if (player.attack) {
       const ctx = rig.bufferCtx;
-      const m = rig._world['armFrontLower'];
+      const m = rig._world['armBackLower'] || rig._world['armFrontLower'];
       if (m) {
         ctx.save();
         ctx.setTransform(m[0], m[3], m[1], m[4], m[2] + RockKombatRig.PAD.left, m[5] + RockKombatRig.PAD.top);
         if (player.data.id === 'kurt' && weaponGuitarImg.complete) {
-          ctx.translate(20, 60);
-          ctx.rotate(-0.8);
-          ctx.drawImage(weaponGuitarImg, -110, -50, 180, 100);
+          ctx.translate(10, 40);
+          ctx.rotate(-0.55);
+          ctx.drawImage(weaponGuitarImg, -90, -40, 150, 85);
         } else if (player.data.id === 'axl' && weaponMicImg.complete) {
-          ctx.translate(30, 45);
-          ctx.rotate(0.2);
-          ctx.drawImage(weaponMicImg, -30, -180, 60, 240);
+          ctx.translate(15, 30);
+          ctx.rotate(0.15);
+          ctx.drawImage(weaponMicImg, -24, -150, 48, 200);
         } else if (player.data.id === 'lennon' && weaponDoveImg.complete) {
-          ctx.translate(40, 20);
-          ctx.drawImage(weaponDoveImg, -45, -45, 90, 90);
+          ctx.translate(20, 10);
+          ctx.drawImage(weaponDoveImg, -36, -36, 72, 72);
         }
         ctx.restore();
       }
@@ -1645,7 +1658,9 @@
     // fully opaque inverted clone instead of a faint ghost.
     c.globalAlpha = c.globalAlpha * alpha;
     c.translate(x, ground);
-    c.scale(player.facing * scale, scale);
+    // Source art faces left; facing=+1 means "opponent is to the right", so
+    // flip when facing right so both fighters look at each other.
+    c.scale(-player.facing * scale, scale);
 
     // Landing squash keeps impacts weighty without needing extra art.
     if (player.landSquash > 0) {
@@ -1692,7 +1707,7 @@
     c.save();
     c.globalCompositeOperation = 'screen';
     c.translate(player.x, player.y);
-    c.scale(player.facing, 1);
+    c.scale(-player.facing, 1);
 
     if (player.attack.type === 'special') {
       if (f.id === 'kurt') {
@@ -1766,7 +1781,7 @@
     c.globalCompositeOperation = 'screen';
     c.globalAlpha = 0.8;
     c.translate(player.x, player.y);
-    c.scale(player.facing, 1);
+    c.scale(-player.facing, 1);
     c.strokeStyle = f.color;
     c.shadowColor = f.color;
     c.shadowBlur = 22;

@@ -81,21 +81,22 @@ def load_base(who, assets_dir):
     return im.resize((max(1, round(im.width * scale)), TARGET_HEIGHT), Image.LANCZOS), scale
 
 
-def _box_mask(w, h, box):
-    """Near-hard-edged mask for a normalised (x0,y0,x1,y1) box.
+def _box_mask(w, h, box, soft=1.0):
+    """Mask for a normalised (x0,y0,x1,y1) box.
 
-    A 1px blur plus a smoothstep collapses what used to be an 8-10px feather
-    ramp down to about a pixel, so two overlapping parts read as one opaque
-    surface instead of both fading to 75% where they meet.
+    `soft` is the Gaussian blur radius. Limbs use a harder edge so subtracting
+    them from the torso doesn't leave a translucent gap at every seam.
     """
     x0, y0, x1, y1 = box
     bx0, by0 = int(w * x0), int(h * y0)
     bx1, by1 = int(w * x1), int(h * y1)
     m = np.zeros((h, w), dtype=np.float32)
     m[by0:by1, bx0:bx1] = 1.0
-    soft = Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0))
-    soft = np.array(soft).astype(np.float32) / 255.0
-    return np.clip((soft - 0.35) / 0.30, 0.0, 1.0)
+    if soft <= 0:
+        return m
+    soft_im = Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(soft))
+    soft_arr = np.array(soft_im).astype(np.float32) / 255.0
+    return np.clip((soft_arr - 0.35) / 0.30, 0.0, 1.0)
 
 
 def _disk_mask(w, h, cx, cy, radius):
@@ -107,46 +108,129 @@ def cut_parts(who, base):
     """Slice the base pose into rig parts.
 
     Each part comes back as a full-canvas RGBA layer so later affine transforms
-    can be expressed in one shared coordinate space. Parts are only allowed to
-    overlap their parent and direct children (sharing a joint) -- everyone else
-    is clipped out of the layer except in a small disc around *their own*
-    pivot, which is what stopped e.g. the torso from carrying a baked-in copy
-    of the forearm that then doubled up once the real forearm rotated away.
+    can be expressed in one shared coordinate space.
+
+    Cutting rules:
+      1. Limbs own a hard core of their box (so a lead punch arm keeps its fist).
+      2. Torso/pelvis/head keep everything else, plus a joint disc so seams don't
+         open when a limb rotates a few degrees.
+      3. Higher-z limbs still win overlaps against lower-z siblings (front arm
+         over back arm) the way the paint order expects.
     """
     w, h = base.size
-    src_alpha = np.array(base)[..., 3].astype(np.float32)
+    src = np.array(base)
+    src_alpha = src[..., 3].astype(np.float32)
     parts_spec = RIGS[who]['parts']
-    joint_radius = 0.07 * min(w, h)
-    box_masks = {name: _box_mask(w, h, spec['box']) for name, spec in parts_spec.items()}
+    joint_radius = 0.10 * min(w, h)
+
+    BODY = {'pelvis', 'torso', 'head'}
+    LIMBS = {n for n in parts_spec if n not in BODY}
+
+    # Hard cores for limbs (almost no feather) + soft boxes for body.
+    box_hard = {n: _box_mask(w, h, s['box'], soft=0.4 if n in LIMBS else 1.0)
+                for n, s in parts_spec.items()}
+
+    # Union of every limb core — body will yield this, except at joints.
+    limb_union = np.zeros((h, w), dtype=np.float32)
+    for n in LIMBS:
+        limb_union = np.maximum(limb_union, box_hard[n])
+
     layers = {}
-
-    # A flat pose only has one pixel value per coordinate: wherever two parts'
-    # boxes overlap, that pixel is really whichever part paints on top in the
-    # final rig (its higher z). So for each part we clip out the footprint of
-    # every part drawn *after* it, keeping a small disc around the pivot only
-    # when the two are directly jointed (parent/child) -- that disc is the
-    # actual shared joint, everything else is the other part's content baked
-    # into a layer that will never legitimately show it.
     for name, spec in parts_spec.items():
-        mask = box_masks[name].copy()
+        mask = box_hard[name].copy()
 
-        for other_name, other_spec in parts_spec.items():
-            if other_name == name or other_spec['z'] <= spec['z']:
-                continue
-            direct = other_spec['parent'] == name or spec['parent'] == other_name
-            exclude = box_masks[other_name]
-            if direct:
-                child_spec = other_spec if other_spec['parent'] == name else spec
-                px = child_spec['pivot'][0] * w
-                py = child_spec['pivot'][1] * h
-                disk = _disk_mask(w, h, px, py, joint_radius)
-                exclude = exclude * (1.0 - disk)
-            mask = np.clip(mask - exclude, 0.0, 1.0)
+        if name in BODY:
+            # Body keeps joint discs so rotating a limb doesn't tear a hole
+            # the size of the whole forearm out of the chest on frame 1.
+            keep = np.zeros((h, w), dtype=np.float32)
+            for limb_name, limb_spec in parts_spec.items():
+                if limb_name not in LIMBS:
+                    continue
+                # Keep a disc around any joint that attaches this body part
+                # to a limb (shoulder on torso, hip on pelvis).
+                if limb_spec['parent'] == name or (
+                        name == 'pelvis' and limb_spec['parent'] == 'pelvis'):
+                    px = limb_spec['pivot'][0] * w
+                    py = limb_spec['pivot'][1] * h
+                    keep = np.maximum(keep, _disk_mask(w, h, px, py, joint_radius))
+                # Head also keeps a disc around its own neck pivot.
+                if name == 'head':
+                    px = spec['pivot'][0] * w
+                    py = spec['pivot'][1] * h
+                    keep = np.maximum(keep, _disk_mask(w, h, px, py, joint_radius * 0.7))
+            mask = np.clip(mask - limb_union * (1.0 - keep), 0.0, 1.0)
+
+            # Head must not be eaten by arm boxes that brush the jawline —
+            # re-assert the head box so jaw/hair stay on the head layer.
+            if name == 'head':
+                mask = np.maximum(mask, box_hard['head'])
+
+        else:
+            # Limbs yield to higher-z siblings (and to the head — never steal face).
+            for other_name, other_spec in parts_spec.items():
+                if other_name == name:
+                    continue
+                steals = (
+                    (other_name == 'head')
+                    or (other_name in LIMBS and other_spec['z'] > spec['z'])
+                )
+                if not steals:
+                    continue
+                direct = other_spec['parent'] == name or spec['parent'] == other_name
+                exclude = box_hard[other_name]
+                if direct:
+                    child_spec = other_spec if other_spec['parent'] == name else spec
+                    px = child_spec['pivot'][0] * w
+                    py = child_spec['pivot'][1] * h
+                    disk = _disk_mask(w, h, px, py, joint_radius * 0.85)
+                    exclude = exclude * (1.0 - disk)
+                mask = np.clip(mask - exclude, 0.0, 1.0)
 
         combined = mask * src_alpha
-
-        layer = np.array(base).copy()
+        layer = src.copy()
         layer[..., 3] = np.clip(combined, 0, 255).astype(np.uint8)
         layers[name] = Image.fromarray(layer)
+
+    # Heal: any opaque source pixel that no part claimed gets assigned to the
+    # torso (or pelvis if it's below the waist). Without this, soft-box seams
+    # leave magenta-sized holes even in the identity pose.
+    claimed = np.zeros((h, w), dtype=np.float32)
+    for name in layers:
+        claimed = np.maximum(claimed, np.array(layers[name])[..., 3].astype(np.float32))
+    orphan = (src_alpha > 40) & (claimed < 40)
+    if orphan.any():
+        waist = int(h * 0.55)
+        for name, y0, y1 in (('torso', 0, waist + int(h * 0.08)),
+                             ('pelvis', waist - int(h * 0.05), h)):
+            if name not in layers:
+                continue
+            layer = np.array(layers[name])
+            band = orphan.copy()
+            band[:y0, :] = False
+            band[y1:, :] = False
+            layer[band, :3] = src[band, :3]
+            layer[band, 3] = src[band, 3]
+            layers[name] = Image.fromarray(layer)
+            orphan[band] = False
+        # Anything still orphaned (boots, hair tips) goes to the nearest limb
+        # by box centroid — keeps feet from vanishing.
+        if orphan.any():
+            for name, spec in parts_spec.items():
+                if name not in LIMBS:
+                    continue
+                x0, y0, x1, y1 = spec['box']
+                bx0, by0, bx1, by1 = int(w * x0), int(h * y0), int(w * x1), int(h * y1)
+                region = orphan.copy()
+                region[:by0, :] = False
+                region[by1:, :] = False
+                region[:, :bx0] = False
+                region[:, bx1:] = False
+                if not region.any():
+                    continue
+                layer = np.array(layers[name])
+                layer[region, :3] = src[region, :3]
+                layer[region, 3] = src[region, 3]
+                layers[name] = Image.fromarray(layer)
+                orphan[region] = False
 
     return layers
