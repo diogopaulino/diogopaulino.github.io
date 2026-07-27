@@ -4,48 +4,49 @@
     /* ============================================================
        RAKURAKU DINOKUN / DINKIE DINO — lógica fiel 1997
        ============================================================ */
-    const STORAGE_KEY = 'tamagotchi-dinkie-v4';
-    const OLD_KEYS = ['tamagotchi-dinkie-v3', 'tamagotchi-dinkie-v2', 'ovinho-save-v1'];
-    const THEME_KEY = 'tamagotchi-theme-v3';
+    const STORAGE_KEY = 'tamagotchi-dinkie-v6';
+    const OLD_KEYS = ['tamagotchi-dinkie-v5', 'tamagotchi-dinkie-v4', 'tamagotchi-dinkie-v3', 'tamagotchi-dinkie-v2', 'ovinho-save-v1'];
+    const THEME_KEY = 'tamagotchi-theme-v6';
     const HISTORY_KEY = 'tamagotchi-history-v3';
 
     const DAY_MS = 10 * 60 * 1000;
-    const STAGE_DAYS = { child: 1, teen: 2.5, adult: 4.5 };
     const RENDER_MS = 400;
     const DECAY_MS = 1000;
     const IDEAL_TEMP = 25;
     const MUTE_HOLD_MS = 3000;
+    const CLOCK_HOLD_MS = 1200;
     const EDU_GRADES = ['E+', 'D+', 'C+', 'B+', 'A+'];
-    const EVOL_WEIGHT = { baby: 12, child: 22, teen: 35 };
+    /* MUGG: 1kg=lv1, 15kg=lv2; extrapolamos teen/adult */
+    const EVOL_WEIGHT = { child: 15, teen: 25, adult: 35 };
+    const MOOD_FACES = [':(', ':-|', ':|', ':)', ':D', ':))'];
+    const MOOD_LABELS = ['Unhappy', 'Slightly unhappy', 'Neutral', 'Slightly happy', 'Happy', 'Very Happy'];
 
     const RATES = {
-        hunger: 90,
-        thirst: 75,
-        happiness: 65,
         sickBase: 0.04,
         sickBad: 0.55,
-        sickTimer: 0.35,
-        tempDrift: 8
+        sickTimer: 0.35
     };
 
-    /* Amarelo clássico = botões vermelhos + cap azul */
-    const SHELL_PRESETS = ['#f6c836', '#37b264', '#e8455a', '#8a56ce', '#3898f8', '#f0f2f5', '#2a313d'];
-    const ACCENT_PRESETS = ['#e23b2e', '#262626', '#1d63ed', '#f06c30', '#10b981', '#ffffff'];
-    const SCREEN_PRESETS = ['#9aaa7a', '#78a6ba', '#c6d175', '#e2b3c2', '#bcf49c', '#d2dfd4'];
+    /* Cores: amarelo + vermelho (clássico) */
+    const SHELL_PRESETS = ['#f6c836', '#2ec4b6', '#e8455a', '#f0f2f5', '#37b264', '#3898f8', '#2a313d'];
+    const ACCENT_PRESETS = ['#e23b2e', '#f6c836', '#262626', '#1d63ed', '#ffffff', '#10b981'];
+    const SCREEN_PRESETS = ['#9aaa7a', '#a8b890', '#78a6ba', '#c6d175', '#e2b3c2', '#bcf49c'];
 
     /* Layout autêntico: esquerda / direita separados */
     const LEFT_ICONS = ['drink', 'food', 'light', 'discipline', 'stats'];
     const RIGHT_ICONS = ['play', 'study', 'bath', 'ac', 'medicine'];
     const ALL_ICONS = LEFT_ICONS.concat(RIGHT_ICONS);
 
+    /* Evolução por comida: carne→T-Rex, vegetais→Bronto, massa→Triceratops */
     const FOODS = [
-        { id: 'burger', label: 'Hamburguer', hunger: 28, happy: 4 },
-        { id: 'chicken', label: 'Frango', hunger: 30, happy: 6 },
-        { id: 'apple', label: 'Maca', hunger: 18, happy: 8 },
-        { id: 'carrot', label: 'Cenoura', hunger: 16, happy: 5 },
-        { id: 'icecream', label: 'Sorvete', hunger: 12, happy: 22 },
-        { id: 'noodles', label: 'Macarrao', hunger: 26, happy: 7 }
+        { id: 'burger', label: 'Hamburguer', path: 'meat' },
+        { id: 'chicken', label: 'Frango', path: 'meat' },
+        { id: 'apple', label: 'Maca', path: 'veggie' },
+        { id: 'carrot', label: 'Cenoura', path: 'veggie' },
+        { id: 'icecream', label: 'Sorvete', path: 'pasta' },
+        { id: 'noodles', label: 'Macarrao', path: 'pasta' }
     ];
+    const ADULT_FORMS = { meat: 'trex', veggie: 'bronto', pasta: 'trike' };
 
     const RPS = ['rock', 'scissors', 'paper'];
     const RPS_LABEL = { rock: 'PEDRA', scissors: 'TESOURA', paper: 'PAPEL' };
@@ -112,7 +113,12 @@
         accent: ACCENT_PRESETS[0],
         screen: SCREEN_PRESETS[0],
         muted: false
-    }, loadJSON(THEME_KEY, loadJSON('tamagotchi-theme-v2', {})));
+    }, (() => {
+        const cur = loadJSON(THEME_KEY, null);
+        if (cur) return cur;
+        const old = loadJSON('tamagotchi-theme-v5', loadJSON('tamagotchi-theme-v4', {}));
+        return old.muted != null ? { muted: old.muted } : {};
+    })());
 
     let ink = '#1c2418';
 
@@ -188,13 +194,24 @@
     function migrateState(raw) {
         if (!raw) return null;
         const s = Object.assign(freshState(raw.name || 'Dino'), raw);
-        if (s.thirst == null) s.thirst = 85;
+        if (s.mood == null) {
+            const h = s.happiness != null ? s.happiness : 85;
+            s.mood = clamp(Math.round(h / 20), 0, 5);
+        }
+        if (s.foodUnits == null) {
+            const h = s.hunger != null ? s.hunger : 85;
+            s.foodUnits = clamp(Math.round(h / 25), 0, 4);
+        }
+        if (s.drinkUnits == null) {
+            const t = s.thirst != null ? s.thirst : 85;
+            s.drinkUnits = t >= 50 ? 1 : 0;
+        }
         if (s.temperature == null) s.temperature = IDEAL_TEMP;
         if (s.acOn == null) s.acOn = false;
-        if (s.weight == null) s.weight = 5;
+        if (s.weight == null || s.weight < 1) s.weight = 1;
         if (s.dirty == null) s.dirty = false;
         if (s.angry == null) s.angry = false;
-        if (s.madAngry == null) s.madAngry = s.angry && s.happiness < 40;
+        if (s.madAngry == null) s.madAngry = s.mood <= 1;
         if (s.heatAngry == null) s.heatAngry = s.temperature >= 30;
         if (s.freezing == null) s.freezing = s.temperature < 20;
         if (s.eduLevel == null) {
@@ -203,14 +220,25 @@
         }
         if (s.sickTimer == null) s.sickTimer = 0;
         if (s.lastScheduleHour == null) s.lastScheduleHour = new Date().getHours();
-        if (s.caredAt9am == null) s.caredAt9am = false;
         if (s.inGameMode == null) s.inGameMode = s.stage !== 'egg';
+        if (!s.foodPath) s.foodPath = { meat: 0, veggie: 0, pasta: 0 };
+        if (s.iceCreamCount == null) s.iceCreamCount = (s.foodBias && s.foodBias.icecream) || 0;
+        if (s.adultForm === 'good') s.adultForm = 'bronto';
+        if (s.adultForm === 'bad') s.adultForm = 'trex';
+        if (s.adultForm === 'neutral') s.adultForm = 'trike';
+        if (s.afterlifeAt == null) s.afterlifeAt = null;
         delete s.poopCount;
         delete s.hygiene;
         delete s.health;
         delete s.energy;
         delete s.discipline;
-        s.v = 4;
+        delete s.hunger;
+        delete s.thirst;
+        delete s.happiness;
+        delete s.caredAt9am;
+        delete s.careSum;
+        delete s.careDays;
+        s.v = 6;
         return s;
     }
 
@@ -218,17 +246,17 @@
         const now = Date.now();
         const h = new Date().getHours();
         return {
-            v: 4,
+            v: 6,
             name: name || 'Dino',
             birthTime: now,
             hatchTime: null,
             stage: 'egg',
             adultForm: null,
-            hunger: 85,
-            thirst: 85,
-            happiness: 85,
+            mood: 4,
+            foodUnits: 4,
+            drinkUnits: 1,
             eduLevel: 0,
-            weight: 5,
+            weight: 1,
             temperature: IDEAL_TEMP,
             acOn: false,
             isSick: false,
@@ -243,12 +271,197 @@
             inGameMode: false,
             lastUpdate: now,
             lastScheduleHour: h,
-            caredAt9am: false,
-            careSum: 0,
-            careDays: 0,
             sicknessEpisodes: 0,
-            foodBias: { burger: 0, chicken: 0, apple: 0, carrot: 0, icecream: 0, noodles: 0 }
+            foodBias: { burger: 0, chicken: 0, apple: 0, carrot: 0, icecream: 0, noodles: 0 },
+            foodPath: { meat: 0, veggie: 0, pasta: 0 },
+            iceCreamCount: 0,
+            deathForm: null,
+            afterlifeAt: null
         };
+    }
+
+    function resolveAdultForm() {
+        if (!state) return 'trike';
+        const p = state.foodPath || { meat: 0, veggie: 0, pasta: 0 };
+        let best = 'pasta';
+        let bestVal = -1;
+        ['meat', 'veggie', 'pasta'].forEach((k) => {
+            if ((p[k] || 0) > bestVal) {
+                bestVal = p[k] || 0;
+                best = k;
+            }
+        });
+        return ADULT_FORMS[best] || 'trike';
+    }
+
+    function evolLevel() {
+        if (!state) return 1;
+        if (state.stage === 'egg' || state.stage === 'baby') return 1;
+        if (state.stage === 'child') return 2;
+        if (state.stage === 'teen') return 3;
+        return 4;
+    }
+
+    function hungerPlatesEmpty() {
+        if (!state) return 0;
+        return clamp(2 - Math.ceil(state.foodUnits / 2), 0, 2);
+    }
+
+    function thirstGlassEmpty() {
+        if (!state) return 0;
+        return state.drinkUnits > 0 ? 0 : 1;
+    }
+
+    function syncAngryFlags() {
+        if (!state) return;
+        state.heatAngry = state.temperature >= 30;
+        state.freezing = state.temperature < 20;
+        state.madAngry = state.madAngry || state.mood <= 1;
+        state.angry = state.madAngry || state.heatAngry;
+    }
+
+    /* Agenda MUGG: esvazia pratos/copos, humor, +1kg se cheio; temp ±0~8 */
+    function applyScheduleHour(hour) {
+        if (!state || !state.isAlive || state.stage === 'egg' || !state.inGameMode) return;
+        if (state.afterlifeAt) return;
+
+        const lv = evolLevel();
+        const emptyPlates = lv <= 1 ? 2 : 1;
+        const moodDropHours = [10, 12, 14, 16, 18];
+
+        if (hour === 9) {
+            /* Ordem MUGG: 1) converter cheio→peso 2) checar evolução */
+            if (state.foodUnits >= 4 && state.drinkUnits >= 1) {
+                state.weight = clamp(state.weight + 1, 1, 99);
+            }
+            checkEvolution(true);
+        }
+
+        if (hour >= 10 && hour <= 20) {
+            /* Converter peso ANTES de esvaziar */
+            if (state.foodUnits >= 4 && state.drinkUnits >= 1) {
+                state.weight = clamp(state.weight + 1, 1, 99);
+            }
+            state.foodUnits = clamp(4 - emptyPlates * 2, 0, 4);
+            state.drinkUnits = 0;
+            if (moodDropHours.indexOf(hour) >= 0) {
+                state.mood = clamp(state.mood - 1, 0, 5);
+            }
+        }
+
+        /* Temperatura: ± aleatório 0~8°C por hora (AC liga = esfria) */
+        const delta = Math.floor(Math.random() * 9);
+        state.temperature = clamp(
+            state.temperature + (state.acOn ? -delta : delta),
+            10, 40
+        );
+
+        syncAngryFlags();
+        if (state.foodUnits < 2 || state.drinkUnits < 1 || state.mood <= 1) maybeAlertBeep();
+    }
+
+    function applyDecay(deltaMs) {
+        if (!state || !state.isAlive || deltaMs <= 0) return;
+
+        const nowHour = new Date().getHours();
+        if (nowHour !== state.lastScheduleHour) {
+            applyScheduleHour(nowHour);
+            state.lastScheduleHour = nowHour;
+        }
+
+        if (state.stage === 'egg' || !state.inGameMode) {
+            state.lastUpdate = Date.now();
+            return;
+        }
+
+        /* Após adulto: 1 dia anjo/vampiro, depois morte */
+        if (state.afterlifeAt) {
+            if (Date.now() - state.afterlifeAt >= DAY_MS) {
+                killPet('Fim');
+                return;
+            }
+            state.lastUpdate = Date.now();
+            return;
+        }
+
+        if (state.stage === 'adult' && state.hatchTime) {
+            const adultAge = (Date.now() - (state.adultAt || state.hatchTime)) / DAY_MS;
+            if (adultAge >= 4) {
+                enterAfterlife();
+                state.lastUpdate = Date.now();
+                return;
+            }
+        }
+
+        const deltaDays = deltaMs / DAY_MS;
+
+        if (!state.dirty && state.mood <= 2 && Math.random() < 0.06 * deltaDays) {
+            state.dirty = true;
+        }
+
+        if (!state.madAngry && state.mood <= 1 && Math.random() < 0.08 * deltaDays) {
+            state.madAngry = true;
+            syncAngryFlags();
+            maybeAlertBeep();
+        }
+
+        if (!state.isSick) {
+            const badness = (
+                state.foodUnits < 1 || state.drinkUnits < 1 ||
+                Math.abs(state.temperature - IDEAL_TEMP) > 8 ||
+                (state.lightsOn && isNightNow())
+            );
+            const lambda = (badness ? RATES.sickBad : RATES.sickBase) * deltaDays;
+            if (Math.random() < (1 - Math.exp(-lambda))) {
+                state.isSick = true;
+                state.sickTimer = 1;
+                state.sicknessEpisodes += 1;
+                SND.sick();
+                maybeAlertBeep();
+            }
+        } else {
+            state.sickTimer += RATES.sickTimer * deltaDays;
+            if (state.sickTimer >= 1) {
+                killPet('Doenca');
+                return;
+            }
+        }
+
+        syncAngryFlags();
+        maybeAlertBeep();
+        state.lastUpdate = Date.now();
+    }
+
+    function enterAfterlife() {
+        /* MUGG: anjo/vampiro ~1 dia, independente do ramo; sorvete → vampiro */
+        state.afterlifeAt = Date.now();
+        state.deathForm = state.iceCreamCount > 0 ? 'devil' : 'angel';
+        state.isAlive = true;
+        selectedSide = null;
+        selectedIndex = -1;
+        updateIconSelection();
+        showToastMsg(state.deathForm === 'devil' ? 'Vampiro!' : 'Anjo!', 2000);
+        SND.hatch();
+        save();
+        updateCompanionUI();
+    }
+
+    function checkEvolution(atNineAm) {
+        if (!atNineAm || !state || !state.isAlive) return;
+        if (state.stage === 'baby' && state.weight >= EVOL_WEIGHT.child) {
+            state.stage = 'child';
+            state.adultForm = resolveAdultForm();
+            SND.hatch();
+        } else if (state.stage === 'child' && state.weight >= EVOL_WEIGHT.teen) {
+            state.stage = 'teen';
+            state.adultForm = resolveAdultForm();
+            SND.hatch();
+        } else if (state.stage === 'teen' && state.weight >= EVOL_WEIGHT.adult) {
+            state.stage = 'adult';
+            state.adultForm = resolveAdultForm();
+            state.adultAt = Date.now();
+            SND.hatch();
+        }
     }
 
     let state = migrateState(loadJSON(STORAGE_KEY, null));
@@ -377,156 +590,18 @@
         return EDU_GRADES[clamp(level, 0, EDU_GRADES.length - 1)];
     }
 
-    function hungerPlatesEmpty() {
-        if (!state) return 0;
-        if (state.hunger >= 66) return 0;
-        if (state.hunger >= 33) return 1;
-        return 2;
-    }
-
-    function thirstGlassEmpty() {
-        if (!state) return 0;
-        return state.thirst < 50 ? 1 : 0;
-    }
-
-    function syncAngryFlags() {
-        if (!state) return;
-        state.heatAngry = state.temperature >= 30;
-        state.freezing = state.temperature < 20;
-        state.angry = state.madAngry || state.heatAngry;
-    }
-
-    function applyScheduleHour(hour) {
-        if (!state || !state.isAlive || state.stage === 'egg' || !state.inGameMode) return;
-        if (hour === 9) {
-            if (state.hunger >= 50 && state.thirst >= 50) {
-                state.weight = clamp(state.weight + 1, 1, 99);
-                state.caredAt9am = true;
-            } else {
-                state.caredAt9am = false;
-            }
-            checkEvolution(true);
-        }
-        if (hour === 10 || hour === 14 || hour === 18) {
-            state.hunger = clamp(state.hunger - 34, 0, 100);
-        }
-        if (hour === 11 || hour === 15 || hour === 19) {
-            state.thirst = clamp(state.thirst - 45, 0, 100);
-        }
-        if (state.hunger < 25 || state.thirst < 25) maybeAlertBeep();
-    }
-
-    function applyDecay(deltaMs) {
-        if (!state || !state.isAlive || deltaMs <= 0) return;
-
-        const nowHour = new Date().getHours();
-        if (nowHour !== state.lastScheduleHour) {
-            applyScheduleHour(nowHour);
-            state.lastScheduleHour = nowHour;
-        }
-
-        if (state.stage === 'egg' || !state.inGameMode) {
-            state.lastUpdate = Date.now();
-            return;
-        }
-
-        const deltaDays = deltaMs / DAY_MS;
-        const hungerBefore = state.hunger;
-        const happyBefore = state.happiness;
-
-        state.hunger = clamp(state.hunger - RATES.hunger * deltaDays, 0, 100);
-        state.thirst = clamp(state.thirst - RATES.thirst * deltaDays, 0, 100);
-
-        const tempDir = state.acOn ? -1 : 1;
-        state.temperature = clamp(
-            state.temperature + tempDir * RATES.tempDrift * deltaDays,
-            10, 40
-        );
-        syncAngryFlags();
-
-        let happyDecay = RATES.happiness * deltaDays;
-        if (state.hunger < 25) happyDecay *= 1.4;
-        if (state.thirst < 25) happyDecay *= 1.3;
-        if (state.dirty) happyDecay *= 1.4;
-        if (state.isSick) happyDecay *= 1.5;
-        if (state.angry) happyDecay *= 1.35;
-        if (!state.lightsOn && isNightNow()) happyDecay *= 0.25;
-        else if (!state.lightsOn) happyDecay *= 1.35;
-        if (Math.abs(state.temperature - IDEAL_TEMP) > 6) happyDecay *= 1.3;
-        state.happiness = clamp(state.happiness - happyDecay, 0, 100);
-
-        if (!state.dirty && state.happiness < 30 && Math.random() < 0.06 * deltaDays) {
-            state.dirty = true;
-        }
-
-        if (!state.madAngry && state.happiness < 30 && Math.random() < 0.05 * deltaDays) {
-            state.madAngry = true;
-            syncAngryFlags();
-            maybeAlertBeep();
-        }
-
-        if (!state.isSick) {
-            const badness = (
-                state.hunger < 25 || state.thirst < 25 ||
-                Math.abs(state.temperature - IDEAL_TEMP) > 8 ||
-                (state.lightsOn && isNightNow())
-            );
-            const lambda = (badness ? RATES.sickBad : RATES.sickBase) * deltaDays;
-            if (Math.random() < (1 - Math.exp(-lambda))) {
-                state.isSick = true;
-                state.sickTimer = 1;
-                state.sicknessEpisodes += 1;
-                SND.sick();
-                maybeAlertBeep();
-            }
-        } else {
-            state.sickTimer += RATES.sickTimer * deltaDays;
-            if (state.sickTimer >= 1) {
-                killPet('Doenca');
-                return;
-            }
-        }
-
-        state.careSum += (((hungerBefore + state.hunger) / 2 + (happyBefore + state.happiness) / 2) / 2) * deltaDays;
-        state.careDays += deltaDays;
-
-        checkEvolution(false);
-        maybeAlertBeep();
-        state.lastUpdate = Date.now();
-    }
-
     let lastAlertBeep = 0;
     function maybeAlertBeep() {
-        if (!state || !state.isAlive) return;
+        if (!state || !state.isAlive || state.afterlifeAt) return;
         const needs = (
-            state.hunger < 25 || state.thirst < 25 ||
+            state.foodUnits < 2 || state.drinkUnits < 1 ||
             state.isSick || state.dirty || state.madAngry || state.heatAngry ||
             state.freezing || Math.abs(state.temperature - IDEAL_TEMP) > 7
         );
-        if (needs && Date.now() - lastAlertBeep > 12000) {
+        /* MUGG: bip a cada ~4 minutos */
+        if (needs && Date.now() - lastAlertBeep > 240000) {
             lastAlertBeep = Date.now();
             SND.alert();
-        }
-    }
-
-    function checkEvolution(atNineAm) {
-        const ad = ageDays();
-        if (atNineAm && state.stage === 'baby' && state.weight >= EVOL_WEIGHT.baby) {
-            state.stage = 'child';
-            SND.hatch();
-        } else if (atNineAm && state.stage === 'child' && ad >= STAGE_DAYS.child && state.weight >= EVOL_WEIGHT.child) {
-            state.stage = 'teen';
-            SND.hatch();
-        } else if (atNineAm && state.stage === 'teen' && ad >= STAGE_DAYS.teen && state.weight >= EVOL_WEIGHT.teen) {
-            state.stage = 'adult';
-            const avg = state.careDays > 0 ? (state.careSum / state.careDays) : 65;
-            const score = avg - (state.sicknessEpisodes * 6) + (state.eduLevel * 8);
-            state.adultForm = score >= 70 ? 'good' : score >= 40 ? 'neutral' : 'bad';
-            SND.hatch();
-        } else if (!atNineAm) {
-            if (state.stage === 'baby' && ad >= STAGE_DAYS.child && state.weight >= EVOL_WEIGHT.baby) {
-                /* evolução principal às 9h */
-            }
         }
     }
 
@@ -549,6 +624,8 @@
 
     function killPet(cause) {
         state.isAlive = false;
+        state.afterlifeAt = null;
+        state.deathForm = 'dead';
         uiMode = 'idle';
         selectedSide = null;
         selectedIndex = -1;
@@ -617,6 +694,7 @@
     let leftHeld = false;
     let rightHeld = false;
     let bothHeldSince = 0;
+    let escEnterHeldSince = 0;
 
     function showToastMsg(text, ms) {
         if (!toastEl) return;
@@ -785,15 +863,6 @@
         }
 
         if (btn === 'ESC') {
-            if (escHeld && enterHeld) {
-                const now = new Date();
-                clockSetHour = now.getHours();
-                clockSetMin = now.getMinutes();
-                clockSetField = 'hour';
-                uiMode = 'clock_set';
-                SND.nav();
-                return;
-            }
             if (uiMode === 'menu') {
                 uiMode = 'idle';
                 selectedSide = null;
@@ -842,6 +911,12 @@
             if (iconElements[actionId]) iconElements[actionId].classList.remove('active');
         }, 500);
 
+        if (state.afterlifeAt) {
+            showToastMsg('Sem interacao', 1400);
+            SND.cancel();
+            return;
+        }
+
         if (state.stage === 'egg' && actionId !== 'stats' && actionId !== 'light') {
             showToastMsg('Ainda e ovo!', 1400);
             SND.cancel();
@@ -849,7 +924,7 @@
         }
 
         if (actionId === 'drink') {
-            if (thirstGlassEmpty() === 0) {
+            if (state.drinkUnits >= 1) {
                 SND.cancel();
                 return;
             }
@@ -858,8 +933,7 @@
             animSequence = {
                 type: 'drink', step: 0, maxStep: 12,
                 onDone: () => {
-                    state.thirst = clamp(state.thirst + 50, 0, 100);
-                    state.happiness = clamp(state.happiness + 4, 0, 100);
+                    state.drinkUnits = 1;
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -868,7 +942,7 @@
         }
 
         if (actionId === 'food') {
-            if (hungerPlatesEmpty() === 0) {
+            if (state.foodUnits >= 4) {
                 SND.cancel();
                 return;
             }
@@ -888,10 +962,7 @@
         }
 
         if (actionId === 'discipline') {
-            if (!state.madAngry && !state.heatAngry && state.eduLevel >= 4) {
-                SND.cancel();
-                return;
-            }
+            /* MUGG: Pet = +1 educação (como Study); também acalma raiva */
             uiMode = 'animating';
             SND.confirm();
             animSequence = {
@@ -899,11 +970,8 @@
                 onDone: () => {
                     if (state.madAngry) state.madAngry = false;
                     if (state.heatAngry && state.acOn) state.heatAngry = false;
-                    if (!state.madAngry && !state.heatAngry) {
-                        state.eduLevel = clamp(state.eduLevel + 1, 0, 4);
-                    }
+                    state.eduLevel = clamp(state.eduLevel + 1, 0, 4);
                     syncAngryFlags();
-                    state.happiness = clamp(state.happiness + 6, 0, 100);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -955,7 +1023,6 @@
                 type: 'bath', step: 0, maxStep: 14,
                 onDone: () => {
                     state.dirty = false;
-                    state.happiness = clamp(state.happiness + 6, 0, 100);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -964,15 +1031,13 @@
         }
 
         if (actionId === 'ac') {
+            /* MUGG: usar AC cura o status, mesmo se já estava ajustado */
             state.acOn = !state.acOn;
-            if (state.acOn && state.temperature >= 28) {
-                state.heatAngry = false;
-            }
-            if (!state.acOn && state.temperature < 22) {
-                state.freezing = false;
-            }
+            if (state.acOn) state.heatAngry = false;
+            else state.freezing = false;
             syncAngryFlags();
             SND.confirm();
+            showToastMsg(state.acOn ? 'AC ON' : 'AC OFF', 1200);
             save(); updateCompanionUI();
             return;
         }
@@ -987,11 +1052,12 @@
             animSequence = {
                 type: 'medicine', step: 0, maxStep: 12,
                 onDone: () => {
+                    /* MUGG: cura e zera mood, food, drink, education */
                     state.isSick = false;
                     state.sickTimer = 0;
-                    state.hunger = 0;
-                    state.thirst = 0;
-                    state.happiness = 0;
+                    state.mood = 0;
+                    state.foodUnits = 0;
+                    state.drinkUnits = 0;
                     state.eduLevel = 0;
                     uiMode = 'idle';
                     save(); updateCompanionUI();
@@ -1008,13 +1074,17 @@
         animSequence = {
             type: 'food', step: 0, maxStep: 14, foodId: food.id,
             onDone: () => {
-                state.hunger = clamp(state.hunger + food.hunger, 0, 100);
-                state.happiness = clamp(state.happiness + food.happy, 0, 100);
+                /* MUGG: 1 feed = 1 unidade; prato vazio precisa de 2 feeds */
+                state.foodUnits = clamp(state.foodUnits + 1, 0, 4);
                 if (food.id === 'icecream') {
                     state.madAngry = false;
+                    state.iceCreamCount = (state.iceCreamCount || 0) + 1;
                     syncAngryFlags();
                 }
                 if (state.foodBias) state.foodBias[food.id] = (state.foodBias[food.id] || 0) + 1;
+                if (state.foodPath && food.path) {
+                    state.foodPath[food.path] = (state.foodPath[food.path] || 0) + 1;
+                }
                 foodPick = null;
                 uiMode = 'idle';
                 save(); updateCompanionUI();
@@ -1022,7 +1092,7 @@
         };
     }
 
-    /* Jan-ken-po: objetivo é deixar o DINO ganhar 3/5 */
+    /* MUGG: empate = vitória sua; só vitória do Dino sobe humor +1; set sem bônus */
     function playRpsTurn() {
         if (!minigameData || minigameData.state !== 'waiting') return;
         minigameData.state = 'reveal';
@@ -1031,7 +1101,6 @@
         minigameData.player = player;
         minigameData.dino = dino;
 
-        let dinoWins = false;
         if (player === dino) {
             minigameData.result = 'tie';
             SND.nav();
@@ -1040,10 +1109,9 @@
             (dino === 'scissors' && player === 'paper') ||
             (dino === 'paper' && player === 'rock')
         ) {
-            dinoWins = true;
             minigameData.wins++;
             minigameData.result = 'dino';
-            state.happiness = clamp(state.happiness + 20, 0, 100);
+            state.mood = clamp(state.mood + 1, 0, 5);
             SND.confirm();
         } else {
             minigameData.result = 'you';
@@ -1052,14 +1120,8 @@
 
         setTimeout(() => {
             if (uiMode !== 'minigame' || !minigameData) return;
-            if (minigameData.result === 'tie') {
-                minigameData.state = 'waiting';
-                return;
-            }
             minigameData.round++;
             if (minigameData.round > minigameData.maxRounds) {
-                state.happiness = clamp(state.happiness + (minigameData.wins >= 3 ? 20 : 6), 0, 100);
-                if (minigameData.wins >= 3) SND.hatch();
                 uiMode = 'idle';
                 minigameData = null;
                 save(); updateCompanionUI();
@@ -1071,31 +1133,56 @@
 
     document.querySelectorAll('[data-btn]').forEach((btnEl) => {
         const code = btnEl.getAttribute('data-btn');
-        btnEl.addEventListener('mousedown', () => {
+        let touchUsed = false;
+
+        function pressDown() {
             btnEl.classList.add('pressed');
-            if (code === 'ESC') escHeld = true;
-            if (code === 'ENTER') enterHeld = true;
+            if (code === 'ESC') {
+                escHeld = true;
+                if (enterHeld && !escEnterHeldSince) escEnterHeldSince = Date.now();
+            }
+            if (code === 'ENTER') {
+                enterHeld = true;
+                if (escHeld && !escEnterHeldSince) escEnterHeldSince = Date.now();
+            }
             if (code === 'LEFT') { leftHeld = true; if (rightHeld && !bothHeldSince) bothHeldSince = Date.now(); }
             if (code === 'RIGHT') { rightHeld = true; if (leftHeld && !bothHeldSince) bothHeldSince = Date.now(); }
-        });
-        btnEl.addEventListener('mouseup', () => {
+        }
+
+        function pressUp(fromTouch) {
             btnEl.classList.remove('pressed');
-            if (code === 'ESC') escHeld = false;
-            if (code === 'ENTER') enterHeld = false;
+            const holdClock = escEnterHeldSince && (Date.now() - escEnterHeldSince >= CLOCK_HOLD_MS);
+            const holdMute = bothHeldSince && (Date.now() - bothHeldSince >= MUTE_HOLD_MS);
+            if (code === 'ESC') { escHeld = false; escEnterHeldSince = 0; }
+            if (code === 'ENTER') { enterHeld = false; escEnterHeldSince = 0; }
             if (code === 'LEFT') { leftHeld = false; bothHeldSince = 0; }
             if (code === 'RIGHT') { rightHeld = false; bothHeldSince = 0; }
-        });
+            if (fromTouch && !holdClock && !holdMute) handleHardwareBtn(code);
+        }
+
+        btnEl.addEventListener('mousedown', pressDown);
+        btnEl.addEventListener('mouseup', () => pressUp(false));
         btnEl.addEventListener('mouseleave', () => {
             btnEl.classList.remove('pressed');
-            if (code === 'ESC') escHeld = false;
-            if (code === 'ENTER') enterHeld = false;
+            if (code === 'ESC') { escHeld = false; escEnterHeldSince = 0; }
+            if (code === 'ENTER') { enterHeld = false; escEnterHeldSince = 0; }
             if (code === 'LEFT') { leftHeld = false; bothHeldSince = 0; }
             if (code === 'RIGHT') { rightHeld = false; bothHeldSince = 0; }
         });
         btnEl.addEventListener('click', (e) => {
             e.preventDefault();
+            if (touchUsed) { touchUsed = false; return; }
             handleHardwareBtn(code);
         });
+        btnEl.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchUsed = true;
+            pressDown();
+        }, { passive: false });
+        btnEl.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            pressUp(true);
+        }, { passive: false });
     });
 
     /* Clique direto nos ícones do LCD */
@@ -1144,11 +1231,11 @@
     function getStageTitle(stage, form) {
         if (stage === 'egg') return 'Ovo';
         if (stage === 'baby') return 'Bebe';
-        if (stage === 'child') return 'Crianca';
-        if (stage === 'teen') return 'Jovem';
-        if (stage === 'adult') {
-            return form === 'good' ? 'Adulto+' : form === 'bad' ? 'Selvagem' : 'Adulto';
-        }
+        const f = form || (state && state.adultForm) || null;
+        const path = f === 'trex' ? 'T-Rex' : f === 'bronto' ? 'Bronto' : f === 'trike' ? 'Tricera' : null;
+        if (stage === 'child') return path ? path + ' jr' : 'Crianca';
+        if (stage === 'teen') return path ? path + '+' : 'Jovem';
+        if (stage === 'adult') return path || 'Adulto';
         return stage;
     }
 
@@ -1161,21 +1248,22 @@
             const t = Math.round(state.temperature);
             tempLabel.textContent = t + '°C' + (state.acOn ? ' AC' : '');
         }
-        setBar(barHunger, state.hunger);
-        setBar(barThirst, state.thirst);
-        setBar(barHappiness, state.happiness);
+        setBar(barHunger, (state.foodUnits / 4) * 100);
+        setBar(barThirst, state.drinkUnits * 100);
+        setBar(barHappiness, (state.mood / 5) * 100);
         setBar(barDiscipline, (state.eduLevel + 1) * 20);
-        setBar(barWeight, clamp(state.weight, 0, 99));
+        setBar(barWeight, clamp(state.weight * 2, 0, 100));
 
         if (stateLabel) {
             if (!state.isAlive) stateLabel.textContent = 'Faleceu';
+            else if (state.afterlifeAt) stateLabel.textContent = state.deathForm === 'devil' ? 'Vampiro' : 'Anjo';
             else if (state.isSick) stateLabel.textContent = 'Doente';
             else if (state.freezing) stateLabel.textContent = 'Frio';
             else if (state.madAngry) stateLabel.textContent = 'Abandonado';
             else if (state.heatAngry) stateLabel.textContent = 'Calor';
             else if (state.dirty) stateLabel.textContent = 'Sujo';
             else if (!state.lightsOn) stateLabel.textContent = 'Dormindo';
-            else stateLabel.textContent = 'Ativo';
+            else stateLabel.textContent = MOOD_LABELS[clamp(state.mood, 0, 5)] || 'Ativo';
         }
     }
 
@@ -1207,11 +1295,10 @@
         if (empty) clearRectG(21, 49, 2, 4);
     }
 
-    function drawMoodFace(happiness) {
-        const level = happiness >= 85 ? 5 : happiness >= 70 ? 4 : happiness >= 55 ? 3 : happiness >= 40 ? 2 : happiness >= 25 ? 1 : 0;
-        const faces = [':(', ':-|', ':|', ':)', ':D', ':))'];
+    function drawMoodFace(moodLevel) {
+        const level = clamp(moodLevel, 0, 5);
         ctx.font = '700 18px "Press Start 2P", monospace';
-        ctx.fillText(faces[level], canvas.width / 2, 72);
+        ctx.fillText(MOOD_FACES[level], canvas.width / 2, 72);
     }
 
     function drawClockSetScreen() {
@@ -1238,105 +1325,97 @@
         else rect(22, 3, 1, 1);
     }
 
-    /* Animação LCD: só frames 0/1 lentos — sem bounce/flicker */
+    /* Sprites 1-bit — baby fiel à foto (chifres, olhos, boca em linha) */
+    const SPRITE_MAP = {
+        egg: { w:8, h:7, rows:['00111100','01111110','11011011','11000011','11011011','01111110','00111100'] },
+        /* Foto: blob quadrado + 2 chifres nos cantos, olhos 1px, boca reta */
+        baby: { w:8, h:8, rows:[
+            '10000001',
+            '01111110',
+            '11011011',
+            '11000011',
+            '11111111',
+            '01111110',
+            '00111100',
+            '01100110'
+        ] },
+        trex_child: { w:9, h:7, rows:['000111100','001111110','001100110','011111110','011000110','001100110','001000010'] },
+        trex_teen: { w:10, h:8, rows:['0000111110','0001111111','0001100011','0011111111','0011100110','0111100110','0110000110','0100000010'] },
+        trex_adult: { w:12, h:9, rows:['000001111110','000011111111','000011000011','000111111111','000111100110','011111000110','011100000110','011000000011','010000000010'] },
+        bronto_child: { w:8, h:7, rows:['00000110','00001110','00001100','01111111','11000011','01100110','01000010'] },
+        bronto_teen: { w:10, h:8, rows:['0000001100','0000011100','0000011000','0000111000','0111111111','1100000011','0110000110','0100000010'] },
+        bronto_adult: { w:12, h:9, rows:['000000001100','000000011100','000000111000','000001110000','000011110000','011111111111','110000000011','011000000110','010000000010'] },
+        trike_child: { w:8, h:7, rows:['00010000','00111000','01111111','11011011','11000011','01111110','01000010'] },
+        trike_teen: { w:9, h:8, rows:['000011000','000111100','001111110','011111111','110110111','110000011','011111110','010000010'] },
+        trike_adult: { w:11, h:9, rows:['00000100000','00001110000','00011111000','00111111111','01111111111','11011011111','11000000011','01111111110','01000000010'] },
+        angel: { w:10, h:7, rows:['0100000010','1101111011','0111111110','1101101101','1100000011','0111111110','0011111100'] },
+        devil: { w:10, h:7, rows:['1010000101','0110111101','0111111110','1101001011','1100000011','0111111110','1100000011'] },
+        dead: { w:8, h:9, rows:['00011000','00111100','01011010','11000011','11011011','01111110','00111100','00011000','01110111'] }
+    };
+
+    function spriteKeyForState() {
+        if (!state) return 'egg';
+        if (!state.isAlive) return 'dead';
+        /* MUGG: anjo/vampiro por 1 dia, sem interação */
+        if (state.afterlifeAt) {
+            return state.deathForm === 'devil' ? 'devil' : 'angel';
+        }
+        if (state.stage === 'egg') return 'egg';
+        if (state.stage === 'baby') return 'baby';
+        const form = state.adultForm || resolveAdultForm();
+        if (state.stage === 'child') return form + '_child';
+        if (state.stage === 'teen') return form + '_teen';
+        return form + '_adult';
+    }
+
+    function drawSpriteKey(key, cx, cy, invert) {
+        const spr = SPRITE_MAP[key] || SPRITE_MAP.baby;
+        const ox = cx - Math.floor(spr.w / 2);
+        const oy = cy - spr.h;
+        ctx.fillStyle = ink;
+        for (let y = 0; y < spr.h; y++) {
+            const row = spr.rows[y];
+            for (let x = 0; x < spr.w; x++) {
+                if (row[x] === '1') {
+                    if (invert) clearRectG(ox + x, oy + y, 1, 1);
+                    else rect(ox + x, oy + y, 1, 1);
+                }
+            }
+        }
+        return { ox, oy, w: spr.w, h: spr.h };
+    }
+
+    /* Animação LCD: sprites do growth chart 1997 */
     function drawDinoSprite(cx, cy, stage, mood, frame, anim) {
         ctx.fillStyle = ink;
         const invert = state.dirty && (frame % 2 === 1);
+        const shiver = (state.temperature <= 18 && mood !== 'sleep' && state.isAlive && frame % 2 === 1) ? 1 : 0;
+        const x = cx + shiver;
+        const key = spriteKeyForState();
+        const box = drawSpriteKey(key, x, cy, invert);
 
-        if (stage === 'egg') {
-            /* Ovo estático manchado — sem tremor/pisca */
-            const x = cx;
-            const y = cy;
-            rect(x - 4, y - 9, 8, 2);
-            rect(x - 5, y - 7, 10, 8);
-            rect(x - 4, y + 1, 8, 1);
-            clearRectG(x - 5, y - 7, 1, 1);
-            clearRectG(x + 4, y - 7, 1, 1);
-            clearRectG(x - 2, y - 5, 2, 2);
-            clearRectG(x + 1, y - 2, 2, 2);
-            return;
-        }
+        if (!state.isAlive) return;
 
-        if (!state.isAlive || mood === 'angel') {
-            rect(cx - 4, cy - 9, 8, 6);
-            rect(cx - 8, cy - 8, 3, 2);
-            rect(cx + 5, cy - 8, 3, 2);
-            rect(cx - 3, cy - 12, 6, 1);
-            clearRectG(cx - 2, cy - 7, 2, 1);
-            clearRectG(cx + 1, cy - 7, 2, 1);
-            return;
-        }
-
-        let w = 10, h = 9, tail = 3, spikes = 2, arm = 1;
-        if (stage === 'baby') { w = 8; h = 7; tail = 2; spikes = 1; arm = 0; }
-        else if (stage === 'child') { w = 10; h = 9; tail = 3; spikes = 2; arm = 1; }
-        else if (stage === 'teen') { w = 12; h = 11; tail = 4; spikes = 3; arm = 2; }
-        else if (stage === 'adult') { w = 14; h = 12; tail = 5; spikes = 4; arm = 2; }
-
-        const shiver = (state.temperature <= 18 && mood !== 'sleep' && frame % 2 === 1) ? 1 : 0;
-        const topY = cy - h;
-        const leftX = cx - Math.floor(w / 2) + shiver;
-
-        const walking = mood !== 'sleep' && !state.isSick && state.lightsOn;
-        const step = walking ? (frame % 2) : 0;
-        rect(Math.round(cx - w * 0.3) - 1 + shiver, FLOOR_Y - 2 + step, 2, 2);
-        rect(Math.round(cx + w * 0.3) - 1 + shiver, FLOOR_Y - 2 + (1 - step), 2, 2);
-
-        for (let i = 0; i < tail; i++) {
-            rect(leftX - 1 - i, cy - Math.floor(h * 0.4), 2, 2);
-        }
-
-        rect(leftX, topY, w, h);
-        if (invert) {
-            clearRectG(leftX + 1, topY + 1, w - 2, h - 2);
-            ctx.fillStyle = ink;
-        } else {
-            clearRectG(leftX, topY, 1, 1);
-            clearRectG(leftX + w - 1, topY, 1, 1);
-        }
-
-        for (let s = 0; s < spikes; s++) {
-            const sx = leftX + 1 + Math.floor(s * ((w - 2) / Math.max(spikes, 1)));
-            rect(sx, topY - 2, 2, 2);
-        }
-
-        if (arm > 0) {
-            rect(leftX + w - 1, topY + Math.floor(h * 0.45), arm, 2);
-        }
-
-        const blink = (frame % 16) === 15;
-        const eyeX = leftX + w - Math.floor(w * 0.35);
-        const eyeY = topY + Math.floor(h * 0.3);
-        if (mood === 'sleep') {
-            rect(eyeX - 2, eyeY + 1, 3, 1);
-        } else if (mood === 'sick' || mood === 'angry') {
-            clearRectG(eyeX - 2, eyeY, 2, 2);
-            rect(eyeX - 2, eyeY, 1, 1);
-            rect(eyeX - 1, eyeY + 1, 1, 1);
-        } else if (!blink) {
-            clearRectG(eyeX - 2, eyeY, 2, 2);
-            rect(eyeX - 1, eyeY + 1, 1, 1);
-        }
-
-        const mouthY = topY + Math.floor(h * 0.65);
-        const mouthX = leftX + w - 4;
-        if (anim && (anim.type === 'food' || anim.type === 'drink') && frame % 2 === 0) {
-            clearRectG(mouthX, mouthY - 1, 3, 3);
-        } else if (mood === 'angry') {
-            clearRectG(mouthX, mouthY + 1, 3, 1);
-        } else if (mood === 'happy' || mood === 'good') {
-            clearRectG(mouthX, mouthY, 3, 1);
-        } else if (mood === 'bad' || mood === 'sick') {
-            clearRectG(mouthX, mouthY + 1, 3, 1);
-        } else if (mood !== 'sleep') {
-            clearRectG(mouthX, mouthY, 2, 1);
+        const walking = mood !== 'sleep' && !state.isSick && state.lightsOn && stage !== 'egg';
+        if (walking) {
+            const step = frame % 2;
+            rect(box.ox + 1, FLOOR_Y - 1 + step, 2, 1);
+            rect(box.ox + box.w - 3, FLOOR_Y - 1 + (1 - step), 2, 1);
         }
 
         if (state.isSick && frame % 2 === 0) {
-            rect(leftX + w + 1, topY + 1, 1, 2);
+            rect(box.ox + box.w + 1, box.oy + 1, 1, 2);
         }
         if (mood === 'sleep') {
-            rect(leftX + w + 1, topY - 2, 2, 2);
+            rect(box.ox + box.w + 1, box.oy - 1, 2, 2);
+            rect(box.ox + box.w + 3, box.oy - 3, 1, 1);
+        }
+        if (mood === 'angry' && frame % 2 === 0) {
+            rect(box.ox + box.w - 2, box.oy - 2, 1, 1);
+            rect(box.ox + box.w, box.oy - 2, 1, 1);
+        }
+        if (anim && (anim.type === 'food' || anim.type === 'drink') && frame % 2 === 0) {
+            clearRectG(box.ox + box.w - 4, box.oy + Math.floor(box.h * 0.55), 3, 2);
         }
     }
 
@@ -1447,6 +1526,7 @@
     }
 
     function drawStatsView() {
+        /* MUGG ordem: humor, temp, sede, fome, peso/dias, educação */
         ctx.fillStyle = ink;
         ctx.font = '700 9px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
@@ -1454,12 +1534,20 @@
         const pages = [
             () => {
                 ctx.fillText('HUMOR', midX, 28);
-                drawMoodFace(state.happiness);
+                drawMoodFace(state.mood);
             },
             () => {
-                ctx.fillText('ESTUDO', midX, 28);
-                ctx.font = '700 22px "Press Start 2P", monospace';
-                ctx.fillText(educationGrade(state.eduLevel), midX, 72);
+                ctx.fillText('TEMP', midX, 28);
+                ctx.font = '700 18px "Press Start 2P", monospace';
+                ctx.fillText(Math.round(state.temperature) + 'C', midX, 72);
+            },
+            () => {
+                ctx.fillText('SEDE', midX, 28);
+                drawGlass(thirstGlassEmpty() > 0);
+            },
+            () => {
+                ctx.fillText('FOME', midX, 28);
+                drawPlates(hungerPlatesEmpty());
             },
             () => {
                 ctx.fillText('PESO/IDADE', midX, 28);
@@ -1468,17 +1556,9 @@
                 ctx.fillText('Dia ' + Math.floor(ageDays()), midX, 84);
             },
             () => {
-                ctx.fillText('FOME', midX, 28);
-                drawPlates(hungerPlatesEmpty());
-            },
-            () => {
-                ctx.fillText('SEDE', midX, 28);
-                drawGlass(thirstGlassEmpty() > 0);
-            },
-            () => {
-                ctx.fillText('TEMP', midX, 28);
-                ctx.font = '700 18px "Press Start 2P", monospace';
-                ctx.fillText(Math.round(state.temperature) + 'C', midX, 72);
+                ctx.fillText('ESTUDO', midX, 28);
+                ctx.font = '700 22px "Press Start 2P", monospace';
+                ctx.fillText(educationGrade(state.eduLevel), midX, 72);
             }
         ];
         pages[statsPage % pages.length]();
@@ -1520,15 +1600,16 @@
 
         let mood = 'happy';
         if (!state.isAlive) mood = 'angel';
+        else if (state.afterlifeAt) mood = 'angel';
         else if (state.isSick) mood = 'sick';
         else if (state.madAngry || state.heatAngry) mood = 'angry';
         else if (state.freezing) mood = 'bad';
         else if (!state.lightsOn) mood = 'sleep';
-        else if (state.hunger < 30 || state.thirst < 30 || state.happiness < 30) mood = 'bad';
+        else if (state.foodUnits < 2 || state.drinkUnits < 1 || state.mood <= 1) mood = 'bad';
 
         /* Posição: troca a cada ~6 frames (poucos passos, estilo original) */
         let dinoX = 24;
-        if (state.isAlive && state.lightsOn && !state.isSick && !animSequence && state.stage !== 'egg') {
+        if (state.isAlive && !state.afterlifeAt && state.lightsOn && !state.isSick && !animSequence && state.stage !== 'egg') {
             const walkCycle = Math.floor(lcdFrame / 6) % 5;
             dinoX = 16 + walkCycle * 4;
         } else if (animSequence && (animSequence.type === 'food' || animSequence.type === 'drink')) {
@@ -1556,6 +1637,17 @@
             applyTheme();
             bothHeldSince = Date.now() + 999999;
             SND.nav();
+        }
+        if (escHeld && enterHeld && escEnterHeldSince && Date.now() - escEnterHeldSince >= CLOCK_HOLD_MS) {
+            if (state && state.isAlive && state.inGameMode && uiMode === 'idle') {
+                const now = new Date();
+                clockSetHour = now.getHours();
+                clockSetMin = now.getMinutes();
+                clockSetField = 'hour';
+                uiMode = 'clock_set';
+                SND.nav();
+            }
+            escEnterHeldSince = Date.now() + 999999;
         }
     }, 200);
 
