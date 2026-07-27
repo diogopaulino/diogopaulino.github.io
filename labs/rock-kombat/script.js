@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  // Matches the "60" the HUD starts with in index.html -- keep both in sync.
-  const ROUND_TIME = 60;
+  // Matches the "90" the HUD starts with in index.html -- keep both in sync.
+  const ROUND_TIME = 90;
   const STAGE_NAMES = { woodstock: "WOODSTOCK '69 STAGE", stadium: "STADIUM ARENA '94", club: "UNDERGROUND TUBE CLUB" };
 
   // --- THE 3 OFFICIAL ROCK LEGENDS (KURT, AXL, LENNON) ---
@@ -116,6 +116,20 @@
     img.onload = () => { stagePhotos[name] = img; stageCache.dirty = true; };
   });
 
+  const realAmpImg = new Image(); realAmpImg.src = 'assets/real-amp.png';
+  const realDrumsImg = new Image(); realDrumsImg.src = 'assets/real-drums.png';
+  const realTrussImg = new Image(); realTrussImg.src = 'assets/real-truss.png';
+  const weaponGuitarImg = new Image(); weaponGuitarImg.src = 'assets/weapon-guitar.png';
+  const weaponMicImg = new Image(); weaponMicImg.src = 'assets/weapon-mic.png';
+  const weaponDoveImg = new Image(); weaponDoveImg.src = 'assets/weapon-dove.png';
+
+  [realAmpImg, realDrumsImg, realTrussImg].forEach(img => {
+    img.onload = () => {
+      initRealisticStageSprites();
+      if (typeof stageCache !== 'undefined') stageCache.dirty = true;
+    };
+  });
+
   const rigReady = RockKombatRig.load('assets/atlas.json', 'assets/')
     .then(loaded => {
       rigs = loaded.fighters;
@@ -156,65 +170,80 @@
     const ampC = document.createElement('canvas');
     ampC.width = 140; ampC.height = 240;
     const ax = ampC.getContext('2d');
-    const shadowG = ax.createRadialGradient(70, 232, 5, 70, 232, 60);
-    shadowG.addColorStop(0, 'rgba(0,0,0,0.65)'); shadowG.addColorStop(1, 'transparent');
-    ax.fillStyle = shadowG; ax.fillRect(0, 215, 140, 25);
-    [70, 150].forEach((y, idx) => {
-      ax.fillStyle = '#110c14'; ax.fillRect(15, y, 110, 75);
-      ax.strokeStyle = '#2b2133'; ax.lineWidth = 2; ax.strokeRect(15, y, 110, 75);
-      ax.fillStyle = '#1d1722'; ax.fillRect(21, y + 6, 98, 63);
-      ax.fillStyle = '#0f0a13';
-      [42, 88].forEach(sx => {
-        [y + 24, y + 54].forEach(sy => {
-          ax.beginPath(); ax.arc(sx, sy, 13, 0, Math.PI * 2); ax.fill();
-          ax.strokeStyle = '#32253b'; ax.lineWidth = 1; ax.stroke();
-          ax.fillStyle = '#40324a'; ax.beginPath(); ax.arc(sx, sy, 4, 0, Math.PI * 2); ax.fill();
-          ax.fillStyle = '#0f0a13';
+    
+    if (realAmpImg.complete && realAmpImg.naturalWidth > 0) {
+      const shadowG = ax.createRadialGradient(70, 232, 5, 70, 232, 60);
+      shadowG.addColorStop(0, 'rgba(0,0,0,0.65)'); shadowG.addColorStop(1, 'transparent');
+      ax.fillStyle = shadowG; ax.fillRect(0, 215, 140, 25);
+      ax.drawImage(realAmpImg, 5, 0, 130, 220);
+    } else {
+      const shadowG = ax.createRadialGradient(70, 232, 5, 70, 232, 60);
+      shadowG.addColorStop(0, 'rgba(0,0,0,0.65)'); shadowG.addColorStop(1, 'transparent');
+      ax.fillStyle = shadowG; ax.fillRect(0, 215, 140, 25);
+      [70, 150].forEach((y, idx) => {
+        ax.fillStyle = '#110c14'; ax.fillRect(15, y, 110, 75);
+        ax.strokeStyle = '#2b2133'; ax.lineWidth = 2; ax.strokeRect(15, y, 110, 75);
+        ax.fillStyle = '#1d1722'; ax.fillRect(21, y + 6, 98, 63);
+        ax.fillStyle = '#0f0a13';
+        [42, 88].forEach(sx => {
+          [y + 24, y + 54].forEach(sy => {
+            ax.beginPath(); ax.arc(sx, sy, 13, 0, Math.PI * 2); ax.fill();
+            ax.strokeStyle = '#32253b'; ax.lineWidth = 1; ax.stroke();
+            ax.fillStyle = '#40324a'; ax.beginPath(); ax.arc(sx, sy, 4, 0, Math.PI * 2); ax.fill();
+            ax.fillStyle = '#0f0a13';
+          });
         });
+        ax.fillStyle = idx === 0 ? '#ffffff' : '#ffd56b';
+        ax.font = 'italic bold 11px "Barlow Condensed", Inter, sans-serif';
+        ax.fillText('Marshall', 48, y + 20);
       });
-      ax.fillStyle = idx === 0 ? '#ffffff' : '#ffd56b';
-      ax.font = 'italic bold 11px "Barlow Condensed", Inter, sans-serif';
-      ax.fillText('Marshall', 48, y + 20);
-    });
-    ax.fillStyle = '#140f1a'; ax.fillRect(20, 25, 100, 42);
-    ax.strokeStyle = '#382a45'; ax.lineWidth = 2; ax.strokeRect(20, 25, 100, 42);
-    const goldPanel = ax.createLinearGradient(25, 0, 115, 0);
-    goldPanel.addColorStop(0, '#e6a100'); goldPanel.addColorStop(0.5, '#ffee82'); goldPanel.addColorStop(1, '#c98600');
-    ax.fillStyle = goldPanel; ax.fillRect(25, 45, 90, 16);
-    ax.fillStyle = '#1a110a';
-    for (let k = 0; k < 6; k++) { ax.beginPath(); ax.arc(38 + k * 12, 53, 3, 0, Math.PI * 2); ax.fill(); }
-    ax.fillStyle = '#ff2e78'; ax.shadowColor = '#ff2e78'; ax.shadowBlur = 6;
-    ax.beginPath(); ax.arc(108, 53, 3.5, 0, Math.PI * 2); ax.fill(); ax.shadowBlur = 0;
+      ax.fillStyle = '#140f1a'; ax.fillRect(20, 25, 100, 42);
+      ax.strokeStyle = '#382a45'; ax.lineWidth = 2; ax.strokeRect(20, 25, 100, 42);
+      const goldPanel = ax.createLinearGradient(25, 0, 115, 0);
+      goldPanel.addColorStop(0, '#e6a100'); goldPanel.addColorStop(0.5, '#ffee82'); goldPanel.addColorStop(1, '#c98600');
+      ax.fillStyle = goldPanel; ax.fillRect(25, 45, 90, 16);
+      ax.fillStyle = '#1a110a';
+      for (let k = 0; k < 6; k++) { ax.beginPath(); ax.arc(38 + k * 12, 53, 3, 0, Math.PI * 2); ax.fill(); }
+      ax.fillStyle = '#ff2e78'; ax.shadowColor = '#ff2e78'; ax.shadowBlur = 6;
+      ax.beginPath(); ax.arc(108, 53, 3.5, 0, Math.PI * 2); ax.fill(); ax.shadowBlur = 0;
+    }
     stageSprites.marshallStack = ampC;
 
-    // 2. Bateria Realista Woodstock com Bumbo "Peace ☮️" (Transparente)
+    // 2. Bateria Realista Woodstock (Transparente)
     const drumC = document.createElement('canvas');
     drumC.width = 280; drumC.height = 200;
     const dx = drumC.getContext('2d');
-    dx.fillStyle = 'rgba(75, 15, 25, 0.85)'; dx.fillRect(10, 165, 260, 28);
-    dx.strokeStyle = 'rgba(215, 155, 65, 0.5)'; dx.lineWidth = 2; dx.strokeRect(10, 165, 260, 28);
-    const kickG = dx.createRadialGradient(140, 125, 15, 140, 125, 52);
-    kickG.addColorStop(0, '#f8f4f0'); kickG.addColorStop(0.85, '#dfd6cb'); kickG.addColorStop(1, '#8e7968');
-    dx.fillStyle = kickG; dx.beginPath(); dx.arc(140, 130, 50, 0, Math.PI * 2); dx.fill();
-    dx.strokeStyle = '#382a20'; dx.lineWidth = 6; dx.stroke();
-    dx.strokeStyle = '#c42045'; dx.lineWidth = 5;
-    dx.beginPath(); dx.arc(140, 130, 32, 0, Math.PI * 2); dx.stroke();
-    dx.beginPath(); dx.moveTo(140, 98); dx.lineTo(140, 162);
-    dx.moveTo(140, 130); dx.lineTo(116, 154);
-    dx.moveTo(140, 130); dx.lineTo(164, 154); dx.stroke();
-    [{x: 95, y: 110, r: 28, h: 22}, {x: 185, y: 110, r: 28, h: 24}, {x: 65, y: 140, r: 30, h: 20}].forEach(d => {
-      dx.fillStyle = '#221820'; dx.fillRect(d.x - d.r, d.y, d.r * 2, d.h);
-      dx.fillStyle = '#dedce4'; dx.beginPath(); dx.ellipse(d.x, d.y, d.r, d.r * 0.45, 0, 0, Math.PI * 2); dx.fill();
-      dx.strokeStyle = '#cccccc'; dx.lineWidth = 3; dx.stroke();
-    });
-    [{x: 45, y: 75, r: 35}, {x: 105, y: 55, r: 32}, {x: 180, y: 50, r: 34}, {x: 235, y: 75, r: 38}].forEach(cym => {
-      const cG = dx.createRadialGradient(cym.x, cym.y, 2, cym.x, cym.y, cym.r);
-      cG.addColorStop(0, '#ffffff'); cG.addColorStop(0.3, '#ffde59'); cG.addColorStop(0.8, '#c99618'); cG.addColorStop(1, '#664906');
-      dx.fillStyle = cG;
-      dx.beginPath(); dx.ellipse(cym.x, cym.y, cym.r, cym.r * 0.28, -0.15, 0, Math.PI * 2); dx.fill();
-      dx.strokeStyle = '#aaaaaa'; dx.lineWidth = 3;
-      dx.beginPath(); dx.moveTo(cym.x, cym.y + 6); dx.lineTo(cym.x + 4, 175); dx.stroke();
-    });
+    
+    if (realDrumsImg.complete && realDrumsImg.naturalWidth > 0) {
+      dx.fillStyle = 'rgba(75, 15, 25, 0.85)'; dx.fillRect(10, 165, 260, 28);
+      dx.strokeStyle = 'rgba(215, 155, 65, 0.5)'; dx.lineWidth = 2; dx.strokeRect(10, 165, 260, 28);
+      dx.drawImage(realDrumsImg, 10, 10, 260, 170);
+    } else {
+      dx.fillStyle = 'rgba(75, 15, 25, 0.85)'; dx.fillRect(10, 165, 260, 28);
+      dx.strokeStyle = 'rgba(215, 155, 65, 0.5)'; dx.lineWidth = 2; dx.strokeRect(10, 165, 260, 28);
+      const kickG = dx.createRadialGradient(140, 125, 15, 140, 125, 52);
+      kickG.addColorStop(0, '#f8f4f0'); kickG.addColorStop(0.85, '#dfd6cb'); kickG.addColorStop(1, '#8e7968');
+      dx.fillStyle = kickG; dx.beginPath(); dx.arc(140, 130, 50, 0, Math.PI * 2); dx.fill();
+      dx.strokeStyle = '#382a20'; dx.lineWidth = 6; dx.stroke();
+      dx.strokeStyle = '#c42045'; dx.lineWidth = 5;
+      dx.beginPath(); dx.arc(140, 130, 32, 0, Math.PI * 2); dx.stroke();
+      dx.beginPath(); dx.moveTo(140, 98); dx.lineTo(140, 162);
+      dx.moveTo(140, 130); dx.lineTo(116, 154);
+      dx.moveTo(140, 130); dx.lineTo(164, 154); dx.stroke();
+      [{x: 95, y: 110, r: 28, h: 22}, {x: 185, y: 110, r: 28, h: 24}, {x: 65, y: 140, r: 30, h: 20}].forEach(d => {
+        dx.fillStyle = '#221820'; dx.fillRect(d.x - d.r, d.y, d.r * 2, d.h);
+        dx.fillStyle = '#dedce4'; dx.beginPath(); dx.ellipse(d.x, d.y, d.r, d.r * 0.45, 0, 0, Math.PI * 2); dx.fill();
+        dx.strokeStyle = '#cccccc'; dx.lineWidth = 3; dx.stroke();
+      });
+      [{x: 45, y: 75, r: 35}, {x: 105, y: 55, r: 32}, {x: 180, y: 50, r: 34}, {x: 235, y: 75, r: 38}].forEach(cym => {
+        const cG = dx.createRadialGradient(cym.x, cym.y, 2, cym.x, cym.y, cym.r);
+        cG.addColorStop(0, '#ffffff'); cG.addColorStop(0.3, '#ffde59'); cG.addColorStop(0.8, '#c99618'); cG.addColorStop(1, '#664906');
+        dx.fillStyle = cG;
+        dx.beginPath(); dx.ellipse(cym.x, cym.y, cym.r, cym.r * 0.28, -0.15, 0, Math.PI * 2); dx.fill();
+        dx.strokeStyle = '#aaaaaa'; dx.lineWidth = 3;
+        dx.beginPath(); dx.moveTo(cym.x, cym.y + 6); dx.lineTo(cym.x + 4, 175); dx.stroke();
+      });
+    }
     stageSprites.woodstockDrumKit = drumC;
 
     // 3. Estrutura Rústica Woodstock '69 e Canhão de Luz (Rigging) Esquerda & Direita
@@ -222,14 +251,20 @@
       const rigC = document.createElement('canvas');
       rigC.width = 220; rigC.height = 420;
       const rx = rigC.getContext('2d');
-      rx.fillStyle = '#301d14'; rx.fillRect(isLeft ? 20 : 160, 0, 40, 420);
-      rx.fillStyle = '#4a2c1e'; rx.fillRect(isLeft ? 0 : 180, 0, 22, 420);
-      for (let y = 40; y < 400; y += 80) {
-        rx.fillStyle = '#26160f'; rx.fillRect(isLeft ? 0 : 160, y, 60, 18);
-        rx.fillStyle = '#b89b80';
-        rx.beginPath(); rx.arc(isLeft ? 10 : 170, y + 9, 3, 0, Math.PI * 2); rx.fill();
-        rx.beginPath(); rx.arc(isLeft ? 50 : 210, y + 9, 3, 0, Math.PI * 2); rx.fill();
+      
+      if (realTrussImg.complete && realTrussImg.naturalWidth > 0) {
+        rx.drawImage(realTrussImg, isLeft ? 10 : 150, 0, 60, 420);
+      } else {
+        rx.fillStyle = '#301d14'; rx.fillRect(isLeft ? 20 : 160, 0, 40, 420);
+        rx.fillStyle = '#4a2c1e'; rx.fillRect(isLeft ? 0 : 180, 0, 22, 420);
+        for (let y = 40; y < 400; y += 80) {
+          rx.fillStyle = '#26160f'; rx.fillRect(isLeft ? 0 : 160, y, 60, 18);
+          rx.fillStyle = '#b89b80';
+          rx.beginPath(); rx.arc(isLeft ? 10 : 170, y + 9, 3, 0, Math.PI * 2); rx.fill();
+          rx.beginPath(); rx.arc(isLeft ? 50 : 210, y + 9, 3, 0, Math.PI * 2); rx.fill();
+        }
       }
+      
       const paX = isLeft ? 65 : 45;
       for (let box = 0; box < 3; box++) {
         const by = 180 + box * 75;
@@ -270,14 +305,19 @@
     const clubC = document.createElement('canvas');
     clubC.width = 160; clubC.height = 160;
     const cx = clubC.getContext('2d');
-    cx.fillStyle = '#3a2a1d'; cx.fillRect(15, 30, 130, 115);
-    cx.strokeStyle = '#1f140c'; cx.lineWidth = 3; cx.strokeRect(15, 30, 130, 115);
-    cx.fillStyle = '#140c08'; cx.fillRect(25, 45, 110, 85);
-    cx.fillStyle = '#ff7b00'; cx.shadowColor = '#ff6200'; cx.shadowBlur = 10;
-    [50, 75, 100].forEach(tx => { cx.fillRect(tx, 35, 8, 16); });
-    cx.shadowBlur = 0;
-    cx.fillStyle = '#b51a30'; cx.fillRect(95, 135, 32, 22);
-    cx.fillStyle = '#ff1a1a'; cx.beginPath(); cx.arc(111, 140, 2.5, 0, Math.PI * 2); cx.fill();
+    
+    if (realAmpImg.complete && realAmpImg.naturalWidth > 0) {
+      cx.drawImage(realAmpImg, 15, 20, 130, 130);
+    } else {
+      cx.fillStyle = '#3a2a1d'; cx.fillRect(15, 30, 130, 115);
+      cx.strokeStyle = '#1f140c'; cx.lineWidth = 3; cx.strokeRect(15, 30, 130, 115);
+      cx.fillStyle = '#140c08'; cx.fillRect(25, 45, 110, 85);
+      cx.fillStyle = '#ff7b00'; cx.shadowColor = '#ff6200'; cx.shadowBlur = 10;
+      [50, 75, 100].forEach(tx => { cx.fillRect(tx, 35, 8, 16); });
+      cx.shadowBlur = 0;
+      cx.fillStyle = '#b51a30'; cx.fillRect(95, 135, 32, 22);
+      cx.fillStyle = '#ff1a1a'; cx.beginPath(); cx.arc(111, 140, 2.5, 0, Math.PI * 2); cx.fill();
+    }
     stageSprites.clubTubeAmp = clubC;
 
     // 5. Packed Woodstock hillside crowd, painted once and reused every frame.
@@ -469,7 +509,7 @@
 
     /** Which clip the current physics state should be playing. */
     clipName() {
-      if (this.attack) return this.attack.type;
+      if (this.attack) return this.attack.type === 'mini_special' ? 'special' : this.attack.type;
       if (this.stun > 0) return 'hit';
       if (this.blocking) return 'block';
       if (!this.grounded) return 'jump';
@@ -553,6 +593,8 @@
       if (distance < 145 && this.cooldown <= 0 && (punishWhiff || this.aiTimer <= 0)) {
         if (this.meter >= 100 && Math.random() < tune.specialChance) {
           input.special = true;
+        } else if (this.meter >= 50 && Math.random() < tune.specialChance * 0.7) {
+          input.special = true;
         } else if (Math.random() < tune.aggression || punishWhiff) {
           // PRESSURE
           input[Math.random() < kickBias ? 'kick' : 'punch'] = true;
@@ -581,14 +623,17 @@
       if (this.attack && this.attackTimer <= Math.max(9, this.attack.activeAt)) {
         if (input.punch) this.bufferedAttack = 'punch';
         else if (input.kick) this.bufferedAttack = 'kick';
-        else if (input.special && this.meter >= 100) this.bufferedAttack = 'special';
+        else if (input.special) {
+          if (this.meter >= 100) this.bufferedAttack = 'special';
+          else if (this.meter >= 50) this.bufferedAttack = 'mini_special';
+        }
       }
       if (!this.attack && this.bufferedAttack && this.cooldown <= 0) {
         const queued = this.bufferedAttack; this.bufferedAttack = null; this.startAttack(queued);
       }
 
       this.blocking = input.block && this.grounded && !this.attack;
-      const speed = (3.5 + this.data.speed * 0.25) * (this.cpu ? 0.92 : 1);
+      const speed = (2.2 + this.data.speed * 0.18) * (this.cpu ? 0.92 : 1);
 
       if (!this.attack && !this.blocking && this.stun <= 0) {
         const targetSpeed = input.left ? -speed : input.right ? speed : 0;
@@ -596,17 +641,20 @@
         this.vx += (targetSpeed - this.vx) * control;
         if (!input.left && !input.right) this.vx *= this.grounded ? 0.70 : 0.96;
         if (input.jump && this.grounded) {
-          this.vy = -13.0; this.grounded = false; sound('ui', 0.65);
+          this.vy = -11.0; this.grounded = false; sound('ui', 0.65);
         }
         if (input.punch) this.startAttack('punch');
         else if (input.kick) this.startAttack('kick');
-        else if (input.special && this.meter >= 100) this.startAttack('special');
+        else if (input.special) {
+          if (this.meter >= 100) this.startAttack('special');
+          else if (this.meter >= 50) this.startAttack('mini_special');
+        }
       } else if (this.attack) {
         this.vx *= 0.80;
       }
 
       const wasGrounded = this.grounded;
-      this.vy += 0.75;
+      this.vy += 0.55;
       this.x += this.vx; this.y += this.vy;
 
       if (this.y >= 425) {
@@ -625,6 +673,39 @@
 
       if (this.attackTimer > 0) {
         this.attackTimer--;
+        if (this.attack && this.attackTimer === this.attack.activeAt) {
+          // Spawn visual projectiles for mini specials!
+          if (this.attack.type === 'mini_special') {
+            if (this.data.id === 'lennon') {
+              match.particles.push({
+                x: this.x + 50 * this.facing,
+                y: this.y - 100,
+                vx: 11 * this.facing,
+                vy: -0.8,
+                life: 38,
+                maxLife: 38,
+                color: '#ffffff',
+                size: 15,
+                icon: '🕊️'
+              });
+            } else if (this.data.id === 'kurt') {
+              // Riff wave particles
+              for (let i = 0; i < 5; i++) {
+                match.particles.push({
+                  x: this.x + (40 + i * 15) * this.facing,
+                  y: this.y - 90 + rand(-15, 15),
+                  vx: (10 + rand(-2, 2)) * this.facing,
+                  vy: rand(-3, 3),
+                  life: 25,
+                  maxLife: 25,
+                  color: '#23d7ef',
+                  size: 10,
+                  icon: ['🎵', '🎶', '⚡', ''][i % 4]
+                });
+              }
+            }
+          }
+        }
         if (!this.attack.hit && this.attackTimer <= this.attack.activeAt) this.checkHit(other);
         if (this.attackTimer <= 0) this.attack = null;
       }
@@ -634,19 +715,20 @@
     startAttack(type) {
       if (this.cooldown > 0) return;
       const config = {
-        punch: { duration: 18, activeAt: 10, range: 108 + (this.cpu ? 0 : 14), damage: 7 + this.data.power * 0.75, knock: 4.0 },
-        kick: { duration: 25, activeAt: 14, range: 128 + (this.cpu ? 0 : 14), damage: 10 + this.data.power * 1.05, knock: 6.0 },
-        special: { duration: 55, activeAt: 35, range: 280 + (this.cpu ? 0 : 20), damage: 22 + this.data.power * 1.3, knock: 13 }
+        punch: { duration: 18, activeAt: 10, range: 108 + (this.cpu ? 0 : 14), damage: 2.5 + this.data.power * 0.25, knock: 4.0 },
+        kick: { duration: 25, activeAt: 14, range: 128 + (this.cpu ? 0 : 14), damage: 3.5 + this.data.power * 0.35, knock: 6.0 },
+        mini_special: { duration: 35, activeAt: 18, range: 180 + (this.cpu ? 0 : 15), damage: 6.0 + this.data.power * 0.4, knock: 8.0 },
+        special: { duration: 55, activeAt: 35, range: 280 + (this.cpu ? 0 : 20), damage: 11.0 + this.data.power * 0.65, knock: 13 }
       }[type];
 
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
       // Faster fighters shake off their own recovery quicker -- speed now
       // shapes how often a character can swing, not just how fast it walks.
-      const baseCooldown = (type === 'special' ? 55 : config.duration + 2) + (this.cpu ? 5 : 0);
-      const recoveryBonus = type === 'special' ? 0 : Math.round((this.data.speed - 3) * 1.5);
+      const baseCooldown = (type === 'special' ? 55 : type === 'mini_special' ? 35 : config.duration + 2) + (this.cpu ? 5 : 0);
+      const recoveryBonus = (type === 'special' || type === 'mini_special') ? 0 : Math.round((this.data.speed - 3) * 1.5);
       this.cooldown = Math.max(config.duration - 2, baseCooldown - recoveryBonus);
-      this.vx += this.facing * (type === 'special' ? 4.8 : type === 'kick' ? 3.0 : 2.0);
+      this.vx += this.facing * (type === 'special' ? 4.8 : type === 'mini_special' ? 3.5 : type === 'kick' ? 3.0 : 2.0);
 
       if (type === 'special') {
         this.meter = 0;
@@ -654,6 +736,14 @@
         announce(this.data.special.toUpperCase(), 780);
         sound('special', 1 + this.data.speed * 0.05);
         sound('crowd');
+        // Trigger screen freeze and camera zoom
+        match.specialFreeze = 45;
+        match.specialAttacker = this;
+      } else if (type === 'mini_special') {
+        this.meter = Math.max(0, this.meter - 50);
+        this.afterimages.push({ x: this.x - 10 * this.facing, y: this.y, life: 15 });
+        announce("MINI " + this.data.special.toUpperCase(), 600);
+        sound('special', 1.2 + this.data.speed * 0.05);
       } else {
         if (type === 'kick') this.afterimages.push({ x: this.x - 10 * this.facing, y: this.y, life: 12 });
         sound('ui', type === 'kick' ? 0.75 : 1.1);
@@ -682,32 +772,44 @@
 
         other.health = clamp(other.health - damage, 0, 100);
         other.hitFlash = 9;
-        other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 30 : 12;
+        other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 30 : this.attack.type === 'mini_special' ? 18 : 12;
         other.vx = this.attack.knock * this.facing * (other.blocking ? 0.35 : 1);
         if (this.attack.type === 'special') other.vy = -6.5;
 
-        this.meter = clamp(this.meter + (this.attack.type === 'special' ? 0 : this.cpu ? 11 : 24), 0, 100);
+        this.meter = clamp(this.meter + ((this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0 : this.cpu ? 11 : 24), 0, 100);
         other.meter = clamp(other.meter + (other.cpu ? 6 : 14), 0, 100);
         this.combo++; this.comboTimer = 65;
 
         // Estilo Mega Drive / Streets of Rage: Hitstop mais estalado e tremedeira pesada!
-        match.shake = this.attack.type === 'special' ? 24 : this.attack.type === 'kick' ? 14 : 9;
-        match.flash = this.attack.type === 'special' ? 10 : 3;
-        match.hitStop = other.blocking ? 4 : this.attack.type === 'special' ? 14 : this.attack.type === 'kick' ? 8 : 5;
-        match.zoomPulse = this.attack.type === 'special' ? 0.09 : 0.035;
+        match.shake = this.attack.type === 'special' ? 24 : this.attack.type === 'mini_special' ? 16 : this.attack.type === 'kick' ? 14 : 9;
+        match.flash = this.attack.type === 'special' ? 10 : this.attack.type === 'mini_special' ? 5 : 3;
+        match.hitStop = other.blocking ? 4 : this.attack.type === 'special' ? 14 : this.attack.type === 'mini_special' ? 10 : this.attack.type === 'kick' ? 8 : 5;
+        match.zoomPulse = this.attack.type === 'special' ? 0.09 : this.attack.type === 'mini_special' ? 0.055 : 0.035;
 
         const impactText = this.attack.type === 'special'
           ? (this.data.id === 'kurt' ? 'GUITARRADA SMASH!' : this.data.id === 'axl' ? 'SERPENT SCREAM!' : 'PEACE & LOVE PULSE!')
-          : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'THUD!' : 'POW!');
+          : this.attack.type === 'mini_special'
+            ? 'MINI SPECIAL!'
+            : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'THUD!' : 'POW!');
 
         match.impacts.push({
           x: (this.x + other.x) / 2, y: other.y - 95,
           text: impactText,
-          color: this.data.color, life: this.attack.type === 'special' ? 38 : 24
+          color: this.data.color, life: (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 38 : 24
         });
 
-        burst((this.x + other.x) / 2, other.y - 85, this.data.color, this.attack.type === 'special' ? 42 : 16, this.attack.type, this.data.id);
-        sound(other.blocking ? 'block' : 'hit', this.attack.type === 'special' ? 0.6 : 0.95);
+        // Spawn hit spark
+        match.hitSparks.push({
+          x: (this.x + other.x) / 2,
+          y: other.y - 85,
+          color: this.data.color,
+          life: 14,
+          maxLife: 14,
+          type: this.attack.type
+        });
+
+        burst((this.x + other.x) / 2, other.y - 85, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'mini_special' ? 25 : 16, this.attack.type, this.data.id);
+        sound(other.blocking ? 'block' : 'hit', (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0.6 : 0.95);
       }
     }
   }
@@ -738,7 +840,7 @@
       s1, s2,
       p1: new Player(s1, 320, 1, false),
       p2: new Player(s2, 640, -1, true),
-      timer: ROUND_TIME, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
+      timer: ROUND_TIME, frames: 0, state: 'intro', intro: 150, particles: [], impacts: [], hitSparks: [], specialFreeze: 0, specialAttacker: null, shake: 0, flash: 0, hitStop: 0, zoomPulse: 0, ended: false, paused: false,
       camX: 480, camZoom: 1,
       round: 1, wins: { p1: 0, p2: 0 }, roundOver: false,
     };
@@ -776,7 +878,8 @@
     match.p1 = new Player(match.s1, 320, 1, false);
     match.p2 = new Player(match.s2, 640, -1, true);
     match.timer = ROUND_TIME;
-    match.particles = []; match.impacts = [];
+    match.particles = []; match.impacts = []; match.hitSparks = [];
+    match.specialFreeze = 0; match.specialAttacker = null;
     match.shake = 0; match.flash = 0; match.hitStop = 0; match.zoomPulse = 0;
     match.camX = 480; match.camZoom = 1;
     match.state = 'intro'; match.intro = 90;
@@ -822,7 +925,7 @@
   function burst(x, y, color, count, type = 'normal', id = null) {
     const icons = id === 'kurt' ? ['🎸', '⚡', '✦', ''] : id === 'axl' ? ['🔥', '💥', '✨', ''] : id === 'lennon' ? ['☮', '❤️', '♪', '♫'] : [''];
     for (let i = 0; i < count; i++) {
-      const isIcon = type === 'special' && Math.random() > 0.35;
+      const isIcon = (type === 'special' || type === 'mini_special') && Math.random() > 0.35;
       const chosenIcon = isIcon ? icons[Math.floor(Math.random() * icons.length)] : '';
       const isLand = type === 'land';
       if (match && match.particles) {
@@ -845,7 +948,26 @@
 
   function update() {
     if (!match || match.paused || match.ended || match.roundOver) return;
+    
+    if (match.specialFreeze > 0) {
+      match.specialFreeze--;
+      if (match.specialAttacker) {
+        match.specialAttacker.updateAnimation();
+      }
+      match.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; p.life--; });
+      match.particles = match.particles.filter(p => p.life > 0);
+      if (match.specialFreeze <= 0) {
+        match.specialAttacker = null;
+      }
+      return;
+    }
+    
     if (match.hitStop > 0) { match.hitStop--; return; }
+    
+    if (match.hitSparks) {
+      match.hitSparks.forEach(s => s.life--);
+      match.hitSparks = match.hitSparks.filter(s => s.life > 0);
+    }
 
     match.frames++;
     if (match.state === 'intro') {
@@ -912,10 +1034,34 @@
     $('#p2-health').style.transform = `scaleX(${match.p2.health / 100})`;
     $('#p1-meter').style.width = `${match.p1.meter}%`;
     $('#p2-meter').style.width = `${match.p2.meter}%`;
-    $('#p1-ready').classList.toggle('is-ready', match.p1.meter >= 100);
-    $('#p2-ready').classList.toggle('is-ready', match.p2.meter >= 100);
-    $('#p1-ready').textContent = match.p1.meter >= 100 ? 'PRONTO!' : 'CARREGANDO';
-    $('#p2-ready').textContent = match.p2.meter >= 100 ? 'PRONTO!' : 'CARREGANDO';
+    
+    // Dynamic styling of meter color
+    const p1Meter = match.p1.meter;
+    $('#p1-meter').style.background = p1Meter >= 100 ? '#ffc44d' : p1Meter >= 50 ? '#23d7ef' : '#8e183a';
+    $('#p1-meter').style.boxShadow = p1Meter >= 50 ? `0 0 8px ${p1Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
+    
+    const p2Meter = match.p2.meter;
+    $('#p2-meter').style.background = p2Meter >= 100 ? '#ffc44d' : p2Meter >= 50 ? '#23d7ef' : '#8e183a';
+    $('#p2-meter').style.boxShadow = p2Meter >= 50 ? `0 0 8px ${p2Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
+
+    const updateMeterLabel = (el, meter) => {
+      if (meter >= 100) {
+        el.textContent = 'SUPER!';
+        el.style.color = '#ffc44d';
+        el.classList.add('is-ready');
+      } else if (meter >= 50) {
+        el.textContent = 'MINI!';
+        el.style.color = '#23d7ef';
+        el.classList.add('is-ready');
+      } else {
+        el.textContent = 'CARREGANDO';
+        el.style.color = '';
+        el.classList.remove('is-ready');
+      }
+    };
+    updateMeterLabel($('#p1-ready'), p1Meter);
+    updateMeterLabel($('#p2-ready'), p2Meter);
+    
     $('#timer').textContent = String(Math.max(0, match.timer)).padStart(2, '0');
   }
 
@@ -948,11 +1094,19 @@
     ctx.save();
     ctx.scale(canvasW / 960, canvasH / 540);
 
-    const targetCamX = (match.p1.x + match.p2.x) / 2;
-    match.camX += (targetCamX - match.camX) * 0.08;
+    let targetCamX = (match.p1.x + match.p2.x) / 2;
     const dist = Math.abs(match.p1.x - match.p2.x);
-    const targetZoom = clamp(960 / (dist + 380), 1.0, 1.14);
-    match.camZoom += (targetZoom - match.camZoom) * 0.08;
+    let targetZoom = clamp(960 / (dist + 380), 1.0, 1.14);
+    let lerpSpeed = 0.08;
+    
+    if (match.specialFreeze > 0 && match.specialAttacker) {
+      targetCamX = match.specialAttacker.x;
+      targetZoom = 1.35;
+      lerpSpeed = 0.15;
+    }
+    
+    match.camX += (targetCamX - match.camX) * lerpSpeed;
+    match.camZoom += (targetZoom - match.camZoom) * lerpSpeed;
 
     const shakeX = match.shake ? rand(-match.shake, match.shake) : 0;
     const shakeY = match.shake ? rand(-match.shake * 0.5, match.shake * 0.5) : 0;
@@ -969,6 +1123,25 @@
 
     // 1. Stage
     drawStage(ctx, match.frames);
+
+    if (match.specialFreeze > 0 && match.specialAttacker) {
+      // Dark dramatic spotlight overlay
+      ctx.fillStyle = 'rgba(5, 2, 10, 0.7)';
+      ctx.fillRect(-200, -50, STAGE_W, STAGE_H);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const attacker = match.specialAttacker;
+      const grad = ctx.createLinearGradient(0, 0, 960, 0);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(0.3, attacker.data.color + '22');
+      grad.addColorStop(0.5, attacker.data.color + '88');
+      grad.addColorStop(0.7, attacker.data.color + '22');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(-200, 180, STAGE_W, 140);
+      ctx.restore();
+    }
 
     // Pose both skeletons once; every pass below reuses these buffers.
     composeFighter(match.p1);
@@ -1433,6 +1606,30 @@
     }
     const sample = player.anim.sample(progress);
     rig.compose(sample.pose, sample.front);
+
+    // Draw weapons only during attacks!
+    if (player.attack) {
+      const ctx = rig.bufferCtx;
+      const m = rig._world['armFrontLower'];
+      if (m) {
+        ctx.save();
+        ctx.setTransform(m[0], m[3], m[1], m[4], m[2] + RockKombatRig.PAD.left, m[5] + RockKombatRig.PAD.top);
+        if (player.data.id === 'kurt' && weaponGuitarImg.complete) {
+          ctx.translate(20, 60);
+          ctx.rotate(-0.8);
+          ctx.drawImage(weaponGuitarImg, -110, -50, 180, 100);
+        } else if (player.data.id === 'axl' && weaponMicImg.complete) {
+          ctx.translate(30, 45);
+          ctx.rotate(0.2);
+          ctx.drawImage(weaponMicImg, -30, -180, 60, 240);
+        } else if (player.data.id === 'lennon' && weaponDoveImg.complete) {
+          ctx.translate(40, 20);
+          ctx.drawImage(weaponDoveImg, -45, -45, 90, 90);
+        }
+        ctx.restore();
+      }
+    }
+
     return rig;
   }
 
@@ -1487,9 +1684,9 @@
 
   /** Signature weapon/energy effects layered over a special. */
   function drawSpecialFx(c, player) {
-    if (!player.attack || player.attack.type !== 'special') return;
+    if (!player.attack || (player.attack.type !== 'special' && player.attack.type !== 'mini_special')) return;
     const phase = 1 - player.attackTimer / player.attack.duration;
-    if (phase < 0.28) return;
+    if (phase < 0.20) return;
 
     const f = player.data;
     c.save();
@@ -1497,37 +1694,62 @@
     c.translate(player.x, player.y);
     c.scale(player.facing, 1);
 
-    if (f.id === 'kurt') {
-      c.strokeStyle = '#23d7ef'; c.lineWidth = 11;
-      c.shadowColor = '#23d7ef'; c.shadowBlur = 34;
-      c.beginPath();
-      for (let i = 0; i < 8; i++) {
-        const ang = i * Math.PI / 4 + match.frames * 0.25;
+    if (player.attack.type === 'special') {
+      if (f.id === 'kurt') {
+        c.strokeStyle = '#23d7ef'; c.lineWidth = 14;
+        c.shadowColor = '#23d7ef'; c.shadowBlur = 40;
+        c.beginPath();
         c.moveTo(40, -95);
-        c.lineTo(40 + Math.cos(ang) * 190, -95 + Math.sin(ang) * 150);
+        c.lineTo(80, -250);
+        c.lineTo(20, -250);
+        c.lineTo(60, -400);
+        c.stroke();
+        c.strokeStyle = '#ffc44d'; c.lineWidth = 6;
+        c.beginPath();
+        for (let i = 0; i < 3; i++) {
+          c.arc(40, -40, 30 + i * 50 * phase, 0, Math.PI * 2);
+        }
+        c.stroke();
+      } else if (f.id === 'axl') {
+        c.strokeStyle = '#ff2e78'; c.lineWidth = 14;
+        c.shadowColor = '#ff2e78'; c.shadowBlur = 45;
+        c.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const radius = 30 + i * 60 + phase * 120;
+          c.arc(40, -100, radius, -Math.PI/3, Math.PI/3);
+        }
+        c.stroke();
+        c.strokeStyle = '#ffc44d'; c.lineWidth = 6; c.stroke();
+      } else {
+        c.strokeStyle = '#6acfa0'; c.lineWidth = 14;
+        c.shadowColor = '#6acfa0'; c.shadowBlur = 45;
+        const r = 80 + phase * 220;
+        c.beginPath();
+        c.arc(20, -110, r, 0, Math.PI * 2);
+        c.moveTo(20, -110 - r); c.lineTo(20, -110 + r);
+        c.moveTo(20, -110); c.lineTo(20 - r * 0.72, -110 + r * 0.72);
+        c.moveTo(20, -110); c.lineTo(20 + r * 0.72, -110 + r * 0.72);
+        c.stroke();
+        c.strokeStyle = '#ffffff'; c.lineWidth = 6; c.stroke();
       }
-      c.stroke();
-      c.strokeStyle = '#ffc44d'; c.lineWidth = 5; c.stroke();
-    } else if (f.id === 'axl') {
-      c.strokeStyle = '#ff2e78'; c.lineWidth = 14;
-      c.shadowColor = '#ff2e78'; c.shadowBlur = 36;
-      c.beginPath();
-      for (let i = 0; i < 6; i++) {
-        c.moveTo(30, -100);
-        c.quadraticCurveTo(90 + i * 34, -140 + Math.sin(i * 1.5 + match.frames * 0.45) * 46, 190 + i * 38, -100);
+    } else if (player.attack.type === 'mini_special') {
+      if (f.id === 'kurt') {
+        c.strokeStyle = '#23d7ef'; c.lineWidth = 6;
+        c.shadowColor = '#23d7ef'; c.shadowBlur = 20;
+        c.beginPath();
+        c.arc(60, -95, 40, -Math.PI/2, Math.PI/2);
+        c.stroke();
+      } else if (f.id === 'axl') {
+        c.strokeStyle = '#ff2e78'; c.lineWidth = 4;
+        c.beginPath();
+        c.moveTo(20, -100);
+        c.quadraticCurveTo(80, -130 + Math.sin(phase * 10) * 30, 160, -90);
+        c.stroke();
+        c.fillStyle = '#cccccc';
+        c.beginPath();
+        c.arc(160, -90, 8, 0, Math.PI*2);
+        c.fill();
       }
-      c.stroke();
-      c.strokeStyle = '#ffc44d'; c.lineWidth = 6; c.stroke();
-    } else {
-      c.strokeStyle = '#6acfa0'; c.lineWidth = 13;
-      c.shadowColor = '#6acfa0'; c.shadowBlur = 38;
-      const r = 90 + Math.sin(phase * 14) * 38;
-      c.beginPath();
-      c.arc(20, -110, r, 0, Math.PI * 2);
-      c.moveTo(20, -110 - r); c.lineTo(20, -110 + r);
-      c.moveTo(20, -110); c.lineTo(20 - r * 0.72, -110 + r * 0.72);
-      c.moveTo(20, -110); c.lineTo(20 + r * 0.72, -110 + r * 0.72);
-      c.stroke();
     }
     c.restore();
   }
@@ -1676,6 +1898,36 @@
       ctx.fillText(impact.text, 0, 0);
       ctx.restore();
     });
+
+    if (match.hitSparks) {
+      match.hitSparks.forEach(s => {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const progress = s.life / s.maxLife;
+        const size = (s.type === 'special' ? 140 : s.type === 'mini_special' ? 90 : 60) * (1.2 - progress);
+        
+        drawGlow(ctx, s.x, s.y, size * 1.5, s.color, progress);
+        
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4 * progress;
+        ctx.beginPath();
+        ctx.moveTo(s.x - size, s.y);
+        ctx.lineTo(s.x + size, s.y);
+        ctx.moveTo(s.x, s.y - size);
+        ctx.lineTo(s.x, s.y + size);
+        ctx.moveTo(s.x - size*0.7, s.y - size*0.7);
+        ctx.lineTo(s.x + size*0.7, s.y + size*0.7);
+        ctx.moveTo(s.x + size*0.7, s.y - size*0.7);
+        ctx.lineTo(s.x - size*0.7, s.y + size*0.7);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, size * 0.4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
   }
 
   /** Called once a player has taken 2 round wins -- ends the whole match. */

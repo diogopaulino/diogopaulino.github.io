@@ -1,104 +1,134 @@
 <div align="center">
 
-# Diogo Paulino
+# ⚡ Diogo Paulino
 
-### 🌐 [diogopaulino.com.br](https://diogopaulino.com.br/)
+### **Tech Manager · Design & Code Lover · Sound Explorer**
 
-**Tech Manager · Design & Code Lover**
+*Um hub criativo onde desenvolvimento web de alta performance, design de interfaces, sintetizadores de áudio e inteligência artificial se conectam sem atrito.*
 
-Um espaço onde design, código, música e inteligência artificial se encontram para criar experiências digitais simples, úteis e divertidas.
+[![Website](https://img.shields.io/badge/🌐_Website-diogopaulino.com.br-3B82F6?style=for-the-badge&logoColor=white)](https://diogopaulino.com.br/)
+[![Labs Portal](https://img.shields.io/badge/🧪_Labs_Portal-21_Experimentos-8B5CF6?style=for-the-badge&logoColor=white)](https://diogopaulino.com.br/labs/)
 
-[![Explorar o site](https://img.shields.io/badge/Explorar_o_site-3B82F6?style=for-the-badge&logo=safari&logoColor=white)](https://diogopaulino.com.br/)
-[![Conhecer os Labs](https://img.shields.io/badge/Conhecer_os_Labs-8B5CF6?style=for-the-badge&logo=gamejolt&logoColor=white)](https://diogopaulino.com.br/labs/)
+<br/>
 
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-diogopaulino-0077B5?style=flat-square&logo=linkedin)](https://br.linkedin.com/in/diogopaulino)
-[![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
+[![Spotify](https://img.shields.io/badge/Spotify-Artist_Profile-1DB954?style=flat-square&logo=spotify)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 </div>
 
 ---
 
-## 🧪 Um playground de ideias
+## 🚀 Sobre o Projeto
 
-O **Labs** reúne jogos, ferramentas e experimentos interativos feitos para explorar o que é possível criar diretamente no navegador com HTML, CSS e JavaScript.
+Este repositório abriga o site oficial e o **Labs** — uma coleção viva de **21 aplicações e experimentos interativos** construídos para rodar 100% diretamente no navegador.
 
-> Sem instalação e sem complicação: escolha um projeto e comece a explorar.
-
-### **[Acessar todos os Labs →](https://diogopaulino.com.br/labs/)**
-
-### 🎮 Games — jogue direto no navegador
-
-| Projeto | Descrição |
-|---------|-----------|
-| **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de consoles clássicos no navegador com suporte a ROMs e filtros |
-| **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Corrida de Fórmula 1 com pista dinâmica, oponentes IA e sistema de voltas |
-| **[Retro Racer](https://diogopaulino.com.br/labs/racing/)** | Jogo de corrida arcade estilo retrô onde você deve desviar do tráfego |
-| **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Aventura de plataforma inspirada em clássicos como Pitfall |
-| **[Neon Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Arcade clássico com visual cyberpunk, partículas e efeitos neon |
-| **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | O clássico jogo de blocos com visual retrô de Game Boy |
-| **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Clássico jogo da cobrinha com visual de console portátil dos anos 90 |
-| **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Clássico jogo de estratégia com estética retrô do Windows 95 |
-| **[LingoQuest](https://diogopaulino.com.br/labs/english-duo/)** | Jogo de inglês com desafios dinâmicos de vocabulário |
-
-### 🎨 Creative & Visual — crie, observe e experimente
-
-| Projeto | Descrição |
-|---------|-----------|
-| **[AI Evolution](https://diogopaulino.com.br/labs/ai-evolution/)** | Simulação interativa de algoritmo genético onde a IA aprende a navegar |
-| **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Visualização hipnotizante de aurora boreal com partículas e campos de fluxo |
-| **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital completo com pincéis, formas e histórico |
-| **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Simulação de partículas com física, gravidade e colisões interativas |
-| **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Editor de fotos com filtros e ajustes visuais |
-
-### 🛠️ Tools & Utilities — pequenas soluções para o dia a dia
-
-| Projeto | Descrição |
-|---------|-----------|
-| **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Minificador e conversor de imagens com suporte a múltiplos formatos |
-| **[Fun Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora moderna com conversão de moedas em tempo real |
-| **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com tarefas, estatísticas, sons e notificações do navegador |
-
-### 🎵 Music & Audio — som também é interface
-
-| Projeto | Descrição |
-|---------|-----------|
-| **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento generativo: toque para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos |
-| **[Piano](https://diogopaulino.com.br/labs/piano/)** | Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain |
-| **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Clone do lendário player MP3 com visual clássico e equalizador |
+A filosofia central do projeto é a **simplicidade de execução com máxima fidelidade visual e sonora**:
+- ⚡ **Zero Dependências Pesadas:** Foco em HTML5, CSS moderno e Vanilla JavaScript de alta performance.
+- 🎨 **Experiência Premium & Responsiva:** Suporte total a temas Dark/Light, interações por toque, teclado e gamepad.
+- 🔊 **Áudio Nativo Realista:** Síntese de som e processamento via Web Audio API sem necessidade de arquivos externos massivos.
+- 🔒 **Privacidade & Execução Client-Side:** Seus dados e arquivos permanecem no seu navegador (ex: otimizador de imagens e ferramentas).
 
 ---
 
-## ⚡ Feito com
+## 🧪 O Playground (Labs)
 
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=111)
-![Canvas API](https://img.shields.io/badge/Canvas_API-111827?style=flat-square)
-![Web Audio API](https://img.shields.io/badge/Web_Audio_API-9333EA?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-ready-5A0FC8?style=flat-square&logo=pwa&logoColor=white)
+Explore os 21 projetos interativos disponíveis no **[diogopaulino.com.br/labs/](https://diogopaulino.com.br/labs/)**:
 
-Os experimentos priorizam tecnologias nativas da web, carregamento rápido e zero dependências sempre que possível.
+### 🎮 Games — Arcade, Retro & Simulações
 
-## ✨ O que você encontra por aqui
+| Projeto | Descrição | Tecs & Destaques |
+| :--- | :--- | :--- |
+| 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Jogo de luta estilo 16-bits com lendas do rock, combos, golpes especiais e modo Versus. | `HTML5 Canvas` `Web Audio API` `Sprites` |
+| 🕹️ **[Videogame (Sega)](https://diogopaulino.com.br/labs/videogame/)** | Emulador online de Mega Drive / Genesis com suporte a carregamento de ROMs e filtros CRT. | `WebAssembly` `Emulation` `CRT Shaders` |
+| 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Réplica fiel do clássico simulador vetorial de pouso lunar com física de aceleração e gravidade. | `Vector Physics` `Canvas 2D` `Arcade` |
+| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Corrida de Fórmula 1 com pistas dinâmicas, oponentes controlados por IA, curvas e cronometragem. | `AI Driving` `Pseudo-3D` `Telemetry` |
+| 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Aventura de plataforma inspirada no clássico *Pitfall*, com física de pulo e gráficos retro. | `PixiJS Engine` `Sprites` `Platformer` |
+| 🌌 **[Neon Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Space shooter com estética Cyberpunk, explosões de partículas, power-ups e efeitos neon. | `Cyberpunk Style` `Particle Engine` |
+| 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | O lendário jogo de encaixar blocos com visual e paleta inspirados no Game Boy clássico. | `Game Boy Theme` `Matrix Grid` |
+| 🐍 **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Jogo da cobrinha nostálgico no estilo de celulares dos anos 90, com efeito LCD. | `Nokia 3310 Vibe` `LCD Filter` |
+| 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Clássico jogo de lógica e estratégia com interface idêntica ao Windows 95. | `Retro UI` `Windows 95` `Logic` |
 
-- Experiências responsivas para desktop e mobile
-- Temas claro e escuro
-- Interações por mouse, toque e teclado
-- Jogos retrô, simulações, ferramentas e projetos musicais
-- Alguns easter eggs esperando para serem descobertos
+### 🎨 Visual & Experimentos Interativos
+
+| Projeto | Descrição | Tecs & Destaques |
+| :--- | :--- | :--- |
+| 🟢 **[Matrix Rain](https://diogopaulino.com.br/labs/matrix/)** | Chuva digital inspirada no filme, com caracteres Katakana espelhados, bloom e ajuste de velocidade. | `Canvas` `CRT Glow` `Interactive Controls` |
+| 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Visualização hipnotizante de aurora boreal utilizando partículas em campos de fluxo vetoriais. | `Flow Fields` `Perlin Noise` `Particles` |
+| 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital completo com múltiplas ferramentas de pincel, formas geométricas e histórico. | `Digital Paint` `History Stack` |
+| 🪐 **[Gravity Simulation](https://diogopaulino.com.br/labs/gravity/)** | Sandbox de física espacial para criação e atração gravitacional de partículas em tempo real. | `N-Body Physics` `Interactive Gravity` |
+
+### 🛠️ Tools & Produtividade
+
+| Projeto | Descrição | Tecs & Destaques |
+| :--- | :--- | :--- |
+| ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Ferramenta de compressão e conversão de imagens (WebP/JPEG/PNG) 100% no cliente. | `Client-Side Processing` `Canvas` |
+| 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Editor de fotos estilo Instagram com filtros de cor, ajustes de brilho/contraste e corte. | `CSS Filters` `Canvas Export` |
+| ⏱️ **[Pomodoro Focus](https://diogopaulino.com.br/labs/pomodoro/)** | Gerenciador de tempo de foco com áudios de fundo relaxantes, notificações e estatísticas. | `Focus Timer` `Ambient Sound` `PWA` |
+| 🗣️ **[Talk / English Duo](https://diogopaulino.com.br/labs/english-duo/)** | Treinador de pronúncia e vocabulário em múltiplos idiomas com reconhecimento e síntese de voz. | `Web Speech API` `Speech Recognition` |
+| 🧮 **[Fun Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora moderna com histórico de operações e conversão de moedas via API. | `Currency API` `Modern UI` |
+
+### 🎵 Áudio & Música
+
+| Projeto | Descrição | Tecs & Destaques |
+| :--- | :--- | :--- |
+| 🎹 **[Interactive Piano](https://diogopaulino.com.br/labs/piano/)** | Piano sintetizado com 4 oitavas, suporte a pedal de sustain, mapeamento de teclado e toque. | `Web Audio API` `Polyphonic Synth` |
+| 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Recriação fiel do lendário tocador de MP3 Winamp 2.x com equalizador gráfico e visualizador. | `Audio Visualizer` `DSP Equalizer` |
+| ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento generativo: toque na tela para criar orbes que pulsam sozinhos, se conectam e disparam notas em cadeia. | `Web Audio API` `Generative Music` `Canvas` |
 
 ---
+
+## 🛠️ Stack Tecnológica & Arquitetura
+
+O projeto adota uma arquitetura limpa e moderna focada em performance nativa da Web:
+
+- **Linguagens & Core:** HTML5 Semântico, CSS3 (Custom Properties & Tokens), JavaScript (ES6+ Vanilla).
+- **Gráficos & Renderização:** Canvas 2D API, WebGL, PixiJS Engine.
+- **Áudio & Voz:** Web Audio API (Osciladores, Filtros, Gain Nodes), Web Speech API.
+- **PWA & Offline:** Service Workers, Web App Manifest, Cache Storage API.
+- **Design System:** Design minimalista, tipografia fluida (*Outfit* / *Inter*), suporte a Dark Mode e micro-interações CSS.
+
+---
+
+## 💻 Como Rodar Localmente
+
+Para explorar ou modificar o código no seu ambiente local, siga os passos:
+
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/diogopaulino/diogopaulino.github.io.git
+   cd diogopaulino.github.io
+   ```
+
+2. **Execute um servidor web simples:**
+   Como a maioria dos experimentos utiliza módulos e recursos como Service Workers e Canvas API, é recomendado rodar um servidor HTTP local:
+
+   *Com Node.js (npx):*
+   ```bash
+   npx serve .
+   ```
+
+   *Ou com Python:*
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+3. **Acesse no seu navegador:**
+   Abra `http://localhost:8000` (ou a porta indicada pelo terminal) para explorar o site e acessar `/labs/`.
+
+---
+
+## 📬 Conecte-se comigo
 
 <div align="center">
 
-### Tem uma ideia ou quer trocar uma conversa?
+Gostou de algum experimento ou quer trocar uma ideia sobre Tecnologia, Design ou Música?
 
-[Visite o site](https://diogopaulino.com.br/) · [Conecte-se no LinkedIn](https://br.linkedin.com/in/diogopaulino) · [Veja mais no GitHub](https://github.com/diogopaulino)
+[![Portfolio](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=for-the-badge&logo=safari&logoColor=white)](https://diogopaulino.com.br/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://br.linkedin.com/in/diogopaulino)
+[![Spotify](https://img.shields.io/badge/Spotify-Ouvir_Músicas-1DB954?style=for-the-badge&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
 
 **Design, código e curiosidade — um experimento por vez.**
 
 </div>
-
-
-

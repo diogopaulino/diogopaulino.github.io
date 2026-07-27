@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aurora Flow - Diogo Paulino</title>
-    <meta name="description" content="Visualização interativa de aurora boreal com partículas e campos de fluxo.">
+    <meta name="description" content="Aurora boreal generativa: cortinas de luz, campos de fluxo e partículas reagindo em tempo real ao seu movimento.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -27,7 +27,7 @@
                 </div>
             </template>
             <template data-slot="actions">
-                <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia">
+                <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia (F)">
                     <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2">
                         <path
@@ -44,7 +44,7 @@
 
         <canvas id="canvas"></canvas>
 
-        <button id="toggleControls" class="toggle-controls-btn" aria-label="Mostrar/esconder controles">
+        <button id="toggleControls" class="toggle-controls-btn" aria-label="Mostrar/esconder controles" title="Controles (C)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path
                     d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -62,243 +62,306 @@
                 </button>
             </div>
 
+            <div class="tabs-nav" role="tablist">
+                <button class="tab-btn active" data-tab="scenes" role="tab" aria-selected="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z"/></svg>
+                    Cenas
+                </button>
+                <button class="tab-btn" data-tab="visual" role="tab" aria-selected="false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="13" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="10" cy="19" r="2.5"/></svg>
+                    Visual
+                </button>
+                <button class="tab-btn" data-tab="physics" role="tab" aria-selected="false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+                    Física
+                </button>
+                <button class="tab-btn" data-tab="particles" role="tab" aria-selected="false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.5" fill="currentColor"/><circle cx="16" cy="5" r="1.5" fill="currentColor"/><circle cx="18" cy="15" r="1.5" fill="currentColor"/><circle cx="8" cy="17" r="1.5" fill="currentColor"/><circle cx="12" cy="11" r="2" fill="currentColor"/></svg>
+                    Partículas
+                </button>
+            </div>
+
             <div class="controls-scroll">
-                <div class="control-section">
-                    <div class="section-title">Tema de Cores</div>
-                    <div class="color-grid">
-                        <button class="color-swatch active" data-theme="aurora" title="Aurora">
-                            <span style="background: linear-gradient(135deg, #00ff88, #00d4ff, #8b5cf6)"></span>
-                            <small>Aurora</small>
-                        </button>
-                        <button class="color-swatch" data-theme="sunset" title="Sunset">
-                            <span style="background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3)"></span>
-                            <small>Sunset</small>
-                        </button>
-                        <button class="color-swatch" data-theme="ocean" title="Ocean">
-                            <span style="background: linear-gradient(135deg, #0066ff, #00ffff, #00ff99)"></span>
-                            <small>Ocean</small>
-                        </button>
-                        <button class="color-swatch" data-theme="cosmic" title="Cosmic">
-                            <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899, #f43f5e)"></span>
-                            <small>Cosmic</small>
-                        </button>
-                        <button class="color-swatch" data-theme="neon" title="Neon">
-                            <span style="background: linear-gradient(135deg, #39ff14, #ff073a, #00fff7)"></span>
-                            <small>Neon</small>
-                        </button>
-                        <button class="color-swatch" data-theme="fire" title="Fire">
-                            <span style="background: linear-gradient(135deg, #ff4500, #ff8c00, #ffd700)"></span>
-                            <small>Fire</small>
-                        </button>
-                        <button class="color-swatch" data-theme="forest" title="Forest">
-                            <span style="background: linear-gradient(135deg, #228b22, #32cd32, #7cfc00)"></span>
-                            <small>Forest</small>
-                        </button>
-                        <button class="color-swatch" data-theme="candy" title="Candy">
-                            <span style="background: linear-gradient(135deg, #ff69b4, #ba55d3, #00ced1)"></span>
-                            <small>Candy</small>
-                        </button>
+                <div class="tab-panel active" data-tab-panel="scenes">
+                    <p class="tab-hint">Escolha uma cena para começar. Ajuste os detalhes nas outras abas.</p>
+                    <div class="scene-grid" id="sceneGrid"></div>
+                </div>
+
+                <div class="tab-panel" data-tab-panel="visual">
+                    <div class="control-section">
+                        <div class="section-title">Tema de Cores</div>
+                        <div class="color-grid" id="colorGrid">
+                            <button class="color-swatch active" data-theme="aurora" title="Aurora">
+                                <span style="background: linear-gradient(135deg, #00ff88, #00d4ff, #8b5cf6)"></span>
+                                <small>Aurora</small>
+                            </button>
+                            <button class="color-swatch" data-theme="sunset" title="Sunset">
+                                <span style="background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3)"></span>
+                                <small>Sunset</small>
+                            </button>
+                            <button class="color-swatch" data-theme="ocean" title="Ocean">
+                                <span style="background: linear-gradient(135deg, #0066ff, #00ffff, #00ff99)"></span>
+                                <small>Ocean</small>
+                            </button>
+                            <button class="color-swatch" data-theme="cosmic" title="Cosmic">
+                                <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899, #f43f5e)"></span>
+                                <small>Cosmic</small>
+                            </button>
+                            <button class="color-swatch" data-theme="neon" title="Neon">
+                                <span style="background: linear-gradient(135deg, #39ff14, #ff073a, #00fff7)"></span>
+                                <small>Neon</small>
+                            </button>
+                            <button class="color-swatch" data-theme="fire" title="Fire">
+                                <span style="background: linear-gradient(135deg, #ff4500, #ff8c00, #ffd700)"></span>
+                                <small>Fire</small>
+                            </button>
+                            <button class="color-swatch" data-theme="forest" title="Forest">
+                                <span style="background: linear-gradient(135deg, #228b22, #32cd32, #7cfc00)"></span>
+                                <small>Forest</small>
+                            </button>
+                            <button class="color-swatch" data-theme="candy" title="Candy">
+                                <span style="background: linear-gradient(135deg, #ff69b4, #ba55d3, #00ced1)"></span>
+                                <small>Candy</small>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">Forma da Partícula</div>
+                        <div class="shape-grid">
+                            <button class="shape-btn active" data-shape="line">
+                                <div class="shape-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <line x1="4" y1="20" x2="20" y2="4" />
+                                    </svg>
+                                </div>
+                                <span>Linha</span>
+                            </button>
+                            <button class="shape-btn" data-shape="circle">
+                                <div class="shape-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="12" cy="12" r="7" fill="currentColor" opacity="0.3" />
+                                        <circle cx="12" cy="12" r="7" />
+                                    </svg>
+                                </div>
+                                <span>Círculo</span>
+                            </button>
+                            <button class="shape-btn" data-shape="star">
+                                <div class="shape-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" opacity="0.8">
+                                        <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
+                                    </svg>
+                                </div>
+                                <span>Estrela</span>
+                            </button>
+                            <button class="shape-btn" data-shape="spark">
+                                <div class="shape-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M12 2v6m0 8v6M2 12h6m8 0h6" />
+                                        <path
+                                            d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"
+                                            opacity="0.6" />
+                                    </svg>
+                                </div>
+                                <span>Faísca</span>
+                            </button>
+                            <button class="shape-btn" data-shape="glow">
+                                <div class="shape-icon glow-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="12" cy="12" r="4" />
+                                        <circle cx="12" cy="12" r="7" opacity="0.3" />
+                                        <circle cx="12" cy="12" r="10" opacity="0.1" />
+                                    </svg>
+                                </div>
+                                <span>Brilho</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">Efeitos</div>
+                        <div class="effects-row">
+                            <div class="select-group">
+                                <label>Mistura</label>
+                                <select id="blendMode">
+                                    <option value="lighter">Aditivo</option>
+                                    <option value="source-over" selected>Normal</option>
+                                    <option value="screen">Screen</option>
+                                    <option value="color-dodge">Dodge</option>
+                                </select>
+                            </div>
+                            <div class="select-group">
+                                <label>Fundo</label>
+                                <select id="bgEffect">
+                                    <option value="none">Nenhum</option>
+                                    <option value="stars" selected>Estrelas</option>
+                                    <option value="grid">Grade</option>
+                                    <option value="nebula">Nebulosa</option>
+                                    <option value="rain">Matrix</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="control-section">
-                    <div class="section-title">Forma da Partícula</div>
-                    <div class="shape-grid">
-                        <button class="shape-btn active" data-shape="line">
-                            <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2.5">
-                                    <line x1="4" y1="20" x2="20" y2="4" />
-                                </svg>
-                            </div>
-                            <span>Linha</span>
-                        </button>
-                        <button class="shape-btn" data-shape="circle">
-                            <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                <div class="tab-panel" data-tab-panel="physics">
+                    <div class="control-section">
+                        <div class="section-title">Interação do Mouse</div>
+                        <div class="interaction-grid">
+                            <button class="interaction-btn active" data-mode="attract">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
-                                    <circle cx="12" cy="12" r="7" fill="currentColor" opacity="0.3" />
-                                    <circle cx="12" cy="12" r="7" />
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
                                 </svg>
-                            </div>
-                            <span>Círculo</span>
-                        </button>
-                        <button class="shape-btn" data-shape="star">
-                            <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" opacity="0.8">
-                                    <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
-                                </svg>
-                            </div>
-                            <span>Estrela</span>
-                        </button>
-                        <button class="shape-btn" data-shape="spark">
-                            <div class="shape-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                <span>Atrair</span>
+                            </button>
+                            <button class="interaction-btn" data-mode="repel">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
-                                    <path d="M12 2v6m0 8v6M2 12h6m8 0h6" />
-                                    <path
-                                        d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"
-                                        opacity="0.6" />
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M12 2l2 2m-2-2l-2 2m2 18l2-2m-2 2l-2-2M2 12l2 2m-2-2l2-2m18 2l-2 2m2-2l-2-2" />
                                 </svg>
-                            </div>
-                            <span>Faísca</span>
-                        </button>
-                        <button class="shape-btn" data-shape="glow">
-                            <div class="shape-icon glow-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="12" r="4" />
-                                    <circle cx="12" cy="12" r="7" opacity="0.3" />
-                                    <circle cx="12" cy="12" r="10" opacity="0.1" />
+                                <span>Repelir</span>
+                            </button>
+                            <button class="interaction-btn" data-mode="vortex">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0" />
+                                    <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0" />
+                                    <circle cx="12" cy="12" r="2" fill="currentColor" />
                                 </svg>
-                            </div>
-                            <span>Brilho</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Interação</div>
-                    <div class="interaction-grid">
-                        <button class="interaction-btn active" data-mode="attract">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <circle cx="12" cy="12" r="3" />
-                                <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
-                            </svg>
-                            <span>Atrair</span>
-                        </button>
-                        <button class="interaction-btn" data-mode="repel">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <circle cx="12" cy="12" r="3" />
-                                <path d="M12 2l2 2m-2-2l-2 2m2 18l2-2m-2 2l-2-2M2 12l2 2m-2-2l2-2m18 2l-2 2m2-2l-2-2" />
-                            </svg>
-                            <span>Repelir</span>
-                        </button>
-                        <button class="interaction-btn" data-mode="vortex">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0" />
-                                <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0" />
-                                <circle cx="12" cy="12" r="2" fill="currentColor" />
-                            </svg>
-                            <span>Vórtex</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Efeitos</div>
-                    <div class="effects-row">
-                        <div class="select-group">
-                            <label>Mistura</label>
-                            <select id="blendMode">
-                                <option value="lighter">Aditivo</option>
-                                <option value="source-over" selected>Normal</option>
-                                <option value="screen">Screen</option>
-                                <option value="color-dodge">Dodge</option>
-                            </select>
+                                <span>Vórtex</span>
+                            </button>
                         </div>
-                        <div class="select-group">
-                            <label>Fundo</label>
-                            <select id="bgEffect">
-                                <option value="none">Nenhum</option>
-                                <option value="stars" selected>Estrelas</option>
-                                <option value="grid">Grade</option>
-                                <option value="nebula">Nebulosa</option>
-                                <option value="rain">Matrix</option>
-                            </select>
+                        <p class="tab-hint">Clique na tela a qualquer momento para disparar uma explosão de energia.</p>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">Ajustes</div>
+                        <div class="sliders-grid">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Velocidade</label>
+                                    <span class="slider-value" id="speedValue">1.0</span>
+                                </div>
+                                <input type="range" id="flowSpeed" min="0.1" max="3" step="0.1" value="1">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Turbulência</label>
+                                    <span class="slider-value" id="turbValue">0.004</span>
+                                </div>
+                                <input type="range" id="turbulence" min="0.001" max="0.015" step="0.001" value="0.004">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Força</label>
+                                    <span class="slider-value" id="forceValue">3.0</span>
+                                </div>
+                                <input type="range" id="interactionForce" min="1" max="10" step="0.5" value="3">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Aurora</label>
+                                    <span class="slider-value" id="auroraValue">70%</span>
+                                </div>
+                                <input type="range" id="auroraIntensity" min="0" max="100" step="5" value="70">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="control-section">
-                    <div class="section-title">Ajustes</div>
-                    <div class="sliders-grid">
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Velocidade</label>
-                                <span class="slider-value" id="speedValue">1.0</span>
+                <div class="tab-panel" data-tab-panel="particles">
+                    <div class="control-section">
+                        <div class="section-title">Ajustes</div>
+                        <div class="sliders-grid">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Tamanho</label>
+                                    <span class="slider-value" id="sizeValue">1.5</span>
+                                </div>
+                                <input type="range" id="particleSize" min="0.5" max="5" step="0.1" value="1.5">
                             </div>
-                            <input type="range" id="flowSpeed" min="0.1" max="3" step="0.1" value="1">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Tamanho</label>
-                                <span class="slider-value" id="sizeValue">1.5</span>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Densidade</label>
+                                    <span class="slider-value" id="densityValue">2500</span>
+                                </div>
+                                <input type="range" id="density" min="500" max="8000" step="100" value="2500">
                             </div>
-                            <input type="range" id="particleSize" min="0.5" max="5" step="0.1" value="1.5">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Densidade</label>
-                                <span class="slider-value" id="densityValue">2000</span>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Rastro</label>
+                                    <span class="slider-value" id="trailValue">95%</span>
+                                </div>
+                                <input type="range" id="trailLength" min="80" max="100" step="1" value="95">
                             </div>
-                            <input type="range" id="density" min="500" max="8000" step="100" value="2000">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Rastro</label>
-                                <span class="slider-value" id="trailValue">95%</span>
-                            </div>
-                            <input type="range" id="trailLength" min="80" max="100" step="1" value="95">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Turbulência</label>
-                                <span class="slider-value" id="turbValue">0.004</span>
-                            </div>
-                            <input type="range" id="turbulence" min="0.001" max="0.015" step="0.001" value="0.004">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Força</label>
-                                <span class="slider-value" id="forceValue">3.0</span>
-                            </div>
-                            <input type="range" id="interactionForce" min="1" max="10" step="0.5" value="3">
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="control-footer">
-                    <div class="action-buttons">
-                        <button id="random" class="action-btn random-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
-                                <path d="m18 2 4 4-4 4" />
-                                <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
-                                <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
-                                <path d="m18 14 4 4-4 4" />
-                            </svg>
-                            Random
-                        </button>
-                        <button id="reset" class="action-btn reset-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                                <path d="M3 3v5h5" />
-                            </svg>
-                            Reset
-                        </button>
+            <div class="control-footer">
+                <div class="action-buttons">
+                    <button id="random" class="action-btn random-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+                            <path d="m18 2 4 4-4 4" />
+                            <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+                            <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+                            <path d="m18 14 4 4-4 4" />
+                        </svg>
+                        Random
+                    </button>
+                    <button id="reset" class="action-btn reset-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                        Reset
+                    </button>
+                    <button id="playPause" class="action-btn" aria-label="Pausar animação" title="Pausar/Retomar (Espaço)">
+                        <svg class="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="4" width="4" height="16" rx="1" />
+                            <rect x="14" y="4" width="4" height="16" rx="1" />
+                        </svg>
+                        <svg class="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+                            <path d="M7 4l13 8-13 8V4z" />
+                        </svg>
+                        Pausar
+                    </button>
+                    <button id="saveImage" class="action-btn" aria-label="Salvar imagem" title="Salvar imagem (S)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <path d="M7 10l5 5 5-5" />
+                            <path d="M12 15V3" />
+                        </svg>
+                        Salvar
+                    </button>
+                </div>
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="stat-value" id="particleCount">0</span>
+                        <span class="stat-label">partículas</span>
                     </div>
-                    <div class="stats-bar">
-                        <div class="stat">
-                            <span class="stat-value" id="particleCount">0</span>
-                            <span class="stat-label">partículas</span>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat">
-                            <span class="stat-value" id="fps">60</span>
-                            <span class="stat-label">fps</span>
-                        </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat">
+                        <span class="stat-dot" id="fpsDot"></span>
+                        <span class="stat-value" id="fps">60</span>
+                        <span class="stat-label">fps</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="instructions">
-            <p>Mova o mouse para interagir com as partículas</p>
+            <p>Mova o mouse para interagir · clique para uma explosão de energia</p>
         </div>
 
         <footer data-lab-footer data-home-href="/"></footer>

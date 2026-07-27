@@ -6,18 +6,65 @@ const CONFIG = Object.freeze({
     JUMP_FORCE: -14.2,
     MOVE_SPEED: 5.4,
     BASE_SCROLL_SPEED: 2.3,
-    MAX_SCROLL_SPEED: 4.8,
+    MAX_SCROLL_SPEED: 5.2,
     SEGMENT_WIDTH: 320,
     SPAWN_AHEAD: 1900,
     COYOTE_FRAMES: 7,
-    JUMP_BUFFER_FRAMES: 8
+    JUMP_BUFFER_FRAMES: 8,
+    CLIMB_SPEED: 0.018
 });
 
-const BIOMES = [
-    { at: 0, name: 'Trilha do Alvorecer' },
-    { at: 240, name: 'Dossel Esmeralda' },
-    { at: 520, name: 'Ruínas Submersas' },
-    { at: 850, name: 'Templo da Lua' }
+const LEVELS = [
+    {
+        id: 1,
+        name: 'Trilha do Alvorecer',
+        distanceGoal: 250,
+        baseSpeed: 2.3,
+        maxSpeed: 3.5,
+        allowedObstacles: ['log', 'pit'],
+        bgColor: 0x07150f,
+        description: 'Uma trilha inicial tranquila pela selva ao amanhecer. Desvie de troncos e buracos.'
+    },
+    {
+        id: 2,
+        name: 'Dossel Esmeralda',
+        distanceGoal: 350,
+        baseSpeed: 2.8,
+        maxSpeed: 4.2,
+        allowedObstacles: ['log', 'pit', 'vine', 'platform', 'tree'],
+        bgColor: 0x051d12,
+        description: 'Suba pelas árvores e copas. Use árvores escaláveis, cipós e plataformas para cruzar abismos.'
+    },
+    {
+        id: 3,
+        name: 'Ruínas Submersas',
+        distanceGoal: 450,
+        baseSpeed: 3.2,
+        maxSpeed: 4.8,
+        allowedObstacles: ['log', 'pit', 'vine', 'platform', 'crocodile', 'tree'],
+        bgColor: 0x04191c,
+        description: 'Antigas ruínas tomadas pelas águas. Escale árvores e cuidado com jacarés nos pântanos.'
+    },
+    {
+        id: 4,
+        name: 'Templo da Lua',
+        distanceGoal: 550,
+        baseSpeed: 3.6,
+        maxSpeed: 5.4,
+        allowedObstacles: ['log', 'pit', 'vine', 'platform', 'crocodile', 'ruin', 'tree'],
+        bgColor: 0x0a1624,
+        description: 'O templo sagrado. O desafio definitivo com velocidade extrema e perigos combinados.'
+    },
+    {
+        id: 5,
+        name: 'Modo Infinito',
+        distanceGoal: Infinity,
+        baseSpeed: 2.5,
+        maxSpeed: 6.0,
+        allowedObstacles: ['log', 'pit', 'vine', 'platform', 'crocodile', 'ruin', 'tree'],
+        bgColor: 0x081015,
+        description: 'A selva não tem fim. Corra o mais longe que conseguir neste desafio eterno.'
+    }
 ];
 
 class JungleAudio {
@@ -40,9 +87,7 @@ class JungleAudio {
         this.muted = !this.muted;
         try {
             localStorage.setItem('jungleRunMuted', String(this.muted));
-        } catch {
-            // Local storage can be unavailable in private browsing.
-        }
+        } catch {}
         this.syncButton();
         if (!this.muted) this.play('select');
     }
@@ -74,7 +119,8 @@ class JungleAudio {
             hit: [150, 55, 0.3, 'sawtooth', 0.06],
             select: [300, 440, 0.08, 'sine', 0.025],
             milestone: [330, 760, 0.38, 'triangle', 0.045],
-            land: [90, 55, 0.08, 'sine', 0.025]
+            land: [90, 55, 0.08, 'sine', 0.025],
+            victory: [440, 880, 0.5, 'triangle', 0.06]
         };
         const [from, to, duration, wave, volume] = presets[type] || presets.select;
         const now = context.currentTime;
@@ -100,29 +146,39 @@ class JungleRun {
         this.app = null;
         this.state = 'loading';
         this.keys = Object.create(null);
-        this.touch = { left: false, right: false, jump: false };
+        this.touch = { left: false, right: false, jump: false, climbUp: false, climbDown: false };
+        
+        // Game stats
         this.score = 0;
         this.lives = 3;
         this.distance = 0;
-        this.bestDistance = this.readNumber('jungleRunBestDistance');
-        this.bestScore = this.readNumber('jungleRunBestScore');
-        this.collectCount = 0;
         this.cameraX = 0;
         this.lastSpawnX = 0;
         this.invincibleFrames = 0;
         this.coyoteFrames = 0;
         this.jumpBufferFrames = 0;
+        this.collectCount = 0;
+        this.spawnedCollectiblesCount = 0;
+        
+        // Level management
+        this.unlockedLevel = this.readNumber('jungleRunUnlockedLevel') || 1;
+        this.selectedLevelIndex = 0;
+        this.currentLevel = LEVELS[0];
+        
+        // Lists
         this.effects = [];
         this.obstacles = [];
         this.collectibles = [];
         this.vines = [];
         this.platforms = [];
+        this.trees = [];
         this.parallaxLayers = [];
         this.uiCache = {};
-        this.currentBiome = -1;
+        
         this.toastTimer = null;
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.audio = new JungleAudio(document.getElementById('soundBtn'));
+        
         this.init();
     }
 
@@ -137,9 +193,7 @@ class JungleRun {
     saveNumber(key, value) {
         try {
             localStorage.setItem(key, String(value));
-        } catch {
-            // Scores still work for the current session.
-        }
+        } catch {}
     }
 
     async init() {
@@ -156,54 +210,279 @@ class JungleRun {
                 preference: 'webgl'
             });
 
-            const playerTextures = await Promise.all([
-                PIXI.Assets.load('./assets/explorer-run.png?v=2'),
-                PIXI.Assets.load('./assets/explorer-jump.png?v=2'),
-                PIXI.Assets.load('./assets/explorer-run-contact.png?v=2'),
-                PIXI.Assets.load('./assets/explorer-run-down.png?v=2'),
-                PIXI.Assets.load('./assets/explorer-run-passing.png?v=2')
+            // Load all textures (Realistic Assets + Dedicated Climbing Sprites & Tree Trunk)
+            const textures = await Promise.all([
+                PIXI.Assets.load('./assets/explorer-run.png'),
+                PIXI.Assets.load('./assets/explorer-jump.png'),
+                PIXI.Assets.load('./assets/explorer-run-contact.png'),
+                PIXI.Assets.load('./assets/explorer-run-down.png'),
+                PIXI.Assets.load('./assets/explorer-run-passing.png'),
+                PIXI.Assets.load('./assets/obstacle-crocodile.png'),
+                PIXI.Assets.load('./assets/obstacle-log.png'),
+                PIXI.Assets.load('./assets/obstacle-ruin.png'),
+                PIXI.Assets.load('./assets/collectible-relic.png'),
+                PIXI.Assets.load('./assets/collectible-coin.png'),
+                PIXI.Assets.load('./assets/platform.png'),
+                PIXI.Assets.load('./assets/moon.png'),
+                PIXI.Assets.load('./assets/background-layer1.png'),
+                PIXI.Assets.load('./assets/background-layer2.png'),
+                PIXI.Assets.load('./assets/background-layer3.png'),
+                PIXI.Assets.load('./assets/explorer-climb-1.png'),
+                PIXI.Assets.load('./assets/explorer-climb-2.png'),
+                PIXI.Assets.load('./assets/tree-trunk.png')
             ]);
-            this.playerTexture = playerTextures[0];
-            this.playerJumpTexture = playerTextures[1];
-            this.playerRunTextures = [
-                playerTextures[2],
-                playerTextures[3],
-                playerTextures[4],
-                playerTextures[0]
-            ];
+
+            this.playerTexture = textures[0];
+            this.playerJumpTexture = textures[1];
+            this.playerRunTextures = [textures[2], textures[3], textures[4], textures[0]];
+            
+            this.crocodileTexture = textures[5];
+            this.logTexture = textures[6];
+            this.ruinTexture = textures[7];
+            this.relicTexture = textures[8];
+            this.coinTexture = textures[9];
+            this.platformTexture = textures[10];
+            this.moonTexture = textures[11];
+            
+            this.bgLayer1 = textures[12];
+            this.bgLayer2 = textures[13];
+            this.bgLayer3 = textures[14];
+
+            this.playerClimbTextures = [textures[15], textures[16]];
+            this.treeTrunkTexture = textures[17];
+
             this.createBackdrop();
             this.createWorld();
             this.setupEventListeners();
+            
+            // Build the levels selector cards in startScreen
+            this.renderLevelSelector();
+
             this.app.ticker.add(this.gameLoop, this);
             this.state = 'intro';
             this.syncHud(true);
-            document.getElementById('bestScore').textContent = this.pad(this.bestScore, 4);
+            
+            // Enabled start expedition
             document.getElementById('startBtn').disabled = false;
         } catch (error) {
-            console.error('Jungle Run could not initialize:', error);
-            const startButton = document.getElementById('startBtn');
-            startButton.disabled = true;
-            startButton.querySelector('span').textContent = 'Não foi possível iniciar';
+            console.error('Jungle Run overhaul initialization failed:', error);
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.querySelector('span').textContent = 'Erro ao carregar texturas';
+            }
         }
+    }
+
+    renderLevelSelector() {
+        const grid = document.getElementById('levelGrid');
+        grid.innerHTML = '';
+        
+        LEVELS.forEach((level, idx) => {
+            const isLocked = idx > 0 && level.id > this.unlockedLevel && level.id !== 5;
+            const isEndlessLocked = level.id === 5 && this.unlockedLevel < 4;
+            
+            const locked = isLocked || isEndlessLocked;
+            const recordScore = this.readNumber(`jungleRunBestScore_lvl_${level.id}`);
+            
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = `level-card ${locked ? 'locked' : ''} ${idx === this.selectedLevelIndex ? 'selected' : ''}`;
+            card.disabled = locked;
+            
+            card.innerHTML = `
+                <span class="level-card-number">EXPEDIÇÃO 0${level.id}</span>
+                <h4 class="level-card-title">${level.name}</h4>
+                <p class="level-card-desc">${level.description}</p>
+                <div class="level-card-meta">
+                    <span>Meta: ${level.distanceGoal === Infinity ? 'Infinito' : level.distanceGoal + 'm'}</span>
+                    <span>Recorde: ${recordScore > 0 ? recordScore : '---'}</span>
+                </div>
+                ${locked ? '<span class="level-card-lock-icon">🔒</span>' : ''}
+            `;
+            
+            if (!locked) {
+                card.addEventListener('click', () => {
+                    this.audio.play('select');
+                    document.querySelectorAll('.level-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    this.selectedLevelIndex = idx;
+                    this.currentLevel = level;
+                    
+                    document.getElementById('startBtn').querySelector('span').textContent = `Iniciar: ${level.name}`;
+                });
+            }
+            
+            grid.appendChild(card);
+        });
+
+        this.currentLevel = LEVELS[this.selectedLevelIndex];
+        document.getElementById('startBtn').querySelector('span').textContent = `Iniciar: ${this.currentLevel.name}`;
+        
+        const generalRecord = this.readNumber('jungleRunBestScore');
+        document.getElementById('bestScore').textContent = this.pad(generalRecord, 4);
+    }
+
+    createBackdrop() {
+        const sky = new PIXI.Graphics();
+        sky.rect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT).fill(0x040c0b);
+        this.app.stage.addChild(sky);
+
+        const moon = new PIXI.Sprite(this.moonTexture);
+        moon.anchor.set(0.5);
+        moon.x = 760;
+        moon.y = 110;
+        moon.width = 100;
+        moon.height = 100;
+        this.app.stage.addChild(moon);
+
+        const stars = new PIXI.Graphics();
+        const random = this.seededRandom(42);
+        for (let i = 0; i < 60; i++) {
+            const x = random() * CONFIG.WIDTH;
+            const y = 15 + random() * 220;
+            const radius = random() > 0.88 ? 1.5 : 0.8;
+            stars.circle(x, y, radius).fill({ color: 0xfffcd8, alpha: 0.2 + random() * 0.6 });
+        }
+        this.app.stage.addChild(stars);
+
+        this.createParallaxLayer(this.bgLayer3, 0.08, 200, 400);
+        this.createParallaxLayer(this.bgLayer2, 0.20, 150, 450);
+        this.createParallaxLayer(this.bgLayer1, 0.45, 100, 500);
+    }
+
+    createParallaxLayer(texture, speed, y, height) {
+        const tilingSprite = new PIXI.TilingSprite({
+            texture: texture,
+            width: CONFIG.WIDTH + 320,
+            height: height
+        });
+        tilingSprite.y = y;
+        tilingSprite.tileScale.set(1);
+        tilingSprite.alpha = speed === 0.08 ? 0.35 : (speed === 0.20 ? 0.55 : 0.75);
+        this.app.stage.addChild(tilingSprite);
+        this.parallaxLayers.push({ sprite: tilingSprite, speed });
+    }
+
+    seededRandom(seed) {
+        let value = seed >>> 0;
+        return () => {
+            value = (value * 1664525 + 1013904223) >>> 0;
+            return value / 4294967296;
+        };
+    }
+
+    createWorld() {
+        this.world = new PIXI.Container();
+        this.app.stage.addChild(this.world);
+
+        this.ground = new PIXI.Graphics();
+        this.ground.rect(0, CONFIG.GROUND_Y, 100000, CONFIG.HEIGHT - CONFIG.GROUND_Y).fill(0x0e1713);
+        this.ground.rect(0, CONFIG.GROUND_Y, 100000, 10).fill(0x386d3b);
+        this.ground.rect(0, CONFIG.GROUND_Y + 10, 100000, 6).fill(0x1a3a22);
+        
+        for (let x = 0; x < 100000; x += 32) {
+            const height = 4 + (x % 11);
+            this.ground.moveTo(x, CONFIG.GROUND_Y);
+            this.ground.lineTo(x + 5, CONFIG.GROUND_Y - height);
+            this.ground.lineTo(x + 10, CONFIG.GROUND_Y);
+            this.ground.fill(x % 64 ? 0x2e602f : 0x51914b);
+        }
+        this.world.addChild(this.ground);
+
+        this.groundDecor = new PIXI.Container();
+        this.world.addChild(this.groundDecor);
+        for (let x = 60; x < 6000; x += 180) {
+            this.createGroundFern(x);
+        }
+
+        this.playerShadow = new PIXI.Graphics();
+        this.playerShadow.ellipse(0, 0, 32, 7).fill({ color: 0x000603, alpha: 0.4 });
+        this.world.addChild(this.playerShadow);
+
+        this.createPlayer();
+        this.spawnInitialContent();
+    }
+
+    createGroundFern(x) {
+        const plant = new PIXI.Graphics();
+        const color = x % 360 ? 0x1f4c2c : 0x367c48;
+        plant.moveTo(0, 0).quadraticCurveTo(-8, -20, -15, -26).stroke({ color, width: 3.5 });
+        plant.moveTo(0, 0).quadraticCurveTo(6, -16, 15, -20).stroke({ color, width: 3 });
+        plant.ellipse(-15, -26, 7, 3.5).fill(color);
+        plant.ellipse(15, -20, 6.5, 3).fill(color);
+        plant.x = x;
+        plant.y = CONFIG.GROUND_Y + 4;
+        this.groundDecor.addChild(plant);
+    }
+
+    createPlayer() {
+        this.player = new PIXI.Container();
+        this.player.x = 150;
+        this.player.y = CONFIG.GROUND_Y;
+        this.player.vx = 0;
+        this.player.vy = 0;
+        this.player.onGround = true;
+        this.player.onVine = null;
+        this.player.onTree = null;
+        this.player.climbProgress = 0.8;
+        this.player.facing = 1;
+        this.player.jumpHeld = false;
+
+        const aura = new PIXI.Graphics();
+        aura.ellipse(0, -48, 45, 55).fill({ color: 0x8bf2bd, alpha: 0.05 });
+        aura.blendMode = 'add';
+        this.player.addChild(aura);
+        this.player.aura = aura;
+
+        this.player.visual = new PIXI.Container();
+        this.player.baseSpriteScale = 108 / this.playerTexture.height;
+        this.player.pose = 'run-0';
+
+        const rim = new PIXI.Sprite(this.playerTexture);
+        rim.anchor.set(0.5, 0.98);
+        rim.scale.set(this.player.baseSpriteScale * 1.03);
+        rim.tint = 0x8df5c2;
+        rim.alpha = 0.16;
+        rim.blendMode = 'add';
+        this.player.visual.addChild(rim);
+
+        const sprite = new PIXI.Sprite(this.playerTexture);
+        sprite.anchor.set(0.5, 0.98);
+        sprite.scale.set(this.player.baseSpriteScale);
+        this.player.visual.addChild(sprite);
+        
+        this.player.sprite = sprite;
+        this.player.rim = rim;
+        this.player.addChild(this.player.visual);
+
+        this.playerTrails = [];
+        for (let i = 0; i < 2; i++) {
+            const trail = new PIXI.Sprite(this.playerTexture);
+            trail.anchor.set(0.5, 0.98);
+            trail.scale.set(this.player.baseSpriteScale);
+            trail.tint = i === 0 ? 0x86e8b4 : 0xf0d080;
+            trail.alpha = 0;
+            trail.blendMode = 'add';
+            this.world.addChild(trail);
+            this.playerTrails.push(trail);
+        }
+
+        this.world.addChild(this.player);
     }
 
     setupEventListeners() {
         window.addEventListener('keydown', (event) => {
             this.keys[event.code] = true;
-            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS'].includes(event.code)) {
                 event.preventDefault();
             }
-            if (
-                !event.repeat &&
-                ['Space', 'ArrowUp', 'KeyW'].includes(event.code)
-            ) {
+            if (!event.repeat && ['Space', 'ArrowUp', 'KeyW'].includes(event.code)) {
                 this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
             }
-
             if ((event.code === 'Escape' || event.code === 'KeyP') && !event.repeat) {
                 this.togglePause();
             }
-
             if (event.code === 'Enter' && !event.repeat) {
                 if (this.state === 'intro') this.startExpedition();
                 else if (this.state === 'over') this.restartGame();
@@ -228,6 +507,9 @@ class JungleRun {
         document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
         document.getElementById('resumeBtn').addEventListener('click', () => this.resumeGame());
         document.getElementById('soundBtn').addEventListener('click', () => this.audio.toggle());
+        
+        document.getElementById('nextLevelBtn').addEventListener('click', () => this.advanceToNextLevel());
+        document.getElementById('completeMenuBtn').addEventListener('click', () => this.backToMenu());
 
         this.bindHoldButton('leftBtn', 'left');
         this.bindHoldButton('rightBtn', 'right');
@@ -258,323 +540,173 @@ class JungleRun {
         button.addEventListener('contextmenu', (event) => event.preventDefault());
     }
 
-    createBackdrop() {
-        const sky = new PIXI.Graphics();
-        const bands = [
-            [0, 125, 0x081329],
-            [125, 125, 0x102a39],
-            [250, 135, 0x174638],
-            [385, 215, 0x0a2518]
-        ];
-        for (const [y, height, color] of bands) {
-            sky.rect(0, y, CONFIG.WIDTH, height).fill(color);
-        }
-        this.app.stage.addChild(sky);
-
-        const moonGlow = new PIXI.Graphics();
-        moonGlow.circle(760, 108, 76).fill({ color: 0xe8e3a9, alpha: 0.04 });
-        moonGlow.circle(760, 108, 48).fill({ color: 0xf0e9b3, alpha: 0.08 });
-        moonGlow.circle(760, 108, 28).fill({ color: 0xfff4c7, alpha: 0.72 });
-        moonGlow.circle(750, 101, 5).fill({ color: 0xd7d19c, alpha: 0.36 });
-        moonGlow.circle(770, 116, 4).fill({ color: 0xd7d19c, alpha: 0.28 });
-        this.app.stage.addChild(moonGlow);
-
-        const stars = new PIXI.Graphics();
-        const random = this.seededRandom(17);
-        for (let i = 0; i < 80; i++) {
-            const x = random() * CONFIG.WIDTH;
-            const y = 28 + random() * 205;
-            const radius = random() > 0.86 ? 1.6 : 0.8;
-            stars.circle(x, y, radius).fill({ color: 0xf8f0c9, alpha: 0.25 + random() * 0.55 });
-        }
-        this.app.stage.addChild(stars);
-
-        this.createParallaxLayer(0.1, 0x112e31, 325, 0.72, 22, 81);
-        this.createParallaxLayer(0.22, 0x153d32, 366, 0.82, 28, 123);
-        this.createParallaxLayer(0.42, 0x164d31, 408, 0.96, 34, 241);
-
-        this.fireflies = new PIXI.Container();
-        for (let i = 0; i < 20; i++) {
-            const fly = new PIXI.Graphics();
-            fly.circle(0, 0, i % 4 === 0 ? 2.1 : 1.2).fill({ color: 0xd8ef74, alpha: 0.78 });
-            fly.x = random() * CONFIG.WIDTH;
-            fly.y = 210 + random() * 240;
-            fly.baseY = fly.y;
-            fly.phase = random() * Math.PI * 2;
-            this.fireflies.addChild(fly);
-        }
-        this.app.stage.addChild(this.fireflies);
-    }
-
-    seededRandom(seed) {
-        let value = seed >>> 0;
-        return () => {
-            value = (value * 1664525 + 1013904223) >>> 0;
-            return value / 4294967296;
-        };
-    }
-
-    createParallaxLayer(speed, color, baseline, alpha, count, seed) {
-        const layer = new PIXI.Container();
-        const width = 2400;
-        const random = this.seededRandom(seed);
-
-        for (let repeat = 0; repeat < 2; repeat++) {
-            for (let i = 0; i < count; i++) {
-                const x = repeat * width + (i / count) * width + random() * 38;
-                const scale = 0.55 + random() * 0.75;
-                const tree = this.createJungleTree(color, alpha, scale);
-                tree.x = x;
-                tree.y = baseline + random() * 32;
-                layer.addChild(tree);
-            }
-        }
-
-        this.app.stage.addChild(layer);
-        this.parallaxLayers.push({ container: layer, speed, width });
-    }
-
-    createJungleTree(color, alpha, scale) {
-        const tree = new PIXI.Graphics();
-        const trunkHeight = 82 * scale;
-        const trunkWidth = 13 * scale;
-        tree.roundRect(-trunkWidth / 2, -trunkHeight, trunkWidth, trunkHeight + 30, trunkWidth / 2)
-            .fill({ color: 0x2c2a1c, alpha: alpha * 0.72 });
-
-        const crownY = -trunkHeight;
-        for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI * 2 * i) / 6;
-            const x = Math.cos(angle) * 24 * scale;
-            const y = crownY + Math.sin(angle) * 18 * scale;
-            tree.ellipse(x, y, 42 * scale, 23 * scale).fill({ color, alpha });
-        }
-        tree.circle(0, crownY, 31 * scale).fill({ color, alpha });
-        return tree;
-    }
-
-    createWorld() {
-        this.world = new PIXI.Container();
-        this.app.stage.addChild(this.world);
-
-        this.ground = new PIXI.Graphics();
-        this.ground.rect(0, CONFIG.GROUND_Y, 100000, CONFIG.HEIGHT - CONFIG.GROUND_Y)
-            .fill(0x1c2115);
-        this.ground.rect(0, CONFIG.GROUND_Y, 100000, 13)
-            .fill(0x3f7f3e);
-        this.ground.rect(0, CONFIG.GROUND_Y + 13, 100000, 7)
-            .fill(0x254f2b);
-        for (let x = 0; x < 100000; x += 42) {
-            const height = 5 + (x % 17);
-            this.ground.moveTo(x, CONFIG.GROUND_Y);
-            this.ground.lineTo(x + 7, CONFIG.GROUND_Y - height);
-            this.ground.lineTo(x + 13, CONFIG.GROUND_Y);
-            this.ground.fill(x % 84 ? 0x4a9147 : 0x65a858);
-        }
-        this.world.addChild(this.ground);
-
-        this.groundDecor = new PIXI.Container();
-        this.world.addChild(this.groundDecor);
-        for (let x = 60; x < 5000; x += 140) this.createGroundPlant(x);
-
-        this.playerShadow = new PIXI.Graphics();
-        this.playerShadow.ellipse(0, 0, 33, 8).fill({ color: 0x020905, alpha: 0.34 });
-        this.world.addChild(this.playerShadow);
-
-        this.createPlayer();
-        this.spawnInitialContent();
-    }
-
-    createGroundPlant(x) {
-        const plant = new PIXI.Graphics();
-        const color = x % 280 ? 0x255f35 : 0x367944;
-        plant.moveTo(0, 0).quadraticCurveTo(-10, -22, -18, -29).stroke({ color, width: 4 });
-        plant.moveTo(0, 0).quadraticCurveTo(8, -18, 19, -23).stroke({ color, width: 3 });
-        plant.ellipse(-18, -29, 9, 4).fill(color);
-        plant.ellipse(19, -23, 8, 4).fill(color);
-        plant.x = x;
-        plant.y = CONFIG.GROUND_Y + 7;
-        this.groundDecor.addChild(plant);
-    }
-
-    createPlayer() {
-        this.player = new PIXI.Container();
-        this.player.x = 150;
-        this.player.y = CONFIG.GROUND_Y;
-        this.player.vx = 0;
-        this.player.vy = 0;
-        this.player.onGround = true;
-        this.player.onVine = null;
-        this.player.facing = 1;
-        this.player.jumpHeld = false;
-
-        const aura = new PIXI.Graphics();
-        aura.ellipse(0, -49, 43, 55).fill({ color: 0x8bf2bd, alpha: 0.055 });
-        aura.blendMode = 'add';
-        this.player.addChild(aura);
-        this.player.aura = aura;
-
-        this.player.visual = new PIXI.Container();
-        this.player.baseSpriteScale = 116 / this.playerTexture.height;
-        this.player.pose = 'run-0';
-
-        const rim = new PIXI.Sprite(this.playerTexture);
-        rim.anchor.set(0.53, 0.985);
-        rim.scale.set(this.player.baseSpriteScale * 1.045);
-        rim.tint = 0x72dca5;
-        rim.alpha = 0.2;
-        rim.blendMode = 'add';
-        this.player.visual.addChild(rim);
-
-        const sprite = new PIXI.Sprite(this.playerTexture);
-        sprite.anchor.set(0.53, 0.985);
-        sprite.scale.set(this.player.baseSpriteScale);
-        this.player.visual.addChild(sprite);
-        this.player.sprite = sprite;
-        this.player.rim = rim;
-        this.player.addChild(this.player.visual);
-
-        this.playerTrails = [];
-        for (let i = 0; i < 2; i++) {
-            const trail = new PIXI.Sprite(this.playerTexture);
-            trail.anchor.set(0.53, 0.985);
-            trail.scale.set(this.player.baseSpriteScale);
-            trail.tint = i === 0 ? 0x70dba4 : 0xf0ce72;
-            trail.alpha = 0;
-            trail.blendMode = 'add';
-            this.world.addChild(trail);
-            this.playerTrails.push(trail);
-        }
-
-        this.world.addChild(this.player);
-    }
-
     spawnInitialContent() {
-        for (let i = 0; i < 6; i++) this.spawnCollectible(420 + i * 72, i === 5);
-        for (let x = 840; x < CONFIG.SPAWN_AHEAD; x += CONFIG.SEGMENT_WIDTH) {
+        this.spawnedCollectiblesCount = 0;
+        for (let i = 0; i < 5; i++) {
+            this.spawnCollectible(400 + i * 80, false);
+        }
+        for (let x = 800; x < CONFIG.SPAWN_AHEAD; x += CONFIG.SEGMENT_WIDTH) {
             this.spawnSegment(x);
         }
         this.lastSpawnX = CONFIG.SPAWN_AHEAD;
     }
 
     spawnSegment(x) {
-        const difficulty = Math.min(1, this.distance / 900);
-        const roll = Math.random();
+        const allowed = this.currentLevel.allowedObstacles;
+        const choices = [];
+        
+        if (allowed.includes('pit') && Math.random() < 0.22) choices.push('pit');
+        if (allowed.includes('crocodile') && Math.random() < 0.25) choices.push('crocodile');
+        if (allowed.includes('log') && Math.random() < 0.28) choices.push('log');
+        if (allowed.includes('vine') && Math.random() < 0.24) choices.push('vine');
+        if (allowed.includes('ruin') && Math.random() < 0.20) choices.push('ruin');
+        if (allowed.includes('tree') && Math.random() < 0.26) choices.push('tree');
 
-        if (roll < 0.22 + difficulty * 0.04) {
-            this.spawnPit(x);
-        } else if (roll < 0.43 + difficulty * 0.05) {
-            this.spawnCrocodile(x + 70);
-        } else if (roll < 0.61 + difficulty * 0.05) {
-            this.spawnLog(x + 90, difficulty);
-        } else if (roll < 0.77) {
-            this.spawnVine(x + 120);
-        } else {
-            this.spawnRuin(x + 75);
+        if (choices.length > 0) {
+            const select = choices[Math.floor(Math.random() * choices.length)];
+            if (select === 'pit') this.spawnPit(x);
+            else if (select === 'crocodile') this.spawnCrocodile(x + 50);
+            else if (select === 'log') this.spawnLog(x + 80);
+            else if (select === 'vine') this.spawnVine(x + 100);
+            else if (select === 'ruin') this.spawnRuin(x + 60);
+            else if (select === 'tree') this.spawnTree(x + 90);
         }
 
-        if (Math.random() < 0.7) {
-            const count = Math.random() < 0.35 ? 3 : 1;
+        if (allowed.includes('platform') && (choices.includes('pit') || choices.includes('tree')) && Math.random() < 0.6) {
+            this.spawnPlatform(x + 40, CONFIG.GROUND_Y - 75, 110);
+        }
+
+        if (Math.random() < 0.65) {
+            const count = Math.random() < 0.3 ? 3 : 1;
+            const forceRelic = Math.random() < 0.15;
             for (let i = 0; i < count; i++) {
-                this.spawnCollectible(x + 55 + i * 46, count === 1 && Math.random() < 0.22);
+                this.spawnCollectible(x + 60 + i * 50, forceRelic && i === 0);
             }
         }
     }
 
-    spawnPit(x) {
-        const width = 104 + Math.random() * 54;
-        const pit = new PIXI.Graphics();
-        pit.rect(0, -2, width, 148).fill(0x030907);
-        pit.rect(8, 15, width - 16, 120).fill({ color: 0x214b38, alpha: 0.35 });
-        pit.ellipse(width / 2, 26, width * 0.43, 18).fill({ color: 0x51b56a, alpha: 0.11 });
-        for (let i = 8; i < width - 8; i += 17) {
-            pit.moveTo(i, 9).lineTo(i + 6, -9).lineTo(i + 12, 9).fill(0x13251a);
-        }
-        pit.x = x;
-        pit.y = CONFIG.GROUND_Y;
-        pit.type = 'pit';
-        pit.hitWidth = width;
-        this.world.addChild(pit);
-        this.obstacles.push(pit);
-
-        if (width > 135 && Math.random() < 0.55) {
-            this.createPlatform(x + width * 0.35, CONFIG.GROUND_Y - 66, width * 0.32);
-        }
+    spawnTree(x) {
+        const tree = new PIXI.Sprite(this.treeTrunkTexture);
+        tree.anchor.set(0.5, 1.0);
+        tree.x = x;
+        tree.y = CONFIG.GROUND_Y + 5;
+        tree.width = 65;
+        tree.height = 320;
+        tree.type = 'tree';
+        tree.hitWidth = 50;
+        tree.hitHeight = 310;
+        
+        this.world.addChild(tree);
+        this.trees.push(tree);
     }
 
-    createPlatform(x, y, width) {
-        const platform = new PIXI.Graphics();
-        platform.roundRect(0, 0, width, 14, 4).fill(0x75512c).stroke({ color: 0x241b10, width: 3 });
-        platform.rect(5, 3, width - 10, 4).fill(0xb17b3a);
+    spawnPlatform(x, y, width) {
+        const platform = new PIXI.Sprite(this.platformTexture);
         platform.x = x;
         platform.y = y;
+        platform.width = width;
+        platform.height = 20;
         platform.type = 'platform';
         platform.platformWidth = width;
         this.world.addChild(platform);
         this.platforms.push(platform);
     }
 
-    spawnCrocodile(x) {
-        const croc = new PIXI.Container();
-        const body = new PIXI.Graphics();
-        body.ellipse(0, 0, 49, 15).fill(0x3f7f44).stroke({ color: 0x07150f, width: 4 });
-        body.moveTo(43, -2).lineTo(72, -8).lineTo(68, 7).closePath().fill(0x2f6639)
-            .stroke({ color: 0x07150f, width: 3 });
-        for (let i = -35; i < 35; i += 15) {
-            body.moveTo(i, -13).lineTo(i + 6, -22).lineTo(i + 12, -13).fill(0x25532f);
+    spawnPit(x) {
+        const width = 110 + Math.random() * 50;
+        const pit = new PIXI.Graphics();
+        pit.rect(0, -2, width, 150).fill(0x020705);
+        pit.rect(6, 12, width - 12, 126).fill({ color: 0x1b3528, alpha: 0.25 });
+        
+        for (let i = 6; i < width - 6; i += 16) {
+            pit.moveTo(i, 8).lineTo(i + 5, -8).lineTo(i + 10, 8).fill(0x0e1a13);
         }
-        body.circle(-40, -10, 4).fill(0xf3cf63);
-        body.circle(-41, -10, 1.5).fill(0x07150f);
+        
+        pit.x = x;
+        pit.y = CONFIG.GROUND_Y;
+        pit.type = 'pit';
+        pit.hitWidth = width;
+        
+        this.world.addChild(pit);
+        this.obstacles.push(pit);
+    }
 
-        const jaw = new PIXI.Graphics();
-        jaw.moveTo(-48, 0).lineTo(-78, 7).lineTo(-43, 11).closePath().fill(0x5e9c50)
-            .stroke({ color: 0x07150f, width: 3 });
-        for (let xPos = -70; xPos < -48; xPos += 7) {
-            jaw.moveTo(xPos, 4).lineTo(xPos + 3, -2).lineTo(xPos + 6, 4).fill(0xf3efd2);
-        }
-        croc.addChild(body, jaw);
-        croc.jaw = jaw;
+    spawnCrocodile(x) {
+        const croc = new PIXI.Sprite(this.crocodileTexture);
+        croc.anchor.set(0.5, 1.0);
         croc.x = x;
-        croc.y = CONFIG.GROUND_Y - 15;
+        croc.y = CONFIG.GROUND_Y + 2;
+        croc.width = 110;
+        croc.height = 45;
         croc.type = 'crocodile';
-        croc.hitWidth = 104;
-        croc.hitHeight = 34;
+        croc.hitWidth = 92;
+        croc.hitHeight = 28;
         croc.phase = Math.random() * Math.PI * 2;
+        croc.startY = croc.y;
+        
         this.world.addChild(croc);
         this.obstacles.push(croc);
     }
 
-    spawnLog(x, difficulty) {
-        const log = new PIXI.Container();
-        const body = new PIXI.Graphics();
-        body.roundRect(-40, -17, 80, 34, 13).fill(0x754325).stroke({ color: 0x21160e, width: 4 });
-        body.rect(-27, -12, 52, 5).fill({ color: 0xb8793f, alpha: 0.5 });
-        body.circle(-34, 0, 14).fill(0xa16d3d).stroke({ color: 0x402817, width: 3 });
-        body.circle(-34, 0, 7).stroke({ color: 0x62401f, width: 2 });
-        log.addChild(body);
+    spawnLog(x) {
+        const log = new PIXI.Sprite(this.logTexture);
+        log.anchor.set(0.5);
         log.x = x;
-        log.y = CONFIG.GROUND_Y - 18;
+        log.y = CONFIG.GROUND_Y - 17;
+        log.width = 76;
+        log.height = 38;
         log.type = 'log';
-        log.hitWidth = 72;
-        log.hitHeight = 34;
-        log.vx = -(1.15 + Math.random() * 0.75 + difficulty);
+        log.hitWidth = 64;
+        log.hitHeight = 30;
+        log.vx = -(1.2 + Math.random() * 0.9 + (this.distance / 400));
+        
         this.world.addChild(log);
         this.obstacles.push(log);
     }
 
+    spawnRuin(x) {
+        const ruin = new PIXI.Sprite(this.ruinTexture);
+        ruin.anchor.set(0.5, 1.0);
+        ruin.x = x;
+        ruin.y = CONFIG.GROUND_Y + 3;
+        ruin.width = 72;
+        ruin.height = 108;
+        ruin.type = 'ruin';
+        ruin.hitWidth = 40;
+        ruin.hitHeight = 85;
+        
+        this.world.addChild(ruin);
+        this.obstacles.push(ruin);
+    }
+
     spawnVine(x) {
         const vine = new PIXI.Container();
-        const rope = new PIXI.Graphics();
+        const ropeLine = new PIXI.Graphics();
         const grip = new PIXI.Graphics();
-        grip.circle(0, 0, 10).fill(0x6b9f46).stroke({ color: 0x17371e, width: 3 });
-        vine.addChild(rope, grip);
+        grip.circle(0, 0, 9).fill(0x386d3b).stroke({ color: 0x091c10, width: 2.5 });
+        
+        vine.addChild(ropeLine, grip);
         vine.x = x;
-        vine.y = 50;
+        vine.y = 40;
         vine.type = 'vine';
-        vine.rope = rope;
+        vine.rope = ropeLine;
         vine.grip = grip;
-        vine.ropeLength = 245 + Math.random() * 40;
-        vine.angle = -0.35 + Math.random() * 0.25;
-        vine.angularVelocity = 0.012 + Math.random() * 0.004;
+        vine.ropeLength = 250 + Math.random() * 35;
+        vine.angle = -0.36 + Math.random() * 0.25;
+        vine.angularVelocity = 0.011 + Math.random() * 0.005;
+        
+        vine.leaves = [];
+        const leafCount = 6;
+        for (let i = 0; i < leafCount; i++) {
+            const leaf = new PIXI.Graphics();
+            const side = i % 2 === 0 ? 1 : -1;
+            leaf.ellipse(0, 0, 8, 3.5).fill(0x51914b).stroke({ color: 0x1a3a22, width: 1.5 });
+            leaf.pivot.set(side * 8, 0);
+            leaf.rotation = side * (0.3 + Math.random() * 0.3);
+            vine.addChild(leaf);
+            vine.leaves.push({ leaf, ratio: 0.15 + (i / leafCount) * 0.75, side });
+        }
+
         this.drawVine(vine);
         this.world.addChild(vine);
         this.vines.push(vine);
@@ -583,62 +715,46 @@ class JungleRun {
     drawVine(vine) {
         const endX = Math.sin(vine.angle) * vine.ropeLength;
         const endY = Math.cos(vine.angle) * vine.ropeLength;
+        
         vine.rope.clear();
-        vine.rope.moveTo(0, 0).quadraticCurveTo(endX * 0.45 - 12, endY * 0.45, endX, endY)
-            .stroke({ color: 0x173b26, width: 9 });
-        vine.rope.moveTo(0, 0).quadraticCurveTo(endX * 0.45 - 12, endY * 0.45, endX, endY)
-            .stroke({ color: 0x4a8f48, width: 4 });
+        vine.rope.moveTo(0, 0).quadraticCurveTo(endX * 0.45 - 8, endY * 0.45, endX, endY)
+            .stroke({ color: 0x0e2815, width: 8 });
+        vine.rope.moveTo(0, 0).quadraticCurveTo(endX * 0.45 - 8, endY * 0.45, endX, endY)
+            .stroke({ color: 0x3d7e48, width: 3.5 });
+            
         vine.grip.x = endX;
         vine.grip.y = endY;
+
+        vine.leaves.forEach(item => {
+            const r = item.ratio;
+            const curX = Math.sin(vine.angle) * (vine.ropeLength * r);
+            const curY = Math.cos(vine.angle) * (vine.ropeLength * r);
+            item.leaf.x = curX;
+            item.leaf.y = curY;
+            item.leaf.rotation = vine.angle + item.side * 0.4;
+        });
     }
 
-    spawnRuin(x) {
-        const ruin = new PIXI.Graphics();
-        ruin.roundRect(-23, -72, 46, 72, 4).fill(0x526854).stroke({ color: 0x1a2b20, width: 4 });
-        ruin.rect(-30, -74, 60, 12).fill(0x71806a).stroke({ color: 0x1a2b20, width: 3 });
-        ruin.rect(-13, -49, 26, 31).fill(0x17241c);
-        ruin.circle(0, -48, 13).fill(0x17241c);
-        ruin.moveTo(-23, -23).lineTo(23, -36).stroke({ color: 0x37473b, width: 4 });
-        ruin.x = x;
-        ruin.y = CONFIG.GROUND_Y;
-        ruin.type = 'ruin';
-        ruin.hitWidth = 44;
-        ruin.hitHeight = 64;
-        this.world.addChild(ruin);
-        this.obstacles.push(ruin);
-    }
-
-    spawnCollectible(x, forceRelic = false) {
-        const collectible = new PIXI.Container();
-        const isRelic = forceRelic || Math.random() < 0.18;
+    spawnCollectible(x, isRelic = false) {
+        const coll = new PIXI.Sprite(isRelic ? this.relicTexture : this.coinTexture);
+        coll.anchor.set(0.5);
+        coll.x = x;
+        coll.baseY = CONFIG.GROUND_Y - 60 - Math.random() * 90;
+        coll.y = coll.baseY;
+        coll.width = isRelic ? 36 : 30;
+        coll.height = isRelic ? 36 : 30;
+        coll.type = isRelic ? 'relic' : 'coin';
+        coll.value = isRelic ? 250 : 50;
+        coll.phase = Math.random() * Math.PI * 2;
+        
         const glow = new PIXI.Graphics();
-        const gem = new PIXI.Graphics();
+        glow.circle(0, 0, isRelic ? 24 : 18).fill({ color: isRelic ? 0x8bf2bd : 0xf0ce72, alpha: 0.15 });
+        coll.addChild(glow);
+        coll.glow = glow;
 
-        if (isRelic) {
-            glow.circle(0, 0, 25).fill({ color: 0x58e4b0, alpha: 0.16 });
-            gem.moveTo(0, -16).lineTo(13, -4).lineTo(8, 13).lineTo(-8, 13).lineTo(-13, -4)
-                .closePath().fill(0x55e5b2).stroke({ color: 0xd2ffec, width: 2 });
-            gem.moveTo(-12, -4).lineTo(12, -4).lineTo(0, 13).closePath()
-                .stroke({ color: 0x147654, width: 2 });
-            collectible.value = 125;
-            collectible.type = 'relic';
-        } else {
-            glow.circle(0, 0, 22).fill({ color: 0xf6cf69, alpha: 0.14 });
-            gem.circle(0, 0, 12).fill(0xf2c75e).stroke({ color: 0xffefaa, width: 2 });
-            gem.circle(0, 0, 6).stroke({ color: 0xb5772d, width: 2 });
-            gem.moveTo(-5, 0).lineTo(5, 0).stroke({ color: 0xb5772d, width: 2 });
-            collectible.value = 50;
-            collectible.type = 'coin';
-        }
-
-        collectible.addChild(glow, gem);
-        collectible.glow = glow;
-        collectible.baseY = CONFIG.GROUND_Y - 68 - Math.random() * 82;
-        collectible.x = x;
-        collectible.y = collectible.baseY;
-        collectible.phase = Math.random() * Math.PI * 2;
-        this.world.addChild(collectible);
-        this.collectibles.push(collectible);
+        this.world.addChild(coll);
+        this.collectibles.push(coll);
+        this.spawnedCollectiblesCount++;
     }
 
     async startExpedition() {
@@ -649,27 +765,46 @@ class JungleRun {
         this.state = 'countdown';
         await this.runCountdown();
         if (this.state !== 'countdown') return;
+        
+        this.score = 0;
+        this.distance = 0;
+        this.lives = 3;
+        this.cameraX = 0;
+        this.lastSpawnX = 0;
+        this.collectCount = 0;
+        
+        this.player.x = 150;
+        this.player.y = CONFIG.GROUND_Y;
+        this.player.vx = 0;
+        this.player.vy = 0;
+        this.player.onGround = true;
+        this.player.onVine = null;
+        this.player.onTree = null;
+        
+        this.app.renderer.background.color = this.currentLevel.bgColor;
+
         this.state = 'playing';
-        this.invincibleFrames = 100;
+        this.invincibleFrames = 90;
+        this.syncHud(true);
         this.announce('Expedição iniciada');
     }
 
     async runCountdown() {
-        const element = document.getElementById('countdown');
-        element.classList.remove('hidden', 'go');
-        for (const value of ['3', '2', '1']) {
+        const el = document.getElementById('countdown');
+        el.classList.remove('hidden', 'go');
+        for (const val of ['3', '2', '1']) {
             if (this.state !== 'countdown') break;
-            element.textContent = value;
+            el.textContent = val;
             this.audio.play('select');
-            await new Promise((resolve) => setTimeout(resolve, 480));
+            await new Promise(r => setTimeout(r, 450));
         }
         if (this.state === 'countdown') {
-            element.textContent = 'VAI!';
-            element.classList.add('go');
+            el.textContent = 'VAI!';
+            el.classList.add('go');
             this.audio.play('milestone');
-            await new Promise((resolve) => setTimeout(resolve, 380));
+            await new Promise(r => setTimeout(r, 350));
         }
-        element.classList.add('hidden');
+        el.classList.add('hidden');
     }
 
     pauseGame() {
@@ -707,18 +842,19 @@ class JungleRun {
         this.collectCount = 0;
         this.cameraX = 0;
         this.lastSpawnX = 0;
-        this.invincibleFrames = 120;
-        this.currentBiome = -1;
-        this.effects.forEach((effect) => this.world.removeChild(effect.container));
+        this.invincibleFrames = 100;
+        
+        this.effects.forEach(e => this.world.removeChild(e.container));
         this.effects = [];
-
-        [...this.obstacles, ...this.collectibles, ...this.vines, ...this.platforms].forEach((object) => {
-            if (object.parent) object.parent.removeChild(object);
+        
+        [...this.obstacles, ...this.collectibles, ...this.vines, ...this.platforms, ...this.trees].forEach(obj => {
+            if (obj.parent) obj.parent.removeChild(obj);
         });
         this.obstacles = [];
         this.collectibles = [];
         this.vines = [];
         this.platforms = [];
+        this.trees = [];
 
         this.player.x = 150;
         this.player.y = CONFIG.GROUND_Y;
@@ -726,32 +862,60 @@ class JungleRun {
         this.player.vy = 0;
         this.player.onGround = true;
         this.player.onVine = null;
+        this.player.onTree = null;
         this.player.alpha = 1;
         this.player.scale.set(1);
         this.world.x = 0;
+        
+        this.app.renderer.background.color = this.currentLevel.bgColor;
+        
         this.spawnInitialContent();
         this.releaseInputs();
 
-        ['pauseScreen', 'gameOverScreen', 'countdown'].forEach((id) => {
+        ['pauseScreen', 'gameOverScreen', 'levelCompleteScreen', 'countdown'].forEach(id => {
             document.getElementById(id).classList.add('hidden');
+            document.getElementById(id).setAttribute('aria-hidden', 'true');
         });
-        document.getElementById('pauseScreen').setAttribute('aria-hidden', 'true');
-        document.getElementById('gameOverScreen').setAttribute('aria-hidden', 'true');
+        
         document.getElementById('hud').classList.remove('is-dimmed');
         document.getElementById('mobileControls').classList.remove('is-hidden');
+        
         this.uiCache = {};
         this.syncHud(true);
         this.state = 'playing';
         this.audio.play('select');
-        this.announce('Nova expedição iniciada');
+        this.announce('Expedição reiniciada');
+    }
+
+    backToMenu() {
+        ['pauseScreen', 'gameOverScreen', 'levelCompleteScreen'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+            document.getElementById(id).setAttribute('aria-hidden', 'true');
+        });
+        
+        this.state = 'intro';
+        this.renderLevelSelector();
+        document.getElementById('startScreen').classList.remove('hidden');
+        document.getElementById('hud').classList.remove('is-dimmed');
+        document.getElementById('mobileControls').classList.add('is-hidden');
+        this.announce('Menu principal');
+    }
+
+    advanceToNextLevel() {
+        const currentIdx = LEVELS.findIndex(l => l.id === this.currentLevel.id);
+        if (currentIdx >= 0 && currentIdx < LEVELS.length - 1) {
+            this.selectedLevelIndex = currentIdx + 1;
+            this.currentLevel = LEVELS[this.selectedLevelIndex];
+            this.restartGame();
+        } else {
+            this.backToMenu();
+        }
     }
 
     releaseInputs() {
         this.keys = Object.create(null);
-        Object.keys(this.touch).forEach((key) => {
-            this.touch[key] = false;
-        });
-        document.querySelectorAll('.mobile-btn').forEach((button) => button.classList.remove('is-active'));
+        Object.keys(this.touch).forEach(k => { this.touch[k] = false; });
+        document.querySelectorAll('.mobile-btn').forEach(b => b.classList.remove('is-active'));
     }
 
     gameLoop(ticker) {
@@ -759,55 +923,80 @@ class JungleRun {
         this.updateAmbient(delta);
         if (this.state !== 'playing') return;
 
-        this.handleInput();
+        this.handleInput(delta);
         this.updatePlayer(delta);
         this.updateObstacles(delta);
         this.updateCollectibles(delta);
         this.updateVines(delta);
         this.updateEffects(delta);
         this.updateCamera();
-        this.checkCollisions();
+        this.checkCollisions(delta);
         this.spawnNewContent();
         this.cleanupOffscreen();
         this.syncHud();
+        this.checkVictoryCondition();
     }
 
-    updateAmbient(delta) {
-        const time = this.app.ticker.lastTime / 1000;
-        for (let i = 0; i < this.fireflies.children.length; i++) {
-            const fly = this.fireflies.children[i];
-            fly.y = fly.baseY + Math.sin(time * 1.25 + fly.phase) * 10;
-            fly.x += 0.07 * delta;
-            if (fly.x > CONFIG.WIDTH + 10) fly.x = -10;
-            fly.alpha = 0.25 + (Math.sin(time * 2 + fly.phase) + 1) * 0.32;
-        }
-    }
+    updateAmbient(delta) {}
 
-    handleInput() {
+    handleInput(delta) {
         const left = this.keys.ArrowLeft || this.keys.KeyA || this.touch.left;
         const right = this.keys.ArrowRight || this.keys.KeyD || this.touch.right;
         const jump = this.keys.Space || this.keys.ArrowUp || this.keys.KeyW || this.touch.jump;
+        const climbUp = this.keys.KeyW || this.keys.ArrowUp || this.touch.climbUp;
+        const climbDown = this.keys.KeyS || this.keys.ArrowDown || this.touch.climbDown;
 
         if (jump && !this.player.jumpHeld) this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
         this.player.jumpHeld = Boolean(jump);
 
+        // Vine Climbing
         if (this.player.onVine) {
-            if (!jump && this.jumpBufferFrames > 0) this.releaseVine();
-            if (left) this.player.onVine.angularVelocity -= 0.0005;
-            if (right) this.player.onVine.angularVelocity += 0.0005;
+            const vine = this.player.onVine;
+            if (climbUp) {
+                this.player.climbProgress = Math.max(0.10, this.player.climbProgress - CONFIG.CLIMB_SPEED * delta);
+            }
+            if (climbDown) {
+                this.player.climbProgress = Math.min(0.96, this.player.climbProgress + CONFIG.CLIMB_SPEED * delta);
+            }
+
+            if (left) vine.angularVelocity -= 0.0006 * delta;
+            if (right) vine.angularVelocity += 0.0006 * delta;
+            
+            if (this.jumpBufferFrames > 0) {
+                this.releaseVine();
+            }
             return;
         }
 
+        // Tree Trunk Climbing
+        if (this.player.onTree) {
+            const tree = this.player.onTree;
+            if (climbUp) {
+                this.player.climbProgress = Math.max(0.10, this.player.climbProgress - CONFIG.CLIMB_SPEED * delta);
+            }
+            if (climbDown) {
+                this.player.climbProgress = Math.min(0.98, this.player.climbProgress + CONFIG.CLIMB_SPEED * delta);
+            }
+
+            if (this.jumpBufferFrames > 0) {
+                this.releaseTree(left ? -1 : 1);
+            }
+            return;
+        }
+
+        // Running physics
         let inputVelocity = 0;
         if (left) inputVelocity -= CONFIG.MOVE_SPEED;
         if (right) inputVelocity += CONFIG.MOVE_SPEED;
-        this.player.vx += (inputVelocity - this.player.vx) * 0.24;
-
+        
+        this.player.vx += (inputVelocity - this.player.vx) * 0.22;
         if (inputVelocity !== 0) this.player.facing = Math.sign(inputVelocity);
+        
         if (this.player.onGround) this.coyoteFrames = CONFIG.COYOTE_FRAMES;
         else this.coyoteFrames = Math.max(0, this.coyoteFrames - 1);
 
         if (this.jumpBufferFrames > 0) this.jumpBufferFrames--;
+        
         if (this.jumpBufferFrames > 0 && this.coyoteFrames > 0) {
             this.player.vy = CONFIG.JUMP_FORCE;
             this.player.onGround = false;
@@ -817,182 +1006,227 @@ class JungleRun {
             this.emitDust(this.player.x, this.player.y, 5);
         }
 
-        if (!jump && this.player.vy < -5.6) this.player.vy *= 0.86;
+        if (!jump && this.player.vy < -5.0) {
+            this.player.vy *= 0.84;
+        }
     }
 
     updatePlayer(delta) {
+        // Vine climbing positioning
         if (this.player.onVine) {
             const vine = this.player.onVine;
-            this.player.x = vine.x + vine.grip.x;
-            this.player.y = vine.y + vine.grip.y + 8;
-            this.player.rotation = -vine.angle * 0.3;
-            this.playerShadow.alpha = 0.12;
+            const climbDist = vine.ropeLength * this.player.climbProgress;
+            
+            this.player.x = vine.x + Math.sin(vine.angle) * climbDist;
+            this.player.y = vine.y + Math.cos(vine.angle) * climbDist - 10;
+            this.player.rotation = vine.angle;
+            this.playerShadow.alpha = 0.08;
+            
+            this.updatePlayerAnimation(delta, 0);
+            return;
+        }
+
+        // Tree trunk climbing positioning
+        if (this.player.onTree) {
+            const tree = this.player.onTree;
+            const climbDist = tree.hitHeight * (1.0 - this.player.climbProgress);
+            
+            this.player.x = tree.x - 5;
+            this.player.y = tree.y - climbDist;
+            this.player.rotation = 0;
+            this.playerShadow.alpha = 0.05;
+            
             this.updatePlayerAnimation(delta, 0);
             return;
         }
 
         const wasOnGround = this.player.onGround;
         const autoSpeed = Math.min(
-            CONFIG.MAX_SCROLL_SPEED,
-            CONFIG.BASE_SCROLL_SPEED + this.distance / 520
+            this.currentLevel.maxSpeed,
+            this.currentLevel.baseSpeed + this.distance / 500
         );
+
         this.player.vy += CONFIG.GRAVITY * delta;
         this.player.x += (autoSpeed + this.player.vx) * delta;
         this.player.y += this.player.vy * delta;
-        this.player.x = Math.max(this.cameraX + 44, this.player.x);
+        
+        this.player.x = Math.max(this.cameraX + 40, this.player.x);
 
-        let onPlatform = false;
-        for (const platform of this.platforms) {
-            const previousY = this.player.y - this.player.vy * delta;
+        let onPlat = false;
+        for (const plat of this.platforms) {
+            const prevY = this.player.y - this.player.vy * delta;
             if (
                 this.player.vy >= 0 &&
-                this.player.x > platform.x - 8 &&
-                this.player.x < platform.x + platform.platformWidth + 8 &&
-                this.player.y >= platform.y &&
-                previousY <= platform.y + 6
+                this.player.x > plat.x - 12 &&
+                this.player.x < plat.x + plat.platformWidth + 12 &&
+                this.player.y >= plat.y &&
+                prevY <= plat.y + 7
             ) {
-                this.player.y = platform.y;
+                this.player.y = plat.y;
                 this.player.vy = 0;
                 this.player.onGround = true;
-                onPlatform = true;
+                onPlat = true;
                 break;
             }
         }
 
-        if (!onPlatform && this.player.y >= CONFIG.GROUND_Y) {
-            const pit = this.obstacles.find((obstacle) => (
-                obstacle.type === 'pit' &&
-                this.player.x > obstacle.x + 12 &&
-                this.player.x < obstacle.x + obstacle.hitWidth - 12
-            ));
+        if (!onPlat && this.player.y >= CONFIG.GROUND_Y) {
+            const pit = this.obstacles.find(o => 
+                o.type === 'pit' &&
+                this.player.x > o.x + 14 &&
+                this.player.x < o.x + o.hitWidth - 14
+            );
+            
             if (pit) {
                 this.player.onGround = false;
-                if (this.player.y > CONFIG.GROUND_Y + 95) this.takeDamage(pit);
+                if (this.player.y > CONFIG.GROUND_Y + 90) {
+                    this.takeDamage(pit);
+                }
             } else {
                 this.player.y = CONFIG.GROUND_Y;
                 this.player.vy = 0;
                 this.player.onGround = true;
                 if (!wasOnGround) {
                     this.audio.play('land');
-                    this.emitDust(this.player.x, this.player.y, 7);
+                    this.emitDust(this.player.x, this.player.y, 6);
                 }
             }
-        } else if (!onPlatform) {
+        } else if (!onPlat) {
             this.player.onGround = false;
         }
 
-        this.player.rotation += (0 - this.player.rotation) * 0.18;
+        this.player.rotation += (0 - this.player.rotation) * 0.20;
         this.player.scale.x = this.player.facing;
         this.player.scale.y += (1 - this.player.scale.y) * 0.2;
+
         this.playerShadow.x = this.player.x;
-        this.playerShadow.y = CONFIG.GROUND_Y + 8;
-        const height = Math.max(0, CONFIG.GROUND_Y - this.player.y);
-        this.playerShadow.scale.x = Math.max(0.45, 1 - height / 260);
-        this.playerShadow.alpha = Math.max(0.08, 0.28 - height / 600);
+        this.playerShadow.y = CONFIG.GROUND_Y + 7;
+        const h = Math.max(0, CONFIG.GROUND_Y - this.player.y);
+        this.playerShadow.scale.x = Math.max(0.4, 1.0 - h / 240);
+        this.playerShadow.alpha = Math.max(0.06, 0.35 - h / 550);
 
         this.distance = Math.max(0, Math.floor((this.player.x - 150) / 10));
         this.updatePlayerAnimation(delta, autoSpeed + Math.abs(this.player.vx));
+
         if (this.invincibleFrames > 0) {
             this.invincibleFrames -= delta;
-            this.player.alpha = Math.floor(this.invincibleFrames / 5) % 2 ? 0.35 : 1;
+            this.player.alpha = Math.floor(this.invincibleFrames / 4) % 2 ? 0.3 : 1.0;
         } else {
-            this.player.alpha = 1;
+            this.player.alpha = 1.0;
         }
     }
 
     updatePlayerAnimation(delta, speed) {
         const time = this.app.ticker.lastTime / 1000;
         const visual = this.player.visual;
-        const frameRate = 7.5 + Math.min(4.5, speed * 0.52);
+        const frameRate = 7.0 + Math.min(5.0, speed * 0.5);
         const runFrame = Math.floor(time * frameRate) % this.playerRunTextures.length;
-        const nextPose = this.player.onGround ? `run-${runFrame}` : 'jump';
+        const climbFrame = Math.floor(time * 8.0) % 2;
+        
+        let nextPose = 'run-0';
+        if (this.player.onVine || this.player.onTree) {
+            nextPose = `climb-${climbFrame}`;
+        } else if (!this.player.onGround) {
+            nextPose = 'jump';
+        } else {
+            nextPose = `run-${runFrame}`;
+        }
+
         if (this.player.pose !== nextPose) {
             this.player.pose = nextPose;
-            const texture = nextPose === 'jump'
-                ? this.playerJumpTexture
-                : this.playerRunTextures[runFrame];
-            this.player.sprite.texture = texture;
-            this.player.rim.texture = texture;
+            let tex = this.playerTexture;
+            if (nextPose.startsWith('climb')) {
+                tex = this.playerClimbTextures[climbFrame];
+            } else if (nextPose === 'jump') {
+                tex = this.playerJumpTexture;
+            } else {
+                tex = this.playerRunTextures[runFrame];
+            }
+            
+            this.player.sprite.texture = tex;
+            this.player.rim.texture = tex;
         }
+
         let targetY = 0;
-        let targetRotation = 0;
-        let targetScaleX = 1;
-        let targetScaleY = 1;
+        let targetRot = 0;
+        let targetScaleX = 1.0;
+        let targetScaleY = 1.0;
 
-        if (this.player.onGround && speed > 0.4) {
-            const gaitPhase = time * frameRate * Math.PI * 0.5;
-            const stride = Math.sin(gaitPhase);
-            targetY = Math.abs(stride) * 2.2;
-            targetRotation = stride * 0.022;
-            targetScaleX = 1 + Math.abs(stride) * 0.018;
-            targetScaleY = 1 - Math.abs(stride) * 0.015;
-        } else if (this.player.onVine) {
-            targetY = -2;
-            targetRotation = -0.1;
-            targetScaleX = 0.96;
-            targetScaleY = 1.04;
+        if (this.player.onVine || this.player.onTree) {
+            const isClimbing = this.keys.KeyW || this.keys.ArrowUp || this.keys.KeyS || this.keys.ArrowDown;
+            const bob = isClimbing ? Math.sin(time * 18) * 0.06 : 0;
+            targetScaleX = 0.95 + bob;
+            targetScaleY = 1.05 - bob;
+            targetRot = 0;
+        } else if (this.player.onGround && speed > 0.3) {
+            const phase = time * frameRate * Math.PI * 0.5;
+            const str = Math.sin(phase);
+            targetY = Math.abs(str) * 2.0;
+            targetRot = str * 0.02;
+            targetScaleX = 1.0 + Math.abs(str) * 0.015;
+            targetScaleY = 1.0 - Math.abs(str) * 0.015;
         } else {
-            targetRotation = Math.max(-0.14, Math.min(0.12, this.player.vy * 0.012));
-            targetScaleX = 1.035;
-            targetScaleY = 0.97;
+            targetRot = Math.max(-0.12, Math.min(0.12, this.player.vy * 0.01));
+            targetScaleX = 1.02;
+            targetScaleY = 0.98;
         }
 
-        visual.y += (targetY - visual.y) * 0.3 * delta;
-        visual.rotation += (targetRotation - visual.rotation) * 0.22 * delta;
+        visual.y += (targetY - visual.y) * 0.28 * delta;
+        visual.rotation += (targetRot - visual.rotation) * 0.20 * delta;
 
         const base = this.player.baseSpriteScale;
-        this.player.sprite.scale.x += (base * targetScaleX - this.player.sprite.scale.x) * 0.22 * delta;
-        this.player.sprite.scale.y += (base * targetScaleY - this.player.sprite.scale.y) * 0.22 * delta;
-        this.player.rim.scale.x = this.player.sprite.scale.x * 1.045;
-        this.player.rim.scale.y = this.player.sprite.scale.y * 1.045;
-        this.player.rim.alpha = 0.14 + Math.min(0.12, speed * 0.012);
-        this.player.aura.alpha = 0.72 + Math.sin(time * 2.4) * 0.16;
-        this.player.aura.scale.set(1 + Math.sin(time * 1.8) * 0.035);
+        this.player.sprite.scale.x += (base * targetScaleX - this.player.sprite.scale.x) * 0.20 * delta;
+        this.player.sprite.scale.y += (base * targetScaleY - this.player.sprite.scale.y) * 0.20 * delta;
+        
+        this.player.rim.scale.x = this.player.sprite.scale.x * 1.03;
+        this.player.rim.scale.y = this.player.sprite.scale.y * 1.03;
+        this.player.rim.alpha = 0.12 + Math.min(0.12, speed * 0.01);
+        this.player.aura.alpha = 0.7 + Math.sin(time * 2.5) * 0.15;
+        this.player.aura.scale.set(1.0 + Math.sin(time * 2.0) * 0.03);
+
         this.updatePlayerTrails(speed, delta);
     }
 
     updatePlayerTrails(speed, delta) {
-        const shouldShow = !this.reducedMotion && (
-            !this.player.onGround || speed > CONFIG.BASE_SCROLL_SPEED + 2.7
-        );
-        this.playerTrails.forEach((trail, index) => {
-            const targetAlpha = shouldShow ? 0.1 - index * 0.032 : 0;
-            trail.alpha += (targetAlpha - trail.alpha) * 0.18 * delta;
+        const show = !this.reducedMotion && (!this.player.onGround || speed > CONFIG.BASE_SCROLL_SPEED + 2.5);
+        this.playerTrails.forEach((trail, idx) => {
+            const targetAlpha = show ? 0.08 - idx * 0.03 : 0;
+            trail.alpha += (targetAlpha - trail.alpha) * 0.20 * delta;
             trail.texture = this.player.sprite.texture;
-            trail.x = this.player.x - this.player.facing * (12 + index * 11);
-            trail.y = this.player.y + this.player.visual.y + index * 1.5;
+            trail.x = this.player.x - this.player.facing * (10 + idx * 10);
+            trail.y = this.player.y + this.player.visual.y + idx * 1.0;
             trail.rotation = this.player.rotation + this.player.visual.rotation;
-            const trailScale = this.player.baseSpriteScale * (1 - index * 0.025);
-            trail.scale.set(trailScale * this.player.facing, trailScale);
+            const tScale = this.player.baseSpriteScale * (1.0 - idx * 0.02);
+            trail.scale.set(tScale * this.player.facing, tScale);
         });
     }
 
     updateObstacles(delta) {
         const time = this.app.ticker.lastTime / 1000;
-        for (const obstacle of this.obstacles) {
-            if (obstacle.type === 'crocodile') {
-                obstacle.y = CONFIG.GROUND_Y - 15 + Math.sin(time * 2.2 + obstacle.phase) * 2;
-                obstacle.jaw.rotation = 0.08 + Math.max(0, Math.sin(time * 3 + obstacle.phase)) * 0.35;
-            } else if (obstacle.type === 'log') {
-                obstacle.x += obstacle.vx * delta;
-                obstacle.rotation += obstacle.vx * 0.012 * delta;
+        for (const obs of this.obstacles) {
+            if (obs.type === 'crocodile') {
+                obs.y = obs.startY + Math.sin(time * 3.0 + obs.phase) * 1.8;
+                obs.rotation = Math.max(0, Math.sin(time * 2.0 + obs.phase)) * 0.06;
+            } else if (obs.type === 'log') {
+                obs.x += obs.vx * delta;
+                obs.rotation += obs.vx * 0.012 * delta;
             }
         }
     }
 
     updateCollectibles(delta) {
         const time = this.app.ticker.lastTime / 1000;
-        for (const collectible of this.collectibles) {
-            collectible.y = collectible.baseY + Math.sin(time * 2.6 + collectible.phase) * 7;
-            collectible.rotation = Math.sin(time * 1.8 + collectible.phase) * 0.12;
-            const pulse = 1 + Math.sin(time * 4 + collectible.phase) * 0.12;
-            collectible.glow.scale.set(pulse);
+        for (const col of this.collectibles) {
+            col.y = col.baseY + Math.sin(time * 2.8 + col.phase) * 6;
+            col.rotation = Math.sin(time * 1.5 + col.phase) * 0.1;
+            const p = 1.0 + Math.sin(time * 4.0 + col.phase) * 0.12;
+            col.glow.scale.set(p);
         }
     }
 
     updateVines(delta) {
         for (const vine of this.vines) {
-            vine.angularVelocity += -Math.sin(vine.angle) * 0.00055 * delta;
+            vine.angularVelocity += -Math.sin(vine.angle) * 0.0006 * delta;
             vine.angularVelocity *= 0.997;
             vine.angle += vine.angularVelocity * delta;
             this.drawVine(vine);
@@ -1000,88 +1234,132 @@ class JungleRun {
     }
 
     updateCamera() {
-        const target = Math.max(0, this.player.x - CONFIG.WIDTH * 0.31);
+        const target = Math.max(0, this.player.x - CONFIG.WIDTH * 0.3);
         this.cameraX += (target - this.cameraX) * 0.085;
         this.world.x = -this.cameraX;
+
         for (const layer of this.parallaxLayers) {
-            layer.container.x = -((this.cameraX * layer.speed) % layer.width);
+            layer.sprite.tilePosition.x = -this.cameraX * layer.speed;
         }
     }
 
-    checkCollisions() {
-        const bounds = {
-            x: this.player.x - 17,
-            y: this.player.y - 97,
-            width: 34,
-            height: 95
+    checkCollisions(delta) {
+        const pBounds = {
+            x: this.player.x - 16,
+            y: this.player.y - 95,
+            width: 32,
+            height: 93
         };
 
+        // Collectibles check
         for (let i = this.collectibles.length - 1; i >= 0; i--) {
-            const collectible = this.collectibles[i];
-            const dx = this.player.x - collectible.x;
-            const dy = this.player.y - 48 - collectible.y;
-            if (dx * dx + dy * dy < 33 * 33) {
-                this.score += collectible.value;
+            const col = this.collectibles[i];
+            const dx = this.player.x - col.x;
+            const dy = this.player.y - 45 - col.y;
+            if (dx * dx + dy * dy < 34 * 34) {
+                this.score += col.value;
                 this.collectCount++;
-                this.createCollectEffect(collectible.x, collectible.y, collectible.type);
-                this.audio.play(collectible.type === 'relic' ? 'relic' : 'coin');
-                this.removeFromWorld(collectible, this.collectibles, i);
-                if (this.collectCount % 8 === 0) this.showToast('Sequência de exploração +250');
+                this.createCollectEffect(col.x, col.y, col.type);
+                this.audio.play(col.type === 'relic' ? 'relic' : 'coin');
+                this.removeFromWorld(col, this.collectibles, i);
+                
+                if (this.collectCount % 8 === 0) {
+                    this.score += 200;
+                    this.showToast('Sequência de Relíquias +200');
+                }
             }
         }
 
+        // Damage obstacles check
         if (this.invincibleFrames <= 0) {
-            for (const obstacle of this.obstacles) {
-                if (!['crocodile', 'log', 'ruin'].includes(obstacle.type)) continue;
-                const obstacleBounds = {
-                    x: obstacle.x - obstacle.hitWidth / 2,
-                    y: obstacle.y - obstacle.hitHeight,
-                    width: obstacle.hitWidth,
-                    height: obstacle.hitHeight
+            for (const obs of this.obstacles) {
+                if (!['crocodile', 'log', 'ruin'].includes(obs.type)) continue;
+                const obsBounds = {
+                    x: obs.x - obs.hitWidth / 2,
+                    y: obs.y - obs.hitHeight,
+                    width: obs.hitWidth,
+                    height: obs.hitHeight
                 };
-                if (this.rectIntersect(bounds, obstacleBounds)) {
-                    if (obstacle.type === 'log' && this.player.vy > 3 && this.player.y < obstacle.y - 8) {
-                        this.player.y = obstacle.y - obstacle.hitHeight;
-                        this.player.vy = CONFIG.JUMP_FORCE * 0.72;
-                        this.score += 25;
-                        this.showToast('Salto perfeito +25');
+
+                if (this.rectIntersect(pBounds, obsBounds)) {
+                    if (obs.type === 'log' && this.player.vy > 3 && this.player.y < obs.y - 6) {
+                        this.player.y = obs.y - obs.hitHeight;
+                        this.player.vy = CONFIG.JUMP_FORCE * 0.70;
+                        this.score += 50;
+                        this.showToast('Salto Perfeito +50');
+                        this.audio.play('jump');
                     } else {
-                        this.takeDamage(obstacle);
+                        this.takeDamage(obs);
                     }
                     break;
                 }
             }
         }
 
-        if (!this.player.onVine) {
+        // Tree trunk climbing check
+        if (!this.player.onTree && !this.player.onVine) {
+            const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump;
+            if (grabRequested) {
+                for (const tree of this.trees) {
+                    const dx = Math.abs(this.player.x - tree.x);
+                    const dy = this.player.y - (tree.y - tree.hitHeight / 2);
+                    if (dx < 35 && Math.abs(dy) < tree.hitHeight / 2 + 20) {
+                        this.player.onTree = tree;
+                        this.player.climbProgress = Math.max(0.1, Math.min(0.9, 1.0 - (tree.y - this.player.y) / tree.hitHeight));
+                        this.player.vy = 0;
+                        this.player.vx = 0;
+                        this.jumpBufferFrames = 0;
+                        this.showToast('Árvore escalada · W/S para subir');
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Vine grabbing check
+        if (!this.player.onVine && !this.player.onTree) {
             const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump;
             if (grabRequested) {
                 for (const vine of this.vines) {
                     const endX = vine.x + vine.grip.x;
                     const endY = vine.y + vine.grip.y;
                     const dx = this.player.x - endX;
-                    const dy = this.player.y - 48 - endY;
-                    if (dx * dx + dy * dy < 47 * 47) {
+                    const dy = this.player.y - 45 - endY;
+                    if (dx * dx + dy * dy < 48 * 48) {
                         this.player.onVine = vine;
+                        this.player.climbProgress = 0.85;
                         this.player.vy = 0;
                         vine.angularVelocity += this.player.vx * 0.001;
                         this.jumpBufferFrames = 0;
-                        this.showToast('Cipó agarrado · solte para saltar');
+                        this.showToast('Cipó agarrado · W/S para escalar');
                         break;
                     }
                 }
             }
-        } else if (!this.player.jumpHeld) {
-            this.releaseVine();
         }
     }
 
     releaseVine() {
         const vine = this.player.onVine;
         if (!vine) return;
+        
         this.player.onVine = null;
-        this.player.vx = Math.cos(vine.angle) * vine.angularVelocity * vine.ropeLength * 3.2;
-        this.player.vy = -8.5 + Math.sin(vine.angle) * 2;
+        const climbDist = vine.ropeLength * this.player.climbProgress;
+        this.player.vx = Math.cos(vine.angle) * vine.angularVelocity * climbDist * 3.1;
+        this.player.vy = -8.0 + Math.sin(vine.angle) * 2;
+        
+        this.player.jumpHeld = false;
+        this.audio.play('jump');
+    }
+
+    releaseTree(dir = 1) {
+        const tree = this.player.onTree;
+        if (!tree) return;
+        
+        this.player.onTree = null;
+        this.player.vx = dir * 4.5;
+        this.player.vy = -7.8;
+        
         this.player.jumpHeld = false;
         this.audio.play('jump');
     }
@@ -1098,139 +1376,226 @@ class JungleRun {
     takeDamage(source) {
         if (this.invincibleFrames > 0 || this.state !== 'playing') return;
         this.lives--;
-        this.invincibleFrames = 115;
+        this.invincibleFrames = 110;
+        
         this.player.onVine = null;
-        this.player.vy = -9;
-        this.player.vx = -5;
-        this.player.scale.y = 0.82;
-        this.emitImpact(this.player.x, this.player.y - 28);
+        this.player.onTree = null;
+        this.player.vy = -8.5;
+        this.player.vx = -4.5;
+        this.player.scale.y = 0.8;
+        
+        this.emitImpact(this.player.x, this.player.y - 30);
         this.audio.play('hit');
-        this.announce(`Você perdeu uma vida. ${this.lives} restantes.`);
+        
+        this.announce(`Dano sofrido. ${this.lives} vidas restantes.`);
 
         if (source?.type === 'pit') {
-            this.player.x = Math.max(this.cameraX + 170, source.x - 70);
+            this.player.x = Math.max(this.cameraX + 160, source.x - 65);
             this.player.y = CONFIG.GROUND_Y - 95;
         }
 
-        if (this.lives <= 0) this.gameOver();
+        if (this.lives <= 0) {
+            this.gameOver();
+        }
     }
 
     createCollectEffect(x, y, type) {
         const container = new PIXI.Container();
-        const color = type === 'relic' ? 0x65efbc : 0xf6cf69;
-        const count = this.reducedMotion ? 5 : 11;
+        const color = type === 'relic' ? 0x8bf2bd : 0xf0ce72;
+        const count = this.reducedMotion ? 4 : 10;
+        
         for (let i = 0; i < count; i++) {
-            const particle = new PIXI.Graphics();
-            particle.circle(0, 0, 2 + Math.random() * 2.5).fill(color);
-            particle.x = x;
-            particle.y = y;
-            particle.vx = (Math.random() - 0.5) * 7;
-            particle.vy = (Math.random() - 0.5) * 7 - 2;
-            container.addChild(particle);
+            const p = new PIXI.Graphics();
+            p.circle(0, 0, 1.8 + Math.random() * 2.2).fill(color);
+            p.x = x;
+            p.y = y;
+            p.vx = (Math.random() - 0.5) * 6;
+            p.vy = (Math.random() - 0.5) * 6 - 2;
+            container.addChild(p);
         }
+        
         this.world.addChild(container);
-        this.effects.push({ container, life: 30, maxLife: 30, gravity: 0.13 });
+        this.effects.push({ container, life: 28, maxLife: 28, gravity: 0.12 });
     }
 
     emitDust(x, y, amount) {
         if (this.reducedMotion) return;
         const container = new PIXI.Container();
         for (let i = 0; i < amount; i++) {
-            const particle = new PIXI.Graphics();
-            particle.circle(0, 0, 2 + Math.random() * 3).fill({ color: 0xa3bd78, alpha: 0.48 });
-            particle.x = x + (Math.random() - 0.5) * 24;
-            particle.y = y + Math.random() * 5;
-            particle.vx = -1.2 - Math.random() * 2.2;
-            particle.vy = -0.5 - Math.random() * 1.4;
-            container.addChild(particle);
+            const p = new PIXI.Graphics();
+            p.circle(0, 0, 2 + Math.random() * 2.5).fill({ color: 0x486b45, alpha: 0.4 });
+            p.x = x + (Math.random() - 0.5) * 20;
+            p.y = y + Math.random() * 4;
+            p.vx = -1.0 - Math.random() * 2.0;
+            p.vy = -0.4 - Math.random() * 1.0;
+            container.addChild(p);
         }
         this.world.addChild(container);
-        this.effects.push({ container, life: 22, maxLife: 22, gravity: 0.02 });
+        this.effects.push({ container, life: 20, maxLife: 20, gravity: 0.02 });
     }
 
     emitImpact(x, y) {
         const container = new PIXI.Container();
-        for (let i = 0; i < 9; i++) {
-            const particle = new PIXI.Graphics();
-            particle.rect(-3, -3, 6, 6).fill(i % 2 ? 0xf06b4f : 0xf6cf69);
-            particle.x = x;
-            particle.y = y;
-            const angle = (Math.PI * 2 * i) / 9;
-            particle.vx = Math.cos(angle) * 5;
-            particle.vy = Math.sin(angle) * 5;
-            container.addChild(particle);
+        for (let i = 0; i < 8; i++) {
+            const p = new PIXI.Graphics();
+            p.rect(-2.5, -2.5, 5, 5).fill(i % 2 ? 0xf06b4f : 0xf0ce72);
+            p.x = x;
+            p.y = y;
+            const a = (Math.PI * 2 * i) / 8;
+            p.vx = Math.cos(a) * 4.5;
+            p.vy = Math.sin(a) * 4.5;
+            container.addChild(p);
         }
         this.world.addChild(container);
-        this.effects.push({ container, life: 24, maxLife: 24, gravity: 0.1 });
+        this.effects.push({ container, life: 22, maxLife: 22, gravity: 0.09 });
     }
 
     updateEffects(delta) {
         for (let i = this.effects.length - 1; i >= 0; i--) {
-            const effect = this.effects[i];
-            effect.life -= delta;
-            effect.container.alpha = Math.max(0, effect.life / effect.maxLife);
-            for (const particle of effect.container.children) {
-                particle.x += particle.vx * delta;
-                particle.y += particle.vy * delta;
-                particle.vy += effect.gravity * delta;
-                particle.rotation += 0.08 * delta;
+            const eff = this.effects[i];
+            eff.life -= delta;
+            eff.container.alpha = Math.max(0, eff.life / eff.maxLife);
+            for (const p of eff.container.children) {
+                p.x += p.vx * delta;
+                p.y += p.vy * delta;
+                p.vy += eff.gravity * delta;
             }
-            if (effect.life <= 0) {
-                this.world.removeChild(effect.container);
+            if (eff.life <= 0) {
+                this.world.removeChild(eff.container);
                 this.effects.splice(i, 1);
             }
         }
     }
 
+    checkVictoryCondition() {
+        if (this.state !== 'playing') return;
+        
+        if (this.distance >= this.currentLevel.distanceGoal) {
+            this.completeLevel();
+        }
+    }
+
+    completeLevel() {
+        this.state = 'won';
+        this.releaseInputs();
+        this.audio.play('victory');
+        
+        const currentIdx = LEVELS.findIndex(l => l.id === this.currentLevel.id);
+        const nextLevelId = this.currentLevel.id + 1;
+        
+        if (this.unlockedLevel < nextLevelId && nextLevelId <= 4) {
+            this.unlockedLevel = nextLevelId;
+            this.saveNumber('jungleRunUnlockedLevel', this.unlockedLevel);
+        }
+
+        const lvlBest = this.readNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`);
+        if (this.score > lvlBest) {
+            this.saveNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`, this.score);
+            this.saveNumber(`jungleRunLevelBestDistance_lvl_${this.currentLevel.id}`, this.distance);
+        }
+        
+        const bestScore = this.readNumber('jungleRunBestScore');
+        if (this.score > bestScore) {
+            this.saveNumber('jungleRunBestScore', this.score);
+            this.saveNumber('jungleRunBestDistance', this.distance);
+        }
+
+        let stars = 1;
+        const totalCollectibles = this.spawnedCollectiblesCount || 1;
+        const collectRatio = this.collectCount / totalCollectibles;
+        
+        if (collectRatio >= 0.70 && this.lives === 3) stars = 3;
+        else if (collectRatio >= 0.40 || this.lives >= 2) stars = 2;
+        
+        document.getElementById('completeLevelName').textContent = this.currentLevel.name;
+        document.getElementById('completeScore').textContent = this.pad(this.score, 4);
+        document.getElementById('completeDistance').textContent = `${this.distance}m`;
+        document.getElementById('completeLivesBonus').textContent = `${this.lives}/3 (${this.lives * 150} pts bônus)`;
+        
+        this.score += this.lives * 150;
+        document.getElementById('completeScore').textContent = this.pad(this.score, 4);
+
+        document.getElementById('star1').className = 'star active';
+        document.getElementById('idStar2').className = stars >= 2 ? 'star active' : 'star';
+        document.getElementById('idStar3').className = stars === 3 ? 'star active' : 'star';
+        
+        const nextBtn = document.getElementById('nextLevelBtn');
+        if (nextLevelId > LEVELS.length) {
+            nextBtn.classList.add('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            nextBtn.querySelector('span').textContent = currentIdx === 3 ? 'Jogar Infinito' : 'Avançar';
+        }
+
+        document.getElementById('levelCompleteScreen').classList.remove('hidden');
+        document.getElementById('levelCompleteScreen').setAttribute('aria-hidden', 'false');
+        document.getElementById('hud').classList.add('is-dimmed');
+        document.getElementById('mobileControls').classList.add('is-hidden');
+        nextBtn.focus();
+        
+        this.announce(`Fase concluída com sucesso! Pontuação final: ${this.score}.`);
+    }
+
     gameOver() {
         this.state = 'over';
         this.releaseInputs();
-        const isRecord = this.distance > this.bestDistance;
-        this.bestDistance = Math.max(this.bestDistance, this.distance);
-        this.bestScore = Math.max(this.bestScore, this.score);
-        this.saveNumber('jungleRunBestDistance', this.bestDistance);
-        this.saveNumber('jungleRunBestScore', this.bestScore);
+        
+        const lvlBest = this.readNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`);
+        const isRecord = this.score > lvlBest;
+        
+        if (isRecord) {
+            this.saveNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`, this.score);
+            this.saveNumber(`jungleRunLevelBestDistance_lvl_${this.currentLevel.id}`, this.distance);
+        }
+        
+        const bestScore = this.readNumber('jungleRunBestScore');
+        if (this.score > bestScore) {
+            this.saveNumber('jungleRunBestScore', this.score);
+            this.saveNumber('jungleRunBestDistance', this.distance);
+        }
 
         document.getElementById('finalScore').textContent = this.pad(this.score, 4);
         document.getElementById('finalDistance').textContent = `${this.pad(this.distance, 3)}m`;
-        document.getElementById('finalBest').textContent = `${this.pad(this.bestDistance, 3)}m`;
-        document.getElementById('resultEyebrow').textContent = isRecord ? 'NOVO RECORDE DE EXPEDIÇÃO' : 'FIM DA EXPEDIÇÃO';
+        document.getElementById('finalBest').textContent = `${this.pad(lvlBest > this.score ? lvlBest : this.score, 4)}`;
+        document.getElementById('resultEyebrow').textContent = isRecord ? 'NOVO RECORDE DA EXPEDIÇÃO!' : 'EXPEDIÇÃO FALHOU';
+        
         document.getElementById('gameOverScreen').classList.remove('hidden');
         document.getElementById('gameOverScreen').setAttribute('aria-hidden', 'false');
         document.getElementById('hud').classList.add('is-dimmed');
         document.getElementById('mobileControls').classList.add('is-hidden');
         document.getElementById('restartBtn').focus();
-        this.announce(`Fim da expedição. ${this.distance} metros e ${this.score} pontos.`);
+        
+        this.announce(`Fim da expedição. Distância: ${this.distance}m, Pontuação: ${this.score}.`);
     }
 
     spawnNewContent() {
         while (this.lastSpawnX < this.player.x + CONFIG.SPAWN_AHEAD) {
             this.spawnSegment(this.lastSpawnX);
             this.lastSpawnX += CONFIG.SEGMENT_WIDTH;
-            if (this.lastSpawnX % 2240 === 0) {
-                for (let i = 0; i < 5; i++) this.spawnCollectible(this.lastSpawnX + i * 48, i === 4);
-            }
         }
     }
 
     cleanupOffscreen() {
-        const threshold = this.cameraX - 260;
+        const threshold = this.cameraX - 250;
         const cleanup = (array) => {
             for (let i = array.length - 1; i >= 0; i--) {
-                const object = array[i];
-                const rightEdge = object.x + (object.hitWidth || object.platformWidth || 0);
-                if (rightEdge < threshold) this.removeFromWorld(object, array, i);
+                const obj = array[i];
+                const rightEdge = obj.x + (obj.hitWidth || obj.platformWidth || 32);
+                if (rightEdge < threshold) {
+                    this.removeFromWorld(obj, array, i);
+                }
             }
         };
         cleanup(this.obstacles);
         cleanup(this.collectibles);
         cleanup(this.vines);
         cleanup(this.platforms);
+        cleanup(this.trees);
     }
 
-    removeFromWorld(object, array, index) {
-        if (object.parent) object.parent.removeChild(object);
-        array.splice(index, 1);
+    removeFromWorld(obj, array, idx) {
+        if (obj.parent) obj.parent.removeChild(obj);
+        array.splice(idx, 1);
     }
 
     syncHud(force = false) {
@@ -1244,33 +1609,25 @@ class JungleRun {
             document.getElementById('score').textContent = next.score;
         }
         if (force || this.uiCache.lives !== next.lives) {
-            const hearts = Array.from({ length: 3 }, (_, index) => index < this.lives ? '●' : '○').join(' ');
-            const livesElement = document.getElementById('lives');
-            livesElement.textContent = hearts;
-            livesElement.setAttribute('aria-label', `${this.lives} ${this.lives === 1 ? 'vida' : 'vidas'}`);
+            const hearts = Array.from({ length: 3 }, (_, idx) => idx < this.lives ? '●' : '○').join(' ');
+            const el = document.getElementById('lives');
+            el.textContent = hearts;
+            el.setAttribute('aria-label', `${this.lives} vidas`);
         }
         if (force || this.uiCache.distance !== next.distance) {
             document.getElementById('distance').textContent = next.distance;
         }
 
-        const biomeIndex = BIOMES.reduce((index, biome, candidate) => (
-            this.distance >= biome.at ? candidate : index
-        ), 0);
-        if (force || biomeIndex !== this.currentBiome) {
-            this.currentBiome = biomeIndex;
-            document.getElementById('biomeLabel').textContent = BIOMES[biomeIndex].name;
-            if (!force && biomeIndex > 0) {
-                this.showToast(`Nova área · ${BIOMES[biomeIndex].name}`);
-                this.audio.play('milestone');
-            }
+        const goal = this.currentLevel.distanceGoal;
+        if (goal !== Infinity) {
+            const pct = Math.min(100, (this.distance / goal) * 100);
+            document.getElementById('progressFill').style.width = `${pct}%`;
+        } else {
+            const pct = (this.distance % 300) / 3.0;
+            document.getElementById('progressFill').style.width = `${pct}%`;
         }
 
-        const biome = BIOMES[biomeIndex];
-        const nextBiome = BIOMES[biomeIndex + 1];
-        const progress = nextBiome
-            ? ((this.distance - biome.at) / (nextBiome.at - biome.at)) * 100
-            : Math.min(100, 60 + ((this.distance - biome.at) % 400) / 10);
-        document.getElementById('progressFill').style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        document.getElementById('biomeLabel').textContent = this.currentLevel.name;
         this.uiCache = next;
     }
 
@@ -1279,15 +1636,15 @@ class JungleRun {
         toast.textContent = message;
         toast.classList.add('show');
         window.clearTimeout(this.toastTimer);
-        this.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2200);
+        this.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2100);
     }
 
     announce(message) {
         document.getElementById('gameAnnouncer').textContent = message;
     }
 
-    pad(value, size) {
-        return String(Math.max(0, Math.floor(value))).padStart(size, '0');
+    pad(val, size) {
+        return String(Math.max(0, Math.floor(val))).padStart(size, '0');
     }
 }
 

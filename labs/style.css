@@ -101,6 +101,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   background: var(--bg-body);
   border-radius: 1.25rem;
   color: var(--accent);
@@ -108,6 +109,11 @@
   border: 1px solid var(--border-subtle);
   position: relative;
   z-index: 1;
+}
+
+.project-icon svg {
+  width: 48px;
+  height: 48px;
 }
 
 .project-card:hover .project-icon {
@@ -165,6 +171,12 @@
   background: var(--bg-body);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+.project-card:focus-visible,
+.filter-btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
 }
 
 /* Animations */
