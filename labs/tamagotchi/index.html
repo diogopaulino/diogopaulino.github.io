@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RakuRaku Dinokun / Dinkie Dino (1997) - Labs</title>
   <meta name="description"
-    content="Réplica fiel do bichinho virtual de bolso Rakuraku Dinokun / Dinkie Dino (1997). Mesmo hardware, mesmos ícones, jan-ken-po e ar-condicionado.">
+    content="Réplica do Rakuraku Dinokun / Dinkie Dino de 1997. Hardware, ícones laterais e jogabilidade originais.">
   <link rel="stylesheet" href="/labs/shared.css?v=4">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Chewy&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -17,47 +17,40 @@
 <body>
   <div class="container">
     <header data-lab-header data-title="Dinkie Dino">
-      <template data-slot="logo">
-        RakuRaku Dinokun
-      </template>
+      <template data-slot="logo">RakuRaku Dinokun</template>
     </header>
 
     <main class="game-container">
-      <!-- Setup / blister 1997 -->
       <div class="setup-overlay hidden" id="setupScreen">
         <div class="setup-box">
           <header class="setup-header">
             <span class="setup-badge">1997 · TK-910</span>
             <h2>RakuRaku Dinokun</h2>
-            <p>Personalize a carcaça e choque um novo ovo de dinossauro.</p>
+            <p>Cor da carcaça e nome do dinossauro.</p>
           </header>
-
           <div class="setup-content">
             <div class="field-group">
               <label for="petNameInput">Nome</label>
-              <input type="text" id="petNameInput" maxlength="12" value="Dino" placeholder="Rex, Spike, Dino…">
+              <input type="text" id="petNameInput" maxlength="12" value="Dino" placeholder="Dino">
             </div>
-
             <div class="field-group">
-              <label>Cor da carcaça</label>
+              <label>Carcaça</label>
               <div class="preset-row" id="shellPresets"></div>
               <div class="color-picker-sub">
                 <span>Personalizada</span>
                 <input type="color" id="shellColorInput" value="#f6c836">
               </div>
             </div>
-
             <div class="field-group">
-              <label>Cor dos botões</label>
+              <label>Botões</label>
               <div class="preset-row" id="accentPresets"></div>
               <div class="color-picker-sub">
                 <span>Personalizada</span>
                 <input type="color" id="accentColorInput" value="#e23b2e">
               </div>
             </div>
-
             <div class="field-group">
-              <label>Tom do LCD</label>
+              <label>LCD</label>
               <div class="preset-row" id="screenPresets"></div>
               <div class="color-picker-sub">
                 <span>Personalizada</span>
@@ -65,202 +58,132 @@
               </div>
             </div>
           </div>
-
           <footer class="setup-footer">
-            <button class="start-journey-btn" id="btnStartJourney" type="button">
-              Ligar &amp; chocar ovo
-            </button>
+            <button class="start-journey-btn" id="btnStartJourney" type="button">Ligar &amp; chocar ovo</button>
             <button class="ghost-btn cancel-btn hidden" id="btnCancelSetup" type="button">Cancelar</button>
           </footer>
         </div>
       </div>
 
       <div class="device-showcase">
-        <!-- HARDWARE RAKURAKU DINOKUN 1997 -->
+        <!--
+          Hardware autêntico Dinkie / RakuRaku:
+          oval largo, cap colorido, 5 botões NA BASE (◄ Esc Enter Clock ►),
+          ícones verticais nas laterais do LCD.
+        -->
         <div class="device-stage">
           <div class="tama-shell" id="tamaShell">
-            <!-- Cap azul + anel metálico -->
             <div class="tama-cap" aria-hidden="true">
               <div class="cap-face"></div>
-              <div class="tama-ring">
-                <span class="ring-shine"></span>
-              </div>
-              <div class="chain">
-                <span class="chain-link"></span>
-                <span class="chain-link"></span>
-                <span class="chain-link"></span>
-              </div>
+              <div class="tama-ring"></div>
             </div>
 
-            <button class="tama-side-btn tama-arrow-left" data-btn="LEFT" aria-label="Seta esquerda" type="button">
-              <svg viewBox="0 0 12 16" aria-hidden="true"><path d="M10 1 L2 8 L10 15 Z" fill="currentColor"/></svg>
-            </button>
-            <button class="tama-side-btn tama-arrow-right" data-btn="RIGHT" aria-label="Seta direita" type="button">
-              <svg viewBox="0 0 12 16" aria-hidden="true"><path d="M2 1 L10 8 L2 15 Z" fill="currentColor"/></svg>
-            </button>
-
-            <!-- Branding moldado -->
             <div class="tama-branding" aria-hidden="true">
               <span class="brand-text brand-left">RakuRaku</span>
-              <span class="brand-mascot" title="Dinokun">
-                <svg viewBox="0 0 32 32" width="28" height="28">
-                  <circle cx="16" cy="16" r="14" fill="#fff8dc" stroke="#2a1a0a" stroke-width="1.5"/>
-                  <ellipse cx="16" cy="18" rx="10" ry="8" fill="#6bbf4e"/>
-                  <circle cx="12" cy="16" r="2.2" fill="#1a1a1a"/>
-                  <circle cx="20" cy="16" r="2.2" fill="#1a1a1a"/>
-                  <circle cx="12.6" cy="15.4" r="0.7" fill="#fff"/>
-                  <circle cx="20.6" cy="15.4" r="0.7" fill="#fff"/>
-                  <path d="M11 21 Q16 24 21 21" fill="none" stroke="#1a1a1a" stroke-width="1.4" stroke-linecap="round"/>
-                  <path d="M8 10 L10 6 L12 10" fill="#6bbf4e" stroke="#2a1a0a" stroke-width="0.8"/>
-                  <path d="M20 10 L22 6 L24 10" fill="#6bbf4e" stroke="#2a1a0a" stroke-width="0.8"/>
+              <span class="brand-mascot">
+                <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
+                  <circle cx="14" cy="14" r="13" fill="#f3e6ff"/>
+                  <ellipse cx="14" cy="16" rx="9" ry="7" fill="#7b3db8"/>
+                  <circle cx="10.5" cy="14.5" r="1.8" fill="#1a1020"/>
+                  <circle cx="17.5" cy="14.5" r="1.8" fill="#1a1020"/>
+                  <circle cx="11" cy="14" r="0.5" fill="#fff"/>
+                  <circle cx="18" cy="14" r="0.5" fill="#fff"/>
+                  <path d="M10 19q4 3 8 0" fill="none" stroke="#1a1020" stroke-width="1.2" stroke-linecap="round"/>
+                  <path d="M8 9l2-3 2 3M16 9l2-3 2 3" fill="#7b3db8" stroke="#1a1020" stroke-width="0.7"/>
                 </svg>
               </span>
               <span class="brand-text brand-right">Dinokun</span>
             </div>
 
-            <!-- Bezel + LCD -->
             <div class="tama-screen-bezel">
-              <div class="tama-inner-rim">
-                <div class="tama-lcd-frame">
-                  <!-- Esquerda: drink, food, light, discipline, status -->
-                  <div class="lcd-icons-col lcd-icons-left" id="iconsLeft">
-                    <button class="lcd-icon" data-icon="drink" type="button" title="Água">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M5 2h6v2H5zM4 4h8l-1 10H5L4 4z" fill="currentColor"/>
-                        <path d="M6 7h4v5H6z" fill="var(--screen-color)" opacity="0.55"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="food" type="button" title="Comida">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <ellipse cx="7" cy="8" rx="5" ry="4" fill="currentColor"/>
-                        <rect x="11" y="7" width="4" height="2" fill="currentColor"/>
-                        <rect x="13" y="5" width="1.5" height="2" fill="currentColor"/>
-                        <rect x="13" y="9" width="1.5" height="2" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="light" type="button" title="Luz">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 1a5 5 0 0 0-3 9c.4.5.7 1 .7 1.5h4.6c0-.5.3-1 .7-1.5A5 5 0 0 0 8 1z" fill="currentColor"/>
-                        <rect x="6" y="12" width="4" height="1.5" fill="currentColor"/>
-                        <rect x="6.5" y="14" width="3" height="1.2" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="discipline" type="button" title="Disciplina">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 3c2 0 4 2 4 4.5S9.5 12 8 14C6.5 12 4 10 4 7.5S6 3 8 3z" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="stats" type="button" title="Status">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <rect x="2" y="10" width="3" height="4" fill="currentColor"/>
-                        <rect x="6.5" y="6" width="3" height="8" fill="currentColor"/>
-                        <rect x="11" y="3" width="3" height="11" fill="currentColor"/>
-                      </svg>
-                    </button>
-                  </div>
+              <div class="tama-lcd">
+                <!-- Esquerda: água, comida, luz, disciplina, status -->
+                <div class="lcd-icons lcd-icons-left">
+                  <button class="lcd-icon" data-icon="drink" type="button" title="Água" aria-label="Água">
+                    <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M2 0h6v2H2zM1 2h8L8 12H2L1 2zm2 3h4v5H3z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="food" type="button" title="Comida" aria-label="Comida">
+                    <svg viewBox="0 0 12 10" aria-hidden="true"><path d="M0 3c0-2 2-3 4-3s4 1 4 3-1 3-2 4v2H2V7C1 6 0 5 0 3zm8 1h4v2H9v2H8z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="light" type="button" title="Luz" aria-label="Luz">
+                    <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M5 0a4 4 0 0 0-2.5 6.8c.4.5.7 1 .7 1.7h3.6c0-.7.3-1.2.7-1.7A4 4 0 0 0 5 0zM3.5 9.5h3V11h-3zm.5 2h2V12H4z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="discipline" type="button" title="Disciplina" aria-label="Disciplina">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0C2.5 0 1 2 1 4.5 1 7 3.5 9 5 10c1.5-1 4-3 4-5.5C9 2 7.5 0 5 0z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="stats" type="button" title="Status" aria-label="Status">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 6h2v4H0zm4-3h2v7H4zm4-3h2v10H8z"/></svg>
+                  </button>
+                </div>
 
-                  <div class="tama-screen-canvas-wrap">
-                    <canvas id="petCanvas" width="280" height="200"></canvas>
-                    <div class="tama-dot-grid" aria-hidden="true"></div>
-                    <div class="tama-glass-glare" aria-hidden="true"></div>
-                    <div class="tama-overlay hidden" id="tamaOverlay"></div>
-                    <div class="tama-toast" id="tamaToast"></div>
-                  </div>
+                <div class="tama-screen-canvas-wrap">
+                  <div class="lcd-eyes-bg" aria-hidden="true"></div>
+                  <canvas id="petCanvas" width="192" height="128"></canvas>
+                  <div class="tama-dot-grid" aria-hidden="true"></div>
+                  <div class="tama-glass-glare" aria-hidden="true"></div>
+                  <div class="tama-overlay hidden" id="tamaOverlay"></div>
+                  <div class="tama-toast" id="tamaToast"></div>
+                </div>
 
-                  <!-- Direita: play, study, bath, ac, medicine -->
-                  <div class="lcd-icons-col lcd-icons-right" id="iconsRight">
-                    <button class="lcd-icon" data-icon="play" type="button" title="Jan-ken-po">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M4 6h3v8H4zM9 4h3v10H9z" fill="currentColor"/>
-                        <circle cx="5.5" cy="4.5" r="1.5" fill="currentColor"/>
-                        <circle cx="10.5" cy="2.5" r="1.5" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="study" type="button" title="Estudar">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M2 3h5v11H2zM9 3h5v11H9z" fill="currentColor"/>
-                        <path d="M7 3v11M9 3v11" stroke="var(--screen-color)" stroke-width="1"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="bath" type="button" title="Banho">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M3 8h10v4H3z" fill="currentColor"/>
-                        <path d="M2 8h12v1H2zM4 5h2v3H4z" fill="currentColor"/>
-                        <circle cx="8" cy="4" r="1.2" fill="currentColor"/>
-                        <circle cx="11" cy="5" r="1" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="ac" type="button" title="Ar-condicionado">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 1v14M1 8h14M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.6" fill="none"/>
-                        <circle cx="8" cy="8" r="2" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button class="lcd-icon" data-icon="medicine" type="button" title="Remédio">
-                      <svg class="icon-sprite" viewBox="0 0 16 16" aria-hidden="true">
-                        <rect x="6" y="1" width="4" height="5" rx="1" fill="currentColor"/>
-                        <path d="M5 6h6l1 8H4L5 6z" fill="currentColor"/>
-                        <rect x="7" y="9" width="2" height="3" fill="var(--screen-color)" opacity="0.5"/>
-                      </svg>
-                    </button>
-                  </div>
+                <!-- Direita: jogo, estudo, banho, AC, remédio -->
+                <div class="lcd-icons lcd-icons-right">
+                  <button class="lcd-icon" data-icon="play" type="button" title="Jan-ken-po" aria-label="Jogo">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 4h3v5H1zm5-2h3v7H6zM2.5 2a1.2 1.2 0 1 1 0-2.4A1.2 1.2 0 0 1 2.5 2zm5-1a1.2 1.2 0 1 1 0-2.4A1.2 1.2 0 0 1 7.5 1z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="study" type="button" title="Estudar" aria-label="Estudar">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h4v8H0zm6 0h4v8H6z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="bath" type="button" title="Banho" aria-label="Banho">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5h8v3H1zM0 5h10v1H0zM2 2h2v3H2zm3-1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="ac" type="button" title="Ar-condicionado" aria-label="AC">
+                    <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M4.5 0h1v3h-1zM4.5 7h1v3h-1zM0 4.5h3v1H0zm7 0h3v1H7zM1.2 1.2l.7-.7 2 2-.7.7zm4.9 4.9 2 2-.7.7-2-2zm0-4.9.7-.7 2 2-.7.7zM1.2 8.8l.7.7 2-2-.7-.7zM3.5 3.5h3v3h-3z"/></svg>
+                  </button>
+                  <button class="lcd-icon" data-icon="medicine" type="button" title="Remédio" aria-label="Remédio">
+                    <svg viewBox="0 0 8 12" aria-hidden="true"><path d="M2 0h4v3H2zm-1 3h6l1 8H0L1 3zm2 2h2v3H3z"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- Esc / Enter / Clock — labels ACIMA (autêntico) -->
+            <!-- 5 botões na base, dentro da carcaça -->
             <div class="tama-bottom-buttons">
               <div class="btn-unit">
+                <span class="btn-mark arrow">◄</span>
+                <button class="tama-btn" data-btn="LEFT" aria-label="Esquerda" type="button"></button>
+              </div>
+              <div class="btn-unit">
                 <span class="script-label">Esc</span>
-                <button class="tama-btn btn-oval" data-btn="ESC" aria-label="Esc" type="button"></button>
+                <button class="tama-btn" data-btn="ESC" aria-label="Esc" type="button"></button>
               </div>
               <div class="btn-unit btn-center">
                 <span class="script-label">Enter</span>
-                <button class="tama-btn btn-oval" data-btn="ENTER" aria-label="Enter" type="button"></button>
+                <button class="tama-btn tama-btn-enter" data-btn="ENTER" aria-label="Enter" type="button"></button>
               </div>
               <div class="btn-unit">
                 <span class="script-label">Clock</span>
-                <button class="tama-btn btn-oval" data-btn="CLOCK" aria-label="Clock" type="button"></button>
+                <button class="tama-btn" data-btn="CLOCK" aria-label="Clock" type="button"></button>
+              </div>
+              <div class="btn-unit">
+                <span class="btn-mark arrow">►</span>
+                <button class="tama-btn" data-btn="RIGHT" aria-label="Direita" type="button"></button>
               </div>
             </div>
-
-            <div class="shell-gloss" aria-hidden="true"></div>
-            <div class="shell-mold-line" aria-hidden="true"></div>
           </div>
         </div>
 
-        <!-- Painel companion -->
         <div class="side-companion">
-          <section class="glass-panel stats-panel" aria-label="Monitor do Dinossauro">
+          <section class="glass-panel stats-panel" aria-label="Monitor">
             <header class="panel-head">
               <h3>Status · <span id="petNameLabel">Dino</span></h3>
               <span class="stage-tag" id="petStageLabel">Ovo</span>
             </header>
             <div class="stat-meters">
-              <div class="stat-row">
-                <span class="stat-label">Fome</span>
-                <div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Sede</span>
-                <div class="stat-bar"><div class="stat-fill" id="barThirst"></div></div>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Humor</span>
-                <div class="stat-bar"><div class="stat-fill" id="barHappiness"></div></div>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Higiene</span>
-                <div class="stat-bar"><div class="stat-fill" id="barHygiene"></div></div>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Saúde</span>
-                <div class="stat-bar"><div class="stat-fill" id="barHealth"></div></div>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Estudo</span>
-                <div class="stat-bar"><div class="stat-fill" id="barDiscipline"></div></div>
-              </div>
+              <div class="stat-row"><span class="stat-label">Fome</span><div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div></div>
+              <div class="stat-row"><span class="stat-label">Sede</span><div class="stat-bar"><div class="stat-fill" id="barThirst"></div></div></div>
+              <div class="stat-row"><span class="stat-label">Humor</span><div class="stat-bar"><div class="stat-fill" id="barHappiness"></div></div></div>
+              <div class="stat-row"><span class="stat-label">Educação</span><div class="stat-bar"><div class="stat-fill" id="barDiscipline"></div></div></div>
+              <div class="stat-row"><span class="stat-label">Peso</span><div class="stat-bar"><div class="stat-fill" id="barWeight"></div></div></div>
             </div>
             <div class="stat-meta">
               <span class="meta-tag" id="petAgeLabel">Dia 0</span>
@@ -276,13 +199,12 @@
           <section class="glass-panel guide-panel">
             <h4>Controles originais</h4>
             <ul class="controls-list">
-              <li><strong>◄</strong> navega ícones da esquerda · <strong>►</strong> da direita</li>
+              <li><strong>◄ ►</strong> ícones da esquerda / direita</li>
               <li><strong>Enter</strong> confirma · <strong>Esc</strong> cancela</li>
-              <li><strong>Clock</strong> mostra o relógio</li>
-              <li>Jogo: <strong>jan-ken-po</strong> — deixe o dino ganhar 3/5</li>
-              <li>Mantenha ~<strong>25°C</strong> com o ar-condicionado</li>
+              <li><strong>Clock</strong> relógio · <strong>Esc+Enter</strong> ajustar hora</li>
+              <li><strong>◄+►</strong> 3s = mute · jan-ken-po 3/5</li>
+              <li>Temperatura ideal: 25°C (AC)</li>
             </ul>
-            <p class="guide-note">Progresso salvo no navegador. Sem ícone de alerta — escute o bip.</p>
           </section>
 
           <details class="history-panel glass-panel" id="historyPanel" hidden>
@@ -296,8 +218,8 @@
     <footer data-lab-footer data-home-href="/"></footer>
   </div>
 
-  <script src="/labs/shared.js?v=5" defer></script>
-  <script src="script.js?v=3" defer></script>
+  <script src="/labs/shared.js?v=6" defer></script>
+  <script src="script.js?v=6" defer></script>
 </body>
 
 </html>
