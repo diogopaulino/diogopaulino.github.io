@@ -377,6 +377,17 @@
   const $ = (selector) => document.querySelector(selector);
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const rand = (min, max) => Math.random() * (max - min) + min;
+  const cleanInPlace = (arr, fn) => {
+    let k = 0;
+    const n = arr.length;
+    for (let i = 0; i < n; i++) {
+      if (fn(arr[i])) {
+        if (i !== k) arr[k] = arr[i];
+        k++;
+      }
+    }
+    if (k < n) arr.length = k;
+  };
 
   // --- CANVAS HIGH-DPI RESIZING ---
   // Driven by a ResizeObserver rather than measured every frame: reading
@@ -496,13 +507,13 @@
     document.querySelectorAll('[data-difficulty]').forEach(b => b.classList.toggle('is-active', b.dataset.difficulty === difficulty));
   }
 
-  // --- PLAYER ENTITY CLASS ---
+  // --- PLAYER ENTITY CLASS (MK REALISTIC COMBAT & PHYSICS ENGINE) ---
   class Player {
     constructor(data, x, facing, isCpu = false) {
       this.data = data; this.x = x; this.y = 425; this.vx = 0; this.vy = 0;
       this.facing = facing; this.attackFacing = facing; this.cpu = isCpu;
       this.health = 100; this.meter = 20; this.width = 70; this.height = 150;
-      this.grounded = true; this.attack = null; this.attackTimer = 0; this.cooldown = 0;
+      this.grounded = true; this.ducking = false; this.attack = null; this.attackTimer = 0; this.cooldown = 0;
       this.hitFlash = 0; this.stun = 0; this.blocking = false; this.aiTimer = 0;
       this.aiReactingTo = null; this.aiReactionTimer = 0;
       this.afterimages = []; this.combo = 0; this.comboTimer = 0; this.animFrame = 0;
@@ -519,9 +530,13 @@
 
     /** Which clip the current physics state should be playing. */
     clipName() {
-      if (this.attack) return this.attack.type === 'mini_special' ? 'special' : this.attack.type;
+      if (this.attack) {
+        if (this.attack.type === 'mini_special') return 'special';
+        if (this.attack.type === 'uppercut') return 'punch';
+        return this.attack.type;
+      }
       if (this.stun > 0) return 'hit';
-      if (this.blocking) return 'block';
+      if (this.blocking || this.ducking) return 'block';
       if (!this.grounded) return 'jump';
       return Math.abs(this.vx) > 0.55 ? 'walk' : 'idle';
     }
@@ -539,84 +554,88 @@
     }
 
     input(other) {
-      if (this.stun > 0) return { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false };
+      if (this.stun > 0) return { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false, down:false };
       if (!this.cpu) {
+        const downPressed = isPressed('block');
         return {
           left: isPressed('left'),
           right: isPressed('right'),
           jump: consumeAction('jump'),
-          block: isPressed('block'),
+          block: downPressed,
+          down: downPressed,
           punch: consumeAction('punch'),
           kick: consumeAction('kick'),
           special: consumeAction('special')
         };
       }
 
+      // --- INTELIGÊNCIA ARTIFICIAL (REALISTIC COMBAT AI) ---
       const tune = DIFFICULTY[difficulty];
       this.aiTimer--;
       const distance = Math.abs(other.x - this.x);
-      const input = { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false };
+      const input = { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false, down:false };
 
-      // DEFEND: an incoming attack only gets blocked after `reactionDelay`
-      // frames of "seeing" it -- that delay (short on hard, long on easy) is
-      // what makes higher difficulties feel sharper without just hitting
-      // harder. `aiReactingTo` tracks the attack instance so a new swing
-      // resets the clock instead of block reacting instantly to everything.
-      // A tougher defense stat nudges the difficulty's own block chance up;
-      // a faster fighter recovers and re-engages sooner (cadenceFactor,
-      // used below). Both stats were previously decorative.
       const blockChance = clamp(tune.blockChance + (this.data.defense - 3) * 0.05, 0.15, 0.95);
       const cadenceFactor = clamp(1 - (this.data.speed - 3) * 0.08, 0.65, 1.25);
 
-      if (other.attack && distance < 150) {
+      // Defesa ou Agachamento tático contra golpes altos
+      if (other.attack && distance < 160) {
         if (this.aiReactingTo !== other.attack) {
           this.aiReactingTo = other.attack;
           this.aiReactionTimer = Math.round(rand(tune.reactionDelay[0], tune.reactionDelay[1]));
         }
         if (this.aiReactionTimer > 0) this.aiReactionTimer--;
-        if (this.aiReactionTimer <= 0 && Math.random() < blockChance) input.block = true;
+        if (this.aiReactionTimer <= 0 && Math.random() < blockChance) {
+          input.block = true;
+          if (other.attack.type === 'punch' && Math.random() < 0.6) input.down = true; // Agachar contra soco alto!
+        }
       } else {
         this.aiReactingTo = null;
       }
 
-      // RETREAT: low on health and in range, sometimes back off to buy
-      // space instead of always trading blows.
-      const retreating = this.health < 30 && distance < 110 && Math.random() < tune.retreatChance;
+      // Anti-Air: Oponente pulando em nossa direção -> preparar gancho ou chute firmando base!
+      if (!other.grounded && distance < 130 && this.cooldown <= 0 && Math.random() < tune.aggression) {
+        if (Math.random() < 0.65) { input.down = true; input.punch = true; } // Gancho!
+        else { input.kick = true; }
+        return input;
+      }
 
+      const retreating = this.health < 30 && distance < 110 && Math.random() < tune.retreatChance;
       if (retreating) {
         input[other.x < this.x ? 'right' : 'left'] = true;
       } else if (distance > 115) {
-        input[other.x < this.x ? 'left' : 'right'] = true; // APPROACH
-      } else if (distance < 65 && Math.random() < 0.25) {
-        input[other.x < this.x ? 'right' : 'left'] = true; // give a hair of spacing back
+        input[other.x < this.x ? 'left' : 'right'] = true;
+      } else if (distance < 60 && Math.random() < 0.3) {
+        input[other.x < this.x ? 'right' : 'left'] = true;
       }
 
-      // PUNISH: the opponent just whiffed (attack lingering past its active
-      // window with nothing landed) -- jump straight into an attack instead
-      // of waiting out the normal timer, scaled by aggression.
-      const punishWhiff = other.attack && !other.attack.hit && other.attackTimer < other.attack.activeAt - 4
-        && distance < 145 && Math.random() < tune.aggression;
+      // Whiff Punish: adversário golpeou no ar sem acertar -> contra-atacar imediatamente!
+      const punishWhiff = other.attack && !other.attack.hit && other.attackTimer < other.attack.activeAt - 2
+        && distance < 150 && Math.random() < tune.aggression * 1.2;
 
-      // Power favors the harder-hitting kick; speed favors the quicker jab.
       const kickBias = clamp(0.38 + (this.data.power - this.data.speed) * 0.06, 0.2, 0.6);
 
-      if (distance < 145 && this.cooldown <= 0 && (punishWhiff || this.aiTimer <= 0)) {
+      if (distance < 150 && this.cooldown <= 0 && (punishWhiff || this.aiTimer <= 0)) {
         if (this.meter >= 100 && Math.random() < tune.specialChance) {
           input.special = true;
         } else if (this.meter >= 50 && Math.random() < tune.specialChance * 0.7) {
           input.special = true;
         } else if (Math.random() < tune.aggression || punishWhiff) {
-          // PRESSURE
-          input[Math.random() < kickBias ? 'kick' : 'punch'] = true;
+          // Se perto o suficiente e adversário exposto, disparar Gancho (Uppercut)!
+          if (distance < 85 && Math.random() < 0.3) {
+            input.down = true; input.punch = true;
+          } else {
+            input[Math.random() < kickBias ? 'kick' : 'punch'] = true;
+          }
         } else {
           const randAttack = Math.random();
-          if (randAttack < 1 - kickBias - 0.12) input.punch = true;
-          else if (randAttack < 1 - 0.12) input.kick = true;
+          if (randAttack < 1 - kickBias - 0.15) input.punch = true;
+          else if (randAttack < 1 - 0.15) input.kick = true;
           else input.block = true;
         }
-        this.aiTimer = rand(12, 34) * cadenceFactor;
+        this.aiTimer = rand(10, 30) * cadenceFactor;
       }
-      if (distance > 210 && Math.random() < tune.jumpChance) input.jump = true;
+      if (distance > 220 && Math.random() < tune.jumpChance && this.grounded) input.jump = true;
       return input;
     }
 
@@ -630,8 +649,9 @@
 
       const input = this.input(other);
 
-      if (this.attack && this.attackTimer <= Math.max(9, this.attack.activeAt)) {
-        if (input.punch) this.bufferedAttack = 'punch';
+      if (this.attack && this.attackTimer <= Math.max(8, this.attack.activeAt)) {
+        if (input.down && input.punch) this.bufferedAttack = 'uppercut';
+        else if (input.punch) this.bufferedAttack = 'punch';
         else if (input.kick) this.bufferedAttack = 'kick';
         else if (input.special) {
           if (this.meter >= 100) this.bufferedAttack = 'special';
@@ -642,51 +662,64 @@
         const queued = this.bufferedAttack; this.bufferedAttack = null; this.startAttack(queued);
       }
 
-      this.blocking = input.block && this.grounded && !this.attack;
-      // Snappier arcade walk: Streets of Rage / SF spacing, not ice-skating.
-      const speed = (2.85 + this.data.speed * 0.22) * (this.cpu ? 0.92 : 1);
+      // Agachamento Tático (Ducking) & Defesa
+      this.ducking = (input.down || input.block) && this.grounded && !this.attack && !input.left && !input.right;
+      this.blocking = input.block && this.grounded && !this.attack && (other.attack != null || this.stun > 0);
+      this.height = this.ducking ? 85 : 150; // Redução do hitbox ao agachar (permite esquivar de socos altos!)
 
-      if (!this.attack && !this.blocking && this.stun <= 0) {
+      const speed = (3.0 + this.data.speed * 0.22) * (this.cpu ? 0.92 : 1);
+
+      // Movimentação Planted & Salto Comprometido
+      if (!this.attack && !this.blocking && !this.ducking && this.stun <= 0) {
         const targetSpeed = input.left ? -speed : input.right ? speed : 0;
-        const control = this.grounded ? 0.58 : 0.24;
+        // Controle de solo firme (0.65) vs controle reduzido e realista no ar (0.09)
+        const control = this.grounded ? 0.65 : 0.09;
         this.vx += (targetSpeed - this.vx) * control;
-        if (!input.left && !input.right) this.vx *= this.grounded ? 0.78 : 0.94;
-        if (input.jump && this.grounded) {
-          this.vy = -10.5; this.grounded = false; sound('ui', 0.65);
+        if (!input.left && !input.right) {
+          // Parada imediata sem deslizar no gelo (Fricção Planted MK)
+          this.vx *= this.grounded ? 0.45 : 0.96;
         }
-        if (input.punch) this.startAttack('punch');
+        if (input.jump && this.grounded) {
+          this.vy = -11.5; this.grounded = false; sound('jump', 0.95);
+        }
+        // Ataques no solo ou no ar (Combate aéreo habilitado!)
+        if (input.down && input.punch) this.startAttack('uppercut');
+        else if (input.punch) this.startAttack('punch');
         else if (input.kick) this.startAttack('kick');
-        else if (input.special) {
+        else if (input.special && this.grounded) {
           if (this.meter >= 100) this.startAttack('special');
           else if (this.meter >= 50) this.startAttack('mini_special');
         }
+      } else if (this.ducking && !this.attack && this.stun <= 0) {
+        this.vx *= 0.3; // Fricção alta ao agachar
+        if (input.punch) this.startAttack('uppercut');
+        else if (input.kick) this.startAttack('kick');
       } else if (this.attack) {
-        this.vx *= 0.72;
+        this.vx *= 0.65; // Estabiliza base durante o golpe
       }
 
       const wasGrounded = this.grounded;
-      this.vy += 0.55;
+      this.vy += 0.58; // Gravidade concisa e realista
       this.x += this.vx; this.y += this.vy;
 
       if (this.y >= 425) {
         this.y = 425;
-        if (!wasGrounded && this.vy > 4) {
+        if (!wasGrounded && this.vy > 4.5) {
           this.landSquash = 8;
-          match.shake = Math.max(match.shake, 4.0);
+          match.shake = Math.max(match.shake, 3.5);
           if (typeof burst === 'function') burst(this.x, 425, '#c2cbda', 8, 'land');
-          sound('ui', 0.48);
+          sound('land', 0.95);
         }
         this.vy = 0; this.grounded = true;
       }
       this.x = clamp(this.x, 80, 880);
-      // Never flip mid-attack — that was the main "hits go the wrong way" bug.
       if (!this.attack) this.facing = other.x >= this.x ? 1 : -1;
 
-      // Soft body separation so fighters don't occupy the same spot.
+      // Soft body separation
       const gap = other.x - this.x;
-      const minGap = 62;
-      if (Math.abs(gap) < minGap && Math.abs(other.y - this.y) < 90) {
-        const push = (minGap - Math.abs(gap)) * 0.28 * Math.sign(gap || this.faceDir());
+      const minGap = 64;
+      if (Math.abs(gap) < minGap && Math.abs(other.y - this.y) < 95) {
+        const push = (minGap - Math.abs(gap)) * 0.32 * Math.sign(gap || this.faceDir());
         this.x -= push;
       }
 
@@ -696,32 +729,18 @@
         this.attackTimer--;
         if (this.attack && this.attackTimer === this.attack.activeAt) {
           const dir = this.faceDir();
-          // Spawn visual projectiles for mini specials (arcade sparks, no emoji).
           if (this.attack.type === 'mini_special') {
             if (this.data.id === 'lennon') {
               match.particles.push({
-                x: this.x + 50 * dir,
-                y: this.y - 100,
-                vx: 11 * dir,
-                vy: -0.8,
-                life: 38,
-                maxLife: 38,
-                color: '#ffffff',
-                size: 10,
-                shape: 'ring'
+                x: this.x + 50 * dir, y: this.y - 100, vx: 12 * dir, vy: -0.8,
+                life: 38, maxLife: 38, color: '#ffffff', size: 10, shape: 'ring'
               });
             } else if (this.data.id === 'kurt') {
               for (let i = 0; i < 5; i++) {
                 match.particles.push({
-                  x: this.x + (40 + i * 15) * dir,
-                  y: this.y - 90 + rand(-15, 15),
-                  vx: (10 + rand(-2, 2)) * dir,
-                  vy: rand(-3, 3),
-                  life: 25,
-                  maxLife: 25,
-                  color: '#23d7ef',
-                  size: 8,
-                  shape: 'star'
+                  x: this.x + (40 + i * 15) * dir, y: this.y - 90 + rand(-15, 15),
+                  vx: (11 + rand(-2, 2)) * dir, vy: rand(-3, 3),
+                  life: 25, maxLife: 25, color: '#23d7ef', size: 8, shape: 'star'
                 });
               }
             }
@@ -730,28 +749,31 @@
         if (!this.attack.hit && this.attackTimer <= this.attack.activeAt) this.checkHit(other);
         if (this.attackTimer <= 0) this.attack = null;
       }
-      this.afterimages = this.afterimages.filter(a => --a.life > 0);
+      cleanInPlace(this.afterimages, a => (--a.life) > 0);
     }
 
     startAttack(type) {
       if (this.cooldown > 0) return;
-      // Durations track clip hold totals; ranges stay close to real limb reach.
+      const isAir = !this.grounded;
       const config = {
-        punch: { duration: 15, activeAt: 8, range: 72, damage: 2.6 + this.data.power * 0.28, knock: 3.4, radius: 38 },
-        kick: { duration: 17, activeAt: 10, range: 88, damage: 3.6 + this.data.power * 0.36, knock: 5.2, radius: 42 },
-        mini_special: { duration: 25, activeAt: 12, range: 120, damage: 6.0 + this.data.power * 0.4, knock: 7.0, radius: 52 },
-        special: { duration: 25, activeAt: 12, range: 150, damage: 11.0 + this.data.power * 0.65, knock: 11, radius: 64 }
-      }[type];
+        punch: { duration: isAir ? 17 : 15, activeAt: isAir ? 11 : 8, range: isAir ? 94 : 76, damage: 2.8 + this.data.power * 0.28, knock: 3.6, radius: 42, airAttack: isAir },
+        kick: { duration: isAir ? 19 : 17, activeAt: isAir ? 13 : 10, range: isAir ? 112 : 90, damage: 3.8 + this.data.power * 0.36, knock: 5.8, radius: 46, airAttack: isAir },
+        uppercut: { duration: 24, activeAt: 12, range: 82, damage: 8.5 + this.data.power * 0.5, knock: 6.8, launch: -12.5, radius: 52 },
+        mini_special: { duration: 25, activeAt: 12, range: 125, damage: 6.5 + this.data.power * 0.4, knock: 7.5, radius: 54 },
+        special: { duration: 28, activeAt: 14, range: 155, damage: 12.0 + this.data.power * 0.65, knock: 12.0, radius: 68 }
+      }[type] || { duration: 15, activeAt: 8, range: 75, damage: 3, knock: 3, radius: 40 };
 
       this.attackFacing = this.facing;
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
-      const baseCooldown = (type === 'special' ? 36 : type === 'mini_special' ? 26 : config.duration + 2) + (this.cpu ? 5 : 0);
+      const baseCooldown = (type === 'special' ? 36 : type === 'mini_special' ? 26 : type === 'uppercut' ? 24 : config.duration + 2) + (this.cpu ? 4 : 0);
       const recoveryBonus = (type === 'special' || type === 'mini_special') ? 0 : Math.round((this.data.speed - 3) * 1.5);
       this.cooldown = Math.max(config.duration - 1, baseCooldown - recoveryBonus);
-      // Short lunge — enough commitment without crossing through the rival.
-      this.vx += this.attackFacing * (type === 'special' ? 2.4 : type === 'mini_special' ? 1.8 : type === 'kick' ? 1.5 : 1.0);
+      if (this.grounded) {
+        this.vx += this.attackFacing * (type === 'special' ? 2.6 : type === 'mini_special' ? 2.0 : type === 'uppercut' ? 3.0 : type === 'kick' ? 1.6 : 1.0);
+      }
 
+      // --- WHIFF SOUND & NO SHAKE UPON SWINGING IN THE AIR ---
       if (type === 'special') {
         this.meter = 0;
         this.afterimages.push({ x: this.x - 20 * this.attackFacing, y: this.y, life: 25 });
@@ -764,10 +786,17 @@
         this.meter = Math.max(0, this.meter - 50);
         this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 15 });
         announce("MINI " + this.data.special.toUpperCase(), 600);
-        sound('special', 1.2 + this.data.speed * 0.05);
+        sound('whiff_special', 1.0);
+      } else if (type === 'uppercut') {
+        this.afterimages.push({ x: this.x - 12 * this.attackFacing, y: this.y, life: 16 });
+        sound('whiff_punch', 0.85); // Vento grave e poderoso do gancho
       } else {
-        if (type === 'kick') this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 12 });
-        sound('ui', type === 'kick' ? 0.75 : 1.1);
+        if (type === 'kick') {
+          this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 12 });
+          sound('whiff_kick', 1.0 + rand(-0.05, 0.05));
+        } else {
+          sound('whiff_punch', 1.0 + rand(-0.05, 0.05));
+        }
       }
     }
 
@@ -776,16 +805,14 @@
       const reach = this.attack.range;
       const radius = this.attack.radius || 40;
 
-      // Prefer the actual swinging limb when the rig is available.
       let strikeX = this.x + dir * (reach * 0.55);
-      let strikeY = this.y - (this.attack.type === 'kick' ? 70 : 95);
+      let strikeY = this.y - (this.attack.type === 'kick' ? 70 : this.attack.type === 'uppercut' ? 110 : 95);
       const rig = rigs && rigs[this.data.id];
       if (rig) {
         const limb = this.attack.type === 'kick' ? 'legFrontLower' : 'armFrontLower';
         const m = rig._world[limb] || rig._world['armBackLower'] || rig._world['legBackLower'];
         if (m) {
           const scale = FIGHTER_HEIGHT / rig.baseH;
-          // Buffer X → stage X: art faces left, canvas flips with facing.
           const localX = (m[2] + RockKombatRig.PAD.left) - rig.anchorX;
           const localY = (m[5] + RockKombatRig.PAD.top) - rig.anchorY;
           strikeX = this.x - dir * localX * scale;
@@ -793,10 +820,16 @@
         }
       }
 
+      // Esquiva por Agachamento (Ducking evasion): Socos altos passam direto se o adversário estiver agachado!
+      if (other.ducking && this.attack.type === 'punch' && !this.attack.airAttack) {
+        return; // Whiff limpo!
+      }
+
       const dx = other.x - strikeX;
-      const dy = (other.y - 85) - strikeY;
+      const dy = (other.y - (other.ducking ? 50 : 85)) - strikeY;
       const inFront = (other.x - this.x) * dir > -12;
-      const closeEnough = Math.hypot(dx, dy) < radius || (inFront && Math.abs(other.x - this.x) < reach && Math.abs(other.y - this.y) < (this.attack.type === 'kick' ? 90 : 100));
+      const verticalWindow = other.ducking ? 70 : (this.attack.type === 'kick' ? 90 : 105);
+      const closeEnough = Math.hypot(dx, dy) < radius || (inFront && Math.abs(other.x - this.x) < reach && Math.abs(other.y - this.y) < verticalWindow);
 
       if (inFront && closeEnough) {
         this.attack.hit = true;
@@ -809,32 +842,54 @@
 
         other.health = clamp(other.health - damage, 0, 100);
         other.hitFlash = 9;
-        other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 30 : this.attack.type === 'mini_special' ? 18 : 12;
+        other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : this.attack.type === 'mini_special' ? 20 : 14;
+        
+        // RECUO FÍSICO (Recoil): Atacante sente a resistência do impacto corporal
+        if (this.grounded && !other.blocking) this.vx = -1.8 * dir;
+        
         other.vx = this.attack.knock * dir * (other.blocking ? 0.35 : 1);
-        if (this.attack.type === 'special') other.vy = -6.5;
+        
+        // LAUNCH & JUGGLE (Gancho, Especiais ou Golpe Aéreo)
+        if (this.attack.launch && !other.blocking) {
+          other.vy = this.attack.launch; other.grounded = false;
+        } else if (this.attack.airAttack && !other.blocking) {
+          other.vy = -6.5; other.grounded = false;
+        } else if (this.attack.type === 'special' && !other.blocking) {
+          other.vy = -7.5; other.grounded = false;
+        }
+
+        // CORNER BOUNCE & SHUDDER: Impacto contra as extremidades do cenário
+        if ((other.x <= 85 || other.x >= 875) && !other.blocking) {
+          other.vx = -other.vx * 0.45; // Quique nas bordas da arena
+          match.shake += 6;
+          sound('corner_thud', 0.9);
+        }
 
         this.meter = clamp(this.meter + ((this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0 : this.cpu ? 11 : 24), 0, 100);
         other.meter = clamp(other.meter + (other.cpu ? 6 : 14), 0, 100);
-        this.combo++; this.comboTimer = 65;
+        this.combo++; this.comboTimer = 70;
 
-        match.shake = this.attack.type === 'special' ? 24 : this.attack.type === 'mini_special' ? 16 : this.attack.type === 'kick' ? 14 : 9;
-        match.flash = this.attack.type === 'special' ? 10 : this.attack.type === 'mini_special' ? 5 : 3;
-        match.hitStop = other.blocking ? 4 : this.attack.type === 'special' ? 14 : this.attack.type === 'mini_special' ? 10 : this.attack.type === 'kick' ? 8 : 5;
-        match.zoomPulse = this.attack.type === 'special' ? 0.09 : this.attack.type === 'mini_special' ? 0.055 : 0.035;
+        // HITSTOP (Congelamento imersivo milissegundo apenas no acerto real!)
+        match.shake = this.attack.type === 'special' ? 26 : this.attack.type === 'uppercut' ? 22 : this.attack.type === 'mini_special' ? 18 : this.attack.type === 'kick' ? 15 : 10;
+        match.flash = this.attack.type === 'special' ? 12 : this.attack.type === 'uppercut' ? 8 : this.attack.type === 'mini_special' ? 6 : 4;
+        match.hitStop = other.blocking ? 5 : this.attack.type === 'special' ? 16 : this.attack.type === 'uppercut' ? 14 : this.attack.type === 'mini_special' ? 12 : this.attack.type === 'kick' ? 9 : 6;
+        match.zoomPulse = this.attack.type === 'special' ? 0.1 : this.attack.type === 'uppercut' ? 0.08 : this.attack.type === 'mini_special' ? 0.06 : 0.04;
 
         const impactText = this.attack.type === 'special'
           ? (this.data.id === 'kurt' ? 'GUITARRADA SMASH!' : this.data.id === 'axl' ? 'SERPENT SCREAM!' : 'PEACE & LOVE PULSE!')
-          : this.attack.type === 'mini_special'
-            ? 'MINI SPECIAL!'
-            : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'THUD!' : 'POW!');
+          : this.attack.type === 'uppercut'
+            ? 'GANCHO EXPLOSIVO!'
+            : this.attack.type === 'mini_special'
+              ? 'MINI SPECIAL!'
+              : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'CRUSH!' : 'SMACK!');
 
         const impactX = (strikeX + other.x) / 2;
-        const impactY = (strikeY + other.y - 95) / 2;
+        const impactY = (strikeY + other.y - (other.ducking ? 50 : 85)) / 2;
 
         match.impacts.push({
           x: impactX, y: impactY,
           text: impactText,
-          color: this.data.color, life: (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 38 : 24
+          color: this.data.color, life: (this.attack.type === 'special' || this.attack.type === 'mini_special' || this.attack.type === 'uppercut') ? 38 : 24
         });
 
         match.hitSparks.push({
@@ -846,8 +901,14 @@
           type: this.attack.type
         });
 
-        burst(impactX, impactY, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'mini_special' ? 25 : 16, this.attack.type, this.data.id);
-        sound(other.blocking ? 'block' : 'hit', (this.attack.type === 'special' || this.attack.type === 'mini_special') ? 0.6 : 0.95);
+        burst(impactX, impactY, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'uppercut' ? 32 : this.attack.type === 'mini_special' ? 25 : 18, this.attack.type, this.data.id);
+        
+        // EFEITOS SONOROS PESADOS APENAS NO IMPACTO
+        if (other.blocking) sound('block', 0.95);
+        else if (this.attack.type === 'uppercut') sound('uppercut', 1.0);
+        else if (this.attack.type === 'kick') sound('hit_kick', 1.0);
+        else if (this.attack.type === 'special' || this.attack.type === 'mini_special') sound('hit_special', 1.0);
+        else sound('hit_punch', 1.0);
       }
     }
   }
@@ -990,8 +1051,7 @@
       if (match.specialAttacker) {
         match.specialAttacker.updateAnimation();
       }
-      match.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; p.life--; });
-      match.particles = match.particles.filter(p => p.life > 0);
+      cleanInPlace(match.particles, p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; return (--p.life) > 0; });
       if (match.specialFreeze <= 0) {
         match.specialAttacker = null;
       }
@@ -1001,8 +1061,7 @@
     if (match.hitStop > 0) { match.hitStop--; return; }
     
     if (match.hitSparks) {
-      match.hitSparks.forEach(s => s.life--);
-      match.hitSparks = match.hitSparks.filter(s => s.life > 0);
+      cleanInPlace(match.hitSparks, s => (--s.life) > 0);
     }
 
     match.frames++;
@@ -1020,10 +1079,8 @@
       if (match.p1.health <= 0 || match.p2.health <= 0 || match.timer <= 0) endRound();
     }
 
-    match.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; p.life--; });
-    match.particles = match.particles.filter(p => p.life > 0);
-    match.impacts.forEach(impact => impact.life--);
-    match.impacts = match.impacts.filter(impact => impact.life > 0);
+    cleanInPlace(match.particles, p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; return (--p.life) > 0; });
+    cleanInPlace(match.impacts, impact => (--impact.life) > 0);
 
     stageFog.forEach(f => {
       f.x += f.vx;

@@ -167,24 +167,71 @@ window.RockKombatAudio = (() => {
     };
   }
 
-  // --- ONE-SHOT SFX -----------------------------------------------------
+  // --- ONE-SHOT SFX (MK REALISTIC COMBAT SOUNDS) ------------------------
   function sfx(type, pitch = 1) {
     if (muted) return;
     init();
     const now = ctx.currentTime;
 
     switch (type) {
-      case 'special':
-        powerChord(sfxGain, now, 146.83 * pitch, 0.9, 3600, 0.16);
-        fmVoice(sfxGain, now, { freq: 220 * pitch, ratio: 3, modIndex: 700, modIndexDecay: 0.22, wave: 'square', duration: 0.55, gain: 0.16 });
+      case 'whiff':
+      case 'whiff_punch':
+        // Som cortante de ar rápido (Swish) sem impacto físico
+        noiseHit(sfxGain, now, { duration: 0.11, gain: 0.15, filterType: 'bandpass', freq: 850 * pitch, freqEnd: 250, Q: 1.5 });
+        fmVoice(sfxGain, now, { freq: 75 * pitch, ratio: 1, modIndex: 80, modIndexDecay: 0.04, wave: 'triangle', duration: 0.09, gain: 0.08 });
+        break;
+      case 'whiff_kick':
+        // Vento mais encorpado e grave do chute aéreo ou rasteiro no ar
+        noiseHit(sfxGain, now, { duration: 0.15, gain: 0.18, filterType: 'bandpass', freq: 620 * pitch, freqEnd: 180, Q: 1.2 });
+        fmVoice(sfxGain, now, { freq: 65 * pitch, ratio: 0.5, modIndex: 110, modIndexDecay: 0.06, wave: 'sine', duration: 0.12, gain: 0.12 });
+        break;
+      case 'whiff_special':
+        // Acorde místico / vento ressoante de instrumento sem acertar
+        noiseHit(sfxGain, now, { duration: 0.22, gain: 0.16, filterType: 'lowpass', freq: 1200, freqEnd: 400 });
+        powerChord(sfxGain, now, 110 * pitch, 0.3, 1800, 0.09);
         break;
       case 'hit':
-        fmVoice(sfxGain, now, { freq: 95 * pitch, ratio: 1, modIndex: 320, modIndexDecay: 0.09, wave: 'sine', duration: 0.22, gain: 0.32 });
-        noiseHit(sfxGain, now, { duration: 0.09, gain: 0.16, filterType: 'lowpass', freq: 1200, freqEnd: 300 });
-        powerChord(sfxGain, now, 98 * pitch, 0.26, 2200, 0.1);
+      case 'hit_punch':
+        // Pancada seca, densa e corporal de soco (Thud osso/carne)
+        fmVoice(sfxGain, now, { freq: 85 * pitch, ratio: 1, modIndex: 380, modIndexDecay: 0.07, wave: 'sine', duration: 0.18, gain: 0.35 });
+        noiseHit(sfxGain, now, { duration: 0.08, gain: 0.24, filterType: 'lowpass', freq: 1600, freqEnd: 250 });
+        powerChord(sfxGain, now, 92 * pitch, 0.18, 2000, 0.12);
+        break;
+      case 'hit_kick':
+        // Impacto pesado e brutal com compressão de grave e estalo percussivo
+        fmVoice(sfxGain, now, { freq: 55 * pitch, ratio: 0.5, modIndex: 500, modIndexDecay: 0.09, wave: 'sine', duration: 0.24, gain: 0.42 });
+        noiseHit(sfxGain, now, { duration: 0.12, gain: 0.28, filterType: 'bandpass', freq: 1400, freqEnd: 200, Q: 0.8 });
+        powerChord(sfxGain, now, 82 * pitch, 0.26, 2500, 0.16);
+        break;
+      case 'uppercut':
+      case 'hit_uppercut':
+        // O clássico gancho estrondoso que arremessa o adversário pelos ares!
+        fmVoice(sfxGain, now, { freq: 48 * pitch, ratio: 1.5, modIndex: 650, modIndexDecay: 0.14, wave: 'square', duration: 0.32, gain: 0.45 });
+        noiseHit(sfxGain, now, { duration: 0.18, gain: 0.32, filterType: 'lowpass', freq: 2200, freqEnd: 350 });
+        powerChord(sfxGain, now, 105 * pitch, 0.45, 3200, 0.22);
+        break;
+      case 'special':
+      case 'hit_special':
+        // Impacto explosivo de estádio (Power chord distorcido + impacto titânico)
+        powerChord(sfxGain, now, 130.81 * pitch, 0.95, 3800, 0.24);
+        fmVoice(sfxGain, now, { freq: 180 * pitch, ratio: 3, modIndex: 850, modIndexDecay: 0.25, wave: 'square', duration: 0.6, gain: 0.28 });
+        fmVoice(sfxGain, now, { freq: 52 * pitch, ratio: 0.5, modIndex: 400, modIndexDecay: 0.15, wave: 'sine', duration: 0.4, gain: 0.38 });
         break;
       case 'block':
-        fmVoice(sfxGain, now, { freq: 540 * pitch, ratio: 7, modIndex: 950, modIndexDecay: 0.05, wave: 'square', duration: 0.13, gain: 0.2 });
+        // Som defendo/madeira ou metal sem ferimento
+        fmVoice(sfxGain, now, { freq: 460 * pitch, ratio: 5, modIndex: 750, modIndexDecay: 0.05, wave: 'square', duration: 0.12, gain: 0.24 });
+        noiseHit(sfxGain, now, { duration: 0.05, gain: 0.15, filterType: 'bandpass', freq: 900, freqEnd: 500, Q: 2.5 });
+        break;
+      case 'jump':
+        // Salto físico com impulso do solo
+        fmVoice(sfxGain, now, { freq: 140 * pitch, ratio: 1.5, modIndex: 120, modIndexDecay: 0.06, wave: 'triangle', duration: 0.1, gain: 0.15 });
+        noiseHit(sfxGain, now, { duration: 0.06, gain: 0.12, filterType: 'lowpass', freq: 600, freqEnd: 900 });
+        break;
+      case 'land':
+      case 'corner_thud':
+        // Aterrissagem pesada de bota no chão de tábua/arena ou impacto na quina
+        fmVoice(sfxGain, now, { freq: 60 * pitch, ratio: 0.5, modIndex: 200, modIndexDecay: 0.06, wave: 'sine', duration: 0.14, gain: 0.3 });
+        noiseHit(sfxGain, now, { duration: 0.09, gain: 0.2, filterType: 'bandpass', freq: 450, freqEnd: 150, Q: 1.2 });
         break;
       case 'crowd':
         noiseHit(sfxGain, now, { duration: 0.6, gain: 0.09, filterType: 'bandpass', freq: 850, freqEnd: 1700, Q: 3 });
