@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ovinho - Bichinho Virtual Retrô - Labs</title>
+  <meta name="description"
+    content="Bichinho virtual retrô inspirado nos clássicos anos 90. Alimente, brinque, cuide e veja seu bichinho evoluir. Progresso salvo no seu navegador.">
+  <link rel="stylesheet" href="/labs/shared.css?v=4">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <header data-lab-header data-title="Ovinho">
+      <template data-slot="logo">
+        🥚 Ovinho
+      </template>
+    </header>
+
+    <main class="game-container">
+      <div class="tama-shell" id="tamaShell">
+        <div class="tama-loop"></div>
+
+        <div class="tama-top-label" id="petNameLabel">OVINHO</div>
+
+        <div class="tama-screen-bezel">
+          <div class="tama-screen">
+            <canvas id="petCanvas" width="320" height="200"></canvas>
+            <div class="tama-scanlines"></div>
+            <div class="tama-glass-glare"></div>
+            <div class="tama-overlay hidden" id="tamaOverlay"></div>
+            <div class="tama-toast" id="tamaToast"></div>
+          </div>
+          <div class="bezel-dot bezel-dot-left"></div>
+          <div class="bezel-dot bezel-dot-right"></div>
+        </div>
+
+        <div class="tama-speaker" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="tama-buttons">
+          <div class="btn-col">
+            <button class="tama-btn" data-btn="A" aria-label="Botão A - navegar menu" type="button">A</button>
+          </div>
+          <div class="btn-col">
+            <button class="tama-btn" data-btn="B" aria-label="Botão B - confirmar" type="button">B</button>
+          </div>
+          <div class="btn-col">
+            <button class="tama-btn" data-btn="C" aria-label="Botão C - cancelar" type="button">C</button>
+          </div>
+        </div>
+
+        <div class="tama-brand">OVINHO · VIRTUAL PET</div>
+      </div>
+
+      <div class="side-panels">
+        <section class="glass-panel stats-panel" aria-label="Status do bichinho">
+          <h2>Status</h2>
+          <div class="stat-row">
+            <span class="stat-label">🍖 Fome</span>
+            <div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">😊 Alegria</span>
+            <div class="stat-bar"><div class="stat-fill" id="barHappiness"></div></div>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">🧼 Higiene</span>
+            <div class="stat-bar"><div class="stat-fill" id="barHygiene"></div></div>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">❤️ Saúde</span>
+            <div class="stat-bar"><div class="stat-fill" id="barHealth"></div></div>
+          </div>
+          <div class="stat-meta">
+            <span id="petStageLabel">Ovo</span>
+            <span id="petAgeLabel">Dia 0</span>
+          </div>
+          <button class="ghost-btn" id="renameBtn" type="button">✏️ Renomear</button>
+          <button class="ghost-btn danger-btn" id="resetBtn" type="button">🥚 Novo ovo</button>
+        </section>
+
+        <section class="glass-panel customize-panel" aria-label="Personalizar carcaça">
+          <h2>Personalizar</h2>
+          <div class="color-field">
+            <label for="shellColorInput">Cor da carcaça</label>
+            <input type="color" id="shellColorInput" value="#e8536b">
+          </div>
+          <div class="preset-row" id="shellPresets"></div>
+          <div class="color-field">
+            <label for="accentColorInput">Cor dos botões</label>
+            <input type="color" id="accentColorInput" value="#3a3a3a">
+          </div>
+          <div class="preset-row" id="accentPresets"></div>
+          <div class="color-field">
+            <label for="screenColorInput">Cor da tela</label>
+            <input type="color" id="screenColorInput" value="#9bbc0f">
+          </div>
+          <div class="preset-row" id="screenPresets"></div>
+          <button class="ghost-btn" id="muteBtn" type="button">🔊 Som ligado</button>
+        </section>
+      </div>
+
+      <div class="instructions">
+        <p><strong>A</strong> navega o menu · <strong>B</strong> confirma · <strong>C</strong> cancela</p>
+        <p>Cuide bem do seu bichinho — quanto mais amor, melhor ele evolui. O progresso é salvo automaticamente.</p>
+      </div>
+
+      <details class="history-panel glass-panel" id="historyPanel" hidden>
+        <summary>🏆 Memórias (bichinhos anteriores)</summary>
+        <ul id="historyList"></ul>
+      </details>
+    </main>
+
+    <footer data-lab-footer data-home-href="/"></footer>
+  </div>
+
+  <script src="/labs/shared.js?v=5" defer></script>
+  <script src="script.js" defer></script>
+</body>
+
+</html>
