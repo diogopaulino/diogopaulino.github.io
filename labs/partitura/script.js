@@ -473,9 +473,9 @@ class StaffSVGRenderer {
 
     // 2. Desenho Vetorial Perfeito das Claves
     if (this.clef === 'treble') {
-      // Clave de Sol (Espiral em torno da 2ª linha, Y=130) + texto de apoio elegante
+      // Clave de Sol (Espiral em torno da 2ª linha, Y=130) — sem animação de posição
       const group = document.createElementNS(ns, 'g');
-      group.setAttribute('class', 'note-glow');
+      group.setAttribute('class', 'clef-mark');
       
       const clefText = document.createElementNS(ns, 'text');
       clefText.setAttribute('x', '55');
@@ -498,7 +498,7 @@ class StaffSVGRenderer {
     } else {
       // Clave de Fá: Símbolo de Fá na 4ª Linha (Y=90) com os DOIS PONTOS clássicos em Y=80 e Y=100!
       const group = document.createElementNS(ns, 'g');
-      group.setAttribute('class', 'note-glow');
+      group.setAttribute('class', 'clef-mark');
       
       const clefText = document.createElementNS(ns, 'text');
       clefText.setAttribute('x', '50');

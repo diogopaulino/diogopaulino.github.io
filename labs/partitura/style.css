@@ -343,14 +343,26 @@ body {
 .feedback-bar-integrated.success { background: rgba(16, 185, 129, 0.18); color: #34d399; border-color: rgba(16,185,129,0.5); }
 .feedback-bar-integrated.error { background: rgba(244, 63, 94, 0.18); color: #fb7185; border-color: rgba(244,63,94,0.5); }
 
-/* Animações de nota no SVG */
-.note-glow { filter: drop-shadow(0 0 10px var(--neon-cyan)); animation: notePulse 1.2s infinite alternate; }
-.mode-bass-clef .note-glow { filter: drop-shadow(0 0 12px var(--neon-amethyst)); animation: notePulseBass 1.2s infinite alternate; }
-@keyframes notePulse { from { transform: scale(1); filter: drop-shadow(0 0 5px var(--neon-cyan)); } to { transform: scale(1.07); filter: drop-shadow(0 0 14px var(--neon-cyan)); } }
-@keyframes notePulseBass { from { transform: scale(1); filter: drop-shadow(0 0 6px var(--neon-amethyst)); } to { transform: scale(1.07); filter: drop-shadow(0 0 15px var(--neon-pink)); } }
+/* Brilho estático na pauta — sem scale/translate (confunde leitura de linha/espaço) */
+.clef-mark { filter: drop-shadow(0 0 8px var(--neon-cyan)); }
+.mode-bass-clef .clef-mark { filter: drop-shadow(0 0 10px var(--neon-amethyst)); }
 
-.note-hit-anim { animation: noteJumpSuccess 0.5s ease; }
-@keyframes noteJumpSuccess { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-15px) scale(1.3); filter: drop-shadow(0 0 25px var(--neon-emerald)); } }
+.note-glow { filter: drop-shadow(0 0 10px var(--neon-cyan)); }
+.mode-bass-clef .note-glow { filter: drop-shadow(0 0 12px var(--neon-amethyst)); }
+
+/* Feedback de acerto: só intensifica o glow, sem mexer a posição da nota */
+.note-hit-anim { animation: noteHitFlash 0.45s ease; }
+@keyframes noteHitFlash {
+  0%, 100% { filter: drop-shadow(0 0 10px var(--neon-cyan)); }
+  50% { filter: drop-shadow(0 0 22px var(--neon-emerald)); }
+}
+
+.staff-shake { animation: staffShake 0.4s ease; }
+@keyframes staffShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 
 /* ==========================================================================
    4. CONSOLE DE SYNTH & TECLADO VIRTUAL DE ALTA DENSIDADE
