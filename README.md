@@ -45,6 +45,7 @@ Tudo roda no navegador: jogos, ferramentas, visualizações e instrumentos.
 
 | Projeto | Sobre |
 | :--- | :--- |
+| 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: terminal, firewall, Oracle e cipher |
 | 🟢 **[Matrix Rain](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
 | 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Aurora boreal em flow fields |
 | 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital |
