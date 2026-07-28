@@ -843,23 +843,21 @@
         }, 500);
 
         if (state.stage === 'egg' && actionId !== 'stats' && actionId !== 'light') {
-            showToastMsg('Ainda e ovo!', 1400);
+            showToastMsg('Ainda é ovo! Chocando... 🥚', 1600);
             SND.cancel();
             return;
         }
 
         if (actionId === 'drink') {
-            if (thirstGlassEmpty() === 0) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'animating';
             SND.feed();
+            showToastMsg('Beber Água 💧', 1400);
             animSequence = {
-                type: 'drink', step: 0, maxStep: 12,
+                type: 'drink', step: 0, maxStep: 14,
                 onDone: () => {
-                    state.thirst = clamp(state.thirst + 50, 0, 100);
-                    state.happiness = clamp(state.happiness + 4, 0, 100);
+                    state.thirst = clamp(state.thirst + 40, 0, 100);
+                    state.happiness = clamp(state.happiness + 6, 0, 100);
+                    showToastMsg('Que refrescante! 💦', 1400);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -868,42 +866,34 @@
         }
 
         if (actionId === 'food') {
-            if (hungerPlatesEmpty() === 0) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'food_pick';
             foodPick = 0;
             SND.confirm();
-            showToastMsg(FOODS[0].label + ' ◄►', 1600);
+            showToastMsg(FOODS[0].label + ' — ◄► e Enter', 2000);
             return;
         }
 
         if (actionId === 'light') {
             state.lightsOn = !state.lightsOn;
             SND.confirm();
-            showToastMsg(state.lightsOn ? 'Luz ON' : 'Luz OFF', 1600);
+            showToastMsg(state.lightsOn ? 'Luz: ACESA 💡' : 'Luz: APAGADA 🌙', 1600);
             save(); updateCompanionUI();
             return;
         }
 
         if (actionId === 'discipline') {
-            if (!state.madAngry && !state.heatAngry && state.eduLevel >= 4) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'animating';
             SND.confirm();
+            showToastMsg('Atenção! Disciplinando... ⚠️', 1400);
             animSequence = {
-                type: 'discipline', step: 0, maxStep: 10,
+                type: 'discipline', step: 0, maxStep: 12,
                 onDone: () => {
                     if (state.madAngry) state.madAngry = false;
                     if (state.heatAngry && state.acOn) state.heatAngry = false;
-                    if (!state.madAngry && !state.heatAngry) {
-                        state.eduLevel = clamp(state.eduLevel + 1, 0, 4);
-                    }
+                    state.eduLevel = clamp(state.eduLevel + 1, 0, 4);
                     syncAngryFlags();
-                    state.happiness = clamp(state.happiness + 6, 0, 100);
+                    state.happiness = clamp(state.happiness + 5, 0, 100);
+                    showToastMsg('Dino mais educado! 🎓', 1400);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -915,6 +905,7 @@
             uiMode = 'stats_view';
             statsPage = 0;
             SND.confirm();
+            showToastMsg('Status do Dino (Enter p/ mudar) 📊', 2000);
             return;
         }
 
@@ -922,20 +913,20 @@
             uiMode = 'minigame';
             minigameData = { round: 1, maxRounds: 5, wins: 0, choice: 0, state: 'waiting', result: null };
             SND.confirm();
+            showToastMsg('Jokenpô! ◄► escolhe e Enter 🕹️', 2500);
             return;
         }
 
         if (actionId === 'study') {
-            if (state.eduLevel >= 4) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'animating';
             SND.confirm();
+            showToastMsg('Estudando para escola... 📚', 1400);
             animSequence = {
-                type: 'study', step: 0, maxStep: 12,
+                type: 'study', step: 0, maxStep: 14,
                 onDone: () => {
                     state.eduLevel = clamp(state.eduLevel + 1, 0, 4);
+                    state.happiness = clamp(state.happiness + 5, 0, 100);
+                    showToastMsg('Inteligência +1! 📖✨', 1400);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -944,18 +935,15 @@
         }
 
         if (actionId === 'bath') {
-            if (!state.dirty) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'animating';
             SND.clean();
-            showToastMsg('Banho!', 1400);
+            showToastMsg('Tomando Banho de Chuveiro 🚿', 1600);
             animSequence = {
-                type: 'bath', step: 0, maxStep: 14,
+                type: 'bath', step: 0, maxStep: 16,
                 onDone: () => {
                     state.dirty = false;
-                    state.happiness = clamp(state.happiness + 6, 0, 100);
+                    state.happiness = clamp(state.happiness + 10, 0, 100);
+                    showToastMsg('Limpinho e cheiroso! 🧼✨', 1500);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -973,26 +961,32 @@
             }
             syncAngryFlags();
             SND.confirm();
-            save(); updateCompanionUI();
+            uiMode = 'animating';
+            showToastMsg(state.acOn ? 'Ligando Ar-Condicionado... ❄️' : 'Desligando Ar... ♨️', 1400);
+            animSequence = {
+                type: 'ac', step: 0, maxStep: 12, acState: state.acOn,
+                onDone: () => {
+                    showToastMsg(state.acOn ? 'Ar-Condicionado: LIGADO ❄️' : 'Ar-Condicionado: DESLIGADO ♨️', 1600);
+                    uiMode = 'idle';
+                    save(); updateCompanionUI();
+                }
+            };
             return;
         }
 
         if (actionId === 'medicine') {
-            if (!state.isSick) {
-                SND.cancel();
-                return;
-            }
             uiMode = 'animating';
             SND.confirm();
+            showToastMsg('Tomando Remédio e Vitaminas 💊', 1600);
             animSequence = {
-                type: 'medicine', step: 0, maxStep: 12,
+                type: 'medicine', step: 0, maxStep: 14,
                 onDone: () => {
                     state.isSick = false;
                     state.sickTimer = 0;
-                    state.hunger = 0;
-                    state.thirst = 0;
-                    state.happiness = 0;
-                    state.eduLevel = 0;
+                    state.hunger = clamp(state.hunger + 10, 0, 100);
+                    state.thirst = clamp(state.thirst + 10, 0, 100);
+                    state.happiness = clamp(state.happiness + 15, 0, 100);
+                    showToastMsg('Saúde renovada! ❤️', 1600);
                     uiMode = 'idle';
                     save(); updateCompanionUI();
                 }
@@ -1004,7 +998,7 @@
         const food = FOODS[foodPick];
         uiMode = 'animating';
         SND.feed();
-        showToastMsg(food.label, 1400);
+        showToastMsg('Comendo: ' + food.label + ' 😋', 1400);
         animSequence = {
             type: 'food', step: 0, maxStep: 14, foodId: food.id,
             onDone: () => {
@@ -1017,12 +1011,13 @@
                 if (state.foodBias) state.foodBias[food.id] = (state.foodBias[food.id] || 0) + 1;
                 foodPick = null;
                 uiMode = 'idle';
+                showToastMsg('Delícia! ' + food.label + ' 🦖', 1400);
                 save(); updateCompanionUI();
             }
         };
     }
 
-    /* Jan-ken-po: objetivo é deixar o DINO ganhar 3/5 */
+    /* Jan-ken-po: Joguinho interativo */
     function playRpsTurn() {
         if (!minigameData || minigameData.state !== 'waiting') return;
         minigameData.state = 'reveal';
@@ -1035,6 +1030,7 @@
         if (player === dino) {
             minigameData.result = 'tie';
             SND.nav();
+            showToastMsg('Empate! Ambos jogaram ' + RPS_LABEL[player] + ' 🤜🤛', 1400);
         } else if (
             (dino === 'rock' && player === 'scissors') ||
             (dino === 'scissors' && player === 'paper') ||
@@ -1045,9 +1041,11 @@
             minigameData.result = 'dino';
             state.happiness = clamp(state.happiness + 20, 0, 100);
             SND.confirm();
+            showToastMsg('Dino venceu com ' + RPS_LABEL[dino] + '! 🦖🎉', 1400);
         } else {
             minigameData.result = 'you';
             SND.cancel();
+            showToastMsg('Você ganhou com ' + RPS_LABEL[player] + '! 🙋‍♂️✨', 1400);
         }
 
         setTimeout(() => {
@@ -1058,59 +1056,66 @@
             }
             minigameData.round++;
             if (minigameData.round > minigameData.maxRounds) {
-                state.happiness = clamp(state.happiness + (minigameData.wins >= 3 ? 20 : 6), 0, 100);
-                if (minigameData.wins >= 3) SND.hatch();
+                state.happiness = clamp(state.happiness + (minigameData.wins >= 3 ? 20 : 10), 0, 100);
+                if (minigameData.wins >= 3) {
+                    SND.hatch();
+                    showToastMsg('Fim: DINO É CAMPEÃO! 🏆🦖', 2500);
+                } else {
+                    showToastMsg('Fim do jogo! Boa partida 🕹️✨', 2200);
+                }
                 uiMode = 'idle';
                 minigameData = null;
                 save(); updateCompanionUI();
             } else {
                 minigameData.state = 'waiting';
+                showToastMsg('Rodada ' + minigameData.round + '/5: Escolha ◄► Enter', 1600);
             }
-        }, 1100);
+        }, 1300);
     }
 
     document.querySelectorAll('[data-btn]').forEach((btnEl) => {
         const code = btnEl.getAttribute('data-btn');
-        btnEl.addEventListener('mousedown', () => {
+        const onPress = () => {
             btnEl.classList.add('pressed');
             if (code === 'ESC') escHeld = true;
             if (code === 'ENTER') enterHeld = true;
             if (code === 'LEFT') { leftHeld = true; if (rightHeld && !bothHeldSince) bothHeldSince = Date.now(); }
             if (code === 'RIGHT') { rightHeld = true; if (leftHeld && !bothHeldSince) bothHeldSince = Date.now(); }
-        });
-        btnEl.addEventListener('mouseup', () => {
+        };
+        const onRelease = () => {
             btnEl.classList.remove('pressed');
             if (code === 'ESC') escHeld = false;
             if (code === 'ENTER') enterHeld = false;
             if (code === 'LEFT') { leftHeld = false; bothHeldSince = 0; }
             if (code === 'RIGHT') { rightHeld = false; bothHeldSince = 0; }
-        });
-        btnEl.addEventListener('mouseleave', () => {
-            btnEl.classList.remove('pressed');
-            if (code === 'ESC') escHeld = false;
-            if (code === 'ENTER') enterHeld = false;
-            if (code === 'LEFT') { leftHeld = false; bothHeldSince = 0; }
-            if (code === 'RIGHT') { rightHeld = false; bothHeldSince = 0; }
-        });
+        };
+        btnEl.addEventListener('mousedown', onPress);
+        btnEl.addEventListener('touchstart', (e) => { onPress(); }, { passive: true });
+        btnEl.addEventListener('mouseup', onRelease);
+        btnEl.addEventListener('touchend', onRelease);
+        btnEl.addEventListener('mouseleave', onRelease);
+        btnEl.addEventListener('touchcancel', onRelease);
         btnEl.addEventListener('click', (e) => {
             e.preventDefault();
             handleHardwareBtn(code);
         });
     });
 
-    /* Clique direto nos ícones do LCD */
+    /* Clique direto nos ícones do LCD — Ativa E EXECUTA NA HORA! */
     ALL_ICONS.forEach((id) => {
         const el = iconElements[id];
         if (!el) return;
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
             const side = LEFT_ICONS.includes(id) ? 'left' : 'right';
             const list = side === 'left' ? LEFT_ICONS : RIGHT_ICONS;
             uiMode = 'menu';
             selectedSide = side;
             selectedIndex = list.indexOf(id);
             updateIconSelection();
+            if (iconElements[id]) iconElements[id].classList.add('active');
             SND.nav();
-            showToastMsg(ICON_TITLES[id], 900);
+            executeAction(id);
         });
     });
 
@@ -1360,18 +1365,85 @@
 
     function drawDrinkItem(step) {
         ctx.fillStyle = ink;
-        const fx = 36, fy = FLOOR_Y - 6;
-        rect(fx, fy, 4, 6);
-        clearRectG(fx + 1, fy + 1, 2, 4);
-        if (step < 8) rect(fx + 1, fy + 2 + Math.floor(step / 3), 2, 2);
+        const fx = 36, fy = FLOOR_Y - 8;
+        rect(fx, fy, 5, 8);
+        clearRectG(fx + 1, fy + 1, 3, 6);
+        if (step < 10) {
+            rect(fx + 1, fy + 2 + Math.floor(step / 2), 3, 4);
+        }
+        // Bolhas de água indo para o dino
+        if (step % 2 === 0) {
+            rect(fx - 4, fy + 3, 2, 2);
+            rect(fx - 7, fy + 5, 2, 2);
+        }
     }
 
     function drawShowerAnim(step) {
         ctx.fillStyle = ink;
-        rect(16, 2, 14, 2);
-        const dropY = 5 + step;
-        for (let i = 0; i < 4; i++) {
-            rect(18 + i * 3, (dropY + (i % 2) * 2) % (FLOOR_Y - 3), 1, 2);
+        rect(12, 1, 36, 3);
+        rect(28, 4, 6, 2);
+        const dropY = (step * 3) % 18;
+        for (let i = 0; i < 7; i++) {
+            rect(14 + i * 5, (dropY + (i % 2) * 4) % (FLOOR_Y - 4), 1, 3);
+        }
+        // Bolhas e água de banho
+        if (step % 2 === 0) {
+            rect(12, FLOOR_Y - 4, 4, 4); clearRectG(13, FLOOR_Y - 3, 2, 2);
+            rect(42, FLOOR_Y - 5, 3, 3); clearRectG(43, FLOOR_Y - 4, 1, 1);
+        }
+    }
+
+    function drawStudyAnim(step) {
+        ctx.fillStyle = ink;
+        const lx = 38, ly = FLOOR_Y - 6;
+        rect(lx, ly, 14, 6);
+        clearRectG(lx + 6, ly + 1, 2, 5);
+        if (step % 2 === 0) rect(lx + 6, ly - 2, 2, 3); // Página virando
+        // Notas do livro subindo
+        const ny = FLOOR_Y - 9 - (step % 4) * 3;
+        rect(lx + 2, ny, 3, 3);
+        rect(lx + 9, ny - 3, 2, 2);
+    }
+
+    function drawDisciplineAnim(step) {
+        ctx.fillStyle = ink;
+        const bx = 42, by = 4;
+        rect(bx, by, 12, 16);
+        clearRectG(bx + 1, by + 1, 10, 14);
+        rect(bx + 5, by + 3, 2, 7); // Exclamação !
+        rect(bx + 5, by + 12, 2, 2);
+        if (step % 2 === 0) {
+            rect(bx - 3, by + 5, 2, 1);
+            rect(bx - 5, by + 8, 2, 1);
+            rect(bx - 3, by + 11, 2, 1);
+        }
+    }
+
+    function drawMedicineAnim(step) {
+        ctx.fillStyle = ink;
+        const mx = 42, my = FLOOR_Y - 8;
+        rect(mx, my, 8, 8);
+        rect(mx + 2, my - 3, 4, 3);
+        clearRectG(mx + 3, my + 1, 2, 6);
+        clearRectG(mx + 1, my + 3, 6, 2); // Cruz no frasco
+        const cy = FLOOR_Y - 10 - (step % 5) * 3;
+        rect(24, cy, 5, 5); clearRectG(24, cy, 1, 1); clearRectG(28, cy, 1, 1); clearRectG(24, cy + 4, 1, 1); clearRectG(28, cy + 4, 1, 1);
+    }
+
+    function drawAcAnim(step, acState) {
+        ctx.fillStyle = ink;
+        if (acState) {
+            for (let i = 0; i < 3; i++) {
+                const wx = ((step * 5) + i * 18) % 56 + 4;
+                rect(wx, 5 + i * 4, 7, 1);
+                rect(wx + 3, 3 + i * 4, 1, 5); // Flocos de neve ❄️
+            }
+        } else {
+            for (let i = 0; i < 4; i++) {
+                const hx = 12 + i * 12;
+                const hy = FLOOR_Y - 5 - ((step + i) % 3) * 5;
+                rect(hx, hy, 2, 4); rect(hx + 2, hy - 3, 2, 2); // Ondas de calor ♨️
+            }
         }
     }
 
@@ -1404,14 +1476,17 @@
         }
 
         if (minigameData.state === 'waiting') {
-            drawHand(6, 14, RPS[minigameData.choice]);
-            drawDinoSprite(32, FLOOR_Y - 2, state.stage, 'happy', frame, null);
-            rect(22, 12, 2, 1); rect(23, 13, 1, 2); rect(22, 15, 1, 1);
+            const bobY = 13 + (frame % 2);
+            drawHand(6, bobY, RPS[minigameData.choice]);
+            drawDinoSprite(36, FLOOR_Y - 2 - ((frame % 2) * 2), state.stage, 'happy', frame, null);
+            rect(24, 13, 2, 1); rect(25, 14, 1, 2); rect(24, 16, 1, 1); // "vs" sinal
         } else {
-            drawHand(4, 12, minigameData.player);
-            drawHand(32, 12, minigameData.dino);
-            rect(22, 15, 4, 1);
-            rect(23, 13, 2, 5);
+            drawHand(6, 12, minigameData.player);
+            drawHand(36, 12, minigameData.dino);
+            // Impacto visual de duelo no centro
+            rect(22, 13, 6, 2);
+            rect(24, 11, 2, 6);
+            if (frame % 2 === 0) { clearRectG(23, 12, 4, 4); }
         }
     }
 
@@ -1526,13 +1601,17 @@
         else if (!state.lightsOn) mood = 'sleep';
         else if (state.hunger < 30 || state.thirst < 30 || state.happiness < 30) mood = 'bad';
 
-        /* Posição: troca a cada ~6 frames (poucos passos, estilo original) */
+        /* Posição e dança durante animações */
         let dinoX = 24;
         if (state.isAlive && state.lightsOn && !state.isSick && !animSequence && state.stage !== 'egg') {
             const walkCycle = Math.floor(lcdFrame / 6) % 5;
             dinoX = 16 + walkCycle * 4;
-        } else if (animSequence && (animSequence.type === 'food' || animSequence.type === 'drink')) {
-            dinoX = Math.min(32, 18 + animSequence.step * 2);
+        } else if (animSequence) {
+            if (animSequence.type === 'food' || animSequence.type === 'drink') {
+                dinoX = Math.min(32, 16 + animSequence.step * 2);
+            } else {
+                dinoX = 22 + ((animSequence.step % 2 === 0) ? -3 : 3); // Dino animado dançando
+            }
         }
 
         drawDinoSprite(dinoX, FLOOR_Y - 2, state.stage, mood, lcdFrame, animSequence);
@@ -1542,6 +1621,10 @@
             if (animSequence.type === 'food') drawFoodItem(animSequence.step, animSequence.foodId);
             if (animSequence.type === 'drink') drawDrinkItem(animSequence.step);
             if (animSequence.type === 'bath') drawShowerAnim(animSequence.step);
+            if (animSequence.type === 'study') drawStudyAnim(animSequence.step);
+            if (animSequence.type === 'discipline') drawDisciplineAnim(animSequence.step);
+            if (animSequence.type === 'medicine') drawMedicineAnim(animSequence.step);
+            if (animSequence.type === 'ac') drawAcAnim(animSequence.step, animSequence.acState);
             if (animSequence.step >= animSequence.maxStep) {
                 const done = animSequence.onDone;
                 animSequence = null;
