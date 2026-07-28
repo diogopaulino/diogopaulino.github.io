@@ -775,7 +775,7 @@ function updateKeyboardZones() {
 }
 
 function updateNotationButtons() {
-  const btns = document.querySelectorAll('.note-btn');
+  const btns = document.querySelectorAll('.trigger-pad, .note-btn');
   btns.forEach(b => {
     const note = b.dataset.note;
     const nameEl = b.querySelector('.note-name');
@@ -1191,7 +1191,7 @@ function setupControlBars() {
   const btnStartArcade = document.getElementById('btn-start-arcade');
   if (btnStartArcade) btnStartArcade.addEventListener('click', () => startArcadeMode());
 
-  const noteBtns = document.querySelectorAll('.note-btn');
+  const noteBtns = document.querySelectorAll('.trigger-pad, .note-btn');
   noteBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       const note = btn.dataset.note;
