@@ -64,6 +64,7 @@ Tudo roda no navegador: jogos, ferramentas, visualizações e instrumentos.
 
 | Projeto | Sobre |
 | :--- | :--- |
+| 🎼 **[Partitura Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado de partituras e escalas gamificado |
 | 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Synth com 4 oitavas |
 | 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Player estilo Winamp 2.x |
 | ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento generativo |
