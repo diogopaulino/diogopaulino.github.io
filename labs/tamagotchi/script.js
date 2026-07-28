@@ -653,12 +653,24 @@
         medicine: 'Remedio'
     };
 
+    /* Termina animação em curso (aplica efeito) para não engolir o próximo clique */
+    function finishAnimationNow() {
+        if (!animSequence) {
+            if (uiMode === 'animating') uiMode = 'idle';
+            return;
+        }
+        const done = animSequence.onDone;
+        animSequence = null;
+        if (done) done();
+        else if (uiMode === 'animating') uiMode = 'idle';
+    }
+
     function handleHardwareBtn(btn) {
         if (!state || !state.isAlive) {
             openSetup(false);
             return;
         }
-        if (uiMode === 'animating') return;
+        if (uiMode === 'animating') finishAnimationNow();
 
         if (uiMode === 'clock_set') {
             if (btn === 'ESC') {
@@ -822,22 +834,25 @@
         }
 
         if (btn === 'ENTER') {
-            if (uiMode !== 'menu' || !currentIconId()) {
+            /* Se já há ícone selecionado (mesmo após animação → idle), executa na hora */
+            if (!currentIconId()) {
                 uiMode = 'menu';
                 selectedSide = 'left';
                 selectedIndex = 0;
                 updateIconSelection();
-                SND.nav();
-                showToastMsg(ICON_TITLES.drink, 1000);
-                return;
             }
             const actionId = currentIconId();
+            uiMode = 'menu';
             if (iconElements[actionId]) iconElements[actionId].classList.add('active');
             executeAction(actionId);
         }
     }
 
     function executeAction(actionId) {
+        if (uiMode === 'animating' || animSequence) finishAnimationNow();
+        if (uiMode === 'food_pick') foodPick = null;
+        if (uiMode === 'minigame') minigameData = null;
+
         setTimeout(() => {
             if (iconElements[actionId]) iconElements[actionId].classList.remove('active');
         }, 500);
@@ -1075,6 +1090,9 @@
 
     document.querySelectorAll('[data-btn]').forEach((btnEl) => {
         const code = btnEl.getAttribute('data-btn');
+        let pointerArmed = false;
+        let lastFireAt = 0;
+
         const onPress = () => {
             btnEl.classList.add('pressed');
             if (code === 'ESC') escHeld = true;
@@ -1089,15 +1107,43 @@
             if (code === 'LEFT') { leftHeld = false; bothHeldSince = 0; }
             if (code === 'RIGHT') { rightHeld = false; bothHeldSince = 0; }
         };
-        btnEl.addEventListener('mousedown', onPress);
-        btnEl.addEventListener('touchstart', (e) => { onPress(); }, { passive: true });
-        btnEl.addEventListener('mouseup', onRelease);
-        btnEl.addEventListener('touchend', onRelease);
-        btnEl.addEventListener('mouseleave', onRelease);
-        btnEl.addEventListener('touchcancel', onRelease);
+        const fire = () => {
+            const now = Date.now();
+            if (now - lastFireAt < 80) return;
+            lastFireAt = now;
+            handleHardwareBtn(code);
+        };
+
+        /*
+          Ação no pointerup (com capture), não no click.
+          O transform :active/:pressed deslocava o botão e o click se perdia —
+          aí parecia que precisava clicar 2x.
+        */
+        btnEl.addEventListener('pointerdown', (e) => {
+            if (e.button != null && e.button !== 0) return;
+            pointerArmed = true;
+            try { btnEl.setPointerCapture(e.pointerId); } catch (err) {}
+            onPress();
+        });
+        btnEl.addEventListener('pointerup', (e) => {
+            if (!pointerArmed) return;
+            pointerArmed = false;
+            /* Dispara antes do onRelease para Esc+Enter (ajuste de hora) ainda ver os dois held */
+            fire();
+            onRelease();
+        });
+        btnEl.addEventListener('pointercancel', () => {
+            pointerArmed = false;
+            onRelease();
+        });
+        btnEl.addEventListener('lostpointercapture', () => {
+            if (pointerArmed) {
+                pointerArmed = false;
+                onRelease();
+            }
+        });
         btnEl.addEventListener('click', (e) => {
             e.preventDefault();
-            handleHardwareBtn(code);
         });
     });
 
@@ -1105,8 +1151,13 @@
     ALL_ICONS.forEach((id) => {
         const el = iconElements[id];
         if (!el) return;
-        el.addEventListener('click', (e) => {
-            e.preventDefault();
+        let iconArmed = false;
+        let lastIconFire = 0;
+
+        const fireIcon = () => {
+            const now = Date.now();
+            if (now - lastIconFire < 80) return;
+            lastIconFire = now;
             const side = LEFT_ICONS.includes(id) ? 'left' : 'right';
             const list = side === 'left' ? LEFT_ICONS : RIGHT_ICONS;
             uiMode = 'menu';
@@ -1116,7 +1167,20 @@
             if (iconElements[id]) iconElements[id].classList.add('active');
             SND.nav();
             executeAction(id);
+        };
+
+        el.addEventListener('pointerdown', (e) => {
+            if (e.button != null && e.button !== 0) return;
+            iconArmed = true;
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
         });
+        el.addEventListener('pointerup', () => {
+            if (!iconArmed) return;
+            iconArmed = false;
+            fireIcon();
+        });
+        el.addEventListener('pointercancel', () => { iconArmed = false; });
+        el.addEventListener('click', (e) => { e.preventDefault(); });
     });
 
     window.addEventListener('keydown', (e) => {
