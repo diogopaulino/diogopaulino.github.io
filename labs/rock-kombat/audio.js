@@ -217,6 +217,44 @@ window.RockKombatAudio = (() => {
         fmVoice(sfxGain, now, { freq: 180 * pitch, ratio: 3, modIndex: 850, modIndexDecay: 0.25, wave: 'square', duration: 0.6, gain: 0.28 });
         fmVoice(sfxGain, now, { freq: 52 * pitch, ratio: 0.5, modIndex: 400, modIndexDecay: 0.15, wave: 'sine', duration: 0.4, gain: 0.38 });
         break;
+      case 'projectile':
+      case 'hadoken':
+        // Disparo de projétil sonoro/psicodélico (Hadoken swish & onda elétrica)
+        fmVoice(sfxGain, now, { freq: 320 * pitch, ratio: 1.5, modIndex: 450, modIndexDecay: 0.12, wave: 'sine', duration: 0.25, gain: 0.3 });
+        noiseHit(sfxGain, now, { duration: 0.18, gain: 0.22, filterType: 'bandpass', freq: 1400 * pitch, freqEnd: 400, Q: 2 });
+        break;
+      case 'hit_projectile':
+      case 'projectile_clash':
+        // Impacto de onda de energia ou colisão de projéteis no ar!
+        powerChord(sfxGain, now, 160 * pitch, 0.4, 3000, 0.18);
+        noiseHit(sfxGain, now, { duration: 0.2, gain: 0.35, filterType: 'highpass', freq: 800, freqEnd: 200 });
+        fmVoice(sfxGain, now, { freq: 220 * pitch, ratio: 4, modIndex: 600, modIndexDecay: 0.08, wave: 'square', duration: 0.2, gain: 0.3 });
+        break;
+      case 'sweep':
+      case 'whiff_sweep':
+        // Som rasgante e rasteiro no chão (Tsunami Kick swish)
+        noiseHit(sfxGain, now, { duration: 0.18, gain: 0.25, filterType: 'lowpass', freq: 700 * pitch, freqEnd: 150 });
+        fmVoice(sfxGain, now, { freq: 50 * pitch, ratio: 0.5, modIndex: 90, modIndexDecay: 0.05, wave: 'triangle', duration: 0.14, gain: 0.15 });
+        break;
+      case 'hit_sweep':
+      case 'knockdown':
+        // Queda pesada no tatame / palco de madeira (Hard Knockdown!)
+        fmVoice(sfxGain, now, { freq: 45 * pitch, ratio: 0.5, modIndex: 600, modIndexDecay: 0.1, wave: 'sine', duration: 0.28, gain: 0.5 });
+        noiseHit(sfxGain, now, { duration: 0.16, gain: 0.32, filterType: 'lowpass', freq: 800, freqEnd: 120 });
+        powerChord(sfxGain, now, 65 * pitch, 0.2, 1200, 0.14);
+        break;
+      case 'parry':
+      case 'perfect_parry':
+        // Rock Block / Perfect Parry! Brilho metálico cristalino com eco de amplificador
+        powerChord(sfxGain, now, 329.63 * pitch, 0.6, 4500, 0.25); // Mi agudo brilhante
+        fmVoice(sfxGain, now, { freq: 880 * pitch, ratio: 2, modIndex: 300, modIndexDecay: 0.15, wave: 'triangle', duration: 0.3, gain: 0.38 });
+        noiseHit(sfxGain, now, { duration: 0.06, gain: 0.2, filterType: 'highpass', freq: 2000, freqEnd: 1000 });
+        break;
+      case 'combo':
+        // Som escalonável de comemoração de combo percussivo!
+        powerChord(sfxGain, now, (130.81 + pitch * 20), 0.35, 3000, 0.15);
+        fmVoice(sfxGain, now, { freq: (200 + pitch * 50), ratio: 1, modIndex: 250, modIndexDecay: 0.08, wave: 'sawtooth', duration: 0.16, gain: 0.28 });
+        break;
       case 'block':
         // Som defendo/madeira ou metal sem ferimento
         fmVoice(sfxGain, now, { freq: 460 * pitch, ratio: 5, modIndex: 750, modIndexDecay: 0.05, wave: 'square', duration: 0.12, gain: 0.24 });
