@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Partitura: Maestro Quest - Diogo Paulino</title>
+  <meta name="description" content="Aprenda a ler partituras, notas e escalas musicais com interatividade, áudio sintético e gamificação.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=4">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container maestro-container">
+    <header data-lab-header data-title="Partitura Quest">
+      <template data-slot="logo">
+        <span class="logo-icon">𝄞</span> Partitura Quest
+      </template>
+    </header>
+
+    <!-- PAINEL DE GAMIFICAÇÃO & STATUS DO MAESTRO -->
+    <div class="maestro-dashboard">
+      <div class="level-badge-box">
+        <div class="avatar-ring">
+          <span id="maestro-avatar">🎩</span>
+        </div>
+        <div class="level-details">
+          <div class="level-title" id="maestro-level-title">Nível 1: Aprendiz da Clave</div>
+          <div class="xp-bar-container" title="Sua experiência musical">
+            <div class="xp-bar-fill" id="xp-bar" style="width: 0%;"></div>
+            <span class="xp-text" id="xp-text">0 / 100 XP</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-counter-group">
+        <div class="stat-pill combo-pill" id="combo-box">
+          <span class="stat-icon">🔥</span>
+          <span class="stat-value" id="combo-count">x1</span>
+          <span class="stat-label">Combo</span>
+        </div>
+        <div class="stat-pill streak-pill" title="Dias seguidos praticando">
+          <span class="stat-icon">⚡</span>
+          <span class="stat-value" id="streak-days">1</span>
+          <span class="stat-label">Streak</span>
+        </div>
+        <div class="stat-pill coin-pill" title="Notas de Ouro acumuladas">
+          <span class="stat-icon">🪙</span>
+          <span class="stat-value" id="coin-count">0</span>
+          <span class="stat-label">Ouro</span>
+        </div>
+        <button class="badge-open-btn" id="btn-open-badges" aria-label="Ver Troféus e Conquistas">
+          🏆 <span class="btn-text">Troféus</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROLES DE CONFIGURAÇÃO RÁPIDA (ÁUDIO E NOTAÇÃO) -->
+    <div class="audio-settings-bar">
+      <div class="setting-item">
+        <label for="instrument-select">🎹 Timbre:</label>
+        <select id="instrument-select" class="neon-select">
+          <option value="piano" selected>Piano de Cauda</option>
+          <option value="synth">Sintetizador Néon</option>
+          <option value="celesta">Celesta Mágica</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <button class="toggle-btn" id="toggle-notation-btn" title="Alternar entre Dó-Ré-Mi e C-D-E">
+          <span class="notation-mode-badge" id="notation-mode-display">Dó Ré Mi ⇄ C D E</span>
+        </button>
+      </div>
+      <div class="setting-item">
+        <label for="clef-select">🎼 Clave:</label>
+        <select id="clef-select" class="neon-select">
+          <option value="treble" selected>Clave de Sol (𝄞)</option>
+          <option value="bass">Clave de Fá (𝄢)</option>
+          <option value="both">Alternar Ambas</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ABAS DE NAVEGAÇÃO DOS MODOS DE ESTUDO & JOGO -->
+    <nav class="mode-tabs" role="tablist">
+      <button class="tab-btn active" data-mode="quiz" role="tab" aria-selected="true">
+        🎮 Desafio da Clave
+      </button>
+      <button class="tab-btn" data-mode="scales" role="tab" aria-selected="false">
+        📈 Lab de Escalas
+      </button>
+      <button class="tab-btn" data-mode="ear" role="tab" aria-selected="false">
+        🎧 Treino Auditivo
+      </button>
+      <button class="tab-btn" data-mode="arcade" role="tab" aria-selected="false">
+        ⚡ Corrida 60s
+      </button>
+    </nav>
+
+    <!-- PALCO PRINCIPAL DE INTERAÇÃO -->
+    <main class="main-stage">
+      <!-- MODO DE ESCALAS BARRA SUPERIOR EXCLUSIVA -->
+      <div class="mode-toolbar hidden" id="toolbar-scales">
+        <label for="scale-select">Escala para explorar:</label>
+        <select id="scale-select" class="neon-select scale-picker">
+          <option value="C-major">Dó Maior (C Major)</option>
+          <option value="G-major">Sol Maior (G Major - 1 Falso Mágico: Fá♯)</option>
+          <option value="A-minor">Lá Menor Natural (A Minor)</option>
+          <option value="C-penta">Dó Pentatônica (C Pentatonic)</option>
+          <option value="C-blues">Dó Blues (C Blues - Blue Note! 🎸)</option>
+          <option value="A-harmonic">Lá Menor Harmônica (A Harmonic Minor)</option>
+        </select>
+        <button id="btn-play-scale" class="action-btn glow-btn">
+          ▶ Tocar Escala
+        </button>
+      </div>
+
+      <!-- MODO DE 60 SEGUNDOS EXECUTOR DE TEMPO -->
+      <div class="mode-toolbar hidden" id="toolbar-arcade">
+        <div class="timer-box">
+          <span class="timer-icon">⏱️</span>
+          <span id="timer-display" class="timer-digits">60s</span>
+        </div>
+        <div class="score-box">
+          Pontos no Round: <strong id="arcade-score">0</strong>
+          <span class="high-score" title="Recorde Pessoal">🏆 Recorde: <span id="arcade-highscore">0</span></span>
+        </div>
+        <button id="btn-start-arcade" class="action-btn pulse-btn">⚡ Iniciar Desafio</button>
+      </div>
+
+      <!-- PAINEL VISUAL DO PENTAGRAMA (PARTITURA SVG) -->
+      <div class="staff-display-card">
+        <div class="staff-header-info" id="mode-instruction-text">
+          Toque a nota ou tecla correspondente no pentagrama para marcar pontos!
+        </div>
+
+        <div class="staff-svg-wrapper">
+          <svg id="staff-canvas" viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg">
+            <!-- As linhas do pentagrama, claves e notas reluzentes são renderizadas programaticamente -->
+          </svg>
+        </div>
+
+        <!-- FEEDBACK VISUAL BONITO DO RESULTADO (ACERTO / ERRO) -->
+        <div class="feedback-banner" id="feedback-display">
+          <span class="feedback-icon" id="feedback-icon">✨</span>
+          <span class="feedback-text" id="feedback-text">Qual é esta nota na partitura?</span>
+        </div>
+      </div>
+
+      <!-- PAINEL DE COMANDOS / TECLADO DE ENTRADA -->
+      <section class="input-controllers">
+        <div class="note-buttons-row" id="note-buttons-container">
+          <button class="note-btn" data-note="C" data-color="red">
+            <span class="note-name">Dó</span><span class="note-cifra">C</span>
+          </button>
+          <button class="note-btn" data-note="D" data-color="orange">
+            <span class="note-name">Ré</span><span class="note-cifra">D</span>
+          </button>
+          <button class="note-btn" data-note="E" data-color="yellow">
+            <span class="note-name">Mi</span><span class="note-cifra">E</span>
+          </button>
+          <button class="note-btn" data-note="F" data-color="green">
+            <span class="note-name">Fá</span><span class="note-cifra">F</span>
+          </button>
+          <button class="note-btn" data-note="G" data-color="cyan">
+            <span class="note-name">Sol</span><span class="note-cifra">G</span>
+          </button>
+          <button class="note-btn" data-note="A" data-color="blue">
+            <span class="note-name">Lá</span><span class="note-cifra">A</span>
+          </button>
+          <button class="note-btn" data-note="B" data-color="purple">
+            <span class="note-name">Si</span><span class="note-cifra">B</span>
+          </button>
+        </div>
+
+        <div class="virtual-keyboard-card">
+          <div class="keyboard-header">
+            <span>🎹 Teclado Interativo (Dó3 a Si4)</span>
+            <span class="keyboard-tip">Você também pode tocar aqui diretamente!</span>
+          </div>
+          <div class="piano-keyboard-wrapper">
+            <div class="piano-keyboard" id="piano-keyboard">
+              <!-- Teclas brancas e pretas geradas dinamicamente com suporte a toques e mouse -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MODAL DE TROFÉUS E CONQUISTAS (PERSISTIDO EM LOCALSTORAGE) -->
+    <div class="modal-backdrop hidden" id="modal-badges">
+      <div class="modal-card glass-modal">
+        <header class="modal-header">
+          <h2>🏆 Sua Galeria de Troféus & Conquistas</h2>
+          <button class="close-btn" id="btn-close-badges" aria-label="Fechar Modal">✕</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-desc">Todas as conquistas e estatísticas são salvas no seu <code>localStorage</code> automaticamente!</p>
+          
+          <div class="stats-summary-grid">
+            <div class="stat-box">
+              <span class="box-num" id="stat-total-correct">0</span>
+              <span class="box-label">Acertos Totais</span>
+            </div>
+            <div class="stat-box">
+              <span class="box-num" id="stat-accuracy">100%</span>
+              <span class="box-label">Precisão</span>
+            </div>
+            <div class="stat-box">
+              <span class="box-num" id="stat-max-combo">0</span>
+              <span class="box-label">Maior Combo 🔥</span>
+            </div>
+            <div class="stat-box">
+              <span class="box-num" id="stat-max-arcade">0</span>
+              <span class="box-label">Recorde 60s ⚡</span>
+            </div>
+          </div>
+
+          <div class="badges-grid" id="badges-grid-container">
+            <!-- Badges injetadas via JS com estilos travado / destravado -->
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button class="action-btn btn-primary" id="btn-reset-data" title="Reiniciar seu progresso no localStorage">
+            🔄 Resetar Progresso
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- TOAST DE CONQUISTA FLUÍDA -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <footer data-lab-footer data-home-href="/"></footer>
+  </div>
+
+  <script src="/labs/shared.js?v=5" defer></script>
+  <script src="script.js" defer></script>
+</body>
+
+</html>
