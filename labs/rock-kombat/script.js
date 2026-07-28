@@ -746,12 +746,10 @@
         // Target Combo: Soco -> Chute ou Rasteira
         if (this.attack.type === 'punch' && ((input.down && input.kick) || input.kick)) {
           this.attack = null; this.cooldown = 0; comboCanceled = true;
-          match.impacts.push({ x: this.x, y: this.y - 140, text: 'LINK!', color: '#38e874', life: 22 });
         }
         // Special Cancel: Qualquer Golpe Normal -> Especial ou Mini-Especial!
         else if (['punch', 'kick', 'sweep', 'uppercut'].includes(this.attack.type) && input.special && this.meter >= 50) {
           this.attack = null; this.cooldown = 0; comboCanceled = true;
-          match.impacts.push({ x: this.x, y: this.y - 150, text: 'SPECIAL CANCEL!', color: '#ffb400', life: 30 });
         }
       }
 
@@ -924,7 +922,6 @@
       if (type === 'special') {
         this.meter = 0;
         this.afterimages.push({ x: this.x - 22 * this.attackFacing, y: this.y, life: 28 });
-        announce(this.data.special.toUpperCase(), 800);
         sound('special_' + this.data.id, 1 + this.data.speed * 0.05);
         sound('crowd');
         match.specialFreeze = 26;
@@ -932,7 +929,6 @@
       } else if (type === 'mini_special') {
         this.meter = Math.max(0, this.meter - 50);
         this.afterimages.push({ x: this.x - 12 * this.attackFacing, y: this.y, life: 16 });
-        announce("MINI " + this.data.special.toUpperCase(), 600);
         sound('whiff_special', 1.0);
       } else if (type === 'uppercut') {
         this.afterimages.push({ x: this.x - 14 * this.attackFacing, y: this.y, life: 18 });
@@ -988,12 +984,10 @@
         // --- PERFECT PARRY (ROCK BLOCK / JUST-DEFEND) ---
         if (other.blocking && other.blockTimer > 0 && other.blockTimer <= 10) {
           other.meter = clamp(other.meter + 25, 0, 100); // Ganho maciço de especial!
-          other.hitFlash = 12;
+          other.hitFlash = 0;
           this.vx = -6.5 * dir; // Empurrão forte no atacante
           this.cooldown = 15; // Deixa vulnerável para contra-ataque (Parry Punish)
-          match.shake = 16; match.hitStop = 15; match.flash = 10;
-          match.impacts.push({ x: (strikeX + other.x) / 2, y: other.y - 150, text: 'PERFECT PARRY!', color: '#00ffff', life: 40 });
-          burst((strikeX + other.x) / 2, other.y - 85, '#00ffff', 25, 'special');
+          match.shake = 6; match.hitStop = 6;
           sound('parry', 1.0);
           return;
         }
@@ -1009,7 +1003,7 @@
         }
 
         other.health = clamp(other.health - damage, 0, 100);
-        other.hitFlash = 9;
+        other.hitFlash = 0;
         other.stun = other.blocking ? 6 : (this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : 16) + (this.attack.hitStunBonus || 0);
         
         if (this.grounded && !other.blocking) this.vx = -1.5 * dir;
@@ -1044,39 +1038,12 @@
           if (this.combo >= 2) sound('combo', clamp(1 + this.combo * 0.1, 1, 1.6));
         }
 
-        // HITSTOP (Freeze Frames de impacto de arcade!)
-        match.shake = this.attack.type === 'special' ? 28 : this.attack.type === 'uppercut' || this.attack.type === 'sweep' ? 22 : 12;
-        match.flash = this.attack.type === 'special' ? 14 : this.attack.type === 'uppercut' ? 9 : 5;
-        match.hitStop = other.blocking ? 5 : this.attack.type === 'special' ? 18 : this.attack.type === 'uppercut' || this.attack.type === 'sweep' ? 14 : 7;
-        match.zoomPulse = this.attack.type === 'special' ? 0.12 : this.attack.type === 'uppercut' || this.attack.type === 'sweep' ? 0.08 : 0.04;
+        // Impact feedback: light shake + short hitstop only (no flash / labels / particles)
+        match.shake = this.attack.type === 'special' ? 8 : 3;
+        match.hitStop = other.blocking ? 2 : this.attack.type === 'special' ? 6 : 3;
+        match.zoomPulse = 0;
 
-        const impactText = this.attack.type === 'special'
-          ? (this.data.id === 'kurt' ? 'GUITARRADA SMASH!' : this.data.id === 'axl' ? 'JUNGLE BARRAGE!' : 'PEACE & LOVE PULSE!')
-          : this.attack.type === 'uppercut'
-            ? 'UPPERCUT!'
-            : this.attack.type === 'sweep'
-              ? 'SWEEP!'
-              : this.attack.type === 'mini_special'
-                ? 'SPECIAL BURST!'
-                : (other.blocking ? 'BLOCK!' : this.attack.type === 'kick' ? 'CRUSH!' : 'SMACK!');
-
-        const impactX = (strikeX + other.x) / 2;
-        const impactY = (strikeY + other.y - (other.ducking ? 45 : 85)) / 2;
-
-        match.impacts.push({
-          x: impactX, y: impactY,
-          text: impactText,
-          color: this.data.color, life: (this.attack.type === 'special' || this.attack.type === 'mini_special' || this.attack.type === 'uppercut' || this.attack.type === 'sweep') ? 38 : 24
-        });
-
-        match.hitSparks.push({
-          x: impactX, y: impactY,
-          color: this.data.color, life: 16, maxLife: 16, type: this.attack.type
-        });
-
-        burst(impactX, impactY, this.data.color, this.attack.type === 'special' ? 42 : this.attack.type === 'uppercut' || this.attack.type === 'sweep' ? 32 : 20, this.attack.type, this.data.id);
-
-        // EFEITOS SONOROS PESADOS
+        // EFEITOS SONOROS
         if (other.blocking) sound('block', 0.95);
         else if (this.attack.type === 'sweep') sound('hit_sweep', 1.0);
         else if (this.attack.type === 'uppercut') sound('uppercut', 1.0);
@@ -1198,27 +1165,7 @@
     }, 1500);
   }
 
-  function burst(x, y, color, count, type = 'normal', id = null) {
-    for (let i = 0; i < count; i++) {
-      const isSpark = (type === 'special' || type === 'mini_special') && Math.random() > 0.35;
-      const isLand = type === 'land';
-      if (match && match.particles) {
-        match.particles.push({
-          x: x + rand(-18, 18),
-          y: y + rand(isLand ? -4 : -15, isLand ? 4 : 15),
-          vx: rand(isLand ? -12 : -10, isLand ? 12 : 10),
-          vy: isSpark ? rand(-14, -2) : isLand ? rand(-5, -0.5) : rand(-12, 5),
-          life: isSpark ? rand(30, 58) : isLand ? rand(12, 22) : rand(18, 38),
-          maxLife: isSpark ? 58 : isLand ? 22 : 38,
-          color: type === 'special' ? (Math.random() > 0.5 ? '#fffae0' : color) : isLand ? '#d1dcde' : color,
-          size: isLand ? rand(4, 11) : rand(2.5, 7.5),
-          length: isLand ? 0 : rand(10, 32),
-          shape: isSpark ? (Math.random() > 0.5 ? 'star' : 'ring') : null,
-          isLand
-        });
-      }
-    }
-  }
+  function burst() { /* hit FX removed — no particle flash spam */ }
 
   function updateProjectiles() {
     if (!match || !match.projectiles) return;
@@ -1235,9 +1182,8 @@
           p1.hit = true; p2.hit = true;
           const midX = (p1.x + p2.x) / 2;
           const midY = (p1.y + p2.y) / 2;
-          burst(midX, midY, '#fffae0', 36, 'special');
-          match.impacts.push({ x: midX, y: midY - 60, text: 'CLASH!', color: '#ffea00', life: 32 });
-          match.shake = Math.max(match.shake, 16);
+          burst(midX, midY, '#c9a227', 4, 'normal');
+          match.shake = Math.max(match.shake, 4);
           sound('projectile_clash', 1.0);
         }
       }
@@ -1268,10 +1214,8 @@
           // Perfect Parry contra projéteis
           if (target.blocking && target.blockTimer > 0 && target.blockTimer <= 10) {
             target.meter = clamp(target.meter + 25, 0, 100);
-            target.hitFlash = 12;
-            match.shake = Math.max(match.shake, 12);
-            match.impacts.push({ x: target.x, y: target.y - 150, text: 'PERFECT PARRY!', color: '#00ffff', life: 40 });
-            burst(target.x, p.y, '#00ffff', 25, 'special');
+            target.hitFlash = 0;
+            match.shake = Math.max(match.shake, 4);
             sound('parry', 1.0);
             return false;
           }
@@ -1285,21 +1229,16 @@
             dmg *= 0.15; // Chip damage
             sound('block', 0.95);
             target.vx = Math.sign(p.vx) * 2.0;
-            match.impacts.push({ x: target.x, y: p.y, text: 'BLOCK!', color: '#aaaaaa', life: 20 });
           } else {
             target.health = clamp(target.health - dmg, 0, 100);
-            target.hitFlash = 10;
+            target.hitFlash = 0;
             target.stun = 22;
             target.vx = Math.sign(p.vx) * 6.5;
             p.owner.combo++; p.owner.comboTimer = 70;
             if (p.owner.combo >= 2) sound('combo', clamp(1 + p.owner.combo * 0.1, 1, 1.6));
             
-            match.shake = Math.max(match.shake, 18);
-            match.hitStop = 8;
-            match.flash = 6;
-            const text = p.shape === 'sonic' ? 'SONIC SHOCK!' : p.shape === 'pyro' ? 'PYRO BLAST!' : 'KARMA WAVE!';
-            match.impacts.push({ x: target.x, y: p.y - 40, text, color: p.color, life: 34 });
-            burst(target.x, p.y, p.color, 28, 'special');
+            match.shake = Math.max(match.shake, 5);
+            match.hitStop = 4;
             sound('hit_projectile', 1.0);
           }
           return false;
@@ -1493,22 +1432,8 @@
     drawStage(ctx, match.frames);
 
     if (match.specialFreeze > 0 && match.specialAttacker) {
-      // Dark dramatic spotlight overlay
-      ctx.fillStyle = 'rgba(5, 2, 10, 0.7)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
       ctx.fillRect(-200, -50, STAGE_W, STAGE_H);
-      
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const attacker = match.specialAttacker;
-      const grad = ctx.createLinearGradient(0, 0, 960, 0);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(0.3, attacker.data.color + '22');
-      grad.addColorStop(0.5, attacker.data.color + '88');
-      grad.addColorStop(0.7, attacker.data.color + '22');
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(-200, 180, STAGE_W, 140);
-      ctx.restore();
     }
 
     // Pose both skeletons once; every pass below reuses these buffers.
@@ -1543,27 +1468,14 @@
     drawEffects();
 
     ctx.restore();
-
-    if (match.flash) {
-      ctx.fillStyle = `rgba(255,255,255,${match.flash / 9})`;
-      ctx.fillRect(0, 0, canvasW, canvasH);
-    }
-
-    // Arcade CRT scanlines — Mortal Kombat / SoR cabinet feel on photo sprites.
-    drawCrtOverlay(ctx, canvasW, canvasH);
   }
 
   function drawCrtOverlay(c, w, h) {
+    // Soft vignette only — no scanline flicker / white wash
     c.save();
-    c.fillStyle = 'rgba(0, 0, 0, 0.14)';
-    const step = Math.max(2, Math.round(h / 270));
-    for (let y = 0; y < h; y += step * 2) {
-      c.fillRect(0, y, w, step);
-    }
-    // Soft vignette like a curved tube.
-    const g = c.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.78);
+    const g = c.createRadialGradient(w / 2, h / 2, h * 0.45, w / 2, h / 2, h * 0.85);
     g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.28)');
+    g.addColorStop(1, 'rgba(0,0,0,0.18)');
     c.fillStyle = g;
     c.fillRect(0, 0, w, h);
     c.restore();
@@ -2057,12 +1969,6 @@
 
     c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
 
-    if (flash) {
-      c.globalCompositeOperation = 'lighter';
-      c.globalAlpha = Math.min(1, c.globalAlpha + flash * 0.12);
-      c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
-    }
-
     c.restore();
   }
 
@@ -2080,116 +1986,23 @@
     c.restore();
   }
 
-  /** Signature weapon/energy effects layered over a special. */
+  /** Subtle special cue — no neon blast overlays. */
   function drawSpecialFx(c, player) {
     if (!player.attack || (player.attack.type !== 'special' && player.attack.type !== 'mini_special')) return;
     const phase = 1 - player.attackTimer / player.attack.duration;
-    if (phase < 0.20) return;
-
-    const f = player.data;
+    if (phase < 0.25 || phase > 0.85) return;
     const facing = player.faceDir();
     c.save();
-    c.globalCompositeOperation = 'screen';
-    c.translate(player.x, player.y);
-    c.scale(-facing, 1);
-
-    if (player.attack.type === 'special') {
-      if (f.id === 'kurt') {
-        c.strokeStyle = '#23d7ef'; c.lineWidth = 14;
-        c.shadowColor = '#23d7ef'; c.shadowBlur = 40;
-        c.beginPath();
-        c.moveTo(40, -95);
-        c.lineTo(80, -250);
-        c.lineTo(20, -250);
-        c.lineTo(60, -400);
-        c.stroke();
-        c.strokeStyle = '#ffc44d'; c.lineWidth = 6;
-        c.beginPath();
-        for (let i = 0; i < 3; i++) {
-          c.arc(40, -40, 30 + i * 50 * phase, 0, Math.PI * 2);
-        }
-        c.stroke();
-      } else if (f.id === 'axl') {
-        c.strokeStyle = '#ff2e78'; c.lineWidth = 14;
-        c.shadowColor = '#ff2e78'; c.shadowBlur = 45;
-        c.beginPath();
-        for (let i = 0; i < 4; i++) {
-          const radius = 30 + i * 60 + phase * 120;
-          c.arc(40, -100, radius, -Math.PI/3, Math.PI/3);
-        }
-        c.stroke();
-        c.strokeStyle = '#ffc44d'; c.lineWidth = 6; c.stroke();
-      } else {
-        c.strokeStyle = '#6acfa0'; c.lineWidth = 14;
-        c.shadowColor = '#6acfa0'; c.shadowBlur = 45;
-        const r = 80 + phase * 220;
-        c.beginPath();
-        c.arc(20, -110, r, 0, Math.PI * 2);
-        c.moveTo(20, -110 - r); c.lineTo(20, -110 + r);
-        c.moveTo(20, -110); c.lineTo(20 - r * 0.72, -110 + r * 0.72);
-        c.moveTo(20, -110); c.lineTo(20 + r * 0.72, -110 + r * 0.72);
-        c.stroke();
-        c.strokeStyle = '#ffffff'; c.lineWidth = 6; c.stroke();
-      }
-    } else if (player.attack.type === 'mini_special') {
-      if (f.id === 'kurt') {
-        c.strokeStyle = '#23d7ef'; c.lineWidth = 6;
-        c.shadowColor = '#23d7ef'; c.shadowBlur = 20;
-        c.beginPath();
-        c.arc(60, -95, 40, -Math.PI/2, Math.PI/2);
-        c.stroke();
-      } else if (f.id === 'axl') {
-        c.strokeStyle = '#ff2e78'; c.lineWidth = 4;
-        c.beginPath();
-        c.moveTo(20, -100);
-        c.quadraticCurveTo(80, -130 + Math.sin(phase * 10) * 30, 160, -90);
-        c.stroke();
-        c.fillStyle = '#cccccc';
-        c.beginPath();
-        c.arc(160, -90, 8, 0, Math.PI*2);
-        c.fill();
-      }
-    }
+    c.globalAlpha = 0.4;
+    c.strokeStyle = player.data.color;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(player.x + facing * 50, player.y - 90, 28 + phase * 20, 0, Math.PI * 2);
+    c.stroke();
     c.restore();
   }
 
-  /** Speed streaks trailing a committed strike. */
-  function drawStrikeTrail(c, player) {
-    const attack = player.attack;
-    if (!attack || attack.type === 'special') return;
-    const phase = 1 - player.attackTimer / attack.duration;
-    if (phase < 0.25 || phase > 0.7) return;
-
-    const f = player.data;
-    const facing = player.faceDir();
-    c.save();
-    c.globalCompositeOperation = 'screen';
-    c.globalAlpha = 0.8;
-    c.translate(player.x, player.y);
-    c.scale(-facing, 1);
-    c.strokeStyle = f.color;
-    c.shadowColor = f.color;
-    c.shadowBlur = 22;
-
-    if (attack.type === 'kick') {
-      c.lineWidth = 9;
-      for (let i = 0; i < 5; i++) {
-        c.beginPath();
-        c.moveTo(20 - i * 10, -60 + i * 12);
-        c.quadraticCurveTo(70, -80 + i * 5, 122, -96 + i * 8);
-        c.stroke();
-      }
-    } else {
-      c.lineWidth = 8;
-      for (let i = 0; i < 4; i++) {
-        c.beginPath();
-        c.moveTo(24 - i * 13, -118 + i * 10);
-        c.lineTo(96, -110 + i * 6);
-        c.stroke();
-      }
-    }
-    c.restore();
-  }
+  function drawStrikeTrail() { /* no trail flash */ }
 
   function announce(text, duration = 800) {
     const el = $('#announcer'); el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
@@ -2233,173 +2046,22 @@
   }
 
   function drawEffects() {
-    const players = [match.p1, match.p2];
-    players.forEach(p => {
-      if (p.attack?.type === 'special' && p.attackTimer > 8) {
-        const life = p.attackTimer / 55;
-        const dir = p.faceDir();
-        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.8 * life;
-        const x = p.x + dir * 85; const y = p.y - 85;
-        ctx.strokeStyle = p.data.color; ctx.lineWidth = 14; ctx.shadowColor = p.data.color; ctx.shadowBlur = 34;
-        ctx.beginPath();
-        for (let r = 20; r < 180; r += 32) { ctx.arc(x, y, r, 0, Math.PI * 2); }
-        ctx.stroke(); ctx.restore();
-      }
+    // Clear leftover FX queues — no floating labels / sparks / particle flashes
+    if (match.particles) match.particles.length = 0;
+    if (match.impacts) match.impacts.length = 0;
+    if (match.hitSparks) match.hitSparks.length = 0;
 
-      if (p.combo > 1 && p.comboTimer > 0) {
-        ctx.save();
-        const comboProgress = Math.min(1, p.comboTimer / 25);
-        ctx.translate(p.x, p.y - 195);
-        ctx.scale(1 + (1 - comboProgress) * 0.28, 1 + (1 - comboProgress) * 0.28);
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = p.data.color;
-        ctx.lineWidth = 6;
-        ctx.font = 'italic 900 44px "Barlow Condensed"';
-        ctx.textAlign = 'center';
-        ctx.shadowColor = p.data.color;
-        ctx.shadowBlur = 18;
-        const text = `${p.combo}x ROCKIN' COMBO!`;
-        ctx.strokeText(text, 0, 0);
-        ctx.fillText(text, 0, 0);
-        ctx.restore();
-      }
-    });
-
-    if (match.projectiles) {
-      match.projectiles.forEach(p => {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        drawGlow(ctx, 0, 0, p.radius * 2.5, p.color);
-        ctx.globalCompositeOperation = 'screen';
-
-        if (p.shape === 'ring') {
-          // Lennon Peace Karma Wave
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 6;
-          ctx.shadowColor = p.color; ctx.shadowBlur = 18;
-          ctx.beginPath(); ctx.arc(0, 0, p.radius * (0.6 + Math.sin(match.frames * 0.4) * 0.2), 0, Math.PI * 2); ctx.stroke();
-          ctx.strokeStyle = p.color; ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.9, 0, Math.PI * 2); ctx.stroke();
-        } else if (p.shape === 'pyro') {
-          // Axl Flame Sphere
-          const angle = match.frames * 0.35;
-          ctx.rotate(angle);
-          ctx.fillStyle = p.color; ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 24;
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2;
-            const r = i % 2 === 0 ? p.radius : p.radius * 0.45;
-            if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-            else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-          }
-          ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2); ctx.fill();
-        } else {
-          // Kurt Sonic Wave
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.shadowColor = p.color; ctx.shadowBlur = 20;
-          const dir = Math.sign(p.vx) || 1;
-          ctx.scale(dir, 1);
-          ctx.beginPath();
-          ctx.arc(-8, 0, p.radius * 0.8, -Math.PI * 0.45, Math.PI * 0.45);
-          ctx.arc(-18, 0, p.radius * 1.1, -Math.PI * 0.4, Math.PI * 0.4);
-          ctx.stroke();
-        }
-        ctx.restore();
-      });
-    }
-
-    match.particles.forEach(p => {
+    if (!match.projectiles) return;
+    match.projectiles.forEach(p => {
       ctx.save();
-      const maxL = p.maxLife || 38;
-      ctx.globalAlpha = clamp(p.life / maxL, 0, 1);
-      if (p.shape === 'ring') {
-        drawGlow(ctx, p.x, p.y, 18, p.color || '#ffcc00');
-        ctx.strokeStyle = p.color || '#fff';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (p.shape === 'star') {
-        drawGlow(ctx, p.x, p.y, 16, p.color || '#ffcc00');
-        ctx.fillStyle = p.color || '#fff';
-        ctx.beginPath();
-        for (let i = 0; i < 4; i++) {
-          const a = (i / 4) * Math.PI * 2 + p.life * 0.12;
-          const r = i % 2 === 0 ? p.size : p.size * 0.35;
-          const px = p.x + Math.cos(a) * r;
-          const py = p.y + Math.sin(a) * r;
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
-      } else if (p.icon) {
-        // Legacy path — keep readable if an old particle is still alive.
-        drawGlow(ctx, p.x, p.y, 20, p.color || '#ffcc00');
-        ctx.font = 'bold 30px sans-serif';
-        ctx.fillStyle = p.color || '#fff';
-        ctx.fillText(p.icon, p.x, p.y);
-      } else if (p.isLand) {
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        const mag = Math.hypot(p.vx, p.vy) || 1;
-        drawGlow(ctx, p.x, p.y, p.size * 2.2, p.color);
-        ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - (p.vx / mag) * p.length, p.y - (p.vy / mag) * p.length); ctx.stroke();
-      }
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(8, p.radius * 0.7), 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     });
-
-    match.impacts.forEach(impact => {
-      const progress = impact.life / 38;
-      ctx.save();
-      ctx.translate(impact.x, impact.y);
-      ctx.rotate(-0.09);
-      ctx.scale(1 + (1 - progress) * 0.28, 1 + (1 - progress) * 0.28);
-      ctx.font = 'italic 900 42px "Barlow Condensed"';
-      ctx.textAlign = 'center';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = 9;
-      ctx.strokeStyle = '#0a040b';
-      ctx.strokeText(impact.text, 0, 0);
-      ctx.fillStyle = impact.color;
-      ctx.shadowColor = impact.color;
-      ctx.shadowBlur = 14;
-      ctx.fillText(impact.text, 0, 0);
-      ctx.restore();
-    });
-
-    if (match.hitSparks) {
-      match.hitSparks.forEach(s => {
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const progress = s.life / s.maxLife;
-        const size = (s.type === 'special' ? 140 : s.type === 'mini_special' ? 90 : 60) * (1.2 - progress);
-        
-        drawGlow(ctx, s.x, s.y, size * 1.5, s.color, progress);
-        
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4 * progress;
-        ctx.beginPath();
-        ctx.moveTo(s.x - size, s.y);
-        ctx.lineTo(s.x + size, s.y);
-        ctx.moveTo(s.x, s.y - size);
-        ctx.lineTo(s.x, s.y + size);
-        ctx.moveTo(s.x - size*0.7, s.y - size*0.7);
-        ctx.lineTo(s.x + size*0.7, s.y + size*0.7);
-        ctx.moveTo(s.x + size*0.7, s.y - size*0.7);
-        ctx.lineTo(s.x - size*0.7, s.y + size*0.7);
-        ctx.stroke();
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, size * 0.4, 0, Math.PI*2);
-        ctx.fill();
-        ctx.restore();
-      });
-    }
   }
 
   /** Called once a player has taken 2 round wins -- ends the whole match. */
