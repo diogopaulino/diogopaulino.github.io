@@ -212,16 +212,43 @@ window.RockKombatAudio = (() => {
         break;
       case 'special':
       case 'hit_special':
+      case 'special_kurt':
         // Impacto explosivo de estádio (Power chord distorcido + impacto titânico)
         powerChord(sfxGain, now, 130.81 * pitch, 0.95, 3800, 0.24);
         fmVoice(sfxGain, now, { freq: 180 * pitch, ratio: 3, modIndex: 850, modIndexDecay: 0.25, wave: 'square', duration: 0.6, gain: 0.28 });
         fmVoice(sfxGain, now, { freq: 52 * pitch, ratio: 0.5, modIndex: 400, modIndexDecay: 0.15, wave: 'sine', duration: 0.4, gain: 0.38 });
         break;
+      case 'special_axl':
+        // Explosão pirotécnica flamejante de alta octanagem
+        noiseHit(sfxGain, now, { duration: 0.6, gain: 0.4, filterType: 'bandpass', freq: 2800 * pitch, freqEnd: 250, Q: 0.9 });
+        fmVoice(sfxGain, now, { freq: 260 * pitch, ratio: 4, modIndex: 900, modIndexDecay: 0.3, wave: 'sawtooth', duration: 0.5, gain: 0.3 });
+        powerChord(sfxGain, now, 146.83 * pitch, 0.7, 4200, 0.22);
+        break;
+      case 'special_lennon':
+        // Pulso cósmico e psicodélico de paz & carma
+        fmVoice(sfxGain, now, { freq: 440 * pitch, ratio: 2.5, modIndex: 600, modIndexDecay: 0.4, wave: 'sine', duration: 0.7, gain: 0.32 });
+        fmVoice(sfxGain, now, { freq: 220 * pitch, ratio: 1.5, modIndex: 300, modIndexDecay: 0.3, wave: 'triangle', duration: 0.6, gain: 0.35 });
+        powerChord(sfxGain, now, 110 * pitch, 0.5, 2200, 0.18);
+        break;
       case 'projectile':
       case 'hadoken':
-        // Disparo de projétil sonoro/psicodélico (Hadoken swish & onda elétrica)
         fmVoice(sfxGain, now, { freq: 320 * pitch, ratio: 1.5, modIndex: 450, modIndexDecay: 0.12, wave: 'sine', duration: 0.25, gain: 0.3 });
         noiseHit(sfxGain, now, { duration: 0.18, gain: 0.22, filterType: 'bandpass', freq: 1400 * pitch, freqEnd: 400, Q: 2 });
+        break;
+      case 'projectile_kurt':
+        // Onda sônica de guitarrada com fuzz e baixo pesado
+        powerChord(sfxGain, now, 98 * pitch, 0.35, 2500, 0.2);
+        noiseHit(sfxGain, now, { duration: 0.15, gain: 0.24, filterType: 'lowpass', freq: 1200, freqEnd: 300 });
+        break;
+      case 'projectile_axl':
+        // Chiado de esfera de fogo (Pyro Blast)
+        noiseHit(sfxGain, now, { duration: 0.22, gain: 0.28, filterType: 'bandpass', freq: 3200 * pitch, freqEnd: 600, Q: 1.2 });
+        fmVoice(sfxGain, now, { freq: 380 * pitch, ratio: 3.5, modIndex: 500, modIndexDecay: 0.15, wave: 'sawtooth', duration: 0.2, gain: 0.25 });
+        break;
+      case 'projectile_lennon':
+        // Sino cósmico / chimes cósmicos do Karma Ring
+        fmVoice(sfxGain, now, { freq: 520 * pitch, ratio: 2.5, modIndex: 400, modIndexDecay: 0.2, wave: 'sine', duration: 0.3, gain: 0.3 });
+        fmVoice(sfxGain, now, { freq: 260 * pitch, ratio: 1.5, modIndex: 200, modIndexDecay: 0.15, wave: 'triangle', duration: 0.25, gain: 0.22 });
         break;
       case 'hit_projectile':
       case 'projectile_clash':

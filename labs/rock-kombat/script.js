@@ -48,6 +48,25 @@
   const roster = document.querySelector('#roster');
   const gameCanvas = document.querySelector('#game');
   const ctx = gameCanvas.getContext('2d');
+  
+  // Cache DOM de alta performance para zerar pesquisas DOM no loop 60Hz
+  const dom = {
+    p1Name: document.querySelector('#p1-name'),
+    p2Name: document.querySelector('#p2-name'),
+    timer: document.querySelector('#timer'),
+    opponentLabel: document.querySelector('#opponent-label'),
+    roundLabel: document.querySelector('#round-label'),
+    coachText: document.querySelector('#coach-text'),
+    p1Health: document.querySelector('#p1-health'),
+    p2Health: document.querySelector('#p2-health'),
+    p1Meter: document.querySelector('#p1-meter'),
+    p2Meter: document.querySelector('#p2-meter'),
+    p1Ready: document.querySelector('#p1-ready'),
+    p2Ready: document.querySelector('#p2-ready'),
+    p1Pips: document.querySelector('#p1-pips'),
+    p2Pips: document.querySelector('#p2-pips'),
+  };
+
   const stageSprites = {};
   const keys = {};
   const touch = {};
@@ -572,74 +591,100 @@
         };
       }
 
-      // --- INTELIGÊNCIA ARTIFICIAL (STREET FIGHTER TACTICAL AI) ---
+      // --- INTELIGÊNCIA ARTIFICIAL ARQUETÍPICA (ARGHETYPE AI) ---
       const tune = DIFFICULTY[difficulty];
       this.aiTimer--;
       const distance = Math.abs(other.x - this.x);
       const input = { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false, down:false };
+      const fid = this.data.id;
 
-      const blockChance = clamp(tune.blockChance + (this.data.defense - 3) * 0.05, 0.20, 0.96);
-      const cadenceFactor = clamp(1 - (this.data.speed - 3) * 0.08, 0.60, 1.25);
+      const blockChance = clamp(tune.blockChance + (this.data.defense - 3) * 0.05 + (fid === 'lennon' ? 0.15 : 0), 0.20, 0.98);
+      const cadenceFactor = clamp(1 - (this.data.speed - 3) * 0.08, 0.50, 1.25);
 
       // AI Combo Execution: Se acabou de acertar um soco, tentar emendar combo imediatamente!
       if (this.attack && this.attack.hit) {
-        if (this.attack.type === 'punch' && Math.random() < tune.aggression * 1.3) {
-          input[Math.random() < 0.5 ? 'kick' : 'down'] = true; input.kick = true;
+        if (this.attack.type === 'punch' && Math.random() < tune.aggression * (fid === 'axl' ? 1.5 : 1.3)) {
+          input[Math.random() < (fid === 'kurt' ? 0.3 : 0.5) ? 'kick' : 'down'] = true; input.kick = true;
           return input;
         }
-        if (this.meter >= 50 && Math.random() < tune.specialChance * 1.2) {
+        if (this.meter >= 50 && Math.random() < tune.specialChance * (fid === 'axl' ? 1.4 : 1.1)) {
           input.special = true;
           return input;
         }
       }
 
-      // Defesa e Perfect Parry contra projéteis e golpes inimigos
-      if ((other.attack || (match.projectiles && match.projectiles.some(p => p.owner === other && Math.abs(p.x - this.x) < 220))) && distance < 250) {
+      // Defesa e Perfect Parry contra projéteis e golpes inimigos (Lennon é mestre em parry)
+      if ((other.attack || (match.projectiles && match.projectiles.some(p => p.owner === other && Math.abs(p.x - this.x) < 240))) && distance < 270) {
         if (this.aiReactingTo !== other.attack) {
           this.aiReactingTo = other.attack;
-          this.aiReactionTimer = Math.round(rand(tune.reactionDelay[0], tune.reactionDelay[1]));
+          const delayMod = fid === 'lennon' ? -4 : fid === 'axl' ? 2 : 0;
+          this.aiReactionTimer = Math.round(rand(Math.max(2, tune.reactionDelay[0] + delayMod), Math.max(5, tune.reactionDelay[1] + delayMod)));
         }
         if (this.aiReactionTimer > 0) this.aiReactionTimer--;
         if (this.aiReactionTimer <= 0 && Math.random() < blockChance) {
           input.block = true;
-          if (other.attack && other.attack.type === 'punch' && Math.random() < 0.7) input.down = true; // Agachar contra soco!
+          if (other.attack && (other.attack.type === 'punch' || other.attack.sweep) && Math.random() < (fid === 'lennon' ? 0.85 : 0.7)) input.down = true;
           return input;
         }
       } else {
         this.aiReactingTo = null;
       }
 
-      // Anti-Air Shoryuken: Oponente pulando em nossa direção -> disparar gancho invulnerável ou chute alto!
-      if (!other.grounded && distance < 145 && this.cooldown <= 0 && Math.random() < tune.aggression) {
-        if (Math.random() < 0.75) { input.down = true; input.punch = true; } // Gancho!
+      // Anti-Air Shoryuken: Oponente pulando em nossa direção
+      if (!other.grounded && distance < (fid === 'lennon' ? 160 : 145) && this.cooldown <= 0 && Math.random() < tune.aggression * 1.1) {
+        if (Math.random() < (fid === 'kurt' || fid === 'axl' ? 0.85 : 0.75)) { input.down = true; input.punch = true; } // Gancho!
         else { input.kick = true; }
         return input;
       }
 
-      // Rasteira (Sweep) Tática: Inimigo em pé em distância média
-      if (other.grounded && !other.ducking && distance >= 70 && distance < 115 && this.cooldown <= 0 && Math.random() < tune.aggression * 0.7) {
-        input.down = true; input.kick = true; // Sweep!
-        return input;
+      // COMPORTAMENTO DIFERENCIADO POR ARQUÉTIPO (KURT vs AXL vs LENNON)
+      if (fid === 'lennon') {
+        // ZONER / DEFENSIVE MASTER: Procura espaçamento longo (170-230px), atira Karma Rings e usa pokes longos
+        if (distance < 135 && Math.random() < 0.75 && other.knockdown <= 0) {
+          input[other.x < this.x ? 'right' : 'left'] = true; // Recuo tático constante
+        } else if (distance >= 160 && this.meter >= 50 && this.grounded && Math.random() < tune.specialChance * 1.5) {
+          input.special = true; // Dispara magias defensivas
+          return input;
+        } else if (distance > 220) {
+          input[other.x < this.x ? 'left' : 'right'] = true; // Aprox-se só o suficiente para zonear
+        }
+        // Long-range Poke (Revolution Kick tem alcance 122px!)
+        if (distance >= 95 && distance <= 125 && this.cooldown <= 0 && Math.random() < tune.aggression * 1.2) {
+          input.kick = true;
+          return input;
+        }
+      } else if (fid === 'axl') {
+        // RUSHDOWN / SPEED MACHINE: Nunca recua, corre pra cima (<85px) e aplica Dash Shoryuken
+        if (distance > 80) {
+          input[other.x < this.x ? 'left' : 'right'] = true;
+        }
+        // Surpreender de média distância com o avanço do Paradise Shoryuken (vx=+6.5) ou rasteira veloz
+        if (distance >= 75 && distance <= 110 && this.cooldown <= 0 && Math.random() < tune.aggression * 0.9) {
+          if (Math.random() < 0.55) { input.down = true; input.punch = true; } // Lunge Shoryu
+          else { input.down = true; input.kick = true; } // Rose Sweep
+          return input;
+        }
+      } else {
+        // KURT: BALANCED BRAWLER (Ryu style): Busca distância média (~110px), jump-in attacks e Smash Slide
+        if (distance > 160 && this.meter >= 50 && this.grounded && Math.random() < tune.specialChance * 1.2) {
+          input.special = true; // Guitarrada sônica
+          return input;
+        }
+        const retreating = this.health < 25 && distance < 105 && Math.random() < tune.retreatChance;
+        if (retreating) {
+          input[other.x < this.x ? 'right' : 'left'] = true;
+        } else if (distance > 115) {
+          input[other.x < this.x ? 'left' : 'right'] = true;
+        }
+        // Jump-In Attack tático para iniciar Gatling Combo
+        if (distance >= 135 && distance <= 185 && Math.random() < tune.jumpChance * 3.5 && this.grounded && !retreating) {
+          input.jump = true; input[other.x < this.x ? 'left' : 'right'] = true;
+        }
       }
 
-      // Controle de Espacialidade (Hadoken zoning à distância)
-      if (distance > 240 && this.meter >= 50 && this.grounded && Math.random() < tune.specialChance * 1.4) {
-        input.special = true;
-        return input;
-      }
-
-      const retreating = this.health < 30 && distance < 110 && Math.random() < tune.retreatChance;
-      if (retreating) {
-        input[other.x < this.x ? 'right' : 'left'] = true;
-      } else if (distance > 115) {
-        input[other.x < this.x ? 'left' : 'right'] = true;
-      } else if (distance < 60 && Math.random() < 0.3) {
-        input[other.x < this.x ? 'right' : 'left'] = true;
-      }
-
-      // Whiff Punish: adversário errou no ar ou rasteira sem acertar -> punir brutalmente!
+      // Whiff Punish: adversário errou no vazio -> punir!
       const punishWhiff = other.attack && !other.attack.hit && other.attackTimer < other.attack.activeAt - 2
-        && distance < 155 && Math.random() < tune.aggression * 1.3;
+        && distance < 155 && Math.random() < tune.aggression * 1.35;
 
       if (distance < 160 && this.cooldown <= 0 && (punishWhiff || this.aiTimer <= 0)) {
         if (this.meter >= 100 && Math.random() < tune.specialChance) {
@@ -655,9 +700,9 @@
             input[Math.random() < 0.5 ? 'kick' : 'punch'] = true;
           }
         }
-        this.aiTimer = rand(8, 26) * cadenceFactor;
+        this.aiTimer = rand(8, 24) * cadenceFactor;
       }
-      if (distance > 210 && Math.random() < tune.jumpChance && this.grounded && !retreating) input.jump = true;
+      if (distance > 220 && Math.random() < tune.jumpChance && this.grounded && fid !== 'lennon') input.jump = true;
       return input;
     }
 
@@ -787,9 +832,10 @@
           const dir = this.faceDir();
           if (this.attack.type === 'mini_special' || this.attack.type === 'special') {
             const isSuper = this.attack.type === 'special';
-            const projSpeed = isSuper ? 17 : 13;
+            const projSpeed = this.attack.projSpeed || (isSuper ? 17 : 13);
+            const projLife = this.attack.projLife || 110;
             const projShape = this.data.id === 'lennon' ? 'ring' : this.data.id === 'axl' ? 'pyro' : 'sonic';
-            const projCount = isSuper ? 3 : 1;
+            const projCount = this.attack.projCount || (isSuper ? 3 : 1);
 
             for (let i = 0; i < projCount; i++) {
               const yOffset = -90 + (i - (projCount - 1) / 2) * 28;
@@ -802,14 +848,14 @@
                 vx: (projSpeed + i * 1.5) * dir,
                 vy: this.data.id === 'kurt' && isSuper ? 0 : (rand(-0.3, 0.3)),
                 radius: isSuper ? 48 : 34,
-                damage: isSuper ? (9.5 + this.data.power * 0.4) : (7.5 + this.data.power * 0.35),
-                life: 110,
+                damage: isSuper ? (10.0 + this.data.power * 0.5) : (7.8 + this.data.power * 0.4),
+                life: projLife,
                 color: this.data.color,
                 shape: projShape,
                 hit: false
               });
             }
-            sound('projectile', 1.0 + (this.data.speed * 0.05));
+            sound('projectile_' + this.data.id, 1.0 + (this.data.speed * 0.05));
           }
         }
 
@@ -825,36 +871,61 @@
     startAttack(type) {
       if (this.cooldown > 0 || this.knockdown > 0 || this.stun > 0) return;
       const isAir = !this.grounded;
-      const config = {
-        punch: { duration: isAir ? 16 : 14, activeAt: isAir ? 11 : 9, activeWindow: 5, range: isAir ? 94 : 80, damage: 3.2 + this.data.power * 0.25, knock: 3.8, radius: 42, airAttack: isAir },
-        kick: { duration: isAir ? 19 : 17, activeAt: isAir ? 13 : 11, activeWindow: 6, range: isAir ? 115 : 95, damage: 4.2 + this.data.power * 0.35, knock: 5.8, radius: 46, airAttack: isAir },
-        sweep: { duration: 22, activeAt: 14, activeWindow: 7, range: 110, damage: 5.5 + this.data.power * 0.4, knock: 4.0, radius: 45, sweep: true },
-        uppercut: { duration: 26, activeAt: 15, activeWindow: 8, range: 86, damage: 9.0 + this.data.power * 0.55, knock: 6.5, launch: -13.5, radius: 54 },
-        mini_special: { duration: 25, activeAt: 14, activeWindow: 8, range: 135, damage: 7.5 + this.data.power * 0.4, knock: 7.5, radius: 54 },
-        special: { duration: 32, activeAt: 16, activeWindow: 10, range: 170, damage: 14.0 + this.data.power * 0.7, knock: 12.0, radius: 72 }
-      }[type] || { duration: 15, activeAt: 8, activeWindow: 5, range: 75, damage: 3, knock: 3, radius: 40 };
+      const fid = this.data.id;
+      let config = {};
+
+      if (fid === 'kurt') {
+        // Kurt: All-Rounder Brawler. Alto hit-stun (+4), antiaéreo vertical pesado, magias rasteiras sônicas brutais.
+        config = {
+          punch: { duration: isAir ? 15 : 13, activeAt: isAir ? 10 : 8, activeWindow: 5, range: isAir ? 96 : 83, damage: 4.8, knock: 4.5, hitStunBonus: 4, radius: 44, airAttack: isAir },
+          kick: { duration: isAir ? 18 : 16, activeAt: isAir ? 12 : 10, activeWindow: 6, range: isAir ? 118 : 98, damage: 6.5, knock: 6.0, hitStunBonus: 5, radius: 48, airAttack: isAir },
+          sweep: { duration: 22, activeAt: 14, activeWindow: 7, range: 114, damage: 7.8, knock: 4.5, sweep: true, slideBoost: 5.5, radius: 46 },
+          uppercut: { duration: 26, activeAt: 15, activeWindow: 8, range: 88, damage: 12.5, knock: 7.0, launch: -14.5, invuln: 8, forwardBoost: 3.8, radius: 56 },
+          mini_special: { duration: 25, activeAt: 14, activeWindow: 8, range: 140, damage: 9.0, knock: 7.5, radius: 56, projSpeed: 15, projLife: 115 },
+          special: { duration: 32, activeAt: 16, activeWindow: 10, range: 175, damage: 16.0, knock: 12.5, radius: 74, projSpeed: 19, projLife: 125, projCount: 3 }
+        }[type];
+      } else if (fid === 'axl') {
+        // Axl: Rushdown Veloz. O ataque mais rápido da arena (11 frames), gancho com dash avançado (vx=+6.5) e fogo rápido.
+        config = {
+          punch: { duration: isAir ? 13 : 11, activeAt: isAir ? 9 : 7, activeWindow: 4, range: isAir ? 90 : 78, damage: 3.8, knock: 3.2, hitStunBonus: 3, radius: 40, airAttack: isAir },
+          kick: { duration: isAir ? 16 : 14, activeAt: isAir ? 11 : 9, activeWindow: 5, range: isAir ? 110 : 92, damage: 5.5, knock: 5.0, hitStunBonus: 3, radius: 45, airAttack: isAir },
+          sweep: { duration: 18, activeAt: 11, activeWindow: 6, range: 104, damage: 6.4, knock: 4.0, sweep: true, slideBoost: 4.5, radius: 44 },
+          uppercut: { duration: 24, activeAt: 14, activeWindow: 8, range: 92, damage: 11.2, knock: 8.5, launch: -13.0, invuln: 7, forwardBoost: 6.5, radius: 54 },
+          mini_special: { duration: 23, activeAt: 13, activeWindow: 8, range: 135, damage: 8.2, knock: 8.0, radius: 54, projSpeed: 17, projLife: 105 },
+          special: { duration: 29, activeAt: 15, activeWindow: 9, range: 168, damage: 15.0, knock: 12.0, radius: 70, projSpeed: 21, projLife: 115, projCount: 3 }
+        }[type];
+      } else {
+        // Lennon: Zoner Defensivo. Maior alcance de golpe (122px), antiaéreo com 9 frames de invulnerabilidade e magias duradouras.
+        config = {
+          punch: { duration: isAir ? 16 : 15, activeAt: isAir ? 11 : 10, activeWindow: 6, range: isAir ? 98 : 94, damage: 4.3, knock: 6.5, hitStunBonus: 2, radius: 46, airAttack: isAir },
+          kick: { duration: isAir ? 20 : 19, activeAt: isAir ? 14 : 13, activeWindow: 7, range: isAir ? 128 : 122, damage: 6.8, knock: 7.5, hitStunBonus: 3, radius: 50, airAttack: isAir },
+          sweep: { duration: 23, activeAt: 15, activeWindow: 7, range: 120, damage: 7.2, knock: 5.2, sweep: true, slideBoost: 2.2, radius: 48 },
+          uppercut: { duration: 27, activeAt: 16, activeWindow: 9, range: 96, damage: 11.5, knock: 7.0, launch: -15.0, invuln: 9, forwardBoost: 2.5, radius: 60 },
+          mini_special: { duration: 26, activeAt: 15, activeWindow: 9, range: 138, damage: 8.5, knock: 7.0, radius: 56, projSpeed: 9.5, projLife: 160 },
+          special: { duration: 34, activeAt: 17, activeWindow: 11, range: 172, damage: 15.5, knock: 11.5, radius: 72, projSpeed: 12, projLife: 175, projCount: 3 }
+        }[type] || { duration: 15, activeAt: 8, activeWindow: 5, range: 75, damage: 3, knock: 3, radius: 40 };
+      }
 
       this.attackFacing = this.facing;
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
 
       // Gancho Shoryuken ou Super conferem breves frames de invulnerabilidade ao iniciar!
-      if (type === 'uppercut') this.invuln = 6;
-      if (type === 'special') this.invuln = 14;
-      if (type === 'mini_special') this.invuln = 5;
+      if (config.invuln) this.invuln = config.invuln;
 
-      const baseCooldown = (type === 'special' ? 38 : type === 'mini_special' ? 26 : type === 'uppercut' ? 25 : type === 'sweep' ? 20 : config.duration + 1) + (this.cpu ? 4 : 0);
+      const baseCooldown = (type === 'special' ? 36 : type === 'mini_special' ? 24 : type === 'uppercut' ? 24 : type === 'sweep' ? 20 : config.duration + 1) + (this.cpu ? 4 : 0);
       const recoveryBonus = (type === 'special' || type === 'mini_special') ? 0 : Math.round((this.data.speed - 3) * 1.4);
       this.cooldown = Math.max(config.duration - 1, baseCooldown - recoveryBonus);
       if (this.grounded) {
-        this.vx += this.attackFacing * (type === 'special' ? 3.0 : type === 'mini_special' ? 2.2 : type === 'uppercut' ? 3.5 : type === 'sweep' ? 4.2 : type === 'kick' ? 1.8 : 1.2);
+        const boost = config.forwardBoost || config.slideBoost || (type === 'special' ? 3.0 : type === 'mini_special' ? 2.2 : type === 'uppercut' ? 3.5 : type === 'sweep' ? 4.2 : type === 'kick' ? 1.8 : 1.2);
+        this.vx += this.attackFacing * boost;
       }
 
       if (type === 'special') {
         this.meter = 0;
         this.afterimages.push({ x: this.x - 22 * this.attackFacing, y: this.y, life: 28 });
         announce(this.data.special.toUpperCase(), 800);
-        sound('special', 1 + this.data.speed * 0.05);
+        sound('special_' + this.data.id, 1 + this.data.speed * 0.05);
         sound('crowd');
         match.specialFreeze = 26;
         match.specialAttacker = this;
@@ -939,7 +1010,7 @@
 
         other.health = clamp(other.health - damage, 0, 100);
         other.hitFlash = 9;
-        other.stun = other.blocking ? 6 : this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : 16;
+        other.stun = other.blocking ? 6 : (this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : 16) + (this.attack.hitStunBonus || 0);
         
         if (this.grounded && !other.blocking) this.vx = -1.5 * dir;
         other.vx = this.attack.knock * dir * (other.blocking ? 0.35 : 1);
@@ -1046,15 +1117,17 @@
       camX: 480, camZoom: 1,
       round: 1, wins: { p1: 0, p2: 0 }, roundOver: false,
     };
-    $('#p1-name').textContent = s1.short; $('#p2-name').textContent = s2.short;
-    $('#timer').textContent = match.timer;
-    $('#opponent-label').textContent = match.p2.cpu ? 'CPU' : 'P2';
-    $('#round-label').textContent = `ROUND ${match.round}`;
+    dom.p1Name.textContent = s1.short; dom.p2Name.textContent = s2.short;
+    dom.timer.textContent = match.timer;
+    dom.opponentLabel.textContent = match.p2.cpu ? 'CPU' : 'P2';
+    dom.roundLabel.textContent = `ROUND ${match.round}`;
     updateRoundPips();
 
-    $('#coach-text').textContent = window.matchMedia('(max-width: 720px)').matches
-      ? 'Use as setas ← e → para chegar perto do rival.'
-      : 'Use A/D ou Setas. Q é Soco, E é Chute, R é Golpe Especial!';
+    if (dom.coachText) {
+      dom.coachText.textContent = window.matchMedia('(max-width: 720px)').matches
+        ? 'Use as setas ← e → para chegar perto do rival.'
+        : 'Use A/D ou Setas. Q é Soco, E é Chute, R é Golpe Especial!';
+    }
 
     announce(STAGE_NAMES[currentStage] || 'WORLD TOUR STAGE', 900);
     sound('crowd');
@@ -1066,12 +1139,13 @@
 
   function updateRoundPips() {
     if (!match) return;
-    const fill = (id, wins) => {
-      const pips = $(id).children;
+    const fill = (el, wins) => {
+      if (!el) return;
+      const pips = el.children;
       for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('won', i < wins);
     };
-    fill('#p1-pips', match.wins.p1);
-    fill('#p2-pips', match.wins.p2);
+    fill(dom.p1Pips, match.wins.p1);
+    fill(dom.p2Pips, match.wins.p2);
   }
 
   /** Wipes health/position/effects for a fresh round while keeping the
@@ -1312,43 +1386,51 @@
       ];
       tip = tips[Math.floor(match.frames / 260) % tips.length];
     }
-    $('#coach-text').textContent = tip;
+    if (dom.coachText) dom.coachText.textContent = tip;
   }
 
   function updateHud() {
-    $('#p1-health').style.transform = `scaleX(${match.p1.health / 100})`;
-    $('#p2-health').style.transform = `scaleX(${match.p2.health / 100})`;
-    $('#p1-meter').style.width = `${match.p1.meter}%`;
-    $('#p2-meter').style.width = `${match.p2.meter}%`;
+    if (!match) return;
+    dom.p1Health.style.transform = `scaleX(${match.p1.health / 100})`;
+    dom.p2Health.style.transform = `scaleX(${match.p2.health / 100})`;
+    dom.p1Meter.style.width = `${match.p1.meter}%`;
+    dom.p2Meter.style.width = `${match.p2.meter}%`;
     
     // Dynamic styling of meter color
     const p1Meter = match.p1.meter;
-    $('#p1-meter').style.background = p1Meter >= 100 ? '#ffc44d' : p1Meter >= 50 ? '#23d7ef' : '#8e183a';
-    $('#p1-meter').style.boxShadow = p1Meter >= 50 ? `0 0 8px ${p1Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
+    dom.p1Meter.style.background = p1Meter >= 100 ? '#ffc44d' : p1Meter >= 50 ? '#23d7ef' : '#8e183a';
+    dom.p1Meter.style.boxShadow = p1Meter >= 50 ? `0 0 8px ${p1Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
     
     const p2Meter = match.p2.meter;
-    $('#p2-meter').style.background = p2Meter >= 100 ? '#ffc44d' : p2Meter >= 50 ? '#23d7ef' : '#8e183a';
-    $('#p2-meter').style.boxShadow = p2Meter >= 50 ? `0 0 8px ${p2Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
+    dom.p2Meter.style.background = p2Meter >= 100 ? '#ffc44d' : p2Meter >= 50 ? '#23d7ef' : '#8e183a';
+    dom.p2Meter.style.boxShadow = p2Meter >= 50 ? `0 0 8px ${p2Meter >= 100 ? '#ffc44d' : '#23d7ef'}` : 'none';
 
     const updateMeterLabel = (el, meter) => {
+      if (!el) return;
       if (meter >= 100) {
-        el.textContent = 'SUPER!';
-        el.style.color = '#ffc44d';
-        el.classList.add('is-ready');
+        if (el.textContent !== 'SUPER!') {
+          el.textContent = 'SUPER!';
+          el.style.color = '#ffc44d';
+          el.classList.add('is-ready');
+        }
       } else if (meter >= 50) {
-        el.textContent = 'MINI!';
-        el.style.color = '#23d7ef';
-        el.classList.add('is-ready');
+        if (el.textContent !== 'MINI!') {
+          el.textContent = 'MINI!';
+          el.style.color = '#23d7ef';
+          el.classList.add('is-ready');
+        }
       } else {
-        el.textContent = 'CARREGANDO';
-        el.style.color = '';
-        el.classList.remove('is-ready');
+        if (el.textContent !== 'CARREGANDO') {
+          el.textContent = 'CARREGANDO';
+          el.style.color = '';
+          el.classList.remove('is-ready');
+        }
       }
     };
-    updateMeterLabel($('#p1-ready'), p1Meter);
-    updateMeterLabel($('#p2-ready'), p2Meter);
+    updateMeterLabel(dom.p1Ready, p1Meter);
+    updateMeterLabel(dom.p2Ready, p2Meter);
     
-    $('#timer').textContent = String(Math.max(0, match.timer)).padStart(2, '0');
+    dom.timer.textContent = String(Math.max(0, match.timer)).padStart(2, '0');
   }
 
   function loop(timestamp = 0) {
