@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Partitura: Maestro Quest - Diogo Paulino</title>
-  <meta name="description" content="Aprenda a ler partituras, notas e escalas musicais com interatividade, áudio sintético e gamificação.">
+  <meta name="description" content="Aprenda a ler partituras, notas na Clave de Sol e Fá, e escalas musicais com interatividade, áudio sintético pro e gamificação.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -24,9 +24,9 @@
     </header>
 
     <!-- PAINEL DE GAMIFICAÇÃO & STATUS DO MAESTRO -->
-    <div class="maestro-dashboard">
+    <div class="maestro-dashboard" id="dashboard-card">
       <div class="level-badge-box">
-        <div class="avatar-ring">
+        <div class="avatar-ring" id="maestro-avatar-ring">
           <span id="maestro-avatar">🎩</span>
         </div>
         <div class="level-details">
@@ -60,28 +60,32 @@
       </div>
     </div>
 
-    <!-- CONTROLES DE CONFIGURAÇÃO RÁPIDA (ÁUDIO E NOTAÇÃO) -->
+    <!-- CONTROLES DE CONFIGURAÇÃO RÁPIDA (ÁUDIO, CLAVE E MODO GUIA) -->
     <div class="audio-settings-bar">
       <div class="setting-item">
         <label for="instrument-select">🎹 Timbre:</label>
         <select id="instrument-select" class="neon-select">
-          <option value="piano" selected>Piano de Cauda</option>
+          <option value="piano" selected>Piano de Cauda (Reverb)</option>
           <option value="synth">Sintetizador Néon</option>
-          <option value="celesta">Celesta Mágica</option>
+          <option value="guitar">Guitarra & Pluck 🎸</option>
+          <option value="celesta">Celesta Mágica ✨</option>
         </select>
       </div>
       <div class="setting-item">
+        <label for="clef-select">🎼 Clave & Faixa:</label>
+        <select id="clef-select" class="neon-select clef-selector">
+          <option value="treble" selected>𝄞 Clave de Sol (Agudo / Mão Dir.)</option>
+          <option value="bass">𝄢 Clave de Fá (Grave / Mão Esq.)</option>
+          <option value="both">𝄡 Reveber Ambas (Desafio Total!)</option>
+        </select>
+      </div>
+      <div class="setting-item flex-actions">
         <button class="toggle-btn" id="toggle-notation-btn" title="Alternar entre Dó-Ré-Mi e C-D-E">
-          <span class="notation-mode-badge" id="notation-mode-display">Dó Ré Mi ⇄ C D E</span>
+          <span class="notation-mode-badge" id="notation-mode-display">Notação: Dó Ré Mi ⇄ C D E</span>
         </button>
-      </div>
-      <div class="setting-item">
-        <label for="clef-select">🎼 Clave:</label>
-        <select id="clef-select" class="neon-select">
-          <option value="treble" selected>Clave de Sol (𝄞)</option>
-          <option value="bass">Clave de Fá (𝄢)</option>
-          <option value="both">Alternar Ambas</option>
-        </select>
+        <button class="toggle-btn guide-toggle" id="toggle-hint-btn" title="Ativar ou desativar o gabarito das notas sob a pauta">
+          💡 Modo Guia: <span id="hint-status">OFF</span>
+        </button>
       </div>
     </div>
 
@@ -103,20 +107,26 @@
 
     <!-- PALCO PRINCIPAL DE INTERAÇÃO -->
     <main class="main-stage">
-      <!-- MODO DE ESCALAS BARRA SUPERIOR EXCLUSIVA -->
+      <!-- MODO DE ESCALAS BARRA SUPERIOR E EXPLICAÇÃO TEÓRICA -->
       <div class="mode-toolbar hidden" id="toolbar-scales">
-        <label for="scale-select">Escala para explorar:</label>
-        <select id="scale-select" class="neon-select scale-picker">
-          <option value="C-major">Dó Maior (C Major)</option>
-          <option value="G-major">Sol Maior (G Major - 1 Falso Mágico: Fá♯)</option>
-          <option value="A-minor">Lá Menor Natural (A Minor)</option>
-          <option value="C-penta">Dó Pentatônica (C Pentatonic)</option>
-          <option value="C-blues">Dó Blues (C Blues - Blue Note! 🎸)</option>
-          <option value="A-harmonic">Lá Menor Harmônica (A Harmonic Minor)</option>
-        </select>
-        <button id="btn-play-scale" class="action-btn glow-btn">
-          ▶ Tocar Escala
-        </button>
+        <div class="scale-selector-row">
+          <label for="scale-select">Escala para explorar:</label>
+          <select id="scale-select" class="neon-select scale-picker">
+            <option value="C-major">Dó Maior (C Major - Clássica)</option>
+            <option value="G-major">Sol Maior (G Major - Fá Sustenido ♯)</option>
+            <option value="F-major">Fá Maior (F Major - Si Bemol ♭)</option>
+            <option value="A-minor">Lá Menor Natural (A Minor - Melancólica)</option>
+            <option value="C-penta">Dó Pentatônica (C Pentatonic - Solo Pro)</option>
+            <option value="C-blues">Dó Blues (C Blues - Com Blue Note! 🎸)</option>
+          </select>
+          <div class="scale-direction-btns">
+            <button id="btn-play-scale" class="action-btn glow-btn">▶ Ascendente</button>
+            <button id="btn-play-scale-desc" class="action-btn glow-btn-alt">◀ Descendente</button>
+          </div>
+        </div>
+        <div class="theory-card-box" id="scale-theory-desc">
+          💡 <strong>Dó Maior:</strong> A escala base da música ocidental! Composta inteiramente pelas teclas brancas do piano sem nenhum acidente (sem sustenidos ou bemóis).
+        </div>
       </div>
 
       <!-- MODO DE 60 SEGUNDOS EXECUTOR DE TEMPO -->
@@ -132,19 +142,20 @@
         <button id="btn-start-arcade" class="action-btn pulse-btn">⚡ Iniciar Desafio</button>
       </div>
 
-      <!-- PAINEL VISUAL DO PENTAGRAMA (PARTITURA SVG) -->
-      <div class="staff-display-card">
-        <div class="staff-header-info" id="mode-instruction-text">
-          Toque a nota ou tecla correspondente no pentagrama para marcar pontos!
+      <!-- PAINEL VISUAL DO PENTAGRAMA (PARTITURA SVG COM MODO GRAVE/AGUDO) -->
+      <div class="staff-display-card" id="staff-card-wrapper">
+        <div class="staff-header-info">
+          <span id="clef-active-indicator" class="clef-badge treble-badge">𝄞 Oitava Aguda (Clave de Sol)</span>
+          <span id="mode-instruction-text" class="instruction-span">Toque a nota correspondente na pauta para pontuar!</span>
         </div>
 
         <div class="staff-svg-wrapper">
-          <svg id="staff-canvas" viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg">
-            <!-- As linhas do pentagrama, claves e notas reluzentes são renderizadas programaticamente -->
+          <svg id="staff-canvas" viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+            <!-- As linhas da pauta, claves vetoriais perfeitas e notas são renderizadas programaticamente -->
           </svg>
         </div>
 
-        <!-- FEEDBACK VISUAL BONITO DO RESULTADO (ACERTO / ERRO) -->
+        <!-- FEEDBACK VISUAL DO RESULTADO EXPLICATIVO (ACERTO / ERRO / COMPARAÇÃO) -->
         <div class="feedback-banner" id="feedback-display">
           <span class="feedback-icon" id="feedback-icon">✨</span>
           <span class="feedback-text" id="feedback-text">Qual é esta nota na partitura?</span>
@@ -156,42 +167,53 @@
         <div class="note-buttons-row" id="note-buttons-container">
           <button class="note-btn" data-note="C" data-color="red">
             <span class="note-name">Dó</span><span class="note-cifra">C</span>
+            <span class="note-octave-hint" id="hint-oct-C">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="D" data-color="orange">
             <span class="note-name">Ré</span><span class="note-cifra">D</span>
+            <span class="note-octave-hint" id="hint-oct-D">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="E" data-color="yellow">
             <span class="note-name">Mi</span><span class="note-cifra">E</span>
+            <span class="note-octave-hint" id="hint-oct-E">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="F" data-color="green">
             <span class="note-name">Fá</span><span class="note-cifra">F</span>
+            <span class="note-octave-hint" id="hint-oct-F">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="G" data-color="cyan">
             <span class="note-name">Sol</span><span class="note-cifra">G</span>
+            <span class="note-octave-hint" id="hint-oct-G">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="A" data-color="blue">
             <span class="note-name">Lá</span><span class="note-cifra">A</span>
+            <span class="note-octave-hint" id="hint-oct-A">Oitava 4</span>
           </button>
           <button class="note-btn" data-note="B" data-color="purple">
             <span class="note-name">Si</span><span class="note-cifra">B</span>
+            <span class="note-octave-hint" id="hint-oct-B">Oitava 4</span>
           </button>
         </div>
 
         <div class="virtual-keyboard-card">
           <div class="keyboard-header">
-            <span>🎹 Teclado Interativo (Dó3 a Si4)</span>
-            <span class="keyboard-tip">Você também pode tocar aqui diretamente!</span>
+            <div class="keyboard-title-group">
+              <span>🎹 Teclado Interativo (Fá2 ao Dó5)</span>
+              <span class="zone-badge left-hand-zone" id="zone-left">Mão Esq. (Grave / Clave de Fá)</span>
+              <span class="zone-badge right-hand-zone" id="zone-right">Mão Dir. (Agudo / Clave de Sol)</span>
+            </div>
+            <span class="keyboard-tip">💡 Dica: Dó4 (C4) é o famoso Dó Central que une as duas claves!</span>
           </div>
           <div class="piano-keyboard-wrapper">
             <div class="piano-keyboard" id="piano-keyboard">
-              <!-- Teclas brancas e pretas geradas dinamicamente com suporte a toques e mouse -->
+              <!-- Teclas brancas e pretas geradas dinamicamente de Fá2 a Dó5 -->
             </div>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- MODAL DE TROFÉUS E CONQUISTAS (PERSISTIDO EM LOCALSTORAGE) -->
+    <!-- MODAL DE TROFÉUS E CONQUISTAS -->
     <div class="modal-backdrop hidden" id="modal-badges">
       <div class="modal-card glass-modal">
         <header class="modal-header">
@@ -199,7 +221,7 @@
           <button class="close-btn" id="btn-close-badges" aria-label="Fechar Modal">✕</button>
         </header>
         <div class="modal-body">
-          <p class="modal-desc">Todas as conquistas e estatísticas são salvas no seu <code>localStorage</code> automaticamente!</p>
+          <p class="modal-desc">Todas as suas pontuações e conquistas ficam seguras no seu <code>localStorage</code> automaticamente!</p>
           
           <div class="stats-summary-grid">
             <div class="stat-box">
@@ -221,7 +243,7 @@
           </div>
 
           <div class="badges-grid" id="badges-grid-container">
-            <!-- Badges injetadas via JS com estilos travado / destravado -->
+            <!-- Badges injetadas via JS com estilos travados e destravados -->
           </div>
         </div>
         <footer class="modal-footer">
