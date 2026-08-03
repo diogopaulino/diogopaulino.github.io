@@ -7,7 +7,7 @@
   <title>Rock Kombat — Rock Legends Fighting Game</title>
   <meta name="description"
     content="Rock Kombat é um jogo de luta arcade com lendas do rock, golpes especiais, modo versus e controles mobile.">
-  <meta name="theme-color" content="#09030f">
+  <meta name="theme-color" content="#06030a">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/rock-kombat/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Rock Kombat — Rock Legends Fighting Game">
@@ -45,14 +45,13 @@
         alt="Kurt Cobain, Axl Rose e John Lennon em pose de luta no palco">
       <div class="hero-scrim"></div>
       <div class="hero-content">
-        <p class="eyebrow"><span></span> WORLD TOUR '94 <span></span></p>
+        <p class="eyebrow"><span></span> THREE-DIMENSIONAL WORLD TOUR <span></span></p>
         <h1 id="hero-title"><span>ROCK</span> KOMBAT</h1>
-        <p class="hero-copy">O palco virou arena. O amplificador está no máximo.<br>Escolha sua lenda e domine o
-          encore.</p>
+        <p class="hero-copy">O palco virou arena em uma nova experiência 3D.<br>Escolha sua lenda e domine o encore.</p>
         <button class="primary-btn" id="enter-game" type="button">
           <span>PRESS START</span><small>ENTRAR NA ARENA</small>
         </button>
-        <p class="hero-tip">TECLADO (SETAS / ASD + Q,E,R) · CONTROLE TOUCH</p>
+        <p class="hero-tip">3D · TECLADO · TOUCH · GAMEPAD</p>
       </div>
     </section>
 
@@ -130,6 +129,10 @@
 
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="game" width="960" height="540" aria-label="Jogo Rock Kombat"></canvas>
+          <div class="render-status" id="render-status" aria-live="polite">
+            <i></i><span>PREPARANDO O PALCO 3D</span>
+          </div>
+          <div class="quality-badge" id="quality-badge">3D · AUTO</div>
           <div class="crt-glass" aria-hidden="true"></div>
           <div class="announcer" id="announcer" aria-live="assertive"></div>
           <button class="pause-btn" id="pause-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
@@ -181,7 +184,7 @@
       <button class="modal-close" id="close-how" type="button" aria-label="Fechar instruções">×</button>
       <p class="kicker">PLAYER'S GUIDE</p>
       <h2 id="how-title">COMO <em>JOGAR</em></h2>
-      <p class="how-intro">Domine o sistema de combate estilo Street Fighter: faça cancelamento de combos, dispare projéteis, execute rasteiras ao solo e use a Defesa Perfeita ("Rock Block") para dominar a arena!</p>
+      <p class="how-intro">Kurt resolve na guitarrada, Axl usa o pedestal do microfone e Lennon contra-ataca com Peace &amp; Love. Combine golpes, carregue o especial e use a Defesa Perfeita para roubar o show.</p>
 
       <div class="control-guides">
         <article style="grid-column: 1 / -1;">
@@ -192,7 +195,7 @@
           <div class="key-row"><kbd>Q</kbd><kbd>E</kbd><p>Golpe de Soco (<kbd>Q</kbd>) / Golpe de Chute (<kbd>E</kbd>)</p></div>
           <div class="key-row"><kbd>↓</kbd><kbd>Q</kbd><p><b>Gancho Antiaéreo (Shoryuken):</b> <kbd>↓/S</kbd> + Soco (invulnerável a saltos e joga para o alto)</p></div>
           <div class="key-row"><kbd>↓</kbd><kbd>E</kbd><p><b>Rasteira (Tsunami Kick):</b> <kbd>↓/S</kbd> + Chute (acerta embaixo e causa queda Hard Knockdown)</p></div>
-          <div class="key-row special-key"><kbd>R</kbd><p>Golpe Especial & Projéteis (Mini-Hadoken com 50%, Super Explosão com 100% usando <kbd>R</kbd> / <kbd>Espaço</kbd>)</p></div>
+          <div class="key-row special-key"><kbd>R</kbd><p>Especial cômico do personagem: versão rápida com 50% ou cena Super com a barra completa.</p></div>
         </article>
       </div>
 
@@ -214,9 +217,8 @@
     </div>
   </div>
 
-  <script src="rig.js?v=2"></script>
   <script src="audio.js?v=2"></script>
-  <script src="script.js?v=3"></script>
+  <script type="module" src="game3d.js?v=1"></script>
 </body>
 
 </html>

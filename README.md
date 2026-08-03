@@ -30,7 +30,7 @@ Tudo roda no navegador: jogos, ferramentas, visualizações e instrumentos.
 
 | Projeto | Sobre |
 | :--- | :--- |
-| 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 16-bits com lendas do rock |
+| 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 3D cômica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
 | 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |
 | 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Corrida com IA e telemetria |

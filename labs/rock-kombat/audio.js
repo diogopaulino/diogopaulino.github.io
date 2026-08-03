@@ -174,6 +174,10 @@ window.RockKombatAudio = (() => {
     const now = ctx.currentTime;
 
     switch (type) {
+      case 'select':
+        fmVoice(sfxGain, now, { freq: 392 * pitch, ratio: 2, modIndex: 110, modIndexDecay: 0.05, wave: 'square', duration: 0.11, gain: 0.13 });
+        fmVoice(sfxGain, now + 0.045, { freq: 587.33 * pitch, ratio: 1, modIndex: 70, modIndexDecay: 0.04, wave: 'triangle', duration: 0.12, gain: 0.10 });
+        break;
       case 'whiff':
       case 'whiff_punch':
         // Som cortante de ar rápido (Swish) sem impacto físico
