@@ -61,8 +61,8 @@ export class InputManager {
         const pads = root.querySelectorAll('[data-control]');
         for (const pad of pads) {
             const control = pad.dataset.control;
-            const press = (on) => (event) => {
-                event.preventDefault();
+            const setPad = (on, event) => {
+                event?.preventDefault();
                 pad.classList.toggle('is-active', on);
                 if (control === 'drs') {
                     if (on) this.actions.toggleDrs?.();
@@ -75,10 +75,13 @@ export class InputManager {
                 this.touch[control] = on ? 1 : 0;
                 if (on && navigator.vibrate) navigator.vibrate(8);
             };
-            pad.addEventListener('pointerdown', press(true), { signal });
-            pad.addEventListener('pointerup', press(false), { signal });
-            pad.addEventListener('pointercancel', press(false), { signal });
-            pad.addEventListener('pointerleave', press(false), { signal });
+            pad.addEventListener('pointerdown', (event) => {
+                pad.setPointerCapture?.(event.pointerId);
+                setPad(true, event);
+            }, { signal });
+            pad.addEventListener('pointerup', (event) => setPad(false, event), { signal });
+            pad.addEventListener('pointercancel', (event) => setPad(false, event), { signal });
+            pad.addEventListener('lostpointercapture', () => setPad(false), { signal });
             pad.addEventListener('contextmenu', (e) => e.preventDefault(), { signal });
         }
     }
@@ -123,14 +126,21 @@ export class InputManager {
         this.state.throttle = ramp(this.state.throttle, throttleTarget, 7, 12);
         this.state.brake = ramp(this.state.brake, brakeTarget, 12, 16);
 
+        // Compose desired steer in "screen space" first: left = -1, right = +1.
         let steerTarget = 0;
         if (this.raw.left || this.touch.left) steerTarget -= 1;
         if (this.raw.right || this.touch.right) steerTarget += 1;
-        if (pad && pad.steer) steerTarget = pad.steer;
-        steerTarget = Math.max(-1, Math.min(1, steerTarget));
+        // Gamepad stick augments keys/touch instead of hard-replacing them
+        // (avoids a resting/drifted pad swallowing keyboard input).
+        if (pad) steerTarget += pad.steer;
+
+        // Vehicle +X is the car's right, but a chase camera looking along +Z shows
+        // world +X on the LEFT of the screen (Three.js Y-up / look-down-−Z basis).
+        // Negate so pressing left turns toward screen-left.
+        steerTarget = Math.max(-1, Math.min(1, -steerTarget));
 
         const returning = Math.sign(steerTarget) !== Math.sign(this.state.steer) || steerTarget === 0;
-        this.state.steer = ramp(this.state.steer, steerTarget, returning ? 9 : 4.5, 10);
+        this.state.steer = ramp(this.state.steer, steerTarget, returning ? 11 : 6.5, 12);
 
         this.state.ers = this.raw.ers || this.touch.ers || (pad?.ers ?? false);
 

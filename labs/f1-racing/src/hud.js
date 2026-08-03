@@ -174,9 +174,18 @@ export class Hud {
                 gapEl.textContent = car.finished ? formatTime(car.finishTime) : 'LÍDER';
             } else {
                 const leader = order[0];
-                const gap = (leader.totalDistance - car.totalDistance);
-                const speed = Math.max(12, car.speed);
-                gapEl.textContent = gap > 0 ? `+${(gap / speed).toFixed(1)}s` : '—';
+                const gapMeters = leader.totalDistance - car.totalDistance;
+                const lapLen = this.circuit?.length || 5000;
+                if (gapMeters <= 0) {
+                    gapEl.textContent = '—';
+                } else if (gapMeters > lapLen * 0.85) {
+                    const laps = Math.max(1, Math.round(gapMeters / lapLen));
+                    gapEl.textContent = laps === 1 ? '+1 VOLTA' : `+${laps} VOLTAS`;
+                } else {
+                    // Use the faster of the two so a parked car doesn't show +1000s.
+                    const speed = Math.max(28, car.speed, leader.speed * 0.85);
+                    gapEl.textContent = `+${(gapMeters / speed).toFixed(1)}s`;
+                }
             }
         });
 
