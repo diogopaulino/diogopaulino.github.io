@@ -197,9 +197,10 @@ export class Vehicle {
         const steerTarget = clamp(input.steer, -1, 1);
 
         // Speed-sensitive steering keeps the car drivable at 300 km/h.
+        // Convention: positive steerTarget / steer = turn right (yaw increases).
         const speedFactor = clamp(1 - Math.abs(this.vx) / 135, 0.26, 1);
         const maxSteer = SPEC.maxSteer * speedFactor;
-        const steerRate = input.assists ? 5.2 : 8.5;
+        const steerRate = input.assists ? 6.8 : 9.5;
         this.steer += (steerTarget * maxSteer - this.steer) * Math.min(1, steerRate * dt);
 
         this.autoShift(dt);
