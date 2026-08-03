@@ -1,32 +1,31 @@
 <div align="center">
 
-<!-- Banner interativo gerado com Typing SVG -->
-<a href="https://diogopaulino.com.br">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Outfit&weight=600&size=35&pause=1000&color=8B5CF6&center=true&vCenter=true&width=600&height=80&lines=Olá,+eu+sou+o+Diogo!+👋;Tech+Manager+·+Design+%26+Code;Explorando+tecnologia+há+20+anos;Música,+IA+e+Inovação" alt="Typing SVG" />
-</a>
+# Diogo Paulino
 
-**Misturando design, código e som para criar experiências interativas.**
+**Design, Código & Som**
+
+Explorando tecnologia há quase 20 anos. Misturando interfaces, código sólido e música para criar experiências digitais.
 
 <br/>
 
 <p align="center">
-  <a href="https://diogopaulino.com.br/"><img src="https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=firefoxbrowser&logoColor=white" alt="Website" /></a>
-  <a href="https://diogopaulino.com.br/labs/"><img src="https://img.shields.io/badge/Labs-Playground-8B5CF6?style=flat-square&logo=codesandbox&logoColor=white" alt="Labs" /></a>
-  <a href="https://br.linkedin.com/in/diogopaulino"><img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin" alt="LinkedIn" /></a>
-  <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"><img src="https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white" alt="Spotify" /></a>
+  <a href="https://diogopaulino.com.br/"><img src="https://img.shields.io/badge/Website-diogopaulino.com.br-181717?style=flat-square&logo=firefoxbrowser&logoColor=white" alt="Website" /></a>
+  <a href="https://diogopaulino.com.br/labs/"><img src="https://img.shields.io/badge/Labs-Playground-181717?style=flat-square&logo=codesandbox&logoColor=white" alt="Labs" /></a>
+  <a href="https://br.linkedin.com/in/diogopaulino"><img src="https://img.shields.io/badge/LinkedIn-diogopaulino-181717?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
+  <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"><img src="https://img.shields.io/badge/Spotify-Artist-181717?style=flat-square&logo=spotify&logoColor=white" alt="Spotify" /></a>
 </p>
 
 </div>
 
 ---
 
-## 🚀 Sobre mim
+## Sobre mim
 
-Sou um **Tech Manager** apaixonado por tecnologia e criação. Com quase 20 anos de estrada, transito entre liderança técnica, desenvolvimento hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface incrível, um código limpo e um bom produto.
+Atuo no desenvolvimento de software unindo visão técnica, hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface bem pensada, uma arquitetura sólida e um bom produto final.
 
-- 🎸 **Músico nas horas vagas**, explorando como a arte e o código se conectam.
-- 🤖 **Entusiasta de Inteligência Artificial**, sempre testando novos modelos e ferramentas.
-- 🧪 **Criador compulsivo** de pequenos projetos (dá uma olhada no meu Playground abaixo!).
+- 🎸 **Música & Áudio:** Explorando como a arte e a programação se conectam.
+- 🤖 **IA & Inovação:** Constantemente testando novos modelos, integrações e ferramentas.
+- 🧪 **Playground:** Criador compulsivo de pequenos experimentos e sistemas interativos (veja abaixo).
 
 <br/>
 
@@ -78,26 +77,21 @@ Um espaço aberto onde guardo experimentos e mini-projetos que fui criando ao lo
 
 <div align="center">
 
-### ⚡ Tech & Tools
-<p align="center">
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=js,html,css,react,nodejs,ts,git,figma,aws,docker,python,linux&perline=12" alt="Tech Stack" />
-  </a>
-</p>
-
+### Tecnologias & Ferramentas
 <br/>
-
-### 📈 GitHub Stats
 <p align="center">
-  <a href="https://github.com/diogopaulino">
-    <img height="160em" src="https://github-readme-stats.vercel.app/api?username=diogopaulino&show_icons=true&theme=dracula&hide_border=true&include_all_commits=true&count_private=true" alt="GitHub Stats" />
-    <img height="160em" src="https://github-readme-stats.vercel.app/api/top-langs/?username=diogopaulino&layout=compact&theme=dracula&hide_border=true" alt="Top Langs" />
-  </a>
+  <img src="https://img.shields.io/badge/JavaScript-181717?style=flat-square&logo=javascript&logoColor=F7DF1E" alt="JavaScript" />
+  <img src="https://img.shields.io/badge/TypeScript-181717?style=flat-square&logo=typescript&logoColor=3178C6" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/React-181717?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Node.js-181717?style=flat-square&logo=node.js&logoColor=339933" alt="Node.js" />
+  <img src="https://img.shields.io/badge/HTML5-181717?style=flat-square&logo=html5&logoColor=E34F26" alt="HTML5" />
+  <img src="https://img.shields.io/badge/CSS3-181717?style=flat-square&logo=css3&logoColor=1572B6" alt="CSS3" />
+  <img src="https://img.shields.io/badge/Python-181717?style=flat-square&logo=python&logoColor=3776AB" alt="Python" />
+  <img src="https://img.shields.io/badge/Figma-181717?style=flat-square&logo=figma&logoColor=F24E1E" alt="Figma" />
+  <img src="https://img.shields.io/badge/AWS-181717?style=flat-square&logo=amazonaws&logoColor=FF9900" alt="AWS" />
+  <img src="https://img.shields.io/badge/Docker-181717?style=flat-square&logo=docker&logoColor=2496ED" alt="Docker" />
+  <img src="https://img.shields.io/badge/Git-181717?style=flat-square&logo=git&logoColor=F05032" alt="Git" />
 </p>
-
-<br/>
-
-<img src="https://komarev.com/ghpvc/?username=diogopaulino&color=8B5CF6&style=flat-square&label=VISITANTES" alt="Profile views" />
 
 <br/>
 <br/>
