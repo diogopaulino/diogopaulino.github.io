@@ -8,7 +8,7 @@
   <meta name="description"
     content="Recriação pesquisada do RakuRaku Dinokun / Dinkie Dino: carcaça, LCD, controles e ciclo de cuidado em tempo real.">
   <link rel="stylesheet" href="/labs/shared.css?v=4">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 
 <body>
@@ -19,6 +19,11 @@
 
     <main class="game-container">
       <section class="device-area" aria-label="RakuRaku Dinokun interativo">
+        <div class="exhibit-label" aria-hidden="true">
+          <span>referência de 1997</span>
+          <strong>TK-910 · versão amarela</strong>
+        </div>
+
         <div class="tama-shell" id="tamaShell">
           <div class="tama-cap" aria-hidden="true">
             <span class="cap-neck"></span>
@@ -84,7 +89,7 @@
           <button id="resetButton" class="reset-control" type="button" title="Botão rebaixado no verso do aparelho">
             <span aria-hidden="true"></span> reset traseiro
           </button>
-          <span id="soundState" aria-live="polite">som ligado</span>
+          <span class="sound-indicator"><i aria-hidden="true"></i><b id="soundState" aria-live="polite">som ligado</b></span>
         </div>
       </section>
 
