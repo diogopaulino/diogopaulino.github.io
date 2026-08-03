@@ -9,10 +9,18 @@ Mais de 20 anos apaixonado por tecnologia. Unindo liderança, programação e de
 <br/>
 
 <p align="center">
-  <a href="https://diogopaulino.com.br/"><img src="https://img.shields.io/badge/Website-diogopaulino.com.br-181717?style=flat-square&logo=firefoxbrowser&logoColor=white" alt="Website" /></a>
-  <a href="https://diogopaulino.com.br/labs/"><img src="https://img.shields.io/badge/Labs-Playground-181717?style=flat-square&logo=codesandbox&logoColor=white" alt="Labs" /></a>
-  <a href="https://br.linkedin.com/in/diogopaulino"><img src="https://img.shields.io/badge/LinkedIn-diogopaulino-181717?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
-  <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"><img src="https://img.shields.io/badge/Spotify-Artist-181717?style=flat-square&logo=spotify&logoColor=white" alt="Spotify" /></a>
+  <a href="https://diogopaulino.com.br/">
+    <img src="https://img.shields.io/badge/Website-3B82F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website" />
+  </a>&nbsp;&nbsp;
+  <a href="https://diogopaulino.com.br/labs/">
+    <img src="https://img.shields.io/badge/Playground-8B5CF6?style=for-the-badge&logo=codesandbox&logoColor=white" alt="Labs" />
+  </a>&nbsp;&nbsp;
+  <a href="https://br.linkedin.com/in/diogopaulino">
+    <img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" />
+  </a>&nbsp;&nbsp;
+  <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ">
+    <img src="https://img.shields.io/badge/Spotify-1DB954?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify" />
+  </a>
 </p>
 
 </div>
