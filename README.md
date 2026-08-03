@@ -1,34 +1,41 @@
 <div align="center">
 
-<img src="https://diogopaulino.com.br/assets/img/diogo.jpeg" alt="Diogo Paulino" width="120" height="120" style="border-radius:50%" />
+<!-- Banner interativo gerado com Typing SVG -->
+<a href="https://diogopaulino.com.br">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Outfit&weight=600&size=35&pause=1000&color=8B5CF6&center=true&vCenter=true&width=600&height=80&lines=Olá,+eu+sou+o+Diogo!+👋;Tech+Manager+·+Design+%26+Code;Explorando+tecnologia+há+20+anos;Música,+IA+e+Inovação" alt="Typing SVG" />
+</a>
 
-# Diogo Paulino
-
-**Tech Manager · Design & Code**
-
-Apaixonado por tecnologia — quase 20 anos explorando o mundo tech.  
-Entusiasta de **música**, **IA** e de tudo que une design, código e som.
+**Misturando design, código e som para criar experiências interativas.**
 
 <br/>
 
-[![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=firefoxbrowser&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-Playground-8B5CF6?style=flat-square&logo=codesandbox&logoColor=white)](https://diogopaulino.com.br/labs/)
-[![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github)](https://github.com/diogopaulino)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-diogopaulino-0A66C2?style=flat-square&logo=linkedin)](https://br.linkedin.com/in/diogopaulino)
-[![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
+<p align="center">
+  <a href="https://diogopaulino.com.br/"><img src="https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=firefoxbrowser&logoColor=white" alt="Website" /></a>
+  <a href="https://diogopaulino.com.br/labs/"><img src="https://img.shields.io/badge/Labs-Playground-8B5CF6?style=flat-square&logo=codesandbox&logoColor=white" alt="Labs" /></a>
+  <a href="https://br.linkedin.com/in/diogopaulino"><img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin" alt="LinkedIn" /></a>
+  <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"><img src="https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white" alt="Spotify" /></a>
+</p>
 
 </div>
 
 ---
 
-## Playground
+## 🚀 Sobre mim
 
-Espaço com projetinhos que fui criando ao longo do tempo — um lab aberto pra experimentar ideias.  
-Tudo roda no navegador: jogos, ferramentas, visualizações e instrumentos.
+Sou um **Tech Manager** apaixonado por tecnologia e criação. Com quase 20 anos de estrada, transito entre liderança técnica, desenvolvimento hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface incrível, um código limpo e um bom produto.
 
-### Games
+- 🎸 **Músico nas horas vagas**, explorando como a arte e o código se conectam.
+- 🤖 **Entusiasta de Inteligência Artificial**, sempre testando novos modelos e ferramentas.
+- 🧪 **Criador compulsivo** de pequenos projetos (dá uma olhada no meu Playground abaixo!).
 
-| Projeto | Sobre |
+<br/>
+
+## 🎡 Playground
+
+Um espaço aberto onde guardo experimentos e mini-projetos que fui criando ao longo do tempo. Tudo roda direto no navegador: abra, jogue, quebre e descubra como funciona.
+
+### 🎮 Games & Retrô
+| Projeto | O que é? |
 | :--- | :--- |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 16-bits com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
@@ -38,45 +45,63 @@ Tudo roda no navegador: jogos, ferramentas, visualizações e instrumentos.
 | 🌌 **[Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Shooter cyberpunk neon |
 | 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy |
 | 🐍 **[Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha Nokia 3310 |
-| 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Visual Windows 95 |
+| 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Visual Windows 95 autêntico |
 | 🐣 **[Tamagotchi](https://diogopaulino.com.br/labs/tamagotchi/)** | Bichinho virtual dos anos 90 |
 
-### Arte & Simulações
-
-| Projeto | Sobre |
+### 🎨 Arte & Simulações
+| Projeto | O que é? |
 | :--- | :--- |
-| 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: terminal, firewall, Oracle e cipher |
+| 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser (terminal, firewall) |
 | 🟢 **[Matrix Rain](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
 | 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Aurora boreal em flow fields |
-| 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital |
-| 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox gravitacional |
+| 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital na web |
+| 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox gravitacional e física |
 
-### Ferramentas
-
-| Projeto | Sobre |
+### 🛠️ Ferramentas & Utilidades
+| Projeto | O que é? |
 | :--- | :--- |
-| ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão 100% no cliente |
-| 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Filtros e cortes |
-| ⏱️ **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com sons |
-| 🗣️ **[English Duo](https://diogopaulino.com.br/labs/english-duo/)** | Treino de pronúncia |
-| 🧮 **[Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora + câmbio ao vivo |
+| ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão rápida 100% no cliente |
+| 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Filtros, cortes e ajustes na hora |
+| ⏱️ **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com soundscapes |
+| 🗣️ **[English Duo](https://diogopaulino.com.br/labs/english-duo/)** | Treino de pronúncia e escuta |
+| 🧮 **[Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora com câmbio ao vivo |
 
-### Áudio & Música
-
-| Projeto | Sobre |
+### 🎧 Áudio & Música
+| Projeto | O que é? |
 | :--- | :--- |
-| 🎼 **[Partitura Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado de partituras e escalas gamificado |
-| 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Synth com 4 oitavas |
-| 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Player estilo Winamp 2.x |
-| ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento generativo |
+| 🎼 **[Partitura Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
+| 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Sintetizador de 4 oitavas no navegador |
+| 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Nostalgia pura: player estilo Winamp 2.x |
+| ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento musical generativo |
 
 ---
 
 <div align="center">
 
-Abre, experimenta, quebra, reconstrói.  
-Esse é o espírito do playground.
+### ⚡ Tech & Tools
+<p align="center">
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=js,html,css,react,nodejs,ts,git,figma,aws,docker,python,linux&perline=12" alt="Tech Stack" />
+  </a>
+</p>
 
-**[diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/)**
+<br/>
+
+### 📈 GitHub Stats
+<p align="center">
+  <a href="https://github.com/diogopaulino">
+    <img height="160em" src="https://github-readme-stats.vercel.app/api?username=diogopaulino&show_icons=true&theme=dracula&hide_border=true&include_all_commits=true&count_private=true" alt="GitHub Stats" />
+    <img height="160em" src="https://github-readme-stats.vercel.app/api/top-langs/?username=diogopaulino&layout=compact&theme=dracula&hide_border=true" alt="Top Langs" />
+  </a>
+</p>
+
+<br/>
+
+<img src="https://komarev.com/ghpvc/?username=diogopaulino&color=8B5CF6&style=flat-square&label=VISITANTES" alt="Profile views" />
+
+<br/>
+<br/>
+
+**[diogopaulino.com.br](https://diogopaulino.com.br/)**
 
 </div>
