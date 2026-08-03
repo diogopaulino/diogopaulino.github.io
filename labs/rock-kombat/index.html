@@ -35,6 +35,7 @@
     </div>
     <div class="header-tools">
       <button class="icon-btn how-btn" id="how-to-play" type="button">? COMO JOGAR</button>
+      <button class="icon-btn" id="crt-toggle" type="button" aria-label="Ativar ou desativar CRT scanlines">CRT: ON</button>
       <button class="icon-btn" id="sound-toggle" type="button" aria-label="Ativar ou desativar som">SOM: ON</button>
     </div>
   </header>
@@ -110,7 +111,7 @@
         <div class="fight-hud" aria-live="polite">
           <div class="hud-player">
             <div class="hud-row"><strong id="p1-name">KURT</strong><span>P1</span></div>
-            <div class="health-track left"><i id="p1-health"></i></div>
+            <div class="health-track left"><i id="p1-health-lag"></i><i id="p1-health"></i></div>
             <div class="special-line"><small>ESPECIAL</small><div class="special-track"><i id="p1-meter"></i></div><b id="p1-ready">CARREGANDO</b></div>
           </div>
           <div class="round-center">
@@ -123,14 +124,34 @@
           </div>
           <div class="hud-player right">
             <div class="hud-row"><span id="opponent-label">CPU</span><strong id="p2-name">AXL</strong></div>
-            <div class="health-track right"><i id="p2-health"></i></div>
+            <div class="health-track right"><i id="p2-health-lag"></i><i id="p2-health"></i></div>
             <div class="special-line right"><b id="p2-ready">CARREGANDO</b><div class="special-track"><i id="p2-meter"></i></div><small>ESPECIAL</small></div>
           </div>
         </div>
 
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="game" width="960" height="540" aria-label="Jogo Rock Kombat"></canvas>
-          <div class="crt-glass" aria-hidden="true"></div>
+          <div class="crt-glass crt-on" id="crt-overlay" aria-hidden="true"></div>
+          
+          <!-- Interactive Street Fighter HUD Overlays -->
+          <div class="hud-overlay-container">
+            <div class="combo-counter left" id="p1-combo-hud" hidden>
+              <div class="combo-inner">
+                <span class="hits-num" id="p1-combo-hits">2</span>
+                <span class="hits-label">HITS!</span>
+              </div>
+            </div>
+            <div class="combo-counter right" id="p2-combo-hud" hidden>
+              <div class="combo-inner">
+                <span class="hits-num" id="p2-combo-hits">2</span>
+                <span class="hits-label">HITS!</span>
+              </div>
+            </div>
+            
+            <div class="fight-feedback left" id="p1-feedback" hidden>COUNTER</div>
+            <div class="fight-feedback right" id="p2-feedback" hidden>PARRY</div>
+          </div>
+
           <div class="announcer" id="announcer" aria-live="assertive"></div>
           <button class="pause-btn" id="pause-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
         </div>
@@ -149,15 +170,17 @@
             <button data-touch="block" type="button" aria-label="Defender">↓</button>
           </div>
           <div class="action-pad">
-            <button class="action kick" data-touch="kick" type="button"><span>K</span>CHUTE</button>
-            <button class="action punch" data-touch="punch" type="button"><span>P</span>SOCO</button>
+            <button class="action punch" data-touch="punch" type="button"><span>LP</span>FRAC</button>
+            <button class="action punch-heavy" data-touch="heavy_punch" type="button"><span>HP</span>FORT</button>
+            <button class="action kick" data-touch="kick" type="button"><span>LK</span>FRAC</button>
+            <button class="action kick-heavy" data-touch="heavy_kick" type="button"><span>HK</span>FORT</button>
             <button class="action special" data-touch="special" type="button"><span>★</span>ESPECIAL</button>
           </div>
         </div>
 
         <div class="desktop-controls">
-          <span><b>MOVER</b> <kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> · <b>PULAR</b> <kbd>W</kbd> ou <kbd>↑</kbd> · <b>DEFENDER</b> <kbd>S</kbd> ou <kbd>↓</kbd> · <b>ROCK BLOCK</b> Defesa no frame exato!</span>
-          <span><b>SOCO</b> <kbd>Q</kbd> · <b>CHUTE</b> <kbd>E</kbd> · <b>RASTEIRA</b> <kbd>↓</kbd>+<kbd>E</kbd> · <b>GANCHO (ANTIAÉREO)</b> <kbd>↓</kbd>+<kbd>Q</kbd> · <b>ESPECIAL</b> <kbd>R</kbd> ou <kbd>ESPAÇO</kbd></span>
+          <span><b>MOVER</b> <kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> · <b>PULO</b> <kbd>W</kbd> / <kbd>↑</kbd> · <b>DEFESA</b> <kbd>S</kbd> / <kbd>↓</kbd> (<b>ROCK BLOCK (Parry):</b> Defenda no impacto!)</span>
+          <span><b>SOCOS</b> <kbd>Q</kbd> (Fraco) / <kbd>F</kbd> (Forte) · <b>CHUTES</b> <kbd>E</kbd> (Fraco) / <kbd>G</kbd> (Forte) · <b>RASTEIRA</b> <kbd>↓</kbd>+<kbd>E</kbd> · <b>GANCHO</b> <kbd>↓</kbd>+<kbd>Q</kbd> · <b>ESPECIAL</b> <kbd>R</kbd> / <kbd>ESPAÇO</kbd></span>
         </div>
       </div>
     </section>
@@ -181,18 +204,20 @@
       <button class="modal-close" id="close-how" type="button" aria-label="Fechar instruções">×</button>
       <p class="kicker">PLAYER'S GUIDE</p>
       <h2 id="how-title">COMO <em>JOGAR</em></h2>
-      <p class="how-intro">Domine o sistema de combate estilo Street Fighter: faça cancelamento de combos, dispare projéteis, execute rasteiras ao solo e use a Defesa Perfeita ("Rock Block") para dominar a arena!</p>
+      <p class="how-intro">Domine o sistema de combate estilo Street Fighter: faça cancelamento de combos, execute golpes normais, socos e chutes fortes, e use o Perfect Parry ("Rock Block") para abrir a guarda inimiga!</p>
 
       <div class="control-guides">
         <article style="grid-column: 1 / -1;">
           <span class="guide-player p1">COMANDOS DO JOGADOR</span>
           <div class="key-row"><kbd>A</kbd><kbd>D</kbd><p>Mover para Esquerda / Direita (ou setas <kbd>←</kbd> <kbd>→</kbd>)</p></div>
-          <div class="key-row"><kbd>W</kbd><p>Pular (ou seta <kbd>↑</kbd>) — use no ar para abrir combos com vantagens ao aterrissar</p></div>
+          <div class="key-row"><kbd>W</kbd><p>Pular (ou seta <kbd>↑</kbd>)</p></div>
           <div class="key-row"><kbd>S</kbd><p>Defender / Bloquear (<kbd>S</kbd> ou <kbd>↓</kbd>). <b>Perfect Parry:</b> Defenda no frame exato para 0 dano e +25% barra!</p></div>
-          <div class="key-row"><kbd>Q</kbd><kbd>E</kbd><p>Golpe de Soco (<kbd>Q</kbd>) / Golpe de Chute (<kbd>E</kbd>)</p></div>
-          <div class="key-row"><kbd>↓</kbd><kbd>Q</kbd><p><b>Gancho Antiaéreo (Shoryuken):</b> <kbd>↓/S</kbd> + Soco (invulnerável a saltos e joga para o alto)</p></div>
-          <div class="key-row"><kbd>↓</kbd><kbd>E</kbd><p><b>Rasteira (Tsunami Kick):</b> <kbd>↓/S</kbd> + Chute (acerta embaixo e causa queda Hard Knockdown)</p></div>
-          <div class="key-row special-key"><kbd>R</kbd><p>Golpe Especial & Projéteis (Mini-Hadoken com 50%, Super Explosão com 100% usando <kbd>R</kbd> / <kbd>Espaço</kbd>)</p></div>
+          <div class="key-row"><kbd>Q</kbd><kbd>F</kbd><p>Soco Fraco (<kbd>Q</kbd>) / Soco Forte (<kbd>F</kbd>)</p></div>
+          <div class="key-row"><kbd>E</kbd><kbd>G</kbd><p>Chute Fraco (<kbd>E</kbd>) / Chute Forte (<kbd>G</kbd>)</p></div>
+          <div class="key-row"><kbd>→</kbd>+<kbd>Q</kbd> / <kbd>E</kbd><p><b>Golpes de Comando:</b> Ataques de avanço de longo alcance (Frente + Soco / Chute)</p></div>
+          <div class="key-row"><kbd>↓</kbd><kbd>Q</kbd><p><b>Gancho Antiaéreo:</b> <kbd>↓/S</kbd> + Soco (invulnerável a saltos e joga para o alto)</p></div>
+          <div class="key-row"><kbd>↓</kbd><kbd>E</kbd><p><b>Rasteira (Sweep):</b> <kbd>↓/S</kbd> + Chute (derruba ao solo com Hard Knockdown)</p></div>
+          <div class="key-row special-key"><kbd>R</kbd><p>Golpe Especial (HADOKEN) com 50% de barra, Super com 100% de barra usando <kbd>R</kbd> ou <kbd>Espaço</kbd></p></div>
         </article>
       </div>
 

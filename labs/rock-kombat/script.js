@@ -50,6 +50,7 @@
   const ctx = gameCanvas.getContext('2d');
   
   // Cache DOM de alta performance para zerar pesquisas DOM no loop 60Hz
+  // Cache DOM de alta performance para zerar pesquisas DOM no loop 60Hz
   const dom = {
     p1Name: document.querySelector('#p1-name'),
     p2Name: document.querySelector('#p2-name'),
@@ -58,14 +59,64 @@
     roundLabel: document.querySelector('#round-label'),
     coachText: document.querySelector('#coach-text'),
     p1Health: document.querySelector('#p1-health'),
+    p1HealthLag: document.querySelector('#p1-health-lag'),
     p2Health: document.querySelector('#p2-health'),
+    p2HealthLag: document.querySelector('#p2-health-lag'),
     p1Meter: document.querySelector('#p1-meter'),
     p2Meter: document.querySelector('#p2-meter'),
     p1Ready: document.querySelector('#p1-ready'),
     p2Ready: document.querySelector('#p2-ready'),
     p1Pips: document.querySelector('#p1-pips'),
     p2Pips: document.querySelector('#p2-pips'),
+    p1ComboHud: document.querySelector('#p1-combo-hud'),
+    p2ComboHud: document.querySelector('#p2-combo-hud'),
+    p1ComboHits: document.querySelector('#p1-combo-hits'),
+    p2ComboHits: document.querySelector('#p2-combo-hits'),
+    p1Feedback: document.querySelector('#p1-feedback'),
+    p2Feedback: document.querySelector('#p2-feedback'),
   };
+
+  // --- OPTIMIZED PARTICLE POOL (ZERO DYNAMIC MEMORY ALLOCATION DURING PLAY) ---
+  const MAX_PARTICLES = 300;
+  const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
+    active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0, color: '', size: 0, shape: ''
+  }));
+
+  function spawnParticle(x, y, vx, vy, life, color, size, shape) {
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      const p = particlePool[i];
+      if (!p.active) {
+        p.active = true;
+        p.x = x; p.y = y;
+        p.vx = vx; p.vy = vy;
+        p.life = life; p.maxLife = life;
+        p.color = color; p.size = size;
+        p.shape = shape;
+        return p;
+      }
+    }
+  }
+
+  function updateParticles() {
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      const p = particlePool[i];
+      if (p.active) {
+        p.life--;
+        if (p.life <= 0) {
+          p.active = false;
+        } else {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.shape === 'smoke') {
+            p.vx *= 0.94;
+            p.vy *= 0.94;
+          } else if (p.shape === 'spark') {
+            p.vy += 0.38;
+          }
+        }
+      }
+    }
+  }
 
   const stageSprites = {};
   const keys = {};
@@ -98,8 +149,10 @@
     right: ['KeyD', 'ArrowRight'],
     jump: ['KeyW', 'ArrowUp'],
     block: ['KeyS', 'ArrowDown'],
-    punch: ['KeyQ', 'KeyF', 'KeyJ'],
-    kick: ['KeyE', 'KeyG', 'KeyK'],
+    punch: ['KeyQ', 'KeyJ'],
+    heavy_punch: ['KeyF'],
+    kick: ['KeyE', 'KeyK'],
+    heavy_kick: ['KeyG'],
     special: ['KeyR', 'KeyH', 'KeyL', 'Space']
   };
 
@@ -540,6 +593,7 @@
       this.knockdown = 0; this.wakeup = 0; this.invuln = 0;
       this.anim = rigClips ? new RockKombatRig.Animator(rigClips) : null;
       this.animState = 'idle';
+      this.feedbackText = ''; this.feedbackTimer = 0;
     }
 
     /** Facing locked for the duration of an attack so mid-swing crossovers
@@ -552,10 +606,11 @@
     clipName() {
       if (this.knockdown > 0) return 'hit';
       if (this.attack) {
-        if (this.attack.type === 'mini_special') return 'special';
-        if (this.attack.type === 'uppercut') return 'punch';
-        if (this.attack.type === 'sweep') return 'kick';
-        return this.attack.type;
+        const type = this.attack.type;
+        if (type === 'mini_special') return 'special';
+        if (type === 'uppercut' || type === 'heavy_punch' || type === 'fwd_punch') return 'punch';
+        if (type === 'sweep' || type === 'heavy_kick' || type === 'fwd_kick') return 'kick';
+        return type;
       }
       if (this.stun > 0 || (this.wakeup > 0 && Math.floor(this.animFrame / 4) % 2 === 0)) return 'hit';
       if (this.blocking || this.ducking) return 'block';
@@ -576,7 +631,7 @@
     }
 
     input(other) {
-      if (this.knockdown > 0 || this.stun > 0) return { left:false, right:false, jump:false, block:false, punch:false, kick:false, special:false, down:false };
+      if (this.knockdown > 0 || this.stun > 0) return { left:false, right:false, jump:false, block:false, punch:false, heavy_punch:false, kick:false, heavy_kick:false, special:false, down:false };
       if (!this.cpu) {
         const downPressed = isPressed('block');
         return {
@@ -586,7 +641,9 @@
           block: downPressed,
           down: downPressed,
           punch: consumeAction('punch'),
+          heavy_punch: consumeAction('heavy_punch'),
           kick: consumeAction('kick'),
+          heavy_kick: consumeAction('heavy_kick'),
           special: consumeAction('special')
         };
       }
@@ -697,7 +754,16 @@
           } else if (Math.random() < 0.45) {
             input.down = true; input.kick = true; // Sweep
           } else {
-            input[Math.random() < 0.5 ? 'kick' : 'punch'] = true;
+            const r = Math.random();
+            const fwd = Math.random() < 0.45;
+            if (fwd) {
+              if (other.x < this.x) input.left = true;
+              else input.right = true;
+            }
+            if (r < 0.3) input.punch = true;
+            else if (r < 0.5) input.heavy_punch = true;
+            else if (r < 0.8) input.kick = true;
+            else input.heavy_kick = true;
           }
         }
         this.aiTimer = rand(8, 24) * cadenceFactor;
@@ -715,6 +781,10 @@
       if (this.wakeup > 0) this.wakeup--;
       if (this.invuln > 0) this.invuln--;
       if (this.comboTimer > 0) this.comboTimer--; else this.combo = 0;
+      if (this.feedbackTimer > 0) {
+        this.feedbackTimer--;
+        if (this.feedbackTimer <= 0) this.feedbackText = '';
+      }
 
       // Hard Knockdown: Deitado ao chão irresponsivo até levantar com invulnerabilidade
       if (this.knockdown > 0) {
@@ -743,21 +813,25 @@
       // --- SISTEMA DE CANCELAMENTO DE COMBOS (GATLING & SPECIAL CANCEL) ---
       let comboCanceled = false;
       if (this.attack && this.attack.hit && this.cooldown > 0) {
-        // Target Combo: Soco -> Chute ou Rasteira
-        if (this.attack.type === 'punch' && ((input.down && input.kick) || input.kick)) {
+        // Gatling Combo: Golpe Fraco -> Golpe Forte, ou Soco Fraco -> Chute Fraco, etc.
+        const canGatling = ['punch', 'kick'].includes(this.attack.type);
+        if (canGatling && (input.heavy_punch || input.heavy_kick || ((input.down && input.kick) || input.kick))) {
           this.attack = null; this.cooldown = 0; comboCanceled = true;
         }
         // Special Cancel: Qualquer Golpe Normal -> Especial ou Mini-Especial!
-        else if (['punch', 'kick', 'sweep', 'uppercut'].includes(this.attack.type) && input.special && this.meter >= 50) {
+        else if (['punch', 'heavy_punch', 'kick', 'heavy_kick', 'sweep', 'uppercut', 'fwd_punch', 'fwd_kick'].includes(this.attack.type) && input.special && this.meter >= 50) {
           this.attack = null; this.cooldown = 0; comboCanceled = true;
         }
       }
 
       if (this.attack && this.attackTimer <= Math.max(6, this.attack.activeAt - 2)) {
+        const movingForward = (this.facing === 1 && input.right) || (this.facing === -1 && input.left);
         if (input.down && input.kick) this.bufferedAttack = 'sweep';
         else if (input.down && input.punch) this.bufferedAttack = 'uppercut';
-        else if (input.punch) this.bufferedAttack = 'punch';
-        else if (input.kick) this.bufferedAttack = 'kick';
+        else if (input.heavy_punch) this.bufferedAttack = 'heavy_punch';
+        else if (input.heavy_kick) this.bufferedAttack = 'heavy_kick';
+        else if (input.punch) this.bufferedAttack = movingForward ? 'fwd_punch' : 'punch';
+        else if (input.kick) this.bufferedAttack = movingForward ? 'fwd_kick' : 'kick';
         else if (input.special && this.meter >= 50) this.bufferedAttack = this.meter >= 100 ? 'special' : 'mini_special';
       }
       if (!this.attack && this.bufferedAttack && this.cooldown <= 0) {
@@ -778,18 +852,21 @@
           this.vy = -12.2; this.grounded = false; sound('jump', 0.95);
         }
         // Disparo de Golpes (Comando Direcional & Especiais)
+        const movingForward = (this.facing === 1 && input.right) || (this.facing === -1 && input.left);
         if (input.down && input.kick && this.grounded) this.startAttack('sweep');
         else if (input.down && input.punch) this.startAttack('uppercut');
-        else if (input.punch) this.startAttack('punch');
-        else if (input.kick) this.startAttack('kick');
+        else if (input.heavy_punch) this.startAttack('heavy_punch');
+        else if (input.heavy_kick) this.startAttack('heavy_kick');
+        else if (input.punch) this.startAttack(movingForward ? 'fwd_punch' : 'punch');
+        else if (input.kick) this.startAttack(movingForward ? 'fwd_kick' : 'kick');
         else if (input.special && this.grounded) {
           if (this.meter >= 100) this.startAttack('special');
           else if (this.meter >= 50) this.startAttack('mini_special');
         }
       } else if (this.ducking && !this.attack && this.stun <= 0) {
         this.vx *= 0.2;
-        if (input.kick) this.startAttack('sweep');
-        else if (input.punch) this.startAttack('uppercut');
+        if (input.kick || input.heavy_kick) this.startAttack('sweep');
+        else if (input.punch || input.heavy_punch) this.startAttack('uppercut');
       } else if (this.attack) {
         this.vx *= 0.60; // Base firme ao golpear
       }
@@ -876,7 +953,11 @@
         // Kurt: All-Rounder Brawler. Alto hit-stun (+4), antiaéreo vertical pesado, magias rasteiras sônicas brutais.
         config = {
           punch: { duration: isAir ? 15 : 13, activeAt: isAir ? 10 : 8, activeWindow: 5, range: isAir ? 96 : 83, damage: 4.8, knock: 4.5, hitStunBonus: 4, radius: 44, airAttack: isAir },
+          heavy_punch: { duration: 20, activeAt: 12, activeWindow: 6, range: 94, damage: 9.5, knock: 6.5, hitStunBonus: 6, radius: 48, forwardBoost: 2.8 },
           kick: { duration: isAir ? 18 : 16, activeAt: isAir ? 12 : 10, activeWindow: 6, range: isAir ? 118 : 98, damage: 6.5, knock: 6.0, hitStunBonus: 5, radius: 48, airAttack: isAir },
+          heavy_kick: { duration: 24, activeAt: 15, activeWindow: 7, range: 124, damage: 11.2, knock: 8.5, hitStunBonus: 7, radius: 52, forwardBoost: 3.5 },
+          fwd_punch: { duration: 16, activeAt: 9, activeWindow: 5, range: 105, damage: 7.2, knock: 4.8, hitStunBonus: 4, radius: 46, forwardBoost: 4.0 },
+          fwd_kick: { duration: 19, activeAt: 11, activeWindow: 6, range: 125, damage: 8.4, knock: 6.2, hitStunBonus: 5, radius: 50, forwardBoost: 4.8 },
           sweep: { duration: 22, activeAt: 14, activeWindow: 7, range: 114, damage: 7.8, knock: 4.5, sweep: true, slideBoost: 5.5, radius: 46 },
           uppercut: { duration: 26, activeAt: 15, activeWindow: 8, range: 88, damage: 12.5, knock: 7.0, launch: -14.5, invuln: 8, forwardBoost: 3.8, radius: 56 },
           mini_special: { duration: 25, activeAt: 14, activeWindow: 8, range: 140, damage: 9.0, knock: 7.5, radius: 56, projSpeed: 15, projLife: 115 },
@@ -886,7 +967,11 @@
         // Axl: Rushdown Veloz. O ataque mais rápido da arena (11 frames), gancho com dash avançado (vx=+6.5) e fogo rápido.
         config = {
           punch: { duration: isAir ? 13 : 11, activeAt: isAir ? 9 : 7, activeWindow: 4, range: isAir ? 90 : 78, damage: 3.8, knock: 3.2, hitStunBonus: 3, radius: 40, airAttack: isAir },
+          heavy_punch: { duration: 18, activeAt: 10, activeWindow: 5, range: 88, damage: 8.5, knock: 5.5, hitStunBonus: 5, radius: 44, forwardBoost: 3.8 },
           kick: { duration: isAir ? 16 : 14, activeAt: isAir ? 11 : 9, activeWindow: 5, range: isAir ? 110 : 92, damage: 5.5, knock: 5.0, hitStunBonus: 3, radius: 45, airAttack: isAir },
+          heavy_kick: { duration: 22, activeAt: 13, activeWindow: 6, range: 116, damage: 10.0, knock: 7.5, hitStunBonus: 6, radius: 48, forwardBoost: 4.5 },
+          fwd_punch: { duration: 14, activeAt: 8, activeWindow: 4, range: 95, damage: 6.2, knock: 4.0, hitStunBonus: 3, radius: 42, forwardBoost: 5.5 },
+          fwd_kick: { duration: 17, activeAt: 10, activeWindow: 5, range: 115, damage: 7.4, knock: 5.4, hitStunBonus: 4, radius: 46, forwardBoost: 6.2 },
           sweep: { duration: 18, activeAt: 11, activeWindow: 6, range: 104, damage: 6.4, knock: 4.0, sweep: true, slideBoost: 4.5, radius: 44 },
           uppercut: { duration: 24, activeAt: 14, activeWindow: 8, range: 92, damage: 11.2, knock: 8.5, launch: -13.0, invuln: 7, forwardBoost: 6.5, radius: 54 },
           mini_special: { duration: 23, activeAt: 13, activeWindow: 8, range: 135, damage: 8.2, knock: 8.0, radius: 54, projSpeed: 17, projLife: 105 },
@@ -896,7 +981,11 @@
         // Lennon: Zoner Defensivo. Maior alcance de golpe (122px), antiaéreo com 9 frames de invulnerabilidade e magias duradouras.
         config = {
           punch: { duration: isAir ? 16 : 15, activeAt: isAir ? 11 : 10, activeWindow: 6, range: isAir ? 98 : 94, damage: 4.3, knock: 6.5, hitStunBonus: 2, radius: 46, airAttack: isAir },
+          heavy_punch: { duration: 22, activeAt: 14, activeWindow: 7, range: 108, damage: 9.0, knock: 7.5, hitStunBonus: 4, radius: 50, forwardBoost: 1.8 },
           kick: { duration: isAir ? 20 : 19, activeAt: isAir ? 14 : 13, activeWindow: 7, range: isAir ? 128 : 122, damage: 6.8, knock: 7.5, hitStunBonus: 3, radius: 50, airAttack: isAir },
+          heavy_kick: { duration: 26, activeAt: 17, activeWindow: 8, range: 140, damage: 10.8, knock: 9.5, hitStunBonus: 5, radius: 54, forwardBoost: 2.5 },
+          fwd_punch: { duration: 18, activeAt: 11, activeWindow: 6, range: 115, damage: 6.8, knock: 5.2, hitStunBonus: 3, radius: 48, forwardBoost: 2.6 },
+          fwd_kick: { duration: 21, activeAt: 13, activeWindow: 6, range: 138, damage: 8.0, knock: 6.8, hitStunBonus: 4, radius: 52, forwardBoost: 3.2 },
           sweep: { duration: 23, activeAt: 15, activeWindow: 7, range: 120, damage: 7.2, knock: 5.2, sweep: true, slideBoost: 2.2, radius: 48 },
           uppercut: { duration: 27, activeAt: 16, activeWindow: 9, range: 96, damage: 11.5, knock: 7.0, launch: -15.0, invuln: 9, forwardBoost: 2.5, radius: 60 },
           mini_special: { duration: 26, activeAt: 15, activeWindow: 9, range: 138, damage: 8.5, knock: 7.0, radius: 56, projSpeed: 9.5, projLife: 160 },
@@ -907,6 +996,12 @@
       this.attackFacing = this.facing;
       this.attack = { type, ...config, hit: false };
       this.attackTimer = config.duration;
+
+      // Reversal check: se atacou logo ao levantar
+      if (this.wakeup > 0) {
+        this.feedbackText = 'REVERSAL!';
+        this.feedbackTimer = 50;
+      }
 
       // Gancho Shoryuken ou Super conferem breves frames de invulnerabilidade ao iniciar!
       if (config.invuln) this.invuln = config.invuln;
@@ -936,6 +1031,12 @@
       } else if (type === 'sweep') {
         this.afterimages.push({ x: this.x - 14 * this.attackFacing, y: this.y, life: 15 });
         sound('whiff_sweep', 0.95);
+      } else if (type === 'heavy_punch' || type === 'heavy_kick') {
+        this.afterimages.push({ x: this.x - 16 * this.attackFacing, y: this.y, life: 20 });
+        sound(type === 'heavy_punch' ? 'whiff_punch' : 'whiff_kick', 0.82);
+      } else if (type === 'fwd_punch' || type === 'fwd_kick') {
+        this.afterimages.push({ x: this.x - 12 * this.attackFacing, y: this.y, life: 14 });
+        sound(type === 'fwd_punch' ? 'whiff_punch' : 'whiff_kick', 1.05);
       } else {
         if (type === 'kick') {
           this.afterimages.push({ x: this.x - 10 * this.attackFacing, y: this.y, life: 12 });
@@ -953,10 +1054,10 @@
       const radius = this.attack.radius || 42;
 
       let strikeX = this.x + dir * (reach * 0.55);
-      let strikeY = this.y - (this.attack.type === 'kick' || this.attack.type === 'sweep' ? 55 : this.attack.type === 'uppercut' ? 115 : 95);
+      let strikeY = this.y - (['kick', 'heavy_kick', 'fwd_kick', 'sweep'].includes(this.attack.type) ? 55 : this.attack.type === 'uppercut' ? 115 : 95);
       const rig = rigs && rigs[this.data.id];
       if (rig && this.attack.type !== 'sweep') {
-        const limb = this.attack.type === 'kick' ? 'legFrontLower' : 'armFrontLower';
+        const limb = ['kick', 'heavy_kick', 'fwd_kick'].includes(this.attack.type) ? 'legFrontLower' : 'armFrontLower';
         const m = rig._world[limb] || rig._world['armBackLower'] || rig._world['legBackLower'];
         if (m) {
           const scale = FIGHTER_HEIGHT / rig.baseH;
@@ -968,14 +1069,14 @@
       }
 
       // Esquiva por Agachamento (Ducking evasion): Socos altos passam direto sobre a cabeça se agachado!
-      if (other.ducking && this.attack.type === 'punch' && !this.attack.airAttack) {
+      if (other.ducking && ['punch', 'heavy_punch', 'fwd_punch'].includes(this.attack.type) && !this.attack.airAttack) {
         return; // Clean whiff!
       }
 
       const dx = other.x - strikeX;
       const dy = (other.y - (other.ducking ? 45 : 85)) - strikeY;
       const inFront = (other.x - this.x) * dir > -14;
-      const verticalWindow = other.ducking ? 70 : (this.attack.type === 'kick' || this.attack.type === 'sweep' ? 95 : 110);
+      const verticalWindow = other.ducking ? 70 : (['kick', 'heavy_kick', 'fwd_kick', 'sweep'].includes(this.attack.type) ? 95 : 110);
       const closeEnough = Math.hypot(dx, dy) < radius || (inFront && Math.abs(other.x - this.x) < reach && Math.abs(other.y - this.y) < verticalWindow);
 
       if (inFront && closeEnough) {
@@ -985,9 +1086,12 @@
         if (other.blocking && other.blockTimer > 0 && other.blockTimer <= 10) {
           other.meter = clamp(other.meter + 25, 0, 100); // Ganho maciço de especial!
           other.hitFlash = 0;
+          other.feedbackText = 'PARRY!';
+          other.feedbackTimer = 50;
           this.vx = -6.5 * dir; // Empurrão forte no atacante
-          this.cooldown = 15; // Deixa vulnerável para contra-ataque (Parry Punish)
-          match.shake = 6; match.hitStop = 6;
+          this.cooldown = 18; // Deixa vulnerável para contra-ataque (Parry Punish)
+          match.shake = 8; match.hitStop = 8;
+          burst(strikeX, strikeY, '#23d7ef', 12, 'parry');
           sound('parry', 1.0);
           return;
         }
@@ -998,16 +1102,34 @@
         else if (other.cpu) damage *= tune.playerDamageMult;
         damage *= clamp(1 - (other.data.defense - 3) * 0.055, 0.78, 1.22);
         
+        // --- COUNTER HIT SYSTEM ---
+        let isCounter = false;
+        if (other.attack && other.attackTimer > (other.attack.duration - other.attack.activeAt)) {
+          isCounter = true;
+          this.feedbackText = 'COUNTER!';
+          this.feedbackTimer = 50;
+          damage *= 1.25; // 25% extra damage on Counter Hits!
+        }
+
         if (other.blocking) {
           damage *= 0.15; // Block chip damage
         }
 
         other.health = clamp(other.health - damage, 0, 100);
-        other.hitFlash = 0;
-        other.stun = other.blocking ? 6 : (this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : 16) + (this.attack.hitStunBonus || 0);
         
+        // Ativa piscadas de hit confirmação (SF style)
+        other.hitFlash = other.blocking ? 0 : 16;
+        
+        other.stun = other.blocking ? 6 : (this.attack.type === 'special' ? 32 : this.attack.type === 'uppercut' ? 28 : this.attack.type.startsWith('heavy') ? 22 : 16) + (this.attack.hitStunBonus || 0);
+        if (isCounter && !other.blocking) {
+          other.stun += 6; // Extra hitstun em Counter Hits!
+        }
+
         if (this.grounded && !other.blocking) this.vx = -1.5 * dir;
         other.vx = this.attack.knock * dir * (other.blocking ? 0.35 : 1);
+        if (isCounter && !other.blocking) {
+          other.vx *= 1.2; // mais knockback
+        }
         
         // LAUNCH, JUGGLE & HARD KNOCKDOWN (Quedas e Arremessos estilo Street Fighter)
         if (this.attack.sweep && !other.blocking) {
@@ -1038,18 +1160,35 @@
           if (this.combo >= 2) sound('combo', clamp(1 + this.combo * 0.1, 1, 1.6));
         }
 
-        // Impact feedback: light shake + short hitstop only (no flash / labels / particles)
-        match.shake = this.attack.type === 'special' ? 8 : 3;
-        match.hitStop = other.blocking ? 2 : this.attack.type === 'special' ? 6 : 3;
+        // Disparar Faíscas Visuais
+        const hitType = other.blocking ? 'block' : 'hit';
+        const hitColor = other.blocking ? '#665979' : (isCounter ? '#ffd56b' : this.data.color);
+        const hitSparksCount = other.blocking ? 6 : (this.attack.type === 'special' ? 24 : this.attack.type.startsWith('heavy') ? 14 : 8);
+        burst(strikeX, strikeY, hitColor, hitSparksCount, hitType);
+
+        // Impact feedback: shake + hitstop
+        match.shake = this.attack.type === 'special' ? 8 : (this.attack.type.startsWith('heavy') ? 5 : 3);
+        match.hitStop = other.blocking ? 2 : (this.attack.type === 'special' ? 6 : (this.attack.type.startsWith('heavy') ? 4 : 3));
         match.zoomPulse = 0;
 
         // EFEITOS SONOROS
-        if (other.blocking) sound('block', 0.95);
-        else if (this.attack.type === 'sweep') sound('hit_sweep', 1.0);
-        else if (this.attack.type === 'uppercut') sound('uppercut', 1.0);
-        else if (this.attack.type === 'kick') sound('hit_kick', 1.0);
-        else if (this.attack.type === 'special' || this.attack.type === 'mini_special') sound('hit_special', 1.0);
-        else sound('hit_punch', 1.0);
+        if (other.blocking) {
+          sound('block', 0.95);
+        } else if (this.attack.type === 'sweep') {
+          sound('hit_sweep', 1.0);
+        } else if (this.attack.type === 'uppercut') {
+          sound('uppercut', 1.0);
+        } else if (this.attack.type === 'heavy_punch') {
+          sound('hit_punch', 0.82);
+        } else if (this.attack.type === 'heavy_kick') {
+          sound('hit_kick', 0.82);
+        } else if (['kick', 'fwd_kick'].includes(this.attack.type)) {
+          sound('hit_kick', 1.0);
+        } else if (this.attack.type === 'special' || this.attack.type === 'mini_special') {
+          sound('hit_special', 1.0);
+        } else {
+          sound('hit_punch', 1.0);
+        }
       }
     }
   }
@@ -1165,7 +1304,38 @@
     }, 1500);
   }
 
-  function burst() { /* hit FX removed — no particle flash spam */ }
+  function burst(x, y, color, count, type) {
+    if (type === 'land') {
+      for (let i = 0; i < count; i++) {
+        spawnParticle(x + rand(-30, 30), y - rand(0, 5), rand(-1.5, 1.5), -rand(0.5, 2.5), rand(15, 25), color, rand(4, 9), 'smoke');
+      }
+    } else if (type === 'block') {
+      for (let i = 0; i < count; i++) {
+        const angle = rand(0, Math.PI * 2);
+        const speed = rand(3, 7);
+        spawnParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, rand(10, 20), color, rand(3, 6), 'spark');
+      }
+    } else if (type === 'parry') {
+      for (let i = 0; i < count * 2; i++) {
+        const angle = rand(-0.5, 0.5) + (rand(0, 1) > 0.5 ? 0 : Math.PI);
+        const speed = rand(6, 12);
+        spawnParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, rand(15, 30), '#23d7ef', rand(3, 7), 'spark');
+      }
+      spawnParticle(x, y, 0, 0, 16, '#23d7ef', 10, 'ring');
+    } else if (type === 'hit') {
+      for (let i = 0; i < count; i++) {
+        const angle = rand(0, Math.PI * 2);
+        const speed = rand(4, 9);
+        spawnParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, rand(12, 22), color, rand(3, 7), 'spark');
+      }
+    } else {
+      for (let i = 0; i < count; i++) {
+        const angle = rand(0, Math.PI * 2);
+        const speed = rand(2, 5);
+        spawnParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, rand(10, 18), color, rand(2, 5), 'spark');
+      }
+    }
+  }
 
   function updateProjectiles() {
     if (!match || !match.projectiles) return;
@@ -1197,11 +1367,11 @@
 
       // Gerar rastro de partículas
       if (match.frames % 2 === 0) {
-        match.particles.push({
-          x: p.x + rand(-8, 8), y: p.y + rand(-8, 8),
-          vx: -p.vx * 0.25 + rand(-1, 1), vy: rand(-1.5, 1.5),
-          life: 18, maxLife: 18, color: p.color, size: rand(3, 7), shape: p.shape === 'ring' ? 'ring' : 'star'
-        });
+        spawnParticle(
+          p.x + rand(-8, 8), p.y + rand(-8, 8),
+          -p.vx * 0.25 + rand(-1, 1), rand(-1.5, 1.5),
+          18, p.color, rand(3, 7), p.shape === 'ring' ? 'ring' : 'star'
+        );
       }
 
       const target = p.owner === match.p1 ? match.p2 : match.p1;
@@ -1257,7 +1427,7 @@
       if (match.specialAttacker) {
         match.specialAttacker.updateAnimation();
       }
-      cleanInPlace(match.particles, p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; return (--p.life) > 0; });
+      updateParticles();
       if (match.specialFreeze <= 0) {
         match.specialAttacker = null;
       }
@@ -1265,10 +1435,6 @@
     }
     
     if (match.hitStop > 0) { match.hitStop--; return; }
-    
-    if (match.hitSparks) {
-      cleanInPlace(match.hitSparks, s => (--s.life) > 0);
-    }
 
     match.frames++;
     if (match.state === 'intro') {
@@ -1286,8 +1452,7 @@
       if (match.p1.health <= 0 || match.p2.health <= 0 || match.timer <= 0) endRound();
     }
 
-    cleanInPlace(match.particles, p => { p.x += p.vx; p.y += p.vy; p.vy += 0.38; return (--p.life) > 0; });
-    cleanInPlace(match.impacts, impact => (--impact.life) > 0);
+    updateParticles();
 
     stageFog.forEach(f => {
       f.x += f.vx;
@@ -1332,6 +1497,9 @@
     if (!match) return;
     dom.p1Health.style.transform = `scaleX(${match.p1.health / 100})`;
     dom.p2Health.style.transform = `scaleX(${match.p2.health / 100})`;
+    dom.p1HealthLag.style.transform = `scaleX(${match.p1.health / 100})`;
+    dom.p2HealthLag.style.transform = `scaleX(${match.p2.health / 100})`;
+
     dom.p1Meter.style.width = `${match.p1.meter}%`;
     dom.p2Meter.style.width = `${match.p2.meter}%`;
     
@@ -1368,6 +1536,36 @@
     };
     updateMeterLabel(dom.p1Ready, p1Meter);
     updateMeterLabel(dom.p2Ready, p2Meter);
+
+    // Combo Counter overlays updates
+    if (match.p1.combo >= 2) {
+      dom.p1ComboHits.textContent = match.p1.combo;
+      dom.p1ComboHud.classList.add('is-active');
+    } else {
+      dom.p1ComboHud.classList.remove('is-active');
+    }
+
+    if (match.p2.combo >= 2) {
+      dom.p2ComboHits.textContent = match.p2.combo;
+      dom.p2ComboHud.classList.add('is-active');
+    } else {
+      dom.p2ComboHud.classList.remove('is-active');
+    }
+
+    // Fight Feedback popups (Counter, Parry, Reversal)
+    if (match.p1.feedbackText) {
+      dom.p1Feedback.textContent = match.p1.feedbackText;
+      dom.p1Feedback.classList.add('is-active');
+    } else {
+      dom.p1Feedback.classList.remove('is-active');
+    }
+
+    if (match.p2.feedbackText) {
+      dom.p2Feedback.textContent = match.p2.feedbackText;
+      dom.p2Feedback.classList.add('is-active');
+    } else {
+      dom.p2Feedback.classList.remove('is-active');
+    }
     
     dom.timer.textContent = String(Math.max(0, match.timer)).padStart(2, '0');
   }
@@ -1968,6 +2166,13 @@
     }
 
     c.drawImage(rig.buffer, -rig.anchorX, -rig.anchorY);
+    if (flash > 0) {
+      c.save();
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = flash > 8 ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 46, 120, 0.75)';
+      c.fillRect(-rig.anchorX, -rig.anchorY, rig.width, rig.height);
+      c.restore();
+    }
 
     c.restore();
   }
@@ -2046,22 +2251,88 @@
   }
 
   function drawEffects() {
-    // Clear leftover FX queues — no floating labels / sparks / particle flashes
-    if (match.particles) match.particles.length = 0;
-    if (match.impacts) match.impacts.length = 0;
-    if (match.hitSparks) match.hitSparks.length = 0;
+    if (!match) return;
+    
+    // 1. Desenhar Projéteis Personalizados
+    if (match.projectiles) {
+      match.projectiles.forEach(p => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = 0.85;
+        
+        if (p.shape === 'ring') {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = p.type === 'special' ? 8 : 4;
+          ctx.beginPath();
+          ctx.arc(0, 0, p.radius * 0.8, 0, Math.PI * 2);
+          ctx.stroke();
+          drawGlow(ctx, p.x, p.y, p.radius + 15, p.color, 0.45);
+        } else if (p.shape === 'pyro') {
+          // Labareda de fogo circular
+          const rad = p.radius * 0.8;
+          const grad = ctx.createRadialGradient(0, 0, rad * 0.1, 0, 0, rad);
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.3, '#ffcc00');
+          grad.addColorStop(0.7, '#ff2e78');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(0, 0, rad, 0, Math.PI * 2);
+          ctx.fill();
+          drawGlow(ctx, p.x, p.y, p.radius + 20, '#ff2e78', 0.5);
+        } else {
+          // Onda sônica de guitarra (crescente)
+          ctx.beginPath();
+          ctx.moveTo(p.radius * 0.6, 0);
+          ctx.quadraticCurveTo(-p.radius * 0.3, p.radius * 0.7, -p.radius * 0.6, 0);
+          ctx.quadraticCurveTo(-p.radius * 0.3, -p.radius * 0.7, p.radius * 0.6, 0);
+          ctx.fill();
+          drawGlow(ctx, p.x, p.y, p.radius + 18, p.color, 0.4);
+        }
+        ctx.restore();
+      });
+    }
 
-    if (!match.projectiles) return;
-    match.projectiles.forEach(p => {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = 0.85;
-      ctx.beginPath();
-      ctx.arc(0, 0, Math.max(8, p.radius * 0.7), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
+    // 2. Desenhar Partículas Ativas do Pool
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      const p = particlePool[i];
+      if (p.active) {
+        ctx.save();
+        ctx.globalAlpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color;
+        
+        if (p.shape === 'ring') {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const currentRadius = p.size + (1 - p.life / p.maxLife) * 60;
+          ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (p.shape === 'smoke') {
+          ctx.fillStyle = 'rgba(170, 160, 185, 0.42)';
+          ctx.beginPath();
+          const size = p.size * (1 + (1 - p.life / p.maxLife) * 1.5);
+          ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.shape === 'star') {
+          ctx.translate(p.x, p.y);
+          ctx.beginPath();
+          for (let j = 0; j < 5; j++) {
+            ctx.lineTo(Math.cos((18 + j * 72) * Math.PI / 180) * p.size, Math.sin((18 + j * 72) * Math.PI / 180) * p.size);
+            ctx.lineTo(Math.cos((54 + j * 72) * Math.PI / 180) * (p.size/2), Math.sin((54 + j * 72) * Math.PI / 180) * (p.size/2));
+          }
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // Sparks normais (círculos)
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
   }
 
   /** Called once a player has taken 2 round wins -- ends the whole match. */
@@ -2099,7 +2370,17 @@
   document.addEventListener('keyup', e => { keys[e.code] = 0; });
 
   document.querySelectorAll('[data-touch]').forEach(btn => {
-    const map = { left: 'KeyA', right: 'KeyD', jump: 'KeyW', block: 'KeyS', punch: 'KeyQ', kick: 'KeyE', special: 'KeyR' };
+    const map = {
+      left: 'KeyA',
+      right: 'KeyD',
+      jump: 'KeyW',
+      block: 'KeyS',
+      punch: 'KeyQ',
+      heavy_punch: 'KeyF',
+      kick: 'KeyE',
+      heavy_kick: 'KeyG',
+      special: 'KeyR'
+    };
     const key = map[btn.dataset.touch];
     const down = e => { e.preventDefault(); initAudio(); touch[key] = 1; btn.classList.add('is-down'); };
     const up = e => { e.preventDefault(); touch[key] = 0; btn.classList.remove('is-down'); };
@@ -2155,6 +2436,19 @@
   $('#open-guide-arena').addEventListener('click', openHow);
   $('#close-how').addEventListener('click', closeHow);
   $('#how-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeHow(); });
+
+  $('#crt-toggle').addEventListener('click', e => {
+    const active = $('#crt-overlay').classList.toggle('is-active');
+    localStorage.setItem('rk-crt', active ? '1' : '0');
+    e.currentTarget.textContent = `CRT: ${active ? 'ON' : 'OFF'}`;
+  });
+  if (localStorage.getItem('rk-crt') === '1' || localStorage.getItem('rk-crt') === null) {
+    $('#crt-overlay').classList.add('is-active');
+    $('#crt-toggle').textContent = 'CRT: ON';
+  } else {
+    $('#crt-overlay').classList.remove('is-active');
+    $('#crt-toggle').textContent = 'CRT: OFF';
+  }
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && match && !match.ended && !match.paused) togglePause(true);
