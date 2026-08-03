@@ -1,767 +1,551 @@
-/* ============================================================
-   RAKURAKU DINOKUN / DINKIE DINO — hardware 1997
-   Oval largo, 5 botões na base, ícones laterais no LCD
-   ============================================================ */
-
 :root {
-  --shell-color: #f6c836;
-  --shell-light: #ffe066;
-  --shell-dark: #d4a61e;
-
-  --accent-color: #e23b2e;
-  --accent-light: #f06a5a;
-  --accent-dark: #b0251c;
-
-  --cap-color: #2b6fd4;
-  --cap-light: #5a97ef;
-  --cap-dark: #1a4a9a;
-
-  --screen-color: #9aaa7a;
-  --screen-dark: #849268;
-  --ink-color: #1c2418;
-
-  --panel-bg: rgba(28, 32, 28, 0.82);
-  --panel-border: rgba(255, 255, 255, 0.1);
+  --shell: #f2c51f;
+  --shell-light: #ffe45b;
+  --shell-dark: #b68108;
+  --cap: #404da4;
+  --cap-light: #6673ca;
+  --cap-dark: #253073;
+  --key: #cf3029;
+  --key-light: #ed6256;
+  --key-dark: #861913;
+  --lcd: #aeb7a1;
+  --lcd-dark: #7f8b7a;
+  --ink: #17231b;
+  --plastic-shadow: rgba(55, 34, 0, 0.28);
 }
 
-* { box-sizing: border-box; }
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}
 
 .game-container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5rem 1rem 3rem;
-  width: 100%;
-  min-height: 85vh;
-}
-
-.device-showcase {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
+  width: min(100%, 980px);
+  display: grid;
+  justify-items: center;
   gap: 2.5rem;
-  max-width: 1100px;
+  padding: 0.25rem 0 4rem;
+}
+
+.device-area {
   width: 100%;
-}
-
-@media (max-width: 960px) {
-  .device-showcase { flex-direction: column; gap: 1.75rem; }
-}
-
-/* ---------- Setup ---------- */
-.setup-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(12, 14, 12, 0.88);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  transition: opacity 0.3s, visibility 0.3s;
-}
-.setup-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-.setup-box {
-  background: linear-gradient(160deg, #2a3228, #161a14);
-  border: 1px solid rgba(246, 200, 54, 0.25);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
-  border-radius: 16px;
-  max-width: 460px;
-  width: 100%;
-  padding: 1.75rem;
-  color: #f5f5f0;
-}
-
-.setup-header { text-align: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.setup-badge {
-  display: inline-block;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.5rem;
-  color: #1a1a12;
-  background: #f6c836;
-  padding: 0.3rem 0.6rem;
-  border-radius: 3px;
-  margin-bottom: 0.6rem;
-}
-.setup-header h2 {
-  font-family: 'Chewy', cursive, sans-serif;
-  font-size: 1.9rem;
-  margin: 0 0 0.35rem;
-  color: #f6c836;
-}
-.setup-header p { margin: 0; font-size: 0.85rem; color: rgba(255,255,255,0.65); }
-
-.setup-content { display: flex; flex-direction: column; gap: 1.1rem; }
-.field-group { display: flex; flex-direction: column; gap: 0.45rem; }
-.field-group label { font-weight: 600; font-size: 0.82rem; }
-.field-group input[type="text"] {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  background: rgba(0,0,0,0.35);
-  border: 2px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: inherit;
-  outline: none;
-}
-.field-group input[type="text"]:focus { border-color: var(--shell-color); }
-
-.preset-row { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-.preset-swatch {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
-}
-.preset-swatch.active { box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0,0,0,0.4); }
-
-.color-picker-sub {
-  display: flex; align-items: center; justify-content: flex-end; gap: 0.45rem;
-  font-size: 0.72rem; color: rgba(255,255,255,0.5);
-}
-.color-picker-sub input[type="color"] {
-  width: 24px; height: 24px; border: none; border-radius: 4px; background: transparent; cursor: pointer;
-}
-
-.setup-footer { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.start-journey-btn {
-  background: linear-gradient(180deg, #f6c836, #d4a61e);
-  color: #1a1a12; border: none; padding: 0.85rem;
-  font-size: 0.95rem; font-weight: 800; border-radius: 10px; cursor: pointer;
-}
-.ghost-btn {
-  background: transparent; border: 1px solid rgba(255,255,255,0.18);
-  color: rgba(255,255,255,0.75); padding: 0.55rem; border-radius: 8px; cursor: pointer;
-}
-.ghost-btn.hidden { display: none; }
-
-/* ============================================================
-   CARCAÇA HIPER REALISTA — RakuRaku Dinokun / Dinkie Dino (1997)
-   Ovoide anatômico 3D, asas com botões laterais e 3 botões vermelhos ovais na base
-   ============================================================ */
-.device-stage {
-  position: relative;
-  padding: 54px 20px 28px;
-}
-
-/* Contato no chão — curto e discreto, sem halo */
-.device-stage::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
-  width: 58%;
-  height: 14px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, 0.22) 0%,
-    rgba(0, 0, 0, 0.08) 50%,
-    transparent 72%
-  );
-  filter: blur(3px);
-  z-index: 1;
-  pointer-events: none;
+  display: grid;
+  justify-items: center;
+  gap: 1.15rem;
+  padding-top: 2.7rem;
 }
 
 .tama-shell {
   position: relative;
-  width: 460px;
-  height: 360px;
+  width: 568px;
+  height: 421px;
+  max-width: calc(100vw - 32px);
+  border: 2px solid #9b6905;
+  border-radius: 44% 44% 48% 48% / 39% 39% 52% 52%;
   background:
-    radial-gradient(ellipse 48% 36% at 28% 14%, rgba(255, 255, 255, 0.72) 0%, transparent 52%),
-    radial-gradient(ellipse 70% 58% at 38% 30%, var(--shell-light) 0%, transparent 58%),
-    radial-gradient(ellipse 48% 40% at 82% 78%, rgba(0, 0, 0, 0.16) 0%, transparent 58%),
-    linear-gradient(158deg, var(--shell-light) 0%, var(--shell-color) 46%, var(--shell-dark) 100%);
-  /* Formato ovoide clássico: mais largo nas bochechas e curvado suavemente embaixo */
-  border-radius: 46% 46% 48% 48% / 54% 54% 46% 46%;
-  padding: 38px 32px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  user-select: none;
+    radial-gradient(ellipse at 37% 17%, rgba(255, 255, 255, 0.6) 0 2%, transparent 11%),
+    radial-gradient(ellipse at 68% 76%, transparent 0 55%, rgba(120, 75, 0, 0.08) 78%),
+    linear-gradient(128deg, var(--shell-light), var(--shell) 39%, #dba40e 78%, var(--shell-dark));
   box-shadow:
-    inset 0 8px 14px rgba(255, 255, 255, 0.62),
-    inset 0 -12px 18px rgba(0, 0, 0, 0.28),
-    inset -8px 0 14px rgba(0, 0, 0, 0.14),
-    inset 8px 0 14px rgba(255, 255, 255, 0.32),
-    0 0 0 1px rgba(0, 0, 0, 0.06),
-    0 3px 8px rgba(0, 0, 0, 0.1);
-  z-index: 5;
-  overflow: visible;
+    inset 10px 13px 20px rgba(255, 255, 255, 0.32),
+    inset -14px -18px 25px rgba(110, 67, 0, 0.2),
+    0 7px 0 #946306,
+    0 17px 31px var(--plastic-shadow);
+  transition: transform 90ms ease;
+  isolation: isolate;
 }
 
-/* Reflexo especular fotorealista no plástico (estúdio de foto) */
-.shell-specular {
-  position: absolute;
-  top: 8px;
-  left: 12%;
-  right: 28%;
-  height: 34px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 55%, transparent 100%);
-  border-radius: 50%;
-  transform: rotate(-7deg);
-  pointer-events: none;
-  filter: blur(5px);
-  z-index: 6;
-  opacity: 0.9;
-}
-
-/* Filete de borda do plástico moldado */
 .tama-shell::before {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 8px 11px 13px;
+  z-index: -1;
+  border: 1px solid rgba(111, 70, 0, 0.26);
   border-radius: inherit;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   pointer-events: none;
-  z-index: 6;
 }
 
-/* Relevo e espessura interna do invólucro de plástico */
-.shell-inner-rim {
-  position: absolute;
-  inset: 6px;
-  border-radius: inherit;
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.4),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.22);
-  pointer-events: none;
-  z-index: 6;
+.tama-shell.is-pressing {
+  transform: translateY(1px) scale(0.998);
 }
 
-/* ---------- Top Pendant Cap & Key Ring ---------- */
 .tama-cap {
   position: absolute;
-  top: -34px;
+  z-index: -2;
   left: 50%;
+  top: -64px;
+  width: 124px;
+  height: 96px;
   transform: translateX(-50%);
-  width: 66px;
-  height: 42px;
-  z-index: 8;
 }
-.cap-face {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(160deg, var(--cap-light) 0%, var(--cap-color) 45%, var(--cap-dark) 100%);
-  border-radius: 34px 34px 10px 10px;
-  box-shadow:
-    inset 0 4px 8px rgba(255, 255, 255, 0.45),
-    inset 0 -6px 10px rgba(0, 0, 0, 0.45),
-    0 2px 4px rgba(0, 0, 0, 0.22);
-}
-.tama-ring {
+
+.cap-neck {
   position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28px;
-  height: 22px;
-  border: 4.5px solid;
-  border-color: #e2e8f0 #94a3b8 #64748b #cbd5e1;
+  left: 20px;
+  bottom: 0;
+  width: 84px;
+  height: 52px;
+  border: 2px solid var(--cap-dark);
+  border-radius: 44% 44% 30% 30% / 70% 70% 26% 26%;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255,255,255,0.44), transparent 22%),
+    linear-gradient(135deg, var(--cap-light), var(--cap) 50%, var(--cap-dark));
+  box-shadow: inset -8px -7px 10px rgba(18, 23, 81, 0.32), 0 4px 5px rgba(0,0,0,0.22);
+}
+
+.key-ring {
+  position: absolute;
+  left: 36px;
+  top: 0;
+  width: 52px;
+  height: 52px;
+  border: 7px solid #c3c5c3;
   border-radius: 50%;
   background: transparent;
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.8),
-    0 1px 2px rgba(0, 0, 0, 0.25);
+    inset 2px 2px 2px #6c6f71,
+    2px 2px 1px #5e6265,
+    -2px -2px 2px #f5f6f5;
 }
-.tama-ring-shadow {
+
+.brand-mark {
   position: absolute;
-  top: 0px;
+  top: 24px;
   left: 50%;
-  transform: translateX(-50%);
-  width: 22px;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 50%;
-  filter: blur(2px);
-}
-
-/* ---------- Branding ---------- */
-.tama-branding {
+  transform: translateX(-50%) rotate(-1deg);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  margin-top: 4px;
-  margin-bottom: 2px;
-  z-index: 7;
-  position: relative;
-}
-.brand-text {
-  font-family: 'Chewy', cursive, sans-serif;
-  font-size: 1.35rem;
-  line-height: 1;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1.5px 0 rgba(255, 255, 255, 0.55), 0 -1.5px 0 rgba(0, 0, 0, 0.25), 2px 3px 5px rgba(0, 0, 0, 0.2);
-}
-.brand-left { color: #731c9a; transform: rotate(-7deg) translateY(2px); }
-.brand-right { color: #16388a; transform: rotate(7deg) translateY(2px); }
-.brand-mascot {
-  display: flex;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -2px 4px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  transform: translateY(-2px);
-}
-
-/* ---------- Área Intermediária (Asas laterais e Bezel) ---------- */
-.tama-mid-area {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 8px;
-  margin: 6px 0 10px;
-  z-index: 7;
-}
-
-/* Botões de seta nas asas laterais (como no brinquedo real) */
-.tama-side-control {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 54px;
-}
-.side-left { justify-content: flex-start; padding-left: 4px; }
-.side-right { justify-content: flex-end; padding-right: 4px; }
-
-.tama-wing-btn {
-  width: 44px;
-  height: 52px;
-  border: none;
-  background: linear-gradient(145deg, var(--shell-light), var(--shell-color) 55%, var(--shell-dark));
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    inset 2px 3px 6px rgba(255, 255, 255, 0.65),
-    inset -2px -4px 6px rgba(0, 0, 0, 0.35),
-    0 2px 5px rgba(0, 0, 0, 0.2),
-    0 1px 2px rgba(0, 0, 0, 0.12);
-  transition: transform 0.06s ease, box-shadow 0.06s ease;
-  position: relative;
-}
-.tama-wing-btn:active,
-.tama-wing-btn.pressed {
-  transform: translateY(3px) scale(0.96);
-  box-shadow:
-    inset 2px 3px 8px rgba(0, 0, 0, 0.45),
-    inset -1px -2px 4px rgba(255, 255, 255, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.25);
-}
-.wing-btn-arrow {
-  font-size: 0.95rem;
+  gap: 5px;
+  color: #332c28;
+  font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+  font-size: 25px;
   font-weight: 900;
-  color: #5e430a;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5), 0 -1px 0 rgba(0, 0, 0, 0.25);
-  pointer-events: none;
+  letter-spacing: -2px;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.65);
 }
 
-/* ---------- LCD & Bezel Rebaixado ---------- */
-.tama-screen-bezel {
-  flex: 1;
-  max-width: 280px;
+.brand-mark > span:first-child { color: #3168b6; }
+.brand-mark > span:last-child { color: #db422f; }
+
+.brand-dino {
+  width: 42px;
+  height: 30px;
+  overflow: visible;
+}
+
+.brand-dino path:first-child {
+  fill: #55b85d;
+  stroke: #262626;
+  stroke-width: 1.2;
+}
+
+.brand-dino circle { fill: #1d1d1d; }
+.brand-dino path:last-child { fill: none; stroke: #1d1d1d; stroke-width: 1.2; }
+
+.screen-row {
+  position: absolute;
+  top: 79px;
+  left: 50%;
+  width: 526px;
+  max-width: calc(100% - 24px);
+  height: 223px;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 2px;
+}
+
+.screen-bezel {
+  height: 220px;
+  padding: 11px 12px;
+  border: 2px solid #6f550e;
+  border-radius: 34px 34px 31px 31px / 27px 27px 24px 24px;
   background:
-    linear-gradient(165deg, #4a5244 0%, #2a3026 35%, #151910 72%, #0e120c 100%);
-  border-radius: 16px;
-  padding: 7px;
+    linear-gradient(145deg, rgba(255,255,255,0.55), transparent 21%),
+    linear-gradient(145deg, #e0ad16, #ad7906);
   box-shadow:
-    inset 0 6px 12px rgba(0, 0, 0, 0.75),
-    inset 0 -2px 5px rgba(255, 255, 255, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.35),
-    0 -1px 2px rgba(0, 0, 0, 0.2);
-  position: relative;
+    inset 4px 5px 6px rgba(255,255,255,0.26),
+    inset -5px -6px 7px rgba(78,45,0,0.22),
+    0 2px 1px rgba(255,255,255,0.38);
 }
 
-.bezel-inner-cavity {
-  padding: 3px;
-  background: #0c0f0a;
-  border-radius: 11px;
-  box-shadow:
-    inset 0 3px 6px rgba(0, 0, 0, 0.85),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-.tama-lcd {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  height: 142px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 18%),
-    linear-gradient(180deg, var(--screen-color), var(--screen-dark));
-  border-radius: 7px;
+.lcd {
+  height: 100%;
+  padding: 8px 7px;
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr) 31px;
+  gap: 3px;
+  border: 3px solid #5b6658;
+  border-radius: 18px;
   overflow: hidden;
+  background: var(--lcd);
   box-shadow:
-    inset 0 4px 10px rgba(0, 0, 0, 0.38),
-    inset 0 -1px 3px rgba(255, 255, 255, 0.18);
-  position: relative;
+    inset 4px 5px 8px rgba(30,38,28,0.4),
+    inset -2px -2px 3px rgba(238,244,230,0.32),
+    0 0 0 2px rgba(70,78,68,0.55);
 }
 
 .lcd-icons {
+  position: relative;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  width: 24px;
-  padding: 4px 0;
-  flex-shrink: 0;
-  z-index: 5;
-  background: rgba(0, 0, 0, 0.04);
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
 }
-.lcd-icons-left { align-items: center; border-right: 1px solid rgba(0, 0, 0, 0.06); }
-.lcd-icons-right { align-items: center; border-left: 1px solid rgba(0, 0, 0, 0.06); }
 
 .lcd-icon {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--ink-color);
-  opacity: 0.22;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: opacity 0.15s, transform 0.15s;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  opacity: 0.52;
+  filter: blur(0.12px);
+  transition: opacity 70ms linear;
 }
+
 .lcd-icon svg {
-  width: 13px;
-  height: 13px;
-  display: block;
+  width: 22px;
+  height: 22px;
   fill: currentColor;
 }
-.lcd-icon.selected {
-  opacity: 1;
-  box-shadow: 0 0 0 1.5px var(--ink-color);
-  background: rgba(28, 36, 24, 0.15);
-  filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.2));
-}
+
+.lcd-icon.selected,
 .lcd-icon.active {
-  opacity: 1;
-  filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.2));
+  opacity: 0.98;
+  filter: drop-shadow(0 0 1px rgba(10,22,12,0.45));
 }
 
-.tama-screen-canvas-wrap {
+.lcd-center {
   position: relative;
-  flex: 1;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
+  border-left: 1px solid rgba(47,61,46,0.15);
+  border-right: 1px solid rgba(47,61,46,0.15);
 }
+
 #petCanvas {
+  position: relative;
+  z-index: 3;
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  position: relative;
-  z-index: 2;
 }
 
-/* Fundo impresso sob a tela LCD (marcador de autenticidade Dinkie) */
-.lcd-eyes-bg {
+.printed-eyes {
   position: absolute;
-  inset: 0;
   z-index: 1;
-  opacity: 0.08;
-  background:
-    radial-gradient(circle at 38% 42%, var(--ink-color) 0 5px, transparent 6px),
-    radial-gradient(circle at 62% 42%, var(--ink-color) 0 5px, transparent 6px),
-    radial-gradient(ellipse at 50% 60%, transparent 0 12px, var(--ink-color) 13px 14px, transparent 15px);
-  pointer-events: none;
+  inset: 16px 13px 12px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0.16;
 }
 
-.tama-dot-grid {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(0,0,0,0.08) 0.6px, transparent 0.7px);
-  background-size: 3px 3px;
-  pointer-events: none;
-  z-index: 3;
-  mix-blend-mode: multiply;
+.printed-eyes span {
+  width: 45%;
+  height: 76%;
+  border: 4px solid #697667;
+  border-bottom-color: transparent;
+  border-radius: 50% 50% 42% 42%;
+  transform: rotate(8deg);
 }
 
-.tama-glass-glare {
+.printed-eyes span + span { transform: rotate(-8deg); }
+
+.lcd-grid {
   position: absolute;
-  top: -35%;
-  left: -45%;
-  width: 160%;
-  height: 70%;
-  background: linear-gradient(
-    128deg,
-    rgba(255,255,255,0.28) 0%,
-    rgba(255,255,255,0.08) 28%,
-    transparent 48%
-  );
-  pointer-events: none;
   z-index: 4;
-}
-.tama-glass-shadow {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 22px;
-  background: linear-gradient(0deg, rgba(0,0,0,0.16) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 3;
-}
-
-.tama-overlay {
-  position: absolute;
   inset: 0;
-  background: rgba(28, 36, 24, 0.94);
-  color: var(--screen-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.55rem;
-  padding: 0.5rem;
-  z-index: 10;
-}
-.tama-overlay.hidden { display: none; }
-
-.tama-toast {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-25px);
-  background: var(--ink-color);
-  color: var(--screen-color);
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.5rem;
-  padding: 5px 8px;
-  border-radius: 4px;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-  z-index: 20;
-  white-space: nowrap;
-  max-width: 95%;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  opacity: 0.07;
+  background-image:
+    linear-gradient(rgba(22,35,27,0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22,35,27,0.55) 1px, transparent 1px);
+  background-size: 4px 4px;
 }
-.tama-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ============================================================
-   3 BOTÕES VERMELHOS NA BASE — Idênticos ao RakuRaku Dinokun da foto
-   ESC  Enter  Clock (com rótulos em fonte script no plástico)
-   ============================================================ */
-.tama-bottom-buttons {
-  width: 76%;
-  margin-top: 4px;
-  padding: 2px 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+.lcd-glass {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(151deg, rgba(255,255,255,0.18), transparent 30% 76%, rgba(45,55,43,0.08));
+}
+
+.lcd.screen-off .lcd-center::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  background: rgba(24,34,27,0.84);
+}
+
+.side-key {
   position: relative;
-  z-index: 7;
+  z-index: 6;
+  width: 46px;
+  height: 60px;
+  padding: 0;
+  border: 0;
+  color: #62100c;
+  cursor: pointer;
+  background: linear-gradient(145deg, var(--key-light), var(--key) 48%, var(--key-dark));
+  filter: drop-shadow(0 4px 0 var(--key-dark)) drop-shadow(0 7px 5px rgba(65,20,7,0.25));
+  transition: transform 70ms ease, filter 70ms ease;
 }
 
-.btn-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  flex: 1;
+.side-key-left {
+  clip-path: polygon(100% 6%, 100% 94%, 12% 50%);
 }
-.btn-center { transform: translateY(5px); }
 
-.script-label {
-  font-family: 'Caveat', cursive, sans-serif;
-  font-size: 1.2rem;
+.side-key-right {
+  clip-path: polygon(0 6%, 0 94%, 88% 50%);
+}
+
+.side-key span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  text-shadow: 0 1px rgba(255,255,255,0.25);
+}
+
+.side-key-left span { left: 61%; }
+.side-key-right span { left: 39%; }
+
+.side-key.pressed {
+  transform: translateY(4px);
+  filter: drop-shadow(0 1px 0 var(--key-dark)) drop-shadow(0 2px 2px rgba(65,20,7,0.2));
+}
+
+.bottom-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 41px;
+  width: 292px;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 11px;
+}
+
+.bottom-controls label {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: #483218;
+  font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+  font-size: 15px;
   font-weight: 700;
-  color: #1a223e;
-  line-height: 1;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5), 0 -1px 0 rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.4px;
+  text-shadow: 0 1px rgba(255,255,255,0.6);
 }
-.btn-unit:nth-child(1) .script-label { transform: rotate(-6deg); }
-.btn-unit:nth-child(2) .script-label { transform: rotate(0deg); }
-.btn-unit:nth-child(3) .script-label { transform: rotate(6deg); }
 
-.btn-socket {
-  padding: 5px 6px;
-  background: radial-gradient(ellipse at top, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.08));
-  border-radius: 22px;
+.bottom-key {
+  width: 58px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--key-dark);
+  border-radius: 5px 5px 25px 25px / 5px 5px 22px 22px;
+  cursor: pointer;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.3), transparent 38%),
+    linear-gradient(var(--key-light), var(--key) 48%, var(--key-dark));
   box-shadow:
-    inset 0 3px 6px rgba(0, 0, 0, 0.5),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.2),
-    0 1px 3px rgba(255, 255, 255, 0.55);
+    inset 0 2px 2px rgba(255,255,255,0.3),
+    0 4px 0 #801713,
+    0 7px 7px rgba(76,24,6,0.27);
+  transition: transform 70ms ease, box-shadow 70ms ease;
+}
+
+.bottom-key.pressed {
+  transform: translateY(4px);
+  box-shadow: inset 0 2px 3px rgba(84,10,7,0.3), 0 1px 0 #801713, 0 2px 3px rgba(76,24,6,0.2);
+}
+
+.side-key:focus-visible,
+.bottom-key:focus-visible,
+.reset-control:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 4px;
+}
+
+.device-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.tama-btn.red-pill {
-  width: 42px;
-  height: 24px;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(155deg, var(--accent-light) 0%, var(--accent-color) 48%, var(--accent-dark) 100%);
-  cursor: pointer;
-  box-shadow:
-    inset 0 3px 5px rgba(255, 255, 255, 0.5),
-    inset 0 -3px 5px rgba(0, 0, 0, 0.45),
-    0 2px 4px rgba(0, 0, 0, 0.28),
-    0 1px 2px rgba(0, 0, 0, 0.18);
-  transition: transform 0.06s ease, box-shadow 0.06s ease;
-}
-.tama-btn.enter-btn {
-  width: 48px;
-  height: 26px;
-  border-radius: 15px;
-}
-.tama-btn:active,
-.tama-btn.pressed {
-  transform: translateY(3px) scale(0.96);
-  box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.55),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.25),
-    0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* ---------- Companion ---------- */
-.side-companion {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  flex: 1;
-  max-width: 400px;
-  width: 100%;
-}
-.side-companion .glass-panel {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  padding: 1.2rem;
-  color: #f4f4f0;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-}
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.panel-head h3 { font-size: 1.05rem; margin: 0; }
-.stage-tag {
-  background: #f6c836;
-  color: #1a1a12;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.48rem;
-  padding: 0.3rem 0.5rem;
-  border-radius: 3px;
-}
-.stat-meters { display: flex; flex-direction: column; gap: 0.55rem; }
-.stat-row { display: flex; align-items: center; gap: 0.7rem; }
-.stat-label { font-size: 0.8rem; font-weight: 600; width: 64px; flex-shrink: 0; }
-.stat-bar {
-  flex: 1; height: 10px;
-  background: rgba(0,0,0,0.35);
-  border-radius: 2px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.stat-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #3d9e5a, #5ec878);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-.stat-fill.low { background: linear-gradient(90deg, #c98a1a, #e0b040); }
-.stat-fill.critical { background: linear-gradient(90deg, #c43a2e, #e06050); }
-
-.stat-meta {
-  display: flex; flex-wrap: wrap; gap: 0.4rem;
-  margin-top: 0.85rem; padding-top: 0.7rem;
-  border-top: 1px dashed rgba(255,255,255,0.12);
-  font-size: 0.75rem; font-weight: 600;
-}
-.meta-tag {
-  background: rgba(255,255,255,0.07);
-  padding: 0.25rem 0.55rem;
-  border-radius: 5px;
-}
-.companion-actions { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
-.action-btn {
-  flex: 1;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
-  padding: 0.55rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 8px;
+.reset-control {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
   cursor: pointer;
 }
-.action-btn.config-btn {
-  background: rgba(246, 200, 54, 0.12);
-  border-color: rgba(246, 200, 54, 0.35);
-}
-.guide-panel h4 { margin: 0 0 0.55rem; font-size: 0.95rem; color: #f6c836; }
-.controls-list {
-  margin: 0; padding: 0 0 0 1rem;
-  display: flex; flex-direction: column; gap: 0.3rem;
-  font-size: 0.8rem; color: rgba(255,255,255,0.75);
-}
-.controls-list li strong { color: #f6c836; }
-.history-panel summary { font-weight: 700; font-size: 0.9rem; cursor: pointer; }
-#historyList {
-  list-style: none; padding: 0; margin: 0.7rem 0 0;
-  display: flex; flex-direction: column; gap: 0.4rem;
-}
-#historyList li {
-  display: flex; justify-content: space-between; gap: 0.4rem;
-  background: rgba(0,0,0,0.25);
-  padding: 0.4rem 0.65rem;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  border-left: 3px solid #f6c836;
+
+.reset-control span {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--bg-body);
+  background: currentColor;
 }
 
-@media (max-width: 500px) {
-  .tama-shell { width: min(420px, 94vw); height: 340px; padding: 32px 22px 26px; }
-  .tama-lcd { height: 132px; }
-  .brand-text { font-size: 1.15rem; }
-  .tama-side-control { flex: 0 0 44px; }
-  .tama-wing-btn { width: 36px; height: 44px; }
-  .tama-bottom-buttons { width: 88%; }
-  .tama-btn.red-pill { width: 36px; height: 22px; }
-  .tama-btn.enter-btn { width: 42px; height: 24px; }
+.reset-control:hover { color: var(--text-primary); }
+
+.manual {
+  width: min(100%, 720px);
+  padding: 1.5rem 1.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 1.25rem;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
 }
 
-@media (max-width: 390px) {
-  .tama-shell { width: 96vw; height: 310px; padding: 26px 14px 22px; }
-  .tama-lcd { height: 118px; }
-  .brand-text { font-size: 1rem; }
-  .brand-mascot { width: 26px; height: 26px; }
-  .tama-side-control { flex: 0 0 36px; }
-  .tama-wing-btn { width: 32px; height: 40px; }
-  .script-label { font-size: 1rem; }
-  .btn-socket { padding: 3px 4px; }
-  .tama-btn.red-pill { width: 32px; height: 20px; }
-  .tama-btn.enter-btn { width: 36px; height: 22px; }
+.manual-kicker {
+  margin-bottom: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.manual h2 {
+  margin: 0 0 1.15rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.manual dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem 1.35rem;
+}
+
+.manual dl > div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.55rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.manual dt {
+  color: var(--text-primary);
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.manual dd {
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.manual-note {
+  margin: 1.15rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  body { padding-inline: 0.75rem; }
+
+  .game-container { gap: 2rem; }
+
+  .device-area {
+    padding-top: 2.4rem;
+    transform-origin: top center;
+  }
+
+  .tama-shell {
+    width: min(568px, calc(100vw - 24px));
+    height: auto;
+    aspect-ratio: 568 / 421;
+  }
+
+  .screen-row {
+    top: 18.8%;
+    height: 53%;
+  }
+
+  .screen-bezel { height: 100%; padding: 2% 2.2%; }
+  .lcd { padding: 2% 1.5%; }
+
+  .brand-mark {
+    top: 5.7%;
+    font-size: clamp(17px, 4.4vw, 25px);
+  }
+
+  .brand-dino { width: clamp(31px, 7.4vw, 42px); }
+
+  .bottom-controls {
+    bottom: 9.7%;
+    width: 52%;
+    gap: 2%;
+  }
+
+  .bottom-controls label { font-size: clamp(11px, 2.7vw, 15px); }
+
+  .bottom-key {
+    width: clamp(39px, 10.2vw, 58px);
+    height: clamp(19px, 4.9vw, 28px);
+  }
+
+  .tama-cap {
+    top: max(-64px, -11.3vw);
+    transform: translateX(-50%) scale(0.86);
+    transform-origin: bottom center;
+  }
+
+  .manual { padding: 1.25rem; }
+  .manual dl { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .tama-cap { transform: translateX(-50%) scale(0.72); }
+
+  .screen-row {
+    width: calc(100% - 14px);
+    grid-template-columns: 33px minmax(0, 1fr) 33px;
+  }
+
+  .side-key { width: 34px; height: 47px; }
+  .side-key span { font-size: 13px; }
+  .screen-bezel { border-radius: 22px; }
+  .lcd { grid-template-columns: 24px minmax(0, 1fr) 24px; gap: 1px; border-width: 2px; }
+  .lcd-icon { width: 20px; height: 20px; }
+  .lcd-icon svg { width: 18px; height: 18px; }
+  .printed-eyes span { border-width: 3px; }
+  .manual dl > div { grid-template-columns: 6.3rem 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tama-shell,
+  .side-key,
+  .bottom-key { transition: none; }
 }

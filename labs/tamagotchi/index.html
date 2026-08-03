@@ -6,12 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RakuRaku Dinokun / Dinkie Dino (1997) - Labs</title>
   <meta name="description"
-    content="Réplica do Rakuraku Dinokun / Dinkie Dino de 1997. Hardware, ícones laterais e jogabilidade originais.">
+    content="Recriação pesquisada do RakuRaku Dinokun / Dinkie Dino: carcaça, LCD, controles e ciclo de cuidado em tempo real.">
   <link rel="stylesheet" href="/labs/shared.css?v=4">
-  <link rel="stylesheet" href="style.css?v=9">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Chewy&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 
 <body>
@@ -21,243 +18,98 @@
     </header>
 
     <main class="game-container">
-      <div class="setup-overlay hidden" id="setupScreen">
-        <div class="setup-box">
-          <header class="setup-header">
-            <span class="setup-badge">1997 · TK-910</span>
-            <h2>RakuRaku Dinokun</h2>
-            <p>Cor da carcaça e nome do dinossauro.</p>
-          </header>
-          <div class="setup-content">
-            <div class="field-group">
-              <label for="petNameInput">Nome</label>
-              <input type="text" id="petNameInput" maxlength="12" value="Dino" placeholder="Dino">
-            </div>
-            <div class="field-group">
-              <label>Carcaça</label>
-              <div class="preset-row" id="shellPresets"></div>
-              <div class="color-picker-sub">
-                <span>Personalizada</span>
-                <input type="color" id="shellColorInput" value="#f6c836">
-              </div>
-            </div>
-            <div class="field-group">
-              <label>Botões</label>
-              <div class="preset-row" id="accentPresets"></div>
-              <div class="color-picker-sub">
-                <span>Personalizada</span>
-                <input type="color" id="accentColorInput" value="#e23b2e">
-              </div>
-            </div>
-            <div class="field-group">
-              <label>LCD</label>
-              <div class="preset-row" id="screenPresets"></div>
-              <div class="color-picker-sub">
-                <span>Personalizada</span>
-                <input type="color" id="screenColorInput" value="#9aaa7a">
-              </div>
-            </div>
+      <section class="device-area" aria-label="RakuRaku Dinokun interativo">
+        <div class="tama-shell" id="tamaShell">
+          <div class="tama-cap" aria-hidden="true">
+            <span class="cap-neck"></span>
+            <span class="key-ring"></span>
           </div>
-          <footer class="setup-footer">
-            <button class="start-journey-btn" id="btnStartJourney" type="button">Ligar &amp; chocar ovo</button>
-            <button class="ghost-btn cancel-btn hidden" id="btnCancelSetup" type="button">Cancelar</button>
-          </footer>
-        </div>
-      </div>
 
-      <div class="device-showcase">
-        <!--
-          Hardware autêntico RakuRaku Dinokun / Dinkie Dino (1997):
-          Carcaça ovoide anatômica hiper realista, cap azul brilhante com argola de metal,
-          botões laterais (◄ na asa esquerda, ► na asa direita) e 3 botões vermelhos ovais na base
-          (Esc, Enter, Clock), tela LCD rebaixada com ícones laterais e reflexo real.
-        -->
-        <div class="device-stage">
-          <div class="tama-shell" id="tamaShell">
-            <div class="shell-specular" aria-hidden="true"></div>
-            <div class="shell-inner-rim" aria-hidden="true"></div>
+          <div class="brand-mark" aria-hidden="true">
+            <span>RakuRaku</span>
+            <svg class="brand-dino" viewBox="0 0 36 25">
+              <path d="M5 18c-3-5 0-12 7-13 4-6 13-5 16 1 7 1 8 10 2 13-4 3-8 1-11 1-5 4-11 3-14-2Z" />
+              <circle cx="14" cy="11" r="1.3" />
+              <circle cx="22" cy="11" r="1.3" />
+              <path d="M15 16c2 1 4 1 6 0" />
+            </svg>
+            <span>Dinokun</span>
+          </div>
 
-            <div class="tama-cap" aria-hidden="true">
-              <div class="tama-ring-shadow"></div>
-              <div class="cap-face"></div>
-              <div class="tama-ring"></div>
-            </div>
+          <div class="screen-row">
+            <button class="side-key side-key-left" data-btn="LEFT" type="button" aria-label="Botão esquerdo">
+              <span aria-hidden="true">◀</span>
+            </button>
 
-            <div class="tama-branding" aria-hidden="true">
-              <span class="brand-text brand-left">RakuRaku</span>
-              <span class="brand-mascot">
-                <svg viewBox="0 0 36 36" width="32" height="32" aria-hidden="true">
-                  <defs>
-                    <radialGradient id="eggGrad" cx="40%" cy="30%" r="70%">
-                      <stop offset="0%" stop-color="#ffffff"/>
-                      <stop offset="60%" stop-color="#f2e2fe"/>
-                      <stop offset="100%" stop-color="#cda4ef"/>
-                    </radialGradient>
-                    <linearGradient id="dinoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="#2de3b3"/>
-                      <stop offset="50%" stop-color="#19ac85"/>
-                      <stop offset="100%" stop-color="#0f7a5d"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="18" cy="18" r="17" fill="url(#eggGrad)" stroke="#1f1a24" stroke-width="1.2" box-shadow="0 2px 4px rgba(0,0,0,0.25)"/>
-                  <path d="M12 24 C 9 24 8 20 9 15 C 10 10 14 8 18 8 C 23 8 27 12 26 18 C 25 24 22 26 18 26 C 15 26 14 24 12 24 Z" fill="url(#dinoGrad)" stroke="#1a251f" stroke-width="1.2"/>
-                  <!-- Olhinhos -->
-                  <circle cx="15.5" cy="15" r="2.2" fill="#fff"/>
-                  <circle cx="20.5" cy="15" r="2.2" fill="#fff"/>
-                  <circle cx="16.2" cy="15.2" r="1.1" fill="#111"/>
-                  <circle cx="21.2" cy="15.2" r="1.1" fill="#111"/>
-                  <!-- Bochechas e sorriso -->
-                  <ellipse cx="13.5" cy="17.5" rx="1.5" ry="0.9" fill="#ff7da7" opacity="0.8"/>
-                  <ellipse cx="22.5" cy="17.5" rx="1.5" ry="0.9" fill="#ff7da7" opacity="0.8"/>
-                  <path d="M16.5 18.5 Q18 20 19.5 18.5" fill="none" stroke="#111" stroke-width="1.2" stroke-linecap="round"/>
-                  <!-- Cristas dinossauro -->
-                  <path d="M14 8 L15 5 L17 8 M18 8 L19 5 L21 8" fill="#ff7da7" stroke="#1a251f" stroke-width="1"/>
-                </svg>
-              </span>
-              <span class="brand-text brand-right">Dinokun</span>
-            </div>
-
-            <!-- Área intermediária: Botão de seta Esquerda, Bezel com Tela LCD, e Botão de seta Direita -->
-            <div class="tama-mid-area">
-              <div class="tama-side-control side-left">
-                <button class="tama-wing-btn" data-btn="LEFT" aria-label="Esquerda (◄)" type="button" title="Botão Esquerda (◄)">
-                  <span class="wing-btn-arrow">◄</span>
-                </button>
-              </div>
-
-              <div class="tama-screen-bezel">
-                <div class="bezel-inner-cavity">
-                  <div class="tama-lcd">
-                    <!-- Esquerda: água, comida, luz, disciplina, status -->
-                    <div class="lcd-icons lcd-icons-left">
-                      <button class="lcd-icon" data-icon="drink" type="button" title="Água" aria-label="Água">
-                        <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M2 0h6v2H2zM1 2h8L8 12H2L1 2zm2 3h4v5H3z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="food" type="button" title="Comida" aria-label="Comida">
-                        <svg viewBox="0 0 12 10" aria-hidden="true"><path d="M0 3c0-2 2-3 4-3s4 1 4 3-1 3-2 4v2H2V7C1 6 0 5 0 3zm8 1h4v2H9v2H8z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="light" type="button" title="Luz" aria-label="Luz">
-                        <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M5 0a4 4 0 0 0-2.5 6.8c.4.5.7 1 .7 1.7h3.6c0-.7.3-1.2.7-1.7A4 4 0 0 0 5 0zM3.5 9.5h3V11h-3zm.5 2h2V12H4z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="discipline" type="button" title="Disciplina" aria-label="Disciplina">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0C2.5 0 1 2 1 4.5 1 7 3.5 9 5 10c1.5-1 4-3 4-5.5C9 2 7.5 0 5 0z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="stats" type="button" title="Status" aria-label="Status">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 6h2v4H0zm4-3h2v7H4zm4-3h2v10H8z"/></svg>
-                      </button>
-                    </div>
-
-                    <div class="tama-screen-canvas-wrap">
-                      <div class="lcd-eyes-bg" aria-hidden="true"></div>
-                      <canvas id="petCanvas" width="192" height="128"></canvas>
-                      <div class="tama-dot-grid" aria-hidden="true"></div>
-                      <div class="tama-glass-glare" aria-hidden="true"></div>
-                      <div class="tama-glass-shadow" aria-hidden="true"></div>
-                      <div class="tama-overlay hidden" id="tamaOverlay"></div>
-                      <div class="tama-toast" id="tamaToast"></div>
-                    </div>
-
-                    <!-- Direita: jogo, estudo, banho, AC, remédio -->
-                    <div class="lcd-icons lcd-icons-right">
-                      <button class="lcd-icon" data-icon="play" type="button" title="Jan-ken-po" aria-label="Jogo">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 4h3v5H1zm5-2h3v7H6zM2.5 2a1.2 1.2 0 1 1 0-2.4A1.2 1.2 0 0 1 2.5 2zm5-1a1.2 1.2 0 1 1 0-2.4A1.2 1.2 0 0 1 7.5 1z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="study" type="button" title="Estudar" aria-label="Estudar">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h4v8H0zm6 0h4v8H6z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="bath" type="button" title="Banho" aria-label="Banho">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5h8v3H1zM0 5h10v1H0zM2 2h2v3H2zm3-1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="ac" type="button" title="Ar-condicionado" aria-label="AC">
-                        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M4.5 0h1v3h-1zM4.5 7h1v3h-1zM0 4.5h3v1H0zm7 0h3v1H7zM1.2 1.2l.7-.7 2 2-.7.7zm4.9 4.9 2 2-.7.7-2-2zm0-4.9.7-.7 2 2-.7.7zM1.2 8.8l.7.7 2-2-.7-.7zM3.5 3.5h3v3h-3z"/></svg>
-                      </button>
-                      <button class="lcd-icon" data-icon="medicine" type="button" title="Remédio" aria-label="Remédio">
-                        <svg viewBox="0 0 8 12" aria-hidden="true"><path d="M2 0h4v3H2zm-1 3h6l1 8H0L1 3zm2 2h2v3H3z"/></svg>
-                      </button>
-                    </div>
-                  </div>
+            <div class="screen-bezel">
+              <div class="lcd" id="lcd">
+                <div class="lcd-icons lcd-icons-left" aria-hidden="true">
+                  <span class="lcd-icon" data-icon="drink"><svg viewBox="0 0 20 20"><path d="M6 1h8v3l2 2-2 13H6L4 6l2-2V1Zm1 7 1 8h4l1-8H7Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="food"><svg viewBox="0 0 20 20"><path d="M2 11h16c0 5-3 7-8 7s-8-2-8-7Zm3-2c0-4 2-6 5-6s5 2 5 6H5Zm3-5V1h4v3H8Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="light"><svg viewBox="0 0 20 20"><path d="M10 1a6 6 0 0 1 4 11c-1 1-1 2-1 3H7c0-1 0-2-1-3A6 6 0 0 1 10 1Zm-3 15h6v2H7v-2Zm2 3h2v1H9v-1Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="discipline"><svg viewBox="0 0 20 20"><path d="M10 19 3 12C-2 6 4-1 10 5c6-6 12 1 7 7l-7 7Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="stats"><svg viewBox="0 0 20 20"><path d="M3 2h14v16H3V2Zm3 3v2h8V5H6Zm0 4v2h8V9H6Zm0 4v2h8v-2H6Z" /></svg></span>
                 </div>
-              </div>
 
-              <div class="tama-side-control side-right">
-                <button class="tama-wing-btn" data-btn="RIGHT" aria-label="Direita (►)" type="button" title="Botão Direita (►)">
-                  <span class="wing-btn-arrow">►</span>
-                </button>
-              </div>
-            </div>
+                <div class="lcd-center">
+                  <div class="printed-eyes" aria-hidden="true"><span></span><span></span></div>
+                  <canvas id="petCanvas" width="228" height="144" aria-label="Tela LCD do Dinkie Dino"></canvas>
+                  <div class="lcd-grid" aria-hidden="true"></div>
+                  <div class="lcd-glass" aria-hidden="true"></div>
+                </div>
 
-            <!-- 3 botões vermelhos na curva inferior (autênticos da foto) -->
-            <div class="tama-bottom-buttons">
-              <div class="btn-unit">
-                <span class="script-label">ESC</span>
-                <div class="btn-socket">
-                  <button class="tama-btn red-pill" data-btn="ESC" aria-label="Esc" type="button" title="Cancelar / Sair (ESC)"></button>
-                </div>
-              </div>
-              <div class="btn-unit btn-center">
-                <span class="script-label">Enter</span>
-                <div class="btn-socket">
-                  <button class="tama-btn red-pill enter-btn" data-btn="ENTER" aria-label="Enter" type="button" title="Confirmar (ENTER)"></button>
-                </div>
-              </div>
-              <div class="btn-unit">
-                <span class="script-label">Clock</span>
-                <div class="btn-socket">
-                  <button class="tama-btn red-pill" data-btn="CLOCK" aria-label="Clock" type="button" title="Relógio / Status (CLOCK)"></button>
+                <div class="lcd-icons lcd-icons-right" aria-hidden="true">
+                  <span class="lcd-icon" data-icon="play"><svg viewBox="0 0 20 20"><path d="M2 8h6v10H2V8Zm10-4h6v14h-6V4ZM5 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm10-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="study"><svg viewBox="0 0 20 20"><path d="M1 3c4-1 7 0 9 2 2-2 5-3 9-2v14c-4-1-7 0-9 2-2-2-5-3-9-2V3Zm8 3C7 5 5 5 3 5v9c2 0 4 0 6 1V6Zm2 0v9c2-1 4-1 6-1V5c-2 0-4 0-6 1Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="bath"><svg viewBox="0 0 20 20"><path d="M1 10h18v5c0 2-2 3-4 3H5c-2 0-4-1-4-3v-5Zm3-6h3v6H4V4Zm8-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="ac"><svg viewBox="0 0 20 20"><path d="M2 3h16v12H2V3Zm3 3v2h10V6H5Zm0 4v2h10v-2H5Zm2 6h2v3H7v-3Zm4 0h2v3h-2v-3Z" /></svg></span>
+                  <span class="lcd-icon" data-icon="medicine"><svg viewBox="0 0 20 20"><path d="M6 1h8v4l2 2v12H4V7l2-2V1Zm3 6v3H6v5h3v3h4v-3h3v-5h-3V7H9Z" /></svg></span>
                 </div>
               </div>
             </div>
+
+            <button class="side-key side-key-right" data-btn="RIGHT" type="button" aria-label="Botão direito">
+              <span aria-hidden="true">▶</span>
+            </button>
+          </div>
+
+          <div class="bottom-controls">
+            <label><span>Esc</span><button class="bottom-key" data-btn="ESC" type="button" aria-label="Esc"></button></label>
+            <label><span>Enter</span><button class="bottom-key" data-btn="ENTER" type="button" aria-label="Enter"></button></label>
+            <label><span>Clock</span><button class="bottom-key" data-btn="CLOCK" type="button" aria-label="Clock"></button></label>
           </div>
         </div>
 
-        <div class="side-companion">
-          <section class="glass-panel stats-panel" aria-label="Monitor">
-            <header class="panel-head">
-              <h3>Status · <span id="petNameLabel">Dino</span></h3>
-              <span class="stage-tag" id="petStageLabel">Ovo</span>
-            </header>
-            <div class="stat-meters">
-              <div class="stat-row"><span class="stat-label">Fome</span><div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div></div>
-              <div class="stat-row"><span class="stat-label">Sede</span><div class="stat-bar"><div class="stat-fill" id="barThirst"></div></div></div>
-              <div class="stat-row"><span class="stat-label">Humor</span><div class="stat-bar"><div class="stat-fill" id="barHappiness"></div></div></div>
-              <div class="stat-row"><span class="stat-label">Educação</span><div class="stat-bar"><div class="stat-fill" id="barDiscipline"></div></div></div>
-              <div class="stat-row"><span class="stat-label">Peso</span><div class="stat-bar"><div class="stat-fill" id="barWeight"></div></div></div>
-            </div>
-            <div class="stat-meta">
-              <span class="meta-tag" id="petAgeLabel">Dia 0</span>
-              <span class="meta-tag" id="petTempLabel">25°C</span>
-              <span class="meta-tag" id="petStateLabel">Ativo</span>
-            </div>
-            <div class="companion-actions">
-              <button class="action-btn" id="muteBtn" type="button">Som ligado</button>
-              <button class="action-btn config-btn" id="openSetupBtn" type="button">Personalizar / Novo ovo</button>
-            </div>
-          </section>
-
-          <section class="glass-panel guide-panel">
-            <h4>Controles originais</h4>
-            <ul class="controls-list">
-              <li><strong>◄ ►</strong> ícones da esquerda / direita</li>
-              <li><strong>Enter</strong> confirma · <strong>Esc</strong> cancela</li>
-              <li><strong>Clock</strong> relógio · <strong>Esc+Enter</strong> ajustar hora</li>
-              <li><strong>◄+►</strong> 3s = mute · jan-ken-po 3/5</li>
-              <li>Temperatura ideal: 25°C (AC)</li>
-            </ul>
-          </section>
-
-          <details class="history-panel glass-panel" id="historyPanel" hidden>
-            <summary>Dinossauros passados</summary>
-            <ul id="historyList"></ul>
-          </details>
+        <div class="device-actions" aria-label="Controles físicos adicionais">
+          <button id="resetButton" class="reset-control" type="button" title="Botão rebaixado no verso do aparelho">
+            <span aria-hidden="true"></span> reset traseiro
+          </button>
+          <span id="soundState" aria-live="polite">som ligado</span>
         </div>
-      </div>
+      </section>
+
+      <section class="manual" aria-labelledby="manualTitle">
+        <div>
+          <p class="manual-kicker">TK-910 · 2 × AG13/LR44 · 1997</p>
+          <h2 id="manualTitle">Controles do aparelho</h2>
+        </div>
+        <dl>
+          <div><dt>◀ / ▶</dt><dd>percorrem as cinco funções do lado correspondente</dd></div>
+          <div><dt>Enter</dt><dd>confirma a função ou a escolha exibida</dd></div>
+          <div><dt>Esc</dt><dd>cancela e retorna à tela do dinossauro</dd></div>
+          <div><dt>Clock</dt><dd>alterna entre o relógio e o dinossauro</dd></div>
+          <div><dt>Esc + Enter</dt><dd>ajusta o relógio</dd></div>
+          <div><dt>◀ + ▶ por 3 s</dt><dd>liga ou desliga o som</dd></div>
+        </dl>
+        <p class="manual-note">O tempo não é acelerado: ele dorme das 21h às 9h e evolui ao acordar, como no aparelho.</p>
+      </section>
     </main>
 
     <footer data-lab-footer data-home-href="/"></footer>
   </div>
 
   <script src="/labs/shared.js?v=6" defer></script>
-  <script src="script.js?v=7" defer></script>
+  <script src="script.js?v=9" defer></script>
 </body>
 
 </html>
