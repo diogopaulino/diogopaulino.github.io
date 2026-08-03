@@ -2,9 +2,9 @@
 
 # Diogo Paulino
 
-**Design, Código & Som**
+**Design, Código & Música**
 
-Mais de 20 anos apaixonado por tecnologia. Misturando liderança, desenvolvimento e música para criar grandes experiências.
+Mais de 20 anos apaixonado por tecnologia. Unindo liderança, programação e design para criar experiências digitais marcantes.
 
 <br/>
 
@@ -21,17 +21,19 @@ Mais de 20 anos apaixonado por tecnologia. Misturando liderança, desenvolviment
 
 ## Sobre mim
 
-Com mais de 20 anos de estrada, sou verdadeiramente apaixonado por tecnologia. Ao longo dessa jornada, venho atuando no desenvolvimento de software unindo visão de liderança, programação hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface bem pensada, uma arquitetura sólida e um bom produto final.
+Com mais de 20 anos de estrada, sou apaixonado por tecnologia e por construir coisas. Ao longo dessa jornada, venho atuando no desenvolvimento de software unindo visão de liderança, programação hands-on e design UI/UX.
 
-- 🎸 **Música & Áudio:** Explorando como a arte e a programação se conectam.
-- 🤖 **IA & Inovação:** Constantemente testando novos modelos, integrações e ferramentas.
-- 🧪 **Playground:** Criador compulsivo de pequenos experimentos e sistemas interativos (veja abaixo).
+- 🎸 **Música & Áudio:** Explorando os caminhos onde a arte e o código se cruzam.
+- 🤖 **IA & Inovação:** Sempre testando novos modelos, integrações e ideias.
+- 🧪 **Playground:** Criador compulsivo de pequenos experimentos (veja abaixo!).
 
 <br/>
 
 ## 🎡 Playground
 
-Um espaço aberto onde guardo experimentos e mini-projetos que fui criando ao longo do tempo. Tudo roda direto no navegador: abra, jogue, quebre e descubra como funciona.
+> *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
+
+Um laboratório aberto onde guardo experimentos e mini-projetos que fui criando ao longo do tempo. Tudo roda direto no navegador.
 
 ### 🎮 Games & Retrô
 | Projeto | O que é? |
