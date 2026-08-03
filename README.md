@@ -4,7 +4,7 @@
 
 **Design, Código & Som**
 
-Explorando tecnologia há quase 20 anos. Misturando interfaces, código sólido e música para criar experiências digitais.
+Mais de 20 anos apaixonado por tecnologia. Misturando liderança, desenvolvimento e música para criar grandes experiências.
 
 <br/>
 
@@ -21,7 +21,7 @@ Explorando tecnologia há quase 20 anos. Misturando interfaces, código sólido 
 
 ## Sobre mim
 
-Atuo no desenvolvimento de software unindo visão técnica, hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface bem pensada, uma arquitetura sólida e um bom produto final.
+Com mais de 20 anos de estrada, sou verdadeiramente apaixonado por tecnologia. Ao longo dessa jornada, venho atuando no desenvolvimento de software unindo visão de liderança, programação hands-on e design UI/UX. Gosto de encontrar o equilíbrio perfeito entre uma interface bem pensada, uma arquitetura sólida e um bom produto final.
 
 - 🎸 **Música & Áudio:** Explorando como a arte e a programação se conectam.
 - 🤖 **IA & Inovação:** Constantemente testando novos modelos, integrações e ferramentas.
@@ -76,24 +76,6 @@ Um espaço aberto onde guardo experimentos e mini-projetos que fui criando ao lo
 ---
 
 <div align="center">
-
-### Tecnologias & Ferramentas
-<br/>
-<p align="center">
-  <img src="https://img.shields.io/badge/JavaScript-181717?style=flat-square&logo=javascript&logoColor=F7DF1E" alt="JavaScript" />
-  <img src="https://img.shields.io/badge/TypeScript-181717?style=flat-square&logo=typescript&logoColor=3178C6" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/React-181717?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/Node.js-181717?style=flat-square&logo=node.js&logoColor=339933" alt="Node.js" />
-  <img src="https://img.shields.io/badge/HTML5-181717?style=flat-square&logo=html5&logoColor=E34F26" alt="HTML5" />
-  <img src="https://img.shields.io/badge/CSS3-181717?style=flat-square&logo=css3&logoColor=1572B6" alt="CSS3" />
-  <img src="https://img.shields.io/badge/Python-181717?style=flat-square&logo=python&logoColor=3776AB" alt="Python" />
-  <img src="https://img.shields.io/badge/Figma-181717?style=flat-square&logo=figma&logoColor=F24E1E" alt="Figma" />
-  <img src="https://img.shields.io/badge/AWS-181717?style=flat-square&logo=amazonaws&logoColor=FF9900" alt="AWS" />
-  <img src="https://img.shields.io/badge/Docker-181717?style=flat-square&logo=docker&logoColor=2496ED" alt="Docker" />
-  <img src="https://img.shields.io/badge/Git-181717?style=flat-square&logo=git&logoColor=F05032" alt="Git" />
-</p>
-
-<br/>
 <br/>
 
 **[diogopaulino.com.br](https://diogopaulino.com.br/)**
