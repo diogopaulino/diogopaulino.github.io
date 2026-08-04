@@ -427,92 +427,149 @@
         ctx2d.fillRect(0, 0, width, height);
 
         const stops = THEMES[state.themeKey] || THEMES.nebula;
-        ctx2d.globalCompositeOperation = 'lighter';
+        ctx2d.globalCompositeOperation = dark ? 'screen' : 'multiply';
+        
+        // Blobs with rotation and slow breathing
+        const timeScale = now * 0.08;
         const blobs = [
-            { cx: width * 0.25 + Math.sin(now * 0.05) * 60, cy: height * 0.3 + Math.cos(now * 0.04) * 40, color: stops[0] },
-            { cx: width * 0.75 + Math.cos(now * 0.06) * 50, cy: height * 0.7 + Math.sin(now * 0.05) * 50, color: stops[1] },
-            { cx: width * 0.5 + Math.sin(now * 0.03) * 80, cy: height * 0.5 + Math.cos(now * 0.07) * 60, color: stops[2] }
+            { cx: width * 0.25 + Math.sin(timeScale) * 80, cy: height * 0.3 + Math.cos(timeScale * 0.8) * 60, r: Math.max(width, height) * 0.45, color: stops[0] },
+            { cx: width * 0.75 + Math.cos(timeScale * 1.2) * 70, cy: height * 0.7 + Math.sin(timeScale * 1.1) * 70, r: Math.max(width, height) * 0.5, color: stops[1] },
+            { cx: width * 0.5 + Math.sin(timeScale * 0.7) * 100, cy: height * 0.5 + Math.cos(timeScale * 1.3) * 80, r: Math.max(width, height) * 0.4, color: stops[2] }
         ];
+        
         blobs.forEach(function (b) {
-            const grad = ctx2d.createRadialGradient(b.cx, b.cy, 0, b.cx, b.cy, Math.max(width, height) * 0.4);
+            const grad = ctx2d.createRadialGradient(b.cx, b.cy, 0, b.cx, b.cy, b.r);
             const rgb = hexToRgb(b.color);
-            grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${dark ? 0.08 : 0.05})`);
+            grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${dark ? 0.12 : 0.08})`);
             grad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx2d.fillStyle = grad;
-            ctx2d.fillRect(0, 0, width, height);
+            ctx2d.beginPath();
+            ctx2d.arc(b.cx, b.cy, b.r, 0, Math.PI * 2);
+            ctx2d.fill();
         });
+        
         ctx2d.globalCompositeOperation = 'source-over';
 
         if (dark) {
             for (const s of stars) {
-                const alpha = 0.3 + 0.5 * (0.5 + 0.5 * Math.sin(now * s.speed + s.phase));
+                const alpha = 0.2 + 0.6 * (0.5 + 0.5 * Math.sin(now * s.speed + s.phase));
                 ctx2d.beginPath();
-                ctx2d.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx2d.arc(s.x, s.y, s.r + (alpha > 0.7 ? 0.5 : 0), 0, Math.PI * 2);
                 ctx2d.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+                if (alpha > 0.6) {
+                    ctx2d.shadowBlur = 4;
+                    ctx2d.shadowColor = '#fff';
+                }
                 ctx2d.fill();
+                ctx2d.shadowBlur = 0;
             }
         }
     }
 
     function drawConnections(reach) {
+        const now = clock();
+        ctx2d.globalCompositeOperation = isDark() ? 'screen' : 'multiply';
+        
         for (let i = 0; i < orbs.length; i++) {
             const a = orbs[i];
+            const burstA = clamp(1 - (now - a.lastTriggerTime) / 0.45, 0, 1);
+            
             for (const b of a.connections) {
                 if (b.id < a.id) continue;
                 const d = dist(a, b);
-                const alpha = clamp(1 - d / reach, 0, 1) * 0.28;
-                if (alpha <= 0.01) continue;
+                const baseAlpha = clamp(1 - d / reach, 0, 1) * 0.28;
+                if (baseAlpha <= 0.01) continue;
+                
+                const burstB = clamp(1 - (now - b.lastTriggerTime) / 0.45, 0, 1);
+                const activeFactor = Math.max(burstA, burstB);
+                const finalAlpha = baseAlpha + (activeFactor * 0.4);
+                
                 const grad = ctx2d.createLinearGradient(a.x, a.y, b.x, b.y);
-                grad.addColorStop(0, rgbaStr(a.color, alpha));
-                grad.addColorStop(1, rgbaStr(b.color, alpha));
+                grad.addColorStop(0, rgbaStr(a.color, finalAlpha));
+                grad.addColorStop(1, rgbaStr(b.color, finalAlpha));
+                
                 ctx2d.strokeStyle = grad;
-                ctx2d.lineWidth = 1;
+                ctx2d.lineWidth = 1 + activeFactor * 1.5;
+                if (activeFactor > 0.1) {
+                    ctx2d.shadowBlur = 8 * activeFactor;
+                    ctx2d.shadowColor = rgbStr(a.color);
+                } else {
+                    ctx2d.shadowBlur = 0;
+                }
+                
                 ctx2d.beginPath();
                 ctx2d.moveTo(a.x, a.y);
                 ctx2d.lineTo(b.x, b.y);
                 ctx2d.stroke();
             }
         }
+        ctx2d.shadowBlur = 0;
+        ctx2d.globalCompositeOperation = 'source-over';
     }
 
     function drawOrbs(now) {
+        const dark = isDark();
+        ctx2d.globalCompositeOperation = dark ? 'screen' : 'source-over';
+        
         for (const o of orbs) {
             const progress = clamp(1 - (o.nextPulseTime - now) / Math.max(0.1, o.baseInterval / state.tempo), 0, 1);
             const burst = clamp(1 - (now - o.lastTriggerTime) / 0.45, 0, 1);
-            const r = o.r + progress * 2.5 + burst * 6;
-            const glowR = r + 10 + burst * 22;
+            const r = o.r + progress * 2.5 + burst * 8;
+            const glowR = r + 16 + burst * 28;
 
+            // Outer Bloom
             const grad = ctx2d.createRadialGradient(o.x, o.y, 0, o.x, o.y, glowR);
-            grad.addColorStop(0, rgbaStr(o.color, 0.55 + burst * 0.35));
+            grad.addColorStop(0, rgbaStr(o.color, 0.65 + burst * 0.35));
             grad.addColorStop(1, rgbaStr(o.color, 0));
             ctx2d.fillStyle = grad;
             ctx2d.beginPath();
             ctx2d.arc(o.x, o.y, glowR, 0, Math.PI * 2);
             ctx2d.fill();
 
+            // Inner solid orb with glow
             ctx2d.beginPath();
             ctx2d.arc(o.x, o.y, r, 0, Math.PI * 2);
             ctx2d.fillStyle = rgbStr(o.color);
+            ctx2d.shadowBlur = 15 + burst * 20;
+            ctx2d.shadowColor = rgbStr(o.color);
             ctx2d.fill();
-            ctx2d.lineWidth = 1.5;
-            ctx2d.strokeStyle = 'rgba(255,255,255,0.6)';
+            
+            // Orb border
+            ctx2d.lineWidth = 1.5 + burst;
+            ctx2d.strokeStyle = dark ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.9)';
             ctx2d.stroke();
+            
+            // Orb Core (Energy center)
+            ctx2d.shadowBlur = 0;
+            ctx2d.beginPath();
+            ctx2d.arc(o.x, o.y, Math.max(1.5, r * 0.25), 0, Math.PI * 2);
+            ctx2d.fillStyle = dark ? '#fff' : 'rgba(255,255,255,0.9)';
+            ctx2d.fill();
         }
+        ctx2d.shadowBlur = 0;
+        ctx2d.globalCompositeOperation = 'source-over';
     }
 
     function drawRipples(now) {
+        ctx2d.globalCompositeOperation = isDark() ? 'screen' : 'source-over';
         for (let i = ripples.length - 1; i >= 0; i--) {
             const rp = ripples[i];
             const age = Math.max(0, now - rp.born);
             const r = age * RIPPLE_SPEED;
-            const alpha = clamp(1 - r / rp.maxR, 0, 1) * 0.5;
+            const alpha = clamp(1 - r / rp.maxR, 0, 1) * 0.65;
             if (alpha <= 0.01 || r > rp.maxR) { ripples.splice(i, 1); continue; }
+            
             ctx2d.beginPath();
             ctx2d.arc(rp.x, rp.y, r, 0, Math.PI * 2);
-            ctx2d.lineWidth = 1.5;
+            ctx2d.lineWidth = 2.5 - (r / rp.maxR) * 1.5;
             ctx2d.strokeStyle = rgbaStr(rp.color, alpha);
+            
+            ctx2d.shadowBlur = 10;
+            ctx2d.shadowColor = rgbStr(rp.color);
             ctx2d.stroke();
         }
+        ctx2d.shadowBlur = 0;
+        ctx2d.globalCompositeOperation = 'source-over';
     }
 
     // ---------- main loop ----------
