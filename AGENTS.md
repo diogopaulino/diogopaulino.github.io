@@ -46,4 +46,16 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
 - Sempre documente o código de lógicas complexas (como fórmulas matemáticas para simulações ou regras de jogos).
 
 ---
+
+## Cursor Cloud specific instructions
+
+Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json`, `npm install`, etc. O código-fonte é o próprio artefato servido no GitHub Pages.
+
+- **Rodar em desenvolvimento**: sirva a raiz do repositório por HTTP (abrir os arquivos via `file://` quebra caminhos absolutos como `/favicon.ico` e módulos ES). A partir de `/workspace`:
+  - `python3 -m http.server 8000` → site principal em `http://localhost:8000/`, playground em `http://localhost:8000/labs/`.
+- **Estrutura**: `index.html` (portfólio raiz) + `labs/<nome-do-lab>/index.html` (cada lab é autocontido). `labs/index.html` é a galeria que linka todos os labs.
+- **Caminhos**: o `manifest.json` e alguns assets usam caminhos absolutos (`/favicon.ico`, `/assets/...`), por isso é necessário servir a partir da raiz do repositório, não de uma subpasta.
+- **Verificação/"testes"**: não existe suíte automatizada. Valide manualmente carregando as páginas no navegador (o toggle de tema na home e abrir um lab da galeria são bons smoke tests).
+
+---
 *Lembre-se: O objetivo principal do projeto é criatividade, performance e experimentação tecnológica na web sem barreiras.*
