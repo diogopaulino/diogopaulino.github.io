@@ -6,108 +6,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Ravi 1·2·3: A Grande Festa Surpresa</title>
   <meta name="description"
-    content="Aventura mágica interativa focada em números de 1 a 9. Ajude Ravi a preparar uma festa de aniversário!">
+    content="Ajude o Ravi a preparar uma festa surpresa para guerreiros e heróis! Jogo educativo de números 1 a 9 inspirado nos clássicos dos anos 90.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/ravi-123/">
 
-  <!-- Fontes mais modernas e lúdicas para crianças (Outfit) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/ravi-123/">
+  <meta property="og:title" content="Ravi 1·2·3: A Grande Festa Surpresa">
+  <meta property="og:description"
+    content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino.">
+  <meta property="og:locale" content="pt_BR">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="/labs/shared.css?v=5">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 
 <body>
-  <!-- Cabeçalho (do portfólio) oculto ou minimizado durante a imersão, mas disponível -->
-  <header data-lab-header data-title="Ravi 1·2·3" data-back-href="/labs/" data-back-label="Labs">
-    <template data-slot="logo">
-      <h1>Ravi 1·2·3</h1>
-    </template>
-  </header>
+  <div id="app">
+    <canvas id="game" width="640" height="400" aria-label="Ravi 1·2·3"></canvas>
 
-  <main id="game-container">
-    <!-- UI Fixa: Pergunta atual e Teclado Numérico -->
-    <div id="ui-layer">
-      <h2 id="prompt-text">Ravi 1·2·3</h2>
-      
-      <div id="number-pad" class="hidden">
-        <button class="num-btn" data-val="1">1</button>
-        <button class="num-btn" data-val="2">2</button>
-        <button class="num-btn" data-val="3">3</button>
-        <button class="num-btn" data-val="4">4</button>
-        <button class="num-btn" data-val="5">5</button>
-        <button class="num-btn" data-val="6">6</button>
-        <button class="num-btn" data-val="7">7</button>
-        <button class="num-btn" data-val="8">8</button>
-        <button class="num-btn" data-val="9">9</button>
+    <div id="hud">
+      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar">←</button>
+      <div id="speech-bubble" class="hidden" aria-live="polite"></div>
+      <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+    </div>
+
+    <div id="flashcard" class="hidden" aria-hidden="true">
+      <span id="flash-num">1</span>
+    </div>
+
+    <div id="choice-panel" class="hidden">
+      <p id="choice-prompt"></p>
+      <div id="choice-grid"></div>
+    </div>
+
+    <div id="numpad">
+      <button type="button" class="num-key" data-n="1">1</button>
+      <button type="button" class="num-key" data-n="2">2</button>
+      <button type="button" class="num-key" data-n="3">3</button>
+      <button type="button" class="num-key" data-n="4">4</button>
+      <button type="button" class="num-key" data-n="5">5</button>
+      <button type="button" class="num-key" data-n="6">6</button>
+      <button type="button" class="num-key" data-n="7">7</button>
+      <button type="button" class="num-key" data-n="8">8</button>
+      <button type="button" class="num-key" data-n="9">9</button>
+      <button type="button" class="num-key num-zero" data-n="0">0</button>
+    </div>
+
+    <div id="title-overlay" class="overlay">
+      <div class="title-card">
+        <p class="eyebrow">Disney Soft · 1990 vibes</p>
+        <h1>Ravi <span>1·2·3</span></h1>
+        <h2>A Grande Festa Surpresa</h2>
+        <p class="hint">Aperte qualquer número para acordar o Ravi!</p>
+        <div class="title-keys">
+          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+          <span>6</span><span>7</span><span>8</span><span>9</span>
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- Cenários -->
-    <div id="scenes">
-      
-      <!-- Cena 0: Intro -->
-      <section id="scene-intro" class="scene active">
-        <div class="intro-content">
-          <div class="title-fx">A Grande Festa Surpresa</div>
-          <p class="blink">Aperte qualquer número para começar!</p>
-        </div>
-      </section>
-
-      <!-- Cena 1: Sonho (Carneirinhos) -->
-      <section id="scene-dream" class="scene">
-        <div class="moon"></div>
-        <div class="stars" id="dream-stars"></div>
-        <div class="fence">
-          <div class="fence-post"></div>
-          <div class="fence-rail"></div>
-          <div class="fence-post"></div>
-          <div class="fence-rail"></div>
-          <div class="fence-post"></div>
-        </div>
-        <div id="sheep-container"></div>
-        <div class="sleeping-ravi"></div>
-      </section>
-
-      <!-- Cena 2: Fábrica (Brinquedos) -->
-      <section id="scene-factory" class="scene">
-        <div class="gears">
-          <div class="gear g1">⚙️</div>
-          <div class="gear g2">⚙️</div>
-          <div class="gear g3">⚙️</div>
-        </div>
-        <div class="conveyor-belt"></div>
-        <div class="factory-machine"></div>
-        <div id="toys-container"></div>
-      </section>
-
-      <!-- Cena 3: Mercado (Doces) -->
-      <section id="scene-market" class="scene">
-        <div class="store-awning"></div>
-        <div class="shelves"></div>
-        <div class="basket-front"></div>
-        <div id="candies-container"></div>
-        <div class="basket-back"></div>
-      </section>
-
-      <!-- Cena 4: Festa -->
-      <section id="scene-party" class="scene">
-        <div class="bunting"></div>
-        <div id="party-guests"></div>
-        <div id="party-table">
-          <div id="party-cake">🎂</div>
-          <div id="party-items-container"></div>
-        </div>
-        <div id="confetti-container"></div>
-      </section>
-
-    </div>
-  </main>
-
-  <script src="/labs/shared.js?v=4" defer></script>
-  <script src="audio.js?v=2" defer></script>
-  <script src="game.js?v=2" defer></script>
+  <script type="module" src="main.js?v=3"></script>
 </body>
+
 </html>
