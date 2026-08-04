@@ -382,7 +382,8 @@ body.is-playing #numpad { /* visible */ }
   #choice-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
-@media (max-width: 420px) {
-  #choice-grid { grid-template-columns: repeat(3, 1fr); }
-  .hud-btn { width: 38px; height: 38px; font-size: 1.1rem; }
+body.fs-fallback #app {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
 }

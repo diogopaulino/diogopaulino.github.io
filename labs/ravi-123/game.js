@@ -166,11 +166,21 @@ function setPad(active) {
 }
 
 function toggleFullscreen() {
-  const root = document.getElementById('app');
-  if (!document.fullscreenElement) {
-    (root.requestFullscreen || root.webkitRequestFullscreen || (() => {})).call(root);
-  } else {
-    (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  const root = document.documentElement;
+  const req = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (req) req.call(root);
+      else document.body.classList.add('fs-fallback');
+    } else if (exit) {
+      exit.call(document);
+      document.body.classList.remove('fs-fallback');
+    } else {
+      document.body.classList.toggle('fs-fallback');
+    }
+  } catch (_) {
+    document.body.classList.toggle('fs-fallback');
   }
 }
 
@@ -190,7 +200,7 @@ async function onNumber(n) {
   Audio.init();
   // Durante a esteira, números moldam o presente mesmo com busy
   if (S.scene === 'factoryBelt') {
-    if (n === 0) S.beltX += 22;
+    if (n === 0) S.beltBoost = (S.beltBoost || 0) + 28;
     else S.mold = n;
     Audio.pop();
     return;
@@ -271,7 +281,7 @@ function goSign() {
     { n: 2, label: 'Mercado', done: S.marketDone },
     { n: 3, label: 'Correios', done: S.inviteDone }
   ];
-  if (readyForParty()) items.push({ n: 4, label: '🎉 A FESTA!', done: false });
+  if (readyForParty()) items.push({ n: 4, label: 'A FESTA!', done: false });
   showChoices('Para onde vamos? Aperte um número!', items);
   say(readyForParty()
     ? 'Tudo pronto! Aperte 4 para a FESTA!'
@@ -905,23 +915,25 @@ function drawParty(ctx) {
     ctx.fillText('SURPRESA!', 320, 128);
   }
 
-  drawRavi(ctx, 200, 300, S.partyPhase === 'surprise' ? 'cheer' : 'wave', S.t);
+  drawRavi(ctx, 120, 310, S.partyPhase === 'surprise' || S.partyPhase === 'leave' ? 'cheer' : 'wave', S.t);
 
-  // convidados
+  // convidados em fila na frente da mesa
   const guests = [...S.invited];
   if (S.guestsIn > S.invited.length) guests.push(S.honoree);
 
-  for (let i = 0; i < Math.min(S.guestsIn, guests.length); i++) {
+  const shown = Math.min(S.guestsIn, guests.length);
+  for (let i = 0; i < shown; i++) {
     const hi = guests[i];
-    const x = 280 + i * 55;
-    const dance = S.partyPhase === 'leave' ? Math.sin(S.t * 8 + i) * 8 : 0;
-    const leaveX = S.partyPhase === 'leave' || S.partyPhase === 'bye' ? (S.t * 30) % 200 : 0;
-    drawHero(ctx, HEROES[hi], x + leaveX, 300 + dance, 0.75, S.t);
+    const spread = Math.min(70, 360 / Math.max(shown, 1));
+    const x = 220 + i * spread;
+    const dance = (S.partyPhase === 'leave' || S.partyPhase === 'surprise') ? Math.sin(S.t * 8 + i) * 10 : 0;
+    const leaveX = S.partyPhase === 'leave' || S.partyPhase === 'bye' ? ((S.t * 40) % 220) : 0;
+    drawHero(ctx, HEROES[hi], x + leaveX, 318 + dance, 1.05, S.t);
   }
 
-  // presente na mesa
+  // presente ao lado do bolo
   if (S.present) {
-    S.present.draw(ctx, 360, 250, 0.8);
+    S.present.draw(ctx, 420, 248, 0.95);
   }
 
   if (S.partyPhase === 'surprise' || S.partyPhase === 'leave' || S.partyPhase === 'bye') {
