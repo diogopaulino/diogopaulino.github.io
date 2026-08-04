@@ -202,16 +202,25 @@ function buildStartLine(circuit) {
  * ------------------------------------------------------------------ */
 
 function treeGeometry() {
-    const trunk = new THREE.CylinderGeometry(0.22, 0.32, 2.6, 5);
-    trunk.translate(0, 1.3, 0);
+    const trunk = new THREE.CylinderGeometry(0.3, 0.45, 3.5, 6);
+    trunk.translate(0, 1.75, 0);
     paint(trunk, 0x4a3a2a);
-    const low = new THREE.ConeGeometry(2.3, 4.6, 7);
-    low.translate(0, 4.4, 0);
-    paint(low, 0x2c4a22);
-    const top = new THREE.ConeGeometry(1.5, 3.4, 7);
-    top.translate(0, 6.8, 0);
-    paint(top, 0x35592a);
-    return mergeGeometries([trunk, low, top], false);
+    
+    // Pine tree layers (multiple overlapping cones)
+    const layers = [];
+    for(let i = 0; i < 4; i++) {
+        const r = 3.2 - i * 0.6;
+        const h = 4.5;
+        const cone = new THREE.ConeGeometry(r, h, 8);
+        cone.translate(0, 3.5 + i * 2.2, 0);
+        // Add some random tilt for organic look
+        cone.rotateX((Math.random() - 0.5) * 0.1);
+        cone.rotateZ((Math.random() - 0.5) * 0.1);
+        paint(cone, i % 2 === 0 ? 0x2c4a22 : 0x35592a);
+        layers.push(cone);
+    }
+    
+    return mergeGeometries([trunk, ...layers], false);
 }
 
 function paint(geometry, hex) {
@@ -603,11 +612,11 @@ export function buildWorld(circuit, { quality, weather }) {
     if (quality.scenery > 0.1 && !cityLike) {
         const trees = new THREE.InstancedMesh(
             treeGeometry(),
-            new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }),
-            Math.floor(circuit.count * 1.4 * quality.scenery)
+            new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.0 }),
+            Math.floor(circuit.count * 1.8 * quality.scenery) // Increased density
         );
-        trees.castShadow = false;
-        trees.receiveShadow = false;
+        trees.castShadow = true; // Enabled shadows for hyper-realism
+        trees.receiveShadow = true;
         let seed = 1337;
         const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
         let idx = 0;

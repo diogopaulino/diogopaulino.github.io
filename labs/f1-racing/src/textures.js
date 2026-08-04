@@ -76,30 +76,37 @@ function speckle(ctx, w, h, count, colors, size = 2, seed = 7) {
  * Road surface. `u` runs across the track, so the white edge lines and the darker
  * rubbered-in racing line are baked straight into the texture.
  */
-export function roadTexture(base = 0x3a3d44) {
+export function roadTexture(base = 0x22242a) { // Darker realistic asphalt base
     const key = `road-${base}`;
-    return makeTexture(key, 512, 512, (ctx, w, h) => {
+    return makeTexture(key, 1024, 1024, (ctx, w, h) => { // Higher resolution
         const col = new THREE.Color(base);
         ctx.fillStyle = `#${col.getHexString()}`;
         ctx.fillRect(0, 0, w, h);
-        noiseField(ctx, w, h, { cells: 40, alpha: 0.22, light: 210, dark: 40, seed: 12 });
-        noiseField(ctx, w, h, { cells: 140, alpha: 0.13, light: 190, dark: 60, seed: 88 });
-        speckle(ctx, w, h, 5200, ['#0006', '#fff1', '#0004'], 2, 33);
+        noiseField(ctx, w, h, { cells: 60, alpha: 0.15, light: 180, dark: 30, seed: 12 });
+        noiseField(ctx, w, h, { cells: 200, alpha: 0.1, light: 200, dark: 50, seed: 88 });
+        speckle(ctx, w, h, 15000, ['#00000044', '#ffffff11', '#00000066'], 2, 33); // More speckles for macro texture
 
         // Asphalt seam down the middle of the lane.
-        ctx.globalAlpha = 0.18;
+        ctx.globalAlpha = 0.25;
         ctx.fillStyle = '#000';
-        ctx.fillRect(w * 0.5 - 1, 0, 2, h);
+        ctx.fillRect(w * 0.5 - 2, 0, 4, h);
         ctx.globalAlpha = 1;
 
         // Painted edge lines.
         ctx.fillStyle = '#e9ecef';
         ctx.fillRect(w * 0.022, 0, w * 0.028, h);
         ctx.fillRect(w * 0.95, 0, w * 0.028, h);
+        
+        // Add subtle tyre grooves / rubbering near edges
+        ctx.globalAlpha = 0.1;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(w * 0.1, 0, w * 0.15, h);
+        ctx.fillRect(w * 0.75, 0, w * 0.15, h);
+        
         ctx.globalAlpha = 0.35;
-        speckle(ctx, w, h, 700, ['#0008'], 3, 5);
+        speckle(ctx, w, h, 1200, ['#0008'], 3, 5);
         ctx.globalAlpha = 1;
-    }, { repeat: [1, 1] });
+    }, { repeat: [1, 1], aniso: 16 });
 }
 
 /** Rubber build-up on the racing line, blended over the road with a second pass. */
@@ -117,15 +124,15 @@ export function kerbTexture() {
     }, { repeat: [1, 1] });
 }
 
-export function grassTexture(tint = 0x2f4a24) {
-    return makeTexture(`grass-${tint}`, 512, 512, (ctx, w, h) => {
+export function grassTexture(tint = 0x223618) { // Darker grass tint
+    return makeTexture(`grass-${tint}`, 1024, 1024, (ctx, w, h) => { // Higher res
         const col = new THREE.Color(tint);
         ctx.fillStyle = `#${col.getHexString()}`;
         ctx.fillRect(0, 0, w, h);
-        noiseField(ctx, w, h, { cells: 26, alpha: 0.4, light: 150, dark: 20, seed: 21 });
-        noiseField(ctx, w, h, { cells: 90, alpha: 0.22, light: 170, dark: 30, seed: 55 });
-        speckle(ctx, w, h, 9000, ['#00000022', '#7fa04a33', '#4c6b2a44'], 3, 91);
-    }, { repeat: [1, 1] });
+        noiseField(ctx, w, h, { cells: 35, alpha: 0.45, light: 130, dark: 10, seed: 21 });
+        noiseField(ctx, w, h, { cells: 150, alpha: 0.25, light: 160, dark: 20, seed: 55 });
+        speckle(ctx, w, h, 18000, ['#00000033', '#7fa04a22', '#4c6b2a44'], 3, 91);
+    }, { repeat: [1, 1], aniso: 8 });
 }
 
 /** Asphalt run-off apron: like the track but lighter, unmarked and coarser. */
