@@ -5,16 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#08090d">
+    <meta name="theme-color" content="#07080c">
     <meta name="description"
-        content="Simulador ultra-realista de corrida de Fórmula 1 no navegador, com DRS, ERS, motor sintetizado, circuitos reais e telemetria avançada.">
-    <title>F1 Grand Prix Pro — Realistic Racing Lab</title>
+        content="Simulador de Fórmula 1 em 3D com Three.js e WebGPU: circuitos reais, física de pneus, DRS, ERS, IA e telemetria ao vivo no navegador.">
+    <title>F1 Grand Prix — Simulador 3D WebGPU</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=3">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&display=swap"
+    <link rel="stylesheet" href="style.css?v=10">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
+            "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
+            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.tsl.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
 </head>
 
 <body>
@@ -22,366 +33,240 @@
         <header data-lab-header data-title="F1 Grand Prix" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="f1-logo">F1</span>
+                    <span class="f1-mark">F1</span>
                     <span>Grand Prix</span>
-                    <span class="logo-status"><i></i> Realistic Simulator</span>
+                    <span class="logo-status"><i></i> <span id="backendBadge">3D</span></span>
                 </div>
             </template>
         </header>
 
-        <section class="game-wrapper" aria-label="Simulador de corrida">
-            <canvas id="gameCanvas" aria-label="Pista de corrida com carros realistas"></canvas>
+        <section class="stage" aria-label="Simulador de corrida">
+            <canvas id="scene" aria-label="Circuito em 3D"></canvas>
 
-            <div class="ambient-vignette" aria-hidden="true"></div>
-            <div id="rainOverlay" class="rain-overlay hidden" aria-hidden="true"></div>
+            <!-- ============ HUD ============ -->
+            <div id="hud" class="hud" aria-label="Telemetria">
+                <div class="hud-corner hud-top-left">
+                    <div class="panel stat-panel">
+                        <span class="stat-label">Posição</span>
+                        <p class="stat-value"><strong id="positionValue">1</strong><span>/<span id="positionTotal">8</span></span></p>
+                    </div>
+                    <div class="panel stat-panel">
+                        <span class="stat-label">Volta</span>
+                        <p class="stat-value"><strong id="lapValue">1</strong><span>/<span id="lapTotal">4</span></span></p>
+                    </div>
+                    <ol id="timingTower" class="timing-tower" aria-label="Classificação"></ol>
+                </div>
 
-            <div class="hud" id="raceHud" aria-label="Telemetria da corrida">
-                <div class="hud-cluster hud-left">
-                    <div class="metric-card position-display">
-                        <span class="metric-label">POSIÇÃO</span>
-                        <span class="metric-line">
-                            <strong id="position">1</strong>
-                            <span>/ 5</span>
-                        </span>
-                    </div>
-                    <div class="metric-card lap-display">
-                        <span class="metric-label">VOLTA</span>
-                        <span class="metric-line">
-                            <strong id="lap">1</strong>
-                            <span>/ 3</span>
-                        </span>
-                    </div>
-                    <div class="metric-card ers-display">
-                        <span class="metric-label">ERS BATERIA</span>
-                        <div class="ers-bar-wrapper">
-                            <div id="ersFill" class="ers-fill" style="width: 100%;"></div>
+                <div class="hud-corner hud-top-right">
+                    <div class="panel timing-panel">
+                        <div class="timing-row">
+                            <span class="stat-label">Volta atual</span>
+                            <strong id="currentLapTime" class="mono">0:00.000</strong>
                         </div>
+                        <div class="timing-row">
+                            <span class="stat-label">Melhor</span>
+                            <strong id="bestLapTime" class="mono">--:--.---</strong>
+                        </div>
+                        <div class="timing-row delta-row">
+                            <span id="sectorLabel" class="sector-label"></span>
+                            <span id="lastDelta" class="mono delta"></span>
+                        </div>
+                    </div>
+                    <div class="panel map-panel">
+                        <div class="map-head">
+                            <span class="stat-label">Circuito</span>
+                            <strong id="circuitName">MONZA</strong>
+                        </div>
+                        <canvas id="minimap" aria-label="Mapa do circuito"></canvas>
                     </div>
                 </div>
 
-                <div class="hud-center">
-                    <div class="telemetry-panel">
-                        <div class="rpm-lights" id="rpmLights" aria-hidden="true">
-                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <div class="hud-bottom">
+                    <div class="panel systems-panel">
+                        <div class="system-block">
+                            <span class="stat-label">ERS</span>
+                            <div class="meter ers"><i id="ersFill"></i></div>
+                            <span id="ersValue" class="mono small">100%</span>
                         </div>
-                        <div class="telemetry-main">
-                            <div class="speedometer">
-                                <svg viewBox="0 0 120 120" aria-hidden="true">
-                                    <circle class="speed-bg" cx="60" cy="60" r="52"></circle>
-                                    <circle id="speedArc" class="speed-fill" cx="60" cy="60" r="52"></circle>
-                                </svg>
-                                <div class="speed-value">
-                                    <strong id="speed">0</strong>
-                                    <span>KM/H</span>
-                                </div>
+                        <div class="system-block">
+                            <span class="stat-label">Pneu <b id="tyreLabel">Macio</b></span>
+                            <div class="meter tyre"><i id="tyreWear"></i></div>
+                            <span id="tyreTemp" class="mono small" data-state="cold">55°</span>
+                        </div>
+                        <span id="drsBadge" class="drs-badge" data-state="off">DRS</span>
+                    </div>
+
+                    <div class="cluster">
+                        <div class="shift-lights" id="shiftLights" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                        </div>
+                        <div class="cluster-main">
+                            <div class="speedo">
+                                <strong id="speedValue">0</strong>
+                                <span>km/h</span>
                             </div>
-                            <div class="gear-display">
-                                <span>MARCHA</span>
-                                <strong id="gear">N</strong>
+                            <div class="gear">
+                                <strong id="gearValue">N</strong>
                             </div>
                         </div>
-                        <div class="rpm-track">
-                            <span id="rpmBar"></span>
-                        </div>
+                        <div class="rpm-track"><i id="rpmFill"></i></div>
                     </div>
-                    <div class="systems-status">
-                        <span id="drsBadge" class="system-badge drs-disabled">DRS INDISPONÍVEL</span>
-                        <span id="ersBadge" class="system-badge ers-ready">ERS PRONTO</span>
+
+                    <div class="hud-actions">
+                        <button id="cameraButton" class="icon-button" type="button" title="Câmera (C)" aria-label="Trocar câmera">🎥</button>
+                        <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">⏸</button>
+                        <span id="fpsCounter" class="fps mono">—</span>
                     </div>
                 </div>
 
-                <div class="hud-cluster hud-right">
-                    <div class="metric-card time-display">
-                        <span class="metric-label">TEMPO</span>
-                        <strong id="time" class="time-value">0:00.00</strong>
-                    </div>
-                    <div class="metric-card best-display">
-                        <span class="metric-label">MELHOR</span>
-                        <strong id="bestLap" class="time-value">--:--.--</strong>
-                    </div>
-                    <div class="metric-card tire-display">
-                        <span class="metric-label">PNEU</span>
-                        <strong id="hudTireLabel" class="tire-value soft">SOFT</strong>
-                    </div>
-                </div>
+                <p id="raceMessage" class="race-message" role="status"></p>
+            </div>
 
-                <div class="race-progress" aria-hidden="true">
-                    <span id="raceProgress"></span>
+            <div id="countdown" class="countdown" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+            <!-- ============ Touch controls ============ -->
+            <div id="touchControls" class="touch-controls" aria-label="Controles">
+                <div class="pad-group pad-left">
+                    <button type="button" class="pad" data-control="left" aria-label="Esquerda">◀</button>
+                    <button type="button" class="pad" data-control="right" aria-label="Direita">▶</button>
+                </div>
+                <div class="pad-group pad-right">
+                    <button type="button" class="pad pad-small" data-control="drs" aria-label="DRS">DRS</button>
+                    <button type="button" class="pad pad-small" data-control="ers" aria-label="ERS">ERS</button>
+                    <button type="button" class="pad pad-brake" data-control="brake" aria-label="Freio">FREIO</button>
+                    <button type="button" class="pad pad-throttle" data-control="throttle" aria-label="Acelerar">GÁS</button>
                 </div>
             </div>
 
-            <div class="top-actions">
-                <button id="optionsBtn" class="icon-button" type="button" aria-label="Opções e Configurações" title="Configurações (O)">
-                    ⚙️
-                </button>
-                <button id="cameraToggleBtn" class="icon-button" type="button" aria-label="Alternar Câmera" title="Alternar Câmera (C)">
-                    🎥
-                </button>
-                <button id="pauseBtn" class="pause-button" type="button" aria-label="Pausar corrida" title="Pausar corrida (P)">
-                    <span></span><span></span>
-                </button>
-            </div>
+            <!-- ============ Menu ============ -->
+            <div id="menuOverlay" class="overlay menu-overlay">
+                <div class="overlay-card menu-card">
+                    <header class="menu-head">
+                        <p class="eyebrow"><i></i> Three.js · WebGPU · TSL</p>
+                        <h1>F1 <span>Grand Prix</span></h1>
+                        <p class="lede">Quatro circuitos modelados a partir da geometria real, física de pneus com carga
+                            aerodinâmica, ERS, DRS e um grid de IA que briga de verdade.</p>
+                    </header>
 
-            <div class="minimap-container">
-                <div class="minimap-heading">
-                    <span>CIRCUITO</span>
-                    <strong id="minimapTrackName">GP MONZA</strong>
-                </div>
-                <canvas id="minimapCanvas" aria-label="Mapa do circuito"></canvas>
-            </div>
+                    <div class="menu-grid">
+                        <section class="menu-section menu-section--wide">
+                            <h2>Circuito</h2>
+                            <div id="circuitList" class="option-list circuit-list"></div>
+                            <p id="circuitBlurb" class="section-note"></p>
+                        </section>
 
-            <div id="mobileControls" class="mobile-controls" aria-label="Controles da corrida">
-                <div class="steering-controls">
-                    <button type="button" class="control-pad" data-control="left" aria-label="Virar para esquerda">
-                        <span>←</span>
-                    </button>
-                    <button type="button" class="control-pad" data-control="right" aria-label="Virar para direita">
-                        <span>→</span>
-                    </button>
-                </div>
-                <div class="systems-mobile-controls">
-                    <button type="button" class="control-pad system-pad drs-pad" data-control="drs" aria-label="Ativar DRS">
-                        <span>DRS</span>
-                    </button>
-                    <button type="button" class="control-pad system-pad ers-pad" data-control="boost" aria-label="Boost ERS">
-                        <span>BOOST</span>
-                    </button>
-                </div>
-                <div class="pedal-controls">
-                    <button type="button" class="control-pad brake-pad" data-control="down" aria-label="Frear">
-                        <span>FREIO</span>
-                    </button>
-                    <button type="button" class="control-pad throttle-pad" data-control="up" aria-label="Acelerar">
-                        <span>ACELERAR</span>
-                    </button>
-                </div>
-            </div>
+                        <section class="menu-section">
+                            <h2>Equipe</h2>
+                            <div id="teamList" class="option-list team-list"></div>
+                        </section>
 
-            <div id="startScreen" class="overlay start-overlay">
-                <div class="start-decoration start-decoration-left" aria-hidden="true"></div>
-                <div class="start-decoration start-decoration-right" aria-hidden="true"></div>
+                        <section class="menu-section">
+                            <h2>Composto</h2>
+                            <div id="compoundOptions" class="chip-row"></div>
 
-                <div class="overlay-content start-card scrollable-card">
-                    <p class="eyebrow"><span></span> Realistic F1 Simulator</p>
-                    <h1 class="f1-title">
-                        <span class="f1-red">F1</span>
-                        <span>Grand Prix Pro</span>
-                    </h1>
-                    <p class="start-copy">Carros hiper-realistas, DRS, ERS, som de motor sintetizado e suporte a telemetria.</p>
+                            <h2>Clima</h2>
+                            <div id="weatherOptions" class="chip-row"></div>
 
-                    <div class="config-grid">
-                        <fieldset class="config-section">
-                            <legend>CIRCUITO</legend>
-                            <div class="track-options">
-                                <button class="track-btn selected" type="button" data-track="monza">
-                                    <span class="track-name">Monza GP</span>
-                                    <span class="track-desc">Alta Velocidade · 2 Retas DRS</span>
-                                </button>
-                                <button class="track-btn" type="button" data-track="spa">
-                                    <span class="track-name">Spa-Francorchamps</span>
-                                    <span class="track-desc">Técnico · Curvas Rápidas</span>
-                                </button>
-                                <button class="track-btn" type="button" data-track="monaco">
-                                    <span class="track-name">Monaco GP</span>
-                                    <span class="track-desc">Rua · Precisão Extrema</span>
-                                </button>
+                            <h2>Nível da IA</h2>
+                            <div id="difficultyOptions" class="chip-row"></div>
+                        </section>
+
+                        <section class="menu-section menu-section--wide">
+                            <h2>Ajustes</h2>
+                            <div class="settings-grid">
+                                <label class="field">
+                                    <span>Adversários <b id="opponentsValue">7</b></span>
+                                    <input id="opponentsSlider" type="range" min="1" max="7" step="1">
+                                </label>
+                                <label class="field">
+                                    <span>Volume</span>
+                                    <input id="volumeSlider" type="range" min="0" max="100" step="1">
+                                </label>
+                                <label class="field">
+                                    <span>Qualidade</span>
+                                    <select id="qualitySelect">
+                                        <option value="auto">Automática</option>
+                                        <option value="low">Performance</option>
+                                        <option value="medium">Equilibrada</option>
+                                        <option value="high">Ultra</option>
+                                    </select>
+                                </label>
+                                <label class="field field--switch">
+                                    <span>Assistências de pilotagem</span>
+                                    <input id="assistsToggle" type="checkbox">
+                                </label>
+                                <label class="field field--switch">
+                                    <span>Áudio do motor</span>
+                                    <input id="audioToggle" type="checkbox">
+                                </label>
+                                <button id="clearRecords" class="ghost-button" type="button">Apagar recordes</button>
                             </div>
-                        </fieldset>
-
-                        <fieldset class="car-select config-section">
-                            <legend>EQUIPE</legend>
-                            <div class="team-options">
-                                <button class="team-btn selected" type="button" data-color="#ff2b24" data-name="Ferrari"
-                                    aria-pressed="true" style="--team-color: #ff2b24">
-                                    <span class="team-number">16</span>
-                                    <span class="team-name">Ferrari</span>
-                                    <span class="team-color"></span>
-                                </button>
-                                <button class="team-btn" type="button" data-color="#27f4d2" data-name="Mercedes"
-                                    aria-pressed="false" style="--team-color: #27f4d2">
-                                    <span class="team-number">63</span>
-                                    <span class="team-name">Mercedes</span>
-                                    <span class="team-color"></span>
-                                </button>
-                                <button class="team-btn" type="button" data-color="#3671C6" data-name="Red Bull"
-                                    aria-pressed="false" style="--team-color: #3671C6">
-                                    <span class="team-number">01</span>
-                                    <span class="team-name">Red Bull</span>
-                                    <span class="team-color"></span>
-                                </button>
-                                <button class="team-btn" type="button" data-color="#ff8700" data-name="McLaren"
-                                    aria-pressed="false" style="--team-color: #ff8700">
-                                    <span class="team-number">04</span>
-                                    <span class="team-name">McLaren</span>
-                                    <span class="team-color"></span>
-                                </button>
-                                <button class="team-btn" type="button" data-color="#229971" data-name="Aston Martin"
-                                    aria-pressed="false" style="--team-color: #229971">
-                                    <span class="team-number">14</span>
-                                    <span class="team-name">Aston Martin</span>
-                                    <span class="team-color"></span>
-                                </button>
-                                <button class="team-btn" type="button" data-color="#0093cc" data-name="Alpine"
-                                    aria-pressed="false" style="--team-color: #0093cc">
-                                    <span class="team-number">10</span>
-                                    <span class="team-name">Alpine</span>
-                                    <span class="team-color"></span>
-                                </button>
-                            </div>
-                        </fieldset>
-
-                        <div class="row-configs">
-                            <fieldset class="config-section">
-                                <legend>COMPOSTO DE PNEU</legend>
-                                <div class="tire-options">
-                                    <button class="tire-btn selected soft" type="button" data-tire="soft">Soft (Máxima Aderência)</button>
-                                    <button class="tire-btn medium" type="button" data-tire="medium">Medium (Equilibrado)</button>
-                                    <button class="tire-btn hard" type="button" data-tire="hard">Hard (Alta Durabilidade)</button>
-                                </div>
-                            </fieldset>
-
-                            <fieldset class="config-section">
-                                <legend>CLIMA</legend>
-                                <div class="weather-options">
-                                    <button class="weather-btn selected" type="button" data-weather="dry">☀️ Pista Seca</button>
-                                    <button class="weather-btn" type="button" data-weather="wet">🌧️ Chuva (Pista Molhada)</button>
-                                </div>
-                            </fieldset>
-                        </div>
+                        </section>
                     </div>
 
-                    <div class="controls-info">
-                        <span class="controls-label">CONTROLES DO PILOTO</span>
-                        <div class="keyboard-hints">
-                            <span><kbd>W</kbd><kbd>↑</kbd> Acelerar</span>
-                            <span><kbd>S</kbd><kbd>↓</kbd> Frear</span>
-                            <span><kbd>A</kbd><kbd>D</kbd> Direção</span>
+                    <footer class="menu-foot">
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>S</kbd> acelerar / frear</span>
+                            <span><kbd>A</kbd><kbd>D</kbd> direção</span>
                             <span><kbd>E</kbd> DRS</span>
-                            <span><kbd>Espaço</kbd>/<kbd>Shift</kbd> BOOST ERS</span>
+                            <span><kbd>Espaço</kbd> ERS</span>
+                            <span><kbd>C</kbd> câmera</span>
+                            <span><kbd>P</kbd> pausa</span>
                         </div>
-                    </div>
-
-                    <div class="action-bar">
-                        <button id="startBtn" class="start-button" type="button">
-                            <span class="btn-label">Largar agora</span>
-                            <span class="btn-arrow" aria-hidden="true">→</span>
-                            <span class="start-lights" aria-hidden="true">
-                                <i></i><i></i><i></i><i></i><i></i>
-                            </span>
+                        <button id="startButton" class="primary-button" type="button">
+                            <span>Ir para o grid</span>
+                            <i aria-hidden="true">→</i>
                         </button>
-                        <button id="startOptionsBtn" class="secondary-button" type="button" aria-label="Opções">
-                            ⚙️ Opções
-                        </button>
-                    </div>
+                    </footer>
                 </div>
             </div>
 
-            <div id="optionsModal" class="overlay modal-overlay hidden">
-                <div class="overlay-content compact-card options-card">
-                    <p class="eyebrow"><span></span> Configurações de jogo</p>
-                    <h2>Opções & Preferências</h2>
-
-                    <div class="options-form">
-                        <div class="option-item">
-                            <label for="sfxVolumeSlider">Volume de Áudio / Motor</label>
-                            <input id="sfxVolumeSlider" type="range" min="0" max="100" value="80">
-                        </div>
-
-                        <div class="option-item toggle-item">
-                            <span>Motor Sintetizado Web Audio</span>
-                            <label class="switch">
-                                <input id="engineAudioToggle" type="checkbox" checked>
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-
-                        <div class="option-item">
-                            <label for="cameraModeSelect">Modo de Câmera</label>
-                            <select id="cameraModeSelect">
-                                <option value="chase">Câmera Dinâmica (Chase Cam)</option>
-                                <option value="full">Visão Geral do Circuito</option>
-                            </select>
-                        </div>
-
-                        <div class="option-item">
-                            <label for="difficultySelect">Dificuldade dos Rivais (IA)</label>
-                            <select id="difficultySelect">
-                                <option value="rookie">Rookie (Iniciante)</option>
-                                <option value="pro" selected>Pro (Intermediário)</option>
-                                <option value="legend">Legend (Desafio Máximo)</option>
-                            </select>
-                        </div>
-
-                        <div class="option-item">
-                            <button id="resetRecordsBtn" class="danger-button" type="button">Restaurar Tempos / Recordes</button>
-                        </div>
-                    </div>
-
-                    <button id="closeOptionsBtn" class="start-button" type="button">
-                        <span class="btn-label">Salvar & Fechar</span>
-                    </button>
-                </div>
-            </div>
-
-            <div id="countdownOverlay" class="overlay countdown-overlay hidden" aria-live="assertive">
-                <p>Prepare-se</p>
-                <div class="countdown-lights">
-                    <span class="countdown-light"></span>
-                    <span class="countdown-light"></span>
-                    <span class="countdown-light"></span>
-                    <span class="countdown-light"></span>
-                    <span class="countdown-light"></span>
-                </div>
-                <div id="countdownText" class="countdown-text"></div>
-            </div>
-
-            <div id="pauseScreen" class="overlay pause-overlay hidden">
-                <div class="overlay-content compact-card">
-                    <p class="eyebrow"><span></span> Corrida pausada</p>
+            <!-- ============ Pause ============ -->
+            <div id="pauseOverlay" class="overlay">
+                <div class="overlay-card compact-card">
+                    <p class="eyebrow"><i></i> Corrida pausada</p>
                     <h2>Respire.<br>Volte mais rápido.</h2>
-                    <button id="resumeBtn" class="start-button" type="button">
-                        <span class="btn-label">Continuar corrida</span>
-                        <span class="btn-arrow" aria-hidden="true">→</span>
-                    </button>
-                    <button id="pauseOptionsBtn" class="secondary-button" type="button">⚙️ Opções</button>
-                    <button id="quitBtn" class="text-button" type="button">Voltar ao grid</button>
+                    <button id="resumeButton" class="primary-button" type="button"><span>Continuar</span><i aria-hidden="true">→</i></button>
+                    <button id="restartButton" class="ghost-button" type="button">Reiniciar corrida</button>
+                    <button id="quitButton" class="text-button" type="button">Voltar ao menu</button>
                 </div>
             </div>
 
-            <div id="finishScreen" class="overlay finish-overlay hidden" aria-live="polite">
-                <div class="overlay-content finish-card">
-                    <div class="finish-flag" aria-hidden="true"></div>
-                    <p class="eyebrow"><span></span> Resultado oficial</p>
-                    <h2 id="finishTitle">CORRIDA FINALIZADA</h2>
-                    <p id="finishTeam" class="finish-team">Ferrari · GP Labs</p>
-                    <div class="results">
-                        <div class="result-item featured-result">
-                            <span>Posição final</span>
-                            <strong id="finalPosition">1º</strong>
-                        </div>
-                        <div class="result-item">
-                            <span>Melhor volta</span>
-                            <strong id="finalBestLap">--:--.--</strong>
-                        </div>
-                        <div class="result-item">
-                            <span>Tempo total</span>
-                            <strong id="finalTime">0:00.00</strong>
-                        </div>
+            <!-- ============ Results ============ -->
+            <div id="resultsOverlay" class="overlay">
+                <div class="overlay-card results-card">
+                    <p class="eyebrow"><i></i> Bandeira quadriculada</p>
+                    <h2 id="resultTitle">CORRIDA FINALIZADA</h2>
+                    <p id="resultTeam" class="result-team"></p>
+                    <div class="result-highlights">
+                        <div><span>Posição</span><strong id="resultPosition">1º</strong></div>
+                        <div><span>Melhor volta</span><strong id="resultBest" class="mono">--:--.---</strong></div>
+                        <div><span>Tempo total</span><strong id="resultTotal" class="mono">--:--.---</strong></div>
                     </div>
-                    <button id="restartBtn" class="start-button" type="button">
-                        <span class="btn-label">Correr novamente</span>
-                        <span class="btn-arrow" aria-hidden="true">↻</span>
-                    </button>
-                    <button id="changeTeamBtn" class="text-button" type="button">Trocar equipe / pista</button>
+                    <ol id="resultBoard" class="result-board"></ol>
+                    <div class="result-actions">
+                        <button id="resultsRestartButton" class="primary-button" type="button"><span>Correr de novo</span><i aria-hidden="true">↻</i></button>
+                        <button id="resultsMenuButton" class="text-button" type="button">Trocar circuito / equipe</button>
+                    </div>
                 </div>
             </div>
 
-            <div id="raceAnnouncement" class="sr-only" aria-live="polite"></div>
+            <!-- ============ Loading ============ -->
+            <div id="loadingOverlay" class="overlay loading-overlay is-visible">
+                <div class="loading-card">
+                    <div class="loading-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+                    <p id="loadingText">carregando…</p>
+                </div>
+            </div>
+
+            <p id="raceAnnouncer" class="sr-only" aria-live="polite"></p>
         </section>
     </main>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js?v=3" defer></script>
+    <script type="module" src="src/main.js?v=2"></script>
 </body>
 
 </html>

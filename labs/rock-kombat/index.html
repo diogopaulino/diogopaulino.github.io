@@ -1,222 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Rock Kombat — Rock Legends Fighting Game</title>
-  <meta name="description"
-    content="Rock Kombat é um jogo de luta arcade com lendas do rock, golpes especiais, modo versus e controles mobile.">
-  <meta name="theme-color" content="#09030f">
-  <link rel="canonical" href="https://diogopaulino.com.br/labs/rock-kombat/">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Rock Kombat — Rock Legends Fighting Game">
-  <meta property="og:description" content="O palco virou arena. Escolha sua lenda e domine o encore.">
-  <meta property="og:image"
-    content="https://diogopaulino.com.br/labs/rock-kombat/assets/rock-kombat-fighters.webp">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,800&family=Oswald:wght@500;600;700&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Rock Kombat — 2D Arcade Fight</title>
+  <meta name="description" content="Jogo de luta 2D com lendas do rock, combate baseado em frame data e arte digitalizada.">
+  <meta name="theme-color" content="#090a0c">
+  <meta property="og:title" content="Rock Kombat — 2D Arcade Fight">
+  <meta property="og:description" content="Escolha sua lenda. Leia a distância. Domine o palco.">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
-
 <body>
-  <div class="noise" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
 
   <header class="topbar">
-    <a class="back-link" href="/labs/" aria-label="Voltar para Labs">
-      <span aria-hidden="true">←</span> LABS
-    </a>
-    <div class="brand" aria-label="Rock Kombat">
-      <span>ROCK</span><strong>KOMBAT</strong>
-    </div>
-    <div class="header-tools">
-      <button class="icon-btn how-btn" id="how-to-play" type="button">? COMO JOGAR</button>
-      <button class="icon-btn" id="sound-toggle" type="button" aria-label="Ativar ou desativar som">SOM: ON</button>
+    <a href="/labs/" class="back-link" aria-label="Voltar para Labs">← <span>LABS</span></a>
+    <div class="mini-brand" aria-label="Rock Kombat"><b>ROCK</b> KOMBAT</div>
+    <div class="top-actions">
+      <button id="help-button" type="button">COMANDOS</button>
+      <button id="sound-button" type="button" aria-label="Ativar ou desativar som">SOM ON</button>
     </div>
   </header>
 
-  <main>
-    <section class="screen hero-screen is-active" id="hero-screen" aria-labelledby="hero-title">
-      <img class="hero-art" src="assets/rock-kombat-fighters.webp"
-        alt="Kurt Cobain, Axl Rose e John Lennon em pose de luta no palco">
-      <div class="hero-scrim"></div>
-      <div class="hero-content">
-        <p class="eyebrow"><span></span> WORLD TOUR '94 <span></span></p>
+  <main id="app">
+    <section class="screen hero is-active" id="hero-screen" aria-labelledby="hero-title">
+      <div class="hero-stage" aria-hidden="true"></div>
+      <div class="hero-fighters" aria-hidden="true">
+        <i class="sheet-figure kurt"></i>
+        <i class="sheet-figure axl"></i>
+        <i class="sheet-figure lennon"></i>
+      </div>
+      <div class="hero-shade" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="overline">A NEW 2D ARCADE FIGHT</p>
         <h1 id="hero-title"><span>ROCK</span> KOMBAT</h1>
-        <p class="hero-copy">O palco virou arena. O amplificador está no máximo.<br>Escolha sua lenda e domine o
-          encore.</p>
-        <button class="primary-btn" id="enter-game" type="button">
-          <span>PRESS START</span><small>ENTRAR NA ARENA</small>
-        </button>
-        <p class="hero-tip">TECLADO (SETAS / ASD + Q,E,R) · CONTROLE TOUCH</p>
+        <p>Três eras. Um palco. Combate preciso, impacto pesado e nenhuma pose desmontada.</p>
+        <button class="cta" id="enter-button" type="button"><b>PRESS START</b><span>ENTRAR NO TORNEIO</span></button>
+        <small>TECLADO · TOUCH · 60 FPS</small>
       </div>
     </section>
 
-    <section class="screen select-screen" id="select-screen" aria-labelledby="select-title">
-      <div class="section-heading">
-        <p class="kicker">SELECT YOUR FIGHTER</p>
+    <section class="screen select" id="select-screen" aria-labelledby="select-title">
+      <div class="select-head">
+        <p class="overline">SELECT YOUR FIGHTER</p>
         <h2 id="select-title">ESCOLHA SUA <em>LENDA</em></h2>
-        <p>Cada artista tem atributos, ritmo e um golpe especial exclusivo.</p>
+        <p>Personagens completos, estilos distintos e especiais próprios.</p>
       </div>
 
-      <div class="stage-switch" role="group" aria-label="Escolha do Palco">
-        <button class="stage-btn is-active" data-stage="woodstock" type="button">WOODSTOCK '69</button>
-        <button class="stage-btn" data-stage="stadium" type="button">STADIUM ARENA</button>
-        <button class="stage-btn" data-stage="club" type="button">UNDERGROUND CLUB</button>
-      </div>
+      <div class="selection-layout">
+        <div class="roster" id="roster" role="list" aria-label="Lutadores"></div>
 
-      <div class="stage-switch" role="group" aria-label="Dificuldade">
-        <button class="stage-btn" data-difficulty="easy" type="button">FÁCIL</button>
-        <button class="stage-btn is-active" data-difficulty="normal" type="button">NORMAL</button>
-        <button class="stage-btn" data-difficulty="hard" type="button">DIFÍCIL</button>
-      </div>
-
-      <div class="quick-guide" aria-label="Passos para jogar">
-        <div><b>1</b><span><strong>ESCOLHA</strong>um artista</span></div>
-        <i>→</i>
-        <div><b>2</b><span><strong>ATAQUE</strong>quando chegar perto</span></div>
-        <i>→</i>
-        <div><b>3</b><span><strong>ESPECIAL</strong>Mini aos 50%, Super aos 100%</span></div>
-      </div>
-
-      <div class="versus-picks">
-        <div class="pick-slot" id="p1-pick">
-          <span class="player-tag">PLAYER 1</span>
-          <strong>ESCOLHA</strong>
-        </div>
-        <div class="vs-burst">VS</div>
-        <div class="pick-slot opponent" id="p2-pick">
-          <span class="player-tag">CPU</span>
-          <strong>ALEATÓRIO</strong>
-        </div>
-      </div>
-
-      <div class="roster" id="roster" role="list" aria-label="Personagens disponíveis"></div>
-
-      <div class="select-actions">
-        <button class="text-btn" id="back-to-hero" type="button">← VOLTAR</button>
-        <button class="fight-btn" id="start-fight" type="button" disabled>
-          <span>LET'S ROCK</span><small>COMEÇAR LUTA</small>
-        </button>
-      </div>
-    </section>
-
-    <section class="screen arena-screen" id="arena-screen" aria-label="Arena de luta">
-      <div class="arena-shell">
-        <div class="fight-hud" aria-live="polite">
-          <div class="hud-player">
-            <div class="hud-row"><strong id="p1-name">KURT</strong><span>P1</span></div>
-            <div class="health-track left"><i id="p1-health"></i></div>
-            <div class="special-line"><small>ESPECIAL</small><div class="special-track"><i id="p1-meter"></i></div><b id="p1-ready">CARREGANDO</b></div>
+        <aside class="match-setup" aria-label="Configuração da partida">
+          <div class="versus-preview">
+            <div><small>P1</small><strong id="p1-preview">ESCOLHA</strong></div>
+            <b>VS</b>
+            <div><small>CPU</small><strong id="cpu-preview">ALEATÓRIO</strong></div>
           </div>
-          <div class="round-center">
-            <span id="round-label">ROUND 1</span>
-            <strong id="timer">90</strong>
-            <div class="round-pips">
-              <div class="round-pips-side" id="p1-pips"><i></i><i></i></div>
-              <div class="round-pips-side" id="p2-pips"><i></i><i></i></div>
+
+          <fieldset>
+            <legend>PALCO</legend>
+            <div class="option-grid" id="stage-options">
+              <button class="option is-active" data-stage="seattle" type="button"><b>SEATTLE RAIN</b><span>Blue hour · chuva</span></button>
+              <button class="option" data-stage="coliseum" type="button"><b>RED COLOSSEUM</b><span>Stadium · 1988</span></button>
+              <button class="option" data-stage="cellar" type="button"><b>ABBEY CELLAR</b><span>London · 1969</span></button>
             </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>DIFICULDADE</legend>
+            <div class="difficulty" id="difficulty-options">
+              <button data-difficulty="easy" type="button">FÁCIL</button>
+              <button data-difficulty="normal" class="is-active" type="button">NORMAL</button>
+              <button data-difficulty="hard" type="button">DIFÍCIL</button>
+            </div>
+          </fieldset>
+
+          <button class="cta fight-cta" id="fight-button" type="button" disabled><b>LET'S ROCK</b><span>COMEÇAR LUTA</span></button>
+          <button class="quiet-button" id="select-back" type="button">← VOLTAR</button>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen arena" id="arena-screen" aria-label="Arena de luta">
+      <div class="arena-shell">
+        <div class="hud" aria-live="polite">
+          <div class="hud-side p1">
+            <div class="hud-name"><strong id="p1-name">KURT</strong><span>P1</span></div>
+            <div class="life"><i id="p1-life"></i><b id="p1-chip"></b></div>
+            <div class="meter"><span>AMPLIFIER</span><div><i id="p1-meter"></i></div><b id="p1-meter-label">0%</b></div>
           </div>
-          <div class="hud-player right">
-            <div class="hud-row"><span id="opponent-label">CPU</span><strong id="p2-name">AXL</strong></div>
-            <div class="health-track right"><i id="p2-health"></i></div>
-            <div class="special-line right"><b id="p2-ready">CARREGANDO</b><div class="special-track"><i id="p2-meter"></i></div><small>ESPECIAL</small></div>
+          <div class="round-hud">
+            <span id="round-label">ROUND 1</span>
+            <strong id="timer">99</strong>
+            <div class="round-wins"><i id="p1-win-1"></i><i id="p1-win-2"></i><b></b><i id="p2-win-1"></i><i id="p2-win-2"></i></div>
+          </div>
+          <div class="hud-side p2">
+            <div class="hud-name"><span>CPU</span><strong id="p2-name">AXL</strong></div>
+            <div class="life"><i id="p2-life"></i><b id="p2-chip"></b></div>
+            <div class="meter right"><b id="p2-meter-label">0%</b><div><i id="p2-meter"></i></div><span>AMPLIFIER</span></div>
           </div>
         </div>
 
-        <div class="canvas-wrap" id="canvas-wrap">
-          <canvas id="game" width="960" height="540" aria-label="Jogo Rock Kombat"></canvas>
-          <div class="crt-glass" aria-hidden="true"></div>
-          <div class="announcer" id="announcer" aria-live="assertive"></div>
-          <button class="pause-btn" id="pause-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
+        <div class="canvas-frame">
+          <canvas id="game" width="1280" height="720" aria-label="Rock Kombat, jogo de luta 2D"></canvas>
+          <div class="announce" id="announce" aria-live="assertive"></div>
+          <div class="combo p1" id="p1-combo"></div>
+          <div class="combo p2" id="p2-combo"></div>
+          <button class="pause-button" id="pause-button" type="button" aria-label="Pausar">Ⅱ</button>
+          <div class="loading" id="loading"><i></i><span>CARREGANDO LUTADORES</span></div>
         </div>
 
-        <div class="coach-bar" aria-live="polite">
-          <span class="coach-label">DICA</span>
-          <strong id="coach-text">Aproxime-se do rival usando A / D ou as Setas.</strong>
-          <button id="open-guide-arena" type="button">VER TODOS OS COMANDOS</button>
+        <div class="fight-help">
+          <span><b>MOVER</b> A/D ou ←/→</span>
+          <span><b>PULAR</b> W ou ↑</span>
+          <span><b>SOCO</b> J/Q</span>
+          <span><b>CHUTE</b> K/E</span>
+          <span><b>ESPECIAL</b> L/R</span>
+          <span><b>DEFESA</b> segure para trás</span>
         </div>
 
-        <div class="mobile-controls" aria-label="Controles touch">
-          <div class="d-pad">
-            <button data-touch="left" type="button" aria-label="Esquerda">←</button>
-            <button data-touch="jump" type="button" aria-label="Pular">↑</button>
-            <button data-touch="right" type="button" aria-label="Direita">→</button>
-            <button data-touch="block" type="button" aria-label="Defender">↓</button>
+        <div class="touch-controls" aria-label="Controles touch">
+          <div class="touch-move">
+            <button data-input="left" type="button" aria-label="Esquerda">←</button>
+            <button data-input="jump" type="button" aria-label="Pular">↑</button>
+            <button data-input="right" type="button" aria-label="Direita">→</button>
+            <button data-input="down" type="button" aria-label="Agachar">↓</button>
           </div>
-          <div class="action-pad">
-            <button class="action kick" data-touch="kick" type="button"><span>K</span>CHUTE</button>
-            <button class="action punch" data-touch="punch" type="button"><span>P</span>SOCO</button>
-            <button class="action special" data-touch="special" type="button"><span>★</span>ESPECIAL</button>
+          <div class="touch-action">
+            <button data-input="punch" class="punch" type="button">P</button>
+            <button data-input="kick" class="kick" type="button">K</button>
+            <button data-input="special" class="special" type="button">★</button>
           </div>
-        </div>
-
-        <div class="desktop-controls">
-          <span><b>MOVER</b> <kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> · <b>PULAR</b> <kbd>W</kbd> ou <kbd>↑</kbd> · <b>DEFENDER</b> <kbd>S</kbd> ou <kbd>↓</kbd> · <b>ROCK BLOCK</b> Defesa no frame exato!</span>
-          <span><b>SOCO</b> <kbd>Q</kbd> · <b>CHUTE</b> <kbd>E</kbd> · <b>RASTEIRA</b> <kbd>↓</kbd>+<kbd>E</kbd> · <b>GANCHO (ANTIAÉREO)</b> <kbd>↓</kbd>+<kbd>Q</kbd> · <b>ESPECIAL</b> <kbd>R</kbd> ou <kbd>ESPAÇO</kbd></span>
         </div>
       </div>
     </section>
 
-    <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
-      <div class="result-card">
-        <p class="kicker" id="result-kicker">KNOCKOUT</p>
-        <h2 id="result-title">KURT <em>VENCEU!</em></h2>
-        <div class="winner-portrait" id="winner-portrait"></div>
-        <p id="result-quote">“Melhor que queimar o palco.”</p>
+    <section class="screen results" id="results-screen" aria-labelledby="result-title">
+      <div class="result-panel">
+        <p class="overline" id="result-overline">KNOCKOUT</p>
+        <div class="result-figure" id="result-figure" aria-hidden="true"></div>
+        <h2 id="result-title">KURT <em>VENCEU</em></h2>
+        <p id="result-copy">O palco tem um novo dono.</p>
         <div class="result-actions">
-          <button class="fight-btn" id="rematch" type="button"><span>REMATCH</span><small>JOGAR NOVAMENTE</small></button>
-          <button class="text-btn" id="change-fighter" type="button">TROCAR LUTADOR</button>
+          <button class="cta" id="rematch-button" type="button"><b>REMATCH</b><span>LUTAR NOVAMENTE</span></button>
+          <button class="quiet-button" id="change-button" type="button">TROCAR LUTADOR</button>
         </div>
       </div>
     </section>
   </main>
 
-  <div class="how-modal" id="how-modal" role="dialog" aria-modal="true" aria-labelledby="how-title" hidden>
-    <div class="how-card">
-      <button class="modal-close" id="close-how" type="button" aria-label="Fechar instruções">×</button>
-      <p class="kicker">PLAYER'S GUIDE</p>
-      <h2 id="how-title">COMO <em>JOGAR</em></h2>
-      <p class="how-intro">Domine o sistema de combate estilo Street Fighter: faça cancelamento de combos, dispare projéteis, execute rasteiras ao solo e use a Defesa Perfeita ("Rock Block") para dominar a arena!</p>
-
-      <div class="control-guides">
-        <article style="grid-column: 1 / -1;">
-          <span class="guide-player p1">COMANDOS DO JOGADOR</span>
-          <div class="key-row"><kbd>A</kbd><kbd>D</kbd><p>Mover para Esquerda / Direita (ou setas <kbd>←</kbd> <kbd>→</kbd>)</p></div>
-          <div class="key-row"><kbd>W</kbd><p>Pular (ou seta <kbd>↑</kbd>) — use no ar para abrir combos com vantagens ao aterrissar</p></div>
-          <div class="key-row"><kbd>S</kbd><p>Defender / Bloquear (<kbd>S</kbd> ou <kbd>↓</kbd>). <b>Perfect Parry:</b> Defenda no frame exato para 0 dano e +25% barra!</p></div>
-          <div class="key-row"><kbd>Q</kbd><kbd>E</kbd><p>Golpe de Soco (<kbd>Q</kbd>) / Golpe de Chute (<kbd>E</kbd>)</p></div>
-          <div class="key-row"><kbd>↓</kbd><kbd>Q</kbd><p><b>Gancho Antiaéreo (Shoryuken):</b> <kbd>↓/S</kbd> + Soco (invulnerável a saltos e joga para o alto)</p></div>
-          <div class="key-row"><kbd>↓</kbd><kbd>E</kbd><p><b>Rasteira (Tsunami Kick):</b> <kbd>↓/S</kbd> + Chute (acerta embaixo e causa queda Hard Knockdown)</p></div>
-          <div class="key-row special-key"><kbd>R</kbd><p>Golpe Especial & Projéteis (Mini-Hadoken com 50%, Super Explosão com 100% usando <kbd>R</kbd> / <kbd>Espaço</kbd>)</p></div>
-        </article>
-      </div>
-
-      <div class="how-rules">
-        <div><b>01</b><p><strong>CANCELAMENTO DE COMBOS</strong>Acertou um Soco? Cancele na hora num Chute ou Rasteira para combos incríveis!</p></div>
-        <div><b>02</b><p><strong>SPECIAL CANCEL</strong>Cancele qualquer golpe normal que conectou diretamente no Especial (<kbd>R</kbd>)!</p></div>
-        <div><b>03</b><p><strong>ANTIAÉREO & RASTEIRA</strong>Use <kbd>↓</kbd> + Soco contra inimigos pulando e <kbd>↓</kbd> + Chute para derrubar ao chão.</p></div>
-        <div><b>04</b><p><strong>ROCK BLOCK (PARRY)</strong>Defesa perfeita no momento do impacto reflete o ataque, dá +25% de especial e abre guarda!</p></div>
-      </div>
+  <dialog id="help-dialog">
+    <button class="dialog-close" id="help-close" type="button" aria-label="Fechar">×</button>
+    <p class="overline">PLAYER GUIDE</p>
+    <h2>COMO JOGAR</h2>
+    <div class="guide-grid">
+      <article><b>POSICIONAMENTO</b><p>Ande com A/D ou setas. Segure a direção oposta ao rival para defender. Para ataques baixos, defenda agachado.</p></article>
+      <article><b>GOLPES</b><p>J/Q dá soco. K/E dá chute. Agachado + soco executa antiaéreo; agachado + chute aplica rasteira.</p></article>
+      <article><b>COMBOS</b><p>Soco confirmado pode cancelar em chute ou especial. O buffer curto aceita o próximo comando sem exigir precisão de um frame.</p></article>
+      <article><b>AMPLIFIER</b><p>Atacar, acertar, defender e receber dano carregam a barra, que continua entre rounds. Com 40%, L/R ativa o especial. Com 100%, o mesmo comando executa a versão Super.</p></article>
     </div>
+    <p class="frame-note">Cada golpe possui startup, frames ativos e recovery. Ataque no vazio é punível; acerto confirmado cria vantagem.</p>
+  </dialog>
+
+  <div class="pause-layer" id="pause-layer" hidden>
+    <div><p class="overline">INTERMISSION</p><h2>PAUSADO</h2><button class="cta" id="resume-button" type="button"><b>CONTINUAR</b></button><button class="quiet-button" id="quit-button" type="button">SAIR DA LUTA</button></div>
   </div>
 
-  <div class="pause-modal" id="pause-modal" hidden>
-    <div>
-      <p class="kicker">INTERMISSION</p>
-      <h2>PAUSADO</h2>
-      <button class="fight-btn" id="resume" type="button"><span>CONTINUAR</span></button>
-      <button class="text-btn" id="quit-fight" type="button">SAIR DA LUTA</button>
-    </div>
-  </div>
-
-  <script src="rig.js?v=2"></script>
-  <script src="audio.js?v=2"></script>
-  <script src="script.js?v=3"></script>
+  <script src="audio.js?v=3"></script>
+  <script src="game.js?v=1"></script>
 </body>
-
 </html>

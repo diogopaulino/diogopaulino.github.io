@@ -38,10 +38,10 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 16-bits com lendas do rock |
+| 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
 | 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |
-| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Corrida com IA e telemetria |
+| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador 3D WebGPU com IA e telemetria |
 | 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Plataforma retrô |
 | 🌌 **[Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Shooter cyberpunk neon |
 | 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy |
