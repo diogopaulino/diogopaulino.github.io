@@ -21,6 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="/labs/shared.css?v=5">
 </head>
 
 <body>
@@ -28,9 +29,13 @@
     <canvas id="game" width="640" height="400" aria-label="Ravi 1·2·3"></canvas>
 
     <div id="hud">
-      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar">←</button>
+      
       <div id="speech-bubble" class="hidden" aria-live="polite"></div>
-      <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+      <header data-lab-header data-title="Ravi 1·2·3" class="ravi-header">
+        <template data-slot="actions">
+          <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+        </template>
+      </header>
     </div>
 
     <div id="flashcard" class="hidden" aria-hidden="true">
@@ -70,6 +75,7 @@
   </div>
 
   <script type="module" src="main.js?v=3"></script>
+  <script src="/labs/shared.js?v=5" defer></script>
 </body>
 
 </html>
