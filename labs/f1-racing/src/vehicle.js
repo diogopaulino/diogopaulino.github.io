@@ -387,15 +387,15 @@ export class Vehicle {
         this.wheelAngle += (this.vx / SPEC.wheelRadius) * dt;
 
         // Thermal: warm with slip/load while moving, cool when coasting/stopped.
-        if (Math.abs(this.vx) > 4) {
-            const heat = (this.slip * 28 + Math.abs(this.throttle) * 5 + Math.abs(this.brake) * 8)
+        if (Math.abs(this.vx) > 8) {
+            const heat = (this.slip * 18 + Math.abs(this.throttle) * 3.5 + Math.abs(this.brake) * 5)
                 * this.compound.warmup;
-            const cool = 5.5 + (this.weather.id === 'wet' ? 3.5 : 0);
+            const cool = 7 + (this.weather.id === 'wet' ? 4 : 0) + Math.abs(this.vx) * 0.04;
             this.tyreTemp += (heat - cool) * dt;
         } else {
-            this.tyreTemp += (55 - this.tyreTemp) * Math.min(1, 0.35 * dt);
+            this.tyreTemp += (62 - this.tyreTemp) * Math.min(1, 0.55 * dt);
         }
-        this.tyreTemp = clamp(this.tyreTemp, 30, 125);
+        this.tyreTemp = clamp(this.tyreTemp, 35, 118);
 
         // Wear accumulates with slip energy and compound aggressiveness.
         if (Math.abs(this.vx) > 6) {

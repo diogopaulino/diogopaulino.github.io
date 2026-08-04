@@ -537,22 +537,26 @@ button {
 .overlay {
     position: absolute;
     inset: 0;
-    display: grid;
+    display: none;
     place-items: center;
     padding: calc(var(--safe-top) + 4.2rem) 1rem calc(var(--safe-bottom) + 1rem);
     background: color-mix(in oklab, var(--ink-deep) 78%, transparent);
     backdrop-filter: blur(12px);
     z-index: 10;
     opacity: 0;
-    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.35s var(--ease), visibility 0.35s;
 }
 
 .overlay.is-visible {
+    display: grid;
     opacity: 1;
-    visibility: visible;
     pointer-events: auto;
+    animation: overlayIn 0.28s var(--ease);
+}
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .overlay-card {
@@ -769,6 +773,8 @@ select {
     gap: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--line-soft);
+    position: relative;
+    z-index: 2;
 }
 
 .keys { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; font-size: 0.7rem; color: var(--text-dim); }

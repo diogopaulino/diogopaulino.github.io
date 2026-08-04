@@ -321,14 +321,12 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
 
     const paintMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.18,
-        metalness: 0.42,
+        roughness: 0.14,
+        metalness: 0.55,
         clearcoat: 1.0,
-        clearcoatRoughness: 0.06,
-        envMapIntensity: 2.0,
-        sheen: 0.35,
-        sheenRoughness: 0.4,
-        sheenColor: new THREE.Color(primary)
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 2.6,
+        reflectivity: 0.9
     });
     const darkMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true,

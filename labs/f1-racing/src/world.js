@@ -462,7 +462,7 @@ export function buildWorld(circuit, { quality, weather }) {
         wet ? 0x6d7887 : 0x5f8fd0,
         circuit.def.scenery === 'city' ? 0x3a3d42 : 0x39492a
     );
-    scene.environmentIntensity = wet ? 0.85 : 0.55;
+    scene.environmentIntensity = wet ? 1.05 : 0.85;
 
     const fogColor = new THREE.Color(wet ? 0x8d99a8 : 0xa8bede);
     scene.fog = new THREE.Fog(fogColor, quality.drawDistance * 0.38, quality.drawDistance * 1.55);
@@ -474,16 +474,16 @@ export function buildWorld(circuit, { quality, weather }) {
     const roadMaterial = new THREE.MeshStandardMaterial({
         map: roadPack.map,
         normalMap: roadPack.normalMap,
-        normalScale: new THREE.Vector2(0.85, 0.85),
+        normalScale: new THREE.Vector2(1.35, 1.35),
         roughnessMap: roadPack.roughnessMap,
-        roughness: wet ? 0.22 : 0.92,
-        metalness: wet ? 0.22 : 0.04,
-        envMapIntensity: wet ? 1.85 : 0.45
+        roughness: wet ? 0.22 : 0.9,
+        metalness: wet ? 0.22 : 0.06,
+        envMapIntensity: wet ? 2.1 : 0.7
     });
 
     const halfAt = (i) => circuit.halfWidth * circuit.widthScale[i];
     const road = new THREE.Mesh(
-        buildRibbon(circuit, (i) => -halfAt(i), (i) => halfAt(i), { vScale: 1 / 14 }),
+        buildRibbon(circuit, (i) => -halfAt(i), (i) => halfAt(i), { vScale: 1 / 8 }),
         roadMaterial
     );
     road.receiveShadow = quality.shadows;
