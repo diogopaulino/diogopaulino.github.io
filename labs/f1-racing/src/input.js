@@ -6,14 +6,15 @@ const KEY_MAP = {
     ArrowLeft: 'left', KeyA: 'left',
     ArrowRight: 'right', KeyD: 'right',
     Space: 'ers', ShiftLeft: 'ers', ShiftRight: 'ers',
-    KeyE: 'drs'
+    KeyE: 'drs',
+    KeyB: 'lookBack'
 };
 
 export class InputManager {
     constructor({ root, actions = {} }) {
-        this.raw = { throttle: false, brake: false, left: false, right: false, ers: false, drs: false };
+        this.raw = { throttle: false, brake: false, left: false, right: false, ers: false, drs: false, lookBack: false };
         this.touch = { throttle: 0, brake: 0, left: 0, right: 0, ers: false, drs: false };
-        this.state = { throttle: 0, brake: 0, steer: 0, ers: false, drs: false };
+        this.state = { throttle: 0, brake: 0, steer: 0, ers: false, drs: false, lookBack: false };
         this.actions = actions;
         this.gamepadIndex = null;
         this.abort = new AbortController();
@@ -101,7 +102,8 @@ export class InputManager {
             throttle: Math.max(pad.buttons[7]?.value ?? 0, pad.buttons[0]?.pressed ? 1 : 0),
             brake: Math.max(pad.buttons[6]?.value ?? 0, pad.buttons[1]?.pressed ? 1 : 0),
             ers: pad.buttons[2]?.pressed ?? false,
-            drs: pad.buttons[3]?.pressed ?? false
+            drs: pad.buttons[3]?.pressed ?? false,
+            lookBack: pad.buttons[5]?.pressed ?? false
         };
     }
 
@@ -143,6 +145,7 @@ export class InputManager {
         this.state.steer = ramp(this.state.steer, steerTarget, returning ? 11 : 6.5, 12);
 
         this.state.ers = this.raw.ers || this.touch.ers || (pad?.ers ?? false);
+        this.state.lookBack = this.raw.lookBack || (pad?.lookBack ?? false);
 
         const drsHeld = this.raw.drs || (pad?.drs ?? false);
         if (drsHeld && !this.drsWasHeld) this.actions.toggleDrs?.();

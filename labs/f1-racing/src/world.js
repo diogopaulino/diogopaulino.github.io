@@ -8,8 +8,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
 import {
-    roadTexture, kerbTexture, grassTexture, gravelTexture, runoffTexture, concreteTexture,
-    crowdTexture, startLineTexture, liveryTexture
+    roadMaps, kerbMaps, grassMaps, gravelMaps, runoffMaps, concreteMaps,
+    crowdTexture, startLineTexture, liveryTexture, bannerTexture, fenceTexture
 } from './textures.js';
 import { TEAMS } from './config.js';
 
@@ -202,25 +202,75 @@ function buildStartLine(circuit) {
  * ------------------------------------------------------------------ */
 
 function treeGeometry() {
-    const trunk = new THREE.CylinderGeometry(0.3, 0.45, 3.5, 6);
-    trunk.translate(0, 1.75, 0);
+    const trunk = new THREE.CylinderGeometry(0.28, 0.48, 4.2, 7);
+    trunk.translate(0, 2.1, 0);
     paint(trunk, 0x4a3a2a);
-    
-    // Pine tree layers (multiple overlapping cones)
+
     const layers = [];
-    for(let i = 0; i < 4; i++) {
-        const r = 3.2 - i * 0.6;
-        const h = 4.5;
-        const cone = new THREE.ConeGeometry(r, h, 8);
-        cone.translate(0, 3.5 + i * 2.2, 0);
-        // Add some random tilt for organic look
-        cone.rotateX((Math.random() - 0.5) * 0.1);
-        cone.rotateZ((Math.random() - 0.5) * 0.1);
-        paint(cone, i % 2 === 0 ? 0x2c4a22 : 0x35592a);
+    for (let i = 0; i < 5; i++) {
+        const r = 3.4 - i * 0.55;
+        const h = 4.2;
+        const cone = new THREE.ConeGeometry(r, h, 9);
+        cone.translate(0, 3.8 + i * 2.05, 0);
+        cone.rotateX(((i * 17) % 7 - 3) * 0.015);
+        cone.rotateZ(((i * 29) % 7 - 3) * 0.015);
+        paint(cone, i % 2 === 0 ? 0x254820 : 0x2f5a28);
         layers.push(cone);
     }
-    
+
     return mergeGeometries([trunk, ...layers], false);
+}
+
+function lightPoleGeometry() {
+    const pole = new THREE.CylinderGeometry(0.12, 0.16, 12, 8);
+    pole.translate(0, 6, 0);
+    paint(pole, 0x3a4048);
+    const arm = new THREE.BoxGeometry(0.15, 0.12, 3.2);
+    arm.translate(0, 11.6, 1.4);
+    paint(arm, 0x2e343c);
+    const lamp = new THREE.BoxGeometry(0.5, 0.25, 0.7);
+    lamp.translate(0, 11.4, 2.6);
+    paint(lamp, 0x1a1e24);
+    return mergeGeometries([pole, arm, lamp], false);
+}
+
+function pitBuilding(length = 90) {
+    const group = new THREE.Group();
+    const wall = new THREE.MeshStandardMaterial({ color: 0x2a2f38, roughness: 0.7, metalness: 0.25 });
+    const glass = new THREE.MeshPhysicalMaterial({
+        color: 0x6a90b8, roughness: 0.15, metalness: 0.4, transmission: 0.35, transparent: true, opacity: 0.85
+    });
+
+    const garage = new THREE.Mesh(new THREE.BoxGeometry(length, 5.5, 14), wall);
+    garage.position.set(0, 2.75, 8);
+    group.add(garage);
+
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(length * 0.92, 3.2, 10), glass);
+    upper.position.set(0, 7.2, 7);
+    group.add(upper);
+
+    const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(length + 4, 0.4, 16),
+        new THREE.MeshStandardMaterial({ color: 0xd8261f, roughness: 0.55, metalness: 0.3, emissive: 0x3b0906, emissiveIntensity: 0.35 })
+    );
+    roof.position.set(0, 9.0, 7.5);
+    group.add(roof);
+
+    // Garage doors
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x15181e, roughness: 0.8 });
+    const doorCount = Math.floor(length / 10);
+    for (let i = 0; i < doorCount; i++) {
+        const door = new THREE.Mesh(new THREE.BoxGeometry(7.5, 3.8, 0.2), doorMat);
+        door.position.set(-length / 2 + 5 + i * 10, 1.9, 0.9);
+        group.add(door);
+    }
+
+    // Pit wall
+    const pitWall = new THREE.Mesh(new THREE.BoxGeometry(length * 0.85, 1.1, 0.45), wall);
+    pitWall.position.set(0, 0.55, -2.5);
+    group.add(pitWall);
+
+    return group;
 }
 
 function paint(geometry, hex) {
@@ -324,16 +374,24 @@ function buildGantry(circuit) {
 
 function environmentTexture(sunColor, skyColor, groundColor) {
     const el = document.createElement('canvas');
-    el.width = 128;
-    el.height = 64;
+    el.width = 256;
+    el.height = 128;
     const ctx = el.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 64);
-    grad.addColorStop(0, `#${new THREE.Color(skyColor).getHexString()}`);
-    grad.addColorStop(0.48, `#${new THREE.Color(sunColor).getHexString()}`);
-    grad.addColorStop(0.52, `#${new THREE.Color(groundColor).getHexString()}`);
-    grad.addColorStop(1, '#14170f');
+    const grad = ctx.createLinearGradient(0, 0, 0, 128);
+    grad.addColorStop(0, `#${new THREE.Color(skyColor).clone().multiplyScalar(1.15).getHexString()}`);
+    grad.addColorStop(0.42, `#${new THREE.Color(sunColor).getHexString()}`);
+    grad.addColorStop(0.52, `#${new THREE.Color(skyColor).getHexString()}`);
+    grad.addColorStop(0.58, `#${new THREE.Color(groundColor).getHexString()}`);
+    grad.addColorStop(1, '#0e120c');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillRect(0, 0, 256, 128);
+    // Soft sun disc
+    const sun = ctx.createRadialGradient(190, 48, 2, 190, 48, 28);
+    sun.addColorStop(0, 'rgba(255,248,220,0.95)');
+    sun.addColorStop(0.4, 'rgba(255,210,140,0.35)');
+    sun.addColorStop(1, 'rgba(255,200,120,0)');
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, 256, 128);
     const texture = new THREE.CanvasTexture(el);
     texture.mapping = THREE.EquirectangularReflectionMapping;
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -368,59 +426,64 @@ export function buildWorld(circuit, { quality, weather }) {
     sky.material.fog = false;   // the dome sits far beyond the fog range
     scene.add(sky);
 
-    const sunTint = wet ? 0xbfc9d6 : 0xfff2dd;
-    const sun = new THREE.DirectionalLight(sunTint, wet ? 1.6 : 3.6);
+    const sunTint = wet ? 0xbfc9d6 : 0xfff1dc;
+    const sun = new THREE.DirectionalLight(sunTint, wet ? 1.85 : 4.1);
     sun.position.copy(sunDirection).multiplyScalar(320);
     sun.castShadow = quality.shadows;
     if (quality.shadows) {
         sun.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
         sun.shadow.camera.near = 1;
-        sun.shadow.camera.far = 520;
-        const extent = 90;
+        sun.shadow.camera.far = 560;
+        const extent = 110;
         sun.shadow.camera.left = -extent;
         sun.shadow.camera.right = extent;
         sun.shadow.camera.top = extent;
         sun.shadow.camera.bottom = -extent;
-        sun.shadow.bias = -0.0008;
-        sun.shadow.normalBias = 0.05;
+        sun.shadow.bias = -0.0006;
+        sun.shadow.normalBias = 0.04;
     }
     scene.add(sun);
     scene.add(sun.target);
 
-    // Kept deliberately low: too much sky light and the sun's shadows stop reading.
     const hemi = new THREE.HemisphereLight(
-        wet ? 0x7f8b9c : 0x9fc4ff,
+        wet ? 0x7f8b9c : 0xa8cfff,
         circuit.def.scenery === 'city' ? 0x2a2c30 : 0x2d3a22,
-        wet ? 1.15 : 0.42
+        wet ? 1.25 : 0.48
     );
     scene.add(hemi);
+
+    // Soft fill to lift shadowed asphalt without killing contrast.
+    const fill = new THREE.DirectionalLight(wet ? 0x8a9aab : 0xb8d0f0, wet ? 0.35 : 0.55);
+    fill.position.set(-sunDirection.x * 80, 40, -sunDirection.z * 80);
+    scene.add(fill);
 
     scene.environment = environmentTexture(
         wet ? 0x9aa6b4 : 0xffd9a0,
         wet ? 0x6d7887 : 0x5f8fd0,
         circuit.def.scenery === 'city' ? 0x3a3d42 : 0x39492a
     );
-    scene.environmentIntensity = wet ? 0.55 : 0.3;
+    scene.environmentIntensity = wet ? 1.05 : 0.85;
 
     const fogColor = new THREE.Color(wet ? 0x8d99a8 : 0xa8bede);
-    scene.fog = new THREE.Fog(fogColor, quality.drawDistance * 0.35, quality.drawDistance * 1.5);
+    scene.fog = new THREE.Fog(fogColor, quality.drawDistance * 0.38, quality.drawDistance * 1.55);
 
     /* --- road ----------------------------------------------------- */
-    const roadMap = roadTexture(circuit.def.surface);
-    roadMap.repeat.set(1, 1);
-    roadMap.anisotropy = quality.anisotropy;
+    const roadPack = roadMaps(circuit.def.surface);
+    roadPack.map.anisotropy = quality.anisotropy;
+    roadPack.normalMap.anisotropy = quality.anisotropy;
     const roadMaterial = new THREE.MeshStandardMaterial({
-        map: roadMap,
-        bumpMap: roadMap,
-        bumpScale: 0.015,
-        roughness: wet ? 0.28 : 0.86,
-        metalness: wet ? 0.16 : 0.02,
-        envMapIntensity: wet ? 1.5 : 0.35
+        map: roadPack.map,
+        normalMap: roadPack.normalMap,
+        normalScale: new THREE.Vector2(1.35, 1.35),
+        roughnessMap: roadPack.roughnessMap,
+        roughness: wet ? 0.22 : 0.9,
+        metalness: wet ? 0.22 : 0.06,
+        envMapIntensity: wet ? 2.1 : 0.7
     });
 
     const halfAt = (i) => circuit.halfWidth * circuit.widthScale[i];
     const road = new THREE.Mesh(
-        buildRibbon(circuit, (i) => -halfAt(i), (i) => halfAt(i), { vScale: 1 / 14 }),
+        buildRibbon(circuit, (i) => -halfAt(i), (i) => halfAt(i), { vScale: 1 / 8 }),
         roadMaterial
     );
     road.receiveShadow = quality.shadows;
@@ -429,34 +492,59 @@ export function buildWorld(circuit, { quality, weather }) {
 
     const startLine = new THREE.Mesh(
         buildStartLine(circuit),
-        new THREE.MeshStandardMaterial({ map: startLineTexture(), roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2 })
+        new THREE.MeshStandardMaterial({
+            map: startLineTexture(), roughness: 0.65, metalness: 0.05,
+            polygonOffset: true, polygonOffsetFactor: -2
+        })
     );
     startLine.receiveShadow = false;
     group.add(startLine);
 
     /* --- kerbs ---------------------------------------------------- */
-    const kerbMap = kerbTexture();
-    kerbMap.anisotropy = quality.anisotropy;
+    const kerbPack = kerbMaps();
+    kerbPack.map.anisotropy = quality.anisotropy;
     const kerbs = new THREE.Mesh(
         buildKerbs(circuit),
-        new THREE.MeshStandardMaterial({ map: kerbMap, bumpMap: kerbMap, bumpScale: 0.02, roughness: 0.62, metalness: 0.03 })
+        new THREE.MeshStandardMaterial({
+            map: kerbPack.map,
+            normalMap: kerbPack.normalMap,
+            normalScale: new THREE.Vector2(1.4, 1.4),
+            roughnessMap: kerbPack.roughnessMap,
+            roughness: 0.55,
+            metalness: 0.04,
+            envMapIntensity: 0.5
+        })
     );
     kerbs.receiveShadow = quality.shadows;
+    kerbs.castShadow = quality.shadows;
     group.add(kerbs);
 
     /* --- run-off + terrain ---------------------------------------- */
     const cityLike = circuit.def.scenery === 'city';
 
-    // Modern circuits: a paved apron right beside the track, then a gravel trap.
-    const apronMap = runoffTexture();
-    apronMap.repeat.set(3, 1);
-    apronMap.anisotropy = quality.anisotropy;
-    const apronMaterial = new THREE.MeshStandardMaterial({ map: apronMap, roughness: 0.92 });
+    const apronPack = runoffMaps();
+    apronPack.map.repeat.set(3, 1);
+    apronPack.normalMap.repeat.set(3, 1);
+    apronPack.map.anisotropy = quality.anisotropy;
+    const apronMaterial = new THREE.MeshStandardMaterial({
+        map: apronPack.map,
+        normalMap: apronPack.normalMap,
+        normalScale: new THREE.Vector2(0.7, 0.7),
+        roughnessMap: apronPack.roughnessMap,
+        roughness: 0.92
+    });
 
-    const gravelMap = cityLike ? concreteTexture() : gravelTexture();
-    gravelMap.repeat.set(5, 1);
-    gravelMap.anisotropy = quality.anisotropy;
-    const gravelMaterial = new THREE.MeshStandardMaterial({ map: gravelMap, roughness: 0.98 });
+    const gravelPack = cityLike ? concreteMaps() : gravelMaps();
+    gravelPack.map.repeat.set(5, 1);
+    gravelPack.normalMap.repeat.set(5, 1);
+    gravelPack.map.anisotropy = quality.anisotropy;
+    const gravelMaterial = new THREE.MeshStandardMaterial({
+        map: gravelPack.map,
+        normalMap: gravelPack.normalMap,
+        normalScale: new THREE.Vector2(1.2, 1.2),
+        roughnessMap: gravelPack.roughnessMap,
+        roughness: 0.98
+    });
 
     for (const side of [-1, 1]) {
         const apron = new THREE.Mesh(
@@ -484,10 +572,17 @@ export function buildWorld(circuit, { quality, weather }) {
         group.add(gravel);
     }
 
-    const grassMap = grassTexture(cityLike ? 0x39413a : 0x33501f);
-    grassMap.repeat.set(26, 1);
-    grassMap.anisotropy = quality.anisotropy;
-    const grassMaterial = new THREE.MeshStandardMaterial({ map: grassMap, bumpMap: grassMap, bumpScale: 0.08, roughness: 1 });
+    const grassPack = grassMaps(cityLike ? 0x39413a : 0x1f3518);
+    grassPack.map.repeat.set(26, 1);
+    grassPack.normalMap.repeat.set(26, 1);
+    grassPack.map.anisotropy = quality.anisotropy;
+    const grassMaterial = new THREE.MeshStandardMaterial({
+        map: grassPack.map,
+        normalMap: grassPack.normalMap,
+        normalScale: new THREE.Vector2(1.1, 1.1),
+        roughnessMap: grassPack.roughnessMap,
+        roughness: 1
+    });
 
     let baseY = Infinity;
     for (let i = 0; i < circuit.count; i++) baseY = Math.min(baseY, circuit.y[i]);
@@ -502,7 +597,6 @@ export function buildWorld(circuit, { quality, weather }) {
                 {
                     vScale: 1 / 55,
                     lift: -0.36,
-                    // Blend the outer edge towards the base plane so the ground meets it flat.
                     outerLift: (i) => baseY + 0.55 - (circuit.y[i] + side * (halfAt(i) + VERGE_WIDTH) * Math.tan(circuit.bank[i])),
                     step: 2
                 }
@@ -516,11 +610,18 @@ export function buildWorld(circuit, { quality, weather }) {
     const spanX = circuit.maxX - circuit.minX;
     const spanZ = circuit.maxZ - circuit.minZ;
     const groundSize = Math.max(spanX, spanZ) + 4200;
-    const groundMap = grassTexture(cityLike ? 0x3c4139 : 0x2c471c);
-    groundMap.repeat.set(groundSize / 26, groundSize / 26);
+    const groundPack = grassMaps(cityLike ? 0x3c4139 : 0x1a3014);
+    groundPack.map.repeat.set(groundSize / 26, groundSize / 26);
+    groundPack.normalMap.repeat.set(groundSize / 26, groundSize / 26);
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(groundSize, groundSize),
-        new THREE.MeshStandardMaterial({ map: groundMap, bumpMap: groundMap, bumpScale: 0.08, roughness: 1 })
+        new THREE.MeshStandardMaterial({
+            map: groundPack.map,
+            normalMap: groundPack.normalMap,
+            normalScale: new THREE.Vector2(0.9, 0.9),
+            roughnessMap: groundPack.roughnessMap,
+            roughness: 1
+        })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set((circuit.minX + circuit.maxX) / 2, baseY + 0.55, (circuit.minZ + circuit.maxZ) / 2);
@@ -528,10 +629,16 @@ export function buildWorld(circuit, { quality, weather }) {
     group.add(ground);
 
     /* --- barriers ------------------------------------------------- */
-    const wallHeight = 1.05;
-    const wallGeo = new THREE.BoxGeometry(3.4, wallHeight, 0.4);
+    const concretePack = concreteMaps();
+    const wallHeight = 1.1;
+    const wallGeo = new THREE.BoxGeometry(3.5, wallHeight, 0.42);
     const wallMaterial = new THREE.MeshStandardMaterial({
-        map: concreteTexture(), roughness: 0.85, metalness: 0.05
+        map: concretePack.map,
+        normalMap: concretePack.normalMap,
+        normalScale: new THREE.Vector2(0.6, 0.6),
+        roughnessMap: concretePack.roughnessMap,
+        roughness: 0.82,
+        metalness: 0.06
     });
     const wallStep = Math.max(1, Math.round(3.6 / circuit.spacing));
     const wallCount = Math.floor(circuit.count / wallStep) * 2;
@@ -555,24 +662,54 @@ export function buildWorld(circuit, { quality, weather }) {
     walls.count = w;
     group.add(walls);
 
+    // Catch fencing above barriers on high-speed stretches.
+    const fenceMat = new THREE.MeshStandardMaterial({
+        map: fenceTexture(),
+        transparent: true,
+        opacity: 0.55,
+        side: THREE.DoubleSide,
+        roughness: 0.4,
+        metalness: 0.7,
+        depthWrite: false
+    });
+    const fenceGeo = new THREE.PlaneGeometry(3.5, 2.4);
+    const fenceCount = Math.floor(circuit.count / (wallStep * 2)) * 2;
+    const fences = new THREE.InstancedMesh(fenceGeo, fenceMat, Math.max(1, fenceCount));
+    let fi = 0;
+    for (let i = 0; i < circuit.count; i += wallStep * 2) {
+        if (Math.abs(circuit.curvature[i]) > 0.012) continue; // skip tight hairpins
+        for (const side of [-1, 1]) {
+            if (fi >= fenceCount) break;
+            const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 1.35);
+            const [x, y, z] = surfacePoint(circuit, i, lateral, -0.4);
+            dummy.position.set(x, y + wallHeight + 1.2, z);
+            dummy.rotation.set(0, circuit.heading[i] + (side > 0 ? 0 : Math.PI), 0);
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            fences.setMatrixAt(fi++, dummy.matrix);
+        }
+    }
+    fences.count = fi;
+    group.add(fences);
+
     // Tyre stacks on the outside of the quickest corners.
-    const tyreGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.55, 10);
+    const tyreGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.55, 12);
     const tyreMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.95 });
     const stackSlots = [];
     for (let i = 0; i < circuit.count; i += 3) {
         if (Math.abs(circuit.curvature[i]) < 0.008) continue;
         stackSlots.push(i);
     }
-    const tyres = new THREE.InstancedMesh(tyreGeo, tyreMaterial, Math.max(1, stackSlots.length * 3));
+    const tyres = new THREE.InstancedMesh(tyreGeo, tyreMaterial, Math.max(1, stackSlots.length * 4));
     tyres.castShadow = quality.shadows;
     let ti = 0;
     for (const i of stackSlots) {
         const side = circuit.curvature[i] > 0 ? -1 : 1;
         const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 0.5);
         const [x, y, z] = surfacePoint(circuit, i, lateral, -0.4);
-        for (let level = 0; level < 3; level++) {
-            dummy.position.set(x, y + 0.28 + level * 0.55, z);
-            dummy.rotation.set(0, circuit.heading[i], 0);
+        for (let level = 0; level < 4; level++) {
+            dummy.position.set(x + (level % 2) * 0.15, y + 0.28 + level * 0.52, z);
+            dummy.rotation.set(0, circuit.heading[i] + level * 0.2, 0);
             dummy.updateMatrix();
             tyres.setMatrixAt(ti++, dummy.matrix);
         }
@@ -581,53 +718,75 @@ export function buildWorld(circuit, { quality, weather }) {
     group.add(tyres);
 
     /* --- advertising hoardings ------------------------------------ */
-    const boardCount = Math.floor(circuit.count / 14);
-    const boardGeo = new THREE.PlaneGeometry(6.5, 1.5);
-    const boards = new THREE.InstancedMesh(
-        boardGeo,
-        new THREE.MeshStandardMaterial({ roughness: 0.55, side: THREE.DoubleSide }),
-        boardCount * 2
-    );
-    const boardColor = new THREE.Color();
+    const boardStride = 12;
+    const boardCount = Math.floor(circuit.count / boardStride);
+    const boardGeo = new THREE.PlaneGeometry(7.2, 1.7);
+    const boardMats = TEAMS.map((team) => new THREE.MeshStandardMaterial({
+        map: bannerTexture(team),
+        roughness: 0.45,
+        metalness: 0.15,
+        side: THREE.DoubleSide,
+        envMapIntensity: 0.8
+    }));
     let bi = 0;
-    for (let i = 0; i < circuit.count; i += 14) {
+    for (let i = 0; i < circuit.count; i += boardStride) {
         for (const side of [-1, 1]) {
-            if (bi >= boardCount * 2) break;
+            const teamIdx = (Math.floor(i / boardStride) + (side > 0 ? 3 : 0)) % TEAMS.length;
+            const board = new THREE.Mesh(boardGeo, boardMats[teamIdx]);
             const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 1.05);
             const [x, y, z] = surfacePoint(circuit, i, lateral, -0.4);
-            dummy.position.set(x, y + 1.5, z);
-            dummy.rotation.set(0, circuit.heading[i] + (side > 0 ? Math.PI : 0), 0);
-            dummy.updateMatrix();
-            boards.setMatrixAt(bi, dummy.matrix);
-            const team = TEAMS[(i / 14 + (side > 0 ? 3 : 0)) % TEAMS.length | 0];
-            boards.setColorAt(bi, boardColor.setHex(team.primary).multiplyScalar(0.85));
+            board.position.set(x, y + 1.6, z);
+            board.rotation.y = circuit.heading[i] + (side > 0 ? Math.PI : 0);
+            group.add(board);
             bi++;
+            if (bi > boardCount * 2) break;
         }
     }
-    boards.count = bi;
-    if (boards.instanceColor) boards.instanceColor.needsUpdate = true;
-    group.add(boards);
+    void bi;
+
+    /* --- light poles ---------------------------------------------- */
+    if (quality.scenery > 0.2) {
+        const poleGeo = lightPoleGeometry();
+        const poleMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.65 });
+        const poleStep = Math.max(8, Math.round(28 / quality.scenery));
+        const poleSlots = Math.floor(circuit.count / poleStep);
+        const poles = new THREE.InstancedMesh(poleGeo, poleMat, poleSlots);
+        poles.castShadow = quality.shadows;
+        let pi = 0;
+        for (let i = 0; i < circuit.count && pi < poleSlots; i += poleStep) {
+            const side = (Math.floor(i / poleStep) % 2 === 0) ? 1 : -1;
+            const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 4.5);
+            const [x, y, z] = surfacePoint(circuit, i, lateral, -0.4);
+            dummy.position.set(x, y, z);
+            dummy.rotation.set(0, circuit.heading[i] + (side > 0 ? Math.PI / 2 : -Math.PI / 2), 0);
+            dummy.scale.setScalar(1);
+            dummy.updateMatrix();
+            poles.setMatrixAt(pi++, dummy.matrix);
+        }
+        poles.count = pi;
+        group.add(poles);
+    }
 
     /* --- scenery -------------------------------------------------- */
     if (quality.scenery > 0.1 && !cityLike) {
         const trees = new THREE.InstancedMesh(
             treeGeometry(),
-            new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.0 }),
-            Math.floor(circuit.count * 1.8 * quality.scenery) // Increased density
+            new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.0 }),
+            Math.floor(circuit.count * 2.1 * quality.scenery)
         );
-        trees.castShadow = true; // Enabled shadows for hyper-realism
-        trees.receiveShadow = true;
+        trees.castShadow = quality.shadows;
+        trees.receiveShadow = quality.shadows;
         let seed = 1337;
         const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
         let idx = 0;
-        const step = Math.max(2, Math.round(6 / quality.scenery));
+        const step = Math.max(2, Math.round(5 / quality.scenery));
         for (let i = 0; i < circuit.count && idx < trees.count; i += step) {
-            const clusters = rand() < 0.55 ? 2 : 1;
+            const clusters = rand() < 0.6 ? 2 : 1;
             for (let c = 0; c < clusters && idx < trees.count; c++) {
                 const side = rand() < 0.5 ? -1 : 1;
                 const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 14 + rand() * 78);
-                const [x, _, z] = surfacePoint(circuit, i, lateral, -0.4);
-                const scale = 0.75 + rand() * 0.9;
+                const [x, , z] = surfacePoint(circuit, i, lateral, -0.4);
+                const scale = 0.7 + rand() * 1.05;
                 dummy.position.set(x + (rand() - 0.5) * 12, baseY + 0.55, z + (rand() - 0.5) * 12);
                 dummy.rotation.set(0, rand() * Math.PI * 2, 0);
                 dummy.scale.setScalar(scale);
@@ -640,20 +799,28 @@ export function buildWorld(circuit, { quality, weather }) {
         group.add(trees);
     }
 
-    // Grandstands: one at the line, the rest at the slowest corners (best viewing).
+    // Grandstands + pit complex at the start/finish.
     const standSpots = [0];
     const sorted = [...circuit.corners].sort((a, b) => a.radius - b.radius).slice(0, 4);
     for (const corner of sorted) standSpots.push(corner.index);
     for (const spotIndex of standSpots) {
-        const stand = buildGrandstand(spotIndex === 0 ? 120 : 70, spotIndex === 0 ? 12 : 8);
+        const stand = buildGrandstand(spotIndex === 0 ? 130 : 75, spotIndex === 0 ? 13 : 8.5);
         const side = spotIndex === 0 ? 1 : (circuit.curvature[spotIndex] > 0 ? -1 : 1);
         const lateral = side * (halfAt(spotIndex) + RUNOFF_WIDTH + 3.5);
         const [x, y, z] = surfacePoint(circuit, spotIndex, lateral, -0.4);
         stand.position.set(x, y, z);
-        // The stand is built facing local -Z with its length on X, so it has to be
-        // turned a quarter turn to run alongside the track and face the racing line.
         stand.rotation.y = circuit.heading[spotIndex] + (side > 0 ? Math.PI / 2 : -Math.PI / 2);
         group.add(stand);
+    }
+
+    {
+        const pits = pitBuilding(110);
+        const side = -1;
+        const lateral = side * (halfAt(0) + RUNOFF_WIDTH + 18);
+        const [x, y, z] = surfacePoint(circuit, 0, lateral, -0.4);
+        pits.position.set(x, y, z);
+        pits.rotation.y = circuit.heading[0] + (side > 0 ? Math.PI / 2 : -Math.PI / 2);
+        group.add(pits);
     }
 
     const gantry = buildGantry(circuit);
@@ -666,15 +833,15 @@ export function buildWorld(circuit, { quality, weather }) {
 
     /* --- DRS zone markers ----------------------------------------- */
     const drsMaterial = new THREE.MeshStandardMaterial({
-        color: 0x0a2e1c, emissive: 0x18f08a, emissiveIntensity: 1.4, roughness: 0.4
+        color: 0x0a2e1c, emissive: 0x18f08a, emissiveIntensity: 1.6, roughness: 0.35, metalness: 0.2
     });
     for (const zone of circuit.drs) {
         const i = circuit.indexAt(zone.start * circuit.length);
         for (const side of [-1, 1]) {
-            const sign = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 0.2), drsMaterial);
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 0.22), drsMaterial);
             const lateral = side * (halfAt(i) + 3.2);
             const [x, y, z] = surfacePoint(circuit, i, lateral, 0);
-            sign.position.set(x, y + 2.2, z);
+            sign.position.set(x, y + 2.3, z);
             sign.rotation.y = circuit.heading[i];
             group.add(sign);
         }
@@ -689,10 +856,9 @@ export function buildWorld(circuit, { quality, weather }) {
         gantry,
         baseY,
         roadMaterial,
-        /** Keeps the shadow frustum tight around the player. */
         update(target) {
             sun.target.position.copy(target);
-            sun.position.copy(target).addScaledVector(sunDirection, 260);
+            sun.position.copy(target).addScaledVector(sunDirection, 280);
             sun.target.updateMatrixWorld();
         },
         dispose() {

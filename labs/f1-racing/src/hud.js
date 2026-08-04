@@ -245,6 +245,25 @@ export class Hud {
 
         const ersPct = (car.ers / 4) * 100;
         if (el.ersFill) el.ersFill.style.setProperty('--fill', (ersPct / 100).toFixed(3));
+        if (el.ersValue) el.ersValue.textContent = car.ers.toFixed(1);
+
+        if (el.tyreLabel) {
+            const map = { soft: 'S', medium: 'M', hard: 'H' };
+            el.tyreLabel.textContent = map[car.compound?.id] || 'M';
+            el.tyreLabel.style.color = car.compound?.color || '#f0c419';
+        }
+        if (el.tyreWear) el.tyreWear.style.setProperty('--fill', (1 - (car.tyreWear || 0)).toFixed(3));
+        if (el.tyreTemp) {
+            const temp = Math.round(car.tyreTemp || 80);
+            el.tyreTemp.textContent = `${temp}°C`;
+            el.tyreTemp.dataset.state = temp < 55 ? 'cold' : temp > 105 ? 'hot' : 'ok';
+        }
+
+        if (el.drsBadge) {
+            const state = drsState || 'off';
+            el.drsBadge.dataset.state = state;
+            el.drsBadge.textContent = state === 'open' ? 'DRS OPEN' : state === 'ready' ? 'DRS READY' : 'DRS';
+        }
 
         if (el.sector && sector) el.sector.textContent = sector;
 

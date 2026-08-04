@@ -47,7 +47,7 @@ body {
     min-height: 100dvh;
     padding: 0;
     color: var(--text);
-    font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-synthesis-weight: none;
     user-select: none;
     -webkit-user-select: none;
@@ -121,7 +121,7 @@ button {
 }
 
 .f1-mark {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-weight: 900;
     font-style: italic;
     letter-spacing: -0.06em;
@@ -208,7 +208,7 @@ button {
 }
 
 .stat-value strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.75rem;
     font-weight: 800;
 }
@@ -399,7 +399,7 @@ button {
 .speedo { display: flex; align-items: baseline; gap: 0.3rem; }
 
 .speedo strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(2.4rem, 6vw, 3.4rem);
     font-weight: 800;
     line-height: 0.9;
@@ -425,7 +425,7 @@ button {
 }
 
 .gear strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.9rem;
     font-weight: 800;
     line-height: 1;
@@ -485,7 +485,7 @@ button {
     background: var(--panel-strong);
     border: 1px solid var(--line);
     backdrop-filter: blur(var(--blur));
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(1rem, 2.6vw, 1.5rem);
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -537,18 +537,27 @@ button {
 .overlay {
     position: absolute;
     inset: 0;
-    display: grid;
+    display: none;
     place-items: center;
     padding: calc(var(--safe-top) + 4.2rem) 1rem calc(var(--safe-bottom) + 1rem);
     background: color-mix(in oklab, var(--ink-deep) 78%, transparent);
     backdrop-filter: blur(12px);
     z-index: 10;
     opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.35s var(--ease), visibility 0.35s;
+    pointer-events: none;
 }
 
-.overlay.is-visible { opacity: 1; visibility: visible; }
+.overlay.is-visible {
+    display: grid;
+    opacity: 1;
+    pointer-events: auto;
+    animation: overlayIn 0.28s var(--ease);
+}
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 
 .overlay-card {
     width: min(1080px, 100%);
@@ -594,7 +603,7 @@ button {
 
 .menu-head h1 {
     margin: 0.4rem 0 0.5rem;
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(2rem, 6vw, 3.4rem);
     font-weight: 900;
     font-style: italic;
@@ -679,7 +688,7 @@ button {
 }
 
 .team-number {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.15rem;
     font-weight: 800;
     min-width: 2ch;
@@ -764,6 +773,8 @@ select {
     gap: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--line-soft);
+    position: relative;
+    z-index: 2;
 }
 
 .keys { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; font-size: 0.7rem; color: var(--text-dim); }
@@ -825,7 +836,7 @@ kbd {
 
 .compact-card h2, .results-card h2 {
     margin: 0;
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(1.4rem, 4vw, 2.2rem);
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -851,7 +862,7 @@ kbd {
 }
 
 .result-highlights span { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
-.result-highlights strong { font-size: 1.15rem; font-family: Orbitron, Inter, sans-serif; }
+.result-highlights strong { font-size: 1.15rem; font-family: Orbitron, 'DM Sans', sans-serif; }
 .result-highlights div:first-child strong { color: var(--f1-red-soft); }
 
 .result-board {
