@@ -47,7 +47,7 @@ body {
     min-height: 100dvh;
     padding: 0;
     color: var(--text);
-    font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-synthesis-weight: none;
     user-select: none;
     -webkit-user-select: none;
@@ -121,7 +121,7 @@ button {
 }
 
 .f1-mark {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-weight: 900;
     font-style: italic;
     letter-spacing: -0.06em;
@@ -208,7 +208,7 @@ button {
 }
 
 .stat-value strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.75rem;
     font-weight: 800;
 }
@@ -399,7 +399,7 @@ button {
 .speedo { display: flex; align-items: baseline; gap: 0.3rem; }
 
 .speedo strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(2.4rem, 6vw, 3.4rem);
     font-weight: 800;
     line-height: 0.9;
@@ -425,7 +425,7 @@ button {
 }
 
 .gear strong {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.9rem;
     font-weight: 800;
     line-height: 1;
@@ -485,7 +485,7 @@ button {
     background: var(--panel-strong);
     border: 1px solid var(--line);
     backdrop-filter: blur(var(--blur));
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(1rem, 2.6vw, 1.5rem);
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -594,7 +594,7 @@ button {
 
 .menu-head h1 {
     margin: 0.4rem 0 0.5rem;
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(2rem, 6vw, 3.4rem);
     font-weight: 900;
     font-style: italic;
@@ -679,7 +679,7 @@ button {
 }
 
 .team-number {
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: 1.15rem;
     font-weight: 800;
     min-width: 2ch;
@@ -825,7 +825,7 @@ kbd {
 
 .compact-card h2, .results-card h2 {
     margin: 0;
-    font-family: Orbitron, Inter, sans-serif;
+    font-family: Orbitron, 'DM Sans', sans-serif;
     font-size: clamp(1.4rem, 4vw, 2.2rem);
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -851,7 +851,7 @@ kbd {
 }
 
 .result-highlights span { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
-.result-highlights strong { font-size: 1.15rem; font-family: Orbitron, Inter, sans-serif; }
+.result-highlights strong { font-size: 1.15rem; font-family: Orbitron, 'DM Sans', sans-serif; }
 .result-highlights div:first-child strong { color: var(--f1-red-soft); }
 
 .result-board {

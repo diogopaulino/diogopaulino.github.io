@@ -99,7 +99,7 @@ class Game {
         renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.quality.pixelRatio));
         renderer.setSize(innerWidth, innerHeight, false);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.05;
+        renderer.toneMappingExposure = 1.12;
         renderer.shadowMap.enabled = this.quality.shadows;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -370,7 +370,11 @@ class Game {
                 this.player = vehicle;
             }
 
-            const model = buildCar(team, { quality: this.quality, isPlayer });
+            const model = buildCar(team, {
+                quality: this.quality,
+                isPlayer,
+                compoundColor: (COMPOUNDS[compound] || COMPOUNDS.medium).color
+            });
             this.scene.add(model.group);
             this.models.set(vehicle, model);
         }
@@ -674,13 +678,16 @@ class Game {
                 }
             }
 
-            // DRS: enabled from lap 2, inside a zone, within one second of the car ahead.
+            // DRS: detection + activation zone, lap 2+, within 1s of car ahead.
             const zone = circuit.drsZoneAt(car.lapDistance / circuit.length);
             const ahead = this.carAhead(car);
             const withinRange = ahead && ahead.gapSeconds < 1.0;
-            car.drsAvailable = Boolean(zone) && car.lap >= 1 && Boolean(withinRange) && !car.offTrack;
-            if (!car.drsAvailable || car.brake > 0.25) car.drsOpen = false;
-            if (car !== this.player && car.drsAvailable && car.throttle > 0.8) car.drsOpen = true;
+            const inActivation = zone && (car.lapDistance / circuit.length) >= zone.start
+                && (car.lapDistance / circuit.length) <= zone.end;
+            car.drsAvailable = Boolean(inActivation) && car.lap >= 1 && Boolean(withinRange)
+                && !car.offTrack && car.surface <= 1;
+            if (!car.drsAvailable || car.brake > 0.2) car.drsOpen = false;
+            if (car !== this.player && car.drsAvailable && car.throttle > 0.75) car.drsOpen = true;
         }
 
         this.order = [...this.cars].sort((a, b) => {
@@ -787,27 +794,37 @@ class Game {
         RIGHT.set(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
         CAR_POS.set(car.position.x, car.position.y, car.position.z);
         const speedNorm = Math.min(1, Math.abs(car.vx) / 90);
-        let fov = 62;
+        const lookBack = this.input?.state?.lookBack;
+        let targetFov = 62;
 
-        switch (this.cameraMode) {
+        if (lookBack) {
+            DESIRED.copy(CAR_POS).addScaledVector(FORWARD, 7.5);
+            DESIRED.y += 2.4;
+            const follow = 1 - Math.exp(-dt * 10);
+            this.camera.position.lerp(DESIRED, follow);
+            LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, -18);
+            LOOK_AT.y += 1.0;
+            this.cameraLook.lerp(LOOK_AT, Math.min(1, dt * 12));
+            targetFov = 58;
+        } else switch (this.cameraMode) {
             case 'cockpit': {
-                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 0.25);
-                this.camera.position.y += 1.02;
+                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 0.22);
+                this.camera.position.y += 1.05;
                 LOOK_AT.copy(CAR_POS)
-                    .addScaledVector(FORWARD, 26)
-                    .addScaledVector(RIGHT, car.steer * 22);
-                LOOK_AT.y += 1.1;
+                    .addScaledVector(FORWARD, 28)
+                    .addScaledVector(RIGHT, car.steer * 18);
+                LOOK_AT.y += 1.05;
                 this.cameraLook.copy(LOOK_AT);
-                fov = 74 + speedNorm * 10;
+                targetFov = 72 + speedNorm * 12;
                 break;
             }
             case 'bonnet': {
-                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 1.7);
-                this.camera.position.y += 0.78;
-                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 32);
-                LOOK_AT.y += 0.9;
+                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 1.75);
+                this.camera.position.y += 0.8;
+                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 34);
+                LOOK_AT.y += 0.85;
                 this.cameraLook.copy(LOOK_AT);
-                fov = 70 + speedNorm * 12;
+                targetFov = 68 + speedNorm * 14;
                 break;
             }
             case 'broadcast': {
@@ -821,47 +838,46 @@ class Game {
                 }
                 this.camera.position.lerp(best, Math.min(1, dt * 6));
                 this.cameraLook.lerp(CAR_POS, Math.min(1, dt * 9));
-                fov = 32 + Math.min(28, best.distanceTo(CAR_POS) * 0.16);
+                targetFov = 32 + Math.min(28, best.distanceTo(CAR_POS) * 0.16);
                 break;
             }
             default: {
-                const back = 8.4 + speedNorm * 2.2;
-                const height = 3.1 + speedNorm * 0.5;
+                const back = 8.8 + speedNorm * 2.4;
+                const height = 3.2 + speedNorm * 0.55;
                 DESIRED.copy(CAR_POS)
                     .addScaledVector(FORWARD, -back)
-                    // Swing wide through corners so the apex stays in shot.
-                    .addScaledVector(RIGHT, -car.yawRate * 3.2);
+                    .addScaledVector(RIGHT, -car.yawRate * 2.8);
                 DESIRED.y += height;
-                const follow = 1 - Math.exp(-dt * (6 + speedNorm * 4));
+                const follow = 1 - Math.exp(-dt * (5.5 + speedNorm * 3.5));
                 this.camera.position.lerp(DESIRED, follow);
 
-                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 12);
-                LOOK_AT.y += 1.2;
+                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 14);
+                LOOK_AT.y += 1.15;
                 this.cameraLook.lerp(LOOK_AT, Math.min(1, dt * 8));
-                fov = 62 + speedNorm * 14;
+                targetFov = 60 + speedNorm * 16;
                 break;
             }
         }
-        
-        const groundClearance = this.circuit ? this.circuit.heightAt(this.circuit.nearest(this.camera.position.x, this.camera.position.z), 0) + 0.5 : -999;
+
+        const groundClearance = this.circuit
+            ? this.circuit.heightAt(this.circuit.nearest(this.camera.position.x, this.camera.position.z), 0) + 0.5
+            : -999;
         if (this.camera.position.y < groundClearance) {
             this.camera.position.y = groundClearance;
         }
 
-        // Camera Shake / Force Feedback effect at high speeds
-        if (speedNorm > 0.5 && this.cameraMode !== 'broadcast') {
-            const shakeFactor = Math.pow((speedNorm - 0.5) * 2, 2) * 0.05;
+        if (speedNorm > 0.55 && this.cameraMode !== 'broadcast' && !lookBack) {
+            const shakeFactor = Math.pow((speedNorm - 0.55) * 2.2, 2) * 0.04;
             this.cameraLook.x += (Math.random() - 0.5) * shakeFactor;
-            this.cameraLook.y += (Math.random() - 0.5) * shakeFactor;
+            this.cameraLook.y += (Math.random() - 0.5) * shakeFactor * 0.7;
         }
 
         this.camera.lookAt(this.cameraLook);
-        this.camera.fov = fov;
-        this.camera.updateProjectionMatrix();
-        // A touch of head tilt in the cockpit sells the lateral load.
-        if (this.cameraMode === 'cockpit') this.camera.rotateZ(-car.roll * 0.8 - car.steer * 0.12);
+        if (this.cameraMode === 'cockpit' && !lookBack) {
+            this.camera.rotateZ(-car.roll * 0.85 - car.steer * 0.1);
+        }
 
-        this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
+        this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 5);
         this.camera.updateProjectionMatrix();
     }
 
