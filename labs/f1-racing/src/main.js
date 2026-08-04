@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { RenderPipeline } from 'three/webgpu';
-import { pass, mrt, output, emissive, uniform, uv, vec2, vec3, float, smoothstep, mix } from 'three/tsl';
+import { pass, mrt, output, emissive, uniform, uv, vec2, float, smoothstep, mix } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 import { buildCircuit, CIRCUITS, CIRCUIT_KEYS } from './circuits.js';
@@ -99,7 +99,7 @@ class Game {
         renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.quality.pixelRatio));
         renderer.setSize(innerWidth, innerHeight, false);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.12;
+        renderer.toneMappingExposure = 1.25;
         renderer.shadowMap.enabled = this.quality.shadows;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -381,23 +381,23 @@ class Game {
 
         this.setLoading('gerando efeitos…');
         this.smoke = new ParticleSystem(this.scene, {
-            max: Math.round(340 * this.quality.particles),
+            max: Math.round(400 * this.quality.particles),
             gravity: 1.1,
             drag: 0.9
         });
         this.sparks = new ParticleSystem(this.scene, {
-            max: Math.round(160 * this.quality.particles),
+            max: Math.round(240 * this.quality.particles),
             blending: THREE.AdditiveBlending,
-            gravity: -9,
-            drag: 0.82
+            gravity: -12,
+            drag: 0.8
         });
         this.spray = new ParticleSystem(this.scene, {
-            max: Math.round(260 * this.quality.particles),
-            gravity: -2.2,
-            drag: 0.88
+            max: Math.round(360 * this.quality.particles),
+            gravity: -2.0,
+            drag: 0.92
         });
-        this.trails = new SkidTrails(this.scene, { maxPoints: 700 });
-        this.rain = new RainField(this.scene, { count: Math.round(2400 * this.quality.particles) });
+        this.trails = new SkidTrails(this.scene, { maxPoints: 900 });
+        this.rain = new RainField(this.scene, { count: Math.round(3600 * this.quality.particles) });
         this.rain.setEnabled(this.weather.id !== 'dry');
 
         this.buildCameraPosts();
@@ -465,23 +465,14 @@ class Game {
 
         let node = color;
         if (this.quality.bloom) {
-            // Hyper-realistic Bloom: mais intenso, limiar ajustado para cobrir destaques do sol e reflexos
-            const bloomEffect = bloom(emissiveTexture.add(color.mul(0.15)), 2.2, 0.65, 0.05);
-            node = node.add(bloomEffect);
+            node = node.add(bloom(emissiveTexture, 1.25, 0.6, 0.05));
         }
 
-        // Color Grading: Estilo Transmissão Oficial de F1 (Contraste alto, saturação rica)
-        // Correção de Gamma e contraste
-        node = node.pow(0.88);
-        const luma = node.dot(vec3(0.2126, 0.7152, 0.0722));
-        node = mix(vec3(luma), node, float(1.25)); // +25% Saturação
-        
-        // Efeito de túnel em alta velocidade (Speed Pinch + Vignette Dinâmico)
-        const uvDist = uv().sub(vec2(0.5, 0.5));
-        const distance = uvDist.length();
-        const vignette = smoothstep(1.05, 0.25, distance);
-        const speedPinch = this.speedUniform.mul(0.65);
-        node = node.mul(mix(float(1), vignette, float(0.4).add(speedPinch)));
+        // Vignette + a slight desaturating edge darkening at speed.
+        const distance = uv().sub(vec2(0.5, 0.5)).length();
+        const vignette = smoothstep(0.92, 0.28, distance);
+        const speedPinch = this.speedUniform.mul(0.35);
+        node = node.mul(mix(float(1), vignette, float(0.55).add(speedPinch)));
 
         const pipeline = new RenderPipeline(this.renderer);
         pipeline.outputColorTransform = false;
@@ -591,8 +582,8 @@ class Game {
                             car.position.x + (Math.random()-0.5)*2, 
                             car.position.y + 0.2, 
                             car.position.z + (Math.random()-0.5)*2, 
-                            (Math.random()-0.5)*20, Math.random()*15+5, (Math.random()-0.5)*20, 
-                            { size: 1.5, life: 0.4, color: 0xffddaa }
+                            (Math.random()-0.5)*25, Math.random()*15+8, (Math.random()-0.5)*25, 
+                            { size: 2.0, life: 0.5, color: 0xffeebb }
                         );
                     }
                 }
@@ -624,7 +615,7 @@ class Game {
                             const mx = (cars[i].position.x + cars[j].position.x) / 2;
                             const my = (cars[i].position.y + cars[j].position.y) / 2 + 0.3;
                             const mz = (cars[i].position.z + cars[j].position.z) / 2;
-                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*30, Math.random()*20+5, (Math.random()-0.5)*30, { size: 1.5, life: 0.4, color: 0xffaa44 });
+                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*35, Math.random()*20+8, (Math.random()-0.5)*35, { size: 2.2, life: 0.5, color: 0xffcc22 });
                         }
                     }
                 }
@@ -882,24 +873,8 @@ class Game {
         }
 
         this.camera.lookAt(this.cameraLook);
-        // A touch of head tilt in the cockpit sells the lateral load.
         if (this.cameraMode === 'cockpit' && !lookBack) {
-            this.camera.rotateZ(-car.roll * 0.8 - car.steer * 0.12);
-        }
-        
-        // Efeito de vibração violenta em alta velocidade (Hyper-realismo)
-        if (speedNorm > 0.35 && this.cameraMode !== 'broadcast' && !lookBack) {
-            const shakeLevel = Math.pow(speedNorm - 0.35, 2) * 3.5; // Escala quadrática
-            const t = (this.raceTime || 0) * 60;
-            this.camera.position.x += (Math.sin(t) * 0.02 + Math.sin(t * 3.2) * 0.01) * shakeLevel;
-            this.camera.position.y += (Math.cos(t * 1.4) * 0.02 + Math.cos(t * 2.7) * 0.01) * shakeLevel;
-            this.camera.position.z += (Math.sin(t * 1.7) * 0.02) * shakeLevel;
-            
-            // Vibração rotacional no cockpit (a cabeça do piloto treme)
-            if (this.cameraMode === 'cockpit') {
-                this.camera.rotateX((Math.sin(t * 4.1) * 0.006) * shakeLevel);
-                this.camera.rotateY((Math.cos(t * 3.5) * 0.006) * shakeLevel);
-            }
+            this.camera.rotateZ(-car.roll * 0.85 - car.steer * 0.1);
         }
 
         this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 5);

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Ravi 1·2·3 — lógica no molde de Mickey's 123: The Big Surprise Party
+   Mickey 1·2·3 — lógica no molde de Mickey's 123: The Big Surprise Party
    Controles: apenas números 0–9 (teclado ou numpad na tela)
    ========================================================================== */
 
@@ -121,7 +121,7 @@ function bindUI() {
   });
 
   document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
-  document.getElementById('btn-back').addEventListener('click', () => {
+  const btnBack = document.getElementById('btn-back'); if (btnBack) btnBack.addEventListener('click', () => {
     window.location.href = '/labs/';
   });
 
@@ -258,7 +258,7 @@ async function startDream(n) {
   S.scene = 'dream';
   S.sheep = [];
   hideChoices();
-  say('Ravi está sonhando... vamos contar carneirinhos!', 2500);
+  say('Mickey está sonhando... vamos contar carneirinhos!', 2500);
   await wait(600);
 
   await Audio.countTo(n, (i) => {

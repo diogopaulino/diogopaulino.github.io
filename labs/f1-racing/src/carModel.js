@@ -321,32 +321,27 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
 
     const paintMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.12, // Lowered for hyper-reflective paint
-        metalness: 0.65, // Increased for metallic base
-        clearcoat: 1.0,  // Glossy finish
-        clearcoatRoughness: 0.04,
-        envMapIntensity: 2.5, // Bright reflections
-        reflectivity: 0.9,
-        iridescence: 0.3,
-        iridescenceIOR: 1.4,
+        roughness: 0.1,
+        metalness: 0.65,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.02,
+        envMapIntensity: 3.5,
+        reflectivity: 1.0
     });
-    // Carbon fiber-like physical material
-    const darkMaterial = new THREE.MeshPhysicalMaterial({
+    const darkMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.55,
-        metalness: 0.85,
-        clearcoat: 0.4,
-        clearcoatRoughness: 0.25,
+        roughness: 0.6,
+        metalness: 0.4,
         envMapIntensity: 1.2
     });
     const carbonMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
         map: carbonTexture(),
-        roughness: 0.45,
-        metalness: 0.55,
-        clearcoat: 0.6,
-        clearcoatRoughness: 0.2,
-        envMapIntensity: 1.4
+        roughness: 0.35,
+        metalness: 0.65,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1,
+        envMapIntensity: 2.0
     });
 
     const group = new THREE.Group();
@@ -401,8 +396,8 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
     const wheelMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true, roughness: 0.82, metalness: 0.28, envMapIntensity: 0.6
     });
-    const discMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x2a1a14, emissive: 0xff3300, emissiveIntensity: 0, roughness: 0.4, metalness: 0.8
+    const discMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a1810, emissive: 0xff5500, emissiveIntensity: 0, roughness: 0.45, metalness: 0.5
     });
 
     const wheels = [];
@@ -478,7 +473,7 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
             }
         },
         setBrakeGlow(amount) {
-            discMaterial.emissiveIntensity = amount * 8.0;
+            discMaterial.emissiveIntensity = amount * 8.5;
         },
         setDrs(open) {
             drsPivot.rotation.x = open * -0.78;

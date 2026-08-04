@@ -180,12 +180,12 @@ button {
 .hud-top-right { justify-self: end; align-items: end; }
 
 .panel {
-    background: color-mix(in oklab, var(--ink-deep) 60%, transparent);
-    border: 1px solid color-mix(in oklab, var(--text) 25%, transparent);
+    background: color-mix(in oklab, var(--ink-deep) 65%, transparent);
+    border: 1px solid color-mix(in oklab, var(--text) 22%, transparent);
     border-radius: var(--radius);
-    backdrop-filter: blur(var(--blur)) saturate(1.8);
+    backdrop-filter: blur(32px) saturate(2);
     padding: 0.55rem 0.75rem;
-    box-shadow: 0 16px 40px -10px oklch(0% 0 0 / 0.9), inset 0 1px 1px color-mix(in oklab, var(--text) 15%, transparent);
+    box-shadow: 0 16px 40px -10px oklch(0% 0 0 / 0.95), inset 0 1px 2px color-mix(in oklab, var(--text) 18%, transparent);
 }
 
 .stat-label {
@@ -365,7 +365,8 @@ button {
     color: oklch(18% 0.03 150);
     background: var(--signal);
     border-color: var(--signal);
-    box-shadow: 0 0 22px -4px var(--signal);
+    box-shadow: 0 0 24px -2px var(--signal), inset 0 0 8px oklch(100% 0 0 / 0.5);
+    text-shadow: 0 0 4px color-mix(in oklab, var(--ink) 50%, transparent);
 }
 
 .cluster {
@@ -373,11 +374,11 @@ button {
     justify-items: center;
     gap: 0.4rem;
     padding: 0.6rem 1.1rem 0.7rem;
-    background: color-mix(in oklab, var(--ink-deep) 70%, transparent);
-    border: 1px solid color-mix(in oklab, var(--text) 25%, transparent);
+    background: color-mix(in oklab, var(--ink-deep) 75%, transparent);
+    border: 1px solid color-mix(in oklab, var(--text) 22%, transparent);
     border-radius: var(--radius-lg);
-    backdrop-filter: blur(var(--blur)) saturate(1.5);
-    box-shadow: 0 16px 40px -10px oklch(0% 0 0 / 0.9), inset 0 1px 1px color-mix(in oklab, var(--text) 15%, transparent);
+    backdrop-filter: blur(32px) saturate(2);
+    box-shadow: 0 16px 40px -10px oklch(0% 0 0 / 0.95), inset 0 1px 2px color-mix(in oklab, var(--text) 18%, transparent);
 }
 
 .shift-lights { display: flex; gap: 4px; }
@@ -390,9 +391,9 @@ button {
     transition: background 60ms linear, box-shadow 60ms linear;
 }
 
-.shift-lights i:nth-child(-n+4).is-lit { background: var(--signal); box-shadow: 0 0 10px var(--signal); }
-.shift-lights i:nth-child(n+5):nth-child(-n+7).is-lit { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
-.shift-lights i:nth-child(n+8).is-lit { background: oklch(65% 0.25 330); box-shadow: 0 0 12px oklch(65% 0.25 330); }
+.shift-lights i:nth-child(-n+4).is-lit { background: var(--signal); box-shadow: 0 0 14px 2px var(--signal); }
+.shift-lights i:nth-child(n+5):nth-child(-n+7).is-lit { background: var(--warn); box-shadow: 0 0 14px 2px var(--warn); }
+.shift-lights i:nth-child(n+8).is-lit { background: oklch(65% 0.25 330); box-shadow: 0 0 16px 3px oklch(65% 0.25 330); }
 
 .cluster-main { display: flex; align-items: center; gap: 1.1rem; }
 
@@ -405,6 +406,8 @@ button {
     line-height: 0.9;
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
+    font-style: italic;
+    text-shadow: 0 0 16px color-mix(in oklab, var(--text) 45%, transparent);
 }
 
 .speedo span {
@@ -429,6 +432,8 @@ button {
     font-size: 1.9rem;
     font-weight: 800;
     line-height: 1;
+    font-style: italic;
+    text-shadow: 0 0 12px color-mix(in oklab, var(--text) 35%, transparent);
 }
 
 .gear strong.is-shift { animation: gear-pop 0.16s var(--ease); }

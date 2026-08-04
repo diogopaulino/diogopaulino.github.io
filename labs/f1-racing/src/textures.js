@@ -211,7 +211,7 @@ export function roadTexture(base = 0x1e2026) {
     for (let y = 0; y < 1024; y += 48) ctx.fillRect(1024 * 0.5 - 2, y, 4, 22);
     ctx.globalAlpha = 1;
 
-    const pack = packMaps(key, el, { strength: 3.2, roughBase: 0.88, roughContrast: 0.18, aniso: 16 });
+    const pack = packMaps(key, el, { strength: 4.5, roughBase: 0.82, roughContrast: 0.25, aniso: 16 });
     return pack.map;
 }
 
@@ -243,7 +243,7 @@ export function kerbTexture() {
     noiseField(ctx, 128, 256, { cells: 24, alpha: 0.18, light: 255, dark: 80, seed: 4 });
     speckle(ctx, 128, 256, 600, ['#0008', '#fff3'], 2, 19);
 
-    packMaps(key, el, { strength: 4.5, roughBase: 0.55, roughContrast: 0.3, aniso: 8 });
+    packMaps(key, el, { strength: 5.5, roughBase: 0.5, roughContrast: 0.4, aniso: 8 });
     return cache.get(`${key}-pack`).map;
 }
 
@@ -280,7 +280,7 @@ export function grassTexture(tint = 0x1f3518) {
     ctx.globalAlpha = 1;
     speckle(ctx, 1024, 1024, 14000, ['#00000044', '#7fa04a33', '#4c6b2a55'], 2, 91);
 
-    packMaps(key, el, { strength: 2.8, roughBase: 0.95, roughContrast: 0.12, aniso: 8 });
+    packMaps(key, el, { strength: 3.5, roughBase: 0.92, roughContrast: 0.18, aniso: 8 });
     return cache.get(`${key}-pack`).map;
 }
 
@@ -324,7 +324,7 @@ export function gravelTexture() {
         ctx.arc(rand() * 512, rand() * 512, r, 0, Math.PI * 2);
         ctx.fill();
     }
-    packMaps(key, el, { strength: 4.0, roughBase: 0.98, roughContrast: 0.1 });
+    packMaps(key, el, { strength: 5.0, roughBase: 0.95, roughContrast: 0.15 });
     return cache.get(`${key}-pack`).map;
 }
 
