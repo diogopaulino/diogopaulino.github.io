@@ -413,10 +413,10 @@ export function buildWorld(circuit, { quality, weather }) {
     /* --- sky + light --------------------------------------------- */
     const sky = new SkyMesh();
     sky.scale.setScalar(45000);
-    sky.turbidity.value = 4 + overcast * 10;
-    sky.rayleigh.value = wet ? 1.2 : 0.6;
-    sky.mieCoefficient.value = 0.005 + overcast * 0.02;
-    sky.mieDirectionalG.value = 0.9;
+    sky.turbidity.value = 4.5 + overcast * 12;
+    sky.rayleigh.value = wet ? 1.5 : 0.85;
+    sky.mieCoefficient.value = 0.008 + overcast * 0.025;
+    sky.mieDirectionalG.value = 0.94;
 
     const sunAngle = circuit.def.sun || { elevation: 40, azimuth: 160 };
     const phi = THREE.MathUtils.degToRad(90 - sunAngle.elevation);
@@ -426,8 +426,8 @@ export function buildWorld(circuit, { quality, weather }) {
     sky.material.fog = false;   // the dome sits far beyond the fog range
     scene.add(sky);
 
-    const sunTint = wet ? 0xbfc9d6 : 0xfff1dc;
-    const sun = new THREE.DirectionalLight(sunTint, wet ? 1.85 : 4.1);
+    const sunTint = wet ? 0xcfdff0 : 0xffead0;
+    const sun = new THREE.DirectionalLight(sunTint, wet ? 2.2 : 5.5);
     sun.position.copy(sunDirection).multiplyScalar(320);
     sun.castShadow = quality.shadows;
     if (quality.shadows) {
@@ -439,16 +439,16 @@ export function buildWorld(circuit, { quality, weather }) {
         sun.shadow.camera.right = extent;
         sun.shadow.camera.top = extent;
         sun.shadow.camera.bottom = -extent;
-        sun.shadow.bias = -0.0006;
-        sun.shadow.normalBias = 0.04;
+        sun.shadow.bias = -0.0005;
+        sun.shadow.normalBias = 0.035;
     }
     scene.add(sun);
     scene.add(sun.target);
 
     const hemi = new THREE.HemisphereLight(
-        wet ? 0x7f8b9c : 0xa8cfff,
-        circuit.def.scenery === 'city' ? 0x2a2c30 : 0x2d3a22,
-        wet ? 1.25 : 0.48
+        wet ? 0x8fa0b5 : 0x9bc2ff,
+        circuit.def.scenery === 'city' ? 0x303338 : 0x334426,
+        wet ? 1.4 : 0.6
     );
     scene.add(hemi);
 
@@ -458,11 +458,11 @@ export function buildWorld(circuit, { quality, weather }) {
     scene.add(fill);
 
     scene.environment = environmentTexture(
-        wet ? 0x9aa6b4 : 0xffd9a0,
-        wet ? 0x6d7887 : 0x5f8fd0,
-        circuit.def.scenery === 'city' ? 0x3a3d42 : 0x39492a
+        wet ? 0xabbcd2 : 0xffdfb0,
+        wet ? 0x768598 : 0x6c9be8,
+        circuit.def.scenery === 'city' ? 0x40444a : 0x40552d
     );
-    scene.environmentIntensity = wet ? 1.05 : 0.85;
+    scene.environmentIntensity = wet ? 1.2 : 1.0;
 
     const fogColor = new THREE.Color(wet ? 0x8d99a8 : 0xa8bede);
     scene.fog = new THREE.Fog(fogColor, quality.drawDistance * 0.38, quality.drawDistance * 1.55);

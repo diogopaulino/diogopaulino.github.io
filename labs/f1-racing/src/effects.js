@@ -223,8 +223,8 @@ export class RainField {
             depthWrite: false,
             side: THREE.DoubleSide
         });
-        material.colorNode = vec4(0.68, 0.76, 0.88, 1);
-        material.opacityNode = float(0.32);
+        material.colorNode = vec4(0.75, 0.85, 0.95, 1);
+        material.opacityNode = float(0.42);
 
         this.mesh = new THREE.InstancedMesh(geometry, material, count);
         this.mesh.frustumCulled = false;

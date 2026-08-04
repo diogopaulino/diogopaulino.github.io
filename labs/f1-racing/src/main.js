@@ -99,7 +99,7 @@ class Game {
         renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.quality.pixelRatio));
         renderer.setSize(innerWidth, innerHeight, false);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.12;
+        renderer.toneMappingExposure = 1.25;
         renderer.shadowMap.enabled = this.quality.shadows;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -381,23 +381,23 @@ class Game {
 
         this.setLoading('gerando efeitos…');
         this.smoke = new ParticleSystem(this.scene, {
-            max: Math.round(340 * this.quality.particles),
+            max: Math.round(400 * this.quality.particles),
             gravity: 1.1,
             drag: 0.9
         });
         this.sparks = new ParticleSystem(this.scene, {
-            max: Math.round(160 * this.quality.particles),
+            max: Math.round(240 * this.quality.particles),
             blending: THREE.AdditiveBlending,
-            gravity: -9,
-            drag: 0.82
+            gravity: -12,
+            drag: 0.8
         });
         this.spray = new ParticleSystem(this.scene, {
-            max: Math.round(260 * this.quality.particles),
-            gravity: -2.2,
-            drag: 0.88
+            max: Math.round(360 * this.quality.particles),
+            gravity: -2.0,
+            drag: 0.92
         });
-        this.trails = new SkidTrails(this.scene, { maxPoints: 700 });
-        this.rain = new RainField(this.scene, { count: Math.round(2400 * this.quality.particles) });
+        this.trails = new SkidTrails(this.scene, { maxPoints: 900 });
+        this.rain = new RainField(this.scene, { count: Math.round(3600 * this.quality.particles) });
         this.rain.setEnabled(this.weather.id !== 'dry');
 
         this.buildCameraPosts();
@@ -465,7 +465,7 @@ class Game {
 
         let node = color;
         if (this.quality.bloom) {
-            node = node.add(bloom(emissiveTexture, 1.15, 0.42, 0.02));
+            node = node.add(bloom(emissiveTexture, 1.25, 0.6, 0.05));
         }
 
         // Vignette + a slight desaturating edge darkening at speed.
@@ -582,8 +582,8 @@ class Game {
                             car.position.x + (Math.random()-0.5)*2, 
                             car.position.y + 0.2, 
                             car.position.z + (Math.random()-0.5)*2, 
-                            (Math.random()-0.5)*20, Math.random()*15+5, (Math.random()-0.5)*20, 
-                            { size: 1.5, life: 0.4, color: 0xffddaa }
+                            (Math.random()-0.5)*25, Math.random()*15+8, (Math.random()-0.5)*25, 
+                            { size: 2.0, life: 0.5, color: 0xffeebb }
                         );
                     }
                 }
@@ -615,7 +615,7 @@ class Game {
                             const mx = (cars[i].position.x + cars[j].position.x) / 2;
                             const my = (cars[i].position.y + cars[j].position.y) / 2 + 0.3;
                             const mz = (cars[i].position.z + cars[j].position.z) / 2;
-                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*30, Math.random()*20+5, (Math.random()-0.5)*30, { size: 1.5, life: 0.4, color: 0xffaa44 });
+                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*35, Math.random()*20+8, (Math.random()-0.5)*35, { size: 2.2, life: 0.5, color: 0xffcc22 });
                         }
                     }
                 }
