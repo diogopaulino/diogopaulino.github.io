@@ -361,10 +361,10 @@ export function buildWorld(circuit, { quality, weather }) {
     /* --- sky + light --------------------------------------------- */
     const sky = new SkyMesh();
     sky.scale.setScalar(45000);
-    sky.turbidity.value = 3 + overcast * 12;
-    sky.rayleigh.value = wet ? 0.7 : 2.2;
+    sky.turbidity.value = 4 + overcast * 10;
+    sky.rayleigh.value = wet ? 1.2 : 0.6;
     sky.mieCoefficient.value = 0.005 + overcast * 0.02;
-    sky.mieDirectionalG.value = 0.82;
+    sky.mieDirectionalG.value = 0.9;
 
     const sunAngle = circuit.def.sun || { elevation: 40, azimuth: 160 };
     const phi = THREE.MathUtils.degToRad(90 - sunAngle.elevation);
@@ -417,11 +417,13 @@ export function buildWorld(circuit, { quality, weather }) {
     roadMap.anisotropy = quality.anisotropy;
     const roadMaterial = new THREE.MeshPhysicalMaterial({
         map: roadMap,
-        roughness: wet ? 0.15 : 0.75,
-        metalness: wet ? 0.3 : 0.05,
+        bumpMap: roadMap,
+        bumpScale: 0.015,
+        roughness: wet ? 0.28 : 0.86,
+        metalness: wet ? 0.16 : 0.02,
         clearcoat: wet ? 1.0 : 0.1,
         clearcoatRoughness: wet ? 0.05 : 0.5,
-        envMapIntensity: wet ? 2.5 : 0.5
+        envMapIntensity: wet ? 1.5 : 0.35
     });
 
     const halfAt = (i) => circuit.halfWidth * circuit.widthScale[i];
@@ -445,7 +447,7 @@ export function buildWorld(circuit, { quality, weather }) {
     kerbMap.anisotropy = quality.anisotropy;
     const kerbs = new THREE.Mesh(
         buildKerbs(circuit),
-        new THREE.MeshStandardMaterial({ map: kerbMap, roughness: 0.62, metalness: 0.03 })
+        new THREE.MeshStandardMaterial({ map: kerbMap, bumpMap: kerbMap, bumpScale: 0.02, roughness: 0.62, metalness: 0.03 })
     );
     kerbs.receiveShadow = quality.shadows;
     group.add(kerbs);
@@ -493,7 +495,7 @@ export function buildWorld(circuit, { quality, weather }) {
     const grassMap = grassTexture(cityLike ? 0x39413a : 0x33501f);
     grassMap.repeat.set(26, 1);
     grassMap.anisotropy = quality.anisotropy;
-    const grassMaterial = new THREE.MeshStandardMaterial({ map: grassMap, roughness: 1 });
+    const grassMaterial = new THREE.MeshStandardMaterial({ map: grassMap, bumpMap: grassMap, bumpScale: 0.08, roughness: 1 });
 
     let baseY = Infinity;
     for (let i = 0; i < circuit.count; i++) baseY = Math.min(baseY, circuit.y[i]);
@@ -509,7 +511,7 @@ export function buildWorld(circuit, { quality, weather }) {
                     vScale: 1 / 55,
                     lift: -0.36,
                     // Blend the outer edge towards the base plane so the ground meets it flat.
-                    outerLift: (i) => baseY - circuit.y[i] + 0.6,
+                    outerLift: (i) => baseY + 0.55 - (circuit.y[i] + side * (halfAt(i) + VERGE_WIDTH) * Math.tan(circuit.bank[i])),
                     step: 2
                 }
             ),
@@ -526,7 +528,7 @@ export function buildWorld(circuit, { quality, weather }) {
     groundMap.repeat.set(groundSize / 26, groundSize / 26);
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(groundSize, groundSize),
-        new THREE.MeshStandardMaterial({ map: groundMap, roughness: 1 })
+        new THREE.MeshStandardMaterial({ map: groundMap, bumpMap: groundMap, bumpScale: 0.08, roughness: 1 })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set((circuit.minX + circuit.maxX) / 2, baseY + 0.55, (circuit.minZ + circuit.maxZ) / 2);
@@ -632,9 +634,9 @@ export function buildWorld(circuit, { quality, weather }) {
             for (let c = 0; c < clusters && idx < trees.count; c++) {
                 const side = rand() < 0.5 ? -1 : 1;
                 const lateral = side * (halfAt(i) + RUNOFF_WIDTH + 14 + rand() * 78);
-                const [x, y, z] = surfacePoint(circuit, i, lateral, -0.4);
+                const [x, _, z] = surfacePoint(circuit, i, lateral, -0.4);
                 const scale = 0.75 + rand() * 0.9;
-                dummy.position.set(x + (rand() - 0.5) * 12, y - 0.3, z + (rand() - 0.5) * 12);
+                dummy.position.set(x + (rand() - 0.5) * 12, baseY + 0.55, z + (rand() - 0.5) * 12);
                 dummy.rotation.set(0, rand() * Math.PI * 2, 0);
                 dummy.scale.setScalar(scale);
                 dummy.updateMatrix();

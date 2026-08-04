@@ -24,6 +24,7 @@ import { AudioEngine } from './audio.js';
 import { ParticleSystem, SkidTrails, RainField } from './effects.js';
 import { InputManager } from './input.js';
 import { Hud } from './hud.js';
+import { crowdTexture } from './textures.js';
 
 const FIXED_STEP = 1 / 120;
 const MAX_STEPS = 6;
@@ -575,9 +576,22 @@ class Game {
 
             car.update(dt, input);
             const wallHit = car.clampToTrack();
-            if (wallHit > 8 && car === this.player) {
-                this.audio.contact(wallHit * 0.4);
-                if (navigator.vibrate) navigator.vibrate(45);
+            if (wallHit > 8) {
+                if (car === this.player) {
+                    this.audio.contact(wallHit * 0.4);
+                    if (navigator.vibrate) navigator.vibrate(45);
+                }
+                if (this.sparks) {
+                    for (let s = 0; s < 10; s++) {
+                        this.sparks.spawn(
+                            car.position.x + (Math.random()-0.5)*2, 
+                            car.position.y + 0.2, 
+                            car.position.z + (Math.random()-0.5)*2, 
+                            (Math.random()-0.5)*20, Math.random()*15+5, (Math.random()-0.5)*20, 
+                            { size: 1.5, life: 0.4, color: 0xffddaa }
+                        );
+                    }
+                }
             }
 
             // Marshals: a car stranded off track is returned to the racing line.
@@ -597,8 +611,18 @@ class Game {
         for (let i = 0; i < cars.length; i++) {
             for (let j = i + 1; j < cars.length; j++) {
                 const force = Vehicle.resolveContact(cars[i], cars[j]);
-                if (force > 4 && (cars[i] === this.player || cars[j] === this.player)) {
-                    this.audio.contact(force * 0.25);
+                if (force > 4) {
+                    if (cars[i] === this.player || cars[j] === this.player) {
+                        this.audio.contact(force * 0.25);
+                    }
+                    if (this.sparks && force > 6) {
+                        for (let s = 0; s < 12; s++) {
+                            const mx = (cars[i].position.x + cars[j].position.x) / 2;
+                            const my = (cars[i].position.y + cars[j].position.y) / 2 + 0.3;
+                            const mz = (cars[i].position.z + cars[j].position.z) / 2;
+                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*30, Math.random()*20+5, (Math.random()-0.5)*30, { size: 1.5, life: 0.4, color: 0xffaa44 });
+                        }
+                    }
                 }
             }
         }
@@ -746,10 +770,15 @@ class Game {
      * ============================================================== */
 
     syncModels(dt) {
+        const cTex = crowdTexture();
+        if (cTex) {
+            cTex.offset.y = Math.sin(performance.now() / 1000 * 8) * 0.015;
+        }
+
         for (const car of this.cars) {
             const model = this.models.get(car);
             if (!model) continue;
-            model.group.position.set(car.position.x, car.position.y, car.position.z);
+            model.group.position.set(car.position.x, car.position.y + 0.02, car.position.z);
             model.group.rotation.order = 'YXZ';
             model.group.rotation.set(car.pitch, car.yaw, car.roll);
             model.updateWheels(car.steer * 1.15, (car.vx / 0.36) * dt, car.suspension);
@@ -822,6 +851,13 @@ class Game {
                 break;
             }
         }
+        
+        const groundClearance = this.circuit ? this.circuit.heightAt(this.circuit.nearest(this.camera.position.x, this.camera.position.z), 0) + 0.5 : -999;
+        if (this.camera.position.y < groundClearance) {
+            this.camera.position.y = groundClearance;
+        }
+
+        this.camera.fov = fov;
 
         this.camera.lookAt(this.cameraLook);
         // A touch of head tilt in the cockpit sells the lateral load.
