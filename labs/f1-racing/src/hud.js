@@ -248,7 +248,8 @@ export class Hud {
         if (el.ersValue) el.ersValue.textContent = car.ers.toFixed(1);
 
         if (el.tyreLabel) {
-            el.tyreLabel.textContent = car.compound?.label?.[0] || 'M';
+            const map = { soft: 'S', medium: 'M', hard: 'H' };
+            el.tyreLabel.textContent = map[car.compound?.id] || 'M';
             el.tyreLabel.style.color = car.compound?.color || '#f0c419';
         }
         if (el.tyreWear) el.tyreWear.style.setProperty('--fill', (1 - (car.tyreWear || 0)).toFixed(3));

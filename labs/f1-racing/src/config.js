@@ -239,9 +239,11 @@ export function detectQuality() {
     const mobile = matchMedia('(pointer: coarse)').matches;
     const cores = navigator.hardwareConcurrency || 4;
     const memory = navigator.deviceMemory || 4;
-    if (mobile || cores <= 4 || memory <= 4) return mobile && cores >= 6 ? 'medium' : 'low';
-    if (cores >= 8 && memory >= 8) return 'high';
-    return 'medium';
+    if (mobile) return cores >= 6 && memory >= 4 ? 'medium' : 'low';
+    // Desktop browsers: prefer medium+ so shadows/PBR read correctly.
+    if (cores >= 6 && memory >= 4) return 'high';
+    if (cores >= 4) return 'medium';
+    return 'low';
 }
 
 export function formatTime(seconds) {

@@ -11,10 +11,14 @@ function canvas(w, h) {
     return el;
 }
 
+function ctx2d(el) {
+    return el.getContext('2d', { willReadFrequently: true });
+}
+
 function makeTexture(key, w, h, draw, { repeat = [1, 1], srgb = true, aniso = 8 } = {}) {
     if (cache.has(key)) return cache.get(key);
     const el = canvas(w, h);
-    draw(el.getContext('2d'), w, h);
+    draw(ctx2d(el), w, h);
     const texture = new THREE.CanvasTexture(el);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(repeat[0], repeat[1]);
@@ -80,7 +84,7 @@ function speckle(ctx, w, h, count, colors, size = 2, seed = 7) {
 function heightToNormal(srcCtx, w, h, strength = 2.4) {
     const src = srcCtx.getImageData(0, 0, w, h).data;
     const out = canvas(w, h);
-    const ctx = out.getContext('2d');
+    const ctx = out.getContext('2d', { willReadFrequently: true });
     const img = ctx.createImageData(w, h);
     const d = img.data;
     const lum = (x, y) => {
@@ -106,7 +110,7 @@ function heightToNormal(srcCtx, w, h, strength = 2.4) {
 function roughnessFromAlbedo(srcCtx, w, h, { base = 0.82, contrast = 0.22, invert = false } = {}) {
     const src = srcCtx.getImageData(0, 0, w, h).data;
     const out = canvas(w, h);
-    const ctx = out.getContext('2d');
+    const ctx = out.getContext('2d', { willReadFrequently: true });
     const img = ctx.createImageData(w, h);
     const d = img.data;
     for (let i = 0; i < src.length; i += 4) {
@@ -127,7 +131,7 @@ function packMaps(key, albedoCanvas, { strength = 2.2, roughBase = 0.84, roughCo
 
     const w = albedoCanvas.width;
     const h = albedoCanvas.height;
-    const aCtx = albedoCanvas.getContext('2d');
+    const aCtx = albedoCanvas.getContext('2d', { willReadFrequently: true });
 
     const map = new THREE.CanvasTexture(albedoCanvas);
     map.wrapS = map.wrapT = THREE.RepeatWrapping;
@@ -161,7 +165,7 @@ export function roadTexture(base = 0x1e2026) {
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
 
     const el = canvas(1024, 1024);
-    const ctx = el.getContext('2d');
+    const ctx = ctx2d(el);
     const col = new THREE.Color(base);
     ctx.fillStyle = `#${col.getHexString()}`;
     ctx.fillRect(0, 0, 1024, 1024);
@@ -221,7 +225,7 @@ export function kerbTexture() {
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
 
     const el = canvas(128, 256);
-    const ctx = el.getContext('2d');
+    const ctx = el.getContext('2d', { willReadFrequently: true });
     const bands = 8;
     for (let i = 0; i < bands; i++) {
         ctx.fillStyle = i % 2 === 0 ? '#c92e28' : '#f4f5f7';
@@ -253,7 +257,7 @@ export function grassTexture(tint = 0x1f3518) {
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
 
     const el = canvas(1024, 1024);
-    const ctx = el.getContext('2d');
+    const ctx = ctx2d(el);
     const col = new THREE.Color(tint);
     ctx.fillStyle = `#${col.getHexString()}`;
     ctx.fillRect(0, 0, 1024, 1024);
@@ -289,7 +293,7 @@ export function runoffTexture() {
     const key = 'runoff';
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
     const el = canvas(512, 512);
-    const ctx = el.getContext('2d');
+    const ctx = el.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#4a4e55';
     ctx.fillRect(0, 0, 512, 512);
     noiseField(ctx, 512, 512, { cells: 36, alpha: 0.26, light: 200, dark: 55, seed: 71 });
@@ -308,7 +312,7 @@ export function gravelTexture() {
     const key = 'gravel';
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
     const el = canvas(512, 512);
-    const ctx = el.getContext('2d');
+    const ctx = el.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#8a7658';
     ctx.fillRect(0, 0, 512, 512);
     noiseField(ctx, 512, 512, { cells: 70, alpha: 0.38, light: 230, dark: 85, seed: 6 });
@@ -333,7 +337,7 @@ export function concreteTexture() {
     const key = 'concrete';
     if (cache.has(`${key}-pack`)) return cache.get(`${key}-pack`).map;
     const el = canvas(512, 512);
-    const ctx = el.getContext('2d');
+    const ctx = el.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#949aa0';
     ctx.fillRect(0, 0, 512, 512);
     noiseField(ctx, 512, 512, { cells: 28, alpha: 0.28, light: 230, dark: 110, seed: 17 });

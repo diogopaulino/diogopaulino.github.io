@@ -883,40 +883,41 @@ class Game {
 
     emitEffects(dt) {
         const car = this.player;
-        if (!car) return;
+        if (!car || this.state === 'countdown') return;
         const density = this.quality.particles;
 
         for (const other of this.cars) {
             const isPlayer = other === car;
             const distance = Math.hypot(other.position.x - car.position.x, other.position.z - car.position.z);
             if (!isPlayer && distance > 140) continue;
+            if (Math.abs(other.vx) < 8) continue;
 
             const forward = { x: Math.sin(other.yaw), z: Math.cos(other.yaw) };
             const rearX = other.position.x - forward.x * 1.9;
             const rearZ = other.position.z - forward.z * 1.9;
 
             // Tyre smoke from sliding or wheelspin.
-            const slide = Math.max(other.slip - 0.55, other.wheelSpin * 0.8, other.lockUp || 0);
-            if (slide > 0.05 && Math.random() < slide * density * 1.4) {
+            const slide = Math.max(other.slip - 0.7, other.wheelSpin * 0.75, (other.lockUp || 0) * 0.9);
+            if (slide > 0.08 && Math.random() < slide * density * 1.1) {
                 for (const side of [-0.8, 0.8]) {
                     this.smoke.spawn(
                         rearX + Math.cos(other.yaw) * side,
-                        other.position.y + 0.2,
+                        other.position.y + 0.22,
                         rearZ - Math.sin(other.yaw) * side,
-                        (Math.random() - 0.5) * 2.4,
-                        0.8 + Math.random(),
-                        (Math.random() - 0.5) * 2.4,
-                        { size: 0.9, life: 0.85 + Math.random() * 0.6, color: 0xb9bdc4, growth: 3.2 }
+                        (Math.random() - 0.5) * 2.0,
+                        0.6 + Math.random() * 0.8,
+                        (Math.random() - 0.5) * 2.0,
+                        { size: 0.55 + slide * 0.35, life: 0.7 + Math.random() * 0.5, color: 0xb9bdc4, growth: 2.4 }
                     );
                 }
             }
 
             // Dust when running wide.
-            if (other.offTrack && Math.abs(other.vx) > 12 && Math.random() < 0.6 * density) {
+            if (other.offTrack && Math.abs(other.vx) > 12 && Math.random() < 0.55 * density) {
                 this.smoke.spawn(
                     rearX, other.position.y + 0.1, rearZ,
-                    (Math.random() - 0.5) * 3, 1.4 + Math.random(), (Math.random() - 0.5) * 3,
-                    { size: 1.3, life: 1.1, color: 0x9c8a6b, growth: 3.6 }
+                    (Math.random() - 0.5) * 3, 1.2 + Math.random(), (Math.random() - 0.5) * 3,
+                    { size: 1.0, life: 1.0, color: 0x9c8a6b, growth: 3.0 }
                 );
             }
 
@@ -938,13 +939,15 @@ class Game {
                     -forward.x * 5 + (Math.random() - 0.5) * 3,
                     2.4 + Math.random() * 2,
                     -forward.z * 5 + (Math.random() - 0.5) * 3,
-                    { size: 1.1, life: 0.75, color: 0xd8e2ee, growth: 3.8 }
+                    { size: 0.95, life: 0.7, color: 0xd8e2ee, growth: 3.2 }
                 );
             }
         }
 
-        const slideIntensity = Math.max(car.slip - 0.6, car.lockUp || 0, car.wheelSpin * 0.7);
-        this.trails.push(car.position, car.yaw, 0.82, car.surface <= 1 ? slideIntensity : 0);
+        const slideIntensity = Math.max(car.slip - 0.7, car.lockUp || 0, car.wheelSpin * 0.7);
+        if (Math.abs(car.vx) > 10) {
+            this.trails.push(car.position, car.yaw, 0.82, car.surface <= 1 ? slideIntensity : 0);
+        }
         void dt;
     }
 

@@ -545,10 +545,15 @@ button {
     z-index: 10;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.35s var(--ease), visibility 0.35s;
 }
 
-.overlay.is-visible { opacity: 1; visibility: visible; }
+.overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
 
 .overlay-card {
     width: min(1080px, 100%);
