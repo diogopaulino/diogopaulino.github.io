@@ -315,16 +315,31 @@ function buildGantry(circuit) {
 
 function environmentTexture(sunColor, skyColor, groundColor) {
     const el = document.createElement('canvas');
-    el.width = 128;
-    el.height = 64;
+    el.width = 512;
+    el.height = 256;
     const ctx = el.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 64);
+    
+    // Sky and ground gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
     grad.addColorStop(0, `#${new THREE.Color(skyColor).getHexString()}`);
     grad.addColorStop(0.48, `#${new THREE.Color(sunColor).getHexString()}`);
-    grad.addColorStop(0.52, `#${new THREE.Color(groundColor).getHexString()}`);
+    grad.addColorStop(0.5, `#${new THREE.Color(groundColor).getHexString()}`);
     grad.addColorStop(1, '#14170f');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Simulate a bright sun disc for intense HDRI-like reflections
+    const sunX = 350; // Azimuth roughly matches the directional light
+    const sunY = 100; // Elevation
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 40);
+    sunGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    sunGrad.addColorStop(0.2, 'rgba(255, 250, 240, 0.8)');
+    sunGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 40, 0, Math.PI * 2);
+    ctx.fill();
+
     const texture = new THREE.CanvasTexture(el);
     texture.mapping = THREE.EquirectangularReflectionMapping;
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -400,11 +415,13 @@ export function buildWorld(circuit, { quality, weather }) {
     const roadMap = roadTexture(circuit.def.surface);
     roadMap.repeat.set(1, 1);
     roadMap.anisotropy = quality.anisotropy;
-    const roadMaterial = new THREE.MeshStandardMaterial({
+    const roadMaterial = new THREE.MeshPhysicalMaterial({
         map: roadMap,
-        roughness: wet ? 0.28 : 0.86,
-        metalness: wet ? 0.16 : 0.02,
-        envMapIntensity: wet ? 1.5 : 0.35
+        roughness: wet ? 0.15 : 0.75,
+        metalness: wet ? 0.3 : 0.05,
+        clearcoat: wet ? 1.0 : 0.1,
+        clearcoatRoughness: wet ? 0.05 : 0.5,
+        envMapIntensity: wet ? 2.5 : 0.5
     });
 
     const halfAt = (i) => circuit.halfWidth * circuit.widthScale[i];

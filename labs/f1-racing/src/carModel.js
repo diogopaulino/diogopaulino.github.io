@@ -238,16 +238,22 @@ export function buildCar(team, { quality, isPlayer = false } = {}) {
 
     const paintMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.28,
-        metalness: 0.15,
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        envMapIntensity: 1.1
+        roughness: 0.12, // Lowered for hyper-reflective paint
+        metalness: 0.65, // Increased for metallic base
+        clearcoat: 1.0,  // Glossy finish
+        clearcoatRoughness: 0.04,
+        envMapIntensity: 2.5, // Bright reflections
+        iridescence: 0.3,
+        iridescenceIOR: 1.4,
     });
-    const darkMaterial = new THREE.MeshStandardMaterial({
+    // Carbon fiber-like physical material
+    const darkMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.72,
-        metalness: 0.35
+        roughness: 0.55,
+        metalness: 0.85,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.25,
+        envMapIntensity: 1.2
     });
 
     const group = new THREE.Group();
@@ -275,8 +281,8 @@ export function buildCar(team, { quality, isPlayer = false } = {}) {
     const wheelMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true, roughness: 0.78, metalness: 0.3
     });
-    const discMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2a1a14, emissive: 0xff3a08, emissiveIntensity: 0, roughness: 0.5
+    const discMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x2a1a14, emissive: 0xff3300, emissiveIntensity: 0, roughness: 0.4, metalness: 0.8
     });
 
     const wheels = [];
@@ -334,7 +340,7 @@ export function buildCar(team, { quality, isPlayer = false } = {}) {
             }
         },
         setBrakeGlow(amount) {
-            discMaterial.emissiveIntensity = amount * 3.4;
+            discMaterial.emissiveIntensity = amount * 8.0;
         },
         setDrs(open) {
             drsPivot.rotation.x = open * -0.72;
