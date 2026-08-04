@@ -321,18 +321,23 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
 
     const paintMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.14,
-        metalness: 0.55,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.05,
-        envMapIntensity: 2.6,
-        reflectivity: 0.9
+        roughness: 0.12, // Lowered for hyper-reflective paint
+        metalness: 0.65, // Increased for metallic base
+        clearcoat: 1.0,  // Glossy finish
+        clearcoatRoughness: 0.04,
+        envMapIntensity: 2.5, // Bright reflections
+        reflectivity: 0.9,
+        iridescence: 0.3,
+        iridescenceIOR: 1.4,
     });
-    const darkMaterial = new THREE.MeshStandardMaterial({
+    // Carbon fiber-like physical material
+    const darkMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.72,
-        metalness: 0.25,
-        envMapIntensity: 0.8
+        roughness: 0.55,
+        metalness: 0.85,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.25,
+        envMapIntensity: 1.2
     });
     const carbonMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
@@ -396,8 +401,8 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
     const wheelMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true, roughness: 0.82, metalness: 0.28, envMapIntensity: 0.6
     });
-    const discMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2a1810, emissive: 0xff3a08, emissiveIntensity: 0, roughness: 0.45, metalness: 0.5
+    const discMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x2a1a14, emissive: 0xff3300, emissiveIntensity: 0, roughness: 0.4, metalness: 0.8
     });
 
     const wheels = [];
@@ -473,7 +478,7 @@ export function buildCar(team, { quality, isPlayer = false, compoundColor = '#e8
             }
         },
         setBrakeGlow(amount) {
-            discMaterial.emissiveIntensity = amount * 4.2;
+            discMaterial.emissiveIntensity = amount * 8.0;
         },
         setDrs(open) {
             drsPivot.rotation.x = open * -0.78;

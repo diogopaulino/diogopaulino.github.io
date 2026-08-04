@@ -11,13 +11,13 @@
     --text-soft: oklch(72% 0.015 260);
     --text-dim: oklch(58% 0.015 260);
 
-    --panel: color-mix(in oklab, oklch(16% 0.015 265) 82%, transparent);
-    --panel-strong: color-mix(in oklab, oklch(12% 0.015 265) 92%, transparent);
-    --line: color-mix(in oklab, var(--text) 12%, transparent);
+    --panel: color-mix(in oklab, oklch(16% 0.015 265) 45%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(12% 0.015 265) 70%, transparent);
+    --line: color-mix(in oklab, var(--text) 18%, transparent);
     --line-soft: color-mix(in oklab, var(--text) 7%, transparent);
 
-    --radius: 16px;
-    --radius-lg: 24px;
+    --radius: 14px;
+    --radius-lg: 22px;
     --blur: 24px;
 
     --safe-top: env(safe-area-inset-top, 0px);

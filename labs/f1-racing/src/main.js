@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { RenderPipeline } from 'three/webgpu';
-import { pass, mrt, output, emissive, uniform, uv, vec2, float, smoothstep, mix } from 'three/tsl';
+import { pass, mrt, output, emissive, uniform, uv, vec2, vec3, float, smoothstep, mix } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 import { buildCircuit, CIRCUITS, CIRCUIT_KEYS } from './circuits.js';
@@ -465,14 +465,23 @@ class Game {
 
         let node = color;
         if (this.quality.bloom) {
-            node = node.add(bloom(emissiveTexture, 1.15, 0.42, 0.02));
+            // Hyper-realistic Bloom: mais intenso, limiar ajustado para cobrir destaques do sol e reflexos
+            const bloomEffect = bloom(emissiveTexture.add(color.mul(0.15)), 2.2, 0.65, 0.05);
+            node = node.add(bloomEffect);
         }
 
-        // Vignette + a slight desaturating edge darkening at speed.
-        const distance = uv().sub(vec2(0.5, 0.5)).length();
-        const vignette = smoothstep(0.92, 0.28, distance);
-        const speedPinch = this.speedUniform.mul(0.35);
-        node = node.mul(mix(float(1), vignette, float(0.55).add(speedPinch)));
+        // Color Grading: Estilo Transmissão Oficial de F1 (Contraste alto, saturação rica)
+        // Correção de Gamma e contraste
+        node = node.pow(0.88);
+        const luma = node.dot(vec3(0.2126, 0.7152, 0.0722));
+        node = mix(vec3(luma), node, float(1.25)); // +25% Saturação
+        
+        // Efeito de túnel em alta velocidade (Speed Pinch + Vignette Dinâmico)
+        const uvDist = uv().sub(vec2(0.5, 0.5));
+        const distance = uvDist.length();
+        const vignette = smoothstep(1.05, 0.25, distance);
+        const speedPinch = this.speedUniform.mul(0.65);
+        node = node.mul(mix(float(1), vignette, float(0.4).add(speedPinch)));
 
         const pipeline = new RenderPipeline(this.renderer);
         pipeline.outputColorTransform = false;
@@ -873,8 +882,24 @@ class Game {
         }
 
         this.camera.lookAt(this.cameraLook);
+        // A touch of head tilt in the cockpit sells the lateral load.
         if (this.cameraMode === 'cockpit' && !lookBack) {
-            this.camera.rotateZ(-car.roll * 0.85 - car.steer * 0.1);
+            this.camera.rotateZ(-car.roll * 0.8 - car.steer * 0.12);
+        }
+        
+        // Efeito de vibração violenta em alta velocidade (Hyper-realismo)
+        if (speedNorm > 0.35 && this.cameraMode !== 'broadcast' && !lookBack) {
+            const shakeLevel = Math.pow(speedNorm - 0.35, 2) * 3.5; // Escala quadrática
+            const t = (this.raceTime || 0) * 60;
+            this.camera.position.x += (Math.sin(t) * 0.02 + Math.sin(t * 3.2) * 0.01) * shakeLevel;
+            this.camera.position.y += (Math.cos(t * 1.4) * 0.02 + Math.cos(t * 2.7) * 0.01) * shakeLevel;
+            this.camera.position.z += (Math.sin(t * 1.7) * 0.02) * shakeLevel;
+            
+            // Vibração rotacional no cockpit (a cabeça do piloto treme)
+            if (this.cameraMode === 'cockpit') {
+                this.camera.rotateX((Math.sin(t * 4.1) * 0.006) * shakeLevel);
+                this.camera.rotateY((Math.cos(t * 3.5) * 0.006) * shakeLevel);
+            }
         }
 
         this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 5);

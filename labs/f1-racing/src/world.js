@@ -374,24 +374,30 @@ function buildGantry(circuit) {
 
 function environmentTexture(sunColor, skyColor, groundColor) {
     const el = document.createElement('canvas');
-    el.width = 256;
-    el.height = 128;
+    el.width = 512;
+    el.height = 256;
     const ctx = el.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 128);
-    grad.addColorStop(0, `#${new THREE.Color(skyColor).clone().multiplyScalar(1.15).getHexString()}`);
-    grad.addColorStop(0.42, `#${new THREE.Color(sunColor).getHexString()}`);
-    grad.addColorStop(0.52, `#${new THREE.Color(skyColor).getHexString()}`);
-    grad.addColorStop(0.58, `#${new THREE.Color(groundColor).getHexString()}`);
-    grad.addColorStop(1, '#0e120c');
+    
+    // Sky and ground gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, `#${new THREE.Color(skyColor).getHexString()}`);
+    grad.addColorStop(0.48, `#${new THREE.Color(sunColor).getHexString()}`);
+    grad.addColorStop(0.5, `#${new THREE.Color(groundColor).getHexString()}`);
+    grad.addColorStop(1, '#14170f');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 256, 128);
-    // Soft sun disc
-    const sun = ctx.createRadialGradient(190, 48, 2, 190, 48, 28);
-    sun.addColorStop(0, 'rgba(255,248,220,0.95)');
-    sun.addColorStop(0.4, 'rgba(255,210,140,0.35)');
-    sun.addColorStop(1, 'rgba(255,200,120,0)');
-    ctx.fillStyle = sun;
-    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Simulate a bright sun disc for intense HDRI-like reflections
+    const sunX = 350; // Azimuth roughly matches the directional light
+    const sunY = 100; // Elevation
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 40);
+    sunGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    sunGrad.addColorStop(0.2, 'rgba(255, 250, 240, 0.8)');
+    sunGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 40, 0, Math.PI * 2);
+    ctx.fill();
     const texture = new THREE.CanvasTexture(el);
     texture.mapping = THREE.EquirectangularReflectionMapping;
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -468,17 +474,18 @@ export function buildWorld(circuit, { quality, weather }) {
     scene.fog = new THREE.Fog(fogColor, quality.drawDistance * 0.38, quality.drawDistance * 1.55);
 
     /* --- road ----------------------------------------------------- */
-    const roadPack = roadMaps(circuit.def.surface);
-    roadPack.map.anisotropy = quality.anisotropy;
-    roadPack.normalMap.anisotropy = quality.anisotropy;
-    const roadMaterial = new THREE.MeshStandardMaterial({
-        map: roadPack.map,
-        normalMap: roadPack.normalMap,
-        normalScale: new THREE.Vector2(1.35, 1.35),
-        roughnessMap: roadPack.roughnessMap,
-        roughness: wet ? 0.22 : 0.9,
-        metalness: wet ? 0.22 : 0.06,
-        envMapIntensity: wet ? 2.1 : 0.7
+    const roadMap = roadTexture(circuit.def.surface);
+    roadMap.repeat.set(1, 1);
+    roadMap.anisotropy = quality.anisotropy;
+    const roadMaterial = new THREE.MeshPhysicalMaterial({
+        map: roadMap,
+        bumpMap: roadMap,
+        bumpScale: 0.015,
+        roughness: wet ? 0.28 : 0.86,
+        metalness: wet ? 0.16 : 0.02,
+        clearcoat: wet ? 1.0 : 0.1,
+        clearcoatRoughness: wet ? 0.05 : 0.5,
+        envMapIntensity: wet ? 1.5 : 0.35
     });
 
     const halfAt = (i) => circuit.halfWidth * circuit.widthScale[i];
