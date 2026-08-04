@@ -1951,15 +1951,12 @@
    */
   function fitScreen() {
     var host = document.querySelector('.stage-wrap');
-    var crt = document.getElementById('crt');
-    var bezelPad = parseFloat(getComputedStyle(viewportEl.parentElement).paddingLeft) || 26;
-    var crtPad = parseFloat(getComputedStyle(crt).paddingLeft) || 14;
+    var availW = host.clientWidth || window.innerWidth;
+    var availH = window.innerHeight;
 
-    var availW = (host.clientWidth || window.innerWidth) - 2 * (crtPad + bezelPad) - 8;
-    var availH = window.innerHeight - 250;
-
-    var scale = Math.min(availW / W, Math.max(220, availH) / H);
-    scale = Math.max(0.32, Math.min(1.5, scale));
+    var scale = Math.min(availW / W, availH / H);
+    // Allow scaling beyond 1.5 to fully fill large screens
+    scale = Math.max(0.32, scale);
     viewportEl.style.setProperty('--screen-scale', scale);
   }
 
@@ -1981,6 +1978,41 @@
 
     fitScreen();
     window.addEventListener('resize', fitScreen);
+
+    // Efeito visual (sparkles) global para cliques divertidos
+    window.addEventListener('mousedown', function (ev) {
+      if (ev.target.closest('a, button, .clickable, .hit, .choice, .num-key, .btn')) {
+        var star = document.createElement('div');
+        star.className = 'star-fly';
+        star.style.left = (ev.pageX - 12) + 'px';
+        star.style.top = (ev.pageY - 12) + 'px';
+        star.style.pointerEvents = 'none';
+        star.style.zIndex = '99999';
+        
+        var canvas = document.createElement('canvas');
+        canvas.width = 16; canvas.height = 16;
+        var ctx = canvas.getContext('2d');
+        if (typeof art !== 'undefined' && art.ITEMS && art.ITEMS.star) {
+           // Desenhar a estrela usando a lógica de art.js, ou apenas algo simples
+           ctx.fillStyle = '#ffd21e';
+           ctx.fillRect(4, 6, 8, 4);
+           ctx.fillRect(6, 4, 4, 8);
+        } else {
+           ctx.fillStyle = '#ffd21e';
+           ctx.fillRect(4, 6, 8, 4);
+           ctx.fillRect(6, 4, 4, 8);
+        }
+        star.style.backgroundImage = 'url(' + canvas.toDataURL() + ')';
+        document.body.appendChild(star);
+
+        star.style.transition = 'all 0.4s ease-out';
+        requestAnimationFrame(function () {
+          star.style.transform = 'scale(1.5) translateY(-25px) rotate(45deg)';
+          star.style.opacity = '0';
+        });
+        setTimeout(function () { star.remove(); }, 400);
+      }
+    });
 
     /* Esc abre o menu em qualquer cena */
     window.addEventListener('keydown', function (ev) {
