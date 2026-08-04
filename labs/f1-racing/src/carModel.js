@@ -177,8 +177,15 @@ export function buildCar(team, { quality, isPlayer = false } = {}) {
     // Floor, plank and diffuser.
     darkParts.push(box(1.9, 0.05, 4.6, 0, 0.055, -0.35, 0x101216));
     darkParts.push(box(1.5, 0.28, 0.7, 0, 0.17, -2.55, 0x0d0f13, -0.28));
+    // Complex Diffuser strakes
+    for (const side of [-1, -0.5, 0.5, 1]) {
+        darkParts.push(box(0.02, 0.26, 0.65, side * 0.6, 0.15, -2.55, 0x0c0e12, -0.28));
+    }
+    // Floor edges (bargeboard/edge extensions)
     for (const side of [-1, 1]) {
         darkParts.push(box(0.05, 0.24, 3.2, side * 0.95, 0.15, -0.2, 0x0c0e12));
+        darkParts.push(box(0.18, 0.35, 0.8, side * 0.85, 0.25, 0.8, 0x0c0e12, -0.15)); // Bargeboards
+        darkParts.push(cylinder(0.02, 0.02, 0.4, side * 0.8, 0.45, 0.6, 0x0c0e12, 'z'));
     }
 
     // Sidepod inlets + cooling louvres.
@@ -238,16 +245,16 @@ export function buildCar(team, { quality, isPlayer = false } = {}) {
 
     const paintMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.28,
-        metalness: 0.15,
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        envMapIntensity: 1.1
+        roughness: 0.12,         // Shinier for realism
+        metalness: 0.35,         // Metallic flake paint look
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.04,
+        envMapIntensity: 1.8     // High reflection
     });
     const darkMaterial = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.72,
-        metalness: 0.35
+        roughness: 0.85,
+        metalness: 0.15          // Matte Carbon Fiber look
     });
 
     const group = new THREE.Group();

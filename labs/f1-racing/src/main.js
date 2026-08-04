@@ -848,9 +848,16 @@ class Game {
             this.camera.position.y = groundClearance;
         }
 
-        this.camera.fov = fov;
+        // Camera Shake / Force Feedback effect at high speeds
+        if (speedNorm > 0.5 && this.cameraMode !== 'broadcast') {
+            const shakeFactor = Math.pow((speedNorm - 0.5) * 2, 2) * 0.05;
+            this.cameraLook.x += (Math.random() - 0.5) * shakeFactor;
+            this.cameraLook.y += (Math.random() - 0.5) * shakeFactor;
+        }
 
         this.camera.lookAt(this.cameraLook);
+        this.camera.fov = fov;
+        this.camera.updateProjectionMatrix();
         // A touch of head tilt in the cockpit sells the lateral load.
         if (this.cameraMode === 'cockpit') this.camera.rotateZ(-car.roll * 0.8 - car.steer * 0.12);
 

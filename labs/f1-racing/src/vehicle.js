@@ -20,9 +20,9 @@ const SPEC = {
     wheelRadius: 0.36,
     clA: 4.6,               // downforce coefficient x area
     cdA: 1.28,
-    maxPower: 660000,       // W (ICE + deployment)
-    maxTorqueForce: 26000,  // N at the contact patch in first gear
-    brakeForce: 42000,      // N total at full pedal
+    maxPower: 580000,       // W (ICE + deployment)
+    maxTorqueForce: 21000,  // N at the contact patch in first gear
+    brakeForce: 38000,      // N total at full pedal
     maxSteer: 0.34,
     ersCapacity: 4.0,       // MJ
     ersDeployRate: 0.36,    // MJ/s
@@ -227,11 +227,11 @@ export class Vehicle {
                 this.ers = Math.max(0, this.ers - SPEC.ersDeployRate * dt * 2);
             }
         } else if (this.brake > 0) {
-            // Arcade braking recharges boost
-            this.ers = Math.min(SPEC.ersCapacity, this.ers + SPEC.ersHarvestRate * dt * 2);
+            // Braking recharges boost
+            this.ers = Math.min(SPEC.ersCapacity, this.ers + SPEC.ersHarvestRate * dt * 1.5);
         }
 
-        let braking = this.brake * SPEC.brakeForce * 1.5; // Stronger brakes for arcade
+        let braking = this.brake * SPEC.brakeForce; // Removed arcade 1.5x multiplier for more realistic braking distance
 
         const drag = 0.5 * RHO * SPEC.cdA * (this.drsOpen ? 0.5 : 1) * this.vx * Math.abs(this.vx);
         const rolling = ROLLING_COEFF * SPEC.mass * G * Math.sign(this.vx || 1)
@@ -245,15 +245,15 @@ export class Vehicle {
         /* --- arcade lateral kinematics ------------------------------ */
         this.vx += (fx / SPEC.mass) * dt;
         if (this.brake > 0.1 && this.vx < 0.6) this.vx = Math.max(0, this.vx - 12 * dt);
-        this.vx = clamp(this.vx, -15, 130); // Higher max speed (arcade)
+        this.vx = clamp(this.vx, -12, 95); // Capped max speed to ~342 km/h (realistic F1)
 
         // Simple kinematic steering with drift
         const turnRadius = SPEC.wheelbase / Math.tan(this.steer || 0.001);
         this.yawRate = this.vx / turnRadius;
         
-        // Arcade drift/slip
-        this.vz = this.steer * this.vx * 0.15; 
-        this.slip = Math.abs(this.steer) * (this.vx / 30);
+        // Refined drift/slip (more grip, less slide)
+        this.vz = this.steer * this.vx * 0.06; 
+        this.slip = Math.abs(this.steer) * (this.vx / 45);
 
         this.yaw += this.yawRate * dt;
         this.speed = Math.hypot(this.vx, this.vz);
