@@ -4,24 +4,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <title>Mickey 1·2·3: A Grande Festa Surpresa</title>
+  <title>Ravi 1·2·3: A Grande Festa Surpresa</title>
   <meta name="description"
-    content="Ajude o Mickey a preparar uma festa surpresa para seus amigos! Jogo educativo de números 1 a 9 inspirado nos clássicos dos anos 90.">
+    content="Ajude o Ravi a preparar uma festa surpresa para guerreiros e heróis! Jogo educativo de números 1 a 9 inspirado nos clássicos dos anos 90.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/ravi-123/">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/ravi-123/">
-  <meta property="og:title" content="Mickey 1·2·3: A Grande Festa Surpresa">
+  <meta property="og:title" content="Ravi 1·2·3: A Grande Festa Surpresa">
   <meta property="og:description"
-    content="Conte de 1 a 9 e ajude o Mickey a convidar a turma para a maior festa surpresa.">
+    content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino.">
   <meta property="og:locale" content="pt_BR">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3">
-  <link rel="stylesheet" href="/labs/shared.css?v=5">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
@@ -29,13 +28,9 @@
     <canvas id="game" width="640" height="400" aria-label="Ravi 1·2·3"></canvas>
 
     <div id="hud">
-      
+      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar">←</button>
       <div id="speech-bubble" class="hidden" aria-live="polite"></div>
-      <header data-lab-header data-title="Ravi 1·2·3" class="ravi-header">
-        <template data-slot="actions">
-          <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
-        </template>
-      </header>
+      <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
     </div>
 
     <div id="flashcard" class="hidden" aria-hidden="true">
@@ -63,9 +58,9 @@
     <div id="title-overlay" class="overlay">
       <div class="title-card">
         <p class="eyebrow">Clássico educativo · anos 90</p>
-        <h1>Mickey <span>1·2·3</span></h1>
+        <h1>Ravi <span>1·2·3</span></h1>
         <h2>A Grande Festa Surpresa</h2>
-        <p class="hint">Aperte qualquer número para acordar o Mickey!</p>
+        <p class="hint">Aperte qualquer número para acordar o Ravi!</p>
         <div class="title-keys">
           <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
           <span>6</span><span>7</span><span>8</span><span>9</span>
@@ -74,8 +69,7 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=3"></script>
-  <script src="/labs/shared.js?v=5" defer></script>
+  <script type="module" src="main.js?v=4"></script>
 </body>
 
 </html>

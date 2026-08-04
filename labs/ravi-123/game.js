@@ -61,6 +61,14 @@ function fresh() {
 let S = fresh();
 let sayTimer = 0;
 
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeOutQuad(t) {
+  return t * (2 - t);
+}
+
 /* --------------------------------------------------------------------------
    UI helpers
    -------------------------------------------------------------------------- */
@@ -329,11 +337,19 @@ async function pickTransport(n) {
 
   // anima viagem
   const start = performance.now();
+  const duration = 2500; // 2.5s duration
+  const startX = -100;
+  const targetX = W + 80;
+  
   await new Promise((resolve) => {
     const step = () => {
-      const elapsed = (performance.now() - start) / 1000;
-      S.travelX = -100 + elapsed * 280;
-      if (S.travelX > W + 80) resolve();
+      const elapsed = performance.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeInOutCubic(progress);
+      
+      S.travelX = startX + (targetX - startX) * eased;
+      
+      if (progress >= 1) resolve();
       else requestAnimationFrame(step);
     };
     step();
@@ -485,11 +501,19 @@ async function inviteHero(n) {
   say(`Convite para ${HEROES[idx].name}! O carteiro está a caminho!`, 2500);
 
   const start = performance.now();
+  const duration = 3000;
+  const startX = -60;
+  const targetX = W + 40;
+  
   await new Promise((resolve) => {
     const tick = () => {
-      const e = (performance.now() - start) / 1000;
-      S.mailmanX = -60 + e * 200;
-      if (S.mailmanX > W + 40) resolve();
+      const elapsed = performance.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutQuad(progress);
+      
+      S.mailmanX = startX + (targetX - startX) * eased;
+      
+      if (progress >= 1) resolve();
       else requestAnimationFrame(tick);
     };
     tick();
