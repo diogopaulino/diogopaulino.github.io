@@ -109,7 +109,7 @@ export class AIDriver {
         const lookLength = Math.max(6, Math.hypot(localX, localZ));
         const curvature = (2 * localX) / (lookLength * lookLength);
         const requiredSteer = Math.atan(curvature * 3.6);
-        const maxSteer = 0.34 * clamp(1 - Math.abs(me.vx) / 135, 0.26, 1);
+        const maxSteer = 0.34 * clamp(1 - Math.abs(me.vx) / 135, 0.4, 1);
         let steer = clamp(requiredSteer / maxSteer, -1, 1);
 
         // Gentle counter-steer when the rear steps out.
@@ -119,8 +119,7 @@ export class AIDriver {
         let targetSpeed = Infinity;
         // Braking capability rises with downforce, so the usable deceleration at the
         // end of a straight is several times what it is at hairpin speed.
-        const aero = 1 + Math.min(3.2, (speed * speed) / AERO_REFERENCE);
-        const brakeCapacity = Math.min(1.55 * 9.81 * aero, 55) * this.personality.bravery * me.weather.grip;
+        const brakeCapacity = 55 * this.personality.bravery * me.weather.grip; // Arcade brakes
         for (let k = 0; k < 110; k++) {
             const idx = circuit.indexAt(me.lapDistance + k * circuit.spacing * 1.5);
             const distance = Math.max(1, k * circuit.spacing * 1.5);
@@ -128,8 +127,7 @@ export class AIDriver {
             const reachable = Math.sqrt(limit * limit + 2 * brakeCapacity * distance);
             if (reachable < targetSpeed) targetSpeed = reachable;
         }
-        targetSpeed *= diff.pace * this.personality.pace;
-        if (me.offTrack) targetSpeed *= 0.6;
+        targetSpeed *= diff.pace * this.personality.pace * 1.35; // Arcade boost for AI
         if (raceState?.safety) targetSpeed = Math.min(targetSpeed, 24);
 
         // Slipstream: tuck in and use the tow on straights.

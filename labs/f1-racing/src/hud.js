@@ -245,24 +245,6 @@ export class Hud {
 
         const ersPct = (car.ers / 4) * 100;
         if (el.ersFill) el.ersFill.style.setProperty('--fill', (ersPct / 100).toFixed(3));
-        if (el.ersValue) el.ersValue.textContent = `${Math.round(ersPct)}%`;
-
-        if (el.tyreWear) el.tyreWear.style.setProperty('--fill', (1 - car.tyreWear).toFixed(3));
-        if (el.tyreTemp) {
-            const temp = Math.round(car.tyreTemp);
-            el.tyreTemp.textContent = `${temp}°`;
-            el.tyreTemp.dataset.state = temp < 70 ? 'cold' : temp > 118 ? 'hot' : 'ok';
-        }
-        if (el.tyreLabel) {
-            el.tyreLabel.textContent = car.compound.label;
-            el.tyreLabel.style.color = car.compound.color;
-        }
-
-        if (el.drsBadge) {
-            el.drsBadge.dataset.state = drsState;
-            el.drsBadge.textContent = drsState === 'open' ? 'DRS ATIVO'
-                : drsState === 'ready' ? 'DRS DISPONÍVEL' : 'DRS';
-        }
 
         if (el.sector && sector) el.sector.textContent = sector;
 

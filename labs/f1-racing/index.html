@@ -84,16 +84,9 @@
                 <div class="hud-bottom">
                     <div class="panel systems-panel">
                         <div class="system-block">
-                            <span class="stat-label">ERS</span>
+                            <span class="stat-label">NITRO</span>
                             <div class="meter ers"><i id="ersFill"></i></div>
-                            <span id="ersValue" class="mono small">100%</span>
                         </div>
-                        <div class="system-block">
-                            <span class="stat-label">Pneu <b id="tyreLabel">Macio</b></span>
-                            <div class="meter tyre"><i id="tyreWear"></i></div>
-                            <span id="tyreTemp" class="mono small" data-state="cold">55°</span>
-                        </div>
-                        <span id="drsBadge" class="drs-badge" data-state="off">DRS</span>
                     </div>
 
                     <div class="cluster">
@@ -133,8 +126,7 @@
                     <button type="button" class="pad" data-control="right" aria-label="Direita">▶</button>
                 </div>
                 <div class="pad-group pad-right">
-                    <button type="button" class="pad pad-small" data-control="drs" aria-label="DRS">DRS</button>
-                    <button type="button" class="pad pad-small" data-control="ers" aria-label="ERS">ERS</button>
+                    <button type="button" class="pad pad-small" data-control="ers" aria-label="Nitro">NITRO</button>
                     <button type="button" class="pad pad-brake" data-control="brake" aria-label="Freio">FREIO</button>
                     <button type="button" class="pad pad-throttle" data-control="throttle" aria-label="Acelerar">GÁS</button>
                 </div>
@@ -163,8 +155,6 @@
                         </section>
 
                         <section class="menu-section">
-                            <h2>Composto</h2>
-                            <div id="compoundOptions" class="chip-row"></div>
 
                             <h2>Clima</h2>
                             <div id="weatherOptions" class="chip-row"></div>
@@ -210,8 +200,7 @@
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>S</kbd> acelerar / frear</span>
                             <span><kbd>A</kbd><kbd>D</kbd> direção</span>
-                            <span><kbd>E</kbd> DRS</span>
-                            <span><kbd>Espaço</kbd> ERS</span>
+                            <span><kbd>E</kbd><kbd>Espaço</kbd> Nitro</span>
                             <span><kbd>C</kbd> câmera</span>
                             <span><kbd>P</kbd> pausa</span>
                         </div>

@@ -196,11 +196,9 @@ export class Vehicle {
         this.brake = clamp(input.brake, 0, 1);
         const steerTarget = clamp(input.steer, -1, 1);
 
-        // Speed-sensitive steering keeps the car drivable at 300 km/h.
-        // Convention: positive steerTarget / steer = turn right (yaw increases).
-        const speedFactor = clamp(1 - Math.abs(this.vx) / 135, 0.26, 1);
+        const speedFactor = clamp(1 - Math.abs(this.vx) / 135, 0.4, 1);
         const maxSteer = SPEC.maxSteer * speedFactor;
-        const steerRate = input.assists ? 6.8 : 9.5;
+        const steerRate = 12.0;
         this.steer += (steerTarget * maxSteer - this.steer) * Math.min(1, steerRate * dt);
 
         this.autoShift(dt);
@@ -218,111 +216,44 @@ export class Vehicle {
 
         this.surface = circuit.surfaceAt(this.lateral, this.trackIndex);
         this.wide = this.surface >= 2;          // beyond the white line
-        this.offTrack = this.surface >= 3;      // gravel or grass — a real penalty
-        const surfaceGrip = SURFACE_GRIP[this.surface];
+        this.offTrack = this.surface >= 3;      // gravel or grass
 
-        /* --- longitudinal forces ------------------------------------ */
-        const grip = this.gripLevel * surfaceGrip;
-        const downforce = this.downforce;
-        const weight = SPEC.mass * G + downforce;
-
+        /* --- arcade longitudinal forces ----------------------------- */
         let drive = 0;
         if (this.throttle > 0) {
             drive = this.engineForce() * this.throttle;
-            if (this.ersActive && this.ers > 0) drive *= 1.14;
+            if (this.ersActive && this.ers > 0) {
+                drive *= 1.5; // Arcade Nitro Boost
+                this.ers = Math.max(0, this.ers - SPEC.ersDeployRate * dt * 2);
+            }
+        } else if (this.brake > 0) {
+            // Arcade braking recharges boost
+            this.ers = Math.min(SPEC.ersCapacity, this.ers + SPEC.ersHarvestRate * dt * 2);
         }
 
-        // Longitudinal weight transfer, estimated from the previous frame's acceleration.
-        const transfer = (SPEC.mass * (this.lastAccel || 0) * SPEC.cgHeight) / SPEC.wheelbase;
-        const rearLoad = Math.max(1400, weight * (SPEC.frontAxle / SPEC.wheelbase) + transfer);
-        const frontLoad = Math.max(1400, weight - rearLoad);
+        let braking = this.brake * SPEC.brakeForce * 1.5; // Stronger brakes for arcade
 
-        // Traction limit on the driven axle: TC trims the excess, otherwise it spins.
-        const tractionLimit = grip * rearLoad;
-        if (drive > tractionLimit) {
-            const excess = drive - tractionLimit;
-            // With traction control the ECU cuts before the tyre actually lights up.
-            this.wheelSpin = clamp(excess / 9000, 0, 1) * (input.assists ? 0.22 : 1);
-            drive = tractionLimit + (input.assists ? 0 : Math.min(excess * 0.12, 2200));
-        } else {
-            this.wheelSpin *= Math.exp(-dt * 6);
-        }
-
-        // Engine braking when coasting.
-        if (this.throttle < 0.05 && this.vx > 1) drive -= 1400;
-
-        // Brakes are limited by all four tyres; overshooting locks the fronts.
-        let braking = this.brake * SPEC.brakeForce;
-        const brakeLimit = grip * weight;
-        if (braking > brakeLimit) {
-            this.lockUp = clamp((braking - brakeLimit) / 10000, 0, 1);
-            braking = brakeLimit * (input.assists ? 1 : 0.88);
-        } else {
-            this.lockUp = (this.lockUp || 0) * Math.exp(-dt * 5);
-        }
-
-        const drag = 0.5 * RHO * SPEC.cdA * (this.drsOpen ? 0.78 : 1) * this.vx * Math.abs(this.vx);
-        const rolling = ROLLING_COEFF * weight * Math.sign(this.vx || 1)
-            + SURFACE_DRAG[this.surface] * Math.sign(this.vx) * Math.min(1, Math.abs(this.vx) / 8);
+        const drag = 0.5 * RHO * SPEC.cdA * (this.drsOpen ? 0.5 : 1) * this.vx * Math.abs(this.vx);
+        const rolling = ROLLING_COEFF * SPEC.mass * G * Math.sign(this.vx || 1)
+            + (this.offTrack ? 12000 : 0) * Math.sign(this.vx); // Heavy penalty off-track
         const slope = circuit.slope[this.trackIndex];
         const gravityPull = SPEC.mass * G * -slope;
 
         let fx = drive - braking * Math.sign(this.vx || 1) - drag - rolling + gravityPull;
         this.lastAccel = fx / SPEC.mass;
 
-        /* --- lateral: single-track model ---------------------------- */
-        const speedAbs = Math.abs(this.vx);
-        if (speedAbs > 2.2) {
-            const alphaFront = Math.atan2(this.vz + this.yawRate * SPEC.frontAxle, speedAbs) - this.steer;
-            const alphaRear = Math.atan2(this.vz - this.yawRate * SPEC.rearAxle, speedAbs);
-
-            // Friction ellipse: longitudinal use eats into lateral capacity.
-            const longUse = clamp(Math.abs(fx) / (grip * weight), 0, 0.98);
-            const lateralScale = Math.sqrt(1 - longUse * longUse);
-
-            const muFront = grip * lateralScale * 1.02;
-            const muRear = grip * lateralScale * (this.brake > 0.5 ? 0.96 : 1.06);
-
-            const fyFront = -tyreCurve(alphaFront) * frontLoad * muFront;
-            const fyRear = -tyreCurve(alphaRear, 8.4, 1.5) * rearLoad * muRear;
-
-            const cosSteer = Math.cos(this.steer);
-            const sinSteer = Math.sin(this.steer);
-
-            const ay = (fyFront * cosSteer + fyRear) / SPEC.mass - this.vx * this.yawRate;
-            const yawAccel = (SPEC.frontAxle * fyFront * cosSteer - SPEC.rearAxle * fyRear) / SPEC.yawInertia;
-
-            this.vz += ay * dt;
-            this.yawRate += yawAccel * dt;
-            fx -= fyFront * sinSteer;
-
-            this.slip = clamp(Math.max(Math.abs(alphaFront), Math.abs(alphaRear)) / 0.22, 0, 1.6);
-
-            // Stability control smooths the tail for pad/keyboard players.
-            if (input.assists) {
-                const target = (this.vx * Math.tan(this.steer)) / SPEC.wheelbase;
-                this.yawRate += (target - this.yawRate) * Math.min(1, 2.6 * dt);
-                this.vz *= Math.exp(-dt * 1.6);
-            }
-        } else {
-            // Kinematic steering at parking speeds.
-            this.yawRate = (this.vx * Math.tan(this.steer)) / SPEC.wheelbase;
-            this.vz *= Math.exp(-dt * 8);
-            this.slip *= Math.exp(-dt * 4);
-        }
-
+        /* --- arcade lateral kinematics ------------------------------ */
         this.vx += (fx / SPEC.mass) * dt;
-        if (this.brake > 0.1 && this.vx < 0.6) this.vx = Math.max(0, this.vx - 6 * dt);
-        this.vx = clamp(this.vx, -12, 120);
+        if (this.brake > 0.1 && this.vx < 0.6) this.vx = Math.max(0, this.vx - 12 * dt);
+        this.vx = clamp(this.vx, -15, 130); // Higher max speed (arcade)
 
-        // External impulses (contact).
-        if (this.impulse.x || this.impulse.z) {
-            const cos = Math.cos(-this.yaw);
-            const sin = Math.sin(-this.yaw);
-            this.vx += this.impulse.z * cos - this.impulse.x * sin;
-            this.vz += this.impulse.x * cos + this.impulse.z * sin;
-            this.impulse.x = this.impulse.z = 0;
-        }
+        // Simple kinematic steering with drift
+        const turnRadius = SPEC.wheelbase / Math.tan(this.steer || 0.001);
+        this.yawRate = this.vx / turnRadius;
+        
+        // Arcade drift/slip
+        this.vz = this.steer * this.vx * 0.15; 
+        this.slip = Math.abs(this.steer) * (this.vx / 30);
 
         this.yaw += this.yawRate * dt;
         this.speed = Math.hypot(this.vx, this.vz);
@@ -333,7 +264,7 @@ export class Vehicle {
         this.position.x += (this.vx * sinYaw + this.vz * cosYaw) * dt;
         this.position.z += (this.vx * cosYaw - this.vz * sinYaw) * dt;
 
-        // Follow the track surface, with a little suspension travel and airtime.
+        // Ground tracking
         const groundY = circuit.heightAt(this.trackIndex, clamp(this.lateral, -60, 60));
         const drop = this.position.y - groundY;
         if (drop > 0.05) {
@@ -347,7 +278,7 @@ export class Vehicle {
         this.position.y += (groundY - this.position.y) * Math.min(1, 14 * dt);
         this.suspension = clamp(-drop * 0.4, -0.05, 0.05);
 
-        // Kerb rattle.
+        // Kerb rattle
         if (this.surface === 1) {
             this.suspension += Math.sin(this.totalDistance * 6) * 0.022;
         }
@@ -355,22 +286,15 @@ export class Vehicle {
         /* --- attitude ------------------------------------------------ */
         const targetPitch = clamp(-slope * 0.9 - (fx / SPEC.mass) * 0.006, -0.3, 0.3);
         this.pitch += (targetPitch - this.pitch) * Math.min(1, 6 * dt);
-        const targetRoll = clamp(circuit.bank[this.trackIndex] + (this.vz * this.yawRate) * 0.004 - this.yawRate * this.vx * 0.0009, -0.2, 0.2);
+        const targetRoll = clamp(circuit.bank[this.trackIndex] + (this.vz * this.yawRate) * 0.004, -0.2, 0.2);
         this.roll += (targetRoll - this.roll) * Math.min(1, 6 * dt);
 
-        /* --- wheels, ERS, tyres -------------------------------------- */
-        this.wheelAngle += ((this.vx / SPEC.wheelRadius) + this.wheelSpin * 60) * dt;
+        /* --- wheels & HUD fakes -------------------------------------- */
+        this.wheelAngle += (this.vx / SPEC.wheelRadius) * dt;
 
-        if (this.ersActive && this.ers > 0 && this.throttle > 0.3) {
-            this.ers = Math.max(0, this.ers - SPEC.ersDeployRate * dt);
-        } else if (this.brake > 0.15 || this.throttle < 0.15) {
-            this.ers = Math.min(SPEC.ersCapacity, this.ers + SPEC.ersHarvestRate * dt * (this.brake > 0.15 ? 1 : 0.35));
-        }
-
-        const workload = (Math.abs(this.slip) * 0.7 + Math.abs(this.vx) / 90 * 0.3);
-        this.tyreWear = clamp(this.tyreWear + workload * this.compound.wear * dt * 0.0055, 0, 1);
-        const targetTemp = 48 + workload * 52 + (this.weather.id === 'dry' ? 14 : -10);
-        this.tyreTemp += (targetTemp - this.tyreTemp) * Math.min(1, dt * 0.35 * this.compound.warmup);
+        // Keep HUD/Audio happy but no actual wear
+        this.tyreWear = 0;
+        this.tyreTemp = 80;
 
         return delta;
     }
