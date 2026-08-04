@@ -113,7 +113,7 @@ function bindUI() {
   });
 
   document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
-  document.getElementById('btn-back').addEventListener('click', () => {
+  const btnBack = document.getElementById('btn-back'); if (btnBack) btnBack.addEventListener('click', () => {
     window.location.href = '/labs/';
   });
 
