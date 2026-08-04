@@ -273,7 +273,7 @@ window.Art = (function () {
 
   /* Elenco. Ravi é o primeiro: cabelo cacheado, camiseta listrada. */
   var KIDS = {
-    ravi:  { name: 'Ravi',  hair: 'curly',    H: '#5a3418', h: '#3a2010', K: '#c88a5a', k: '#8a5a32', T: C.yellow, t: C.red,    P: C.blue,   S: C.white,  C: C.red },
+    ravi:  { name: 'Ravi',  hair: 'curly',    H: '#5a3418', h: '#3a2010', K: '#fcdbad', k: '#dca77c', T: C.yellow, t: C.red,    P: C.blue,   S: C.white,  C: C.red },
     bia:   { name: 'Bia',   hair: 'braids',   H: '#3a2010', h: '#1f1108', K: '#8a5a32', k: '#5c3a1e', T: C.pink,   t: C.white,  P: C.purple, S: C.red,    C: C.pink },
     leo:   { name: 'Léo',   hair: 'cap',      H: '#c07a2a', h: '#8a5216', K: '#f0c89a', k: '#c89a68', T: C.green,  t: C.yellow, P: C.brown,  S: C.blue,   C: C.blue },
     manu:  { name: 'Manu',  hair: 'afro',     H: '#2b1a10', h: '#140a06', K: '#7a4a26', k: '#4e2f16', T: C.cyan,   t: C.white,  P: C.red,    S: C.yellow, C: C.cyan },
