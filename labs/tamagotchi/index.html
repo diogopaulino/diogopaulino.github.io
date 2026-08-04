@@ -16,26 +16,17 @@
 
 <body>
   <div class="container">
-    <header class="page-header" data-lab-header data-title="Dinkie Dino">
-      <div class="header-content">
-        <h1 class="header-title">
-          <span class="title-word title-word-1">RakuRaku</span>
-          <span class="title-word title-word-2">Dinokun</span>
-        </h1>
-        <p class="header-subtitle">Retro 1997 Virtual Pet Experience</p>
-      </div>
+    <header data-lab-header data-title="Dinkie Dino">
+      <template data-slot="logo">RakuRaku Dinokun</template>
     </header>
 
     <main class="game-container">
       <div class="setup-overlay hidden" id="setupScreen">
         <div class="setup-box">
-          <header class="setup-header awesome-header">
-            <div class="header-glow"></div>
-            <span class="setup-badge">TK-910 • 1997</span>
-            <h2>
-              <span class="letter-pink">R</span><span class="letter-blue">a</span><span class="letter-green">k</span><span class="letter-red">u</span><span class="letter-purple">R</span><span class="letter-green">a</span><span class="letter-pink">k</span><span class="letter-blue">u</span>
-            </h2>
-            <p>Configure seu Virtual Pet</p>
+          <header class="setup-header">
+            <span class="setup-badge">1997 · TK-910</span>
+            <h2>RakuRaku Dinokun</h2>
+            <p>Cor da carcaça e nome do dinossauro.</p>
           </header>
           <div class="setup-content">
             <div class="field-group">
@@ -93,24 +84,44 @@
             </div>
 
             <div class="tama-branding" aria-hidden="true">
-              <span class="brand-text brand-left">
-                <span class="c-pink">R</span><span class="c-blue">a</span><span class="c-green">k</span><span class="c-red">u</span><span class="c-purple">R</span><span class="c-green">a</span><span class="c-pink">k</span><span class="c-blue">u</span>
-              </span>
+              <span class="brand-text brand-left">RakuRaku</span>
               <span class="brand-mascot">
                 <svg viewBox="0 0 36 36" width="32" height="32" aria-hidden="true">
-                  <path d="M10 18 Q 5 10 18 6 Q 31 10 26 18 Q 30 28 18 32 Q 6 28 10 18 Z" fill="#6bdc94"/>
-                  <path d="M14 18 Q 12 12 18 10 Q 24 12 22 18 Q 24 24 18 26 Q 12 24 14 18 Z" fill="#ff7ba3"/>
+                  <defs>
+                    <radialGradient id="eggGrad" cx="40%" cy="30%" r="70%">
+                      <stop offset="0%" stop-color="#ffffff"/>
+                      <stop offset="60%" stop-color="#f2e2fe"/>
+                      <stop offset="100%" stop-color="#cda4ef"/>
+                    </radialGradient>
+                    <linearGradient id="dinoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#2de3b3"/>
+                      <stop offset="50%" stop-color="#19ac85"/>
+                      <stop offset="100%" stop-color="#0f7a5d"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="18" cy="18" r="17" fill="url(#eggGrad)" stroke="#1f1a24" stroke-width="1.2" box-shadow="0 2px 4px rgba(0,0,0,0.25)"/>
+                  <path d="M12 24 C 9 24 8 20 9 15 C 10 10 14 8 18 8 C 23 8 27 12 26 18 C 25 24 22 26 18 26 C 15 26 14 24 12 24 Z" fill="url(#dinoGrad)" stroke="#1a251f" stroke-width="1.2"/>
+                  <!-- Olhinhos -->
+                  <circle cx="15.5" cy="15" r="2.2" fill="#fff"/>
+                  <circle cx="20.5" cy="15" r="2.2" fill="#fff"/>
+                  <circle cx="16.2" cy="15.2" r="1.1" fill="#111"/>
+                  <circle cx="21.2" cy="15.2" r="1.1" fill="#111"/>
+                  <!-- Bochechas e sorriso -->
+                  <ellipse cx="13.5" cy="17.5" rx="1.5" ry="0.9" fill="#ff7da7" opacity="0.8"/>
+                  <ellipse cx="22.5" cy="17.5" rx="1.5" ry="0.9" fill="#ff7da7" opacity="0.8"/>
+                  <path d="M16.5 18.5 Q18 20 19.5 18.5" fill="none" stroke="#111" stroke-width="1.2" stroke-linecap="round"/>
+                  <!-- Cristas dinossauro -->
+                  <path d="M14 8 L15 5 L17 8 M18 8 L19 5 L21 8" fill="#ff7da7" stroke="#1a251f" stroke-width="1"/>
                 </svg>
               </span>
-              <span class="brand-text brand-right">
-                <span class="c-pink">D</span><span class="c-purple">i</span><span class="c-red">n</span><span class="c-blue">o</span><span class="c-green">K</span><span class="c-orange">u</span><span class="c-purple">n</span>
-              </span>
+              <span class="brand-text brand-right">Dinokun</span>
             </div>
 
             <!-- Área intermediária: Botão de seta Esquerda, Bezel com Tela LCD, e Botão de seta Direita -->
             <div class="tama-mid-area">
               <div class="tama-side-control side-left">
-                <button class="tama-wing-btn left-wing" data-btn="LEFT" aria-label="Esquerda (◄)" type="button" title="Botão Esquerda (◄)">
+                <button class="tama-wing-btn" data-btn="LEFT" aria-label="Esquerda (◄)" type="button" title="Botão Esquerda (◄)">
+                  <span class="wing-btn-arrow">◄</span>
                 </button>
               </div>
 
@@ -137,12 +148,6 @@
                     </div>
 
                     <div class="tama-screen-canvas-wrap">
-                      <div class="paw-prints paw-left">
-                        <div class="paw"></div><div class="paw"></div><div class="paw"></div><div class="paw"></div>
-                      </div>
-                      <div class="paw-prints paw-right">
-                        <div class="paw"></div><div class="paw"></div><div class="paw"></div><div class="paw"></div>
-                      </div>
                       <div class="lcd-eyes-bg" aria-hidden="true"></div>
                       <canvas id="petCanvas" width="192" height="128"></canvas>
                       <div class="tama-dot-grid" aria-hidden="true"></div>
@@ -175,7 +180,8 @@
               </div>
 
               <div class="tama-side-control side-right">
-                <button class="tama-wing-btn right-wing" data-btn="RIGHT" aria-label="Direita (►)" type="button" title="Botão Direita (►)">
+                <button class="tama-wing-btn" data-btn="RIGHT" aria-label="Direita (►)" type="button" title="Botão Direita (►)">
+                  <span class="wing-btn-arrow">►</span>
                 </button>
               </div>
             </div>
@@ -183,7 +189,7 @@
             <!-- 3 botões vermelhos na curva inferior (autênticos da foto) -->
             <div class="tama-bottom-buttons">
               <div class="btn-unit">
-                <span class="script-label">Esc</span>
+                <span class="script-label">ESC</span>
                 <div class="btn-socket">
                   <button class="tama-btn red-pill" data-btn="ESC" aria-label="Esc" type="button" title="Cancelar / Sair (ESC)"></button>
                 </div>
@@ -205,10 +211,10 @@
         </div>
 
         <div class="side-companion">
-          <section class="glass-panel stats-panel awesome-panel" aria-label="Monitor">
+          <section class="glass-panel stats-panel" aria-label="Monitor">
             <header class="panel-head">
-              <h3 class="panel-title"><span class="icon-pulse"></span> Status · <span id="petNameLabel">Dino</span></h3>
-              <span class="stage-tag awesome-tag" id="petStageLabel">Ovo</span>
+              <h3>Status · <span id="petNameLabel">Dino</span></h3>
+              <span class="stage-tag" id="petStageLabel">Ovo</span>
             </header>
             <div class="stat-meters">
               <div class="stat-row"><span class="stat-label">Fome</span><div class="stat-bar"><div class="stat-fill" id="barHunger"></div></div></div>
@@ -228,10 +234,8 @@
             </div>
           </section>
 
-          <section class="glass-panel guide-panel awesome-panel">
-            <header class="panel-head">
-              <h4 class="panel-title">Controles originais</h4>
-            </header>
+          <section class="glass-panel guide-panel">
+            <h4>Controles originais</h4>
             <ul class="controls-list">
               <li><strong>◄ ►</strong> ícones da esquerda / direita</li>
               <li><strong>Enter</strong> confirma · <strong>Esc</strong> cancela</li>
