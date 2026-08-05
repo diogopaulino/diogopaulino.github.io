@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { RenderPipeline } from 'three/webgpu';
-import { pass, mrt, output, emissive, uniform, uv, vec2, float, smoothstep, mix } from 'three/tsl';
+import { pass, mrt, output, emissive, uniform, uv, vec2, float, smoothstep, mix, length } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 import { buildCircuit, CIRCUITS, CIRCUIT_KEYS } from './circuits.js';
@@ -469,7 +469,7 @@ class Game {
         }
 
         // Vignette + a slight desaturating edge darkening at speed.
-        const distance = uv().sub(vec2(0.5, 0.5)).length();
+        const distance = length(uv().sub(vec2(0.5, 0.5)));
         const vignette = smoothstep(0.92, 0.28, distance);
         const speedPinch = this.speedUniform.mul(0.35);
         node = node.mul(mix(float(1), vignette, float(0.55).add(speedPinch)));
