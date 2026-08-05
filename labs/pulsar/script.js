@@ -775,38 +775,34 @@
         });
     });
 
-    const waveformSelect = document.getElementById('waveform');
-    if (waveformSelect) {
-        waveformSelect.addEventListener('change', function () {
-            state.waveform = waveformSelect.value;
+    const waveformCycle = document.getElementById('waveformCycle');
+    const waveforms = ['sine', 'triangle', 'soft-saw'];
+    if (waveformCycle) {
+        waveformCycle.addEventListener('click', function () {
+            let idx = waveforms.indexOf(state.waveform);
+            idx = (idx + 1) % waveforms.length;
+            state.waveform = waveforms[idx];
             scheduleSave();
         });
     }
 
-    function bindSlider(id, valueId, format, onInput) {
+    function bindSlider(id, onInput) {
         const input = document.getElementById(id);
-        const label = document.getElementById(valueId);
         if (!input) return;
         input.addEventListener('input', function () {
-            const v = parseFloat(input.value);
-            if (label) label.textContent = format(v);
-            onInput(v);
+            onInput(parseFloat(input.value));
         });
     }
 
-    bindSlider('tempo', 'tempoValue', function (v) { return v.toFixed(1) + '×'; }, function (v) {
+    bindSlider('tempo', function (v) {
         state.tempo = v;
         scheduleSave();
     });
-    bindSlider('reverb', 'reverbValue', function (v) { return Math.round(v) + '%'; }, function (v) {
+    bindSlider('reverb', function (v) {
         AudioEngine.setReverbMix(v / 100);
         scheduleSave();
     });
-    bindSlider('reach', 'reachValue', function (v) { return Math.round(v) + '%'; }, function (v) {
-        state.reachPercent = v;
-        scheduleSave();
-    });
-    bindSlider('volume', 'volumeValue', function (v) { return Math.round(v) + '%'; }, function (v) {
+    bindSlider('volume', function (v) {
         AudioEngine.setVolume(v / 100);
         scheduleSave();
     });
@@ -817,8 +813,6 @@
             AudioEngine.resume();
             state.droneOn = !state.droneOn;
             droneBtn.setAttribute('aria-pressed', String(state.droneOn));
-            const span = droneBtn.querySelector('span');
-            if (span) span.textContent = state.droneOn ? 'Desligar camada de fundo' : 'Ligar camada de fundo';
             if (state.droneOn) AudioEngine.startDrone(); else AudioEngine.stopDrone();
         });
     }
@@ -845,20 +839,7 @@
         });
     }
 
-    // controls panel visibility
-    const controlsPanel = document.querySelector('.controls');
-    const toggleBtn = document.getElementById('toggleControls');
-    const closeBtn = document.getElementById('closeControls');
-    if (toggleBtn && closeBtn && controlsPanel) {
-        toggleBtn.addEventListener('click', function () {
-            controlsPanel.classList.add('visible');
-            toggleBtn.classList.add('hidden');
-        });
-        closeBtn.addEventListener('click', function () {
-            controlsPanel.classList.remove('visible');
-            toggleBtn.classList.remove('hidden');
-        });
-    }
+    // controls panel visibility (removed in minimalist dock)
 
     // fullscreen
     const fullscreenBtn = document.getElementById('fullscreen');
@@ -888,24 +869,21 @@
     if (!hadSaved) seedDefaultConstellation();
 
     // sync initial control UI to loaded state
-    document.querySelectorAll('#scaleGrid .pill-btn').forEach(function (b) {
+    document.querySelectorAll('#scaleGrid .pill-mini').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-scale') === state.scale);
     });
-    document.querySelectorAll('#rootGrid .pill-btn').forEach(function (b) {
+    document.querySelectorAll('#rootGrid .pill-mini').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-root') === state.root);
     });
-    document.querySelectorAll('.color-swatch').forEach(function (b) {
+    document.querySelectorAll('.swatch-mini').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-theme') === state.themeKey);
     });
-    if (waveformSelect) waveformSelect.value = state.waveform;
     const tempoInput = document.getElementById('tempo');
-    if (tempoInput) { tempoInput.value = String(state.tempo); document.getElementById('tempoValue').textContent = state.tempo.toFixed(1) + '×'; }
+    if (tempoInput) { tempoInput.value = String(state.tempo); }
     const reverbInput = document.getElementById('reverb');
-    if (reverbInput) { reverbInput.value = String(Math.round(state.reverbMix * 100)); document.getElementById('reverbValue').textContent = Math.round(state.reverbMix * 100) + '%'; }
-    const reachInput = document.getElementById('reach');
-    if (reachInput) { reachInput.value = String(state.reachPercent); document.getElementById('reachValue').textContent = Math.round(state.reachPercent) + '%'; }
+    if (reverbInput) { reverbInput.value = String(Math.round(state.reverbMix * 100)); }
     const volumeInput = document.getElementById('volume');
-    if (volumeInput) { volumeInput.value = String(Math.round(state.volume * 100)); document.getElementById('volumeValue').textContent = Math.round(state.volume * 100) + '%'; }
+    if (volumeInput) { volumeInput.value = String(Math.round(state.volume * 100)); }
 
     applyThemeVars();
     retuneAll();
