@@ -2,13 +2,14 @@
 // Teto: ~420 linhas. FASE 1 STUB: implementar play e result completos, outros básicos.
 
 import { W, H } from '../core/pixel.js';
-import { bakeHubBackground } from '../art/mapart.js';
+import { bakeHubBackground, MARKERS } from '../art/mapart.js';
+import { ORDER } from './shell.js';
 
 export const titleScene = {
     id: 'title',
     bg: null,
     enter(app) {
-        if (!this.bg) this.bg = bakeHubBackground(app.store ? app.store.rng : null);
+        if (!this.bg) this.bg = bakeHubBackground(app.rng);
         this.t = 0;
         if (app.audio) app.audio.playSong('tema');
     },
@@ -35,12 +36,14 @@ export const hubScene = {
     bg: null,
     selectedIdx: 0,
     enter(app) {
-        if (!this.bg) this.bg = bakeHubBackground(app.store.rng);
+        if (!this.bg) this.bg = bakeHubBackground(app.rng);
         this.selectedIdx = 0;
+        this.t = 0;
         if (app.audio) app.audio.playSong('tema');
     },
     exit() {},
     update(dt, input, app) {
+        this.t += dt * 6;
         const prev = this.selectedIdx;
         if (input.state.left.pressed) this.selectedIdx = (this.selectedIdx - 1 + 5) % 5;
         if (input.state.right.pressed) this.selectedIdx = (this.selectedIdx + 1) % 5;
@@ -59,8 +62,29 @@ export const hubScene = {
     },
     draw(px, app) {
         if (this.bg) px.ctx.drawImage(this.bg, 0, 0);
-        app.font.text(px.ctx, 'SANTOS', 10, 10, { color: 'A', mono: true, scale: 1 });
-        app.font.text(px.ctx, 'Selecione um evento', 10, 200, { color: 'q', mono: false, scale: 1 });
+        app.font.text(px.ctx, 'SANTOS VICE CITY', 6, 4, { color: 'A', mono: true, scale: 1, shadow: '0' });
+
+        const selectedId = ORDER[this.selectedIdx];
+        for (const marker of MARKERS) {
+            const isSel = marker.id === selectedId;
+            const sp = app.sprites.has('marker_' + marker.id) ? app.sprites.get('marker_' + marker.id) : null;
+            if (sp) px.blitScreen(sp, marker.x, marker.y);
+            if (isSel) {
+                const bounce = Math.sin(this.t || 0) * 2;
+                app.font.text(px.ctx, '▼', marker.x, marker.y - 18 + bounce, { align: 'center', color: 'A', mono: true });
+            }
+            const best = app.store.getBest(marker.id);
+            if (best.medal) {
+                const medalSp = app.sprites.has('medal_' + best.medal) ? app.sprites.get('medal_' + best.medal) : null;
+                if (medalSp) px.blitScreen(medalSp, marker.x + 10, marker.y - 6);
+            }
+        }
+
+        const selMarker = MARKERS.find(m => m.id === selectedId);
+        if (selMarker) {
+            app.font.text(px.ctx, selMarker.label, W / 2, 198, { align: 'center', color: 'q', mono: false });
+        }
+        app.font.text(px.ctx, 'A: treino   START: campeonato', W / 2, 212, { align: 'center', color: 'p', mono: false });
     }
 };
 
@@ -96,16 +120,18 @@ export const playScene = {
         this.mode = params?.mode || 'treino';
         this.eventIdx = params?.eventIdx || 0;
         if (!this.event) return;
-        this.event.init(app, {
+        this.eventApi = {
             rng: app.rng,
             sprites: app.sprites,
+            font: app.font,
             hud: app.hud,
             duration: this.event.duration,
             cam: null,
             finish: (reason) => this._finish(app, reason),
             shake: (p, ms) => app.px.shake(p, ms),
             popup: (x, y, text, color) => app.hud.popup(x, y, text, color)
-        });
+        };
+        this.event.init(app, this.eventApi);
         this.countdownLeft = 3;
         this._musicStarted = false;
         if (app.audio) app.audio.playStinger('contagem');
@@ -124,7 +150,7 @@ export const playScene = {
                 this._musicStarted = true;
                 if (app.audio) app.audio.playSong(this.event.music);
             }
-            this.event.update(dt, input, { duration: this.event.duration, finish: (r) => this._finish(app, r) });
+            this.event.update(dt, input, this.eventApi);
         }
         app.hud.update(dt * 1000);
         app.hud.score = this.event.score();
@@ -133,13 +159,13 @@ export const playScene = {
     draw(px, app) {
         px.ctx.fillStyle = '#0d0a1a';
         px.ctx.fillRect(0, 0, W, H);
-        if (this.event) this.event.draw(px, { sprites: app.sprites });
+        if (this.event) this.event.draw(px, this.eventApi);
         if (this.countdownLeft > 0) {
             const num = Math.ceil(this.countdownLeft);
             app.font.textBig(px.ctx, String(num), W / 2, H / 2, { align: 'center', scale: 3, outlineColor: '#ff2fa0' });
         }
         app.hud.draw(px);
-        if (this.event) this.event.hud(px, { sprites: app.sprites });
+        if (this.event) this.event.hud(px, this.eventApi);
     },
     _finish(app, reason) {
         if (!this.event) return;
