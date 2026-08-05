@@ -197,6 +197,11 @@ export const resultScene = {
         this.medal = params?.medal || 'none';
         this.mode = params?.mode || 'treino';
         this.isRecord = params?.isRecord || false;
+        const el = document.getElementById('svcAnnouncer');
+        if (el) {
+            el.textContent = 'Pontuação: ' + Math.floor(this.score) + '. Medalha: ' + this.medal + '.' +
+                (this.isRecord ? ' Novo recorde!' : '');
+        }
     },
     exit() {},
     update(dt, input, app) {

@@ -38,12 +38,27 @@ function appCtx() {
     };
 }
 
+const SCENE_ANNOUNCE = {
+    title: 'Tela de título.',
+    hub: 'Mapa de Santos. Escolha um evento.',
+    briefing: 'Briefing do evento.',
+    play: 'Jogo em andamento.',
+    result: 'Resultado do evento.',
+    podium: 'Pódio do campeonato.'
+};
+
+function announce(sceneId) {
+    const el = document.getElementById('svcAnnouncer');
+    if (el && SCENE_ANNOUNCE[sceneId]) el.textContent = SCENE_ANNOUNCE[sceneId];
+}
+
 function gotoScene(newScene, params = {}) {
     while (sceneStack.length > 0) {
         const s = sceneStack.pop();
         if (s.exit) s.exit();
     }
     sceneStack.push(newScene);
+    announce(newScene.id);
     if (newScene.enter) newScene.enter(appCtx(), params);
 }
 

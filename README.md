@@ -38,6 +38,7 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🌇 **[Santos Vice City](https://diogopaulino.com.br/labs/santos-vice-city/)** | Cinco mini-eventos 16-bit por Santos, com campeonato, medalhas e pódio |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
 | 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |

@@ -9,9 +9,26 @@
 //
 // Teto: ~300 linhas.
 
+import { SVC } from './palette.js';
+
 const CELL_W = 6;
 const CELL_H = 9;
 const SS = 6; // fator de super-amostragem antes do downsample pixelado
+
+/**
+ * Resolve uma cor recebida por text()/textBig(): aceita tanto um char de 1 letra
+ * da paleta mestra ("A", "q", "x"…) quanto uma cor CSS já pronta ("#ffe600").
+ * Sem isso, passar um char de paleta direto pro canvas é silenciosamente
+ * ignorado (CSS inválido não lança erro) e o texto sai preto — o fillStyle
+ * default de um canvas novo — em vez da cor pretendida.
+ */
+export function resolveColor(color) {
+    if (!color) return '#ffffff';
+    if (color.length === 1 && Object.prototype.hasOwnProperty.call(SVC, color)) {
+        return SVC[color] || '#ffffff';
+    }
+    return color;
+}
 
 const CHARSET =
     ' !"#$%&\'()*+,-./0123456789:;<=>?@' +
@@ -150,7 +167,7 @@ export class BitmapFont {
      * opts: { color, shadow, align: 'left'|'center'|'right', mono, scale, wave }
      */
     text(ctx, str, x, y, opts = {}) {
-        const color = opts.color || '#ffffff';
+        const color = resolveColor(opts.color);
         const scale = opts.scale || 1;
         const mono = opts.mono !== false;
         const align = opts.align || 'left';
@@ -160,9 +177,11 @@ export class BitmapFont {
         else if (align === 'right') drawX = x - w;
 
         if (opts.shadow) {
-            this._draw(ctx, str, drawX + scale, y + scale, opts.shadow, mono, scale, opts.wave, y);
+            this._draw(ctx, str, drawX + scale, y + scale, resolveColor(opts.shadow), mono, scale, opts.wave, y);
         }
+        if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
         this._draw(ctx, str, drawX, y, color, mono, scale, opts.wave, y);
+        if (opts.alpha != null) ctx.globalAlpha = 1;
         return w;
     }
 
