@@ -1,0 +1,303 @@
+/* Santos Vice City 16-bit — style.css
+   Regras obrigatórias (bug documentado em labs/.corrections.md):
+   1. Nenhuma cor hardcoded fora do canvas — tudo var(--token) ou color-mix() a partir de tokens.
+   2. Vars locais definidas em :root E [data-theme="dark"] — nunca literal escuro solto em :root.
+   3. box-shadow: var(--shadow-*) NÃO funciona neste repo (tokens são cores puras, não tuplas) —
+      sempre escrever a tupla completa: box-shadow: 0 Npx Mpx var(--shadow-lg).
+   4. Não reestilizar as cores do chrome compartilhado (.back-link, .theme-toggle).
+*/
+
+:root {
+    --svc-shell: color-mix(in oklab, var(--bg-card) 92%, var(--text-primary));
+    --svc-bezel: color-mix(in oklab, var(--text-primary) 12%, var(--bg-card));
+    --svc-letterbox: color-mix(in oklab, var(--bg-body) 88%, var(--text-primary));
+    --svc-line: var(--border-strong);
+    --svc-glow: color-mix(in oklab, var(--accent) 45%, transparent);
+    --svc-pad-bg: color-mix(in oklab, var(--bg-card) 82%, transparent);
+    --svc-pad-ink: var(--text-primary);
+    --svc-scan: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+
+[data-theme="dark"] {
+    --svc-shell: color-mix(in oklab, var(--bg-card) 88%, #000);
+    --svc-bezel: #0d0a1a;
+    --svc-letterbox: #07060f;
+    --svc-glow: color-mix(in oklab, #ff2fa0 40%, transparent);
+    --svc-scan: rgba(255, 255, 255, .05);
+}
+
+body {
+    overscroll-behavior: none;
+}
+
+header[data-lab-header] {
+    min-height: 44px;
+}
+
+header .app-logo .brand-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    font-size: 16px;
+    background: var(--accent-muted);
+}
+
+.svc-shell {
+    width: 100%;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: minmax(320px, 3fr) minmax(240px, 1.1fr);
+    gap: clamp(12px, 1.6vw, 22px);
+    align-items: start;
+}
+
+.svc-stage {
+    min-height: 0;
+    border: 1px solid var(--svc-line);
+    border-radius: 20px;
+    background: var(--svc-shell);
+    box-shadow: 0 18px 48px var(--shadow-lg);
+    padding: clamp(8px, 1.3vw, 16px);
+    display: flex;
+    flex-direction: column;
+}
+
+.svc-screen-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 320 / 224;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--svc-letterbox);
+    border: 1px solid var(--svc-bezel);
+    box-shadow: inset 0 0 0 1px var(--svc-glow);
+}
+
+#svcStage {
+    display: none;
+}
+
+#svcScreen {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    touch-action: none;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Controles por toque — overlay de botões DOM reais sobre o canvas */
+.svc-touch {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: none;
+    pointer-events: none;
+}
+
+.svc-touch.tp--hidden {
+    display: none !important;
+}
+
+.svc-touch.tp--full,
+.svc-touch.tp--lr,
+.svc-touch.tp--ud {
+    display: block;
+}
+
+.svc-touch button {
+    pointer-events: auto;
+    touch-action: none;
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--svc-glow);
+    border-radius: 10px;
+    color: var(--svc-pad-ink);
+    background: var(--svc-pad-bg);
+    backdrop-filter: blur(6px);
+    font: 700 14px 'Press Start 2P', cursive;
+}
+
+.tp-dpad {
+    display: none;
+}
+
+.tp--full .tp-dpad {
+    display: block;
+}
+
+.tp-up { left: 14px; bottom: 92px; }
+.tp-left { left: 4px; bottom: 52px; }
+.tp-right { left: 44px; bottom: 52px; }
+.tp-down { left: 14px; bottom: 12px; }
+
+.tp-actions {
+    position: absolute;
+    right: 8px;
+    bottom: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.tp--lr .tp-up,
+.tp--lr .tp-down,
+.tp--ud .tp-left,
+.tp--ud .tp-right {
+    display: none;
+}
+
+.tp--lr .tp-left { left: 8px; bottom: 32px; }
+.tp--lr .tp-right { left: 52px; bottom: 32px; }
+.tp--ud .tp-up { left: 24px; bottom: 72px; }
+.tp--ud .tp-down { left: 24px; bottom: 12px; }
+
+.tp-b { width: 44px; height: 44px; }
+.tp-a {
+    width: 52px;
+    height: 52px;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.tp-start {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 10px;
+}
+
+/* Sidebar */
+.svc-side {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.svc-side-block {
+    border: 1px solid var(--svc-line);
+    border-radius: 16px;
+    background: var(--bg-card);
+    box-shadow: 0 10px 28px var(--shadow-md);
+    padding: 16px 18px;
+}
+
+.svc-kicker {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    letter-spacing: .14em;
+}
+
+.svc-side-block h2 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.svc-side-block p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.svc-key-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.svc-key-row kbd {
+    display: inline-grid;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 6px;
+    place-items: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--accent-muted);
+    color: var(--text-primary);
+    font: 600 11px 'Outfit', sans-serif;
+}
+
+.svc-sound-toggle,
+.svc-reset-toggle {
+    width: 100%;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--svc-line);
+    border-radius: 12px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font: 600 12px 'Outfit', sans-serif;
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease;
+}
+
+.svc-sound-toggle:hover,
+.svc-reset-toggle:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.svc-sound-toggle[aria-pressed="false"] {
+    color: var(--text-tertiary);
+}
+
+@media (pointer: coarse) {
+    .svc-touch.tp--full,
+    .svc-touch.tp--lr,
+    .svc-touch.tp--ud {
+        display: block;
+    }
+}
+
+@media (max-width: 900px) {
+    .svc-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .svc-side {
+        display: none;
+    }
+
+    footer[data-lab-footer] {
+        display: none;
+    }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+    header[data-lab-header] {
+        min-height: 34px;
+        margin-bottom: 0.75rem;
+    }
+
+    .svc-stage {
+        padding: 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}
