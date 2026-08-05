@@ -428,7 +428,11 @@ export function buildWorld(circuit, { quality, weather }) {
     const phi = THREE.MathUtils.degToRad(90 - sunAngle.elevation);
     const theta = THREE.MathUtils.degToRad(sunAngle.azimuth);
     const sunDirection = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
-    sky.sunPosition.value.copy(sunDirection);
+    if (sky.sunPosition) {
+        sky.sunPosition.value.copy(sunDirection);
+    } else if (sky.material && sky.material.uniforms && sky.material.uniforms.sunPosition) {
+        sky.material.uniforms.sunPosition.value.copy(sunDirection);
+    }
     sky.material.fog = false;   // the dome sits far beyond the fog range
     scene.add(sky);
 
