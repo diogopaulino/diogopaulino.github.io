@@ -4,8 +4,6 @@
  * search, and adds a lateral offset to defend or overtake.
  */
 
-import { AERO_REFERENCE } from './circuits.js';
-
 const LOOKAHEAD_MIN = 14;
 const LOOKAHEAD_MAX = 52;
 
@@ -109,7 +107,7 @@ export class AIDriver {
         const lookLength = Math.max(6, Math.hypot(localX, localZ));
         const curvature = (2 * localX) / (lookLength * lookLength);
         const requiredSteer = Math.atan(curvature * 3.6);
-        const maxSteer = 0.34 * clamp(1 - Math.abs(me.vx) / 135, 0.26, 1);
+        const maxSteer = 0.34 * clamp(1 - Math.abs(me.vx) / 135, 0.4, 1);
         let steer = clamp(requiredSteer / maxSteer, -1, 1);
 
         // Gentle counter-steer when the rear steps out.
@@ -117,37 +115,38 @@ export class AIDriver {
 
         /* --- braking / throttle -------------------------------------- */
         let targetSpeed = Infinity;
-        // Braking capability rises with downforce, so the usable deceleration at the
-        // end of a straight is several times what it is at hairpin speed.
-        const aero = 1 + Math.min(3.2, (speed * speed) / AERO_REFERENCE);
-        const brakeCapacity = Math.min(1.55 * 9.81 * aero, 55) * this.personality.bravery * me.weather.grip;
-        for (let k = 0; k < 110; k++) {
-            const idx = circuit.indexAt(me.lapDistance + k * circuit.spacing * 1.5);
-            const distance = Math.max(1, k * circuit.spacing * 1.5);
+        // Braking capability rises with downforce at speed.
+        const aeroBoost = clamp(Math.abs(me.vx) / 90, 0, 1.35);
+        const brakeCapacity = (28 + aeroBoost * 22) * this.personality.bravery * me.weather.grip;
+        for (let k = 0; k < 130; k++) {
+            const idx = circuit.indexAt(me.lapDistance + k * circuit.spacing * 1.4);
+            const distance = Math.max(1, k * circuit.spacing * 1.4);
             const limit = circuit.speedProfile[idx];
             const reachable = Math.sqrt(limit * limit + 2 * brakeCapacity * distance);
             if (reachable < targetSpeed) targetSpeed = reachable;
         }
-        targetSpeed *= diff.pace * this.personality.pace;
-        if (me.offTrack) targetSpeed *= 0.6;
+        targetSpeed *= diff.pace * this.personality.pace * 1.12;
         if (raceState?.safety) targetSpeed = Math.min(targetSpeed, 24);
 
         // Slipstream: tuck in and use the tow on straights.
-        if (ahead.car && ahead.gap < 25 && Math.abs(circuit.curvature[me.trackIndex]) < 0.004) {
-            targetSpeed *= 1.03;
+        if (ahead.car && ahead.gap < 22 && Math.abs(circuit.curvature[me.trackIndex]) < 0.004) {
+            targetSpeed *= 1.045;
         }
 
         const error = targetSpeed - speed;
-        let throttle = clamp(error * 0.35, 0, 1);
-        let brake = clamp(-error * 0.22, 0, 1);
+        let throttle = clamp(error * 0.32, 0, 1);
+        let brake = clamp(-error * 0.2, 0, 1);
 
-        // Do not brake and accelerate at once; feather off the kerbs.
         if (brake > 0.05) throttle = 0;
-        if (me.surface === 1) throttle *= 0.9;
+        if (me.surface === 1) throttle *= 0.88;
 
-        // Traction-limited exit.
-        if (speed < 26 && throttle > 0.6 && Math.abs(circuit.curvature[me.trackIndex]) > 0.012) {
-            throttle *= 0.82 + diff.reaction * 0.16;
+        // Traction-limited exit — respect tyre grip.
+        if (speed < 28 && throttle > 0.55 && Math.abs(circuit.curvature[me.trackIndex]) > 0.01) {
+            throttle *= 0.78 + diff.reaction * 0.18;
+        }
+        if (me.slip > 0.85) {
+            throttle *= 0.7;
+            steer *= 0.85;
         }
 
         /* --- ERS + DRS ------------------------------------------------ */
