@@ -38,6 +38,7 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🌇 **[Santos Vice City](https://diogopaulino.com.br/labs/santos-vice-city/)** | Cinco mini-eventos 16-bit por Santos, com campeonato, medalhas e pódio |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |

@@ -9,7 +9,7 @@ import { buildAtlas } from './art/atlas.js';
 import { createAudio } from './core/audio.js';
 import { GameShell } from './game/shell.js';
 import { HUD } from './game/hud.js';
-import { titleScene, hubScene, briefingScene, playScene, resultScene, podiumScene } from './game/scenes.js';
+import { titleScene, hubScene, briefingScene, playScene, resultScene, podiumScene, pauseScene, optionsScene } from './game/scenes.js';
 
 // Check for file:// protocol
 if (location.protocol === 'file:') {
@@ -29,31 +29,42 @@ function getCurrentScene() {
     return sceneStack.length > 0 ? sceneStack[sceneStack.length - 1] : null;
 }
 
-function gotoScene(newScene, params = {}) {
-    const cur = getCurrentScene();
-    if (cur && cur.exit) cur.exit();
-    sceneStack.length = 0;
-    sceneStack.push(newScene);
-    if (newScene.enter) {
-        newScene.enter({
-            px, input, sprites, font, store, shell, hud, rng, audio,
-            goto: gotoScene,
-            pushScene: pushScene,
-            popScene: popScene
-        }, params);
-    }
+function appCtx() {
+    return {
+        px, input, sprites, font, store, shell, hud, rng, audio,
+        goto: gotoScene,
+        pushScene: pushScene,
+        popScene: popScene
+    };
 }
 
-function pushScene(scene) {
-    sceneStack.push(scene);
-    if (scene.enter) {
-        scene.enter({
-            px, input, sprites, font, store, shell, hud, rng, audio,
-            goto: gotoScene,
-            pushScene: pushScene,
-            popScene: popScene
-        });
+const SCENE_ANNOUNCE = {
+    title: 'Tela de título.',
+    hub: 'Mapa de Santos. Escolha um evento.',
+    briefing: 'Briefing do evento.',
+    play: 'Jogo em andamento.',
+    result: 'Resultado do evento.',
+    podium: 'Pódio do campeonato.'
+};
+
+function announce(sceneId) {
+    const el = document.getElementById('svcAnnouncer');
+    if (el && SCENE_ANNOUNCE[sceneId]) el.textContent = SCENE_ANNOUNCE[sceneId];
+}
+
+function gotoScene(newScene, params = {}) {
+    while (sceneStack.length > 0) {
+        const s = sceneStack.pop();
+        if (s.exit) s.exit();
     }
+    sceneStack.push(newScene);
+    announce(newScene.id);
+    if (newScene.enter) newScene.enter(appCtx(), params);
+}
+
+function pushScene(scene, params = {}) {
+    sceneStack.push(scene);
+    if (scene.enter) scene.enter(appCtx(), params);
 }
 
 function popScene() {
@@ -68,27 +79,16 @@ function update(dtMs) {
     if (!scene) return;
     input.update(dtMs);
     px.tickShake(dtMs);
-    if (scene.update) {
-        scene.update(STEP, input, {
-            px, input, sprites, font, store, shell, hud, rng, audio,
-            goto: gotoScene,
-            pushScene: pushScene,
-            popScene: popScene
-        });
-    }
+    if (scene.update) scene.update(STEP, input, appCtx());
 }
 
 function draw() {
-    const scene = getCurrentScene();
-    if (!scene) return;
+    if (sceneStack.length === 0) return;
     px.clearStage('#0d0a1a');
-    if (scene.draw) {
-        scene.draw(px, {
-            px, input, sprites, font, store, shell, hud, rng, audio,
-            goto: gotoScene,
-            pushScene: pushScene,
-            popScene: popScene
-        });
+    // Desenha a pilha inteira de baixo pra cima — permite overlays (pause/opções)
+    // compor sobre o último frame da cena de baixo sem precisar redesenhá-la.
+    for (const scene of sceneStack) {
+        if (scene.draw) scene.draw(px, appCtx());
     }
     px.present();
 }
@@ -148,7 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wire input
     input.attachTouch(touchOverlay, 'FULL');
     input.onPause(() => {
-        // Pause overlay: TODO
+        const top = getCurrentScene();
+        if (!top) return;
+        if (top.id === 'pause') {
+            popScene();
+        } else if (top.id !== 'title' && top.id !== 'pause') {
+            pushScene(pauseScene);
+        }
     });
     const toggleMute = () => {
         const muted = !store.getOpts().mute;

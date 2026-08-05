@@ -2,6 +2,7 @@
 // Teto: ~190 linhas.
 
 import { W, H } from '../core/pixel.js';
+import { resolveColor } from '../core/font.js';
 
 export class HUD {
     constructor(font, sprites) {
@@ -66,7 +67,7 @@ export class HUD {
 
         // Partículas
         for (const p of this.particles) {
-            ctx.fillStyle = p.color;
+            ctx.fillStyle = resolveColor(p.color);
             ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
             ctx.fillRect(p.x, p.y, p.size, p.size);
             ctx.globalAlpha = 1;
