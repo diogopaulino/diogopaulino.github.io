@@ -76,7 +76,8 @@ export class GameShell {
     }
 
     finishCampeonato() {
-        const isChampRecord = this.store.submitChampion(this.champPoints, 1, false);
+        const assist = !!this.store.getOpts().assist;
+        const isChampRecord = this.store.submitChampion(this.champPoints, 1, assist);
         return { points: this.champPoints, isRecord: isChampRecord, rivals: this.champRivals };
     }
 
