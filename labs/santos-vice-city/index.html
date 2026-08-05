@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Santos Vice City 16-bit - Labs</title>
+    <meta name="description"
+        content="Cinco mini-eventos 16-bit por Santos: surf no Quebra-Mar, ciclovia da orla, delivery de pastel, puçá no Canal 3 e a subida do Monte Serrat.">
+    <meta name="theme-color" content="#fafbfc">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Santos Vice City 16-bit">
+    <meta property="og:description"
+        content="Coletânea de mini-eventos 16-bit ambientada em Santos, SP. Campeonato, medalhas e pódio.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=4">
+    <link rel="stylesheet" href="style.css?v=1">
+</head>
+
+<body>
+    <div class="container">
+        <header data-lab-header data-title="Santos Vice City">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">🌇</span>
+                    <span>Santos Vice City</span>
+                </div>
+            </template>
+        </header>
+
+        <main class="svc-shell">
+            <section class="svc-stage" aria-label="Área do jogo">
+                <div class="svc-screen-wrap" id="svcWrap">
+                    <canvas id="svcStage" width="320" height="224"></canvas>
+                    <canvas id="svcScreen" role="img" aria-label="Santos Vice City 16-bit"></canvas>
+
+                    <div class="svc-touch tp--hidden" id="svcTouch" aria-label="Controles por toque">
+                        <div class="tp-dpad" aria-hidden="false">
+                            <button data-btn="up" aria-label="Cima" class="tp-up">▲</button>
+                            <button data-btn="left" aria-label="Esquerda" class="tp-left">◀</button>
+                            <button data-btn="right" aria-label="Direita" class="tp-right">▶</button>
+                            <button data-btn="down" aria-label="Baixo" class="tp-down">▼</button>
+                        </div>
+                        <div class="tp-actions">
+                            <button data-btn="b" aria-label="Botão B" class="tp-b">B</button>
+                            <button data-btn="a" aria-label="Botão A" class="tp-a">A</button>
+                        </div>
+                        <button data-btn="start" aria-label="Iniciar / Pausar" class="tp-start">II</button>
+                    </div>
+                </div>
+                <p class="sr-only" aria-live="polite" id="svcAnnouncer"></p>
+            </section>
+
+            <aside class="svc-side" aria-label="Informações do jogo">
+                <div class="svc-side-block">
+                    <span class="svc-kicker">SANTOS VICE CITY</span>
+                    <h2>Cinco mini-eventos, um campeonato</h2>
+                    <p>Surf no Quebra-Mar, ciclovia da orla, delivery de pastel no Gonzaga, puçá no
+                        Canal 3 e a subida do Monte Serrat — tudo em pixel art 16-bit gerada 100% em código.</p>
+                </div>
+
+                <div class="svc-side-block">
+                    <span class="svc-kicker">CONTROLES</span>
+                    <div class="svc-key-row"><kbd>↑↓←→</kbd><span>Mover</span></div>
+                    <div class="svc-key-row"><kbd>Z</kbd><span>Botão A</span></div>
+                    <div class="svc-key-row"><kbd>X</kbd><span>Botão B</span></div>
+                    <div class="svc-key-row"><kbd>Enter</kbd><span>Start / Pausa</span></div>
+                    <div class="svc-key-row"><kbd>M</kbd><span>Mudo</span></div>
+                </div>
+
+                <button id="svcSoundToggle" class="svc-sound-toggle" type="button" aria-pressed="true">
+                    <span aria-hidden="true">◉</span>
+                    <span>Som ativado</span>
+                </button>
+
+                <button id="svcResetBtn" class="svc-reset-toggle" type="button">
+                    Apagar recordes
+                </button>
+            </aside>
+        </main>
+
+        <footer data-lab-footer data-home-href="/"></footer>
+    </div>
+
+    <script src="/labs/shared.js?v=5" defer></script>
+    <script type="module" src="src/main.js?v=7"></script>
+</body>
+
+</html>

@@ -61,153 +61,36 @@
             </template>
         </header>
 
+        <div class="css-bg">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+        </div>
+
         <canvas id="canvas"></canvas>
 
-        <button id="toggleControls" class="toggle-controls-btn" aria-label="Mostrar/esconder controles">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path
-                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-            </svg>
-        </button>
-
-        <div class="controls">
-            <div class="controls-header">
-                <span>Configurações</span>
-                <button id="closeControls" class="close-btn" aria-label="Fechar">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="controls-scroll">
-                <div class="control-section">
-                    <div class="section-title">Escala Musical</div>
-                    <div class="pill-grid" id="scaleGrid">
-                        <button class="pill-btn active" data-scale="pentatonic">Pentatônica</button>
-                        <button class="pill-btn" data-scale="major">Maior</button>
-                        <button class="pill-btn" data-scale="minor">Menor</button>
-                        <button class="pill-btn" data-scale="dorian">Dórica</button>
-                        <button class="pill-btn" data-scale="wholetone">Tons Inteiros</button>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Tônica</div>
-                    <div class="pill-grid notes-grid" id="rootGrid">
-                        <button class="pill-btn" data-root="C">C</button>
-                        <button class="pill-btn" data-root="D">D</button>
-                        <button class="pill-btn active" data-root="E">E</button>
-                        <button class="pill-btn" data-root="G">G</button>
-                        <button class="pill-btn" data-root="A">A</button>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Tema de Cores</div>
-                    <div class="color-grid">
-                        <button class="color-swatch active" data-theme="nebula" title="Nebula">
-                            <span style="background: linear-gradient(135deg, #22d3ee, #a855f7, #f472b6)"></span>
-                            <small>Nébula</small>
-                        </button>
-                        <button class="color-swatch" data-theme="aurora" title="Aurora">
-                            <span style="background: linear-gradient(135deg, #00ff88, #00d4ff, #8b5cf6)"></span>
-                            <small>Aurora</small>
-                        </button>
-                        <button class="color-swatch" data-theme="sunset" title="Sunset">
-                            <span style="background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3)"></span>
-                            <small>Sunset</small>
-                        </button>
-                        <button class="color-swatch" data-theme="deep" title="Deep">
-                            <span style="background: linear-gradient(135deg, #0066ff, #6366f1, #22d3ee)"></span>
-                            <small>Deep</small>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Timbre</div>
-                    <div class="select-group">
-                        <select id="waveform">
-                            <option value="sine" selected>Suave (Sine)</option>
-                            <option value="triangle">Quente (Triangle)</option>
-                            <option value="soft-saw">Cristalino (Saw filtrado)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Ajustes</div>
-                    <div class="sliders-grid">
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Ritmo</label>
-                                <span class="slider-value" id="tempoValue">1.0×</span>
-                            </div>
-                            <input type="range" id="tempo" min="0.3" max="2.5" step="0.1" value="1">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Espaço (reverb)</label>
-                                <span class="slider-value" id="reverbValue">45%</span>
-                            </div>
-                            <input type="range" id="reverb" min="0" max="100" step="1" value="45">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Alcance</label>
-                                <span class="slider-value" id="reachValue">100%</span>
-                            </div>
-                            <input type="range" id="reach" min="40" max="160" step="5" value="100">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label>Volume</label>
-                                <span class="slider-value" id="volumeValue">80%</span>
-                            </div>
-                            <input type="range" id="volume" min="0" max="100" step="1" value="80">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="control-section">
-                    <div class="section-title">Drone Ambiente</div>
-                    <button id="droneToggle" class="drone-toggle" aria-pressed="false">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18V5l12-2v13" />
-                            <circle cx="6" cy="18" r="3" />
-                            <circle cx="18" cy="16" r="3" />
-                        </svg>
-                        <span>Ligar camada de fundo</span>
-                    </button>
-                </div>
-
-                <div class="control-footer">
-                    <div class="action-buttons">
-                        <button id="clear" class="action-btn reset-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M3 6h18" />
-                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            </svg>
-                            Limpar
-                        </button>
-                    </div>
-                    <div class="stats-bar">
-                        <div class="stat">
-                            <span class="stat-value" id="orbCount">0</span>
-                            <span class="stat-label">orbes</span>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat">
-                            <span class="stat-value" id="noteCount">0</span>
-                            <span class="stat-label">notas</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="floating-toolbar">
+            <button id="cyclePreset" class="tool-btn" aria-label="Mudar Modo" title="Mudar Modo (Mood)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                <span class="preset-name" id="presetName">Nebula</span>
+            </button>
+            <div class="divider"></div>
+            <button id="droneToggle" class="tool-btn drone-toggle" aria-label="Fundo Ambiente" aria-pressed="false" title="Fundo Ambiente">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                </svg>
+            </button>
+            <button id="clear" class="tool-btn" aria-label="Limpar Orbes" title="Limpar Orbes">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                </svg>
+            </button>
         </div>
 
         <div class="instructions">
