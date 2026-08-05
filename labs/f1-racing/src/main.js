@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { RenderPipeline } from 'three/webgpu';
-import { pass, mrt, output, emissive, uniform, uv, vec2, vec3, float, smoothstep, mix } from 'three/tsl';
+import { pass, mrt, output, emissive, uniform, uv, vec2, float, smoothstep, mix, length } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 import { buildCircuit, CIRCUITS, CIRCUIT_KEYS } from './circuits.js';
@@ -99,7 +99,7 @@ class Game {
         renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.quality.pixelRatio));
         renderer.setSize(innerWidth, innerHeight, false);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.05;
+        renderer.toneMappingExposure = 1.25;
         renderer.shadowMap.enabled = this.quality.shadows;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -370,30 +370,34 @@ class Game {
                 this.player = vehicle;
             }
 
-            const model = buildCar(team, { quality: this.quality, isPlayer });
+            const model = buildCar(team, {
+                quality: this.quality,
+                isPlayer,
+                compoundColor: (COMPOUNDS[compound] || COMPOUNDS.medium).color
+            });
             this.scene.add(model.group);
             this.models.set(vehicle, model);
         }
 
         this.setLoading('gerando efeitos…');
         this.smoke = new ParticleSystem(this.scene, {
-            max: Math.round(340 * this.quality.particles),
+            max: Math.round(400 * this.quality.particles),
             gravity: 1.1,
             drag: 0.9
         });
         this.sparks = new ParticleSystem(this.scene, {
-            max: Math.round(160 * this.quality.particles),
+            max: Math.round(240 * this.quality.particles),
             blending: THREE.AdditiveBlending,
-            gravity: -9,
-            drag: 0.82
+            gravity: -12,
+            drag: 0.8
         });
         this.spray = new ParticleSystem(this.scene, {
-            max: Math.round(260 * this.quality.particles),
-            gravity: -2.2,
-            drag: 0.88
+            max: Math.round(360 * this.quality.particles),
+            gravity: -2.0,
+            drag: 0.92
         });
-        this.trails = new SkidTrails(this.scene, { maxPoints: 700 });
-        this.rain = new RainField(this.scene, { count: Math.round(2400 * this.quality.particles) });
+        this.trails = new SkidTrails(this.scene, { maxPoints: 900 });
+        this.rain = new RainField(this.scene, { count: Math.round(3600 * this.quality.particles) });
         this.rain.setEnabled(this.weather.id !== 'dry');
 
         this.buildCameraPosts();
@@ -461,23 +465,14 @@ class Game {
 
         let node = color;
         if (this.quality.bloom) {
-            // Hyper-realistic Bloom: mais intenso, limiar ajustado para cobrir destaques do sol e reflexos
-            const bloomEffect = bloom(emissiveTexture.add(color.mul(0.15)), 2.2, 0.65, 0.05);
-            node = node.add(bloomEffect);
+            node = node.add(bloom(emissiveTexture, 1.25, 0.6, 0.05));
         }
 
-        // Color Grading: Estilo Transmissão Oficial de F1 (Contraste alto, saturação rica)
-        // Correção de Gamma e contraste
-        node = node.pow(0.88);
-        const luma = node.dot(vec3(0.2126, 0.7152, 0.0722));
-        node = mix(vec3(luma), node, float(1.25)); // +25% Saturação
-        
-        // Efeito de túnel em alta velocidade (Speed Pinch + Vignette Dinâmico)
-        const uvDist = uv().sub(vec2(0.5, 0.5));
-        const distance = uvDist.length();
-        const vignette = smoothstep(1.05, 0.25, distance);
-        const speedPinch = this.speedUniform.mul(0.65);
-        node = node.mul(mix(float(1), vignette, float(0.4).add(speedPinch)));
+        // Vignette + a slight desaturating edge darkening at speed.
+        const distance = length(uv().sub(vec2(0.5, 0.5)));
+        const vignette = smoothstep(0.92, 0.28, distance);
+        const speedPinch = this.speedUniform.mul(0.35);
+        node = node.mul(mix(float(1), vignette, float(0.55).add(speedPinch)));
 
         const pipeline = new RenderPipeline(this.renderer);
         pipeline.outputColorTransform = false;
@@ -587,8 +582,8 @@ class Game {
                             car.position.x + (Math.random()-0.5)*2, 
                             car.position.y + 0.2, 
                             car.position.z + (Math.random()-0.5)*2, 
-                            (Math.random()-0.5)*20, Math.random()*15+5, (Math.random()-0.5)*20, 
-                            { size: 1.5, life: 0.4, color: 0xffddaa }
+                            (Math.random()-0.5)*25, Math.random()*15+8, (Math.random()-0.5)*25, 
+                            { size: 2.0, life: 0.5, color: 0xffeebb }
                         );
                     }
                 }
@@ -620,7 +615,7 @@ class Game {
                             const mx = (cars[i].position.x + cars[j].position.x) / 2;
                             const my = (cars[i].position.y + cars[j].position.y) / 2 + 0.3;
                             const mz = (cars[i].position.z + cars[j].position.z) / 2;
-                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*30, Math.random()*20+5, (Math.random()-0.5)*30, { size: 1.5, life: 0.4, color: 0xffaa44 });
+                            this.sparks.spawn(mx, my, mz, (Math.random()-0.5)*35, Math.random()*20+8, (Math.random()-0.5)*35, { size: 2.2, life: 0.5, color: 0xffcc22 });
                         }
                     }
                 }
@@ -683,13 +678,16 @@ class Game {
                 }
             }
 
-            // DRS: enabled from lap 2, inside a zone, within one second of the car ahead.
+            // DRS: detection + activation zone, lap 2+, within 1s of car ahead.
             const zone = circuit.drsZoneAt(car.lapDistance / circuit.length);
             const ahead = this.carAhead(car);
             const withinRange = ahead && ahead.gapSeconds < 1.0;
-            car.drsAvailable = Boolean(zone) && car.lap >= 1 && Boolean(withinRange) && !car.offTrack;
-            if (!car.drsAvailable || car.brake > 0.25) car.drsOpen = false;
-            if (car !== this.player && car.drsAvailable && car.throttle > 0.8) car.drsOpen = true;
+            const inActivation = zone && (car.lapDistance / circuit.length) >= zone.start
+                && (car.lapDistance / circuit.length) <= zone.end;
+            car.drsAvailable = Boolean(inActivation) && car.lap >= 1 && Boolean(withinRange)
+                && !car.offTrack && car.surface <= 1;
+            if (!car.drsAvailable || car.brake > 0.2) car.drsOpen = false;
+            if (car !== this.player && car.drsAvailable && car.throttle > 0.75) car.drsOpen = true;
         }
 
         this.order = [...this.cars].sort((a, b) => {
@@ -796,27 +794,37 @@ class Game {
         RIGHT.set(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
         CAR_POS.set(car.position.x, car.position.y, car.position.z);
         const speedNorm = Math.min(1, Math.abs(car.vx) / 90);
-        let fov = 62;
+        const lookBack = this.input?.state?.lookBack;
+        let targetFov = 62;
 
-        switch (this.cameraMode) {
+        if (lookBack) {
+            DESIRED.copy(CAR_POS).addScaledVector(FORWARD, 7.5);
+            DESIRED.y += 2.4;
+            const follow = 1 - Math.exp(-dt * 10);
+            this.camera.position.lerp(DESIRED, follow);
+            LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, -18);
+            LOOK_AT.y += 1.0;
+            this.cameraLook.lerp(LOOK_AT, Math.min(1, dt * 12));
+            targetFov = 58;
+        } else switch (this.cameraMode) {
             case 'cockpit': {
-                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 0.25);
-                this.camera.position.y += 1.02;
+                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 0.22);
+                this.camera.position.y += 1.05;
                 LOOK_AT.copy(CAR_POS)
-                    .addScaledVector(FORWARD, 26)
-                    .addScaledVector(RIGHT, car.steer * 22);
-                LOOK_AT.y += 1.1;
+                    .addScaledVector(FORWARD, 28)
+                    .addScaledVector(RIGHT, car.steer * 18);
+                LOOK_AT.y += 1.05;
                 this.cameraLook.copy(LOOK_AT);
-                fov = 74 + speedNorm * 10;
+                targetFov = 72 + speedNorm * 12;
                 break;
             }
             case 'bonnet': {
-                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 1.7);
-                this.camera.position.y += 0.78;
-                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 32);
-                LOOK_AT.y += 0.9;
+                this.camera.position.copy(CAR_POS).addScaledVector(FORWARD, 1.75);
+                this.camera.position.y += 0.8;
+                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 34);
+                LOOK_AT.y += 0.85;
                 this.cameraLook.copy(LOOK_AT);
-                fov = 70 + speedNorm * 12;
+                targetFov = 68 + speedNorm * 14;
                 break;
             }
             case 'broadcast': {
@@ -830,96 +838,86 @@ class Game {
                 }
                 this.camera.position.lerp(best, Math.min(1, dt * 6));
                 this.cameraLook.lerp(CAR_POS, Math.min(1, dt * 9));
-                fov = 32 + Math.min(28, best.distanceTo(CAR_POS) * 0.16);
+                targetFov = 32 + Math.min(28, best.distanceTo(CAR_POS) * 0.16);
                 break;
             }
             default: {
-                const back = 8.4 + speedNorm * 2.2;
-                const height = 3.1 + speedNorm * 0.5;
+                const back = 8.8 + speedNorm * 2.4;
+                const height = 3.2 + speedNorm * 0.55;
                 DESIRED.copy(CAR_POS)
                     .addScaledVector(FORWARD, -back)
-                    // Swing wide through corners so the apex stays in shot.
-                    .addScaledVector(RIGHT, -car.yawRate * 3.2);
+                    .addScaledVector(RIGHT, -car.yawRate * 2.8);
                 DESIRED.y += height;
-                const follow = 1 - Math.exp(-dt * (6 + speedNorm * 4));
+                const follow = 1 - Math.exp(-dt * (5.5 + speedNorm * 3.5));
                 this.camera.position.lerp(DESIRED, follow);
 
-                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 12);
-                LOOK_AT.y += 1.2;
+                LOOK_AT.copy(CAR_POS).addScaledVector(FORWARD, 14);
+                LOOK_AT.y += 1.15;
                 this.cameraLook.lerp(LOOK_AT, Math.min(1, dt * 8));
-                fov = 62 + speedNorm * 14;
+                targetFov = 60 + speedNorm * 16;
                 break;
             }
         }
-        
-        const groundClearance = this.circuit ? this.circuit.heightAt(this.circuit.nearest(this.camera.position.x, this.camera.position.z), 0) + 0.5 : -999;
+
+        const groundClearance = this.circuit
+            ? this.circuit.heightAt(this.circuit.nearest(this.camera.position.x, this.camera.position.z), 0) + 0.5
+            : -999;
         if (this.camera.position.y < groundClearance) {
             this.camera.position.y = groundClearance;
         }
 
-        this.camera.fov = fov;
+        if (speedNorm > 0.55 && this.cameraMode !== 'broadcast' && !lookBack) {
+            const shakeFactor = Math.pow((speedNorm - 0.55) * 2.2, 2) * 0.04;
+            this.cameraLook.x += (Math.random() - 0.5) * shakeFactor;
+            this.cameraLook.y += (Math.random() - 0.5) * shakeFactor * 0.7;
+        }
 
         this.camera.lookAt(this.cameraLook);
-        // A touch of head tilt in the cockpit sells the lateral load.
-        if (this.cameraMode === 'cockpit') {
-            this.camera.rotateZ(-car.roll * 0.8 - car.steer * 0.12);
-        }
-        
-        // Efeito de vibração violenta em alta velocidade (Hyper-realismo)
-        if (speedNorm > 0.35 && this.cameraMode !== 'broadcast') {
-            const shakeLevel = Math.pow(speedNorm - 0.35, 2) * 3.5; // Escala quadrática
-            const t = (this.raceTime || 0) * 60;
-            this.camera.position.x += (Math.sin(t) * 0.02 + Math.sin(t * 3.2) * 0.01) * shakeLevel;
-            this.camera.position.y += (Math.cos(t * 1.4) * 0.02 + Math.cos(t * 2.7) * 0.01) * shakeLevel;
-            this.camera.position.z += (Math.sin(t * 1.7) * 0.02) * shakeLevel;
-            
-            // Vibração rotacional no cockpit (a cabeça do piloto treme)
-            if (this.cameraMode === 'cockpit') {
-                this.camera.rotateX((Math.sin(t * 4.1) * 0.006) * shakeLevel);
-                this.camera.rotateY((Math.cos(t * 3.5) * 0.006) * shakeLevel);
-            }
+        if (this.cameraMode === 'cockpit' && !lookBack) {
+            this.camera.rotateZ(-car.roll * 0.85 - car.steer * 0.1);
         }
 
-        this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
+        this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 5);
         this.camera.updateProjectionMatrix();
     }
 
     emitEffects(dt) {
         const car = this.player;
-        if (!car) return;
+        if (!car || this.state === 'countdown') return;
         const density = this.quality.particles;
 
         for (const other of this.cars) {
             const isPlayer = other === car;
             const distance = Math.hypot(other.position.x - car.position.x, other.position.z - car.position.z);
             if (!isPlayer && distance > 140) continue;
+            if (Math.abs(other.vx) < 8) continue;
 
             const forward = { x: Math.sin(other.yaw), z: Math.cos(other.yaw) };
             const rearX = other.position.x - forward.x * 1.9;
             const rearZ = other.position.z - forward.z * 1.9;
 
             // Tyre smoke from sliding or wheelspin.
-            const slide = Math.max(other.slip - 0.55, other.wheelSpin * 0.8, other.lockUp || 0);
-            if (slide > 0.05 && Math.random() < slide * density * 1.4) {
+            const slide = Math.max(other.slip - 0.7, other.wheelSpin * 0.75, (other.lockUp || 0) * 0.9);
+            if (slide > 0.08 && Math.random() < slide * density * 1.1) {
                 for (const side of [-0.8, 0.8]) {
                     this.smoke.spawn(
                         rearX + Math.cos(other.yaw) * side,
-                        other.position.y + 0.2,
+                        other.position.y + 0.22,
                         rearZ - Math.sin(other.yaw) * side,
-                        (Math.random() - 0.5) * 2.4,
-                        0.8 + Math.random(),
-                        (Math.random() - 0.5) * 2.4,
-                        { size: 0.9, life: 0.85 + Math.random() * 0.6, color: 0xb9bdc4, growth: 3.2 }
+                        (Math.random() - 0.5) * 2.0,
+                        0.6 + Math.random() * 0.8,
+                        (Math.random() - 0.5) * 2.0,
+                        { size: 0.55 + slide * 0.35, life: 0.7 + Math.random() * 0.5, color: 0xb9bdc4, growth: 2.4 }
                     );
                 }
             }
 
             // Dust when running wide.
-            if (other.offTrack && Math.abs(other.vx) > 12 && Math.random() < 0.6 * density) {
+            if (other.offTrack && Math.abs(other.vx) > 12 && Math.random() < 0.55 * density) {
                 this.smoke.spawn(
                     rearX, other.position.y + 0.1, rearZ,
-                    (Math.random() - 0.5) * 3, 1.4 + Math.random(), (Math.random() - 0.5) * 3,
-                    { size: 1.3, life: 1.1, color: 0x9c8a6b, growth: 3.6 }
+                    (Math.random() - 0.5) * 3, 1.2 + Math.random(), (Math.random() - 0.5) * 3,
+                    { size: 1.0, life: 1.0, color: 0x9c8a6b, growth: 3.0 }
                 );
             }
 
@@ -941,13 +939,15 @@ class Game {
                     -forward.x * 5 + (Math.random() - 0.5) * 3,
                     2.4 + Math.random() * 2,
                     -forward.z * 5 + (Math.random() - 0.5) * 3,
-                    { size: 1.1, life: 0.75, color: 0xd8e2ee, growth: 3.8 }
+                    { size: 0.95, life: 0.7, color: 0xd8e2ee, growth: 3.2 }
                 );
             }
         }
 
-        const slideIntensity = Math.max(car.slip - 0.6, car.lockUp || 0, car.wheelSpin * 0.7);
-        this.trails.push(car.position, car.yaw, 0.82, car.surface <= 1 ? slideIntensity : 0);
+        const slideIntensity = Math.max(car.slip - 0.7, car.lockUp || 0, car.wheelSpin * 0.7);
+        if (Math.abs(car.vx) > 10) {
+            this.trails.push(car.position, car.yaw, 0.82, car.surface <= 1 ? slideIntensity : 0);
+        }
         void dt;
     }
 

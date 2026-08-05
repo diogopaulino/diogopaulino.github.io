@@ -8,18 +8,20 @@
   <meta name="theme-color" content="#090a0c">
   <meta property="og:title" content="Rock Kombat — 2D Arcade Fight">
   <meta property="og:description" content="Escolha sua lenda. Leia a distância. Domine o palco.">
+  <link rel="stylesheet" href="/labs/shared.css?v=5">
   <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
 
-  <header class="topbar">
-    <a href="/labs/" class="back-link" aria-label="Voltar para Labs">← <span>LABS</span></a>
-    <div class="mini-brand" aria-label="Rock Kombat"><b>ROCK</b> KOMBAT</div>
-    <div class="top-actions">
+  <header data-lab-header data-title="Rock Kombat">
+    <template data-slot="logo">
+      <div class="mini-brand" aria-label="Rock Kombat"><b>ROCK</b> KOMBAT</div>
+    </template>
+    <template data-slot="actions">
       <button id="help-button" type="button">COMANDOS</button>
       <button id="sound-button" type="button" aria-label="Ativar ou desativar som">SOM ON</button>
-    </div>
+    </template>
   </header>
 
   <main id="app">
@@ -166,6 +168,7 @@
     <div><p class="overline">INTERMISSION</p><h2>PAUSADO</h2><button class="cta" id="resume-button" type="button"><b>CONTINUAR</b></button><button class="quiet-button" id="quit-button" type="button">SAIR DA LUTA</button></div>
   </div>
 
+  <script src="/labs/shared.js?v=5" defer></script>
   <script src="audio.js?v=3"></script>
   <script src="game.js?v=1"></script>
 </body>

@@ -7,14 +7,14 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#07080c">
     <meta name="description"
-        content="Simulador de Fórmula 1 em 3D com Three.js e WebGPU: circuitos reais, física de pneus, DRS, ERS, IA e telemetria ao vivo no navegador.">
-    <title>F1 Grand Prix — Simulador 3D WebGPU</title>
+        content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+    <title>F1 Grand Prix — Crazy Realism</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=10">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800;900&display=swap"
+    <link rel="stylesheet" href="style.css?v=13">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&display=swap"
         rel="stylesheet">
     <script type="importmap">
     {
@@ -84,14 +84,13 @@
                 <div class="hud-bottom">
                     <div class="panel systems-panel">
                         <div class="system-block">
-                            <span class="stat-label">ERS</span>
+                            <span class="stat-label">ERS <b id="ersValue">4.0</b></span>
                             <div class="meter ers"><i id="ersFill"></i></div>
-                            <span id="ersValue" class="mono small">100%</span>
                         </div>
                         <div class="system-block">
-                            <span class="stat-label">Pneu <b id="tyreLabel">Macio</b></span>
+                            <span class="stat-label">Pneu <b id="tyreLabel">M</b></span>
                             <div class="meter tyre"><i id="tyreWear"></i></div>
-                            <span id="tyreTemp" class="mono small" data-state="cold">55°</span>
+                            <span class="small" id="tyreTemp">80°C</span>
                         </div>
                         <span id="drsBadge" class="drs-badge" data-state="off">DRS</span>
                     </div>
@@ -113,8 +112,8 @@
                     </div>
 
                     <div class="hud-actions">
-                        <button id="cameraButton" class="icon-button" type="button" title="Câmera (C)" aria-label="Trocar câmera">🎥</button>
-                        <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">⏸</button>
+                        <button id="cameraButton" class="icon-button" type="button" title="Câmera (C)" aria-label="Trocar câmera">Cam</button>
+                        <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">II</button>
                         <span id="fpsCounter" class="fps mono">—</span>
                     </div>
                 </div>
@@ -144,10 +143,10 @@
             <div id="menuOverlay" class="overlay menu-overlay">
                 <div class="overlay-card menu-card">
                     <header class="menu-head">
-                        <p class="eyebrow"><i></i> Three.js · WebGPU · TSL</p>
+                        <p class="eyebrow"><i></i> WebGPU · Pacejka · Aero</p>
                         <h1>F1 <span>Grand Prix</span></h1>
-                        <p class="lede">Quatro circuitos modelados a partir da geometria real, física de pneus com carga
-                            aerodinâmica, ERS, DRS e um grid de IA que briga de verdade.</p>
+                        <p class="lede">Corrida estilo Grand Prix com pista PBR, carro detalhado, física de pneus com
+                            carga aerodinâmica, DRS, ERS e IA agressiva — no navegador.</p>
                     </header>
 
                     <div class="menu-grid">
@@ -210,8 +209,9 @@
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>S</kbd> acelerar / frear</span>
                             <span><kbd>A</kbd><kbd>D</kbd> direção</span>
-                            <span><kbd>E</kbd> DRS</span>
                             <span><kbd>Espaço</kbd> ERS</span>
+                            <span><kbd>E</kbd> DRS</span>
+                            <span><kbd>B</kbd> olhar atrás</span>
                             <span><kbd>C</kbd> câmera</span>
                             <span><kbd>P</kbd> pausa</span>
                         </div>
@@ -266,7 +266,7 @@
     </main>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script type="module" src="src/main.js?v=2"></script>
+    <script type="module" src="src/main.js?v=4"></script>
 </body>
 
 </html>
