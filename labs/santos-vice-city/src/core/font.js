@@ -20,6 +20,11 @@ const CHARSET =
     'ÁÀÂÃÉÊÍÓÔÕÚÜÇÑáàâãéêíóôõúüçñ' +
     '←→↑↓♥★●○◆▲▼';
 
+// Limiar de maioria: uma célula final só vira "tinta" se uma fração mínima dos subpixels
+// super-amostrados estiver ativa. Usar "qualquer subpixel ativo" (OR) faz uma fonte em negrito
+// preencher quase toda célula numa grade tão pequena — o resultado vira um borrão ilegível.
+const FILL_THRESHOLD = 0.4;
+
 function rasterizeGlyph(ch) {
     const ssW = CELL_W * SS, ssH = CELL_H * SS;
     const cv = document.createElement('canvas');
@@ -29,24 +34,23 @@ function rasterizeGlyph(ch) {
     g.fillStyle = '#fff';
     g.textAlign = 'center';
     g.textBaseline = 'alphabetic';
-    g.font = `900 ${Math.floor(ssH * 0.82)}px "Arial Black", Arial, sans-serif`;
-    // baseline deixa ~22% pra descendentes/acentos abaixo, corpo ocupa o resto
+    g.font = `700 ${Math.floor(ssH * 0.75)}px Arial, sans-serif`;
+    // baseline deixa espaço pra descendentes/acentos abaixo, corpo ocupa o resto
     g.fillText(ch, ssW / 2, ssH * 0.78);
 
-    // downsample: cada célula final = máximo de alpha no bloco SS x SS correspondente
+    // downsample por maioria: célula final = fração de subpixels ativos > FILL_THRESHOLD
     const src = g.getImageData(0, 0, ssW, ssH).data;
     const mask = new Uint8Array(CELL_W * CELL_H);
     for (let cy = 0; cy < CELL_H; cy++) {
         for (let cx = 0; cx < CELL_W; cx++) {
-            let hit = 0;
-            for (let sy = 0; sy < SS && !hit; sy++) {
+            let count = 0;
+            for (let sy = 0; sy < SS; sy++) {
                 for (let sx = 0; sx < SS; sx++) {
                     const px = cx * SS + sx, py = cy * SS + sy;
-                    const alpha = src[(py * ssW + px) * 4 + 3];
-                    if (alpha > 90) { hit = 1; break; }
+                    if (src[(py * ssW + px) * 4 + 3] > 90) count++;
                 }
             }
-            mask[cy * CELL_W + cx] = hit;
+            mask[cy * CELL_W + cx] = (count / (SS * SS)) > FILL_THRESHOLD ? 1 : 0;
         }
     }
     return mask;

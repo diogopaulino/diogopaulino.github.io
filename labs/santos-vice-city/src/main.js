@@ -6,6 +6,7 @@ import { createFont } from './core/font.js';
 import { Store } from './core/store.js';
 import { makeRng } from './core/util.js';
 import { buildAtlas } from './art/atlas.js';
+import { createAudio } from './core/audio.js';
 import { GameShell } from './game/shell.js';
 import { HUD } from './game/hud.js';
 import { titleScene, hubScene, briefingScene, playScene, resultScene, podiumScene } from './game/scenes.js';
@@ -17,7 +18,7 @@ if (location.protocol === 'file:') {
 }
 
 // Globals
-let px = null, input = null, font = null, sprites = null, store = null, shell = null, hud = null, rng = null;
+let px = null, input = null, font = null, sprites = null, store = null, shell = null, hud = null, rng = null, audio = null;
 const sceneStack = [];
 let isRunning = false;
 let acc = 0, lastTime = 0;
@@ -35,7 +36,7 @@ function gotoScene(newScene, params = {}) {
     sceneStack.push(newScene);
     if (newScene.enter) {
         newScene.enter({
-            px, input, sprites, font, store, shell, hud, rng,
+            px, input, sprites, font, store, shell, hud, rng, audio,
             goto: gotoScene,
             pushScene: pushScene,
             popScene: popScene
@@ -47,7 +48,7 @@ function pushScene(scene) {
     sceneStack.push(scene);
     if (scene.enter) {
         scene.enter({
-            px, input, sprites, font, store, shell, hud, rng,
+            px, input, sprites, font, store, shell, hud, rng, audio,
             goto: gotoScene,
             pushScene: pushScene,
             popScene: popScene
@@ -69,7 +70,7 @@ function update(dtMs) {
     px.tickShake(dtMs);
     if (scene.update) {
         scene.update(STEP, input, {
-            px, input, sprites, font, store, shell, hud, rng,
+            px, input, sprites, font, store, shell, hud, rng, audio,
             goto: gotoScene,
             pushScene: pushScene,
             popScene: popScene
@@ -83,7 +84,7 @@ function draw() {
     px.clearStage('#0d0a1a');
     if (scene.draw) {
         scene.draw(px, {
-            px, input, sprites, font, store, shell, hud, rng,
+            px, input, sprites, font, store, shell, hud, rng, audio,
             goto: gotoScene,
             pushScene: pushScene,
             popScene: popScene
@@ -134,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         rng = makeRng(Date.now());
         shell = new GameShell(store, rng);
         hud = new HUD(font, sprites);
+        audio = createAudio();
         console.log('✓ Engine initialized');
     } catch (e) {
         console.error('Boot error:', e);
@@ -148,24 +150,31 @@ document.addEventListener('DOMContentLoaded', () => {
     input.onPause(() => {
         // Pause overlay: TODO
     });
-    input.onMute(() => {
-        const muted = store.getOpts().mute;
-        store.setOpt('mute', !muted);
+    const toggleMute = () => {
+        const muted = !store.getOpts().mute;
+        store.setOpt('mute', muted);
+        audio.setMute(muted);
         soundBtn.setAttribute('aria-pressed', String(!muted));
-        soundBtn.textContent = !muted ? '◉ Som ativado' : '◌ Som desativado';
-    });
+        soundBtn.textContent = muted ? '◌ Som desativado' : '◉ Som ativado';
+    };
+    input.onMute(toggleMute);
+
+    // Áudio precisa de gesto real do usuário (política de autoplay) — primeiro
+    // input de qualquer tipo destrava o AudioContext, igual a tela PRESS START sugere.
+    const unlockAudio = () => {
+        audio.unlock();
+        audio.setMute(store.getOpts().mute);
+        audio.setVolume(store.getOpts().vol);
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
 
     if (store.getOpts().mute) {
         soundBtn.setAttribute('aria-pressed', 'false');
         soundBtn.textContent = '◌ Som desativado';
     }
 
-    soundBtn.addEventListener('click', () => {
-        const muted = store.getOpts().mute;
-        store.setOpt('mute', !muted);
-        soundBtn.setAttribute('aria-pressed', String(!muted));
-        soundBtn.textContent = !muted ? '◉ Som ativado' : '◌ Som desativado';
-    });
+    soundBtn.addEventListener('click', toggleMute);
 
     resetBtn.addEventListener('click', () => {
         if (confirm('Apagar todos os recordes?')) {
@@ -193,6 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
     gotoScene(titleScene);
     requestAnimationFrame(loop);
     lastTime = performance.now();
-});
 
-window.__svc = { px, input, font, sprites, store, shell, hud, sceneStack, gotoScene, pushScene, popScene };
+    window.__svc = { px, input, font, sprites, store, shell, hud, audio, sceneStack, gotoScene, pushScene, popScene };
+});

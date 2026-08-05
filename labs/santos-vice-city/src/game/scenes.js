@@ -10,10 +10,14 @@ export const titleScene = {
     enter(app) {
         if (!this.bg) this.bg = bakeHubBackground(app.store ? app.store.rng : null);
         this.t = 0;
+        if (app.audio) app.audio.playSong('tema');
     },
     exit() {},
-    update(dt) {
+    update(dt, input, app) {
         this.t += dt;
+        if (input.state.a.pressed || input.state.start.pressed) {
+            app.goto(hubScene);
+        }
     },
     draw(px, app) {
         if (this.bg) px.ctx.drawImage(this.bg, 0, 0);
@@ -33,16 +37,23 @@ export const hubScene = {
     enter(app) {
         if (!this.bg) this.bg = bakeHubBackground(app.store.rng);
         this.selectedIdx = 0;
+        if (app.audio) app.audio.playSong('tema');
     },
     exit() {},
     update(dt, input, app) {
+        const prev = this.selectedIdx;
         if (input.state.left.pressed) this.selectedIdx = (this.selectedIdx - 1 + 5) % 5;
         if (input.state.right.pressed) this.selectedIdx = (this.selectedIdx + 1) % 5;
         if (input.state.up.pressed) this.selectedIdx = (this.selectedIdx - 2 + 5) % 5;
         if (input.state.down.pressed) this.selectedIdx = (this.selectedIdx + 2) % 5;
-        if (input.state.a.pressed) app.goto(briefingScene, { eventIdx: this.selectedIdx, mode: 'treino' });
+        if (this.selectedIdx !== prev && app.audio) app.audio.play('ui_move');
+        if (input.state.a.pressed) {
+            if (app.audio) app.audio.play('ui_confirm');
+            app.goto(briefingScene, { eventIdx: this.selectedIdx, mode: 'treino' });
+        }
         if (input.state.start.pressed) {
-            const champ = app.shell.startCampeonato();
+            app.shell.startCampeonato();
+            if (app.audio) app.audio.play('ui_confirm');
             app.goto(briefingScene, { eventIdx: 0, mode: 'campeonato' });
         }
     },
@@ -63,6 +74,7 @@ export const briefingScene = {
     exit() {},
     update(dt, input, app) {
         if (input.state.a.pressed) {
+            if (app.audio) app.audio.play('ui_confirm');
             app.goto(playScene, { event: this.event, mode: this.mode, eventIdx: this.eventIdx });
         }
     },
@@ -95,16 +107,28 @@ export const playScene = {
             popup: (x, y, text, color) => app.hud.popup(x, y, text, color)
         });
         this.countdownLeft = 3;
+        this._musicStarted = false;
+        if (app.audio) app.audio.playStinger('contagem');
+        app.hud.time = 0;
+        app.hud.lives = 3;
     },
-    exit() {},
+    exit() {
+        if (this._app && this._app.audio) this._app.audio.stopSong();
+    },
     update(dt, input, app) {
         if (!this.event) return;
+        this._app = app;
         this.countdownLeft = Math.max(0, this.countdownLeft - dt);
         if (this.countdownLeft <= 0) {
+            if (!this._musicStarted) {
+                this._musicStarted = true;
+                if (app.audio) app.audio.playSong(this.event.music);
+            }
             this.event.update(dt, input, { duration: this.event.duration, finish: (r) => this._finish(app, r) });
         }
-        app.hud.update(dt);
+        app.hud.update(dt * 1000);
         app.hud.score = this.event.score();
+        app.hud.time = this.countdownLeft <= 0 ? Math.min(1, (this.event.state?.time || 0) / this.event.duration) : 0;
     },
     draw(px, app) {
         px.ctx.fillStyle = '#0d0a1a';
@@ -119,11 +143,13 @@ export const playScene = {
     },
     _finish(app, reason) {
         if (!this.event) return;
+        if (app.audio) app.audio.stopSong();
         const score = this.event.score();
         const medal = app.shell.getEvent(this.eventIdx).medals;
         const medalName = score >= medal.platina ? 'platina' : score >= medal.ouro ? 'ouro' : score >= medal.prata ? 'prata' : score >= medal.bronze ? 'bronze' : 'none';
-        app.shell.recordResult(this.event.id, score, medalName);
-        app.goto(resultScene, { eventId: this.event.id, score, medal: medalName, mode: this.mode });
+        const isRecord = app.shell.recordResult(this.event.id, score, medalName);
+        if (app.audio) app.audio.playStinger(medalName === 'none' ? 'falha' : 'fanfarra_ouro');
+        app.goto(resultScene, { eventId: this.event.id, score, medal: medalName, mode: this.mode, isRecord });
     }
 };
 
@@ -134,10 +160,12 @@ export const resultScene = {
         this.score = params?.score || 0;
         this.medal = params?.medal || 'none';
         this.mode = params?.mode || 'treino';
+        this.isRecord = params?.isRecord || false;
     },
     exit() {},
     update(dt, input, app) {
         if (input.state.a.pressed) {
+            if (app.audio) app.audio.play('ui_confirm');
             if (this.mode === 'campeonato') {
                 const next = app.shell.nextEvent();
                 if (next) {
@@ -156,6 +184,9 @@ export const resultScene = {
         app.font.text(px.ctx, 'RESULTADO', W / 2, 30, { align: 'center', color: 'A', mono: true, scale: 1 });
         app.font.text(px.ctx, 'SCORE: ' + String(this.score).padStart(6, '0'), W / 2, 70, { align: 'center', color: 'q', mono: true, scale: 1 });
         app.font.text(px.ctx, 'MEDALHA: ' + this.medal.toUpperCase(), W / 2, 90, { align: 'center', color: 'A', mono: true, scale: 1 });
+        if (this.isRecord) {
+            app.font.text(px.ctx, 'NOVO RECORDE!', W / 2, 115, { align: 'center', color: 'x', mono: true, scale: 1 });
+        }
         app.font.text(px.ctx, 'Pressione A para continuar', W / 2, 180, { align: 'center', color: 'r', mono: false, scale: 1 });
     }
 };
@@ -164,10 +195,14 @@ export const podiumScene = {
     id: 'podium',
     enter(app) {
         this.result = app.shell.finishCampeonato();
+        if (app.audio) app.audio.playStinger('fanfarra_ouro');
     },
     exit() {},
     update(dt, input, app) {
-        if (input.state.a.pressed) app.goto(hubScene);
+        if (input.state.a.pressed) {
+            if (app.audio) app.audio.play('ui_confirm');
+            app.goto(hubScene);
+        }
     },
     draw(px, app) {
         px.ctx.fillStyle = '#1b1233';
