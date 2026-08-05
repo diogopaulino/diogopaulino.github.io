@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
 import {
-    roadMaps, kerbMaps, grassMaps, gravelMaps, runoffMaps, concreteMaps,
+    roadMaps, roadTexture, kerbMaps, grassMaps, gravelMaps, runoffMaps, concreteMaps,
     crowdTexture, startLineTexture, liveryTexture, bannerTexture, fenceTexture
 } from './textures.js';
 import { TEAMS } from './config.js';
