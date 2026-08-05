@@ -1,1008 +1,958 @@
 /* ==========================================================================
-   Mickey 1·2·3 — lógica no molde de Mickey's 123: The Big Surprise Party
-   Controles: apenas números 0–9 (teclado ou numpad na tela)
+   Ravi 1·2·3 — máquina de estados e roteiro
+   --------------------------------------------------------------------------
+   Fluxo do original: sonho com carneirinhos → placa de caminhos → fábrica de
+   presentes / mercado / correios → decorar a casa → convidados chegam →
+   SURPRESA → servir a comida → todos dançam para fora.
+
+   Nenhuma sequência usa setTimeout ou promise: tudo é uma Timeline declarativa
+   avançada pelo update(dt), então trocar de cena descarta o roteiro inteiro
+   sem deixar callback órfão para trás.
    ========================================================================== */
 
+import { W } from './screen.js';
+import { K, Pen, blit, blitMid, blitFoot } from './assets.js';
+import * as F from './font.js';
 import { Audio } from './audio.js';
-import * as Art from './art.js';
+import { SPR, HEROES, TOYS, FOODS, VEHICLES, buildSprites } from './sprites.js';
+import * as Sc from './scenes.js';
 
-const {
-  W, H, C, HEROES, TOYS, VEHICLES, MARKET,
-  drawSky, drawGrass, drawRavi, drawHero, drawSheep, drawFence,
-  drawArmchair, drawHouseInterior, drawSignpost, drawFactoryBg, drawGear,
-  drawMarketBg, drawPostBg, drawPartyBg, drawStreet, drawVehicle,
-  drawMarketItem, drawNumberBadge, drawConfetti, makeConfetti
-} = Art;
+const STAGE_H = Sc.STAGE_H;
+
+/* --------------------------------------------------------------------------
+   Timeline — sequências temporizadas sem timers
+   -------------------------------------------------------------------------- */
+
+class Timeline {
+  constructor() {
+    this.steps = [];
+    this.i = 0;
+    this.t = 0;
+    this.entered = false;
+  }
+
+  /** `onUpdate` recebe o progresso 0..1 do passo. */
+  add(dur, onEnter, onUpdate) {
+    this.steps.push({ dur, onEnter, onUpdate });
+    return this;
+  }
+
+  update(dt) {
+    let budget = dt;
+    while (this.i < this.steps.length) {
+      const step = this.steps[this.i];
+      if (!this.entered) {
+        this.entered = true;
+        this.t = 0;
+        if (step.onEnter) step.onEnter();
+      }
+      this.t += budget;
+      budget = 0;
+      const p = step.dur > 0 ? Math.min(1, this.t / step.dur) : 1;
+      if (step.onUpdate) step.onUpdate(p);
+      if (this.t < step.dur) return false;
+      this.i++;
+      this.entered = false;
+    }
+    return true;
+  }
+
+  get done() {
+    return this.i >= this.steps.length;
+  }
+}
 
 /* --------------------------------------------------------------------------
    Estado
    -------------------------------------------------------------------------- */
 
-function fresh() {
-  const honoree = (Math.random() * HEROES.length) | 0;
+let S;
+let scene = null;
+let timeline = null;
+let clock = 0;
+
+function freshState() {
   return {
-    scene: 'title',
-    busy: false,
-    t: 0,
-    honoree,
+    honoree: (Math.random() * HEROES.length) | 0,
     invited: [],
     present: null,
     presentDone: false,
+    made: [],
     cart: {},
     marketDone: false,
     inviteDone: false,
     balloons: 0,
     destination: null,
     vehicle: null,
-    travelX: -80,
+    message: '',
+    flash: null,
+    flashPop: 0,
     sheep: [],
-    countN: 0,
-    flash: 0,
-    beltX: 180,
-    beltItem: null,
-    mold: 0,
-    marketIdx: 0,
-    marketCount: 0,
-    marketShown: [],
-    serveIdx: 0,
-    serveItem: 0,
-    partyPhase: 'prep',
-    confetti: makeConfetti(50),
+    travelX: -100,
     mailmanX: -60,
-    mailmanTarget: null,
-    fridge: false,
-    signHung: false,
-    balloonsHung: 0,
+    mold: 0,
+    lumpX: 96,
+    marketIdx: 0,
+    serveIdx: 0,
     guestsIn: 0,
-    goodbye: 0
+    balloonsHung: 0,
+    bannerUp: false,
+    fridgeFull: false,
+    guestX: [],
+    confetti: Sc.makeConfetti(60)
   };
 }
 
-let S = fresh();
-let sayTimer = 0;
-
-function easeInOutCubic(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-function easeOutQuad(t) {
-  return t * (2 - t);
-}
-
-/* --------------------------------------------------------------------------
-   UI helpers
-   -------------------------------------------------------------------------- */
-
-const els = {};
-
-function roundRectLocal(ctx, x, y, w, h, r) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-function bindUI() {
-  els.canvas = document.getElementById('game');
-  els.ctx = els.canvas.getContext('2d');
-  els.bubble = document.getElementById('speech-bubble');
-  els.flash = document.getElementById('flashcard');
-  els.flashNum = document.getElementById('flash-num');
-  els.choice = document.getElementById('choice-panel');
-  els.choicePrompt = document.getElementById('choice-prompt');
-  els.choiceGrid = document.getElementById('choice-grid');
-  els.numpad = document.getElementById('numpad');
-  els.title = document.getElementById('title-overlay');
-
-  document.querySelectorAll('.num-key').forEach((btn) => {
-    const fire = () => {
-      const n = parseInt(btn.dataset.n, 10);
-      btn.classList.add('pressed');
-      setTimeout(() => btn.classList.remove('pressed'), 120);
-      onNumber(n);
-    };
-    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); fire(); });
-  });
-
-  window.addEventListener('keydown', (e) => {
-    if (e.key >= '0' && e.key <= '9') {
-      e.preventDefault();
-      onNumber(parseInt(e.key, 10));
-      const btn = document.querySelector(`.num-key[data-n="${e.key}"]`);
-      if (btn) {
-        btn.classList.add('pressed');
-        setTimeout(() => btn.classList.remove('pressed'), 120);
-      }
-    }
-  });
-
-  document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
-  const btnBack = document.getElementById('btn-back'); if (btnBack) btnBack.addEventListener('click', () => {
-    window.location.href = '/labs/';
-  });
-
-  // toque na intro também inicia
-  els.title.addEventListener('pointerdown', () => {
-    if (S.scene === 'title') onNumber(1 + ((Math.random() * 9) | 0));
-  });
-}
-
-function say(text, ms = 3200) {
-  els.bubble.textContent = text;
-  els.bubble.classList.remove('hidden');
-  // re-trigger animation
-  els.bubble.style.animation = 'none';
-  void els.bubble.offsetWidth;
-  els.bubble.style.animation = '';
-  clearTimeout(sayTimer);
-  sayTimer = setTimeout(() => els.bubble.classList.add('hidden'), ms);
-  Audio.say(text);
-}
-
-function showFlash(n) {
-  els.flashNum.textContent = String(n);
-  els.flash.classList.remove('hidden');
-}
-
-function hideFlash() {
-  els.flash.classList.add('hidden');
-}
-
-function showChoices(prompt, items) {
-  els.choicePrompt.textContent = prompt;
-  els.choiceGrid.innerHTML = '';
-  items.forEach((it, i) => {
-    const div = document.createElement('div');
-    div.className = 'choice-item' + (it.done ? ' done' : '') + (it.locked ? ' locked' : '');
-    div.style.animationDelay = `${i * 0.04}s`;
-    div.innerHTML = `<span class="n">${it.n}</span><span>${it.label}</span>`;
-    els.choiceGrid.appendChild(div);
-  });
-  els.choice.classList.remove('hidden');
-}
-
-function hideChoices() {
-  els.choice.classList.add('hidden');
-}
-
-function setPad(active) {
-  els.numpad.classList.toggle('dim', !active);
-}
-
-function toggleFullscreen() {
-  const root = document.documentElement;
-  const req = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
-  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-  try {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (req) req.call(root);
-      else document.body.classList.add('fs-fallback');
-    } else if (exit) {
-      exit.call(document);
-      document.body.classList.remove('fs-fallback');
-    } else {
-      document.body.classList.toggle('fs-fallback');
-    }
-  } catch (_) {
-    document.body.classList.toggle('fs-fallback');
-  }
-}
-
-function wait(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+function honoree() {
+  return HEROES[S.honoree];
 }
 
 function readyForParty() {
   return S.presentDone && S.marketDone && S.inviteDone;
 }
 
-/* --------------------------------------------------------------------------
-   Input
-   -------------------------------------------------------------------------- */
-
-async function onNumber(n) {
-  Audio.init();
-  // Durante a esteira, números moldam o presente mesmo com busy
-  if (S.scene === 'factoryBelt') {
-    if (n === 0) S.beltBoost = (S.beltBoost || 0) + 28;
-    else S.mold = n;
-    Audio.pop();
-    return;
-  }
-  if (S.busy) return;
-
-  switch (S.scene) {
-    case 'title':
-      await startDream(n === 0 ? 5 : n);
-      break;
-    case 'sign':
-      await pickDestination(n);
-      break;
-    case 'transport':
-      await pickTransport(n);
-      break;
-    case 'factoryPick':
-      if (n >= 1 && n <= 9) await makePresent(n - 1);
-      else if (n === 0) goSign();
-      break;
-    case 'marketItem':
-      if (n >= 1 && n <= 9) await buyItem(n);
-      else if (n === 0) await buyItem(0);
-      break;
-    case 'post':
-      await inviteHero(n);
-      break;
-    case 'partyServe':
-      if (n >= 1 && n <= 9) await serveFood(n);
-      break;
-    case 'end':
-      restart();
-      break;
-    default:
-      break;
-  }
+/** Comidas efetivamente compradas (balão não é comida). */
+function boughtFoods() {
+  return FOODS.filter((f) => f.id !== 'balloon' && (S.cart[f.id] || 0) > 0);
 }
 
 /* --------------------------------------------------------------------------
-   Cenas / fluxo
+   Fala e flashcard
    -------------------------------------------------------------------------- */
 
-async function startDream(n) {
-  S.busy = true;
-  document.body.classList.add('is-playing');
-  els.title.classList.add('hidden');
-  S.scene = 'dream';
-  S.sheep = [];
-  hideChoices();
-  say('Mickey está sonhando... vamos contar carneirinhos!', 2500);
-  await wait(600);
-
-  await Audio.countTo(n, (i) => {
-    showFlash(i);
-    S.sheep.push({ x: -40, born: S.t, i });
-    Audio.sheep();
-  });
-  hideFlash();
-  await wait(700);
-
-  S.scene = 'wake';
-  say(`Bom dia! Hoje vou preparar uma festa surpresa para ${HEROES[S.honoree].name}!`, 4000);
-  Audio.magic();
-  await wait(3800);
-
-  say(`${HEROES[S.honoree].name}, ${HEROES[S.honoree].title}, vai adorar! Vamos à placa de caminhos!`, 3500);
-  await wait(2800);
-  goSign();
-  S.busy = false;
+function say(message, speak = true) {
+  S.message = message;
+  if (speak) Audio.speak(message);
 }
 
-function goSign() {
-  S.scene = 'sign';
-  S.destination = null;
-  hideFlash();
-  const items = [
-    { n: 1, label: 'Fábrica de Presentes', done: S.presentDone },
-    { n: 2, label: 'Mercado', done: S.marketDone },
-    { n: 3, label: 'Correios', done: S.inviteDone }
-  ];
-  if (readyForParty()) items.push({ n: 4, label: 'A FESTA!', done: false });
-  showChoices('Para onde vamos? Aperte um número!', items);
-  say(readyForParty()
-    ? 'Tudo pronto! Aperte 4 para a FESTA!'
-    : 'Aperte 1, 2 ou 3 para escolher o caminho!');
-  setPad(true);
+function showFlash(n) {
+  S.flash = n;
+  S.flashPop = 0;
 }
 
-async function pickDestination(n) {
-  if (n === 4 && readyForParty()) {
-    hideChoices();
-    await startParty();
-    return;
-  }
-  if (n < 1 || n > 3) {
-    Audio.bonk();
-    return;
-  }
-  S.destination = ['factory', 'market', 'post'][n - 1];
-  S.scene = 'transport';
-  showChoices('Como vamos? Escolha o transporte (0–9)!', VEHICLES.map((v, i) => ({
-    n: i,
-    label: `${v.name}${v.wheels ? ` · ${v.wheels} roda${v.wheels > 1 ? 's' : ''}` : ''}`
-  })));
-  say('Escolha de 0 a 9: cada número é um jeito de ir!');
+function hideFlash() {
+  S.flash = null;
+  S.flashPop = 0;
 }
 
-async function pickTransport(n) {
-  if (n < 0 || n > 9) return;
-  S.busy = true;
-  S.vehicle = VEHICLES[n];
-  hideChoices();
-  S.scene = 'travel';
-  S.travelX = -100;
-  Audio.engine();
-  say(`${S.vehicle.name}! Contando as rodas...`, 2000);
-
-  if (S.vehicle.wheels > 0) {
-    await Audio.countTo(S.vehicle.wheels, (i) => showFlash(i));
-    hideFlash();
-  } else {
-    showFlash(0);
-    await wait(500);
-    hideFlash();
-  }
-
-  // anima viagem
-  const start = performance.now();
-  const duration = 2500; // 2.5s duration
-  const startX = -100;
-  const targetX = W + 80;
-  
-  await new Promise((resolve) => {
-    const step = () => {
-      const elapsed = performance.now() - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeInOutCubic(progress);
-      
-      S.travelX = startX + (targetX - startX) * eased;
-      
-      if (progress >= 1) resolve();
-      else requestAnimationFrame(step);
-    };
-    step();
-  });
-
-  S.busy = false;
-  if (S.destination === 'factory') enterFactory();
-  else if (S.destination === 'market') enterMarket();
-  else enterPost();
-}
-
-function enterFactory() {
-  S.scene = 'factoryPick';
-  showChoices('Qual presente vamos fazer? (0 = voltar)', TOYS.map((t, i) => ({
-    n: i + 1,
-    label: t.name
-  })).concat([{ n: 0, label: 'Voltar à placa' }]));
-  say('Na fábrica mágica: aperte 1 a 9 para escolher o presente!');
-}
-
-async function makePresent(idx) {
-  S.busy = true;
-  S.present = TOYS[idx];
-  hideChoices();
-  S.scene = 'factoryBelt';
-  S.beltX = 180;
-  S.mold = 0;
-  S.beltBoost = 0;
-  say(`Vamos fazer: ${S.present.name}! Aperte números para moldar. 0 acelera a esteira!`, 4000);
-
-  const start = performance.now();
-  await new Promise((resolve) => {
-    const tick = () => {
-      const elapsed = (performance.now() - start) / 1000;
-      S.beltX = 180 + elapsed * 70 + (S.beltBoost || 0);
-      if (S.beltX >= 520) resolve();
-      else requestAnimationFrame(tick);
-    };
-    tick();
-  });
-
-  showFlash(idx + 1);
-  Audio.success();
-  S.presentDone = true;
-  say(`Presente pronto: ${S.present.name}!`, 2500);
-  await wait(1800);
-  hideFlash();
-  S.busy = false;
-  goSign();
-}
-
-function enterMarket() {
-  S.scene = 'marketItem';
-  S.marketIdx = 0;
-  S.marketShown = [];
-  S.cart = {};
-  askMarketItem();
-}
-
-function askMarketItem() {
-  if (S.marketIdx >= MARKET.length) {
-    finishMarket();
-    return;
-  }
-  const item = MARKET[S.marketIdx];
-  showChoices(`Quantos(as) ${item.name}? (1–9)`, [
-    { n: '1–9', label: item.name }
-  ]);
-  say(`Quantos ${item.name.toLowerCase()} vamos levar para a festa?`);
-  setPad(true);
-}
-
-async function buyItem(n) {
-  if (S.busy) return;
-  S.busy = true;
-  const item = MARKET[S.marketIdx];
-  const qty = Math.max(0, Math.min(9, n));
-  hideChoices();
-
-  if (qty === 0) {
-    S.cart[item.id] = 0;
-    say(`Nenhum ${item.name.toLowerCase()}... ok!`, 1500);
-    await wait(1000);
-  } else {
-    S.cart[item.id] = qty;
-    if (item.id === 'balloon') S.balloons = qty;
-    say(`${qty} ${item.name}!`, 1500);
-    await Audio.countTo(qty, (i) => {
+/**
+ * Anexa à timeline uma contagem de 1 até n: flashcard, nota e número falado.
+ * É o coração educativo do jogo — aparece em quase toda cena.
+ */
+function addCount(tl, n, onStep, stepDur = 0.72) {
+  for (let i = 1; i <= n; i++) {
+    tl.add(stepDur, () => {
       showFlash(i);
-      S.marketShown.push({ id: item.id, i, born: S.t });
+      Audio.countStep(i);
+      if (onStep) onStep(i);
     });
-    hideFlash();
   }
-
-  S.marketIdx++;
-  S.busy = false;
-  askMarketItem();
+  tl.add(0.45, () => hideFlash());
+  return tl;
 }
 
-async function finishMarket() {
-  S.marketDone = true;
-  S.scene = 'marketDone';
-  Audio.success();
-  say('Compras feitas! De volta à placa!', 2500);
-  await wait(2000);
-  goSign();
-}
+/* --------------------------------------------------------------------------
+   Troca de cena
+   -------------------------------------------------------------------------- */
 
-function enterPost() {
-  S.scene = 'post';
-  const items = HEROES.map((h, i) => ({
-    n: i + 1,
-    label: h.name,
-    done: S.invited.includes(i),
-    locked: i === S.honoree
-  }));
-  items.push({ n: 0, label: 'Voltar à placa' });
-  showChoices('Quem vamos convidar? (aniversariante bloqueado)', items);
-  say(`Convide heróis! Não pode ser ${HEROES[S.honoree].name} — a festa é surpresa!`);
-}
-
-async function inviteHero(n) {
-  if (n === 0) {
-    if (S.invited.length > 0) S.inviteDone = true;
-    goSign();
-    return;
-  }
-  if (n < 1 || n > 9) return;
-  const idx = n - 1;
-  if (idx === S.honoree) {
-    Audio.bonk();
-    say(`Shh! ${HEROES[idx].name} não pode saber da surpresa!`);
-    return;
-  }
-  if (S.invited.includes(idx)) {
-    Audio.bonk();
-    say(`${HEROES[idx].name} já foi convidado(a)!`);
-    return;
-  }
-
-  S.busy = true;
-  S.invited.push(idx);
-  S.mailmanTarget = idx;
-  S.mailmanX = -60;
-  hideChoices();
-  S.scene = 'mailman';
-  showFlash(n);
-  Audio.note(n - 1);
-  say(`Convite para ${HEROES[idx].name}! O carteiro está a caminho!`, 2500);
-
-  const start = performance.now();
-  const duration = 3000;
-  const startX = -60;
-  const targetX = W + 40;
-  
-  await new Promise((resolve) => {
-    const tick = () => {
-      const elapsed = performance.now() - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeOutQuad(progress);
-      
-      S.mailmanX = startX + (targetX - startX) * eased;
-      
-      if (progress >= 1) resolve();
-      else requestAnimationFrame(tick);
-    };
-    tick();
-  });
-
+function go(next) {
+  if (scene && scene.exit) scene.exit();
+  scene = next;
+  timeline = null;
   hideFlash();
-  S.inviteDone = S.invited.length > 0;
-  S.busy = false;
-  enterPost();
+  if (scene.enter) scene.enter();
 }
 
-async function startParty() {
-  S.busy = true;
-  S.scene = 'party';
-  S.partyPhase = 'fridge';
-  hideChoices();
-  say('Hora da festa! Guardando a comida na geladeira...', 2800);
-  Audio.party();
-  await wait(2800);
-
-  S.partyPhase = 'sign';
-  say('Colocando a placa: SURPRESA!', 2200);
-  await wait(2200);
-
-  S.partyPhase = 'balloons';
-  const b = Math.max(S.balloons, 1);
-  say(`Vamos pendurar ${b} balões!`, 2000);
-  await Audio.countTo(b, (i) => {
-    showFlash(i);
-    S.balloonsHung = i;
-  });
-  hideFlash();
-
-  S.partyPhase = 'wait';
-  say('Shh... os convidados estão chegando!', 2500);
-  await wait(2200);
-
-  S.partyPhase = 'arrive';
-  for (let i = 0; i <= S.invited.length; i++) {
-    S.guestsIn = i;
-    Audio.pop();
-    await wait(450);
-  }
-  // aniversariante entra por último
-  S.guestsIn = S.invited.length + 1;
-  await wait(400);
-
-  S.partyPhase = 'surprise';
-  Audio.magic();
-  say(`SURPRESA, ${HEROES[S.honoree].name}!!!`, 3500);
-  await wait(3000);
-
-  if (S.invited.length === 0) {
-    await endParty();
-    return;
-  }
-
-  S.partyPhase = 'serve';
-  S.scene = 'partyServe';
-  S.serveIdx = 0;
-  S.serveItem = 0;
-  askServe();
-  S.busy = false;
+/**
+ * Hotspots da cena atual — usados pelo hit-test do ponteiro.
+ * Cenas em animação zeram `spots`, então o toque fica inerte enquanto a
+ * sequência roda, exatamente como o teclado.
+ */
+export function currentSpots() {
+  return scene ? scene.spots : null;
 }
 
-function askServe() {
-  if (S.serveIdx >= S.invited.length) {
-    S.busy = true;
-    endParty();
-    return;
+/* --------------------------------------------------------------------------
+   Cenas
+   -------------------------------------------------------------------------- */
+
+/** Balões numerados da tela de título: dão o toque e ensinam o controle. */
+function titleSpots() {
+  const spots = [];
+  for (let i = 0; i < 9; i++) {
+    spots.push({ n: i + 1, x: 12 + i * 34, y: 70, w: 30, h: 42 });
   }
-  const hero = HEROES[S.invited[S.serveIdx]];
-  const foods = MARKET.filter((m) => m.id !== 'balloon' && (S.cart[m.id] || 0) > 0);
-  if (foods.length === 0) {
-    S.serveIdx++;
-    askServe();
-    return;
-  }
-  const food = foods[S.serveItem % foods.length];
-  showChoices(`Quantos ${food.name} para ${hero.name}?`, [
-    { n: '1–9', label: `${hero.name} quer ${food.name}` }
-  ]);
-  say(`Quantos ${food.name.toLowerCase()} para ${hero.name}?`);
+  return spots;
 }
 
-async function serveFood(n) {
-  S.busy = true;
-  hideChoices();
-  const hero = HEROES[S.invited[S.serveIdx]];
-  await Audio.countTo(n, (i) => showFlash(i));
-  hideFlash();
-  say(`${n} para ${hero.name}!`, 1200);
-  await wait(900);
+const SCENES = {
+  /* ---------------------------------------------------------------- título */
+  title: {
+    backdrop: 'houseNight',
+    spots: null,
+    enter() {
+      this.spots = titleSpots();
+      say('Aperte um número para acordar o Ravi!');
+    },
+    update() {},
+    input(n) {
+      go(SCENES.dream);
+      SCENES.dream.begin(n === 0 ? 3 : n);
+    },
+    draw(ctx) {
+      const pen = new Pen(ctx);
+      blitFoot(ctx, SPR.ravi.sleep, 150, 152);
 
-  S.serveItem++;
-  const foods = MARKET.filter((m) => m.id !== 'balloon' && (S.cart[m.id] || 0) > 0);
-  if (S.serveItem >= foods.length) {
-    S.serveItem = 0;
-    S.serveIdx++;
+      // Logotipo — alto o bastante para cobrir a janela do cenário
+      pen.col(K.BLACK).rect(28, 4, 264, 70);
+      pen.bevel(30, 6, 260, 66, K.NAVY, K.BLU, K.NIGHT);
+      F.textCenter(ctx, 'RAVI', 160, 13, K.YEL_L, { scale: 3, shadow: K.RED_D });
+      F.textCenter(ctx, '1 · 2 · 3', 160, 38, K.CYAN, { scale: 2, shadow: K.BLACK });
+      F.textCenter(ctx, 'A GRANDE FESTA SURPRESA', 160, 57, K.WHITE, { shadow: K.BLACK });
+
+      // Balões numerados
+      for (const spot of this.spots) {
+        const bob = Math.round(2 * Math.sin(clock * 2 + spot.n));
+        const cx = spot.x + spot.w / 2;
+        const cy = spot.y + 14 + bob;
+        const color = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.ORANGE, K.CYAN, K.PUR, K.RED_L][spot.n - 1];
+        pen.col(K.BLACK).ellipse(cx, cy, 12, 14);
+        pen.col(color).ellipse(cx, cy, 11, 13);
+        pen.col(K.WHITE).ellipse(cx - 4, cy - 5, 2, 3);
+        pen.col(K.CREAM).vline(cx, cy + 14, 14);
+        const label = String(spot.n);
+        const tw = F.measure(label, 2);
+        F.text(ctx, label, Math.round(cx - tw / 2), cy - 7, K.BLACK, { scale: 2 });
+      }
+    }
+  },
+
+  /* ----------------------------------------------------------------- sonho */
+  dream: {
+    backdrop: 'field',
+    spots: null,
+    begin(n) {
+      S.sheep = [];
+      say(`O Ravi está sonhando. Vamos contar ${n} carneirinho${n > 1 ? 's' : ''}!`);
+      const tl = new Timeline();
+      tl.add(1.6, () => {});
+      addCount(tl, n, (i) => {
+        S.sheep.push({ born: clock, i });
+        Audio.sheep();
+      });
+      tl.add(0.9, () => {
+        Audio.magic();
+        say('Bom dia! Já sei: vou fazer uma festa surpresa!');
+      });
+      tl.add(3.2, null);
+      tl.add(0.1, () => go(SCENES.wake));
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      blitFoot(ctx, SPR.ravi.sleep, 40, 160);
+      for (const sh of S.sheep) {
+        const age = clock - sh.born;
+        const x = -20 + age * 120;
+        if (x > W + 24) continue;
+        // Salto sobre a cerca
+        const jump = Math.max(0, Math.sin(Math.min(1, (x - 40) / 240) * Math.PI)) * 26;
+        blitFoot(ctx, SPR.misc.sheep, x, 140 - jump);
+      }
+    }
+  },
+
+  /* ---------------------------------------------------------- acordar */
+  wake: {
+    backdrop: 'houseDay',
+    spots: null,
+    enter() {
+      const h = honoree();
+      say(`A festa é para ${h.name}, ${h.title}!`);
+      const tl = new Timeline();
+      tl.add(3.4, () => Audio.fanfare());
+      tl.add(0.2, () => say('Vamos à placa de caminhos escolher para onde ir!'));
+      tl.add(2.8, null);
+      tl.add(0.1, () => go(SCENES.crossroads));
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      const pen = new Pen(ctx);
+      blitFoot(ctx, SPR.ravi.cheer, 110, 160);
+      // Balão de pensamento com o aniversariante
+      pen.col(K.BLACK).ellipse(224, 62, 47, 39);
+      pen.col(K.WHITE).ellipse(224, 62, 45, 37);
+      pen.col(K.BLACK).ellipse(180, 100, 6, 5).ellipse(168, 112, 4, 3);
+      pen.col(K.WHITE).ellipse(180, 100, 5, 4).ellipse(168, 112, 3, 2);
+      blitFoot(ctx, SPR.hero[honoree().id], 224, 88);
+      F.textCenter(ctx, honoree().name, 224, 32, K.RED_D);
+    }
+  },
+
+  /* ---------------------------------------------------- placa de caminhos */
+  crossroads: {
+    backdrop: 'street',
+    spots: null,
+    enter() {
+      this.spots = Sc.signpostSpots(readyForParty());
+      S.destination = null;
+      say(readyForParty()
+        ? 'Tudo pronto! Aperte 4 para começar a festa!'
+        : 'Aperte 1, 2 ou 3 para escolher o caminho!');
+    },
+    update() {},
+    input(n) {
+      if (n === 4 && readyForParty()) {
+        go(SCENES.partyPrep);
+        return;
+      }
+      if (n < 1 || n > 3) {
+        Audio.bonk();
+        return;
+      }
+      Audio.click();
+      S.destination = ['factory', 'market', 'post'][n - 1];
+      go(SCENES.transport);
+    },
+    draw(ctx) {
+      Sc.drawSignpost(ctx, this.spots, S);
+      blitFoot(ctx, SPR.ravi.wave, 40, 160);
+      blitFoot(ctx, SPR.hero[honoree().id], 288, 160);
+    }
+  },
+
+  /* ------------------------------------------------------------ transporte */
+  transport: {
+    backdrop: 'street',
+    spots: null,
+    enter() {
+      this.spots = Sc.vehicleSpots();
+      say('Como vamos? Escolha de 0 a 9 e conte as rodas!');
+    },
+    update() {},
+    input(n) {
+      if (n < 0 || n > 9) return;
+      Audio.click();
+      S.vehicle = VEHICLES[n];
+      go(SCENES.travel);
+    },
+    draw(ctx) {
+      Sc.drawVehicleRack(ctx, this.spots);
+    }
+  },
+
+  /* ---------------------------------------------------------------- viagem */
+  travel: {
+    backdrop: 'street',
+    spots: null,
+    enter() {
+      const v = S.vehicle;
+      S.travelX = -100;
+      Audio.engine();
+      say(v.wheels === 0
+        ? 'A pé! Nenhuma roda. Zero!'
+        : `${v.name}! Vamos contar as rodas.`);
+
+      const tl = new Timeline();
+      tl.add(1.4, null);
+      if (v.wheels === 0) {
+        tl.add(1.0, () => { showFlash(0); Audio.countStep(0); });
+        tl.add(0.4, () => hideFlash());
+      } else {
+        addCount(tl, v.wheels, null);
+      }
+      tl.add(2.4, () => say('Lá vamos nós!'), (p) => {
+        S.travelX = -100 + (W + 160) * easeInOut(p);
+      });
+      tl.add(0.1, () => {
+        if (S.destination === 'factory') go(SCENES.factoryPick);
+        else if (S.destination === 'market') go(SCENES.market);
+        else go(SCENES.post);
+      });
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      const v = S.vehicle;
+      const bob = Math.round(Math.sin(clock * 14));
+      if (v.wheels === 0) {
+        blitFoot(ctx, SPR.ravi[Math.floor(clock * 8) % 2 ? 'walk1' : 'walk0'], S.travelX, 160);
+      } else {
+        const sprite = SPR.vehicle[v.id];
+        blit(ctx, sprite, Math.round(S.travelX - sprite.w / 2), 160 - sprite.h + bob);
+        blitFoot(ctx, SPR.ravi.wave, S.travelX, 160 - sprite.h + 12 + bob);
+      }
+      if (v.wheels > 0) {
+        const pen = new Pen(ctx);
+        pen.col(K.BLACK).rect(8, 8, 54, 26);
+        pen.bevel(9, 9, 52, 24, K.CREAM, K.WHITE, K.GRAY_D);
+        F.text(ctx, 'RODAS', 13, 12, K.GRAY_XD);
+        F.text(ctx, String(v.wheels), 42, 14, K.RED, { scale: 2 });
+      }
+    }
+  },
+
+  /* -------------------------------------------- fábrica: escolher brinquedo */
+  factoryPick: {
+    backdrop: 'factory',
+    spots: null,
+    enter() {
+      this.spots = Sc.toyColumnSpots();
+      say('Aperte de 1 a 9 e escolha o presente que vamos fabricar!');
+    },
+    update() {},
+    input(n) {
+      if (n < 1 || n > 9) {
+        Audio.bonk();
+        return;
+      }
+      Audio.click();
+      S.present = TOYS[n - 1];
+      go(SCENES.factoryBelt);
+    },
+    draw(ctx) {
+      Sc.drawToyColumn(ctx, this.spots, S.made);
+      blitFoot(ctx, SPR.ravi.idle, 68, 160);
+    }
+  },
+
+  /* ------------------------------------------------ fábrica: esteira/prensa */
+  factoryBelt: {
+    backdrop: 'factory',
+    spots: null,
+    enter() {
+      this.spots = Sc.machinePanelSpots();
+      S.mold = 0;
+      S.lumpX = 62;
+      this.finishing = false;
+      say(`Aperte os números para moldar: ${S.present.name}!`);
+    },
+    update(dt) {
+      if (timeline) {
+        timeline.update(dt);
+        return;
+      }
+      S.lumpX += dt * (14 + S.mold * 5);
+      if (S.lumpX >= 238 && !this.finishing) {
+        this.finishing = true;
+        const tl = new Timeline();
+        tl.add(0.5, () => Audio.stamp());
+        tl.add(0.9, () => {
+          S.presentDone = true;
+          if (!S.made.includes(S.present.id)) S.made.push(S.present.id);
+          Audio.success();
+          showFlash(TOYS.findIndex((t) => t.id === S.present.id) + 1);
+          say(`Pronto! Um ${S.present.name} lindo para a festa!`);
+        });
+        tl.add(2.4, null);
+        tl.add(0.1, () => go(SCENES.crossroads));
+        timeline = tl;
+      }
+    },
+    input(n) {
+      if (this.finishing) return;
+      if (n >= 1 && n <= 9) {
+        S.mold = n;
+        Audio.pop();
+      }
+    },
+    draw(ctx) {
+      const pen = new Pen(ctx);
+
+      // Esteira
+      pen.col(K.BLACK).rect(54, 104, 194, 14);
+      pen.col(K.PUR).rect(55, 105, 192, 12);
+      pen.col(K.PUR_L);
+      const shift = Math.floor(clock * 26) % 12;
+      for (let x = 55 - shift; x < 247; x += 12) pen.vline(Math.max(55, x), 105, 12);
+
+      // Prensa no fim da esteira
+      pen.col(K.BLACK).rect(248, 26, 60, 78);
+      pen.bevel(249, 27, 58, 76, K.GRAY, K.GRAY_L, K.GRAY_D);
+      pen.col(K.CYAN).rect(257, 36, 42, 20);
+      pen.col(K.BLACK).ellipse(269, 46, 5, 5).ellipse(287, 46, 5, 5);
+      pen.col(K.WHITE).ellipse(269, 46, 3, 3).ellipse(287, 46, 3, 3);
+      pen.col(K.BLACK).ellipse(269, 47, 1, 2).ellipse(287, 47, 1, 2);
+      const press = this.finishing ? 26 : 12;  // o pistão desce ao carimbar
+      pen.col(K.BLACK).rect(258, 62, 40, press);
+      pen.col(K.GRAY_D).rect(259, 62, 38, press - 1);
+
+      // Massa / brinquedo na esteira
+      const lump = Math.round(S.lumpX);
+      if (S.presentDone && this.finishing) {
+        blitMid(ctx, SPR.toy[S.present.id], lump, 96);
+      } else {
+        pen.col(K.BLACK).ellipse(lump, 96, 10, 8);
+        pen.col(K.GRAY).ellipse(lump, 96, 9, 7);
+        pen.col(K.GRAY_L).ellipse(lump - 3, 93, 3, 2);
+        if (S.mold > 0) {
+          // A massa vai virando o brinquedo conforme os números são apertados
+          ctx.save();
+          ctx.globalAlpha = S.mold / 9;
+          blitMid(ctx, SPR.toy[S.present.id], lump, 96);
+          ctx.restore();
+        }
+      }
+
+      blitFoot(ctx, SPR.ravi.idle, 26, 158);
+      Sc.drawMachinePanel(ctx, this.spots, S.mold);
+    }
+  },
+
+  /* --------------------------------------------------------------- mercado */
+  market: {
+    backdrop: 'market',
+    spots: null,
+    enter() {
+      S.marketIdx = 0;
+      S.cart = {};
+      this.spots = Sc.quantitySpots();
+      this.ask();
+    },
+    ask() {
+      if (S.marketIdx >= FOODS.length) {
+        this.spots = null;
+        const tl = new Timeline();
+        tl.add(0.2, () => {
+          S.marketDone = true;
+          Audio.success();
+          say('Compras feitas! De volta à placa.');
+        });
+        tl.add(2.4, null);
+        tl.add(0.1, () => go(SCENES.crossroads));
+        timeline = tl;
+        return;
+      }
+      this.spots = Sc.quantitySpots();
+      const item = FOODS[S.marketIdx];
+      say(`Quantos ${item.name.toLowerCase()} vamos levar? Aperte de 1 a 9.`);
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    input(n) {
+      if (!this.spots) return;  // contagem em andamento
+      if (n < 1 || n > 9) {
+        Audio.bonk();
+        return;
+      }
+      const item = FOODS[S.marketIdx];
+      S.cart[item.id] = n;
+      if (item.id === 'balloon') S.balloons = n;
+      this.spots = null;
+
+      const tl = new Timeline();
+      tl.add(0.3, () => say(`${n} ${item.name.toLowerCase()}!`));
+      addCount(tl, n, null);
+      tl.add(0.1, () => {
+        S.marketIdx++;
+        timeline = null;
+        this.ask();
+      });
+      timeline = tl;
+    },
+    draw(ctx) {
+      blitFoot(ctx, SPR.ravi.idle, 40, 160);
+
+      if (S.marketIdx < FOODS.length) {
+        const item = FOODS[S.marketIdx];
+        const pen = new Pen(ctx);
+        // Vitrine com o produto da vez
+        pen.col(K.BLACK).rect(98, 26, 96, 76);
+        pen.bevel(99, 27, 94, 74, K.CREAM, K.WHITE, K.GRAY_D);
+        const sprite = SPR.food[item.id];
+        ctx.drawImage(sprite.canvas, 125, 34, sprite.w * 3, sprite.h * 3);
+        F.textCenter(ctx, item.name, 146, 88, K.GRAY_XD);
+        if (this.spots) Sc.drawQuantityBoard(ctx, this.spots, 'QUANTOS?');
+      }
+
+      // Carrinho de compras já preenchido
+      let slot = 0;
+      for (const food of FOODS) {
+        const qty = S.cart[food.id] || 0;
+        for (let i = 0; i < qty && slot < 18; i++, slot++) {
+          const col = slot % 9;
+          const row = (slot / 9) | 0;
+          blitMid(ctx, SPR.food[food.id], 74 + col * 17, 128 + row * 18);
+        }
+      }
+    }
+  },
+
+  /* -------------------------------------------------------------- correios */
+  post: {
+    backdrop: 'post',
+    spots: null,
+    enter() {
+      this.spots = Sc.mailboxSpots();
+      say(`Convide os heróis! ${honoree().name} não pode saber, é surpresa.`);
+    },
+    update() {},
+    input(n) {
+      if (n === 0) {
+        S.inviteDone = S.invited.length > 0;
+        if (!S.inviteDone) {
+          Audio.bonk();
+          say('Convide pelo menos um herói antes de voltar!');
+          return;
+        }
+        Audio.click();
+        go(SCENES.crossroads);
+        return;
+      }
+      if (n < 1 || n > 9) return;
+      const idx = n - 1;
+      if (idx === S.honoree) {
+        Audio.bonk();
+        say(`Shh! ${HEROES[idx].name} não pode saber da surpresa!`);
+        return;
+      }
+      if (S.invited.includes(idx)) {
+        Audio.bonk();
+        say(`${HEROES[idx].name} já foi convidado!`);
+        return;
+      }
+      S.invited.push(idx);
+      S.inviteDone = true;
+      go(SCENES.mailman);
+      SCENES.mailman.begin(idx);
+    },
+    draw(ctx) {
+      Sc.drawMailboxes(ctx, this.spots, S);
+      blitFoot(ctx, SPR.ravi.wave, 292, 164);
+    }
+  },
+
+  /* -------------------------------------------------------------- carteiro */
+  mailman: {
+    backdrop: 'post',
+    spots: null,
+    begin(idx) {
+      S.mailmanX = -40;
+      // Cacheado aqui: recalcular a grade a cada frame alocaria no render
+      this.boxes = Sc.mailboxSpots();
+      const hero = HEROES[idx];
+      say(`Convite para ${hero.name}! O carteiro já está a caminho.`);
+      const tl = new Timeline();
+      tl.add(0.4, () => { showFlash(idx + 1); Audio.note(idx); });
+      tl.add(2.6, null, (p) => { S.mailmanX = -40 + (W + 80) * easeOut(p); });
+      tl.add(0.2, () => { hideFlash(); Audio.pop(); });
+      tl.add(0.1, () => go(SCENES.post));
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      Sc.drawMailboxes(ctx, this.boxes, S);
+      blitFoot(ctx, SPR.misc.mailman, S.mailmanX, 164);
+      blit(ctx, SPR.misc.envelope, Math.round(S.mailmanX + 14), 118);
+    }
+  },
+
+  /* ------------------------------------------------ festa: preparar a casa */
+  partyPrep: {
+    backdrop: 'party',
+    spots: null,
+    enter() {
+      S.balloonsHung = 0;
+      S.bannerUp = false;
+      S.fridgeFull = false;
+      S.guestsIn = 0;
+      Audio.party();
+      say('Hora da festa! Vamos guardar a comida.');
+
+      const tl = new Timeline();
+      tl.add(2.6, () => { S.fridgeFull = true; });
+      tl.add(0.2, () => say('Agora a faixa: SURPRESA!'));
+      tl.add(2.2, () => { S.bannerUp = true; });
+      const balloons = Math.max(1, S.balloons);
+      tl.add(0.2, () => say(`Vamos pendurar ${balloons} balão${balloons > 1 ? 'ões' : ''}!`));
+      addCount(tl, balloons, (i) => { S.balloonsHung = i; });
+      tl.add(0.2, () => say('Shh... os convidados estão chegando!'));
+      tl.add(2.0, null);
+      tl.add(0.1, () => go(SCENES.partyArrive));
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      drawPartyBack(ctx);
+      drawPartyFront(ctx);
+      blitFoot(ctx, SPR.ravi.wave, 46, 160);
+    }
+  },
+
+  /* ------------------------------------------------- festa: chegada e surpresa */
+  partyArrive: {
+    backdrop: 'party',
+    spots: null,
+    enter() {
+      S.guestsIn = 0;
+      S.guestX = layoutGuests(S.invited.length + 1);
+      const tl = new Timeline();
+      for (let i = 0; i < S.invited.length; i++) {
+        tl.add(0.55, () => { S.guestsIn = i + 1; Audio.pop(); });
+      }
+      tl.add(0.6, () => { S.guestsIn = S.invited.length + 1; Audio.click(); });
+      tl.add(0.3, () => {
+        Audio.fanfare();
+        say(`SURPRESA, ${honoree().name}!`);
+      });
+      tl.add(3.4, null);
+      tl.add(0.1, () => {
+        if (boughtFoods().length === 0 || S.invited.length === 0) go(SCENES.partyEnd);
+        else go(SCENES.partyServe);
+      });
+      timeline = tl;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    draw(ctx) {
+      drawPartyBack(ctx);
+      drawGuests(ctx);
+      drawPartyFront(ctx);
+      blitFoot(ctx, SPR.ravi.cheer, 46, 160);
+      if (S.guestsIn > S.invited.length) {
+        Sc.drawConfetti(ctx, S.confetti, clock);
+        if (Math.floor(clock * 3) % 2 === 0) {
+          F.textCenter(ctx, 'SURPRESA!', 160, 74, K.YEL_L, { scale: 2, shadow: K.RED_D });
+        }
+      }
+    }
+  },
+
+  /* ------------------------------------------------------- festa: servir */
+  partyServe: {
+    backdrop: 'party',
+    spots: null,
+    enter() {
+      S.serveIdx = 0;
+      S.guestsIn = S.invited.length + 1;
+      S.guestX = layoutGuests(S.invited.length + 1);
+      this.spots = Sc.plateSpots();
+      this.ask();
+    },
+    ask() {
+      const menu = boughtFoods();
+      if (S.serveIdx >= S.invited.length || menu.length === 0) {
+        this.spots = null;
+        const tl = new Timeline();
+        tl.add(0.1, () => go(SCENES.partyEnd));
+        timeline = tl;
+        return;
+      }
+      const hero = HEROES[S.invited[S.serveIdx]];
+      const food = menu[S.serveIdx % menu.length];
+      this.food = food;
+      this.spots = Sc.plateSpots();
+      say(`Quantos ${food.name.toLowerCase()} para ${hero.name}? Aperte de 1 a 9.`);
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    input(n) {
+      if (!this.spots) return;  // contagem em andamento
+      if (n < 1 || n > 9) {
+        Audio.bonk();
+        return;
+      }
+      const hero = HEROES[S.invited[S.serveIdx]];
+      this.spots = null;
+      const tl = new Timeline();
+      addCount(tl, n, null);
+      tl.add(0.9, () => say(`${n} para ${hero.name}!`));
+      tl.add(0.1, () => {
+        S.serveIdx++;
+        timeline = null;
+        this.ask();
+      });
+      timeline = tl;
+    },
+    draw(ctx) {
+      drawPartyBack(ctx);
+      drawGuests(ctx);
+      drawPartyFront(ctx);
+      blitFoot(ctx, SPR.ravi.wave, 22, 158);
+      if (this.spots) Sc.drawPlates(ctx, this.spots, this.food);
+    }
+  },
+
+  /* ------------------------------------------------------------ festa: fim */
+  partyEnd: {
+    backdrop: 'party',
+    spots: null,
+    enter() {
+      this.leave = 0;
+      Audio.party();
+      say('Que festa incrível! Os heróis dançam até a porta.');
+      const tl = new Timeline();
+      tl.add(3.6, null, (p) => { this.leave = p; });
+      tl.add(0.2, () => {
+        Audio.success();
+        say('Obrigado por ajudar! Aperte um número para outra festa.');
+      });
+      tl.add(1.2, null);
+      tl.add(0.1, () => {
+        this.done = true;
+        // A tela inteira vira alvo de toque para recomeçar
+        this.spots = [{ n: 1, x: 0, y: 0, w: W, h: STAGE_H }];
+      });
+      timeline = tl;
+      this.done = false;
+      this.spots = null;
+    },
+    update(dt) {
+      if (timeline) timeline.update(dt);
+    },
+    input() {
+      if (!this.done) return;
+      restart();
+    },
+    draw(ctx) {
+      drawPartyBack(ctx);
+      drawGuests(ctx, Math.round(this.leave * 210));
+      drawPartyFront(ctx);
+      blitFoot(ctx, SPR.ravi.cheer, 46, 160);
+      Sc.drawConfetti(ctx, S.confetti, clock);
+
+      if (this.done) {
+        const pen = new Pen(ctx);
+        pen.col(K.BLACK).rect(48, 50, 224, 62);
+        pen.bevel(50, 52, 220, 58, K.NAVY, K.BLU, K.NIGHT);
+        F.textCenter(ctx, 'FESTA ENCERRADA!', 160, 62, K.YEL_L, { scale: 2, shadow: K.RED_D });
+        if (Math.floor(clock * 1.5) % 2 === 0) {
+          F.textCenter(ctx, 'APERTE UM NÚMERO PARA RECOMEÇAR', 160, 92, K.WHITE, { shadow: K.BLACK });
+        }
+      }
+    }
   }
-  S.busy = false;
-  askServe();
+};
+
+/* --------------------------------------------------------------------------
+   Desenho compartilhado da sala de festa
+   -------------------------------------------------------------------------- */
+
+/* Os convidados ficam ATRÁS da mesa: pés na linha do tampo, para o corpo
+   aparecer inteiro e os pés sumirem por trás do móvel. Por isso a sala é
+   desenhada em duas camadas, com os heróis no meio. */
+const GUEST_FOOT_Y = 118;
+
+function layoutGuests(count) {
+  const xs = [];
+  const spread = Math.min(34, 292 / Math.max(count, 1));
+  const start = 160 - ((count - 1) * spread) / 2;
+  for (let i = 0; i < count; i++) xs.push(Math.round(start + i * spread));
+  return xs;
 }
 
-async function endParty() {
-  S.busy = true;
-  hideChoices();
-  S.scene = 'party';
-  S.partyPhase = 'leave';
-  say('Que festa incrível! Os heróis dançam até a porta...', 3500);
-  Audio.success();
-  await wait(3500);
+/** Camada de fundo da sala: geladeira, faixa e balões. */
+function drawPartyBack(ctx) {
+  const pen = new Pen(ctx);
 
-  S.partyPhase = 'bye';
-  S.scene = 'end';
-  say('Obrigado por ajudar! Aperte qualquer número para outra festa!', 5000);
-  setPad(true);
-  S.busy = false;
+  // Geladeira
+  pen.col(K.BLACK).rect(8, 60, 34, 68);
+  pen.col(K.WHITE).rect(9, 61, 32, 66);
+  pen.col(K.GRAY_L).hline(9, 94, 32);
+  pen.col(K.GRAY_D).rect(36, 70, 3, 16).rect(36, 100, 3, 16);
+  if (S.fridgeFull) {
+    pen.col(K.RED).rect(14, 66, 6, 6);
+    pen.col(K.GRN).rect(24, 66, 6, 6);
+    pen.col(K.YEL).rect(19, 76, 6, 6);
+  }
+
+  // Faixa SURPRESA
+  if (S.bannerUp) {
+    pen.col(K.BLACK).rect(96, 14, 128, 22);
+    pen.bevel(97, 15, 126, 20, K.YEL, K.YEL_L, K.OCHRE);
+    F.textCenter(ctx, 'SURPRESA!', 160, 21, K.RED, { shadow: K.SAND });
+  }
+
+  Sc.drawBalloons(ctx, S.balloonsHung, clock);
+}
+
+/** Camada da frente: o que está apoiado sobre a mesa, na frente dos heróis. */
+function drawPartyFront(ctx) {
+  blitFoot(ctx, SPR.misc.cake, 62, 125);
+  if (S.presentDone && S.present) blitFoot(ctx, SPR.misc.gift, 262, 125);
+}
+
+function drawGuests(ctx, offsetX = 0) {
+  for (let i = 0; i < S.guestsIn && i < S.guestX.length; i++) {
+    const isHonoree = i >= S.invited.length;
+    const hi = isHonoree ? S.honoree : S.invited[i];
+    const dance = isHonoree && S.guestsIn > S.invited.length
+      ? Math.round(3 * Math.sin(clock * 7 + i))
+      : 0;
+    blitFoot(ctx, SPR.hero[HEROES[hi].id], S.guestX[i] + offsetX, GUEST_FOOT_Y + dance);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Easing
+   -------------------------------------------------------------------------- */
+
+function easeInOut(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeOut(t) {
+  return t * (2 - t);
+}
+
+/* --------------------------------------------------------------------------
+   API pública
+   -------------------------------------------------------------------------- */
+
+export function initGame() {
+  buildSprites();
+  S = freshState();
+  scene = SCENES.title;
+  timeline = null;
+  clock = 0;
+  if (scene.enter) scene.enter();
 }
 
 function restart() {
-  S = fresh();
-  document.body.classList.remove('is-playing');
-  els.title.classList.remove('hidden');
-  hideChoices();
-  hideFlash();
-  els.bubble.classList.add('hidden');
-  S.scene = 'title';
+  Audio.stopSpeech();
+  S = freshState();
+  go(SCENES.title);
 }
 
-/* --------------------------------------------------------------------------
-   Render
-   -------------------------------------------------------------------------- */
-
-function render() {
-  const ctx = els.ctx;
-  ctx.clearRect(0, 0, W, H);
-  S.t += 1 / 60;
-
-  switch (S.scene) {
-    case 'title':
-      drawTitle(ctx);
-      break;
-    case 'dream':
-      drawDream(ctx);
-      break;
-    case 'wake':
-      drawWake(ctx);
-      break;
-    case 'sign':
-      drawSign(ctx);
-      break;
-    case 'transport':
-      drawSign(ctx);
-      break;
-    case 'travel':
-      drawTravel(ctx);
-      break;
-    case 'factoryPick':
-    case 'factoryBelt':
-      drawFactory(ctx);
-      break;
-    case 'marketItem':
-    case 'marketDone':
-      drawMarket(ctx);
-      break;
-    case 'post':
-    case 'mailman':
-      drawPost(ctx);
-      break;
-    case 'party':
-    case 'partyServe':
-    case 'end':
-      drawParty(ctx);
-      break;
-    default:
-      drawSky(ctx);
-      break;
-  }
+/**
+ * Entrada de número, venha do teclado ou do toque num hotspot.
+ * Cenas puramente animadas simplesmente não têm `input`, então a entrada
+ * é ignorada sem precisar de flag de "ocupado" espalhada pelo estado.
+ */
+export function handleNumber(n) {
+  Audio.init();
+  if (scene && scene.input) scene.input(n);
 }
 
-function drawTitle(ctx) {
-  drawHouseInterior(ctx, true);
-  drawArmchair(ctx, 300, 250);
-  drawRavi(ctx, 300, 220, 'sleep', S.t);
-  // estrela cadente
-  ctx.strokeStyle = C.yellow;
-  ctx.lineWidth = 2;
-  const sx = (S.t * 80) % (W + 100) - 50;
-  ctx.beginPath();
-  ctx.moveTo(sx, 60); ctx.lineTo(sx + 30, 75);
-  ctx.stroke();
+export function update(dt) {
+  clock += dt;
+  if (S.flash !== null && S.flashPop < 1) {
+    S.flashPop = Math.min(1, S.flashPop + dt * 7);
+  }
+  if (scene && scene.update) scene.update(dt);
 }
 
-function drawDream(ctx) {
-  drawSky(ctx, { night: true });
-  drawFence(ctx, 250);
-  drawGrass(ctx, 310);
-  drawRavi(ctx, 80, 280, 'sleep', S.t);
-
-  S.sheep.forEach((sh, i) => {
-    const age = S.t - sh.born;
-    const x = -40 + age * 140;
-    drawSheep(ctx, x, 240, S.t + i);
-  });
+export function draw(ctx) {
+  ctx.drawImage(Sc.backdrop(scene.backdrop), 0, 0);
+  if (scene.draw) scene.draw(ctx);
+  if (S.flash !== null) Sc.flashcard(ctx, S.flash, S.flashPop);
+  Sc.speechBar(ctx, S.message);
 }
 
-function drawWake(ctx) {
-  drawHouseInterior(ctx, false);
-  drawArmchair(ctx, 300, 250);
-  drawRavi(ctx, 300, 220, 'cheer', S.t);
-  drawHero(ctx, HEROES[S.honoree], 480, 260, 1.1, S.t);
-  // balão pensamento
-  ctx.fillStyle = C.cream;
-  roundBubble(ctx, 480, 160, 100, 50);
-  ctx.fillStyle = C.ink;
-  ctx.font = 'bold 13px Fredoka, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Festa para', 480, 155);
-  ctx.fillText(HEROES[S.honoree].name.split(' ')[0], 480, 175);
-}
-
-function roundBubble(ctx, x, y, w, h) {
-  ctx.beginPath();
-  ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-}
-
-function drawSign(ctx) {
-  drawStreet(ctx);
-  drawSignpost(ctx, 200, 140);
-  if (readyForParty()) {
-    ctx.save();
-    ctx.translate(220, 300);
-    roundRectLocal(ctx, 8, 0, 130, 32, 6);
-    ctx.fillStyle = C.yellow;
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = C.ink;
-    ctx.font = 'bold 14px Fredoka, sans-serif';
-    ctx.fillText('4  FESTA!', 22, 21);
-    ctx.restore();
-  }
-  drawRavi(ctx, 420, 270, 'wave', S.t);
-  drawHero(ctx, HEROES[S.honoree], 520, 280, 0.85, S.t);
-  // checkmarks
-  ctx.font = 'bold 18px sans-serif';
-  if (S.presentDone) { ctx.fillStyle = C.green; ctx.fillText('✓ Presente', 20, 30); }
-  if (S.marketDone) { ctx.fillStyle = C.green; ctx.fillText('✓ Mercado', 20, 52); }
-  if (S.inviteDone) { ctx.fillStyle = C.green; ctx.fillText('✓ Convites', 20, 74); }
-}
-
-function drawTravel(ctx) {
-  drawStreet(ctx);
-  const v = S.vehicle;
-  if (v && v.id !== 'walk') {
-    drawVehicle(ctx, v.id, S.travelX, 300, S.t);
-    drawRavi(ctx, S.travelX, 250, 'walk', S.t);
-  } else {
-    drawRavi(ctx, S.travelX, 270, 'walk', S.t);
-  }
-  if (v && v.wheels > 0) {
-    drawNumberBadge(ctx, v.wheels, 80, 80, 0.9);
-  }
-}
-
-function drawFactory(ctx) {
-  drawFactoryBg(ctx);
-  drawGear(ctx, 100, 100, 28, S.t * 2);
-  drawGear(ctx, 145, 85, 18, -S.t * 3);
-
-  if (S.scene === 'factoryBelt' && S.present) {
-    // material na esteira
-    const morph = S.mold / 9;
-    ctx.save();
-    ctx.translate(S.beltX, 230);
-    if (morph < 0.3) {
-      ctx.fillStyle = '#a8a29e';
-      ctx.beginPath();
-      ctx.arc(0, 0, 20 + S.mold, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = C.ink;
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    } else {
-      S.present.draw(ctx, 0, 0, 0.7 + morph * 0.4);
-    }
-    ctx.restore();
-  }
-
-  drawRavi(ctx, 560, 300, 'idle', S.t);
-
-  if (S.presentDone && S.present && S.scene !== 'factoryBelt') {
-    S.present.draw(ctx, 500, 200, 1);
-  }
-}
-
-function drawMarket(ctx) {
-  drawMarketBg(ctx);
-  drawRavi(ctx, 80, 300, 'idle', S.t);
-
-  // item atual grande
-  if (S.marketIdx < MARKET.length && S.scene === 'marketItem') {
-    const item = MARKET[S.marketIdx];
-    drawMarketItem(ctx, item.id, 320, 200, 2.2);
-    ctx.fillStyle = C.ink;
-    ctx.font = 'bold 22px Fredoka, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(item.name, 320, 270);
-  }
-
-  // itens já comprados
-  S.marketShown.forEach((m, i) => {
-    const col = i % 8;
-    const row = (i / 8) | 0;
-    drawMarketItem(ctx, m.id, 200 + col * 40, 320 + row * 30, 0.7);
-  });
-}
-
-function drawPost(ctx) {
-  drawPostBg(ctx);
-  drawRavi(ctx, 120, 280, 'wave', S.t);
-
-  // heróis em miniatura
-  HEROES.forEach((h, i) => {
-    const x = 80 + (i % 5) * 100;
-    const y = 40 + ((i / 5) | 0) * 70;
-    const locked = i === S.honoree;
-    const invited = S.invited.includes(i);
-    ctx.globalAlpha = locked ? 0.35 : 1;
-    drawHero(ctx, h, x, y, 0.55, S.t);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = locked ? C.gray : invited ? C.green : C.ink;
-    ctx.font = 'bold 12px Fredoka, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${i + 1}. ${h.name.split(' ')[0]}`, x, y + 55);
-    if (invited) ctx.fillText('✓', x + 28, y - 20);
-  });
-
-  if (S.scene === 'mailman') {
-    ctx.save();
-    ctx.translate(S.mailmanX, 300);
-    // bicicleta
-    ctx.fillStyle = C.ink;
-    ctx.beginPath();
-    ctx.arc(-22, 24, 14, 0, Math.PI * 2);
-    ctx.arc(22, 24, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = C.gray;
-    ctx.beginPath();
-    ctx.arc(-22, 24, 6, 0, Math.PI * 2);
-    ctx.arc(22, 24, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-22, 24); ctx.lineTo(0, 0); ctx.lineTo(22, 24);
-    ctx.moveTo(0, 0); ctx.lineTo(0, -18);
-    ctx.stroke();
-    // carteiro
-    roundRectLocal(ctx, -14, -40, 28, 32, 8);
-    ctx.fillStyle = '#2563eb';
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(0, -52, 14, 13, 0, 0, Math.PI * 2);
-    ctx.fillStyle = C.skin;
-    ctx.fill();
-    ctx.stroke();
-    // chapéu
-    roundRectLocal(ctx, -16, -68, 32, 12, 3);
-    ctx.fillStyle = '#1d4ed8';
-    ctx.fill();
-    ctx.stroke();
-    // envelope
-    ctx.fillStyle = C.cream;
-    ctx.fillRect(16, -36, 26, 18);
-    ctx.strokeStyle = C.ink;
-    ctx.strokeRect(16, -36, 26, 18);
-    ctx.beginPath();
-    ctx.moveTo(16, -36); ctx.lineTo(29, -26); ctx.lineTo(42, -36);
-    ctx.stroke();
-    ctx.restore();
-  }
-}
-
-function drawParty(ctx) {
-  drawPartyBg(ctx);
-
-  // balões pendurados
-  for (let i = 0; i < S.balloonsHung; i++) {
-    const x = 100 + i * Math.min(50, 440 / Math.max(S.balloonsHung, 1));
-    drawMarketItem(ctx, 'balloon', x, 100 + (i % 3) * 10, 0.9);
-  }
-
-  if (S.partyPhase === 'fridge' || S.partyPhase === 'sign') {
-    // geladeira
-    roundRectLocal(ctx, 40, 140, 70, 140, 6);
-    ctx.fillStyle = C.white;
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = C.blue;
-    ctx.fillRect(95, 200, 8, 20);
-  }
-
-  if (S.partyPhase === 'sign' || ['balloons', 'wait', 'arrive', 'surprise', 'serve', 'leave', 'bye'].includes(S.partyPhase)) {
-    ctx.fillStyle = C.yellow;
-    roundRectLocal(ctx, 240, 100, 160, 40, 8);
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = C.red;
-    ctx.font = 'bold 20px Fredoka, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('SURPRESA!', 320, 128);
-  }
-
-  drawRavi(ctx, 120, 310, S.partyPhase === 'surprise' || S.partyPhase === 'leave' ? 'cheer' : 'wave', S.t);
-
-  // convidados em fila na frente da mesa
-  const guests = [...S.invited];
-  if (S.guestsIn > S.invited.length) guests.push(S.honoree);
-
-  const shown = Math.min(S.guestsIn, guests.length);
-  for (let i = 0; i < shown; i++) {
-    const hi = guests[i];
-    const spread = Math.min(70, 360 / Math.max(shown, 1));
-    const x = 220 + i * spread;
-    const dance = (S.partyPhase === 'leave' || S.partyPhase === 'surprise') ? Math.sin(S.t * 8 + i) * 10 : 0;
-    const leaveX = S.partyPhase === 'leave' || S.partyPhase === 'bye' ? ((S.t * 40) % 220) : 0;
-    drawHero(ctx, HEROES[hi], x + leaveX, 318 + dance, 1.05, S.t);
-  }
-
-  // presente ao lado do bolo
-  if (S.present) {
-    S.present.draw(ctx, 420, 248, 0.95);
-  }
-
-  if (S.partyPhase === 'surprise' || S.partyPhase === 'leave' || S.partyPhase === 'bye') {
-    drawConfetti(ctx, S.confetti, S.t);
-  }
-
-  if (S.scene === 'end') {
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = C.cream;
-    roundRectLocal(ctx, 120, 120, 400, 120, 16);
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 5;
-    ctx.stroke();
-    ctx.fillStyle = C.red;
-    ctx.font = 'bold 28px Fredoka, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Festa Encerrada!', 320, 170);
-    ctx.fillStyle = C.ink;
-    ctx.font = 'bold 16px Fredoka, sans-serif';
-    ctx.fillText('Aperte um número para recomeçar', 320, 210);
-  }
-}
-
-/* --------------------------------------------------------------------------
-   Loop + resize (estica fullscreen como DOS)
-   -------------------------------------------------------------------------- */
-
-function resize() {
-  // Canvas interno fixo 640x400; CSS estica para 100vw×100vh
-  els.canvas.width = W;
-  els.canvas.height = H;
-}
-
-function loop() {
-  render();
-  requestAnimationFrame(loop);
-}
-
-export function boot() {
-  bindUI();
-  resize();
-  window.addEventListener('resize', resize);
-  setPad(true);
-  say('Aperte qualquer número para começar!', 4000);
-  loop();
+export function getClock() {
+  return clock;
 }

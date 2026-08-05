@@ -6,70 +6,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Ravi 1·2·3: A Grande Festa Surpresa</title>
   <meta name="description"
-    content="Ajude o Ravi a preparar uma festa surpresa para guerreiros e heróis! Jogo educativo de números 1 a 9 inspirado nos clássicos dos anos 90.">
+    content="Jogo educativo de contagem de 1 a 9 em pixel art 320×200, no molde dos clássicos educativos de DOS. Ajude o Ravi a preparar uma festa surpresa.">
   <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#000000">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/ravi-123/">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/ravi-123/">
   <meta property="og:title" content="Ravi 1·2·3: A Grande Festa Surpresa">
   <meta property="og:description"
-    content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino.">
+    content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino. Pixel art 320×200, tudo em vanilla.">
   <meta property="og:locale" content="pt_BR">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
-  <div id="app">
-    <canvas id="game" width="640" height="400" aria-label="Ravi 1·2·3"></canvas>
-
-    <div id="hud">
-      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar">←</button>
-      <div id="speech-bubble" class="hidden" aria-live="polite"></div>
-      <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+  <main id="app">
+    <div id="frame">
+      <canvas id="screen" width="320" height="200" aria-label="Ravi 1·2·3: jogo de contagem"></canvas>
     </div>
 
-    <div id="flashcard" class="hidden" aria-hidden="true">
-      <span id="flash-num">1</span>
-    </div>
+    <nav id="hud" aria-label="Controles">
+      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar aos labs">&#8592;</button>
+      <span class="hud-spacer"></span>
+      <button id="btn-sound" class="hud-btn" type="button" title="Som (M)" aria-label="Ligar ou desligar o som"
+        aria-pressed="false">&#9834;</button>
+      <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia (F)" aria-label="Tela cheia">&#9974;</button>
+    </nav>
 
-    <div id="choice-panel" class="hidden">
-      <p id="choice-prompt"></p>
-      <div id="choice-grid"></div>
-    </div>
+    <p id="rotate-hint">Vire o aparelho na horizontal para jogar melhor.</p>
+  </main>
 
-    <div id="numpad">
-      <button type="button" class="num-key" data-n="1">1</button>
-      <button type="button" class="num-key" data-n="2">2</button>
-      <button type="button" class="num-key" data-n="3">3</button>
-      <button type="button" class="num-key" data-n="4">4</button>
-      <button type="button" class="num-key" data-n="5">5</button>
-      <button type="button" class="num-key" data-n="6">6</button>
-      <button type="button" class="num-key" data-n="7">7</button>
-      <button type="button" class="num-key" data-n="8">8</button>
-      <button type="button" class="num-key" data-n="9">9</button>
-      <button type="button" class="num-key num-zero" data-n="0">0</button>
-    </div>
+  <noscript>
+    <p style="color:#fff;font:16px sans-serif;padding:24px">
+      Este laboratório precisa de JavaScript para rodar o jogo.
+    </p>
+  </noscript>
 
-    <div id="title-overlay" class="overlay">
-      <div class="title-card">
-        <p class="eyebrow">Clássico educativo · anos 90</p>
-        <h1>Ravi <span>1·2·3</span></h1>
-        <h2>A Grande Festa Surpresa</h2>
-        <p class="hint">Aperte qualquer número para acordar o Ravi!</p>
-        <div class="title-keys">
-          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
-          <span>6</span><span>7</span><span>8</span><span>9</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module" src="main.js?v=4"></script>
+  <script type="module" src="main.js?v=5"></script>
 </body>
 
 </html>
