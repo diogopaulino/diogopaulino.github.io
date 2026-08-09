@@ -8,289 +8,11 @@
    ========================================================================== */
 
 import { W, H, makeSurface } from './screen.js';
-import { K, Pen, blit, blitMid } from './assets.js';
+import { K, Pen, blit, blitMid, IMG } from './assets.js';
 import * as F from './font.js';
 import { SPR, TOYS, VEHICLES, HEROES } from './sprites.js';
 
 export const STAGE_H = 166;  // altura da área de jogo (o resto é a barra de fala)
-
-/* --------------------------------------------------------------------------
-   Texturas
-   -------------------------------------------------------------------------- */
-
-/** Xadrez de 1px entre duas cores — o jeito VGA de simular meio-tom. */
-function dither(pen, x, y, w, h, a, b) {
-  pen.col(a).rect(x, y, w, h);
-  pen.col(b);
-  for (let j = 0; j < h; j++) {
-    for (let i = (j & 1); i < w; i += 2) pen.px(x + i, y + j);
-  }
-}
-
-function brickWall(pen, x, y, w, h) {
-  pen.col(K.RED).rect(x, y, w, h);
-  pen.col(K.RED_D);
-  for (let j = 0; j < h; j += 8) {
-    pen.hline(x, y + j, w);
-    const offset = ((j / 8) & 1) ? 8 : 0;
-    for (let i = offset; i < w; i += 16) pen.vline(x + i, y + j, Math.min(8, h - j));
-  }
-  // Brilho em alguns tijolos, para a parede não ficar chapada
-  pen.col(K.RED_L);
-  for (let j = 1; j < h - 1; j += 16) {
-    for (let i = 2; i < w; i += 32) pen.hline(x + i, y + j, 6);
-  }
-}
-
-/** Cano metálico horizontal com reflexo. */
-function pipeH(pen, x, y, w, thick = 8) {
-  pen.col(K.BLACK).rect(x, y - 1, w, thick + 2);
-  pen.col(K.GRAY).rect(x, y, w, thick);
-  pen.col(K.GRAY_L).hline(x, y + 1, w);
-  pen.col(K.WHITE).hline(x, y + 2, w);
-  pen.col(K.GRAY_D).hline(x, y + thick - 1, w);
-  // Flanges
-  pen.col(K.GRAY_D);
-  for (let i = 24; i < w; i += 48) pen.rect(x + i, y - 1, 3, thick + 2);
-}
-
-function pipeV(pen, x, y, h, thick = 8) {
-  pen.col(K.BLACK).rect(x - 1, y, thick + 2, h);
-  pen.col(K.GRAY).rect(x, y, thick, h);
-  pen.col(K.WHITE).vline(x + 2, y, h);
-  pen.col(K.GRAY_D).vline(x + thick - 1, y, h);
-}
-
-function crate(pen, x, y, s = 20) {
-  pen.col(K.BLACK).rect(x, y, s, s);
-  pen.col(K.OCHRE).rect(x + 1, y + 1, s - 2, s - 2);
-  pen.col(K.WOOD_D).line(x + 1, y + 1, x + s - 2, y + s - 2).line(x + s - 2, y + 1, x + 1, y + s - 2);
-  pen.col(K.WOOD_D).frame(x + 1, y + 1, s - 2, s - 2);
-}
-
-/* --------------------------------------------------------------------------
-   Cenários
-   -------------------------------------------------------------------------- */
-
-const BACKDROPS = {
-  /** Sala do Ravi. `night` troca a janela e escurece a parede. */
-  house(pen, night) {
-    const wall = night ? K.NAVY : K.LILAC;
-    const wallAlt = night ? K.NIGHT : K.CREAM;
-    pen.col(wall).rect(0, 0, W, 126);
-    pen.col(wallAlt);
-    for (let x = 6; x < W; x += 18) pen.vline(x, 0, 126);
-    // Rodapé e chão
-    pen.col(K.WOOD_D).rect(0, 120, W, 8);
-    pen.col(night ? K.GRAY_XD : K.OCHRE).rect(0, 128, W, STAGE_H - 128);
-    pen.col(night ? K.BLACK : K.WOOD_D);
-    for (let x = -20; x < W; x += 26) pen.line(x, STAGE_H, x + 30, 128);
-
-    // Janela
-    pen.col(K.BLACK).rect(202, 20, 62, 52);
-    pen.col(night ? K.NIGHT : K.BLU_L).rect(204, 22, 58, 48);
-    if (night) {
-      pen.col(K.YEL_L).ellipse(248, 36, 8, 8);
-      pen.col(K.NIGHT).ellipse(244, 33, 6, 6);
-      pen.col(K.WHITE).px(215, 30).px(228, 42).px(238, 55).px(222, 60).px(210, 48);
-    } else {
-      pen.col(K.GRN).rect(204, 56, 58, 14);
-      pen.col(K.WHITE).ellipse(220, 34, 8, 4).ellipse(244, 42, 6, 3);
-    }
-    pen.col(K.CREAM).rect(232, 20, 3, 52).rect(202, 44, 62, 3);
-
-    // Quadro na parede
-    pen.col(K.YEL).rect(40, 22, 34, 26);
-    pen.col(K.BLACK).frame(40, 22, 34, 26);
-    pen.col(K.GRN_L).rect(43, 25, 28, 20);
-    pen.col(K.BLU).ellipse(57, 40, 10, 5);
-    pen.col(K.YEL_L).ellipse(64, 30, 4, 4);
-
-    // Tapete
-    pen.col(K.RED_D).ellipse(160, 152, 88, 16);
-    pen.col(K.RED).ellipse(160, 152, 82, 13);
-    pen.col(K.CREAM).ellipse(160, 152, 60, 8);
-    pen.col(K.RED).ellipse(160, 152, 48, 6);
-  },
-
-  /** Poltrona — desenhada à parte para o Ravi poder dormir nela. */
-  armchair(pen, x, y) {
-    pen.col(K.BLACK).rect(x - 26, y - 34, 52, 40);
-    pen.col(K.BLU).rect(x - 25, y - 33, 50, 38);
-    pen.col(K.BLU_D).rect(x - 25, y - 6, 50, 11);
-    pen.col(K.BLU_L).rect(x - 21, y - 29, 42, 20);
-    // Braços
-    pen.col(K.BLACK).rect(x - 34, y - 20, 10, 26).rect(x + 24, y - 20, 10, 26);
-    pen.col(K.BLU).rect(x - 33, y - 19, 8, 24).rect(x + 25, y - 19, 8, 24);
-    pen.col(K.BLU_L).hline(x - 33, y - 19, 8).hline(x + 25, y - 19, 8);
-    // Pés
-    pen.col(K.WOOD_D).rect(x - 28, y + 6, 6, 5).rect(x + 22, y + 6, 6, 5);
-  },
-
-  /** Campo noturno do sonho, com lua, estrelas e cerca. */
-  field(pen) {
-    pen.col(K.NIGHT).rect(0, 0, W, 60);
-    dither(pen, 0, 60, W, 20, K.NIGHT, K.NAVY);
-    pen.col(K.NAVY).rect(0, 80, W, 26);
-    dither(pen, 0, 106, W, 12, K.NAVY, K.GRN_D);
-    pen.col(K.GRN_D).rect(0, 118, W, STAGE_H - 118);
-
-    // Lua
-    pen.col(K.YEL_L).ellipse(268, 32, 18, 18);
-    pen.col(K.CREAM).ellipse(268, 32, 15, 15);
-    pen.col(K.YEL_L).ellipse(262, 26, 4, 3).ellipse(273, 38, 5, 4).ellipse(274, 24, 3, 2);
-
-    // Estrelas — posições fixas (determinísticas, nada de random no boot)
-    pen.col(K.WHITE);
-    for (let i = 0; i < 46; i++) {
-      const x = (i * 71 + 13) % W;
-      const y = (i * 37 + 5) % 78;
-      pen.px(x, y);
-      if (i % 5 === 0) { pen.px(x - 1, y); pen.px(x + 1, y); pen.px(x, y - 1); pen.px(x, y + 1); }
-    }
-
-    // Grama
-    pen.col(K.GRN);
-    for (let x = 0; x < W; x += 7) pen.line(x, STAGE_H, x + 3, 120);
-
-    // Cerca que as ovelhas pulam
-    pen.col(K.WOOD_D).rect(0, 128, W, 4).rect(0, 138, W, 4);
-    pen.col(K.OCHRE).hline(0, 128, W).hline(0, 138, W);
-    for (let x = 14; x < W; x += 46) {
-      pen.col(K.BLACK).rect(x - 1, 118, 8, 32);
-      pen.col(K.WOOD_D).rect(x, 119, 6, 30);
-      pen.col(K.OCHRE).vline(x, 119, 30);
-    }
-  },
-
-  /** Rua com a placa de caminhos. */
-  street(pen) {
-    pen.col(K.BLU_L).rect(0, 0, W, 62);
-    dither(pen, 0, 62, W, 14, K.BLU_L, K.CYAN);
-    pen.col(K.CYAN).rect(0, 76, W, 26);   // faixa de horizonte por trás dos morros
-    // Morros ao fundo
-    pen.col(K.GRN_D);
-    for (let x = 0; x < W; x++) {
-      const h = 16 + Math.round(10 * Math.sin(x / 26) + 6 * Math.sin(x / 11));
-      pen.vline(x, 92 - h, h + 8);
-    }
-    pen.col(K.GRN).rect(0, 100, W, 22);
-    pen.col(K.GRN_L);
-    for (let x = 3; x < W; x += 9) pen.px(x, 104 + ((x * 7) % 12));
-
-    // Nuvens
-    pen.col(K.WHITE);
-    pen.ellipse(52, 22, 14, 6).ellipse(64, 18, 10, 6).ellipse(40, 20, 9, 5);
-    pen.ellipse(228, 14, 12, 5).ellipse(240, 11, 8, 5);
-
-    // Estrada
-    pen.col(K.GRAY_D).rect(0, 122, W, STAGE_H - 122);
-    pen.col(K.GRAY).rect(0, 124, W, STAGE_H - 126);
-    pen.col(K.GRAY_XD).hline(0, 122, W).hline(0, STAGE_H - 1, W);
-    pen.col(K.YEL_L);
-    for (let x = 4; x < W; x += 26) pen.rect(x, 144, 14, 3);
-  },
-
-  /** Fábrica de brinquedos — reconstruída a partir da tela original. */
-  factory(pen) {
-    brickWall(pen, 0, 0, W, 122);
-    pipeH(pen, 0, 6, W, 10);
-    pipeH(pen, 0, 26, 150, 7);
-    pipeV(pen, 96, 16, 12, 7);
-    pipeV(pen, 250, 16, 30, 9);
-    pipeH(pen, 250, 46, 70, 9);
-
-    // Chão
-    pen.col(K.FLOOR_D).rect(0, 122, W, STAGE_H - 122);
-    pen.col(K.FLOOR).rect(0, 126, W, STAGE_H - 130);
-    pen.col(K.FLOOR_D);
-    for (let x = 0; x < W; x += 32) pen.vline(x, 126, STAGE_H - 130);
-
-    // Engradados à esquerda
-    crate(pen, 6, 82, 22);
-    crate(pen, 30, 82, 22);
-    crate(pen, 18, 60, 22);
-
-    // Prateleira azul com nichos amarelos (canto direito)
-    pen.col(K.BLACK).rect(268, 56, 50, 66);
-    pen.col(K.BLU_D).rect(269, 57, 48, 64);
-    pen.col(K.BLU).frame(269, 57, 48, 64);
-    for (let r = 0; r < 4; r++) {
-      pen.col(K.YEL).rect(273, 61 + r * 16, 18, 12);
-      pen.col(K.OCHRE).hline(273, 72 + r * 16, 18);
-      pen.col(K.BLU_D).rect(295, 61 + r * 16, 18, 12);
-      pen.col(K.NAVY).rect(297, 63 + r * 16, 14, 8);
-    }
-  },
-
-  /** Mercado. */
-  market(pen) {
-    pen.col(K.CREAM).rect(0, 0, W, 118);
-    pen.col(K.SAND);
-    for (let y = 0; y < 118; y += 14) pen.hline(0, y, W);
-
-    /* Gôndolas só na faixa esquerda: a vitrine do produto da vez ocupa o
-       centro e o quadro de quantidade fica na direita. */
-    for (let r = 0; r < 3; r++) {
-      const y = 20 + r * 32;
-      pen.col(K.BLACK).rect(6, y + 18, 86, 4);
-      pen.col(K.WOOD_D).rect(6, y + 18, 86, 3);
-      for (let i = 0; i < 5; i++) {
-        const x = 10 + i * 17;
-        const c = [K.RED, K.GRN, K.BLU, K.YEL, K.PUR, K.ORANGE][(i + r) % 6];
-        pen.col(K.BLACK).rect(x - 1, y + 3, 14, 16);
-        pen.col(c).rect(x, y + 4, 12, 14);
-        pen.col(K.WHITE).hline(x, y + 9, 12);
-      }
-    }
-
-    // Piso quadriculado em tom quente
-    pen.col(K.SAND).rect(0, 118, W, STAGE_H - 118);
-    pen.col(K.CREAM);
-    for (let y = 118; y < STAGE_H; y += 8) {
-      for (let x = ((y - 118) / 8) % 2 ? 0 : 8; x < W; x += 16) pen.rect(x, y, 8, 8);
-    }
-    pen.col(K.OCHRE).hline(0, 118, W);
-  },
-
-  /** Correios. */
-  post(pen) {
-    pen.col(K.BLU_L).rect(0, 0, W, 104);
-    pen.col(K.CREAM).rect(0, 104, W, 14);
-    pen.col(K.WOOD_D).rect(0, 100, W, 6);
-    // Placa CORREIOS
-    pen.col(K.BLACK).rect(96, 4, 128, 20);
-    pen.col(K.RED).rect(97, 5, 126, 18);
-    F.textCenter(pen.ctx, 'CORREIOS', 160, 11, K.YEL_L, { shadow: K.RED_D });
-    // Balcão
-    pen.col(K.BLACK).rect(0, 118, W, 6);
-    pen.col(K.OCHRE).rect(0, 118, W, 5);
-    pen.col(K.WOOD_D).rect(0, 124, W, STAGE_H - 124);
-    pen.col(K.WOOD_D).hline(0, 123, W);
-    pen.col(K.GRAY_XD);
-    for (let x = 0; x < W; x += 24) pen.vline(x, 124, STAGE_H - 124);
-  },
-
-  /** Sala decorada para a festa. */
-  party(pen) {
-    BACKDROPS.house(pen, false);
-    // Serpentinas no teto
-    for (let i = 0; i < 5; i++) {
-      const c = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK][i];
-      pen.col(c);
-      for (let x = i * 64; x < i * 64 + 64 && x < W; x++) {
-        pen.px(x, 4 + Math.round(4 * Math.sin((x + i * 20) / 5)));
-      }
-    }
-    /* Mesa larga: os convidados ficam atrás dela e o bolo e o presente nas
-       pontas, para nenhum herói sumir por trás dos objetos. */
-    pen.col(K.BLACK).rect(36, 116, 252, 9);
-    pen.col(K.CREAM).rect(37, 117, 250, 7);
-    pen.col(K.PINK).rect(37, 122, 250, 3);
-    pen.col(K.BLACK).rect(48, 125, 6, 24).rect(268, 125, 6, 24);
-    pen.col(K.WOOD_D).rect(49, 125, 4, 24).rect(269, 125, 4, 24);
-  }
-};
 
 /** Cache de cenários já assados. */
 const baked = new Map();
@@ -304,22 +26,27 @@ export function backdrop(id) {
   if (surface) return surface;
 
   const s = makeSurface(W, STAGE_H);
-  const pen = new Pen(s.ctx);
-  /* Base opaca: o canvas principal não é limpo a cada frame (o cenário é que
-     cobre tudo), então qualquer pixel transparente aqui deixaria a cena
-     anterior vazar por baixo. */
-  pen.col(K.BLACK).rect(0, 0, W, STAGE_H);
-  switch (id) {
-    case 'houseNight': BACKDROPS.house(pen, true); BACKDROPS.armchair(pen, 150, 150); break;
-    case 'houseDay': BACKDROPS.house(pen, false); BACKDROPS.armchair(pen, 150, 150); break;
-    case 'field': BACKDROPS.field(pen); break;
-    case 'street': BACKDROPS.street(pen); break;
-    case 'factory': BACKDROPS.factory(pen); break;
-    case 'market': BACKDROPS.market(pen); break;
-    case 'post': BACKDROPS.post(pen); break;
-    case 'party': BACKDROPS.party(pen); break;
-    default: pen.col(K.BLACK).rect(0, 0, W, STAGE_H); break;
+  
+  const imgMap = {
+    houseNight: 'house_night',
+    houseDay: 'house_day',
+    field: 'field_night',
+    street: 'street',
+    factory: 'factory',
+    market: 'market',
+    post: 'post',
+    party: 'party'
+  };
+  
+  const imgName = imgMap[id];
+  if (imgName && IMG[imgName]) {
+    s.ctx.drawImage(IMG[imgName], 0, 0, W, STAGE_H);
+  } else {
+    // Fallback preto
+    const pen = new Pen(s.ctx);
+    pen.col(K.BLACK).rect(0, 0, W, STAGE_H);
   }
+
   surface = s.canvas;
   baked.set(id, surface);
   return surface;

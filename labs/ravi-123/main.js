@@ -10,6 +10,8 @@ import { initScreen, fit, toBuffer } from './screen.js';
 import { Audio } from './audio.js';
 import { hitTest } from './scenes.js';
 import { initGame, update, draw, handleNumber, currentSpots } from './game.js';
+import { loadImages } from './assets.js';
+import { buildSprites } from './sprites.js';
 
 const STEP = 1 / 60;      // passo lógico fixo
 const MAX_FRAME = 0.25;   // teto para não explodir depois de uma aba oculta
@@ -86,44 +88,64 @@ function toggleFullscreen() {
    Boot
    -------------------------------------------------------------------------- */
 
-function boot() {
+async function boot() {
   const canvas = document.getElementById('screen');
   ctx = initScreen(canvas);
-  initGame();
+  
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('CARREGANDO...', 120, 100);
 
-  window.addEventListener('keydown', onKeyDown);
-  canvas.addEventListener('pointerdown', onPointerDown);
+  try {
+    await loadImages([
+      'ravi_sprites', 'heroes_sprites', 'items_sprites',
+      'house_day', 'house_night', 'field_night', 'street',
+      'factory', 'market', 'post', 'party'
+    ]);
+    
+    await buildSprites();
+    initGame();
 
-  let resizeTimer = 0;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(fit, 80);
-  });
+    window.addEventListener('keydown', onKeyDown);
+    canvas.addEventListener('pointerdown', onPointerDown);
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      running = false;
-      Audio.suspend();
-    } else {
-      running = true;
-      last = 0;          // descarta o intervalo em que a aba ficou oculta
-      accumulator = 0;
-      Audio.resume();
-    }
-  });
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fit, 80);
+    });
 
-  document.getElementById('btn-back').addEventListener('click', () => {
-    window.location.href = '/labs/';
-  });
-  document.getElementById('btn-sound').addEventListener('click', (event) => {
-    Audio.init();
-    const muted = Audio.toggleMute();
-    event.currentTarget.textContent = muted ? '♪̸' : '♪';
-    event.currentTarget.setAttribute('aria-pressed', String(muted));
-  });
-  document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        running = false;
+        Audio.suspend();
+      } else {
+        running = true;
+        last = 0;          // descarta o intervalo em que a aba ficou oculta
+        accumulator = 0;
+        Audio.resume();
+      }
+    });
 
-  rafId = requestAnimationFrame(loop);
+    document.getElementById('btn-back').addEventListener('click', () => {
+      window.location.href = '/labs/';
+    });
+    document.getElementById('btn-sound').addEventListener('click', (event) => {
+      Audio.init();
+      const muted = Audio.toggleMute();
+      event.currentTarget.textContent = muted ? '♪̸' : '♪';
+      event.currentTarget.setAttribute('aria-pressed', String(muted));
+    });
+    document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
+
+    rafId = requestAnimationFrame(loop);
+  } catch (err) {
+    ctx.fillStyle = 'red';
+    ctx.fillText('ERRO: ' + err.message, 20, 120);
+    console.error(err);
+  }
 }
 
 window.addEventListener('pagehide', () => {

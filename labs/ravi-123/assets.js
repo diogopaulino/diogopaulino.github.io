@@ -176,6 +176,125 @@ export class Pen {
    Sprites
    -------------------------------------------------------------------------- */
 
+export const IMG = {};
+
+export async function loadImages(names) {
+  const promises = names.map(name => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        IMG[name] = img;
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = `./assets/img/${name}.jpg`;
+    });
+  });
+  await Promise.all(promises);
+}
+
+export function sliceSpriteSheet(imageName, targetHeight = 0) {
+  const img = IMG[imageName];
+  if (!img) return [];
+  const s = makeSurface(img.width, img.height);
+  const ctx = s.ctx;
+  ctx.drawImage(img, 0, 0);
+  const imgData = ctx.getImageData(0, 0, img.width, img.height);
+  const data = imgData.data;
+
+  // Ajustado para remover fundo magenta com segurança (sem comer o rosa da Aria)
+  // Checamos se R e B são altos, G é baixo, e se R e B são similares (magenta real).
+  const isBg = (r, g, b) => r > 150 && b > 150 && g < 150 && Math.abs(r - b) < 60;
+
+  const visited = new Uint8Array(img.width * img.height);
+  const rects = [];
+
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      const idx = y * img.width + x;
+      if (visited[idx]) continue;
+      const p = idx * 4;
+      if (isBg(data[p], data[p+1], data[p+2])) {
+        visited[idx] = 1;
+        continue;
+      }
+
+      let minX = x, maxX = x, minY = y, maxY = y;
+      const stack = [[x, y]];
+      visited[idx] = 1;
+      let pixelCount = 0;
+
+      while (stack.length > 0) {
+        const [cx, cy] = stack.pop();
+        if (cx < minX) minX = cx;
+        if (cx > maxX) maxX = cx;
+        if (cy < minY) minY = cy;
+        if (cy > maxY) maxY = cy;
+        pixelCount++;
+
+        const neighbors = [
+          [cx-1, cy], [cx+1, cy], [cx, cy-1], [cx, cy+1],
+          [cx-1, cy-1], [cx+1, cy-1], [cx-1, cy+1], [cx+1, cy+1]
+        ];
+
+        for (const [nx, ny] of neighbors) {
+          if (nx >= 0 && nx < img.width && ny >= 0 && ny < img.height) {
+            const nidx = ny * img.width + nx;
+            if (!visited[nidx]) {
+              visited[nidx] = 1;
+              const np = nidx * 4;
+              if (!isBg(data[np], data[np+1], data[np+2])) {
+                stack.push([nx, ny]);
+              }
+            }
+          }
+        }
+      }
+
+      // Filtro: ignorar ruídos
+      if (pixelCount < 100) continue;
+      
+      const w = maxX - minX + 1;
+      const h = maxY - minY + 1;
+      
+      // Filtro: ignorar textos compridos
+      if (w > h * 2.5) continue;
+      if (h > w * 3) continue;
+
+      rects.push({x: minX, y: minY, w, h});
+    }
+  }
+
+  // Ordenar da esquerda pra direita, de cima pra baixo
+  rects.sort((a, b) => {
+    if (Math.abs(a.y - b.y) < Math.min(a.h, b.h) / 2) {
+      return a.x - b.x;
+    }
+    return a.y - b.y;
+  });
+
+  const sprites = [];
+  for (const r of rects) {
+    let finalW = r.w;
+    let finalH = r.h;
+    if (targetHeight > 0) {
+      finalH = targetHeight;
+      finalW = Math.round((r.w / r.h) * targetHeight);
+    }
+    const sub = makeSurface(finalW, finalH);
+    sub.ctx.drawImage(img, r.x, r.y, r.w, r.h, 0, 0, finalW, finalH);
+    const sData = sub.ctx.getImageData(0, 0, finalW, finalH);
+    for (let i = 0; i < sData.data.length; i += 4) {
+      if (isBg(sData.data[i], sData.data[i+1], sData.data[i+2])) {
+        sData.data[i+3] = 0;
+      }
+    }
+    sub.ctx.putImageData(sData, 0, 0);
+    sprites.push({ canvas: sub.canvas, w: finalW, h: finalH });
+  }
+  return sprites;
+}
+
 /**
  * Assa um sprite desenhado por código.
  * `draw(pen, w, h)` recebe uma Pen já apontada para a superfície.
