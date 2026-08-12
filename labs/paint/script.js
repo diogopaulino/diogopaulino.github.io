@@ -355,6 +355,12 @@ const setColor = (color) => {
     currentColor = color;
     colorPicker.value = color;
     colorPreview.style.backgroundColor = color;
+    // Marca a amostra correspondente (se a cor veio da paleta) para que o anel de seleção
+    // acompanhe a cor ativa em vez de ficar preso na primeira.
+    swatches.forEach((sw) => {
+        sw.classList.toggle('is-active', sw.dataset.color?.toLowerCase() === color.toLowerCase());
+        sw.setAttribute('aria-pressed', String(sw.classList.contains('is-active')));
+    });
 };
 
 colorPicker.addEventListener('input', (e) => setColor(e.target.value));

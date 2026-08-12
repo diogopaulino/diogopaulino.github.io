@@ -1,303 +1,355 @@
-/* Santos Vice City 16-bit — style.css
-   Regras obrigatórias (bug documentado em labs/.corrections.md):
-   1. Nenhuma cor hardcoded fora do canvas — tudo var(--token) ou color-mix() a partir de tokens.
-   2. Vars locais definidas em :root E [data-theme="dark"] — nunca literal escuro solto em :root.
-   3. box-shadow: var(--shadow-*) NÃO funciona neste repo (tokens são cores puras, não tuplas) —
-      sempre escrever a tupla completa: box-shadow: 0 Npx Mpx var(--shadow-lg).
-   4. Não reestilizar as cores do chrome compartilhado (.back-link, .theme-toggle).
-*/
-
-:root {
-    --svc-shell: color-mix(in oklab, var(--bg-card) 92%, var(--text-primary));
-    --svc-bezel: color-mix(in oklab, var(--text-primary) 12%, var(--bg-card));
-    --svc-letterbox: color-mix(in oklab, var(--bg-body) 88%, var(--text-primary));
-    --svc-line: var(--border-strong);
-    --svc-glow: color-mix(in oklab, var(--accent) 45%, transparent);
-    --svc-pad-bg: color-mix(in oklab, var(--bg-card) 82%, transparent);
-    --svc-pad-ink: var(--text-primary);
-    --svc-scan: color-mix(in oklab, var(--text-primary) 6%, transparent);
-}
-
-[data-theme="dark"] {
-    --svc-shell: color-mix(in oklab, var(--bg-card) 88%, #000);
-    --svc-bezel: #0d0a1a;
-    --svc-letterbox: #07060f;
-    --svc-glow: color-mix(in oklab, #ff2fa0 40%, transparent);
-    --svc-scan: rgba(255, 255, 255, .05);
-}
-
-body {
-    overscroll-behavior: none;
-}
-
-header[data-lab-header] {
-    min-height: 44px;
-}
-
-header .app-logo .brand-mark {
-    display: inline-grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
-    font-size: 16px;
-    background: var(--accent-muted);
-}
+/* Santos Vice Games — casca da página.
+   O jogo inteiro vive num canvas de 320x224; o que está aqui é o "gabinete" ao redor dele:
+   moldura, painel lateral e controles de toque. Tudo se apoia nos tokens de tema do
+   shared.css, então o laboratório acompanha o modo claro/escuro do site. */
 
 .svc-shell {
     width: 100%;
     max-width: 1200px;
     display: grid;
-    grid-template-columns: minmax(320px, 3fr) minmax(240px, 1.1fr);
-    gap: clamp(12px, 1.6vw, 22px);
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 1.5rem;
     align-items: start;
 }
 
+/* ---------- palco ---------- */
+
 .svc-stage {
-    min-height: 0;
-    border: 1px solid var(--svc-line);
-    border-radius: 20px;
-    background: var(--svc-shell);
-    box-shadow: 0 18px 48px var(--shadow-lg);
-    padding: clamp(8px, 1.3vw, 16px);
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
 }
 
 .svc-screen-wrap {
     position: relative;
     width: 100%;
     aspect-ratio: 320 / 224;
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #05040c;
+    border-radius: 18px;
+    padding: 14px;
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+        0 24px 60px -24px rgba(255, 47, 160, 0.45),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        var(--shadow-lg, 0 20px 40px rgba(0, 0, 0, 0.25));
     overflow: hidden;
-    border-radius: 14px;
-    background: var(--svc-letterbox);
-    border: 1px solid var(--svc-bezel);
-    box-shadow: inset 0 0 0 1px var(--svc-glow);
 }
 
-#svcStage {
-    display: none;
-}
-
-#svcScreen {
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    touch-action: none;
-    max-width: 100%;
-    max-height: 100%;
-}
-
-/* Controles por toque — overlay de botões DOM reais sobre o canvas */
-.svc-touch {
+/* brilho difuso de "tubo" atrás da tela */
+.svc-screen-wrap::before {
+    content: '';
     position: absolute;
-    inset: 0;
-    z-index: 3;
-    display: none;
+    inset: -30%;
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 47, 160, 0.16), transparent 55%),
+        radial-gradient(circle at 75% 80%, rgba(0, 240, 255, 0.14), transparent 55%);
     pointer-events: none;
 }
 
-.svc-touch.tp--hidden {
-    display: none !important;
-}
-
-.svc-touch.tp--full,
-.svc-touch.tp--lr,
-.svc-touch.tp--ud {
+#svcScreen {
+    position: relative;
     display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border-radius: 4px;
+    background: #0d0a1a;
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
 }
 
-.svc-touch button {
-    pointer-events: auto;
-    touch-action: none;
-    position: absolute;
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--svc-glow);
-    border-radius: 10px;
-    color: var(--svc-pad-ink);
-    background: var(--svc-pad-bg);
-    backdrop-filter: blur(6px);
-    font: 700 14px 'Press Start 2P', cursive;
-}
+/* ---------- painel lateral ---------- */
 
-.tp-dpad {
-    display: none;
-}
-
-.tp--full .tp-dpad {
-    display: block;
-}
-
-.tp-up { left: 14px; bottom: 92px; }
-.tp-left { left: 4px; bottom: 52px; }
-.tp-right { left: 44px; bottom: 52px; }
-.tp-down { left: 14px; bottom: 12px; }
-
-.tp-actions {
-    position: absolute;
-    right: 8px;
-    bottom: 12px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-}
-
-.tp--lr .tp-up,
-.tp--lr .tp-down,
-.tp--ud .tp-left,
-.tp--ud .tp-right {
-    display: none;
-}
-
-.tp--lr .tp-left { left: 8px; bottom: 32px; }
-.tp--lr .tp-right { left: 52px; bottom: 32px; }
-.tp--ud .tp-up { left: 24px; bottom: 72px; }
-.tp--ud .tp-down { left: 24px; bottom: 12px; }
-
-.tp-b { width: 44px; height: 44px; }
-.tp-a {
-    width: 52px;
-    height: 52px;
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.tp-start {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 32px;
-    height: 32px;
-    font-size: 10px;
-}
-
-/* Sidebar */
 .svc-side {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 1rem;
+    min-width: 0;
 }
 
 .svc-side-block {
-    border: 1px solid var(--svc-line);
-    border-radius: 16px;
     background: var(--bg-card);
-    box-shadow: 0 10px 28px var(--shadow-md);
-    padding: 16px 18px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow-sm);
 }
 
 .svc-kicker {
     display: block;
-    margin-bottom: 8px;
-    color: var(--text-tertiary);
-    font-size: 10px;
-    letter-spacing: .14em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
 }
 
 .svc-side-block h2 {
-    margin: 0 0 8px;
     font-size: 1.05rem;
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 0.45rem;
     color: var(--text-primary);
 }
 
 .svc-side-block p {
-    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
     color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
 }
 
+/* lista numerada das provas */
+.svc-events {
+    list-style: none;
+    counter-reset: prova;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 0.6rem;
+    display: grid;
+    gap: 2px;
+    box-shadow: var(--shadow-sm);
+}
+
+.svc-events li {
+    counter-increment: prova;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    transition: background 0.2s ease;
+}
+
+.svc-events li:hover {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.svc-events li::before {
+    content: counter(prova);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 0.72rem;
+    color: var(--accent);
+    min-width: 1.1em;
+}
+
+.svc-events b {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.svc-events span {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+/* linhas de controle */
 .svc-key-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 0;
-    font-size: 13px;
+    gap: 0.6rem;
+    padding: 0.22rem 0;
+    font-size: 0.82rem;
     color: var(--text-secondary);
 }
 
 .svc-key-row kbd {
-    display: inline-grid;
-    min-width: 28px;
-    height: 24px;
-    padding: 0 6px;
-    place-items: center;
-    border: 1px solid var(--border-strong);
+    min-width: 62px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    padding: 0.22rem 0.4rem;
     border-radius: 6px;
-    background: var(--accent-muted);
+    border: 1px solid var(--border-subtle);
+    border-bottom-width: 2px;
+    background: var(--bg-body);
     color: var(--text-primary);
-    font: 600 11px 'Outfit', sans-serif;
 }
 
-.svc-sound-toggle,
-.svc-reset-toggle {
+.svc-note {
+    margin-top: 0.6rem;
+    font-size: 0.76rem !important;
+    opacity: 0.85;
+}
+
+/* ---------- botões ---------- */
+
+.svc-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.svc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     width: 100%;
-    padding: 12px 14px;
+    padding: 0.65rem 1rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.svc-btn:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--shadow-md);
+}
+
+.svc-btn:active {
+    transform: translateY(0);
+}
+
+.svc-btn:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
+.svc-btn--ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.svc-btn[aria-pressed="false"] [data-icon] {
+    opacity: 0.5;
+}
+
+/* ---------- controles de toque ---------- */
+
+.svc-touch {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.svc-touch.tp--hidden {
+    display: none;
+}
+
+.svc-touch button {
+    pointer-events: auto;
+    position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border: 1px solid var(--svc-line);
-    border-radius: 12px;
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    font: 600 12px 'Outfit', sans-serif;
-    cursor: pointer;
-    transition: border-color .2s ease, color .2s ease;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(12, 10, 26, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    touch-action: none;
+    user-select: none;
+    transition: background 0.1s ease, transform 0.1s ease;
 }
 
-.svc-sound-toggle:hover,
-.svc-reset-toggle:hover {
-    border-color: var(--accent);
-    color: var(--text-primary);
+.svc-touch button:active {
+    background: rgba(255, 47, 160, 0.7);
+    transform: scale(0.94);
 }
 
-.svc-sound-toggle[aria-pressed="false"] {
-    color: var(--text-tertiary);
+.tp-dpad button {
+    width: 46px;
+    height: 46px;
 }
 
-@media (pointer: coarse) {
-    .svc-touch.tp--full,
-    .svc-touch.tp--lr,
-    .svc-touch.tp--ud {
-        display: block;
-    }
+.tp-up { left: 62px; bottom: 108px; }
+.tp-down { left: 62px; bottom: 12px; }
+.tp-left { left: 14px; bottom: 60px; }
+.tp-right { left: 110px; bottom: 60px; }
+
+.tp-actions button {
+    width: 56px;
+    height: 56px;
+    font-size: 1.1rem;
 }
 
-@media (max-width: 900px) {
+.tp-a { right: 14px; bottom: 26px; }
+.tp-b { right: 76px; bottom: 62px; }
+
+.tp-start {
+    width: 46px;
+    height: 30px;
+    border-radius: 15px !important;
+    right: 50%;
+    transform: translateX(50%);
+    bottom: 10px;
+    font-size: 0.8rem;
+}
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 960px) {
     .svc-shell {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .svc-side {
-        display: none;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        align-items: start;
     }
 
-    footer[data-lab-footer] {
-        display: none;
+    .svc-actions {
+        flex-direction: row;
     }
 }
 
-@media (max-height: 560px) and (orientation: landscape) {
-    header[data-lab-header] {
-        min-height: 34px;
-        margin-bottom: 0.75rem;
+@media (max-width: 700px) {
+    .svc-screen-wrap {
+        padding: 8px;
+        border-radius: 12px;
     }
 
-    .svc-stage {
-        padding: 6px;
+    .tp-dpad button {
+        width: 42px;
+        height: 42px;
+    }
+
+    .tp-up { left: 54px; bottom: 96px; }
+    .tp-down { left: 54px; bottom: 10px; }
+    .tp-left { left: 10px; bottom: 53px; }
+    .tp-right { left: 98px; bottom: 53px; }
+
+    .tp-actions button {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* Em telas baixas e deitadas o painel lateral empurra o jogo para fora da dobra;
+   limitar a altura do palco mantém a tela inteira visível sem rolagem. */
+@media (max-height: 560px) and (orientation: landscape) {
+    .svc-screen-wrap {
+        max-height: 78vh;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.001ms !important;
-        transition-duration: 0.001ms !important;
+    .svc-btn:hover,
+    .svc-touch button:active {
+        transform: none;
     }
 }

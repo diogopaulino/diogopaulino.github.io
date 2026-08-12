@@ -1,337 +1,760 @@
-// game/scenes.js — cenas: title, hub, briefing, play, result, pódio, opções, pause.
-// Teto: ~420 linhas. FASE 1 STUB: implementar play e result completos, outros básicos.
+// game/scenes.js — todas as telas fora do gameplay.
+//
+// Cada cena é um objeto com { id, enter, update, draw, exit }. `update` devolve nada; a
+// navegação acontece por `ctx.goto(cena, params)` / `ctx.pushScene` / `ctx.popScene`, o que
+// mantém o fluxo explícito e permite empilhar a pausa por cima de qualquer coisa.
+//
+// O fluxo geral copia o do California Games: título -> menu -> patrocinador -> prova a prova,
+// com uma tela de resultado entre elas, e a cerimônia de pódio no fim.
 
 import { W, H } from '../core/pixel.js';
-import { bakeHubBackground, MARKERS } from '../art/mapart.js';
-import { ORDER } from './shell.js';
+import { SVC } from '../core/palette.js';
+import { clamp, easeOutBack } from '../core/util.js';
+import { EVENTS, EVENT_ORDER, SPONSORS, MEDAL_LABEL, MEDAL_COLOR } from './config.js';
+import { Championship } from './championship.js';
+import { MenuList, screenHeader, screenFooter, scrim } from './menu.js';
+import { panel, judgePanel } from './hud.js';
+import { drawNeonGrid } from '../art/scenery.js';
+import { createEvent } from '../events/index.js';
+
+// ---------------------------------------------------------------------------
+// Título
+// ---------------------------------------------------------------------------
 
 export const titleScene = {
     id: 'title',
-    bg: null,
-    enter(app) {
-        if (!this.bg) this.bg = bakeHubBackground(app.rng);
+    enter(ctx) {
+        this.ctx = ctx;
         this.t = 0;
-        if (app.audio) app.audio.playSong('tema');
+        this.ctx.audio.playSong('tema');
     },
-    exit() {},
-    update(dt, input, app) {
-        this.t += dt;
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (ctx.input.state.start.pressed || ctx.input.state.a.pressed) {
+            ctx.audio.play('ui_confirm');
+            ctx.goto(menuScene);
+        }
+    },
+    draw() {
+        const { px, font, sprites, scenery, store } = this.ctx;
+        const c = px.ctx;
+
+        c.drawImage(scenery.skyNight, 0, 0);
+        c.drawImage(scenery.sky, 0, 40);
+        drawNeonGrid(c, 150, 74, this.t);
+        c.drawImage(scenery.skyline, Math.round(-(this.t * 6) % 640), 96);
+
+        // logotipo
+        const bob = Math.sin(this.t * 1.6) * 2;
+        font.textBig(c, 'SANTOS', W / 2, 40 + bob, { scale: 4, color: 'x', outlineColor: '0', align: 'center' });
+        font.textBig(c, 'VICE GAMES', W / 2, 74 + bob, { scale: 3, color: 'y', outlineColor: '0', align: 'center' });
+        scrim(px, 100, 16, 0.5);
+        font.text(c, 'SEIS PROVAS NA ORLA · UM CAMPEONATO', W / 2, 106, {
+            color: '8', align: 'center', mono: true, shadow: '0'
+        });
+
+        // faixa escura atrás das chamadas de baixo — sem ela o texto some no skyline
+        scrim(px, 158, 66, 0.55);
+
+        // "insira ficha"
+        if (Math.floor(this.t * 1.8) % 2 === 0) {
+            font.text(c, 'APERTE START', W / 2, 168, {
+                color: 'A', align: 'center', mono: true, scale: 2, shadow: '0'
+            });
+        }
+
+        const career = store.careerTotal();
+        if (career > 0) {
+            font.text(c, `CARREIRA: ${career} PTS`, W / 2, 196, { color: 'p', align: 'center', mono: true });
+        }
+        font.text(c, 'HOMENAGEM A CALIFORNIA GAMES', W / 2, 208, { color: 'o', align: 'center', mono: true });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Menu principal
+// ---------------------------------------------------------------------------
+
+export const menuScene = {
+    id: 'menu',
+    enter(ctx) {
+        this.ctx = ctx;
+        this.t = 0;
+        this.menu = new MenuList([
+            { label: 'CAMPEONATO', value: 'champ', hint: 'As seis provas em sequência, com pódio no fim.' },
+            { label: 'PROVA ÚNICA', value: 'single', hint: 'Escolha uma prova e tente bater seu recorde.' },
+            { label: 'TREINO', value: 'practice', hint: 'Jogue sem registrar recorde nem colocação.' },
+            { label: 'RECORDES', value: 'records', hint: 'Suas melhores marcas e medalhas.' },
+            { label: 'OPÇÕES', value: 'options', hint: 'Som, tremor de tela e apagar dados.' }
+        ]);
+    },
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        const action = this.menu.update(ctx.input, ctx.audio, dtMs);
+        if (action === 'back') { ctx.goto(titleScene); return; }
+        if (action !== 'confirm') return;
+
+        switch (this.menu.current.value) {
+            case 'champ': ctx.goto(sponsorScene, { mode: 'champ' }); break;
+            case 'single': ctx.goto(eventSelectScene, { mode: 'single' }); break;
+            case 'practice': ctx.goto(eventSelectScene, { mode: 'practice' }); break;
+            case 'records': ctx.goto(recordsScene); break;
+            case 'options': ctx.goto(optionsScene); break;
+            default: break;
+        }
+    },
+    draw() {
+        const { px, font, sprites, scenery } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, 0);
+        drawNeonGrid(c, 160, 64, this.t * 0.5);
+        c.drawImage(scenery.skyline, -40, 108);
+
+        scrim(px, 31, 179);
+        screenHeader(px, font, 'SANTOS VICE GAMES', 'MENU PRINCIPAL');
+        this.menu.draw(px, font, sprites, W / 2, 62, { lineH: 20, time: this.t, hintY: 176 });
+        screenFooter(px, font, 'Z CONFIRMA · X VOLTA');
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Escolha de patrocinador
+// ---------------------------------------------------------------------------
+
+export const sponsorScene = {
+    id: 'sponsor',
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.mode = params.mode || 'champ';
+        this.index = SPONSORS.findIndex((s) => s.id === ctx.store.data.seen.sponsor);
+        if (this.index < 0) this.index = 0;
+        this.t = 0;
+        this.repeatT = 0;
+    },
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        const { input, audio } = ctx;
+
+        const move = (d) => {
+            this.index = (this.index + d + SPONSORS.length) % SPONSORS.length;
+            audio.play('ui_move');
+        };
+        if (input.state.left.pressed) move(-1);
+        if (input.state.right.pressed) move(1);
+        if (input.state.up.pressed) move(-3);
+        if (input.state.down.pressed) move(3);
+
         if (input.state.a.pressed || input.state.start.pressed) {
-            app.goto(hubScene);
+            audio.play('ui_confirm');
+            const sponsor = SPONSORS[this.index];
+            ctx.store.rememberSponsor(sponsor.id);
+            ctx.setSponsor(sponsor);
+            const champ = new Championship('champ', sponsor, ctx.rng, EVENT_ORDER);
+            ctx.champ = champ;
+            ctx.goto(briefingScene, { eventId: champ.currentEventId, champ });
         }
+        if (input.state.b.pressed) { audio.play('ui_back'); ctx.goto(menuScene); }
     },
-    draw(px, app) {
-        if (this.bg) px.ctx.drawImage(this.bg, 0, 0);
-        app.font.textBig(px.ctx, 'SANTOS', W / 2, 60, { align: 'center', scale: 2, outlineColor: '#ff2fa0' });
-        app.font.textBig(px.ctx, 'VICE CITY', W / 2, 100, { align: 'center', scale: 2, outlineColor: '#00f0ff' });
-        const blinkOn = Math.sin(this.t * 4) > 0;
-        if (blinkOn) {
-            app.font.text(px.ctx, 'PRESS START', W / 2, 180, { align: 'center', color: 'A', scale: 1 });
-        }
+    draw() {
+        const { px, font, sprites, scenery } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -20);
+        drawNeonGrid(c, 170, 54, this.t * 0.4);
+
+        scrim(px, 31, 179);
+        screenHeader(px, font, 'PATROCINADOR', 'ELE PAGA O UNIFORME E TORCE NA SUA PROVA');
+
+        // grade 3x2 de emblemas
+        const cols = 3, cellW = 92, cellH = 64;
+        const x0 = (W - cols * cellW) / 2;
+        const y0 = 38;
+        SPONSORS.forEach((sp, i) => {
+            const cx = x0 + (i % cols) * cellW + cellW / 2;
+            const cy = y0 + Math.floor(i / cols) * cellH;
+            const active = i === this.index;
+            if (active) {
+                const pulse = Math.round(Math.sin(this.t * 6) * 1);
+                panel(px, cx - 40, cy - 2 + pulse, 80, 58, { fill: '2', border: 'A', accent: sp.kit.shirt });
+            }
+            px.blitScreen(sprites.get(`logo_${sp.id}`), cx, cy + 20);
+            font.text(c, EVENTS[sp.boon].name, cx, cy + 44, {
+                color: active ? 'A' : 'o', align: 'center', mono: true
+            });
+        });
+
+        const sp = SPONSORS[this.index];
+        panel(px, 12, 158, W - 24, 46, { fill: '1', border: 'q', accent: sp.kit.shirt });
+        font.text(c, sp.name, W / 2, 163, { color: sp.kit.shirt, align: 'center', mono: true });
+        font.text(c, sp.motto, W / 2, 176, { color: 'p', align: 'center', mono: true });
+        font.text(c, `+12% DE PONTOS EM ${EVENTS[sp.boon].name}`, W / 2, 190, {
+            color: 'H', align: 'center', mono: true
+        });
+
+        screenFooter(px, font, 'SETAS ESCOLHEM · Z FECHA CONTRATO · X VOLTA');
     }
 };
 
-export const hubScene = {
-    id: 'hub',
-    bg: null,
-    selectedIdx: 0,
-    enter(app) {
-        if (!this.bg) this.bg = bakeHubBackground(app.rng);
-        this.selectedIdx = 0;
+// ---------------------------------------------------------------------------
+// Seleção de prova (modo avulso e treino)
+// ---------------------------------------------------------------------------
+
+export const eventSelectScene = {
+    id: 'eventSelect',
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.mode = params.mode || 'single';
         this.t = 0;
-        if (app.audio) app.audio.playSong('tema');
+        this.menu = new MenuList(EVENT_ORDER.map((id) => {
+            const ev = EVENTS[id];
+            const best = ctx.store.getBest(id);
+            return {
+                label: ev.name,
+                value: id,
+                hint: `${ev.place} — ${ev.tagline}`,
+                best
+            };
+        }));
     },
-    exit() {},
-    update(dt, input, app) {
-        this.t += dt * 6;
-        const prev = this.selectedIdx;
-        if (input.state.left.pressed) this.selectedIdx = (this.selectedIdx - 1 + 5) % 5;
-        if (input.state.right.pressed) this.selectedIdx = (this.selectedIdx + 1) % 5;
-        if (input.state.up.pressed) this.selectedIdx = (this.selectedIdx - 2 + 5) % 5;
-        if (input.state.down.pressed) this.selectedIdx = (this.selectedIdx + 2) % 5;
-        if (this.selectedIdx !== prev && app.audio) app.audio.play('ui_move');
-        if (input.state.a.pressed) {
-            if (app.audio) app.audio.play('ui_confirm');
-            app.goto(briefingScene, { eventIdx: this.selectedIdx, mode: 'treino' });
-        }
-        if (input.state.start.pressed) {
-            app.shell.startCampeonato();
-            if (app.audio) app.audio.play('ui_confirm');
-            app.goto(briefingScene, { eventIdx: 0, mode: 'campeonato' });
-        }
-        if (input.state.select.pressed) {
-            app.pushScene(optionsScene);
-        }
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        const action = this.menu.update(ctx.input, ctx.audio, dtMs);
+        if (action === 'back') { ctx.goto(menuScene); return; }
+        if (action !== 'confirm') return;
+        const id = this.menu.current.value;
+        const champ = new Championship(this.mode, ctx.sponsor, ctx.rng, [id]);
+        ctx.champ = champ;
+        ctx.goto(briefingScene, { eventId: id, champ });
     },
-    draw(px, app) {
-        if (this.bg) px.ctx.drawImage(this.bg, 0, 0);
-        app.font.text(px.ctx, 'SANTOS VICE CITY', 6, 4, { color: 'A', mono: true, scale: 1, shadow: '0' });
+    draw() {
+        const { px, font, sprites, scenery, store } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -10);
+        drawNeonGrid(c, 168, 56, this.t * 0.4);
 
-        const selectedId = ORDER[this.selectedIdx];
-        for (const marker of MARKERS) {
-            const isSel = marker.id === selectedId;
-            const sp = app.sprites.has('marker_' + marker.id) ? app.sprites.get('marker_' + marker.id) : null;
-            if (sp) px.blitScreen(sp, marker.x, marker.y);
-            if (isSel) {
-                const bounce = Math.sin(this.t || 0) * 2;
-                app.font.text(px.ctx, '▼', marker.x, marker.y - 18 + bounce, { align: 'center', color: 'A', mono: true });
-            }
-            const best = app.store.getBest(marker.id);
+        scrim(px, 31, 179);
+        screenHeader(px, font, this.mode === 'practice' ? 'TREINO' : 'PROVA ÚNICA', 'ESCOLHA A PROVA');
+
+        this.menu.items.forEach((it, i) => {
+            const active = i === this.menu.index;
+            const y = 46 + i * 20;
+            const ev = EVENTS[it.value];
+            if (active) panel(px, 10, y - 4, W - 20, 18, { fill: '2', border: ev.tint });
+            font.text(c, ev.name, 22, y, { color: active ? 'A' : 'q', mono: true });
+            font.text(c, ev.place, 118, y, { color: 'o', mono: true });
+            const best = store.getBest(it.value);
+            font.text(c, best.score ? String(best.score).padStart(4, '0') : '----', W - 42, y, {
+                color: best.score ? 'r' : 'n', align: 'right', mono: true
+            });
             if (best.medal) {
-                const medalSp = app.sprites.has('medal_' + best.medal) ? app.sprites.get('medal_' + best.medal) : null;
-                if (medalSp) px.blitScreen(medalSp, marker.x + 10, marker.y - 6);
+                font.text(c, MEDAL_LABEL[best.medal][0], W - 22, y, {
+                    color: MEDAL_COLOR[best.medal], align: 'right', mono: true
+                });
             }
-        }
+        });
 
-        const selMarker = MARKERS.find(m => m.id === selectedId);
-        if (selMarker) {
-            app.font.text(px.ctx, selMarker.label, W / 2, 198, { align: 'center', color: 'q', mono: false });
+        const cur = this.menu.current;
+        if (cur) {
+            panel(px, 12, 172, W - 24, 30, { fill: '1', border: 'n' });
+            font.text(c, EVENTS[cur.value].tagline, W / 2, 180, { color: 'p', align: 'center', mono: true });
+            font.text(c, EVENTS[cur.value].hint, W / 2, 191, { color: 'o', align: 'center', mono: true });
         }
-        app.font.text(px.ctx, 'A: treino   START: campeonato', W / 2, 212, { align: 'center', color: 'p', mono: false });
+        screenFooter(px, font, 'Z COMEÇA · X VOLTA');
     }
 };
+
+// ---------------------------------------------------------------------------
+// Briefing da prova
+// ---------------------------------------------------------------------------
 
 export const briefingScene = {
     id: 'briefing',
-    enter(app, params) {
-        this.eventIdx = params?.eventIdx || 0;
-        this.mode = params?.mode || 'treino';
-        this.event = app.shell.getEvent(this.eventIdx);
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.eventId = params.eventId;
+        this.champ = params.champ;
+        this.def = EVENTS[this.eventId];
+        this.t = 0;
+        ctx.audio.playSong(this.def.song);
     },
-    exit() {},
-    update(dt, input, app) {
-        if (input.state.a.pressed) {
-            if (app.audio) app.audio.play('ui_confirm');
-            app.goto(playScene, { event: this.event, mode: this.mode, eventIdx: this.eventIdx });
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (ctx.input.state.a.pressed || ctx.input.state.start.pressed) {
+            ctx.audio.play('ui_confirm');
+            ctx.goto(playScene, { eventId: this.eventId, champ: this.champ });
+        }
+        if (ctx.input.state.b.pressed) {
+            ctx.audio.play('ui_back');
+            ctx.goto(this.champ.mode === 'champ' ? menuScene : eventSelectScene, { mode: this.champ.mode });
         }
     },
-    draw(px, app) {
-        px.ctx.fillStyle = '#0d0a1a';
-        px.ctx.fillRect(0, 0, W, H);
-        app.font.text(px.ctx, this.event.name, W / 2, 20, { align: 'center', color: 'A', scale: 1 });
-        app.font.text(px.ctx, this.event.region, W / 2, 35, { align: 'center', color: 'q', mono: false, scale: 1 });
-        app.font.text(px.ctx, this.event.blurb[0], W / 2, 60, { align: 'center', color: 'r', mono: false, scale: 1 });
-        app.font.text(px.ctx, 'Pressione A para começar', W / 2, 200, { align: 'center', color: 'A', mono: false, scale: 1 });
+    draw() {
+        const { px, font, sprites, scenery, store, sponsor } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -16);
+        c.drawImage(scenery.skyline, -80, 120);
+
+        scrim(px, 31, 179);
+        screenHeader(px, font, this.def.name, this.def.place);
+
+        panel(px, 14, 40, W - 28, 66, { fill: '1', border: this.def.tint, accent: this.def.tint });
+        this.def.brief.forEach((linha, i) => {
+            font.text(c, linha, W / 2, 48 + i * 12, { color: 'q', align: 'center', mono: true });
+        });
+        if (this.def.judgeNote) {
+            font.text(c, this.def.judgeNote, W / 2, 88, { color: 'y', align: 'center', mono: true });
+        }
+
+        // controles
+        panel(px, 14, 112, W - 28, 24, { fill: '2', border: 'n' });
+        font.text(c, 'CONTROLES', W / 2, 116, { color: 'o', align: 'center', mono: true });
+        font.text(c, this.def.hint, W / 2, 126, { color: 'r', align: 'center', mono: true });
+
+        // recorde pessoal + bônus do patrocinador
+        const best = store.getBest(this.eventId);
+        panel(px, 14, 142, (W - 34) / 2, 26, { fill: '1', border: 'n' });
+        font.text(c, 'SEU RECORDE', 20, 146, { color: 'o', mono: true });
+        font.text(c, best.score ? String(best.score) : '—', 20, 157, { color: 'A', mono: true });
+
+        panel(px, W / 2 + 3, 142, (W - 34) / 2, 26, { fill: '1', border: 'n' });
+        const boon = sponsor && sponsor.boon === this.eventId;
+        font.text(c, 'PATROCÍNIO', W / 2 + 9, 146, { color: 'o', mono: true });
+        font.text(c, sponsor ? (boon ? `${sponsor.name} +12%` : sponsor.name) : 'SEM PATROCÍNIO', W / 2 + 9, 157, {
+            color: boon ? 'H' : 'p', mono: true
+        });
+
+        if (this.champ.mode === 'champ') {
+            font.text(c, `PROVA ${this.champ.progressLabel}`, W / 2, 176, {
+                color: 'x', align: 'center', mono: true
+            });
+        }
+
+        if (Math.floor(this.t * 2) % 2 === 0) {
+            font.text(c, 'Z PARA COMEÇAR', W / 2, 192, { color: 'A', align: 'center', mono: true, scale: 1 });
+        }
+        screenFooter(px, font, 'Z COMEÇA · X VOLTA · ENTER PAUSA DURANTE A PROVA');
     }
 };
+
+// ---------------------------------------------------------------------------
+// Prova em andamento
+// ---------------------------------------------------------------------------
 
 export const playScene = {
     id: 'play',
-    countdownLeft: 0,
-    enter(app, params) {
-        this.event = params?.event;
-        this.mode = params?.mode || 'treino';
-        this.eventIdx = params?.eventIdx || 0;
-        if (!this.event) return;
-        const assist = !!app.store.getOpts().assist;
-        this.duration = this.event.duration * (assist ? 1.25 : 1);
-        this.eventApi = {
-            rng: app.rng,
-            sprites: app.sprites,
-            font: app.font,
-            hud: app.hud,
-            duration: this.duration,
-            assist,
-            cam: null,
-            finish: (reason) => this._finish(app, reason),
-            shake: (p, ms) => app.px.shake(p, ms),
-            popup: (x, y, text, color) => app.hud.popup(x, y, text, color)
-        };
-        this.event.init(app, this.eventApi);
-        this.countdownLeft = 3;
-        this._musicStarted = false;
-        if (app.audio) app.audio.playStinger('contagem');
-        app.hud.time = 0;
-        app.hud.lives = 3;
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.eventId = params.eventId;
+        this.champ = params.champ;
+        this.event = createEvent(this.eventId, ctx);
+        this.event.practice = this.champ.mode === 'practice';
+        ctx.audio.playSong(EVENTS[this.eventId].song);
+        ctx.setTouchLayout('FULL');
     },
-    exit() {
-        if (this._app && this._app.audio) this._app.audio.stopSong();
-    },
-    update(dt, input, app) {
-        if (!this.event) return;
-        this._app = app;
-        if (input.state.start.pressed) {
-            app.pushScene(pauseScene);
+    update(dtMs) {
+        const ctx = this.ctx;
+        if (ctx.input.state.start.pressed) {
+            ctx.audio.play('pause');
+            ctx.pushScene(pauseScene, { eventId: this.eventId });
             return;
         }
-        this.countdownLeft = Math.max(0, this.countdownLeft - dt);
-        if (this.countdownLeft <= 0) {
-            if (!this._musicStarted) {
-                this._musicStarted = true;
-                if (app.audio) app.audio.playSong(this.event.music);
-            }
-            this.event.update(dt, input, this.eventApi);
+        const result = this.event.update(dtMs);
+        if (result) {
+            const entry = this.champ.mode === 'practice'
+                ? { score: result.score, medal: null, place: 0, detail: result.detail, table: [], raw: result.score, boon: 0 }
+                : this.champ.submit(this.eventId, result.score, result.detail);
+            ctx.goto(resultScene, {
+                eventId: this.eventId,
+                champ: this.champ,
+                entry,
+                judges: result.judges
+            });
         }
-        app.hud.update(dt * 1000);
-        app.hud.score = this.event.score();
-        app.hud.time = this.countdownLeft <= 0 ? Math.min(1, (this.event.state?.time || 0) / this.event.duration) : 0;
     },
-    draw(px, app) {
-        px.ctx.fillStyle = '#0d0a1a';
-        px.ctx.fillRect(0, 0, W, H);
-        if (this.event) this.event.draw(px, this.eventApi);
-        if (this.countdownLeft > 0) {
-            const num = Math.ceil(this.countdownLeft);
-            app.font.textBig(px.ctx, String(num), W / 2, H / 2, { align: 'center', scale: 3, outlineColor: '#ff2fa0' });
-        }
-        app.hud.draw(px);
-        if (this.event) this.event.hud(px, this.eventApi);
-    },
-    _finish(app, reason) {
-        if (!this.event) return;
-        if (app.audio) app.audio.stopSong();
-        const score = this.event.score();
-        const medal = app.shell.getEvent(this.eventIdx).medals;
-        const medalName = score >= medal.platina ? 'platina' : score >= medal.ouro ? 'ouro' : score >= medal.prata ? 'prata' : score >= medal.bronze ? 'bronze' : 'none';
-        const isRecord = app.shell.recordResult(this.event.id, score, medalName);
-        if (app.audio) app.audio.playStinger(medalName === 'none' ? 'falha' : 'fanfarra_ouro');
-        app.goto(resultScene, { eventId: this.event.id, score, medal: medalName, mode: this.mode, isRecord });
+    draw() { this.event.draw(); },
+    exit() {
+        this.event.exit();
+        this.ctx.setTouchLayout(null);
     }
 };
 
-export const resultScene = {
-    id: 'result',
-    enter(app, params) {
-        this.eventId = params?.eventId;
-        this.score = params?.score || 0;
-        this.medal = params?.medal || 'none';
-        this.mode = params?.mode || 'treino';
-        this.isRecord = params?.isRecord || false;
-        const el = document.getElementById('svcAnnouncer');
-        if (el) {
-            el.textContent = 'Pontuação: ' + Math.floor(this.score) + '. Medalha: ' + this.medal + '.' +
-                (this.isRecord ? ' Novo recorde!' : '');
-        }
-    },
-    exit() {},
-    update(dt, input, app) {
-        if (input.state.a.pressed) {
-            if (app.audio) app.audio.play('ui_confirm');
-            if (this.mode === 'campeonato') {
-                const next = app.shell.nextEvent();
-                if (next) {
-                    app.goto(briefingScene, { eventIdx: app.shell.eventIdx, mode: 'campeonato' });
-                } else {
-                    app.goto(podiumScene);
-                }
-            } else {
-                app.goto(hubScene);
-            }
-        }
-    },
-    draw(px, app) {
-        px.ctx.fillStyle = '#0d0a1a';
-        px.ctx.fillRect(0, 0, W, H);
-        app.font.text(px.ctx, 'RESULTADO', W / 2, 30, { align: 'center', color: 'A', mono: true, scale: 1 });
-        app.font.text(px.ctx, 'SCORE: ' + String(this.score).padStart(6, '0'), W / 2, 70, { align: 'center', color: 'q', mono: true, scale: 1 });
-        app.font.text(px.ctx, 'MEDALHA: ' + this.medal.toUpperCase(), W / 2, 90, { align: 'center', color: 'A', mono: true, scale: 1 });
-        if (this.isRecord) {
-            app.font.text(px.ctx, 'NOVO RECORDE!', W / 2, 115, { align: 'center', color: 'x', mono: true, scale: 1 });
-        }
-        app.font.text(px.ctx, 'Pressione A para continuar', W / 2, 180, { align: 'center', color: 'r', mono: false, scale: 1 });
-    }
-};
-
-export const podiumScene = {
-    id: 'podium',
-    enter(app) {
-        this.result = app.shell.finishCampeonato();
-        if (app.audio) app.audio.playStinger('fanfarra_ouro');
-    },
-    exit() {},
-    update(dt, input, app) {
-        if (input.state.a.pressed) {
-            if (app.audio) app.audio.play('ui_confirm');
-            app.goto(hubScene);
-        }
-    },
-    draw(px, app) {
-        px.ctx.fillStyle = '#1b1233';
-        px.ctx.fillRect(0, 0, W, H);
-        app.font.text(px.ctx, 'PÓDIO', W / 2, 20, { align: 'center', color: 'A', mono: true, scale: 1 });
-        if (this.result && this.result.isRecord) {
-            app.font.text(px.ctx, 'NOVO RECORDE DO CAMPEONATO!', W / 2, 35, { align: 'center', color: 'x', mono: false });
-        }
-        const podium = app.shell.getPodium();
-        const heights = [140, 110, 170];
-        for (let i = 0; i < podium.length; i++) {
-            const y = 180 - heights[i];
-            app.font.text(px.ctx, podium[i].name.slice(0, 8), 50 + i * 90, y, { align: 'center', color: 'q', mono: true });
-            app.font.text(px.ctx, String(podium[i].points).padStart(5, '0'), 50 + i * 90, y + 20, { align: 'center', color: 'A', mono: true });
-        }
-        app.font.text(px.ctx, 'Pressione A para voltar ao mapa', W / 2, 205, { align: 'center', color: 'r', mono: false });
-    }
-};
+// ---------------------------------------------------------------------------
+// Pausa (empilhada sobre a prova)
+// ---------------------------------------------------------------------------
 
 export const pauseScene = {
     id: 'pause',
-    overlay: true,
-    enter(app) {
-        if (app.audio) app.audio.play('pause');
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.eventId = params.eventId;
+        this.t = 0;
+        this.menu = new MenuList([
+            { label: 'CONTINUAR', value: 'resume' },
+            { label: 'RECOMEÇAR PROVA', value: 'restart' },
+            { label: 'SAIR PARA O MENU', value: 'quit' }
+        ]);
     },
-    exit() {},
-    update(dt, input, app) {
-        if (input.state.a.pressed || input.state.start.pressed) {
-            app.popScene();
-        }
-        if (input.state.b.pressed) {
-            app.popScene();
-            app.pushScene(optionsScene);
-        }
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (ctx.input.state.start.pressed) { ctx.audio.play('pause'); ctx.popScene(); return; }
+        const action = this.menu.update(ctx.input, ctx.audio, dtMs);
+        if (action === 'back') { ctx.popScene(); return; }
+        if (action !== 'confirm') return;
+        const value = this.menu.current.value;
+        if (value === 'resume') ctx.popScene();
+        else if (value === 'restart') ctx.restartEvent();
+        else ctx.goto(menuScene);
     },
-    draw(px, app) {
-        px.ctx.fillStyle = 'rgba(13,10,26,0.82)';
-        px.ctx.fillRect(0, 0, W, H);
-        app.font.textBig(px.ctx, 'PAUSA', W / 2, 70, { align: 'center', scale: 2, outlineColor: '#0d0a1a' });
-        app.font.text(px.ctx, 'A / START: continuar', W / 2, 120, { align: 'center', color: 'q', mono: false });
-        app.font.text(px.ctx, 'B: opções', W / 2, 135, { align: 'center', color: 'q', mono: false });
+    draw() {
+        const { px, font, sprites } = this.ctx;
+        const c = px.ctx;
+        c.globalAlpha = 0.72;
+        px.rect(0, 0, W, H, SVC['0']);
+        c.globalAlpha = 1;
+
+        panel(px, 60, 62, W - 120, 100, { fill: '1', border: 'A', accent: 'x' });
+        font.textBig(c, 'PAUSA', W / 2, 70, { scale: 2, color: 'A', outlineColor: '0', align: 'center' });
+        this.menu.draw(px, font, sprites, W / 2, 104, { lineH: 16, time: this.t });
+        font.text(c, EVENTS[this.eventId].hint, W / 2, 168, { color: 'o', align: 'center', mono: true });
     }
 };
 
-export const optionsScene = {
-    id: 'options',
-    overlay: true,
-    enter(app) {
-        this.returnScene = app.hud ? null : null;
-        this.confirmReset = false;
+// ---------------------------------------------------------------------------
+// Resultado da prova
+// ---------------------------------------------------------------------------
+
+export const resultScene = {
+    id: 'result',
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.eventId = params.eventId;
+        this.champ = params.champ;
+        this.entry = params.entry;
+        this.judges = params.judges;
+        this.def = EVENTS[this.eventId];
+        this.t = 0;
+        this.isRecord = false;
+
+        if (this.champ.mode !== 'practice') {
+            this.isRecord = ctx.store.submitScore(
+                this.eventId, this.entry.score, this.entry.medal, this.entry.detail
+            );
+        }
+        ctx.audio.playSong(this.entry.medal === 'gold' ? 'fanfarra_ouro'
+            : this.entry.medal ? 'fanfarra_menor' : 'falha');
+        if (this.isRecord) ctx.audio.play('record');
     },
-    exit() {},
-    update(dt, input, app) {
-        const opts = app.store.getOpts();
-        if (input.state.up.pressed || input.state.down.pressed) {
-            if (app.audio) app.audio.play('ui_move');
-        }
-        if (input.state.left.pressed || input.state.right.pressed) {
-            const muted = !opts.mute;
-            app.store.setOpt('mute', muted);
-            if (app.audio) app.audio.setMute(muted);
-        }
-        if (input.state.a.pressed) {
-            const assist = !opts.assist;
-            app.store.setOpt('assist', assist);
-            if (app.audio) app.audio.play('ui_confirm');
-        }
-        if (input.state.b.pressed) {
-            if (this.confirmReset) {
-                app.store.reset();
-                this.confirmReset = false;
-                if (app.audio) app.audio.play('ui_back');
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (this.t < 0.6) return;
+        if (ctx.input.state.a.pressed || ctx.input.state.start.pressed) {
+            ctx.audio.play('ui_confirm');
+            if (this.champ.mode === 'champ') {
+                this.champ.advance();
+                if (this.champ.isFinished) ctx.goto(podiumScene, { champ: this.champ });
+                else ctx.goto(briefingScene, { eventId: this.champ.currentEventId, champ: this.champ });
             } else {
-                this.confirmReset = true;
+                ctx.goto(eventSelectScene, { mode: this.champ.mode });
             }
         }
-        if (input.state.start.pressed) {
-            app.popScene();
+        if (ctx.input.state.b.pressed && this.champ.mode !== 'champ') {
+            ctx.audio.play('ui_back');
+            ctx.goto(menuScene);
         }
     },
-    draw(px, app) {
-        const opts = app.store.getOpts();
-        px.ctx.fillStyle = 'rgba(13,10,26,0.9)';
-        px.ctx.fillRect(0, 0, W, H);
-        app.font.text(px.ctx, 'OPÇÕES', W / 2, 20, { align: 'center', color: 'A', mono: true });
-        app.font.text(px.ctx, '←→ Som: ' + (opts.mute ? 'MUDO' : 'ATIVO'), W / 2, 60, { align: 'center', color: 'q', mono: false });
-        app.font.text(px.ctx, 'A: Modo tranquilo: ' + (opts.assist ? 'LIGADO' : 'DESLIGADO'), W / 2, 80, { align: 'center', color: 'q', mono: false });
-        app.font.text(px.ctx, this.confirmReset ? 'B DE NOVO PRA CONFIRMAR' : 'B: Apagar recordes', W / 2, 100, { align: 'center', color: this.confirmReset ? 'B' : 'q', mono: false });
-        app.font.text(px.ctx, 'START: voltar', W / 2, 180, { align: 'center', color: 'r', mono: false });
+    draw() {
+        const { px, font, sprites, scenery } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -30);
+        drawNeonGrid(c, 176, 48, this.t * 0.3);
+
+        scrim(px, 31, 179);
+        screenHeader(px, font, 'RESULTADO', `${this.def.name} · ${this.def.place}`);
+
+        // pontuação com contagem animada
+        const shown = Math.round(this.entry.score * clamp(this.t / 0.9, 0, 1));
+        font.textBig(c, String(shown).padStart(4, '0'), W / 2, 42, {
+            scale: 4, color: 'A', outlineColor: '0', align: 'center'
+        });
+
+        if (this.entry.boon > 0) {
+            font.text(c, `+${this.entry.boon} DO PATROCINADOR`, W / 2, 80, {
+                color: 'H', align: 'center', mono: true
+            });
+        }
+        if (this.entry.detail) {
+            font.text(c, this.entry.detail, W / 2, 92, { color: 'p', align: 'center', mono: true });
+        }
+
+        // medalha
+        if (this.entry.medal) {
+            const pop = easeOutBack(clamp((this.t - 0.9) / 0.5, 0, 1));
+            if (pop > 0) {
+                px.blitScreen(sprites.get(`medal_${this.entry.medal}`), 44, 132);
+                font.text(c, MEDAL_LABEL[this.entry.medal], 44, 136, {
+                    color: MEDAL_COLOR[this.entry.medal], align: 'center', mono: true
+                });
+            }
+        } else {
+            font.text(c, 'SEM MEDALHA', 44, 128, { color: 'n', align: 'center', mono: true });
+        }
+
+        if (this.isRecord && Math.floor(this.t * 3) % 2 === 0) {
+            font.text(c, 'RECORDE PESSOAL!', W / 2, 106, { color: 'x', align: 'center', mono: true });
+        }
+
+        // notas dos jurados nas provas julgadas
+        if (this.judges) {
+            judgePanel(px, font, this.judges, this.t * 1.4);
+        } else if (this.entry.table && this.entry.table.length) {
+            // tabela da prova nas provas não julgadas
+            const x = 96;
+            panel(px, x, 112, W - x - 12, 84, { fill: '1', border: 'n' });
+            this.entry.table.slice(0, 5).forEach((row, i) => {
+                const isPlayer = row.id === 'player';
+                const y = 118 + i * 15;
+                font.text(c, `${i + 1}º`, x + 6, y, { color: isPlayer ? 'A' : 'o', mono: true });
+                font.text(c, row.name, x + 26, y, { color: isPlayer ? 'A' : 'q', mono: true });
+                font.text(c, String(row.score), W - 20, y, {
+                    color: isPlayer ? 'A' : 'p', align: 'right', mono: true
+                });
+            });
+        }
+
+        screenFooter(px, font, this.champ.mode === 'champ' ? 'Z SEGUE PARA A PRÓXIMA PROVA' : 'Z VOLTA · X MENU');
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Pódio
+// ---------------------------------------------------------------------------
+
+const PODIUM_H = [46, 34, 26];
+
+export const podiumScene = {
+    id: 'podium',
+    enter(ctx, params) {
+        this.ctx = ctx;
+        this.champ = params.champ;
+        this.t = 0;
+        this.standings = this.champ.standings();
+        this.place = this.champ.playerPlace();
+        this.isRecord = ctx.store.submitChampionship({
+            total: this.champ.total(),
+            place: this.place,
+            sponsor: this.champ.sponsor ? this.champ.sponsor.id : null,
+            golds: this.champ.goldCount()
+        });
+        ctx.audio.playSong('podio');
+    },
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (this.t < 1) return;
+        if (ctx.input.state.a.pressed || ctx.input.state.start.pressed) {
+            ctx.audio.play('ui_confirm');
+            ctx.goto(menuScene);
+        }
+    },
+    draw() {
+        const { px, font, sprites, scenery } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.skyNight, 0, 0);
+        c.drawImage(scenery.sky, 0, 70);
+        drawNeonGrid(c, 150, 74, this.t * 0.2);
+
+        scrim(px, 31, 179, 0.45);
+        screenHeader(px, font, 'PÓDIO', 'CAMPEONATO SANTOS VICE GAMES');
+
+        // três degraus
+        const order = [1, 0, 2];   // prata, ouro, bronze — da esquerda para a direita
+        const baseY = 176;
+        order.forEach((rank, slot) => {
+            const row = this.standings[rank];
+            if (!row) return;
+            const x = 66 + slot * 94;
+            const h = PODIUM_H[rank];
+            const rise = clamp((this.t - 0.4 - slot * 0.25) / 0.5, 0, 1);
+            const drawH = Math.round(h * easeOutBack(rise));
+            if (drawH <= 0) return;
+
+            px.rect(x - 34, baseY - drawH, 68, drawH, SVC['n']);
+            px.rect(x - 34, baseY - drawH, 68, 2, SVC['q']);
+            font.text(c, String(rank + 1), x, baseY - drawH + 8, {
+                color: MEDAL_COLOR[['gold', 'silver', 'bronze'][rank]], align: 'center', mono: true, scale: 2
+            });
+
+            if (rise >= 1) {
+                const isPlayer = row.id === 'player';
+                px.blitScreen(sprites.get(isPlayer ? 'ballIdle' : `cheer#${rank % 4}`), x, baseY - drawH);
+                font.text(c, row.name, x, baseY + 6, {
+                    color: isPlayer ? 'A' : 'q', align: 'center', mono: true
+                });
+                font.text(c, `${row.points} PTS`, x, baseY + 17, {
+                    color: 'p', align: 'center', mono: true
+                });
+            }
+        });
+
+        // resumo do jogador
+        const summary = this.place === 1 ? 'CAMPEÃO DA ORLA!'
+            : this.place <= 3 ? 'PÓDIO GARANTIDO' : 'FICA PRA PRÓXIMA';
+        if (this.t > 1.6) {
+            font.textBig(c, summary, W / 2, 40, {
+                scale: 2, color: this.place === 1 ? 'A' : 'r', outlineColor: '0', align: 'center'
+            });
+            font.text(c, `${this.place}º LUGAR · ${this.champ.total()} PONTOS · ${this.champ.goldCount()} OURO(S)`,
+                W / 2, 62, { color: 'p', align: 'center', mono: true });
+            if (this.champ.sponsor) {
+                font.text(c, `PATROCÍNIO ${this.champ.sponsor.name}`, W / 2, 74, {
+                    color: this.champ.sponsor.kit.shirt, align: 'center', mono: true
+                });
+            }
+            if (this.isRecord && Math.floor(this.t * 3) % 2 === 0) {
+                font.text(c, 'MELHOR CAMPANHA!', W / 2, 86, { color: 'x', align: 'center', mono: true });
+            }
+        }
+
+        screenFooter(px, font, 'Z VOLTA AO MENU');
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Recordes
+// ---------------------------------------------------------------------------
+
+export const recordsScene = {
+    id: 'records',
+    enter(ctx) { this.ctx = ctx; this.t = 0; },
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        if (ctx.input.state.b.pressed || ctx.input.state.a.pressed || ctx.input.state.start.pressed) {
+            ctx.audio.play('ui_back');
+            ctx.goto(menuScene);
+        }
+    },
+    draw() {
+        const { px, font, sprites, scenery, store } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -20);
+        drawNeonGrid(c, 176, 48, this.t * 0.25);
+
+        const medals = store.medalCount();
+        scrim(px, 31, 179);
+        screenHeader(px, font, 'RECORDES',
+            `${medals.gold} OURO · ${medals.silver} PRATA · ${medals.bronze} BRONZE`);
+
+        EVENT_ORDER.forEach((id, i) => {
+            const ev = EVENTS[id];
+            const best = store.getBest(id);
+            const y = 42 + i * 22;
+            panel(px, 10, y - 4, W - 20, 20, { fill: '1', border: 'n', accent: best.score ? ev.tint : null });
+            font.text(c, ev.name, 18, y, { color: best.score ? 'q' : 'n', mono: true });
+            font.text(c, best.detail || ev.place, 18, y + 9, { color: 'o', mono: true });
+            font.text(c, best.score ? String(best.score).padStart(4, '0') : '----', W - 46, y + 3, {
+                color: best.score ? 'A' : 'n', align: 'right', mono: true
+            });
+            if (best.medal) {
+                font.text(c, MEDAL_LABEL[best.medal], W - 16, y + 3, {
+                    color: MEDAL_COLOR[best.medal], align: 'right', mono: true
+                });
+            }
+        });
+
+        const champ = store.data.champ;
+        panel(px, 10, 178, W - 20, 24, { fill: '2', border: 'x' });
+        font.text(c, 'MELHOR CAMPANHA', 18, 182, { color: 'o', mono: true });
+        font.text(c, champ.best ? `${champ.place}º LUGAR · ${champ.best} PTS · ${champ.golds} OURO(S)` : 'AINDA NÃO DISPUTADA',
+            18, 192, { color: champ.best ? 'r' : 'n', mono: true });
+
+        screenFooter(px, font, 'X VOLTA');
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Opções
+// ---------------------------------------------------------------------------
+
+export const optionsScene = {
+    id: 'options',
+    enter(ctx) {
+        this.ctx = ctx;
+        this.t = 0;
+        this.confirmReset = false;
+        this.rebuild();
+    },
+    rebuild() {
+        const opts = this.ctx.store.getOpts();
+        this.menu = new MenuList([
+            { label: `SOM: ${opts.mute ? 'DESLIGADO' : 'LIGADO'}`, value: 'mute', hint: 'Também alterna com a tecla M.' },
+            { label: `SCANLINES: ${opts.scanlines ? 'LIGADAS' : 'DESLIGADAS'}`, value: 'scanlines', hint: 'Simula as linhas da TV de tubo.' },
+            { label: `TREMOR DE TELA: ${opts.shake ? 'LIGADO' : 'DESLIGADO'}`, value: 'shake', hint: 'Desligue se preferir imagem estável.' },
+            {
+                label: this.confirmReset ? 'CONFIRMAR? Z APAGA' : 'APAGAR RECORDES',
+                value: 'reset',
+                hint: 'Zera medalhas, recordes e campanhas.'
+            },
+            { label: 'VOLTAR', value: 'back' }
+        ], { wrap: true });
+    },
+    update(dtMs) {
+        const ctx = this.ctx;
+        this.t += dtMs / 1000;
+        const keep = this.menu.index;
+        const action = this.menu.update(ctx.input, ctx.audio, dtMs);
+        if (action === 'back') { ctx.goto(menuScene); return; }
+        if (action === 'move' && this.confirmReset) { this.confirmReset = false; this.rebuild(); this.menu.index = keep; }
+        if (action !== 'confirm') return;
+
+        const store = ctx.store;
+        const opts = store.getOpts();
+        switch (this.menu.current.value) {
+            case 'mute':
+                store.setOpt('mute', !opts.mute);
+                ctx.audio.setMute(!opts.mute);
+                break;
+            case 'scanlines':
+                store.setOpt('scanlines', !opts.scanlines);
+                ctx.applyOptions();
+                break;
+            case 'shake':
+                store.setOpt('shake', !opts.shake);
+                ctx.applyOptions();
+                break;
+            case 'reset':
+                if (this.confirmReset) {
+                    store.reset();
+                    ctx.applyOptions();
+                    this.confirmReset = false;
+                    ctx.audio.play('ui_back');
+                } else {
+                    this.confirmReset = true;
+                }
+                break;
+            case 'back':
+                ctx.goto(menuScene);
+                return;
+            default: break;
+        }
+        const idx = this.menu.index;
+        this.rebuild();
+        this.menu.index = idx;
+    },
+    draw() {
+        const { px, font, sprites, scenery } = this.ctx;
+        const c = px.ctx;
+        c.drawImage(scenery.sky, 0, -10);
+        drawNeonGrid(c, 172, 52, this.t * 0.3);
+        scrim(px, 31, 179);
+        screenHeader(px, font, 'OPÇÕES', 'AJUSTES DO GABINETE');
+        this.menu.draw(px, font, sprites, W / 2, 66, { lineH: 20, time: this.t, hintY: 178 });
+        screenFooter(px, font, 'Z CONFIRMA · X VOLTA');
     }
 };

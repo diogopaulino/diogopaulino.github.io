@@ -30,12 +30,16 @@ export function resolveColor(color) {
     return color;
 }
 
+// Qualquer caractere fora desta lista cai no glifo '?' silenciosamente, então tudo que o jogo
+// escreve na tela precisa estar aqui — inclusive a pontuação decorativa (·, º, °, —) que é
+// usada como separador nos HUDs e nos placares.
 const CHARSET =
     ' !"#$%&\'()*+,-./0123456789:;<=>?@' +
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`' +
     'abcdefghijklmnopqrstuvwxyz{|}~' +
     'ÁÀÂÃÉÊÍÓÔÕÚÜÇÑáàâãéêíóôõúüçñ' +
-    '←→↑↓♥★●○◆▲▼';
+    '·º°ª—…' +
+    '♥★●○◆▲▼';
 
 // Limiar de maioria: uma célula final só vira "tinta" se uma fração mínima dos subpixels
 // super-amostrados estiver ativa. Usar "qualquer subpixel ativo" (OR) faz uma fonte em negrito

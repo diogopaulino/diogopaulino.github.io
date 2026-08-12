@@ -227,28 +227,60 @@ para perguntar como cada lab foi construído.`
       win.style.setProperty('--wy', win.style.top);
     });
 
-    bar.addEventListener('pointerup', () => {
+    const endDrag = () => {
       drag = null;
-    });
+    };
+
+    bar.addEventListener('pointerup', endDrag);
+    bar.addEventListener('pointercancel', endDrag);
+    bar.addEventListener('lostpointercapture', endDrag);
   });
 
   /* Phosphor */
-  $$('[data-phosphor]').forEach((btn) => {
+  function setPhosphor(mode) {
+    document.body.dataset.phosphor = mode;
+    $$('.phos-btn').forEach((b) => {
+      const active = b.dataset.phosphor === mode;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  $$('.phos-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const mode = btn.dataset.phosphor;
-      document.body.dataset.phosphor = mode;
-      $$('.phos-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.phosphor === mode));
-      setStatus(`phosphor :: ${mode}`);
+      setPhosphor(btn.dataset.phosphor);
+      setStatus(`phosphor :: ${btn.dataset.phosphor}`);
     });
   });
 
-  /* Clock */
+  setPhosphor(document.body.dataset.phosphor || 'green');
+
+  /* Clock — pausa quando a aba está oculta para não acordar o main thread à toa */
+  let clockTimer = null;
+
   function tickClock() {
     const now = new Date();
     statusClock.textContent = now.toTimeString().slice(0, 8);
   }
-  tickClock();
-  setInterval(tickClock, 1000);
+
+  function startClock() {
+    tickClock();
+    if (clockTimer === null) clockTimer = setInterval(tickClock, 1000);
+  }
+
+  function stopClock() {
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopClock();
+    else startClock();
+  });
+
+  startClock();
 
   /* ─── Terminal ─── */
   const termOutput = $('#termOutput');
@@ -270,14 +302,6 @@ para perguntar como cada lab foi construído.`
     termOutput.scrollTop = termOutput.scrollHeight;
   }
 
-  function printHTML(html, cls = 'line-out') {
-    const line = document.createElement('div');
-    line.className = cls;
-    line.innerHTML = html;
-    termOutput.appendChild(line);
-    termOutput.scrollTop = termOutput.scrollHeight;
-  }
-
   const HELP = `CyberOS shell — comandos disponíveis
 
   help              lista de comandos
@@ -293,6 +317,8 @@ para perguntar como cada lab foi construído.`
   hack              atalho p/ firewall
   oracle [pergunta] consulta o Oracle
   history           histórico de comandos
+
+Atalhos: TAB autocompleta · ↑/↓ navega no histórico
 
 Dica: explore ~/secrets e ~/projects`;
 
@@ -386,12 +412,10 @@ Dica: explore ~/secrets e ~/projects`;
   function cmdTheme(args) {
     const t = (args[0] || '').toLowerCase();
     if (t === 'g' || t === 'green' || t === 'verde') {
-      document.body.dataset.phosphor = 'green';
-      $$('.phos-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.phosphor === 'green'));
+      setPhosphor('green');
       print('fósforo → green');
     } else if (t === 'a' || t === 'amber' || t === 'ambar' || t === 'âmbar') {
-      document.body.dataset.phosphor = 'amber';
-      $$('.phos-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.phosphor === 'amber'));
+      setPhosphor('amber');
       print('fósforo → amber');
     } else {
       print('uso: theme green|amber', 'line-err');
@@ -501,7 +525,66 @@ Dica: explore ~/secrets e ~/projects`;
     runCommand(value);
   });
 
+  /* Autocompletar com Tab: completa o comando na 1ª palavra e caminhos nas seguintes. */
+  const COMMANDS = [
+    'help', 'ls', 'cd', 'cat', 'pwd', 'clear', 'whoami', 'neofetch', 'open', 'run',
+    'theme', 'hack', 'oracle', 'cipher', 'history', 'echo', 'date', 'sudo'
+  ];
+
+  function longestCommonPrefix(list) {
+    if (!list.length) return '';
+    return list.reduce((prefix, item) => {
+      let i = 0;
+      while (i < prefix.length && i < item.length && prefix[i] === item[i]) i++;
+      return prefix.slice(0, i);
+    });
+  }
+
+  function completePath(fragment) {
+    const slash = fragment.lastIndexOf('/');
+    const dirPart = slash >= 0 ? fragment.slice(0, slash + 1) : '';
+    const namePart = slash >= 0 ? fragment.slice(slash + 1) : fragment;
+    const { node, full } = resolve(dirPart || '.');
+    if (!node || node.type !== 'dir') return null;
+
+    const matches = listDir(full)
+      .filter((name) => name.startsWith(namePart))
+      .map((name) => {
+        const childPath = full === '/' ? `/${name}` : `${full}/${name}`;
+        return FS[childPath] && FS[childPath].type === 'dir' ? `${name}/` : name;
+      });
+
+    return { dirPart, namePart, matches };
+  }
+
+  function handleTabComplete() {
+    const value = termInput.value;
+    const parts = value.split(' ');
+    const isFirstWord = parts.length === 1;
+
+    if (isFirstWord) {
+      const matches = COMMANDS.filter((c) => c.startsWith(parts[0]));
+      if (!matches.length) return;
+      termInput.value = matches.length === 1 ? `${matches[0]} ` : longestCommonPrefix(matches);
+      if (matches.length > 1) print(matches.join('  '));
+      return;
+    }
+
+    const result = completePath(parts[parts.length - 1]);
+    if (!result || !result.matches.length) return;
+    const completion =
+      result.matches.length === 1 ? result.matches[0] : longestCommonPrefix(result.matches);
+    parts[parts.length - 1] = result.dirPart + completion;
+    termInput.value = parts.join(' ');
+    if (result.matches.length > 1) print(result.matches.join('  '));
+  }
+
   termInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      handleTabComplete();
+      return;
+    }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (!history.length) return;

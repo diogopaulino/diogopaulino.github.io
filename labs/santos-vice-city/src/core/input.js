@@ -25,6 +25,10 @@ export class InputManager {
         this._kbDown = new Set();
         this._touchDown = new Set();
         this._gpDown = new Set();
+        // Toques muito curtos podem começar e terminar entre dois frames — sem este buffer,
+        // o jogo simplesmente não veria a tecla. Cada ação registrada aqui vale por um frame,
+        // garantindo que todo apertar gere exatamente um `pressed`.
+        this._buffered = new Set();
 
         this._pauseCb = null;
         this._muteCb = null;
@@ -47,7 +51,7 @@ export class InputManager {
             if (e.code === 'Escape' || e.code === 'KeyP') { this._pauseCb && this._pauseCb(); return; }
             if (e.code === 'KeyM') { this._muteCb && this._muteCb(); return; }
             const action = KEY_MAP[e.code];
-            if (action) this._kbDown.add(action);
+            if (action) { this._kbDown.add(action); this._buffered.add(action); }
         }, { signal, passive: false });
         window.addEventListener('keyup', (e) => {
             const action = KEY_MAP[e.code];
@@ -81,6 +85,7 @@ export class InputManager {
                 e.preventDefault();
                 try { btn.setPointerCapture(e.pointerId); } catch { /* noop */ }
                 this._touchDown.add(action);
+                this._buffered.add(action);
                 if (navigator.vibrate) navigator.vibrate(8);
             };
             const release = () => this._touchDown.delete(action);
@@ -89,8 +94,6 @@ export class InputManager {
             btn.addEventListener('pointercancel', release, { signal });
             btn.addEventListener('lostpointercapture', release, { signal });
         });
-        const pauseBtn = overlayEl.querySelector('[data-btn="start"]');
-        void pauseBtn;
     }
 
     pollGamepad() {
@@ -115,7 +118,8 @@ export class InputManager {
     update(dtMs) {
         this.pollGamepad();
         for (const a of ACTIONS) {
-            const down = this._kbDown.has(a) || this._touchDown.has(a) || this._gpDown.has(a);
+            const down = this._kbDown.has(a) || this._touchDown.has(a) ||
+                this._gpDown.has(a) || this._buffered.has(a);
             const st = this.state[a];
             st.pressed = down && !this.prevDown[a];
             st.released = !down && this.prevDown[a];
@@ -123,6 +127,7 @@ export class InputManager {
             st.heldMs = down ? st.heldMs + dtMs : 0;
             this.prevDown[a] = down;
         }
+        this._buffered.clear();
     }
 
     axisX() { return (this.state.right.down ? 1 : 0) - (this.state.left.down ? 1 : 0); }
@@ -132,6 +137,7 @@ export class InputManager {
         this._kbDown.clear();
         this._touchDown.clear();
         this._gpDown.clear();
+        this._buffered.clear();
     }
 
     dispose() { this.ac.abort(); }

@@ -13,6 +13,81 @@
     font-family: "MS Sans Serif", Tahoma, Geneva, sans-serif;
 }
 
+/* --------------------------------------------------------------------------
+   SKINS — cada skin é apenas um conjunto de custom properties (zero imagens)
+   -------------------------------------------------------------------------- */
+.desktop {
+    --wa-face: #c6c6c6;
+    --wa-face-light: #f4f4f4;
+    --wa-face-fg: #111;
+    --wa-title-a: #000080;
+    --wa-title-b: #1084d0;
+    --wa-title-fg: #fff;
+    --wa-lcd-bg: #050a06;
+    --wa-lcd-fg: #21e654;
+    --wa-btn-face: #c6c6c6;
+    --wa-btn-light: #fff;
+    --wa-btn-active: #9d9d9d;
+    --wa-btn-active-fg: #000;
+    --wa-track: #8f8f8f;
+    --wa-focus: #ffdb3a;
+    --desktop: #008080;
+}
+
+.desktop[data-skin="green"] {
+    --wa-face: #1f3a27;
+    --wa-face-light: #4d7d5c;
+    --wa-face-fg: #d8ffe4;
+    --wa-title-a: #0b3d1c;
+    --wa-title-b: #22a04a;
+    --wa-title-fg: #eafff0;
+    --wa-lcd-bg: #03150a;
+    --wa-lcd-fg: #59ff92;
+    --wa-btn-face: #2a4d34;
+    --wa-btn-light: #63946f;
+    --wa-btn-active: #467d55;
+    --wa-btn-active-fg: #eafff0;
+    --wa-track: #143020;
+    --wa-focus: #b6ff6a;
+    --desktop: #05261a;
+}
+
+.desktop[data-skin="aqua"] {
+    --wa-face: #dbe9f6;
+    --wa-face-light: #ffffff;
+    --wa-face-fg: #0d2438;
+    --wa-title-a: #1d5f92;
+    --wa-title-b: #8ecbf5;
+    --wa-title-fg: #ffffff;
+    --wa-lcd-bg: #08283f;
+    --wa-lcd-fg: #6fe0ff;
+    --wa-btn-face: #cfe2f2;
+    --wa-btn-light: #ffffff;
+    --wa-btn-active: #9cc4e4;
+    --wa-btn-active-fg: #06263c;
+    --wa-track: #a8c4da;
+    --wa-focus: #0b63a8;
+    --desktop: #3a6ea5;
+}
+
+.desktop[data-skin="zelda"] {
+    --wa-face: #c2a870;
+    --wa-face-light: #efdca6;
+    --wa-face-fg: #241a06;
+    --wa-title-a: #4a3411;
+    --wa-title-b: #b78a30;
+    --wa-title-fg: #ffeec2;
+    --wa-lcd-bg: #16220c;
+    --wa-lcd-fg: #ffd964;
+    --wa-btn-face: #c2a870;
+    --wa-btn-light: #f2e2b2;
+    --wa-btn-active: #9a8149;
+    --wa-btn-active-fg: #1c1405;
+    --wa-track: #8c7643;
+    --wa-focus: #2f6d1f;
+    --desktop: #2f4416;
+}
+
 *,
 *::before,
 *::after {
@@ -258,22 +333,649 @@ a:focus-visible {
     outline: 0;
 }
 
-#winamp-stage .webamp {
-    image-rendering: pixelated;
+/* ==========================================================================
+   PLAYER — janelas, display LCD, controles (100% CSS, sem imagens)
+   ========================================================================== */
+
+.wa-window {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    border: 2px outset var(--wa-face-light);
+    background: var(--wa-face);
+    color: var(--wa-face-fg);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
 }
 
-.loading-window {
+.wa-window[hidden] {
+    display: none;
+}
+
+.wa-main {
+    top: 0;
+    left: 0;
+    width: 550px;
+    height: 232px;
+}
+
+.wa-eq {
+    top: 232px;
+    left: 0;
+    width: 550px;
+    height: 232px;
+}
+
+.wa-pl {
+    top: 0;
+    left: 550px;
+    width: 550px;
+    height: 464px;
+}
+
+.wa-titlebar {
+    display: flex;
+    height: 24px;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    margin: 2px;
+    padding: 0 4px;
+    background: linear-gradient(90deg, var(--wa-title-a), var(--wa-title-b));
+    color: var(--wa-title-fg);
+}
+
+.wa-title-text {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.wa-title-deco {
+    height: 8px;
+    flex: 1;
+    background: repeating-linear-gradient(0deg,
+            currentColor 0 1px,
+            transparent 1px 3px);
+    opacity: 0.45;
+}
+
+.wa-title-buttons {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 3px;
+}
+
+.wa-window-btn {
+    min-width: 26px;
+    height: 17px;
+    padding: 0 4px;
+    border: 2px outset var(--wa-btn-light);
+    background: var(--wa-btn-face);
+    color: var(--wa-face-fg);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.wa-window-btn.is-on {
+    border-style: inset;
+    background: var(--wa-btn-active);
+    color: var(--wa-btn-active-fg);
+}
+
+.wa-window-btn:hover {
+    filter: brightness(1.12);
+}
+
+.wa-window-close {
+    min-width: 19px;
+    font-size: 12px;
+}
+
+/* ---------- Janela principal ---------- */
+
+.wa-main-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 8px 8px;
+}
+
+.wa-display {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 2px inset var(--wa-face-light);
+    background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+        var(--wa-lcd-bg);
+    color: var(--wa-lcd-fg);
+}
+
+.wa-display-left {
+    display: flex;
+    width: 132px;
+    flex: 0 0 auto;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.wa-time {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.wa-time-digits {
+    display: block;
+    font-family: "Courier New", monospace;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--wa-lcd-fg) 55%, transparent);
+    font-variant-numeric: tabular-nums;
+}
+
+.wa-time.is-blinking .wa-time-digits {
+    animation: wa-blink 1s steps(2, jump-none) infinite;
+}
+
+@keyframes wa-blink {
+    50% {
+        opacity: 0.28;
+    }
+}
+
+.wa-status-lamps {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.wa-lamp {
+    opacity: 0.2;
+    transition: opacity 160ms linear;
+}
+
+.wa-lamp.is-lit {
+    opacity: 1;
+    text-shadow: 0 0 7px currentColor;
+}
+
+.wa-display-right {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wa-vis-wrap {
+    display: block;
+    width: 100%;
+    height: 46px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--wa-lcd-fg) 28%, transparent);
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.wa-vis-wrap:hover {
+    border-color: var(--wa-lcd-fg);
+}
+
+#wa-vis {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.wa-marquee {
+    overflow: hidden;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.wa-marquee span {
+    display: inline-block;
+    padding-right: 32px;
+}
+
+.wa-marquee.is-scrolling span {
+    animation: wa-marquee var(--wa-marquee-duration, 12s) linear infinite;
+}
+
+@keyframes wa-marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.wa-meta {
+    display: flex;
+    margin: 0;
+    gap: 12px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    opacity: 0.82;
+    text-transform: uppercase;
+}
+
+.wa-sliders {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 12px;
+}
+
+.wa-slider {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.wa-slider-label {
+    flex: 0 0 auto;
+    opacity: 0.75;
+}
+
+.wa-slider output {
+    min-width: 48px;
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+    text-align: right;
+}
+
+.wa-seek {
+    flex: 0 0 auto;
+}
+
+/* Sliders retrô */
+.wa-main input[type="range"],
+.wa-eq input[type="range"] {
+    width: 100%;
+    height: 16px;
+    padding: 0;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.wa-main input[type="range"]::-webkit-slider-runnable-track,
+.wa-eq input[type="range"]::-webkit-slider-runnable-track {
+    height: 8px;
+    border: 2px inset var(--wa-face-light);
+    background: var(--wa-track);
+}
+
+.wa-main input[type="range"]::-moz-range-track,
+.wa-eq input[type="range"]::-moz-range-track {
+    height: 8px;
+    border: 2px inset var(--wa-face-light);
+    background: var(--wa-track);
+}
+
+.wa-main input[type="range"]::-webkit-slider-thumb,
+.wa-eq input[type="range"]::-webkit-slider-thumb {
+    width: 13px;
+    height: 16px;
+    margin-top: -6px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px outset var(--wa-btn-light);
+    background: var(--wa-btn-face);
+}
+
+.wa-main input[type="range"]::-moz-range-thumb,
+.wa-eq input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 16px;
+    border: 2px outset var(--wa-btn-light);
+    border-radius: 0;
+    background: var(--wa-btn-face);
+}
+
+.wa-main input[type="range"]:hover::-webkit-slider-thumb,
+.wa-eq input[type="range"]:hover::-webkit-slider-thumb {
+    background: var(--wa-btn-active);
+}
+
+.wa-main input[type="range"]:focus-visible,
+.wa-eq input[type="range"]:focus-visible,
+.wa-pl-list:focus-visible {
+    outline: 2px solid var(--wa-focus);
+    outline-offset: 2px;
+}
+
+.wa-transport {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.wa-transport-main {
+    display: flex;
+    gap: 3px;
+}
+
+.wa-btn {
+    display: grid;
+    width: 40px;
+    height: 30px;
+    place-items: center;
+    padding: 0;
+    border: 2px outset var(--wa-btn-light);
+    background: var(--wa-btn-face);
+    color: var(--wa-face-fg);
+    transition: filter 120ms linear;
+}
+
+.wa-btn:hover {
+    filter: brightness(1.15);
+}
+
+.wa-btn:active,
+.wa-btn.is-active {
+    border-style: inset;
+    background: var(--wa-btn-active);
+}
+
+.wa-btn-eject {
+    margin-left: 8px;
+}
+
+.wa-ico {
+    display: block;
+    width: 14px;
+    height: 12px;
+    background: currentColor;
+}
+
+.wa-ico-play {
+    clip-path: polygon(6% 0, 100% 50%, 6% 100%);
+}
+
+.wa-ico-pause {
+    clip-path: polygon(0 0, 34% 0, 34% 100%, 0 100%, 0 0, 66% 0, 100% 0, 100% 100%, 66% 100%, 66% 0);
+}
+
+.wa-ico-stop {
+    clip-path: polygon(6% 6%, 94% 6%, 94% 94%, 6% 94%);
+}
+
+.wa-ico-prev {
+    clip-path: polygon(0 0, 14% 0, 14% 42%, 100% 0, 100% 100%, 14% 58%, 14% 100%, 0 100%);
+}
+
+.wa-ico-next {
+    clip-path: polygon(0 0, 86% 42%, 86% 0, 100% 0, 100% 100%, 86% 100%, 86% 58%, 0 100%);
+}
+
+.wa-ico-eject {
+    clip-path: polygon(50% 0, 100% 55%, 0 55%, 0 72%, 100% 72%, 100% 100%, 0 100%, 0 55%);
+}
+
+.wa-transport-modes {
+    display: flex;
+    gap: 4px;
+}
+
+.wa-toggle {
+    min-width: 56px;
+    height: 22px;
+    padding: 0 8px;
+    border: 2px outset var(--wa-btn-light);
+    background: var(--wa-btn-face);
+    color: var(--wa-face-fg);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.wa-toggle:hover {
+    filter: brightness(1.15);
+}
+
+.wa-toggle.is-on {
+    border-style: inset;
+    background: var(--wa-btn-active);
+    color: var(--wa-btn-active-fg);
+    font-weight: 700;
+}
+
+/* ---------- Equalizador ---------- */
+
+.wa-eq-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    gap: 14px;
+    padding: 8px 10px 10px;
+}
+
+.wa-eq-side {
+    display: flex;
+    width: 128px;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.wa-toggle-lg {
+    width: 100%;
+    height: 26px;
+}
+
+.wa-eq-bands {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2px;
+}
+
+.wa-eq-band {
+    position: relative;
+    display: flex;
+    width: 34px;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    cursor: pointer;
+}
+
+.wa-eq-band input[type="range"] {
+    position: absolute;
+    top: calc(50% - 16px);
+    left: 50%;
+    width: 118px !important;
+    transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.wa-eq-band-label {
+    position: relative;
+    z-index: 1;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    opacity: 0.85;
+}
+
+.wa-eq-preamp {
+    height: 130px;
+}
+
+.wa-eq-preamp input[type="range"] {
+    width: 104px !important;
+}
+
+.wa-preset {
+    width: 100%;
+}
+
+.wa-preset select {
+    width: 100%;
+    height: 22px;
+    padding: 0 4px;
+    border: 2px inset var(--wa-face-light);
+    background: var(--wa-btn-face);
+    color: var(--wa-face-fg);
+    font: inherit;
+    font-size: 11px;
+}
+
+/* ---------- Playlist ---------- */
+
+.wa-pl-body {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 0 4px 4px;
+}
+
+.wa-pl-list {
+    min-height: 0;
+    flex: 1;
+    padding: 3px;
+    margin: 0;
+    overflow-y: auto;
+    border: 2px inset var(--wa-face-light);
+    background: var(--wa-lcd-bg);
+    color: var(--wa-lcd-fg);
+    list-style: none;
+    scrollbar-color: var(--wa-lcd-fg) var(--wa-lcd-bg);
+    scrollbar-width: thin;
+}
+
+.wa-pl-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 6px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.wa-pl-item:hover {
+    background: color-mix(in srgb, var(--wa-lcd-fg) 16%, transparent);
+}
+
+.wa-pl-item.is-current {
+    background: var(--wa-title-a);
+    color: var(--wa-title-fg);
+    font-weight: 700;
+}
+
+.wa-pl-item.is-selected {
+    outline: 1px dotted currentColor;
+    outline-offset: -2px;
+}
+
+.wa-pl-index {
+    min-width: 22px;
+    flex: 0 0 auto;
+    opacity: 0.7;
+    text-align: right;
+}
+
+.wa-pl-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wa-pl-time {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+.wa-pl-empty {
     position: absolute;
     top: 50%;
-    left: 50%;
-    width: 260px;
-    border: 2px outset var(--win-light);
-    background: var(--win-gray);
-    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
-    transform: translate(-50%, -50%);
+    right: 22px;
+    left: 22px;
+    margin: 0;
+    color: var(--wa-lcd-fg);
+    font-size: 12px;
+    text-align: center;
+    transform: translateY(-50%);
 }
 
-.window-titlebar,
+.wa-pl-footer {
+    display: flex;
+    height: 30px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.wa-pl-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.wa-pl-btn {
+    height: 22px;
+    padding: 0 10px;
+    border: 2px outset var(--wa-btn-light);
+    background: var(--wa-btn-face);
+    color: var(--wa-face-fg);
+    font-size: 11px;
+}
+
+.wa-pl-btn:hover {
+    filter: brightness(1.15);
+}
+
+.wa-pl-btn:active {
+    border-style: inset;
+}
+
+.wa-pl-stats {
+    margin: 0;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
 .dialog-titlebar {
     display: flex;
     min-height: 21px;
@@ -284,33 +986,6 @@ a:focus-visible {
     background: linear-gradient(90deg, #000080, #1084d0);
     color: #fff;
     font-weight: 700;
-}
-
-.window-controls {
-    display: grid;
-    width: 16px;
-    height: 15px;
-    place-items: center;
-    border: 2px outset #fff;
-    background: var(--win-gray);
-    color: #000;
-    line-height: 10px;
-}
-
-.loading-window-body {
-    display: flex;
-    min-height: 72px;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-}
-
-.loading-window-body p {
-    margin: 0;
-}
-
-.hourglass {
-    font-size: 25px;
 }
 
 .desktop-tip {
@@ -706,6 +1381,12 @@ noscript {
     :root {
         --stage-width: 550px;
         --stage-height: 783px;
+    }
+
+    .wa-pl {
+        top: 464px;
+        left: 0;
+        height: 319px;
     }
 
     .desktop-icons {

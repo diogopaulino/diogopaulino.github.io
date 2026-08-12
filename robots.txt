@@ -1,0 +1,5 @@
+# Site estático do portfólio e do playground de laboratórios.
+User-agent: *
+Allow: /
+
+Sitemap: https://diogopaulino.com.br/sitemap.xml

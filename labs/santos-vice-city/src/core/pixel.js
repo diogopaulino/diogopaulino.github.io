@@ -43,18 +43,28 @@ export class PixelSurface {
     }
 
     fit() {
-        const box = this.wrap.getBoundingClientRect();
-        if (box.width < 4 || box.height < 4) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const raw = Math.min(box.width / W, box.height / H);
-        if (!(raw > 0)) return;
-        const intScale = Math.max(1, Math.floor(raw));
-        const cssScale = (intScale >= 2 || !this.coarse) ? intScale : raw;
+        // A caixa útil é a área interna do wrap: o padding é a "moldura" do gabinete e não
+        // pode entrar na conta, senão a tela vaza por baixo dela.
+        const cs = getComputedStyle(this.wrap);
+        const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const availW = this.wrap.clientWidth - padX;
+        const availH = this.wrap.clientHeight - padY;
+        if (availW < 4 || availH < 4) return;
 
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const raw = Math.min(availW / W, availH / H);
+        if (!(raw > 0)) return;
+
+        // O tamanho em CSS preenche a moldura (escala fracionária), mas o buffer de trás é
+        // sempre um múltiplo inteiro de 320x224. Com `image-rendering: pixelated` o navegador
+        // faz a ampliação final por vizinho mais próximo — pixels continuam duros e nenhum
+        // espaço da moldura fica sobrando, que era o defeito da escala inteira pura.
+        const cssScale = raw;
         this.screen.style.width = Math.round(W * cssScale) + 'px';
         this.screen.style.height = Math.round(H * cssScale) + 'px';
 
-        const back = clamp(Math.round(cssScale * dpr), 1, MAX_BACK_SCALE);
+        const back = clamp(Math.ceil(cssScale * dpr), 1, MAX_BACK_SCALE);
         if (this.screen.width !== W * back || this.screen.height !== H * back) {
             this.screen.width = W * back;
             this.screen.height = H * back;
@@ -71,7 +81,8 @@ export class PixelSurface {
     }
 
     shake(power, ms) {
-        if (this.reducedMotion) return;
+        // respeitamos tanto a preferência do sistema quanto o ajuste nas opções do jogo
+        if (this.reducedMotion || this.shakeEnabled === false) return;
         this.shakePower = Math.max(this.shakePower, power);
         this.shakeMs = Math.max(this.shakeMs, ms);
         this.shakeT = 0;
@@ -105,10 +116,14 @@ export class PixelSurface {
         this._draw(sprite, dx, dy, opts);
     }
 
-    /** Desenha um sprite direto na tela, ignorando câmera (HUD). */
+    /**
+     * Desenha um sprite direto na tela, ignorando câmera (HUD, cenas de menu).
+     * Assim como `blit`, honra a âncora do sprite (ox/oy): (sx, sy) é o ponto de apoio —
+     * tipicamente o centro horizontal e a base — e não o canto superior esquerdo.
+     */
     blitScreen(sprite, sx, sy, opts = {}) {
         if (!sprite) return;
-        this._draw(sprite, Math.round(sx), Math.round(sy), opts);
+        this._draw(sprite, Math.round(sx - sprite.ox), Math.round(sy - sprite.oy), opts);
     }
 
     _draw(sprite, dx, dy, opts) {

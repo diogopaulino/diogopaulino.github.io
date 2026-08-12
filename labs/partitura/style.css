@@ -272,10 +272,15 @@ body {
 /* ==========================================================================
    3. ÁREA DE TRABALHO STUDIO WORKSPACE (PARTITURA + TECLADO AO VIVO)
    ========================================================================== */
+/* Itens de flex têm `min-width: auto` por padrão, ou seja, não encolhem abaixo do próprio
+   conteúdo. Como a pauta é um SVG de 680px, essa cadeia inteira travava em ~750px e estourava
+   a tela no celular. Zerar o min-width em cada nível é o que libera o encolhimento. */
 .studio-workspace {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .staff-display-card {
@@ -288,6 +293,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .staff-display-card.mode-bass-clef {
@@ -300,9 +307,15 @@ body {
 
 .staff-header-mini {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.staff-header-mini > * {
+  min-width: 0;
 }
 
 .clef-badge {
@@ -320,10 +333,13 @@ body {
   padding: 0.4rem;
   display: flex; justify-content: center;
   box-shadow: inset 0 4px 15px rgba(0,0,0,0.8);
+  min-width: 0;
+  max-width: 100%;
 }
 
 #staff-canvas {
   width: 100%;
+  min-width: 0;
   max-width: 680px;
   height: auto;
   max-height: 155px; /* Altura cirúrgica para evitar scroll vertical! */

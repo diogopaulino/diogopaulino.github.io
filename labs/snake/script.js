@@ -1,31 +1,78 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
+const pauseScreen = document.getElementById('pauseScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const finalScoreSpan = document.getElementById('finalScore');
+const hudScore = document.getElementById('hudScore');
+const hudBest = document.getElementById('hudBest');
+const statusLive = document.getElementById('gameStatus');
 const powerLed = document.querySelector('.power-led');
 
 // Game Constants
 const GRID_SIZE = 20;
 const TILE_COUNT = canvas.width / GRID_SIZE;
-const GAME_SPEED = 100; // ms per frame
+const BASE_SPEED = 130; // ms per step at score 0
+const MIN_SPEED = 65;   // fastest step interval
+const STORAGE_KEY = 'snakeHighScore';
 
 // Game State
 let snake = [];
 let food = { x: 0, y: 0 };
 let dx = 0;
 let dy = 0;
+let queuedDirection = null; // buffers one input per step so fast taps never reverse the snake
 let score = 0;
-let gameLoopId = null;
+let highScore = readHighScore();
+let stepInterval = BASE_SPEED;
+let accumulator = 0;
+let lastFrame = 0;
+let rafId = null;
 let isGameRunning = false;
 let isPaused = false;
 
-// Colors (match CSS variables)
-const COLORS = {
-    bg: '#9bbc0f',
-    snake: '#0f380f',
-    food: '#0f380f'
-};
+// Colors are pulled from the CSS custom properties so the LCD follows the theme.
+const COLORS = { bg: '#9bbc0f', snake: '#0f380f', food: '#0f380f' };
+
+function readCssColor(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+}
+
+function syncColors() {
+    COLORS.bg = readCssColor('--gb-screen-bg', '#9bbc0f');
+    COLORS.snake = readCssColor('--gb-pixel-dark', '#0f380f');
+    COLORS.food = COLORS.snake;
+}
+
+function readHighScore() {
+    try {
+        return Number(localStorage.getItem(STORAGE_KEY)) || 0;
+    } catch (err) {
+        return 0;
+    }
+}
+
+function saveHighScore(value) {
+    try {
+        localStorage.setItem(STORAGE_KEY, String(value));
+    } catch (err) {
+        /* Storage can be unavailable in private browsing contexts. */
+    }
+}
+
+function pad(value) {
+    return String(Math.min(999, value)).padStart(3, '0');
+}
+
+function updateHud() {
+    hudScore.textContent = pad(score);
+    hudBest.textContent = pad(highScore);
+}
+
+function announce(message) {
+    statusLive.textContent = message;
+}
 
 // Initialize Game
 function initGame() {
@@ -36,40 +83,78 @@ function initGame() {
     ];
     dx = 1;
     dy = 0;
+    queuedDirection = null;
     score = 0;
+    stepInterval = BASE_SPEED;
+    accumulator = 0;
     placeFood();
     isGameRunning = true;
     isPaused = false;
 
     startScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     powerLed.classList.add('on');
+    updateHud();
+    announce('Partida iniciada.');
 
-    if (gameLoopId) clearInterval(gameLoopId);
-    gameLoopId = setInterval(gameLoop, GAME_SPEED);
+    startLoop();
+}
+
+function startLoop() {
+    if (rafId !== null) return;
+    lastFrame = 0;
+    rafId = requestAnimationFrame(gameLoop);
+}
+
+function stopLoop() {
+    if (rafId === null) return;
+    cancelAnimationFrame(rafId);
+    rafId = null;
 }
 
 function placeFood() {
-    food.x = Math.floor(Math.random() * TILE_COUNT);
-    food.y = Math.floor(Math.random() * TILE_COUNT);
-
-    // Don't place food on snake
-    for (let segment of snake) {
-        if (segment.x === food.x && segment.y === food.y) {
-            placeFood();
-            break;
+    // Collect the free cells first: this avoids the unbounded recursion the
+    // previous version could hit once the snake filled most of the board.
+    const free = [];
+    for (let x = 0; x < TILE_COUNT; x++) {
+        for (let y = 0; y < TILE_COUNT; y++) {
+            if (!snake.some(segment => segment.x === x && segment.y === y)) free.push({ x, y });
         }
     }
+    if (!free.length) return;
+    const pick = free[Math.floor(Math.random() * free.length)];
+    food.x = pick.x;
+    food.y = pick.y;
 }
 
-function gameLoop() {
-    if (isPaused) return;
+function gameLoop(timestamp) {
+    rafId = requestAnimationFrame(gameLoop);
 
-    update();
+    if (!lastFrame) lastFrame = timestamp;
+    // Cap the delta so a backgrounded tab never replays a burst of steps.
+    const delta = Math.min(timestamp - lastFrame, 250);
+    lastFrame = timestamp;
+
+    if (isGameRunning && !isPaused) {
+        accumulator += delta;
+        while (accumulator >= stepInterval) {
+            accumulator -= stepInterval;
+            update();
+            if (!isGameRunning) break;
+        }
+    }
+
     draw();
 }
 
 function update() {
+    if (queuedDirection) {
+        dx = queuedDirection.dx;
+        dy = queuedDirection.dy;
+        queuedDirection = null;
+    }
+
     // Move Snake
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
@@ -79,9 +164,13 @@ function update() {
         return;
     }
 
-    // Check Self Collision
-    for (let segment of snake) {
-        if (head.x === segment.x && head.y === segment.y) {
+    const willGrow = head.x === food.x && head.y === food.y;
+
+    // Check Self Collision. The tail cell is free unless the snake is growing,
+    // so it is skipped to avoid phantom deaths when turning into it.
+    const lastIndex = willGrow ? snake.length : snake.length - 1;
+    for (let i = 0; i < lastIndex; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
             gameOver();
             return;
         }
@@ -90,10 +179,12 @@ function update() {
     snake.unshift(head);
 
     // Check Food Collision
-    if (head.x === food.x && head.y === food.y) {
+    if (willGrow) {
         score += 10;
+        // Each fruit shaves a little off the step interval for a difficulty ramp.
+        stepInterval = Math.max(MIN_SPEED, BASE_SPEED - Math.floor(score / 10) * 3);
         placeFood();
-        // Maybe speed up slightly?
+        updateHud();
     } else {
         snake.pop();
     }
@@ -156,10 +247,46 @@ function draw() {
 
 function gameOver() {
     isGameRunning = false;
-    clearInterval(gameLoopId);
+    isPaused = false;
+    stopLoop();
+    pauseScreen.classList.add('hidden');
     finalScoreSpan.textContent = score;
+
+    if (score > highScore) {
+        highScore = score;
+        saveHighScore(highScore);
+        announce(`Fim de jogo. Novo recorde: ${score} pontos.`);
+    } else {
+        announce(`Fim de jogo. ${score} pontos.`);
+    }
+
+    updateHud();
     gameOverScreen.classList.remove('hidden');
     powerLed.classList.remove('on');
+    draw();
+}
+
+function setPaused(paused) {
+    if (!isGameRunning) return;
+    isPaused = paused;
+    pauseScreen.classList.toggle('hidden', !paused);
+    powerLed.classList.toggle('on', !paused);
+    announce(paused ? 'Jogo pausado.' : 'Jogo retomado.');
+    if (paused) {
+        stopLoop();
+    } else {
+        accumulator = 0;
+        startLoop();
+    }
+}
+
+function queueDirection(nextDx, nextDy) {
+    // Compare against the direction that will actually be applied next step.
+    const currentDx = queuedDirection ? queuedDirection.dx : dx;
+    const currentDy = queuedDirection ? queuedDirection.dy : dy;
+    if (nextDx === -currentDx && nextDy === -currentDy) return;
+    if (nextDx === currentDx && nextDy === currentDy) return;
+    queuedDirection = { dx: nextDx, dy: nextDy };
 }
 
 // Input Handling
@@ -171,53 +298,78 @@ function handleInput(key) {
         return;
     }
 
-    // Prevent reversing direction directly
+    if (isPaused && key !== 'Enter' && key !== 'Start') return;
+
     switch (key) {
         case 'ArrowUp':
-            if (dy !== 1) { dx = 0; dy = -1; }
+            queueDirection(0, -1);
             break;
         case 'ArrowDown':
-            if (dy !== -1) { dx = 0; dy = 1; }
+            queueDirection(0, 1);
             break;
         case 'ArrowLeft':
-            if (dx !== 1) { dx = -1; dy = 0; }
+            queueDirection(-1, 0);
             break;
         case 'ArrowRight':
-            if (dx !== -1) { dx = 1; dy = 0; }
+            queueDirection(1, 0);
             break;
         case 'Enter':
         case 'Start':
-            isPaused = !isPaused;
+            setPaused(!isPaused);
             break;
     }
 }
 
 // Keyboard Listeners
 document.addEventListener('keydown', (e) => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         handleInput(e.key);
+        return;
+    }
+    if (e.key === 'Enter' && !e.target.closest('a, button')) {
+        e.preventDefault();
+        handleInput('Enter');
     }
 });
 
 // Touch/Click Listeners for On-Screen Controls
-const dpadButtons = document.querySelectorAll('.d-pad > div[data-key]');
-dpadButtons.forEach(btn => {
-    btn.addEventListener('mousedown', (e) => {
+document.querySelectorAll('.d-pad [data-key]').forEach(btn => {
+    // pointerdown fires for mouse, pen and touch, so a single binding covers all
+    // inputs without the double-fire the old mousedown + touchstart pair caused.
+    btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         handleInput(btn.dataset.key);
     });
-    btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        handleInput(btn.dataset.key);
-    });
+    btn.addEventListener('click', (e) => e.preventDefault());
 });
 
 document.getElementById('btnStart').addEventListener('click', () => handleInput('Start'));
+document.getElementById('btnSelect').addEventListener('click', () => initGame());
 document.getElementById('btnA').addEventListener('click', () => {
     if (!isGameRunning) initGame();
 });
+document.getElementById('btnB').addEventListener('click', () => {
+    if (isGameRunning) setPaused(!isPaused);
+});
+
+// Pause the loop while the tab is hidden so we never burn frames in background.
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopLoop();
+    } else if (isGameRunning && !isPaused) {
+        accumulator = 0;
+        startLoop();
+    }
+});
+
+// Keep the LCD palette in sync with the theme toggle.
+new MutationObserver(() => {
+    syncColors();
+    draw();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 // Initial Draw
-ctx.fillStyle = COLORS.bg;
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+syncColors();
+updateHud();
+draw();

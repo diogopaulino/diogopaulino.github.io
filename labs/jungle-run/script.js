@@ -267,9 +267,27 @@ class JungleRun {
         } catch (error) {
             console.error('Jungle Run overhaul initialization failed:', error);
             const startBtn = document.getElementById('startBtn');
+            // A causa mais comum aqui não é bug de código: é o PixiJS não ter chegado da CDN
+            // (rede bloqueada, offline, extensão que corta scripts de terceiros). Distinguir os
+            // dois casos evita o jogador ficar olhando uma tela preta sem saber o motivo.
+            const missingEngine = typeof PIXI === 'undefined';
             if (startBtn) {
                 startBtn.disabled = true;
-                startBtn.querySelector('span').textContent = 'Erro ao carregar texturas';
+                const label = startBtn.querySelector('span');
+                if (label) {
+                    label.textContent = missingEngine ? 'Motor gráfico indisponível' : 'Erro ao carregar texturas';
+                }
+            }
+            const overlay = document.querySelector('#startScreen .overlay-content') ||
+                document.getElementById('startScreen');
+            if (overlay && !overlay.querySelector('.jr-load-error')) {
+                const msg = document.createElement('p');
+                msg.className = 'jr-load-error';
+                msg.setAttribute('role', 'alert');
+                msg.textContent = missingEngine
+                    ? 'Não foi possível carregar o motor gráfico (PixiJS). Verifique sua conexão e recarregue a página.'
+                    : 'Não foi possível carregar os recursos do jogo. Recarregue a página para tentar de novo.';
+                overlay.appendChild(msg);
             }
         }
     }

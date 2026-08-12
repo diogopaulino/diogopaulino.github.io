@@ -13,12 +13,16 @@
   <meta property="og:description"
     content="Sistema operacional cyberpunk no browser. Explore arquivos secretos, hackeie firewalls e consulte o Oracle.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/cyberos/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:image" content="https://diogopaulino.com.br/labs/cyberos/og-cyberos.jpg">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=VT323&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="/labs/shared.css?v=4">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body data-phosphor="green">
@@ -43,8 +47,10 @@
           </template>
           <template data-slot="actions">
             <div class="phosphor-switch" role="group" aria-label="Cor do fósforo">
-              <button type="button" class="phos-btn is-active" data-phosphor="green" title="Verde">●</button>
-              <button type="button" class="phos-btn" data-phosphor="amber" title="Âmbar">●</button>
+              <button type="button" class="phos-btn is-active" data-phosphor="green" title="Fósforo verde"
+                aria-label="Fósforo verde" aria-pressed="true"><span aria-hidden="true">●</span></button>
+              <button type="button" class="phos-btn" data-phosphor="amber" title="Fósforo âmbar"
+                aria-label="Fósforo âmbar" aria-pressed="false"><span aria-hidden="true">●</span></button>
             </div>
           </template>
         </header>
@@ -187,7 +193,7 @@
   <footer data-lab-footer data-home-href="/" class="cyber-lab-footer"></footer>
 
   <script src="/labs/shared.js?v=5" defer></script>
-  <script src="script.js" defer></script>
+  <script src="script.js?v=2" defer></script>
 </body>
 
 </html>
