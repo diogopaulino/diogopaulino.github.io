@@ -5,6 +5,9 @@
 }
 
 /* Filters */
+/* A largura precisa vir do container, não do conteúdo: como item de flex do body, esta
+   barra encolhe-para-caber e cresce livremente com os botões, e no celular (onde ela vira
+   uma faixa rolável) isso arrastava a página inteira para o lado. */
 .filters-container {
   display: flex;
   flex-wrap: wrap;
@@ -12,6 +15,9 @@
   margin-bottom: 2.5rem;
   justify-content: center;
   padding: 0 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .filter-btn {
@@ -216,10 +222,17 @@
   .filters-container {
     gap: 0.5rem;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     justify-content: flex-start;
     padding-bottom: 0.5rem;
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+
+  /* Sem isto os botões encolheriam para caber e o rótulo quebraria em duas linhas. */
+  .filters-container .filter-btn {
+    flex: 0 0 auto;
   }
 
   .filter-btn {
