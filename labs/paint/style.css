@@ -251,13 +251,25 @@ input[type="color"] {
     aspect-ratio: 1;
     border-radius: 6px;
     cursor: pointer;
+    /* A cor de cada amostra vem do custom property `--swatch` declarado inline no HTML;
+       sem esta linha os botões ficam todos transparentes e a paleta some. */
+    background: var(--swatch, transparent);
     border: 1px solid var(--border-subtle);
-    transition: transform 0.1s;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .color-swatch:hover {
     transform: scale(1.1);
     z-index: 1;
+}
+
+.color-swatch:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.color-swatch.is-active {
+    box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent);
 }
 
 input[type="range"] {

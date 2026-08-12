@@ -6,15 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#008080">
     <meta name="description"
-        content="Winamp 2.91 no navegador: player clássico completo, equalizador, playlist, visualizador, skins e músicas demo.">
+        content="Winamp 2.91 recriado em HTML, CSS e JavaScript puros: transporte completo, equalizador de 10 bandas, playlist, visualizador e trilha chiptune gerada em tempo real pela Web Audio API.">
+    <meta name="color-scheme" content="light">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Winamp 2.91 — Diogo Labs">
+    <meta property="og:description"
+        content="Player retrô 100% vanilla: playlist, equalizador, visualizador e músicas chiptune sintetizadas no navegador.">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/winamp/">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta name="twitter:card" content="summary">
     <title>Winamp 2.91 — Diogo Labs</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
     <a class="skip-link" href="#winamp-stage">Pular para o Winamp</a>
 
-    <div class="desktop" id="desktop">
+    <div class="desktop" id="desktop" data-skin="classic">
         <nav class="desktop-icons" aria-label="Atalhos da área de trabalho">
             <a class="desktop-icon" href="/labs/" aria-label="Voltar para todos os Labs">
                 <span class="icon-art icon-computer" aria-hidden="true">
@@ -45,22 +54,179 @@
         <main class="player-workspace" aria-label="Winamp 2.91">
             <div class="player-scale-wrap" id="player-scale-wrap">
                 <div id="winamp-stage" tabindex="-1">
-                    <div class="loading-window" id="loading-window" role="status">
-                        <div class="window-titlebar">
-                            <span>Winamp</span>
-                            <span class="window-controls" aria-hidden="true">×</span>
+
+                    <!-- ============ JANELA PRINCIPAL ============ -->
+                    <section class="wa-window wa-main" aria-labelledby="wa-main-title">
+                        <header class="wa-titlebar">
+                            <h2 class="wa-title-text" id="wa-main-title">Winamp 2.91</h2>
+                            <span class="wa-title-deco" aria-hidden="true"></span>
+                            <span class="wa-title-buttons">
+                                <button type="button" class="wa-window-btn is-on" data-window-toggle="eq"
+                                    aria-pressed="true" title="Mostrar ou ocultar o equalizador">EQ</button>
+                                <button type="button" class="wa-window-btn is-on" data-window-toggle="pl"
+                                    aria-pressed="true" title="Mostrar ou ocultar a playlist">PL</button>
+                            </span>
+                        </header>
+
+                        <div class="wa-main-body">
+                            <div class="wa-display">
+                                <div class="wa-display-left">
+                                    <button type="button" class="wa-time" id="wa-time"
+                                        title="Alternar entre tempo decorrido e restante" aria-live="off">
+                                        <span class="wa-time-digits" id="wa-time-digits">--:--</span>
+                                    </button>
+                                    <div class="wa-status-lamps" aria-hidden="true">
+                                        <span class="wa-lamp" id="wa-lamp-play">▶</span>
+                                        <span class="wa-lamp" id="wa-lamp-pause">❚❚</span>
+                                        <span class="wa-lamp" id="wa-lamp-stop">■</span>
+                                    </div>
+                                </div>
+
+                                <div class="wa-display-right">
+                                    <button type="button" class="wa-vis-wrap" id="wa-vis-btn"
+                                        title="Alternar visualizador (espectro, osciloscópio, desligado)">
+                                        <canvas id="wa-vis" width="304" height="120" role="img"
+                                            aria-label="Visualizador de áudio"></canvas>
+                                    </button>
+                                    <p class="wa-marquee" id="wa-marquee">
+                                        <span id="wa-track-title">Winamp 2.91 — pronto para tocar</span>
+                                    </p>
+                                    <p class="wa-meta">
+                                        <span><strong id="wa-kbps">--</strong> kbps</span>
+                                        <span><strong id="wa-khz">--</strong> kHz</span>
+                                        <span id="wa-channels">stereo</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="wa-sliders">
+                                <label class="wa-slider">
+                                    <span class="wa-slider-label">Volume</span>
+                                    <input type="range" id="wa-volume" min="0" max="100" value="78" step="1"
+                                        aria-label="Volume">
+                                    <output id="wa-volume-out">78%</output>
+                                </label>
+                                <label class="wa-slider">
+                                    <span class="wa-slider-label">Balanço</span>
+                                    <input type="range" id="wa-balance" min="-100" max="100" value="0" step="1"
+                                        aria-label="Balanço entre os canais">
+                                    <output id="wa-balance-out">centro</output>
+                                </label>
+                            </div>
+
+                            <div class="wa-seek">
+                                <input type="range" id="wa-seek" min="0" max="1000" value="0" step="1"
+                                    aria-label="Posição da faixa" aria-valuetext="00:00">
+                            </div>
+
+                            <div class="wa-transport">
+                                <div class="wa-transport-main" role="group" aria-label="Controles de reprodução">
+                                    <button type="button" class="wa-btn" data-cmd="prev" title="Anterior (Z)"
+                                        aria-label="Faixa anterior">
+                                        <span class="wa-ico wa-ico-prev" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" class="wa-btn wa-btn-play" data-cmd="play" title="Play (X)"
+                                        aria-label="Tocar">
+                                        <span class="wa-ico wa-ico-play" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" class="wa-btn" data-cmd="pause" title="Pausa (C)"
+                                        aria-label="Pausar">
+                                        <span class="wa-ico wa-ico-pause" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" class="wa-btn" data-cmd="stop" title="Stop (V)"
+                                        aria-label="Parar">
+                                        <span class="wa-ico wa-ico-stop" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" class="wa-btn" data-cmd="next" title="Próxima (B)"
+                                        aria-label="Próxima faixa">
+                                        <span class="wa-ico wa-ico-next" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" class="wa-btn wa-btn-eject" data-cmd="eject"
+                                        title="Abrir arquivos do computador (L)" aria-label="Abrir arquivos">
+                                        <span class="wa-ico wa-ico-eject" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                                <div class="wa-transport-modes">
+                                    <button type="button" class="wa-toggle" id="wa-shuffle" aria-pressed="false"
+                                        title="Ordem aleatória">shuffle</button>
+                                    <button type="button" class="wa-toggle" id="wa-repeat" aria-pressed="false"
+                                        title="Repetir a playlist">repeat</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="loading-window-body">
-                            <span class="hourglass" aria-hidden="true">⌛</span>
-                            <p>Iniciando o Winamp 2.91...</p>
+                    </section>
+
+                    <!-- ============ EQUALIZADOR ============ -->
+                    <section class="wa-window wa-eq" id="wa-eq" aria-labelledby="wa-eq-title">
+                        <header class="wa-titlebar">
+                            <h2 class="wa-title-text" id="wa-eq-title">Equalizer</h2>
+                            <span class="wa-title-deco" aria-hidden="true"></span>
+                            <span class="wa-title-buttons">
+                                <button type="button" class="wa-window-btn wa-window-close" data-window-close="eq"
+                                    aria-label="Fechar equalizador" title="Fechar equalizador">×</button>
+                            </span>
+                        </header>
+
+                        <div class="wa-eq-body">
+                            <div class="wa-eq-side">
+                                <button type="button" class="wa-toggle wa-toggle-lg is-on" id="wa-eq-on"
+                                    aria-pressed="true" title="Ligar ou desligar o equalizador">on</button>
+                                <label class="wa-eq-band wa-eq-preamp">
+                                    <input type="range" min="-12" max="12" value="0" step="1" id="wa-preamp"
+                                        aria-label="Pré-amplificação" data-band="pre">
+                                    <span class="wa-eq-band-label">preamp</span>
+                                </label>
+                                <label class="wa-preset">
+                                    <span class="sr-only">Preset do equalizador</span>
+                                    <select id="wa-eq-preset" title="Presets do equalizador">
+                                        <option value="flat">Flat</option>
+                                        <option value="rock">Rock</option>
+                                        <option value="dance">Dance</option>
+                                        <option value="bass">Full Bass</option>
+                                        <option value="treble">Full Treble</option>
+                                        <option value="laptop">Laptop</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="wa-eq-bands" id="wa-eq-bands"><!-- gerado por script.js --></div>
                         </div>
-                    </div>
+                    </section>
+
+                    <!-- ============ PLAYLIST ============ -->
+                    <section class="wa-window wa-pl" id="wa-pl" aria-labelledby="wa-pl-title">
+                        <header class="wa-titlebar">
+                            <h2 class="wa-title-text" id="wa-pl-title">Playlist Editor</h2>
+                            <span class="wa-title-deco" aria-hidden="true"></span>
+                            <span class="wa-title-buttons">
+                                <button type="button" class="wa-window-btn wa-window-close" data-window-close="pl"
+                                    aria-label="Fechar playlist" title="Fechar playlist">×</button>
+                            </span>
+                        </header>
+
+                        <div class="wa-pl-body">
+                            <ol class="wa-pl-list" id="wa-pl-list" tabindex="0" role="listbox"
+                                aria-label="Faixas da playlist"><!-- gerado por script.js --></ol>
+                            <p class="wa-pl-empty" id="wa-pl-empty" hidden>
+                                Playlist vazia. Use <strong>+ arquivo</strong> ou arraste músicas para cá.
+                            </p>
+                            <footer class="wa-pl-footer">
+                                <div class="wa-pl-actions">
+                                    <button type="button" class="wa-pl-btn" data-pl-action="add">+ arquivo</button>
+                                    <button type="button" class="wa-pl-btn" data-pl-action="remove">− remover</button>
+                                    <button type="button" class="wa-pl-btn" data-pl-action="restore">↺ demos</button>
+                                </div>
+                                <p class="wa-pl-stats"><span id="wa-pl-count">0</span> faixas ·
+                                    <span id="wa-pl-total">00:00</span>
+                                </p>
+                            </footer>
+                        </div>
+                    </section>
                 </div>
             </div>
         </main>
 
         <div class="desktop-tip" id="desktop-tip" role="status" aria-live="polite">
-            Dica: dê dois cliques em uma faixa para começar.
+            Dica: dê dois cliques em uma faixa da playlist para começar.
         </div>
 
         <div class="drop-overlay" id="drop-overlay" aria-hidden="true">
@@ -77,21 +243,22 @@
                 <button type="button" class="dialog-close" data-close-dialog aria-label="Fechar">×</button>
             </div>
             <div class="dialog-body">
-                <p class="dialog-intro">Escolha uma skin clássica. O player troca sem parar a música.</p>
+                <p class="dialog-intro">Escolha uma skin clássica. Todas são recriadas em CSS puro e trocam sem
+                    parar a música.</p>
                 <div class="skin-list">
-                    <button type="button" class="skin-choice is-selected" data-skin="classic">
+                    <button type="button" class="skin-choice is-selected" data-skin="classic" aria-pressed="true">
                         <span class="skin-swatch skin-classic" aria-hidden="true"></span>
-                        <span><strong>Winamp Base 2.91</strong><small>O clássico original</small></span>
+                        <span><strong>Winamp Base 2.91</strong><small>O clássico cinza e verde</small></span>
                     </button>
-                    <button type="button" class="skin-choice" data-skin="green">
+                    <button type="button" class="skin-choice" data-skin="green" aria-pressed="false">
                         <span class="skin-swatch skin-green" aria-hidden="true"></span>
-                        <span><strong>Green Dimension V2</strong><small>Verde sci-fi</small></span>
+                        <span><strong>Green Dimension</strong><small>Verde sci-fi</small></span>
                     </button>
-                    <button type="button" class="skin-choice" data-skin="aqua">
+                    <button type="button" class="skin-choice" data-skin="aqua" aria-pressed="false">
                         <span class="skin-swatch skin-aqua" aria-hidden="true"></span>
-                        <span><strong>Mac OS X Aqua</strong><small>Brilho dos anos 2000</small></span>
+                        <span><strong>Aqua 1.5</strong><small>Brilho dos anos 2000</small></span>
                     </button>
-                    <button type="button" class="skin-choice" data-skin="zelda">
+                    <button type="button" class="skin-choice" data-skin="zelda" aria-pressed="false">
                         <span class="skin-swatch skin-zelda" aria-hidden="true"></span>
                         <span><strong>Zelda Amp</strong><small>Aventura 16-bit</small></span>
                     </button>
@@ -112,34 +279,53 @@
                     <span class="about-bolt" aria-hidden="true">⚡</span>
                     <div>
                         <h3>Winamp 2.91 no navegador</h3>
-                        <p>Player real com playlist, equalizador de 10 bandas, skins, arquivos locais, atalhos e
-                            visualizador MilkDrop.</p>
+                        <p>Player recriado do zero em HTML, CSS e JavaScript puros: playlist, equalizador de 10
+                            bandas, visualizador, skins, arquivos locais e atalhos de teclado.</p>
                     </div>
                 </div>
 
                 <fieldset>
                     <legend>Atalhos clássicos</legend>
                     <dl class="hotkeys">
-                        <div><dt>Z</dt><dd>Anterior</dd></div>
-                        <div><dt>X</dt><dd>Play</dd></div>
-                        <div><dt>C</dt><dd>Pausa</dd></div>
-                        <div><dt>V</dt><dd>Stop</dd></div>
-                        <div><dt>B</dt><dd>Próxima</dd></div>
-                        <div><dt>L</dt><dd>Abrir música</dd></div>
+                        <div>
+                            <dt>Z</dt>
+                            <dd>Anterior</dd>
+                        </div>
+                        <div>
+                            <dt>X</dt>
+                            <dd>Play</dd>
+                        </div>
+                        <div>
+                            <dt>C</dt>
+                            <dd>Pausa</dd>
+                        </div>
+                        <div>
+                            <dt>V</dt>
+                            <dd>Stop</dd>
+                        </div>
+                        <div>
+                            <dt>B</dt>
+                            <dd>Próxima</dd>
+                        </div>
+                        <div>
+                            <dt>L</dt>
+                            <dd>Abrir música</dd>
+                        </div>
                     </dl>
                 </fieldset>
 
-                <p><strong>Experimente:</strong> clique com o botão direito no player para abrir o menu completo.
-                    Em <em>Windows</em>, ative o MilkDrop; em <em>Options → Skins</em>, troque a aparência.</p>
-                <p>Você também pode arrastar músicas e arquivos <code>.wsz</code> diretamente para o Winamp.</p>
+                <fieldset>
+                    <legend>Como a trilha é feita</legend>
+                    <p>Nenhum áudio é baixado: as faixas demo são <strong>chiptune sintetizado</strong> na hora
+                        pela Web Audio API — ondas quadradas, triângulo e ruído renderizadas em um buffer PCM,
+                        exatamente como um tracker dos anos 90. Arraste seus próprios MP3/WAV para a janela e eles
+                        entram na mesma playlist.</p>
+                </fieldset>
 
                 <fieldset class="credits">
-                    <legend>Créditos e licenças</legend>
-                    <p>Interface reproduzida por <a href="https://github.com/captbaritone/webamp" target="_blank"
-                            rel="noopener noreferrer">Webamp</a> 2.3.1 (MIT). Músicas demo do álbum
-                        <a href="https://blocsonic.com/releases/track/bscomp0024-disc-1-1-diablo-swing-orchestra-heroines/"
-                            target="_blank" rel="noopener noreferrer">netBloc Vol. 24</a>, disponibilizadas
-                        gratuitamente; cada faixa mantém sua licença Creative Commons original.
+                    <legend>Créditos</legend>
+                    <p>Homenagem à interface do Winamp 2.91 (Nullsoft, 1997–2001), reconstruída com CSS puro por
+                        <a href="/labs/">Diogo Labs</a>. Sem bibliotecas, sem build, sem assets externos.
                     </p>
                 </fieldset>
 
@@ -171,16 +357,7 @@
     </div>
 
     <noscript>Ative o JavaScript para usar o player.</noscript>
-    <script>
-        window.__winampBootTimer = window.setTimeout(function () {
-            var message = document.querySelector("#loading-window p");
-            if (message) {
-                message.textContent =
-                    "O player demorou mais que o esperado. Atualize a página ou verifique sua conexão.";
-            }
-        }, 15000);
-    </script>
-    <script type="module" src="script.js?v=4"></script>
+    <script type="module" src="script.js?v=5"></script>
 </body>
 
 </html>

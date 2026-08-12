@@ -153,6 +153,17 @@ body .container {
   transform: scale(1.15);
 }
 
+/* Foco visível consistente para todos os controles do CyberOS */
+.crt-screen :is(button, a, select, textarea, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.phos-btn:focus-visible {
+  opacity: 1;
+}
+
 /* Boot */
 .boot-screen {
   position: fixed;
@@ -664,6 +675,12 @@ select {
   background: var(--phosphor-fade);
 }
 
+.chip:active,
+.os-btn:active,
+.dock-icon:active {
+  transform: scale(0.97);
+}
+
 /* Cipher */
 .cipher-body {
   display: flex;
@@ -875,6 +892,27 @@ select {
 
   .win-titlebar {
     cursor: default;
+  }
+
+  /* Barra de status compacta: separadores quebrariam em linhas soltas */
+  .os-statusbar {
+    justify-content: center;
+    text-align: center;
+    font-size: 0.58rem;
+    gap: 0.5rem;
+  }
+
+  .os-statusbar .status-sep {
+    display: none;
+  }
+
+  .dock-icon {
+    min-width: 3.75rem;
+    min-height: 3rem;
+  }
+
+  .fw-node {
+    min-height: 3rem;
   }
 }
 

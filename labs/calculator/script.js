@@ -360,7 +360,7 @@ async function initCurrencyConverter() {
         allCurrencies = Object.keys(exchangeRates).sort();
         populateSelects();
         calculate();
-        lastUpdatedEl.innerText = `Last updated: ${new Date(cached.timestamp).toLocaleTimeString()}`;
+        lastUpdatedEl.innerText = `Cotação de ${new Date(cached.timestamp).toLocaleTimeString('pt-BR')} (cache)`;
     }
 
     refreshBtn.classList.add('loading');
@@ -378,15 +378,19 @@ async function initCurrencyConverter() {
 
         populateSelects();
         calculate();
-        lastUpdatedEl.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+        lastUpdatedEl.innerText = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
     } catch (err) {
-        console.error('Error fetching currency data:', err);
+        // Os dois provedores falharem é uma condição prevista (offline, rede corporativa,
+        // bloqueador). É `warn`, não `error`: já está tratada e o app segue utilizável.
+        console.warn('Cotações indisponíveis, seguindo com o que há em cache:', err);
         if (cached) {
-            lastUpdatedEl.innerText = `Showing cached rates from ${new Date(cached.timestamp).toLocaleTimeString()}`;
+            lastUpdatedEl.innerText =
+                `Sem conexão — usando cotação de ${new Date(cached.timestamp).toLocaleTimeString('pt-BR')}`;
         } else {
-            rateEl.innerText = 'Unable to load rates. Check your connection and try again.';
-            lastUpdatedEl.innerText = 'Update failed';
+            rateEl.innerText = 'Cotações indisponíveis. Verifique a conexão e toque em atualizar.';
+            lastUpdatedEl.innerText = 'Falha ao atualizar';
         }
+        lastUpdatedEl.setAttribute('role', 'status');
     } finally {
         refreshBtn.classList.remove('loading');
     }

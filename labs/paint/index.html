@@ -3,120 +3,255 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Paint Lab - Diogo Paulino</title>
-    <meta name="description" content="Editor de imagens estilo Paint com ferramentas de desenho, formas e cores.">
+    <meta name="description"
+        content="Editor de desenho no navegador: pincel, borracha, balde de tinta, conta-gotas, formas, opacidade, desfazer/refazer e exportação em PNG.">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/paint/">
+    <meta property="og:title" content="Paint Lab - Diogo Paulino">
+    <meta property="og:description"
+        content="Editor de desenho vanilla em Canvas: pincel, formas, balde de tinta, conta-gotas e exportação em PNG.">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/paint/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:image" content="https://diogopaulino.com.br/labs/paint/og-paint.jpg">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body>
+    <!--
+      Sprite SVG inline: os ícones vivem no próprio documento (sem CDN externo),
+      garantindo que a barra de ferramentas funcione offline e sem FOUC.
+    -->
+    <svg class="icon-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <g id="i-brush" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M15.5 4.5l4 4L9 19H5v-4z" />
+                <path d="M13.5 6.5l4 4" />
+            </g>
+            <g id="i-eraser" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M8.5 19.5L4 15a1.6 1.6 0 010-2.3l7.7-7.7a1.6 1.6 0 012.3 0l5 5a1.6 1.6 0 010 2.3l-6.7 6.7z" />
+                <path d="M9 20h11M9.2 8.2l6.6 6.6" />
+            </g>
+            <g id="i-fill" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M11 3.5l8 8-7.2 7.2a1.6 1.6 0 01-2.3 0l-5.7-5.7a1.6 1.6 0 010-2.3z" />
+                <path d="M8 6.5l3-3" />
+                <path d="M20 15.5c1 1.4 1.5 2.4 1.5 3.1a1.5 1.5 0 11-3 0c0-.7.5-1.7 1.5-3.1z" />
+            </g>
+            <g id="i-picker" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M18.4 3.6a2.3 2.3 0 013.2 3.2l-2.1 2.1-3.2-3.2z" />
+                <path d="M16.3 5.7l-8.9 8.9-.9 4.1 4.1-.9 8.9-8.9" />
+                <path d="M4 20h4" />
+            </g>
+            <g id="i-rect" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+            </g>
+            <g id="i-circle" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8" />
+            </g>
+            <g id="i-line" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M5 19L19 5" />
+                <circle cx="5" cy="19" r="2" />
+                <circle cx="19" cy="5" r="2" />
+            </g>
+            <g id="i-undo" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M4 9h11a5 5 0 010 10h-4" />
+                <path d="M8 5L4 9l4 4" />
+            </g>
+            <g id="i-redo" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M20 9H9a5 5 0 000 10h4" />
+                <path d="M16 5l4 4-4 4" />
+            </g>
+            <g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" />
+                <path d="M10 11v6M14 11v6" />
+            </g>
+            <g id="i-download" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 4v11" />
+                <path d="M8 11l4 4 4-4" />
+                <path d="M5 19h14" />
+            </g>
+        </defs>
+    </svg>
+
     <div class="app-container">
         <header data-lab-header data-title="Paint Lab">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <i class="ph ph-paint-brush-broad"></i>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#i-brush"></use>
+                    </svg>
                     Paint Lab
                 </div>
             </template>
         </header>
 
         <div class="toolbar top-bar">
-            <div class="left-section"></div>
+            <div class="left-section">
+                <span class="tool-readout">
+                    <span class="tool-readout-label">Ferramenta</span>
+                    <strong id="activeToolName">Pincel</strong>
+                </span>
+                <span class="canvas-readout" id="canvasReadout">800 × 600</span>
+            </div>
 
             <div class="actions">
-                <button id="undoBtn" title="Desfazer (Ctrl+Z)">
-                    <i class="ph ph-arrow-u-up-left"></i>
+                <button id="undoBtn" type="button" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#i-undo"></use>
+                    </svg>
                 </button>
-                <button id="redoBtn" title="Refazer (Ctrl+Y)">
-                    <i class="ph ph-arrow-u-up-right"></i>
+                <button id="redoBtn" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#i-redo"></use>
+                    </svg>
                 </button>
-                <div class="separator"></div>
-                <button id="clearBtn" title="Limpar Tela">
-                    <i class="ph ph-trash"></i>
+                <div class="separator" aria-hidden="true"></div>
+                <button id="clearBtn" type="button" title="Limpar tela" aria-label="Limpar tela">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#i-trash"></use>
+                    </svg>
                 </button>
-                <button id="saveBtn" class="primary-btn">
-                    <i class="ph ph-download-simple"></i>
+                <button id="saveBtn" class="primary-btn" type="button" title="Baixar como PNG">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#i-download"></use>
+                    </svg>
                     <span>Salvar</span>
                 </button>
             </div>
         </div>
 
         <main class="workspace">
-            <aside class="toolbar side-bar left">
-                <div class="tool-group">
-                    <button class="tool-btn active" data-tool="brush" title="Pincel">
-                        <i class="ph ph-pencil-simple"></i>
+            <aside class="toolbar side-bar left" aria-label="Ferramentas">
+                <div class="tool-group" role="group" aria-label="Ferramentas de desenho">
+                    <button class="tool-btn active" type="button" data-tool="brush" data-name="Pincel"
+                        title="Pincel (B)" aria-label="Pincel" aria-pressed="true">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-brush"></use>
+                        </svg>
                     </button>
-                    <button class="tool-btn" data-tool="eraser" title="Borracha">
-                        <i class="ph ph-eraser"></i>
+                    <button class="tool-btn" type="button" data-tool="eraser" data-name="Borracha"
+                        title="Borracha (E)" aria-label="Borracha" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-eraser"></use>
+                        </svg>
                     </button>
-                    <button class="tool-btn" data-tool="fill" title="Balde de Tinta">
-                        <i class="ph ph-paint-bucket"></i>
+                    <button class="tool-btn" type="button" data-tool="fill" data-name="Balde de tinta"
+                        title="Balde de tinta (G)" aria-label="Balde de tinta" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-fill"></use>
+                        </svg>
                     </button>
-                    <button class="tool-btn" data-tool="picker" title="Conta-gotas">
-                        <i class="ph ph-eyedropper"></i>
+                    <button class="tool-btn" type="button" data-tool="picker" data-name="Conta-gotas"
+                        title="Conta-gotas (I)" aria-label="Conta-gotas" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-picker"></use>
+                        </svg>
                     </button>
                 </div>
 
-                <div class="separator"></div>
+                <div class="separator" aria-hidden="true"></div>
 
-                <div class="tool-group">
-                    <button class="tool-btn" data-tool="rect" title="Retângulo">
-                        <i class="ph ph-rectangle"></i>
+                <div class="tool-group" role="group" aria-label="Formas">
+                    <button class="tool-btn" type="button" data-tool="rect" data-name="Retângulo"
+                        title="Retângulo (R)" aria-label="Retângulo" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-rect"></use>
+                        </svg>
                     </button>
-                    <button class="tool-btn" data-tool="circle" title="Círculo">
-                        <i class="ph ph-circle"></i>
+                    <button class="tool-btn" type="button" data-tool="circle" data-name="Círculo"
+                        title="Círculo (C)" aria-label="Círculo" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-circle"></use>
+                        </svg>
                     </button>
-                    <button class="tool-btn" data-tool="line" title="Linha">
-                        <i class="ph ph-line-segment"></i>
+                    <button class="tool-btn" type="button" data-tool="line" data-name="Linha" title="Linha (L)"
+                        aria-label="Linha" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-line"></use>
+                        </svg>
                     </button>
                 </div>
             </aside>
 
             <div class="canvas-container">
-                <canvas id="canvas"></canvas>
+                <canvas id="canvas" width="800" height="600" aria-label="Tela de desenho" role="img"></canvas>
             </div>
 
-            <aside class="toolbar side-bar right">
+            <aside class="toolbar side-bar right" aria-label="Propriedades">
                 <div class="property-group">
-                    <label>Cor</label>
+                    <label for="colorPicker">Cor</label>
                     <div class="color-picker-wrapper">
                         <input type="color" id="colorPicker" value="#000000">
-                        <div class="color-preview"></div>
                     </div>
-                    <div class="color-palette">
-                        <div class="color-swatch" style="background: #000000" data-color="#000000"></div>
-                        <div class="color-swatch" style="background: #ffffff" data-color="#ffffff"></div>
-                        <div class="color-swatch" style="background: #ff3b30" data-color="#ff3b30"></div>
-                        <div class="color-swatch" style="background: #ff9500" data-color="#ff9500"></div>
-                        <div class="color-swatch" style="background: #ffcc00" data-color="#ffcc00"></div>
-                        <div class="color-swatch" style="background: #4cd964" data-color="#4cd964"></div>
-                        <div class="color-swatch" style="background: #5ac8fa" data-color="#5ac8fa"></div>
-                        <div class="color-swatch" style="background: #007aff" data-color="#007aff"></div>
-                        <div class="color-swatch" style="background: #5856d6" data-color="#5856d6"></div>
+                    <div class="color-palette" role="group" aria-label="Paleta rápida">
+                        <button type="button" class="color-swatch is-active" style="--swatch: #000000"
+                            data-color="#000000" aria-label="Preto" aria-pressed="true"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #ffffff" data-color="#ffffff"
+                            aria-label="Branco" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #ff3b30" data-color="#ff3b30"
+                            aria-label="Vermelho" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #ff9500" data-color="#ff9500"
+                            aria-label="Laranja" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #ffcc00" data-color="#ffcc00"
+                            aria-label="Amarelo" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #4cd964" data-color="#4cd964"
+                            aria-label="Verde" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #5ac8fa" data-color="#5ac8fa"
+                            aria-label="Azul claro" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #007aff" data-color="#007aff"
+                            aria-label="Azul" aria-pressed="false"></button>
+                        <button type="button" class="color-swatch" style="--swatch: #5856d6" data-color="#5856d6"
+                            aria-label="Roxo" aria-pressed="false"></button>
                     </div>
                 </div>
 
-                <div class="separator"></div>
+                <div class="separator" aria-hidden="true"></div>
 
                 <div class="property-group">
-                    <label>Tamanho: <span id="brushSizeVal">5px</span></label>
+                    <label for="brushSize">Tamanho <span id="brushSizeVal">5px</span></label>
                     <input type="range" id="brushSize" min="1" max="50" value="5">
                 </div>
 
-                <div class="property-group" id="opacityGroup">
-                    <label>Opacidade: <span id="opacityVal">100%</span></label>
+                <div class="property-group">
+                    <label for="opacity">Opacidade <span id="opacityVal">100%</span></label>
                     <input type="range" id="opacity" min="1" max="100" value="100">
                 </div>
+
+                <div class="property-group shape-fill-group">
+                    <label class="switch-field" for="fillShapes">
+                        <input type="checkbox" id="fillShapes">
+                        <span>Preencher formas</span>
+                    </label>
+                </div>
+
+                <p class="shortcuts-hint">
+                    <strong>Atalhos</strong>
+                    <span><kbd>B</kbd> pincel · <kbd>E</kbd> borracha · <kbd>G</kbd> balde · <kbd>I</kbd>
+                        conta-gotas</span>
+                    <span><kbd>R</kbd> <kbd>C</kbd> <kbd>L</kbd> formas · <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer</span>
+                </p>
             </aside>
         </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=2" defer></script>
 </body>
 
 </html>

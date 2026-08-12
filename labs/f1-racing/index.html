@@ -8,6 +8,15 @@
     <meta name="theme-color" content="#07080c">
     <meta name="description"
         content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/f1-racing/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/f1-racing/">
+    <meta property="og:title" content="F1 Grand Prix — Crazy Realism">
+    <meta property="og:description" content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="F1 Grand Prix — Crazy Realism">
+    <meta name="twitter:description" content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
     <title>F1 Grand Prix — Crazy Realism</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -258,6 +267,19 @@
                 <div class="loading-card">
                     <div class="loading-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
                     <p id="loadingText">carregando…</p>
+                    <div id="bootFallback" class="boot-fallback" hidden>
+                        <h2 id="bootFallbackTitle">Não foi possível iniciar a corrida</h2>
+                        <p id="bootFallbackText">
+                            Este simulador precisa de WebGPU (ou WebGL2) e da biblioteca 3D carregada pela rede.
+                            Verifique sua conexão e use um navegador atualizado — Chrome, Edge ou Safari recentes.
+                        </p>
+                        <div class="boot-fallback-actions">
+                            <button id="bootRetry" class="primary-button" type="button">
+                                <span>Tentar novamente</span><i aria-hidden="true">↻</i>
+                            </button>
+                            <a class="text-button" href="../index.html">Voltar para os labs</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -266,7 +288,68 @@
     </main>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script type="module" src="src/main.js?v=4"></script>
+
+    <!--
+        Boot watchdog (classic script on purpose): if the ES module never runs — CDN
+        offline, import blocked, browser without WebGPU/WebGL2 — nothing inside main.js
+        can report it. This keeps the loading screen from spinning forever.
+    -->
+    <script>
+        (function () {
+            'use strict';
+            var failed = false;
+
+            function hasGpu() {
+                if (navigator.gpu) return true;
+                try {
+                    var probe = document.createElement('canvas');
+                    return !!(probe.getContext('webgl2') || probe.getContext('webgl'));
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function fail(reason) {
+                if (failed || window.__f1Booted) return;
+                failed = true;
+                var overlay = document.getElementById('loadingOverlay');
+                var lights = overlay && overlay.querySelector('.loading-lights');
+                var text = document.getElementById('loadingText');
+                var box = document.getElementById('bootFallback');
+                if (!box) return;
+                if (overlay) overlay.classList.add('is-visible', 'has-error');
+                if (lights) lights.hidden = true;
+                if (text) text.hidden = true;
+                if (reason === 'gpu') {
+                    document.getElementById('bootFallbackTitle').textContent = 'Seu navegador não suporta WebGPU';
+                    document.getElementById('bootFallbackText').textContent =
+                        'Esta corrida usa WebGPU com fallback para WebGL2, e nenhum dos dois está disponível aqui. ' +
+                        'Tente um navegador atualizado (Chrome, Edge ou Safari) com aceleração de hardware ativada.';
+                }
+                box.hidden = false;
+                var retry = document.getElementById('bootRetry');
+                if (retry) retry.addEventListener('click', function () { location.reload(); }, { once: true });
+            }
+
+            window.__f1BootFail = fail;
+
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () { fail('gpu'); }, { once: true });
+                return;
+            }
+
+            // A module whose imports fail to load fires `error` on its <script> element.
+            document.addEventListener('error', function (event) {
+                var target = event.target;
+                if (target && target.tagName === 'SCRIPT' && target.type === 'module') fail('network');
+            }, true);
+
+            window.addEventListener('load', function () {
+                setTimeout(function () { fail('timeout'); }, 12000);
+            });
+        })();
+    </script>
+    <script type="module" src="src/main.js?v=5"></script>
 </body>
 
 </html>

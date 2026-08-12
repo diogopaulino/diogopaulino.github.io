@@ -5,8 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retro Snake - Labs</title>
+    <meta name="description"
+        content="Snake retrô em um console portátil 8-bit: colete frutas, ganhe velocidade e bata o seu recorde direto no navegador.">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/snake/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Retro Snake - Labs">
+    <meta property="og:description"
+        content="Snake retrô em um console portátil 8-bit: colete frutas, ganhe velocidade e bata o seu recorde.">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/snake/">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
@@ -22,17 +33,28 @@
             <div class="handheld-device">
                 <div class="screen-bezel">
                     <div class="screen-glass">
-                        <canvas id="gameCanvas" width="400" height="400"></canvas>
-                        <div class="ui-overlay" id="startScreen">
-                            <h2>SNAKE</h2>
-                            <p>Pressione Start</p>
+                        <div class="lcd-hud" aria-hidden="true">
+                            <span class="lcd-item"><span class="lcd-key">SC</span><span id="hudScore">000</span></span>
+                            <span class="lcd-item"><span class="lcd-key">HI</span><span id="hudBest">000</span></span>
                         </div>
-                        <div class="ui-overlay hidden" id="gameOverScreen">
-                            <h2>FIM DE JOGO</h2>
-                            <p>Pontos: <span id="finalScore">0</span></p>
-                            <p>Pressione Start</p>
+                        <div class="screen-play">
+                            <canvas id="gameCanvas" width="400" height="400" role="img"
+                                aria-label="Tabuleiro do jogo Snake"></canvas>
+                            <div class="ui-overlay" id="startScreen">
+                                <h2>SNAKE</h2>
+                                <p>Pressione Start</p>
+                            </div>
+                            <div class="ui-overlay hidden" id="pauseScreen">
+                                <h2>PAUSA</h2>
+                                <p>Start p/ voltar</p>
+                            </div>
+                            <div class="ui-overlay hidden" id="gameOverScreen">
+                                <h2>FIM DE JOGO</h2>
+                                <p class="steady">Pontos: <span id="finalScore">0</span></p>
+                                <p>Pressione Start</p>
+                            </div>
+                            <div class="scanlines"></div>
                         </div>
-                        <div class="scanlines"></div>
                     </div>
                     <div class="power-led"></div>
                     <div class="brand-text">NINTENDO-ISH</div>
@@ -40,40 +62,49 @@
 
                 <div class="controls-area">
                     <div class="d-pad">
-                        <div class="d-pad-up" data-key="ArrowUp"></div>
-                        <div class="d-pad-right" data-key="ArrowRight"></div>
-                        <div class="d-pad-down" data-key="ArrowDown"></div>
-                        <div class="d-pad-left" data-key="ArrowLeft"></div>
-                        <div class="d-pad-center"></div>
+                        <button type="button" class="d-pad-up" data-key="ArrowUp" aria-label="Mover para cima"></button>
+                        <button type="button" class="d-pad-right" data-key="ArrowRight"
+                            aria-label="Mover para a direita"></button>
+                        <button type="button" class="d-pad-down" data-key="ArrowDown"
+                            aria-label="Mover para baixo"></button>
+                        <button type="button" class="d-pad-left" data-key="ArrowLeft"
+                            aria-label="Mover para a esquerda"></button>
+                        <div class="d-pad-center" aria-hidden="true"></div>
                     </div>
 
                     <div class="action-buttons">
                         <div class="btn-group">
-                            <button class="btn-b" id="btnB">B</button>
-                            <div class="label">B</div>
+                            <button type="button" class="btn-b" id="btnB" aria-label="Botão B: pausar ou retomar"><span
+                                    class="sr-only">B</span></button>
+                            <div class="label" aria-hidden="true">B</div>
                         </div>
                         <div class="btn-group">
-                            <button class="btn-a" id="btnA">A</button>
-                            <div class="label">A</div>
+                            <button type="button" class="btn-a" id="btnA" aria-label="Botão A: iniciar partida"><span
+                                    class="sr-only">A</span></button>
+                            <div class="label" aria-hidden="true">A</div>
                         </div>
                     </div>
 
                     <div class="meta-controls">
                         <div class="meta-btn-group">
-                            <button class="btn-select" id="btnSelect"></button>
-                            <div class="label">SELECT</div>
+                            <button type="button" class="btn-select" id="btnSelect"
+                                aria-label="Select: reiniciar partida"></button>
+                            <div class="label" aria-hidden="true">SELECT</div>
                         </div>
                         <div class="meta-btn-group">
-                            <button class="btn-start" id="btnStart"></button>
-                            <div class="label">START</div>
+                            <button type="button" class="btn-start" id="btnStart"
+                                aria-label="Start: jogar ou pausar"></button>
+                            <div class="label" aria-hidden="true">START</div>
                         </div>
                     </div>
 
-                    <div class="speaker-grill">
+                    <div class="speaker-grill" aria-hidden="true">
                         <span></span><span></span><span></span><span></span><span></span><span></span>
                     </div>
                 </div>
             </div>
+
+            <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
 
             <div class="instructions">
                 <p>Use as <strong>Setas</strong> ou o <strong>D-Pad</strong> para mover</p>
@@ -85,7 +116,7 @@
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=2" defer></script>
 </body>
 
 </html>

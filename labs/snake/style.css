@@ -11,17 +11,19 @@
     --gb-btn-dpad: #333333;
     --gb-btn-action: #8b0000;
     --gb-btn-meta: #666666;
+    --gb-screen-veil: rgba(155, 188, 15, 0.86);
 }
 
 [data-theme="dark"] {
     --gb-body: #4a4a4a;
     --gb-body-shadow: #2a2a2a;
     --gb-screen-bezel: #222222;
-    --gb-screen-bg: #4b5c07;
+    --gb-screen-bg: #23310a;
     /* Darker green for dark mode comfort */
-    --gb-pixel-dark: #ccffcc;
-    /* Inverted/glowing for dark mode */
-    --gb-pixel-light: #4b5c07;
+    --gb-pixel-dark: #b6e05a;
+    /* Glowing phosphor tone for dark mode */
+    --gb-pixel-light: #23310a;
+    --gb-screen-veil: rgba(35, 49, 10, 0.88);
 }
 
 .game-container {
@@ -36,7 +38,7 @@
 .handheld-device {
     background-color: var(--gb-body);
     width: 320px;
-    height: 540px;
+    height: 562px;
     border-radius: 15px 15px 40px 15px;
     padding: 20px;
     box-shadow:
@@ -54,7 +56,7 @@
 .screen-bezel {
     background-color: var(--gb-screen-bezel);
     width: 100%;
-    height: 240px;
+    height: 262px;
     border-radius: 10px 10px 30px 10px;
     padding: 20px 30px;
     display: flex;
@@ -72,6 +74,43 @@
     box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* LCD score strip: keeps the score visible during play without stealing
+   playfield tiles from the canvas grid. */
+.lcd-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    padding: 3px 6px;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--gb-pixel-dark);
+    border-bottom: 2px solid var(--gb-pixel-dark);
+    letter-spacing: 0.5px;
+}
+
+.lcd-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.lcd-key {
+    opacity: 0.65;
+}
+
+.screen-play {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    /* Lets the overlays scale their type with the LCD instead of the viewport. */
+    container-type: inline-size;
 }
 
 canvas {
@@ -106,7 +145,9 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: rgba(155, 188, 15, 0.8);
+    gap: 6px;
+    padding: 8px;
+    background-color: var(--gb-screen-veil);
     color: var(--gb-pixel-dark);
     font-family: 'Press Start 2P', cursive;
     text-align: center;
@@ -118,14 +159,19 @@ canvas {
 }
 
 .ui-overlay h2 {
-    font-size: 24px;
-    margin-bottom: 10px;
+    font-size: clamp(14px, 5.5cqw, 24px);
+    margin-bottom: 4px;
     text-transform: uppercase;
 }
 
 .ui-overlay p {
-    font-size: 12px;
-    animation: blink 1s infinite;
+    font-size: clamp(8px, 3cqw, 12px);
+    line-height: 1.5;
+    animation: blink 1.1s steps(1, end) infinite;
+}
+
+.ui-overlay p.steady {
+    animation: none;
 }
 
 @keyframes blink {
@@ -186,17 +232,36 @@ canvas {
     left: 20px;
 }
 
-.d-pad div {
+.d-pad > * {
+    appearance: none;
     background-color: var(--gb-btn-dpad);
+    border: 0;
+    padding: 0;
     position: absolute;
     border-radius: 3px;
     cursor: pointer;
+    touch-action: manipulation;
     box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+    transition: filter 0.15s ease;
 }
 
-.d-pad div:active {
+.d-pad > button:hover {
+    filter: brightness(1.35);
+}
+
+.d-pad > *:active {
     transform: translate(1px, 1px);
     box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+}
+
+.d-pad > button:focus-visible,
+.btn-a:focus-visible,
+.btn-b:focus-visible,
+.btn-select:focus-visible,
+.btn-start:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+    z-index: 3;
 }
 
 .d-pad-center {
@@ -263,14 +328,23 @@ canvas {
     border-radius: 50%;
     background-color: var(--gb-btn-action);
     border: none;
-    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3),
+        inset -2px -2px 4px rgba(0, 0, 0, 0.35),
+        inset 2px 2px 4px rgba(255, 255, 255, 0.2);
     cursor: pointer;
+    touch-action: manipulation;
+    transition: filter 0.15s ease;
+}
+
+.btn-a:hover,
+.btn-b:hover {
+    filter: brightness(1.2);
 }
 
 .btn-a:active,
 .btn-b:active {
     transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+    box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3), inset 2px 2px 5px rgba(0, 0, 0, 0.5);
 }
 
 .label {
@@ -307,6 +381,13 @@ canvas {
     transform: rotate(-15deg);
     box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
     cursor: pointer;
+    touch-action: manipulation;
+    transition: filter 0.15s ease;
+}
+
+.btn-select:hover,
+.btn-start:hover {
+    filter: brightness(1.25);
 }
 
 .btn-select:active,
@@ -340,8 +421,11 @@ canvas {
     line-height: 1.5;
 }
 
-@media (max-width: 400px) {
+@media (max-width: 360px) {
     .handheld-device {
-        transform: scale(0.9);
+        transform: scale(0.86);
+        transform-origin: top center;
+        margin-bottom: -78px;
+        /* Reclaims the space the scale transform leaves behind. */
     }
 }

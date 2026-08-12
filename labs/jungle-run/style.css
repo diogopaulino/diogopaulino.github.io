@@ -1205,3 +1205,18 @@ body.jungle-lab {
     }
 }
 
+
+/* Aviso de falha de carregamento (CDN do PixiJS fora do ar, offline, script bloqueado).
+   Fica dentro da tela inicial, no lugar onde o jogador já está olhando. */
+.jr-load-error {
+    margin: 1rem auto 0;
+    max-width: 42ch;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 138, 128, 0.45);
+    background: rgba(120, 20, 20, 0.35);
+    color: #ffd9d4;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: center;
+}
