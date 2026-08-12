@@ -136,7 +136,11 @@ export class AudioEngine {
         const osc = ctx.createOscillator();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        if (sweep) osc.frequency.linearRampToValueAtTime(freq + sweep, ctx.currentTime + dur);
+        // um sweep negativo grande pode levar a frequência a zero/negativo, o que o WebAudio
+        // rejeita — o piso de 20 Hz mantém a rampa válida sem mudar o efeito audível
+        if (sweep) {
+            osc.frequency.linearRampToValueAtTime(Math.max(20, freq + sweep), ctx.currentTime + dur);
+        }
         const g = ctx.createGain();
         g.gain.setValueAtTime(gain, ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
@@ -147,11 +151,18 @@ export class AudioEngine {
         this._voicePool.push({ osc });
     }
 
+    /** Dispara um SFX nomeado da biblioteca (timbre e sweep vêm da definição). */
     play(id) {
         if (!this.unlocked) return;
         const def = SFX_LIBRARY[id];
         if (!def) return;
-        this.blip({ freq: def.freq, dur: def.dur, gain: def.gain, type: 'square' });
+        this.blip({
+            freq: def.freq,
+            dur: def.dur,
+            gain: def.gain,
+            type: def.type || 'square',
+            sweep: def.sweep || 0
+        });
     }
 
     // ---- Tracker: scheduler simples com lookahead ----
@@ -159,7 +170,11 @@ export class AudioEngine {
         if (!this.unlocked) return;
         const song = SONGS[name] || STINGERS[name];
         if (!song) return;
+        // repetir a faixa que já está tocando reiniciaria o compasso a cada troca de cena —
+        // manter o loop correndo é o que dá continuidade entre briefing, jogo e resultado
+        if (this._songState && this._songName === name) return;
         this.stopSong();
+        this._songName = name;
         this._songState = {
             song, orderIdx: 0, rowIdx: 0,
             rowDurSec: 60 / song.bpm / 4,
@@ -171,6 +186,7 @@ export class AudioEngine {
     stopSong() {
         if (this._schedulerId) { clearInterval(this._schedulerId); this._schedulerId = null; }
         this._songState = null;
+        this._songName = null;
         for (const id of ['p1', 'p2', 'tri']) {
             if (this.channels[id]) this.channels[id].gain.gain.setTargetAtTime(0, this.ctx?.currentTime || 0, 0.05);
         }

@@ -1,213 +1,314 @@
-// src/main.js — boot, canvas setup, fixed-step loop, scene stack, input/theme observers.
+// main.js — boot do gabinete: canvas, loop de passo fixo, pilha de cenas e as pontes com a
+// página (tema, toque, som, acessibilidade).
+//
+// O loop separa update de render: a simulação roda sempre em passos de 1/60s, independente da
+// taxa de atualização do monitor, então a física do bowl e a cadência da canoa se comportam
+// igual em 60, 120 ou 144 Hz. Frames atrasados são recuperados até um teto, para que uma aba
+// que voltou do background não "teleporte" o jogo.
 
 import { W, H, PixelSurface } from './core/pixel.js';
 import { InputManager } from './core/input.js';
 import { createFont } from './core/font.js';
 import { Store } from './core/store.js';
-import { makeRng } from './core/util.js';
-import { buildAtlas } from './art/atlas.js';
+import { makeRng, on } from './core/util.js';
 import { createAudio } from './core/audio.js';
-import { GameShell } from './game/shell.js';
-import { HUD } from './game/hud.js';
-import { titleScene, hubScene, briefingScene, playScene, resultScene, podiumScene, pauseScene, optionsScene } from './game/scenes.js';
+import { buildAtlas } from './art/atlas.js';
+import { buildScenery } from './art/scenery.js';
+import { SVC } from './core/palette.js';
+import { titleScene, menuScene, briefingScene, pauseScene } from './game/scenes.js';
 
-// Check for file:// protocol
 if (location.protocol === 'file:') {
-    alert('Santos Vice City requires HTTP/HTTPS.\nRun: python3 -m http.server 8000\nThen visit: http://localhost:8000/labs/santos-vice-city/');
-    throw new Error('file:// not supported');
+    document.body.innerHTML =
+        '<p style="font:16px system-ui;padding:2rem">Este laboratório usa ES Modules e precisa ser servido por HTTP.<br>' +
+        'Rode <code>python3 -m http.server 8000</code> na raiz do repositório e abra ' +
+        '<code>http://localhost:8000/labs/santos-vice-city/</code>.</p>';
+    throw new Error('file:// não suportado');
 }
 
-// Globals
-let px = null, input = null, font = null, sprites = null, store = null, shell = null, hud = null, rng = null, audio = null;
-const sceneStack = [];
-let isRunning = false;
-let acc = 0, lastTime = 0;
-const STEP = 1 / 60;
-const MAX_STEPS = 5;
+const STEP_MS = 1000 / 60;
+const MAX_CATCHUP = 5;
 
-function getCurrentScene() {
-    return sceneStack.length > 0 ? sceneStack[sceneStack.length - 1] : null;
+const state = {
+    px: null, input: null, font: null, sprites: null, scenery: null,
+    store: null, audio: null, rng: null,
+    sponsor: null, champ: null,
+    sceneStack: [],
+    running: false,
+    acc: 0,
+    last: 0,
+    rafId: 0,
+    scanlines: true
+};
+
+const SCENE_ANNOUNCE = {
+    title: 'Tela de título. Aperte Enter para começar.',
+    menu: 'Menu principal.',
+    sponsor: 'Escolha de patrocinador.',
+    eventSelect: 'Escolha de prova.',
+    briefing: 'Briefing da prova.',
+    play: 'Prova em andamento.',
+    result: 'Resultado da prova.',
+    podium: 'Cerimônia de pódio.',
+    records: 'Tela de recordes.',
+    options: 'Opções.',
+    pause: 'Jogo pausado.'
+};
+
+function announce(id) {
+    const el = document.getElementById('svcAnnouncer');
+    if (el && SCENE_ANNOUNCE[id]) el.textContent = SCENE_ANNOUNCE[id];
+}
+
+// ---------------------------------------------------------------------------
+// Pilha de cenas
+// ---------------------------------------------------------------------------
+
+function currentScene() {
+    return state.sceneStack[state.sceneStack.length - 1] || null;
 }
 
 function appCtx() {
     return {
-        px, input, sprites, font, store, shell, hud, rng, audio,
+        px: state.px,
+        input: state.input,
+        font: state.font,
+        sprites: state.sprites,
+        scenery: state.scenery,
+        store: state.store,
+        audio: state.audio,
+        rng: state.rng,
+        get sponsor() { return state.sponsor; },
+        get champ() { return state.champ; },
+        set champ(v) { state.champ = v; },
+        setSponsor,
+        applyOptions,
+        setTouchLayout,
+        restartEvent,
         goto: gotoScene,
-        pushScene: pushScene,
-        popScene: popScene
+        pushScene,
+        popScene
     };
 }
 
-const SCENE_ANNOUNCE = {
-    title: 'Tela de título.',
-    hub: 'Mapa de Santos. Escolha um evento.',
-    briefing: 'Briefing do evento.',
-    play: 'Jogo em andamento.',
-    result: 'Resultado do evento.',
-    podium: 'Pódio do campeonato.'
-};
-
-function announce(sceneId) {
-    const el = document.getElementById('svcAnnouncer');
-    if (el && SCENE_ANNOUNCE[sceneId]) el.textContent = SCENE_ANNOUNCE[sceneId];
-}
-
-function gotoScene(newScene, params = {}) {
-    while (sceneStack.length > 0) {
-        const s = sceneStack.pop();
+function gotoScene(scene, params = {}) {
+    while (state.sceneStack.length) {
+        const s = state.sceneStack.pop();
         if (s.exit) s.exit();
     }
-    sceneStack.push(newScene);
-    announce(newScene.id);
-    if (newScene.enter) newScene.enter(appCtx(), params);
+    state.sceneStack.push(scene);
+    announce(scene.id);
+    if (scene.enter) scene.enter(appCtx(), params);
 }
 
 function pushScene(scene, params = {}) {
-    sceneStack.push(scene);
+    state.sceneStack.push(scene);
+    announce(scene.id);
     if (scene.enter) scene.enter(appCtx(), params);
 }
 
 function popScene() {
-    if (sceneStack.length > 0) {
-        const scene = sceneStack.pop();
-        if (scene.exit) scene.exit();
-    }
+    const scene = state.sceneStack.pop();
+    if (scene && scene.exit) scene.exit();
+    const back = currentScene();
+    if (back) announce(back.id);
 }
+
+/** Recomeça a prova atual do zero — usado pelo menu de pausa. */
+function restartEvent() {
+    const play = state.sceneStack.find((s) => s.id === 'play');
+    if (!play) { gotoScene(menuScene); return; }
+    const eventId = play.eventId;
+    const champ = play.champ;
+    gotoScene(briefingScene, { eventId, champ });
+}
+
+// ---------------------------------------------------------------------------
+// Patrocinador, opções, toque
+// ---------------------------------------------------------------------------
+
+/** Trocar de patrocinador reconstrói o atlas: o uniforme do atleta muda de cor. */
+function setSponsor(sponsor) {
+    state.sponsor = sponsor;
+    state.sprites = buildAtlas({ ...sponsor.kit, skin: 'u', hair: '0' });
+}
+
+function applyOptions() {
+    const opts = state.store.getOpts();
+    state.audio.setMute(!!opts.mute);
+    state.scanlines = opts.scanlines !== false;
+    state.px.shakeEnabled = opts.shake !== false;
+    updateSoundButton();
+}
+
+function setTouchLayout(layout) {
+    const overlay = document.getElementById('svcTouch');
+    if (!overlay) return;
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    state.input.attachTouch(overlay, coarse ? (layout || 'FULL') : null);
+}
+
+function updateSoundButton() {
+    const btn = document.getElementById('svcSoundToggle');
+    if (!btn) return;
+    const muted = !!state.store.getOpts().mute;
+    btn.setAttribute('aria-pressed', String(!muted));
+    const label = btn.querySelector('[data-label]');
+    if (label) label.textContent = muted ? 'Som desativado' : 'Som ativado';
+    const icon = btn.querySelector('[data-icon]');
+    if (icon) icon.textContent = muted ? '◌' : '◉';
+}
+
+// ---------------------------------------------------------------------------
+// Loop
+// ---------------------------------------------------------------------------
 
 function update(dtMs) {
-    const scene = getCurrentScene();
+    const scene = currentScene();
     if (!scene) return;
-    input.update(dtMs);
-    px.tickShake(dtMs);
-    if (scene.update) scene.update(STEP, input, appCtx());
+    state.input.update(dtMs);
+    state.px.tickShake(dtMs);
+    if (scene.update) scene.update(dtMs);
 }
 
-function draw() {
-    if (sceneStack.length === 0) return;
-    px.clearStage('#0d0a1a');
-    // Desenha a pilha inteira de baixo pra cima — permite overlays (pause/opções)
-    // compor sobre o último frame da cena de baixo sem precisar redesenhá-la.
-    for (const scene of sceneStack) {
-        if (scene.draw) scene.draw(px, appCtx());
+function render() {
+    const scene = currentScene();
+    if (!scene) return;
+    state.px.clearStage(SVC['0']);
+
+    // uma cena empilhada (pausa) desenha por cima da de baixo
+    if (state.sceneStack.length > 1) {
+        const below = state.sceneStack[state.sceneStack.length - 2];
+        if (below.draw) below.draw();
     }
-    px.present();
+    if (scene.draw) scene.draw();
+
+    if (state.scanlines) drawScanlines();
+    state.px.present();
 }
 
-function loop(now) {
-    const dtMs = Math.min(50, (now - lastTime) / 1000 * 1000);
-    lastTime = now;
+/** Scanlines: uma linha escura a cada duas, no canvas de baixa resolução. */
+function drawScanlines() {
+    const ctx = state.px.ctx;
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#000';
+    for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+    ctx.globalAlpha = 1;
+}
 
-    if (isRunning) {
-        acc += dtMs / 1000;
-        let steps = 0;
-        while (acc >= STEP && steps < MAX_STEPS) {
-            update(dtMs);
-            acc -= STEP;
-            steps++;
-        }
+function frame(now) {
+    if (!state.running) return;
+    state.rafId = requestAnimationFrame(frame);
+
+    if (!state.last) state.last = now;
+    let delta = now - state.last;
+    state.last = now;
+    // um salto grande (aba em background, GC longo) não deve virar cinco frames de simulação
+    if (delta > 250) delta = STEP_MS;
+    state.acc += delta;
+
+    let steps = 0;
+    while (state.acc >= STEP_MS && steps < MAX_CATCHUP) {
+        update(STEP_MS);
+        state.acc -= STEP_MS;
+        steps++;
     }
+    if (steps === MAX_CATCHUP) state.acc = 0;
 
-    draw();
-    requestAnimationFrame(loop);
+    render();
 }
 
+function startLoop() {
+    if (state.running) return;
+    state.running = true;
+    state.last = 0;
+    state.rafId = requestAnimationFrame(frame);
+}
+
+function stopLoop() {
+    state.running = false;
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+    state.rafId = 0;
+}
+
+// ---------------------------------------------------------------------------
 // Boot
-document.addEventListener('DOMContentLoaded', () => {
+// ---------------------------------------------------------------------------
+
+function boot() {
     const wrap = document.getElementById('svcWrap');
-    const stageCanvas = document.getElementById('svcStage');
-    const screenCanvas = document.getElementById('svcScreen');
-    const touchOverlay = document.getElementById('svcTouch');
+    const stage = document.getElementById('svcStage');
+    const screen = document.getElementById('svcScreen');
+    if (!wrap || !stage || !screen) {
+        console.error('Santos Vice Games: canvas não encontrado no HTML.');
+        return;
+    }
+
+    state.px = new PixelSurface(wrap, stage, screen);
+    state.input = new InputManager();
+    state.font = createFont();
+    state.store = new Store();
+    state.audio = createAudio();
+    state.rng = makeRng(Date.now() & 0xffffffff);
+    state.scenery = buildScenery();
+    state.sprites = buildAtlas({ shirt: 'c', trim: 'y', skin: 'u', hair: '0' });
+
+    applyOptions();
+
+    // O AudioContext só pode nascer num gesto real do usuário. Qualquer primeira interação
+    // serve — tecla, clique ou toque — e depois o listener se remove sozinho.
+    const unlock = () => {
+        state.audio.unlock();
+        state.audio.setMute(!!state.store.getOpts().mute);
+        const scene = currentScene();
+        if (scene && scene.id === 'title') state.audio.playSong('tema');
+    };
+    ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => {
+        window.addEventListener(ev, unlock, { once: true, passive: true });
+    });
+
+    // Esc/P: mesma pausa que o Start, mas acessível de qualquer teclado.
+    state.input.onPause(() => {
+        const scene = currentScene();
+        if (!scene) return;
+        if (scene.id === 'play') pushScene(pauseScene, { eventId: scene.eventId });
+        else if (scene.id === 'pause') popScene();
+    });
+
+    state.input.onMute(() => {
+        const opts = state.store.getOpts();
+        state.store.setOpt('mute', !opts.mute);
+        applyOptions();
+    });
+
+    // Pausar o loop quando a aba sai de vista economiza bateria e evita que o acumulador
+    // de tempo exploda ao voltar.
+    on(document, 'visibilitychange', () => {
+        if (document.hidden) stopLoop();
+        else startLoop();
+    });
+
+    // Botões da página
     const soundBtn = document.getElementById('svcSoundToggle');
+    on(soundBtn, 'click', () => {
+        const opts = state.store.getOpts();
+        state.store.setOpt('mute', !opts.mute);
+        applyOptions();
+    });
+
     const resetBtn = document.getElementById('svcResetBtn');
-
-    if (!wrap || !stageCanvas || !screenCanvas) {
-        console.error('Santos Vice City: DOM nodes missing');
-        return;
-    }
-
-    // Engine
-    try {
-        px = new PixelSurface(wrap, stageCanvas, screenCanvas);
-        input = new InputManager();
-        font = createFont();
-        sprites = buildAtlas();
-        store = new Store();
-        rng = makeRng(Date.now());
-        shell = new GameShell(store, rng);
-        hud = new HUD(font, sprites);
-        audio = createAudio();
-        console.log('✓ Engine initialized');
-    } catch (e) {
-        console.error('Boot error:', e);
-        const g = stageCanvas.getContext('2d');
-        g.fillStyle = '#f00';
-        g.fillText('Error: ' + e.message, 10, 20);
-        return;
-    }
-
-    // Wire input
-    input.attachTouch(touchOverlay, 'FULL');
-    input.onPause(() => {
-        const top = getCurrentScene();
-        if (!top) return;
-        if (top.id === 'pause') {
-            popScene();
-        } else if (top.id !== 'title' && top.id !== 'pause') {
-            pushScene(pauseScene);
-        }
-    });
-    const toggleMute = () => {
-        const muted = !store.getOpts().mute;
-        store.setOpt('mute', muted);
-        audio.setMute(muted);
-        soundBtn.setAttribute('aria-pressed', String(!muted));
-        soundBtn.textContent = muted ? '◌ Som desativado' : '◉ Som ativado';
-    };
-    input.onMute(toggleMute);
-
-    // Áudio precisa de gesto real do usuário (política de autoplay) — primeiro
-    // input de qualquer tipo destrava o AudioContext, igual a tela PRESS START sugere.
-    const unlockAudio = () => {
-        audio.unlock();
-        audio.setMute(store.getOpts().mute);
-        audio.setVolume(store.getOpts().vol);
-    };
-    window.addEventListener('pointerdown', unlockAudio, { once: true });
-    window.addEventListener('keydown', unlockAudio, { once: true });
-
-    if (store.getOpts().mute) {
-        soundBtn.setAttribute('aria-pressed', 'false');
-        soundBtn.textContent = '◌ Som desativado';
-    }
-
-    soundBtn.addEventListener('click', toggleMute);
-
-    resetBtn.addEventListener('click', () => {
-        if (confirm('Apagar todos os recordes?')) {
-            if (confirm('Tem certeza?')) {
-                store.reset();
-                resetBtn.textContent = '✓ Recordes apagados';
-                setTimeout(() => { resetBtn.textContent = 'Apagar recordes'; }, 2000);
-            }
-        }
+    on(resetBtn, 'click', () => {
+        if (!window.confirm('Apagar todos os recordes e medalhas do Santos Vice Games?')) return;
+        state.store.reset();
+        applyOptions();
     });
 
-    // Theme observer
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach(m => {
-            if (m.attributeName === 'data-theme') {
-                const theme = document.documentElement.getAttribute('data-theme') || 'light';
-                px.setTheme(theme);
-            }
-        });
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-    // Start
-    isRunning = true;
     gotoScene(titleScene);
-    requestAnimationFrame(loop);
-    lastTime = performance.now();
+    setTouchLayout(null);
+    startLoop();
+}
 
-    window.__svc = { px, input, font, sprites, store, shell, hud, audio, sceneStack, gotoScene, pushScene, popScene };
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+} else {
+    boot();
+}
