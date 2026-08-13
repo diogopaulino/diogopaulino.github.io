@@ -18,13 +18,13 @@ const HALF_FLAT = 40;       // metade do fundo reto do bowl
 const R = 66;               // raio da transição
 const COPING_Y = FLOOR_Y - R;
 const S_MAX = HALF_FLAT + R * (Math.PI / 2);   // arco do fundo até o coping
-const GRAVITY = 620;
-const PUMP_ACCEL = 340;
-const MIN_LAUNCH = 120;
+const GRAVITY = 750;
+const PUMP_ACCEL = 480;
+const MIN_LAUNCH = 150;
 // Tolerância de alinhamento na aterrissagem, em graus. Era 42; com o mostrador de giro no HUD
 // o jogador finalmente enxerga o alvo, e 52 dá o respiro que faz a manobra parecer justa em
 // vez de sorteada.
-const LAND_TOLERANCE = 52;
+const LAND_TOLERANCE = 55;
 
 /** Arco assinado -> ponto na superfície + inclinação local (radianos). */
 function surfaceAt(s) {

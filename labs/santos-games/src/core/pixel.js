@@ -56,13 +56,12 @@ export class PixelSurface {
         const raw = Math.min(availW / W, availH / H);
         if (!(raw > 0)) return;
 
-        // O tamanho em CSS preenche a moldura (escala fracionária), mas o buffer de trás é
+        // O tamanho em CSS preenche a moldura via flexbox e aspect-ratio, mas o buffer de trás é
         // sempre um múltiplo inteiro de 320x224. Com `image-rendering: pixelated` o navegador
         // faz a ampliação final por vizinho mais próximo — pixels continuam duros e nenhum
-        // espaço da moldura fica sobrando, que era o defeito da escala inteira pura.
+        // espaço da moldura fica sobrando.
+        // As larguras visuais ficam por conta do CSS puro.
         const cssScale = raw;
-        this.screen.style.width = Math.round(W * cssScale) + 'px';
-        this.screen.style.height = Math.round(H * cssScale) + 'px';
 
         const back = clamp(Math.ceil(cssScale * dpr), 1, MAX_BACK_SCALE);
         if (this.screen.width !== W * back || this.screen.height !== H * back) {

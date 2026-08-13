@@ -16,8 +16,8 @@ const NEAR_Y = 196;      // linha do jogador
 const FAR_Y = 126;       // linha do parceiro
 const NEAR_SPREAD = 118; // meia-largura da quadra perto
 const FAR_SPREAD = 58;   // meia-largura longe
-const HIT_WINDOW = 0.16; // faixa de z em que o rebate é possível
-const REACH = 30;        // alcance lateral da raquete
+const HIT_WINDOW = 0.22; // faixa de z em que o rebate é possível (Aumentado)
+const REACH = 44;        // alcance lateral da raquete (Aumentado)
 
 const screenY = (z, h) => lerp(NEAR_Y, FAR_Y, z) - h * lerp(1, 0.55, z);
 const screenX = (x, z) => W / 2 + x * lerp(NEAR_SPREAD, FAR_SPREAD, z);
@@ -50,11 +50,11 @@ export class FrescobolEvent extends EventBase {
         this.ball.h = 26;
         this.ball.live = true;
         this.ball.owner = 'player';
-        // saída suave no primeiro toque, depois a velocidade acompanha a troca
-        const speed = 0.62 + Math.min(this.rally, 14) * 0.028;
+        // saída mais rápida e progressão mais agressiva
+        const speed = 0.85 + Math.min(this.rally, 14) * 0.045;
         this.ball.vz = -speed;
         this.ball.vx = (rng.next() - 0.5) * 0.5;
-        this.ball.vh = 22;
+        this.ball.vh = 28;
         this.partnerSwingT = 0.25;
         this.trailPts.length = 0;
     }
@@ -71,10 +71,10 @@ export class FrescobolEvent extends EventBase {
         }
 
         // --- posição do jogador ---
-        this.playerX = clamp(this.playerX + input.axisX() * 1.5 * dt, -1, 1);
+        this.playerX = clamp(this.playerX + input.axisX() * 1.9 * dt, -1, 1);
 
         // --- carga do rebate: segurar A acumula força, soltar/apertar rebate ---
-        if (input.state.a.down) this.charge = Math.min(1, this.charge + dt * 1.6);
+        if (input.state.a.down) this.charge = Math.min(1, this.charge + dt * 2.8);
 
         if (!this.ball.live) return;
         const b = this.ball;
@@ -83,7 +83,7 @@ export class FrescobolEvent extends EventBase {
         b.z += b.vz * dt;
         b.x += (b.vx + this.wind * 0.35) * dt;
         b.h += b.vh * dt;
-        b.vh -= 46 * dt;
+        b.vh -= 55 * dt; // gravidade maior
 
         // rastro: guarda alguns pontos para desenhar a trajetória
         this.trailPts.push({ x: b.x, z: b.z, h: b.h });
@@ -141,11 +141,11 @@ export class FrescobolEvent extends EventBase {
         this.bestRally = Math.max(this.bestRally, this.rally);
         this.score += pts;
 
-        const speed = 0.62 + Math.min(this.rally, 16) * 0.03 + charge * 0.22;
+        const speed = 0.85 + Math.min(this.rally, 16) * 0.045 + charge * 0.3;
         b.owner = 'partner';
         b.vz = speed;
         b.vx = (this.playerX - b.x) * 1.1 + (this.playerX * -0.25);
-        b.vh = 26 + charge * 16;
+        b.vh = 32 + charge * 20;
         b.h = Math.max(b.h, 6);
 
         audio.play('hit');

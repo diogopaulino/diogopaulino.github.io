@@ -1,0 +1,310 @@
+/* Santos Games — CSS reescrito para layout premium fullscreen glassmorphism */
+
+:root {
+    --glass-bg: rgba(13, 10, 26, 0.45);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(16px);
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Evita scroll na página principal */
+}
+
+/* O container base do lab não deve limitar o tamanho */
+.container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100vw;
+    height: 100vh;
+}
+
+.svc-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 1;
+    /* Animação sutil de escala para dar vida */
+    animation: bgPulse 30s infinite alternate ease-in-out;
+}
+
+@keyframes bgPulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.05); }
+}
+
+.svc-layout {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Headers e footers glassmorphism */
+.glass-header, .glass-footer {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    color: white;
+}
+.glass-footer {
+    border-bottom: none;
+    border-top: 1px solid var(--glass-border);
+    margin-top: auto;
+}
+
+.svc-shell {
+    flex: 1;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    padding: 2rem;
+    align-items: stretch;
+    box-sizing: border-box;
+    overflow: hidden; /* Evita que a página inteira role; o painel lateral que rolará */
+}
+
+/* ---------- palco ---------- */
+.svc-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    min-height: 0; /* Essencial para flex-children não transbordarem */
+    height: 100%;
+}
+
+.svc-screen-wrap {
+    position: relative;
+    box-sizing: border-box;
+    aspect-ratio: 320 / 224;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b0916;
+    border-radius: 12px;
+    padding: 0; /* sem padding para tela ocupar tudo */
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 24px 60px -24px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 47, 160, 0.4),
+        0 0 40px rgba(0, 240, 255, 0.2);
+    overflow: hidden;
+}
+
+/* scanlines intensificadas sobre o canvas */
+.svc-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background: 
+        radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.6) 100%),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
+}
+
+#svcScreen {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #0d0a1a;
+}
+
+/* ---------- painel lateral (glassmorphism) ---------- */
+.glass-panel {
+    width: 340px;
+    flex-shrink: 0;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+}
+
+.svc-side-block h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.svc-side-block p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.svc-kicker {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #00f0ff; /* Neon cyan */
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* lista de eventos */
+.svc-events {
+    list-style: none;
+    counter-reset: prova;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 0.8rem;
+    display: grid;
+    gap: 4px;
+}
+.svc-events li {
+    counter-increment: prova;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+.svc-events li:hover {
+    background: rgba(255, 47, 160, 0.2);
+}
+.svc-events li::before {
+    content: counter(prova);
+    font-weight: 700;
+    color: #ff2fa0;
+    min-width: 1.2em;
+}
+.svc-events b { color: #fff; }
+.svc-events span { margin-left: auto; color: rgba(255,255,255,0.6); font-size: 0.75rem; }
+
+/* controles */
+.svc-key-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.3rem 0;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.8);
+}
+.svc-key-row kbd {
+    min-width: 60px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-bottom-width: 2px;
+    color: #fff;
+}
+.svc-note { margin-top: 0.8rem; font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+
+/* botoes */
+.svc-actions { display: flex; flex-direction: column; gap: 0.8rem; margin-top: auto; }
+.svc-btn {
+    padding: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(255, 47, 160, 0.8);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+}
+.svc-btn:hover { background: #ff2fa0; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 47, 160, 0.4); }
+.svc-btn--ghost { background: rgba(255,255,255,0.1); }
+.svc-btn--ghost:hover { background: rgba(255,255,255,0.2); box-shadow: none; }
+.svc-btn[aria-pressed="false"] [data-icon] { opacity: 0.4; }
+
+/* ---------- controles de toque ---------- */
+.svc-touch { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+.svc-touch.tp--hidden { display: none; }
+.svc-touch button {
+    pointer-events: auto;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(12, 10, 26, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    touch-action: none;
+    user-select: none;
+    transition: background 0.1s ease, transform 0.1s ease;
+}
+.svc-touch button:active { background: rgba(255, 47, 160, 0.7); transform: scale(0.94); box-shadow: 0 0 0 rgba(0, 0, 0, 0.45); }
+.tp-dpad button { width: 46px; height: 46px; border-radius: 8px; }
+.tp-up { left: 62px; bottom: 108px; }
+.tp-down { left: 62px; bottom: 12px; }
+.tp-left { left: 14px; bottom: 60px; }
+.tp-right { left: 110px; bottom: 60px; }
+.tp-actions button { width: 56px; height: 56px; font-size: 1.1rem; }
+.tp-a { right: 14px; bottom: 26px; }
+.tp-b { right: 76px; bottom: 62px; }
+.tp-start { width: 46px; height: 30px; border-radius: 15px !important; right: 50%; transform: translateX(50%); bottom: 10px; font-size: 0.8rem; }
+
+/* ---------- responsivo ---------- */
+@media (max-width: 960px) {
+    .svc-shell { flex-direction: column; padding: 1rem; overflow-y: auto; }
+    .svc-stage { min-height: 50vh; }
+    .glass-panel { width: 100%; }
+    .svc-side { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .svc-actions { flex-direction: row; grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+    .svc-side { grid-template-columns: 1fr; }
+    .svc-actions { flex-direction: column; }
+    .tp-dpad button { width: 42px; height: 42px; }
+    .tp-up { left: 54px; bottom: 96px; }
+    .tp-down { left: 54px; bottom: 10px; }
+    .tp-left { left: 10px; bottom: 53px; }
+    .tp-right { left: 98px; bottom: 53px; }
+    .tp-actions button { width: 50px; height: 50px; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+    .svc-shell { flex-direction: row; padding: 0.5rem; gap: 1rem; }
+    .glass-panel { width: 250px; }
+    .svc-screen-wrap { max-height: 85vh; }
+}

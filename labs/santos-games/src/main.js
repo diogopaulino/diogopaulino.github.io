@@ -16,6 +16,8 @@ import { buildAtlas } from './art/atlas.js';
 import { buildScenery } from './art/scenery.js';
 import { SVC } from './core/palette.js';
 import { titleScene, menuScene, briefingScene, pauseScene } from './game/scenes.js';
+import { EVENT_ORDER, SPONSORS } from './game/config.js';
+import { Championship } from './game/championship.js';
 
 if (location.protocol === 'file:') {
     document.body.innerHTML =
@@ -305,6 +307,24 @@ function boot() {
         if (!window.confirm('Apagar todos os recordes e medalhas do Santos Vice Games?')) return;
         state.store.reset();
         applyOptions();
+    });
+
+    // UX Fix: tornar a lista lateral de eventos interativa. Se o usuário clicar
+    // num item ali, ele pula direto para o briefing daquela prova no modo "Única".
+    const eventItems = document.querySelectorAll('.svc-events li');
+    eventItems.forEach((li, i) => {
+        li.style.cursor = 'pointer';
+        li.title = 'Jogar esta prova';
+        on(li, 'click', () => {
+            const eventId = EVENT_ORDER[i];
+            if (!eventId) return;
+            // Se ainda não tiver patrocinador escolhido, pega o primeiro como padrão
+            const sponsor = state.sponsor || SPONSORS[0];
+            const champ = new Championship('single', sponsor, state.rng, [eventId]);
+            state.champ = champ;
+            state.audio.unlock(); // Tentar destravar áudio caso seja o primeiro clique
+            gotoScene(briefingScene, { eventId, champ });
+        });
     });
 
     gotoScene(titleScene);

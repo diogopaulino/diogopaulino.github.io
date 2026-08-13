@@ -13,8 +13,8 @@ import { drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { panel, needleGauge } from '../game/hud.js';
 
 const SAND_Y = 176;
-const GRAVITY = 300;
-const HIT_RANGE_X = 24;
+const GRAVITY = 250; // Reduzido para mais tempo aéreo
+const HIT_RANGE_X = 34; // Mais tolerância horizontal
 
 /** Tipos de toque: alcance vertical, impulso e pontuação-base de cada um. */
 const TOUCHES = {
@@ -69,7 +69,7 @@ export class AltinhaEvent extends EventBase {
         // --- atleta ---
         const vx = input.axisX();
         if (vx !== 0) this.facing = vx;
-        this.playerX = clamp(this.playerX + vx * 104 * dt, 20, W - 20);
+        this.playerX = clamp(this.playerX + vx * 160 * dt, 20, W - 20); // Mais veloz
 
         if (this.serveT > 0) {
             this.serveT -= dt;

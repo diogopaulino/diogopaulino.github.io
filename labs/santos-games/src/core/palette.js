@@ -6,20 +6,20 @@ export const SVC = {
     ' ': null, '.': null, // transparente
 
     // noite / contorno
-    '0': '#0d0a1a', '1': '#1b1233', '2': '#2e1b4d',
+    '0': '#080512', '1': '#170b2b', '2': '#2d114c',
 
-    // rampa pôr do sol (a "vice" ramp)
-    '3': '#5a2a63', '4': '#93316b', '5': '#d94f6a',
-    '6': '#f97a4d', '7': '#ffb35c', '8': '#ffe28a',
+    // rampa pôr do sol (a "vice" ramp) - Mais vibrante e puro
+    '3': '#661f77', '4': '#ad207a', '5': '#f53874',
+    '6': '#ff6f3b', '7': '#ffac30', '8': '#ffe866',
 
-    // mar
-    '9': '#0b3d5c', 'a': '#12607f', 'b': '#1a8ba3', 'c': '#3fb8c4', 'd': '#8fe3dc',
+    // mar - Mais contraste e azul profundo
+    '9': '#062d4e', 'a': '#0a4b7a', 'b': '#007999', 'c': '#1faac1', 'd': '#73f0e8',
 
     // areia
     'e': '#7a5638', 'f': '#b98a52', 'g': '#e0bd82', 'h': '#f5e3b6',
 
-    // verde (jardins, morro)
-    'i': '#123d2a', 'j': '#1e6b3c', 'k': '#37a04f', 'l': '#7ed36a',
+    // verde (jardins, morro) - Mais vivo
+    'i': '#05301a', 'j': '#095e29', 'k': '#119b35', 'l': '#46db3e',
 
     // concreto / cidade
     'm': '#2a2a38', 'n': '#454a5c', 'o': '#6b7386', 'p': '#9aa3b5', 'q': '#cdd3e0', 'r': '#f2f4fb',
