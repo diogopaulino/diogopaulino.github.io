@@ -57,8 +57,10 @@ function makeBall(r, main, spot) {
 
 function makeRacket() {
     const buf = makeBuf(12, 18);
-    fillEllipse(buf, 6, 6, 5, 6, 'f');   // madeira
+    fillEllipse(buf, 6, 6, 5, 6, 'D');   // aro escuro: é ele que destaca a raquete da areia
+    fillEllipse(buf, 6, 6, 4, 5, 'f');   // madeira
     fillEllipse(buf, 6, 6, 3, 4, 'g');   // miolo mais claro
+    ring(buf, 6, 6, 5, 1, 'h');          // filete de verniz pegando a luz
     fillRect(buf, 5, 12, 3, 6, 'D');     // cabo
     fillRect(buf, 5, 15, 3, 2, 'x');     // grip
     return buf;
@@ -80,16 +82,28 @@ function makeBike() {
     return buf;
 }
 
+/**
+ * Casco de canoa havaiana.
+ * Ele é fundo de propósito: com um casco raso demais o atleta aparecia inteiro por cima e a
+ * leitura virava "sujeito de pé numa prancha". Com 14 px de bordo livre as pernas somem
+ * dentro do barco e a pose sentada finalmente lê.
+ */
 function makeCanoe() {
-    const buf = makeBuf(64, 20);
-    // casco principal
-    fillEllipse(buf, 30, 11, 28, 4, 'E');
-    fillEllipse(buf, 30, 10, 26, 3, 'C');
-    fillRect(buf, 6, 8, 48, 2, 'E');
+    const buf = makeBuf(64, 26);
+    // casco: fundo escuro, costado claro e faixa da borda
+    fillEllipse(buf, 31, 14, 30, 8, 'E');
+    fillEllipse(buf, 31, 13, 28, 7, 'q');
+    fillEllipse(buf, 31, 16, 27, 5, 'C');
+    fillRect(buf, 3, 7, 56, 2, 'E');          // borda superior
+    fillRect(buf, 3, 9, 56, 1, 'p');
+    // bico e popa levantados
+    fillRect(buf, 1, 5, 5, 4, 'E');
+    fillRect(buf, 58, 5, 5, 4, 'E');
     // braço + flutuador (ama) da canoa havaiana — é o que a diferencia de uma canoa comum
-    line(buf, 22, 12, 18, 17, 2, 'M');
-    line(buf, 40, 12, 44, 17, 2, 'M');
-    fillEllipse(buf, 31, 18, 20, 1, 'A');
+    line(buf, 20, 16, 15, 22, 2, 'M');
+    line(buf, 42, 16, 47, 22, 2, 'M');
+    fillEllipse(buf, 31, 23, 20, 2, 'A');
+    fillEllipse(buf, 31, 22, 18, 1, 'K');
     return buf;
 }
 
@@ -350,7 +364,7 @@ export function buildAtlas(kit = {}) {
     addBuf(reg, 'props', 'ballSmall', makeBall(3, 'A', 'B'), { ox: 3, oy: 3 });
     addBuf(reg, 'props', 'racket', makeRacket(), { ox: 6, oy: 17 });
     addBuf(reg, 'props', 'bike', makeBike(), { ox: 15, oy: 19 });
-    addBuf(reg, 'props', 'canoe', makeCanoe(), { ox: 32, oy: 14 });
+    addBuf(reg, 'props', 'canoe', makeCanoe(), { ox: 32, oy: 20 });
     addBuf(reg, 'props', 'paddle', makePaddle(), { ox: 3, oy: 11 });
 
     // --- cenário ---

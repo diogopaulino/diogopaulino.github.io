@@ -58,7 +58,9 @@ function onKeyDown(event) {
   if (event.key === 'm' || event.key === 'M') {
     event.preventDefault();
     Audio.init();
-    Audio.toggleMute();
+    // O atalho e o botão precisam contar a mesma história: mudo pela tecla M sem atualizar
+    // o botão deixava o rótulo e o estado do leitor de tela mentindo sobre o som.
+    syncSoundButton(document.getElementById('btn-sound'), Audio.toggleMute());
     return;
   }
   if (event.key === 'f' || event.key === 'F') {
@@ -74,6 +76,19 @@ function onPointerDown(event) {
   if (n === null) return;
   event.preventDefault();
   handleNumber(n);
+}
+
+/**
+ * Reflete o estado do áudio no botão.
+ * `aria-pressed` descreve o botão "som", então ele vale true quando o som está LIGADO.
+ * Antes o atributo recebia o valor de `muted`, ou seja, o leitor de tela anunciava
+ * "pressionado" justamente quando o som estava desligado — o oposto do estado real.
+ */
+function syncSoundButton(btn, muted) {
+  if (!btn) return;
+  btn.textContent = muted ? '♪̸' : '♪';
+  btn.setAttribute('aria-pressed', String(!muted));
+  btn.setAttribute('aria-label', muted ? 'Ligar o som' : 'Desligar o som');
 }
 
 function toggleFullscreen() {
@@ -134,11 +149,13 @@ async function boot() {
     });
     document.getElementById('btn-sound').addEventListener('click', (event) => {
       Audio.init();
-      const muted = Audio.toggleMute();
-      event.currentTarget.textContent = muted ? '♪̸' : '♪';
-      event.currentTarget.setAttribute('aria-pressed', String(muted));
+      syncSoundButton(event.currentTarget, Audio.toggleMute());
     });
     document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
+
+    // Alguns navegadores não disparam `resize` ao entrar/sair de tela cheia; sem isto a
+    // escala do canvas ficaria congelada na medida da janela antiga.
+    document.addEventListener('fullscreenchange', fit);
 
     rafId = requestAnimationFrame(loop);
   } catch (err) {

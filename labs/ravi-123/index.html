@@ -18,7 +18,7 @@
     content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino. Pixel art 320×200, tudo em vanilla.">
   <meta property="og:locale" content="pt_BR">
 
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 
 <body>
@@ -30,12 +30,14 @@
     <nav id="hud" aria-label="Controles">
       <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar aos labs">&#8592;</button>
       <span class="hud-spacer"></span>
-      <button id="btn-sound" class="hud-btn" type="button" title="Som (M)" aria-label="Ligar ou desligar o som"
-        aria-pressed="false">&#9834;</button>
+      <button id="btn-sound" class="hud-btn" type="button" title="Som (M)" aria-label="Desligar o som"
+        aria-pressed="true">&#9834;</button>
       <button id="btn-fs" class="hud-btn" type="button" title="Tela cheia (F)" aria-label="Tela cheia">&#9974;</button>
     </nav>
 
     <p id="rotate-hint">Vire o aparelho na horizontal para jogar melhor.</p>
+
+    <p id="announcer" class="sr-only" aria-live="polite"></p>
   </main>
 
   <noscript>
@@ -44,7 +46,7 @@
     </p>
   </noscript>
 
-  <script type="module" src="main.js?v=5"></script>
+  <script type="module" src="main.js?v=6"></script>
 </body>
 
 </html>

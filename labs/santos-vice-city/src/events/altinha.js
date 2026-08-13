@@ -9,11 +9,12 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp } from '../core/util.js';
-import { panel, bar } from '../game/hud.js';
+import { drawShoreFoam, drawShadow } from '../art/scenery.js';
+import { panel, needleGauge } from '../game/hud.js';
 
 const SAND_Y = 176;
 const GRAVITY = 300;
-const HIT_RANGE_X = 22;
+const HIT_RANGE_X = 24;
 
 /** Tipos de toque: alcance vertical, impulso e pontuação-base de cada um. */
 const TOUCHES = {
@@ -90,7 +91,8 @@ export class AltinhaEvent extends EventBase {
         if (b.x > W - 12) { b.x = W - 12; b.vx = -Math.abs(b.vx) * 0.85; }
 
         // --- toque ---
-        if (input.state.a.pressed) this.tryTouch();
+        // Buffer curto: apertar meio quadro antes da bola entrar no alcance continua valendo.
+        if (input.buffered('a', 110)) { input.consume('a'); this.tryTouch(); }
 
         // --- caiu na areia ---
         if (b.y >= SAND_Y - 4) {
@@ -186,40 +188,42 @@ export class AltinhaEvent extends EventBase {
 
         ctx.drawImage(scenery.sky, 0, -20);
         ctx.drawImage(scenery.skyline, -120, 46);
-        ctx.drawImage(scenery.sea, 0, 108);
-        ctx.drawImage(scenery.sand, 0, SAND_Y - 12);
-        px.rect(0, SAND_Y + 48, W, H - SAND_Y - 48, SVC['f']);
+        ctx.drawImage(scenery.sea, 0, 100);
+        drawShoreFoam(px, SAND_Y - 18, this.elapsed);
+        ctx.drawImage(scenery.sand, 0, SAND_Y - 14);
+        px.rect(0, SAND_Y + 46, W, H - SAND_Y - 46, SVC['e']);
 
         // guarda-sóis e coqueiro no fundo
-        px.blitScreen(sprites.get('umbrella'), 42, SAND_Y - 6);
-        px.blitScreen(sprites.get('umbrella'), 268, SAND_Y - 2);
-        px.blitScreen(sprites.get('palm'), 300, SAND_Y + 6);
+        px.blitScreen(sprites.get('umbrella'), 40, SAND_Y - 8);
+        px.blitScreen(sprites.get('umbrella'), 264, SAND_Y - 4);
+        px.blitScreen(sprites.get('palm'), 302, SAND_Y + 8);
 
-        // roda de altinha ao fundo
+        // roda de altinha ao fundo, cada um com o seu pé de apoio na areia
         for (const p of this.roda) {
+            drawShadow(px, p.x, SAND_Y - 3, 8, 0.3);
             px.blitScreen(sprites.get(`crowd#${p.kit}`), p.x, SAND_Y - 4);
         }
 
         // sombra da bola na areia — é a leitura que permite se posicionar
         if (this.ball.live) {
             const t = clamp((SAND_Y - this.ball.y) / 150, 0, 1);
-            const r = Math.round(6 - t * 3);
-            ctx.globalAlpha = 0.35 + (1 - t) * 0.35;
-            px.rect(this.ball.x - r, SAND_Y - 2, r * 2, 3, SVC['e']);
+            drawShadow(px, this.ball.x, SAND_Y - 2, Math.round(7 - t * 3.5), 0.3 + (1 - t) * 0.35);
+        }
+
+        // zona de alcance: só aparece quando a bola está descendo perto, para ensinar o timing
+        if (this.ball.live && this.ball.vy > 0 && Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X + 16) {
+            const glow = Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X;
+            ctx.globalAlpha = 0.55;
+            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 1, HIT_RANGE_X * 2, 2, SVC[glow ? 'H' : 'o']);
+            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 4, 1, 4, SVC[glow ? 'H' : 'o']);
+            px.rect(this.playerX + HIT_RANGE_X - 1, SAND_Y - 4, 1, 4, SVC[glow ? 'H' : 'o']);
             ctx.globalAlpha = 1;
         }
 
         // atleta
+        drawShadow(px, this.playerX, SAND_Y - 1, 10, 0.38);
         const spriteName = this.facing < 0 ? `${this.pose}_flip` : this.pose;
         px.blitScreen(sprites.get(spriteName), this.playerX, SAND_Y);
-
-        // zona de alcance: só aparece quando a bola está descendo perto, para ensinar o timing
-        if (this.ball.live && this.ball.vy > 0 && Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X + 14) {
-            const glow = Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X;
-            ctx.globalAlpha = 0.5;
-            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 1, HIT_RANGE_X * 2, 2, SVC[glow ? 'H' : 'o']);
-            ctx.globalAlpha = 1;
-        }
 
         if (this.ball.live) {
             px.blitScreen(sprites.get('ballBig'), this.ball.x, this.ball.y);
@@ -230,22 +234,26 @@ export class AltinhaEvent extends EventBase {
         const { px, font } = this.app;
 
         // indicador de vento — a bola deriva, e saber pra onde é meio caminho
-        panel(px, 4, 18, 82, 22, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'VENTO', 8, 21, { color: 'o', mono: true });
-        const wt = clamp(0.5 + this.wind / 68, 0, 1);
-        bar(px, 8, 31, 74, 4, 1, { fill: 'm', bg: 'm' });
-        px.rect(8 + Math.round(74 * wt) - 1, 29, 3, 8, SVC['y']);
-        font.text(px.ctx, this.wind < -3 ? '<<' : this.wind > 3 ? '>>' : '--', 78, 21, { color: 'y', mono: true });
+        needleGauge(px, font, 4, 16, 92, 'VENTO', clamp(0.5 + this.wind / 68, 0, 1), { color: 'y' });
 
-        // variedade: quatro selos que acendem conforme você usa cada parte do corpo
-        const names = ['PÉ', 'COXA', 'PEITO', 'CABEÇA'];
-        const keys = ['pe', 'coxa', 'peito', 'cabeca'];
-        panel(px, W - 120, 18, 116, 22, { fill: '1', border: 'n' });
-        keys.forEach((k, i) => {
-            const on = this.variety.has(k);
-            font.text(px.ctx, names[i], W - 116 + i * 29, 25, {
-                color: on ? 'H' : 'n', mono: true
+        // Variedade: quatro selos que acendem conforme você usa cada parte do corpo.
+        // Viraram iniciais dentro de caixinhas porque os nomes por extenso não cabiam na
+        // largura disponível e saíam colados uns nos outros ("PEiTOCABEÇ").
+        const stamps = [['P', 'pe'], ['C', 'coxa'], ['T', 'peito'], ['H', 'cabeca']];
+        const boxW = 16, gap = 3;
+        const x0 = W - 4 - (stamps.length * boxW + (stamps.length - 1) * gap);
+        stamps.forEach(([letter, key], i) => {
+            const on = this.variety.has(key);
+            const x = x0 + i * (boxW + gap);
+            panel(px, x, 16, boxW, 14, {
+                fill: on ? 'j' : '1', border: '0', light: on ? 'H' : 'n', dark: '0', shadow: false
+            });
+            font.text(px.ctx, letter, x + boxW / 2, 19, {
+                color: on ? 'P' : 'n', align: 'center', mono: true
             });
         });
+        if (this.variety.size >= 4) {
+            font.text(px.ctx, 'x1.5', x0 - 26, 19, { color: 'A', mono: true, outline: '0' });
+        }
     }
 }

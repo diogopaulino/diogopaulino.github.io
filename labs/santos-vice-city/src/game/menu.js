@@ -5,7 +5,10 @@
 
 import { W } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
-import { panel } from './hud.js';
+import { panel, plate } from './hud.js';
+
+const REPEAT_FIRST = 300;   // ms até a primeira repetição ao segurar o direcional
+const REPEAT_NEXT = 95;     // ms entre as repetições seguintes
 
 export class MenuList {
     /**
@@ -50,9 +53,13 @@ export class MenuList {
 
         let action = null;
         if ((input.state.down.pressed || (down && this.repeatT === 0)) && step(1)) {
-            audio.play('ui_move'); this.repeatT = input.state.down.pressed ? 320 : 110; action = 'move';
+            audio.play('ui_move');
+            this.repeatT = input.state.down.pressed ? REPEAT_FIRST : REPEAT_NEXT;
+            action = 'move';
         } else if ((input.state.up.pressed || (up && this.repeatT === 0)) && step(-1)) {
-            audio.play('ui_move'); this.repeatT = input.state.up.pressed ? 320 : 110; action = 'move';
+            audio.play('ui_move');
+            this.repeatT = input.state.up.pressed ? REPEAT_FIRST : REPEAT_NEXT;
+            action = 'move';
         }
         if (!down && !up) this.repeatT = 0;
 
@@ -64,27 +71,39 @@ export class MenuList {
         return action;
     }
 
-    /** Desenho padrão em coluna. `x` é o centro. */
+    /**
+     * Desenho padrão em coluna. `x` é o centro.
+     * O item ativo ganha uma tarja com chanfro e a seta piscando — nos menus de 16 bits a
+     * seleção nunca é só uma troca de cor, é sempre um realce que se move.
+     */
     draw(px, font, sprites, x, y, opts = {}) {
         const lineH = opts.lineH || 18;
         const t = opts.time || 0;
+        const halfW = opts.width ? opts.width / 2 : 92;
+
         this.items.forEach((it, i) => {
             const active = i === this.index;
             const iy = y + i * lineH;
-            const color = it.disabled ? 'n' : active ? 'A' : 'q';
+
+            if (active && !it.disabled) {
+                panel(px, x - halfW, iy - 4, halfW * 2, 15, {
+                    fill: '2', border: '0', light: 'z', dark: '1', shadow: false
+                });
+            }
             font.text(px.ctx, it.label, x, iy, {
-                color, align: 'center', mono: true, shadow: '0'
+                color: it.disabled ? 'n' : active ? 'A' : 'q',
+                align: 'center', mono: true, shadow: '0'
             });
             if (active && !it.disabled) {
                 const bob = Math.round(Math.sin(t * 8) * 1.5);
-                const half = font.measure(it.label, { mono: true }) / 2;
-                px.blitScreen(sprites.get('cursor'), x - half - 12 + bob, iy + 4);
+                const lw = font.measure(it.label, { mono: true }) / 2;
+                px.blitScreen(sprites.get('cursor'), x - lw - 11 + bob, iy + 4);
             }
         });
 
         const cur = this.current;
         if (cur && cur.hint && opts.hintY != null) {
-            panel(px, 18, opts.hintY, W - 36, 22, { fill: '1', border: 'n' });
+            panel(px, 16, opts.hintY, W - 32, 22, { fill: '1', border: '0', light: 'n' });
             font.text(px.ctx, cur.hint, W / 2, opts.hintY + 7, {
                 color: 'p', align: 'center', mono: true
             });
@@ -104,17 +123,24 @@ export function scrim(px, y, h, alpha = 0.62) {
     px.ctx.globalAlpha = 1;
 }
 
-/** Barra de título usada no topo das telas de menu. */
+/**
+ * Barra de título usada no topo das telas de menu.
+ * O título vem com preenchimento em degradê e contorno grosso: é a assinatura de logotipo
+ * dos cartuchos da época, e é ela que faz a tela parecer um jogo e não um formulário.
+ */
 export function screenHeader(px, font, title, subtitle) {
-    px.rect(0, 0, W, 30, SVC['0']);
-    px.rect(0, 30, W, 1, SVC['x']);
-    font.textBig(px.ctx, title, W / 2, 6, { scale: 2, color: 'A', outlineColor: '0', align: 'center' });
-    if (subtitle) font.text(px.ctx, subtitle, W / 2, 24, { color: 'p', align: 'center', mono: true });
+    plate(px, 0, 0, W, 30, '0');
+    px.rect(0, 29, W, 1, SVC['x']);
+    px.rect(0, 30, W, 1, SVC['3']);
+    font.textBig(px.ctx, title, W / 2, 5, {
+        scale: 2, ramp: ['h', '8', '7', '6'], outlineColor: '0', align: 'center'
+    });
+    if (subtitle) font.text(px.ctx, subtitle, W / 2, 21, { color: 'p', align: 'center', mono: true });
 }
 
 /** Rodapé de ajuda com os botões disponíveis. */
 export function screenFooter(px, font, text) {
-    px.rect(0, 210, W, 14, SVC['0']);
+    plate(px, 0, 210, W, 14, '0');
     px.rect(0, 210, W, 1, SVC['m']);
     font.text(px.ctx, text, W / 2, 214, { color: 'o', align: 'center', mono: true });
 }

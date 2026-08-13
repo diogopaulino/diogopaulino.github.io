@@ -9,8 +9,8 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp } from '../core/util.js';
-import { tile } from '../art/scenery.js';
-import { panel, bar } from '../game/hud.js';
+import { tile, drawWater } from '../art/scenery.js';
+import { panel, gauge } from '../game/hud.js';
 
 const RACE_LEN = 4200;
 const LANES = [126, 148, 170, 192];   // y de cada raia, do fundo para a frente
@@ -194,19 +194,16 @@ export class CanoaEvent extends EventBase {
         ctx.drawImage(scenery.morro, Math.round(-cam * 0.03) % 320, 24);
         tile(ctx, scenery.skylineFar, cam * 0.05, 66);
 
-        // água: bandas horizontais que rolam, cada raia mais escura ao fundo
-        px.rect(0, 104, W, H - 104, SVC['a']);
-        for (let y = 104; y < H; y += 4) {
-            const t = (y - 104) / (H - 104);
-            const shade = t < 0.3 ? 'b' : t < 0.7 ? 'a' : '9';
-            px.rect(0, y, W, 2, SVC[shade]);
-        }
-        // marolas correndo para trás
-        for (let i = 0; i < 26; i++) {
-            const yy = 108 + (i * 37) % (H - 112);
-            const xx = ((i * 91) - cam * 0.6) % (W + 40);
-            const x = ((xx % (W + 40)) + W + 40) % (W + 40) - 20;
-            px.rect(x, yy, 8, 1, SVC['c']);
+        // água da baía: bandas de profundidade + marolas correndo para trás
+        drawWater(px, 0, 104, W, H - 104, this.elapsed, cam);
+        // linhas de raia, que também servem de referência de velocidade
+        for (const ly of LANES) {
+            for (let i = -1; i < 12; i++) {
+                const x = Math.round(i * 34 - (cam * 0.9) % 34);
+                px.ctx.globalAlpha = 0.35;
+                px.rect(x, ly + 12, 14, 1, SVC['d']);
+                px.ctx.globalAlpha = 1;
+            }
         }
 
         // boias
@@ -230,8 +227,8 @@ export class CanoaEvent extends EventBase {
             const x = PLAYER_SCREEN_X + (r.dist - cam);
             if (x < -70 || x > W + 70) continue;
             const y = LANES[r.lane];
-            px.blitScreen(sprites.get(`rowRival#${i % 4}`), x + 4, y + 2);
-            px.blitScreen(sprites.get('canoe'), x, y + 8);
+            px.blitScreen(sprites.get(`rowRival#${i % 4}`), x + 4, y + 6);
+            px.blitScreen(sprites.get('canoe'), x, y + 12);
         }
 
         // --- esteira ---
@@ -247,44 +244,43 @@ export class CanoaEvent extends EventBase {
         // remo atrás do atleta, atleta atrás do casco: a sobreposição é o que vende a leitura
         // de "sentado dentro da canoa" sem precisar de sprites dedicados.
         const paddleSide = this.nextSide === 'a' ? -1 : 1;
-        px.blitScreen(sprites.get('paddle'), PLAYER_SCREEN_X + 4 + paddleSide * 12, this.laneY + 6 + bob);
-        px.blitScreen(sprites.get(pose), PLAYER_SCREEN_X + 4, this.laneY + 2 + bob);
-        px.blitScreen(sprites.get('canoe'), PLAYER_SCREEN_X, this.laneY + 8 + bob);
+        px.blitScreen(sprites.get('paddle'), PLAYER_SCREEN_X + 4 + paddleSide * 12, this.laneY + 10 + bob);
+        px.blitScreen(sprites.get(pose), PLAYER_SCREEN_X + 4, this.laneY + 6 + bob);
+        px.blitScreen(sprites.get('canoe'), PLAYER_SCREEN_X, this.laneY + 12 + bob);
     }
 
     renderOverlay() {
         const { px, font } = this.app;
 
-        // --- metrônomo: a peça central da prova ---
-        const boxW = 132;
-        panel(px, (W - boxW) / 2, 18, boxW, 30, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'CADÊNCIA', W / 2, 21, { color: 'o', align: 'center', mono: true });
+        // --- sincronia acumulada e velocidade, nas beiradas ---
+        gauge(px, font, 4, 16, 84, 'SINC', this.cadence, {
+            fill: this.cadence > 0.6 ? 'H' : 'c', glow: 'd'
+        });
+        gauge(px, font, W - 88, 16, 84, 'RITMO', this.speed / 240, { fill: 'b', glow: 'c' });
 
-        const trackX = (W - boxW) / 2 + 8;
+        // --- metrônomo: a peça central da prova, no meio e sem competir com os medidores ---
+        const boxW = 124;
+        const boxX = Math.round((W - boxW) / 2);
+        panel(px, boxX, 16, boxW, 26, { fill: '1', border: '0', light: 'n', dark: '0' });
+        font.text(px.ctx, 'CADÊNCIA', W / 2, 18, { color: 'o', align: 'center', mono: true });
+
+        const trackX = boxX + 8;
         const trackW = boxW - 16;
-        px.rect(trackX, 32, trackW, 6, SVC['m']);
+        px.rect(trackX, 29, trackW, 6, SVC['m']);
         // janela boa, centrada — o marcador corre da direita pra esquerda até ela
         const goodW = Math.round(trackW * (GOOD_WINDOW * 2 / BEAT_SEC));
-        px.rect(trackX + trackW / 2 - goodW / 2, 32, goodW, 6, SVC['j']);
-        px.rect(trackX + trackW / 2 - 1, 30, 2, 10, SVC['A']);
+        px.rect(Math.round(trackX + trackW / 2 - goodW / 2), 29, goodW, 6, SVC['j']);
+        px.rect(Math.round(trackX + trackW / 2 - goodW / 2), 29, goodW, 1, SVC['k']);
+        px.rect(Math.round(trackX + trackW / 2) - 1, 27, 2, 10, SVC['A']);
 
         const p = clamp(this.beatT / BEAT_SEC, -0.4, 1);
         const markX = trackX + trackW / 2 + p * (trackW / 2);
-        px.rect(Math.round(markX) - 1, 29, 3, 12, SVC[Math.abs(this.beatT) <= GOOD_WINDOW ? 'H' : 'r']);
+        px.rect(Math.round(markX) - 1, 26, 3, 12, SVC[Math.abs(this.beatT) <= GOOD_WINDOW ? 'H' : 'r']);
 
-        // qual botão vem agora
-        font.text(px.ctx, this.nextSide === 'a' ? 'Z' : 'X', trackX - 4, 32, {
+        // qual botão vem agora, dentro da própria caixa da cadência
+        font.text(px.ctx, this.nextSide === 'a' ? 'Z' : 'X', boxX + boxW - 6, 18, {
             color: 'A', align: 'right', mono: true
         });
-
-        // --- sincronia acumulada e velocidade ---
-        panel(px, 4, 18, 74, 30, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'SINCRONIA', 8, 21, { color: 'o', mono: true });
-        bar(px, 8, 32, 66, 5, this.cadence, { fill: this.cadence > 0.6 ? 'H' : 'c', glow: 'd' });
-
-        panel(px, W - 78, 18, 74, 30, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'RITMO', W - 74, 21, { color: 'o', mono: true });
-        bar(px, W - 74, 32, 66, 5, this.speed / 240, { fill: 'b', glow: 'c' });
 
         // --- trilho da regata: onde cada canoa está no percurso ---
         const railX = 20, railW = W - 40, railY = 205;

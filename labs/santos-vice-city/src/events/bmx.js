@@ -9,10 +9,13 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp } from '../core/util.js';
-import { tile } from '../art/scenery.js';
-import { panel, bar } from '../game/hud.js';
+import { tile, drawShoreFoam, drawShadow } from '../art/scenery.js';
+import { gauge } from '../game/hud.js';
 
 const GROUND_Y = 182;
+// Janela de "coyote time": por um instante depois de sair do chão o pulo ainda é aceito.
+// Sem isso, saltar no fim de uma rampa exigia precisão de frame e a prova parecia injusta.
+const COYOTE_SEC = 0.09;
 const COURSE_LEN = 5200;      // px de ciclovia até a linha de chegada
 const GRAVITY = 900;
 const MAX_SPEED = 250;
@@ -43,6 +46,7 @@ export class BmxEvent extends EventBase {
         this.crashes = 0;
         this.cocos = 0;
         this.timeBonus = 0;
+        this.finished = false;
         this.buildCourse();
     }
 
@@ -96,9 +100,14 @@ export class BmxEvent extends EventBase {
         this.speed = clamp(this.speed, 40, MAX_SPEED);
 
         // --- salto ---
-        if (this.grounded && input.state.a.pressed) {
+        // Coyote time + buffer de toque: o pulo sai se o botão foi apertado pouco antes de
+        // encostar no chão OU pouco depois de sair dele.
+        this.coyote = this.grounded ? COYOTE_SEC : Math.max(0, (this.coyote || 0) - dt);
+        if (this.coyote > 0 && input.buffered('a', 130)) {
+            input.consume('a');
             this.vy = 300 + this.speed * 0.5;
             this.grounded = false;
+            this.coyote = 0;
             audio.play('jump');
         }
 
@@ -199,6 +208,11 @@ export class BmxEvent extends EventBase {
     }
 
     arrive() {
+        // Mesma armadilha da prova de surfe: o desfecho segue chamando `step()`, a distância
+        // continua acima da linha de chegada e o bônus de tempo era creditado a cada quadro.
+        if (this.finished) return;
+        this.finished = true;
+
         // o grosso da pontuação é o tempo: 700 é o par, e cada segundo abaixo de 60 vale ouro
         const t = this.elapsed;
         this.timeBonus = Math.max(0, Math.round((78 - t) * 12));
@@ -221,10 +235,11 @@ export class BmxEvent extends EventBase {
         ctx.drawImage(scenery.sky, 0, -14);
         tile(ctx, scenery.skylineFar, cam * 0.06, 56);
         tile(ctx, scenery.skyline, cam * 0.14, 74);
-        ctx.drawImage(scenery.sea, 0, 128);
 
-        // faixa de areia e o mar à esquerda do quadro (a ciclovia corre paralela à praia)
-        px.rect(0, 150, W, 27, SVC['g']);
+        // mar e areia: a ciclovia corre paralela à praia, e é essa faixa que dá a Santos
+        ctx.drawImage(scenery.seaFar, 0, 124);
+        drawShoreFoam(px, 160, this.elapsed);
+        ctx.drawImage(scenery.sand, 0, 162);
 
         // decoração do jardim, antes do piso: as árvores nascem no canteiro, atrás da pista
         for (const d of this.decor) {
@@ -233,17 +248,34 @@ export class BmxEvent extends EventBase {
             px.blitScreen(sprites.get(d.kind), x, GROUND_Y - 3);
         }
 
-        // jardim + calçadão
-        px.rect(0, GROUND_Y - 5, W, 5, SVC['j']);
-        px.rect(0, GROUND_Y - 5, W, 1, SVC['k']);
-        px.rect(0, GROUND_Y, W, H - GROUND_Y, SVC['p']);
-        px.rect(0, GROUND_Y, W, 2, SVC['q']);
-        // faixas do piso correndo, o que dá a leitura de velocidade
-        for (let i = -1; i < 12; i++) {
-            const x = ((i * 40) - (cam % 40));
-            px.rect(x, GROUND_Y + 12, 22, 2, SVC['o']);
+        // --- jardim + calçadão ---
+        px.rect(0, GROUND_Y - 6, W, 6, SVC['j']);
+        px.rect(0, GROUND_Y - 6, W, 1, SVC['k']);
+        // touceiras do canteiro correndo com a câmera
+        for (let i = -1; i < 14; i++) {
+            const x = Math.round(i * 26 - (cam * 1.0) % 26);
+            px.rect(x, GROUND_Y - 8, 7, 3, SVC['k']);
+            px.rect(x + 2, GROUND_Y - 9, 3, 1, SVC['l']);
         }
-        px.rect(0, GROUND_Y + 26, W, H - GROUND_Y - 26, SVC['n']);
+
+        // Piso: três faixas de tom decrescente em vez de um bloco cinza. Com o meio-fio claro
+        // e a linha central pontilhada, o calçadão finalmente tem profundidade e velocidade.
+        px.rect(0, GROUND_Y, W, H - GROUND_Y, SVC['o']);
+        px.rect(0, GROUND_Y, W, 2, SVC['q']);          // meio-fio iluminado
+        px.rect(0, GROUND_Y + 2, W, 1, SVC['p']);
+        px.rect(0, GROUND_Y + 22, W, H - GROUND_Y - 22, SVC['n']);
+        px.rect(0, GROUND_Y + 34, W, H - GROUND_Y - 34, SVC['m']);
+
+        // faixa central pontilhada + juntas do piso, o que dá a leitura de velocidade
+        for (let i = -1; i < 12; i++) {
+            const x = Math.round(i * 40 - (cam % 40));
+            px.rect(x, GROUND_Y + 14, 22, 2, SVC['q']);
+            px.rect(x + 30, GROUND_Y + 26, 26, 2, SVC['o']);
+        }
+        for (let i = -1; i < 8; i++) {
+            const x = Math.round(i * 64 - (cam * 1.3) % 64);
+            px.rect(x, GROUND_Y + 3, 1, H - GROUND_Y - 3, SVC['n']);
+        }
 
         // rampas
         for (const r of this.ramps) {
@@ -286,31 +318,34 @@ export class BmxEvent extends EventBase {
             : this.trickT > 0 ? 'bikeTrick'
                 : this.grounded ? 'bikeRide' : 'bikeAir';
 
+        // sombra antes do sprite: no ar ela encolhe e some, e é ela que diz onde vai cair
+        drawShadow(px, px0, GROUND_Y + 1, clamp(13 - this.y * 0.05, 6, 13),
+            clamp(0.5 - this.y * 0.003, 0.12, 0.5));
+
+        // linhas de velocidade atrás da bike — o truque de sempre para vender aceleração
+        if (this.speed > MAX_SPEED * 0.55 && this.crashT <= 0) {
+            for (let i = 0; i < 4; i++) {
+                const ly = py - 6 - i * 6;
+                const len = 8 + ((Math.floor(this.dist * 0.4) + i * 7) % 12);
+                px.ctx.globalAlpha = 0.5;
+                px.rect(px0 - 22 - len, ly, len, 1, SVC['r']);
+                px.ctx.globalAlpha = 1;
+            }
+        }
+
         if (this.crashT <= 0) {
             const spin = this.trickT > 0 ? Math.sin(this.trickRot * Math.PI / 180) * 4 : 0;
             px.blitScreen(sprites.get('bike'), px0, py + spin);
         }
         px.blitScreen(sprites.get(pose), px0, py - 6);
-
-        // sombra no chão
-        if (!this.grounded) {
-            const shade = clamp(1 - this.y / 120, 0.2, 1);
-            px.ctx.globalAlpha = shade * 0.5;
-            px.rect(px0 - 12, GROUND_Y + 1, 24, 3, SVC['m']);
-            px.ctx.globalAlpha = 1;
-        }
     }
 
     renderOverlay() {
         const { px, font } = this.app;
 
-        panel(px, 4, 18, 84, 24, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'VELOCIDADE', 8, 21, { color: 'o', mono: true });
-        bar(px, 8, 32, 76, 5, this.speed / MAX_SPEED, { fill: 'A', glow: '8' });
+        gauge(px, font, 4, 16, 104, 'VEL', this.speed / MAX_SPEED, { fill: 'A', glow: '8' });
 
         // barra de percurso com a posição relativa — a leitura de "quanto falta"
-        panel(px, W - 108, 18, 104, 24, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'PERCURSO', W - 104, 21, { color: 'o', mono: true });
-        bar(px, W - 104, 32, 96, 5, this.dist / COURSE_LEN, { fill: 'k', glow: 'l' });
+        gauge(px, font, W - 116, 16, 112, 'PISTA', this.dist / COURSE_LEN, { fill: 'k', glow: 'l' });
     }
 }
