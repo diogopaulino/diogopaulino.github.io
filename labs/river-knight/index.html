@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0a12">
+    <title>River Knight — resgate a princesa no castelo | Labs</title>
+    <meta name="description"
+        content="Jogo 3D em three.js: guie o drakkar do guerreiro medieval rio abaixo, derrube barcos inimigos e torres, enfrente a barcaça negra e resgate a princesa no castelo.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/river-knight/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/river-knight/">
+    <meta property="og:title" content="River Knight">
+    <meta property="og:description"
+        content="Aventura medieval 3D no navegador: rio com ondas de Gerstner, drakkar, machados de arremesso e um castelo à espera.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="River Knight">
+    <meta name="twitter:description" content="Navegue, lute e resgate a princesa. Aventura medieval 3D em three.js.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=4">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="River Knight" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">⚔️</span>
+                    <span>River Knight</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Rio medieval em 3D com o barco do guerreiro"></canvas>
+
+        <!-- ================= HUD ================= -->
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel hull-panel">
+                    <span class="hud-label">Casco</span>
+                    <div id="hullPips" class="pips" aria-label="Integridade do casco"></div>
+                    <div class="fury">
+                        <span class="hud-label">Fúria</span>
+                        <div class="meter"><i id="furyFill"></i></div>
+                    </div>
+                </div>
+
+                <div class="panel voyage-panel">
+                    <div class="voyage-head">
+                        <span class="hud-label">Rumo ao castelo</span>
+                        <strong id="distanceValue" class="mono">4200 m</strong>
+                    </div>
+                    <div class="rail">
+                        <i id="progressFill"></i>
+                        <span id="progressBoat" class="rail-boat" aria-hidden="true">⛵</span>
+                        <span class="rail-castle" aria-hidden="true">🏰</span>
+                    </div>
+                </div>
+
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Glória</span>
+                        <strong id="scoreValue" class="mono">0</strong>
+                    </div>
+                    <div class="score-row score-row--sub">
+                        <span id="comboBadge" class="combo" data-active="false">x1.0</span>
+                        <span id="timeValue" class="mono">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bossPanel" class="boss-panel" hidden>
+                <span class="boss-name">Barcaça Negra de Morvain</span>
+                <div class="boss-bar"><i id="bossFill"></i></div>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono" hidden>—</span>
+            </div>
+
+            <!-- Controles de toque -->
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="steer-zone" id="steerZone" aria-label="Arraste para navegar">
+                    <span class="steer-hint">navegar</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-boost" data-control="boost" aria-label="Acelerar">REMAR</button>
+                    <button type="button" class="pad pad-throw" data-control="throw" aria-label="Arremessar machado">🪓</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="hitFlash" class="hit-flash" aria-hidden="true"></div>
+
+        <!-- ================= Overlays ================= -->
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">⚔️</span>
+                <h1>River Knight</h1>
+                <p id="loadingText">Forjando o rio…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · ondas de Gerstner · céu procedural</p>
+                    <h1>River <span>Knight</span></h1>
+                    <p class="lede">A princesa está presa na torre de Morvain. Entre o seu drakkar e o
+                        castelo há quatro quilômetros de rio, arqueiros nas margens, barcos de guerra e
+                        uma barcaça negra bloqueando o portão. Reme.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Jornada</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup"
+                            aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> navegar</span>
+                            <span><kbd>W</kbd> remar forte · <kbd>S</kbd> segurar</span>
+                            <span><kbd>Espaço</kbd> ou <kbd>clique</kbd> arremessar machado</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor glória: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Zarpar</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> Âncora lançada</p>
+                <h2>O rio espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> O casco cedeu</p>
+                <h2>O rio levou<br>o guerreiro.</h2>
+                <div id="defeatStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Tentar de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victoryOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card victory-card">
+                <p class="eyebrow eyebrow--gold"><i></i> Portão tomado</p>
+                <h2>A princesa<br>está livre.</h2>
+                <div id="victoryStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Nova jornada</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>Seu navegador não<br>conseguiu abrir o rio.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=5" defer></script>
+    <script type="module" src="src/main.js?v=1"></script>
+</body>
+
+</html>
