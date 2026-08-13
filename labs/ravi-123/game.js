@@ -120,8 +120,15 @@ function boughtFoods() {
    Fala e flashcard
    -------------------------------------------------------------------------- */
 
+/**
+ * Fala do jogo: escreve na barra de diálogo, sintetiza a voz e espelha o texto numa região
+ * `aria-live`. Sem esse espelho, todo o conteúdo do jogo — que é justamente o que a barra
+ * diz — ficava invisível para leitor de tela, porque vive dentro de um canvas.
+ */
 function say(message, speak = true) {
   S.message = message;
+  const live = typeof document !== 'undefined' && document.getElementById('announcer');
+  if (live) live.textContent = message;
   if (speak) Audio.speak(message);
 }
 
