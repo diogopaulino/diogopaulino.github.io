@@ -188,7 +188,7 @@ export function countdown(px, font, secondsLeft) {
     const n = Math.ceil(secondsLeft);
     const label = n > 0 ? String(n) : 'JÁ!';
     const frac = secondsLeft - Math.floor(secondsLeft);
-    const scale = n > 0 ? Math.round(4 + (1 - frac) * 2) : 5;
+    const scale = n > 0 ? Math.round(5 + (1 - frac) * 3) : 6;
 
     // anel de leitura atrás do número, para ele não sumir num fundo carregado
     px.ctx.globalAlpha = 0.45;
@@ -209,6 +209,6 @@ export function controlHint(px, font, text, alpha = 1) {
     px.ctx.globalAlpha = alpha;
     plate(px, 0, 209, W, 15, '0');
     px.rect(0, 209, W, 1, SVC['m']);
-    font.text(px.ctx, text, W / 2, 213, { color: 'p', align: 'center', mono: true });
+    font.text(px.ctx, text, W / 2, 211, { color: 'A', align: 'center', mono: true, scale: 2, outline: '0' });
     px.ctx.globalAlpha = 1;
 }

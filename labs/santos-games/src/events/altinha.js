@@ -11,10 +11,11 @@ import { SVC } from '../core/palette.js';
 import { clamp } from '../core/util.js';
 import { drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { panel, needleGauge } from '../game/hud.js';
+import { assistToward } from '../game/kids.js';
 
 const SAND_Y = 176;
 const GRAVITY = 220;
-const HIT_RANGE_X = 38;
+const HIT_RANGE_X = 56;
 
 /** Tipos de toque: alcance vertical, impulso e pontuação-base de cada um. */
 const TOUCHES = {
@@ -26,7 +27,7 @@ const TOUCHES = {
 
 export class AltinhaEvent extends EventBase {
     setup() {
-        this.duration = 70;
+        this.duration = 40;
         this.playerX = W / 2;
         this.facing = 1;
         this.pose = 'ballIdle';
@@ -69,8 +70,14 @@ export class AltinhaEvent extends EventBase {
 
         // --- atleta ---
         const vx = input.axisX();
-        if (vx !== 0) this.facing = vx;
-        this.playerX = clamp(this.playerX + vx * 175 * dt, 20, W - 20); // Mais veloz
+        if (vx !== 0) {
+            this.facing = vx;
+            this.playerX = clamp(this.playerX + vx * 175 * dt, 20, W - 20);
+        } else if (this.ball.live) {
+            this.playerX = clamp(assistToward(this.playerX, this.ball.x, 160, dt, 6), 20, W - 20);
+            if (this.ball.x < this.playerX - 4) this.facing = -1;
+            if (this.ball.x > this.playerX + 4) this.facing = 1;
+        }
 
         if (this.serveT > 0) {
             this.serveT -= dt;
@@ -93,7 +100,13 @@ export class AltinhaEvent extends EventBase {
 
         // --- toque ---
         // Buffer curto: apertar meio quadro antes da bola entrar no alcance continua valendo.
-        if (input.buffered('a', 110)) { input.consume('a'); this.tryTouch(); }
+        const height = SAND_Y - b.y;
+        const near = Math.abs(b.x - this.playerX) < HIT_RANGE_X + 10 && b.vy > 0 && height < 90;
+        this.cueReady = this.ball.live && near;
+        this.cueX = this.playerX;
+        this.cueY = SAND_Y - 70;
+
+        if (input.buffered('a', 160)) { input.consume('a'); this.tryTouch(); }
 
         // --- caiu na areia ---
         if (b.y >= SAND_Y - 4) {
@@ -110,7 +123,7 @@ export class AltinhaEvent extends EventBase {
 
         const reach = b.vy > 0 ? HIT_RANGE_X + 4 : HIT_RANGE_X;
         if (dx > reach) {
-            this.float.push('LONGE', this.playerX, SAND_Y - 60, 'o', 500);
+            this.float.push('OPS!', this.playerX, SAND_Y - 60, 'o', 500);
             audio.play('ui_deny');
             return;
         }
@@ -127,11 +140,7 @@ export class AltinhaEvent extends EventBase {
                 break;
             }
         }
-        if (!key) {
-            this.float.push('NÃO ALCANÇOU', this.playerX, SAND_Y - 60, 'o', 550);
-            audio.play('ui_deny');
-            return;
-        }
+        if (!key) key = height > 50 ? 'cabeca' : height > 28 ? 'coxa' : 'pe';
 
         const t = TOUCHES[key];
         // repetir o mesmo toque vale metade: a roda quer variedade
@@ -157,7 +166,7 @@ export class AltinhaEvent extends EventBase {
         this.pose = t.pose;
         this.poseT = 0.28;
 
-        this.float.push(`${t.name} +${pts}`, this.playerX, SAND_Y - 70, repeated ? 'p' : 'z', 750);
+        this.float.push(`BOA! +${pts}`, this.playerX, SAND_Y - 70, repeated ? 'p' : 'z', 750);
         if (this.combo > 0 && this.combo % 5 === 0) {
             this.float.push(`${this.combo} TOQUES!`, W / 2, 70, 'x', 1200);
             if (this.combo % 10 === 0) {
@@ -179,7 +188,7 @@ export class AltinhaEvent extends EventBase {
         this.serveT = 1.2;
         audio.play('drop');
         px.shake(2, 180);
-        this.float.push('CAIU NA AREIA', this.ball.x, SAND_Y - 30, 'B', 1100);
+        this.float.push('OPS!', this.ball.x, SAND_Y - 30, 'B', 1100);
     }
 
     finish(detail) {

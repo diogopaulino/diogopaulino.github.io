@@ -12,11 +12,11 @@ import { clamp } from '../core/util.js';
 import { tile, drawWater } from '../art/scenery.js';
 import { panel, gauge } from '../game/hud.js';
 
-const RACE_LEN = 4200;
-const LANES = [126, 148, 170, 192];   // y de cada raia, do fundo para a frente
+const RACE_LEN = 2800;
+const LANES = [126, 148, 170, 192];
 const PLAYER_SCREEN_X = 92;
-const BEAT_SEC = 0.52;                // intervalo entre remadas na cadência ideal
-const GOOD_WINDOW = 0.18;             // tolerância em segundos para uma remada "no tempo"
+const BEAT_SEC = 0.58;
+const GOOD_WINDOW = 0.28;
 
 export class CanoaEvent extends EventBase {
     setup() {
@@ -82,7 +82,7 @@ export class CanoaEvent extends EventBase {
         const pressedA = input.state.a.pressed;
         const pressedB = input.state.b.pressed;
         if (pressedA || pressedB) {
-            const side = pressedA ? 'a' : 'b';
+            const side = this.nextSide;
             const offset = Math.abs(this.beatT);
             if (side !== this.nextSide) {
                 // remar do lado errado desequilibra a canoa
@@ -101,7 +101,7 @@ export class CanoaEvent extends EventBase {
                     this.perfect++;
                     this.perfectStreak++;
                     this.score += 12;
-                    this.float.push(`NO TEMPO +12`, PLAYER_SCREEN_X, this.laneY - 34, 'z', 550);
+                    this.float.push(`BOA! +12`, PLAYER_SCREEN_X, this.laneY - 34, 'z', 550);
                     if (this.perfectStreak >= 5 && this.perfectStreak % 5 === 0) {
                         this.float.push(`${this.perfectStreak} SEGUIDAS!`, PLAYER_SCREEN_X, this.laneY - 50, 'x', 800);
                         this.speed += 18;
@@ -124,19 +124,31 @@ export class CanoaEvent extends EventBase {
                 this.nextSide = side === 'a' ? 'b' : 'a';
                 this.beatT = BEAT_SEC;
                 audio.play('stroke');
-                this.float.push('FORA DO TEMPO', PLAYER_SCREEN_X, this.laneY - 34, 'o', 450);
+                this.float.push('REMA!', PLAYER_SCREEN_X, this.laneY - 34, 'o', 450);
             }
         }
 
         this.rowPhase += dt;
-        // arrasto: sem remar, a canoa perde tudo rápido (mas um pouco menos agora)
-        this.speed -= (20 + this.speed * 0.12) * dt;
-        this.speed = clamp(this.speed, 0, 240 + this.cadence * 50);
+        this.cueReady = Math.abs(this.beatT) <= GOOD_WINDOW + 0.08;
+        this.cueX = PLAYER_SCREEN_X + 24;
+        this.cueY = this.laneY - 42;
 
-        // --- leme: trocar de raia é discreto, um toque por raia (não é eixo contínuo) ---
         if (input.state.up.pressed && this.lane > 0) this.lane--;
         if (input.state.down.pressed && this.lane < LANES.length - 1) this.lane++;
+        // desvia sozinho da boia que vem na mesma raia
+        if (!input.state.up.down && !input.state.down.down) {
+            const danger = this.buoys.find((b) => !b.hit && b.lane === this.lane
+                && (b.dist - this.dist) > 20 && (b.dist - this.dist) < 90);
+            if (danger) {
+                const alt = danger.lane === 0 ? 1 : danger.lane === LANES.length - 1 ? danger.lane - 1
+                    : (this.lane > 1 ? this.lane - 1 : this.lane + 1);
+                this.lane = alt;
+            }
+        }
         this.laneY += (LANES[this.lane] - this.laneY) * Math.min(1, dt * 7);
+
+        this.speed -= (16 + this.speed * 0.1) * dt;
+        this.speed = clamp(this.speed, 20, 240 + this.cadence * 50);
 
         this.dist += this.speed * dt;
 
@@ -290,7 +302,7 @@ export class CanoaEvent extends EventBase {
         px.rect(Math.round(markX) - 1, 26, 3, 12, SVC[Math.abs(this.beatT) <= GOOD_WINDOW ? 'y' : 'r']);
 
         // qual botão vem agora, dentro da própria caixa da cadência
-        font.text(px.ctx, this.nextSide === 'a' ? 'Z' : 'X', boxX + boxW - 6, 18, {
+        font.text(px.ctx, 'TOQUE', boxX + boxW - 6, 18, {
             color: 'z', align: 'right', mono: true
         });
 

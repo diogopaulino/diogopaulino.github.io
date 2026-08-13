@@ -39,7 +39,7 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 | Projeto | O que é? |
 | :--- | :--- |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval 3D em three.js — drakkar, machados e o resgate da princesa no castelo |
-| 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | California Games, mas caiçara — seis provas de praia 16-bit com patrocinador, medalhas e pódio |
+| 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — toque na tela e jogue surfe, skate, bola, bike, raquete e barco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
