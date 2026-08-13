@@ -39,25 +39,25 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 | Projeto | O que é? |
 | :--- | :--- |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval 3D em three.js — drakkar, machados e o resgate da princesa no castelo |
-| 🌇 **[Santos Vice Games](https://diogopaulino.com.br/labs/santos-vice-city/)** | California Games, mas caiçara — seis provas de praia 16-bit com patrocinador, medalhas e pódio |
+| 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | California Games, mas caiçara — seis provas de praia 16-bit com patrocinador, medalhas e pódio |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
 | 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |
 | 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador 3D WebGPU com IA e telemetria |
 | 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Plataforma retrô |
-| 🌌 **[Space Shooter](https://diogopaulino.com.br/labs/space-shooter/)** | Shooter cyberpunk neon |
+| 🌌 **[Neon Invaders](https://diogopaulino.com.br/labs/space-shooter/)** | Arcade cyberpunk neon |
 | 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy |
-| 🐍 **[Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha Nokia 3310 |
+| 🐍 **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha Nokia 3310 |
 | 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Visual Windows 95 autêntico |
-| 🐣 **[Tamagotchi](https://diogopaulino.com.br/labs/tamagotchi/)** | Bichinho virtual dos anos 90 |
+| 🐣 **[RakuRaku Dinokun](https://diogopaulino.com.br/labs/tamagotchi/)** | Réplica do Dinkie Dino de 1997 |
 
 ### 🎨 Arte & Simulações
 
 | Projeto | O que é? |
 | :--- | :--- |
 | 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: terminal, firewall, Oracle e cipher |
-| 🟢 **[Matrix Rain](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
+| 🟢 **[Matrix](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
 | 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Aurora boreal em flow fields |
 | 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital na web |
 | 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox gravitacional e física |
@@ -69,14 +69,14 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 | ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão rápida 100% no cliente |
 | 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Filtros, cortes e ajustes na hora |
 | ⏱️ **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com soundscapes |
-| 🗣️ **[English Duo](https://diogopaulino.com.br/labs/english-duo/)** | Treino de pronúncia e escuta |
+| 🗣️ **[Talk](https://diogopaulino.com.br/labs/english-duo/)** | Treino de pronúncia e escuta em várias línguas |
 | 🧮 **[Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora com câmbio ao vivo |
 
 ### 🎧 Áudio & Música
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 🎼 **[Partitura Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
+| 🎼 **[Partitura: Maestro Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
 | 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Sintetizador de 4 oitavas no navegador |
 | 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Nostalgia pura: player estilo Winamp 2.x |
 | ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento musical generativo |

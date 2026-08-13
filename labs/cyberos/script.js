@@ -37,7 +37,7 @@ design, código, música e um pouco de IA :)"`
     '/home/guest/projects': { type: 'dir' },
     '/home/guest/projects/matrix.txt': {
       type: 'file',
-      body: `MATRIX RAIN
+      body: `MATRIX
 Chuva digital com katakana espelhado, bloom CRT
 e controles de cinema. Feito em Canvas puro —
 cada coluna é uma stream com trail e head glow.`
@@ -65,7 +65,7 @@ Física leve + grafo harmônico.`
     },
     '/home/guest/projects/space-shooter.txt': {
       type: 'file',
-      body: `NEON SPACE SHOOTER
+      body: `NEON INVADERS
 Arcade cyberpunk com partículas e glow.
 Inspiração direta para a estética do CyberOS.`
     },
@@ -736,7 +736,7 @@ Dica: explore ~/secrets e ~/projects`;
     {
       keys: ['matrix', 'chuva', 'katakana'],
       answer:
-        'Matrix Rain é Canvas puro: colunas de streams com katakana espelhado, head glow e bloom CRT. Modo cinema com a tecla H. Sem libs — só requestAnimationFrame e tipografia.'
+        'Matrix é Canvas puro: colunas de streams com katakana espelhado, head glow e bloom CRT. Modo cinema com a tecla H. Sem libs — só requestAnimationFrame e tipografia.'
     },
     {
       keys: ['rock', 'kombat', 'luta', 'fight'],
@@ -756,7 +756,7 @@ Dica: explore ~/secrets e ~/projects`;
     {
       keys: ['space', 'shooter', 'neon', 'invader'],
       answer:
-        'Neon Space Shooter é arcade clássico com partículas e glow cyberpunk — a mesma vibe de fósforo que inspirou o CyberOS.'
+        'Neon Invaders é arcade clássico com partículas e glow cyberpunk — a mesma vibe de fósforo que inspirou o CyberOS.'
     },
     {
       keys: ['tamagotchi', 'dino', 'pet'],
@@ -801,7 +801,7 @@ Dica: explore ~/secrets e ~/projects`;
     {
       keys: ['musica', 'música', 'spotify', 'audio', 'áudio'],
       answer:
-        'Música atravessa vários labs: Piano, Pulsar, Partitura Quest, Winamp, Rock Kombat. Diogo também tem perfil de artista no Spotify (link na home).'
+        'Música atravessa vários labs: Piano, Pulsar, Partitura: Maestro Quest, Winamp JS, Rock Kombat. Diogo também tem perfil de artista no Spotify (link na home).'
     }
   ];
 
