@@ -38,7 +38,7 @@ export const VEHICLES = [
   { id: 'moto', name: 'Moto', wheels: 2, w: 44 },
   { id: 'tri', name: 'Triciclo', wheels: 3, w: 48 },
   { id: 'car', name: 'Carro', wheels: 4, w: 56 },
-  { id: 'spare', name: 'Estepe', wheels: 5, w: 58 },
+  { id: 'spare', name: 'Jipe', wheels: 5, w: 58 },
   { id: 'van', name: 'Van', wheels: 6, w: 64 },
   { id: 'van7', name: 'Kombi', wheels: 7, w: 70 },
   { id: 'skates', name: 'Patins', wheels: 8, w: 56 },
@@ -128,12 +128,13 @@ const TOY_PAINTERS = {
     pen.col(K.GRAY_D).rect(6, 16, 3, 3).rect(11, 16, 3, 3);
   },
   trombeta(pen) {
-    pen.col(K.YEL).rect(2, 8, 11, 4);
-    pen.col(K.BLACK).frame(1, 7, 13, 6);
-    pen.col(K.YEL).ellipse(16, 10, 3, 5);
-    pen.col(K.BLACK).ring(16, 10, 5);
-    pen.col(K.OCHRE).px(5, 6).px(8, 6).px(11, 6);
-    pen.col(K.RED).rect(2, 8, 2, 4);
+    // Corneta: boquilha + tubo + campânula — cabe no ícone 20×20
+    pen.col(K.YEL).rect(1, 8, 9, 4);
+    pen.col(K.BLACK).frame(0, 7, 11, 6);
+    pen.col(K.OCHRE).rect(1, 8, 3, 4);
+    pen.col(K.YEL).ellipse(15, 10, 5, 7);
+    pen.col(K.BLACK).ring(15, 10, 6);
+    pen.col(K.YEL_L).ellipse(14, 8, 2, 2);
   },
   bola(pen) {
     blob(pen, 10, 10, 8, 8, K.WHITE);
@@ -211,17 +212,21 @@ function drawVehicle(pen, v, w) {
       pen.col(K.YEL).rect((w >> 1) - 3, 4, 7, 3);
       break;
     case 'moto':
-      pen.col(K.RED).rect(14, 10, 18, 6);
-      pen.col(K.BLACK).frame(13, 9, 20, 8);
-      pen.col(K.GRAY_XD).line(14, 10, 8, 5).line(8, 5, 4, 5);
-      pen.col(K.GRAY_L).hline(2, 4, 7);
-      pen.col(K.YEL).rect(30, 12, 3, 3);
+      // Moto de perfil: duas rodas grandes bem separadas
+      pen.col(K.RED).rect(12, 9, 20, 6);
+      pen.col(K.BLACK).frame(11, 8, 22, 8);
+      pen.col(K.GRAY_XD).line(12, 9, 6, 5);
+      pen.col(K.GRAY_L).hline(3, 4, 8);
+      pen.col(K.GRAY).rect(22, 6, 8, 4);
+      pen.col(K.YEL).rect(30, 11, 3, 3);
       break;
     case 'tri':
-      pen.col(K.BLU).rect(8, 10, 30, 7);
-      pen.col(K.BLACK).frame(7, 9, 32, 9);
-      pen.col(K.RED).rect(24, 6, 10, 5);
-      pen.col(K.CYAN).rect(26, 7, 6, 3);
+      // Triciclo: 1 roda na frente, 2 atrás — silhueta de três pontos
+      pen.col(K.BLU).rect(10, 9, 26, 7);
+      pen.col(K.BLACK).frame(9, 8, 28, 9);
+      pen.col(K.RED).rect(22, 4, 10, 6);
+      pen.col(K.CYAN).rect(24, 5, 6, 4);
+      pen.col(K.GRAY_XD).vline(14, 5, 5);
       break;
     case 'car': {
       const y = groundY - r - 12;

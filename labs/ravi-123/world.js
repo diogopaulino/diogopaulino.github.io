@@ -35,10 +35,9 @@ function windowFrame(pen, x, y, w, h, night) {
 }
 
 function houseRoom(pen, night) {
-  // Parede
+  // Parede lisa — listras finas cansam olho de 3 anos
   pen.col(night ? K.NAVY : K.CREAM).rect(0, 0, W, 110);
-  const stripe = night ? K.BLU_D : K.SAND;
-  for (let x = 0; x < W; x += 10) pen.col(stripe).vline(x, 0, 110);
+  if (!night) pen.col(K.SAND).rect(0, 86, W, 24);
   // Rodapé
   pen.col(K.WOOD_D).rect(0, 108, W, 6);
   // Chão
@@ -152,9 +151,9 @@ function paintFactory(pen) {
   // Chão de oficina
   pen.col(K.GRAY).rect(0, 100, W, STAGE_H - 100);
   pen.col(K.GRAY_D).hline(0, 100, W);
-  // Arco ao fundo
-  pen.col(K.GRAY_XD).ellipse(160, 88, 40, 28);
-  pen.col(K.NIGHT).ellipse(160, 90, 28, 22);
+  // Arco ao fundo (menor, não cobre os brinquedos)
+  pen.col(K.GRAY_XD).ellipse(280, 70, 22, 18);
+  pen.col(K.NIGHT).ellipse(280, 72, 14, 12);
 }
 
 function paintMarket(pen) {
@@ -164,10 +163,10 @@ function paintMarket(pen) {
     pen.col(x % 32 ? K.RED : K.WHITE).rect(x, 0, 16, 18);
   }
   pen.col(K.RED_D).hline(0, 18, W);
-  // Piso xadrez simples
+  // Piso xadrez — a divisão precisa ser inteira, senão todo o chão vira um só azul
   for (let y = 96; y < STAGE_H; y += 10) {
     for (let x = 0; x < W; x += 10) {
-      pen.col(((x + y) / 10) % 2 ? K.BLU_L : K.WHITE).rect(x, y, 10, 10);
+      pen.col((((x + y) / 10) | 0) % 2 ? K.BLU_L : K.WHITE).rect(x, y, 10, 10);
     }
   }
   // Bancada de frutas (esquerda, atrás do Ravi)
@@ -211,20 +210,14 @@ function paintPost(pen) {
 }
 
 function paintParty(pen) {
+  // Parede lisa e clara — listras finas cansam olho de 3 anos
   pen.col(K.LILAC).rect(0, 0, W, 100);
-  const stripes = [K.PINK, K.CYAN, K.YEL_L];
-  for (let x = 0; x < W; x += 12) {
-    pen.col(stripes[(x / 12) % 3]).vline(x, 0, 100);
-  }
-  // Janela noite festiva
+  pen.col(K.PINK).rect(0, 96, W, 4);
   windowFrame(pen, 8, 16, 48, 40, true);
-  // Chão
   pen.col(K.WOOD_D).rect(0, 100, W, STAGE_H - 100);
   for (let y = 104; y < STAGE_H; y += 6) pen.col(K.OCHRE).hline(0, y, W);
-  // Tapete
   pen.col(K.RED).ellipse(180, 140, 90, 16);
   pen.col(K.YEL).ellipse(180, 140, 70, 10);
-  // Lareira
   pen.col(K.RED_D).rect(268, 48, 44, 52);
   pen.col(K.GRAY_XD).rect(276, 64, 28, 28);
   pen.col(K.ORANGE).rect(280, 72, 20, 16);
@@ -331,11 +324,11 @@ function drawGears(pen, t) {
   pen.col(K.GRAY).ellipse(300, 36, 4, 4);
   pen.col(K.YEL).px(300 + (spin === 0 ? 8 : spin === 1 ? 0 : spin === 2 ? -8 : 0),
     36 + (spin === 1 ? 8 : spin === 3 ? -8 : 0));
-  // Lâmpada balança
+  // Lâmpada à esquerda — o centro é a coluna de brinquedos
   const sway = wave(t, 1.6, 3);
-  pen.col(K.GRAY_D).vline(160 + sway, 0, 10);
-  pen.col(K.YEL).ellipse(160 + sway, 16, 8, 6);
-  pen.col(K.YEL_L).ellipse(160 + sway, 16, 4, 3);
+  pen.col(K.GRAY_D).vline(88 + sway, 0, 10);
+  pen.col(K.YEL).ellipse(88 + sway, 16, 8, 6);
+  pen.col(K.YEL_L).ellipse(88 + sway, 16, 4, 3);
 }
 
 function drawAwning(pen, t) {

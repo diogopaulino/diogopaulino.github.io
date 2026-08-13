@@ -105,9 +105,9 @@ export function speechBar(ctx, message) {
 export function flashcard(ctx, n, pop = 1) {
   if (n === null || n === undefined) return;
   const pen = new Pen(ctx);
-  const scale = 3;
-  const w = 52;
-  const h = 66;
+  const scale = 4;
+  const w = 56;
+  const h = 74;
   const grow = bounceOut(Math.min(1, Math.max(0, pop)));
   const cw = Math.round(w * (0.55 + grow * 0.45));
   const chh = Math.round(h * (0.55 + grow * 0.45));
@@ -135,7 +135,7 @@ export function flashcard(ctx, n, pop = 1) {
   if (grow > 0.55) {
     const label = String(n);
     const tw = F.measure(label, scale);
-    F.text(ctx, label, Math.round(x + (cw - tw) / 2), y + 16, K.RED, { scale, shadow: K.RED_D });
+    F.text(ctx, label, Math.round(x + (cw - tw) / 2), y + 18, K.RED, { scale, shadow: K.RED_D });
   }
 }
 
@@ -368,10 +368,21 @@ export function drawVehicleRack(ctx, spots, clock = 0) {
     );
 
     F.textCenter(ctx, v.name, spot.x + spot.w / 2, y + 42, K.GRAY_XD);
-    const chip = `${v.wheels}`;
-    const cw = F.measure(chip, 1) + 10;
-    raised(pen, Math.round(spot.x + (spot.w - cw) / 2), y + spot.h - 13, cw, 10, K.YEL, K.YEL_L, K.OCHRE);
-    F.textCenter(ctx, chip + 'R', spot.x + spot.w / 2, y + spot.h - 11, K.RED_D);
+    // Rodas visíveis como bolinhas — a criança conta o que vê
+    const nW = v.wheels;
+    const pipY = y + spot.h - 8;
+    if (nW === 0) {
+      raised(pen, Math.round(spot.x + (spot.w - 16) / 2), pipY - 2, 16, 9, K.YEL, K.YEL_L, K.OCHRE);
+      F.textCenter(ctx, '0', spot.x + spot.w / 2, pipY, K.RED_D);
+    } else {
+      const span = Math.min(spot.w - 8, nW * 6);
+      const x0 = Math.round(spot.x + (spot.w - span) / 2);
+      for (let i = 0; i < nW; i++) {
+        const px = x0 + Math.round((i * span) / Math.max(1, nW - 1));
+        pen.col(K.BLACK).ellipse(px, pipY + 3, 3, 3);
+        pen.col(K.GRAY_L).ellipse(px, pipY + 3, 1, 1);
+      }
+    }
   }
 }
 
@@ -456,9 +467,8 @@ export function drawMailboxes(ctx, spots, state, clock = 0) {
     const y = spot.y - (spot.n === 0 || state.invited.includes(spot.n - 1) ? 0 : pulse);
     if (spot.n === 0) {
       raised(pen, spot.x, y, spot.w, spot.h, K.GRN, K.GRN_L, K.GRN_D);
-      F.textCenter(ctx, 'PRONTO', spot.x + spot.w / 2, y + 6, K.WHITE, { shadow: K.GRN_D });
-      F.textCenter(ctx, 'VOLTAR', spot.x + spot.w / 2, y + 16, K.WHITE, { shadow: K.GRN_D });
-      numBadge(ctx, pen, 0, spot.x + spot.w / 2, y + 30, 2, K.RED);
+      F.textCenter(ctx, 'PRONTO', spot.x + spot.w / 2, y + 10, K.WHITE, { shadow: K.GRN_D });
+      numBadge(ctx, pen, 0, spot.x + spot.w / 2, y + 28, 2, K.RED);
       continue;
     }
 

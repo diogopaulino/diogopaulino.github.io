@@ -10,7 +10,7 @@
    sem deixar callback órfão para trás.
    ========================================================================== */
 
-import { W } from './screen.js';
+import { W, getContext } from './screen.js';
 import { K, Pen, blit, blitMid, blitFoot } from './assets.js';
 import * as F from './font.js';
 import { Audio } from './audio.js';
@@ -238,9 +238,9 @@ const SCENES = {
       const pen = new Pen(ctx);
       const snore = hop(clock, 1.6, 2);
       const sleep = raviPose('sleep', clock);
-      const sw = Math.round(sleep.w * 1.4);
-      const sh = Math.round(sleep.h * 1.4);
-      ctx.drawImage(sleep.canvas, 148 - (sw >> 1), 154 + snore - sh, sw, sh);
+      const sw = Math.round(sleep.w * 1.7);
+      const sh = Math.round(sleep.h * 1.7);
+      ctx.drawImage(sleep.canvas, 136 - (sw >> 1), 156 + snore - sh, sw, sh);
       const zz = ((clock * 1.2) % 3);
       F.text(ctx, 'z', 168, 108 - Math.round(zz * 8), K.CYAN, { scale: 1 + (zz > 1.5 ? 1 : 0), shadow: K.BLACK });
       F.text(ctx, 'z', 178, 98 - Math.round(zz * 6), K.BLU_L, { shadow: K.BLACK });
@@ -299,6 +299,7 @@ const SCENES = {
     update(dt) {
       if (timeline) timeline.update(dt);
     },
+    skip() { go(SCENES.wake); },
     draw(ctx) {
       const pen = new Pen(ctx);
       const snore = hop(clock, 1.5, 2);
@@ -439,7 +440,7 @@ const SCENES = {
         ? 'A pé! Zero rodas!'
         : `${v.name}! ${v.wheels} roda${v.wheels > 1 ? 's' : ''}!`);
 
-      const tripDur = 4.4;
+      const tripDur = 3.2;
       const tl = new Timeline();
       tl.add(0.8, null);
       if (v.wheels === 0) {
@@ -593,6 +594,9 @@ const SCENES = {
       S.lumpX += dt * (28 + S.stamps * 10);
       if (S.lumpX >= 238) this.finishToy();
     },
+    skip() {
+      if (this.finishing) go(SCENES.crossroads);
+    },
     input(n) {
       if (this.finishing) return;
       if (n >= 1 && n <= 9) {
@@ -732,7 +736,7 @@ const SCENES = {
     spots: null,
     enter() {
       this.spots = Sc.mailboxSpots();
-      say(`Chame os amigos! Shh, ${honoree().name} não pode saber.`);
+      say(`Toque um amigo! Shh, ${honoree().name}!`);
     },
     update() {},
     input(n) {
@@ -818,7 +822,7 @@ const SCENES = {
       tl.add(0.2, () => say('Faixa: SURPRESA!'));
       tl.add(1.2, () => { S.bannerUp = true; });
       const balloons = Math.max(1, S.balloons);
-      tl.add(0.2, () => say(`${balloons} balão${balloons > 1 ? 'ões' : ''}!`));
+      tl.add(0.2, () => say(`${balloons} ${balloons === 1 ? 'balão' : 'balões'}!`));
       addCount(tl, balloons, (i) => { S.balloonsHung = i; }, 0.85);
       tl.add(0.2, () => say('Shh... chegaram!'));
       tl.add(1.2, null);
@@ -1161,9 +1165,10 @@ function drawGuests(ctx, offsetX = 0) {
     const isHonoree = i >= S.invited.length;
     const hi = isHonoree ? S.honoree : S.invited[i];
     const hero = HEROES[hi];
+    if (!hero) continue;
+    const dancing = S.guestsIn > S.invited.length;
     const sprite = heroSprite(hero.id, dancing);
     const phase = i * 1.7;
-    const dancing = S.guestsIn > S.invited.length;
     // Dança: salto + balanço lateral, defasada por convidado
     const danceY = dancing
       ? hop(clock, isHonoree ? 6.5 : 5.2, isHonoree ? 6 : 4, phase)
@@ -1268,12 +1273,16 @@ export function update(dt) {
 }
 
 export function draw(ctx) {
-  ctx.drawImage(Sc.backdrop(scene.backdrop), 0, 0);
-  Sc.drawAmbient(ctx, scene.backdrop, clock);
-  if (scene.draw) scene.draw(ctx);
-  Sc.drawPops(ctx, S.pops, clock);
-  if (S.flash !== null) Sc.flashcard(ctx, S.flash, S.flashPop);
-  Sc.speechBar(ctx, S.message);
+  try {
+    ctx.drawImage(Sc.backdrop(scene.backdrop), 0, 0);
+    Sc.drawAmbient(ctx, scene.backdrop, clock);
+    if (scene.draw) scene.draw(ctx);
+    Sc.drawPops(ctx, S.pops, clock);
+    if (S.flash !== null) Sc.flashcard(ctx, S.flash, S.flashPop);
+    Sc.speechBar(ctx, S.message);
+  } catch (err) {
+    console.error('ravi draw', err);
+  }
 }
 
 export function getClock() {
@@ -1298,6 +1307,13 @@ export function debugApi() {
     },
     scene() {
       return Object.keys(SCENES).find((k) => SCENES[k] === scene) || '';
+    },
+    force(frames = 30) {
+      const c = getContext();
+      for (let i = 0; i < frames; i++) {
+        update(1 / 60);
+        if (c) draw(c);
+      }
     }
   };
 }
