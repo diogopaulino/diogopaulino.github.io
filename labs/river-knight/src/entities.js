@@ -17,7 +17,7 @@ import {
     buildCannonballMesh,
     plainMaterial
 } from './models.js?v=14';
-import { waterHeight, waterSlope } from './water.js?v=14';
+import { waterHeight, waterSlope } from './water.js?v=15';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { CANNON, SCORE } from './config.js?v=14';
 import { clamp, damp, randRange } from './utils.js';
@@ -204,11 +204,12 @@ class Tower extends Entity {
             const s = 0.85 + Math.sin(ctx.time * 9 + pos.x) * 0.15;
             fire.scale.set(s, s * 1.25, s);
         }
+
+        const dz = pos.z - ctx.player.z;
         if (dz > -90 && dz < 12 && Math.random() < 0.035) {
             ctx.effects.fire(pos.x, pos.y + 11, pos.z, 1, 0.85);
         }
 
-        const dz = pos.z - ctx.player.z;
         this.fireTimer -= dt;
         if (this.fireTimer <= 0 && dz < 6 && dz > -150) {
             this.fireTimer = this.fireRate * randRange(0.85, 1.2);

@@ -205,7 +205,7 @@ export function createWater(skyUniforms, quality) {
                 float spec = pow(max(dot(N, H), 0.0), 96.0);
                 float sparkle = pow(max(dot(N, H), 0.0), 48.0) *
                     smoothstep(0.62, 1.0, rkValueNoise(rp * 2.4 + uTime * 0.45));
-                col += uSunColor * (spec * 0.85 + sparkle * 0.14);
+                col += uSunColor * (spec * 0.55 + sparkle * 0.06);
 
                 // Espuma junto às margens e nas cristas mais altas.
                 float shore = rkShoreDist(vWorld.x, vWorld.z);

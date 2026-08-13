@@ -121,6 +121,20 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/** SwiftShader / llvmpipe / etc. — auto quality must not pick "Cinemática". */
+export function detectSoftwareGL() {
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return true;
+        const info = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
+    } catch (err) {
+        return false;
+    }
+}
+
 /** Formata segundos como m:ss. */
 export function formatTime(seconds) {
     const s = Math.max(0, Math.floor(seconds));

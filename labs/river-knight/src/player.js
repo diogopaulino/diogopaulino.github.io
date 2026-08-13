@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { buildLongship, buildWarrior } from './models.js?v=14';
-import { waterHeight, waterSlope } from './water.js?v=14';
+import { waterHeight, waterSlope } from './water.js?v=15';
 import { centerX, halfWidth } from './river.js';
 import { BOAT, CANNON } from './config.js?v=14';
 import { clamp, damp, lerp } from './utils.js';

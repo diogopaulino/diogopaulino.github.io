@@ -17,10 +17,10 @@ import {
     BOAT
 } from './config.js?v=14';
 import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from './sky.js?v=14';
-import { createWater, waterHeight } from './water.js?v=14';
+import { createWater, waterHeight } from './water.js?v=15';
 import { createTerrain } from './terrain.js?v=14';
-import { Effects } from './effects.js?v=14';
-import { Entities } from './entities.js?v=14';
+import { Effects } from './effects.js?v=15';
+import { Entities } from './entities.js?v=15';
 import { World } from './world.js?v=14';
 import { Player } from './player.js?v=14';
 import { createCastle, BossBarge } from './castle.js?v=14';
@@ -29,7 +29,7 @@ import { Input } from './input.js';
 import { GameAudio } from './audio.js?v=14';
 import { updateCloth } from './models.js?v=14';
 import { centerX, halfWidth } from './river.js';
-import { clamp, damp, detectMobile, formatTime, randRange } from './utils.js';
+import { clamp, damp, detectMobile, detectSoftwareGL, formatTime, randRange } from './utils.js?v=15';
 
 const WHITE = new THREE.Color(1, 1, 1);
 
@@ -98,7 +98,7 @@ class Game {
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile()) return QUALITY.low;
+        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -523,7 +523,7 @@ class Game {
             if (this.state === 'playing' && !this.adapted) {
                 if (fps < 38) this.fpsLowTime += 0.5;
                 else this.fpsLowTime = Math.max(0, this.fpsLowTime - 0.35);
-                if (this.fpsLowTime > 2.2) {
+                if (this.fpsLowTime > 1.2) {
                     this.adapted = true;
                     this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.05));
                     this.composer = null;
@@ -542,22 +542,26 @@ class Game {
         this.time += dt;
         updateCloth(this.time);
 
-        switch (this.state) {
-            case 'menu':
-                this.updateMenu(dt);
-                break;
-            case 'playing':
-                this.updatePlaying(dt);
-                break;
-            case 'defeat':
-                this.updateDefeat(dt);
-                break;
-            case 'victory-seq':
-                this.updateVictorySequence(dt);
-                break;
-            default:
-                this.updateIdle(dt);
-                break;
+        try {
+            switch (this.state) {
+                case 'menu':
+                    this.updateMenu(dt);
+                    break;
+                case 'playing':
+                    this.updatePlaying(dt);
+                    break;
+                case 'defeat':
+                    this.updateDefeat(dt);
+                    break;
+                case 'victory-seq':
+                    this.updateVictorySequence(dt);
+                    break;
+                default:
+                    this.updateIdle(dt);
+                    break;
+            }
+        } catch (err) {
+            console.error('[River Knight]', err);
         }
 
         this.effects.update(dt, this.time);

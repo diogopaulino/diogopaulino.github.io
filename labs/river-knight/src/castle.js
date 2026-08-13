@@ -13,7 +13,7 @@ import {
     woodMaterial
 } from './models.js?v=14';
 import { centerX, halfWidth, terrainHeight } from './river.js';
-import { waterHeight, waterSlope } from './water.js?v=14';
+import { waterHeight, waterSlope } from './water.js?v=15';
 import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
 import { clamp, damp, randRange } from './utils.js';
 
