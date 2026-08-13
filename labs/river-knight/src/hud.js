@@ -30,6 +30,9 @@ export class Hud {
             steerZone: $('steerZone'),
             soundButton: $('soundButton'),
             pauseButton: $('pauseButton'),
+            reticle: $('reticle'),
+            reticleLabel: $('reticleLabel'),
+            throwFill: $('throwFill'),
 
             loading: $('loadingOverlay'),
             loadingFill: $('loadingFill'),
@@ -174,6 +177,26 @@ export class Hud {
         this.flashTimer = setTimeout(() => {
             el.dataset.show = 'false';
         }, 90);
+    }
+
+    /** Mira: trava visual quando há torre/inimigo no cone. */
+    setAim(lock) {
+        if (!this.el.reticle) return;
+        const locked = Boolean(lock);
+        this.el.reticle.dataset.lock = String(locked);
+        if (!this.el.reticleLabel) return;
+        if (!locked) {
+            this.el.reticleLabel.textContent = '';
+            return;
+        }
+        const labels = { towers: 'Torre', enemyShips: 'Navio', barricades: 'Barricada' };
+        this.el.reticleLabel.textContent = labels[lock.kind] || 'Alvo';
+    }
+
+    /** 0 = recarregando, 1 = canhão pronto. */
+    setThrowReady(ratio) {
+        if (!this.el.throwFill) return;
+        this.el.throwFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
     }
 
     /* ---------------------------- overlays ------------------------------ */

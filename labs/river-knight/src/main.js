@@ -12,28 +12,29 @@ import {
     COURSE_LENGTH,
     CASTLE_Z,
     BOSS_Z,
-    STORAGE_KEY
-} from './config.js';
+    STORAGE_KEY,
+    BOAT
+} from './config.js?v=12';
 import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from './sky.js';
 import { createWater, waterHeight } from './water.js';
 import { createTerrain } from './terrain.js';
-import { Effects } from './effects.js';
-import { Entities } from './entities.js';
+import { Effects } from './effects.js?v=12';
+import { Entities } from './entities.js?v=12';
 import { World } from './world.js';
-import { Player } from './player.js';
+import { Player } from './player.js?v=12';
 import { createCastle, BossBarge } from './castle.js';
 import { Hud } from './hud.js';
 import { Input } from './input.js';
-import { GameAudio } from './audio.js';
-import { updateCloth } from './models.js';
+import { GameAudio } from './audio.js?v=12';
+import { updateCloth } from './models.js?v=12';
 import { centerX, halfWidth } from './river.js';
 import { clamp, damp, detectMobile, formatTime, randRange } from './utils.js';
 
 const WHITE = new THREE.Color(1, 1, 1);
 
 const CAMERA_MODES = [
-    { name: 'perseguição', offset: new THREE.Vector3(0, 9.6, 22), look: new THREE.Vector3(0, 2.6, -17) },
-    { name: 'proa', offset: new THREE.Vector3(0, 6.2, 14.5), look: new THREE.Vector3(0, 2.2, -22) },
+    { name: 'perseguição', offset: new THREE.Vector3(0, 9.4, 20.5), look: new THREE.Vector3(0, 4.8, -12) },
+    { name: 'proa', offset: new THREE.Vector3(0, 7.2, 15.5), look: new THREE.Vector3(0, 3.6, -22) },
     { name: 'aérea', offset: new THREE.Vector3(0, 17, 30), look: new THREE.Vector3(0, 1.5, -12) }
 ];
 
@@ -193,7 +194,7 @@ class Game {
         this.boss = new BossBarge(this.scene);
 
         this.hud.setLoading(0.92, 'Preparando o guerreiro…');
-        this.player = new Player(this.scene);
+        this.player = new Player(this.scene, quality);
 
         this.audio = new GameAudio();
         this.audio.enabled = !this.settings.muted;
@@ -398,7 +399,7 @@ class Game {
         this.hud.setScore(0);
         this.hud.setCombo(1);
         this.hud.setTime(0);
-        this.hud.message('Rume ao castelo!', 'gold', 2600);
+        this.hud.message('Rumo ao castelo!', 'gold', 1800);
 
         this.updateCamera(1, true);
     }
@@ -560,7 +561,7 @@ class Game {
         p.z -= dt * 7;
         p.x = damp(p.x, centerX(p.z), 1.2, dt);
         const wy = waterHeight(p.x, p.z, this.time);
-        p.root.position.set(p.x, wy + 0.62, p.z);
+        p.root.position.set(p.x, wy + 0.42, p.z);
         p.root.rotation.z = Math.sin(this.time * 0.7) * 0.035;
         p.root.rotation.x = Math.sin(this.time * 0.5) * 0.02;
 
@@ -572,7 +573,7 @@ class Game {
         p.wParts.armR.rotation.x = -0.25 + Math.sin(this.time * 1.2) * 0.08;
         p.wParts.torso.rotation.z = Math.sin(this.time * 1.4) * 0.05;
 
-        this.effects.wake.push(p.x, p.z + 6.5, 1.5, 0.5);
+        this.effects.wake.push(p.x, p.z + 6.5, 2.0, 0.55);
         if (Math.random() < 0.4) this.effects.splash(p.x, wy, p.z - 6.5, 2, 0.4);
 
         const radius = 26;
@@ -629,10 +630,24 @@ class Game {
         ctx.speedScale = this.bossStarted && this.boss.active && this.boss.dying <= 0 ? 0.92 : 1;
 
         if (this.input.consumeFire() || (this.player.hasFury && this.input.firing)) {
-            if (this.player.throwAxe(this.entities, ctx)) this.audio.sfx('throw');
+            if (this.player.fireCannons(this.entities, ctx)) {
+                this.audio.sfx('cannon', this.player.hasFury ? 1.15 : 1);
+                const lock = this.player._lastLock;
+                if (lock?.kind === 'towers') this.hud.message('Canhão na torre!', 'gold', 900);
+                else if (lock?.kind === 'enemyShips') this.hud.message('Bordo a bordo!', 'gold', 800);
+            }
         }
 
         this.player.update(dt, ctx);
+
+        // Mira automática — só aponta o navio; a retícula trava sozinha.
+        {
+            const lock = this.player.getAimLock(this.entities);
+            this.hud.setAim(lock);
+            const cd = this.player.hasFury ? BOAT.furyCooldown : BOAT.throwCooldown;
+            const ready = 1 - clamp(this.player.throwTimer / cd, 0, 1);
+            this.hud.setThrowReady(ready);
+        }
 
         // O chefe fecha o rio: não dá para passar por ele.
         if (this.boss.active && this.boss.dying <= 0) {
@@ -715,15 +730,23 @@ class Game {
         boss.update(dt, ctx);
 
         if (boss.dying <= 0) {
-            // Machados contra o chefe.
-            for (const axe of this.entities.pools.axes) {
-                if (!axe.active) continue;
-                const dx = axe.group.position.x - boss.group.position.x;
-                const dz = axe.group.position.z - boss.group.position.z;
-                const dy = axe.group.position.y - boss.group.position.y;
-                if (Math.abs(dx) < 7 && Math.abs(dz) < 17 && dy < 9 && dy > -3) {
-                    axe.deactivate();
+            // Balas de canhão contra o chefe.
+            for (const shot of this.entities.pools.shots) {
+                if (!shot.active) continue;
+                const dx = shot.group.position.x - boss.group.position.x;
+                const dz = shot.group.position.z - boss.group.position.z;
+                const dy = shot.group.position.y - boss.group.position.y;
+                if (Math.abs(dx) < 8 && Math.abs(dz) < 18 && dy < 10 && dy > -3) {
+                    shot.deactivate();
                     boss.hit(1, ctx);
+                    this.effects.explosion(
+                        shot.group.position.x,
+                        shot.group.position.y,
+                        shot.group.position.z,
+                        0.7,
+                        0.3
+                    );
+                    this.audio.sfx('explosion', 0.45);
                     this.hud.setBossHealth(boss.healthRatio);
                 }
             }
