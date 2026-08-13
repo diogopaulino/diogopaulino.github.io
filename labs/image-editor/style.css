@@ -380,7 +380,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr auto;
         height: auto;
-        min-height: 80vh;
+        min-height: 0;
     }
 
     .controls-area {
@@ -390,6 +390,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     }
 
     .preview-area {
-        min-height: 300px;
+        min-height: min(50vh, 360px);
     }
 }

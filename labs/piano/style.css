@@ -34,6 +34,13 @@ body {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: #222 #000;
+  scroll-snap-type: x proximity;
+  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+}
+
+.piano-wrapper .key.white {
+  scroll-snap-align: start;
 }
 
 .piano-wrapper::-webkit-scrollbar {
@@ -328,11 +335,11 @@ body {
   }
 
   .key.white {
-    width: 44px;
+    width: 42px;
   }
 
   .key.black {
-    width: 30px;
+    width: 28px;
   }
 
   .controls {

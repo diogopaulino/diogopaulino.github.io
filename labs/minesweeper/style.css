@@ -7,13 +7,13 @@
     --win-light: #ffffff;
     --win-black: #000000;
     --win-blue: #000080;
+    --cell-size: 24px;
 }
 
 /* Shared CSS handles body background and text color */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden;
-    /* Prevent scrolling */
+    overflow: auto;
 }
 
 .container {
@@ -31,8 +31,9 @@ body {
     padding: 3px;
     box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
     min-width: 200px;
-    max-width: 100vw;
+    max-width: min(100%, 100vw - 1.5rem);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .title-bar {
@@ -133,8 +134,8 @@ body {
 }
 
 .cell {
-    width: 24px;
-    height: 24px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     background: var(--win-gray);
     border: 2px solid;
     border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
@@ -263,4 +264,34 @@ body {
     border-radius: 4px;
     font-weight: bold;
     border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 480px) {
+    .counter {
+        font-size: 14px;
+        min-width: 48px;
+        padding: 2px 3px;
+    }
+
+    .status-bar {
+        padding: 3px 5px;
+    }
+
+    .face-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 16px;
+    }
+
+    .title-bar-text {
+        font-size: 12px;
+    }
+
+    .cell {
+        font-size: 12px;
+    }
+
+    #difficulty-select {
+        font-size: 11px;
+    }
 }

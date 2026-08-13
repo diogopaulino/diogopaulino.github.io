@@ -22,14 +22,15 @@
 
     /* --- PORTRAIT MODE: GameBoy Style --- */
     @media (orientation: portrait) {
+        /* Keep shared header (back button) reachable outside active play */
         #screen {
             position: fixed !important;
-            top: 0;
+            top: calc(56px + env(safe-area-inset-top, 0px));
             left: 0;
             width: 100% !important;
-            height: 48vh !important;
+            height: calc(48vh - 56px) !important;
             background: #000;
-            z-index: 50;
+            z-index: 40;
             padding: 0;
             border-bottom: 2px solid #333;
         }
@@ -43,7 +44,8 @@
         .mobile-controls {
             display: block;
             position: fixed;
-            top: 48vh;
+            /* Align with #screen bottom: (56px + safe) + (48vh - 56px) */
+            top: calc(48vh + env(safe-area-inset-top, 0px));
             left: 0;
             right: 0;
             bottom: 0;
@@ -54,6 +56,20 @@
             padding-bottom: env(safe-area-inset-bottom);
             padding-left: env(safe-area-inset-left);
             padding-right: env(safe-area-inset-right);
+        }
+
+        /* During play, hide shared chrome and reclaim the header strip */
+        body.game-mode [data-lab-header] {
+            display: none;
+        }
+
+        body.game-mode #screen {
+            top: 0;
+            height: 48vh !important;
+        }
+
+        body.game-mode .mobile-controls {
+            top: 48vh;
         }
 
         .controls-row {

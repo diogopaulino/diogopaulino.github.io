@@ -22,6 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerInterval = null;
     let firstClick = true;
 
+    function updateCellSize() {
+        const available = Math.min(window.innerWidth - 48, 720);
+        const cell = Math.max(14, Math.min(24, Math.floor(available / COLS)));
+        document.documentElement.style.setProperty('--cell-size', cell + 'px');
+        boardElement.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
+        boardElement.style.gridTemplateRows = `repeat(${ROWS}, var(--cell-size))`;
+    }
+
     function initGame() {
         // Set difficulty
         const difficulty = difficultySelect.value;
@@ -30,9 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
         COLS = config.cols;
         MINES = config.mines;
 
-        // Update Grid CSS
-        boardElement.style.gridTemplateColumns = `repeat(${COLS}, 24px)`;
-        boardElement.style.gridTemplateRows = `repeat(${ROWS}, 24px)`;
+        // Update Grid CSS (fluid cell size for small viewports)
+        updateCellSize();
 
         // Reset state
         board = [];
@@ -299,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetBtn.addEventListener('click', initGame);
     difficultySelect.addEventListener('change', initGame);
+    window.addEventListener('resize', updateCellSize);
 
     initGame();
 });

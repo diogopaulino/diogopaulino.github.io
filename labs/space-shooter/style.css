@@ -552,7 +552,10 @@ footer a {
     }
 
     footer[data-lab-footer] {
-        display: none;
+        display: flex;
+        padding: 0.5rem;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
     }
 
     .quick-controls {

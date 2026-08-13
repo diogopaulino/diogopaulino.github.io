@@ -18,17 +18,19 @@
     content="Conte de 1 a 9 e ajude o Ravi a convidar heróis para a maior festa surpresa do reino. Pixel art 320×200, tudo em vanilla.">
   <meta property="og:locale" content="pt_BR">
 
+  <link rel="stylesheet" href="/labs/shared.css?v=6">
   <link rel="stylesheet" href="style.css?v=18">
 </head>
 
 <body>
+  <header data-lab-header data-title="Ravi 1·2·3" data-back-href="/labs/" data-back-label="Labs"></header>
+
   <main id="app">
     <div id="frame">
       <canvas id="screen" width="320" height="200" aria-label="Ravi 1·2·3: jogo de contagem"></canvas>
     </div>
 
     <nav id="hud" aria-label="Controles">
-      <button id="btn-back" class="hud-btn" type="button" title="Voltar aos labs" aria-label="Voltar aos labs">&#8592;</button>
       <span class="hud-spacer"></span>
       <button id="btn-sound" class="hud-btn" type="button" title="Som (M)" aria-label="Desligar o som"
         aria-pressed="true">&#9834;</button>
@@ -47,6 +49,7 @@
   </noscript>
 
   <script type="module" src="main.js?v=18"></script>
+  <script src="/labs/shared.js?v=6" defer></script>
 </body>
 
 </html>

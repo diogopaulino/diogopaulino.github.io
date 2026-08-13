@@ -57,23 +57,6 @@ body {
     gap: 16px;
 }
 
-/* Back Link overrides for toolbar context */
-.back-link {
-    position: static !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: transparent !important;
-    padding: 0 !important;
-    color: var(--text-secondary);
-    font-size: 16px;
-}
-
-.back-link:hover {
-    background: var(--surface-hover) !important;
-    color: var(--text-primary) !important;
-    transform: none !important;
-}
-
 .logo {
     display: flex;
     align-items: center;
@@ -308,11 +291,58 @@ input[type="range"]::-webkit-slider-thumb {
         overflow-x: auto;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        order: 1;
+    }
+
+    .canvas-container {
+        order: 2;
+        padding: 16px;
+        min-height: 0;
+        flex: 1;
     }
 
     .side-bar.right {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        height: auto;
+        max-height: 120px;
+        overflow-x: auto;
+        overflow-y: auto;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border: none;
+        border-top: 1px solid var(--border-color);
+        border-left: none;
+        order: 3;
+    }
+
+    .side-bar.right .property-group {
+        margin-bottom: 0;
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+
+    .side-bar.right .property-group label {
+        margin-bottom: 6px;
+    }
+
+    .side-bar.right .color-picker-wrapper {
+        height: 32px;
+        margin-bottom: 6px;
+    }
+
+    .side-bar.right .color-palette {
+        grid-template-columns: repeat(9, 1fr);
+        gap: 4px;
+    }
+
+    .side-bar.right .separator,
+    .side-bar.right .shortcuts-hint,
+    .side-bar.right .shape-fill-group {
         display: none;
-        /* For mobile MVP, maybe hide or make modal */
     }
 
     .tool-group {

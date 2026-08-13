@@ -36,20 +36,31 @@
     border: 0;
 }
 
+html {
+    overflow-x: clip;
+}
+
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--bg-body);
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 1rem;
+    padding: max(2rem, env(safe-area-inset-top, 0px))
+        max(1rem, env(safe-area-inset-right, 0px))
+        max(2rem, env(safe-area-inset-bottom, 0px))
+        max(1rem, env(safe-area-inset-left, 0px));
     transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     background-image:
         radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.03), transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(96, 165, 250, 0.03), transparent 25%);
     background-attachment: fixed;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 .container {
@@ -60,6 +71,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-width: 0;
 }
 
 /* Glassmorphism Utilities */
@@ -85,6 +97,7 @@ header {
     margin-bottom: 3rem;
     padding: 0 1rem;
     max-width: 1200px;
+    min-width: 0;
 }
 
 header .app-logo {
@@ -124,6 +137,7 @@ header .app-logo svg {
     text-decoration: none;
     font-size: 0.9rem;
     padding: 0.6rem 1.2rem;
+    min-height: 44px;
     border: 1px solid var(--border-subtle);
     border-radius: 2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -182,11 +196,13 @@ header h1 {
     justify-self: end;
     display: flex;
     align-items: center;
+    min-height: 44px;
 }
 
 .theme-toggle {
     width: 64px;
     height: 32px;
+    min-width: 64px;
     padding: 0;
     border-radius: 20px;
     border: 1px solid var(--border-subtle);
@@ -287,20 +303,24 @@ footer a:hover {
 /* Responsive */
 @media (max-width: 768px) {
     body {
-        padding: 1rem;
+        padding: max(1rem, env(safe-area-inset-top, 0px))
+            max(0.75rem, env(safe-area-inset-right, 0px))
+            max(1rem, env(safe-area-inset-bottom, 0px))
+            max(0.75rem, env(safe-area-inset-left, 0px));
     }
 
     header {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         padding: 0;
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.5rem;
     }
 
     header .back-link {
-        padding: 0.5rem;
-        width: 36px;
-        height: 36px;
+        padding: 0;
+        width: 44px;
+        height: 44px;
+        min-height: 44px;
         justify-content: center;
         border-radius: 50%;
     }
@@ -309,13 +329,19 @@ footer a:hover {
         display: none;
     }
 
+    header h1,
     header .app-logo {
         justify-self: center;
-        font-size: 1.1rem;
+        font-size: clamp(1rem, 4.5vw, 1.35rem);
         max-width: 100%;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    header .subtitle {
+        font-size: 0.875rem;
+        padding: 0 0.25rem;
     }
 
     header .theme-toggle,
@@ -325,7 +351,9 @@ footer a:hover {
 
     footer {
         margin-top: 2rem;
-        padding: 1rem;
+        padding: 1rem max(1rem, env(safe-area-inset-right, 0px))
+            max(1rem, env(safe-area-inset-bottom, 0px))
+            max(1rem, env(safe-area-inset-left, 0px));
         font-size: 0.8rem;
         flex-direction: column;
         gap: 0.25rem;
