@@ -10,7 +10,10 @@
 :root {
   --sw: 320px;   /* largura escalada, calculada por screen.js */
   --sh: 200px;   /* altura escalada */
-  --hud: #cbd5e1;
+  --hud: #f8e8a0;
+  --hud-face: #1a2458;
+  --hud-edge: #f0c040;
+  --hud-ink: #f8f0d0;
 }
 
 *,
@@ -26,9 +29,11 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  /* Letterbox com vinheta suave — casa com a paleta navy/noite do jogo */
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 45%, #142048 0%, #050814 70%, #000 100%);
   color: var(--hud);
-  font: 600 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 600 14px/1.4 "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
@@ -47,6 +52,13 @@ body {
   width: var(--sw);
   height: var(--sh);
   line-height: 0;
+  /* Moldura fina dourada ao redor do CRT */
+  box-shadow:
+    0 0 0 2px #0a1028,
+    0 0 0 4px #c89830,
+    0 0 0 6px #1a2458,
+    0 12px 40px rgba(0, 0, 0, 0.55);
+  border-radius: 2px;
 }
 
 /* O canvas mantém o backing store em 320×200; quem amplia é o navegador,
@@ -71,6 +83,7 @@ body {
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   pointer-events: none;
+  z-index: 2;
 }
 
 .hud-spacer {
@@ -79,12 +92,13 @@ body {
 
 .hud-btn {
   pointer-events: auto;
-  width: 36px;
-  height: 36px;
-  border: 2px solid #334155;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.72);
-  color: var(--hud);
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--hud-edge);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, #2a3878 0%, var(--hud-face) 55%, #0e1638 100%);
+  color: var(--hud-ink);
   font: inherit;
   font-size: 1.05rem;
   line-height: 1;
@@ -92,23 +106,37 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 120ms linear, border-color 120ms linear;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 2px 0 #0a1028;
+  transition: filter 120ms linear, border-color 120ms linear, transform 80ms linear;
 }
 
 .hud-btn:hover,
 .hud-btn:focus-visible {
-  background: rgba(30, 41, 59, 0.92);
-  border-color: #64748b;
+  filter: brightness(1.12);
+  border-color: #ffe080;
   outline: none;
 }
 
 .hud-btn:active {
   transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 0 rgba(0, 0, 0, 0.35),
+    0 1px 0 #0a1028;
 }
 
 .hud-btn[aria-pressed="true"] {
-  color: #64748b;
-  border-color: #1e293b;
+  /* som ligado: nota dourada */
+  color: #ffe080;
+}
+
+.hud-btn[aria-pressed="false"] {
+  /* som mudo */
+  color: #7a8498;
+  border-color: #4a5578;
+  filter: saturate(0.7);
 }
 
 #rotate-hint {
@@ -120,7 +148,8 @@ body {
   text-align: center;
   padding: 0 16px;
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: #b8c4e0;
+  text-shadow: 0 1px 2px #000;
 }
 
 /* Em celular de pé o palco 320×200 vira uma faixa estreita: vale avisar. */

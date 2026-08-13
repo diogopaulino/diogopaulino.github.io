@@ -257,8 +257,8 @@ export function sliceSpriteSheet(imageName, targetHeight = 0) {
       const w = maxX - minX + 1;
       const h = maxY - minY + 1;
       
-      // Filtro: ignorar textos compridos
-      if (w > h * 2.5) continue;
+      // Filtro: ignorar textos compridos / faixas largas
+      if (w > h * 1.6) continue;
       if (h > w * 3) continue;
 
       rects.push({x: minX, y: minY, w, h});

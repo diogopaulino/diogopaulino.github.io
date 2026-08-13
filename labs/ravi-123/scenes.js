@@ -10,12 +10,55 @@
 import { W, H, makeSurface } from './screen.js';
 import { K, Pen, blit, blitMid, IMG } from './assets.js';
 import * as F from './font.js';
-import { SPR, TOYS, VEHICLES, HEROES } from './sprites.js';
+import { SPR, TOYS, VEHICLES, HEROES, FOODS } from './sprites.js';
+import { bounceOut, wave, hop, wrap } from './anim.js';
 
 export const STAGE_H = 166;  // altura da área de jogo (o resto é a barra de fala)
 
 /** Cache de cenários já assados. */
 const baked = new Map();
+
+/* --------------------------------------------------------------------------
+   Peças de UI diegética (pixel) — tudo reutiliza a mesma “ferragem”
+   -------------------------------------------------------------------------- */
+
+/** Sombra + chanfro elevado. */
+function raised(pen, x, y, w, h, face, light, dark) {
+  pen.col(K.BLACK).rect(x + 1, y + 1, w, h);
+  pen.bevel(x, y, w, h, face, light, dark);
+  // Brilho interno de 1px no topo
+  pen.col(light).hline(x + 2, y + 2, Math.max(0, w - 4));
+}
+
+/** Chanfro afundado (tecla / poço). */
+function sunk(pen, x, y, w, h, face, light, dark) {
+  pen.col(K.BLACK).rect(x, y, w, h);
+  pen.inset(x + 1, y + 1, w - 2, h - 2, face, light, dark);
+}
+
+/** Rebite metálico. */
+function rivet(pen, x, y) {
+  pen.col(K.BLACK).px(x, y).px(x + 1, y).px(x, y + 1);
+  pen.col(K.GRAY_L).px(x, y);
+  pen.col(K.GRAY).px(x + 1, y).px(x, y + 1);
+}
+
+/** Estrelinha de 5 px — ornamento de título/flashcard. */
+function spark(pen, x, y, c = K.YEL_L) {
+  pen.col(c).px(x, y - 1).px(x - 1, y).px(x, y).px(x + 1, y).px(x, y + 1);
+}
+
+/** Badge numérico com fundo creme (contraste em madeira/azul). */
+function numBadge(ctx, pen, n, cx, cy, scale = 2, fg = K.RED, face = K.CREAM) {
+  const label = String(n);
+  const tw = F.measure(label, scale);
+  const bw = tw + 6;
+  const bh = 7 * scale + 2;
+  const bx = Math.round(cx - bw / 2);
+  const by = Math.round(cy - bh / 2);
+  raised(pen, bx, by, bw, bh, face, face === K.CREAM ? K.WHITE : K.YEL_L, face === K.CREAM ? K.GRAY_D : K.RED_D);
+  F.text(ctx, label, Math.round(cx - tw / 2), by + 2, fg, { scale, shadow: face === K.CREAM ? K.SAND : K.RED_D });
+}
 
 /**
  * Devolve o canvas do cenário, assando na primeira vez que for pedido.
@@ -56,48 +99,71 @@ export function backdrop(id) {
    Chrome: barra de fala e flashcard
    -------------------------------------------------------------------------- */
 
-/** Barra de narração no rodapé, no lugar do balão de vidro antigo. */
+/** Barra de narração no rodapé — cromada, com filete dourado e ícone. */
 export function speechBar(ctx, message) {
   const pen = new Pen(ctx);
   const y = STAGE_H;
   const h = H - STAGE_H;
+
+  // Base preta + face navy com chanfro
   pen.col(K.BLACK).rect(0, y, W, h);
-  pen.col(K.NAVY).rect(1, y + 1, W - 2, h - 2);
-  pen.col(K.BLU).hline(1, y + 1, W - 2).vline(1, y + 1, h - 2);
-  pen.col(K.NIGHT).hline(1, H - 2, W - 2).vline(W - 2, y + 1, h - 2);
+  pen.bevel(1, y + 1, W - 2, h - 2, K.NAVY, K.BLU, K.NIGHT);
+  // Filete dourado no topo (como moldura de CRT educativo)
+  pen.col(K.OCHRE).hline(2, y + 1, W - 4);
+  pen.col(K.YEL).hline(2, y + 2, W - 4);
+  pen.col(K.NIGHT).hline(2, H - 2, W - 4);
+
+  // Ícone de fala (boquinha) à esquerda
+  pen.col(K.YEL_L).ellipse(12, y + (h >> 1), 5, 4);
+  pen.col(K.NAVY).ellipse(12, y + (h >> 1), 3, 2);
+  pen.col(K.YEL).px(17, y + (h >> 1) - 1).px(18, y + (h >> 1)).px(17, y + (h >> 1) + 1);
 
   if (!message) return;
-  const lines = F.wrap(message, W - 16);
-  const startY = y + (h - (lines.length * F.LINE - 2)) / 2;
+  const lines = F.wrap(message, W - 36);
+  const startY = y + (h - (lines.length * F.LINE - 2)) / 2 + 1;
   for (let i = 0; i < lines.length; i++) {
-    F.textCenter(ctx, lines[i], W / 2, Math.round(startY + i * F.LINE), K.YEL_L, { shadow: K.BLACK });
+    F.textCenter(ctx, lines[i], W / 2 + 4, Math.round(startY + i * F.LINE), K.YEL_L, { shadow: K.BLACK });
   }
 }
 
 /**
- * Flashcard do numeral — o elemento de ensino do jogo original.
- * `pop` (0..1) é usado para a animação de entrada.
+ * Flashcard do numeral — cartão de ensino com moldura vermelha e brilho.
+ * `pop` (0..1) anima a entrada com bounce.
  */
 export function flashcard(ctx, n, pop = 1) {
   if (n === null || n === undefined) return;
   const pen = new Pen(ctx);
   const scale = 3;
-  const w = 44;
-  const h = 58;
-  const grow = Math.min(1, Math.max(0, pop));
-  const cw = Math.round(w * (0.6 + grow * 0.4));
-  const chh = Math.round(h * (0.6 + grow * 0.4));
+  const w = 52;
+  const h = 66;
+  const grow = bounceOut(Math.min(1, Math.max(0, pop)));
+  const cw = Math.round(w * (0.55 + grow * 0.45));
+  const chh = Math.round(h * (0.55 + grow * 0.45));
   const x = Math.round((W - cw) / 2);
-  const y = Math.round(26 - (chh - h) / 2);
+  const y = Math.round(18 - (chh - h) / 2 - (1 - grow) * 12);
 
+  // Sombra elíptica
+  pen.col(K.BLACK).ellipse(W / 2, y + chh + 5, Math.round(cw * 0.38), 4);
+  // Cartão
   pen.col(K.BLACK).rect(x + 3, y + 3, cw, chh);
   pen.bevel(x, y, cw, chh, K.CREAM, K.WHITE, K.GRAY);
-  pen.col(K.RED).frame(x + 3, y + 3, cw - 6, chh - 6);
+  pen.col(K.WHITE).hline(x + 3, y + 3, Math.max(0, cw - 6));
+  // Moldura dupla vermelha
+  pen.col(K.RED_D).frame(x + 3, y + 3, cw - 6, chh - 6);
+  pen.col(K.RED).frame(x + 4, y + 4, cw - 8, chh - 8);
+  pen.col(K.RED_L).frame(x + 5, y + 5, cw - 10, chh - 10);
+  // Cantos decorativos
+  if (grow > 0.4) {
+    spark(pen, x + 8, y + 10, K.YEL);
+    spark(pen, x + cw - 9, y + 10, K.YEL);
+    spark(pen, x + 8, y + chh - 10, K.ORANGE);
+    spark(pen, x + cw - 9, y + chh - 10, K.ORANGE);
+  }
 
-  if (grow > 0.7) {
+  if (grow > 0.55) {
     const label = String(n);
     const tw = F.measure(label, scale);
-    F.text(ctx, label, Math.round(x + (cw - tw) / 2), y + 13, K.RED, { scale, shadow: K.RED_D });
+    F.text(ctx, label, Math.round(x + (cw - tw) / 2), y + 16, K.RED, { scale, shadow: K.RED_D });
   }
 }
 
@@ -111,8 +177,9 @@ function cell(ctx, spot, opts = {}) {
   const { x, y, w, h } = spot;
   const disabled = opts.done || opts.locked;
 
-  pen.col(K.BLACK).rect(x, y, w, h);
-  pen.bevel(x + 1, y + 1, w - 2, h - 2, disabled ? K.GRAY : K.CREAM, K.WHITE, K.GRAY_D);
+  sunk(pen, x, y, w, h, disabled ? K.GRAY : K.CREAM, K.WHITE, K.GRAY_D);
+  // Filete interno creme
+  if (!disabled) pen.col(K.WHITE).hline(x + 3, y + 2, w - 6);
 
   if (opts.icon) blitMid(ctx, opts.icon, x + 13, y + h / 2);
   else if (opts.label) F.text(ctx, opts.label, x + 4, y + (h - 7) / 2, K.GRAY_XD);
@@ -120,10 +187,15 @@ function cell(ctx, spot, opts = {}) {
   const numColor = opts.locked ? K.GRAY_D : opts.done ? K.GRN_D : K.RED;
   const label = String(spot.n);
   const tw = F.measure(label, 2);
-  F.text(ctx, label, Math.round(x + w - tw - 8), Math.round(y + (h - 14) / 2), numColor, { scale: 2 });
+  F.text(ctx, label, Math.round(x + w - tw - 6), Math.round(y + (h - 14) / 2), numColor, {
+    scale: 2,
+    shadow: K.SAND
+  });
 
   if (opts.done) {
-    pen.col(K.GRN_L).line(x + 5, y + h / 2, x + 9, y + h - 4).line(x + 9, y + h - 4, x + 19, y + 3);
+    pen.col(K.BLACK).rect(x + 4, y + 3, 14, 12);
+    pen.col(K.GRN).rect(x + 5, y + 4, 12, 10);
+    pen.col(K.GRN_L).line(x + 7, y + 9, x + 10, y + 12).line(x + 10, y + 12, x + 16, y + 5);
   }
   if (opts.locked) {
     pen.col(K.GRAY_XD).rect(x + 9, y + h / 2 - 2, 8, 7);
@@ -176,16 +248,21 @@ export function drawMachinePanel(ctx, spots, active) {
   const first = spots[0];
   const last = spots[spots.length - 1];
   const width = last.x + last.w - first.x;
-  // Carcaça do painel, com espaço para o rótulo acima das teclas
-  pen.col(K.BLACK).rect(first.x - 7, first.y - 12, width + 14, first.h + 20);
-  pen.bevel(first.x - 6, first.y - 11, width + 12, first.h + 18, K.GRAY, K.GRAY_L, K.GRAY_D);
+  // Carcaça do painel
+  raised(pen, first.x - 7, first.y - 14, width + 14, first.h + 22, K.GRAY, K.GRAY_L, K.GRAY_D);
+  rivet(pen, first.x - 4, first.y - 11);
+  rivet(pen, first.x + width + 2, first.y - 11);
+  rivet(pen, first.x - 4, first.y + first.h + 2);
+  rivet(pen, first.x + width + 2, first.y + first.h + 2);
+  // Plaquinha do rótulo
+  raised(pen, Math.round(W / 2 - 36), first.y - 12, 72, 10, K.NAVY, K.BLU, K.NIGHT);
   F.textCenter(ctx, 'MOLDADORA', W / 2, first.y - 10, K.YEL_L, { shadow: K.BLACK });
 
   for (const spot of spots) {
     const on = spot.n === active;
-    pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-    pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2,
+    sunk(pen, spot.x, spot.y, spot.w, spot.h,
       on ? K.YEL : K.BLU, on ? K.YEL_L : K.BLU_L, on ? K.OCHRE : K.BLU_D);
+    if (on) pen.col(K.WHITE).hline(spot.x + 2, spot.y + 2, spot.w - 4);
     const label = String(spot.n);
     const tw = F.measure(label, 2);
     F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 3,
@@ -208,29 +285,42 @@ export function drawSignpost(ctx, spots, state) {
   const names = ['FÁBRICA', 'MERCADO', 'CORREIOS', 'A FESTA!'];
   const done = [state.presentDone, state.marketDone, state.inviteDone, false];
 
-  // Poste
-  pen.col(K.BLACK).rect(148, 20, 12, 108);
-  pen.col(K.WOOD_D).rect(149, 21, 10, 106);
-  pen.col(K.OCHRE).vline(150, 21, 106);
+  // Poste com veios de madeira
+  pen.col(K.BLACK).rect(148, 18, 14, 112);
+  pen.col(K.WOOD_D).rect(149, 19, 12, 110);
+  pen.col(K.OCHRE).vline(151, 19, 110);
+  pen.col(K.SAND).vline(152, 22, 20).vline(152, 55, 18).vline(152, 90, 16);
+  // Base do poste
+  pen.col(K.BLACK).rect(142, 126, 26, 6);
+  pen.col(K.WOOD_D).rect(143, 127, 24, 4);
 
   for (const spot of spots) {
     const i = spot.n - 1;
     const party = i === 3;
-    pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-    pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2,
+    raised(pen, spot.x, spot.y, spot.w, spot.h,
       party ? K.YEL : K.OCHRE, party ? K.YEL_L : K.SAND, K.WOOD_D);
+    // Veios horizontais leves
+    if (!party) {
+      pen.col(K.SAND).hline(spot.x + 4, spot.y + 5, spot.w - 14);
+      pen.col(K.WOOD_D).hline(spot.x + 4, spot.y + spot.h - 4, spot.w - 14);
+    }
     // Ponta de seta
     pen.col(K.BLACK);
-    for (let k = 0; k < 8; k++) pen.vline(spot.x + spot.w + k, spot.y + k, spot.h - k * 2);
+    for (let k = 0; k < 9; k++) pen.vline(spot.x + spot.w + k, spot.y + k, spot.h - k * 2);
     pen.col(party ? K.YEL : K.OCHRE);
-    for (let k = 0; k < 7; k++) pen.vline(spot.x + spot.w + k, spot.y + 1 + k, spot.h - 2 - k * 2);
+    for (let k = 0; k < 8; k++) pen.vline(spot.x + spot.w + k, spot.y + 1 + k, spot.h - 2 - k * 2);
+    pen.col(party ? K.YEL_L : K.SAND).vline(spot.x + spot.w, spot.y + 2, spot.h - 4);
 
-    const label = String(spot.n);
-    F.text(ctx, label, spot.x + 5, spot.y + 3, party ? K.RED : K.RED_D, { scale: 2, shadow: K.SAND });
-    F.text(ctx, names[i], spot.x + 22, spot.y + 6, K.WOOD_D);
+    // Badge do número (vermelho, bem legível)
+    numBadge(ctx, pen, spot.n, spot.x + 14, spot.y + (spot.h >> 1), 2, K.YEL_L, K.RED);
+    F.text(ctx, names[i], spot.x + 28, spot.y + 6, K.WOOD_D, { shadow: party ? K.OCHRE : K.SAND });
+
     if (done[i]) {
-      pen.col(K.GRN).line(spot.x + 108, spot.y + 9, spot.x + 112, spot.y + 14)
-        .line(spot.x + 112, spot.y + 14, spot.x + 120, spot.y + 4);
+      pen.col(K.BLACK).rect(spot.x + 106, spot.y + 4, 14, 12);
+      pen.col(K.GRN).rect(spot.x + 107, spot.y + 5, 12, 10);
+      pen.col(K.GRN_L)
+        .line(spot.x + 109, spot.y + 10, spot.x + 112, spot.y + 13)
+        .line(spot.x + 112, spot.y + 13, spot.x + 118, spot.y + 6);
     }
   }
 }
@@ -246,16 +336,51 @@ export function vehicleSpots() {
   return spots;
 }
 
+/** Faixa compacta 0–9 para trocar de veículo durante a viagem. */
+export function travelSwapSpots() {
+  const spots = [];
+  const bw = 28;
+  const gap = 2;
+  const total = 10 * bw + 9 * gap;
+  const x0 = Math.round((W - total) / 2);
+  for (let i = 0; i < 10; i++) {
+    spots.push({ n: i, x: x0 + i * (bw + gap), y: 4, w: bw, h: 18 });
+  }
+  return spots;
+}
+
+export function drawTravelSwap(ctx, spots, activeN) {
+  const pen = new Pen(ctx);
+  const first = spots[0];
+  const last = spots[spots.length - 1];
+  const width = last.x + last.w - first.x;
+  // Trilho cromado atrás das teclas
+  raised(pen, first.x - 4, first.y - 3, width + 8, first.h + 6, K.NAVY, K.BLU, K.NIGHT);
+
+  for (const spot of spots) {
+    const on = spot.n === activeN;
+    sunk(pen, spot.x, spot.y, spot.w, spot.h,
+      on ? K.YEL : K.CREAM, on ? K.YEL_L : K.WHITE, on ? K.OCHRE : K.GRAY_D);
+    const label = String(spot.n);
+    const tw = F.measure(label, 2);
+    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 2,
+      on ? K.RED : K.GRAY_XD, { scale: 2, shadow: on ? K.SAND : undefined });
+  }
+}
+
 export function drawVehicleRack(ctx, spots) {
   const pen = new Pen(ctx);
   for (const spot of spots) {
     const v = VEHICLES[spot.n];
-    pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-    pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2, K.CREAM, K.WHITE, K.GRAY_D);
+    raised(pen, spot.x, spot.y, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
+    // Faixa superior colorida
+    pen.col(K.NAVY).rect(spot.x + 2, spot.y + 2, spot.w - 4, 10);
+    pen.col(K.BLU).hline(spot.x + 2, spot.y + 2, spot.w - 4);
+    const twN = F.measure(String(spot.n), 2);
+    F.text(ctx, String(spot.n), Math.round(spot.x + (spot.w - twN) / 2), spot.y + 2,
+      K.YEL_L, { scale: 2, shadow: K.BLACK });
 
-    /* Veículos mais largos que o cartão entram pela metade. A contagem de
-       rodas de verdade acontece na cena da viagem, com o veículo em tamanho
-       cheio e o flashcard — aqui é só a vitrine de escolha. */
+    /* Veículos mais largos que o cartão entram pela metade. */
     const sprite = v.wheels === 0 ? SPR.ravi.idle : SPR.vehicle[v.id];
     const half = sprite.w > spot.w - 6 || sprite.h > 26;
     const dw = half ? Math.round(sprite.w / 2) : sprite.w;
@@ -263,14 +388,16 @@ export function drawVehicleRack(ctx, spots) {
     ctx.drawImage(
       sprite.canvas,
       Math.round(spot.x + (spot.w - dw) / 2),
-      Math.round(spot.y + 16 - dh / 2),
+      Math.round(spot.y + 28 - dh / 2),
       dw, dh
     );
 
-    F.textCenter(ctx, v.name, spot.x + spot.w / 2, spot.y + 32, K.GRAY_XD);
-    const label = String(spot.n);
-    const tw = F.measure(label, 2);
-    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 43, K.RED, { scale: 2, shadow: K.SAND });
+    F.textCenter(ctx, v.name, spot.x + spot.w / 2, spot.y + 42, K.GRAY_XD);
+    // Chip de rodas
+    const chip = `${v.wheels}`;
+    const cw = F.measure(chip, 1) + 10;
+    raised(pen, Math.round(spot.x + (spot.w - cw) / 2), spot.y + spot.h - 13, cw, 10, K.YEL, K.YEL_L, K.OCHRE);
+    F.textCenter(ctx, chip + 'R', spot.x + spot.w / 2, spot.y + spot.h - 11, K.RED_D);
   }
 }
 
@@ -280,23 +407,59 @@ export function quantitySpots() {
   for (let i = 0; i < 9; i++) {
     const col = i % 3;
     const row = (i / 3) | 0;
-    spots.push({ n: i + 1, x: 210 + col * 34, y: 18 + row * 32, w: 30, h: 28 });
+    spots.push({ n: i + 1, x: 210 + col * 34, y: 24 + row * 28, w: 30, h: 26 });
   }
   return spots;
 }
 
 export function drawQuantityBoard(ctx, spots, title) {
   const pen = new Pen(ctx);
-  pen.col(K.BLACK).rect(202, 4, 112, 106);
-  pen.bevel(203, 5, 110, 104, K.WOOD_D, K.OCHRE, K.GRAY_XD);
+  raised(pen, 202, 4, 112, 106, K.WOOD_D, K.OCHRE, K.GRAY_XD);
+  rivet(pen, 206, 8);
+  rivet(pen, 306, 8);
+  rivet(pen, 206, 100);
+  rivet(pen, 306, 100);
+  // Faixa do título
+  raised(pen, 210, 8, 96, 12, K.NAVY, K.BLU, K.NIGHT);
   F.textCenter(ctx, title, 258, 10, K.YEL_L, { shadow: K.BLACK });
 
   for (const spot of spots) {
-    pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-    pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2, K.CREAM, K.WHITE, K.GRAY_D);
+    sunk(pen, spot.x, spot.y, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
+    pen.col(K.WHITE).hline(spot.x + 3, spot.y + 2, spot.w - 6);
     const label = String(spot.n);
     const tw = F.measure(label, 3);
-    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 4, K.RED, { scale: 3 });
+    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 4, K.RED, {
+      scale: 3,
+      shadow: K.SAND
+    });
+  }
+}
+
+/**
+ * Carrinho de compras com os itens já escolhidos dentro do cesto.
+ * `cart` é o mapa { foodId: qty } do estado do jogo.
+ */
+export function drawShoppingCart(ctx, cart, footX = 150, footY = 158, t = 0) {
+  const body = SPR.misc.cart;
+  if (!body) return;
+  const wobble = t ? wave(t, 6, 1) : 0;
+  const bx = Math.round(footX - body.w / 2) + wobble;
+  const by = footY - body.h;
+  blit(ctx, body, bx, by);
+
+  // Miolo creme do cesto — os itens empilham aqui, bem visíveis
+  const originX = bx + 16;
+  const originY = by + 16;
+  const cols = 4;
+  let slot = 0;
+  for (const food of FOODS) {
+    const qty = cart[food.id] || 0;
+    for (let i = 0; i < qty && slot < 12; i++, slot++) {
+      const col = slot % cols;
+      const row = (slot / cols) | 0;
+      const jiggle = t ? hop(t, 5 + (slot % 3), 1, slot) : 0;
+      blitMid(ctx, SPR.food[food.id], originX + col * 11, originY + row * 9 - jiggle);
+    }
   }
 }
 
@@ -316,12 +479,10 @@ export function drawMailboxes(ctx, spots, state) {
   const pen = new Pen(ctx);
   for (const spot of spots) {
     if (spot.n === 0) {
-      pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-      pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2, K.GRN, K.GRN_L, K.GRN_D);
-      F.textCenter(ctx, 'VOLTAR', spot.x + spot.w / 2, spot.y + 8, K.WHITE, { shadow: K.GRN_D });
-      F.textCenter(ctx, 'À PLACA', spot.x + spot.w / 2, spot.y + 18, K.WHITE, { shadow: K.GRN_D });
-      const tw = F.measure('0', 2);
-      F.text(ctx, '0', Math.round(spot.x + (spot.w - tw) / 2), spot.y + 26, K.YEL_L, { scale: 2, shadow: K.GRN_D });
+      raised(pen, spot.x, spot.y, spot.w, spot.h, K.GRN, K.GRN_L, K.GRN_D);
+      F.textCenter(ctx, 'VOLTAR', spot.x + spot.w / 2, spot.y + 6, K.WHITE, { shadow: K.GRN_D });
+      F.textCenter(ctx, 'À PLACA', spot.x + spot.w / 2, spot.y + 16, K.WHITE, { shadow: K.GRN_D });
+      numBadge(ctx, pen, 0, spot.x + spot.w / 2, spot.y + 30, 2, K.RED);
       continue;
     }
 
@@ -330,15 +491,13 @@ export function drawMailboxes(ctx, spots, state) {
     const locked = idx === state.honoree;
     const invited = state.invited.includes(idx);
 
-    pen.col(K.BLACK).rect(spot.x, spot.y, spot.w, spot.h);
-    pen.bevel(spot.x + 1, spot.y + 1, spot.w - 2, spot.h - 2,
-      locked ? K.GRAY : invited ? K.GRN_D : K.BLU_D, K.GRAY_L, K.GRAY_XD);
+    raised(pen, spot.x, spot.y, spot.w, spot.h,
+      locked ? K.GRAY : invited ? K.GRN_D : K.BLU_D,
+      locked ? K.GRAY_L : invited ? K.GRN_L : K.BLU_L,
+      K.GRAY_XD);
 
-    /* Portinha com o herói espiando. O recorte mostra da cabeça ao tronco:
-       o sprite tem folga no topo para elmos e chapéus, então ele entra
-       deslocado para que o rosto fique centrado na janelinha. */
-    pen.col(K.BLACK).rect(spot.x + 3, spot.y + 3, 20, 32);
-    pen.col(locked ? K.GRAY_D : K.CREAM).rect(spot.x + 4, spot.y + 4, 18, 30);
+    /* Portinha com o herói espiando. */
+    sunk(pen, spot.x + 3, spot.y + 3, 20, 32, locked ? K.GRAY_D : K.CREAM, K.WHITE, K.GRAY_XD);
     if (!locked) {
       ctx.save();
       ctx.beginPath();
@@ -351,14 +510,21 @@ export function drawMailboxes(ctx, spots, state) {
       pen.col(K.YEL).ring(spot.x + 13, spot.y + 15, 3);
     }
 
+    // Placa de latão com o número
+    raised(pen, spot.x + 26, spot.y + 4, 26, 16, K.YEL, K.YEL_L, K.OCHRE);
     const label = String(spot.n);
-    F.text(ctx, label, spot.x + 27, spot.y + 5, locked ? K.GRAY_L : K.YEL_L,
-      { scale: 2, shadow: K.BLACK });
-    F.text(ctx, hero.short, spot.x + 25, spot.y + 24, locked ? K.GRAY_L : K.WHITE,
+    const tw = F.measure(label, 2);
+    F.text(ctx, label, Math.round(spot.x + 39 - tw / 2), spot.y + 5,
+      locked ? K.GRAY_XD : K.RED, { scale: 2, shadow: K.SAND });
+
+    F.text(ctx, hero.short, spot.x + 25, spot.y + 26, locked ? K.GRAY_L : K.WHITE,
       { shadow: K.BLACK });
     if (invited) {
-      pen.col(K.GRN_L).line(spot.x + 44, spot.y + 10, spot.x + 47, spot.y + 15)
-        .line(spot.x + 47, spot.y + 15, spot.x + 53, spot.y + 4);
+      pen.col(K.BLACK).rect(spot.x + 44, spot.y + 24, 10, 10);
+      pen.col(K.GRN).rect(spot.x + 45, spot.y + 25, 8, 8);
+      pen.col(K.GRN_L)
+        .line(spot.x + 46, spot.y + 29, spot.x + 48, spot.y + 31)
+        .line(spot.x + 48, spot.y + 31, spot.x + 52, spot.y + 26);
     }
   }
 }
@@ -366,25 +532,31 @@ export function drawMailboxes(ctx, spots, state) {
 /** Pratos numerados da mesa da festa. */
 export function plateSpots() {
   const spots = [];
-  // Começa em x=44 para deixar o canto esquerdo livre para o Ravi
+  // Fileira baixa, abaixo dos convidados (pés ~142) e acima da barra de fala
   for (let i = 0; i < 9; i++) {
-    spots.push({ n: i + 1, x: 44 + i * 30, y: 128, w: 28, h: 30 });
+    spots.push({ n: i + 1, x: 44 + i * 30, y: 148, w: 28, h: 16 });
   }
   return spots;
 }
 
-/** Pratos: comida à esquerda, numeral à direita — sem um cobrir o outro. */
+/** Pratos: oval creme + numeral + miniatura da comida da vez (Mickey 123). */
 export function drawPlates(ctx, spots, food) {
   const pen = new Pen(ctx);
-  const icon = food ? SPR.food[food.id] : null;
   for (const spot of spots) {
     const cx = Math.round(spot.x + spot.w / 2);
     const cy = Math.round(spot.y + spot.h / 2);
-    pen.col(K.BLACK).ellipse(cx, cy, 13, 10);
-    pen.col(K.WHITE).ellipse(cx, cy, 12, 9);
-    pen.col(K.GRAY_L).ellipse(cx, cy, 9, 6);
-    if (icon) blitMid(ctx, icon, cx - 6, cy);
-    F.text(ctx, String(spot.n), cx + 2, cy - 7, K.RED, { scale: 2 });
+    // Prato oval com borda
+    pen.col(K.BLACK).ellipse(cx + 1, cy + 1, 12, 7);
+    pen.col(K.GRAY).ellipse(cx, cy, 12, 7);
+    pen.col(K.CREAM).ellipse(cx, cy, 10, 5);
+    pen.col(K.WHITE).ellipse(cx - 2, cy - 1, 3, 2);
+    if (food) blitMid(ctx, SPR.food[food.id], cx - 5, cy - 2);
+    // Badge do número por cima, bem legível
+    const label = String(spot.n);
+    const tw = F.measure(label, 2);
+    pen.col(K.BLACK).rect(cx - (tw >> 1) - 2, spot.y - 3, tw + 4, 11);
+    pen.bevel(cx - (tw >> 1) - 1, spot.y - 2, tw + 2, 9, K.YEL, K.YEL_L, K.OCHRE);
+    F.text(ctx, label, Math.round(cx - tw / 2), spot.y - 1, K.RED, { scale: 2 });
   }
 }
 
@@ -407,15 +579,20 @@ export function hitTest(spots, x, y, pad = 3) {
   return null;
 }
 
-/** Confete da festa — posições fixas, animadas por tempo. */
+/** Confete da festa — formas variadas, sem alocar no draw. */
 export function makeConfetti(count) {
   const arr = [];
+  const colors = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.CYAN, K.ORANGE, K.PUR];
   for (let i = 0; i < count; i++) {
     arr.push({
-      x: (i * 53 + 11) % W,
-      y: (i * 29) % STAGE_H,
-      speed: 14 + (i % 5) * 6,
-      color: [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.CYAN][i % 6]
+      x: (i * 47 + 13) % W,
+      y: (i * 31 + 7) % STAGE_H,
+      speed: 18 + (i % 7) * 5,
+      drift: 1 + (i % 4),
+      spin: 3 + (i % 5),
+      size: 2 + (i % 3),
+      shape: i % 3, // 0 rect, 1 tall, 2 diamond-ish
+      color: colors[i % colors.length]
     });
   }
   return arr;
@@ -424,20 +601,47 @@ export function makeConfetti(count) {
 export function drawConfetti(ctx, arr, t) {
   const pen = new Pen(ctx);
   for (const p of arr) {
-    const y = (p.y + t * p.speed) % STAGE_H;
-    const x = p.x + Math.round(3 * Math.sin(t * 2 + p.x));
-    pen.col(p.color).rect(x, y | 0, 2, 2);
+    const y = wrap(p.y + t * p.speed, STAGE_H);
+    const x = p.x + wave(t, p.drift, 5, p.x);
+    const flip = ((t * p.spin + p.x) | 0) & 1;
+    pen.col(p.color);
+    if (p.shape === 0) {
+      pen.rect(x, y | 0, p.size + flip, p.size + (1 - flip));
+    } else if (p.shape === 1) {
+      pen.rect(x, y | 0, 1 + flip, p.size + 2);
+    } else {
+      pen.px(x, y | 0).px(x + 1, (y | 0) + 1).px(x - 1, (y | 0) + 1).px(x, (y | 0) + 2);
+    }
   }
 }
 
-/** Balões pendurados na parede da festa, abaixo da faixa. */
+/** Balões nas laterais da festa — flutuam e balançam o fio. */
 export function drawBalloons(ctx, count, t) {
   const pen = new Pen(ctx);
-  const step = Math.min(32, 272 / Math.max(count, 1));
+  const palette = [K.RED, K.YEL, K.BLU, K.PINK, K.GRN, K.ORANGE, K.PUR, K.CYAN];
   for (let i = 0; i < count; i++) {
-    const x = Math.round(24 + i * step);
-    const y = 48 + Math.round(3 * Math.sin(t * 1.6 + i));
-    blitMid(ctx, SPR.food.balloon, x, y);
-    pen.col(K.CREAM).vline(x, y + 8, 14);
+    const left = i % 2 === 0;
+    const slot = (i / 2) | 0;
+    const baseX = left
+      ? Math.round(18 + slot * 16)
+      : Math.round(W - 18 - slot * 16);
+    const sway = wave(t, 1.4 + i * 0.07, 3, i * 1.3);
+    const bob = wave(t, 1.8 + i * 0.11, 4, i);
+    const x = baseX + sway;
+    const y = 38 + bob;
+    // Fio curvado
+    pen.col(K.CREAM);
+    pen.px(baseX, y + 10);
+    pen.px(baseX + (sway >> 1), y + 16);
+    pen.vline(x, y + 8, 4);
+    // Sombra + balão
+    pen.col(K.BLACK).ellipse(x + 1, y + 1, 7, 8);
+    if (SPR.food.balloon) blitMid(ctx, SPR.food.balloon, x, y);
+    else {
+      pen.col(K.BLACK).ellipse(x, y, 7, 8);
+      pen.col(palette[i % palette.length]).ellipse(x, y, 6, 7);
+    }
+    pen.col(K.WHITE).ellipse(x - 2, y - 3, 2, 2);
+    pen.col(palette[i % palette.length]).px(x, y + 8);
   }
 }
