@@ -265,19 +265,28 @@ export function clearWorldCache() {
 
 export function drawAmbient(ctx, id, t) {
   const pen = new Pen(ctx);
-  if (id === 'houseNight' || id === 'field' || id === 'party') {
+  if (id === 'houseNight') drawWindowStars(pen, t);
+  if (id === 'field' || id === 'party') {
     drawStars(pen, t, id === 'field' ? 28 : 12);
   }
   if (id === 'field') drawFireflies(pen, t);
   if (id === 'houseDay' || id === 'street') drawClouds(pen, t);
   if (id === 'street') drawRoadDash(pen, t);
   if (id === 'factory') drawGears(pen, t);
-  if (id === 'market') drawAwning(pen, t);
   if (id === 'party') {
     drawStreamers(pen, t);
     drawFire(pen, t);
   }
-  if (id === 'houseNight' || id === 'houseDay') drawLampGlow(pen, t, id === 'houseNight');
+  if (id === 'houseNight') drawLampGlow(pen, t, true);
+}
+
+function drawWindowStars(pen, t) {
+  for (let i = 0; i < 8; i++) {
+    const x = 14 + (i % 4) * 16;
+    const y = 24 + ((i / 4) | 0) * 18;
+    if (!hop(t, 3 + (i % 3) * 0.5, 1, i)) continue;
+    pen.col(i % 2 ? K.YEL_L : K.WHITE).px(x, y);
+  }
 }
 
 function drawStars(pen, t, n) {

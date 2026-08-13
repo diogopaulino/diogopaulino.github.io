@@ -60,7 +60,7 @@ export function paintRavi(pen, pose = 'idle') {
   const hy = 10 + jump;
 
   // Sombra
-  pen.col(K.BLACK).ellipse(12, 35, pose === 'cheer' ? 5 : 7, 2);
+  pen.col(K.BLACK).ellipse(12, 40, pose === 'cheer' ? 5 : 7, 2);
 
   // Cabelo (volume bagunçado)
   blob(pen, 12, hy - 1, 8, 7, K.WOOD_D);

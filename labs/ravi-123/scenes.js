@@ -257,7 +257,7 @@ export function drawSignpost(ctx, spots, state, clock = 0) {
   const pen = new Pen(ctx);
   const names = ['FÁBRICA', 'MERCADO', 'CARTAS', 'FESTA!'];
   const done = [state.presentDone, state.marketDone, state.inviteDone, false];
-  const icons = [SPR.toy.robo, SPR.food.apple, SPR.misc.envelope, SPR.misc.cake];
+  const icons = [SPR.toy.robo, SPR.food.apple, SPR.misc.envelope, SPR.food.balloon];
 
   pen.col(K.BLACK).rect(148, 18, 14, 112);
   pen.col(K.WOOD_D).rect(149, 19, 12, 110);
@@ -284,8 +284,11 @@ export function drawSignpost(ctx, spots, state, clock = 0) {
     pen.col(party ? K.YEL_L : K.SAND).vline(spot.x + spot.w, y + 2, spot.h - 4);
 
     numBadge(ctx, pen, spot.n, spot.x + 14, y + (spot.h >> 1), 2, K.YEL_L, K.RED);
-    if (icons[i]) blitMid(ctx, icons[i], spot.x + 36, y + spot.h / 2);
-    F.text(ctx, names[i], spot.x + 48, y + 6, K.WOOD_D, { shadow: party ? K.OCHRE : K.SAND });
+    if (icons[i]) {
+      const ic = icons[i];
+      ctx.drawImage(ic.canvas, spot.x + 26, y + 2, 14, 14);
+    }
+    F.text(ctx, names[i], spot.x + 44, y + 6, K.WOOD_D, { shadow: party ? K.OCHRE : K.SAND });
 
     if (done[i]) {
       pen.col(K.BLACK).rect(spot.x + 106, y + 4, 14, 12);

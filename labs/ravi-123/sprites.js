@@ -377,13 +377,13 @@ export async function buildSprites() {
   const poses = ['idle', 'blink', 'walk0', 'walk1', 'wave', 'cheer', 'sleep', 'sit'];
   for (const pose of poses) {
     const w = pose === 'sleep' ? 42 : 24;
-    const h = pose === 'sleep' ? 22 : 38;
+    const h = pose === 'sleep' ? 22 : 42;
     SPR.ravi[pose] = bakeSprite(w, h, (pen) => paintRavi(pen, pose));
   }
 
   for (const hero of HEROES) {
-    SPR.hero[hero.id] = bakeSprite(24, 38, (pen) => paintHero(pen, hero, 'idle'));
-    SPR.hero[hero.id + '_cheer'] = bakeSprite(24, 38, (pen) => paintHero(pen, hero, 'cheer'));
+    SPR.hero[hero.id] = bakeSprite(24, 42, (pen) => paintHero(pen, hero, 'idle'));
+    SPR.hero[hero.id + '_cheer'] = bakeSprite(24, 42, (pen) => paintHero(pen, hero, 'cheer'));
   }
 
   for (const toy of TOYS) {
