@@ -35,8 +35,16 @@ export const SVC = {
     'G': '#ff9dc4', 'H': '#7cf0a0', 'I': '#c8382f', 'J': '#f0f0ff',
 
     // extra utilitário para roupas/variação
-    'K': '#f4a300', 'L': '#00897b', 'M': '#6d4c41', 'N': '#8e24aa'
+    'K': '#f4a300', 'L': '#00897b', 'M': '#6d4c41', 'N': '#8e24aa',
+
+    // rampas complementares abertas na revisão 16-bit: mar profundo, espuma, areia molhada,
+    // sombra de sprite e dois neons secundários para o HUD
+    'O': '#062a42', 'P': '#c9f5ef', 'Q': '#5c4630', 'R': '#9d7047',
+    'S': '#1a1626', 'T': '#3a2f52', 'U': '#ff5d8f', 'V': '#6ef2c0'
 };
+
+/** Coluna do sol no céu — mar, reflexo e brilhos se alinham a ela. */
+export const SUN_X = 0.62;
 
 /**
  * Constrói um sub-conjunto de paleta com aliases legíveis para um sprite específico.

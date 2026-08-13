@@ -29,6 +29,10 @@ export class InputManager {
         // o jogo simplesmente não veria a tecla. Cada ação registrada aqui vale por um frame,
         // garantindo que todo apertar gere exatamente um `pressed`.
         this._buffered = new Set();
+        // idade (ms) do último toque de cada ação e se ele já foi consumido — a base da
+        // janela de tolerância de `buffered()`
+        this._pressAge = {};
+        this._spent = {};
 
         this._pauseCb = null;
         this._muteCb = null;
@@ -126,8 +130,39 @@ export class InputManager {
             st.down = down;
             st.heldMs = down ? st.heldMs + dtMs : 0;
             this.prevDown[a] = down;
+
+            // idade do último toque, para a janela de tolerância de `buffered()`
+            if (st.pressed) { this._pressAge[a] = 0; this._spent[a] = false; }
+            else if (this._pressAge[a] != null) this._pressAge[a] += dtMs;
         }
         this._buffered.clear();
+    }
+
+    /**
+     * "Esse botão foi apertado nos últimos `windowMs`?"
+     *
+     * Em jogo de ação o jogador quase nunca aperta no frame exato em que a ação fica
+     * disponível — ele aperta um pouco antes, enquanto ainda está no ar, ainda em cooldown,
+     * ainda fora da janela de acerto. Ler só `pressed` joga esse toque fora e o jogo parece
+     * não responder. Com a janela de tolerância o toque fica guardado e é gasto assim que a
+     * ação abre, que é o que faz o controle parecer "grudado" no jogador.
+     */
+    buffered(action, windowMs = 120) {
+        const age = this._pressAge[action];
+        return age != null && age <= windowMs && !this._spent[action];
+    }
+
+    /** Marca o toque bufferizado como usado, para ele não disparar duas vezes. */
+    consume(action) { this._spent[action] = true; }
+
+    /**
+     * Descarta todos os toques em buffer.
+     * Chamado a cada troca de cena: sem isto o mesmo "Z" que confirma CONTINUAR no menu de
+     * pausa ainda estaria dentro da janela de tolerância no primeiro quadro de volta ao jogo,
+     * e sairia como uma manobra que o jogador não pediu.
+     */
+    flushBuffer() {
+        for (const a of ACTIONS) this._spent[a] = true;
     }
 
     axisX() { return (this.state.right.down ? 1 : 0) - (this.state.left.down ? 1 : 0); }
@@ -138,6 +173,8 @@ export class InputManager {
         this._touchDown.clear();
         this._gpDown.clear();
         this._buffered.clear();
+        this._pressAge = {};
+        this._spent = {};
     }
 
     dispose() { this.ac.abort(); }

@@ -45,28 +45,41 @@ export const titleScene = {
         drawNeonGrid(c, 150, 74, this.t);
         c.drawImage(scenery.skyline, Math.round(-(this.t * 6) % 640), 96);
 
-        // logotipo
+        // gaivotas cruzando o pôr do sol — a tela de título ganha uma vida que não custa nada
+        for (let i = 0; i < 3; i++) {
+            const gx = ((this.t * (9 + i * 4) + i * 130) % (W + 40)) - 20;
+            px.blitScreen(sprites.anim('gull', this.t + i, 4), gx, 30 + i * 13);
+        }
+
+        // logotipo: SANTOS em degradê quente, VICE GAMES em neon frio, ambos com contorno grosso
         const bob = Math.sin(this.t * 1.6) * 2;
-        font.textBig(c, 'SANTOS', W / 2, 40 + bob, { scale: 4, color: 'x', outlineColor: '0', align: 'center' });
-        font.textBig(c, 'VICE GAMES', W / 2, 74 + bob, { scale: 3, color: 'y', outlineColor: '0', align: 'center' });
-        scrim(px, 100, 16, 0.5);
-        font.text(c, 'SEIS PROVAS NA ORLA · UM CAMPEONATO', W / 2, 106, {
+        font.textBig(c, 'SANTOS', W / 2, 38 + bob, {
+            scale: 4, ramp: ['h', '8', '7', '6', '5'], outlineColor: '0', align: 'center'
+        });
+        font.textBig(c, 'VICE GAMES', W / 2, 74 + bob, {
+            scale: 3, ramp: ['P', 'd', 'c', 'b'], outlineColor: '0', align: 'center'
+        });
+
+        scrim(px, 102, 14, 0.55);
+        font.text(c, 'SEIS PROVAS NA ORLA · UM CAMPEONATO', W / 2, 105, {
             color: '8', align: 'center', mono: true, shadow: '0'
         });
 
         // faixa escura atrás das chamadas de baixo — sem ela o texto some no skyline
-        scrim(px, 158, 66, 0.55);
+        scrim(px, 160, 64, 0.6);
+        px.rect(0, 160, W, 1, SVC['3']);
 
         // "insira ficha"
         if (Math.floor(this.t * 1.8) % 2 === 0) {
-            font.text(c, 'APERTE START', W / 2, 168, {
-                color: 'A', align: 'center', mono: true, scale: 2, shadow: '0'
+            font.text(c, 'APERTE START', W / 2, 170, {
+                color: 'A', align: 'center', mono: true, scale: 2, outline: '0'
             });
         }
 
         const career = store.careerTotal();
         if (career > 0) {
-            font.text(c, `CARREIRA: ${career} PTS`, W / 2, 196, { color: 'p', align: 'center', mono: true });
+            font.text(c, `CARREIRA ${String(career).padStart(5, '0')} PTS`, W / 2, 196,
+                { color: 'p', align: 'center', mono: true });
         }
         font.text(c, 'HOMENAGEM A CALIFORNIA GAMES', W / 2, 208, { color: 'o', align: 'center', mono: true });
     }
@@ -114,7 +127,9 @@ export const menuScene = {
 
         scrim(px, 31, 179);
         screenHeader(px, font, 'SANTOS VICE GAMES', 'MENU PRINCIPAL');
-        this.menu.draw(px, font, sprites, W / 2, 62, { lineH: 20, time: this.t, hintY: 176 });
+        this.menu.draw(px, font, sprites, W / 2, 62, {
+            lineH: 20, time: this.t, hintY: 176, width: 176
+        });
         screenFooter(px, font, 'Z CONFIRMA · X VOLTA');
     }
 };
@@ -167,29 +182,33 @@ export const sponsorScene = {
         scrim(px, 31, 179);
         screenHeader(px, font, 'PATROCINADOR', 'ELE PAGA O UNIFORME E TORCE NA SUA PROVA');
 
-        // grade 3x2 de emblemas
-        const cols = 3, cellW = 92, cellH = 64;
+        // Grade 3×2 de emblemas. As medidas são apertadas de propósito: a caixa de descrição
+        // embaixo ocupa 46 px e a linha de baixo da grade encostava nela na versão anterior.
+        const cols = 3, cellW = 100, cellH = 54;
         const x0 = (W - cols * cellW) / 2;
-        const y0 = 38;
+        const y0 = 36;
         SPONSORS.forEach((sp, i) => {
-            const cx = x0 + (i % cols) * cellW + cellW / 2;
+            const cx = Math.round(x0 + (i % cols) * cellW + cellW / 2);
             const cy = y0 + Math.floor(i / cols) * cellH;
             const active = i === this.index;
             if (active) {
-                const pulse = Math.round(Math.sin(this.t * 6) * 1);
-                panel(px, cx - 40, cy - 2 + pulse, 80, 58, { fill: '2', border: 'A', accent: sp.kit.shirt });
+                panel(px, cx - 42, cy - 2, 84, 50, {
+                    fill: '2', border: '0', light: 'A', dark: '1', accent: sp.kit.shirt
+                });
             }
-            px.blitScreen(sprites.get(`logo_${sp.id}`), cx, cy + 20);
-            font.text(c, EVENTS[sp.boon].name, cx, cy + 44, {
+            px.blitScreen(sprites.get(`logo_${sp.id}`), cx, cy + 18);
+            font.text(c, EVENTS[sp.boon].name, cx, cy + 36, {
                 color: active ? 'A' : 'o', align: 'center', mono: true
             });
         });
 
         const sp = SPONSORS[this.index];
-        panel(px, 12, 158, W - 24, 46, { fill: '1', border: 'q', accent: sp.kit.shirt });
-        font.text(c, sp.name, W / 2, 163, { color: sp.kit.shirt, align: 'center', mono: true });
-        font.text(c, sp.motto, W / 2, 176, { color: 'p', align: 'center', mono: true });
-        font.text(c, `+12% DE PONTOS EM ${EVENTS[sp.boon].name}`, W / 2, 190, {
+        panel(px, 10, 148, W - 20, 56, { fill: '1', border: '0', light: 'n', accent: sp.kit.shirt });
+        font.text(c, sp.name, W / 2, 154, { color: sp.kit.shirt, align: 'center', mono: true });
+        font.wrap(sp.motto, W - 34, { mono: true }).slice(0, 2).forEach((line, i) => {
+            font.text(c, line, W / 2, 168 + i * 11, { color: 'p', align: 'center', mono: true });
+        });
+        font.text(c, `+12% DE PONTOS EM ${EVENTS[sp.boon].name}`, W / 2, 192, {
             color: 'H', align: 'center', mono: true
         });
 
@@ -242,7 +261,7 @@ export const eventSelectScene = {
             const active = i === this.menu.index;
             const y = 46 + i * 20;
             const ev = EVENTS[it.value];
-            if (active) panel(px, 10, y - 4, W - 20, 18, { fill: '2', border: ev.tint });
+            if (active) panel(px, 10, y - 4, W - 20, 18, { fill: '2', border: '0', light: ev.tint, dark: '1' });
             font.text(c, ev.name, 22, y, { color: active ? 'A' : 'q', mono: true });
             font.text(c, ev.place, 118, y, { color: 'o', mono: true });
             const best = store.getBest(it.value);
@@ -258,7 +277,7 @@ export const eventSelectScene = {
 
         const cur = this.menu.current;
         if (cur) {
-            panel(px, 12, 172, W - 24, 30, { fill: '1', border: 'n' });
+            panel(px, 12, 172, W - 24, 30, { fill: '1', border: '0', light: 'n' });
             font.text(c, EVENTS[cur.value].tagline, W / 2, 180, { color: 'p', align: 'center', mono: true });
             font.text(c, EVENTS[cur.value].hint, W / 2, 191, { color: 'o', align: 'center', mono: true });
         }
@@ -301,7 +320,7 @@ export const briefingScene = {
         scrim(px, 31, 179);
         screenHeader(px, font, this.def.name, this.def.place);
 
-        panel(px, 14, 40, W - 28, 66, { fill: '1', border: this.def.tint, accent: this.def.tint });
+        panel(px, 14, 40, W - 28, 66, { fill: '1', border: '0', light: this.def.tint, accent: this.def.tint });
         this.def.brief.forEach((linha, i) => {
             font.text(c, linha, W / 2, 48 + i * 12, { color: 'q', align: 'center', mono: true });
         });
@@ -310,17 +329,17 @@ export const briefingScene = {
         }
 
         // controles
-        panel(px, 14, 112, W - 28, 24, { fill: '2', border: 'n' });
+        panel(px, 14, 112, W - 28, 24, { fill: '2', border: '0', light: 'n' });
         font.text(c, 'CONTROLES', W / 2, 116, { color: 'o', align: 'center', mono: true });
         font.text(c, this.def.hint, W / 2, 126, { color: 'r', align: 'center', mono: true });
 
         // recorde pessoal + bônus do patrocinador
         const best = store.getBest(this.eventId);
-        panel(px, 14, 142, (W - 34) / 2, 26, { fill: '1', border: 'n' });
+        panel(px, 14, 142, (W - 34) / 2, 26, { fill: '1', border: '0', light: 'n' });
         font.text(c, 'SEU RECORDE', 20, 146, { color: 'o', mono: true });
         font.text(c, best.score ? String(best.score) : '—', 20, 157, { color: 'A', mono: true });
 
-        panel(px, W / 2 + 3, 142, (W - 34) / 2, 26, { fill: '1', border: 'n' });
+        panel(px, W / 2 + 3, 142, (W - 34) / 2, 26, { fill: '1', border: '0', light: 'n' });
         const boon = sponsor && sponsor.boon === this.eventId;
         font.text(c, 'PATROCÍNIO', W / 2 + 9, 146, { color: 'o', mono: true });
         font.text(c, sponsor ? (boon ? `${sponsor.name} +12%` : sponsor.name) : 'SEM PATROCÍNIO', W / 2 + 9, 157, {
@@ -417,10 +436,17 @@ export const pauseScene = {
         px.rect(0, 0, W, H, SVC['0']);
         c.globalAlpha = 1;
 
-        panel(px, 60, 62, W - 120, 100, { fill: '1', border: 'A', accent: 'x' });
-        font.textBig(c, 'PAUSA', W / 2, 70, { scale: 2, color: 'A', outlineColor: '0', align: 'center' });
-        this.menu.draw(px, font, sprites, W / 2, 104, { lineH: 16, time: this.t });
-        font.text(c, EVENTS[this.eventId].hint, W / 2, 168, { color: 'o', align: 'center', mono: true });
+        panel(px, 52, 58, W - 104, 112, { fill: '1', border: '0', light: 'A', dark: '1', accent: 'x' });
+        font.textBig(c, 'PAUSA', W / 2, 66, {
+            scale: 2, ramp: ['h', '8', '7', '6'], outlineColor: '0', align: 'center'
+        });
+        this.menu.draw(px, font, sprites, W / 2, 100, { lineH: 16, time: this.t, width: 148 });
+        // A dica de controles vive DENTRO do painel: fora dele ela caía por cima da mesma
+        // linha que a prova já desenha no rodapé, e o texto aparecia duplicado.
+        px.rect(60, 152, W - 120, 1, SVC['m']);
+        font.text(c, EVENTS[this.eventId].hint, W / 2, 158, {
+            color: 'o', align: 'center', mono: true
+        });
     }
 };
 
@@ -489,7 +515,9 @@ export const resultScene = {
             });
         }
         if (this.entry.detail) {
-            font.text(c, this.entry.detail, W / 2, 92, { color: 'p', align: 'center', mono: true });
+            font.text(c, this.entry.detail, W / 2, 92, {
+                color: 'q', align: 'center', mono: true, outline: '0'
+            });
         }
 
         // medalha
@@ -498,11 +526,14 @@ export const resultScene = {
             if (pop > 0) {
                 px.blitScreen(sprites.get(`medal_${this.entry.medal}`), 44, 132);
                 font.text(c, MEDAL_LABEL[this.entry.medal], 44, 136, {
-                    color: MEDAL_COLOR[this.entry.medal], align: 'center', mono: true
+                    color: MEDAL_COLOR[this.entry.medal], align: 'center', mono: true, outline: '0'
                 });
             }
         } else {
-            font.text(c, 'SEM MEDALHA', 44, 128, { color: 'n', align: 'center', mono: true });
+            // contorno obrigatório: cinza sobre o pôr do sol do fundo era ilegível
+            font.text(c, 'SEM MEDALHA', 44, 128, {
+                color: 'p', align: 'center', mono: true, outline: '0'
+            });
         }
 
         if (this.isRecord && Math.floor(this.t * 3) % 2 === 0) {
@@ -515,7 +546,7 @@ export const resultScene = {
         } else if (this.entry.table && this.entry.table.length) {
             // tabela da prova nas provas não julgadas
             const x = 96;
-            panel(px, x, 112, W - x - 12, 84, { fill: '1', border: 'n' });
+            panel(px, x, 112, W - x - 12, 84, { fill: '1', border: '0', light: 'n' });
             this.entry.table.slice(0, 5).forEach((row, i) => {
                 const isPlayer = row.id === 'player';
                 const y = 118 + i * 15;
@@ -655,7 +686,7 @@ export const recordsScene = {
             const ev = EVENTS[id];
             const best = store.getBest(id);
             const y = 42 + i * 22;
-            panel(px, 10, y - 4, W - 20, 20, { fill: '1', border: 'n', accent: best.score ? ev.tint : null });
+            panel(px, 10, y - 4, W - 20, 20, { fill: '1', border: '0', light: 'n', accent: best.score ? ev.tint : null });
             font.text(c, ev.name, 18, y, { color: best.score ? 'q' : 'n', mono: true });
             font.text(c, best.detail || ev.place, 18, y + 9, { color: 'o', mono: true });
             font.text(c, best.score ? String(best.score).padStart(4, '0') : '----', W - 46, y + 3, {
@@ -669,7 +700,7 @@ export const recordsScene = {
         });
 
         const champ = store.data.champ;
-        panel(px, 10, 178, W - 20, 24, { fill: '2', border: 'x' });
+        panel(px, 10, 178, W - 20, 24, { fill: '2', border: '0', light: 'x', dark: '1' });
         font.text(c, 'MELHOR CAMPANHA', 18, 182, { color: 'o', mono: true });
         font.text(c, champ.best ? `${champ.place}º LUGAR · ${champ.best} PTS · ${champ.golds} OURO(S)` : 'AINDA NÃO DISPUTADA',
             18, 192, { color: champ.best ? 'r' : 'n', mono: true });

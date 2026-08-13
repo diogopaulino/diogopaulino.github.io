@@ -90,18 +90,22 @@ function appCtx() {
     };
 }
 
+// Toda troca de cena descarta o buffer de entrada: o toque que confirmou a transição não
+// pode ser lido de novo pela cena que acabou de entrar.
 function gotoScene(scene, params = {}) {
     while (state.sceneStack.length) {
         const s = state.sceneStack.pop();
         if (s.exit) s.exit();
     }
     state.sceneStack.push(scene);
+    state.input.flushBuffer();
     announce(scene.id);
     if (scene.enter) scene.enter(appCtx(), params);
 }
 
 function pushScene(scene, params = {}) {
     state.sceneStack.push(scene);
+    state.input.flushBuffer();
     announce(scene.id);
     if (scene.enter) scene.enter(appCtx(), params);
 }
@@ -109,6 +113,7 @@ function pushScene(scene, params = {}) {
 function popScene() {
     const scene = state.sceneStack.pop();
     if (scene && scene.exit) scene.exit();
+    state.input.flushBuffer();
     const back = currentScene();
     if (back) announce(back.id);
 }

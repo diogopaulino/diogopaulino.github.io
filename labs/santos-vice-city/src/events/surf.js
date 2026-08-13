@@ -4,30 +4,28 @@
 // atrás, que é o que vende a sensação de velocidade. A tensão vem de um único conflito: a
 // espuma fecha a onda vindo da direita, e os pontos estão justamente perto dela — no "bolso".
 // Fugir para a esquerda é seguro e pobre; ficar no bolso é caro e rende.
+//
+// O perfil da onda tem DOIS lados e o pico anda junto com o ponto de quebra. A versão
+// anterior fixava a crista numa coluna e devolvia altura máxima para tudo à direita dela: a
+// água já quebrada virava um paralelepípedo branco de 90 px cobrindo um quarto da tela, e a
+// parede à esquerda ficava tão rasa que lia como um triângulo deitado. Agora a onda tem
+// ombro, pico e costa, e os três caminham para a esquerda conforme ela fecha.
 
 import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp, lerp } from '../core/util.js';
-import { tile } from '../art/scenery.js';
-import { panel, bar, judgePanel } from '../game/hud.js';
+import { tile, drawWater, drawShadow } from '../art/scenery.js';
+import { gauge, judgePanel } from '../game/hud.js';
 
-const CREST_X = 244;        // coluna onde a crista da onda fica fixa na tela
-const FACE_LEN = 208;       // extensão da parede para a esquerda
-const TROUGH_Y = 186;       // linha da base da onda
-const CREST_H = 92;         // altura da parede na crista
+const START_X = 296;        // onde o pico nasce, perto da borda direita
+const FACE_LEN = 186;       // extensão da parede para a esquerda do pico
+const BACK_LEN = 46;        // extensão da costa da onda para a direita
+const TROUGH_Y = 190;       // linha da base da onda
+const CREST_H = 92;         // altura da parede no pico
+const SHOULDER_H = 22;      // altura do ombro, lá na ponta esquerda da parede
+const SEA_Y = 124;          // horizonte da água
 const WAVES = 3;
-
-/**
- * Altura da parede numa coluna.
- * O expoente alto é o que faz a parede ser CÔNCAVA: ela quase não sobe no ombro e engrossa
- * rápido perto da crista. Com um expoente próximo de 1 o resultado é uma rampa reta, que não
- * lê como onda nenhuma.
- */
-function faceHeight(x) {
-    const d = clamp((CREST_X - x) / FACE_LEN, 0, 1);
-    return CREST_H * Math.pow(1 - d, 2.3);
-}
 
 export class SurfEvent extends EventBase {
     setup() {
@@ -40,11 +38,11 @@ export class SurfEvent extends EventBase {
     }
 
     resetWave() {
-        this.playerX = 150;
+        this.playerX = 170;
         this.face = 0.45;              // 0 = base da parede, 1 = lábio
         this.speed = 62;
-        this.foamX = CREST_X + 26;     // espuma começa atrás da crista
-        this.foamSpeed = 16 + this.waveIndex * 5;
+        this.foamX = START_X;          // o pico (e a quebra) começam à direita e marcham
+        this.foamSpeed = 15 + this.waveIndex * 5;
         this.state = 'ride';           // ride | air | tube | wipe
         this.airT = 0;
         this.airPeak = 0;
@@ -52,6 +50,7 @@ export class SurfEvent extends EventBase {
         this.trickCooldown = 0;
         this.waveT = 0;
         this.wavePoints = 0;
+        this.danger = 0;               // 0..1 — o quanto a espuma já está em cima
         this.spray = [];
     }
 
@@ -59,15 +58,35 @@ export class SurfEvent extends EventBase {
         this.app.audio.play('splash');
     }
 
+    /**
+     * Altura da onda numa coluna.
+     *
+     * O pico acompanha o ponto de quebra (`foamX`), que é o que uma onda de verdade faz: ela
+     * quebra no ponto mais alto e esse ponto caminha ao longo do banco. Amarrar o pico a uma
+     * coluna fixa, como antes, deixava o desenho com uma parede rasíssima do lado esquerdo —
+     * dezenas de pixels de altura zero que liam como um triângulo deitado, não como onda.
+     *
+     * À esquerda: rampa côncava do ombro até o lábio. À direita: a costa desabando.
+     */
+    faceHeight(x) {
+        const peak = this.foamX;
+        if (x <= peak) {
+            const d = clamp((peak - x) / FACE_LEN, 0, 1);
+            return SHOULDER_H + (CREST_H - SHOULDER_H) * Math.pow(1 - d, 1.9);
+        }
+        // atrás do pico a água desaba depressa: é o que sobra depois da onda passar
+        const d = clamp((x - peak) / BACK_LEN, 0, 1);
+        return CREST_H * Math.pow(1 - d, 2.6);
+    }
+
     /** Y da água na coluna x, considerando a parede da onda. */
     waterY(x) {
-        return TROUGH_Y - faceHeight(x);
+        return TROUGH_Y - this.faceHeight(x);
     }
 
     /** Y do surfista: interpola entre a base e o lábio na coluna em que ele está. */
     playerY() {
-        const top = this.waterY(this.playerX);
-        return lerp(TROUGH_Y, top, this.face) - (this.state === 'air' ? this.airT * 0 : 0);
+        return lerp(TROUGH_Y, this.waterY(this.playerX), this.face);
     }
 
     step(dt) {
@@ -88,28 +107,32 @@ export class SurfEvent extends EventBase {
         // Subir custa velocidade, descer ganha: é o bombeio que mantém a prancha viva.
         const vy = input.axisY();
         if (this.state === 'ride') {
-            this.face = clamp(this.face - vy * 0.85 * dt, 0, 1);
-            this.speed += (vy > 0 ? 46 : vy < 0 ? -26 : -6) * dt;
+            this.face = clamp(this.face - vy * 0.95 * dt, 0, 1);
+            this.speed += (vy > 0 ? 52 : vy < 0 ? -26 : -6) * dt;
         }
-        this.speed = clamp(this.speed, 26, 165);
+        this.speed = clamp(this.speed, 26, 170);
 
         // --- posição na linha (esquerda = fugir, direita = bolso) ---
         const vx = input.axisX();
-        this.playerX = clamp(this.playerX + vx * 62 * dt, 44, CREST_X - 6);
+        this.playerX = clamp(this.playerX + vx * 70 * dt, 40, this.foamX - 6);
 
         // --- a onda fecha ---
         this.foamX -= this.foamSpeed * dt;
-        // quanto mais rápido você anda, mais a onda "acompanha" — evita que o jogador
+        // quanto mais tempo passa, mais a onda "acompanha" — evita que o jogador
         // simplesmente estacione na esquerda e espere a prova acabar sem risco
-        this.foamSpeed += dt * 2.2;
+        this.foamSpeed += dt * 2.0;
 
-        // --- manobras ---
-        if (this.state === 'ride' && input.state.a.pressed && this.trickCooldown <= 0) {
+        const gap = this.foamX - this.playerX;
+        this.danger = clamp(1 - gap / 34, 0, 1);
+
+        // --- manobras (com buffer: um toque logo antes do fim do cooldown ainda vale) ---
+        if (this.state === 'ride' && input.buffered('a', 130) && this.trickCooldown <= 0) {
+            input.consume('a');
             this.doTrick();
         }
 
         // --- tubo: agachar embaixo do lábio, perto da espuma ---
-        const inTubeZone = this.face < 0.42 && (this.foamX - this.playerX) < 74 && (this.foamX - this.playerX) > 8;
+        const inTubeZone = this.face < 0.45 && gap < 78 && gap > 10;
         if (this.state === 'ride' && input.state.b.down && inTubeZone) {
             this.state = 'tube';
             audio.play('tube');
@@ -134,36 +157,34 @@ export class SurfEvent extends EventBase {
             if (this.airT >= 0.62) {
                 this.state = 'ride';
                 // aterrissagem: cair muito baixo na parede custa velocidade
-                if (this.face < 0.2) {
-                    this.speed *= 0.7;
-                    audio.play('land');
-                } else {
-                    audio.play('land');
-                }
+                if (this.face < 0.2) this.speed *= 0.75;
+                audio.play('land');
+                px.shake(1, 80);
             }
         }
 
         // --- pontuação contínua: proximidade do bolso × altura na parede ---
-        const gap = this.foamX - this.playerX;
-        const pocketQuality = clamp(1 - Math.abs(gap - 54) / 90, 0, 1);
+        const pocketQuality = clamp(1 - Math.abs(gap - 52) / 88, 0, 1);
         this.wavePoints += pocketQuality * (0.6 + this.face * 0.8) * 26 * dt;
 
         this.scroll += this.speed * dt;
         this.updateSpray(dt);
-        if (Math.random() < dt * 22) this.pushSpray();
+        if (Math.random() < dt * 24) this.pushSpray();
 
         // --- fim de onda ---
-        if (gap < 4) {
+        // A margem de 2 px (em vez de 4) e o aviso visual de perigo dão ao jogador um quadro
+        // inteiro para reagir: antes a queda vinha sem nenhum sinal.
+        if (gap < 2) {
             this.wipeout();
-        } else if (this.foamX < 40 || this.waveT > 26) {
+        } else if (this.foamX < 52 || this.waveT > 26) {
             this.closeWave();
         }
     }
 
     doTrick() {
         const { audio, px } = this.app;
-        this.trickCooldown = 0.5;
-        if (this.face > 0.74 && this.speed > 96) {
+        this.trickCooldown = 0.42;
+        if (this.face > 0.72 && this.speed > 92) {
             this.state = 'air';
             this.airT = 0;
             this.airPeak = 0;
@@ -176,13 +197,13 @@ export class SurfEvent extends EventBase {
             this.addPoints(pts, 'RASGADA', 'A');
             audio.play('carve');
             this.face = clamp(this.face - 0.22, 0, 1);
-            this.speed *= 0.9;
+            this.speed *= 0.92;
         } else {
             const pts = Math.round(20 + this.speed * 0.2);
             this.addPoints(pts, 'CUTBACK', 'H');
             audio.play('carve');
             // o cutback joga o surfista de volta pra dentro do bolso — risco e recompensa
-            this.playerX = clamp(this.playerX + 22, 44, CREST_X - 6);
+            this.playerX = clamp(this.playerX + 22, 40, this.foamX - 6);
         }
     }
 
@@ -198,6 +219,7 @@ export class SurfEvent extends EventBase {
         this.app.px.shake(4, 300);
         this.float.push('CAIU!', this.playerX, this.playerY() - 30, 'B', 1200);
         this.wavePoints *= 0.6;   // cair não zera a onda, mas dói
+        for (let i = 0; i < 14; i++) this.pushSpray(true);
     }
 
     closeWave() {
@@ -207,6 +229,12 @@ export class SurfEvent extends EventBase {
     }
 
     nextWave() {
+        // O desfecho da prova continua rodando `step()` em câmera lenta, e o estado 'wipe' com
+        // o cronômetro já zerado reentrava aqui a cada quadro: a pontuação da última onda era
+        // somada dezenas de vezes e QUALQUER partida — inclusive uma sem tocar em nada —
+        // terminava com nota 10 dos cinco jurados. A prova só fecha onda enquanto está em jogo.
+        if (this.phase !== 'play') return;
+
         this.rawPoints += this.wavePoints;
         this.score = this.rawPoints;
         this.waveIndex++;
@@ -220,13 +248,16 @@ export class SurfEvent extends EventBase {
         }
     }
 
-    pushSpray() {
+    pushSpray(burst = false) {
         this.spray.push({
-            x: this.playerX + 6, y: this.playerY() + 2,
-            vx: 30 + Math.random() * 40, vy: -20 - Math.random() * 30,
-            life: 0.5, size: Math.floor(Math.random() * 3)
+            x: this.playerX + (burst ? (Math.random() - 0.5) * 20 : 6),
+            y: this.playerY() + 2,
+            vx: (burst ? (Math.random() - 0.5) * 120 : 30 + Math.random() * 40),
+            vy: -20 - Math.random() * (burst ? 90 : 30),
+            life: burst ? 0.8 : 0.5,
+            size: Math.floor(Math.random() * 3)
         });
-        if (this.spray.length > 40) this.spray.shift();
+        if (this.spray.length > 48) this.spray.shift();
     }
 
     updateSpray(dt) {
@@ -255,11 +286,15 @@ export class SurfEvent extends EventBase {
             px.blitScreen(sprites.anim('gull', this.waveT + g.s, 5), gx, g.y);
         }
 
-        // --- oceano de fundo ---
-        px.rect(0, 128, W, H - 128, SVC['a']);
-        px.rect(0, TROUGH_Y, W, H - TROUGH_Y, SVC['9']);
+        // --- oceano de fundo: horizonte com cintilância, depois o canal escuro na frente ---
+        ctx.drawImage(scenery.seaFar, 0, SEA_Y);
+        drawWater(px, 0, SEA_Y + 40, W, H - SEA_Y - 40, this.waveT, this.scroll);
+        px.rect(0, TROUGH_Y, W, H - TROUGH_Y, SVC['a']);
+        px.rect(0, TROUGH_Y + 14, W, H - TROUGH_Y - 14, SVC['9']);
+        px.rect(0, TROUGH_Y + 28, W, H - TROUGH_Y - 28, SVC['O']);
 
         const foamX = Math.round(this.foamX);
+        const scrollPhase = Math.floor(this.waveT * 80);
 
         // --- parede não quebrada (tudo à esquerda da linha de quebra) ---
         for (let x = 0; x < Math.min(W, foamX); x++) {
@@ -267,42 +302,59 @@ export class SurfEvent extends EventBase {
             const h = TROUGH_Y - top;
             if (h < 1) continue;
             // bandas seguindo a altura local: quanto mais alta a parede, mais clara no topo
-            px.rect(x, top, 1, Math.max(1, h * 0.22), SVC['d']);
-            px.rect(x, top + h * 0.22, 1, h * 0.30, SVC['c']);
-            px.rect(x, top + h * 0.52, 1, h * 0.28, SVC['b']);
-            px.rect(x, top + h * 0.80, 1, h * 0.20 + 2, SVC['a']);
-            // linha de brilho na crista
-            px.rect(x, top, 1, 1, SVC['h']);
+            px.rect(x, top, 1, Math.max(1, h * 0.20), SVC['d']);
+            px.rect(x, top + h * 0.20, 1, h * 0.28, SVC['c']);
+            px.rect(x, top + h * 0.48, 1, h * 0.28, SVC['b']);
+            px.rect(x, top + h * 0.76, 1, h * 0.24 + 2, SVC['a']);
+            px.rect(x, top, 1, 1, SVC['h']);        // linha de brilho na crista
             // textura: riscos diagonais subindo a parede, que dão a sensação de água correndo
-            if ((x + Math.floor(this.waveT * 80)) % 17 === 0 && h > 12) {
-                px.rect(x, top + h * 0.35, 1, Math.max(2, h * 0.2), SVC['d']);
+            if ((x + scrollPhase) % 17 === 0 && h > 12) {
+                px.rect(x, top + h * 0.32, 1, Math.max(2, h * 0.22), SVC['d']);
+            }
+            if ((x * 3 + scrollPhase) % 29 === 0 && h > 24) {
+                px.rect(x, top + h * 0.6, 1, Math.max(2, h * 0.14), SVC['c']);
             }
         }
 
-        // --- espuma: água já quebrada, com borda dentada e granulado ---
+        // --- água já quebrada ---
+        // A espuma é uma CAMADA na superfície, não uma coluna: embaixo dela continua havendo
+        // água azul. Pintar a coluna inteira de branco é o que transformava a arrebentação
+        // numa cunha branca chapada engolindo o canto da tela.
         for (let x = Math.max(0, foamX); x < W; x++) {
             const top = this.waterY(x);
-            const jag = Math.sin((x + this.waveT * 90) * 0.35) * 3 + Math.sin(x * 1.7) * 1.5;
+            const h = TROUGH_Y - top;
+            if (h < 1) continue;
+            const jag = Math.sin((x + this.waveT * 90) * 0.35) * 2 + Math.sin(x * 1.7) * 1.2;
             const y0 = top + jag;
-            px.rect(x, y0, 1, TROUGH_Y - y0 + 16, SVC['E']);
-            px.rect(x, y0 + 3, 1, 2, SVC['d']);
+            const thick = clamp(h * 0.6, 5, 20);
+
+            // corpo de água por baixo da espuma
+            px.rect(x, y0, 1, h - jag + 6, SVC['b']);
+            px.rect(x, y0 + thick + 4, 1, Math.max(0, h - jag - thick - 2), SVC['a']);
+            // manto de espuma
+            px.rect(x, y0, 1, thick, SVC['P']);
+            px.rect(x, y0, 1, Math.max(1, thick * 0.45), SVC['E']);
             // bolhas: pontos de água azul dentro da espuma, senão vira um bloco branco chapado
             if ((x * 7 + Math.floor(this.waveT * 40)) % 11 < 2) {
-                px.rect(x, y0 + 8 + ((x * 13) % 20), 1, 2, SVC['c']);
+                px.rect(x, y0 + 3 + ((x * 13) % Math.max(3, thick - 2)), 1, 2, SVC['c']);
+            }
+            if ((x * 5 + Math.floor(this.waveT * 26)) % 19 < 2) {
+                px.rect(x, y0 + thick + 1, 1, 2, SVC['d']);
             }
         }
 
         // --- o lábio se enrolando: é isto que faz o desenho ler como onda, e não como rampa ---
         const lipTop = this.waterY(foamX);
-        const curlCx = foamX - 17;
-        const curlCy = lipTop + 17;
-        const curlR = 17;
-        // interior do tubo (escuro, atrás do lábio)
+        const curlCx = foamX - 14;
+        const curlCy = lipTop + 15;
+        const curlR = 14;
+        // Boca do tubo: só a metade de baixo-esquerda do disco, que é a parte que fica na
+        // sombra do lábio. O disco inteiro lia como um buraco redondo furado na onda.
         for (let j = -curlR; j <= curlR; j++) {
             for (let i = -curlR; i <= curlR; i++) {
-                if (i * i + j * j <= (curlR - 5) * (curlR - 5)) {
-                    px.rect(curlCx + i, curlCy + j, 1, 1, SVC['9']);
-                }
+                if (i * i + j * j > (curlR - 4) * (curlR - 4)) continue;
+                if (j < -1 && i > 2) continue;
+                px.rect(curlCx + i, curlCy + j, 1, 1, SVC[j < 1 ? '9' : 'O']);
             }
         }
         // anel branco do lábio, aberto embaixo à esquerda (por onde o surfista sai)
@@ -321,6 +373,17 @@ export class SurfEvent extends EventBase {
             px.rect(x, top - 1 + Math.sin(i * 0.6 + this.waveT * 9) * 1.5, 1, 3, SVC['J']);
         }
 
+        // --- marcador do bolso na própria água: a leitura sem tirar o olho do surfista ---
+        if (this.state !== 'wipe') {
+            const pocketX = Math.round(this.foamX - 52);
+            if (pocketX > 30 && pocketX < W - 10) {
+                const py = this.waterY(pocketX);
+                const blink = Math.sin(this.waveT * 8) > 0 ? 'A' : '8';
+                px.rect(pocketX - 4, py + 3, 9, 1, SVC[blink]);
+                px.rect(pocketX, py + 1, 1, 4, SVC[blink]);
+            }
+        }
+
         // --- surfista ---
         const pyBase = this.playerY();
         const py = pyBase - (this.state === 'air' ? this.airPeak : 0);
@@ -329,6 +392,7 @@ export class SurfEvent extends EventBase {
                 : this.state === 'tube' ? 'surfTube'
                     : this.face > 0.65 ? 'surfCarve' : 'surfCrouch';
 
+        if (this.state === 'air') drawShadow(px, this.playerX, pyBase + 2, 9, 0.35);
         px.blitScreen(sprites.get('board'), this.playerX, py + 4);
         px.blitScreen(sprites.get(poseName), this.playerX, py);
 
@@ -339,24 +403,27 @@ export class SurfEvent extends EventBase {
 
         // dentro do tubo a tela escurece nas bordas — a "boca" fechando
         if (this.state === 'tube') {
-            const ctx2 = px.ctx;
-            ctx2.globalAlpha = 0.55;
+            ctx.globalAlpha = 0.55;
             px.rect(0, 0, W, Math.max(0, this.waterY(this.playerX) - 6), SVC['0']);
-            ctx2.globalAlpha = 1;
+            ctx.globalAlpha = 1;
+        }
+
+        // aviso de que a espuma está em cima: pulso vermelho na borda direita da tela
+        if (this.danger > 0.05 && this.state !== 'wipe') {
+            ctx.globalAlpha = this.danger * (0.4 + Math.sin(this.waveT * 18) * 0.2);
+            px.rect(W - 8, 14, 8, H - 14, SVC['B']);
+            ctx.globalAlpha = 1;
         }
     }
 
     renderOverlay() {
         const { px, font } = this.app;
-        // medidor de velocidade + indicador de bolso
-        panel(px, 4, 18, 78, 24, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'VELOCIDADE', 8, 21, { color: 'o', mono: true });
-        bar(px, 8, 32, 70, 5, (this.speed - 26) / 139, { fill: 'c', glow: 'd' });
+        gauge(px, font, 4, 16, 96, 'VEL', (this.speed - 26) / 144, { fill: 'c', glow: 'd' });
 
         const gap = clamp((this.foamX - this.playerX) / 120, 0, 1);
-        panel(px, W - 82, 18, 78, 24, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'BOLSO', W - 78, 21, { color: 'o', mono: true });
-        bar(px, W - 78, 32, 70, 5, 1 - gap, { fill: gap < 0.2 ? 'B' : 'x', glow: 'G', mark: 0.55, markColor: 'A' });
+        gauge(px, font, W - 100, 16, 96, 'BOLSO', 1 - gap, {
+            fill: gap < 0.2 ? 'B' : 'x', glow: 'G', mark: 0.56, markColor: 'A'
+        });
 
         if (this.phase === 'outro' && this.judges) {
             judgePanel(px, font, this.judges, (1.4 - this.phaseT) * 1.6);

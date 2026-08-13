@@ -9,7 +9,8 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp, lerp } from '../core/util.js';
-import { panel, bar } from '../game/hud.js';
+import { drawShoreFoam, drawShadow } from '../art/scenery.js';
+import { gauge, needleGauge } from '../game/hud.js';
 
 const NEAR_Y = 196;      // linha do jogador
 const FAR_Y = 126;       // linha do parceiro
@@ -92,7 +93,7 @@ export class FrescobolEvent extends EventBase {
         if (Math.abs(b.x) > 1.25) { this.miss('SAIU'); return; }
 
         // --- rebate do jogador ---
-        if (b.owner === 'player' && input.state.a.pressed) this.tryHit();
+        if (b.owner === 'player' && input.buffered('a', 110)) { input.consume('a'); this.tryHit(); }
 
         // --- chegou ao chão ---
         if (b.h <= 0) {
@@ -203,18 +204,30 @@ export class FrescobolEvent extends EventBase {
 
         ctx.drawImage(scenery.sky, 0, -34);
         ctx.drawImage(scenery.skyline, -200, 30);
-        ctx.drawImage(scenery.sea, 0, 88);
-        ctx.drawImage(scenery.sand, 0, FAR_Y - 14);
-        px.rect(0, FAR_Y + 44, W, H - FAR_Y - 44, SVC['f']);
+        ctx.drawImage(scenery.sea, 0, 76);
+        drawShoreFoam(px, FAR_Y - 18, this.elapsed);
+        ctx.drawImage(scenery.sand, 0, FAR_Y - 16);
 
-        // marcas da quadra improvisada: duas linhas na areia convergindo (perspectiva)
-        for (let i = 0; i <= 10; i++) {
-            const z = i / 10;
+        // Areia da frente em três degraus de tom, do claro perto do mar ao escuro na base da
+        // tela. Um bloco bege único, que era o desenho anterior, ocupava metade da tela sem
+        // dar nenhuma informação de distância — agora a própria areia mostra a profundidade.
+        px.rect(0, FAR_Y + 42, W, H - FAR_Y - 42, SVC['f']);
+        px.rect(0, NEAR_Y - 22, W, H - NEAR_Y + 22, SVC['R']);
+        px.rect(0, NEAR_Y + 6, W, H - NEAR_Y - 6, SVC['e']);
+        for (let x = 0; x < W; x += 3) {
+            px.rect(x, FAR_Y + 44 + ((x * 11) % 7), 2, 1, SVC['g']);
+            px.rect(x + 1, NEAR_Y - 20 + ((x * 7) % 9), 2, 1, SVC['f']);
+        }
+
+        // marcas da quadra improvisada: duas linhas contínuas convergindo com a perspectiva
+        for (let i = 0; i < 40; i++) {
+            const z = i / 39;
             const y = groundY(z);
             const half = lerp(NEAR_SPREAD, FAR_SPREAD, z);
-            px.ctx.globalAlpha = 0.35;
-            px.rect(W / 2 - half, y, 2, 1, SVC['e']);
-            px.rect(W / 2 + half - 2, y, 2, 1, SVC['e']);
+            const thick = Math.round(lerp(3, 1, z));
+            px.ctx.globalAlpha = 0.5;
+            px.rect(W / 2 - half, y, thick, 1, SVC['h']);
+            px.rect(W / 2 + half - thick, y, thick, 1, SVC['h']);
             px.ctx.globalAlpha = 1;
         }
 
@@ -223,6 +236,7 @@ export class FrescobolEvent extends EventBase {
 
         // --- parceiro (fundo) ---
         const partnerSX = screenX(this.partnerX, 1);
+        drawShadow(px, partnerSX, FAR_Y - 1, 7, 0.3);
         px.blitScreen(sprites.get(this.partnerSwingT > 0 ? 'racketSwing_flip' : 'racketReady_flip'),
             partnerSX, FAR_Y);
         px.blitScreen(sprites.get('racket'), partnerSX + 9, FAR_Y - 14);
@@ -232,9 +246,15 @@ export class FrescobolEvent extends EventBase {
             const b = this.ball;
             const gy = groundY(b.z);
             const r = Math.round(lerp(5, 3, b.z));
-            ctx.globalAlpha = clamp(0.7 - b.h / 120, 0.18, 0.6);
-            px.rect(screenX(b.x, b.z) - r, gy - 1, r * 2, 2, SVC['e']);
-            ctx.globalAlpha = 1;
+            drawShadow(px, screenX(b.x, b.z), gy - 1, r, clamp(0.7 - b.h / 120, 0.18, 0.6));
+            // retículo no ponto de queda quando a bola vem para o jogador: sem ele o
+            // posicionamento vira adivinhação de trajetória em perspectiva falsa
+            if (b.owner === 'player' && b.vz < 0) {
+                const landX = screenX(b.x + b.vx * Math.max(0, b.h / 46), 0);
+                const blink = Math.sin(this.elapsed * 14) > 0 ? 'A' : '8';
+                px.rect(landX - 5, NEAR_Y - 1, 11, 1, SVC[blink]);
+                px.rect(landX, NEAR_Y - 3, 1, 5, SVC[blink]);
+            }
         }
 
         // --- rastro ---
@@ -248,6 +268,7 @@ export class FrescobolEvent extends EventBase {
         // --- jogador (frente) ---
         const playerSX = screenX(this.playerX, 0);
         const pose = this.swingT > 0 ? 'racketSwing' : (this.ball.live && this.ball.z < 0.4 ? 'racketReach' : 'racketReady');
+        drawShadow(px, playerSX, NEAR_Y - 1, 10, 0.38);
         px.blitScreen(sprites.get(pose), playerSX, NEAR_Y);
         px.blitScreen(sprites.get('racket'), playerSX + (this.swingT > 0 ? 14 : 10), NEAR_Y - 16);
 
@@ -269,17 +290,15 @@ export class FrescobolEvent extends EventBase {
     renderOverlay() {
         const { px, font } = this.app;
 
-        panel(px, 4, 18, 84, 22, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'VENTO', 8, 21, { color: 'o', mono: true });
-        bar(px, 8, 31, 76, 4, 1, { fill: 'm', bg: 'm' });
-        px.rect(8 + Math.round(76 * clamp(0.5 + this.wind, 0, 1)) - 1, 29, 3, 8, SVC['y']);
-
-        panel(px, W - 92, 18, 88, 22, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'FORÇA', W - 88, 21, { color: 'o', mono: true });
-        bar(px, W - 88, 31, 80, 4, this.charge, { fill: this.charge > 0.8 ? 'B' : '6', glow: '8' });
+        needleGauge(px, font, 4, 16, 92, 'VENTO', clamp(0.5 + this.wind, 0, 1), { color: 'y' });
+        gauge(px, font, W - 96, 16, 92, 'FORÇA', this.charge, {
+            fill: this.charge > 0.8 ? 'B' : '6', glow: '8'
+        });
 
         if (this.rally > 0) {
-            font.text(px.ctx, `TROCA ${this.rally}`, W / 2, 22, { color: 'H', align: 'center', mono: true });
+            font.text(px.ctx, `TROCA ${this.rally}`, W / 2, 18, {
+                color: 'H', align: 'center', mono: true, outline: '0'
+            });
         }
     }
 }

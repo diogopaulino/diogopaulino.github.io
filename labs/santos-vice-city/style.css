@@ -21,6 +21,8 @@
     min-width: 0;
 }
 
+/* Gabinete: a moldura imita um console de 16 bits — plástico texturizado, chanfro de luz na
+   borda de cima, sombra na de baixo e o LED de força aceso no canto. */
 .svc-screen-wrap {
     position: relative;
     width: 100%;
@@ -28,13 +30,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #05040c;
+    background:
+        linear-gradient(160deg, #2a2440 0%, #17132a 38%, #0b0916 100%);
     border-radius: 18px;
-    padding: 14px;
-    border: 1px solid var(--border-subtle);
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
     box-shadow:
         0 24px 60px -24px rgba(255, 47, 160, 0.45),
-        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 1px 0 rgba(255, 255, 255, 0.14) inset,
+        0 -2px 0 rgba(0, 0, 0, 0.5) inset,
         var(--shadow-lg, 0 20px 40px rgba(0, 0, 0, 0.25));
     overflow: hidden;
 }
@@ -50,16 +54,46 @@
     pointer-events: none;
 }
 
+/* LED de força: o detalhe que faz a moldura virar aparelho e não só uma borda escura */
+.svc-screen-wrap::after {
+    content: '';
+    position: absolute;
+    top: 7px;
+    left: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff3b5c;
+    box-shadow: 0 0 6px 1px rgba(255, 59, 92, 0.8);
+    pointer-events: none;
+    z-index: 4;
+}
+
 #svcScreen {
     position: relative;
     display: block;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    border-radius: 4px;
+    border-radius: 3px;
     background: #0d0a1a;
     max-width: 100%;
     max-height: 100%;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+    box-shadow:
+        0 0 0 2px #05040c,
+        0 0 0 3px rgba(255, 255, 255, 0.07),
+        0 0 26px rgba(0, 0, 0, 0.75) inset;
+}
+
+/* Vinheta de tubo por cima da imagem. Fica com pointer-events desligado e alpha baixo:
+   escurece só os cantos, sem competir com as scanlines desenhadas no próprio canvas. */
+.svc-vignette {
+    position: absolute;
+    inset: 18px;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 2;
+    background:
+        radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
 }
 
 /* ---------- painel lateral ---------- */
@@ -245,6 +279,8 @@
     display: none;
 }
 
+/* Controles de toque no desenho do controle da época: direcional em cruz de cantos vivos,
+   botões de ação redondos em arco. */
 .svc-touch button {
     pointer-events: auto;
     position: absolute;
@@ -255,9 +291,10 @@
     font-size: 1rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.92);
-    background: rgba(12, 10, 26, 0.55);
+    background: rgba(12, 10, 26, 0.58);
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 50%;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     touch-action: none;
@@ -268,11 +305,13 @@
 .svc-touch button:active {
     background: rgba(255, 47, 160, 0.7);
     transform: scale(0.94);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.45);
 }
 
 .tp-dpad button {
     width: 46px;
     height: 46px;
+    border-radius: 8px;
 }
 
 .tp-up { left: 62px; bottom: 108px; }

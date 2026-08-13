@@ -9,7 +9,8 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp } from '../core/util.js';
-import { panel, bar, judgePanel } from '../game/hud.js';
+import { drawShadow } from '../art/scenery.js';
+import { gauge, judgePanel } from '../game/hud.js';
 
 const CX = W / 2;
 const FLOOR_Y = 184;
@@ -20,6 +21,10 @@ const S_MAX = HALF_FLAT + R * (Math.PI / 2);   // arco do fundo até o coping
 const GRAVITY = 620;
 const PUMP_ACCEL = 340;
 const MIN_LAUNCH = 120;
+// Tolerância de alinhamento na aterrissagem, em graus. Era 42; com o mostrador de giro no HUD
+// o jogador finalmente enxerga o alvo, e 52 dá o respiro que faz a manobra parecer justa em
+// vez de sorteada.
+const LAND_TOLERANCE = 52;
 
 /** Arco assinado -> ponto na superfície + inclinação local (radianos). */
 function surfaceAt(s) {
@@ -167,7 +172,8 @@ export class SkateEvent extends EventBase {
         this.airY = 0;
         const spins = Math.abs(this.rotation) / 360;
         const norm = ((this.rotation % 360) + 360) % 360;
-        const aligned = norm < 42 || norm > 318 || (norm > 138 && norm < 222);
+        const aligned = norm < LAND_TOLERANCE || norm > 360 - LAND_TOLERANCE ||
+            (norm > 180 - LAND_TOLERANCE && norm < 180 + LAND_TOLERANCE);
 
         if (!aligned || this.bestAirThisJump() < 4) {
             this.bail();
@@ -239,35 +245,64 @@ export class SkateEvent extends EventBase {
         ctx.drawImage(scenery.sky, 0, -30);
         ctx.drawImage(scenery.skyline, -60, 40);
 
-        // deck (borda de cima) e concreto do bowl
-        px.rect(0, COPING_Y, W, H - COPING_Y, SVC['n']);
-        for (let x = 0; x < W; x++) {
-            const y = bowlY(x);
-            px.rect(x, y, 1, H - y, SVC['o']);
-            px.rect(x, y, 1, 2, SVC['p']);
-        }
-        // sombra que acompanha a curva: mais escura no fundo do bowl, onde bate menos luz
-        for (let x = 0; x < W; x++) {
-            const y = bowlY(x);
-            const depth = (y - COPING_Y) / R;          // 0 no coping, 1 no fundo
-            const shade = depth > 0.75 ? 'n' : depth > 0.4 ? 'o' : 'p';
-            px.rect(x, y + 2, 1, H - y - 2, SVC[shade]);
-        }
-
-        // grafite no fundo
-        font.text(ctx, this.tag, CX, FLOOR_Y + 12, { color: 'x', align: 'center', mono: true, alpha: 0.75 });
-
-        // coping (cano metálico nas duas bordas)
         const leftCoping = CX - (HALF_FLAT + R);
         const rightCoping = CX + (HALF_FLAT + R);
-        px.rect(leftCoping - 3, COPING_Y - 2, 6, 4, SVC['q']);
-        px.rect(rightCoping - 3, COPING_Y - 2, 6, 4, SVC['q']);
 
-        // plateia no deck
+        // --- deck: laje do calçadão em volta do bowl, com juntas de dilatação ---
+        px.rect(0, COPING_Y, W, H - COPING_Y, SVC['n']);
+        px.rect(0, COPING_Y, W, 2, SVC['p']);
+        px.rect(0, COPING_Y + 2, W, 1, SVC['o']);
+        for (let x = 0; x < W; x += 26) {
+            if (x > leftCoping - 8 && x < rightCoping + 8) continue;
+            px.rect(x, COPING_Y + 3, 1, H - COPING_Y - 3, SVC['m']);
+        }
+
+        // --- concreto do bowl ---
+        // Uma cor só deixava a bacia chapada. Aqui cada coluna é sombreada pela profundidade
+        // e recebe as marcas de forma do concreto: é a curva que precisa ser lida, não a cor.
+        for (let x = 0; x < W; x++) {
+            const y = bowlY(x);
+            // O que vemos é o corte da bacia: massa de concreto uniforme, e por cima dela uma
+            // faixa iluminada logo abaixo da borda. É essa faixa — clara no coping, apagada no
+            // fundo — que descreve a curva; a massa inteira sombreada deixava tudo chapado.
+            const openness = clamp(1 - (y - COPING_Y) / R, 0, 1);   // 1 no coping, 0 no fundo
+            const lit = x < CX ? -0.12 : 0.12;                      // o sol vem da direita
+            const tone = clamp(0.34 + openness * 0.46 + lit, 0, 1);
+            px.rect(x, y, 1, H - y, SVC['n']);
+            px.rect(x, y, 1, 4, SVC[tone > 0.7 ? 'p' : tone > 0.46 ? 'o' : 'n']);
+            px.rect(x, y, 1, 1, SVC[tone > 0.55 ? 'r' : 'q']);
+            // juntas radiais do concreto, a cada 22 px
+            if (x % 22 === 0) px.rect(x, y + 1, 1, H - y - 1, SVC['m']);
+        }
+        // faixas horizontais de concretagem, recortadas pela curva da bacia
+        for (let yy = COPING_Y + 12; yy < H; yy += 13) {
+            for (let x = 0; x < W; x++) {
+                if (yy > bowlY(x) + 4) px.rect(x, yy, 1, 1, SVC['m']);
+            }
+        }
+        // manchas de umidade no fundo da bacia
+        for (let i = 0; i < 7; i++) {
+            const x = CX - HALF_FLAT + i * 12;
+            px.rect(x, FLOOR_Y + 2 + (i % 3), 8, 2, SVC['m']);
+        }
+
+        // --- grafite no fundo ---
+        font.text(ctx, this.tag, CX, FLOOR_Y + 13, {
+            color: 'x', align: 'center', mono: true, alpha: 0.8, outline: '2'
+        });
+
+        // --- coping: cano metálico correndo pelas duas bordas ---
+        for (const cx of [leftCoping, rightCoping]) {
+            px.rect(cx - 4, COPING_Y - 3, 8, 5, SVC['o']);
+            px.rect(cx - 4, COPING_Y - 3, 8, 1, SVC['r']);
+            px.rect(cx - 4, COPING_Y + 1, 8, 1, SVC['m']);
+        }
+
+        // --- plateia no deck, atrás do coping ---
         for (let i = 0; i < 4; i++) {
-            const x = 18 + i * 22;
-            px.blitScreen(sprites.get(`crowd#${i % 4}`), x, COPING_Y);
-            px.blitScreen(sprites.get(`cheer#${(i + 1) % 4}`), W - x, COPING_Y);
+            const x = 16 + i * 21;
+            px.blitScreen(sprites.get(`crowd#${i % 4}`), x, COPING_Y + 1);
+            px.blitScreen(sprites.get(`cheer#${(i + 1) % 4}`), W - x, COPING_Y + 1);
         }
 
         // --- skatista ---
@@ -290,6 +325,12 @@ export class SkateEvent extends EventBase {
             (((this.rotation % 360) + 360) % 360) < 270;
         const useFlip = spinFlip ? !flip : flip;
 
+        // sombra no lábio do bowl enquanto está no ar — a referência de onde vai cair
+        if (this.state === 'air') {
+            drawShadow(px, surfaceAt(this.s).x, COPING_Y + 1, clamp(12 - this.airY * 0.06, 5, 12),
+                clamp(0.45 - this.airY * 0.002, 0.12, 0.45));
+        }
+
         if (this.state !== 'bail') {
             px.blitScreen(sprites.get('deck'), sx, sy + 3);
         }
@@ -303,16 +344,30 @@ export class SkateEvent extends EventBase {
 
     renderOverlay() {
         const { px, font } = this.app;
-        panel(px, 4, 18, 74, 24, { fill: '1', border: 'n' });
-        font.text(px.ctx, 'IMPULSO', 8, 21, { color: 'o', mono: true });
-        bar(px, 8, 32, 66, 5, Math.abs(this.v) / 420, {
-            fill: Math.abs(this.v) > MIN_LAUNCH ? 'x' : 'n', glow: 'G', mark: MIN_LAUNCH / 420
+        gauge(px, font, 4, 16, 108, 'IMPULSO', Math.abs(this.v) / 420, {
+            fill: Math.abs(this.v) > MIN_LAUNCH ? 'x' : 'n',
+            glow: 'G', mark: MIN_LAUNCH / 420, markColor: 'A'
         });
 
         if (this.state === 'air') {
-            font.text(px.ctx, `${Math.round(this.airY)} PX`, W / 2, 24, { color: 'A', align: 'center', mono: true });
+            // Altura, nome do grab e — o que faltava — o alinhamento do giro. Sem esta leitura
+            // a queda por rotação torta parecia aleatória; agora dá para fechar o giro no olho.
+            font.text(px.ctx, `${Math.round(this.airY)} PX`, W / 2, 18,
+                { color: 'A', align: 'center', mono: true, outline: '0' });
+
+            const norm = ((this.rotation % 360) + 360) % 360;
+            const off = Math.min(norm, Math.abs(norm - 180), 360 - norm);
+            const ok = off < LAND_TOLERANCE;
+            const dialW = 60, dialX = Math.round((W - dialW) / 2);
+            px.rect(dialX, 30, dialW, 3, SVC['m']);
+            px.rect(dialX + dialW / 2 - 1, 29, 2, 5, SVC['n']);
+            const t = 1 - Math.min(1, off / 90);
+            px.rect(dialX + Math.round((dialW - 3) * (0.5 + (norm > 180 ? -t : t) * 0.5)), 28, 3, 7,
+                SVC[ok ? 'H' : 'B']);
+
             if (this.grabName) {
-                font.text(px.ctx, this.grabName, W / 2, 34, { color: 'y', align: 'center', mono: true });
+                font.text(px.ctx, this.grabName, W / 2, 38,
+                    { color: 'y', align: 'center', mono: true, outline: '0' });
             }
         }
 
