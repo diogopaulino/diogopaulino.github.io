@@ -40,48 +40,54 @@ export const titleScene = {
         const { px, font, sprites, scenery, store } = this.ctx;
         const c = px.ctx;
 
-        c.drawImage(scenery.skyNight, 0, 0);
-        c.drawImage(scenery.sky, 0, 40);
-        drawNeonGrid(c, 150, 74, this.t);
-        c.drawImage(scenery.skyline, Math.round(-(this.t * 6) % 640), 96);
+        c.drawImage(scenery.sky, 0, 0);
+        c.drawImage(scenery.morro, 0, 28);
+        c.drawImage(scenery.sea, 0, 118);
+        drawNeonGrid(c, 148, 76, this.t);
+        c.drawImage(scenery.skyline, Math.round(-(this.t * 8) % 640), 88);
+        px.blitScreen(sprites.get('palm'), 28, 168);
+        px.blitScreen(sprites.get('palm'), W - 28, 172);
+        px.blitScreen(sprites.get('umbrella'), 70, 178);
 
-        // gaivotas cruzando o pôr do sol — a tela de título ganha uma vida que não custa nada
+        // gaivotas no céu claro
         for (let i = 0; i < 3; i++) {
             const gx = ((this.t * (9 + i * 4) + i * 130) % (W + 40)) - 20;
-            px.blitScreen(sprites.anim('gull', this.t + i, 4), gx, 30 + i * 13);
+            px.blitScreen(sprites.anim('gull', this.t + i, 4), gx, 18 + i * 10);
         }
 
-        // logotipo: SANTOS em degradê quente, VICE GAMES em neon frio, ambos com contorno grosso
+        // Logo estilo cartucho: marca grande + subtítulo — California Games vibes
         const bob = Math.sin(this.t * 1.6) * 2;
-        font.textBig(c, 'SANTOS', W / 2, 38 + bob, {
-            scale: 4, ramp: ['h', '8', '7', '6', '5'], outlineColor: '0', align: 'center'
+        font.textBig(c, 'SANTOS', W / 2, 22 + bob, {
+            scale: 4, ramp: ['h', '8', '7', '6'], outlineColor: '0', align: 'center'
         });
-        font.textBig(c, 'VICE GAMES', W / 2, 74 + bob, {
-            scale: 3, ramp: ['P', 'd', 'c', 'b'], outlineColor: '0', align: 'center'
-        });
-
-        scrim(px, 102, 14, 0.55);
-        font.text(c, 'SEIS PROVAS NA ORLA · UM CAMPEONATO', W / 2, 105, {
-            color: '8', align: 'center', mono: true, shadow: '0'
+        font.textBig(c, 'GAMES', W / 2, 56 + bob, {
+            scale: 4, ramp: ['P', 'd', 'c', 'b', 'a'], outlineColor: '0', align: 'center'
         });
 
-        // faixa escura atrás das chamadas de baixo — sem ela o texto some no skyline
-        scrim(px, 160, 64, 0.6);
-        px.rect(0, 160, W, 1, SVC['3']);
+        panel(px, 40, 92, W - 80, 16, { fill: '1', border: '0', light: 'y', dark: '0', accent: 'x', shadow: false });
+        font.text(c, 'SEIS PROVAS · ORLA DE SANTOS', W / 2, 96, {
+            color: 'A', align: 'center', mono: true
+        });
 
-        // "insira ficha"
+        // atleta + bola no calçadão
+        px.blitScreen(sprites.get('ballIdle'), W / 2 - 40, 170);
+        px.blitScreen(sprites.get(`cheer#${Math.floor(this.t * 2) % 4}`), W / 2 + 40, 170);
+        px.blitScreen(sprites.get('ballBig'), W / 2 - 40, 142);
+
         if (Math.floor(this.t * 1.8) % 2 === 0) {
-            font.text(c, 'APERTE START', W / 2, 170, {
+            font.text(c, 'APERTE START', W / 2, 188, {
                 color: 'A', align: 'center', mono: true, scale: 2, outline: '0'
             });
         }
 
         const career = store.careerTotal();
         if (career > 0) {
-            font.text(c, `CARREIRA ${String(career).padStart(5, '0')} PTS`, W / 2, 196,
-                { color: 'p', align: 'center', mono: true });
+            font.text(c, `CARREIRA ${String(career).padStart(5, '0')} PTS`, W / 2, 204,
+                { color: '0', align: 'center', mono: true, outline: 'E' });
         }
-        font.text(c, 'HOMENAGEM A CALIFORNIA GAMES', W / 2, 208, { color: 'o', align: 'center', mono: true });
+        font.text(c, 'HOMENAGEM A CALIFORNIA GAMES', W / 2, 214, {
+            color: '0', align: 'center', mono: true, outline: 'h'
+        });
     }
 };
 
@@ -126,7 +132,7 @@ export const menuScene = {
         c.drawImage(scenery.skyline, -40, 108);
 
         scrim(px, 31, 179);
-        screenHeader(px, font, 'SANTOS VICE GAMES', 'MENU PRINCIPAL');
+        screenHeader(px, font, 'SANTOS GAMES', 'MENU PRINCIPAL');
         this.menu.draw(px, font, sprites, W / 2, 62, {
             lineH: 20, time: this.t, hintY: 176, width: 176
         });
@@ -226,27 +232,25 @@ export const eventSelectScene = {
         this.ctx = ctx;
         this.mode = params.mode || 'single';
         this.t = 0;
-        this.menu = new MenuList(EVENT_ORDER.map((id) => {
-            const ev = EVENTS[id];
-            const best = ctx.store.getBest(id);
-            return {
-                label: ev.name,
-                value: id,
-                hint: `${ev.place} — ${ev.tagline}`,
-                best
-            };
-        }));
+        this.index = 0;
     },
     update(dtMs) {
         const ctx = this.ctx;
         this.t += dtMs / 1000;
-        const action = this.menu.update(ctx.input, ctx.audio, dtMs);
-        if (action === 'back') { ctx.goto(menuScene); return; }
-        if (action !== 'confirm') return;
-        const id = this.menu.current.value;
-        const champ = new Championship(this.mode, ctx.sponsor, ctx.rng, [id]);
-        ctx.champ = champ;
-        ctx.goto(briefingScene, { eventId: id, champ });
+        const { input, audio } = ctx;
+        const n = EVENT_ORDER.length;
+        if (input.state.left.pressed) { this.index = (this.index + n - 1) % n; audio.play('ui_move'); }
+        if (input.state.right.pressed) { this.index = (this.index + 1) % n; audio.play('ui_move'); }
+        if (input.state.up.pressed) { this.index = (this.index + n - 3) % n; audio.play('ui_move'); }
+        if (input.state.down.pressed) { this.index = (this.index + 3) % n; audio.play('ui_move'); }
+        if (input.state.b.pressed) { audio.play('ui_back'); ctx.goto(menuScene); return; }
+        if (input.state.a.pressed || input.state.start.pressed) {
+            audio.play('ui_confirm');
+            const id = EVENT_ORDER[this.index];
+            const champ = new Championship(this.mode, ctx.sponsor, ctx.rng, [id]);
+            ctx.champ = champ;
+            ctx.goto(briefingScene, { eventId: id, champ });
+        }
     },
     draw() {
         const { px, font, sprites, scenery, store } = this.ctx;
@@ -257,31 +261,40 @@ export const eventSelectScene = {
         scrim(px, 31, 179);
         screenHeader(px, font, this.mode === 'practice' ? 'TREINO' : 'PROVA ÚNICA', 'ESCOLHA A PROVA');
 
-        this.menu.items.forEach((it, i) => {
-            const active = i === this.menu.index;
-            const y = 46 + i * 20;
-            const ev = EVENTS[it.value];
-            if (active) panel(px, 10, y - 4, W - 20, 18, { fill: '2', border: '0', light: ev.tint, dark: '1' });
-            font.text(c, ev.name, 22, y, { color: active ? 'A' : 'q', mono: true });
-            font.text(c, ev.place, 118, y, { color: 'o', mono: true });
-            const best = store.getBest(it.value);
-            font.text(c, best.score ? String(best.score).padStart(4, '0') : '----', W - 42, y, {
-                color: best.score ? 'r' : 'n', align: 'right', mono: true
-            });
+        // Grade 3×2 estilo tela de eventos do California Games
+        const cols = 3, cellW = 96, cellH = 52;
+        const x0 = (W - cols * cellW) / 2;
+        const y0 = 38;
+        EVENT_ORDER.forEach((id, i) => {
+            const ev = EVENTS[id];
+            const cx = Math.round(x0 + (i % cols) * cellW + cellW / 2);
+            const cy = y0 + Math.floor(i / cols) * cellH;
+            const active = i === this.index;
+            if (active) {
+                panel(px, cx - 44, cy - 2, 88, 48, {
+                    fill: '2', border: '0', light: 'y', dark: '1', accent: ev.tint
+                });
+            } else {
+                panel(px, cx - 42, cy, 84, 44, { fill: '1', border: '0', light: 'n', dark: '0', shadow: false });
+            }
+            const logoKey = `logo_${SPONSORS.find((s) => s.boon === id)?.id || 'caicara'}`;
+            if (sprites.has(logoKey)) px.blitScreen(sprites.get(logoKey), cx, cy + 16);
+            font.text(c, ev.name, cx, cy + 30, { color: active ? 'A' : 'q', align: 'center', mono: true });
+            const best = store.getBest(id);
             if (best.medal) {
-                font.text(c, MEDAL_LABEL[best.medal][0], W - 22, y, {
-                    color: MEDAL_COLOR[best.medal], align: 'right', mono: true
+                font.text(c, MEDAL_LABEL[best.medal][0], cx + 34, cy + 6, {
+                    color: MEDAL_COLOR[best.medal], align: 'center', mono: true
                 });
             }
         });
 
-        const cur = this.menu.current;
-        if (cur) {
-            panel(px, 12, 172, W - 24, 30, { fill: '1', border: '0', light: 'n' });
-            font.text(c, EVENTS[cur.value].tagline, W / 2, 180, { color: 'p', align: 'center', mono: true });
-            font.text(c, EVENTS[cur.value].hint, W / 2, 191, { color: 'o', align: 'center', mono: true });
-        }
-        screenFooter(px, font, 'Z COMEÇA · X VOLTA');
+        const cur = EVENTS[EVENT_ORDER[this.index]];
+        panel(px, 12, 148, W - 24, 48, { fill: '1', border: '0', light: 'y', accent: cur.tint });
+        font.text(c, cur.place, W / 2, 154, { color: 'A', align: 'center', mono: true });
+        font.text(c, cur.tagline, W / 2, 166, { color: 'p', align: 'center', mono: true });
+        font.text(c, cur.hint, W / 2, 178, { color: 'o', align: 'center', mono: true });
+
+        screenFooter(px, font, 'SETAS ESCOLHEM · Z COMEÇA · X VOLTA');
     }
 };
 
@@ -601,7 +614,7 @@ export const podiumScene = {
         drawNeonGrid(c, 150, 74, this.t * 0.2);
 
         scrim(px, 31, 179, 0.45);
-        screenHeader(px, font, 'PÓDIO', 'CAMPEONATO SANTOS VICE GAMES');
+        screenHeader(px, font, 'PÓDIO', 'CAMPEONATO SANTOS GAMES');
 
         // três degraus
         const order = [1, 0, 2];   // prata, ouro, bronze — da esquerda para a direita
@@ -725,7 +738,7 @@ export const optionsScene = {
         const opts = this.ctx.store.getOpts();
         this.menu = new MenuList([
             { label: `SOM: ${opts.mute ? 'DESLIGADO' : 'LIGADO'}`, value: 'mute', hint: 'Também alterna com a tecla M.' },
-            { label: `SCANLINES: ${opts.scanlines ? 'LIGADAS' : 'DESLIGADAS'}`, value: 'scanlines', hint: 'Simula as linhas da TV de tubo.' },
+            { label: `SCANLINES: ${opts.scanlines ? 'LIGADAS' : 'DESLIGADAS'}`, value: 'scanlines', hint: 'Opcional. Desligado = visual limpo de emulador.' },
             { label: `TREMOR DE TELA: ${opts.shake ? 'LIGADO' : 'DESLIGADO'}`, value: 'shake', hint: 'Desligue se preferir imagem estável.' },
             {
                 label: this.confirmReset ? 'CONFIRMAR? Z APAGA' : 'APAGAR RECORDES',

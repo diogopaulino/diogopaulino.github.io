@@ -13,8 +13,8 @@ import { drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { panel, needleGauge } from '../game/hud.js';
 
 const SAND_Y = 176;
-const GRAVITY = 250; // Reduzido para mais tempo aéreo
-const HIT_RANGE_X = 34; // Mais tolerância horizontal
+const GRAVITY = 220;
+const HIT_RANGE_X = 38;
 
 /** Tipos de toque: alcance vertical, impulso e pontuação-base de cada um. */
 const TOUCHES = {
@@ -41,6 +41,7 @@ export class AltinhaEvent extends EventBase {
         this.serveT = 1.0;
         this.ball = { x: W / 2, y: 60, vx: 0, vy: 0, spin: 0, live: false };
         this.shadowPulse = 0;
+        this._varietyShown = false;
         // figurantes da roda, parados na areia atrás
         this.roda = [
             { x: 52, kit: 0 }, { x: 108, kit: 1 }, { x: 214, kit: 2 }, { x: 272, kit: 3 }
@@ -69,7 +70,7 @@ export class AltinhaEvent extends EventBase {
         // --- atleta ---
         const vx = input.axisX();
         if (vx !== 0) this.facing = vx;
-        this.playerX = clamp(this.playerX + vx * 160 * dt, 20, W - 20); // Mais veloz
+        this.playerX = clamp(this.playerX + vx * 175 * dt, 20, W - 20); // Mais veloz
 
         if (this.serveT > 0) {
             this.serveT -= dt;
@@ -107,7 +108,8 @@ export class AltinhaEvent extends EventBase {
         const dx = Math.abs(b.x - this.playerX);
         const height = SAND_Y - b.y;
 
-        if (dx > HIT_RANGE_X) {
+        const reach = b.vy > 0 ? HIT_RANGE_X + 4 : HIT_RANGE_X;
+        if (dx > reach) {
             this.float.push('LONGE', this.playerX, SAND_Y - 60, 'o', 500);
             audio.play('ui_deny');
             return;
@@ -147,15 +149,22 @@ export class AltinhaEvent extends EventBase {
         this.score += pts;
         this.variety.add(key);
         this.lastTouch = key;
+        if (this.variety.size === 4 && !this._varietyShown) {
+            this._varietyShown = true;
+            this.float.push('VARIEDADE x1.5!', W / 2, 54, 'z', 1100);
+            audio.play('coin');
+        }
         this.pose = t.pose;
         this.poseT = 0.28;
 
-        this.float.push(`${t.name} +${pts}`, this.playerX, SAND_Y - 70, repeated ? 'p' : 'A', 750);
-        if (this.combo > 0 && this.combo % 10 === 0) {
+        this.float.push(`${t.name} +${pts}`, this.playerX, SAND_Y - 70, repeated ? 'p' : 'z', 750);
+        if (this.combo > 0 && this.combo % 5 === 0) {
             this.float.push(`${this.combo} TOQUES!`, W / 2, 70, 'x', 1200);
-            this.score += 50;
-            audio.play('coin');
-            px.shake(1, 120);
+            if (this.combo % 10 === 0) {
+                this.score += 50;
+                audio.play('coin');
+                px.shake(1, 120);
+            }
         }
         this.app.audio.play(t.sfx);
     }
@@ -166,6 +175,7 @@ export class AltinhaEvent extends EventBase {
         this.drops++;
         this.combo = 0;
         this.variety.clear();
+        this._varietyShown = false;
         this.serveT = 1.2;
         audio.play('drop');
         px.shake(2, 180);
@@ -214,9 +224,9 @@ export class AltinhaEvent extends EventBase {
         if (this.ball.live && this.ball.vy > 0 && Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X + 16) {
             const glow = Math.abs(this.ball.x - this.playerX) < HIT_RANGE_X;
             ctx.globalAlpha = 0.55;
-            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 1, HIT_RANGE_X * 2, 2, SVC[glow ? 'H' : 'o']);
-            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 4, 1, 4, SVC[glow ? 'H' : 'o']);
-            px.rect(this.playerX + HIT_RANGE_X - 1, SAND_Y - 4, 1, 4, SVC[glow ? 'H' : 'o']);
+            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 1, HIT_RANGE_X * 2, 2, SVC[glow ? 'y' : 'o']);
+            px.rect(this.playerX - HIT_RANGE_X, SAND_Y - 4, 1, 4, SVC[glow ? 'y' : 'o']);
+            px.rect(this.playerX + HIT_RANGE_X - 1, SAND_Y - 4, 1, 4, SVC[glow ? 'y' : 'o']);
             ctx.globalAlpha = 1;
         }
 
@@ -246,14 +256,14 @@ export class AltinhaEvent extends EventBase {
             const on = this.variety.has(key);
             const x = x0 + i * (boxW + gap);
             panel(px, x, 16, boxW, 14, {
-                fill: on ? 'j' : '1', border: '0', light: on ? 'H' : 'n', dark: '0', shadow: false
+                fill: on ? 'j' : '1', border: '0', light: on ? 'y' : 'n', dark: '0', shadow: false
             });
             font.text(px.ctx, letter, x + boxW / 2, 19, {
                 color: on ? 'P' : 'n', align: 'center', mono: true
             });
         });
         if (this.variety.size >= 4) {
-            font.text(px.ctx, 'x1.5', x0 - 26, 19, { color: 'A', mono: true, outline: '0' });
+            font.text(px.ctx, 'x1.5', x0 - 26, 19, { color: 'z', mono: true, outline: '0' });
         }
     }
 }

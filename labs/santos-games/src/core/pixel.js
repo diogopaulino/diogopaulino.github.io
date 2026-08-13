@@ -31,7 +31,9 @@ export class PixelSurface {
         this._buildDitherPatterns();
 
         this._ro = new ResizeObserver(() => this._scheduleFit());
-        this._ro.observe(this.wrap);
+        // observa o palco pai — o wrap muda de tamanho por nós (escala inteira)
+        const stage = this.wrap.parentElement || this.wrap;
+        this._ro.observe(stage);
         this._fitPending = false;
         this.fit();
     }
@@ -43,33 +45,24 @@ export class PixelSurface {
     }
 
     fit() {
-        // A caixa útil é a área interna do wrap: o padding é a "moldura" do gabinete e não
-        // pode entrar na conta, senão a tela vaza por baixo dela.
-        const cs = getComputedStyle(this.wrap);
-        const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-        const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-        const availW = this.wrap.clientWidth - padX;
-        const availH = this.wrap.clientHeight - padY;
-        if (availW < 4 || availH < 4) return;
+        // Escala INTEIRA estilo emulador Mega Drive / Genesis.
+        const stage = this.wrap.parentElement;
+        const maxW = Math.max(32, (stage?.clientWidth || 320) - 4);
+        const maxH = Math.max(32, (stage?.clientHeight || 224) - 4);
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const raw = Math.min(availW / W, availH / H);
-        if (!(raw > 0)) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const cssScale = Math.max(1, Math.floor(Math.min(maxW / W, maxH / H)));
+        this.wrap.style.width = `${W * cssScale}px`;
+        this.wrap.style.height = `${H * cssScale}px`;
 
-        // O tamanho em CSS preenche a moldura via flexbox e aspect-ratio, mas o buffer de trás é
-        // sempre um múltiplo inteiro de 320x224. Com `image-rendering: pixelated` o navegador
-        // faz a ampliação final por vizinho mais próximo — pixels continuam duros e nenhum
-        // espaço da moldura fica sobrando.
-        // As larguras visuais ficam por conta do CSS puro.
-        const cssScale = raw;
-
-        const back = clamp(Math.ceil(cssScale * dpr), 1, MAX_BACK_SCALE);
+        const back = clamp(Math.max(cssScale, Math.round(cssScale * dpr)), 1, MAX_BACK_SCALE);
         if (this.screen.width !== W * back || this.screen.height !== H * back) {
             this.screen.width = W * back;
             this.screen.height = H * back;
             this.sctx.imageSmoothingEnabled = false;
         }
         this.back = back;
+        this.cssScale = cssScale;
     }
 
     setTheme(theme) { this.theme = theme; }
@@ -179,7 +172,7 @@ export class PixelSurface {
     }
 
     /** Fade ditherizado (0..1) sobre o stage inteiro, na cor dada. */
-    ditherFade(t, color = '#0d0a1a') {
+    ditherFade(t, color = '#000000') {
         if (t <= 0) return;
         const idx = Math.min(4, Math.floor(t * 4.999));
         const ctx = this.ctx;
@@ -193,7 +186,7 @@ export class PixelSurface {
     }
 
     /** Wipe diagonal (0..1) — barras verticais cobrindo a tela da esquerda pra direita. */
-    wipe(t, color = '#0d0a1a', bars = 10) {
+    wipe(t, color = '#000000', bars = 10) {
         if (t <= 0) return;
         const ctx = this.ctx;
         ctx.fillStyle = color;

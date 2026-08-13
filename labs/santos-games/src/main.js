@@ -23,7 +23,7 @@ if (location.protocol === 'file:') {
     document.body.innerHTML =
         '<p style="font:16px system-ui;padding:2rem">Este laboratório usa ES Modules e precisa ser servido por HTTP.<br>' +
         'Rode <code>python3 -m http.server 8000</code> na raiz do repositório e abra ' +
-        '<code>http://localhost:8000/labs/santos-vice-city/</code>.</p>';
+        '<code>http://localhost:8000/labs/santos-games/</code>.</p>';
     throw new Error('file:// não suportado');
 }
 
@@ -39,7 +39,7 @@ const state = {
     acc: 0,
     last: 0,
     rafId: 0,
-    scanlines: true
+    scanlines: false
 };
 
 const SCENE_ANNOUNCE = {
@@ -142,7 +142,7 @@ function setSponsor(sponsor) {
 function applyOptions() {
     const opts = state.store.getOpts();
     state.audio.setMute(!!opts.mute);
-    state.scanlines = opts.scanlines !== false;
+    state.scanlines = !!opts.scanlines;
     state.px.shakeEnabled = opts.shake !== false;
     updateSoundButton();
 }
@@ -150,8 +150,9 @@ function applyOptions() {
 function setTouchLayout(layout) {
     const overlay = document.getElementById('svcTouch');
     if (!overlay) return;
-    const coarse = matchMedia('(pointer: coarse)').matches;
-    state.input.attachTouch(overlay, coarse ? (layout || 'FULL') : null);
+    // coarse pointer OU dispositivos sem hover (celulares/tablets) — o overlay some no desktop
+    const touchy = matchMedia('(pointer: coarse), (hover: none)').matches;
+    state.input.attachTouch(overlay, touchy ? (layout || 'FULL') : null);
 }
 
 function updateSoundButton() {
@@ -246,7 +247,7 @@ function boot() {
     const stage = document.getElementById('svcStage');
     const screen = document.getElementById('svcScreen');
     if (!wrap || !stage || !screen) {
-        console.error('Santos Vice Games: canvas não encontrado no HTML.');
+        console.error('Santos Games: canvas não encontrado no HTML.');
         return;
     }
 
@@ -304,14 +305,14 @@ function boot() {
 
     const resetBtn = document.getElementById('svcResetBtn');
     on(resetBtn, 'click', () => {
-        if (!window.confirm('Apagar todos os recordes e medalhas do Santos Vice Games?')) return;
+        if (!window.confirm('Apagar todos os recordes e medalhas do Santos Games?')) return;
         state.store.reset();
         applyOptions();
     });
 
     // UX Fix: tornar a lista lateral de eventos interativa. Se o usuário clicar
     // num item ali, ele pula direto para o briefing daquela prova no modo "Única".
-    const eventItems = document.querySelectorAll('.svc-events li');
+    const eventItems = document.querySelectorAll('.sg-events li');
     eventItems.forEach((li, i) => {
         li.style.cursor = 'pointer';
         li.title = 'Jogar esta prova';

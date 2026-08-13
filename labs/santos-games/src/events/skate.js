@@ -19,7 +19,7 @@ const R = 66;               // raio da transição
 const COPING_Y = FLOOR_Y - R;
 const S_MAX = HALF_FLAT + R * (Math.PI / 2);   // arco do fundo até o coping
 const GRAVITY = 750;
-const PUMP_ACCEL = 480;
+const PUMP_ACCEL = 540;
 const MIN_LAUNCH = 150;
 // Tolerância de alinhamento na aterrissagem, em graus. Era 42; com o mostrador de giro no HUD
 // o jogador finalmente enxerga o alvo, e 52 dá o respiro que faz a manobra parecer justa em
@@ -73,7 +73,7 @@ export class SkateEvent extends EventBase {
         this.usedGrabs = new Set();
         this.t = 0;
         // grafite do fundo do bowl, sorteado uma vez por run
-        this.tag = this.app.rng.pick(['SANTOS', 'CANAL 3', 'ORLA', 'VICE', 'CAIÇARA']);
+        this.tag = this.app.rng.pick(['SANTOS', 'CANAL 3', 'ORLA', 'GONZAGA', 'CAIÇARA']);
     }
 
     start() { this.app.audio.play('pump'); }
@@ -103,7 +103,7 @@ export class SkateEvent extends EventBase {
         const pt = surfaceAt(this.s);
         // componente da gravidade ao longo da superfície: freia subindo, empurra descendo
         this.v -= GRAVITY * Math.sin(pt.slope) * Math.sign(this.s || 1) * dt;
-        this.v *= 1 - 0.22 * dt;   // atrito
+        this.v *= 1 - 0.17 * dt;   // atrito
 
         // bombear: acelerar no sentido do movimento enquanto está na transição.
         // O ganho é proporcional à inclinação, então bombear no fundo reto não faz nada —
@@ -192,7 +192,10 @@ export class SkateEvent extends EventBase {
         if (this.grabName) this.usedGrabs.add(this.grabName);
 
         const label = spinPts > 0 ? `${Math.floor(spins * 2) * 180}°` : this.grabName || 'AIR';
-        this.float.push(`${label} +${Math.round(pts)}`, surfaceAt(this.s).x, COPING_Y - 30, 'A', 900);
+        this.float.push(`${label} +${Math.round(pts)}`, surfaceAt(this.s).x, COPING_Y - 30, 'z', 900);
+        if (norm < 20 && height >= 12) {
+            this.float.push('PERFEITO!', surfaceAt(this.s).x, COPING_Y - 54, 'y', 700);
+        }
         if (this.combo > 1) {
             this.float.push(`x${this.combo}`, surfaceAt(this.s).x, COPING_Y - 44, 'x', 700);
         }
@@ -346,14 +349,14 @@ export class SkateEvent extends EventBase {
         const { px, font } = this.app;
         gauge(px, font, 4, 16, 108, 'IMPULSO', Math.abs(this.v) / 420, {
             fill: Math.abs(this.v) > MIN_LAUNCH ? 'x' : 'n',
-            glow: 'G', mark: MIN_LAUNCH / 420, markColor: 'A'
+            glow: '8', mark: MIN_LAUNCH / 420, markColor: 'z'
         });
 
         if (this.state === 'air') {
             // Altura, nome do grab e — o que faltava — o alinhamento do giro. Sem esta leitura
             // a queda por rotação torta parecia aleatória; agora dá para fechar o giro no olho.
             font.text(px.ctx, `${Math.round(this.airY)} PX`, W / 2, 18,
-                { color: 'A', align: 'center', mono: true, outline: '0' });
+                { color: 'z', align: 'center', mono: true, outline: '0' });
 
             const norm = ((this.rotation % 360) + 360) % 360;
             const off = Math.min(norm, Math.abs(norm - 180), 360 - norm);
@@ -363,7 +366,7 @@ export class SkateEvent extends EventBase {
             px.rect(dialX + dialW / 2 - 1, 29, 2, 5, SVC['n']);
             const t = 1 - Math.min(1, off / 90);
             px.rect(dialX + Math.round((dialW - 3) * (0.5 + (norm > 180 ? -t : t) * 0.5)), 28, 3, 7,
-                SVC[ok ? 'H' : 'B']);
+                SVC[ok ? 'y' : 'B']);
 
             if (this.grabName) {
                 font.text(px.ctx, this.grabName, W / 2, 38,

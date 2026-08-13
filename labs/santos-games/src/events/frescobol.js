@@ -16,7 +16,7 @@ const NEAR_Y = 196;      // linha do jogador
 const FAR_Y = 126;       // linha do parceiro
 const NEAR_SPREAD = 118; // meia-largura da quadra perto
 const FAR_SPREAD = 58;   // meia-largura longe
-const HIT_WINDOW = 0.22; // faixa de z em que o rebate é possível (Aumentado)
+const HIT_WINDOW = 0.24; // faixa de z em que o rebate é possível
 const REACH = 44;        // alcance lateral da raquete (Aumentado)
 
 const screenY = (z, h) => lerp(NEAR_Y, FAR_Y, z) - h * lerp(1, 0.55, z);
@@ -71,7 +71,7 @@ export class FrescobolEvent extends EventBase {
         }
 
         // --- posição do jogador ---
-        this.playerX = clamp(this.playerX + input.axisX() * 1.9 * dt, -1, 1);
+        this.playerX = clamp(this.playerX + input.axisX() * 2.3 * dt, -1, 1);
 
         // --- carga do rebate: segurar A acumula força, soltar/apertar rebate ---
         if (input.state.a.down) this.charge = Math.min(1, this.charge + dt * 2.8);
@@ -150,7 +150,8 @@ export class FrescobolEvent extends EventBase {
 
         audio.play('hit');
         const label = quality > 0.8 ? 'NO CHEIO!' : quality > 0.45 ? 'BOA' : 'RASPOU';
-        this.float.push(`${label} +${pts}`, screenX(this.playerX, 0), NEAR_Y - 44, quality > 0.8 ? 'A' : 'r', 750);
+        this.float.push(`${label} +${pts}`, screenX(this.playerX, 0), NEAR_Y - 44, quality > 0.8 ? 'z' : 'y', 750);
+        if (charge > 0.75) this.float.push('FORTE!', screenX(this.playerX, 0), NEAR_Y - 58, 'x', 550);
         if (this.rally > 0 && this.rally % 10 === 0) {
             this.score += 60;
             this.float.push(`${this.rally} TROCAS!`, W / 2, 84, 'x', 1200);
@@ -182,7 +183,7 @@ export class FrescobolEvent extends EventBase {
         this.misses++;
         this.rally = 0;
         this.charge = 0;
-        this.pauseT = 1.1;
+        this.pauseT = 0.95;
         audio.play('miss');
         px.shake(2, 160);
         this.float.push(reason, W / 2, 150, 'B', 1000);
@@ -251,7 +252,7 @@ export class FrescobolEvent extends EventBase {
             // posicionamento vira adivinhação de trajetória em perspectiva falsa
             if (b.owner === 'player' && b.vz < 0) {
                 const landX = screenX(b.x + b.vx * Math.max(0, b.h / 46), 0);
-                const blink = Math.sin(this.elapsed * 14) > 0 ? 'A' : '8';
+                const blink = Math.sin(this.elapsed * 14) > 0 ? 'z' : '8';
                 px.rect(landX - 5, NEAR_Y - 1, 11, 1, SVC[blink]);
                 px.rect(landX, NEAR_Y - 3, 1, 5, SVC[blink]);
             }
@@ -276,7 +277,7 @@ export class FrescobolEvent extends EventBase {
         if (this.ball.live && this.ball.owner === 'player' && this.ball.z < 0.45) {
             const inRange = Math.abs(screenX(this.ball.x, this.ball.z) - playerSX) <= REACH;
             ctx.globalAlpha = 0.45;
-            px.rect(playerSX - REACH, NEAR_Y + 1, REACH * 2, 2, SVC[inRange ? 'H' : 'o']);
+            px.rect(playerSX - REACH, NEAR_Y + 1, REACH * 2, 2, SVC[inRange ? 'y' : 'o']);
             ctx.globalAlpha = 1;
         }
 
@@ -292,12 +293,12 @@ export class FrescobolEvent extends EventBase {
 
         needleGauge(px, font, 4, 16, 92, 'VENTO', clamp(0.5 + this.wind, 0, 1), { color: 'y' });
         gauge(px, font, W - 96, 16, 92, 'FORÇA', this.charge, {
-            fill: this.charge > 0.8 ? 'B' : '6', glow: '8'
+            fill: this.charge > 0.8 ? 'x' : 'z', glow: '8'
         });
 
         if (this.rally > 0) {
             font.text(px.ctx, `TROCA ${this.rally}`, W / 2, 18, {
-                color: 'H', align: 'center', mono: true, outline: '0'
+                color: 'y', align: 'center', mono: true, outline: '0'
             });
         }
     }

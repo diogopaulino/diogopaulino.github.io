@@ -15,7 +15,7 @@ import { gauge } from '../game/hud.js';
 const GROUND_Y = 182;
 // Janela de "coyote time": por um instante depois de sair do chão o pulo ainda é aceito.
 // Sem isso, saltar no fim de uma rampa exigia precisão de frame e a prova parecia injusta.
-const COYOTE_SEC = 0.12;
+const COYOTE_SEC = 0.14;
 const COURSE_LEN = 5200;      // px de ciclovia até a linha de chegada
 const GRAVITY = 1050;
 const MAX_SPEED = 320;
@@ -94,8 +94,8 @@ export class BmxEvent extends EventBase {
 
         // --- aceleração ---
         const ax = input.axisX();
-        if (ax > 0) this.speed += 180 * dt;
-        else if (ax < 0) this.speed -= 250 * dt;
+        if (ax > 0) this.speed += 200 * dt;
+        else if (ax < 0) this.speed -= 260 * dt;
         else this.speed -= 20 * dt;
         this.speed = clamp(this.speed, 50, MAX_SPEED);
 
@@ -158,6 +158,7 @@ export class BmxEvent extends EventBase {
                 this.vy = 250 + this.speed * 1.15;
                 this.grounded = false;
                 audio.play('jump');
+                this.float.push('RAMP!', 96, GROUND_Y - this.y - 36, 'y', 500);
                 px.shake(1, 80);
             }
         }
@@ -184,7 +185,7 @@ export class BmxEvent extends EventBase {
                 p.taken = true;
                 this.cocos++;
                 this.score += 40;
-                this.float.push('+40', 96, GROUND_Y - this.y - 30, 'A', 600);
+                this.float.push('COCO +40', 96, GROUND_Y - this.y - 30, 'z', 600);
                 audio.play('coin');
             }
         }
@@ -217,6 +218,9 @@ export class BmxEvent extends EventBase {
         const t = this.elapsed;
         this.timeBonus = Math.max(0, Math.round((78 - t) * 12));
         this.score += this.timeBonus;
+        if (this.timeBonus > 0) {
+            this.float.push(`TEMPO +${this.timeBonus}`, W / 2, 100, 'z', 1400);
+        }
         this.detail = `${t.toFixed(1)}s · ${this.tricks} manobras · ${this.crashes} quedas`;
         this.app.audio.play('record');
         this.finish(this.detail);
@@ -343,7 +347,7 @@ export class BmxEvent extends EventBase {
     renderOverlay() {
         const { px, font } = this.app;
 
-        gauge(px, font, 4, 16, 104, 'VEL', this.speed / MAX_SPEED, { fill: 'A', glow: '8' });
+        gauge(px, font, 4, 16, 104, 'VEL', this.speed / MAX_SPEED, { fill: 'z', glow: '7' });
 
         // barra de percurso com a posição relativa — a leitura de "quanto falta"
         gauge(px, font, W - 116, 16, 112, 'PISTA', this.dist / COURSE_LEN, { fill: 'k', glow: 'l' });
