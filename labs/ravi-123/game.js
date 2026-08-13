@@ -14,7 +14,7 @@ import { W } from './screen.js';
 import { K, Pen, blit, blitMid, blitFoot } from './assets.js';
 import * as F from './font.js';
 import { Audio } from './audio.js';
-import { SPR, HEROES, TOYS, FOODS, VEHICLES, buildSprites } from './sprites.js';
+import { SPR, HEROES, TOYS, FOODS, VEHICLES, buildSprites, raviPose, heroSprite } from './sprites.js';
 import * as Sc from './scenes.js';
 import { wave, hop } from './anim.js';
 
@@ -104,7 +104,10 @@ function freshState() {
     bannerUp: false,
     fridgeFull: false,
     guestX: [],
-    confetti: Sc.makeConfetti(90)
+    confetti: Sc.makeConfetti(90),
+    pops: [],
+    joy: 0,
+    stamps: 0
   };
 }
 
@@ -159,16 +162,22 @@ function hideFlash() {
  * Anexa à timeline uma contagem de 1 até n: flashcard, nota e número falado.
  * É o coração educativo do jogo — aparece em quase toda cena.
  */
-function addCount(tl, n, onStep, stepDur = 1.15) {
+function addCount(tl, n, onStep, stepDur = 0.95) {
   for (let i = 1; i <= n; i++) {
     tl.add(stepDur, () => {
       showFlash(i);
       Audio.countStep(i);
+      Sc.spawnPops(S.pops, 160, 70, clock);
       if (onStep) onStep(i);
     });
   }
-  tl.add(0.75, () => hideFlash());
+  tl.add(0.45, () => hideFlash());
   return tl;
+}
+
+function joyBurst(x = 160, y = 80) {
+  S.joy = clock;
+  Sc.spawnPops(S.pops, x, y, clock);
 }
 
 /* --------------------------------------------------------------------------
@@ -201,9 +210,13 @@ export function currentSpots() {
 function titleSpots() {
   const spots = [];
   for (let i = 0; i < 9; i++) {
-    spots.push({ n: i + 1, x: 12 + i * 34, y: 70, w: 30, h: 42 });
+    spots.push({ n: i + 1, x: 8 + i * 35, y: 36, w: 32, h: 50 });
   }
   return spots;
+}
+
+function extraHop() {
+  return S.joy && (clock - S.joy) < 0.35 ? 4 : 0;
 }
 
 const SCENES = {
@@ -213,66 +226,51 @@ const SCENES = {
     spots: null,
     enter() {
       this.spots = titleSpots();
-      say('Aperte um número para acordar o Ravi!');
+      say('Toque um número!');
     },
     update() {},
     input(n) {
+      joyBurst(20 + (n ? n : 3) * 32, 60);
       go(SCENES.dream);
       SCENES.dream.begin(n === 0 ? 3 : n);
     },
     draw(ctx) {
       const pen = new Pen(ctx);
-      // Ravi dormindo com Zzz flutuando
       const snore = hop(clock, 1.6, 2);
-      blitFoot(ctx, SPR.ravi.sleep, 150, 152 + snore);
+      const sleep = raviPose('sleep', clock);
+      const sw = Math.round(sleep.w * 1.4);
+      const sh = Math.round(sleep.h * 1.4);
+      ctx.drawImage(sleep.canvas, 148 - (sw >> 1), 154 + snore - sh, sw, sh);
       const zz = ((clock * 1.2) % 3);
-      F.text(ctx, 'z', 168, 100 - Math.round(zz * 8), K.CYAN, { scale: 1 + (zz > 1.5 ? 1 : 0), shadow: K.BLACK });
-      F.text(ctx, 'z', 176, 92 - Math.round(zz * 6), K.BLU_L, { shadow: K.BLACK });
+      F.text(ctx, 'z', 168, 108 - Math.round(zz * 8), K.CYAN, { scale: 1 + (zz > 1.5 ? 1 : 0), shadow: K.BLACK });
+      F.text(ctx, 'z', 178, 98 - Math.round(zz * 6), K.BLU_L, { shadow: K.BLACK });
 
-      // Logotipo com moldura, estrelas e “respiração”
       const breathe = hop(clock, 1.2, 1);
-      const ly = 4 - breathe;
-      const lh = 70 + breathe * 2;
-      pen.col(K.BLACK).rect(26, ly + 2, 268, lh);
-      pen.bevel(28, ly, 264, lh, K.NAVY, K.BLU, K.NIGHT);
-      pen.col(K.OCHRE).frame(30, ly + 2, 260, lh - 4);
-      pen.col(K.YEL).frame(31, ly + 3, 258, lh - 6);
-      // Estrelas nos cantos
-      const sparkY = ly + 8;
-      for (const sx of [38, 278]) {
-        pen.col(K.YEL_L).px(sx, sparkY - 1).px(sx - 1, sparkY).px(sx, sparkY).px(sx + 1, sparkY).px(sx, sparkY + 1);
-      }
-      F.textCenter(ctx, 'RAVI', 160, 13 - breathe, K.YEL_L, { scale: 3, shadow: K.RED_D });
-      // Faixa do subtítulo
-      pen.col(K.NIGHT).rect(70, 36, 180, 14);
-      pen.col(K.BLU_D).rect(71, 37, 178, 12);
-      F.textCenter(ctx, '1 · 2 · 3', 160, 38, K.CYAN, { scale: 2, shadow: K.BLACK });
-      F.textCenter(ctx, 'A GRANDE FESTA SURPRESA', 160, 57 + breathe, K.WHITE, { shadow: K.BLACK });
+      pen.col(K.BLACK).rect(36, 2 + 2, 248, 28);
+      pen.bevel(38, 2, 244, 28, K.NAVY, K.BLU, K.NIGHT);
+      pen.col(K.OCHRE).frame(40, 4, 240, 24);
+      F.textCenter(ctx, 'RAVI  1·2·3', 160, 8 - breathe, K.YEL_L, { scale: 2, shadow: K.RED_D });
+      F.textCenter(ctx, 'A GRANDE FESTA', 160, 20, K.WHITE, { shadow: K.BLACK });
 
-      // Balões numerados — balançam e o fio acompanha
       for (const spot of this.spots) {
-        const bob = wave(clock, 2.1, 3, spot.n * 0.9);
-        const sway = wave(clock, 1.5, 2, spot.n);
+        const bob = wave(clock, 2.1, 4, spot.n * 0.9);
+        const sway = wave(clock, 1.5, 3, spot.n);
         const cx = spot.x + spot.w / 2 + sway;
-        const cy = spot.y + 14 + bob;
+        const cy = spot.y + 16 + bob;
         const color = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.ORANGE, K.CYAN, K.PUR, K.RED_L][spot.n - 1];
-        // Sombra do balão
-        pen.col(K.BLACK).ellipse(cx + 1, cy + 2, 11, 12);
-        pen.col(K.BLACK).ellipse(cx, cy, 12, 14);
-        pen.col(color).ellipse(cx, cy, 11, 13);
-        // Brilho + nó
-        pen.col(K.WHITE).ellipse(cx - 4, cy - 5, 2, 3);
-        pen.col(K.BLACK).px(cx, cy + 13);
-        pen.col(color).px(cx, cy + 14);
-        // Fio
+        pen.col(K.BLACK).ellipse(cx + 1, cy + 2, 13, 14);
+        pen.col(K.BLACK).ellipse(cx, cy, 14, 16);
+        pen.col(color).ellipse(cx, cy, 13, 15);
+        pen.col(K.WHITE).ellipse(cx - 4, cy - 5, 3, 4);
+        pen.col(K.BLACK).px(cx, cy + 15);
+        pen.col(color).px(cx, cy + 16);
         pen.col(K.CREAM);
-        pen.line(cx, cy + 15, spot.x + spot.w / 2, spot.y + 40);
-        // Badge do número (legível em qualquer cor de balão)
+        pen.line(cx, cy + 17, spot.x + spot.w / 2, spot.y + 48);
         const label = String(spot.n);
         const tw = F.measure(label, 2);
-        pen.col(K.CREAM).rect(Math.round(cx - tw / 2 - 2), cy - 8, tw + 4, 12);
-        pen.col(K.WHITE).hline(Math.round(cx - tw / 2 - 1), cy - 7, tw + 2);
-        F.text(ctx, label, Math.round(cx - tw / 2), cy - 7, K.RED, { scale: 2, shadow: K.SAND });
+        pen.col(K.CREAM).rect(Math.round(cx - tw / 2 - 3), cy - 9, tw + 6, 14);
+        pen.col(K.WHITE).hline(Math.round(cx - tw / 2 - 2), cy - 8, tw + 4);
+        F.text(ctx, label, Math.round(cx - tw / 2), cy - 8, K.RED, { scale: 2, shadow: K.SAND });
       }
     }
   },
@@ -283,18 +281,18 @@ const SCENES = {
     spots: null,
     begin(n) {
       S.sheep = [];
-      say(`O Ravi está sonhando. Vamos contar ${n} carneirinho${n > 1 ? 's' : ''}!`);
+      say(`Vamos contar ${n} carneirinho${n > 1 ? 's' : ''}!`);
       const tl = new Timeline();
-      tl.add(2.2, () => {});
+      tl.add(1.1, () => {});
       addCount(tl, n, (i) => {
         S.sheep.push({ born: clock, i });
         Audio.sheep();
-      }, 1.25);
-      tl.add(1.2, () => {
+      }, 1.05);
+      tl.add(0.8, () => {
         Audio.magic();
-        say('Bom dia! Já sei: vou fazer uma festa surpresa!');
+        say('Bom dia! Vamos fazer uma festa!');
       });
-      tl.add(4.0, null);
+      tl.add(2.2, null);
       tl.add(0.1, () => go(SCENES.wake));
       timeline = tl;
     },

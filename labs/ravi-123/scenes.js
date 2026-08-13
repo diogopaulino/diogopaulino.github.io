@@ -7,16 +7,14 @@
    nunca podem sair de sincronia porque vêm da mesma fonte.
    ========================================================================== */
 
-import { W, H, makeSurface } from './screen.js';
-import { K, Pen, blit, blitMid, IMG } from './assets.js';
+import { W, H, STAGE_H } from './screen.js';
+import { K, Pen, blit, blitMid } from './assets.js';
 import * as F from './font.js';
 import { SPR, TOYS, VEHICLES, HEROES, FOODS } from './sprites.js';
 import { bounceOut, wave, hop, wrap } from './anim.js';
+import { bakeWorld, drawAmbient as drawWorldAmbient } from './world.js';
 
-export const STAGE_H = 166;  // altura da área de jogo (o resto é a barra de fala)
-
-/** Cache de cenários já assados. */
-const baked = new Map();
+export { STAGE_H };
 
 /* --------------------------------------------------------------------------
    Peças de UI diegética (pixel) — tudo reutiliza a mesma “ferragem”
@@ -60,39 +58,13 @@ function numBadge(ctx, pen, n, cx, cy, scale = 2, fg = K.RED, face = K.CREAM) {
   F.text(ctx, label, Math.round(cx - tw / 2), by + 2, fg, { scale, shadow: face === K.CREAM ? K.SAND : K.RED_D });
 }
 
-/**
- * Devolve o canvas do cenário, assando na primeira vez que for pedido.
- * Chamado em `enter()` de cada cena, nunca dentro do loop de render.
- */
+/** Cenário VGA assado — a vida (estrelas, nuvens) vai em `drawAmbient`. */
 export function backdrop(id) {
-  let surface = baked.get(id);
-  if (surface) return surface;
+  return bakeWorld(id);
+}
 
-  const s = makeSurface(W, STAGE_H);
-  
-  const imgMap = {
-    houseNight: 'house_night',
-    houseDay: 'house_day',
-    field: 'field_night',
-    street: 'street',
-    factory: 'factory',
-    market: 'market',
-    post: 'post',
-    party: 'party'
-  };
-  
-  const imgName = imgMap[id];
-  if (imgName && IMG[imgName]) {
-    s.ctx.drawImage(IMG[imgName], 0, 0, W, STAGE_H);
-  } else {
-    // Fallback preto
-    const pen = new Pen(s.ctx);
-    pen.col(K.BLACK).rect(0, 0, W, STAGE_H);
-  }
-
-  surface = s.canvas;
-  baked.set(id, surface);
-  return surface;
+export function drawAmbient(ctx, id, t) {
+  drawWorldAmbient(ctx, id, t);
 }
 
 /* --------------------------------------------------------------------------
@@ -174,11 +146,13 @@ export function flashcard(ctx, n, pop = 1) {
 /** Célula base: quadro afundado, miniatura à esquerda, numeral à direita. */
 function cell(ctx, spot, opts = {}) {
   const pen = new Pen(ctx);
-  const { x, y, w, h } = spot;
+  const pulse = opts.pulse ? hop(opts.clock || 0, 4, 1, spot.n) : 0;
+  const { w, h } = spot;
+  const x = spot.x;
+  const y = spot.y - pulse;
   const disabled = opts.done || opts.locked;
 
   sunk(pen, x, y, w, h, disabled ? K.GRAY : K.CREAM, K.WHITE, K.GRAY_D);
-  // Filete interno creme
   if (!disabled) pen.col(K.WHITE).hline(x + 3, y + 2, w - 6);
 
   if (opts.icon) blitMid(ctx, opts.icon, x + 13, y + h / 2);
@@ -221,10 +195,10 @@ export function toyColumnSpots() {
 
 /* Sem rótulo de texto: no jogo original a célula traz só a miniatura do
    brinquedo e o numeral grande. A criança escolhe pela figura. */
-export function drawToyColumn(ctx, spots, madeIds) {
+export function drawToyColumn(ctx, spots, madeIds, clock = 0) {
   for (const spot of spots) {
     const toy = TOYS[spot.n - 1];
-    cell(ctx, spot, { icon: SPR.toy[toy.id], done: madeIds.includes(toy.id) });
+    cell(ctx, spot, { icon: SPR.toy[toy.id], done: madeIds.includes(toy.id), pulse: true, clock });
   }
 }
 
@@ -243,29 +217,28 @@ export function machinePanelSpots() {
   return spots;
 }
 
-export function drawMachinePanel(ctx, spots, active) {
+export function drawMachinePanel(ctx, spots, active, clock = 0) {
   const pen = new Pen(ctx);
   const first = spots[0];
   const last = spots[spots.length - 1];
   const width = last.x + last.w - first.x;
-  // Carcaça do painel
   raised(pen, first.x - 7, first.y - 14, width + 14, first.h + 22, K.GRAY, K.GRAY_L, K.GRAY_D);
   rivet(pen, first.x - 4, first.y - 11);
   rivet(pen, first.x + width + 2, first.y - 11);
   rivet(pen, first.x - 4, first.y + first.h + 2);
   rivet(pen, first.x + width + 2, first.y + first.h + 2);
-  // Plaquinha do rótulo
   raised(pen, Math.round(W / 2 - 36), first.y - 12, 72, 10, K.NAVY, K.BLU, K.NIGHT);
-  F.textCenter(ctx, 'MOLDADORA', W / 2, first.y - 10, K.YEL_L, { shadow: K.BLACK });
+  F.textCenter(ctx, 'TOQUE!', W / 2, first.y - 10, K.YEL_L, { shadow: K.BLACK });
 
   for (const spot of spots) {
     const on = spot.n === active;
-    sunk(pen, spot.x, spot.y, spot.w, spot.h,
+    const pulse = !on && hop(clock, 5, 1, spot.n);
+    sunk(pen, spot.x, spot.y - pulse, spot.w, spot.h,
       on ? K.YEL : K.BLU, on ? K.YEL_L : K.BLU_L, on ? K.OCHRE : K.BLU_D);
-    if (on) pen.col(K.WHITE).hline(spot.x + 2, spot.y + 2, spot.w - 4);
+    if (on) pen.col(K.WHITE).hline(spot.x + 2, spot.y - pulse + 2, spot.w - 4);
     const label = String(spot.n);
     const tw = F.measure(label, 2);
-    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 3,
+    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y - pulse + 3,
       on ? K.RED : K.WHITE, { scale: 2, shadow: K.BLACK });
   }
 }
@@ -280,47 +253,46 @@ export function signpostSpots(showParty) {
   return spots;
 }
 
-export function drawSignpost(ctx, spots, state) {
+export function drawSignpost(ctx, spots, state, clock = 0) {
   const pen = new Pen(ctx);
-  const names = ['FÁBRICA', 'MERCADO', 'CORREIOS', 'A FESTA!'];
+  const names = ['FÁBRICA', 'MERCADO', 'CARTAS', 'FESTA!'];
   const done = [state.presentDone, state.marketDone, state.inviteDone, false];
+  const icons = [SPR.toy.robo, SPR.food.apple, SPR.misc.envelope, SPR.misc.cake];
 
-  // Poste com veios de madeira
   pen.col(K.BLACK).rect(148, 18, 14, 112);
   pen.col(K.WOOD_D).rect(149, 19, 12, 110);
   pen.col(K.OCHRE).vline(151, 19, 110);
   pen.col(K.SAND).vline(152, 22, 20).vline(152, 55, 18).vline(152, 90, 16);
-  // Base do poste
   pen.col(K.BLACK).rect(142, 126, 26, 6);
   pen.col(K.WOOD_D).rect(143, 127, 24, 4);
 
   for (const spot of spots) {
     const i = spot.n - 1;
     const party = i === 3;
-    raised(pen, spot.x, spot.y, spot.w, spot.h,
+    const pulse = hop(clock, party ? 5 : 3.2, party ? 2 : 1, i);
+    const y = spot.y - pulse;
+    raised(pen, spot.x, y, spot.w, spot.h,
       party ? K.YEL : K.OCHRE, party ? K.YEL_L : K.SAND, K.WOOD_D);
-    // Veios horizontais leves
     if (!party) {
-      pen.col(K.SAND).hline(spot.x + 4, spot.y + 5, spot.w - 14);
-      pen.col(K.WOOD_D).hline(spot.x + 4, spot.y + spot.h - 4, spot.w - 14);
+      pen.col(K.SAND).hline(spot.x + 4, y + 5, spot.w - 14);
+      pen.col(K.WOOD_D).hline(spot.x + 4, y + spot.h - 4, spot.w - 14);
     }
-    // Ponta de seta
     pen.col(K.BLACK);
-    for (let k = 0; k < 9; k++) pen.vline(spot.x + spot.w + k, spot.y + k, spot.h - k * 2);
+    for (let k = 0; k < 9; k++) pen.vline(spot.x + spot.w + k, y + k, spot.h - k * 2);
     pen.col(party ? K.YEL : K.OCHRE);
-    for (let k = 0; k < 8; k++) pen.vline(spot.x + spot.w + k, spot.y + 1 + k, spot.h - 2 - k * 2);
-    pen.col(party ? K.YEL_L : K.SAND).vline(spot.x + spot.w, spot.y + 2, spot.h - 4);
+    for (let k = 0; k < 8; k++) pen.vline(spot.x + spot.w + k, y + 1 + k, spot.h - 2 - k * 2);
+    pen.col(party ? K.YEL_L : K.SAND).vline(spot.x + spot.w, y + 2, spot.h - 4);
 
-    // Badge do número (vermelho, bem legível)
-    numBadge(ctx, pen, spot.n, spot.x + 14, spot.y + (spot.h >> 1), 2, K.YEL_L, K.RED);
-    F.text(ctx, names[i], spot.x + 28, spot.y + 6, K.WOOD_D, { shadow: party ? K.OCHRE : K.SAND });
+    numBadge(ctx, pen, spot.n, spot.x + 14, y + (spot.h >> 1), 2, K.YEL_L, K.RED);
+    if (icons[i]) blitMid(ctx, icons[i], spot.x + 36, y + spot.h / 2);
+    F.text(ctx, names[i], spot.x + 48, y + 6, K.WOOD_D, { shadow: party ? K.OCHRE : K.SAND });
 
     if (done[i]) {
-      pen.col(K.BLACK).rect(spot.x + 106, spot.y + 4, 14, 12);
-      pen.col(K.GRN).rect(spot.x + 107, spot.y + 5, 12, 10);
+      pen.col(K.BLACK).rect(spot.x + 106, y + 4, 14, 12);
+      pen.col(K.GRN).rect(spot.x + 107, y + 5, 12, 10);
       pen.col(K.GRN_L)
-        .line(spot.x + 109, spot.y + 10, spot.x + 112, spot.y + 13)
-        .line(spot.x + 112, spot.y + 13, spot.x + 118, spot.y + 6);
+        .line(spot.x + 109, y + 10, spot.x + 112, y + 13)
+        .line(spot.x + 112, y + 13, spot.x + 118, y + 6);
     }
   }
 }
@@ -368,19 +340,19 @@ export function drawTravelSwap(ctx, spots, activeN) {
   }
 }
 
-export function drawVehicleRack(ctx, spots) {
+export function drawVehicleRack(ctx, spots, clock = 0) {
   const pen = new Pen(ctx);
   for (const spot of spots) {
     const v = VEHICLES[spot.n];
-    raised(pen, spot.x, spot.y, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
-    // Faixa superior colorida
-    pen.col(K.NAVY).rect(spot.x + 2, spot.y + 2, spot.w - 4, 10);
-    pen.col(K.BLU).hline(spot.x + 2, spot.y + 2, spot.w - 4);
+    const pulse = hop(clock, 3.4, 1, spot.n);
+    const y = spot.y - pulse;
+    raised(pen, spot.x, y, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
+    pen.col(K.NAVY).rect(spot.x + 2, y + 2, spot.w - 4, 10);
+    pen.col(K.BLU).hline(spot.x + 2, y + 2, spot.w - 4);
     const twN = F.measure(String(spot.n), 2);
-    F.text(ctx, String(spot.n), Math.round(spot.x + (spot.w - twN) / 2), spot.y + 2,
+    F.text(ctx, String(spot.n), Math.round(spot.x + (spot.w - twN) / 2), y + 2,
       K.YEL_L, { scale: 2, shadow: K.BLACK });
 
-    /* Veículos mais largos que o cartão entram pela metade. */
     const sprite = v.wheels === 0 ? SPR.ravi.idle : SPR.vehicle[v.id];
     const half = sprite.w > spot.w - 6 || sprite.h > 26;
     const dw = half ? Math.round(sprite.w / 2) : sprite.w;
@@ -388,16 +360,15 @@ export function drawVehicleRack(ctx, spots) {
     ctx.drawImage(
       sprite.canvas,
       Math.round(spot.x + (spot.w - dw) / 2),
-      Math.round(spot.y + 28 - dh / 2),
+      Math.round(y + 28 - dh / 2),
       dw, dh
     );
 
-    F.textCenter(ctx, v.name, spot.x + spot.w / 2, spot.y + 42, K.GRAY_XD);
-    // Chip de rodas
+    F.textCenter(ctx, v.name, spot.x + spot.w / 2, y + 42, K.GRAY_XD);
     const chip = `${v.wheels}`;
     const cw = F.measure(chip, 1) + 10;
-    raised(pen, Math.round(spot.x + (spot.w - cw) / 2), spot.y + spot.h - 13, cw, 10, K.YEL, K.YEL_L, K.OCHRE);
-    F.textCenter(ctx, chip + 'R', spot.x + spot.w / 2, spot.y + spot.h - 11, K.RED_D);
+    raised(pen, Math.round(spot.x + (spot.w - cw) / 2), y + spot.h - 13, cw, 10, K.YEL, K.YEL_L, K.OCHRE);
+    F.textCenter(ctx, chip + 'R', spot.x + spot.w / 2, y + spot.h - 11, K.RED_D);
   }
 }
 
@@ -412,23 +383,23 @@ export function quantitySpots() {
   return spots;
 }
 
-export function drawQuantityBoard(ctx, spots, title) {
+export function drawQuantityBoard(ctx, spots, title, clock = 0) {
   const pen = new Pen(ctx);
   raised(pen, 202, 4, 112, 106, K.WOOD_D, K.OCHRE, K.GRAY_XD);
   rivet(pen, 206, 8);
   rivet(pen, 306, 8);
   rivet(pen, 206, 100);
   rivet(pen, 306, 100);
-  // Faixa do título
   raised(pen, 210, 8, 96, 12, K.NAVY, K.BLU, K.NIGHT);
   F.textCenter(ctx, title, 258, 10, K.YEL_L, { shadow: K.BLACK });
 
   for (const spot of spots) {
-    sunk(pen, spot.x, spot.y, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
-    pen.col(K.WHITE).hline(spot.x + 3, spot.y + 2, spot.w - 6);
+    const pulse = hop(clock, 4.5, 1, spot.n);
+    sunk(pen, spot.x, spot.y - pulse, spot.w, spot.h, K.CREAM, K.WHITE, K.GRAY_D);
+    pen.col(K.WHITE).hline(spot.x + 3, spot.y - pulse + 2, spot.w - 6);
     const label = String(spot.n);
     const tw = F.measure(label, 3);
-    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y + 4, K.RED, {
+    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), spot.y - pulse + 4, K.RED, {
       scale: 3,
       shadow: K.SAND
     });
@@ -475,14 +446,16 @@ export function mailboxSpots() {
   return spots;
 }
 
-export function drawMailboxes(ctx, spots, state) {
+export function drawMailboxes(ctx, spots, state, clock = 0) {
   const pen = new Pen(ctx);
   for (const spot of spots) {
+    const pulse = hop(clock, 3.6, 1, spot.n);
+    const y = spot.y - (spot.n === 0 || state.invited.includes(spot.n - 1) ? 0 : pulse);
     if (spot.n === 0) {
-      raised(pen, spot.x, spot.y, spot.w, spot.h, K.GRN, K.GRN_L, K.GRN_D);
-      F.textCenter(ctx, 'VOLTAR', spot.x + spot.w / 2, spot.y + 6, K.WHITE, { shadow: K.GRN_D });
-      F.textCenter(ctx, 'À PLACA', spot.x + spot.w / 2, spot.y + 16, K.WHITE, { shadow: K.GRN_D });
-      numBadge(ctx, pen, 0, spot.x + spot.w / 2, spot.y + 30, 2, K.RED);
+      raised(pen, spot.x, y, spot.w, spot.h, K.GRN, K.GRN_L, K.GRN_D);
+      F.textCenter(ctx, 'PRONTO', spot.x + spot.w / 2, y + 6, K.WHITE, { shadow: K.GRN_D });
+      F.textCenter(ctx, 'VOLTAR', spot.x + spot.w / 2, y + 16, K.WHITE, { shadow: K.GRN_D });
+      numBadge(ctx, pen, 0, spot.x + spot.w / 2, y + 30, 2, K.RED);
       continue;
     }
 
@@ -491,40 +464,37 @@ export function drawMailboxes(ctx, spots, state) {
     const locked = idx === state.honoree;
     const invited = state.invited.includes(idx);
 
-    raised(pen, spot.x, spot.y, spot.w, spot.h,
+    raised(pen, spot.x, y, spot.w, spot.h,
       locked ? K.GRAY : invited ? K.GRN_D : K.BLU_D,
       locked ? K.GRAY_L : invited ? K.GRN_L : K.BLU_L,
       K.GRAY_XD);
 
-    /* Portinha com o herói espiando. */
-    sunk(pen, spot.x + 3, spot.y + 3, 20, 32, locked ? K.GRAY_D : K.CREAM, K.WHITE, K.GRAY_XD);
-    if (!locked) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(spot.x + 4, spot.y + 4, 18, 30);
-      ctx.clip();
-      blit(ctx, SPR.hero[hero.id], spot.x - 5, spot.y - 4);
-      ctx.restore();
-    } else {
-      pen.col(K.GRAY_XD).rect(spot.x + 9, spot.y + 18, 8, 8);
-      pen.col(K.YEL).ring(spot.x + 13, spot.y + 15, 3);
+    sunk(pen, spot.x + 3, y + 3, 20, 32, locked ? K.GRAY_D : K.CREAM, K.WHITE, K.GRAY_XD);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(spot.x + 4, y + 4, 18, 30);
+    ctx.clip();
+    blit(ctx, SPR.hero[hero.id], spot.x + 2, y + 2);
+    ctx.restore();
+    if (locked) {
+      pen.col(K.BLACK).rect(spot.x + 5, y + 14, 16, 10);
+      F.text(ctx, 'SHH', spot.x + 6, y + 16, K.YEL_L, { shadow: K.BLACK });
     }
 
-    // Placa de latão com o número
-    raised(pen, spot.x + 26, spot.y + 4, 26, 16, K.YEL, K.YEL_L, K.OCHRE);
+    raised(pen, spot.x + 26, y + 4, 26, 16, K.YEL, K.YEL_L, K.OCHRE);
     const label = String(spot.n);
     const tw = F.measure(label, 2);
-    F.text(ctx, label, Math.round(spot.x + 39 - tw / 2), spot.y + 5,
+    F.text(ctx, label, Math.round(spot.x + 39 - tw / 2), y + 5,
       locked ? K.GRAY_XD : K.RED, { scale: 2, shadow: K.SAND });
 
-    F.text(ctx, hero.short, spot.x + 25, spot.y + 26, locked ? K.GRAY_L : K.WHITE,
+    F.text(ctx, hero.short, spot.x + 25, y + 26, locked ? K.GRAY_L : K.WHITE,
       { shadow: K.BLACK });
     if (invited) {
-      pen.col(K.BLACK).rect(spot.x + 44, spot.y + 24, 10, 10);
-      pen.col(K.GRN).rect(spot.x + 45, spot.y + 25, 8, 8);
+      pen.col(K.BLACK).rect(spot.x + 44, y + 24, 10, 10);
+      pen.col(K.GRN).rect(spot.x + 45, y + 25, 8, 8);
       pen.col(K.GRN_L)
-        .line(spot.x + 46, spot.y + 29, spot.x + 48, spot.y + 31)
-        .line(spot.x + 48, spot.y + 31, spot.x + 52, spot.y + 26);
+        .line(spot.x + 46, y + 29, spot.x + 48, y + 31)
+        .line(spot.x + 48, y + 31, spot.x + 52, y + 26);
     }
   }
 }
@@ -540,23 +510,22 @@ export function plateSpots() {
 }
 
 /** Pratos: oval creme + numeral + miniatura da comida da vez (Mickey 123). */
-export function drawPlates(ctx, spots, food) {
+export function drawPlates(ctx, spots, food, clock = 0) {
   const pen = new Pen(ctx);
   for (const spot of spots) {
+    const bounce = hop(clock, 4.8, 2, spot.n);
     const cx = Math.round(spot.x + spot.w / 2);
-    const cy = Math.round(spot.y + spot.h / 2);
-    // Prato oval com borda
+    const cy = Math.round(spot.y + spot.h / 2) - bounce;
     pen.col(K.BLACK).ellipse(cx + 1, cy + 1, 12, 7);
     pen.col(K.GRAY).ellipse(cx, cy, 12, 7);
     pen.col(K.CREAM).ellipse(cx, cy, 10, 5);
     pen.col(K.WHITE).ellipse(cx - 2, cy - 1, 3, 2);
     if (food) blitMid(ctx, SPR.food[food.id], cx - 5, cy - 2);
-    // Badge do número por cima, bem legível
     const label = String(spot.n);
     const tw = F.measure(label, 2);
-    pen.col(K.BLACK).rect(cx - (tw >> 1) - 2, spot.y - 3, tw + 4, 11);
-    pen.bevel(cx - (tw >> 1) - 1, spot.y - 2, tw + 2, 9, K.YEL, K.YEL_L, K.OCHRE);
-    F.text(ctx, label, Math.round(cx - tw / 2), spot.y - 1, K.RED, { scale: 2 });
+    pen.col(K.BLACK).rect(cx - (tw >> 1) - 2, spot.y - 3 - bounce, tw + 4, 11);
+    pen.bevel(cx - (tw >> 1) - 1, spot.y - 2 - bounce, tw + 2, 9, K.YEL, K.YEL_L, K.OCHRE);
+    F.text(ctx, label, Math.round(cx - tw / 2), spot.y - 1 - bounce, K.RED, { scale: 2 });
   }
 }
 
@@ -568,7 +537,7 @@ export function drawPlates(ctx, spots, food) {
  * Descobre qual hotspot foi tocado. O alvo é ampliado em `pad` pixels para
  * perdoar o dedo — importante porque o jogo é para crianças pequenas.
  */
-export function hitTest(spots, x, y, pad = 3) {
+export function hitTest(spots, x, y, pad = 6) {
   if (!spots) return null;
   for (const spot of spots) {
     if (x >= spot.x - pad && x < spot.x + spot.w + pad &&
@@ -643,5 +612,32 @@ export function drawBalloons(ctx, count, t) {
     }
     pen.col(K.WHITE).ellipse(x - 2, y - 3, 2, 2);
     pen.col(palette[i % palette.length]).px(x, y + 8);
+  }
+}
+
+/** Estourinhos quando a criança mexe — nada fica “morto”. */
+export function spawnPops(arr, x, y, t) {
+  const colors = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.CYAN, K.ORANGE, K.PUR];
+  for (let i = 0; i < 10; i++) {
+    arr.push({ x, y, born: t, i, color: colors[i % colors.length] });
+  }
+  if (arr.length > 90) arr.splice(0, arr.length - 90);
+}
+
+export function drawPops(ctx, arr, t) {
+  const pen = new Pen(ctx);
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const p = arr[i];
+    const age = t - p.born;
+    if (age > 0.65) {
+      arr.splice(i, 1);
+      continue;
+    }
+    const ang = p.i * 0.7;
+    const d = age * 42;
+    const px = Math.round(p.x + Math.cos(ang) * d);
+    const py = Math.round(p.y + Math.sin(ang) * d - age * 22);
+    pen.col(p.color).px(px, py).px(px + 1, py);
+    if (age < 0.2) pen.col(K.WHITE).px(px, py - 1);
   }
 }
