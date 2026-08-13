@@ -15,7 +15,7 @@ import { EventBase } from './base.js';
 import { W, H } from '../core/pixel.js';
 import { SVC } from '../core/palette.js';
 import { clamp, lerp } from '../core/util.js';
-import { tile, drawWater, drawShadow } from '../art/scenery.js';
+import { tile, drawWater, drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { gauge, judgePanel } from '../game/hud.js';
 
 const START_X = 296;        // onde o pico nasce, perto da borda direita
@@ -40,7 +40,7 @@ export class SurfEvent extends EventBase {
     resetWave() {
         this.playerX = 170;
         this.face = 0.45;              // 0 = base da parede, 1 = lábio
-        this.speed = 70;               // mais rápido
+        this.speed = 78;               // mais rápido
         this.foamX = START_X;          // o pico (e a quebra) começam à direita e marcham
         this.foamSpeed = 22 + this.waveIndex * 6; // quebra mais agressiva (California Games style)
         this.state = 'ride';           // ride | air | tube | wipe
@@ -114,7 +114,7 @@ export class SurfEvent extends EventBase {
 
         // --- posição na linha (esquerda = fugir, direita = bolso) ---
         const vx = input.axisX();
-        this.playerX = clamp(this.playerX + vx * 70 * dt, 40, this.foamX - 6);
+        this.playerX = clamp(this.playerX + vx * 82 * dt, 40, this.foamX - 6);
 
         // --- a onda fecha ---
         this.foamX -= this.foamSpeed * dt;
@@ -126,7 +126,7 @@ export class SurfEvent extends EventBase {
         this.danger = clamp(1 - gap / 34, 0, 1);
 
         // --- manobras (com buffer: um toque logo antes do fim do cooldown ainda vale) ---
-        if (this.state === 'ride' && input.buffered('a', 130) && this.trickCooldown <= 0) {
+        if (this.state === 'ride' && input.buffered('a', 150) && this.trickCooldown <= 0) {
             input.consume('a');
             this.doTrick();
         }
@@ -194,13 +194,13 @@ export class SurfEvent extends EventBase {
             px.shake(2, 160);
         } else if (this.face > 0.55) {
             const pts = Math.round(30 + this.speed * 0.35);
-            this.addPoints(pts, 'RASGADA', 'A');
+            this.addPoints(pts, 'RASGADA', 'z');
             audio.play('carve');
             this.face = clamp(this.face - 0.22, 0, 1);
             this.speed *= 0.92;
         } else {
             const pts = Math.round(20 + this.speed * 0.2);
-            this.addPoints(pts, 'CUTBACK', 'H');
+            this.addPoints(pts, 'CUTBACK', 'y');
             audio.play('carve');
             // o cutback joga o surfista de volta pra dentro do bolso — risco e recompensa
             this.playerX = clamp(this.playerX + 22, 40, this.foamX - 6);
@@ -225,7 +225,8 @@ export class SurfEvent extends EventBase {
     closeWave() {
         this.state = 'wipe';
         this.wipeT = 0.9;
-        this.float.push('ONDA FECHOU', W / 2, 96, 'p', 1100);
+        const pts = Math.round(this.wavePoints);
+        this.float.push(`ONDA ${this.waveIndex + 1}  +${pts}`, W / 2, 88, 'z', 1200);
     }
 
     nextWave() {
@@ -288,6 +289,7 @@ export class SurfEvent extends EventBase {
 
         // --- oceano de fundo: horizonte com cintilância, depois o canal escuro na frente ---
         ctx.drawImage(scenery.seaFar, 0, SEA_Y);
+        drawShoreFoam(px, SEA_Y + 36, this.waveT);
         drawWater(px, 0, SEA_Y + 40, W, H - SEA_Y - 40, this.waveT, this.scroll);
         px.rect(0, TROUGH_Y, W, H - TROUGH_Y, SVC['a']);
         px.rect(0, TROUGH_Y + 14, W, H - TROUGH_Y - 14, SVC['9']);
@@ -378,7 +380,7 @@ export class SurfEvent extends EventBase {
             const pocketX = Math.round(this.foamX - 52);
             if (pocketX > 30 && pocketX < W - 10) {
                 const py = this.waterY(pocketX);
-                const blink = Math.sin(this.waveT * 8) > 0 ? 'A' : '8';
+                const blink = Math.sin(this.waveT * 8) > 0 ? 'z' : '8';
                 px.rect(pocketX - 4, py + 3, 9, 1, SVC[blink]);
                 px.rect(pocketX, py + 1, 1, 4, SVC[blink]);
             }
@@ -422,7 +424,7 @@ export class SurfEvent extends EventBase {
 
         const gap = clamp((this.foamX - this.playerX) / 120, 0, 1);
         gauge(px, font, W - 100, 16, 96, 'BOLSO', 1 - gap, {
-            fill: gap < 0.2 ? 'B' : 'x', glow: 'G', mark: 0.56, markColor: 'A'
+            fill: gap < 0.2 ? 'B' : 'x', glow: 'd', mark: 0.56, markColor: 'z'
         });
 
         if (this.phase === 'outro' && this.judges) {

@@ -8,7 +8,7 @@
 // suingue de samba, a ciclovia corre, o frescobol é leve e a baía é remada cadenciada.
 
 export const SONGS = {
-    // --- tela de título: synthwave em Am, o "vice" do nome ---
+    // --- tela de título: tema de orla em Am ---
     tema: {
         bpm: 104,
         rows: 16,

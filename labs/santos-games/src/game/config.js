@@ -1,6 +1,6 @@
 // game/config.js — a "regra do jogo": catálogo de eventos, patrocinadores e rivais.
 //
-// SANTOS VICE GAMES é uma homenagem direta a California Games (Mega Drive): você escolhe um
+// SANTOS GAMES é uma homenagem direta a California Games (Mega Drive): você escolhe um
 // patrocinador, disputa uma sequência de provas de praia curtas e independentes, cada uma com
 // sua própria mecânica, e no fim sobe (ou não) ao pódio. Aqui a Califórnia vira a orla de
 // Santos e cada prova do original ganha um equivalente caiçara.

@@ -194,8 +194,8 @@ export function countdown(px, font, secondsLeft) {
     px.ctx.globalAlpha = 0.45;
     px.rect(0, 66, W, 46, SVC['0']);
     px.ctx.globalAlpha = 1;
-    px.rect(0, 66, W, 1, SVC[n > 0 ? 'x' : 'H']);
-    px.rect(0, 111, W, 1, SVC[n > 0 ? 'x' : 'H']);
+    px.rect(0, 66, W, 1, SVC[n > 0 ? 'z' : 'H']);
+    px.rect(0, 111, W, 1, SVC[n > 0 ? 'z' : 'H']);
 
     font.textBig(px.ctx, label, W / 2, 74, {
         outlineColor: '0', align: 'center', scale,

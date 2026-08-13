@@ -4,47 +4,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>Santos Games — seis provas de praia 16-bit | Labs</title>
+    <title>Santos Games — Mega Drive / California Games | Labs</title>
     <meta name="description"
-        content="Homenagem 16-bit ao California Games ambientada em Santos: surfe no Quebra-Mar, skate no bowl da orla, altinha no Gonzaga, BMX na ciclovia, frescobol no José Menino e canoa havaiana na baía.">
-    <meta name="theme-color" content="#0d0a1a">
-    <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-vice-city/">
+        content="Homenagem ao California Games (Mega Drive) em Santos: surfe, skate, altinha, BMX, frescobol e canoa. Pixel art 16-bit limpo no navegador.">
+    <meta name="theme-color" content="#101018">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-games/">
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="Santos Games">
-    <meta property="og:description"
-        content="Seis provas de praia em pixel art 16-bit gerada 100% em código, com patrocinadores, medalhas e pódio. Uma homenagem ao California Games, mas caiçara.">
+    <meta property="og:description" content="California Games, mas caiçara. Seis provas 16-bit no estilo Mega Drive.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-games/">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Santos Games">
-    <meta name="twitter:description" content="California Games, mas em Santos. Seis provas 16-bit no navegador.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=4">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 
 <body>
-    <div class="svc-background" style="background-image: url('assets/bg.jpg');"></div>
-    <div class="svc-layout">
-        <header data-lab-header data-title="Santos Games" class="glass-header">
+    <div class="sg-bg" aria-hidden="true"></div>
+
+    <div class="sg-layout">
+        <header data-lab-header data-title="Santos Games" class="sg-header">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="brand-mark" aria-hidden="true">🌇</span>
+                    <span class="brand-mark" aria-hidden="true">🏖</span>
                     <span>Santos Games</span>
                 </div>
             </template>
         </header>
 
-        <main class="svc-shell">
-            <section class="svc-stage" aria-label="Área do jogo">
-                <div class="svc-screen-wrap" id="svcWrap">
+        <main class="sg-shell">
+            <section class="sg-stage" aria-label="Área do jogo">
+                <div class="sg-emu" id="svcWrap">
                     <canvas id="svcStage" width="320" height="224" hidden></canvas>
                     <canvas id="svcScreen" role="img"
-                        aria-label="Santos Vice Games — jogo de esportes de praia em pixel art 16-bit"></canvas>
-                    <div class="svc-vignette" aria-hidden="true"></div>
+                        aria-label="Santos Games — esportes de praia em pixel art 16-bit"></canvas>
 
                     <div class="svc-touch tp--hidden" id="svcTouch" aria-label="Controles por toque">
                         <div class="tp-dpad">
@@ -63,52 +59,49 @@
                 <p class="sr-only" aria-live="polite" id="svcAnnouncer"></p>
             </section>
 
-            <aside class="svc-side glass-panel" aria-label="Sobre o jogo">
-                <div class="svc-side-block">
-                    <span class="svc-kicker">Santos Games</span>
-                    <h2>California Games, mas caiçara</h2>
-                    <p>Seis provas de praia num campeonato só: escolha o patrocinador, dispute
-                        surfe, skate, altinha, BMX, frescobol e canoa havaiana, e veja se sobra
-                        lugar no pódio. Pixel art e trilha gerados 100&nbsp;% em código.</p>
+            <aside class="sg-side" aria-label="Sobre o jogo">
+                <div class="sg-side-block">
+                    <span class="sg-kicker">Mega Drive · 320×224</span>
+                    <h2>California Games,<br>mas caiçara</h2>
+                    <p>Escolha o patrocinador, dispute seis provas na orla de Santos e dispute o pódio.</p>
                 </div>
 
-                <ol class="svc-events">
+                <ol class="sg-events">
                     <li><b>Surfe</b><span>Quebra-Mar</span></li>
                     <li><b>Skate Vert</b><span>Bowl da Orla</span></li>
-                    <li><b>Altinha</b><span>Areia do Gonzaga</span></li>
-                    <li><b>BMX</b><span>Ciclovia da Orla</span></li>
+                    <li><b>Altinha</b><span>Gonzaga</span></li>
+                    <li><b>BMX</b><span>Ciclovia</span></li>
                     <li><b>Frescobol</b><span>José Menino</span></li>
-                    <li><b>Canoa havaiana</b><span>Baía de Santos</span></li>
+                    <li><b>Canoa</b><span>Baía</span></li>
                 </ol>
 
-                <div class="svc-side-block">
-                    <span class="svc-kicker">Controles</span>
-                    <div class="svc-key-row"><kbd>↑↓←→</kbd><span>Mover</span></div>
-                    <div class="svc-key-row"><kbd>Z</kbd><span>Botão A</span></div>
-                    <div class="svc-key-row"><kbd>X</kbd><span>Botão B</span></div>
-                    <div class="svc-key-row"><kbd>Enter</kbd><span>Start / pausa</span></div>
-                    <div class="svc-key-row"><kbd>M</kbd><span>Mudo</span></div>
-                    <p class="svc-note">Também funciona com gamepad e, no celular, com os
-                        botões na tela.</p>
+                <div class="sg-side-block">
+                    <span class="sg-kicker">Controles</span>
+                    <div class="sg-key-row"><kbd>↑↓←→</kbd><span>Mover</span></div>
+                    <div class="sg-key-row"><kbd>Z</kbd><span>Botão A</span></div>
+                    <div class="sg-key-row"><kbd>X</kbd><span>Botão B</span></div>
+                    <div class="sg-key-row"><kbd>Enter</kbd><span>Start / pausa</span></div>
+                    <div class="sg-key-row"><kbd>M</kbd><span>Mudo</span></div>
+                    <p class="sg-note">Gamepad e botões na tela no celular.</p>
                 </div>
 
-                <div class="svc-actions">
-                    <button id="svcSoundToggle" class="svc-btn" type="button" aria-pressed="true">
+                <div class="sg-actions">
+                    <button id="svcSoundToggle" class="sg-btn" type="button" aria-pressed="true">
                         <span aria-hidden="true" data-icon>◉</span>
                         <span data-label>Som ativado</span>
                     </button>
-                    <button id="svcResetBtn" class="svc-btn svc-btn--ghost" type="button">
+                    <button id="svcResetBtn" class="sg-btn sg-btn--ghost" type="button">
                         Apagar recordes
                     </button>
                 </div>
             </aside>
         </main>
 
-        <footer data-lab-footer data-home-href="/" class="glass-footer"></footer>
+        <footer data-lab-footer data-home-href="/" class="sg-footer"></footer>
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script type="module" src="src/main.js?v=2"></script>
+    <script type="module" src="src/main.js?v=7"></script>
 </body>
 
 </html>
