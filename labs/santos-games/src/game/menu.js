@@ -87,7 +87,7 @@ export class MenuList {
 
             if (active && !it.disabled) {
                 panel(px, x - halfW, iy - 4, halfW * 2, 15, {
-                    fill: '2', border: '0', light: 'z', dark: '1', shadow: false
+                    fill: '2', border: '0', light: 'y', dark: '1', accent: 'x', shadow: false
                 });
             }
             font.text(px.ctx, it.label, x, iy, {
@@ -130,8 +130,8 @@ export function scrim(px, y, h, alpha = 0.62) {
  */
 export function screenHeader(px, font, title, subtitle) {
     plate(px, 0, 0, W, 30, '0');
-    px.rect(0, 29, W, 1, SVC['x']);
-    px.rect(0, 30, W, 1, SVC['3']);
+    px.rect(0, 29, W, 1, SVC['y']);
+    px.rect(0, 30, W, 1, SVC['c']);
     font.textBig(px.ctx, title, W / 2, 5, {
         scale: 2, ramp: ['h', '8', '7', '6'], outlineColor: '0', align: 'center'
     });

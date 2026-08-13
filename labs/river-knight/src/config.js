@@ -22,19 +22,29 @@ export const BOAT = {
     strafeSpeed: 15.5,
     strafeAccel: 46,
     maxHull: 5,
-    throwCooldown: 0.42,
-    furyCooldown: 0.16,
+    /** Recarga de canhão (uma salva). */
+    throwCooldown: 0.78,
+    furyCooldown: 0.34,
     invulnAfterHit: 1.4,
     bankLimitPadding: 3.4
 };
 
-export const AXE = {
-    speed: 78,
-    gravity: 16,
-    life: 2.6,
+/** Canhão de bordo — mira automática (estilo jogos de navio). */
+export const CANNON = {
+    speed: 108,
+    gravity: 11,
+    life: 3.4,
     damage: 1,
-    spin: 22
+    /** Alcance de trava automática. */
+    assistRange: 155,
+    /** Cone bem amplo (~87°): só precisa apontar o navio. */
+    assistCone: 0.05,
+    loft: 6.2,
+    ballRadius: 1.85
 };
+
+/** Alias legado — alguns módulos ainda referenciam AXE. */
+export const AXE = CANNON;
 
 export const DIFFICULTY = {
     squire: {
@@ -116,7 +126,7 @@ export const QUALITY = {
     high: {
         id: 'high',
         label: 'Cinemática',
-        pixelRatio: 2,
+        pixelRatio: 1.5,
         antialias: true,
         shadows: true,
         shadowSize: 2048,

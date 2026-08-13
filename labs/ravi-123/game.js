@@ -16,6 +16,7 @@ import * as F from './font.js';
 import { Audio } from './audio.js';
 import { SPR, HEROES, TOYS, FOODS, VEHICLES, buildSprites } from './sprites.js';
 import * as Sc from './scenes.js';
+import { wave, hop } from './anim.js';
 
 const STAGE_H = Sc.STAGE_H;
 
@@ -94,12 +95,16 @@ function freshState() {
     lumpX: 96,
     marketIdx: 0,
     serveIdx: 0,
+    servePlacing: 0,
+    serveHero: -1,
+    serveFoodId: null,
+    served: {},
     guestsIn: 0,
     balloonsHung: 0,
     bannerUp: false,
     fridgeFull: false,
     guestX: [],
-    confetti: Sc.makeConfetti(60)
+    confetti: Sc.makeConfetti(90)
   };
 }
 
@@ -114,6 +119,14 @@ function readyForParty() {
 /** Comidas efetivamente compradas (balão não é comida). */
 function boughtFoods() {
   return FOODS.filter((f) => f.id !== 'balloon' && (S.cart[f.id] || 0) > 0);
+}
+
+/**
+ * Lista de quem come na festa: convidados + aniversariante.
+ * No Mickey 123 cada personagem recebe cada item comprado.
+ */
+function partyRoster() {
+  return S.invited.concat(S.honoree);
 }
 
 /* --------------------------------------------------------------------------
@@ -146,7 +159,7 @@ function hideFlash() {
  * Anexa à timeline uma contagem de 1 até n: flashcard, nota e número falado.
  * É o coração educativo do jogo — aparece em quase toda cena.
  */
-function addCount(tl, n, onStep, stepDur = 0.72) {
+function addCount(tl, n, onStep, stepDur = 1.15) {
   for (let i = 1; i <= n; i++) {
     tl.add(stepDur, () => {
       showFlash(i);
@@ -154,7 +167,7 @@ function addCount(tl, n, onStep, stepDur = 0.72) {
       if (onStep) onStep(i);
     });
   }
-  tl.add(0.45, () => hideFlash());
+  tl.add(0.75, () => hideFlash());
   return tl;
 }
 
@@ -164,6 +177,7 @@ function addCount(tl, n, onStep, stepDur = 0.72) {
 
 function go(next) {
   if (scene && scene.exit) scene.exit();
+  Audio.stopSpeech();
   scene = next;
   timeline = null;
   hideFlash();
@@ -208,28 +222,57 @@ const SCENES = {
     },
     draw(ctx) {
       const pen = new Pen(ctx);
-      blitFoot(ctx, SPR.ravi.sleep, 150, 152);
+      // Ravi dormindo com Zzz flutuando
+      const snore = hop(clock, 1.6, 2);
+      blitFoot(ctx, SPR.ravi.sleep, 150, 152 + snore);
+      const zz = ((clock * 1.2) % 3);
+      F.text(ctx, 'z', 168, 100 - Math.round(zz * 8), K.CYAN, { scale: 1 + (zz > 1.5 ? 1 : 0), shadow: K.BLACK });
+      F.text(ctx, 'z', 176, 92 - Math.round(zz * 6), K.BLU_L, { shadow: K.BLACK });
 
-      // Logotipo — alto o bastante para cobrir a janela do cenário
-      pen.col(K.BLACK).rect(28, 4, 264, 70);
-      pen.bevel(30, 6, 260, 66, K.NAVY, K.BLU, K.NIGHT);
-      F.textCenter(ctx, 'RAVI', 160, 13, K.YEL_L, { scale: 3, shadow: K.RED_D });
+      // Logotipo com moldura, estrelas e “respiração”
+      const breathe = hop(clock, 1.2, 1);
+      const ly = 4 - breathe;
+      const lh = 70 + breathe * 2;
+      pen.col(K.BLACK).rect(26, ly + 2, 268, lh);
+      pen.bevel(28, ly, 264, lh, K.NAVY, K.BLU, K.NIGHT);
+      pen.col(K.OCHRE).frame(30, ly + 2, 260, lh - 4);
+      pen.col(K.YEL).frame(31, ly + 3, 258, lh - 6);
+      // Estrelas nos cantos
+      const sparkY = ly + 8;
+      for (const sx of [38, 278]) {
+        pen.col(K.YEL_L).px(sx, sparkY - 1).px(sx - 1, sparkY).px(sx, sparkY).px(sx + 1, sparkY).px(sx, sparkY + 1);
+      }
+      F.textCenter(ctx, 'RAVI', 160, 13 - breathe, K.YEL_L, { scale: 3, shadow: K.RED_D });
+      // Faixa do subtítulo
+      pen.col(K.NIGHT).rect(70, 36, 180, 14);
+      pen.col(K.BLU_D).rect(71, 37, 178, 12);
       F.textCenter(ctx, '1 · 2 · 3', 160, 38, K.CYAN, { scale: 2, shadow: K.BLACK });
-      F.textCenter(ctx, 'A GRANDE FESTA SURPRESA', 160, 57, K.WHITE, { shadow: K.BLACK });
+      F.textCenter(ctx, 'A GRANDE FESTA SURPRESA', 160, 57 + breathe, K.WHITE, { shadow: K.BLACK });
 
-      // Balões numerados
+      // Balões numerados — balançam e o fio acompanha
       for (const spot of this.spots) {
-        const bob = Math.round(2 * Math.sin(clock * 2 + spot.n));
-        const cx = spot.x + spot.w / 2;
+        const bob = wave(clock, 2.1, 3, spot.n * 0.9);
+        const sway = wave(clock, 1.5, 2, spot.n);
+        const cx = spot.x + spot.w / 2 + sway;
         const cy = spot.y + 14 + bob;
         const color = [K.RED, K.YEL, K.GRN, K.BLU, K.PINK, K.ORANGE, K.CYAN, K.PUR, K.RED_L][spot.n - 1];
+        // Sombra do balão
+        pen.col(K.BLACK).ellipse(cx + 1, cy + 2, 11, 12);
         pen.col(K.BLACK).ellipse(cx, cy, 12, 14);
         pen.col(color).ellipse(cx, cy, 11, 13);
+        // Brilho + nó
         pen.col(K.WHITE).ellipse(cx - 4, cy - 5, 2, 3);
-        pen.col(K.CREAM).vline(cx, cy + 14, 14);
+        pen.col(K.BLACK).px(cx, cy + 13);
+        pen.col(color).px(cx, cy + 14);
+        // Fio
+        pen.col(K.CREAM);
+        pen.line(cx, cy + 15, spot.x + spot.w / 2, spot.y + 40);
+        // Badge do número (legível em qualquer cor de balão)
         const label = String(spot.n);
         const tw = F.measure(label, 2);
-        F.text(ctx, label, Math.round(cx - tw / 2), cy - 7, K.BLACK, { scale: 2 });
+        pen.col(K.CREAM).rect(Math.round(cx - tw / 2 - 2), cy - 8, tw + 4, 12);
+        pen.col(K.WHITE).hline(Math.round(cx - tw / 2 - 1), cy - 7, tw + 2);
+        F.text(ctx, label, Math.round(cx - tw / 2), cy - 7, K.RED, { scale: 2, shadow: K.SAND });
       }
     }
   },
@@ -242,16 +285,16 @@ const SCENES = {
       S.sheep = [];
       say(`O Ravi está sonhando. Vamos contar ${n} carneirinho${n > 1 ? 's' : ''}!`);
       const tl = new Timeline();
-      tl.add(1.6, () => {});
+      tl.add(2.2, () => {});
       addCount(tl, n, (i) => {
         S.sheep.push({ born: clock, i });
         Audio.sheep();
-      });
-      tl.add(0.9, () => {
+      }, 1.25);
+      tl.add(1.2, () => {
         Audio.magic();
         say('Bom dia! Já sei: vou fazer uma festa surpresa!');
       });
-      tl.add(3.2, null);
+      tl.add(4.0, null);
       tl.add(0.1, () => go(SCENES.wake));
       timeline = tl;
     },
@@ -259,14 +302,27 @@ const SCENES = {
       if (timeline) timeline.update(dt);
     },
     draw(ctx) {
-      blitFoot(ctx, SPR.ravi.sleep, 40, 160);
+      const pen = new Pen(ctx);
+      const snore = hop(clock, 1.5, 2);
+      blitFoot(ctx, SPR.ravi.sleep, 40, 160 + snore);
+      // Zzz
+      const zz = (clock * 1.4) % 2.5;
+      F.text(ctx, 'z', 58, 110 - Math.round(zz * 10), K.WHITE, { shadow: K.BLACK });
+
       for (const sh of S.sheep) {
         const age = clock - sh.born;
-        const x = -20 + age * 120;
-        if (x > W + 24) continue;
-        // Salto sobre a cerca
-        const jump = Math.max(0, Math.sin(Math.min(1, (x - 40) / 240) * Math.PI)) * 26;
-        blitFoot(ctx, SPR.misc.sheep, x, 140 - jump);
+        const x = -24 + age * 95;
+        if (x > W + 28) continue;
+        // Arco sobre a cerca + “squash” no pouso
+        const along = Math.min(1, Math.max(0, (x - 30) / 220));
+        const jump = Math.sin(along * Math.PI) * 30;
+        const squash = jump < 4 && along > 0.85 ? 1 : 0;
+        const foot = 142 - jump + squash;
+        blitFoot(ctx, SPR.misc.sheep, x, foot);
+        // Nuvenzinha de poeira ao pousar
+        if (squash) {
+          pen.col(K.GRAY_L).px(x - 6, foot).px(x + 6, foot).px(x, foot + 1);
+        }
       }
     }
   },
@@ -279,9 +335,9 @@ const SCENES = {
       const h = honoree();
       say(`A festa é para ${h.name}, ${h.title}!`);
       const tl = new Timeline();
-      tl.add(3.4, () => Audio.fanfare());
-      tl.add(0.2, () => say('Vamos à placa de caminhos escolher para onde ir!'));
-      tl.add(2.8, null);
+      tl.add(4.0, () => Audio.fanfare());
+      tl.add(0.3, () => say('Vamos à placa de caminhos escolher para onde ir!'));
+      tl.add(3.5, null);
       tl.add(0.1, () => go(SCENES.crossroads));
       timeline = tl;
     },
@@ -290,14 +346,26 @@ const SCENES = {
     },
     draw(ctx) {
       const pen = new Pen(ctx);
-      blitFoot(ctx, SPR.ravi.cheer, 110, 160);
-      // Balão de pensamento com o aniversariante
-      pen.col(K.BLACK).ellipse(224, 62, 47, 39);
-      pen.col(K.WHITE).ellipse(224, 62, 45, 37);
-      pen.col(K.BLACK).ellipse(180, 100, 6, 5).ellipse(168, 112, 4, 3);
+      const bounce = hop(clock, 3.2, 3);
+      blitFoot(ctx, SPR.ravi.cheer, 110, 160 - bounce);
+      // Balão de pensamento com moldura e pop suave
+      const pop = 0.9 + hop(clock, 2, 1) * 0.02;
+      const brx = Math.round(48 * pop);
+      const bry = Math.round(40 * pop);
+      pen.col(K.BLACK).ellipse(224, 62, brx + 2, bry + 2);
+      pen.col(K.NAVY).ellipse(224, 62, brx + 1, bry + 1);
+      pen.col(K.WHITE).ellipse(224, 62, brx - 1, bry - 1);
+      pen.col(K.CREAM).ellipse(224, 62, brx - 3, bry - 3);
+      // Rabicho
+      pen.col(K.BLACK).ellipse(180, 100, 7, 6).ellipse(168, 112, 5, 4);
       pen.col(K.WHITE).ellipse(180, 100, 5, 4).ellipse(168, 112, 3, 2);
       blitFoot(ctx, SPR.hero[honoree().id], 224, 88);
-      F.textCenter(ctx, honoree().name, 224, 32, K.RED_D);
+      // Plaquinha do nome
+      const name = honoree().name;
+      const tw = F.measure(name, 1);
+      pen.col(K.BLACK).rect(224 - (tw >> 1) - 4, 28, tw + 8, 12);
+      pen.bevel(224 - (tw >> 1) - 3, 29, tw + 6, 10, K.YEL, K.YEL_L, K.OCHRE);
+      F.textCenter(ctx, name, 224, 31, K.RED, { shadow: K.SAND });
     }
   },
 
@@ -328,8 +396,8 @@ const SCENES = {
     },
     draw(ctx) {
       Sc.drawSignpost(ctx, this.spots, S);
-      blitFoot(ctx, SPR.ravi.wave, 40, 160);
-      blitFoot(ctx, SPR.hero[honoree().id], 288, 160);
+      blitFoot(ctx, SPR.ravi.wave, 40, 160 - hop(clock, 2.8, 2));
+      blitFoot(ctx, SPR.hero[honoree().id], 288, 160 - hop(clock, 2.4, 2, 1));
     }
   },
 
@@ -358,25 +426,42 @@ const SCENES = {
     backdrop: 'street',
     spots: null,
     enter() {
+      this.beginTrip();
+    },
+    /** Como no Mickey's 123: dá para trocar o meio de transporte no caminho. */
+    beginTrip() {
       const v = S.vehicle;
-      S.travelX = -100;
+      S.travelX = -80;
+      this.rolling = false;
+      this.spots = Sc.travelSwapSpots();
       Audio.engine();
       say(v.wheels === 0
         ? 'A pé! Nenhuma roda. Zero!'
-        : `${v.name}! Vamos contar as rodas.`);
+        : `${v.name}! Vamos contar as ${v.wheels} roda${v.wheels > 1 ? 's' : ''}!`);
 
+      // Viagem bem pausada: a criança precisa ver o veículo e contar as rodas
+      const tripDur = 8.5 + Math.min(v.wheels, 9) * 0.35;
       const tl = new Timeline();
-      tl.add(1.4, null);
+      tl.add(2.0, null);
       if (v.wheels === 0) {
-        tl.add(1.0, () => { showFlash(0); Audio.countStep(0); });
-        tl.add(0.4, () => hideFlash());
+        tl.add(1.4, () => { showFlash(0); Audio.countStep(0); });
+        tl.add(0.9, () => hideFlash());
       } else {
-        addCount(tl, v.wheels, null);
+        addCount(tl, v.wheels, null, 1.25);
       }
-      tl.add(2.4, () => say('Lá vamos nós!'), (p) => {
-        S.travelX = -100 + (W + 160) * easeInOut(p);
+      // Para no meio da tela um instante para o veículo ficar bem visível
+      tl.add(0.4, () => {
+        this.rolling = true;
+        say('Lá vamos nós! Aperte outro número para trocar de veículo!');
       });
-      tl.add(0.1, () => {
+      tl.add(tripDur * 0.42, null, (p) => {
+        S.travelX = -80 + (W / 2 + 80) * easeInOut(p);
+      });
+      tl.add(1.6, null); // pausa no centro
+      tl.add(tripDur * 0.58, null, (p) => {
+        S.travelX = W / 2 + (W / 2 + 100) * easeInOut(p);
+      });
+      tl.add(0.2, () => {
         if (S.destination === 'factory') go(SCENES.factoryPick);
         else if (S.destination === 'market') go(SCENES.market);
         else go(SCENES.post);
@@ -386,23 +471,67 @@ const SCENES = {
     update(dt) {
       if (timeline) timeline.update(dt);
     },
+    input(n) {
+      if (n < 0 || n > 9) return;
+      if (S.vehicle && S.vehicle.id === VEHICLES[n].id) return;
+      Audio.click();
+      Audio.stopSpeech();
+      hideFlash();
+      S.vehicle = VEHICLES[n];
+      this.beginTrip();
+    },
     draw(ctx) {
       const v = S.vehicle;
-      const bob = Math.round(Math.sin(clock * 14));
+      const bob = this.rolling ? wave(clock, 9, 2) : 0;
+      const groundY = 158;
+      const pen = new Pen(ctx);
+
+      // Trilha / poeira quando rola
+      if (this.rolling && v.wheels > 0) {
+        const dust = ((clock * 14) | 0) % 5;
+        pen.col(K.GRAY);
+        for (let i = 0; i < 3; i++) {
+          pen.px(
+            Math.round(S.travelX - 18 - i * 6 - dust),
+            groundY - 2 - ((clock * 10 + i * 3) | 0) % 3
+          );
+        }
+      }
+
       if (v.wheels === 0) {
-        blitFoot(ctx, SPR.ravi[Math.floor(clock * 8) % 2 ? 'walk1' : 'walk0'], S.travelX, 160);
+        const pose = this.rolling
+          ? (Math.floor(clock * 4) % 2 ? 'walk1' : 'walk0')
+          : 'idle';
+        blitFoot(ctx, SPR.ravi[pose], S.travelX, groundY);
       } else {
         const sprite = SPR.vehicle[v.id];
-        blit(ctx, sprite, Math.round(S.travelX - sprite.w / 2), 160 - sprite.h + bob);
-        blitFoot(ctx, SPR.ravi.wave, S.travelX, 160 - sprite.h + 12 + bob);
+        const vx = Math.round(S.travelX - sprite.w / 2);
+        const vy = groundY - sprite.h + bob;
+        blit(ctx, sprite, vx, vy);
+        // “Rodas girando”: tracinhos no aro
+        if (this.rolling) {
+          const spin = ((clock * 16) | 0) % 4;
+          pen.col(K.YEL_L);
+          const wy = groundY - 3 + bob;
+          for (let i = 0; i < Math.min(v.wheels, 6); i++) {
+            const wx = vx + 6 + Math.round((i * (sprite.w - 12)) / Math.max(1, Math.min(v.wheels, 6) - 1));
+            if (spin === i % 4) pen.px(wx, wy);
+          }
+        }
+        blitFoot(ctx, SPR.ravi.wave, S.travelX - 4, vy + 10);
       }
       if (v.wheels > 0) {
-        const pen = new Pen(ctx);
-        pen.col(K.BLACK).rect(8, 8, 54, 26);
-        pen.bevel(9, 9, 52, 24, K.CREAM, K.WHITE, K.GRAY_D);
-        F.text(ctx, 'RODAS', 13, 12, K.GRAY_XD);
-        F.text(ctx, String(v.wheels), 42, 14, K.RED, { scale: 2 });
+        pen.col(K.BLACK).rect(7, 27, 56, 30);
+        pen.bevel(8, 28, 54, 28, K.NAVY, K.BLU, K.NIGHT);
+        pen.col(K.OCHRE).hline(10, 29, 50);
+        F.text(ctx, 'RODAS', 14, 32, K.CYAN, { shadow: K.BLACK });
+        // Badge do número
+        pen.col(K.BLACK).rect(28, 40, 22, 14);
+        pen.bevel(29, 41, 20, 12, K.YEL, K.YEL_L, K.OCHRE);
+        const tw = F.measure(String(v.wheels), 2);
+        F.text(ctx, String(v.wheels), Math.round(39 - tw / 2), 42, K.RED, { scale: 2, shadow: K.SAND });
       }
+      if (this.spots) Sc.drawTravelSwap(ctx, this.spots, v.wheels);
     }
   },
 
@@ -446,19 +575,19 @@ const SCENES = {
         timeline.update(dt);
         return;
       }
-      S.lumpX += dt * (14 + S.mold * 5);
+      S.lumpX += dt * (7 + S.mold * 3);
       if (S.lumpX >= 238 && !this.finishing) {
         this.finishing = true;
         const tl = new Timeline();
-        tl.add(0.5, () => Audio.stamp());
-        tl.add(0.9, () => {
+        tl.add(0.6, () => Audio.stamp());
+        tl.add(1.1, () => {
           S.presentDone = true;
           if (!S.made.includes(S.present.id)) S.made.push(S.present.id);
           Audio.success();
           showFlash(TOYS.findIndex((t) => t.id === S.present.id) + 1);
           say(`Pronto! Um ${S.present.name} lindo para a festa!`);
         });
-        tl.add(2.4, null);
+        tl.add(3.4, null);
         tl.add(0.1, () => go(SCENES.crossroads));
         timeline = tl;
       }
@@ -480,21 +609,24 @@ const SCENES = {
       const shift = Math.floor(clock * 26) % 12;
       for (let x = 55 - shift; x < 247; x += 12) pen.vline(Math.max(55, x), 105, 12);
 
-      // Prensa no fim da esteira
+      // Prensa — pistão sobe/desce; bate forte ao carimbar
       pen.col(K.BLACK).rect(248, 26, 60, 78);
       pen.bevel(249, 27, 58, 76, K.GRAY, K.GRAY_L, K.GRAY_D);
       pen.col(K.CYAN).rect(257, 36, 42, 20);
       pen.col(K.BLACK).ellipse(269, 46, 5, 5).ellipse(287, 46, 5, 5);
       pen.col(K.WHITE).ellipse(269, 46, 3, 3).ellipse(287, 46, 3, 3);
       pen.col(K.BLACK).ellipse(269, 47, 1, 2).ellipse(287, 47, 1, 2);
-      const press = this.finishing ? 26 : 12;  // o pistão desce ao carimbar
+      const press = this.finishing
+        ? 12 + hop(clock, 10, 14)
+        : 10 + hop(clock, 1.2, 2);
       pen.col(K.BLACK).rect(258, 62, 40, press);
       pen.col(K.GRAY_D).rect(259, 62, 38, press - 1);
 
       // Massa / brinquedo na esteira
       const lump = Math.round(S.lumpX);
+      const lumpBob = hop(clock, 8, 1);
       if (S.presentDone && this.finishing) {
-        blitMid(ctx, SPR.toy[S.present.id], lump, 96);
+        blitMid(ctx, SPR.toy[S.present.id], lump, 96 - lumpBob);
       } else {
         pen.col(K.BLACK).ellipse(lump, 96, 10, 8);
         pen.col(K.GRAY).ellipse(lump, 96, 9, 7);
@@ -503,12 +635,13 @@ const SCENES = {
           // A massa vai virando o brinquedo conforme os números são apertados
           ctx.save();
           ctx.globalAlpha = S.mold / 9;
-          blitMid(ctx, SPR.toy[S.present.id], lump, 96);
+          blitMid(ctx, SPR.toy[S.present.id], lump, 96 - lumpBob);
           ctx.restore();
         }
       }
 
-      blitFoot(ctx, SPR.ravi.idle, 26, 158);
+      const raviBob = hop(clock, 2.8, 2);
+      blitFoot(ctx, S.mold > 0 ? SPR.ravi.wave : SPR.ravi.idle, 26, 158 - raviBob);
       Sc.drawMachinePanel(ctx, this.spots, S.mold);
     }
   },
@@ -527,19 +660,19 @@ const SCENES = {
       if (S.marketIdx >= FOODS.length) {
         this.spots = null;
         const tl = new Timeline();
-        tl.add(0.2, () => {
+        tl.add(0.3, () => {
           S.marketDone = true;
           Audio.success();
           say('Compras feitas! De volta à placa.');
         });
-        tl.add(2.4, null);
+        tl.add(3.2, null);
         tl.add(0.1, () => go(SCENES.crossroads));
         timeline = tl;
         return;
       }
       this.spots = Sc.quantitySpots();
       const item = FOODS[S.marketIdx];
-      say(`Quantos ${item.name.toLowerCase()} vamos levar? Aperte de 1 a 9.`);
+      say(`${item.how || 'Quantos'} ${item.ask || item.name.toLowerCase()} vamos levar? Aperte de 1 a 9.`);
     },
     update(dt) {
       if (timeline) timeline.update(dt);
@@ -556,9 +689,9 @@ const SCENES = {
       this.spots = null;
 
       const tl = new Timeline();
-      tl.add(0.3, () => say(`${n} ${item.name.toLowerCase()}!`));
+      tl.add(0.5, () => say(`${n} ${item.ask || item.name.toLowerCase()}!`));
       addCount(tl, n, null);
-      tl.add(0.1, () => {
+      tl.add(0.25, () => {
         S.marketIdx++;
         timeline = null;
         this.ask();
@@ -566,29 +699,26 @@ const SCENES = {
       timeline = tl;
     },
     draw(ctx) {
-      blitFoot(ctx, SPR.ravi.idle, 40, 160);
+      // Ravi empurra o carrinho; as compras ficam DENTRO do cesto
+      const push = hop(clock, 3.5, 1);
+      blitFoot(ctx, SPR.ravi.idle, 28, 158 - push);
+      Sc.drawShoppingCart(ctx, S.cart, 88, 158 - push, clock);
 
       if (S.marketIdx < FOODS.length) {
         const item = FOODS[S.marketIdx];
         const pen = new Pen(ctx);
-        // Vitrine com o produto da vez
-        pen.col(K.BLACK).rect(98, 26, 96, 76);
-        pen.bevel(99, 27, 94, 74, K.CREAM, K.WHITE, K.GRAY_D);
+        const pulse = hop(clock, 2.4, 2);
+        // Vitrine com moldura de madeira + vidro
+        pen.col(K.BLACK).rect(128, 16 - pulse, 76, 74);
+        pen.bevel(129, 17 - pulse, 74, 72, K.WOOD_D, K.OCHRE, K.GRAY_XD);
+        pen.col(K.CREAM).rect(133, 21 - pulse, 66, 48);
+        pen.col(K.WHITE).hline(134, 22 - pulse, 20);
+        pen.col(K.CYAN).rect(135, 23 - pulse, 62, 44);
         const sprite = SPR.food[item.id];
-        ctx.drawImage(sprite.canvas, 125, 34, sprite.w * 3, sprite.h * 3);
-        F.textCenter(ctx, item.name, 146, 88, K.GRAY_XD);
+        ctx.drawImage(sprite.canvas, 148, 28 - pulse, sprite.w * 3, sprite.h * 3);
+        pen.col(K.NAVY).rect(133, 70 - pulse, 66, 14);
+        F.textCenter(ctx, item.name, 166, 73 - pulse, K.YEL_L, { shadow: K.BLACK });
         if (this.spots) Sc.drawQuantityBoard(ctx, this.spots, 'QUANTOS?');
-      }
-
-      // Carrinho de compras já preenchido
-      let slot = 0;
-      for (const food of FOODS) {
-        const qty = S.cart[food.id] || 0;
-        for (let i = 0; i < qty && slot < 18; i++, slot++) {
-          const col = slot % 9;
-          const row = (slot / 9) | 0;
-          blitMid(ctx, SPR.food[food.id], 74 + col * 17, 128 + row * 18);
-        }
       }
     }
   },
@@ -648,10 +778,10 @@ const SCENES = {
       const hero = HEROES[idx];
       say(`Convite para ${hero.name}! O carteiro já está a caminho.`);
       const tl = new Timeline();
-      tl.add(0.4, () => { showFlash(idx + 1); Audio.note(idx); });
-      tl.add(2.6, null, (p) => { S.mailmanX = -40 + (W + 80) * easeOut(p); });
-      tl.add(0.2, () => { hideFlash(); Audio.pop(); });
-      tl.add(0.1, () => go(SCENES.post));
+      tl.add(0.5, () => { showFlash(idx + 1); Audio.note(idx); });
+      tl.add(3.2, null, (p) => { S.mailmanX = -40 + (W + 80) * easeOut(p); });
+      tl.add(0.35, () => { hideFlash(); Audio.pop(); });
+      tl.add(0.15, () => go(SCENES.post));
       timeline = tl;
     },
     update(dt) {
@@ -659,8 +789,10 @@ const SCENES = {
     },
     draw(ctx) {
       Sc.drawMailboxes(ctx, this.boxes, S);
-      blitFoot(ctx, SPR.misc.mailman, S.mailmanX, 164);
-      blit(ctx, SPR.misc.envelope, Math.round(S.mailmanX + 14), 118);
+      const bob = hop(clock, 11, 2);
+      const sway = wave(clock, 14, 1);
+      blitFoot(ctx, SPR.misc.mailman, S.mailmanX + sway, 164 - bob);
+      blit(ctx, SPR.misc.envelope, Math.round(S.mailmanX + 14 + sway), 118 - bob - hop(clock, 7, 1));
     }
   },
 
@@ -677,14 +809,14 @@ const SCENES = {
       say('Hora da festa! Vamos guardar a comida.');
 
       const tl = new Timeline();
-      tl.add(2.6, () => { S.fridgeFull = true; });
-      tl.add(0.2, () => say('Agora a faixa: SURPRESA!'));
-      tl.add(2.2, () => { S.bannerUp = true; });
+      tl.add(3.2, () => { S.fridgeFull = true; });
+      tl.add(0.3, () => say('Agora a faixa: SURPRESA!'));
+      tl.add(2.8, () => { S.bannerUp = true; });
       const balloons = Math.max(1, S.balloons);
-      tl.add(0.2, () => say(`Vamos pendurar ${balloons} balão${balloons > 1 ? 'ões' : ''}!`));
-      addCount(tl, balloons, (i) => { S.balloonsHung = i; });
-      tl.add(0.2, () => say('Shh... os convidados estão chegando!'));
-      tl.add(2.0, null);
+      tl.add(0.3, () => say(`Vamos pendurar ${balloons} balão${balloons > 1 ? 'ões' : ''}!`));
+      addCount(tl, balloons, (i) => { S.balloonsHung = i; }, 1.2);
+      tl.add(0.3, () => say('Shh... os convidados estão chegando!'));
+      tl.add(2.6, null);
       tl.add(0.1, () => go(SCENES.partyArrive));
       timeline = tl;
     },
@@ -694,7 +826,7 @@ const SCENES = {
     draw(ctx) {
       drawPartyBack(ctx);
       drawPartyFront(ctx);
-      blitFoot(ctx, SPR.ravi.wave, 46, 160);
+      blitFoot(ctx, SPR.ravi.wave, 46, 160 - hop(clock, 3.2, 2));
     }
   },
 
@@ -707,14 +839,14 @@ const SCENES = {
       S.guestX = layoutGuests(S.invited.length + 1);
       const tl = new Timeline();
       for (let i = 0; i < S.invited.length; i++) {
-        tl.add(0.55, () => { S.guestsIn = i + 1; Audio.pop(); });
+        tl.add(0.85, () => { S.guestsIn = i + 1; Audio.pop(); });
       }
-      tl.add(0.6, () => { S.guestsIn = S.invited.length + 1; Audio.click(); });
-      tl.add(0.3, () => {
+      tl.add(0.9, () => { S.guestsIn = S.invited.length + 1; Audio.click(); });
+      tl.add(0.4, () => {
         Audio.fanfare();
         say(`SURPRESA, ${honoree().name}!`);
       });
-      tl.add(3.4, null);
+      tl.add(4.2, null);
       tl.add(0.1, () => {
         if (boughtFoods().length === 0 || S.invited.length === 0) go(SCENES.partyEnd);
         else go(SCENES.partyServe);
@@ -728,12 +860,9 @@ const SCENES = {
       drawPartyBack(ctx);
       drawGuests(ctx);
       drawPartyFront(ctx);
-      blitFoot(ctx, SPR.ravi.cheer, 46, 160);
+      blitFoot(ctx, SPR.ravi.cheer, 46, 160 - hop(clock, 5.5, 4));
       if (S.guestsIn > S.invited.length) {
         Sc.drawConfetti(ctx, S.confetti, clock);
-        if (Math.floor(clock * 3) % 2 === 0) {
-          F.textCenter(ctx, 'SURPRESA!', 160, 74, K.YEL_L, { scale: 2, shadow: K.RED_D });
-        }
       }
     }
   },
@@ -743,7 +872,12 @@ const SCENES = {
     backdrop: 'party',
     spots: null,
     enter() {
+      // Mickey 123: cada convidado recebe CADA comida comprada
       S.serveIdx = 0;
+      S.servePlacing = 0;
+      S.serveHero = -1;
+      S.serveFoodId = null;
+      S.served = {};
       S.guestsIn = S.invited.length + 1;
       S.guestX = layoutGuests(S.invited.length + 1);
       this.spots = Sc.plateSpots();
@@ -751,18 +885,40 @@ const SCENES = {
     },
     ask() {
       const menu = boughtFoods();
-      if (S.serveIdx >= S.invited.length || menu.length === 0) {
+      const roster = partyRoster();
+      if (menu.length === 0 || roster.length === 0) {
         this.spots = null;
         const tl = new Timeline();
         tl.add(0.1, () => go(SCENES.partyEnd));
         timeline = tl;
         return;
       }
-      const hero = HEROES[S.invited[S.serveIdx]];
-      const food = menu[S.serveIdx % menu.length];
+      // Índice plano: convidado × comida (como no original)
+      const total = roster.length * menu.length;
+      if (S.serveIdx >= total) {
+        this.spots = null;
+        S.servePlacing = 0;
+        S.serveHero = -1;
+        S.serveFoodId = null;
+        const tl = new Timeline();
+        tl.add(0.8, () => say('Todo mundo servido! Que delícia!'));
+        tl.add(2.4, null);
+        tl.add(0.1, () => go(SCENES.partyEnd));
+        timeline = tl;
+        return;
+      }
+      const gi = (S.serveIdx / menu.length) | 0;
+      const fi = S.serveIdx % menu.length;
+      const heroIdx = roster[gi];
+      const hero = HEROES[heroIdx];
+      const food = menu[fi];
       this.food = food;
+      S.serveHero = heroIdx;
+      S.serveFoodId = food.id;
+      S.servePlacing = 0;
       this.spots = Sc.plateSpots();
-      say(`Quantos ${food.name.toLowerCase()} para ${hero.name}? Aperte de 1 a 9.`);
+      const how = food.how || 'Quantos';
+      say(`${how} ${food.ask || food.name.toLowerCase()} para ${hero.name}? Aperte de 1 a 9.`);
     },
     update(dt) {
       if (timeline) timeline.update(dt);
@@ -773,12 +929,25 @@ const SCENES = {
         Audio.bonk();
         return;
       }
-      const hero = HEROES[S.invited[S.serveIdx]];
+      const menu = boughtFoods();
+      const roster = partyRoster();
+      const gi = (S.serveIdx / menu.length) | 0;
+      const fi = S.serveIdx % menu.length;
+      const heroIdx = roster[gi];
+      const hero = HEROES[heroIdx];
+      const food = menu[fi];
       this.spots = null;
+
       const tl = new Timeline();
-      addCount(tl, n, null);
-      tl.add(0.9, () => say(`${n} para ${hero.name}!`));
-      tl.add(0.1, () => {
+      // Contagem um pouco mais ágil na festa (várias rodadas guest×comida)
+      addCount(tl, n, (i) => { S.servePlacing = i; }, 0.95);
+      tl.add(0.9, () => {
+        if (!S.served[heroIdx]) S.served[heroIdx] = {};
+        S.served[heroIdx][food.id] = n;
+        S.servePlacing = 0;
+        say(`${n} ${food.ask || food.name.toLowerCase()} para ${hero.name}!`);
+      });
+      tl.add(1.35, () => {
         S.serveIdx++;
         timeline = null;
         this.ask();
@@ -788,8 +957,9 @@ const SCENES = {
     draw(ctx) {
       drawPartyBack(ctx);
       drawGuests(ctx);
+      drawGuestMeals(ctx);
       drawPartyFront(ctx);
-      blitFoot(ctx, SPR.ravi.wave, 22, 158);
+      blitFoot(ctx, SPR.ravi.wave, 22, 158 - hop(clock, 3.6, 2));
       if (this.spots) Sc.drawPlates(ctx, this.spots, this.food);
     }
   },
@@ -803,12 +973,12 @@ const SCENES = {
       Audio.party();
       say('Que festa incrível! Os heróis dançam até a porta.');
       const tl = new Timeline();
-      tl.add(3.6, null, (p) => { this.leave = p; });
-      tl.add(0.2, () => {
+      tl.add(4.5, null, (p) => { this.leave = p; });
+      tl.add(0.3, () => {
         Audio.success();
         say('Obrigado por ajudar! Aperte um número para outra festa.');
       });
-      tl.add(1.2, null);
+      tl.add(2.0, null);
       tl.add(0.1, () => {
         this.done = true;
         // A tela inteira vira alvo de toque para recomeçar
@@ -828,14 +998,21 @@ const SCENES = {
     draw(ctx) {
       drawPartyBack(ctx);
       drawGuests(ctx, Math.round(this.leave * 210));
+      drawGuestMeals(ctx, Math.round(this.leave * 210));
       drawPartyFront(ctx);
-      blitFoot(ctx, SPR.ravi.cheer, 46, 160);
+      blitFoot(ctx, SPR.ravi.cheer, 46, 160 - hop(clock, 5.2, 3));
       Sc.drawConfetti(ctx, S.confetti, clock);
 
       if (this.done) {
         const pen = new Pen(ctx);
-        pen.col(K.BLACK).rect(48, 50, 224, 62);
-        pen.bevel(50, 52, 220, 58, K.NAVY, K.BLU, K.NIGHT);
+        pen.col(K.BLACK).rect(46, 48, 228, 66);
+        pen.bevel(48, 50, 224, 62, K.NAVY, K.BLU, K.NIGHT);
+        pen.col(K.OCHRE).frame(50, 52, 220, 58);
+        pen.col(K.YEL).frame(51, 53, 218, 56);
+        // Estrelas
+        for (const sx of [58, 258]) {
+          pen.col(K.YEL_L).px(sx, 58).px(sx - 1, 59).px(sx, 59).px(sx + 1, 59).px(sx, 60);
+        }
         F.textCenter(ctx, 'FESTA ENCERRADA!', 160, 62, K.YEL_L, { scale: 2, shadow: K.RED_D });
         if (Math.floor(clock * 1.5) % 2 === 0) {
           F.textCenter(ctx, 'APERTE UM NÚMERO PARA RECOMEÇAR', 160, 92, K.WHITE, { shadow: K.BLACK });
@@ -849,15 +1026,15 @@ const SCENES = {
    Desenho compartilhado da sala de festa
    -------------------------------------------------------------------------- */
 
-/* Os convidados ficam ATRÁS da mesa: pés na linha do tampo, para o corpo
-   aparecer inteiro e os pés sumirem por trás do móvel. Por isso a sala é
-   desenhada em duas camadas, com os heróis no meio. */
-const GUEST_FOOT_Y = 118;
+/* Convidados na FRENTE da mesa do cenário, bem grandes — antes ficavam
+   miudinhos atrás do tampo da foto e quase sumiam. */
+const GUEST_FOOT_Y = 142;
+const GUEST_SCALE = 1.75;
 
 function layoutGuests(count) {
   const xs = [];
-  const spread = Math.min(34, 292 / Math.max(count, 1));
-  const start = 160 - ((count - 1) * spread) / 2;
+  const spread = Math.min(48, 260 / Math.max(count, 1));
+  const start = 168 - ((count - 1) * spread) / 2;
   for (let i = 0; i < count; i++) xs.push(Math.round(start + i * spread));
   return xs;
 }
@@ -866,41 +1043,160 @@ function layoutGuests(count) {
 function drawPartyBack(ctx) {
   const pen = new Pen(ctx);
 
-  // Geladeira
-  pen.col(K.BLACK).rect(8, 60, 34, 68);
-  pen.col(K.WHITE).rect(9, 61, 32, 66);
-  pen.col(K.GRAY_L).hline(9, 94, 32);
-  pen.col(K.GRAY_D).rect(36, 70, 3, 16).rect(36, 100, 3, 16);
+  // Geladeira com as compras visíveis
+  pen.col(K.BLACK).rect(7, 58, 36, 72);
+  pen.bevel(8, 59, 34, 70, K.WHITE, K.GRAY_L, K.GRAY);
+  pen.col(K.GRAY_L).hline(10, 92, 28);
+  pen.col(K.CYAN).rect(12, 64, 20, 22); // vidro freezer
+  pen.col(K.WHITE).hline(13, 65, 8);
+  pen.col(K.GRAY_D).rect(37, 70, 3, 14).rect(37, 104, 3, 14);
   if (S.fridgeFull) {
-    pen.col(K.RED).rect(14, 66, 6, 6);
-    pen.col(K.GRN).rect(24, 66, 6, 6);
-    pen.col(K.YEL).rect(19, 76, 6, 6);
+    const foods = boughtFoods();
+    let slot = 0;
+    for (const food of foods) {
+      const col = slot % 2;
+      const row = (slot / 2) | 0;
+      blitMid(ctx, SPR.food[food.id], 16 + col * 12, 98 + row * 10);
+      slot++;
+    }
+    if (foods.length === 0) {
+      pen.col(K.RED).rect(14, 98, 5, 5);
+      pen.col(K.GRN).rect(22, 98, 5, 5);
+    }
   }
 
-  // Faixa SURPRESA
+  // Faixa SURPRESA — cordas + serrilha
   if (S.bannerUp) {
-    pen.col(K.BLACK).rect(96, 14, 128, 22);
-    pen.bevel(97, 15, 126, 20, K.YEL, K.YEL_L, K.OCHRE);
-    F.textCenter(ctx, 'SURPRESA!', 160, 21, K.RED, { shadow: K.SAND });
+    const pulse = S.guestsIn > S.invited.length && Math.floor(clock * 2) % 2 === 0;
+    const bw = pulse ? 168 : 136;
+    const bh = pulse ? 26 : 20;
+    const bx = Math.round((W - bw) / 2);
+    // Cordas
+    pen.col(K.CREAM).line(bx - 8, 2, bx, 8).line(bx + bw, 8, bx + bw + 8, 2);
+    pen.col(K.BLACK).rect(bx - 2, 4, bw + 4, bh + 4);
+    pen.bevel(bx, 6, bw, bh, pulse ? K.YEL_L : K.YEL, K.WHITE, K.OCHRE);
+    // Serrilha inferior
+    for (let i = 0; i < bw; i += 6) {
+      pen.col(K.OCHRE).px(bx + i + 2, 6 + bh);
+      pen.col(K.YEL).px(bx + i + 3, 6 + bh);
+    }
+    F.textCenter(ctx, 'SURPRESA!', 160, pulse ? 10 : 11, K.RED, {
+      scale: pulse ? 2 : 1,
+      shadow: K.SAND
+    });
   }
 
+  // Balões nas laterais, sem atravessar a faixa nem as cabeças
   Sc.drawBalloons(ctx, S.balloonsHung, clock);
 }
 
-/** Camada da frente: o que está apoiado sobre a mesa, na frente dos heróis. */
+/** Bolo e presente nas laterais — não cobrem o meio onde estão os convidados. */
 function drawPartyFront(ctx) {
-  blitFoot(ctx, SPR.misc.cake, 62, 125);
-  if (S.presentDone && S.present) blitFoot(ctx, SPR.misc.gift, 262, 125);
+  const cakeBob = hop(clock, 2.4, 2);
+  blitFoot(ctx, SPR.misc.cake, 48, 128 - cakeBob);
+  if (S.presentDone && S.present) {
+    const giftBob = hop(clock, 2.1, 2, 1);
+    blitFoot(ctx, SPR.misc.gift, 278, 128 - giftBob);
+  }
 }
 
-function drawGuests(ctx, offsetX = 0) {
+/** Pratos do buffet na frente de cada convidado — todas as comidas ficam visíveis. */
+function drawGuestMeals(ctx, offsetX = 0) {
+  const pen = new Pen(ctx);
+  const menu = boughtFoods();
   for (let i = 0; i < S.guestsIn && i < S.guestX.length; i++) {
     const isHonoree = i >= S.invited.length;
     const hi = isHonoree ? S.honoree : S.invited[i];
-    const dance = isHonoree && S.guestsIn > S.invited.length
-      ? Math.round(3 * Math.sin(clock * 7 + i))
-      : 0;
-    blitFoot(ctx, SPR.hero[HEROES[hi].id], S.guestX[i] + offsetX, GUEST_FOOT_Y + dance);
+    const x = S.guestX[i] + offsetX;
+    const plateY = GUEST_FOOT_Y - 2;
+    const active = S.serveHero === hi;
+
+    // Pratinho
+    pen.col(K.BLACK).ellipse(x + 1, plateY + 1, 15, 5);
+    pen.col(active ? K.YEL_L : K.GRAY_L).ellipse(x, plateY, 14, 4);
+    pen.col(K.CREAM).ellipse(x, plateY, 11, 3);
+    if (active) {
+      // Marcador “é a vez deste herói”
+      pen.col(K.RED).px(x, plateY - 10).px(x - 1, plateY - 9).px(x + 1, plateY - 9);
+    }
+
+    const bag = S.served[hi] || {};
+    let slot = 0;
+    for (const food of menu) {
+      let qty = bag[food.id] || 0;
+      // Contagem ao vivo do item atual
+      if (hi === S.serveHero && food.id === S.serveFoodId && S.servePlacing > 0) {
+        qty = S.servePlacing;
+      }
+      if (qty <= 0) continue;
+      const fx = x - 10 + (slot % 3) * 8;
+      const fy = plateY - 1 - ((slot / 3) | 0) * 8;
+      blitMid(ctx, SPR.food[food.id], fx, fy);
+      if (qty > 1) {
+        F.text(ctx, String(qty), fx + 3, fy - 7, K.RED, { shadow: K.WHITE });
+      }
+      slot++;
+    }
+  }
+}
+
+/** Desenha sprite apoiado pelos pés, com escala (convidados maiores na festa). */
+function blitFootScaled(ctx, sprite, x, y, scale) {
+  if (!sprite) return;
+  const w = Math.round(sprite.w * scale);
+  const h = Math.round(sprite.h * scale);
+  ctx.drawImage(sprite.canvas, (x - (w >> 1)) | 0, (y - h) | 0, w, h);
+}
+
+function drawGuests(ctx, offsetX = 0) {
+  const pen = new Pen(ctx);
+  for (let i = 0; i < S.guestsIn && i < S.guestX.length; i++) {
+    const isHonoree = i >= S.invited.length;
+    const hi = isHonoree ? S.honoree : S.invited[i];
+    const hero = HEROES[hi];
+    const sprite = SPR.hero[hero.id];
+    const phase = i * 1.7;
+    const dancing = S.guestsIn > S.invited.length;
+    // Dança: salto + balanço lateral, defasada por convidado
+    const danceY = dancing
+      ? hop(clock, isHonoree ? 6.5 : 5.2, isHonoree ? 6 : 4, phase)
+      : hop(clock, 2.2, 1, phase);
+    const sway = dancing ? wave(clock, 3.4, 3, phase) : 0;
+    const x = S.guestX[i] + offsetX + sway;
+    const footY = GUEST_FOOT_Y + danceY;
+    const h = Math.round((sprite?.h || 56) * GUEST_SCALE);
+
+    // Sombra que encolhe no salto
+    const shadowW = Math.max(6, Math.round(16 * GUEST_SCALE / 1.5) - (danceY >> 1));
+    pen.col(K.BLACK).ellipse(x, GUEST_FOOT_Y + 1, shadowW, 3);
+
+    blitFootScaled(ctx, sprite, x, footY, GUEST_SCALE);
+
+    // Plaquinha com o nome ACIMA da cabeça (apontando pra baixo)
+    const serving = S.serveHero === hi;
+    const tagY = Math.max(4, footY - h - 12);
+    const label = hero.short;
+    const tw = F.measure(label, 1);
+    const tagW = tw + 8;
+    const tagX = x - (tagW >> 1);
+    pen.col(K.BLACK).rect(tagX - 1, tagY - 1, tagW + 2, 12);
+    pen.bevel(tagX, tagY, tagW, 10,
+      serving || isHonoree ? K.YEL : K.NAVY,
+      serving || isHonoree ? K.YEL_L : K.BLU,
+      serving || isHonoree ? K.OCHRE : K.NIGHT);
+    // Setinha
+    pen.col(serving || isHonoree ? K.YEL : K.NAVY).px(x - 1, tagY + 10).px(x, tagY + 11).px(x + 1, tagY + 10);
+    F.text(ctx, label, x - (tw >> 1), tagY + 2,
+      serving || isHonoree ? K.RED : K.YEL_L,
+      { shadow: K.BLACK });
+
+    if (isHonoree && dancing) {
+      const crownY = footY - h + 2;
+      const twinkle = hop(clock, 8, 1);
+      pen.col(K.BLACK).rect(x - 8, crownY - 2 - twinkle, 16, 6);
+      pen.col(K.YEL).rect(x - 7, crownY - 1 - twinkle, 14, 4);
+      pen.col(K.YEL_L).px(x - 7, crownY - 3 - twinkle).px(x, crownY - 4 - twinkle).px(x + 7, crownY - 3 - twinkle);
+    }
   }
 }
 
@@ -948,7 +1244,7 @@ export function handleNumber(n) {
 export function update(dt) {
   clock += dt;
   if (S.flash !== null && S.flashPop < 1) {
-    S.flashPop = Math.min(1, S.flashPop + dt * 7);
+    S.flashPop = Math.min(1, S.flashPop + dt * 5);
   }
   if (scene && scene.update) scene.update(dt);
 }

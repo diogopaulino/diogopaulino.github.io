@@ -2,21 +2,23 @@
  * O drakkar do jogador e o guerreiro a bordo.
  *
  * Guarda a física da navegação (velocidade, deriva lateral, limites do rio),
- * a animação do casco sobre as ondas, os remos, o arremesso de machado e os
+ * a animação do casco sobre as ondas, os remos, os canhões de bordo e os
  * poderes temporários (escudo e fúria).
  */
 
 import * as THREE from 'three';
-import { buildLongship, buildWarrior } from './models.js';
+import { buildLongship, buildWarrior } from './models.js?v=12';
 import { waterHeight, waterSlope } from './water.js';
 import { centerX, halfWidth } from './river.js';
-import { BOAT, AXE } from './config.js';
+import { BOAT, CANNON } from './config.js?v=12';
 import { clamp, damp, lerp } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
+const tmpMuzzle = new THREE.Vector3();
+const tmpMuzzleWorld = new THREE.Vector3();
 
 export class Player {
-    constructor(scene) {
+    constructor(scene, quality = null) {
         this.root = new THREE.Group();
         scene.add(this.root);
 
@@ -28,7 +30,9 @@ export class Player {
             hullColor: 0x6b4429,
             sailBase: '#ded1b0',
             sailStripe: '#a02f2f',
-            emblem: 'cross'
+            emblem: 'cross',
+            lanternLight: quality?.id !== 'low',
+            cannons: true
         });
         ship.rotation.y = Math.PI;
         this.root.add(ship);
@@ -36,7 +40,8 @@ export class Player {
         this.parts = parts;
 
         const { group: warrior, parts: wParts } = buildWarrior({});
-        warrior.position.set(0, 0.32, -1.6);
+        // Pés no convés midship (sheer 0 − drop 0.26).
+        warrior.position.set(0, 0.95, -1.4);
         ship.add(warrior);
         this.warrior = warrior;
         this.wParts = wParts;
@@ -167,15 +172,19 @@ export class Player {
         const wy = waterHeight(this.x, this.z, time);
         waterSlope(this.x, this.z, time, tmpSlope);
 
-        this.root.position.set(this.x, wy + 0.62, this.z);
+        this.root.position.set(this.x, wy + 0.95, this.z);
 
         const steerYaw = clamp(-this.lateral / BOAT.strafeSpeed, -1, 1) * 0.26;
         this.yaw = damp(this.yaw, steerYaw, 6, dt);
-        this.roll = damp(this.roll, steerYaw * 1.5 - tmpSlope.dx * 1.4, 5, dt);
+        this.roll = damp(this.roll, clamp(steerYaw * 1.5 - tmpSlope.dx * 1.4, -0.22, 0.22), 5, dt);
 
         this.root.rotation.y = this.yaw;
         this.root.rotation.z = this.roll;
-        this.root.rotation.x = tmpSlope.dz * 1.1 + Math.sin(time * 1.3) * 0.012;
+        this.root.rotation.x = clamp(
+            tmpSlope.dz * 1.1 + Math.sin(time * 1.3) * 0.012,
+            -0.14,
+            0.14
+        );
 
         // --- remos ---
         const rowSpeed = 2.2 + (this.speed / BOAT.boostSpeed) * 3.4;
@@ -206,8 +215,8 @@ export class Player {
             this.wParts.torso.rotation.y = damp(this.wParts.torso.rotation.y, 0, 6, dt);
         }
 
-        // Machado da mão some enquanto está em voo.
-        this.wParts.axe.visible = this.throwTimer < (this.hasFury ? BOAT.furyCooldown : BOAT.throwCooldown) * 0.45;
+        // Ordem de fogo — braço aponta, canhão responde.
+        this.wParts.axe.visible = true;
 
         // --- lanterna e brasas ---
         if (this.parts.lanternFlame) {
@@ -215,14 +224,20 @@ export class Player {
             this.parts.lanternFlame.scale.set(s, s * 1.35, s);
         }
 
-        // --- espuma da proa e esteira ---
+        // --- espuma da proa e esteira (fora do casco, nunca sobre o convés) ---
         const speedRatio = this.speed / BOAT.boostSpeed;
-        effects.wake.push(this.x, this.z + 6.5, 1.5 + speedRatio * 1.4, 0.55 + speedRatio * 0.45);
+        const sternZ = this.z + 9.2;
+        effects.wake.push(this.x - 1.1, sternZ, 1.35 + speedRatio * 1.1, 0.55 + speedRatio * 0.4);
+        effects.wake.push(this.x + 1.1, sternZ, 1.35 + speedRatio * 1.1, 0.55 + speedRatio * 0.4);
 
-        if (Math.random() < 0.4 + speedRatio * 0.35) {
-            const bowX = this.x + Math.sin(this.yaw) * 6.5;
-            const bowZ = this.z - 6.8;
-            effects.splash(bowX, wy + 0.1, bowZ, 1, 0.3 + speedRatio * 0.35);
+        if (Math.random() < 0.22 + speedRatio * 0.22) {
+            const bowX = this.x + Math.sin(this.yaw) * 7.2;
+            const bowZ = this.z - 7.6;
+            effects.splash(bowX, wy + 0.05, bowZ, 1, 0.22 + speedRatio * 0.22);
+        }
+        if (Math.random() < 0.1 + speedRatio * 0.12) {
+            const side = Math.random() < 0.5 ? -1 : 1;
+            effects.splash(this.x + side * 3.4, wy + 0.02, this.z + 8.6, 1, 0.14 + speedRatio * 0.14);
         }
 
         // --- temporizadores ---
@@ -262,21 +277,137 @@ export class Player {
         return this.alive && this.throwTimer <= 0;
     }
 
-    /** Lança o machado a partir da mão do guerreiro. */
-    throwAxe(entities, ctx) {
+    /** Frente do navio no plano XZ (mundo). */
+    forwardXZ() {
+        return { x: Math.sin(this.yaw), z: -Math.cos(this.yaw) };
+    }
+
+    /** Alvo atual sob a mira automática (cone largo à frente). */
+    getAimLock(entities) {
+        const fwd = this.forwardXZ();
+        return entities.findCannonTarget(
+            this.x,
+            this.position.y + 1.4,
+            this.z,
+            fwd.x,
+            fwd.z
+        );
+    }
+
+    /**
+     * Dispara canhão com mira automática (estilo jogos de navio).
+     * Um botão: trava o melhor alvo no cone e escolhe o canhão certo.
+     * Em fúria: salva de bordo no mesmo lado.
+     */
+    fireCannons(entities, ctx) {
         if (!this.canThrow()) return false;
         this.throwTimer = this.hasFury ? BOAT.furyCooldown : BOAT.throwCooldown;
         this.throwAnim = 1;
 
-        const origin = new THREE.Vector3();
-        this.wParts.armR.getWorldPosition(origin);
+        const fwd = this.forwardXZ();
+        const target = entities.findCannonTarget(
+            this.x,
+            this.position.y + 1.4,
+            this.z,
+            fwd.x,
+            fwd.z
+        );
+        this._lastLock = target;
 
-        // Mira: levemente à frente, seguindo a inclinação do barco.
-        const dirX = Math.sin(this.yaw) * 0.55 + (ctx?.aimX ?? 0);
-        const dir = new THREE.Vector3(dirX, 0, -1).normalize();
+        let aimX = fwd.x;
+        let aimZ = fwd.z;
+        let aimY = this.position.y + 2.2;
+        if (target) {
+            aimX = target.x - this.x;
+            aimZ = target.z - this.z;
+            aimY = target.y;
+        } else {
+            // Sem trava: tiro curto à frente (ainda útil contra o que surgir).
+            aimX = fwd.x * 0.35 + (ctx?.input?.steer ?? 0) * 0.55;
+            aimZ = fwd.z;
+            aimY = this.position.y + 3.5;
+        }
+        const aimLen = Math.hypot(aimX, aimZ) || 1;
+        aimX /= aimLen;
+        aimZ /= aimLen;
 
-        entities.throwAxe(origin.x, origin.y + 0.3, origin.z - 1.2, dir.x, dir.z, AXE.speed);
-        return true;
+        // Lado no espaço local do modelo (já rotacionado 180° → inverte X mundo).
+        const rightX = Math.cos(this.yaw);
+        const rightZ = Math.sin(this.yaw);
+        const sideDot = aimX * rightX + aimZ * rightZ;
+        const preferSide = Math.abs(sideDot) < 0.25 ? 0 : sideDot > 0 ? -1 : 1;
+
+        const guns = this.parts.cannons || [];
+        const selected = [];
+        if (preferSide === 0) {
+            const bow = guns.find((g) => g.userData.aim === 'bow');
+            if (bow) selected.push(bow);
+        } else {
+            for (const gun of guns) {
+                if (gun.userData.aim === 'bow') continue;
+                if (gun.userData.side === preferSide) selected.push(gun);
+            }
+            // Ordena pela proximidade Z ao alvo — canhão do meio primeiro.
+            if (target && selected.length > 1) {
+                selected.sort((a, b) => {
+                    a.getWorldPosition(tmpMuzzle);
+                    const da = Math.hypot(target.x - tmpMuzzle.x, target.z - tmpMuzzle.z);
+                    b.getWorldPosition(tmpMuzzleWorld);
+                    const db = Math.hypot(target.x - tmpMuzzleWorld.x, target.z - tmpMuzzleWorld.z);
+                    return da - db;
+                });
+            }
+        }
+        if (!selected.length) {
+            const bow = guns.find((g) => g.userData.aim === 'bow');
+            if (bow) selected.push(bow);
+            else if (guns[0]) selected.push(guns[0]);
+        }
+        const toFire = this.hasFury ? selected : selected.slice(0, 1);
+        const speed = CANNON.speed * (this.hasFury ? 1.08 : 1);
+        let fired = 0;
+
+        for (let i = 0; i < toFire.length; i++) {
+            const gun = toFire[i];
+            tmpMuzzle.copy(gun.userData.muzzleLocal);
+            gun.localToWorld(tmpMuzzle);
+            tmpMuzzleWorld.copy(tmpMuzzle);
+
+            let dirX = aimX;
+            let dirZ = aimZ;
+            if (target) {
+                dirX = target.x - tmpMuzzleWorld.x;
+                dirZ = target.z - tmpMuzzleWorld.z;
+            }
+            const dLen = Math.hypot(dirX, dirZ) || 1;
+            dirX /= dLen;
+            dirZ /= dLen;
+
+            const dist = target ? Math.hypot(target.x - tmpMuzzleWorld.x, target.z - tmpMuzzleWorld.z) : 55;
+            const dy = (target ? target.y : aimY) - tmpMuzzleWorld.y;
+            const tFlight = dist / speed;
+            let loft = dy / Math.max(0.2, tFlight) + 0.5 * CANNON.gravity * tFlight;
+            loft = clamp(loft, 4.5, 28);
+
+            // Pequeno atraso entre bocas na salva.
+            const stagger = i * 0.04;
+            const ox = tmpMuzzleWorld.x + dirX * stagger * speed * 0.15;
+            const oz = tmpMuzzleWorld.z + dirZ * stagger * speed * 0.15;
+
+            if (entities.fireShot(ox, tmpMuzzleWorld.y, oz, dirX, dirZ, speed, loft)) {
+                fired += 1;
+                ctx.effects.explosion(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, 0.22, 0.12);
+                ctx.effects.smokePuff(tmpMuzzleWorld.x, tmpMuzzleWorld.y + 0.2, tmpMuzzleWorld.z, 5, 0.85);
+                ctx.effects.fire(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, 2, 0.9);
+            }
+        }
+
+        return fired > 0;
+    }
+
+    /** @deprecated use fireCannons */
+    throwAxe(entities, ctx) {
+        return this.fireCannons(entities, ctx);
     }
 
     damage(amount, ctx) {

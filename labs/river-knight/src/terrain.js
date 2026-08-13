@@ -102,8 +102,10 @@ export function createTerrain(quality) {
                     col *= 0.78 + n1 * 0.38;
                     col *= 0.94 + n2 * 0.12;
 
-                    // Linha úmida junto à água.
-                    col *= mix(0.55, 1.0, smoothstep(-0.6, 1.1, h));
+                    // Faixa úmida / areia molhada junto à água.
+                    float wet = (1.0 - smoothstep(0.0, 1.55, h)) * smoothstep(-1.4, 0.35, h);
+                    col = mix(col, sand * vec3(0.52, 0.48, 0.40), wet * 0.55);
+                    col *= mix(0.42, 1.0, smoothstep(-0.35, 1.55, h));
                     return col;
                 }
                 `

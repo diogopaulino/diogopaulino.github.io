@@ -133,9 +133,20 @@ export function updateCloth(time) {
 /* Casco                                                               */
 /* ------------------------------------------------------------------ */
 
+/** Perfil do casco em t ∈ [-1, 1] (−1 popa, +1 proa). */
+function hullShapeAt(t, { length = 15, beam = 3.6, depth = 1.6, rise = 1.9 } = {}) {
+    const taper = Math.pow(Math.max(0, 1 - t * t), 0.42);
+    return {
+        hw: Math.max(0.09, (beam / 2) * taper),
+        dep: depth * (0.55 + 0.45 * taper),
+        sheer: rise * Math.pow(Math.abs(t), 2.6),
+        z: (t * length) / 2
+    };
+}
+
 /**
- * Gera o casco por seções transversais.
- * @param {object} o dimensões do barco
+ * Gera só a casca do casco (loft em U). O convés é mesh separada —
+ * ver `buildDeckGeometry`.
  */
 export function buildHullGeometry({
     length = 15,
@@ -148,21 +159,11 @@ export function buildHullGeometry({
     const positions = [];
     const uvs = [];
     const indices = [];
-
-    const shapeAt = (t) => {
-        // t ∈ [-1, 1]: -1 popa, +1 proa.
-        const taper = Math.pow(Math.max(0, 1 - t * t), 0.42);
-        return {
-            hw: Math.max(0.09, (beam / 2) * taper),
-            dep: depth * (0.55 + 0.45 * taper),
-            sheer: rise * Math.pow(Math.abs(t), 2.6),
-            z: (t * length) / 2
-        };
-    };
+    const dims = { length, beam, depth, rise };
 
     for (let r = 0; r <= rings; r++) {
         const t = (r / rings) * 2 - 1;
-        const { hw, dep, sheer, z } = shapeAt(t);
+        const { hw, dep, sheer, z } = hullShapeAt(t, dims);
         for (let a = 0; a <= arcSteps; a++) {
             const s = a / arcSteps;
             const ang = -Math.PI / 2 + s * Math.PI;
@@ -184,22 +185,76 @@ export function buildHullGeometry({
         }
     }
 
-    // Convés: liga bordo a bordo um pouco abaixo da amurada.
-    const deckStart = positions.length / 3;
+    // Tampas da proa e da popa — fecham o U para a câmera não ver a água
+    // através do túnel do casco.
+    const midArc = Math.floor(arcSteps / 2);
+    for (const end of [0, rings]) {
+        const base = end * perRing;
+        const keel = base + midArc;
+        // Fan a partir da quilha cobrindo o arco (normals para fora do barco).
+        for (let a = 0; a < arcSteps; a++) {
+            const iA = base + a;
+            const iB = base + a + 1;
+            if (end === 0) indices.push(keel, iB, iA); // popa (−Z): normal −Z
+            else indices.push(keel, iA, iB); // proa (+Z): normal +Z
+        }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    return geo;
+}
+
+/**
+ * Convés com espessura e normals para cima (visível da câmera de perseguição).
+ * Topo em sheer − drop; fundo em topo − thickness.
+ */
+export function buildDeckGeometry({
+    length = 15,
+    beam = 3.6,
+    rise = 1.9,
+    rings = 28,
+    drop = 0.28,
+    thickness = 0.14,
+    inset = 0.995
+} = {}) {
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    const dims = { length, beam, rise };
+
+    // Ordem por anel: L-top, R-top, L-bot, R-bot.
     for (let r = 0; r <= rings; r++) {
         const t = (r / rings) * 2 - 1;
-        const { hw, sheer, z } = shapeAt(t);
-        const y = sheer - 0.42;
-        positions.push(-hw * 0.94, y, z, hw * 0.94, y, z);
-        uvs.push(0, (r / rings) * 3.2, 1, (r / rings) * 3.2);
+        const { hw, sheer, z } = hullShapeAt(t, dims);
+        const x = Math.max(0.08, hw * inset);
+        const yTop = sheer - drop;
+        const yBot = yTop - thickness;
+        const v = (r / rings) * 3.2;
+        positions.push(-x, yTop, z, x, yTop, z, -x, yBot, z, x, yBot, z);
+        uvs.push(0, v, 1, v, 0, v, 1, v);
     }
+
     for (let r = 0; r < rings; r++) {
-        const i0 = deckStart + r * 2;
-        const i1 = i0 + 1;
-        const i2 = i0 + 2;
-        const i3 = i0 + 3;
-        indices.push(i0, i1, i2, i1, i3, i2);
+        const b = r * 4;
+        const n = b + 4;
+        // Topo: winding CCW visto de cima → normal +Y.
+        indices.push(b, n, b + 1, b + 1, n, n + 1);
+        // Fundo: normal −Y.
+        indices.push(b + 2, b + 3, n + 2, b + 3, n + 3, n + 2);
+        // Bordas laterais (fecha a espessura).
+        indices.push(b, b + 2, n, n, b + 2, n + 2);
+        indices.push(b + 1, n + 1, b + 3, b + 3, n + 1, n + 3);
     }
+
+    // Tampas do convés nas pontas.
+    const last = rings * 4;
+    indices.push(0, 1, 3, 0, 3, 2);
+    indices.push(last, last + 3, last + 1, last, last + 2, last + 3);
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -262,16 +317,187 @@ export function buildLongship({
     shields = true,
     oars = true,
     dragon = true,
-    lantern = true
+    lantern = true,
+    lanternLight = true,
+    cannons = false
 } = {}) {
     const group = new THREE.Group();
-    const parts = { oars: [], shields: [], lights: [] };
+    const parts = { oars: [], shields: [], lights: [], cannons: [] };
+    const deckDrop = 0.22;
+    const deckThickness = 0.18;
 
-    const hull = new THREE.Mesh(buildHullGeometry({ length, beam }), woodMaterial(false, hullColor));
+    const hull = new THREE.Mesh(buildHullGeometry({ length, beam }), woodMaterial(false, hullColor).clone());
     hull.castShadow = true;
     hull.receiveShadow = true;
+    hull.material.side = THREE.DoubleSide;
+    hull.material.color.multiplyScalar(0.88);
     group.add(hull);
     parts.hull = hull;
+
+    // Porão sólido que segue o afilamento do casco — a água nunca “entra”.
+    const bilgeMat = new THREE.MeshStandardMaterial({
+        color: 0x120d09,
+        roughness: 1,
+        metalness: 0,
+        flatShading: false
+    });
+    const bilgeRoot = new THREE.Group();
+    bilgeRoot.raycast = () => {};
+    const bilgeSegs = 14;
+    for (let i = 0; i < bilgeSegs; i++) {
+        const t0 = -0.98 + (i / bilgeSegs) * 1.96;
+        const t1 = -0.98 + ((i + 1) / bilgeSegs) * 1.96;
+        const t = (t0 + t1) * 0.5;
+        const { hw, dep, sheer, z } = hullShapeAt(t, { length, beam });
+        const topY = sheer - deckDrop + 0.06;
+        const botY = sheer - dep * 0.98 - 0.08;
+        const h = Math.max(0.55, topY - botY);
+        const segLen = Math.abs(((t1 - t0) * length) / 2) * 1.08;
+        const plug = new THREE.Mesh(
+            new THREE.BoxGeometry(Math.max(0.28, hw * 2.08), h, segLen),
+            bilgeMat
+        );
+        plug.position.set(0, (topY + botY) * 0.5, z);
+        plug.raycast = () => {};
+        bilgeRoot.add(plug);
+    }
+    group.add(bilgeRoot);
+    parts.bilge = bilgeRoot;
+
+    // Convés separado: madeira escura, espesso, normals para cima.
+    const deckMat = woodMaterial(true, 0x6a4a32).clone();
+    deckMat.polygonOffset = true;
+    deckMat.polygonOffsetFactor = 1;
+    deckMat.polygonOffsetUnits = 1;
+    const deck = new THREE.Mesh(
+        buildDeckGeometry({
+            length,
+            beam,
+            drop: deckDrop,
+            thickness: Math.max(deckThickness, 0.26),
+            inset: 0.992
+        }),
+        deckMat
+    );
+    deck.castShadow = true;
+    deck.receiveShadow = true;
+    group.add(deck);
+    parts.deck = deck;
+
+    // Ripas do piso — leitura de prancha, fecha visualmente o vão residual.
+    const plankMat = woodMaterial(true, 0x4a3222);
+    for (let i = -2; i <= 2; i++) {
+        if (i === 0) continue;
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, length * 0.82), plankMat);
+        plank.position.set(i * beam * 0.14, -deckDrop + 0.02, 0);
+        group.add(plank);
+    }
+
+    // Anteparas na proa/popa (bem nas pontas) — bloqueiam o túnel para a água.
+    const bulkMat = woodMaterial(true, 0x2e1c12);
+    for (const t of [-0.94, -0.55, 0.55, 0.94]) {
+        const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
+        const deckY = sheer - deckDrop;
+        const bilge = sheer - dep * 0.85;
+        const h = Math.max(0.55, deckY - bilge + 0.35);
+        const bulk = new THREE.Mesh(new THREE.BoxGeometry(hw * 1.85, h, 0.11), bulkMat);
+        bulk.position.set(0, bilge + h * 0.5, z);
+        bulk.castShadow = true;
+        group.add(bulk);
+    }
+
+    // Espelho de popa/proa — a câmera de perseguição olha para dentro do U;
+    // sem painel sólido a água atravessa o casco.
+    for (const t of [-0.995, 0.995]) {
+        const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
+        const bilge = sheer - dep;
+        const h = Math.max(1.15, sheer - bilge + 0.6);
+        const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(Math.max(0.65, hw * 2.15), h, 0.2),
+            bulkMat
+        );
+        panel.position.set(0, bilge + h * 0.52, z);
+        panel.castShadow = true;
+        group.add(panel);
+    }
+
+    // Plataforma de popa (guerreiro) — fecha o túnel que a câmera vê.
+    {
+        const sternMat = woodMaterial(true, 0x4a3222);
+        const sternDark = woodMaterial(true, 0x2a1a12);
+
+        // Bloco único da quilha ao peitoril, da popa até midships.
+        // Centro alto o bastante para o topo ficar acima da linha d'água.
+        const sternPlug = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 0.98, 2.4, length * 0.52),
+            sternDark
+        );
+        sternPlug.position.set(0, 0.05, -length * 0.24);
+        sternPlug.raycast = () => {};
+        group.add(sternPlug);
+
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 0.98, 0.32, length * 0.52),
+            sternMat
+        );
+        platform.position.set(0, -deckDrop + 0.55, -length * 0.2);
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        group.add(platform);
+        parts.sternPlatform = platform;
+
+        // Convés elevado contínuo (leitura de madeira, não de vazio).
+        const aftDeck = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 1.0, 0.18, length * 0.54),
+            woodMaterial(true, 0x5c3d28)
+        );
+        aftDeck.position.set(0, -deckDrop + 0.7, -length * 0.18);
+        aftDeck.receiveShadow = true;
+        group.add(aftDeck);
+
+        const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 0.96, 0.48, 0.18),
+            woodMaterial(true, 0x3a2618)
+        );
+        rail.position.set(0, -deckDrop + 0.98, -length * 0.44);
+        group.add(rail);
+
+        for (const side of [-1, 1]) {
+            const cheek = new THREE.Mesh(
+                new THREE.BoxGeometry(0.22, 1.35, length * 0.5),
+                woodMaterial(true, 0x3a2618)
+            );
+            cheek.position.set(side * beam * 0.46, -deckDrop + 0.35, -length * 0.2);
+            group.add(cheek);
+        }
+
+        // Tampa de popa alta — silhueta fechada vista da câmera de perseguição.
+        const transom = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 0.98, 1.75, 0.32),
+            woodMaterial(true, 0x2e1c12)
+        );
+        transom.position.set(0, 0.15, -length * 0.48);
+        transom.castShadow = true;
+        group.add(transom);
+    }
+
+    // Sombra de contato na superfície da água (o corpo d'água é opaco).
+    // root.y ≈ water + 0.42 → y local ≈ −0.36 fica logo acima da água.
+    const contact = new THREE.Mesh(
+        new THREE.CircleGeometry(beam * 0.42, 20),
+        new THREE.MeshBasicMaterial({
+            color: 0x030a12,
+            transparent: true,
+            opacity: 0.38,
+            depthWrite: false
+        })
+    );
+    contact.rotation.x = -Math.PI / 2;
+    contact.position.y = -0.36;
+    contact.scale.set(1.2, 3.1, 1);
+    contact.renderOrder = 3;
+    group.add(contact);
+    parts.contactShadow = contact;
 
     // Amurada (borda superior) — dois "trilhos" curvos de madeira escura.
     const railMat = woodMaterial(true, hullColor);
@@ -280,10 +506,8 @@ export function buildLongship({
         const pts = [];
         for (let i = 0; i <= railSteps; i++) {
             const t = (i / railSteps) * 2 - 1;
-            const taper = Math.pow(Math.max(0, 1 - t * t), 0.42);
-            const hw = Math.max(0.09, (beam / 2) * taper);
-            const sheer = 1.9 * Math.pow(Math.abs(t), 2.6);
-            pts.push(new THREE.Vector3(side * hw, sheer + 0.03, (t * length) / 2));
+            const { hw, sheer, z } = hullShapeAt(t, { length, beam });
+            pts.push(new THREE.Vector3(side * hw, sheer + 0.03, z));
         }
         const rail = new THREE.Mesh(
             new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), railSteps, 0.11, 6, false),
@@ -297,6 +521,40 @@ export function buildLongship({
     const keel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, length * 0.98), railMat);
     keel.position.y = -1.35;
     group.add(keel);
+
+    // Faixa molhada na linha d'água (leitura do casco contra a água).
+    const waterlineMat = woodMaterial(true, 0x2a1a12);
+    for (const side of [-1, 1]) {
+        const pts = [];
+        for (let i = 0; i <= 20; i++) {
+            const t = (i / 20) * 2 - 1;
+            const { hw, z } = hullShapeAt(t, { length, beam });
+            pts.push(new THREE.Vector3(side * hw * 1.01, -0.95, z));
+        }
+        const band = new THREE.Mesh(
+            new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.07, 5, false),
+            waterlineMat
+        );
+        group.add(band);
+    }
+
+    // Costelas internas (poucas, só para volume).
+    const ribMat = woodMaterial(true, 0x2e1d14);
+    const ribCount = 5;
+    for (let i = 0; i < ribCount; i++) {
+        const t = -0.55 + (i / (ribCount - 1)) * 1.1;
+        const { hw, sheer, z } = hullShapeAt(t, { length, beam });
+        const deckY = sheer - deckDrop;
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(hw * 1.7, 0.08, 0.1), ribMat);
+        rib.position.set(0, deckY - 0.04, z);
+        group.add(rib);
+        const postL = new THREE.Mesh(new THREE.BoxGeometry(0.07, Math.max(0.2, sheer - deckY + 0.15), 0.07), ribMat);
+        postL.position.set(-hw * 0.88, (sheer + deckY) * 0.5, z);
+        group.add(postL);
+        const postR = postL.clone();
+        postR.position.x = hw * 0.88;
+        group.add(postR);
+    }
 
     if (dragon) {
         const head = buildDragonHead(hullColor);
@@ -312,13 +570,15 @@ export function buildLongship({
         group.add(tail);
     }
 
-    // Bancos de remo.
+    // Bancos de remo assentados no convés.
     const benchMat = woodMaterial(true, hullColor);
     const benchCount = 4;
     for (let i = 0; i < benchCount; i++) {
         const t = -0.5 + (i / (benchCount - 1)) * 1.0;
+        const { sheer, z } = hullShapeAt(t, { length, beam });
+        const deckY = sheer - deckDrop;
         const bench = new THREE.Mesh(new THREE.BoxGeometry(beam * 0.78, 0.12, 0.42), benchMat);
-        bench.position.set(0, 0.05, (t * length) / 2);
+        bench.position.set(0, deckY + 0.06, z);
         bench.castShadow = true;
         group.add(bench);
     }
@@ -427,6 +687,76 @@ export function buildLongship({
         }
     }
 
+    if (cannons) {
+        const bronze = metalMaterial(0x8f7340, 0.48);
+        const dark = metalMaterial(0x2e2924, 0.58);
+        const wood = woodMaterial(true, 0x4a3220);
+
+        const makeGun = (side, aim = 'broadside') => {
+            const gun = new THREE.Group();
+            const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.32, 0.48), wood);
+            carriage.position.y = -0.02;
+            gun.add(carriage);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.08, 10);
+            for (const wx of [-0.22, 0.22]) {
+                const wheel = new THREE.Mesh(wheelGeo, dark);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(wx, -0.18, 0.18);
+                gun.add(wheel);
+            }
+
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.145, 1.7, 12), bronze);
+            barrel.castShadow = true;
+            if (aim === 'bow') {
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.set(0, 0.18, 0.55);
+            } else {
+                barrel.rotation.z = Math.PI / 2;
+                barrel.rotation.y = side > 0 ? -0.08 : 0.08;
+                barrel.position.set(side * 0.42, 0.16, 0);
+            }
+            gun.add(barrel);
+
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.028, 6, 14), dark);
+            if (aim === 'bow') {
+                ring.position.set(0, 0.18, 1.35);
+            } else {
+                ring.rotation.y = Math.PI / 2;
+                ring.position.set(side * 1.22, 0.16, 0);
+            }
+            gun.add(ring);
+
+            gun.userData.side = side;
+            gun.userData.aim = aim;
+            gun.userData.muzzleLocal =
+                aim === 'bow'
+                    ? new THREE.Vector3(0, 0.2, 1.45)
+                    : new THREE.Vector3(side * 1.28, 0.18, 0);
+            return gun;
+        };
+
+        for (const side of [-1, 1]) {
+            for (let i = 0; i < 3; i++) {
+                const t = -0.34 + (i / 2) * 0.66;
+                const { hw, sheer, z } = hullShapeAt(t, { length, beam });
+                const gun = makeGun(side, 'broadside');
+                gun.position.set(side * (hw * 0.62), sheer - deckDrop + 0.22, z);
+                group.add(gun);
+                parts.cannons.push(gun);
+            }
+        }
+
+        // Canhão de proa — alvos à frente do rio.
+        {
+            const { sheer, z } = hullShapeAt(0.72, { length, beam });
+            const bowGun = makeGun(0, 'bow');
+            bowGun.position.set(0, sheer - deckDrop + 0.12, z);
+            group.add(bowGun);
+            parts.cannons.push(bowGun);
+        }
+    }
+
     if (lantern) {
         const lanternGroup = new THREE.Group();
         const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.42, 8), metalMaterial(0x6b6257, 0.5));
@@ -436,14 +766,16 @@ export function buildLongship({
             plainMaterial(0xffd08a, 0.3, 0, 0xff9a3c, 1.4)
         );
         lanternGroup.add(flame);
-        const light = new THREE.PointLight(0xffa54a, 2.2, 9, 2);
-        light.position.y = 0.1;
-        lanternGroup.add(light);
+        if (lanternLight) {
+            const light = new THREE.PointLight(0xffa54a, 2.2, 9, 2);
+            light.position.y = 0.1;
+            lanternGroup.add(light);
+            parts.lights.push(light);
+        }
         lanternGroup.position.set(0, 1.85, -length / 2 + 0.9);
         group.add(lanternGroup);
         parts.lantern = lanternGroup;
         parts.lanternFlame = flame;
-        parts.lights.push(light);
     }
 
     group.userData.parts = parts;
@@ -617,6 +949,14 @@ export function buildAxeMesh(scale = 1) {
         c.castShadow = true;
     });
     return group;
+}
+
+/** Bala de canhão — projétil principal do jogador. */
+export function buildCannonballMesh(scale = 1) {
+    const mat = metalMaterial(0x2a2c30, 0.55);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.28 * scale, 12, 10), mat);
+    ball.castShadow = true;
+    return ball;
 }
 
 /** Flecha incendiária dos inimigos. */

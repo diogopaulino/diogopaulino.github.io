@@ -108,8 +108,8 @@ export function createWater(skyUniforms, quality) {
         uFoam: { value: foamTexture() },
         uFogColor: { value: new THREE.Color(0.7, 0.7, 0.75) },
         uFogDensity: { value: quality.fogDensity },
-        uShallow: { value: new THREE.Color(0.15, 0.33, 0.29) },
-        uDeep: { value: new THREE.Color(0.022, 0.062, 0.095) }
+        uShallow: { value: new THREE.Color(0.22, 0.44, 0.36) },
+        uDeep: { value: new THREE.Color(0.01, 0.03, 0.06) }
     };
 
     const material = new THREE.ShaderMaterial({
@@ -197,20 +197,21 @@ export function createWater(skyUniforms, quality) {
 
                 // Brilho especular do sol na crista das ondas.
                 vec3 H = normalize(V + uSunDir);
-                float spec = pow(max(dot(N, H), 0.0), 380.0);
-                float sparkle = pow(max(dot(N, H), 0.0), 60.0) *
+                float spec = pow(max(dot(N, H), 0.0), 420.0);
+                float sparkle = pow(max(dot(N, H), 0.0), 72.0) *
                     smoothstep(0.55, 1.0, rkValueNoise(rp * 3.1 + uTime * 0.6));
-                col += uSunColor * (spec * 3.4 + sparkle * 0.5);
+                col += uSunColor * (spec * 2.2 + sparkle * 0.28);
 
                 // Espuma junto às margens e nas cristas mais altas.
                 float shore = rkShoreDist(vWorld.x, vWorld.z);
                 // smoothstep exige edge0 < edge1 (fora disso o resultado é indefinido em GLSL).
-                float band = smoothstep(-9.0, -4.0, shore) * (1.0 - smoothstep(-3.2, 0.5, shore));
-                float crest = smoothstep(1.35, 2.35, vPhase);
-                vec2 fuv = vWorld.xz * 0.05 + vec2(uTime * 0.006, uTime * 0.009);
+                float band = smoothstep(-12.5, -2.8, shore) * (1.0 - smoothstep(-2.0, 1.4, shore));
+                float crest = smoothstep(1.15, 2.15, vPhase);
+                // Corrente sutil no eixo do rio (Z negativo ≈ descida).
+                vec2 fuv = vWorld.xz * 0.046 + vec2(uTime * 0.0035, uTime * 0.045);
                 float ftex = texture2D(uFoam, fuv).a;
-                float foam = clamp(band * 1.05 + crest * 0.16, 0.0, 1.0) * smoothstep(0.08, 0.55, ftex);
-                col = mix(col, vec3(0.88, 0.93, 0.96), clamp(foam, 0.0, 1.0) * 0.85);
+                float foam = clamp(band * 1.35 + crest * 0.24, 0.0, 1.0) * smoothstep(0.05, 0.5, ftex);
+                col = mix(col, vec3(0.92, 0.96, 0.99), clamp(foam, 0.0, 1.0) * 0.92);
 
                 // Névoa exponencial casada com o céu.
                 float dist = length(cameraPosition - vWorld);

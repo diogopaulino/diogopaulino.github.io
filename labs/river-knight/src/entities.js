@@ -1,6 +1,6 @@
 /**
  * Entidades do rio: barcos inimigos, torres, barricadas, rochas, redemoinhos,
- * itens, flechas e machados.
+ * itens, flechas e balas de canhão.
  *
  * Todas vivem em pools de tamanho fixo criados no início da partida. Durante o
  * jogo nada é instanciado: objetos apenas alternam entre ativo e inativo.
@@ -14,12 +14,12 @@ import {
     buildRockGeometry,
     buildPickup,
     buildArrowMesh,
-    buildAxeMesh,
+    buildCannonballMesh,
     plainMaterial
-} from './models.js';
+} from './models.js?v=12';
 import { waterHeight, waterSlope } from './water.js';
 import { centerX, halfWidth, terrainHeight } from './river.js';
-import { AXE, SCORE } from './config.js';
+import { CANNON, SCORE } from './config.js?v=12';
 import { clamp, damp, randRange } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -492,35 +492,32 @@ class Arrow extends Entity {
     }
 }
 
-class Axe extends Entity {
+class Cannonball extends Entity {
     constructor() {
-        super(buildAxeMesh(1));
-        this.kind = 'axe';
-        this.radius = 1.4;
+        super(buildCannonballMesh(1));
+        this.kind = 'shot';
+        this.radius = CANNON.ballRadius;
         this.velocity = new THREE.Vector3();
         this.life = 0;
-        this.spin = 0;
     }
 
-    spawn(x, y, z, dirX, dirZ, speed = AXE.speed) {
+    spawn(x, y, z, dirX, dirZ, speed = CANNON.speed, loft = CANNON.loft) {
         this.group.position.set(x, y, z);
-        this.velocity.set(dirX * speed, 6.5, dirZ * speed);
-        this.life = AXE.life;
-        this.spin = 0;
+        this.velocity.set(dirX * speed, loft, dirZ * speed);
+        this.life = CANNON.life;
         this.activate();
     }
 
     update(dt, ctx) {
-        this.velocity.y -= AXE.gravity * dt;
+        this.velocity.y -= CANNON.gravity * dt;
         this.group.position.addScaledVector(this.velocity, dt);
-        this.spin += AXE.spin * dt;
-        this.group.rotation.set(this.spin, 0.2, Math.PI * 0.12);
         this.life -= dt;
 
         const pos = this.group.position;
-        if (pos.y < waterHeight(pos.x, pos.z, ctx.time) - 0.2) {
-            ctx.effects.splash(pos.x, 0.1, pos.z, 10, 0.8);
-            ctx.audio.sfx('splash', 0.5);
+        if (pos.y < waterHeight(pos.x, pos.z, ctx.time) - 0.15) {
+            ctx.effects.splash(pos.x, 0.15, pos.z, 18, 1.25);
+            ctx.effects.smokePuff(pos.x, 0.4, pos.z, 4, 0.7);
+            ctx.audio.sfx('splash', 0.7);
             this.deactivate();
             return;
         }
@@ -540,7 +537,7 @@ const POOL_SIZES = {
     whirlpools: 3,
     pickups: 16,
     arrows: 46,
-    axes: 22
+    shots: 24
 };
 
 export class Entities {
@@ -566,7 +563,7 @@ export class Entities {
         make('whirlpools', () => new Whirlpool(), POOL_SIZES.whirlpools);
         make('pickups', () => new PickupItem(), POOL_SIZES.pickups);
         make('arrows', () => new Arrow(), POOL_SIZES.arrows);
-        make('axes', () => new Axe(), POOL_SIZES.axes);
+        make('shots', () => new Cannonball(), POOL_SIZES.shots);
 
         this.targets = ['enemyShips', 'towers', 'barricades', 'rocks', 'whirlpools'];
     }
@@ -617,10 +614,71 @@ export class Entities {
         return e;
     }
 
-    throwAxe(x, y, z, dirX, dirZ, speed) {
-        const e = this._free('axes');
-        e?.spawn(x, y, z, dirX, dirZ, speed);
+    fireShot(x, y, z, dirX, dirZ, speed, loft) {
+        const e = this._free('shots');
+        e?.spawn(x, y, z, dirX, dirZ, speed, loft);
         return e;
+    }
+
+    /** @deprecated use fireShot */
+    throwAxe(x, y, z, dirX, dirZ, speed, loft) {
+        return this.fireShot(x, y, z, dirX, dirZ, speed, loft);
+    }
+
+    /**
+     * Alvo automático para canhão: prioriza torre, depois barco, no hemisfério à frente.
+     * Cone largo — o jogador só precisa apontar o navio grosso modo.
+     */
+    findCannonTarget(originX, originY, originZ, forwardX, forwardZ, range = CANNON.assistRange) {
+        let best = null;
+        let bestScore = Infinity;
+        const keys = ['towers', 'enemyShips', 'barricades'];
+        const range2 = range * range;
+        const fLen = Math.hypot(forwardX, forwardZ) || 1;
+        const fx = forwardX / fLen;
+        const fz = forwardZ / fLen;
+
+        for (const key of keys) {
+            for (const target of this.pools[key]) {
+                if (!target.active || target.indestructible || target.sinking > 0 || target.crumble > 0) continue;
+                const dx = target.position.x - originX;
+                const dz = target.position.z - originZ;
+                const dist2 = dx * dx + dz * dz;
+                if (dist2 < 9 || dist2 > range2) continue;
+                const dist = Math.sqrt(dist2);
+                const ndx = dx / dist;
+                const ndz = dz / dist;
+                const dot = ndx * fx + ndz * fz;
+                if (dot < CANNON.assistCone) continue;
+
+                const kindBias = key === 'towers' ? 0.55 : key === 'enemyShips' ? 0.7 : 1;
+                const score = (dist / range) * kindBias + (1 - dot) * 0.85;
+                if (score < bestScore) {
+                    bestScore = score;
+                    const aimY = key === 'towers' ? target.position.y + 7 : target.position.y + 1.8;
+                    // Antecipação simples para barcos em movimento.
+                    let leadX = target.position.x;
+                    let leadZ = target.position.z;
+                    if (key === 'enemyShips' && target.speed) {
+                        const tFlight = dist / CANNON.speed;
+                        leadZ -= target.speed * tFlight;
+                    }
+                    best = {
+                        kind: key,
+                        x: leadX,
+                        y: aimY,
+                        z: leadZ,
+                        dist,
+                        entity: target
+                    };
+                }
+            }
+        }
+        return best;
+    }
+
+    findThrowTarget(originX, originY, originZ, forwardX, forwardZ, range) {
+        return this.findCannonTarget(originX, originY, originZ, forwardX, forwardZ, range);
     }
 
     /** Atualiza todas as entidades ativas. */
@@ -632,24 +690,32 @@ export class Entities {
         }
     }
 
-    /** Colisão dos machados do jogador com alvos destrutíveis. */
+    /** Colisão das balas de canhão com alvos destrutíveis. */
     resolveAxeHits(ctx) {
-        for (const axe of this.pools.axes) {
-            if (!axe.active) continue;
-            const ap = axe.group.position;
+        for (const shot of this.pools.shots) {
+            if (!shot.active) continue;
+            const ap = shot.group.position;
 
             for (const key of this.targets) {
                 for (const target of this.pools[key]) {
                     if (!target.active || target.indestructible || target.sinking > 0 || target.crumble > 0) continue;
                     const dx = target.position.x - ap.x;
                     const dz = target.position.z - ap.z;
-                    const dy = target.position.y - ap.y;
-                    const r = target.radius + axe.radius;
+                    const r = target.radius + shot.radius;
                     if (dx * dx + dz * dz > r * r) continue;
-                    if (Math.abs(dy) > (key === 'towers' ? 12 : 5)) continue;
 
-                    const killed = target.hit(AXE.damage, ctx);
-                    axe.deactivate();
+                    if (key === 'towers') {
+                        const baseY = target.position.y;
+                        if (ap.y < baseY - 1.5 || ap.y > baseY + 14) continue;
+                    } else {
+                        const dy = target.position.y - ap.y;
+                        if (Math.abs(dy) > 5.5) continue;
+                    }
+
+                    const killed = target.hit(CANNON.damage, ctx);
+                    ctx.effects.explosion(ap.x, ap.y, ap.z, 0.55, 0.35);
+                    ctx.audio.sfx('explosion', 0.35);
+                    shot.deactivate();
                     if (killed) {
                         const points =
                             key === 'enemyShips' ? SCORE.enemyShip : key === 'towers' ? SCORE.tower : SCORE.barricade;
@@ -660,13 +726,12 @@ export class Entities {
             }
         }
 
-        // Machados também derrubam flechas em voo (defesa de última hora).
-        for (const axe of this.pools.axes) {
-            if (!axe.active) continue;
+        for (const shot of this.pools.shots) {
+            if (!shot.active) continue;
             for (const arrow of this.pools.arrows) {
                 if (!arrow.active) continue;
-                const d = axe.group.position.distanceToSquared(arrow.group.position);
-                if (d < 6) {
+                const d = shot.group.position.distanceToSquared(arrow.group.position);
+                if (d < 8) {
                     ctx.effects.impact(arrow.group.position.x, arrow.group.position.y, arrow.group.position.z, 0xffc987);
                     ctx.audio.sfx('hitMetal');
                     arrow.deactivate();
@@ -686,4 +751,4 @@ export class Entities {
     }
 }
 
-export { EnemyShip, Tower, Barricade, RockObstacle, Whirlpool, PickupItem, Arrow, Axe };
+export { EnemyShip, Tower, Barricade, RockObstacle, Whirlpool, PickupItem, Arrow, Cannonball };

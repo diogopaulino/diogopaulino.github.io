@@ -16,7 +16,7 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/river-knight/">
     <meta property="og:title" content="River Knight">
     <meta property="og:description"
-        content="Aventura medieval 3D no navegador: rio com ondas de Gerstner, drakkar, machados de arremesso e um castelo à espera.">
+        content="Aventura medieval 3D no navegador: rio com ondas de Gerstner, drakkar com canhões e um castelo à espera.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="River Knight">
     <meta name="twitter:description" content="Navegue, lute e resgate a princesa. Aventura medieval 3D em three.js.">
@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=6">
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
@@ -95,6 +95,15 @@
 
             <p id="message" class="message" role="status" aria-live="polite"></p>
 
+            <div id="reticle" class="reticle" aria-hidden="true">
+                <span class="reticle-ring"></span>
+                <span class="reticle-dot"></span>
+                <span id="reticleLabel" class="reticle-label"></span>
+            </div>
+            <div class="throw-meter" title="Canhão pronto">
+                <i id="throwFill"></i>
+            </div>
+
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
                     title="Som (M)" aria-label="Alternar som">♪</button>
@@ -110,7 +119,7 @@
                 </div>
                 <div class="touch-buttons">
                     <button type="button" class="pad pad-boost" data-control="boost" aria-label="Acelerar">REMAR</button>
-                    <button type="button" class="pad pad-throw" data-control="throw" aria-label="Arremessar machado">🪓</button>
+                    <button type="button" class="pad pad-throw" data-control="throw" aria-label="Disparar canhão">🔥</button>
                 </div>
             </div>
         </div>
@@ -148,9 +157,9 @@
                     <section class="menu-section">
                         <h2>Comandos</h2>
                         <div class="keys">
-                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> navegar</span>
+                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> governar o navio</span>
                             <span><kbd>W</kbd> remar forte · <kbd>S</kbd> segurar</span>
-                            <span><kbd>Espaço</kbd> ou <kbd>clique</kbd> arremessar machado</span>
+                            <span><kbd>Espaço</kbd> / <kbd>clique</kbd> canhão (mira automática)</span>
                             <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                     </section>
@@ -239,7 +248,7 @@
     </main>
 
     <script src="/labs/shared.js?v=6" defer></script>
-    <script type="module" src="src/main.js?v=1"></script>
+    <script type="module" src="src/main.js?v=13"></script>
 </body>
 
 </html>

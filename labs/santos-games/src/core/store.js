@@ -3,8 +3,8 @@
 
 import { EVENT_ORDER } from '../game/config.js';
 
-const KEY = 'svg.save.v2';
-const VERSION = 2;
+const KEY = 'svg.save.v3';
+const VERSION = 3;
 
 function defaults() {
     const best = {};
@@ -13,7 +13,7 @@ function defaults() {
         v: VERSION,
         best,
         champ: { best: 0, place: 0, sponsor: null, date: 0, golds: 0 },
-        opts: { mute: false, vol: 0.7, scanlines: true, shake: true, touch: null },
+        opts: { mute: false, vol: 0.7, scanlines: false, shake: true, touch: null },
         seen: { intro: false, sponsor: null }
     };
 }

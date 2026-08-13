@@ -19,6 +19,7 @@ class ParticleSystem {
     constructor({ texture, max = 600, blending = THREE.AdditiveBlending, depthWrite = false }) {
         this.max = max;
         this.cursor = 0;
+        this._wasAlive = false;
 
         this.positions = new Float32Array(max * 3);
         this.colors = new Float32Array(max * 3);
@@ -115,6 +116,7 @@ class ParticleSystem {
 
     update(dt) {
         const { positions, vel, life, maxLife, alphas, sizes, gravity, drag, grow, baseSize } = this;
+        let alive = 0;
         for (let i = 0; i < this.max; i++) {
             if (life[i] <= 0) {
                 if (alphas[i] !== 0) alphas[i] = 0;
@@ -125,6 +127,7 @@ class ParticleSystem {
                 alphas[i] = 0;
                 continue;
             }
+            alive++;
             const d = Math.exp(-drag[i] * dt);
             vel[i * 3] *= d;
             vel[i * 3 + 1] = vel[i * 3 + 1] * d - gravity[i] * dt;
@@ -139,15 +142,19 @@ class ParticleSystem {
             sizes[i] = baseSize[i] * (1 + grow[i] * (1 - t));
         }
 
-        this.geometry.attributes.position.needsUpdate = true;
-        this.geometry.attributes.aAlpha.needsUpdate = true;
-        this.geometry.attributes.aSize.needsUpdate = true;
-        this.geometry.attributes.aColor.needsUpdate = true;
+        if (alive > 0 || this._wasAlive) {
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.attributes.aAlpha.needsUpdate = true;
+            this.geometry.attributes.aSize.needsUpdate = true;
+            this.geometry.attributes.aColor.needsUpdate = true;
+        }
+        this._wasAlive = alive > 0;
     }
 
     reset() {
         this.life.fill(0);
         this.alphas.fill(0);
+        this._wasAlive = false;
         this.geometry.attributes.aAlpha.needsUpdate = true;
     }
 }
@@ -215,7 +222,8 @@ class Wake {
 
         this.mesh = new THREE.Mesh(geo, material);
         this.mesh.frustumCulled = false;
-        this.mesh.renderOrder = 6;
+        this.mesh.renderOrder = 3;
+        this.mesh.material.depthTest = true;
         this.material = material;
     }
 
@@ -234,8 +242,8 @@ class Wake {
         const trail = this.trail;
         for (let i = trail.length - 1; i >= 0; i--) {
             trail[i].age += dt;
-            trail[i].width += dt * 1.5;
-            if (trail[i].age > 2.6) trail.splice(i, 1);
+            trail[i].width += dt * 1.95;
+            if (trail[i].age > 3.3) trail.splice(i, 1);
         }
 
         const n = this.samples;
@@ -262,8 +270,8 @@ class Wake {
             const px = -dz;
             const pz = dx;
 
-            const w = s.width;
-            const y = waterHeight(s.x, s.z, time) + 0.07;
+            const w = Math.min(s.width, 4.2);
+            const y = waterHeight(s.x, s.z, time) + 0.04;
             this.positions[a] = s.x - px * w;
             this.positions[a + 1] = y;
             this.positions[a + 2] = s.z - pz * w;
@@ -277,7 +285,7 @@ class Wake {
             this.uvs[u + 3] = idx / this.samples;
 
             const headFade = Math.min(1, s.age / 0.35);
-            const fade = Math.max(0, 1 - s.age / 2.6) ** 1.6 * s.strength * 0.62 * headFade;
+            const fade = Math.max(0, 1 - s.age / 3.3) ** 1.45 * s.strength * 0.7 * headFade;
             this.alphas[i * 2] = fade;
             this.alphas[i * 2 + 1] = fade;
         }
@@ -365,8 +373,8 @@ export class Effects {
         const scale = quality.id === 'low' ? 0.5 : 1;
 
         this.spray = new ParticleSystem({
-            texture: sparkTexture(),
-            max: Math.round(520 * scale),
+            texture: smokeTexture(),
+            max: Math.round(420 * scale),
             blending: THREE.NormalBlending
         });
         this.embers = new ParticleSystem({
@@ -412,10 +420,10 @@ export class Effects {
                 {
                     life: 0.45 + Math.random() * 0.5,
                     size: 0.2 + Math.random() * 0.38,
-                    color: tmpColor.setRGB(0.86, 0.92, 0.96),
+                    color: tmpColor.setRGB(0.9, 0.95, 0.98),
                     gravity: 11,
                     drag: 0.9,
-                    grow: 1.3
+                    grow: 1.5
                 }
             );
         }

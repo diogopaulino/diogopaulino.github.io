@@ -1,62 +1,52 @@
-// core/palette.js — paleta mestra 16-bit (48 cores) indexada por char, + matriz de dithering.
-// Teto: ~120 linhas.
+// core/palette.js — paleta Mega Drive limpa (cores saturadas, contraste alto, poucos tons mudos).
 
-/** Paleta mestra "SVC" — pôr do sol vice-city, mar, areia, verde, concreto, pele, neon. */
+/** Paleta mestra — California Games / Santos, leitura clara em 320×224. */
 export const SVC = {
-    ' ': null, '.': null, // transparente
+    ' ': null, '.': null,
 
-    // noite / contorno
-    '0': '#080512', '1': '#170b2b', '2': '#2d114c',
+    // preto / painéis (cinza-azul frio, sem roxo)
+    '0': '#000000', '1': '#101820', '2': '#203040',
 
-    // rampa pôr do sol (a "vice" ramp) - Mais vibrante e puro
-    '3': '#661f77', '4': '#ad207a', '5': '#f53874',
-    '6': '#ff6f3b', '7': '#ffac30', '8': '#ffe866',
+    // céu diurno (azul limpo → sol)
+    '3': '#2868a0', '4': '#4890c8', '5': '#78c0e8',
+    '6': '#f07828', '7': '#f0a830', '8': '#f0d848',
 
-    // mar - Mais contraste e azul profundo
-    '9': '#062d4e', 'a': '#0a4b7a', 'b': '#007999', 'c': '#1faac1', 'd': '#73f0e8',
+    // mar
+    '9': '#003858', 'a': '#006888', 'b': '#0090a8', 'c': '#20c0b0', 'd': '#68e0d0',
 
     // areia
-    'e': '#7a5638', 'f': '#b98a52', 'g': '#e0bd82', 'h': '#f5e3b6',
+    'e': '#805028', 'f': '#c08840', 'g': '#e0b868', 'h': '#f0e0b0',
 
-    // verde (jardins, morro) - Mais vivo
-    'i': '#05301a', 'j': '#095e29', 'k': '#119b35', 'l': '#46db3e',
+    // verde
+    'i': '#084018', 'j': '#187028', 'k': '#28a830', 'l': '#58e040',
 
-    // concreto / cidade
-    'm': '#2a2a38', 'n': '#454a5c', 'o': '#6b7386', 'p': '#9aa3b5', 'q': '#cdd3e0', 'r': '#f2f4fb',
+    // cidade / UI cinza
+    'm': '#282838', 'n': '#484858', 'o': '#707088', 'p': '#a0a0b8', 'q': '#d0d0e0', 'r': '#f0f0f8',
 
-    // pele (5 tons)
-    's': '#5a3320', 't': '#8a5334', 'u': '#c08457', 'v': '#e8b088', 'w': '#f6d8bd',
+    // pele
+    's': '#603020', 't': '#905038', 'u': '#c88858', 'v': '#e8b080', 'w': '#f0d0b0',
 
-    // neon
-    'x': '#ff2fa0', 'y': '#00f0ff', 'z': '#b74dff', 'A': '#ffe600',
+    // acentos (coral / teal / ouro)
+    'x': '#f05040', 'y': '#38c8b8', 'z': '#f0c040', 'A': '#f0e020',
 
     // utilitários
-    'B': '#e03a2f', 'C': '#2b6ad6', 'D': '#3a2417', 'E': '#ffffff', 'F': '#000000',
-    'G': '#ff9dc4', 'H': '#7cf0a0', 'I': '#c8382f', 'J': '#f0f0ff',
+    'B': '#e02820', 'C': '#2868d0', 'D': '#382818', 'E': '#ffffff', 'F': '#000000',
+    'G': '#f090b0', 'H': '#60e880', 'I': '#c02820', 'J': '#e8e8f8',
 
-    // extra utilitário para roupas/variação
-    'K': '#f4a300', 'L': '#00897b', 'M': '#6d4c41', 'N': '#8e24aa',
+    'K': '#f09800', 'L': '#089880', 'M': '#684838', 'N': '#f06848',
 
-    // rampas complementares abertas na revisão 16-bit: mar profundo, espuma, areia molhada,
-    // sombra de sprite e dois neons secundários para o HUD
-    'O': '#062a42', 'P': '#c9f5ef', 'Q': '#5c4630', 'R': '#9d7047',
-    'S': '#1a1626', 'T': '#3a2f52', 'U': '#ff5d8f', 'V': '#6ef2c0'
+    'O': '#002838', 'P': '#c0f0e8', 'Q': '#584830', 'R': '#987048',
+    'S': '#080810', 'T': '#182838', 'U': '#f06848', 'V': '#58e8b0'
 };
 
-/** Coluna do sol no céu — mar, reflexo e brilhos se alinham a ela. */
-export const SUN_X = 0.62;
+export const SUN_X = 0.7;
 
-/**
- * Constrói um sub-conjunto de paleta com aliases legíveis para um sprite específico.
- * Ex.: sub({ o:'g', b:'f', s:'6', k:'0' }) -> mapeia char 'o' para a cor SVC['g'], etc.
- */
 export function sub(map) {
     const pal = { ' ': null, '.': null };
     for (const k in map) pal[k] = SVC[map[k]];
     return pal;
 }
 
-/** Matriz Bayer 4x4 normalizada em [0,1) — para dithering de gradientes/transições. */
 export const BAYER4 = [
     [0, 8, 2, 10],
     [12, 4, 14, 6],
@@ -68,10 +58,6 @@ export function bayerThreshold(x, y) {
     return BAYER4[y & 3][x & 3];
 }
 
-/**
- * Desenha um gradiente vertical ditherizado dentro de (x,y,w,h) usando uma rampa de chars.
- * ramp: array de chars da paleta em ordem (escuro -> claro).
- */
 export function ditherGradient(ctx, x, y, w, h, ramp, pal) {
     const steps = ramp.length - 1;
     for (let ry = 0; ry < h; ry++) {
@@ -79,11 +65,11 @@ export function ditherGradient(ctx, x, y, w, h, ramp, pal) {
         const pos = t * steps;
         const idx = Math.min(steps - 1, Math.floor(pos));
         const frac = pos - idx;
+        const a = ramp[idx];
+        const b = ramp[idx + 1] || a;
         for (let rx = 0; rx < w; rx++) {
-            const thresh = bayerThreshold(rx, ry);
-            const useUpper = frac > thresh;
-            const ch = ramp[useUpper ? idx + 1 : idx];
-            const col = pal ? pal[ch] : SVC[ch];
+            const pick = bayerThreshold(x + rx, y + ry) < frac ? b : a;
+            const col = pal[pick];
             if (!col) continue;
             ctx.fillStyle = col;
             ctx.fillRect(x + rx, y + ry, 1, 1);

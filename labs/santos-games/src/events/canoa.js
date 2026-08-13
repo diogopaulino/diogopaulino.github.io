@@ -16,7 +16,7 @@ const RACE_LEN = 4200;
 const LANES = [126, 148, 170, 192];   // y de cada raia, do fundo para a frente
 const PLAYER_SCREEN_X = 92;
 const BEAT_SEC = 0.52;                // intervalo entre remadas na cadência ideal
-const GOOD_WINDOW = 0.16;             // tolerância em segundos para uma remada "no tempo"
+const GOOD_WINDOW = 0.18;             // tolerância em segundos para uma remada "no tempo"
 
 export class CanoaEvent extends EventBase {
     setup() {
@@ -33,6 +33,7 @@ export class CanoaEvent extends EventBase {
         this.broken = 0;
         this.rowPhase = 0;
         this.finished = false;
+        this.perfectStreak = 0;
         this.wake = [];
 
         const { rng } = this.app;
@@ -73,6 +74,7 @@ export class CanoaEvent extends EventBase {
             // perdeu a batida inteira
             this.beatT += BEAT_SEC;
             this.cadence = Math.max(0, this.cadence - 0.22);
+            this.perfectStreak = 0;
             this.broken++;
         }
 
@@ -86,6 +88,7 @@ export class CanoaEvent extends EventBase {
                 // remar do lado errado desequilibra a canoa
                 this.cadence = Math.max(0, this.cadence - 0.3);
                 this.broken++;
+                this.perfectStreak = 0;
                 this.speed *= 0.94;
                 audio.play('ui_deny');
                 this.float.push('FORA DE LADO', PLAYER_SCREEN_X, this.laneY - 34, 'B', 700);
@@ -96,24 +99,32 @@ export class CanoaEvent extends EventBase {
                 this.strokes++;
                 if (quality > 0.7) {
                     this.perfect++;
+                    this.perfectStreak++;
                     this.score += 12;
-                    this.float.push('NO TEMPO', PLAYER_SCREEN_X, this.laneY - 34, 'H', 500);
+                    this.float.push(`NO TEMPO +12`, PLAYER_SCREEN_X, this.laneY - 34, 'z', 550);
+                    if (this.perfectStreak >= 5 && this.perfectStreak % 5 === 0) {
+                        this.float.push(`${this.perfectStreak} SEGUIDAS!`, PLAYER_SCREEN_X, this.laneY - 50, 'x', 800);
+                        this.speed += 18;
+                    }
                 } else {
+                    this.perfectStreak = 0;
                     this.score += 5;
                 }
+                this.pushWake(side);
                 this.nextSide = side === 'a' ? 'b' : 'a';
                 this.beatT = BEAT_SEC;
                 this.rowPhase = 0;
                 audio.play('stroke');
-                this.pushWake();
             } else {
                 // remada fora da janela: entra, mas mata o embalo
                 this.cadence = Math.max(0, this.cadence - 0.14);
+                this.perfectStreak = 0;
                 this.speed += 8;
                 this.strokes++;
                 this.nextSide = side === 'a' ? 'b' : 'a';
                 this.beatT = BEAT_SEC;
                 audio.play('stroke');
+                this.float.push('FORA DO TEMPO', PLAYER_SCREEN_X, this.laneY - 34, 'o', 450);
             }
         }
 
@@ -155,8 +166,8 @@ export class CanoaEvent extends EventBase {
         if (this.dist >= RACE_LEN) this.arrive();
     }
 
-    pushWake() {
-        this.wake.push({ x: PLAYER_SCREEN_X - 30, y: this.laneY + 6, life: 0.7, side: this.nextSide });
+    pushWake(side) {
+        this.wake.push({ x: PLAYER_SCREEN_X - 30, y: this.laneY + 6, life: 0.7, side });
         if (this.wake.length > 20) this.wake.shift();
     }
 
@@ -170,6 +181,7 @@ export class CanoaEvent extends EventBase {
     }
 
     arrive() {
+        if (this.finished) return;
         this.finished = true;
         const placeBonus = [320, 200, 110, 50][this.place - 1] ?? 20;
         const timeBonus = Math.max(0, Math.round((70 - this.elapsed) * 6));
@@ -254,7 +266,7 @@ export class CanoaEvent extends EventBase {
 
         // --- sincronia acumulada e velocidade, nas beiradas ---
         gauge(px, font, 4, 16, 84, 'SINC', this.cadence, {
-            fill: this.cadence > 0.6 ? 'H' : 'c', glow: 'd'
+            fill: this.cadence > 0.6 ? 'y' : 'c', glow: 'd'
         });
         gauge(px, font, W - 88, 16, 84, 'RITMO', this.speed / 240, { fill: 'b', glow: 'c' });
 
@@ -271,15 +283,15 @@ export class CanoaEvent extends EventBase {
         const goodW = Math.round(trackW * (GOOD_WINDOW * 2 / BEAT_SEC));
         px.rect(Math.round(trackX + trackW / 2 - goodW / 2), 29, goodW, 6, SVC['j']);
         px.rect(Math.round(trackX + trackW / 2 - goodW / 2), 29, goodW, 1, SVC['k']);
-        px.rect(Math.round(trackX + trackW / 2) - 1, 27, 2, 10, SVC['A']);
+        px.rect(Math.round(trackX + trackW / 2) - 1, 27, 2, 10, SVC['z']);
 
         const p = clamp(this.beatT / BEAT_SEC, -0.4, 1);
         const markX = trackX + trackW / 2 + p * (trackW / 2);
-        px.rect(Math.round(markX) - 1, 26, 3, 12, SVC[Math.abs(this.beatT) <= GOOD_WINDOW ? 'H' : 'r']);
+        px.rect(Math.round(markX) - 1, 26, 3, 12, SVC[Math.abs(this.beatT) <= GOOD_WINDOW ? 'y' : 'r']);
 
         // qual botão vem agora, dentro da própria caixa da cadência
         font.text(px.ctx, this.nextSide === 'a' ? 'Z' : 'X', boxX + boxW - 6, 18, {
-            color: 'A', align: 'right', mono: true
+            color: 'z', align: 'right', mono: true
         });
 
         // --- trilho da regata: onde cada canoa está no percurso ---
@@ -292,6 +304,6 @@ export class CanoaEvent extends EventBase {
             px.rect(railX + Math.round(railW * t) - 1, railY - 2, 3, 3, SVC['o']);
         }
         const pt = clamp(this.dist / RACE_LEN, 0, 1);
-        px.rect(railX + Math.round(railW * pt) - 2, railY - 3, 5, 8, SVC['A']);
+        px.rect(railX + Math.round(railW * pt) - 2, railY - 3, 5, 8, SVC['z']);
     }
 }
