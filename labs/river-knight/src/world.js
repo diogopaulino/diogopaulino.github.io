@@ -17,7 +17,15 @@ const RECYCLE_BEHIND = 90;
 /* ------------------------------------------------------------------ */
 
 class Scatter {
-    constructor(scene, geometry, count, { minDist, maxDist, scale, sink = 0.6, tint = null }) {
+    constructor(scene, geometry, count, {
+        minDist,
+        maxDist,
+        scale,
+        sink = 0.6,
+        tint = null,
+        minHeight = 0.8,
+        maxSlope = 1.35
+    }) {
         const material = new THREE.MeshStandardMaterial({
             vertexColors: !tint,
             color: tint || 0xffffff,
@@ -37,6 +45,8 @@ class Scatter {
         this.maxDist = maxDist;
         this.scaleRange = scale;
         this.sink = sink;
+        this.minHeight = minHeight;
+        this.maxSlope = maxSlope;
         this.items = new Array(count);
         this.dummy = new THREE.Object3D();
 
@@ -48,16 +58,25 @@ class Scatter {
     /** Sorteia uma posição válida na margem, na frente do jogador. */
     _place(item, z) {
         const side = Math.random() < 0.5 ? -1 : 1;
-        const dist = randRange(this.minDist, this.maxDist);
+        // Viés para perto da margem (mais densidade visual na beira do rio).
+        const u = Math.pow(Math.random(), 1.55);
+        const dist = this.minDist + u * (this.maxDist - this.minDist);
         const x = centerX(z) + side * (halfWidth(z) + dist);
         const y = terrainHeight(x, z);
+        // Amostra vizinhos: evita “flutuadores” em encostas muito íngremes.
+        const eps = 1.4;
+        const yL = terrainHeight(x - eps, z);
+        const yR = terrainHeight(x + eps, z);
+        const yD = terrainHeight(x, z - eps);
+        const yU = terrainHeight(x, z + eps);
+        const slope = Math.max(Math.abs(yL - yR), Math.abs(yD - yU)) / (2 * eps);
         item.x = x;
         item.y = y - this.sink;
         item.z = z;
         item.scale = randRange(this.scaleRange[0], this.scaleRange[1]);
         item.rot = randRange(0, Math.PI * 2);
         item.tilt = randRange(-0.06, 0.06);
-        item.valid = y > 0.4;
+        item.valid = y > this.minHeight && slope < this.maxSlope;
     }
 
     /** Distribui tudo de uma vez ao (re)iniciar a partida. */
@@ -147,21 +166,27 @@ export class World {
     constructor(scene, quality) {
         const s = quality.scatterScale;
         this.pines = new Scatter(scene, buildPineGeometry(), Math.round(150 * s), {
-            minDist: 1.5,
-            maxDist: 120,
-            scale: [0.75, 1.5]
+            minDist: 1.2,
+            maxDist: 95,
+            scale: [0.75, 1.5],
+            minHeight: 1.2,
+            maxSlope: 1.15
         });
         this.oaks = new Scatter(scene, buildOakGeometry(), Math.round(70 * s), {
-            minDist: 2,
-            maxDist: 95,
-            scale: [0.7, 1.35]
+            minDist: 1.6,
+            maxDist: 78,
+            scale: [0.7, 1.35],
+            minHeight: 1.2,
+            maxSlope: 1.1
         });
-        this.bankRocks = new Scatter(scene, buildRockGeometry(5), Math.round(80 * s), {
-            minDist: -2.5,
-            maxDist: 70,
-            scale: [0.8, 2.6],
-            sink: 0.9,
-            tint: 0x54504a
+        this.bankRocks = new Scatter(scene, buildRockGeometry(5), Math.round(110 * s), {
+            minDist: 0.2,
+            maxDist: 18,
+            scale: [0.7, 2.4],
+            sink: 1.25,
+            tint: 0x54504a,
+            minHeight: 0.45,
+            maxSlope: 1.95
         });
 
         this.birds = quality.id === 'low' ? null : new Birds(scene, 12);
@@ -211,7 +236,7 @@ export class World {
             ['rock', 26 - progress * 10],
             ['pickup', 20 - progress * 6],
             ['enemyShip', 6 + progress * 26],
-            ['tower', 4 + progress * 20],
+            ['tower', 8 + progress * 24],
             ['barricade', 8 + progress * 12],
             ['whirlpool', 4 + progress * 8]
         ];
@@ -267,7 +292,8 @@ export class World {
             }
             case 'tower': {
                 const side = Math.random() < 0.5 ? -1 : 1;
-                const x = cx + side * (hw + randRange(3, 11));
+                // Mais perto da água — alcançáveis com canhão assistido.
+                const x = cx + side * (hw + randRange(1.6, 6.5));
                 entities.spawnTower(x, z, { fireRate: (3.6 - progress * 1.3) / difficulty.enemyFireScale });
                 break;
             }

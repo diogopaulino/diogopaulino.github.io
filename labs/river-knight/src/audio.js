@@ -374,6 +374,25 @@ export class GameAudio {
                 this._noiseBurst(t, { duration: 0.22, freq: 1800, endFreq: 420, q: 3, gain: 0.22 * intensity });
                 this._tone(t, { freq: 620, endFreq: 240, duration: 0.16, gain: 0.1, type: 'triangle' });
                 break;
+            case 'cannon':
+                this._noiseBurst(t, {
+                    duration: 0.55,
+                    type: 'lowpass',
+                    freq: 900,
+                    endFreq: 80,
+                    gain: 0.72 * intensity
+                });
+                this._tone(t, { freq: 70, endFreq: 28, duration: 0.55, gain: 0.48 * intensity, type: 'sine' });
+                this._tone(t, { freq: 180, endFreq: 55, duration: 0.28, gain: 0.18 * intensity, type: 'triangle' });
+                this._noiseBurst(t + 0.04, {
+                    duration: 0.35,
+                    type: 'bandpass',
+                    freq: 1400,
+                    endFreq: 400,
+                    q: 1.2,
+                    gain: 0.22 * intensity
+                });
+                break;
             case 'hitWood':
                 this._noiseBurst(t, { duration: 0.14, type: 'lowpass', freq: 1400, endFreq: 300, gain: 0.32 });
                 this._tone(t, { freq: 180, endFreq: 90, duration: 0.18, gain: 0.22, type: 'square' });

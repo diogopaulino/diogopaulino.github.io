@@ -476,6 +476,99 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .message[data-tone="danger"] { color: oklch(78% 0.16 28); }
 .message[data-tone="gold"] { color: var(--gold); }
 
+/* --- mira / arremesso --- */
+.reticle {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 2.6rem;
+    height: 2.6rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 0.55;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    color: oklch(88% 0.04 90);
+    z-index: 4;
+}
+
+.reticle[data-lock="true"] {
+    opacity: 0.95;
+    color: oklch(78% 0.14 75);
+}
+
+.reticle-ring {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 18px rgba(0, 0, 0, 0.25);
+    opacity: 0.75;
+}
+
+.reticle-dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    margin: -2px 0 0 -2px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.reticle-label {
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 0.45rem);
+    transform: translateX(-50%);
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.reticle[data-lock="true"] .reticle-label {
+    opacity: 1;
+}
+
+.throw-meter {
+    position: absolute;
+    left: 50%;
+    top: calc(46% + 1.85rem);
+    width: 3.4rem;
+    height: 3px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: rgba(12, 10, 8, 0.45);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 4;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.throw-meter > i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, oklch(72% 0.12 75), oklch(86% 0.1 95));
+    transition: width 0.08s linear;
+}
+
+body[data-state="playing"] .reticle,
+body[data-state="playing"] .throw-meter {
+    display: block;
+}
+
+body:not([data-state="playing"]) .reticle,
+body:not([data-state="playing"]) .throw-meter {
+    display: none;
+}
+
 /* --- ações --- */
 .hud-actions {
     grid-row: 3;
