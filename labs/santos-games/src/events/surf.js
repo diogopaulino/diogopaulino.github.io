@@ -40,9 +40,9 @@ export class SurfEvent extends EventBase {
     resetWave() {
         this.playerX = 170;
         this.face = 0.45;              // 0 = base da parede, 1 = lábio
-        this.speed = 62;
+        this.speed = 70;               // mais rápido
         this.foamX = START_X;          // o pico (e a quebra) começam à direita e marcham
-        this.foamSpeed = 15 + this.waveIndex * 5;
+        this.foamSpeed = 22 + this.waveIndex * 6; // quebra mais agressiva (California Games style)
         this.state = 'ride';           // ride | air | tube | wipe
         this.airT = 0;
         this.airPeak = 0;

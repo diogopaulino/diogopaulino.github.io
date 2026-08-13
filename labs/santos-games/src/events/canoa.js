@@ -91,8 +91,8 @@ export class CanoaEvent extends EventBase {
                 this.float.push('FORA DE LADO', PLAYER_SCREEN_X, this.laneY - 34, 'B', 700);
             } else if (offset <= GOOD_WINDOW) {
                 const quality = 1 - offset / GOOD_WINDOW;
-                this.cadence = Math.min(1, this.cadence + 0.12 + quality * 0.1);
-                this.speed += 26 + quality * 30 + this.cadence * 22;
+                this.cadence = Math.min(1, this.cadence + 0.15 + quality * 0.15); // Sobe mais rápido
+                this.speed += 38 + quality * 45 + this.cadence * 30; // Impulso muito maior
                 this.strokes++;
                 if (quality > 0.7) {
                     this.perfect++;
@@ -118,9 +118,9 @@ export class CanoaEvent extends EventBase {
         }
 
         this.rowPhase += dt;
-        // arrasto: sem remar, a canoa perde tudo rápido
-        this.speed -= (26 + this.speed * 0.16) * dt;
-        this.speed = clamp(this.speed, 0, 200 + this.cadence * 40);
+        // arrasto: sem remar, a canoa perde tudo rápido (mas um pouco menos agora)
+        this.speed -= (20 + this.speed * 0.12) * dt;
+        this.speed = clamp(this.speed, 0, 240 + this.cadence * 50);
 
         // --- leme: trocar de raia é discreto, um toque por raia (não é eixo contínuo) ---
         if (input.state.up.pressed && this.lane > 0) this.lane--;

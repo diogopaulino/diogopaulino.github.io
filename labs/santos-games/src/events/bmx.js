@@ -15,10 +15,10 @@ import { gauge } from '../game/hud.js';
 const GROUND_Y = 182;
 // Janela de "coyote time": por um instante depois de sair do chão o pulo ainda é aceito.
 // Sem isso, saltar no fim de uma rampa exigia precisão de frame e a prova parecia injusta.
-const COYOTE_SEC = 0.09;
+const COYOTE_SEC = 0.12;
 const COURSE_LEN = 5200;      // px de ciclovia até a linha de chegada
-const GRAVITY = 900;
-const MAX_SPEED = 250;
+const GRAVITY = 1050;
+const MAX_SPEED = 320;
 
 const OBSTACLES = [
     { sprite: 'cone', w: 10, h: 14, damage: 0.45, label: 'CONE' },
@@ -94,10 +94,10 @@ export class BmxEvent extends EventBase {
 
         // --- aceleração ---
         const ax = input.axisX();
-        if (ax > 0) this.speed += 108 * dt;
-        else if (ax < 0) this.speed -= 190 * dt;
-        else this.speed -= 26 * dt;
-        this.speed = clamp(this.speed, 40, MAX_SPEED);
+        if (ax > 0) this.speed += 180 * dt;
+        else if (ax < 0) this.speed -= 250 * dt;
+        else this.speed -= 20 * dt;
+        this.speed = clamp(this.speed, 50, MAX_SPEED);
 
         // --- salto ---
         // Coyote time + buffer de toque: o pulo sai se o botão foi apertado pouco antes de

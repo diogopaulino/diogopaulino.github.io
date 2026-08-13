@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>Santos Vice Games — seis provas de praia 16-bit | Labs</title>
+    <title>Santos Games — seis provas de praia 16-bit | Labs</title>
     <meta name="description"
         content="Homenagem 16-bit ao California Games ambientada em Santos: surfe no Quebra-Mar, skate no bowl da orla, altinha no Gonzaga, BMX na ciclovia, frescobol no José Menino e canoa havaiana na baía.">
     <meta name="theme-color" content="#0d0a1a">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-vice-city/">
 
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Santos Vice Games">
+    <meta property="og:title" content="Santos Games">
     <meta property="og:description"
         content="Seis provas de praia em pixel art 16-bit gerada 100% em código, com patrocinadores, medalhas e pódio. Uma homenagem ao California Games, mas caiçara.">
-    <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-vice-city/">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-games/">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Santos Vice Games">
+    <meta name="twitter:title" content="Santos Games">
     <meta name="twitter:description" content="California Games, mas em Santos. Seis provas 16-bit no navegador.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,12 +27,13 @@
 </head>
 
 <body>
-    <div class="container">
-        <header data-lab-header data-title="Santos Vice Games">
+    <div class="svc-background" style="background-image: url('assets/bg.jpg');"></div>
+    <div class="svc-layout">
+        <header data-lab-header data-title="Santos Games" class="glass-header">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">🌇</span>
-                    <span>Santos Vice Games</span>
+                    <span>Santos Games</span>
                 </div>
             </template>
         </header>
@@ -62,9 +63,9 @@
                 <p class="sr-only" aria-live="polite" id="svcAnnouncer"></p>
             </section>
 
-            <aside class="svc-side" aria-label="Sobre o jogo">
+            <aside class="svc-side glass-panel" aria-label="Sobre o jogo">
                 <div class="svc-side-block">
-                    <span class="svc-kicker">Santos Vice Games</span>
+                    <span class="svc-kicker">Santos Games</span>
                     <h2>California Games, mas caiçara</h2>
                     <p>Seis provas de praia num campeonato só: escolha o patrocinador, dispute
                         surfe, skate, altinha, BMX, frescobol e canoa havaiana, e veja se sobra
@@ -103,7 +104,7 @@
             </aside>
         </main>
 
-        <footer data-lab-footer data-home-href="/"></footer>
+        <footer data-lab-footer data-home-href="/" class="glass-footer"></footer>
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
