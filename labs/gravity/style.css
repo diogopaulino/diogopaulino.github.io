@@ -60,7 +60,7 @@ header {
     width: auto !important;
     max-width: none !important;
     z-index: 20;
-    padding: 1.25rem 1.5rem !important;
+    padding: max(1.1rem, env(safe-area-inset-top)) max(1.35rem, env(safe-area-inset-right)) 1.1rem max(1.35rem, env(safe-area-inset-left)) !important;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
     margin: 0 !important;
     display: grid !important;
@@ -80,6 +80,8 @@ header .back-link {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--panel-border);
     color: var(--text-secondary);
+    min-height: 44px;
+    min-width: 44px;
 }
 
 header .back-link:hover {
@@ -817,7 +819,7 @@ body.fullscreen:hover header {
 
 @media (max-width: 420px) {
     header {
-        padding: 1rem !important;
+        padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 1rem max(1rem, env(safe-area-inset-left)) !important;
     }
 
     .header-actions {

@@ -312,9 +312,12 @@ body {
     font-size: 0.9rem;
 }
 
-/* Responsive adjustments */
-@media (max-width: 400px) {
+/* Responsive adjustments — fit ~390px width with shared header + footer */
+@media (max-width: 420px) {
     .game-boy {
-        transform: scale(0.9);
+        --device-scale: min(1, calc((100vw - 24px) / 320px));
+        transform: scale(var(--device-scale));
+        transform-origin: top center;
+        margin-bottom: calc((var(--device-scale) - 1) * 540px);
     }
 }

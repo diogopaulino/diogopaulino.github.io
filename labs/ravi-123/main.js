@@ -144,9 +144,6 @@ async function boot() {
       }
     });
 
-    document.getElementById('btn-back').addEventListener('click', () => {
-      window.location.href = '/labs/';
-    });
     document.getElementById('btn-sound').addEventListener('click', (event) => {
       Audio.init();
       syncSoundButton(event.currentTarget, Audio.toggleMute());

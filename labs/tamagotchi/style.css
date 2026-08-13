@@ -17,7 +17,11 @@
 body {
   min-width: 320px;
   overflow-x: hidden;
-  background-color: #ece9e2;
+  background-color: var(--bg-body, #ece9e2);
+}
+
+[data-theme="dark"] body {
+  background-color: var(--bg-body, #0a0a0a);
 }
 
 header {

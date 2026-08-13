@@ -154,7 +154,7 @@ button {
 }
 
 .game-shell > header .theme-switch-wrapper {
-    display: none;
+    display: flex;
 }
 
 .lab-foot {

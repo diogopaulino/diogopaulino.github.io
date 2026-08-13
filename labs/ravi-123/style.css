@@ -3,7 +3,7 @@
    --------------------------------------------------------------------------
    Praticamente tudo que se vê é desenhado no canvas. O CSS só faz três
    coisas: pintar o letterbox, escalar o buffer 320×200 com nearest-neighbor
-   e posicionar os três botões de HUD.
+   e posicionar os botões de HUD (som / tela cheia).
    Sem web fonts, sem @import, sem backdrop-filter.
    ========================================================================== */
 
@@ -33,6 +33,49 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* shared.css usa flex + padding; o jogo precisa de letterbox fullscreen preto */
+body {
+  position: relative;
+  padding: 0 !important;
+  display: block !important;
+  background-image: none !important;
+  align-items: stretch !important;
+}
+
+/* Shell compartilhado: faixa fina sobre o jogo, sem roubar cliques do canvas */
+header[data-lab-header] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0 !important;
+  max-width: none !important;
+  padding: max(0.65rem, env(safe-area-inset-top)) 0.75rem 0.5rem !important;
+  grid-template-columns: auto 1fr auto !important;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+  pointer-events: none;
+}
+
+header[data-lab-header] > * {
+  pointer-events: auto;
+}
+
+header[data-lab-header] .back-link {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+header[data-lab-header] .app-logo,
+header[data-lab-header] h1 {
+  font-size: 0.95rem !important;
+  color: #fff !important;
+}
+
+header[data-lab-header] .subtitle {
+  display: none;
 }
 
 #app {
@@ -65,9 +108,11 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  z-index: 30;
   display: flex;
   gap: 8px;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  /* abaixo do header compartilhado (voltar + tema) */
+  padding: calc(3.1rem + env(safe-area-inset-top, 0px)) 12px 10px;
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   pointer-events: none;

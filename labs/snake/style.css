@@ -421,11 +421,12 @@ canvas {
     line-height: 1.5;
 }
 
-@media (max-width: 360px) {
+@media (max-width: 420px) {
     .handheld-device {
-        transform: scale(0.86);
+        /* Absolute-positioned controls break with height:auto; scale the shell instead. */
+        --device-scale: min(1, calc((100vw - 24px) / 320px));
+        transform: scale(var(--device-scale));
         transform-origin: top center;
-        margin-bottom: -78px;
-        /* Reclaims the space the scale transform leaves behind. */
+        margin-bottom: calc((var(--device-scale) - 1) * 562px);
     }
 }

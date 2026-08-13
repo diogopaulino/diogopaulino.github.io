@@ -228,6 +228,7 @@
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
     scrollbar-width: thin;
+    mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 28px), transparent 100%);
   }
 
   /* Sem isto os botões encolheriam para caber e o rótulo quebraria em duas linhas. */
