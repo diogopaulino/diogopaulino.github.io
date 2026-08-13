@@ -106,13 +106,18 @@ export class Player {
             this.root.traverse((child) => {
                 if (!child.material || child === this.shieldBubble) return;
                 const mats = Array.isArray(child.material) ? child.material : [child.material];
-                for (const m of mats) {
-                    if (m.userData.baseOpacity === undefined) {
-                        m.userData.baseOpacity = m.opacity;
-                        m.userData.baseTransparent = m.transparent;
-                    }
-                    this._fadeMats.push(m);
-                }
+                const next = mats.map((m) => {
+                    // Tecidos têm shader próprio; o resto é material em cache
+                    // compartilhado — clonar evita o pisca da invulnerabilidade
+                    // vazar para inimigos, torres e a princesa.
+                    if (m.userData.uniforms) return m;
+                    const clone = m.clone();
+                    clone.userData.baseOpacity = clone.opacity;
+                    clone.userData.baseTransparent = clone.transparent;
+                    this._fadeMats.push(clone);
+                    return clone;
+                });
+                child.material = Array.isArray(child.material) ? next : next[0];
             });
         }
         for (const m of this._fadeMats) {
