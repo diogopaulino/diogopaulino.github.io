@@ -60,8 +60,8 @@ export function woodTexture(dark = false) {
         const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
-        const base = dark ? '#3a2417' : '#6d472a';
-        const light = dark ? '#4c3120' : '#8a5c37';
+        const base = dark ? '#2c1a10' : '#7a5130';
+        const light = dark ? '#5a3a24' : '#c08a52';
 
         ctx.fillStyle = base;
         ctx.fillRect(0, 0, size, size);
@@ -109,8 +109,8 @@ export function woodTexture(dark = false) {
             }
         }
 
-        grain(ctx, size, size, 26, dark ? 5 : 1);
-        return toTexture(el, { repeat: [1, 1] });
+        grain(ctx, size, size, 34, dark ? 5 : 1);
+        return toTexture(el, { repeat: [1.4, 2.2], aniso: 8 });
     });
 }
 
@@ -199,7 +199,7 @@ export function stoneTexture(tint = '#8f8d87') {
         const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
-        ctx.fillStyle = '#3a3833';
+        ctx.fillStyle = '#2a2824';
         ctx.fillRect(0, 0, size, size);
 
         const rows = 10;
@@ -234,8 +234,8 @@ export function stoneTexture(tint = '#8f8d87') {
             }
         }
 
-        grain(ctx, size, size, 30, 4);
-        return toTexture(el);
+        grain(ctx, size, size, 38, 4);
+        return toTexture(el, { repeat: [1.6, 2.4], aniso: 8 });
     });
 }
 
@@ -343,21 +343,32 @@ export function foamTexture() {
         const ctx = el.getContext('2d');
         ctx.clearRect(0, 0, size, size);
 
-        // Bolhas de espuma distribuídas de forma tileável no eixo X.
-        for (let i = 0; i < 900; i++) {
+        // Estelas alongadas no eixo do rio + bolhas — espuma de corrente, não de disco.
+        for (let i = 0; i < 220; i++) {
             const x = noise2(i, 1.3) * size;
             const y = noise2(i, 4.9) * size;
-            const r = 2.4 + noise2(i, 7.1) * 9.0;
-            const a = 0.06 + noise2(i, 9.4) * 0.42;
+            const rw = 14 + noise2(i, 7.1) * 46;
+            const rh = 2.2 + noise2(i, 8.2) * 5.5;
+            const a = 0.08 + noise2(i, 9.4) * 0.38;
             for (const dx of [-size, 0, size]) {
-                const g = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+                const g = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, rw);
                 g.addColorStop(0, `rgba(255,255,255,${a})`);
                 g.addColorStop(1, 'rgba(255,255,255,0)');
                 ctx.fillStyle = g;
                 ctx.beginPath();
-                ctx.arc(x + dx, y, r, 0, Math.PI * 2);
+                ctx.ellipse(x + dx, y, rw, rh, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
+        }
+        for (let i = 0; i < 280; i++) {
+            const x = noise2(i, 11.3) * size;
+            const y = noise2(i, 14.9) * size;
+            const r = 1.4 + noise2(i, 17.1) * 4.2;
+            const a = 0.04 + noise2(i, 19.4) * 0.22;
+            ctx.fillStyle = `rgba(255,255,255,${a})`;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
         }
         return toTexture(el, { srgb: true });
     });

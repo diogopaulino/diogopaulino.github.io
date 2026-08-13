@@ -7,10 +7,10 @@
  */
 
 import * as THREE from 'three';
-import { buildLongship, buildWarrior } from './models.js?v=12';
-import { waterHeight, waterSlope } from './water.js';
+import { buildLongship, buildWarrior } from './models.js?v=14';
+import { waterHeight, waterSlope } from './water.js?v=14';
 import { centerX, halfWidth } from './river.js';
-import { BOAT, CANNON } from './config.js?v=12';
+import { BOAT, CANNON } from './config.js?v=14';
 import { clamp, damp, lerp } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -40,8 +40,8 @@ export class Player {
         this.parts = parts;
 
         const { group: warrior, parts: wParts } = buildWarrior({});
-        // Pés no convés midship (sheer 0 − drop 0.26).
-        warrior.position.set(0, 0.95, -1.4);
+        warrior.position.set(0, 1.08, -2.55);
+        warrior.scale.setScalar(1.42);
         ship.add(warrior);
         this.warrior = warrior;
         this.wParts = wParts;
@@ -101,23 +101,29 @@ export class Player {
     }
 
     _setOpacity(value) {
-        this.root.traverse((child) => {
-            if (!child.material || child === this.shieldBubble) return;
-            const mats = Array.isArray(child.material) ? child.material : [child.material];
-            for (const m of mats) {
-                if (m.userData.baseOpacity === undefined) {
-                    m.userData.baseOpacity = m.opacity;
-                    m.userData.baseTransparent = m.transparent;
+        if (!this._fadeMats) {
+            this._fadeMats = [];
+            this.root.traverse((child) => {
+                if (!child.material || child === this.shieldBubble) return;
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                for (const m of mats) {
+                    if (m.userData.baseOpacity === undefined) {
+                        m.userData.baseOpacity = m.opacity;
+                        m.userData.baseTransparent = m.transparent;
+                    }
+                    this._fadeMats.push(m);
                 }
-                if (value >= 1) {
-                    m.opacity = m.userData.baseOpacity;
-                    m.transparent = m.userData.baseTransparent;
-                } else {
-                    m.transparent = true;
-                    m.opacity = m.userData.baseOpacity * value;
-                }
+            });
+        }
+        for (const m of this._fadeMats) {
+            if (value >= 1) {
+                m.opacity = m.userData.baseOpacity;
+                m.transparent = m.userData.baseTransparent;
+            } else {
+                m.transparent = true;
+                m.opacity = m.userData.baseOpacity * value;
             }
-        });
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -186,12 +192,27 @@ export class Player {
             0.14
         );
 
+        const speedRatio = this.speed / BOAT.boostSpeed;
+
         // --- remos ---
-        const rowSpeed = 2.2 + (this.speed / BOAT.boostSpeed) * 3.4;
+        const rowSpeed = 2.4 + (this.speed / BOAT.boostSpeed) * 3.8;
         for (const oar of this.parts.oars) {
             const phase = time * rowSpeed + oar.userData.phase;
-            oar.rotation.x = Math.sin(phase) * 0.46;
-            oar.rotation.z = oar.userData.baseRoll - oar.userData.side * Math.sin(phase + 1.3) * 0.22;
+            const dip = Math.sin(phase);
+            oar.rotation.x = dip * 0.5;
+            oar.rotation.z = oar.userData.baseRoll - oar.userData.side * Math.sin(phase + 1.3) * 0.24;
+            if (dip > 0.82 && Math.random() < 0.18 && oar.position) {
+                effects.splash(
+                    this.x + oar.userData.side * 3.6,
+                    wy + 0.02,
+                    this.z + (oar.position.z || 0) * 0.2,
+                    2,
+                    0.28 + speedRatio * 0.2
+                );
+            }
+        }
+        if (this.parts.rudder) {
+            this.parts.rudder.rotation.y = -this.yaw * 1.8;
         }
 
         // --- guerreiro ---
@@ -225,19 +246,18 @@ export class Player {
         }
 
         // --- espuma da proa e esteira (fora do casco, nunca sobre o convés) ---
-        const speedRatio = this.speed / BOAT.boostSpeed;
         const sternZ = this.z + 9.2;
-        effects.wake.push(this.x - 1.1, sternZ, 1.35 + speedRatio * 1.1, 0.55 + speedRatio * 0.4);
-        effects.wake.push(this.x + 1.1, sternZ, 1.35 + speedRatio * 1.1, 0.55 + speedRatio * 0.4);
+        effects.wake.push(this.x - 1.15, sternZ, 1.55 + speedRatio * 1.35, 0.7 + speedRatio * 0.5);
+        effects.wake.push(this.x + 1.15, sternZ, 1.55 + speedRatio * 1.35, 0.7 + speedRatio * 0.5);
 
-        if (Math.random() < 0.22 + speedRatio * 0.22) {
+        if (Math.random() < 0.28 + speedRatio * 0.28) {
             const bowX = this.x + Math.sin(this.yaw) * 7.2;
             const bowZ = this.z - 7.6;
-            effects.splash(bowX, wy + 0.05, bowZ, 1, 0.22 + speedRatio * 0.22);
+            effects.splash(bowX, wy + 0.05, bowZ, 2, 0.28 + speedRatio * 0.28);
         }
-        if (Math.random() < 0.1 + speedRatio * 0.12) {
+        if (Math.random() < 0.14 + speedRatio * 0.16) {
             const side = Math.random() < 0.5 ? -1 : 1;
-            effects.splash(this.x + side * 3.4, wy + 0.02, this.z + 8.6, 1, 0.14 + speedRatio * 0.14);
+            effects.splash(this.x + side * 3.4, wy + 0.02, this.z + 8.6, 1, 0.18 + speedRatio * 0.16);
         }
 
         // --- temporizadores ---
@@ -249,8 +269,10 @@ export class Player {
         // Piscar durante a invulnerabilidade.
         if (this.invuln > 0 && !this.hasShield) {
             this._setOpacity(0.35 + Math.abs(Math.sin(time * 22)) * 0.65);
-        } else {
+            this._faded = true;
+        } else if (this._faded) {
             this._setOpacity(1);
+            this._faded = false;
         }
 
         this.shieldBubble.visible = this.hasShield;

@@ -8,8 +8,8 @@
 import * as THREE from 'three';
 import { buildRadialGrid } from './utils.js';
 import { RIVER_GLSL } from './river.js';
-import { SKY_GLSL, NOISE_GLSL } from './sky.js';
-import { foamTexture } from './textures.js';
+import { SKY_GLSL, NOISE_GLSL } from './sky.js?v=14';
+import { foamTexture } from './textures.js?v=14';
 
 /**
  * Conjunto de ondas: direção (normalizada), amplitude, comprimento, velocidade.
@@ -108,8 +108,8 @@ export function createWater(skyUniforms, quality) {
         uFoam: { value: foamTexture() },
         uFogColor: { value: new THREE.Color(0.7, 0.7, 0.75) },
         uFogDensity: { value: quality.fogDensity },
-        uShallow: { value: new THREE.Color(0.22, 0.44, 0.36) },
-        uDeep: { value: new THREE.Color(0.01, 0.03, 0.06) }
+        uShallow: { value: new THREE.Color(0.18, 0.42, 0.34) },
+        uDeep: { value: new THREE.Color(0.02, 0.07, 0.10) }
     };
 
     const material = new THREE.ShaderMaterial({
@@ -193,25 +193,31 @@ export function createWater(skyUniforms, quality) {
                 // Luz atravessando a crista da onda (subsurface fake).
                 body += uSunColor * uShallow * smoothstep(0.6, 1.9, vPhase) * 0.10 * (1.0 - depth * 0.65);
 
+                // Cáusticos baratos no raso — o leito do rio "pisca" com o sol.
+                float caust = rkValueNoise(rp * 1.85 + vec2(uTime * 0.18, -uTime * 0.14));
+                caust *= rkValueNoise(rp * 3.4 + vec2(-uTime * 0.11, uTime * 0.16));
+                body += uSunColor * caust * (1.0 - depth) * 0.16;
+
                 vec3 col = mix(body, refl, fres * 0.88);
 
-                // Brilho especular do sol na crista das ondas.
+                // Brilho especular do sol (rio, não oceano).
                 vec3 H = normalize(V + uSunDir);
-                float spec = pow(max(dot(N, H), 0.0), 420.0);
-                float sparkle = pow(max(dot(N, H), 0.0), 72.0) *
-                    smoothstep(0.55, 1.0, rkValueNoise(rp * 3.1 + uTime * 0.6));
-                col += uSunColor * (spec * 2.2 + sparkle * 0.28);
+                float spec = pow(max(dot(N, H), 0.0), 96.0);
+                float sparkle = pow(max(dot(N, H), 0.0), 48.0) *
+                    smoothstep(0.62, 1.0, rkValueNoise(rp * 2.4 + uTime * 0.45));
+                col += uSunColor * (spec * 0.85 + sparkle * 0.14);
 
                 // Espuma junto às margens e nas cristas mais altas.
                 float shore = rkShoreDist(vWorld.x, vWorld.z);
                 // smoothstep exige edge0 < edge1 (fora disso o resultado é indefinido em GLSL).
                 float band = smoothstep(-12.5, -2.8, shore) * (1.0 - smoothstep(-2.0, 1.4, shore));
                 float crest = smoothstep(1.15, 2.15, vPhase);
-                // Corrente sutil no eixo do rio (Z negativo ≈ descida).
-                vec2 fuv = vWorld.xz * 0.046 + vec2(uTime * 0.0035, uTime * 0.045);
+                vec2 fuv = vWorld.xz * 0.038 + vec2(uTime * 0.004, uTime * 0.07);
                 float ftex = texture2D(uFoam, fuv).a;
-                float foam = clamp(band * 1.35 + crest * 0.24, 0.0, 1.0) * smoothstep(0.05, 0.5, ftex);
-                col = mix(col, vec3(0.92, 0.96, 0.99), clamp(foam, 0.0, 1.0) * 0.92);
+                float current = smoothstep(0.35, 0.85, rkValueNoise(vec2(vWorld.x * 0.08, vWorld.z * 0.025 + uTime * 0.12)));
+                float foam = clamp(band * 1.15 + crest * 0.18 + current * 0.12 * (1.0 - depth), 0.0, 1.0)
+                    * smoothstep(0.08, 0.55, ftex);
+                col = mix(col, vec3(0.88, 0.94, 0.96), clamp(foam, 0.0, 1.0) * 0.72);
 
                 // Névoa exponencial casada com o céu.
                 float dist = length(cameraPosition - vWorld);

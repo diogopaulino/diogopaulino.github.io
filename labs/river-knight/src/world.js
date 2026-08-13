@@ -4,9 +4,9 @@
  */
 
 import * as THREE from 'three';
-import { buildPineGeometry, buildOakGeometry, buildRockGeometry, plainMaterial } from './models.js';
+import { buildPineGeometry, buildOakGeometry, buildRockGeometry, buildReedGeometry, applyVegetationWind } from './models.js?v=14';
 import { centerX, halfWidth, terrainHeight } from './river.js';
-import { COURSE_LENGTH, BOSS_Z } from './config.js';
+import { COURSE_LENGTH, BOSS_Z } from './config.js?v=14';
 import { clamp, randRange, pick } from './utils.js';
 
 const SPAWN_AHEAD = 430;
@@ -24,18 +24,23 @@ class Scatter {
         sink = 0.6,
         tint = null,
         minHeight = 0.8,
-        maxSlope = 1.35
+        maxSlope = 1.35,
+        wind = 0,
+        keepAfloat = false,
+        yScale = 1
     }) {
         const material = new THREE.MeshStandardMaterial({
             vertexColors: !tint,
             color: tint || 0xffffff,
             roughness: 0.92,
-            metalness: 0
+            metalness: 0,
+            side: keepAfloat ? THREE.DoubleSide : THREE.FrontSide
         });
+        if (wind > 0) applyVegetationWind(material, wind);
 
         this.mesh = new THREE.InstancedMesh(geometry, material, count);
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        this.mesh.castShadow = true;
+        this.mesh.castShadow = !keepAfloat;
         this.mesh.receiveShadow = true;
         this.mesh.frustumCulled = false;
         scene.add(this.mesh);
@@ -47,6 +52,8 @@ class Scatter {
         this.sink = sink;
         this.minHeight = minHeight;
         this.maxSlope = maxSlope;
+        this.keepAfloat = keepAfloat;
+        this.yScale = yScale;
         this.items = new Array(count);
         this.dummy = new THREE.Object3D();
 
@@ -71,12 +78,14 @@ class Scatter {
         const yU = terrainHeight(x, z + eps);
         const slope = Math.max(Math.abs(yL - yR), Math.abs(yD - yU)) / (2 * eps);
         item.x = x;
-        item.y = y - this.sink;
+        item.y = this.keepAfloat ? Math.max(y, -0.15) - this.sink : y - this.sink;
         item.z = z;
         item.scale = randRange(this.scaleRange[0], this.scaleRange[1]);
         item.rot = randRange(0, Math.PI * 2);
         item.tilt = randRange(-0.06, 0.06);
-        item.valid = y > this.minHeight && slope < this.maxSlope;
+        item.valid = this.keepAfloat
+            ? y < 2.4 && slope < this.maxSlope
+            : y > this.minHeight && slope < this.maxSlope;
     }
 
     /** Distribui tudo de uma vez ao (re)iniciar a partida. */
@@ -94,7 +103,7 @@ class Scatter {
         const d = this.dummy;
         d.position.set(item.x, item.y, item.z);
         d.rotation.set(item.tilt, item.rot, item.tilt * 0.6);
-        d.scale.setScalar(item.valid ? item.scale : 0.0001);
+        d.scale.set(item.valid ? item.scale : 0.0001, item.valid ? item.scale * this.yScale : 0.0001, item.valid ? item.scale : 0.0001);
         d.updateMatrix();
         this.mesh.setMatrixAt(i, d.matrix);
     }
@@ -165,48 +174,76 @@ class Birds {
 export class World {
     constructor(scene, quality) {
         const s = quality.scatterScale;
-        this.pines = new Scatter(scene, buildPineGeometry(), Math.round(150 * s), {
+        this.pines = new Scatter(scene, buildPineGeometry(), Math.round(180 * s), {
+            minDist: 0.8,
+            maxDist: 88,
+            scale: [0.8, 1.65],
+            minHeight: 1.0,
+            maxSlope: 1.2,
+            wind: 0.09
+        });
+        this.oaks = new Scatter(scene, buildOakGeometry(), Math.round(85 * s), {
             minDist: 1.2,
-            maxDist: 95,
-            scale: [0.75, 1.5],
-            minHeight: 1.2,
-            maxSlope: 1.15
+            maxDist: 72,
+            scale: [0.75, 1.45],
+            minHeight: 1.0,
+            maxSlope: 1.15,
+            wind: 0.07
         });
-        this.oaks = new Scatter(scene, buildOakGeometry(), Math.round(70 * s), {
-            minDist: 1.6,
-            maxDist: 78,
-            scale: [0.7, 1.35],
-            minHeight: 1.2,
-            maxSlope: 1.1
-        });
-        this.bankRocks = new Scatter(scene, buildRockGeometry(5), Math.round(110 * s), {
-            minDist: 0.2,
-            maxDist: 18,
+        this.bankRocks = new Scatter(scene, buildRockGeometry(5), Math.round(120 * s), {
+            minDist: 0.15,
+            maxDist: 16,
             scale: [0.7, 2.4],
             sink: 1.25,
             tint: 0x54504a,
-            minHeight: 0.45,
+            minHeight: 0.35,
             maxSlope: 1.95
         });
+        this.reeds = new Scatter(scene, buildReedGeometry(), quality.reeds ?? 280, {
+            minDist: -1.2,
+            maxDist: 7.5,
+            scale: [0.7, 1.45],
+            sink: 0.05,
+            minHeight: -2,
+            maxSlope: 2.4,
+            wind: 0.22,
+            keepAfloat: true,
+            yScale: 1.15
+        });
 
-        this.birds = quality.id === 'low' ? null : new Birds(scene, 12);
+        this.birds = quality.birds === 0 ? null : new Birds(scene, quality.birds ?? 12);
         this.nextSpawnZ = 0;
         this.lastKind = null;
+        this._fishAcc = 0;
     }
 
     reset(playerZ) {
         this.pines.reset(playerZ);
         this.oaks.reset(playerZ);
         this.bankRocks.reset(playerZ);
-        this.nextSpawnZ = playerZ - 150;
+        this.reeds.reset(playerZ);
+        this.nextSpawnZ = playerZ - 70;
         this.lastKind = null;
     }
 
-    update(dt, time, playerZ) {
+    update(dt, time, playerZ, effects) {
         this.pines.update(playerZ);
         this.oaks.update(playerZ);
         this.bankRocks.update(playerZ);
+        this.reeds.update(playerZ);
         this.birds?.update(dt, time, playerZ);
+
+        if (effects) {
+            this._fishAcc += dt;
+            if (this._fishAcc > 0.55) {
+                this._fishAcc = 0;
+                if (Math.random() < 0.45) {
+                    const z = playerZ - randRange(18, 90);
+                    const x = centerX(z) + randRange(-0.7, 0.7) * halfWidth(z);
+                    effects.splash(x, 0.12, z, 6, 0.7);
+                }
+            }
+        }
     }
 
     /**
@@ -220,7 +257,7 @@ export class World {
             const z = this.nextSpawnZ;
             if (z > BOSS_Z + 130) this._spawnEncounter(z, progress, entities, difficulty);
 
-            const gap = randRange(54, 104) / (0.8 + difficulty.spawnScale * 0.45 + progress * 0.5);
+            const gap = randRange(36, 78) / (0.85 + difficulty.spawnScale * 0.5 + progress * 0.55);
             this.nextSpawnZ -= Math.max(26, gap);
             if (this.nextSpawnZ < BOSS_Z + 130) break;
         }
@@ -233,10 +270,10 @@ export class World {
 
         // Pesos por fase da jornada.
         const weights = [
-            ['rock', 26 - progress * 10],
-            ['pickup', 20 - progress * 6],
-            ['enemyShip', 6 + progress * 26],
-            ['tower', 8 + progress * 24],
+            ['rock', 16 - progress * 6],
+            ['pickup', 22 - progress * 5],
+            ['enemyShip', 14 + progress * 22],
+            ['tower', 12 + progress * 20],
             ['barricade', 8 + progress * 12],
             ['whirlpool', 4 + progress * 8]
         ];

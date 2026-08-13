@@ -4,7 +4,7 @@
  */
 
 import { formatTime } from './utils.js';
-import { DIFFICULTY } from './config.js';
+import { DIFFICULTY } from './config.js?v=14';
 
 const $ = (id) => document.getElementById(id);
 
@@ -33,6 +33,7 @@ export class Hud {
             reticle: $('reticle'),
             reticleLabel: $('reticleLabel'),
             throwFill: $('throwFill'),
+            hintBar: $('hintBar'),
 
             loading: $('loadingOverlay'),
             loadingFill: $('loadingFill'),
@@ -179,8 +180,12 @@ export class Hud {
         }, 90);
     }
 
-    /** Mira: trava visual quando há torre/inimigo no cone. */
-    setAim(lock) {
+    /** Mira: trava visual quando há torre/inimigo no cone. xPct/yPct em 0–100. */
+    setAim(lock, xPct = 50, yPct = 46) {
+        if (this.el.hud) {
+            this.el.hud.style.setProperty('--aim-x', `${xPct}%`);
+            this.el.hud.style.setProperty('--aim-y', `${yPct}%`);
+        }
         if (!this.el.reticle) return;
         const locked = Boolean(lock);
         this.el.reticle.dataset.lock = String(locked);
@@ -191,6 +196,11 @@ export class Hud {
         }
         const labels = { towers: 'Torre', enemyShips: 'Navio', barricades: 'Barricada' };
         this.el.reticleLabel.textContent = labels[lock.kind] || 'Alvo';
+    }
+
+    setHint(visible) {
+        if (!this.el.hintBar) return;
+        this.el.hintBar.classList.toggle('is-on', Boolean(visible));
     }
 
     /** 0 = recarregando, 1 = canhão pronto. */

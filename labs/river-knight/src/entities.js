@@ -16,10 +16,10 @@ import {
     buildArrowMesh,
     buildCannonballMesh,
     plainMaterial
-} from './models.js?v=12';
-import { waterHeight, waterSlope } from './water.js';
+} from './models.js?v=14';
+import { waterHeight, waterSlope } from './water.js?v=14';
 import { centerX, halfWidth, terrainHeight } from './river.js';
-import { CANNON, SCORE } from './config.js?v=12';
+import { CANNON, SCORE } from './config.js?v=14';
 import { clamp, damp, randRange } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -168,8 +168,8 @@ class EnemyShip extends Entity {
 /* ================================================================== */
 
 class Tower extends Entity {
-    constructor() {
-        super(buildWatchtower());
+    constructor(lit = true) {
+        super(buildWatchtower({ lit }));
         this.kind = 'tower';
         this.radius = 3.4;
         this.maxHp = 4;
@@ -204,8 +204,8 @@ class Tower extends Entity {
             const s = 0.85 + Math.sin(ctx.time * 9 + pos.x) * 0.15;
             fire.scale.set(s, s * 1.25, s);
         }
-        if (Math.random() < 0.35) {
-            ctx.effects.fire(pos.x, pos.y + 11, pos.z, 1, 0.9);
+        if (dz > -90 && dz < 12 && Math.random() < 0.035) {
+            ctx.effects.fire(pos.x, pos.y + 11, pos.z, 1, 0.85);
         }
 
         const dz = pos.z - ctx.player.z;
@@ -476,8 +476,8 @@ class Arrow extends Entity {
             const s = 0.9 + Math.sin(ctx.time * 24) * 0.2;
             flame.scale.set(s, s, s * 1.8);
         }
-        if (Math.random() < 0.7) {
-            ctx.effects.fire(this.group.position.x, this.group.position.y, this.group.position.z, 1, 0.5);
+        if (Math.random() < 0.05) {
+            ctx.effects.fire(this.group.position.x, this.group.position.y, this.group.position.z, 1, 0.45);
         }
 
         this.life -= dt;
@@ -557,7 +557,7 @@ export class Entities {
         };
 
         make('enemyShips', () => new EnemyShip(), POOL_SIZES.enemyShips);
-        make('towers', () => new Tower(), POOL_SIZES.towers);
+        make('towers', () => new Tower(quality.pointLights), POOL_SIZES.towers);
         make('barricades', () => new Barricade(), POOL_SIZES.barricades);
         make('rocks', (i) => new RockObstacle(i), POOL_SIZES.rocks);
         make('whirlpools', () => new Whirlpool(), POOL_SIZES.whirlpools);

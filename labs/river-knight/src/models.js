@@ -7,8 +7,8 @@
  */
 
 import * as THREE from 'three';
-import { COLORS } from './config.js';
-import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js';
+import { COLORS } from './config.js?v=14';
+import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
 
 /* ------------------------------------------------------------------ */
 /* Materiais                                                           */
@@ -117,7 +117,46 @@ export function clothMaterial({ map = null, color = 0xffffff, side = THREE.Doubl
     return material;
 }
 
-/** Avança a animação de todos os tecidos criados. */
+/** Vento barato em árvores/juncos instanciados (desloca o topo no vertex shader). */
+export function applyVegetationWind(material, amount = 0.11) {
+    material.userData.uniforms = {
+        uTime: { value: 0 },
+        uWind: { value: amount }
+    };
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = material.userData.uniforms.uTime;
+        shader.uniforms.uWind = material.userData.uniforms.uWind;
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <common>',
+                /* glsl */ `
+                #include <common>
+                uniform float uTime;
+                uniform float uWind;
+                `
+            )
+            .replace(
+                '#include <begin_vertex>',
+                /* glsl */ `
+                #include <begin_vertex>
+                float rkH = max(transformed.y, 0.0);
+                #ifdef USE_INSTANCING
+                vec3 rkOrig = instanceMatrix[3].xyz;
+                #else
+                vec3 rkOrig = vec3(0.0);
+                #endif
+                float rkB = sin(uTime * 1.28 + rkOrig.x * 0.16 + rkOrig.z * 0.12) * uWind * rkH;
+                transformed.x += rkB;
+                transformed.z += rkB * 0.55;
+                `
+            );
+    };
+    material.customProgramCacheKey = () => 'river-knight-veg-wind';
+    registerCloth(material);
+    return material;
+}
+
+/** Avança a animação de todos os tecidos e da vegetação. */
 const clothMaterials = new Set();
 export function registerCloth(material) {
     clothMaterials.add(material);
@@ -269,36 +308,43 @@ export function buildDeckGeometry({
 function buildDragonHead(color) {
     const group = new THREE.Group();
     const mat = woodMaterial(true, color);
+    const dark = woodMaterial(true, 0x2a1810);
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 1.5, 10), mat);
-    neck.rotation.x = -0.35;
-    neck.position.y = 0.7;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.65, 8), mat);
+    neck.rotation.x = -0.42;
+    neck.position.set(0, 0.72, 0.15);
     group.add(neck);
 
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.4, 0.95), mat);
-    skull.position.set(0, 1.42, 0.42);
-    skull.rotation.x = 0.25;
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), mat);
+    skull.scale.set(0.85, 0.78, 1.15);
+    skull.position.set(0, 1.48, 0.55);
     group.add(skull);
 
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.24, 0.55), mat);
-    snout.position.set(0, 1.3, 1.0);
-    snout.rotation.x = 0.25;
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 8), mat);
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, 1.38, 1.12);
     group.add(snout);
 
-    // Crista de espinhos.
-    for (let i = 0; i < 4; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.34, 6), mat);
-        spike.position.set(0, 1.6 - i * 0.06, 0.1 - i * 0.28);
-        spike.rotation.x = -0.5;
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.42), dark);
+    jaw.position.set(0, 1.22, 0.95);
+    jaw.rotation.x = 0.18;
+    group.add(jaw);
+
+    for (let i = 0; i < 5; i++) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.32, 5), dark);
+        spike.position.set(0, 1.72 - i * 0.07, 0.22 - i * 0.22);
+        spike.rotation.x = -0.55;
         group.add(spike);
     }
 
-    // Olhos brilhantes.
     const eyeMat = plainMaterial(0xffb347, 0.3, 0, 0xff7a1a, 2.4);
     for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), eyeMat);
-        eye.position.set(sx * 0.17, 1.46, 0.72);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), eyeMat);
+        eye.position.set(sx * 0.16, 1.54, 0.78);
         group.add(eye);
+        const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), dark);
+        nostril.position.set(sx * 0.07, 1.34, 1.38);
+        group.add(nostril);
     }
 
     return group;
@@ -330,7 +376,6 @@ export function buildLongship({
     hull.castShadow = true;
     hull.receiveShadow = true;
     hull.material.side = THREE.DoubleSide;
-    hull.material.color.multiplyScalar(0.88);
     group.add(hull);
     parts.hull = hull;
 
@@ -393,9 +438,10 @@ export function buildLongship({
         group.add(plank);
     }
 
-    // Anteparas na proa/popa (bem nas pontas) — bloqueiam o túnel para a água.
+    // Anteparas internas — a popa usa o transom dedicado (abaixo), para a
+    // câmera de perseguição não bater num muro marrom na frente do guerreiro.
     const bulkMat = woodMaterial(true, 0x2e1c12);
-    for (const t of [-0.94, -0.55, 0.55, 0.94]) {
+    for (const t of [-0.55, 0.55, 0.94]) {
         const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
         const deckY = sheer - deckDrop;
         const bilge = sheer - dep * 0.85;
@@ -406,9 +452,9 @@ export function buildLongship({
         group.add(bulk);
     }
 
-    // Espelho de popa/proa — a câmera de perseguição olha para dentro do U;
-    // sem painel sólido a água atravessa o casco.
-    for (const t of [-0.995, 0.995]) {
+    // Tampão da proa — bloqueia o túnel para a água. A popa fica a cargo do transom.
+    {
+        const t = 0.995;
         const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
         const bilge = sheer - dep;
         const h = Math.max(1.15, sheer - bilge + 0.6);
@@ -421,64 +467,61 @@ export function buildLongship({
         group.add(panel);
     }
 
-    // Plataforma de popa (guerreiro) — fecha o túnel que a câmera vê.
+    // Plataforma de popa: o tampão fica SÓ abaixo do convés para a água não
+    // atravessar, e a câmera de perseguição vê o guerreiro, o mastro e a vela.
     {
         const sternMat = woodMaterial(true, 0x4a3222);
         const sternDark = woodMaterial(true, 0x2a1a12);
 
-        // Bloco único da quilha ao peitoril, da popa até midships.
-        // Centro alto o bastante para o topo ficar acima da linha d'água.
-        const sternPlug = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.98, 2.4, length * 0.52),
+        const sternBilge = new THREE.Mesh(
+            new THREE.BoxGeometry(beam * 0.82, 0.85, length * 0.38),
             sternDark
         );
-        sternPlug.position.set(0, 0.05, -length * 0.24);
-        sternPlug.raycast = () => {};
-        group.add(sternPlug);
+        sternBilge.position.set(0, -0.98, -length * 0.18);
+        sternBilge.raycast = () => {};
+        group.add(sternBilge);
 
         const platform = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.98, 0.32, length * 0.52),
+            new THREE.BoxGeometry(beam * 0.84, 0.12, length * 0.32),
             sternMat
         );
-        platform.position.set(0, -deckDrop + 0.55, -length * 0.2);
+        platform.position.set(0, -deckDrop + 0.06, -length * 0.2);
         platform.castShadow = true;
         platform.receiveShadow = true;
         group.add(platform);
         parts.sternPlatform = platform;
 
-        // Convés elevado contínuo (leitura de madeira, não de vazio).
-        const aftDeck = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 1.0, 0.18, length * 0.54),
-            woodMaterial(true, 0x5c3d28)
-        );
-        aftDeck.position.set(0, -deckDrop + 0.7, -length * 0.18);
-        aftDeck.receiveShadow = true;
-        group.add(aftDeck);
-
         const rail = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.96, 0.48, 0.18),
+            new THREE.BoxGeometry(beam * 0.88, 0.32, 0.12),
             woodMaterial(true, 0x3a2618)
         );
-        rail.position.set(0, -deckDrop + 0.98, -length * 0.44);
+        rail.position.set(0, -deckDrop + 0.28, -length * 0.48);
         group.add(rail);
 
         for (const side of [-1, 1]) {
             const cheek = new THREE.Mesh(
-                new THREE.BoxGeometry(0.22, 1.35, length * 0.5),
+                new THREE.BoxGeometry(0.12, 0.48, length * 0.3),
                 woodMaterial(true, 0x3a2618)
             );
-            cheek.position.set(side * beam * 0.46, -deckDrop + 0.35, -length * 0.2);
+            cheek.position.set(side * beam * 0.42, -deckDrop + 0.08, -length * 0.2);
             group.add(cheek);
         }
 
-        // Tampa de popa alta — silhueta fechada vista da câmera de perseguição.
         const transom = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.98, 1.75, 0.32),
+            new THREE.BoxGeometry(beam * 0.9, 1.05, 0.16),
             woodMaterial(true, 0x2e1c12)
         );
-        transom.position.set(0, 0.15, -length * 0.48);
+        transom.position.set(0, -0.28, -length * 0.495);
         transom.castShadow = true;
         group.add(transom);
+
+        const rudder = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 1.15, 0.55),
+            woodMaterial(true, 0x3a2618)
+        );
+        rudder.position.set(0, -0.55, -length * 0.52);
+        group.add(rudder);
+        parts.rudder = rudder;
     }
 
     // Sombra de contato na superfície da água (o corpo d'água é opaco).
@@ -602,7 +645,7 @@ export function buildLongship({
     const sailMat = registerCloth(clothMaterial({
         map: sailTexture({ base: sailBase, stripe: sailStripe, emblem }),
         side: THREE.DoubleSide,
-        wind: 0.5
+        wind: 0.82
     }));
     sailMat.transparent = false;
     sailMat.alphaTest = 0;
@@ -793,121 +836,138 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const leather = plainMaterial(0x4a3524, 0.85, 0.02);
     const skin = plainMaterial(0xd9a77c, 0.75, 0);
     const cloth = plainMaterial(tunic, 0.85, 0);
+    const eyeWhite = plainMaterial(0xf4efe6, 0.4, 0);
+    const iris = plainMaterial(0x2a1c12, 0.5, 0);
 
-    // Pernas.
     for (const sx of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.1, 0.78, 8), leather);
-        leg.position.set(sx * 0.15, 0.39, 0);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.105, 0.82, 8), leather);
+        leg.position.set(sx * 0.16, 0.41, 0.02);
         leg.castShadow = true;
         group.add(leg);
-        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.34), plainMaterial(0x2e2116, 0.9, 0));
-        boot.position.set(sx * 0.15, 0.07, 0.04);
+        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.38), plainMaterial(0x2e2116, 0.9, 0));
+        boot.position.set(sx * 0.16, 0.07, 0.06);
         group.add(boot);
     }
 
     const torso = new THREE.Group();
-    torso.position.y = 0.78;
+    torso.position.y = 0.82;
     group.add(torso);
 
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.24, 0.62, 10), cloth);
-    chest.position.y = 0.3;
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.25, 0.66, 10), cloth);
+    chest.position.y = 0.32;
     chest.castShadow = true;
     torso.add(chest);
 
-    // Cota de malha / peitoral.
-    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.36, 10), steel);
-    plate.position.y = 0.42;
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.27, 0.38, 10), steel);
+    plate.position.y = 0.46;
     plate.castShadow = true;
     torso.add(plate);
 
-    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.1, 10), leather);
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.04), metalMaterial(0xd4b45a, 0.35));
+    crossV.position.set(0, 0.48, 0.3);
+    torso.add(crossV);
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.04), metalMaterial(0xd4b45a, 0.35));
+    crossH.position.set(0, 0.5, 0.3);
+    torso.add(crossH);
+
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.1, 10), leather);
     belt.position.y = 0.04;
     torso.add(belt);
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.04), metalMaterial(0xd4b45a, 0.4));
+    buckle.position.set(0, 0.04, 0.27);
+    torso.add(buckle);
 
-    // Ombreiras.
     for (const sx of [-1, 1]) {
-        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), steel);
-        pauldron.position.set(sx * 0.3, 0.56, 0);
+        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), steel);
+        pauldron.position.set(sx * 0.32, 0.6, 0);
         pauldron.rotation.z = sx * 0.35;
         pauldron.castShadow = true;
         torso.add(pauldron);
     }
 
-    // Cabeça + elmo.
     const head = new THREE.Group();
-    head.position.y = 0.74;
+    head.position.y = 0.78;
     torso.add(head);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), skin);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
     head.add(skull);
 
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), steel);
+    for (const sx of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), eyeWhite);
+        eye.position.set(sx * 0.055, 0.02, 0.155);
+        head.add(eye);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), iris);
+        pupil.position.set(sx * 0.055, 0.02, 0.175);
+        head.add(pupil);
+    }
+
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.205, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), steel);
     helm.position.y = 0.02;
     helm.castShadow = true;
     head.add(helm);
 
-    const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), steel);
-    nasal.position.set(0, -0.03, 0.17);
+    const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.05), steel);
+    nasal.position.set(0, -0.03, 0.175);
     head.add(nasal);
 
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.04), darkSteel);
+    visor.position.set(0, 0.04, 0.175);
+    head.add(visor);
+
     for (const sx of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.34, 7), plainMaterial(0xe8dfc8, 0.6, 0));
-        horn.position.set(sx * 0.19, 0.12, -0.02);
-        horn.rotation.z = sx * -0.85;
-        horn.rotation.x = -0.15;
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.048, 0.3, 7), plainMaterial(0xe8dfc8, 0.6, 0));
+        horn.position.set(sx * 0.18, 0.14, -0.02);
+        horn.rotation.z = sx * -0.78;
+        horn.rotation.x = -0.12;
         head.add(horn);
     }
 
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.22, 8), plainMaterial(0x8a5b2f, 0.9, 0));
-    beard.position.set(0, -0.14, 0.06);
+    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 8), plainMaterial(0x6a4220, 0.9, 0));
+    beard.position.set(0, -0.15, 0.07);
     beard.rotation.x = Math.PI;
     head.add(beard);
 
-    // Braços (pivô no ombro).
-    const armGeo = new THREE.CylinderGeometry(0.085, 0.075, 0.56, 8);
+    const armGeo = new THREE.CylinderGeometry(0.09, 0.078, 0.58, 8);
     const armR = new THREE.Group();
-    armR.position.set(0.3, 0.52, 0);
+    armR.position.set(0.32, 0.54, 0);
     torso.add(armR);
     const armRMesh = new THREE.Mesh(armGeo, cloth);
     armRMesh.position.y = -0.28;
     armRMesh.castShadow = true;
     armR.add(armRMesh);
-    const bracerR = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.09, 0.18, 8), darkSteel);
-    bracerR.position.y = -0.5;
+    const bracerR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.092, 0.18, 8), darkSteel);
+    bracerR.position.y = -0.52;
     armR.add(bracerR);
 
     const armL = new THREE.Group();
-    armL.position.set(-0.3, 0.52, 0);
+    armL.position.set(-0.32, 0.54, 0);
     torso.add(armL);
     const armLMesh = new THREE.Mesh(armGeo, cloth);
     armLMesh.position.y = -0.28;
     armLMesh.castShadow = true;
     armL.add(armLMesh);
 
-    // Escudo no braço esquerdo.
     const shield = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.34, 0.34, 0.08, 16),
+        new THREE.CylinderGeometry(0.36, 0.36, 0.09, 16),
         new THREE.MeshStandardMaterial({ map: shieldTexture('#2f5d7c', '#e8dcb8'), roughness: 0.68 })
     );
     shield.rotation.z = Math.PI / 2;
     shield.rotation.y = 0.2;
-    shield.position.set(-0.16, -0.5, 0.06);
+    shield.position.set(-0.18, -0.5, 0.08);
     shield.castShadow = true;
     armL.add(shield);
 
-    // Machado na mão direita.
-    const axe = buildAxeMesh(0.85);
-    axe.position.set(0.02, -0.62, 0.06);
+    const axe = buildAxeMesh(0.9);
+    axe.position.set(0.02, -0.64, 0.06);
     axe.rotation.set(-0.4, 0, 0.3);
     armR.add(axe);
 
-    // Capa.
-    const capeMat = registerCloth(clothMaterial({ color: cape, side: THREE.DoubleSide, wind: 0.4 }));
+    const capeMat = registerCloth(clothMaterial({ color: cape, side: THREE.DoubleSide, wind: 0.55 }));
     capeMat.transparent = false;
     capeMat.alphaTest = 0;
-    const capeMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.95, 8, 8), capeMat);
-    capeMesh.position.set(0, 0.18, -0.26);
-    capeMesh.rotation.x = 0.12;
+    const capeMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 1.05, 8, 8), capeMat);
+    capeMesh.position.set(0, 0.16, -0.28);
+    capeMesh.rotation.x = 0.14;
     capeMesh.castShadow = true;
     torso.add(capeMesh);
 
@@ -999,16 +1059,16 @@ export function buildArrowMesh() {
 /** Pinheiro em camadas — geometria única para uso em InstancedMesh. */
 export function buildPineGeometry() {
     const parts = [];
-    const trunk = new THREE.CylinderGeometry(0.22, 0.34, 3.4, 7);
-    trunk.translate(0, 1.7, 0);
+    const trunk = new THREE.CylinderGeometry(0.2, 0.36, 3.6, 7);
+    trunk.translate(0, 1.8, 0);
     parts.push({ geo: trunk, color: new THREE.Color(0x4a3423) });
 
-    for (let i = 0; i < 4; i++) {
-        const r = 2.3 - i * 0.45;
-        const h = 2.4 - i * 0.28;
-        const cone = new THREE.ConeGeometry(r, h, 8);
-        cone.translate(0, 2.9 + i * 1.35, 0);
-        parts.push({ geo: cone, color: new THREE.Color().setHSL(0.31, 0.42, 0.16 + i * 0.035) });
+    for (let i = 0; i < 5; i++) {
+        const r = 2.45 - i * 0.38;
+        const h = 2.2 - i * 0.18;
+        const cone = new THREE.ConeGeometry(r, h, 7);
+        cone.translate((i % 2) * 0.12, 2.7 + i * 1.18, (i % 3 - 1) * 0.08);
+        parts.push({ geo: cone, color: new THREE.Color().setHSL(0.30, 0.46, 0.15 + i * 0.032) });
     }
     return mergeWithColors(parts);
 }
@@ -1032,6 +1092,21 @@ export function buildOakGeometry() {
         s.translate(x, y, z);
         parts.push({ geo: s, color: new THREE.Color().setHSL(0.26, 0.38, 0.19 + Math.random() * 0.06) });
     }
+    return mergeWithColors(parts);
+}
+
+/** Junco da beira — dois planos cruzados, barato em InstancedMesh. */
+export function buildReedGeometry() {
+    const parts = [];
+    const blade = new THREE.PlaneGeometry(0.22, 1.7, 1, 3);
+    blade.translate(0, 0.85, 0);
+    parts.push({ geo: blade, color: new THREE.Color(0x3d5a28) });
+    const blade2 = blade.clone();
+    blade2.rotateY(Math.PI / 2);
+    parts.push({ geo: blade2, color: new THREE.Color(0x4a6b30) });
+    const tip = new THREE.ConeGeometry(0.05, 0.28, 4);
+    tip.translate(0, 1.78, 0);
+    parts.push({ geo: tip, color: new THREE.Color(0x6b5428) });
     return mergeWithColors(parts);
 }
 
@@ -1105,7 +1180,7 @@ export function mergeWithColors(parts) {
 }
 
 /** Torre de vigia inimiga fincada na margem. */
-export function buildWatchtower() {
+export function buildWatchtower({ lit = true } = {}) {
     const group = new THREE.Group();
     const stone = stoneMaterial('#7d7a72');
 
@@ -1140,12 +1215,14 @@ export function buildWatchtower() {
     );
     fire.position.y = 10.9;
     group.add(fire);
-    const light = new THREE.PointLight(0xff8c3a, 14, 32, 2);
-    light.position.y = 11;
-    group.add(light);
+    if (lit) {
+        const light = new THREE.PointLight(0xff8c3a, 14, 32, 2);
+        light.position.y = 11;
+        group.add(light);
+        group.userData.light = light;
+    }
 
     group.userData.fire = fire;
-    group.userData.light = light;
     return group;
 }
 
