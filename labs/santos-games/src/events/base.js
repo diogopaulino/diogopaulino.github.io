@@ -5,7 +5,7 @@
 // gameplay cuidando só da sua mecânica, e garante que as seis se comportem igual em pausa,
 // em `prefers-reduced-motion` e na entrega da pontuação.
 
-import { EVENTS } from '../game/config.js';
+import { EVENTS, KID_PICK } from '../game/config.js';
 import { FloatingText, topBar, countdown, controlHint } from '../game/hud.js';
 import { clamp } from '../core/util.js';
 import { tapped, consumeTap, drawTapCue, drawSparkles } from '../game/kids.js';
@@ -129,13 +129,12 @@ export class EventBase {
     draw() {
         this.render();
         topBar(this.app.px, this.app.font, {
-            title: this.def.name,
+            title: (KID_PICK[this.id] && KID_PICK[this.id].label) || this.def.name,
             score: Math.round(this.score),
-            middle: this.middleLabel(),
+            middle: this.cueReady ? '★' : this.middleLabel(),
             tint: this.def.tint
         });
         this.float.draw(this.app.px, this.app.font);
-        this.renderOverlay();
 
         if (this.phase === 'countdown') {
             countdown(this.app.px, this.app.font, this.phaseT - 0.2);

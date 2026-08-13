@@ -95,6 +95,10 @@ export class SkateEvent extends EventBase {
         }
 
         if (this.state === 'air') {
+            this.cueReady = true;
+            const lip = surfaceAt(this.s);
+            this.cueX = lip.x;
+            this.cueY = COPING_Y - this.airY - 28;
             this.stepAir(dt);
             return;
         }
@@ -118,7 +122,7 @@ export class SkateEvent extends EventBase {
         this.v = clamp(this.v, -420, 420);
         this.s += this.v * dt;
 
-        const nearLip = Math.abs(this.s) > S_MAX * 0.72 && Math.abs(this.v) > MIN_LAUNCH * 0.7;
+        const nearLip = Math.abs(this.s) > S_MAX * 0.55 && Math.abs(this.v) > MIN_LAUNCH * 0.45;
         this.cueReady = this.state === 'ride' && nearLip;
         const lip = surfaceAt(this.s);
         this.cueX = lip.x;

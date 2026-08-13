@@ -311,17 +311,8 @@ html, body {
 }
 
 .tp-left, .tp-right {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    font-size: 1.3rem;
-    bottom: 16px;
-    display: none;
+    display: none !important;
 }
-.tp-left { left: 12px; }
-.tp-right { left: 72px; }
-.tp--coarse .tp-left,
-.tp--coarse .tp-right { display: flex; }
 
 .tp-tap {
     width: 72px;

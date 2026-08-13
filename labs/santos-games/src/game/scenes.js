@@ -58,11 +58,10 @@ export const titleScene = {
 
         drawSparkles(px, sprites, W / 2, 44, this.t, 6);
 
-        if (Math.floor(this.t * 2.4) % 2 === 0) {
-            font.text(c, 'TOQUE PARA BRINCAR', W / 2, 96, {
-                color: 'A', align: 'center', mono: true, scale: 2, outline: '0'
-            });
-        }
+        font.text(c, 'TOQUE PARA BRINCAR', W / 2, 96, {
+            color: Math.floor(this.t * 3) % 2 === 0 ? 'A' : '8',
+            align: 'center', mono: true, scale: 2, outline: '0'
+        });
 
         const bounce = Math.abs(Math.sin(this.t * 4)) * 16;
         px.blitScreen(sprites.get('ballIdle'), W / 2 - 36, 178);
@@ -298,7 +297,7 @@ export const eventSelectScene = {
             const cx = Math.round(this.x0 + (i % this.cols) * this.cellW + this.cellW / 2);
             const cy = this.y0 + Math.floor(i / this.cols) * this.cellH;
             const active = i === this.index;
-            const bounce = active ? Math.round(Math.sin(this.t * 8) * 3) : 0;
+            const bounce = active ? Math.round(Math.sin(this.t * 8) * 4) : Math.round(Math.sin(this.t * 3 + i) * 1);
             panel(px, cx - 46, cy - 2, 92, 66, {
                 fill: active ? '2' : '1',
                 border: '0',
@@ -307,7 +306,7 @@ export const eventSelectScene = {
                 accent: ev.tint
             });
             const pose = PICK_POSE[id];
-            px.blitScreen(sprites.get(pose), cx, cy + 44 + bounce);
+            px.blitScreen(sprites.get(pose), cx, cy + 46 + bounce);
             const prop = PICK_PROP[id];
             if (sprites.has(prop) && id !== 'canoa') {
                 px.blitScreen(sprites.get(prop), cx + 16, cy + 48 + bounce);

@@ -126,8 +126,8 @@ export function drawBeachLife(px, sprites, scenery, t, extra = {}) {
     px.blitScreen(sprites.get('umbrella'), 78, 180);
 
     if (extra.balloons !== false && sprites.has('balloon')) {
-        px.blitScreen(sprites.get('balloon'), 16 + Math.sin(t * 1.2) * 4, 22 + Math.sin(t * 1.6) * 6);
-        px.blitScreen(sprites.get('balloon'), W - 18 + Math.sin(t * 1.1 + 1) * 4, 30 + Math.sin(t * 1.4) * 7);
+        px.blitScreen(sprites.get('balloon'), 10 + Math.sin(t * 1.2) * 3, 92 + Math.sin(t * 1.6) * 8);
+        px.blitScreen(sprites.get('balloon'), W - 12 + Math.sin(t * 1.1 + 1) * 3, 108 + Math.sin(t * 1.4) * 8);
     }
     if (extra.walkers !== false) {
         if (sprites.has('crab#0')) {

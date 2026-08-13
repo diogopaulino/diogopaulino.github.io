@@ -101,8 +101,8 @@ export class BmxEvent extends EventBase {
 
         this.coyote = this.grounded ? COYOTE_SEC : Math.max(0, (this.coyote || 0) - dt);
 
-        const nearObs = this.obstacles.find((o) => !o.hit && (o.x - this.dist) > 4 && (o.x - this.dist) < 70);
-        this.cueReady = this.grounded && !!nearObs;
+        const nearObs = this.obstacles.find((o) => !o.hit && (o.x - this.dist) > 4 && (o.x - this.dist) < 110);
+        this.cueReady = (this.grounded && !!nearObs) || (!this.grounded && this.y > 18);
         this.cueX = 96;
         this.cueY = GROUND_Y - 56;
 

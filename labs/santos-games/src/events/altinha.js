@@ -101,8 +101,8 @@ export class AltinhaEvent extends EventBase {
         // --- toque ---
         // Buffer curto: apertar meio quadro antes da bola entrar no alcance continua valendo.
         const height = SAND_Y - b.y;
-        const near = Math.abs(b.x - this.playerX) < HIT_RANGE_X + 10 && b.vy > 0 && height < 90;
-        this.cueReady = this.ball.live && near;
+        const near = this.ball.live && b.vy > 0 && height < 100;
+        this.cueReady = !!near;
         this.cueX = this.playerX;
         this.cueY = SAND_Y - 70;
 
