@@ -503,7 +503,7 @@ class Game {
         this.hud.setKills(this.kills);
         this.hud.setTime(this.elapsed);
         let heading = Math.atan2(-Math.sin(this.player.yaw), -Math.cos(this.player.yaw)) * 180 / Math.PI;
-        if (heading < 0) heading += 360;
+        heading = (Math.round(heading) + 360) % 360;
         this.hud.setHeading(heading);
 
         this.fpsFrames += 1;

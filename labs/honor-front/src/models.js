@@ -147,7 +147,7 @@ export function buildViewGarand() {
     hands.position.set(0.02, -0.12, 0.02);
     root.add(hands);
 
-    root.position.set(0.28, -0.28, -0.55);
+    root.position.set(0.22, -0.2, -0.42);
     root.rotation.set(0.04, 0.08, 0.02);
     return root;
 }
@@ -169,7 +169,7 @@ export function buildViewThompson() {
     hands.position.set(0.0, -0.14, 0.0);
     root.add(hands);
 
-    root.position.set(0.26, -0.26, -0.5);
+    root.position.set(0.2, -0.18, -0.4);
     return root;
 }
 

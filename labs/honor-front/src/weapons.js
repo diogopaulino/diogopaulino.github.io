@@ -146,9 +146,9 @@ export class Loadout {
         const bobY = Math.abs(Math.cos(this.sway)) * (moving ? 0.016 : 0.005);
         const adsPull = ads * 0.22;
         const reloadDip = this.reloadT > 0 ? Math.sin((1 - this.reloadT / this.spec.reload) * Math.PI) * 0.28 : 0;
-        const baseX = this.current === 'thompson' ? 0.26 : 0.28;
-        const baseY = this.current === 'thompson' ? -0.26 : -0.28;
-        const baseZ = this.current === 'thompson' ? -0.5 : -0.55;
+        const baseX = this.current === 'thompson' ? 0.2 : 0.22;
+        const baseY = this.current === 'thompson' ? -0.18 : -0.2;
+        const baseZ = this.current === 'thompson' ? -0.4 : -0.42;
         view.position.set(
             baseX - adsPull + bobX,
             baseY + ads * 0.12 + bobY - this.kick * 2.4 - reloadDip,
