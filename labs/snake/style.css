@@ -509,4 +509,10 @@ canvas {
     .instructions {
         display: none;
     }
+
+    /* Sem as instruções, o respiro de 2rem em cima e embaixo só empurrava o
+       aparelho para fora da tela deitada. */
+    .game-container {
+        padding: 0.5rem 0;
+    }
 }
