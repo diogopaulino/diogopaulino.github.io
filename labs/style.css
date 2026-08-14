@@ -145,6 +145,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  overflow-wrap: break-word;
 }
 
 .project-content p {

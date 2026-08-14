@@ -139,7 +139,7 @@ button {
     top: calc(0.85rem + var(--safe-top));
     left: calc(1rem + var(--safe-left));
     right: calc(1rem + var(--safe-right));
-    z-index: 40;
+    z-index: 80;
     margin: 0;
     padding: 0;
     max-width: none;
@@ -458,6 +458,9 @@ body[data-state="observing"] .lab-foot {
 }
 
 .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     width: min(520px, 100%);
     padding: 2rem 1.8rem 1.6rem;
     border-radius: var(--radius-lg);

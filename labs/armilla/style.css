@@ -46,6 +46,8 @@ html, body {
 
 body {
     min-height: 100dvh;
+    padding: 0 !important;
+    display: block !important;
     color: var(--text);
     font-family: 'Outfit', system-ui, sans-serif;
     user-select: none;

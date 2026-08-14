@@ -136,7 +136,7 @@ button {
     top: calc(0.9rem + var(--safe-top));
     left: calc(1rem + var(--safe-left));
     right: calc(1rem + var(--safe-right));
-    z-index: 40;
+    z-index: 80;
     margin: 0;
     padding: 0;
     max-width: none;
@@ -427,7 +427,7 @@ body[data-state="playing"] .game-shell > header .app-logo {
     z-index: 50;
     display: grid;
     place-items: center;
-    padding: calc(1.2rem + var(--safe-top)) 1.2rem calc(1.2rem + var(--safe-bottom));
+    padding: calc(4.5rem + var(--safe-top)) 1.2rem calc(1.2rem + var(--safe-bottom));
     background:
         radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--amber) 16%, transparent), transparent 55%),
         rgba(12, 8, 4, 0.42);
@@ -437,6 +437,9 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .overlay[hidden] { display: none; }
 
 .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     width: min(760px, 100%);
     background: color-mix(in oklab, #1a140c 78%, transparent);
     border: 1px solid var(--line);
@@ -699,4 +702,17 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
     .grain { animation: none; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .overlay {
+        padding: calc(3.4rem + var(--safe-top)) 0.85rem calc(0.75rem + var(--safe-bottom));
+        align-items: stretch;
+    }
+    .overlay-card {
+        max-height: min(92dvh, 100%);
+        padding: 0.85rem 1rem;
+    }
+    .menu-head h1 { font-size: 1.35rem; }
+    .menu-grid { margin: 0.6rem 0; gap: 0.6rem; }
 }

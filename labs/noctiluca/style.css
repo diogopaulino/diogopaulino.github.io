@@ -131,7 +131,7 @@ button {
     top: calc(0.9rem + var(--safe-top));
     left: calc(1rem + var(--safe-left));
     right: calc(1rem + var(--safe-right));
-    z-index: 40;
+    z-index: 80;
     margin: 0;
     padding: 0;
     max-width: none;
@@ -440,6 +440,9 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .overlay[hidden] { display: none; }
 
 .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     width: min(760px, 100%);
     background: color-mix(in oklab, #04141c 78%, transparent);
     border: 1px solid var(--line);

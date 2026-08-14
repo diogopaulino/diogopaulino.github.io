@@ -112,7 +112,7 @@ button {
     top: calc(0.9rem + var(--safe-top));
     left: calc(1rem + var(--safe-left));
     right: calc(1rem + var(--safe-right));
-    z-index: 40;
+    z-index: 80;
     margin: 0;
     padding: 0;
     max-width: none;
@@ -762,6 +762,9 @@ body:not([data-state="playing"]) .throw-meter {
 }
 
 .menu-overlay .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: linear-gradient(160deg,
             color-mix(in oklab, oklch(17% 0.03 285) 72%, transparent),
             color-mix(in oklab, oklch(10% 0.03 285) 78%, transparent));

@@ -61,6 +61,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://diogopaulino.com.br/labs/cupola-64/</loc>
+    <lastmod>2026-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://diogopaulino.com.br/labs/cyberos/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -115,6 +121,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://diogopaulino.com.br/labs/ilha-do-ambar/</loc>
+    <lastmod>2026-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://diogopaulino.com.br/labs/image-editor/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -134,12 +146,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/jornada-do-anel/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/ilha-do-ambar/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -265,13 +271,13 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/ravi-123/</loc>
+    <loc>https://diogopaulino.com.br/labs/rastro-vermelho/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/rastro-vermelho/</loc>
+    <loc>https://diogopaulino.com.br/labs/ravi-123/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -368,12 +374,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/xadrez/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/cupola-64/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

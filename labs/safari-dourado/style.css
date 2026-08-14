@@ -103,6 +103,37 @@ button { background: none; border: 0; cursor: pointer; }
     font-size: 0.85rem;
 }
 
+.game-shell > header {
+    position: absolute;
+    top: calc(0.9rem + var(--safe-top));
+    left: calc(1rem + var(--safe-left));
+    right: calc(1rem + var(--safe-right));
+    z-index: 80;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: auto;
+    pointer-events: none;
+    gap: 0.6rem;
+}
+
+.game-shell > header > * {
+    pointer-events: auto;
+}
+
+.game-shell > header .back-link {
+    background: var(--panel-strong);
+    backdrop-filter: blur(var(--blur));
+    border-color: var(--line);
+    color: var(--text-soft);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.game-shell > header .back-link:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+}
+
 .vignette {
     position: absolute;
     inset: 0;
@@ -737,7 +768,10 @@ kbd {
     .hud-top { grid-template-columns: 1fr 1fr; }
     .hour-panel { display: none; }
     .menu-grid { grid-template-columns: 1fr; }
-    .overlay-card { padding: 20px; }
+    .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; padding: 20px; }
     .polaroid { display: none; }
     body[data-state="play"] .hud-actions { margin-top: 0; top: auto; bottom: calc(160px + var(--safe-bottom)); right: calc(18px + var(--safe-right)); }
 }
