@@ -120,7 +120,7 @@ button {
     top: calc(0.7rem + var(--safe-top));
     left: calc(0.85rem + var(--safe-left));
     right: calc(0.85rem + var(--safe-right));
-    z-index: 5;
+    z-index: 20;
     margin: 0;
     padding: 0;
     max-width: none;

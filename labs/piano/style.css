@@ -381,10 +381,12 @@ body {
   .controls {
     gap: 1rem;
     padding: 0.875rem 0.625rem;
+    padding-bottom: max(0.875rem, env(safe-area-inset-bottom, 0px));
   }
 
   .sustain-btn {
     min-width: 64px;
+    min-height: 44px;
     padding: 0.5rem 0.875rem;
   }
 
@@ -403,8 +405,8 @@ body {
   }
 
   .octave-btn {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
   }
 
   .octave-btn svg {
@@ -448,9 +450,4 @@ body {
   .controls {
     margin-bottom: 1rem;
   }
-}
-/* --- lab-responsive-pass --- */
-@media (max-width: 480px) {
-    .octave-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-    .controls { padding-bottom: max(0.875rem, env(safe-area-inset-bottom, 0px)); }
 }

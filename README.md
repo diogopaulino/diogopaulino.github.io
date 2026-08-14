@@ -34,6 +34,8 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 Um laboratório aberto com **57 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
+Cada pasta em `/labs/<slug>/` é o mesmo slug do card na galeria, da linha abaixo e da URL `https://diogopaulino.com.br/labs/<slug>/`.
+
 ### 🪐 Mundos 3D
 
 | Projeto | O que é? |

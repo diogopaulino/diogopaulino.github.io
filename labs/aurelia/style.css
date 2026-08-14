@@ -119,7 +119,7 @@ button {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 40;
+    z-index: 80;
     background: linear-gradient(to bottom, rgba(10, 6, 4, 0.55), transparent);
     border: 0;
     box-shadow: none;
@@ -417,6 +417,9 @@ button {
 .overlay.is-visible { display: grid; }
 
 .overlay-card {
+    max-height: min(92dvh, 900px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     width: min(980px, 100%);
     background: var(--panel-strong);
     backdrop-filter: blur(28px) saturate(1.2);
