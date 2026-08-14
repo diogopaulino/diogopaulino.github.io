@@ -1,0 +1,18 @@
+# Diogo Paulino
+
+> Tech Manager. Design, código, música e inteligência artificial.
+> Portfólio e playground estático em HTML, CSS e JavaScript puro.
+
+- Home: https://diogopaulino.com.br/
+- Labs: https://diogopaulino.com.br/labs/
+- GitHub: https://github.com/diogopaulino
+- LinkedIn: https://br.linkedin.com/in/diogopaulino
+- Spotify: https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ
+
+## Sobre
+
+Diogo Paulino constrói experiências digitais com design UI/UX, código hands-on e inteligência artificial. O site é o portfólio oficial e o playground de laboratórios que rodam no navegador — jogos 3D, ferramentas, simulações e música, sem instalar nada.
+
+## Labs
+
+Catálogo completo: https://diogopaulino.com.br/labs/

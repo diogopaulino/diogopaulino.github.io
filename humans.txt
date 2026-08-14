@@ -1,0 +1,18 @@
+/* TEAM */
+
+Name: Diogo Paulino
+Role: Tech Manager
+Site: https://diogopaulino.com.br/
+Location: Brasil
+GitHub: https://github.com/diogopaulino
+LinkedIn: https://br.linkedin.com/in/diogopaulino
+Spotify: https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ
+
+/* SITE */
+
+Standards: HTML, CSS, JavaScript
+Language: Português (pt-BR)
+Doctype: HTML5
+Playground: https://diogopaulino.com.br/labs/
+Software: Vanilla — sem build, sem npm
+Last update: 2026-08-14
