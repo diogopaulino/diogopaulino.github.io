@@ -5,13 +5,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Labs - Diogo Paulino</title>
-  <meta name="description" content="Experimentos e projetos interativos. Design, código e criatividade.">
+  <meta name="description" content="34 experimentos interativos: jogos 3D, ferramentas e música. Design, código e criatividade.">
   <meta name="theme-color" content="#fafbfc">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/assets/img/diogo-avatar.png">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Labs - Diogo Paulino">
   <meta property="og:description"
-    content="Coleção de jogos, ferramentas e experimentos visuais construídos com HTML, CSS e JavaScript puro.">
+    content="34 laboratórios: mundos 3D, jogos, ferramentas e música em HTML, CSS e JavaScript puro.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta name="twitter:card" content="summary_large_image">
@@ -20,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/labs/shared.css?v=6">
+  <link rel="stylesheet" href="/labs/shared.css?v=7">
   <link rel="stylesheet" href="/labs/style.css">
   <script type="application/ld+json">
   {
@@ -28,7 +30,7 @@
     "@type": "CollectionPage",
     "name": "Labs - Diogo Paulino",
     "url": "https://diogopaulino.com.br/labs/",
-    "description": "Experimentos interativos com HTML5, CSS e JavaScript.",
+    "description": "34 experimentos interativos com HTML5, CSS e JavaScript.",
     "creator": {
       "@type": "Person",
       "name": "Diogo Paulino"
@@ -39,7 +41,7 @@
 
 <body>
   <div class="container">
-    <header data-lab-header data-title="Labs" data-subtitle="Experimentos interativos" data-back-href="../index.html"
+    <header data-lab-header data-title="Labs" data-subtitle="Experimentos interativos" data-back-href="/"
       data-back-label="Voltar">
       <template data-slot="logo">
         <h1>Labs</h1>
@@ -55,6 +57,26 @@
     </div>
 
     <div class="projects-grid">
+      <a href="/labs/honor-front/" class="project-card" data-groups="game,creative">
+        <div class="project-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.2" />
+            <path d="M12 4.2v3.2M12 16.6v3.2M4.2 12h3.2M16.6 12h3.2" opacity="0.55" />
+            <path d="m8.2 8.2 1.6 1.6M14.2 14.2l1.6 1.6M15.8 8.2 14.2 9.8M9.8 14.2 8.2 15.8" opacity="0.7" />
+            <circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Honor Front</h2>
+          <p>FPS 3D em three.js estilo Medal of Honor: desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco</p>
+          <div class="project-tags">
+            <span class="tag">three.js</span>
+            <span class="tag">FPS</span>
+            <span class="tag">WWII</span>
+          </div>
+        </div>
+      </a>
       <a href="/labs/safari-dourado/" class="project-card" data-groups="game,creative">
         <div class="project-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -75,10 +97,72 @@
           </div>
         </div>
       </a>
-      <a href="/labs/orbis/" class="project-card" data-groups="creative">
+      <a href="/labs/aurelia/" class="project-card" data-groups="game,creative">
         <div class="project-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 16c2-6 5-10 8-10s6 4 8 10" />
+            <path d="M3 17h18" />
+            <path d="M7 17l1.2-3h7.6L17 17" />
+            <circle cx="8" cy="17.5" r="1.4" />
+            <circle cx="16" cy="17.5" r="1.4" />
+            <path d="M12 6v2" opacity="0.6" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Aurelia Festival</h2>
+          <p>Festival de velocidade estilo Forza: supercarros, Costa Aurélia ao pôr do sol, speed traps e photo mode</p>
+          <div class="project-tags">
+            <span class="tag">three.js</span>
+            <span class="tag">Racing</span>
+            <span class="tag">Forza</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/grao/" class="project-card" data-groups="tools">
+        <div class="project-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <ellipse cx="12" cy="13" rx="6.2" ry="7.4" />
+            <path d="M12 6.2c1.4 1.6 1.6 3.6 0 5.4-1.6 1.8-1.4 3.8 0 5.4" />
+            <path d="M9.2 4.4c.8-.8 2.2-1.3 2.8-1.3" opacity="0.7" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Grão</h2>
+          <p>Companheiro de cafeína: registre o café, veja a curva no corpo e a que horas parar para dormir</p>
+          <div class="project-tags">
+            <span class="tag">Utility</span>
+            <span class="tag">Canvas</span>
+            <span class="tag">Local</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/armilla/" class="project-card" data-groups="music,creative">
+        <div class="project-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.1" />
+            <ellipse cx="12" cy="12" rx="9.2" ry="3.6" />
+            <ellipse cx="12" cy="12" rx="9.2" ry="3.6" transform="rotate(60 12 12)" opacity="0.75" />
+            <ellipse cx="12" cy="12" rx="9.2" ry="3.6" transform="rotate(120 12 12)" opacity="0.5" />
+            <circle cx="12" cy="5.4" r="0.9" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Armilla</h2>
+          <p>Esfera armilar 3D que canta: plante estrelas nos anéis e ouça a música das esferas</p>
+          <div class="project-tags">
+            <span class="tag">three.js</span>
+            <span class="tag">Sequencer</span>
+            <span class="tag">Web Audio</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/orbis/" class="project-card" data-groups="creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3.2" />
             <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-18 12 12)" />
             <path d="M12 2.8v2.2M12 19v2.2M4.2 8.5l1.8 1M18 14.5l1.8 1" opacity="0.7" />
@@ -94,10 +178,30 @@
           </div>
         </div>
       </a>
+      <a href="/labs/aetherion/" class="project-card" data-groups="creative,game">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2.2" />
+            <ellipse cx="12" cy="12" rx="9" ry="4.2" />
+            <ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(60 12 12)" opacity="0.7" />
+            <ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(120 12 12)" opacity="0.45" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Aetherion</h2>
+          <p>Observatório estelar 3D: voe por um sistema gerado em shaders, com mundos vivos e um buraco negro</p>
+          <div class="project-tags">
+            <span class="tag">three.js</span>
+            <span class="tag">Shaders</span>
+            <span class="tag">Espaço</span>
+          </div>
+        </div>
+      </a>
       <a href="/labs/neon-rider/" class="project-card" data-groups="game,creative">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 17h3l2-5 3 1 2-4h3" />
             <circle cx="7" cy="18" r="2" />
             <circle cx="17" cy="18" r="2" />
@@ -117,8 +221,8 @@
       </a>
       <a href="/labs/toaster-64/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="5" y="8" width="14" height="10" rx="2" />
             <path d="M8 8V6.5a1.5 1.5 0 0 1 3 0V8" />
             <path d="M13 8V6.2a1.5 1.5 0 0 1 3 0V8" />
@@ -138,30 +242,51 @@
           </div>
         </div>
       </a>
-      <a href="/labs/aetherion/" class="project-card" data-groups="creative,game">
+      <a href="/labs/river-knight/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="2.2" />
-            <ellipse cx="12" cy="12" rx="9" ry="4.2" />
-            <ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(60 12 12)" opacity="0.7" />
-            <ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(120 12 12)" opacity="0.45" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.5v9" />
+            <path d="M12 4h5.5l-1.8 2.6L17.5 9H12" />
+            <path d="M3.5 12.5h17l-2.6 4.4a3 3 0 0 1-2.6 1.5H8.7a3 3 0 0 1-2.6-1.5l-2.6-4.4z" />
+            <path d="M2 21.5c1.7 0 1.7-1.3 3.3-1.3s1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.3 1.3" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Aetherion</h2>
-          <p>Observatório estelar 3D: voe por um sistema gerado em shaders, com mundos vivos e um buraco negro</p>
+          <h2>River Knight</h2>
+          <p>Aventura medieval 3D em three.js: leve o drakkar rio abaixo, derrube barcos e
+            torres inimigas, vença a Barcaça Negra e resgate a princesa no castelo</p>
           <div class="project-tags">
             <span class="tag">three.js</span>
-            <span class="tag">Shaders</span>
-            <span class="tag">Espaço</span>
+            <span class="tag">3D</span>
+            <span class="tag">Medieval</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/jornada-do-anel/" class="project-card" data-groups="game,creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="7.2" />
+            <circle cx="12" cy="12" r="3.1" />
+            <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22" opacity="0.55" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>A Jornada do Anel</h2>
+          <p>Aventura 3D em three.js inspirada no primeiro filme: o Condado, a fuga dos
+            Cavaleiros, o vale élfico, as minas e o Monte da Visão</p>
+          <div class="project-tags">
+            <span class="tag">three.js</span>
+            <span class="tag">3D</span>
+            <span class="tag">Fantasia</span>
           </div>
         </div>
       </a>
       <a href="/labs/pandemonium/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 18c3-6 5-10 8-10s5 4 8 10" />
             <path d="M8 10c.5-3 2-5 4-5s3.5 2 4 5" />
             <circle cx="12" cy="7" r="1.6" />
@@ -180,29 +305,10 @@
           </div>
         </div>
       </a>
-      <a href="/labs/ravi-123/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Ravi 1·2·3</h2>
-          <p>Toque os números e ajude o Ravi a montar a festa surpresa — feito para crianças pequenas.</p>
-          <div class="project-tags">
-            <span class="tag">Números</span>
-            <span class="tag">Edu</span>
-            <span class="tag">Kids</span>
-          </div>
-        </div>
-      </a>
       <a href="/labs/beige-box/" class="project-card" data-groups="creative">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="14" height="12" rx="1.5" />
             <path d="M7 16v3h6v-3" />
             <rect x="6" y="7" width="8" height="6" rx="0.5" />
@@ -220,74 +326,70 @@
           </div>
         </div>
       </a>
-      <a href="/labs/cyberos/" class="project-card" data-groups="creative,game,tools">
+      <a href="/labs/f1-racing/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8" />
-            <path d="M12 17v4" />
-            <path d="M6 8h.01M9 8h6" />
-            <path d="M6 11h4" opacity="0.6" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="17" rx="9" ry="4" />
+            <path d="M12 13V3" />
+            <path d="M5 10l7-7 7 7" />
+            <circle cx="12" cy="17" r="1" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>CyberOS Terminal</h2>
-          <p>SO retrô/hacker no browser: terminal explorável, firewall breach, Oracle e cifrador de mensagens</p>
+          <h2>F1 Grand Prix</h2>
+          <p>Simulador 3D WebGPU com circuitos reais, física de pneus, DRS/ERS e IA</p>
           <div class="project-tags">
-            <span class="tag">CRT</span>
-            <span class="tag">Terminal</span>
-            <span class="tag">Cyberpunk</span>
+            <span class="tag">Game</span>
+            <span class="tag">Three.js</span>
+            <span class="tag">WebGPU</span>
           </div>
         </div>
       </a>
-      <a href="/labs/partitura/" class="project-card" data-groups="game,music,creative">
+      <a href="/labs/santos-games/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 18V5l12-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="18" cy="16" r="3" />
-            <path d="M4 10h16M4 14h16M4 6h16" opacity="0.4" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.4" />
+            <path d="M3 12h18" />
+            <path d="M6.6 12 9.2 7.6M17.4 12 14.8 7.6" />
+            <path d="M2 17c2 0 2-1.6 4-1.6s2 1.6 4 1.6 2-1.6 4-1.6 2 1.6 4 1.6 2-1.6 4-1.6" />
+            <path d="M2 21c2 0 2-1.6 4-1.6s2 1.6 4 1.6 2-1.6 4-1.6 2 1.6 4 1.6 2-1.6 4-1.6" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Partitura: Maestro Quest</h2>
-          <p>Aprenda a ler notas, partituras e escalas com gamificação, sintetizador de áudio e troféus interativos</p>
+          <h2>Santos Games</h2>
+          <p>Toque e brinque na praia de Santos: surfe, skate, bola, bike, raquete e barco.</p>
           <div class="project-tags">
-            <span class="tag">Gamification</span>
-            <span class="tag">Music</span>
-            <span class="tag">Web Audio</span>
+            <span class="tag">Kids</span>
+            <span class="tag">Praia</span>
+            <span class="tag">Toque</span>
           </div>
         </div>
       </a>
-      <a href="/labs/matrix/" class="project-card" data-groups="creative">
+      <a href="/labs/ravi-123/" class="project-card" data-groups="game,creative">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 3v9" />
-            <path d="M9 3v15" />
-            <path d="M14 3v7" />
-            <path d="M19 3v12" />
-            <path d="M4 15v2" opacity="0.5" />
-            <path d="M14 13v2" opacity="0.5" />
-            <path d="M19 18v2" opacity="0.5" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Matrix</h2>
-          <p>Chuva digital fiel ao filme, com katakana espelhado, bloom CRT e controles completos</p>
+          <h2>Ravi 1·2·3</h2>
+          <p>Toque os números e ajude o Ravi a montar a festa surpresa — feito para crianças pequenas.</p>
           <div class="project-tags">
-            <span class="tag">Canvas</span>
-            <span class="tag">Cinema</span>
-            <span class="tag">Screensaver</span>
+            <span class="tag">Números</span>
+            <span class="tag">Edu</span>
+            <span class="tag">Kids</span>
           </div>
         </div>
       </a>
       <a href="/labs/rock-kombat/" class="project-card" data-groups="game,music">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18V5l10-2v13" />
             <circle cx="6" cy="18" r="3" />
             <circle cx="16" cy="16" r="3" />
@@ -306,8 +408,8 @@
       </a>
       <a href="/labs/videogame/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="6" width="20" height="12" rx="2" />
             <path d="M6 12h4" />
             <path d="M8 10v4" />
@@ -327,8 +429,8 @@
       </a>
       <a href="/labs/lander/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2c0 0-3 6-3 10 0 .5.5 2 3 2s3-1.5 3-2c0-4-3-10-3-10z" />
             <path d="M9 12h6" />
             <path d="M5 21l3-4" />
@@ -345,92 +447,95 @@
           </div>
         </div>
       </a>
-      <a href="/labs/aurora-flow/" class="project-card" data-groups="creative">
+      <a href="/labs/jungle-run/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
-            <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
-            <path d="M19 11h2m-1 -1v2" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22v-7l-2-2" />
+            <path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6 6 0 0 1 6.8 8.8V8a5 5 0 0 1 10 0Z" />
+            <path d="m14 14-2 2" />
+            <path d="M4 14h1" />
+            <path d="M19 14h1" />
+            <path d="m6 18 1-1" />
+            <path d="m17 17 1 1" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Aurora Flow</h2>
-          <p>Cortinas, vórtices e tempestades de luz — cenas com física distinta e interação em tempo real</p>
+          <h2>Jungle Run</h2>
+          <p>Aventura estilo Pitfall com gráficos PixiJS, física de plataforma e obstáculos</p>
           <div class="project-tags">
-            <span class="tag">Canvas</span>
-            <span class="tag">Física</span>
-            <span class="tag">Interativo</span>
+            <span class="tag">Game</span>
+            <span class="tag">Arcade</span>
+            <span class="tag">PixiJS</span>
           </div>
         </div>
       </a>
-      <a href="/labs/paint/" class="project-card" data-groups="creative,tools">
+      <a href="/labs/space-shooter/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-            <path d="M2 2l7.586 7.586"></path>
-            <circle cx="11" cy="11" r="2"></circle>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+            <path
+              d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Paint Lab</h2>
-          <p>Editor de arte digital completo com pincéis, formas e histórico</p>
+          <h2>Neon Invaders</h2>
+          <p>Arcade clássico com visual cyberpunk, partículas e efeitos neon</p>
           <div class="project-tags">
-            <span class="tag">Canvas</span>
-            <span class="tag">Art</span>
-            <span class="tag">Creative</span>
+            <span class="tag">Game</span>
+            <span class="tag">Arcade</span>
+            <span class="tag">Neon</span>
           </div>
         </div>
       </a>
-      <a href="/labs/piano/" class="project-card" data-groups="music">
+      <a href="/labs/tetris/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="15" rx="2" />
-            <path d="M7.5 5v9" />
-            <path d="M12 5v9" />
-            <path d="M16.5 5v9" />
-            <path d="M6 5v5" stroke-width="3.5" />
-            <path d="M10 5v5" stroke-width="3.5" />
-            <path d="M14.5 5v5" stroke-width="3.5" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10h4v4H3z" />
+            <path d="M7 10h4v4H7z" />
+            <path d="M11 10h4v4h-4z" />
+            <path d="M7 6h4v4H7z" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Piano</h2>
-          <p>Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain</p>
+          <h2>Tetris 90s</h2>
+          <p>O clássico jogo de blocos com visual retrô de Game Boy</p>
           <div class="project-tags">
-            <span class="tag">Web Audio API</span>
-            <span class="tag">Síntese</span>
-            <span class="tag">Mobile</span>
+            <span class="tag">Game</span>
+            <span class="tag">Retro</span>
+            <span class="tag">GameBoy</span>
           </div>
         </div>
       </a>
-
-      <a href="/labs/gravity/" class="project-card" data-groups="creative">
+      <a href="/labs/snake/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="4" fill="currentColor" />
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
+            <rect x="6" y="6" width="12" height="8" rx="1" ry="1"></rect>
+            <path d="M8 18h.01"></path>
+            <path d="M12 18h.01"></path>
+            <path d="M16 18h.01"></path>
           </svg>
         </div>
         <div class="project-content">
-          <h2>Gravity</h2>
-          <p>Simulação de partículas com física, gravidade e colisões interativas</p>
+          <h2>Retro Snake</h2>
+          <p>Clássico jogo da cobrinha com visual de console portátil dos anos 90</p>
           <div class="project-tags">
-            <span class="tag">Canvas</span>
-            <span class="tag">Física</span>
-            <span class="tag">Interativo</span>
+            <span class="tag">Game</span>
+            <span class="tag">Retro</span>
+            <span class="tag">Nokia</span>
           </div>
         </div>
       </a>
-
       <a href="/labs/minesweeper/" class="project-card" data-groups="game">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="6" fill="currentColor" fill-opacity="0.2" />
             <path d="M12 6V3" />
             <path d="M16.2 7.8L18.4 5.6" />
@@ -452,10 +557,131 @@
           </div>
         </div>
       </a>
+      <a href="/labs/tamagotchi/" class="project-card" data-groups="game,creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2C8 7 5 11.5 5 15a7 7 0 0 0 14 0c0-3.5-3-8-7-13z" />
+            <circle cx="9.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="14.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
+            <path d="M10 18h4" stroke-width="2" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>RakuRaku Dinokun</h2>
+          <p>Réplica do Dinkie Dino de 1997 — mesmo hardware, jan-ken-po e ar-condicionado</p>
+          <div class="project-tags">
+            <span class="tag">Dinkie Dino</span>
+            <span class="tag">1997</span>
+            <span class="tag">Virtual Pet</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/cyberos/" class="project-card" data-groups="creative,game,tools">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <path d="M8 21h8" />
+            <path d="M12 17v4" />
+            <path d="M6 8h.01M9 8h6" />
+            <path d="M6 11h4" opacity="0.6" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>CyberOS Terminal</h2>
+          <p>SO retrô/hacker no browser: terminal explorável, firewall breach, Oracle e cifrador de mensagens</p>
+          <div class="project-tags">
+            <span class="tag">CRT</span>
+            <span class="tag">Terminal</span>
+            <span class="tag">Cyberpunk</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/matrix/" class="project-card" data-groups="creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 3v9" />
+            <path d="M9 3v15" />
+            <path d="M14 3v7" />
+            <path d="M19 3v12" />
+            <path d="M4 15v2" opacity="0.5" />
+            <path d="M14 13v2" opacity="0.5" />
+            <path d="M19 18v2" opacity="0.5" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Matrix</h2>
+          <p>Chuva digital fiel ao filme, com katakana espelhado, bloom CRT e controles completos</p>
+          <div class="project-tags">
+            <span class="tag">Canvas</span>
+            <span class="tag">Cinema</span>
+            <span class="tag">Screensaver</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/aurora-flow/" class="project-card" data-groups="creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+            <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
+            <path d="M19 11h2m-1 -1v2" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Aurora Flow</h2>
+          <p>Cortinas, vórtices e tempestades de luz — cenas com física distinta e interação em tempo real</p>
+          <div class="project-tags">
+            <span class="tag">Canvas</span>
+            <span class="tag">Física</span>
+            <span class="tag">Interativo</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/paint/" class="project-card" data-groups="creative,tools">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+            <path d="M2 2l7.586 7.586"></path>
+            <circle cx="11" cy="11" r="2"></circle>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Paint Lab</h2>
+          <p>Editor de arte digital completo com pincéis, formas e histórico</p>
+          <div class="project-tags">
+            <span class="tag">Canvas</span>
+            <span class="tag">Art</span>
+            <span class="tag">Creative</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/gravity/" class="project-card" data-groups="creative">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="4" fill="currentColor" />
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Gravity</h2>
+          <p>Simulação de partículas com física, gravidade e colisões interativas</p>
+          <div class="project-tags">
+            <span class="tag">Canvas</span>
+            <span class="tag">Física</span>
+            <span class="tag">Interativo</span>
+          </div>
+        </div>
+      </a>
       <a href="/labs/image-optimizer/" class="project-card" data-groups="tools">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
@@ -471,31 +697,63 @@
           </div>
         </div>
       </a>
-      <a href="/labs/space-shooter/" class="project-card" data-groups="game">
+      <a href="/labs/image-editor/" class="project-card" data-groups="tools">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-            <path
-              d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
           </svg>
         </div>
         <div class="project-content">
-          <h2>Neon Invaders</h2>
-          <p>Arcade clássico com visual cyberpunk, partículas e efeitos neon</p>
+          <h2>Image Editor</h2>
+          <p>Editor de fotos estilo Instagram com filtros e ajustes profissionais</p>
           <div class="project-tags">
-            <span class="tag">Game</span>
-            <span class="tag">Arcade</span>
-            <span class="tag">Neon</span>
+            <span class="tag">Canvas</span>
+            <span class="tag">Filters</span>
+            <span class="tag">Editor</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/pomodoro/" class="project-card" data-groups="tools">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Pomodoro</h2>
+          <p>Timer de foco com tarefas, estatísticas, sons e notificações do navegador</p>
+          <div class="project-tags">
+            <span class="tag">Productivity</span>
+            <span class="tag">Timer</span>
+          </div>
+        </div>
+      </a>
+      <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools">
+        <div class="project-icon">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M14 9a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
+            <path d="M18 9h1a2 2 0 0 1 2 2v8l-3-3h-6a2 2 0 0 1-2-2v-1" />
+          </svg>
+        </div>
+        <div class="project-content">
+          <h2>Talk</h2>
+          <p>Aprenda idiomas de forma interativa com pronúncia por voz e múltiplas línguas</p>
+          <div class="project-tags">
+            <span class="tag">Education</span>
+            <span class="tag">Speech API</span>
+            <span class="tag">Audio</span>
           </div>
         </div>
       </a>
       <a href="/labs/calculator/" class="project-card" data-groups="tools">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="4" y="2" width="16" height="20" rx="2" />
             <line x1="8" y1="6" x2="16" y2="6" />
             <line x1="16" y1="14" x2="16" y2="14" />
@@ -516,69 +774,53 @@
           </div>
         </div>
       </a>
-      <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools">
+      <a href="/labs/partitura/" class="project-card" data-groups="game,music,creative">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
-            <path d="M14 9a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
-            <path d="M18 9h1a2 2 0 0 1 2 2v8l-3-3h-6a2 2 0 0 1-2-2v-1" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+            <path d="M4 10h16M4 14h16M4 6h16" opacity="0.4" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Talk</h2>
-          <p>Aprenda idiomas de forma interativa com pronúncia por voz e múltiplas línguas</p>
+          <h2>Partitura: Maestro Quest</h2>
+          <p>Aprenda a ler notas, partituras e escalas com gamificação, sintetizador de áudio e troféus interativos</p>
           <div class="project-tags">
-            <span class="tag">Education</span>
-            <span class="tag">Speech API</span>
-            <span class="tag">Audio</span>
+            <span class="tag">Gamification</span>
+            <span class="tag">Music</span>
+            <span class="tag">Web Audio</span>
           </div>
         </div>
       </a>
-      <a href="/labs/tetris/" class="project-card" data-groups="game">
+      <a href="/labs/piano/" class="project-card" data-groups="music">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 10h4v4H3z" />
-            <path d="M7 10h4v4H7z" />
-            <path d="M11 10h4v4h-4z" />
-            <path d="M7 6h4v4H7z" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="15" rx="2" />
+            <path d="M7.5 5v9" />
+            <path d="M12 5v9" />
+            <path d="M16.5 5v9" />
+            <path d="M6 5v5" stroke-width="3.5" />
+            <path d="M10 5v5" stroke-width="3.5" />
+            <path d="M14.5 5v5" stroke-width="3.5" />
           </svg>
         </div>
         <div class="project-content">
-          <h2>Tetris 90s</h2>
-          <p>O clássico jogo de blocos com visual retrô de Game Boy</p>
+          <h2>Piano</h2>
+          <p>Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain</p>
           <div class="project-tags">
-            <span class="tag">Game</span>
-            <span class="tag">Retro</span>
-            <span class="tag">GameBoy</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/snake/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
-            <rect x="6" y="6" width="12" height="8" rx="1" ry="1"></rect>
-            <path d="M8 18h.01"></path>
-            <path d="M12 18h.01"></path>
-            <path d="M16 18h.01"></path>
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Retro Snake</h2>
-          <p>Clássico jogo da cobrinha com visual de console portátil dos anos 90</p>
-          <div class="project-tags">
-            <span class="tag">Game</span>
-            <span class="tag">Retro</span>
-            <span class="tag">Nokia</span>
+            <span class="tag">Web Audio API</span>
+            <span class="tag">Síntese</span>
+            <span class="tag">Mobile</span>
           </div>
         </div>
       </a>
       <a href="/labs/winamp/" class="project-card" data-groups="music">
         <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18V5l12-2v13"></path>
             <circle cx="6" cy="18" r="3"></circle>
             <circle cx="18" cy="16" r="3"></circle>
@@ -594,107 +836,9 @@
           </div>
         </div>
       </a>
-      <a href="/labs/image-editor/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Image Editor</h2>
-          <p>Editor de fotos estilo Instagram com filtros e ajustes profissionais</p>
-          <div class="project-tags">
-            <span class="tag">Canvas</span>
-            <span class="tag">Filters</span>
-            <span class="tag">Editor</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/tamagotchi/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2C8 7 5 11.5 5 15a7 7 0 0 0 14 0c0-3.5-3-8-7-13z" />
-            <circle cx="9.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <circle cx="14.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <path d="M10 18h4" stroke-width="2" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>RakuRaku Dinokun</h2>
-          <p>Réplica do Dinkie Dino de 1997 — mesmo hardware, jan-ken-po e ar-condicionado</p>
-          <div class="project-tags">
-            <span class="tag">Dinkie Dino</span>
-            <span class="tag">1997</span>
-            <span class="tag">Virtual Pet</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/pomodoro/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Pomodoro</h2>
-          <p>Timer de foco com tarefas, estatísticas, sons e notificações do navegador</p>
-          <div class="project-tags">
-            <span class="tag">Productivity</span>
-            <span class="tag">AI</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/jungle-run/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 22v-7l-2-2" />
-            <path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6 6 0 0 1 6.8 8.8V8a5 5 0 0 1 10 0Z" />
-            <path d="m14 14-2 2" />
-            <path d="M4 14h1" />
-            <path d="M19 14h1" />
-            <path d="m6 18 1-1" />
-            <path d="m17 17 1 1" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Jungle Run</h2>
-          <p>Aventura estilo Pitfall com gráficos PixiJS, física de plataforma e obstáculos</p>
-          <div class="project-tags">
-            <span class="tag">Game</span>
-            <span class="tag">Arcade</span>
-            <span class="tag">PixiJS</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/f1-racing/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <ellipse cx="12" cy="17" rx="9" ry="4" />
-            <path d="M12 13V3" />
-            <path d="M5 10l7-7 7 7" />
-            <circle cx="12" cy="17" r="1" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>F1 Grand Prix</h2>
-          <p>Simulador 3D WebGPU com circuitos reais, física de pneus, DRS/ERS e IA</p>
-          <div class="project-tags">
-            <span class="tag">Game</span>
-            <span class="tag">Three.js</span>
-            <span class="tag">WebGPU</span>
-          </div>
-        </div>
-      </a>
       <a href="/labs/pulsar/" class="project-card" data-groups="music,creative">
         <div class="project-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="2.2" />
             <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" opacity="0.85" />
@@ -713,73 +857,10 @@
           </div>
         </div>
       </a>
-      <a href="/labs/river-knight/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2.5v9" />
-            <path d="M12 4h5.5l-1.8 2.6L17.5 9H12" />
-            <path d="M3.5 12.5h17l-2.6 4.4a3 3 0 0 1-2.6 1.5H8.7a3 3 0 0 1-2.6-1.5l-2.6-4.4z" />
-            <path d="M2 21.5c1.7 0 1.7-1.3 3.3-1.3s1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.3 1.3" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>River Knight</h2>
-          <p>Aventura medieval 3D em three.js: leve o drakkar rio abaixo, derrube barcos e
-            torres inimigas, vença a Barcaça Negra e resgate a princesa no castelo</p>
-          <div class="project-tags">
-            <span class="tag">three.js</span>
-            <span class="tag">3D</span>
-            <span class="tag">Medieval</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/jornada-do-anel/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="7.2" />
-            <circle cx="12" cy="12" r="3.1" />
-            <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22" opacity="0.55" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>A Jornada do Anel</h2>
-          <p>Aventura 3D em three.js inspirada no primeiro filme: o Condado, a fuga dos
-            Cavaleiros, o vale élfico, as minas e o Monte da Visão</p>
-          <div class="project-tags">
-            <span class="tag">three.js</span>
-            <span class="tag">3D</span>
-            <span class="tag">Fantasia</span>
-          </div>
-        </div>
-      </a>
-      <a href="/labs/santos-games/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="8" r="3.4" />
-            <path d="M3 12h18" />
-            <path d="M6.6 12 9.2 7.6M17.4 12 14.8 7.6" />
-            <path d="M2 17c2 0 2-1.6 4-1.6s2 1.6 4 1.6 2-1.6 4-1.6 2 1.6 4 1.6 2-1.6 4-1.6" />
-            <path d="M2 21c2 0 2-1.6 4-1.6s2 1.6 4 1.6 2-1.6 4-1.6 2 1.6 4 1.6 2-1.6 4-1.6" />
-          </svg>
-        </div>
-        <div class="project-content">
-          <h2>Santos Games</h2>
-          <p>Toque e brinque na praia de Santos: surfe, skate, bola, bike, raquete e barco.</p>
-          <div class="project-tags">
-            <span class="tag">Kids</span>
-            <span class="tag">Praia</span>
-            <span class="tag">Toque</span>
-          </div>
-        </div>
-      </a>
     </div>
+    <footer data-lab-footer data-home-href="/"></footer>
   </div>
-  <footer data-lab-footer data-home-href="/"></footer>
-  </div>
-  <script src="/labs/shared.js?v=6"></script>
+  <script src="/labs/shared.js?v=7"></script>
   <script src="/labs/index.js"></script>
 </body>
 
