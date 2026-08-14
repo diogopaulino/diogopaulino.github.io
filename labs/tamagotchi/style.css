@@ -381,6 +381,9 @@ header {
   display: block;
   width: 100%;
   height: 100%;
+  /* O buffer é 228x144; esticado até a caixa do LCD os pixels do bicho ficavam
+     ~12% mais largos que altos. `contain` some na cor do próprio LCD. */
+  object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
