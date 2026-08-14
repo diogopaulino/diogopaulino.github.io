@@ -34,7 +34,7 @@ export class Player {
         this.grounded = true;
         this.toastPop = 0;
         this.cool = 0;
-        this.invuln = 0;
+        this.invuln = 2.6;
         this.flash = 0;
         this.alive = true;
         this.knock.set(0, 0, 0);

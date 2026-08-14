@@ -13,26 +13,28 @@ function geo(key, factory) {
 
 export const retroMaterials = [];
 
-export function retroMat(color, extras = {}) {
+export function retroMat(color, { snap = 84, ...props } = {}) {
     const mat = new THREE.MeshLambertMaterial({
         color,
         flatShading: true,
-        ...extras
+        ...props
     });
     mat.userData.retro = true;
     mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uSnap = { value: extras.snap ?? 84 };
-        shader.vertexShader = shader.vertexShader.replace(
+        shader.uniforms.uSnap = { value: snap };
+        shader.vertexShader = `uniform float uSnap;\n${shader.vertexShader}`.replace(
             '#include <project_vertex>',
             /* glsl */ `
             vec4 mvPosition = vec4( transformed, 1.0 );
+            #ifdef USE_BATCHING
+                mvPosition = batchingMatrix * mvPosition;
+            #endif
             #ifdef USE_INSTANCING
                 mvPosition = instanceMatrix * mvPosition;
             #endif
             mvPosition = modelViewMatrix * mvPosition;
             gl_Position = projectionMatrix * mvPosition;
-            float snap = uSnap;
-            gl_Position.xy = floor(gl_Position.xy / max(gl_Position.w, 0.0001) * snap) / snap * gl_Position.w;
+            gl_Position.xy = floor(gl_Position.xy / max(gl_Position.w, 0.0001) * uSnap) / uSnap * gl_Position.w;
             `
         );
     };

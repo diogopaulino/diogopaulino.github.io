@@ -444,7 +444,7 @@ class Game {
             const pull = (1 - d / 6) * 9 * dt;
             this.player.position.x -= (dx / d) * pull;
             this.player.position.z -= (dz / d) * pull;
-            if (d < 1.7) this.onEvent('hit', b);
+            if (d < 1.35) this.onEvent('hit', b);
         }
     }
 

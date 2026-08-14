@@ -23,8 +23,10 @@ export function formatTime(seconds) {
 }
 
 export function detectMobile() {
-    return window.matchMedia('(pointer: coarse)').matches ||
-        /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const ua = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    return touch && (coarse || ua);
 }
 
 export function detectSoftwareGL() {

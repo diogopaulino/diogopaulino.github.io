@@ -80,13 +80,13 @@ export class Entities {
     }
 
     spawnGhost() {
-        const p = this.rimPoint(14);
+        const p = this.rimPoint(18);
         const mesh = createGhost(pick(GHOST_COLORS));
         mesh.position.set(p.x, 1.1, p.z);
         this.group.add(mesh);
         this.ghosts.push({
             mesh, hp: 1, radius: 0.85,
-            speed: randRange(4.2, 6.4),
+            speed: randRange(3.1, 4.6),
             wobble: Math.random() * 10
         });
     }
