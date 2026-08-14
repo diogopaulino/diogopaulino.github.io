@@ -16,8 +16,8 @@ export function createWater(skyUniforms, quality) {
         uTime: { value: 0 },
         uFogColor: { value: new THREE.Color(0.78, 0.62, 0.42) },
         uFogDensity: { value: quality.fogDensity },
-        uShallow: { value: new THREE.Color(0.22, 0.42, 0.36) },
-        uDeep: { value: new THREE.Color(0.04, 0.12, 0.14) }
+        uShallow: { value: new THREE.Color(0.16, 0.22, 0.18) },
+        uDeep: { value: new THREE.Color(0.05, 0.08, 0.07) }
     };
 
     const material = new THREE.ShaderMaterial({
@@ -53,17 +53,17 @@ export function createWater(skyUniforms, quality) {
                 vec3 view = normalize(cameraPosition - vWorld);
                 vec3 reflDir = reflect(-view, n);
                 reflDir.y = abs(reflDir.y);
-                vec3 sky = sfSky(normalize(reflDir));
-                float fres = pow(1.0 - max(dot(view, n), 0.0), 4.0);
+                vec3 sky = min(sfSky(normalize(reflDir)), vec3(1.15));
+                float fres = pow(1.0 - max(dot(view, n), 0.0), 5.0);
                 float dist = length(vWorld.xz);
-                float depth = smoothstep(8.0, 26.0, dist);
-                vec3 water = mix(uShallow, uDeep, 1.0 - depth);
-                vec3 col = mix(water, sky, 0.28 + fres * 0.55);
-                float spark = pow(max(dot(normalize(uSunDir + view), n), 0.0), 80.0);
-                col += uSunColor * spark * 0.65;
+                float depth = smoothstep(6.0, 24.0, dist);
+                vec3 water = mix(uDeep, uShallow, depth);
+                vec3 col = mix(water, sky * 0.55, 0.10 + fres * 0.28);
+                float spark = pow(max(dot(normalize(uSunDir + view), n), 0.0), 220.0);
+                col += uSunColor * spark * 0.18;
                 float fog = 1.0 - exp(-uFogDensity * length(vWorld - cameraPosition));
                 col = mix(col, uFogColor, clamp(fog, 0.0, 0.85));
-                gl_FragColor = vec4(col, 0.92);
+                gl_FragColor = vec4(col, 0.94);
                 #include <tonemapping_fragment>
                 #include <colorspace_fragment>
             }

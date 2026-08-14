@@ -35,6 +35,8 @@ class Game {
         this.fpsFrames = 0;
         this.hudAccum = 0;
         this.won = false;
+        this.fpsLowTime = 0;
+        this.adapted = false;
         this.photo = new PhotoSystem();
     }
 
@@ -137,7 +139,7 @@ class Game {
                 composer.addPass(new RenderPass(this.scene, this.camera));
                 const bloom = new UnrealBloomPass(
                     new THREE.Vector2(window.innerWidth, window.innerHeight),
-                    0.28, 0.62, 0.72
+                    0.22, 0.55, 0.82
                 );
                 composer.addPass(bloom);
                 composer.addPass(new OutputPass());
@@ -301,7 +303,9 @@ class Game {
         this.fpsAccum += dt;
         this.fpsFrames += 1;
         if (this.fpsAccum >= 0.5) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
+            const fps = Math.round(this.fpsFrames / this.fpsAccum);
+            this.hud.setFps(fps);
+            this.adaptIfNeeded(fps, this.fpsAccum);
             this.fpsAccum = 0;
             this.fpsFrames = 0;
         }
@@ -323,6 +327,7 @@ class Game {
 
         const aim = this.photo.update(dt, this.camera, this.wildlife);
         this.hud.setPhotoMode(photoMode);
+        this.hud.el.prompt.hidden = photoMode;
         if (photoMode) {
             const spec = aim ? SPECIES[aim.animal.species] : null;
             const rating = !aim ? 'sem alvo'
@@ -381,6 +386,19 @@ class Game {
         this.state = 'victory';
         this.hud.setState('victory');
         this.input.exitLock();
+    }
+
+    adaptIfNeeded(fps, dt) {
+        if (this.adapted || this.settings.quality !== 'auto') return;
+        if (fps < 26) this.fpsLowTime += dt;
+        else this.fpsLowTime = 0;
+        if (this.fpsLowTime < 2.2) return;
+        this.adapted = true;
+        this.renderer.setPixelRatio(1);
+        this.renderer.shadowMap.enabled = false;
+        this.composer = null;
+        if (this.world.grass) this.world.grass.visible = false;
+        this.hud.say('Qualidade reduzida para manter o safari fluido.', 3.4);
     }
 
     updateCamera(dt, photoMode) {

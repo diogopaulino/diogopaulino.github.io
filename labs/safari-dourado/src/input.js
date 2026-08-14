@@ -170,8 +170,9 @@ export class Input {
             const action = ACTIONS[e.code];
             if (action) {
                 if (action === 'confirm' && document.activeElement?.tagName === 'BUTTON') return;
-                if (action === 'photo') this.photoHeld = true;
-                else if (action === 'shutter') this.shutterPressed = true;
+                if (action === 'photo') {
+                    if (!e.repeat) this.photoHeld = !this.photoHeld;
+                } else if (action === 'shutter') this.shutterPressed = true;
                 else this.emit(action);
                 if (action !== 'confirm') e.preventDefault();
             }
@@ -184,7 +185,6 @@ export class Input {
         this._onKeyUp = (e) => {
             const key = MOVE[e.code];
             if (key) this.keys.delete(key);
-            if (e.code === 'KeyF') this.photoHeld = false;
         };
 
         this._onMouseMove = (e) => {
