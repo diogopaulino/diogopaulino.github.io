@@ -39,7 +39,8 @@ class Quimera {
         this.ids = { head: 'pirate', body: 'sailor', accessory: 'astronaut' };
         this.autoRotate = true;
         this.uiHidden = false;
-        this.clock = new THREE.Clock();
+        this.t0 = performance.now();
+        this.lastT = this.t0;
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         this.pointerDown = null;
@@ -101,7 +102,7 @@ class Quimera {
 
     _scene() {
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.Fog(0x4a2e58, 8, 22);
+        this.scene.fog = new THREE.FogExp2(0x3a2438, 0.028);
 
         this.camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 40);
         this.camera.position.set(2.4, 1.7, 4.2);
@@ -286,8 +287,10 @@ class Quimera {
     }
 
     loop() {
-        const dt = Math.min(0.05, this.clock.getDelta());
-        const t = this.clock.elapsedTime;
+        const now = performance.now();
+        const dt = Math.min(0.05, (now - this.lastT) / 1000);
+        this.lastT = now;
+        const t = (now - this.t0) / 1000;
         this.controls.update();
         this.character.update(dt, t);
         updateStudio(this.studio, t);

@@ -171,8 +171,8 @@ export function clothedBody(ctx, opts = {}) {
     // braços
     const armL = add.cap(0.075, 0.36, armC, [-L.SHOULDER_X, 0.82, 0.02], [0, 0, 0.28]);
     const armR = add.cap(0.075, 0.36, armC, [L.SHOULDER_X, 0.82, 0.02], [0, 0, -0.28]);
-    add.sphere(0.09, opts.hand ?? mats.skin, [-0.50, 0.58, 0.08]);
-    add.sphere(0.09, opts.hand ?? mats.skin, [0.50, 0.58, 0.08]);
+    add.sphere(0.09, opts.hand ?? mats.skin, [-0.46, 0.58, 0.06]);
+    add.sphere(0.09, opts.hand ?? mats.skin, [0.46, 0.58, 0.06]);
 
     group.userData.arms = [armL, armR];
     group.userData.wings = opts.wings || null;

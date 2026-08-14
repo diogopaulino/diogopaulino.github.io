@@ -109,8 +109,8 @@ const BODIES = {
             add.box(0.18, 0.1, 0.22, mats.secondary, [0.12, 0.08, 0.02], null, null, 0.03);
             add.cap(0.07, 0.32, mats.primary, [-0.36, 0.82, 0.02], [0, 0, 0.28]);
             add.cap(0.07, 0.32, mats.primary, [0.36, 0.82, 0.02], [0, 0, -0.28]);
-            add.sphere(0.09, mats.secondary, [-0.50, 0.58, 0.08]);
-            add.sphere(0.09, mats.secondary, [0.50, 0.58, 0.08]);
+            add.sphere(0.09, mats.secondary, [-0.46, 0.58, 0.06]);
+            add.sphere(0.09, mats.secondary, [0.46, 0.58, 0.06]);
         }
     }),
 
