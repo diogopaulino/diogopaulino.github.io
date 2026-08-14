@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { TIDES, SURFACE, FOG0, lerp } from './config.js';
+import { TIDES, SURFACE, FOG0, FOG1, lerp } from './config.js';
 import { sandTexture, kelpTexture } from './textures.js';
 import { patchFloor, patchKelp, WATER_VERT, WATER_FRAG } from './shaders.js';
 import { createCoral, createRock, createAnemone, createTideLight } from './models.js';
@@ -300,7 +300,7 @@ export class Sanctuary {
         this.uniforms.uAwaken.value = a;
         this._applyGlow();
         if (this.scene.fog) {
-            this.scene.fog.density = lerp(FOG0, 0.011, a);
+            this.scene.fog.density = lerp(FOG0, FOG1, a);
         }
     }
 
@@ -322,7 +322,7 @@ export class Sanctuary {
             orb.position.y = orb.userData.home.y + Math.sin(t * 1.4 + orb.userData.home.x) * 0.35;
             orb.userData.core.rotation.y += dt * 0.6;
             const s = 1 + Math.sin(t * 2.2 + orb.userData.home.z) * 0.08;
-            orb.userData.halo.scale.setScalar(1.35 * s);
+            orb.userData.halo.scale.setScalar(1.8 * s);
         }
         for (const ray of this.rays) {
             ray.mesh.material.opacity = 0.03 + Math.sin(this.time * 0.4 + ray.phase) * 0.02

@@ -40,8 +40,8 @@ export const SONAR_PING_R = 22;
 export const WHALE_R0 = 34;
 export const WHALE_R1 = 13;
 
-export const FOG0 = 0.021;
-export const FOG1 = 0.011;
+export const FOG0 = 0.015;
+export const FOG1 = 0.009;
 export const FOG_COLOR = 0x06202c;
 
 export const QUALITY = {

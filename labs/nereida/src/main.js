@@ -166,7 +166,7 @@ class Nereida {
         this.renderer.setSize(innerWidth, innerHeight);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.92;
+        this.renderer.toneMappingExposure = 1.05;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -300,7 +300,7 @@ class Nereida {
         this.hud.setTides(this.tides, TOTAL_TIDES);
         this.hud.say(orb.userData.hint);
         this.sun.intensity = 0.85 + a * 0.35;
-        this.renderer.toneMappingExposure = 0.92 + a * 0.18;
+        this.renderer.toneMappingExposure = 1.05 + a * 0.18;
 
         if (this.tides >= TOTAL_TIDES && !this.won) {
             this.won = true;

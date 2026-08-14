@@ -19,7 +19,7 @@ export class Player {
         this.scene = scene;
         this.camera = camera;
         this.mesh = createManta();
-        this.mesh.position.set(0, 6.2, 18);
+        this.mesh.position.set(0, 8.4, 16);
         scene.add(this.mesh);
 
         this.vel = new THREE.Vector3();
@@ -36,7 +36,7 @@ export class Player {
     }
 
     reset() {
-        this.mesh.position.set(0, 6.2, 18);
+        this.mesh.position.set(0, 8.4, 16);
         this.vel.set(0, 0, 0);
         this.yaw = Math.PI;
         this.spherical.set(11.5, 1.22, 0.12);

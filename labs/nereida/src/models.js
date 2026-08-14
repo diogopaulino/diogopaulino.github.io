@@ -65,7 +65,7 @@ export function createManta() {
     tail.add(mesh(geo.sphere, glow, { pos: [0, 0, -2.05], scale: [0.07, 0.07, 0.07], cast: false }));
     g.add(tail);
 
-    const light = new THREE.PointLight(0x7af0ff, 1.4, 11, 1.6);
+    const light = new THREE.PointLight(0x7af0ff, 2.1, 13, 1.5);
     light.position.set(0, 0.2, 0.2);
     g.add(light);
 
@@ -218,20 +218,32 @@ export function createTideLight(color = 0x9ef7ff) {
         geo.sphere,
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 })
     );
-    core.scale.setScalar(0.42);
+    core.scale.setScalar(0.55);
     const halo = new THREE.Mesh(
         geo.sphere,
         new THREE.MeshBasicMaterial({
             color,
             transparent: true,
-            opacity: 0.18,
+            opacity: 0.22,
             depthWrite: false,
             blending: THREE.AdditiveBlending
         })
     );
-    halo.scale.setScalar(1.35);
-    const light = new THREE.PointLight(color, 2.4, 14, 1.5);
-    g.add(core, halo, light);
+    halo.scale.setScalar(1.8);
+    const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.42, 9, 10, 1, true),
+        new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: 0.16,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        })
+    );
+    beam.position.y = 4.2;
+    const light = new THREE.PointLight(color, 3.2, 16, 1.4);
+    g.add(core, halo, beam, light);
     g.userData.core = core;
     g.userData.halo = halo;
     g.userData.light = light;
