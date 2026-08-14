@@ -57,7 +57,7 @@
     function buildHeader(header) {
         if (header.dataset.labReady === 'true') return;
 
-        const backHref = header.getAttribute('data-back-href') || '../index.html';
+        const backHref = header.getAttribute('data-back-href') || '/labs/';
         const backLabel = header.getAttribute('data-back-label') || 'Labs';
         const title = header.getAttribute('data-title') || document.title || 'Labs';
         const subtitle = header.getAttribute('data-subtitle');
@@ -158,7 +158,17 @@
         document.head.appendChild(script);
     }
 
+    function ensureFavicon() {
+        if (document.querySelector('link[rel="icon"], link[rel="shortcut icon"]')) return;
+        const icon = document.createElement('link');
+        icon.rel = 'icon';
+        icon.href = '/favicon.ico';
+        icon.sizes = 'any';
+        document.head.appendChild(icon);
+    }
+
     function init() {
+        ensureFavicon();
         initChrome();
         ensureThemeCore();
     }
