@@ -54,7 +54,21 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+export function detectSoftwareGL() {
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return true;
+        const info = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
+    } catch {
+        return true;
+    }
+}
+
 export function detectQuality() {
+    if (detectSoftwareGL()) return 'low';
     const cores = navigator.hardwareConcurrency || 4;
     const mem = navigator.deviceMemory || 4;
     if (detectMobile() || cores <= 4 || mem <= 4) return 'medium';

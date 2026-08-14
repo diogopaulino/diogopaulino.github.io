@@ -140,7 +140,7 @@ class Game {
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = SKIES[this.settings.sky]?.exposure || 1;
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.15, 2800);
         this.camera.position.set(8, 4, -12);
@@ -304,6 +304,8 @@ class Game {
         this.driveTime = 0;
         this.eventState = { id: null, peak: 0, points: 0, stars: 0 };
         this.state = 'drive';
+        this.dom.canvas.tabIndex = 0;
+        this.dom.canvas.focus();
         this.hud.toast('Festival aberto — acelere na Costa Aurélia');
     }
 

@@ -3,7 +3,7 @@
  * transferência de peso visual, câmbio e grip que quebra no handbrake.
  */
 
-import { clamp, damp, sign, wrapAngle } from './utils.js';
+import { clamp, damp, sign, wrapAngle, saturate } from './utils.js';
 
 const G = 9.81;
 const SURFACE_GRIP = [1.0, 0.78, 0.55, 0.42];
@@ -113,113 +113,82 @@ export class Vehicle {
         this.progress = loc.progress;
         this.surface = this.road.surfaceAt(loc.lateral);
 
-        const throttle = this.isPlayer ? input.throttle : input.throttle;
-        const brake = this.isPlayer ? input.brake : input.brake;
-        const handbrake = this.isPlayer ? input.handbrake : 0;
-        const steerInput = this.isPlayer ? input.steer : input.steer;
+        const throttle = input.throttle || 0;
+        const brake = input.brake || 0;
+        const handbrake = this.isPlayer ? (input.handbrake || 0) : 0;
+        const steerInput = clamp(input.steer || 0, -1, 1);
 
         this.throttle = throttle;
         this.brake = brake;
         this.handbrake = handbrake;
 
-        const speedSteer = 1 / (1 + this.speed * 0.045);
-        const steerTarget = steerInput * spec.steer * speedSteer;
-        this.steer = damp(this.steer, steerTarget, 10, dt);
-
-        const forwardX = Math.sin(this.yaw);
-        const forwardZ = Math.cos(this.yaw);
-        const rightX = Math.cos(this.yaw);
-        const rightZ = -Math.sin(this.yaw);
-
-        const vLong = this.vx * forwardX + this.vz * forwardZ;
-        const vLat = this.vx * rightX + this.vz * rightZ;
-
-        const gripMul = SURFACE_GRIP[this.surface] * (spec.grip);
-        const mu = gripMul * (this.handbrake > 0.4 ? 0.42 : 1);
+        const gripMul = SURFACE_GRIP[this.surface] * spec.grip;
+        const topSpeed = 52 + spec.power / 18000;
+        const peakAccel = 9 + spec.power / spec.mass * 0.016;
+        const speedSteer = 1 / (1 + this.speed * 0.038);
+        this.steer = damp(this.steer, steerInput * spec.steer * speedSteer, 11, dt);
 
         const gears = spec.gears;
-        const gearRatio = gears[clamp(this.gear - 1, 0, gears.length - 1)];
-        const wheelR = 0.33;
-        const rpmFromSpeed = Math.abs(vLong) * gearRatio / (wheelR * Math.PI * 2) * 60;
+        const ratio = gears[clamp(this.gear - 1, 0, gears.length - 1)];
+        const rpmFromSpeed = (this.speed * ratio) / (0.33 * Math.PI * 2) * 60;
         this.rpm = clamp(damp(this.rpm, Math.max(spec.idle, rpmFromSpeed), 8, dt), spec.idle, spec.redline + 200);
-
         this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
         if (this.shiftCooldown <= 0) {
             if (this.rpm > spec.redline * 0.94 && this.gear < gears.length) {
                 this.gear += 1;
-                this.shiftCooldown = 0.18;
-            } else if (this.rpm < spec.redline * 0.42 && this.gear > 1) {
+                this.shiftCooldown = 0.16;
+            } else if (this.rpm < spec.redline * 0.4 && this.gear > 1) {
                 this.gear -= 1;
-                this.shiftCooldown = 0.14;
+                this.shiftCooldown = 0.12;
             }
         }
 
-        const rpmNorm = (this.rpm - spec.idle) / (spec.redline - spec.idle);
-        const power = spec.power * (0.35 + 0.65 * Math.sin(Math.PI * clamp(rpmNorm, 0.05, 0.98)));
-        const drive = (power / Math.max(6, Math.abs(vLong) + 4)) * throttle;
-        const brakeForce = spec.brake * brake + (this.handbrake > 0.3 ? spec.brake * 0.55 : 0);
-        const drag = 0.5 * 1.225 * spec.drag * 2.1 * vLong * Math.abs(vLong);
-        const roll = 90 * sign(vLong) * Math.abs(vLong);
-        const surfDrag = SURFACE_DRAG[this.surface] * vLong;
+        const rpmNorm = clamp((this.rpm - spec.idle) / (spec.redline - spec.idle), 0.08, 1);
+        const band = 0.55 + 0.45 * Math.sin(Math.PI * rpmNorm);
+        let accel = throttle * peakAccel * band;
+        accel -= brake * 32;
+        accel -= handbrake * 16;
+        accel -= this.speed * spec.drag * 0.35;
+        accel -= SURFACE_DRAG[this.surface] / spec.mass * this.speed * 0.015;
+        if (throttle < 0.05 && brake < 0.05) accel -= 3.2;
 
-        let aLong = (drive - brakeForce * sign(vLong) - drag - roll - surfDrag) / spec.mass;
-        if (throttle < 0.05 && brake < 0.05 && this.handbrake < 0.1) {
-            aLong -= vLong * 0.35;
-        }
+        const cap = topSpeed * (0.55 + 0.45 * gripMul);
+        this.speed = clamp(this.speed + accel * dt, 0, cap);
 
-        const slipAngle = Math.atan2(vLat, Math.max(4, Math.abs(vLong))) - this.steer * 0.65;
-        const latForce = -Math.sin(1.35 * Math.atan(9.5 * slipAngle)) * mu * spec.mass * G;
-        const aLat = latForce / spec.mass;
-        this.slip = Math.abs(slipAngle);
-
-        const yawInertia = spec.mass * 1.15;
-        const yawTorque = this.steer * mu * 8200 + (-vLat * 420) + this.handbrake * steerInput * 5200;
-        this.yawRate += (yawTorque / yawInertia) * dt;
-        this.yawRate *= Math.exp(-dt * (2.4 + mu * 1.8));
+        const driftWant = Math.abs(steerInput) * (0.12 + handbrake * 0.85) * saturate(this.speed / 18);
+        this.slip = damp(this.slip, driftWant / Math.max(0.55, gripMul), 7, dt);
+        this.yawRate = this.steer * this.speed * 0.24 + sign(steerInput) * this.slip * (0.9 + handbrake * 1.6);
         this.yaw = wrapAngle(this.yaw + this.yawRate * dt);
 
-        const nForwardX = Math.sin(this.yaw);
-        const nForwardZ = Math.cos(this.yaw);
-        const nRightX = Math.cos(this.yaw);
-        const nRightZ = -Math.sin(this.yaw);
-
-        let nLong = vLong + aLong * dt;
-        let nLat = vLat + aLat * dt;
-        nLat *= Math.exp(-dt * (1.6 + mu * 2.2));
-        if (this.handbrake > 0.4) nLat *= Math.exp(-dt * 0.4);
-
-        this.vx = nLong * nForwardX + nLat * nRightX;
-        this.vz = nLong * nForwardZ + nLat * nRightZ;
-        this.speed = Math.hypot(this.vx, this.vz);
-
+        const slipHeading = this.yaw - sign(steerInput || this.steer) * this.slip * 0.9;
+        this.vx = Math.sin(slipHeading) * this.speed;
+        this.vz = Math.cos(slipHeading) * this.speed;
         this.position.x += this.vx * dt;
         this.position.z += this.vz * dt;
 
         const ground = this.road.heightAt(loc.index, loc.lateral);
-        const targetY = ground;
-        if (this.position.y > targetY + 0.6) {
+        if (this.position.y > ground + 0.7) {
             this.airborne = 1;
             this.verticalSpeed -= G * dt;
         } else {
             this.airborne = 0;
-            this.verticalSpeed = (targetY - this.position.y) * 8;
+            this.verticalSpeed = (ground - this.position.y) * 8;
         }
         this.position.y += this.verticalSpeed * dt;
-        if (this.position.y < targetY) this.position.y = targetY;
+        if (this.position.y < ground) this.position.y = ground;
 
         const bank = this.road.bank[loc.index];
-        this.pitch = damp(this.pitch, -aLong * 0.012, 8, dt);
-        this.roll = damp(this.roll, bank * 0.7 + aLat * 0.008 + this.steer * 0.12, 8, dt);
-        this.suspension = damp(this.suspension, -aLong * 0.02, 10, dt);
+        this.pitch = damp(this.pitch, -accel * 0.012, 8, dt);
+        this.roll = damp(this.roll, bank * 0.7 + this.steer * 0.18, 8, dt);
 
-        if (this.slip > 0.18 && this.speed > 8) {
+        if (this.slip > 0.16 && this.speed > 8) {
             this.driftChain += dt;
             this.driftScore += this.slip * this.speed * dt * 18;
         } else {
             this.driftChain = Math.max(0, this.driftChain - dt * 0.6);
         }
 
-        if (Math.abs(loc.lateral) > 42) this.recover();
-        if (this.position.y < -2) this.recover();
+        if (Math.abs(loc.lateral) > 70) this.recover();
+        if (this.position.y < -4) this.recover();
     }
 }
