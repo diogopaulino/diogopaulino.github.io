@@ -666,6 +666,10 @@ kbd {
     align-items: end;
 }
 
+.join-form[hidden] {
+    display: none;
+}
+
 .join-form .field input {
     font-family: var(--display);
     letter-spacing: 0.28em;

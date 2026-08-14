@@ -97,11 +97,11 @@ export function createCraft(team) {
     root.add(under);
 
     const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(0.85, 20),
+        new THREE.CircleGeometry(0.62, 20),
         new THREE.MeshBasicMaterial({
             color: def.color,
             transparent: true,
-            opacity: 0.35,
+            opacity: 0.22,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             side: THREE.DoubleSide
