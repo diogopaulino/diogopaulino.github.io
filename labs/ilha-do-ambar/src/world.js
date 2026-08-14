@@ -328,7 +328,7 @@ export class World {
                 if (this.onRoad(x, z)) continue;
                 if (avoidLake && Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z) < WORLD.lake.r + 6) continue;
                 if (Math.hypot(x - 42, z - 14) < 18) continue;
-                if (Math.hypot(x, z - 102) < 12) continue;
+                if (Math.hypot(x, z - 108) < 12) continue;
                 const clone = proto.clone();
                 const s = 0.75 + rng() * 0.7;
                 clone.scale.setScalar(s);
