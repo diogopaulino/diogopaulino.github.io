@@ -1,117 +1,63 @@
 /**
- * Texturas geradas em canvas: areia, coral, pele da arraia e caústicas.
+ * Texturas procedurais em canvas — areia, lâmina de kelp e rampa suave.
  */
 
-export function makeCanvas(size, draw, h = size) {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    draw(ctx, size, h);
-    return canvas;
+function canvas(size, draw) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    draw(ctx, size);
+    return c;
 }
 
-export function canvasTexture(THREE, canvas, { repeatX = 1, repeatY = 1 } = {}) {
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeatX, repeatY);
-    tex.anisotropy = 4;
-    tex.needsUpdate = true;
-    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-}
-
-export function sandTexture(THREE) {
-    const canvas = makeCanvas(256, (ctx, s) => {
-        ctx.fillStyle = '#c4a574';
-        ctx.fillRect(0, 0, s, s);
-        for (let i = 0; i < 1400; i++) {
-            const n = Math.random();
-            ctx.fillStyle = `rgba(${160 + n * 70 | 0},${120 + n * 50 | 0},${70 + n * 40 | 0},${0.35})`;
-            ctx.fillRect(Math.random() * s, Math.random() * s, 2 + n * 3, 1 + n * 2);
-        }
-        ctx.fillStyle = 'rgba(80, 50, 30, 0.12)';
-        for (let i = 0; i < 12; i++) {
-            ctx.beginPath();
-            ctx.ellipse(Math.random() * s, Math.random() * s, 8 + Math.random() * 18, 3, Math.random(), 0, Math.PI * 2);
-            ctx.fill();
-        }
-    });
-    return canvasTexture(THREE, canvas, { repeatX: 8, repeatY: 8 });
-}
-
-export function coralTexture(THREE, hue = 12) {
-    const canvas = makeCanvas(128, (ctx, s) => {
-        ctx.fillStyle = `hsl(${hue} 55% 48%)`;
-        ctx.fillRect(0, 0, s, s);
-        for (let i = 0; i < 80; i++) {
-            ctx.fillStyle = `hsla(${hue + Math.random() * 20} 60% ${40 + Math.random() * 30}% / 0.5)`;
-            ctx.beginPath();
-            ctx.arc(Math.random() * s, Math.random() * s, 2 + Math.random() * 6, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    });
-    return canvasTexture(THREE, canvas, { repeatX: 2, repeatY: 2 });
-}
-
-export function mantaTexture(THREE) {
-    const canvas = makeCanvas(256, (ctx, s) => {
-        const g = ctx.createLinearGradient(0, 0, 0, s);
-        g.addColorStop(0, '#0a2a3a');
-        g.addColorStop(0.45, '#12384c');
-        g.addColorStop(0.72, '#cfd8d4');
-        g.addColorStop(1, '#eef4f0');
+export function sandTexture() {
+    const c = canvas(256, (ctx, s) => {
+        const g = ctx.createLinearGradient(0, 0, s, s);
+        g.addColorStop(0, '#1a4a4a');
+        g.addColorStop(0.45, '#2d6a62');
+        g.addColorStop(1, '#163a42');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = 'rgba(240, 248, 255, 0.85)';
-        for (let i = 0; i < 28; i++) {
-            const x = 30 + Math.random() * 196;
-            const y = 20 + Math.random() * 110;
-            ctx.beginPath();
-            ctx.ellipse(x, y, 3 + Math.random() * 7, 2 + Math.random() * 4, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.fillStyle = 'rgba(20, 80, 90, 0.35)';
-        ctx.fillRect(0, 0, s, 8);
-    });
-    const tex = canvasTexture(THREE, canvas);
-    tex.wrapS = THREE.ClampToEdgeWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    return tex;
-}
-
-export function causticTexture(THREE) {
-    const canvas = makeCanvas(256, (ctx, s) => {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, s, s);
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < 40; i++) {
-            ctx.strokeStyle = `rgba(140, 255, 240, ${0.08 + Math.random() * 0.12})`;
-            ctx.lineWidth = 1 + Math.random() * 2;
-            ctx.beginPath();
+        for (let i = 0; i < 1800; i++) {
             const x = Math.random() * s;
             const y = Math.random() * s;
-            ctx.moveTo(x, y);
-            ctx.quadraticCurveTo(x + 40, y - 20, x + 80, y + 10);
-            ctx.stroke();
+            const a = 0.04 + Math.random() * 0.12;
+            ctx.fillStyle = Math.random() > 0.5
+                ? `rgba(180, 220, 200, ${a})`
+                : `rgba(20, 40, 50, ${a})`;
+            ctx.fillRect(x, y, 1 + Math.random() * 2, 1);
         }
     });
-    return canvasTexture(THREE, canvas, { repeatX: 4, repeatY: 4 });
+    return c;
 }
 
-export function skyTexture(THREE) {
-    const canvas = makeCanvas(4, (ctx, s, h) => {
-        const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, '#7ec8d4');
-        g.addColorStop(0.22, '#1a6a78');
-        g.addColorStop(0.5, '#063044');
-        g.addColorStop(1, '#010b12');
+export function kelpTexture() {
+    const c = canvas(64, (ctx, s) => {
+        ctx.clearRect(0, 0, s, s);
+        const g = ctx.createLinearGradient(0, 0, s, 0);
+        g.addColorStop(0, 'rgba(10, 60, 50, 0)');
+        g.addColorStop(0.25, 'rgba(18, 140, 96, 0.92)');
+        g.addColorStop(0.5, 'rgba(80, 220, 160, 0.95)');
+        g.addColorStop(0.75, 'rgba(20, 120, 90, 0.9)');
+        g.addColorStop(1, 'rgba(10, 60, 50, 0)');
         ctx.fillStyle = g;
-        ctx.fillRect(0, 0, s, h);
-    }, 64);
-    const tex = canvasTexture(THREE, canvas);
-    tex.magFilter = THREE.LinearFilter;
-    tex.minFilter = THREE.LinearFilter;
-    return tex;
+        ctx.fillRect(8, 0, s - 16, s);
+        ctx.fillStyle = 'rgba(180, 255, 210, 0.18)';
+        ctx.fillRect(s * 0.42, 0, 3, s);
+    });
+    return c;
+}
+
+export function rockTexture() {
+    const c = canvas(128, (ctx, s) => {
+        ctx.fillStyle = '#1c3340';
+        ctx.fillRect(0, 0, s, s);
+        for (let i = 0; i < 400; i++) {
+            ctx.fillStyle = `rgba(${20 + Math.random() * 50},${40 + Math.random() * 40},${50 + Math.random() * 40},${0.15 + Math.random() * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * s, Math.random() * s, 2 + Math.random() * 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+    return c;
 }

@@ -1,26 +1,26 @@
 /* ================================================================
-   Nereida — santuário bioluminescente
-   Paleta: índigo da fossa, teal de cáustica, ciano de maré, pérola da lua.
+   Eyra — voo nos ares
+   Paleta: teal de canópia, ouro do sol baixo, ciano bioluminescente.
    ================================================================ */
 
 :root {
-    --abyss: oklch(12% 0.04 220);
-    --abyss-deep: oklch(8% 0.035 220);
-    --teal: oklch(72% 0.12 185);
-    --cyan: oklch(82% 0.11 200);
-    --pearl: oklch(94% 0.03 95);
-    --foam: oklch(88% 0.06 180);
-    --rose-water: oklch(78% 0.08 350);
-    --gold: oklch(84% 0.12 90);
+    --dusk: oklch(14% 0.04 200);
+    --dusk-deep: oklch(9% 0.035 200);
+    --cyan: oklch(82% 0.13 185);
+    --gold: oklch(84% 0.14 90);
+    --gold-deep: oklch(68% 0.12 78);
+    --moss: oklch(52% 0.12 150);
+    --magenta: oklch(70% 0.16 330);
+    --ink: oklch(16% 0.04 200);
 
-    --text: oklch(96% 0.02 200);
-    --text-soft: oklch(86% 0.04 200);
-    --text-dim: oklch(70% 0.04 210);
+    --text: oklch(97% 0.02 90);
+    --text-soft: oklch(88% 0.03 180);
+    --text-dim: oklch(70% 0.04 180);
 
-    --panel: color-mix(in oklab, oklch(16% 0.05 220) 58%, transparent);
-    --panel-strong: color-mix(in oklab, oklch(10% 0.05 220) 84%, transparent);
+    --panel: color-mix(in oklab, oklch(16% 0.05 200) 58%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(11% 0.05 200) 84%, transparent);
     --line: color-mix(in oklab, var(--cyan) 34%, transparent);
-    --line-soft: color-mix(in oklab, var(--teal) 16%, transparent);
+    --line-soft: color-mix(in oklab, var(--gold) 16%, transparent);
 
     --radius: 18px;
     --radius-lg: 28px;
@@ -45,7 +45,7 @@ html, body {
     height: 100%;
     overflow: clip;
     overscroll-behavior: none;
-    background: var(--abyss-deep);
+    background: var(--dusk-deep);
 }
 
 body {
@@ -53,7 +53,7 @@ body {
     padding: 0 !important;
     display: block !important;
     color: var(--text);
-    font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
@@ -85,7 +85,7 @@ button {
     inset: 0;
     overflow: hidden;
     background:
-        radial-gradient(120% 80% at 50% 0%, oklch(28% 0.07 200) 0%, var(--abyss-deep) 70%);
+        radial-gradient(120% 80% at 50% 0%, oklch(28% 0.08 190) 0%, var(--dusk-deep) 70%);
 }
 
 .stage {
@@ -112,8 +112,8 @@ button {
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse at 50% 46%, transparent 48%, oklch(8% 0.04 220 / 0.5) 100%),
-        linear-gradient(to top, oklch(10% 0.04 200 / 0.28), transparent 32%);
+        radial-gradient(ellipse at 50% 46%, transparent 48%, oklch(10% 0.04 200 / 0.48) 100%),
+        linear-gradient(to top, oklch(12% 0.05 160 / 0.28), transparent 30%);
     z-index: 2;
 }
 
@@ -141,7 +141,7 @@ button {
     -webkit-backdrop-filter: blur(var(--blur));
     border-color: var(--line);
     color: var(--text-soft);
-    box-shadow: 0 10px 30px rgba(4, 20, 32, 0.45);
+    box-shadow: 0 10px 30px rgba(4, 24, 32, 0.4);
 }
 
 .game-shell > header .back-link:hover {
@@ -150,24 +150,24 @@ button {
 }
 
 .game-shell > header .app-logo {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    font-size: 1.25rem;
-    color: var(--foam);
-    text-shadow: 0 2px 18px rgba(4, 24, 36, 0.7);
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 1.15rem;
+    color: var(--gold);
+    text-shadow: 0 2px 18px rgba(4, 20, 28, 0.65);
 }
 
 .brand-mark {
     display: inline-block;
     margin-right: 0.35rem;
     color: var(--cyan);
-    animation: pulse 3.2s ease-in-out infinite;
+    animation: twinkle 2.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(1.22); }
+@keyframes twinkle {
+    0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    50% { opacity: 0.55; transform: scale(1.18) rotate(18deg); }
 }
 
 .lab-foot {
@@ -210,7 +210,7 @@ button {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 0.7rem 0.9rem;
-    box-shadow: 0 12px 36px rgba(4, 16, 28, 0.35);
+    box-shadow: 0 12px 36px rgba(4, 20, 28, 0.32);
 }
 
 .hud-label {
@@ -222,16 +222,37 @@ button {
     font-weight: 800;
 }
 
-.tide-panel, .depth-panel {
-    min-width: 8.5rem;
-}
-
-.tide-panel .mono, .depth-panel .mono {
+.alt-panel .mono, .score-panel .mono {
     display: block;
     margin-top: 0.15rem;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     color: var(--cyan);
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: 'Cinzel', Georgia, serif;
+}
+
+.hud-tag {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+}
+
+.boost-meter {
+    margin-top: 0.55rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, white 10%, transparent);
+    overflow: hidden;
+}
+
+.boost-meter i {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--moss), var(--cyan), var(--gold));
+    transition: width 0.18s linear;
 }
 
 .pips {
@@ -250,7 +271,7 @@ button {
 }
 
 .pips i.on {
-    background: radial-gradient(circle at 35% 30%, #fff, var(--cyan));
+    background: radial-gradient(circle at 35% 30%, #fff8e8, var(--cyan));
     box-shadow: 0 0 12px color-mix(in oklab, var(--cyan) 70%, transparent);
     transform: scale(1.08);
 }
@@ -260,6 +281,21 @@ button {
     font-size: 0.95rem;
     color: var(--text-soft);
     line-height: 1.35;
+}
+
+.score-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+}
+
+.score-row .mono {
+    font-size: 0.95rem;
+    margin: 0;
+    color: var(--gold);
 }
 
 .message {
@@ -291,8 +327,15 @@ button {
     right: calc(1rem + var(--safe-right));
     display: flex;
     gap: 0.45rem;
+    align-items: center;
     pointer-events: auto;
     z-index: 15;
+}
+
+.fps {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    min-width: 2rem;
 }
 
 .icon-button {
@@ -331,7 +374,7 @@ button {
     width: 7.2rem;
     height: 7.2rem;
     border-radius: 50%;
-    background: color-mix(in oklab, oklch(14% 0.04 220) 50%, transparent);
+    background: color-mix(in oklab, oklch(14% 0.04 200) 50%, transparent);
     border: 1px solid var(--line);
     pointer-events: auto;
     touch-action: none;
@@ -345,8 +388,8 @@ button {
     height: 2.5rem;
     margin: -1.25rem 0 0 -1.25rem;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #e8ffff, #2a8a9a);
-    box-shadow: 0 8px 18px rgba(4, 20, 32, 0.4);
+    background: radial-gradient(circle at 35% 30%, #e8fff8, var(--cyan));
+    box-shadow: 0 8px 18px rgba(4, 24, 32, 0.4);
 }
 
 .stick span {
@@ -368,21 +411,22 @@ button {
 }
 
 .pad {
-    width: 3.4rem;
-    height: 3.4rem;
+    width: 3.6rem;
+    height: 3.6rem;
     border-radius: 50%;
     background: var(--panel-strong);
     border: 1px solid var(--line);
     color: var(--text);
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
 }
 
 .pad-magic {
-    width: 4.1rem;
-    height: 4.1rem;
-    background: radial-gradient(circle at 35% 30%, #d8ffff, #2a9aaa);
-    color: #062028;
+    width: 4.3rem;
+    height: 4.3rem;
+    background: radial-gradient(circle at 35% 30%, #e8fff4, #1a8a78);
+    color: #041820;
     border-color: color-mix(in oklab, var(--cyan) 50%, white);
     box-shadow: 0 0 24px color-mix(in oklab, var(--cyan) 55%, transparent);
 }
@@ -395,8 +439,8 @@ button {
     place-items: center;
     padding: calc(5.5rem + var(--safe-top)) 1.2rem calc(1.4rem + var(--safe-bottom));
     background:
-        radial-gradient(ellipse at 50% 20%, oklch(36% 0.1 200 / 0.32), transparent 50%),
-        color-mix(in oklab, var(--abyss-deep) 72%, transparent);
+        radial-gradient(ellipse at 50% 20%, oklch(38% 0.1 185 / 0.22), transparent 52%),
+        color-mix(in oklab, var(--dusk-deep) 42%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -407,13 +451,13 @@ button {
 
 .overlay-card, .loading-card {
     width: min(52rem, 100%);
-    background: color-mix(in oklab, oklch(14% 0.05 220) 82%, transparent);
+    background: color-mix(in oklab, oklch(14% 0.05 200) 82%, transparent);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 1.6rem 1.7rem 1.4rem;
     box-shadow:
-        0 30px 80px rgba(2, 12, 22, 0.5),
-        inset 0 1px 0 color-mix(in oklab, white 12%, transparent);
+        0 30px 80px rgba(4, 16, 24, 0.5),
+        inset 0 1px 0 color-mix(in oklab, white 14%, transparent);
 }
 
 .loading-card {
@@ -422,23 +466,29 @@ button {
 }
 
 .loading-card h1, .menu-head h1, .compact-card h2 {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     font-size: clamp(2.1rem, 5vw, 3.4rem);
     line-height: 0.95;
     margin: 0.2rem 0 0.55rem;
-    background: linear-gradient(180deg, #f4fffe 10%, var(--cyan) 55%, var(--teal) 100%);
+    background: linear-gradient(180deg, #fff8e0 10%, var(--gold) 45%, var(--cyan) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+}
+
+.menu-head h1 span {
+    color: var(--cyan);
+    background: none;
+    -webkit-text-fill-color: var(--cyan);
 }
 
 .star-loader {
     display: inline-block;
     font-size: 2rem;
     color: var(--cyan);
-    animation: pulse 1.4s ease-in-out infinite;
+    animation: twinkle 1.2s ease-in-out infinite;
 }
 
 .loading-bar {
@@ -454,7 +504,7 @@ button {
     height: 100%;
     width: 8%;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--teal), var(--cyan));
+    background: linear-gradient(90deg, var(--moss), var(--cyan), var(--gold));
     transition: width 0.35s var(--ease);
 }
 
@@ -467,13 +517,13 @@ button {
     letter-spacing: 0.16em;
     text-transform: uppercase;
     font-weight: 800;
-    color: var(--cyan);
+    color: var(--gold);
 }
 
 .eyebrow i {
     width: 1.6rem;
     height: 2px;
-    background: linear-gradient(90deg, var(--cyan), transparent);
+    background: linear-gradient(90deg, var(--gold), transparent);
 }
 
 .lede {
@@ -568,8 +618,8 @@ kbd {
 }
 
 .primary-button {
-    background: linear-gradient(180deg, #d8ffff, #3aa8b8);
-    color: #062028;
+    background: linear-gradient(180deg, #e8fff4, #3ad4b8);
+    color: #041820;
     box-shadow: 0 10px 28px color-mix(in oklab, var(--cyan) 40%, transparent);
 }
 
@@ -614,7 +664,7 @@ kbd {
 
 .stats dd {
     margin: 0.15rem 0 0;
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: 'Cinzel', Georgia, serif;
     font-size: 1.2rem;
     color: var(--cyan);
 }

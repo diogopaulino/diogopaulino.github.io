@@ -5,11 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#06202c">
-    <title>Nereida — santuário bioluminescente | Diogo Paulino</title>
+    <meta name="theme-color" content="#041820">
+    <title>Eyra — voo nos ares | Diogo Paulino</title>
     <meta name="description"
-        content="Deslize por um recife bioluminescente em three.js: colete luzes-maré, acorde corais e nade com a baleia. Sem falha, sem timer.">
-    <link rel="canonical" href="https://diogopaulino.com.br/labs/nereida/">
+        content="Voe numa fera alada pelos picos flutuantes de Eyra em three.js: floresta bioluminescente, cachoeiras no céu e o vínculo com a Yva.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/eyra/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -20,18 +20,18 @@
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
-    <meta property="og:url" content="https://diogopaulino.com.br/labs/nereida/">
-    <meta property="og:title" content="Nereida — santuário bioluminescente | Diogo Paulino">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/eyra/">
+    <meta property="og:title" content="Eyra — voo nos ares | Diogo Paulino">
     <meta property="og:description"
-        content="Um recife à luz da lua, medusas, uma baleia e sete marés para acordar. three.js, sem pressa.">
+        content="Picos flutuantes, uma fera alada e a árvore-mãe. three.js, ACES e o céu de um mundo vivo.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Nereida | Diogo Paulino">
-    <meta name="twitter:description" content="Santuário submarino em three.js. Nade, colete luzes e ouça a baleia.">
+    <meta name="twitter:title" content="Eyra | Diogo Paulino">
+    <meta name="twitter:description" content="Voo 3D pelos picos flutuantes de Eyra. Colete sementes de luz e volte à Yva.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Figtree:wght@400;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=7">
     <link rel="stylesheet" href="style.css">
@@ -50,9 +50,9 @@
       "@graph": [
         {
           "@type": "WebApplication",
-          "name": "Nereida",
-          "url": "https://diogopaulino.com.br/labs/nereida/",
-          "description": "Deslize por um recife bioluminescente em three.js: colete luzes-maré, acorde corais e nade com a baleia. Sem falha, sem timer.",
+          "name": "Eyra",
+          "url": "https://diogopaulino.com.br/labs/eyra/",
+          "description": "Voe numa fera alada pelos picos flutuantes de Eyra em three.js: floresta bioluminescente, cachoeiras no céu e o vínculo com a Yva.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -82,8 +82,8 @@
             {
               "@type": "ListItem",
               "position": 3,
-              "name": "Nereida",
-              "item": "https://diogopaulino.com.br/labs/nereida/"
+              "name": "Eyra",
+              "item": "https://diogopaulino.com.br/labs/eyra/"
             }
           ]
         }
@@ -92,36 +92,49 @@
     </script>
 </head>
 
-<body data-state="intro">
+<body>
     <main class="game-shell">
-        <header data-lab-header data-title="Nereida" data-back-label="Labs">
+        <header data-lab-header data-title="Eyra" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="brand-mark" aria-hidden="true">◌</span>
-                    <span>Nereida</span>
+                    <span class="brand-mark" aria-hidden="true">✧</span>
+                    <span>Eyra</span>
                 </div>
             </template>
         </header>
 
-        <section class="stage" aria-label="Santuário submarino em 3D">
-            <canvas id="scene" aria-label="Recife bioluminescente de Nereida"></canvas>
+        <section class="stage" aria-label="Mundo flutuante em 3D">
+            <canvas id="scene" aria-label="Picos flutuantes de Eyra com uma fera alada em voo"></canvas>
             <div class="vignette" aria-hidden="true"></div>
         </section>
 
         <div id="hud" class="hud" hidden>
             <div class="hud-top">
-                <div class="panel tide-panel">
-                    <span class="hud-label">Luzes-maré</span>
-                    <div id="tidePips" class="pips" aria-label="Luzes coletadas"></div>
-                    <strong id="tideCount" class="mono">0 / 7</strong>
+                <div class="panel alt-panel">
+                    <span class="hud-label">Altitude</span>
+                    <strong id="altValue" class="mono">056 m</strong>
+                    <span id="zoneValue" class="hud-tag">Picos de Helion</span>
                 </div>
                 <div class="panel quest-panel">
-                    <span class="hud-label" id="questTag">O santuário dorme</span>
-                    <p id="objective" class="objective">Deslize até as sete luzes-maré e acorde Nereida.</p>
+                    <span class="hud-label" id="questTag">O vínculo adormecido</span>
+                    <p id="objective" class="objective">Colete as oito sementes e volte à Yva.</p>
+                    <div class="boost-meter" title="Impulso">
+                        <i id="boostFill"></i>
+                    </div>
+                    <span id="speedValue" class="hud-tag mono">00 kn</span>
                 </div>
-                <div class="panel depth-panel">
-                    <span class="hud-label">Profundidade</span>
-                    <strong id="depthValue" class="mono">—</strong>
+                <div class="panel score-panel">
+                    <span class="hud-label">Sementes</span>
+                    <div id="seedPips" class="pips" aria-label="Sementes coletadas"></div>
+                    <strong id="seedValue" class="mono">00 / 8</strong>
+                    <div class="score-row">
+                        <span>Combo</span>
+                        <strong id="comboValue" class="mono">1×</strong>
+                    </div>
+                    <div class="score-row">
+                        <span>Canto</span>
+                        <strong id="scoreValue" class="mono">0</strong>
+                    </div>
                 </div>
             </div>
 
@@ -132,26 +145,26 @@
                     title="Som (M)" aria-label="Alternar som">♪</button>
                 <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
                     aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
-                <div id="moveStick" class="stick" aria-label="Nadar">
+                <div id="moveStick" class="stick" aria-label="Voar">
                     <i id="moveKnob"></i>
-                    <span>nadar</span>
+                    <span>voar</span>
                 </div>
                 <div class="touch-buttons">
-                    <button type="button" id="btnUp" class="pad">↑</button>
-                    <button type="button" id="btnDown" class="pad">↓</button>
-                    <button type="button" id="btnPulse" class="pad pad-magic">◌</button>
+                    <button type="button" id="btnRoll" class="pad" aria-label="Pirueta">GIRO</button>
+                    <button type="button" id="btnBoost" class="pad pad-magic" aria-label="Impulso">ÍMPETO</button>
                 </div>
             </div>
         </div>
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="loading-card">
-                <span class="star-loader" aria-hidden="true">◌</span>
-                <h1>Nereida</h1>
-                <p id="loadingText">Afundando com calma…</p>
+                <span class="star-loader" aria-hidden="true">✧</span>
+                <h1>Eyra</h1>
+                <p id="loadingText">Os picos acordam…</p>
                 <div class="loading-bar"><i id="loadingFill"></i></div>
             </div>
         </div>
@@ -159,21 +172,21 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · bioluminescência · calmaria</p>
-                    <h1>Nereida</h1>
-                    <p class="lede">Um recife à luz da lua. Você é uma arraia pequena. Colete as sete
-                        luzes-maré, acorde os corais e nade ao lado da baleia. Não há falha, não há
-                        relógio — só a água.</p>
+                    <p class="eyebrow"><i></i> three.js · picos · bioluminescência</p>
+                    <h1>Ey<span>ra</span></h1>
+                    <p class="lede">Você é o piloto da ira, a fera alada dos picos flutuantes.
+                        Deslize entre montanhas no céu, atravesse anéis de névoa, colete as oito
+                        sementes de luz e devolva o canto à Yva, a árvore-mãe.</p>
                 </header>
 
                 <div class="menu-grid">
                     <section class="menu-section">
-                        <h2>Como nadar</h2>
+                        <h2>Como voar</h2>
                         <div class="keys">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> deslizar</span>
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> guiar · acelerar</span>
                             <span><kbd>Shift</kbd> subir · <kbd>Ctrl</kbd> descer</span>
-                            <span><kbd>Espaço</kbd> sonar — as luzes respondem</span>
-                            <span>Mouse arrasta a câmera · roda aproxima</span>
+                            <span><kbd>Espaço</kbd> impulso · <kbd>Q</kbd> <kbd>E</kbd> pirueta</span>
+                            <span>Mouse arrasta a câmera</span>
                             <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                     </section>
@@ -194,13 +207,13 @@
                                 <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
                             </label>
                         </div>
-                        <p class="section-note">Melhor maré: <b id="bestScore" class="mono">—</b></p>
+                        <p class="section-note">Melhor canto: <b id="bestScore" class="mono">—</b></p>
                     </section>
                 </div>
 
                 <footer class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Entrar na água</span>
+                        <span>Entrar no céu</span>
                         <i aria-hidden="true">→</i>
                     </button>
                 </footer>
@@ -209,8 +222,8 @@
 
         <div id="pauseOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> A corrente espera</p>
-                <h2>O recife<br>está em pausa.</h2>
+                <p class="eyebrow"><i></i> Os picos esperam</p>
+                <h2>O vento<br>está em pausa.</h2>
                 <div class="card-actions">
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
@@ -222,14 +235,14 @@
 
         <div id="victoryOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card victory-card">
-                <p class="eyebrow"><i></i> A maré encheu</p>
-                <h2>Nereida<br>canta de novo.</h2>
-                <p class="lede">As sete luzes voltaram ao recife. A baleia aproxima o flanco
-                    brilhante e o santuário respira com você.</p>
+                <p class="eyebrow"><i></i> O vínculo acendeu</p>
+                <h2>A Yva<br>canta de novo.</h2>
+                <p class="lede">As oito sementes voltaram para o coração da árvore. Os picos
+                    brilham e a ira planeia em paz.</p>
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="replayButton" class="primary-button" type="button">
-                        <span>Nadar outra vez</span><i aria-hidden="true">↻</i>
+                        <span>Voar outra vez</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao início</button>
                 </div>
@@ -239,7 +252,7 @@
         <div id="errorOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
                 <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
-                <h2>O recife não<br>pôde abrir.</h2>
+                <h2>O céu não<br>pôde abrir.</h2>
                 <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
             </div>

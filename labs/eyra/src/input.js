@@ -1,6 +1,6 @@
 /**
- * Teclado, mouse e stick virtual. A natação lê `axis` (x, y, z) a cada frame.
- * Espaço dispara o sonar (consumePulse).
+ * Teclado, mouse e stick virtual.
+ * axis.x = banco, axis.y = arfagem, axis.z = aceleração (W = −1).
  */
 
 export class Input {
@@ -9,8 +9,9 @@ export class Input {
         this.keys = new Set();
         this.axis = { x: 0, y: 0, z: 0 };
         this.look = { dx: 0, dy: 0 };
-        this.zoom = 0;
-        this.pulsePressed = false;
+        this.boostHeld = false;
+        this.rollLeft = false;
+        this.rollRight = false;
         this.dragging = false;
         this.pointers = new Map();
         this.stick = { x: 0, y: 0 };
@@ -27,10 +28,10 @@ export class Input {
         this.listeners.get(name)?.forEach((fn) => fn());
     }
 
-    consumePulse() {
-        const v = this.pulsePressed;
-        this.pulsePressed = false;
-        return v;
+    consumeRoll() {
+        if (this.rollLeft) { this.rollLeft = false; return -1; }
+        if (this.rollRight) { this.rollRight = false; return 1; }
+        return 0;
     }
 
     _bind() {
@@ -38,17 +39,24 @@ export class Input {
             if (e.repeat) return;
             if (e.code === 'KeyP' || e.code === 'Escape') this.emit('pause');
             if (e.code === 'KeyM') this.emit('mute');
+            if (e.code === 'KeyC') this.emit('camera');
+            if (e.code === 'KeyQ') this.rollLeft = true;
+            if (e.code === 'KeyE') this.rollRight = true;
             if (e.code === 'Space') {
-                this.pulsePressed = true;
+                this.boostHeld = true;
                 e.preventDefault();
             }
             this.keys.add(e.code);
         }, { passive: false });
 
-        window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+        window.addEventListener('keyup', (e) => {
+            this.keys.delete(e.code);
+            if (e.code === 'Space') this.boostHeld = false;
+        });
         window.addEventListener('blur', () => {
             this.keys.clear();
             this.stick.x = this.stick.y = 0;
+            this.boostHeld = false;
         });
 
         const el = this.canvas;
@@ -76,14 +84,10 @@ export class Input {
         };
         el.addEventListener('pointerup', up);
         el.addEventListener('pointercancel', up);
-        el.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            this.zoom += e.deltaY;
-        }, { passive: false });
         el.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
-    bindTouch({ stick, knob, up, down, pulse }) {
+    bindTouch({ stick, knob, boost, roll }) {
         if (!stick) return;
         const setKnob = (x, y) => {
             knob.style.transform = `translate(${x * 28}px, ${y * 28}px)`;
@@ -116,21 +120,15 @@ export class Input {
         stick.addEventListener('pointerup', end);
         stick.addEventListener('pointercancel', end);
 
-        const hold = (btn, code) => {
+        const hold = (btn, onDown, onUp) => {
             if (!btn) return;
-            const down = (e) => { e.preventDefault(); this.keys.add(code); };
-            const upFn = () => this.keys.delete(code);
-            btn.addEventListener('pointerdown', down);
-            btn.addEventListener('pointerup', upFn);
-            btn.addEventListener('pointerleave', upFn);
-            btn.addEventListener('pointercancel', upFn);
+            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); onDown(); });
+            btn.addEventListener('pointerup', onUp);
+            btn.addEventListener('pointerleave', onUp);
+            btn.addEventListener('pointercancel', onUp);
         };
-        hold(up, 'ShiftLeft');
-        hold(down, 'ControlLeft');
-        pulse?.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            this.pulsePressed = true;
-        });
+        hold(boost, () => { this.boostHeld = true; }, () => { this.boostHeld = false; });
+        hold(roll, () => { this.rollRight = true; }, () => {});
     }
 
     sample() {
@@ -142,14 +140,14 @@ export class Input {
         if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) z += 1;
         let y = 0;
         if (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.keys.has('KeyR')) y += 1;
-        if (this.keys.has('ControlLeft') || this.keys.has('ControlRight') || this.keys.has('KeyF') || this.keys.has('KeyC')) y -= 1;
+        if (this.keys.has('ControlLeft') || this.keys.has('ControlRight') || this.keys.has('KeyF')) y -= 1;
         const mag = Math.hypot(x, z) || 1;
         this.axis.x = x / (mag > 1 ? mag : 1);
         this.axis.z = z / (mag > 1 ? mag : 1);
         this.axis.y = y;
-        const look = { dx: this.look.dx, dy: this.look.dy, zoom: this.zoom };
+        if (this.keys.has('Space')) this.boostHeld = true;
+        const look = { dx: this.look.dx, dy: this.look.dy };
         this.look.dx = this.look.dy = 0;
-        this.zoom = 0;
         return look;
     }
 }
