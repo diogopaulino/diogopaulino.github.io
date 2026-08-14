@@ -78,24 +78,29 @@ export class Ocean {
     }
 
     _shaderWater(scene, quality) {
-        const seg = quality.water >= 512 ? 80 : 48;
-        const geo = new THREE.PlaneGeometry(2000, 2000, seg, seg);
-        const mat = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0 },
-                uIntensity: { value: 0.25 },
-                uFoam: { value: 0 },
-                uColor: { value: new THREE.Color(0x1a6a7a) },
-                uDeep: { value: new THREE.Color(0x062030) }
-            },
-            vertexShader: WAVE_VERT,
-            fragmentShader: WAVE_FRAG,
-            fog: false
+        const geo = new THREE.PlaneGeometry(2000, 2000, 1, 1);
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0x1a6a82,
+            roughness: 0.28,
+            metalness: 0.12,
+            envMapIntensity: 0
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.rotation.x = -Math.PI / 2;
-        mesh.userData.kind = 'shader-water';
+        mesh.userData.kind = 'simple-water';
         mesh.receiveShadow = true;
+        mesh.material.uniforms = {
+            time: { value: 0 },
+            distortionScale: { value: 2 },
+            waterColor: { value: mat.color },
+            sunDirection: { value: new THREE.Vector3() },
+            sunColor: { value: new THREE.Color() },
+            uTime: { value: 0 },
+            uIntensity: { value: 0.25 },
+            uFoam: { value: 0 },
+            uColor: { value: mat.color },
+            uDeep: { value: new THREE.Color(0x062030) }
+        };
         return mesh;
     }
 

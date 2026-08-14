@@ -59,7 +59,6 @@ export class AssetManager {
 
     async preloadEssential(onProgress) {
         this.onProgress = onProgress;
-        const water = await this.loadTexture(ASSETS.waterNormals);
-        return { waterNormals: water };
+        return { waterNormals: null };
     }
 }

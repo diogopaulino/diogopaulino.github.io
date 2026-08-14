@@ -101,7 +101,7 @@ export class Game {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatio));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0x87b8d0, 1);
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.enabled = this.quality.id !== 'low';
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -399,8 +399,7 @@ export class Game {
 
     render() {
         this.renderer.toneMappingExposure = this.weather.exposure ?? 1;
-        if (this.composer && this.quality.bloom) this.composer.render();
-        else this.renderer.render(this.scene, this.camera);
+        this.renderer.render(this.scene, this.camera);
     }
 
     onResize() {

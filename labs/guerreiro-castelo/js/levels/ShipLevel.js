@@ -128,6 +128,15 @@ export class ShipLevel extends Level {
         g.checkpoints.save('ship_start', g.story._saveBlob());
         g.cameraRig.setObstacles(this.obstacles);
         g.cameraRig.yaw = Math.PI;
+        g.cameraRig.pitch = 0.28;
+        g.cameraRig.cutscene = false;
+        this.ship.updateMatrixWorld(true);
+        g.player.root.updateMatrixWorld(true);
+        g.cameraRig.snapToPlayer(g.player);
+        g.camera.position.set(0, 6.5, 9.5);
+        g.camera.lookAt(0, 2, 1);
+        g.cameraRig.currentPos.copy(g.camera.position);
+        g.cameraRig.smoothLook.set(0, 2, 1);
         g.hud.showObjective('Explore o navio');
         g.input.requestLock();
     }

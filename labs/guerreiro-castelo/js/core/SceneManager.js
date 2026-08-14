@@ -86,6 +86,7 @@ export class SceneManager {
         this.game.cameraRig.setObstacles(obstacles);
         for (const lv of levels) lv.enter(checkpoint);
         this._applyCheckpointSpawn(checkpoint);
+        this.game.scene.updateMatrixWorld(true);
         this.game.cameraRig.snapToPlayer(this.game.player);
         return levels;
     }
