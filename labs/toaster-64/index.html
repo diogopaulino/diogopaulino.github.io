@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1028">
+    <title>Torradeira 64 — o pão contra Clippy | Labs</title>
+    <meta name="description"
+        content="Jogo 3D cômico em three.js: dirija uma torradeira, colete disquetes dourados e toste fantasmas, invasores e o Mega-Clippy num pátio retrô N64/PS1.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/toaster-64/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/toaster-64/">
+    <meta property="og:title" content="Torradeira 64">
+    <meta property="og:description"
+        content="Kart de torradeira em 3D. Disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt. Parece que você quer jogar.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Torradeira 64">
+    <meta name="twitter:description" content="Jogo 3D cômico com three.js e referências retrô. INSERT COIN.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Torradeira 64" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">🍞</span>
+                    <span>Torradeira 64</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Pátio 3D da Torradeira 64"></canvas>
+        <div class="crt" aria-hidden="true"></div>
+        <div class="bezel" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel lives-panel">
+                    <span class="hud-label">Pães</span>
+                    <strong id="livesValue" class="lives">🍞🍞🍞</strong>
+                </div>
+                <div class="panel disk-panel">
+                    <div class="disk-head">
+                        <span class="hud-label">Disquetes de ouro</span>
+                        <strong id="diskValue" class="mono">0/8</strong>
+                    </div>
+                    <div class="rail"><i id="diskFill"></i></div>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Pontos</span>
+                        <strong id="scoreValue" class="mono">0</strong>
+                    </div>
+                    <div class="score-row score-row--sub">
+                        <span id="comboBadge" class="combo" data-active="false">x1.0</span>
+                        <span id="timeValue" class="mono">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bossPanel" class="boss-panel" hidden>
+                <span class="boss-name">MEGA-CLIPPY · Office Assistente Final</span>
+                <div class="boss-bar"><i id="bossFill"></i></div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="throw-meter" title="Torradeira pronta">
+                <i id="toastFill"></i>
+            </div>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono" hidden>—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="steer-zone" id="steerZone" aria-label="Arraste para dirigir">
+                    <span id="steerKnob" class="steer-knob"></span>
+                    <span class="steer-hint">dirigir</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-jump" id="jumpPad" aria-label="Pular">PULO</button>
+                    <button type="button" class="pad pad-fire" id="firePad" aria-label="Torrar">TOSTAR</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="hitFlash" class="hit-flash" aria-hidden="true"></div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">🍞</span>
+                <h1>Torradeira 64</h1>
+                <p id="loadingText">AQUECENDO…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · low-poly PS1 · chiptune</p>
+                    <h1>Torradeira <span>64</span></h1>
+                    <p class="lede">Parece que você quer jogar um jogo. Dirija o pão, colete 8 disquetes
+                        dourados e toste o Mega-Clippy antes que a lixeira recicle você.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Como jogar</h2>
+                        <div class="keys">
+                            <span><kbd>WASD</kbd> ou <kbd>←↑↓→</kbd> dirigir</span>
+                            <span><kbd>Espaço</kbd> pular (a torrada sobe)</span>
+                            <span><kbd>F</kbd> / <kbd>clique</kbd> atirar fatias</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+                    <section class="menu-section">
+                        <h2>O elenco</h2>
+                        <p class="section-note">Fantasmas do Pac-Man, Space Invaders, blocos de Tetris,
+                            o cachorro do Duck Hunt e o Assistente Office. A lixeira do Windows 95
+                            suga. É tudo culpa do Y2K.</p>
+                    </section>
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Recorde: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>INSERT COIN</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> PAUSE</p>
+                <h2>A torrada espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> GAME OVER</p>
+                <h2>A torrada<br>queimou.</h2>
+                <div id="defeatStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Tentar de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="defeatMenuButton" class="ghost-button" type="button">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victoryOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card victory-card">
+                <p class="eyebrow eyebrow--gold"><i></i> YOU WIN</p>
+                <h2>Clippy foi<br>tostado.</h2>
+                <div id="victoryStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Nova partida</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>Seu navegador<br>comeu o disquete.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Ative a aceleração
+                    de hardware ou tente um navegador atualizado.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="src/main.js?v=1"></script>
+</body>
+
+</html>
