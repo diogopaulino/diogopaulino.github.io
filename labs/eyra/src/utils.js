@@ -1,4 +1,4 @@
-/** Utilitários numéricos, spline do recife e detecção de dispositivo. */
+/** Utilitários numéricos e detecção de dispositivo. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -43,10 +43,12 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export function detectSoftwareGL() {
+export function detectSoftwareGL(renderer) {
     try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        const gl = renderer?.getContext?.() || (() => {
+            const c = document.createElement('canvas');
+            return c.getContext('webgl2') || c.getContext('webgl');
+        })();
         if (!gl) return true;
         const info = gl.getExtension('WEBGL_debug_renderer_info');
         const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
@@ -56,51 +58,10 @@ export function detectSoftwareGL() {
     }
 }
 
-/**
- * Spline da corrente. s em metros ao longo de z, com meandros em x/y.
- * x = 34 sin(2.15π t) + 11 sin(5.4π t)
- * y = 16 + 9 sin(1.7π t) + 4 cos(3.6π t)
- */
-export function pathAt(s, length) {
-    const t = clamp(s / length, 0, 1);
-    const x = Math.sin(t * Math.PI * 2.15) * 34 + Math.sin(t * Math.PI * 5.4) * 11;
-    const y = 16 + Math.sin(t * Math.PI * 1.7) * 9 + Math.cos(t * Math.PI * 3.6) * 4;
-    return { x, y, z: s, t };
-}
-
-export function pathTangent(s, length) {
-    const a = pathAt(s, length);
-    const b = pathAt(s + 0.9, length);
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dz = b.z - a.z;
-    const len = Math.hypot(dx, dy, dz) || 1;
-    return { x: dx / len, y: dy / len, z: dz / len };
-}
-
-export function pathFrame(s, length) {
-    const p = pathAt(s, length);
-    const f = pathTangent(s, length);
-    const upx = 0;
-    const upy = 1;
-    const upz = 0;
-    let rx = f.y * upz - f.z * upy;
-    let ry = f.z * upx - f.x * upz;
-    let rz = f.x * upy - f.y * upx;
-    const rl = Math.hypot(rx, ry, rz) || 1;
-    rx /= rl;
-    ry /= rl;
-    rz /= rl;
-    const ux = ry * f.z - rz * f.y;
-    const uy = rz * f.x - rx * f.z;
-    const uz = rx * f.y - ry * f.x;
-    return { p, f, r: { x: rx, y: ry, z: rz }, u: { x: ux, y: uy, z: uz } };
-}
-
-export function zoneAt(t, zones) {
+export function zoneAt(y, zones) {
     let z = zones[0];
     for (let i = 0; i < zones.length; i++) {
-        if (t >= zones[i].t) z = zones[i];
+        if (y >= zones[i].y) z = zones[i];
     }
     return z;
 }

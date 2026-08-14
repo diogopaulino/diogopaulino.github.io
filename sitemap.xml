@@ -67,6 +67,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://diogopaulino.com.br/labs/eyra/</loc>
+    <lastmod>2026-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://diogopaulino.com.br/labs/f1-racing/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -85,6 +91,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://diogopaulino.com.br/labs/guerreiro-castelo/</loc>
+    <lastmod>2026-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://diogopaulino.com.br/labs/honor-front/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -98,6 +110,12 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/image-optimizer/</loc>
+    <lastmod>2026-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -157,13 +175,13 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/noctiluca/</loc>
+    <loc>https://diogopaulino.com.br/labs/nereida/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/nereida/</loc>
+    <loc>https://diogopaulino.com.br/labs/noctiluca/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
