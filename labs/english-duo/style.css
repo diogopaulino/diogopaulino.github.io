@@ -1764,3 +1764,13 @@ body {
         justify-content: center;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .sound-toggle,
+    .btn-back-lang { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 420px) {
+    .question-text { padding-right: 0; padding-bottom: 3rem; }
+    .btn-speak { top: auto; bottom: 0; }
+}

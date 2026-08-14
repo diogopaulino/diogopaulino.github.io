@@ -38,6 +38,8 @@
 
 html {
     overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body {
@@ -342,6 +344,8 @@ footer a:hover {
     header .subtitle {
         font-size: 0.875rem;
         padding: 0 0.25rem;
+        max-width: 100%;
+        overflow-wrap: anywhere;
     }
 
     header .theme-toggle,
