@@ -93,10 +93,10 @@ export const CHAPTERS = [
         fog: { color: 0x1a2238, near: 12, far: 72 },
         clear: 0x10182c,
         ambient: 0x3a4a78,
-        ambientIntensity: 0.28,
-        exposure: 0.88,
-        sun: { color: 0x6a7ab0, intensity: 0.22, dir: [0.35, 0.72, 0.4] },
-        hemi: { sky: 0x243050, ground: 0x1a140c, intensity: 0.38 },
+        ambientIntensity: 0.42,
+        exposure: 0.98,
+        sun: { color: 0x6a7ab0, intensity: 0.38, dir: [0.35, 0.72, 0.4] },
+        hemi: { sky: 0x243050, ground: 0x1a140c, intensity: 0.52 },
         sky: { top: 0x0c1428, mid: 0x1c2848, bot: 0x2a2218 }
     },
     {

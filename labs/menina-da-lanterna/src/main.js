@@ -650,13 +650,13 @@ class Game {
         if (ch.id === 'aldeia') {
             const lamps = w.lampsLit();
             this.hud.setObjective(
-                `${w.progress.talked ? '✓' : '○'} Tomás  ·  lampiões ${lamps}/4  ·  ${this.memories ? '✓' : '○'} carta`
+                `${w.progress.talked ? 'Tomás ✓' : 'Fale com Tomás'}  ·  lampiões ${lamps}/4  ·  ${this.memories ? 'carta ✓' : 'carta na casa'}`
             );
         } else if (ch.id === 'trilha') {
             this.hud.setObjective(`Lanternas ${w.lampsLit()}/5  ·  chegue ao moinho`);
         } else if (ch.id === 'rio') {
             this.hud.setObjective(
-                `Bóias ${w.lampsLit()}/3  ·  ${w.progress.foxFreed ? '✓' : '○'} Pingo  ·  atravesse`
+                `Bóias ${w.lampsLit()}/3  ·  ${w.progress.foxFreed ? 'Pingo ✓' : 'liberte Pingo'}  ·  atravesse`
             );
         } else if (ch.id === 'arvore') {
             this.hud.setObjective(`Raízes ${w.progress.crystals.length}/4  ·  ouro, azul, rosa, verde`);
