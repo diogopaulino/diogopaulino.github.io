@@ -4,12 +4,12 @@
 
 # Diogo Paulino
 
-**Design, Código & Música**
+**Design, Código, Música & IA**
 
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-43_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-45_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -23,7 +23,7 @@ Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX
 Gosto de construir coisas — de time e produto até interface e código. Nessa estrada venho atuando no desenvolvimento de software unindo visão de liderança, programação hands-on e design UI/UX.
 
 - 🎸 **Música & Áudio** — explorando os caminhos onde a arte e o código se cruzam.
-- 🤖 **IA & Inovação** — sempre testando novos modelos, integrações e ideias.
+- 🤖 **IA & Inovação** — inteligência artificial no produto e no playground: modelos, integrações e experimentos no navegador.
 - 🧪 **Playground** — criador compulsivo de pequenos experimentos (veja abaixo).
 
 ---
@@ -32,15 +32,20 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **43 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **45 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 ### 🪐 Mundos 3D
 
 | Projeto | O que é? |
 | :--- | :--- |
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
+| 🪼 **[Noctiluca](https://diogopaulino.com.br/labs/noctiluca/)** | Medusa de luz no abismo — pulse no ritmo, atravesse anéis de ruína e desça a cidade submersa |
+| 🦕 **[Ilha do Âmbar](https://diogopaulino.com.br/labs/ilha-do-ambar/)** | Safari 3D jurássico — dirija o jipe, observe dinossauros e complete o diário de campo |
 | 🕸️ **[Silkline](https://diogopaulino.com.br/labs/silkline/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
+| 🥋 **[Vector Fighter](https://diogopaulino.com.br/labs/vector-fighter/)** | Luta 3D em polígonos no espírito Virtua Fighter — anel octogonal, ring out e K.O. |
+| ✨ **[Lúmina](https://diogopaulino.com.br/labs/lumina/)** | Reino flutuante estilo Disney — voe, colete desejos e acenda as lanternas do castelo |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
+| 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🌅 **[Aurelia Festival](https://diogopaulino.com.br/labs/aurelia/)** | Festival de velocidade estilo Forza — supercarros, Costa Aurélia ao pôr do sol e photo mode |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Observatório de exoplanetas — gere sistemas, aproxime a órbita e forje oceanos, magma e anéis |
 | ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
