@@ -12,7 +12,7 @@ export class Player {
         this.camera = camera;
         this.canvas = canvas;
         this.mesh = createLuma();
-        this.mesh.position.set(0, 2.4, 18);
+        this.mesh.position.set(0, 2.8, 22);
         scene.add(this.mesh);
 
         this.vel = new THREE.Vector3();
@@ -28,7 +28,7 @@ export class Player {
     }
 
     reset() {
-        this.mesh.position.set(0, 2.4, 18);
+        this.mesh.position.set(0, 2.8, 22);
         this.vel.set(0, 0, 0);
         this.yaw = 0;
         this.spherical.set(16, 1.32, 0.05);
