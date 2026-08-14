@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#06010c">
+    <title>Neon Rider — avenida infinita dos anos 80 | Labs</title>
+    <meta name="description"
+        content="Corra de moto por uma avenida infinita à noite: néon, asfalto molhado, rádio synthwave e fitas VHS que retunam a cidade. Arcade 3D em three.js.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/neon-rider/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/neon-rider/">
+    <meta property="og:title" content="Neon Rider">
+    <meta property="og:description"
+        content="Arcade 3D retrô: moto, distrito néon, fitas VHS e rádio procedural. Sem planetas — só avenida e madrugada.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Neon Rider">
+    <meta name="twitter:description" content="Uma avenida infinita à noite, em three.js. Colete fitas e retune o néon.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Outfit:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Neon Rider" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">▣</span>
+                    <span>Neon Rider</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Avenida néon em 3D com a moto"></canvas>
+
+        <div class="crt-overlay" aria-hidden="true">
+            <div class="scanlines"></div>
+            <div class="vignette"></div>
+        </div>
+        <div id="glitchLayer" class="glitch-layer" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel speed-panel">
+                    <span class="hud-label">Velocidade</span>
+                    <strong id="speedValue" class="mono speed-num">000</strong>
+                    <span class="hud-unit">km/h</span>
+                </div>
+                <div class="panel radio-panel">
+                    <span class="hud-label">Rádio</span>
+                    <strong id="radioValue">WAVE 84</strong>
+                    <span id="radioTag" class="hud-tag">synth · meia-noite</span>
+                    <div class="boost-meter" title="Nitro">
+                        <i id="boostFill"></i>
+                    </div>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Avenida</span>
+                        <strong id="kmValue" class="mono">0 m</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Fitas</span>
+                        <strong id="tapeValue" class="mono">00</strong>
+                    </div>
+                    <div class="score-row lives-row">
+                        <span class="hud-label">Créditos</span>
+                        <strong id="livesValue" class="mono lives">■■■</strong>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="steer-zone" id="steerZone" aria-label="Arraste para esterçar">
+                    <span class="steer-hint">esterçar</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-brake" id="touchBrake" aria-label="Frear">FREIO</button>
+                    <button type="button" class="pad pad-boost" id="touchBoost" aria-label="Nitro">NITRO</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">▣</span>
+                <h1>NEON RIDER</h1>
+                <p id="loadingText">Ligando o tubo…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · VHS · 1984</p>
+                    <h1>Neon <span>Rider</span></h1>
+                    <p class="lede">Uma avenida que não acaba, à meia-noite. Colete fitas VHS para
+                        retunar o néon da cidade e a rádio synthwave. Desvie do trânsito. Não olhe para o céu —
+                        o show está no asfalto.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Noite</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> esterçar</span>
+                            <span><kbd>W</kbd> / <kbd>Shift</kbd> nitro · <kbd>S</kbd> freio</span>
+                            <span><kbd>C</kbd> câmera · <kbd>R</kbd> rádio · <kbd>P</kbd> pausa</span>
+                            <span><kbd>M</kbd> mudo · <kbd>Enter</kbd> largar</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">72</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="72">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor avenida: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Insert coin</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> PAUSE</p>
+                <h2>A avenida espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> GAME OVER</p>
+                <h2>O néon<br>apagou.</h2>
+                <div id="overStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Outra fita</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>Seu navegador não<br>ligou o tubo.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="src/main.js?v=1"></script>
+</body>
+
+</html>
