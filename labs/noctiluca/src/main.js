@@ -1,5 +1,5 @@
 /**
- * Aurelia — laço principal.
+ * Noctiluca — laço principal.
  * A medusa de luz desce a cidade submersa em −Z. Chunks reciclam,
  * paletas mudam com a profundidade, e o pulso no beat da trilha rende impulso.
  */

@@ -1,9 +1,9 @@
 /**
- * Aurelia — constantes, paletas por profundidade e presets de qualidade.
+ * Noctiluca — constantes, paletas por profundidade e presets de qualidade.
  * A cidade submersa muda de cor conforme o mergulho: rasa, crepúsculo, abismo.
  */
 
-export const STORAGE_KEY = 'aurelia-v1';
+export const STORAGE_KEY = 'noctiluca-v1';
 
 export const PLAY = {
     halfWidth: 16,

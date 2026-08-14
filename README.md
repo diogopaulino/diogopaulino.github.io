@@ -38,7 +38,7 @@ Um laboratório aberto com **36 experimentos** que rodam direto no navegador —
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 🪼 **[Aurelia](https://diogopaulino.com.br/labs/aurelia/)** | Medusa de luz no abismo — pulse no ritmo, atravesse anéis de ruína e desça a cidade submersa |
+| 🪼 **[Noctiluca](https://diogopaulino.com.br/labs/noctiluca/)** | Medusa de luz no abismo — pulse no ritmo, atravesse anéis de ruína e desça a cidade submersa |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Observatório de exoplanetas — gere sistemas, aproxime a órbita e forje oceanos, magma e anéis |
 | ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
