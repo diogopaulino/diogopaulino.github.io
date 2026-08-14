@@ -89,7 +89,7 @@ export function createLights(scene, quality) {
     group.add(dir);
     group.add(dir.target);
 
-    const fill = new THREE.DirectionalLight(0xc8a0e0, 0.28);
+    const fill = new THREE.DirectionalLight(0xe0b8f0, 0.38);
     fill.position.set(-40, 18, -20);
     group.add(fill);
 

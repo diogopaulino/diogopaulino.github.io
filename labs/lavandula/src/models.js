@@ -56,8 +56,8 @@ function applyWind(material, amount = 0.22) {
 /** Dois planos cruzados com textura de lavanda. */
 export function lavenderGeometry() {
     const geo = new THREE.BufferGeometry();
-    const w = 0.32;
-    const h = 1.18;
+    const w = 0.38;
+    const h = 1.32;
     const positions = [];
     const uvs = [];
     const normals = [];
@@ -168,11 +168,11 @@ export function buildTraveler() {
     torso.add(belt);
 
     const cloak = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.62, 0.95),
+        new THREE.CylinderGeometry(0.18, 0.34, 0.85, 8, 1, true),
         std(0x6a4a38, 0.92, 0.02, { side: THREE.DoubleSide })
     );
-    cloak.position.set(0, 0.42, -0.2);
-    cloak.rotation.x = 0.12;
+    cloak.position.set(0, 0.28, -0.08);
+    cloak.rotation.x = 0.18;
     torso.add(cloak);
 
     const head = new THREE.Group();

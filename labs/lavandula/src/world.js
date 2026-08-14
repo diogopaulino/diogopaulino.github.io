@@ -73,10 +73,10 @@ export class World {
         geo.rotateX(-Math.PI / 2);
         const pos = geo.attributes.position;
         const colors = [];
-        const soil = new THREE.Color(0x5a3a28);
-        const moss = new THREE.Color(0x4a5a30);
-        const lavenderTint = new THREE.Color(0x6a4a68);
-        const dirt = new THREE.Color(0x8a6238);
+        const soil = new THREE.Color(0x8a6240);
+        const moss = new THREE.Color(0x6a7a40);
+        const lavenderTint = new THREE.Color(0x8a5a88);
+        const dirt = new THREE.Color(0xc49a68);
         const c = new THREE.Color();
 
         for (let i = 0; i < pos.count; i++) {
@@ -86,11 +86,11 @@ export class World {
             pos.setY(i, y);
             const n = fbm(x * 0.04, z * 0.04, 11);
             if (onPath(x, z, 0.15)) {
-                c.copy(dirt).lerp(soil, n * 0.35);
+                c.copy(dirt).lerp(soil, n * 0.25);
             } else if (Math.abs(x) > 58) {
-                c.copy(moss).lerp(new THREE.Color(0xc4a050), n);
+                c.copy(moss).lerp(new THREE.Color(0xd4b060), n);
             } else {
-                c.copy(soil).lerp(lavenderTint, 0.35 + n * 0.25);
+                c.copy(soil).lerp(lavenderTint, 0.42 + n * 0.28);
             }
             c.offsetHSL(0, 0, (hash2(x, z, 3) - 0.5) * 0.05);
             colors.push(c.r, c.g, c.b);
@@ -122,8 +122,8 @@ export class World {
         pathGeo.computeVertexNormals();
         const pathMat = new THREE.MeshStandardMaterial({
             map: dirtTexture(),
-            color: 0xc4a070,
-            roughness: 0.92
+            color: 0xe0b878,
+            roughness: 0.9
         });
         const path = new THREE.Mesh(pathGeo, pathMat);
         path.receiveShadow = true;
@@ -150,22 +150,24 @@ export class World {
         mesh.frustumCulled = false;
         const dummy = new THREE.Object3D();
         const rng = seeded(0xc0ffee);
+        const rowStep = WORLD.rowGap * (this.quality.rowSkip || 1);
+        const plantStep = WORLD.plantGap * (this.quality.plantSkip || 1);
         let placed = 0;
-        const attempts = count * 4;
-        for (let i = 0; i < attempts && placed < count; i++) {
-            const row = Math.round((rng() * 2 - 1) * 28) * WORLD.rowGap;
-            const z = -72 + rng() * 132;
-            const x = row + (rng() - 0.5) * 0.35;
-            if (onPath(x, z, 0.6)) continue;
-            if (this._nearLandmark(x, z, 3.5)) continue;
-            if (Math.abs(x) > WORLD.radius - 14) continue;
-            dummy.position.set(x, this.heightAt(x, z), z);
-            dummy.rotation.y = rng() * Math.PI;
-            const s = 0.82 + rng() * 0.45;
-            dummy.scale.set(s, s * (0.9 + rng() * 0.25), s);
-            dummy.updateMatrix();
-            mesh.setMatrixAt(placed, dummy.matrix);
-            placed++;
+        for (let row = -72; row <= 72 && placed < count; row += rowStep) {
+            if (Math.abs(row) < WORLD.pathHalf + 1.15) continue;
+            for (let z = -74; z < 62 && placed < count; z += plantStep) {
+                const x = row + (rng() - 0.5) * 0.28;
+                const zz = z + (rng() - 0.5) * 0.22;
+                if (onPath(x, zz, 0.55)) continue;
+                if (this._nearLandmark(x, zz, 3.2)) continue;
+                dummy.position.set(x, this.heightAt(x, zz), zz);
+                dummy.rotation.y = rng() * 0.5;
+                const s = 0.95 + rng() * 0.38;
+                dummy.scale.set(s, s * (0.95 + rng() * 0.2), s);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(placed, dummy.matrix);
+                placed++;
+            }
         }
         mesh.count = placed;
         mesh.instanceMatrix.needsUpdate = true;

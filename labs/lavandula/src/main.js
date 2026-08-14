@@ -111,7 +111,8 @@ class Game {
 
         this.input = new Input(this.canvas);
         this.audio = new GameAudio();
-        this.clock = new THREE.Clock();
+        this.timer = new THREE.Timer();
+        this.timer.connect(document);
 
         this._bindUi();
         window.addEventListener('resize', () => this._resize());
@@ -383,7 +384,8 @@ class Game {
 
     _loop = () => {
         requestAnimationFrame(this._loop);
-        const dt = clamp(this.clock.getDelta(), 0, 0.05);
+        this.timer.update();
+        const dt = clamp(this.timer.getDelta(), 0, 0.05);
         this.time += dt;
         this.world.update(this.time);
 

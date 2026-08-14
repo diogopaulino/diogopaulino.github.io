@@ -49,10 +49,10 @@ export function soilTexture() {
         const size = 256;
         const el = canvas(size);
         const ctx = el.getContext('2d');
-        ctx.fillStyle = '#6a4a32';
+        ctx.fillStyle = '#8a6248';
         ctx.fillRect(0, 0, size, size);
         for (let i = 0; i < 420; i++) {
-            ctx.fillStyle = hash2(i, 3) > 0.55 ? '#7a5a38' : '#5a3a28';
+            ctx.fillStyle = hash2(i, 3) > 0.55 ? '#a07a58' : '#6e4a34';
             ctx.globalAlpha = 0.35;
             ctx.beginPath();
             ctx.ellipse(hash2(i, 1) * size, hash2(i, 2) * size, 8 + hash2(i, 4) * 18, 4 + hash2(i, 5) * 10, 0, 0, Math.PI * 2);
@@ -115,10 +115,10 @@ export function lavenderTexture() {
             const r = 2.1 + hash2(i, 3) * 2.4;
             const purple = hash2(i, 4);
             ctx.fillStyle = purple > 0.66
-                ? 'rgba(196, 150, 220, 0.95)'
+                ? 'rgba(220, 170, 240, 0.98)'
                 : purple > 0.33
-                    ? 'rgba(132, 78, 168, 0.95)'
-                    : 'rgba(88, 42, 128, 0.92)';
+                    ? 'rgba(156, 88, 196, 0.96)'
+                    : 'rgba(102, 48, 148, 0.94)';
             ctx.beginPath();
             ctx.ellipse(x, y, r * 0.7, r, 0, 0, Math.PI * 2);
             ctx.fill();
