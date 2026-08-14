@@ -40,7 +40,7 @@ class Orbis {
         this.follow = new THREE.Vector3();
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
-        this.clock = new THREE.Clock();
+        this.lastTime = performance.now();
         this.fpsFrames = 0;
         this.fpsTime = 0;
         this.dragging = false;
@@ -48,6 +48,8 @@ class Orbis {
     }
 
     async init() {
+        window.LabShell?.init();
+
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: this.qualityId !== 'low',
@@ -232,10 +234,15 @@ class Orbis {
     }
 
     bind() {
-        $('#newSystem').addEventListener('click', () => {
+        const on = (sel, event, handler) => {
+            const el = $(sel);
+            if (el) el.addEventListener(event, handler);
+        };
+
+        on('#newSystem', 'click', () => {
             this.loadSystem((Math.random() * 0xffffffff) >>> 0);
         });
-        $('#seedForm').addEventListener('submit', (e) => {
+        on('#seedForm', 'submit', (e) => {
             e.preventDefault();
             const raw = $('#seedInput').value.trim();
             if (!raw) return;
@@ -243,27 +250,27 @@ class Orbis {
             this.loadSystem(seed);
             $('#seedInput').value = '';
         });
-        $('#presetRail').addEventListener('click', (e) => {
+        on('#presetRail', 'click', (e) => {
             const btn = e.target.closest('[data-seed]');
             if (!btn) return;
             this.loadSystem(Number(btn.dataset.seed));
         });
-        $('#planetList').addEventListener('click', (e) => {
+        on('#planetList', 'click', (e) => {
             const btn = e.target.closest('[data-index]');
             if (!btn) return;
             this.focusPlanet(Number(btn.dataset.index));
         });
-        $('#backSystem').addEventListener('click', () => this.enterSystem(true));
-        $('#pauseBtn').addEventListener('click', () => this.togglePause());
-        $('#rotateBtn').addEventListener('click', () => this.toggleRotate());
-        $('#forgeToggle').addEventListener('click', () => {
+        on('#backSystem', 'click', () => this.enterSystem(true));
+        on('#pauseBtn', 'click', () => this.togglePause());
+        on('#rotateBtn', 'click', () => this.toggleRotate());
+        on('#forgeToggle', 'click', () => {
             const forge = $('#forge');
             const open = forge.hidden;
             forge.hidden = !open;
             forge.classList.toggle('is-open', open);
         });
-        $('#fullscreen').addEventListener('click', () => this.toggleFullscreen());
-        $('#sliders').addEventListener('input', (e) => {
+        on('#fullscreen', 'click', () => this.toggleFullscreen());
+        on('#sliders', 'input', (e) => {
             const key = e.target.dataset.key;
             if (!key) return;
             const p = this.data.planets[this.focus];
@@ -294,7 +301,7 @@ class Orbis {
         });
 
         window.addEventListener('keydown', (e) => {
-            if (e.target.matches('input, textarea')) return;
+            if (e.target?.matches?.('input, textarea')) return;
             if (e.code === 'Space') {
                 e.preventDefault();
                 this.togglePause();
@@ -315,14 +322,16 @@ class Orbis {
 
     togglePause() {
         this.paused = !this.paused;
-        $('#pauseBtn').setAttribute('aria-pressed', String(this.paused));
-        $('#pauseBtn').title = this.paused ? 'Retomar (Espaço)' : 'Pausar (Espaço)';
+        const btn = $('#pauseBtn');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', String(this.paused));
+        btn.title = this.paused ? 'Retomar (Espaço)' : 'Pausar (Espaço)';
     }
 
     toggleRotate() {
         this.autoRotate = !this.autoRotate;
         this.controls.autoRotate = this.autoRotate;
-        $('#rotateBtn').setAttribute('aria-pressed', String(this.autoRotate));
+        $('#rotateBtn')?.setAttribute('aria-pressed', String(this.autoRotate));
     }
 
     toggleFullscreen() {
@@ -347,7 +356,9 @@ class Orbis {
     }
 
     frame() {
-        const dt = clamp(this.clock.getDelta(), 0, 0.05);
+        const now = performance.now();
+        const dt = clamp((now - this.lastTime) / 1000, 0, 0.05);
+        this.lastTime = now;
         this.system.update(dt, this.paused);
 
         if (this.mode === 'planet') {
@@ -368,7 +379,8 @@ class Orbis {
         this.fpsFrames += 1;
         this.fpsTime += dt;
         if (this.fpsTime >= 0.4) {
-            $('#fps').textContent = String(Math.round(this.fpsFrames / this.fpsTime));
+            const fpsEl = $('#fps');
+            if (fpsEl) fpsEl.textContent = String(Math.round(this.fpsFrames / this.fpsTime));
             this.fpsFrames = 0;
             this.fpsTime = 0;
         }
