@@ -79,7 +79,7 @@ class Armilla {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.12;
+        this.renderer.toneMappingExposure = 1.22;
         this.renderer.setClearColor(0x05030c, 1);
 
         this.scene = new THREE.Scene();

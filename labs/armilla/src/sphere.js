@@ -63,9 +63,9 @@ export class ArmillaSphere {
             fragmentShader: NEBULA_FRAG,
             uniforms: {
                 uTime: { value: 0 },
-                uA: { value: new THREE.Color('#070510') },
-                uB: { value: new THREE.Color('#1a1038') },
-                uC: { value: new THREE.Color('#3a1848') }
+                uA: { value: new THREE.Color('#0c0820') },
+                uB: { value: new THREE.Color('#2c1860') },
+                uC: { value: new THREE.Color('#6a2a78') }
             },
             side: THREE.BackSide,
             depthWrite: false
@@ -112,26 +112,27 @@ export class ArmillaSphere {
         this.cage = new THREE.Group();
         this.root.add(this.cage);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x8a93ab,
-            metalness: 0.85,
-            roughness: 0.28,
-            emissive: 0x1a2030,
-            emissiveIntensity: 0.35
+            color: 0x9aa6c4,
+            metalness: 0.82,
+            roughness: 0.26,
+            emissive: 0x2a3458,
+            emissiveIntensity: 0.55
         });
         const glow = new THREE.MeshBasicMaterial({
-            color: 0x9bb0ff,
+            color: 0xb8c8ff,
             transparent: true,
-            opacity: 0.12,
+            opacity: 0.18,
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
 
+        const segs = this.quality.bloom ? 96 : 48;
         const makeRing = (r, tube, rot) => {
-            const t = new THREE.TorusGeometry(r, tube, 10, 96);
+            const t = new THREE.TorusGeometry(r, tube, 10, segs);
             const m = new THREE.Mesh(t, mat);
             m.rotation.set(rot[0], rot[1], rot[2]);
             this.cage.add(m);
-            const g = new THREE.Mesh(new THREE.TorusGeometry(r, tube * 2.4, 8, 64), glow);
+            const g = new THREE.Mesh(new THREE.TorusGeometry(r, tube * 2.4, 8, Math.max(32, segs / 2)), glow);
             g.rotation.copy(m.rotation);
             this.cage.add(g);
         };
@@ -213,8 +214,9 @@ export class ArmillaSphere {
             const spinner = new THREE.Group();
             frame.add(spinner);
 
+            const segs = this.quality.bloom ? 96 : 48;
             const tube = new THREE.Mesh(
-                new THREE.TorusGeometry(def.radius, def.tube, 12, 96),
+                new THREE.TorusGeometry(def.radius, def.tube, 12, segs),
                 new THREE.MeshStandardMaterial({
                     color: color.clone().multiplyScalar(0.35),
                     emissive: color,
@@ -226,7 +228,7 @@ export class ArmillaSphere {
             spinner.add(tube);
 
             const glow = new THREE.Mesh(
-                new THREE.TorusGeometry(def.radius, def.tube * 3.2, 8, 64),
+                new THREE.TorusGeometry(def.radius, def.tube * 3.2, 8, Math.max(32, segs / 2)),
                 new THREE.MeshBasicMaterial({
                     color,
                     transparent: true,
