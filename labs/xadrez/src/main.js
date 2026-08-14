@@ -236,6 +236,8 @@ class Atelier {
         this.controls.autoRotateSpeed = 0.55;
 
         this.rebuildPieces();
+        this.renderer.compile(this.scene, this.camera);
+        this.renderer.render(this.scene, this.camera);
 
         this.canvas.addEventListener('pointerdown', (e) => this.onDown(e));
         this.canvas.addEventListener('pointerup', (e) => this.onUp(e));
@@ -778,20 +780,18 @@ class Atelier {
     }
 
     renderCaptured() {
-        const start = { w: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 }, b: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 } };
-        const now = { w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 } };
-        for (const p of this.game.board) {
-            if (p) now[p.c][p.t] += 1;
+        const taken = { w: { q: 0, r: 0, b: 0, n: 0, p: 0 }, b: { q: 0, r: 0, b: 0, n: 0, p: 0 } };
+        for (const u of this.game.stack) {
+            if (u.captured) taken[u.captured.c][u.captured.t] += 1;
         }
         let html = '';
         for (const c of ['w', 'b']) {
             for (const t of ['q', 'r', 'b', 'n', 'p']) {
-                const n = start[c][t] - now[c][t];
-                for (let i = 0; i < n; i++) html += GLYPH[c][t];
+                for (let i = 0; i < taken[c][t]; i++) html += GLYPH[c][t];
             }
             if (c === 'w') html += '  ';
         }
-        document.getElementById('captured').textContent = html || '—';
+        document.getElementById('captured').textContent = html.trim() || '—';
     }
 
     renderMoves() {

@@ -596,6 +596,23 @@ button {
 }
 
 @media (max-width: 768px) {
+    .feature-list {
+        display: none;
+    }
+
+    .overlay-card {
+        padding: 1.25rem 1.1rem 1.1rem;
+    }
+
+    .overlay-card h2 {
+        font-size: clamp(1.7rem, 8vw, 2.3rem);
+        margin-bottom: 0.55rem;
+    }
+
+    .lede {
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+    }
     .coach {
         top: auto;
         bottom: calc(5.6rem + var(--safe-bottom));
