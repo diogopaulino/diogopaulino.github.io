@@ -491,7 +491,7 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.hud.say('Clique no mundo para olhar. Espaço pulsa a lanterna.', 3.4);
+            this.hud.say(this.mobile ? 'Arraste na tela para olhar. O botão da lanterna pulsa a chama.' : 'Clique no mundo para olhar. Espaço pulsa a lanterna.', 3.4);
         }
     }
 

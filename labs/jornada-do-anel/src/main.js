@@ -503,7 +503,7 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.hud.say('Clique no mundo para olhar com o mouse.', 3.2);
+            this.hud.say(this.mobile ? 'Arraste na tela para olhar e use o analógico para andar.' : 'Clique no mundo para olhar com o mouse.', 3.2);
         }
     }
 

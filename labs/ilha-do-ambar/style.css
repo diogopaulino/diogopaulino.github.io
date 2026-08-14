@@ -729,8 +729,10 @@ body[data-state="pause"] [data-lab-footer] {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    /* Abaixo do header compartilhado: em 0.75rem os botões caíam em cima do
+       seletor de tema. */
     .hud-actions {
-        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        top: calc(4.4rem + var(--safe-top, env(safe-area-inset-top, 0px)));
         bottom: auto;
         right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
     }
@@ -739,7 +741,54 @@ body[data-state="pause"] [data-lab-footer] {
         width: 44px;
         height: 44px;
     }
-    .touch-controls {
-        height: min(42%, 38dvh);
+    /* A camada de toque é ancorada no topo (inset: 0): limitar a altura aqui
+       fazia o `bottom` dos filhos medir por uma caixa de ~140px e jogava o
+       stick e os botões para fora da tela em paisagem. */
+    .stick {
+        bottom: calc(0.8rem + var(--safe-bottom, 0px));
+    }
+
+    .pad {
+        bottom: calc(0.8rem + var(--safe-bottom, 0px));
+    }
+
+    /* Com o stick colado na base, o rótulo embaixo saía da tela. */
+    .stick span {
+        bottom: auto;
+        top: -1.1rem;
+    }
+
+    /* Deitado a tela tem ~375px de altura: os painéis empilhados do HUD mais o
+       diário de espécies cobriam o stick e o botão de observar. */
+    .hud {
+        padding-top: calc(3.6rem + var(--safe-top));
+    }
+
+    .hud-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.45rem;
+    }
+
+    .panel {
+        padding: 0.4rem 0.6rem;
+    }
+
+    .radio {
+        font-size: 0.85rem;
+    }
+
+    .catalog {
+        margin-top: 0.4rem;
+        max-width: min(100%, 26rem);
+        justify-content: flex-start;
+    }
+
+    .species {
+        padding: 0.2rem 0.45rem;
+        font-size: 0.68rem;
+    }
+
+    .fps {
+        display: none;
     }
 }
