@@ -281,10 +281,10 @@ export class World {
             map: leafTex, transparent: true, alphaTest: 0.2,
             side: THREE.DoubleSide, roughness: 0.85
         });
-        for (let i = 0; i < 7; i++) {
-            const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 3.2), leafMat);
+        for (let i = 0; i < 9; i++) {
+            const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 3.6), leafMat);
             leaf.position.set(0, 5.3, 0);
-            leaf.rotation.set(0.85, (i / 7) * Math.PI * 2, 0);
+            leaf.rotation.set(0.95, (i / 9) * Math.PI * 2, 0);
             g.add(leaf);
         }
         g.traverse((c) => { if (c.isMesh) { c.castShadow = true; } });
@@ -340,6 +340,15 @@ export class World {
         };
         scatter(palmProto, palms, 28, this.islandRadius - 8);
         scatter(treeProto, trees, 22, this.islandRadius - 6);
+        const gateSpots = [[-8, 72], [14, 74], [-12, 62], [16, 58], [9, 46], [-7, 48], [2, 54]];
+        for (const [x, z] of gateSpots) {
+            const c = palmProto.clone();
+            c.scale.setScalar(1.15);
+            c.position.set(x, this.heightAt(x, z), z);
+            c.rotation.y = hash2(x, z, 2) * 6;
+            this.group.add(c);
+            this.addCollider(x, z, 0.65);
+        }
 
         const grassCount = Math.round(900 * this.quality.grass);
         if (grassCount > 0) {
@@ -433,9 +442,6 @@ export class World {
             m.position.y = 1.8 + Math.sin(time * 0.35 + i) * 0.35;
             m.material.opacity = 0.28 + Math.sin(time * 0.4 + i) * 0.12;
             m.lookAt(jeep.x, m.position.y, jeep.z);
-        }
-        if (this.grass) {
-            this.grass.rotation.y = Math.sin(time * 0.35) * 0.01;
         }
         if (this.rain) {
             this.rain.material.opacity = raining ? 0.55 : 0;

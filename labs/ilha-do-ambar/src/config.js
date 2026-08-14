@@ -28,14 +28,15 @@ export const JEEP = {
 };
 
 export const CAMERA = {
-    distance: 9.4,
-    minDistance: 5.2,
-    maxDistance: 18,
-    height: 3.4,
-    lookY: 1.45,
-    pitchMin: -0.22,
-    pitchMax: 0.62,
-    defaultPitch: 0.16
+    distance: 12.5,
+    minDistance: 6.5,
+    maxDistance: 22,
+    height: 5.4,
+    lookY: 1.7,
+    lookAhead: 10,
+    pitchMin: -0.12,
+    pitchMax: 0.48,
+    defaultPitch: 0.04
 };
 
 export const QUALITY = {
@@ -49,7 +50,7 @@ export const QUALITY = {
         grass: 0.25,
         particles: 0.35,
         bloom: false,
-        dinoSegs: 0.55
+        dinoSegs: 0.72
     },
     medium: {
         id: 'medium',

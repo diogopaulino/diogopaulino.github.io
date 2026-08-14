@@ -753,20 +753,21 @@ export function spawnDinosaurs(scene, world, quality) {
     const brachio = new Dino({
         id: 'brachio',
         parts: buildBrachiosaurus(quality),
-        home: { x: -16, z: -8 },
-        roam: 10,
-        cruise: 0.85,
+        home: { x: 6, z: 36 },
+        roam: 7,
+        cruise: 0.7,
         heightAt: world.heightAt
     });
     const brachio2 = new Dino({
         id: 'brachio',
         parts: buildBrachiosaurus(quality),
-        home: { x: -6, z: 4 },
+        home: { x: -16, z: -8 },
         roam: 8,
-        cruise: 0.7,
+        cruise: 0.75,
         heightAt: world.heightAt
     });
-    brachio2.root.scale.setScalar(0.78);
+    brachio.root.scale.setScalar(1.08);
+    brachio2.root.scale.setScalar(0.86);
 
     const trexParts = buildTRex(quality);
     trexParts.root.scale.setScalar(1.12);

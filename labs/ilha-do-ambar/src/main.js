@@ -35,7 +35,7 @@ class Game {
         this.state = 'loading';
         this.time = 0;
         this.elapsed = 0;
-        this.tod = 0.36;
+        this.tod = 0.30;
         this.rain = false;
         this.logged = new Set();
         this.observeId = null;
@@ -131,7 +131,7 @@ class Game {
         this.audio = new ParkAudio();
         this.clock = new THREE.Clock();
 
-        if (this.quality.bloom) await this._bloom();
+        if (this.quality.bloom && !rendererIsSoftware(this.renderer)) await this._bloom();
 
         this._bindUi();
         this._bindTouch();
@@ -147,6 +147,7 @@ class Game {
         this.state = 'menu';
         this.hud.setState('menu');
         this._applyAtmosphere();
+        this._heroCamera();
         this._loop();
     }
 
@@ -280,10 +281,13 @@ class Game {
         this.elapsed = 0;
         this.observeId = null;
         this.observeT = 0;
+        this.camMode = 0;
         this.camYaw = 0;
         this.camPitch = CAMERA.defaultPitch;
+        this.camDist = CAMERA.distance;
         this.shakeT = 0;
         this.jeep.reset(WORLD.spawn);
+        this._snapCamera();
         this.dinos.trex.caught = false;
         this.hud.hideCaught();
         this.hud.hideVictory();
@@ -347,7 +351,7 @@ class Game {
         applySky(this.sky, pal);
         applyLights(this.lights, pal, this.rain);
         this.renderer.toneMappingExposure = pal.exp * (this.rain ? 0.88 : 1);
-        this.scene.fog = new THREE.FogExp2(pal.fog, this.rain ? 0.016 : 0.011);
+        this.scene.fog = new THREE.FogExp2(pal.fog, this.rain ? 0.012 : 0.0075);
         this.renderer.setClearColor(pal.fog);
         if (this.world.waterMat) this.world.waterMat.uniforms.uSun.value.copy(pal.sunDir);
     }
@@ -423,6 +427,35 @@ class Game {
         setTimeout(() => this.hud.setShake(false), 900);
     }
 
+    _heroCamera() {
+        const t = this.time * 0.085;
+        this.camera.fov = 46;
+        this.camera.updateProjectionMatrix();
+        this.camera.position.set(
+            -8 + Math.cos(t) * 32,
+            13.5,
+            8 + Math.sin(t) * 26
+        );
+        this.camera.lookAt(-12, 7.2, -4);
+        this._cam.copy(this.camera.position);
+    }
+
+    _snapCamera() {
+        const yaw = this.jeep.yaw;
+        this._wanted.set(
+            this.jeep.x - Math.sin(yaw) * CAMERA.distance,
+            this.jeep.y + CAMERA.height,
+            this.jeep.z - Math.cos(yaw) * CAMERA.distance
+        );
+        this._cam.copy(this._wanted);
+        this.camera.position.copy(this._wanted);
+        this.camera.lookAt(
+            this.jeep.x + Math.sin(yaw) * CAMERA.lookAhead,
+            this.jeep.y + CAMERA.lookY,
+            this.jeep.z + Math.cos(yaw) * CAMERA.lookAhead
+        );
+    }
+
     _camera(dt, observe) {
         const look = this.input.consumeLook();
         this.camYaw -= look.x * 0.0022;
@@ -430,39 +463,51 @@ class Game {
         this.camDist = clamp(this.camDist + this.input.consumeZoom() * 0.9, CAMERA.minDistance, CAMERA.maxDistance);
 
         const modes = [
-            { dist: this.camDist, h: CAMERA.height, fov: 52 },
-            { dist: this.camDist * 1.45, h: 6.2, fov: 48 },
-            { dist: 3.2, h: 1.55, fov: 62 }
+            { dist: this.camDist, h: CAMERA.height, fov: 50 },
+            { dist: this.camDist * 1.55, h: 8.4, fov: 46 },
+            { dist: 2.1, h: 1.72, fov: 64 }
         ];
         const m = modes[this.camMode];
-        this.camera.fov = damp(this.camera.fov, observe ? 38 : m.fov, 6, dt);
+        this.camera.fov = damp(this.camera.fov, observe ? 36 : m.fov, 6, dt);
         this.camera.updateProjectionMatrix();
 
         const yaw = this.jeep.yaw + this.camYaw;
         this._fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
+        const jYaw = this.jeep.yaw;
         const lookAt = observe
-            ? this._look.set(observe.dino.position.x, observe.dino.position.y + 2.6, observe.dino.position.z)
-            : this._look.set(this.jeep.x, this.jeep.y + CAMERA.lookY, this.jeep.z);
+            ? this._look.set(observe.dino.position.x, observe.dino.position.y + 3.2, observe.dino.position.z)
+            : this._look.set(
+                this.jeep.x + Math.sin(jYaw) * CAMERA.lookAhead,
+                this.jeep.y + CAMERA.lookY,
+                this.jeep.z + Math.cos(jYaw) * CAMERA.lookAhead
+            );
 
         this._wanted.set(
             this.jeep.x - this._fwd.x * m.dist,
-            this.jeep.y + m.h + this.camPitch * 8,
+            this.jeep.y + m.h + this.camPitch * 7,
             this.jeep.z - this._fwd.z * m.dist
         );
+        if (this.camMode === 2 && !observe) {
+            this._wanted.set(
+                this.jeep.x + Math.sin(jYaw) * 0.35,
+                this.jeep.y + 1.78,
+                this.jeep.z + Math.cos(jYaw) * 0.35
+            );
+        }
         if (observe) {
             const ox = observe.dino.position.x - this.jeep.x;
             const oz = observe.dino.position.z - this.jeep.z;
             const len = Math.hypot(ox, oz) || 1;
             this._wanted.set(
-                this.jeep.x - (ox / len) * 6,
-                this.jeep.y + 3.2,
-                this.jeep.z - (oz / len) * 6
+                this.jeep.x - (ox / len) * 8,
+                this.jeep.y + 4.2,
+                this.jeep.z - (oz / len) * 8
             );
         }
 
-        const ground = this.world.heightAt(this._wanted.x, this._wanted.z) + 1.2;
+        const ground = this.world.heightAt(this._wanted.x, this._wanted.z) + 1.4;
         this._wanted.y = Math.max(this._wanted.y, ground);
-        this._cam.lerp(this._wanted, 1 - Math.exp(-4.2 * dt));
+        this._cam.lerp(this._wanted, 1 - Math.exp(-5.5 * dt));
         if (this.shakeT > 0) {
             this._cam.x += (Math.random() - 0.5) * this.shakeT * 0.35;
             this._cam.y += (Math.random() - 0.5) * this.shakeT * 0.2;
@@ -491,7 +536,8 @@ class Game {
             this._applyAtmosphere();
             this.world.update(dt, this.time, this.jeep, this.rain);
             for (const d of this.dinos.list) d.update(dt, this.time, { x: this.jeep.x, z: this.jeep.z, speed: 0 });
-            this._camera(dt, null);
+            if (this.state === 'menu') this._heroCamera();
+            else this._camera(dt, null);
             this._render();
             return;
         }
