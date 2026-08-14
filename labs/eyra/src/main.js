@@ -129,7 +129,7 @@ class Eyra {
         this.renderer.setSize(innerWidth, innerHeight);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.08;
+        this.renderer.toneMappingExposure = 1.18;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -328,8 +328,8 @@ class Eyra {
             this.audio.tick(dt);
         } else {
             const t = now * 0.00008;
-            this.camera.position.set(Math.cos(t) * 90, 62 + Math.sin(t * 0.7) * 10, Math.sin(t) * 90);
-            this.camera.lookAt(0, 48, 0);
+            this.camera.position.set(Math.cos(t) * 56, 48 + Math.sin(t * 0.7) * 8, Math.sin(t) * 56);
+            this.camera.lookAt(0, 42, 0);
             this.camera.fov = 52;
             this.camera.updateProjectionMatrix();
             this.input.look.dx = this.input.look.dy = 0;

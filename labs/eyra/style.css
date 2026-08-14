@@ -439,8 +439,8 @@ button {
     place-items: center;
     padding: calc(5.5rem + var(--safe-top)) 1.2rem calc(1.4rem + var(--safe-bottom));
     background:
-        radial-gradient(ellipse at 50% 20%, oklch(38% 0.1 185 / 0.32), transparent 50%),
-        color-mix(in oklab, var(--dusk-deep) 72%, transparent);
+        radial-gradient(ellipse at 50% 20%, oklch(38% 0.1 185 / 0.22), transparent 52%),
+        color-mix(in oklab, var(--dusk-deep) 42%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
