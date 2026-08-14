@@ -1030,3 +1030,13 @@ input[type="range"] {
         transition: none;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 480px) {
+    .mode-tabs { flex-wrap: wrap; justify-content: center; }
+    .mode-btn { flex: 1 1 auto; min-height: 44px; white-space: normal; }
+    .icon-btn,
+    .close-btn,
+    .task-remove { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .task-check { width: 22px; height: 22px; }
+    .task-form { grid-template-columns: minmax(0, 1fr) 72px 44px; }
+}

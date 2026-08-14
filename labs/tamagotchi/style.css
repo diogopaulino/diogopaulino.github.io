@@ -757,3 +757,15 @@ header {
   .side-key,
   .bottom-key { transition: none; }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 720px) {
+    .device-area {
+        padding-bottom: max(1.35rem, env(safe-area-inset-bottom, 0px));
+        width: 100%;
+        max-width: 100%;
+    }
+    .tama-shell {
+        width: min(568px, calc(100vw - 1.5rem));
+        max-width: 100%;
+    }
+}

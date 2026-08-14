@@ -584,3 +584,61 @@ body[data-view="system"] #backSystem {
         transition: none;
     }
 }
+/* --- lab-responsive-pass --- */
+.icon-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+
+@media (max-width: 860px) {
+    .hud-left {
+        max-height: min(32dvh, calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 11rem));
+        overflow-y: auto;
+    }
+    .dock {
+        width: min(100%, calc(100% - var(--safe-left, 0px) - var(--safe-right, 0px) - 1rem));
+        max-width: 100%;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-left { max-height: 28dvh; width: min(220px, 42vw); }
+    .hud-right { display: none; }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
+    }
+}

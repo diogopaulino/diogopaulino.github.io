@@ -28,15 +28,18 @@ body {
     padding: 0 !important;
     display: block !important;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
-    width: 100vw;
+    width: 100%;
+    overflow-x: clip;
 }
 
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     width: 100%;
+    min-height: 0;
 }
 
 /* Top Bar */
@@ -45,10 +48,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px));
     background: var(--surface-color);
     border-bottom: 1px solid var(--border-color);
     z-index: 10;
+    min-width: 0;
+    gap: 8px;
 }
 
 .left-section {
@@ -349,4 +354,19 @@ input[type="range"]::-webkit-slider-thumb {
         flex-direction: row;
         width: auto;
     }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .top-bar {
+        height: auto;
+        min-height: 60px;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+    }
+    .left-section,
+    .actions { flex-wrap: wrap; min-width: 0; }
+    .tool-btn,
+    button { min-width: 44px; min-height: 44px; }
+    .canvas-container { min-height: 40dvh; }
 }
