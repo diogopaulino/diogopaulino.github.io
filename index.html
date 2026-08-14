@@ -4,30 +4,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diogo Paulino - Tech Manager | Design & Code Lover</title>
+  <title>Diogo Paulino — Tech Manager, Design, Código e IA</title>
   <meta name="description"
-    content="Diogo Paulino - Tech Manager especializado em design e código. Construindo experiências digitais simples com design, código, música e IA.">
+    content="Diogo Paulino, Tech Manager. Portfólio e playground de labs em HTML, CSS e JavaScript: design UI/UX, código, música e inteligência artificial.">
+  <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://diogopaulino.com.br/">
+  <link rel="author" href="/humans.txt">
+  <link rel="me" href="https://github.com/diogopaulino">
+  <link rel="me" href="https://br.linkedin.com/in/diogopaulino">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/assets/img/diogo-avatar.png">
 
   <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="Diogo Paulino">
   <meta property="og:url" content="https://diogopaulino.com.br/">
-  <meta property="og:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
+  <meta property="og:title" content="Diogo Paulino — Tech Manager, Design, Código e IA">
   <meta property="og:description"
-    content="Construindo experiências digitais simples com design, código, música e um pouco de IA">
+    content="Portfólio de Diogo Paulino: design, código, música e inteligência artificial. Labs que rodam no navegador.">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:image:alt" content="Foto de Diogo Paulino">
+  <meta property="og:image:width" content="771">
+  <meta property="og:image:height" content="771">
   <meta property="og:locale" content="pt_BR">
+  <meta property="profile:first_name" content="Diogo">
+  <meta property="profile:last_name" content="Paulino">
 
   <!-- Twitter -->
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://diogopaulino.com.br/">
-  <meta name="twitter:title" content="Diogo Paulino - Tech Manager | Design & Code Lover">
+  <meta name="twitter:title" content="Diogo Paulino — Tech Manager, Design, Código e IA">
   <meta name="twitter:description"
-    content="Construindo experiências digitais simples com design, código, música e um pouco de IA">
+    content="Portfólio de Diogo Paulino: design, código, música e inteligência artificial. Labs que rodam no navegador.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta name="twitter:image:alt" content="Foto de Diogo Paulino">
 
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/style.css">
@@ -57,16 +68,56 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "Person",
-    "name": "Diogo Paulino",
-    "jobTitle": "Tech Manager",
-    "description": "Design & Code lover - Construindo experiências digitais simples com design, código, música e um pouco de IA",
-    "url": "https://diogopaulino.com.br",
-    "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg",
-    "sameAs": [
-      "https://github.com/diogopaulino",
-      "https://br.linkedin.com/in/diogopaulino",
-      "https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://diogopaulino.com.br/#website",
+        "url": "https://diogopaulino.com.br/",
+        "name": "Diogo Paulino",
+        "alternateName": ["Diogo Paulino Labs", "diogopaulino.com.br"],
+        "inLanguage": "pt-BR",
+        "description": "Portfólio e playground de Diogo Paulino: design, código, música e inteligência artificial.",
+        "publisher": { "@id": "https://diogopaulino.com.br/#person" },
+        "hasPart": { "@id": "https://diogopaulino.com.br/labs/#page" }
+      },
+      {
+        "@type": "ProfilePage",
+        "@id": "https://diogopaulino.com.br/#profile",
+        "url": "https://diogopaulino.com.br/",
+        "name": "Diogo Paulino",
+        "inLanguage": "pt-BR",
+        "isPartOf": { "@id": "https://diogopaulino.com.br/#website" },
+        "about": { "@id": "https://diogopaulino.com.br/#person" },
+        "mainEntity": { "@id": "https://diogopaulino.com.br/#person" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://diogopaulino.com.br/#person",
+        "name": "Diogo Paulino",
+        "givenName": "Diogo",
+        "familyName": "Paulino",
+        "jobTitle": "Tech Manager",
+        "description": "Tech Manager. Design, código, música e inteligência artificial. Constrói experiências digitais e um playground de labs em HTML, CSS e JavaScript.",
+        "url": "https://diogopaulino.com.br/",
+        "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg",
+        "nationality": "BR",
+        "knowsLanguage": ["pt-BR", "en"],
+        "knowsAbout": [
+          "Inteligência Artificial",
+          "IA",
+          "Design UI/UX",
+          "JavaScript",
+          "HTML",
+          "CSS",
+          "Liderança técnica",
+          "Música"
+        ],
+        "sameAs": [
+          "https://github.com/diogopaulino",
+          "https://br.linkedin.com/in/diogopaulino",
+          "https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ"
+        ]
+      }
     ]
   }
   </script>
@@ -92,20 +143,21 @@
       <h1 class="main-name" itemprop="name">Diogo Paulino</h1>
       <div class="subtitle" itemprop="jobTitle">Tech Manager</div>
       <div class="subdesc">Design & Code lover</div>
-      <p class="impact-phrase" itemprop="description">Construindo experiências digitais simples com design, código, música e um
-        pouco de IA :)</p>
+      <p class="impact-phrase" itemprop="description">Construindo experiências digitais simples com design, código, música e
+        inteligência artificial :)</p>
       <nav class="social-icons minimal" aria-label="Links de redes sociais">
         <a href="https://github.com/diogopaulino" target="_blank" aria-label="Perfil no GitHub de Diogo Paulino"
-          class="icon-github-outline" rel="noopener noreferrer" itemprop="sameAs" title="GitHub"></a>
+          class="icon-github-outline" rel="me noopener noreferrer" itemprop="sameAs" title="GitHub"></a>
         <a href="https://br.linkedin.com/in/diogopaulino" target="_blank"
-          aria-label="Perfil no LinkedIn de Diogo Paulino" class="icon-linkedin-outline" rel="noopener noreferrer"
+          aria-label="Perfil no LinkedIn de Diogo Paulino" class="icon-linkedin-outline" rel="me noopener noreferrer"
           itemprop="sameAs" title="LinkedIn"></a>
         <a href="https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ" target="_blank"
-          aria-label="Perfil de Artista no Spotify de Diogo Paulino" class="icon-music-outline" rel="noopener noreferrer"
+          aria-label="Perfil de Artista no Spotify de Diogo Paulino" class="icon-music-outline" rel="me noopener noreferrer"
           itemprop="sameAs" title="Spotify - Diogo Paulino"></a>
       </nav>
       <div class="labs-easter-egg" id="labs-easter-egg">
-        <a href="/labs/" class="labs-badge" aria-label="Labs">
+        <a href="/labs/" class="labs-badge"
+          aria-label="Labs de Diogo Paulino: 42 experimentos de jogos, código, música e IA">
           <span class="labs-text">labs</span>
           <svg class="labs-sparkles" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
             <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />

@@ -1,4 +1,5 @@
-# Site estático do portfólio e do playground de laboratórios.
+# Diogo Paulino — portfólio e playground de laboratórios.
+# https://diogopaulino.com.br/
 User-agent: *
 Allow: /
 
