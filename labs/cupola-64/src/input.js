@@ -108,7 +108,12 @@ export class Input {
         if (!stick) return;
         stick.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            stick.setPointerCapture(e.pointerId);
+            // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+            try {
+                stick.setPointerCapture(e.pointerId);
+            } catch (err) {
+                /* segue sem captura */
+            }
             this.stickId = e.pointerId;
             const rect = stick.getBoundingClientRect();
             this.stickOrigin = {
@@ -185,7 +190,12 @@ export class Input {
         const el = this.canvas;
         el.addEventListener('pointerdown', (e) => {
             if (e.target.closest?.('.touch-controls, .hud-actions, header, .overlay')) return;
-            el.setPointerCapture(e.pointerId);
+            // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+            try {
+                el.setPointerCapture(e.pointerId);
+            } catch (err) {
+                /* segue sem captura */
+            }
             this.lookId = e.pointerId;
             this._lastLook = { x: e.clientX, y: e.clientY };
             el.classList.add('is-dragging');

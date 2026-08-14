@@ -722,7 +722,11 @@ export function drawTitle(ctx, t) {
   if (Math.sin(t * 4) > -0.2) {
     ctx.fillStyle = '#f6d03a';
     ctx.font = '11px "Titan One", system-ui';
-    ctx.fillText('APERTE ENTER', 240, 248);
+    // Em tela de toque não há Enter: a chamada precisa combinar com o aparelho.
+    const startHint = window.matchMedia?.('(pointer: coarse)').matches
+      ? 'TOQUE PARA COMEÇAR'
+      : 'APERTE ENTER';
+    ctx.fillText(startHint, 240, 248);
   }
 }
 

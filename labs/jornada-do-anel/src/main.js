@@ -203,36 +203,58 @@ class Game {
             this.input.touchMove.y = -dy;
             knob.style.transform = `translate(${dx * 22}px, ${dy * 22}px)`;
         };
+        const capturePointer = (el, pointerId) => {
+            try {
+                el.setPointerCapture(pointerId);
+            } catch (err) {
+                /* Ponteiro encerrado antes do handler: segue sem captura. */
+            }
+        };
+
+        /* A captura de ponteiro é best-effort: setPointerCapture lança
+           InvalidStateError quando o ponteiro já terminou, e a exceção
+           derrubava o gesto. O id guardado mantém o arrasto funcionando. */
+        let stickId = null;
+
         const end = () => {
+            stickId = null;
             this.input.touchMove.x = 0;
             this.input.touchMove.y = 0;
             knob.style.transform = 'translate(0,0)';
         };
         stick.addEventListener('pointerdown', (e) => {
-            stick.setPointerCapture(e.pointerId);
+            stickId = e.pointerId;
+            capturePointer(stick, e.pointerId);
             setFrom(e.clientX, e.clientY);
         });
         stick.addEventListener('pointermove', (e) => {
-            if (stick.hasPointerCapture(e.pointerId)) setFrom(e.clientX, e.clientY);
+            if (stickId === e.pointerId) setFrom(e.clientX, e.clientY);
         });
         stick.addEventListener('pointerup', end);
         stick.addEventListener('pointercancel', end);
 
         const lookZone = document.getElementById('lookZone');
+        let lookId = null;
         let lx = 0;
         let ly = 0;
         lookZone?.addEventListener('pointerdown', (e) => {
-            lookZone.setPointerCapture(e.pointerId);
+            lookId = e.pointerId;
+            capturePointer(lookZone, e.pointerId);
             lx = e.clientX;
             ly = e.clientY;
         });
         lookZone?.addEventListener('pointermove', (e) => {
-            if (!lookZone.hasPointerCapture(e.pointerId)) return;
+            if (lookId !== e.pointerId) return;
             this.input.lookX += e.clientX - lx;
             this.input.lookY += e.clientY - ly;
             lx = e.clientX;
             ly = e.clientY;
         });
+        const endLook = () => {
+            lookId = null;
+        };
+        lookZone?.addEventListener('pointerup', endLook);
+        lookZone?.addEventListener('pointercancel', endLook);
 
         document.getElementById('btnInteract')?.addEventListener('click', () => {
             this.input.interactPressed = true;

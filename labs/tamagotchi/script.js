@@ -1374,7 +1374,12 @@
     const code = element.dataset.btn;
     element.addEventListener('pointerdown', (event) => {
       event.preventDefault();
-      element.setPointerCapture(event.pointerId);
+      // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+      try {
+          element.setPointerCapture(event.pointerId);
+      } catch (err) {
+          /* segue sem captura */
+      }
       pressButton(element, code);
     });
     element.addEventListener('pointerup', (event) => {

@@ -146,15 +146,31 @@ export class Input {
             setKnob(this.touchMove.x, this.touchMove.y);
         };
 
+        /* A captura é best-effort: `setPointerCapture` lança InvalidStateError
+           quando o ponteiro já não está ativo, e a exceção derrubava o resto do
+           gesto. O id fica guardado à parte para o arrasto seguir funcionando
+           mesmo quando a captura falha. */
+        const capture = (el, pointerId) => {
+            try {
+                el.setPointerCapture(pointerId);
+            } catch (err) {
+                /* Ponteiro encerrado antes do handler: segue sem captura. */
+            }
+        };
+
+        let stickId = null;
         stick.addEventListener('pointerdown', (e) => {
-            stick.setPointerCapture(e.pointerId);
+            stickId = e.pointerId;
+            capture(stick, e.pointerId);
             onStick(e.clientX, e.clientY, stick.getBoundingClientRect());
         });
         stick.addEventListener('pointermove', (e) => {
-            if (!stick.hasPointerCapture(e.pointerId)) return;
+            if (stickId !== e.pointerId) return;
             onStick(e.clientX, e.clientY, stick.getBoundingClientRect());
         });
-        const endStick = () => {
+        const endStick = (e) => {
+            if (e && stickId !== null && e.pointerId !== stickId) return;
+            stickId = null;
             this.touchMove.x = 0;
             this.touchMove.y = 0;
             setKnob(0, 0);
@@ -164,7 +180,7 @@ export class Input {
 
         let last = null;
         look.addEventListener('pointerdown', (e) => {
-            look.setPointerCapture(e.pointerId);
+            capture(look, e.pointerId);
             last = { x: e.clientX, y: e.clientY };
         });
         look.addEventListener('pointermove', (e) => {

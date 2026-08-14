@@ -211,7 +211,12 @@ para perguntar como cada lab foi construído.`
         oy: e.clientY - rect.top,
         parent
       };
-      bar.setPointerCapture(e.pointerId);
+      // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+      try {
+          bar.setPointerCapture(e.pointerId);
+      } catch (err) {
+          /* segue sem captura */
+      }
     });
 
     bar.addEventListener('pointermove', (e) => {

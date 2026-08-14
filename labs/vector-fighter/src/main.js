@@ -213,7 +213,12 @@ class Game {
             nub.style.transform = 'translate(0,0)';
         };
         stick.addEventListener('pointerdown', (e) => {
-            stick.setPointerCapture(e.pointerId);
+            // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+            try {
+                stick.setPointerCapture(e.pointerId);
+            } catch (err) {
+                /* segue sem captura */
+            }
             setFrom(e.clientX, e.clientY);
         });
         stick.addEventListener('pointermove', (e) => {

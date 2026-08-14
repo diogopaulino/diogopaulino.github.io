@@ -739,3 +739,18 @@ kbd {
         display: none;
     }
 }
+
+/* Instruções específicas de toque: no desktop elas só atrapalhariam. */
+.keys-touch {
+    display: none;
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
+@media (pointer: coarse) {
+    .keys-touch {
+        display: block;
+    }
+}

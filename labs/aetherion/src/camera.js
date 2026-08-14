@@ -56,7 +56,12 @@ export class ObservatoryCamera {
     }
 
     onDown(e) {
-        this.canvas.setPointerCapture(e.pointerId);
+        // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+        try {
+            this.canvas.setPointerCapture(e.pointerId);
+        } catch (err) {
+            /* segue sem captura */
+        }
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         this.moved = false;
         if (this.pointers.size === 1) {
