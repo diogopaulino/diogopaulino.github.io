@@ -2,7 +2,7 @@
  * Mundo infinito em chunks.
  *
  * Altura h(x, z):
- *   continent = fBm(x·0.00105, z·0.00105) ^ 1.55           → serras longas
+ *   continent = fBm(x·0.00105, z·0.00105) ^ 1.22           → serras longas
  *   ridge     = ridged(x·0.0022, z·0.0022) ^ 2.1            → cristas
  *   hills     = (fBm(x·0.0065, z·0.0065) − 0.38) · 14
  *   rolling   = fBm(x·0.0026, z·0.0026) ^ 1.25 · 20         → lombadas
@@ -35,8 +35,8 @@ export function heightAt(x, z) {
     const continent = Math.pow(fbm(x * 0.00105, z * 0.00105, 1, 5), 1.22);
     const ridge = Math.pow(ridged(x * 0.0022, z * 0.0022, 11, 4), 2.1);
     const mountains = continent * 72 + ridge * continent * 42;
-    const hills = (fbm(x * 0.0065, z * 0.0065, 3, 5) - 0.38) * 14;
-    const rolling = Math.pow(fbm(x * 0.0026, z * 0.0026, 15, 4), 1.25) * 20;
+    const hills = (fbm(x * 0.0065, z * 0.0065, 3, 5) - 0.32) * 18;
+    const rolling = Math.pow(fbm(x * 0.0026, z * 0.0026, 15, 4), 1.12) * 26;
     const detail = (fbm(x * 0.034, z * 0.034, 9, 3) - 0.5) * 2.1;
 
     const warpX = x + (fbm(x * 0.002, z * 0.002, 21, 3) - 0.5) * 180;

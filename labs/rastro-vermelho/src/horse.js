@@ -17,7 +17,6 @@ import * as THREE from 'three';
 import { HORSE } from './config.js';
 import { clamp, damp, wrapPi, lerp } from './utils.js';
 import { std } from './models.js';
-import { hideTexture } from './textures.js';
 
 function enableShadows(root) {
     root.traverse((c) => {
@@ -30,11 +29,9 @@ function enableShadows(root) {
 
 export function buildHorse() {
     const root = new THREE.Group();
-    const coat = new THREE.MeshStandardMaterial({
-        map: hideTexture(), color: 0xb86a32, roughness: 0.68
-    });
+    const coat = std(0xc47838, 0.62);
     const dark = std(0x1a120c, 0.78);
-    const cream = std(0xd8c8a8, 0.7);
+    const cream = std(0xe8dcc4, 0.65);
     const leather = std(0x4a2412, 0.7);
     const cloth = std(0x6a1c14, 0.75);
     const skin = std(0xc4a07a, 0.65);
