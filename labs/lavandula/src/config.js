@@ -46,7 +46,7 @@ export const QUALITY = {
         antialias: false,
         shadows: false,
         shadowSize: 512,
-        lavender: 2200,
+        lavender: 1600,
         wheat: 280,
         trees: 0.45,
         particles: 40,
