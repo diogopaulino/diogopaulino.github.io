@@ -87,6 +87,7 @@ export function bindKeyboard(playerInput, hooks = {}) {
     KeyW: 'jump', ArrowUp: 'jump',
     KeyJ: 'punch', KeyQ: 'punch',
     KeyK: 'kick', KeyE: 'kick',
+    KeyU: 'throw', KeyO: 'throw',
     KeyL: 'special', KeyR: 'special', Space: 'special'
   };
 

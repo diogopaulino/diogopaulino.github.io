@@ -1307,6 +1307,11 @@ dialog h2 {
   font-size: 58px;
 }
 
+.pause-layer .cta {
+  display: block;
+  margin: 18px auto 0;
+}
+
 .pause-layer .quiet-button {
   border: 1px solid var(--line);
   width: 100%;
@@ -1573,6 +1578,11 @@ dialog h2 {
   .touch-action .kick {
     border-color: var(--amber);
     background: #3d2f16;
+  }
+
+  .touch-action .throw {
+    border-color: #9ad0c4;
+    background: #1a3330;
   }
 
   .touch-action .special {

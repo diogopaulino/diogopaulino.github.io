@@ -77,7 +77,7 @@ export const MOVES = {
 };
 
 export const AI_CONFIG = {
-  easy:   { think: [18, 32], guard: 0.32, attack: 0.42, punish: 0.22, sticky: 0.35, dash: 0.08 },
+  easy:   { think: [22, 40], guard: 0.22, attack: 0.3,  punish: 0.12, sticky: 0.22, dash: 0.04 },
   normal: { think: [8, 16],  guard: 0.58, attack: 0.7,  punish: 0.55, sticky: 0.55, dash: 0.18 },
   hard:   { think: [4, 9],   guard: 0.8,  attack: 0.88, punish: 0.84, sticky: 0.72, dash: 0.3 }
 };

@@ -214,6 +214,9 @@ export class Fighter {
 
   chooseAction() {
     if (this.input.consume('special')) return this.beginMove('special');
+    if (this.input.consume('throw')) {
+      return this.canThrow() ? this.beginMove('throw') : this.beginMove('punch');
+    }
 
     const throwChord = this.input.has('punch') && this.input.has('kick')
       && (this.input.fresh('punch', 4) || this.input.fresh('kick', 4));
