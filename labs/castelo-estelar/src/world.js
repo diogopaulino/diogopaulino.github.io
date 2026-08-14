@@ -66,7 +66,7 @@ function makePines(quality) {
         roughness: 0.92
     });
     const leafMat = new THREE.MeshStandardMaterial({
-        color: 0x0c1a12,
+        color: 0x163322,
         roughness: 0.78,
         metalness: 0.02
     });
@@ -296,21 +296,6 @@ export class Kingdom {
             this.water.position.y = 0.08;
         }
         this.group.add(this.water);
-
-        const streak = new THREE.Mesh(
-            new THREE.PlaneGeometry(7, 90),
-            new THREE.MeshBasicMaterial({
-                color: 0xd0def8,
-                transparent: true,
-                opacity: 0.16,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
-            })
-        );
-        streak.rotation.x = -Math.PI / 2;
-        streak.position.set(-8, 0.14, 42);
-        streak.renderOrder = 1;
-        this.group.add(streak);
 
         this._lights();
     }
