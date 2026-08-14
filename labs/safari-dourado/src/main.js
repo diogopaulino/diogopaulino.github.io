@@ -3,16 +3,16 @@
  */
 
 import * as THREE from 'three';
-import { QUALITY, STORAGE_KEY, CAMERA, GOLDEN_HOUR, SPECIES_ORDER, SPECIES } from './config.js';
-import { clamp, damp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime } from './utils.js';
-import { Input } from './input.js';
-import { GameAudio } from './audio.js';
-import { Hud, statsBlock } from './hud.js';
-import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette, createLights } from './sky.js';
-import { World } from './world.js';
-import { Player } from './player.js';
-import { Wildlife } from './animals.js';
-import { PhotoSystem, focalMm } from './photo.js';
+import { QUALITY, STORAGE_KEY, CAMERA, GOLDEN_HOUR, SPECIES_ORDER, SPECIES } from './config.js?v=4';
+import { clamp, damp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime } from './utils.js?v=4';
+import { Input } from './input.js?v=4';
+import { GameAudio } from './audio.js?v=4';
+import { Hud, statsBlock } from './hud.js?v=4';
+import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette, createLights } from './sky.js?v=4';
+import { World } from './world.js?v=4';
+import { Player } from './player.js?v=4';
+import { Wildlife } from './animals.js?v=4';
+import { PhotoSystem, focalMm } from './photo.js?v=4';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
@@ -462,8 +462,8 @@ class Game {
         const pal = sampleSkyPalette(this.state === 'play' ? this.hour : 0.22);
         applySkyPalette(this.skyUniforms, pal);
         this.scene.fog.color.copy(pal.fog);
-        if (this.world.water?.material.uniforms.uFogColor) {
-            this.world.water.material.uniforms.uFogColor.value.copy(pal.fog);
+        if (this.world.water?.material?.color) {
+            this.world.water.material.color.set(0x243028).lerp(pal.ground, 0.25);
         }
         this.lights.dir.color.copy(pal.light);
         this.lights.dir.intensity = pal.lightIntensity;

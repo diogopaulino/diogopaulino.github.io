@@ -10,7 +10,7 @@ import {
     buildAcacia, buildBaobab, buildKopje, buildDistantHill,
     grassBladeGeometry, grassMaterial
 } from './models.js';
-import { createWater } from './water.js?v=3';
+import { createWater } from './water.js?v=4';
 
 /**
  * Altura do solo. O poço é uma bacia suave; o resto são colinas em fBm
@@ -267,7 +267,7 @@ export class World {
 
     update(dt, time, jeep) {
         if (this.grassMat?.userData.uTime) this.grassMat.userData.uTime.value = time;
-        if (this.water?.material.uniforms.uTime) this.water.material.uniforms.uTime.value = time;
+        if (this.water?.material?.userData?.uTime) this.water.material.userData.uTime.value = time;
         if (this.dust) {
             this.dust.position.set(jeep.x, jeep.y + 1.2, jeep.z);
             this.dust.rotation.y = time * 0.08;
