@@ -535,3 +535,19 @@ body {
 
 .floating-xp { position: absolute; font-family: var(--font-mono); font-weight: 800; font-size: 1.3rem; color: var(--neon-emerald); pointer-events: none; text-shadow: 0 0 8px var(--neon-emerald); z-index: 500; animation: floatUp 1s forwards; }
 @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-38px) scale(1.3); } }
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .maestro-container {
+        padding-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+        max-width: 100%;
+    }
+    .xp-bar-mini { width: min(150px, 40vw); }
+    .stats-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .tab-btn,
+    .toggle-btn-mini,
+    .btn-trophies-mini,
+    .trigger-pad { min-height: 44px; }
+    .close-btn { min-width: 44px; min-height: 44px; }
+    .hud-strip { flex-wrap: wrap; gap: 0.5rem; }
+}
