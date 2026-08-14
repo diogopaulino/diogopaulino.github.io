@@ -270,6 +270,47 @@ body {
     outline-offset: 2px;
 }
 
+/* Área de toque: as setas mantêm os 30px de desenho (o d-pad precisa caber no
+   console), mas o alvo real cresce para fora, longe do centro. */
+.d-pad > button::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+}
+
+.d-pad .up::after {
+    inset: -14px -7px 0 -7px;
+}
+
+.d-pad .down::after {
+    inset: 0 -7px -14px -7px;
+}
+
+.d-pad .left::after {
+    inset: -7px 0 -7px -14px;
+}
+
+.d-pad .right::after {
+    inset: -7px -14px -7px 0;
+}
+
+.btn-a::after,
+.btn-b::after,
+.btn-select::after,
+.btn-start::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+}
+
+.btn-a,
+.btn-b,
+.btn-select,
+.btn-start {
+    position: relative;
+}
+
 .d-pad .center {
     width: 30px;
     height: 30px;
