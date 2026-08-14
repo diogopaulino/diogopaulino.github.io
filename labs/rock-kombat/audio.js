@@ -64,7 +64,9 @@ function sfx(name, strength = 1) {
   if (name === 'parry') { tone(940, .18, .12, 'sine', 0, 1.6); tone(1320, .22, .08, 'triangle', .03, .75); }
   if (name === 'special') { tone(75, .42, .22, 'sawtooth', 0, 4.2); noise(.3, .14, .06, 380); tone(440, .36, .08, 'square', .12, .5); }
   if (name === 'super') { tone(48, .7, .3, 'sawtooth', 0, 7); noise(.55, .2, .08, 130); tone(880, .5, .11, 'triangle', .18, .35); }
-  if (name === 'ko') { tone(130, .38, .2, 'sawtooth', 0, .38); tone(82, .55, .22, 'triangle', .18, .38); }
+  if (name === 'dash') { noise(.12, .07, 0, 400); tone(220, .1, .05, 'sawtooth', 0, 1.8); }
+  if (name === 'throw') { noise(.16, .16, 0, 80); tone(110, .2, .18, 'triangle', 0, .4); tone(70, .24, .12, 'sawtooth', .04, .55); }
+  if (name === 'ko') { tone(130, .38, .2, 'sawtooth', 0, .38); tone(82, .55, .22, 'triangle', .18, .38); noise(.4, .16, .08, 60); }
   if (name === 'round') { tone(330, .12, .1, 'square'); tone(440, .12, .1, 'square', .14); tone(660, .22, .12, 'square', .28); }
   if (name === 'win') { [261.6, 329.6, 392, 523.2].forEach((f, i) => tone(f, .32, .08, 'triangle', i * .12, 1.01)); }
 }

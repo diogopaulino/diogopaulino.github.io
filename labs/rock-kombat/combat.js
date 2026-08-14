@@ -1,184 +1,241 @@
 // ==========================================================================
-// Rock Kombat — Combat Module
-// Hit resolution, projectiles, particle effects, damage numbers
+// Rock Kombat — Combat
+// Hits, blocks, parries, throws, projectile clash, KO freeze
 // ==========================================================================
 
 import {
   PARRY_COOLDOWN, METER_GAIN, W,
   LEFT_WALL, RIGHT_WALL, GROUND,
-  BODY_WIDTH, PUSH_DISTANCE
+  PUSH_DISTANCE, COMBO_DECAY, MIN_SCALE
 } from './constants.js';
-import { clamp, lerp, random } from './utils.js';
+import { clamp, lerp, random, overlap } from './utils.js';
 import audio from './audio.js';
 
-/** AABB overlap test — returns true if rectangles a and b intersect */
-export function overlap(a, b) {
-  return a && b
-    && a.left < b.right && a.right > b.left
-    && a.top < b.bottom && a.bottom > b.top;
-}
+export { overlap };
 
-/**
- * Spawn impact particles and an expanding ring at (x, y).
- * @param {boolean} heavy - More particles and larger ring for heavy hits
- */
 export function addImpact(match, x, y, color, heavy = false) {
-  const count = heavy ? 22 : 12;
+  const count = heavy ? 26 : 14;
   for (let i = 0; i < count; i++) {
     const angle = random(0, Math.PI * 2);
-    const speed = random(2, heavy ? 11 : 7);
+    const speed = random(2.2, heavy ? 13 : 8);
     match.effects.push({
       x, y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: random(12, heavy ? 28 : 20),
-      size: random(2, heavy ? 7 : 5),
-      color
+      vy: Math.sin(angle) * speed - random(0, 2),
+      life: random(12, heavy ? 30 : 20),
+      size: random(2, heavy ? 8 : 5),
+      color,
+      spark: i % 3 === 0
     });
   }
   match.rings.push({
     x, y,
-    life: heavy ? 16 : 11,
-    max: heavy ? 16 : 11,
+    life: heavy ? 18 : 12,
+    max: heavy ? 18 : 12,
     color
   });
 }
 
-/**
- * Add a floating damage number at impact point.
- * @param {string} type - 'hit' | 'block' | 'parry'
- */
-export function addDamageNumber(match, x, y, text, type, color) {
+export function addDust(match, x, y) {
+  for (let i = 0; i < 8; i++) {
+    match.effects.push({
+      x: x + random(-18, 18),
+      y: y - random(0, 8),
+      vx: random(-2.4, 2.4),
+      vy: random(-2.2, -0.4),
+      life: random(10, 18),
+      size: random(3, 7),
+      color: '#c4b8a4',
+      spark: false
+    });
+  }
+}
+
+export function addDamageNumber(match, x, y, text, color) {
   match.damageNumbers.push({
     x, y,
-    vy: -2,
+    vy: -2.4,
     text: String(text),
     color,
-    life: 45,
-    maxLife: 45
+    life: 48,
+    maxLife: 48
   });
 }
 
-/**
- * Core hit resolution. Determines block/parry/hit outcome and applies
- * damage, hitstun, meter gain, screen effects, and emits combo events.
- */
+function scaledDamage(attacker, move) {
+  const power = 0.82 + attacker.data.power / 430;
+  const comboIndex = Math.max(0, attacker.combo);
+  const scale = comboIndex <= 1 ? 1 : Math.max(MIN_SCALE, 1 - (comboIndex - 1) * COMBO_DECAY);
+  return Math.max(1, Math.round(move.damage * power * scale));
+}
+
+function incomingFactor(defender) {
+  return clamp(1 - (defender.data.defense - 72) * 0.0045, 0.82, 1.12);
+}
+
+function cornerPush(match, attacker, defender, amount) {
+  const next = defender.x + amount;
+  if (next <= LEFT_WALL || next >= RIGHT_WALL) {
+    attacker.x -= amount * 0.85;
+    defender.x = clamp(next, LEFT_WALL, RIGHT_WALL);
+    attacker.x = clamp(attacker.x, LEFT_WALL, RIGHT_WALL);
+  } else {
+    defender.x = next;
+  }
+}
+
 export function applyHit(match, attacker, defender, move, projectile = null) {
-  const blocked = defender.blocking(attacker, move);
+  const blocked = !move.unblockable && defender.blocking(attacker, move);
   const parry = blocked && defender.parrying(attacker);
-  const impactX = lerp(attacker.x, defender.x, 0.7);
-  const impactY = defender.y - (move.level === 'low' ? 65 : 190);
+  const impactX = lerp(attacker.x, defender.x, 0.68);
+  const impactY = defender.y - (move.level === 'low' ? 62 : 188);
+  const counter = !blocked && defender.state === 'attack';
 
   if (parry) {
-    // --- PARRY: defender punishes attacker ---
     defender.gainMeter(24);
     attacker.state = 'hitstun';
-    attacker.hitstun = 13;
-    attacker.vx = -attacker.facing * 3;
+    attacker.hitstun = 14;
+    attacker.vx = -attacker.facing * 3.4;
+    attacker.move = null;
     defender.parryCooldown = PARRY_COOLDOWN;
-
-    match.hitStop = 9;
-    match.shake = 3;
+    match.hitStop = 10;
+    match.shake = 4;
     addImpact(match, impactX, impactY, '#b9f2ff', true);
-    addDamageNumber(match, impactX, impactY - 40, 'PARRY', 'parry', '#b9f2ff');
+    addDamageNumber(match, impactX, impactY - 40, 'PARRY', '#b9f2ff');
     audio.sfx('parry');
-
   } else if (blocked) {
-    // --- BLOCK: reduced chip damage, pushback ---
-    const chip = Math.max(1, Math.floor(move.damage * 0.12));
+    const chip = Math.max(1, Math.floor(move.damage * (move.name === 'special' || move.superMove ? 0.18 : 0.1) * incomingFactor(defender)));
     defender.health = clamp(defender.health - chip, 0, 100);
     defender.state = 'blockstun';
-    defender.blockstun = move.blockstun;
-    defender.x += attacker.facing * move.push * 0.45;
-
+    defender.blockstun = move.blockstun + (move.superMove ? 4 : 0);
+    defender.vx = attacker.facing * move.push * 0.12;
+    cornerPush(match, attacker, defender, attacker.facing * move.push * 0.42);
     attacker.gainMeter(move.meter * METER_GAIN.block);
     defender.gainMeter(Math.max(2, move.damage * METER_GAIN.guard));
-
     match.hitStop = Math.max(3, move.hitstop - 2);
     match.shake = 2;
     addImpact(match, impactX, impactY, '#a8c9ce');
-    addDamageNumber(match, impactX, impactY - 40, chip, 'block', '#a8c9ce');
+    addDamageNumber(match, impactX, impactY - 40, chip, '#a8c9ce');
     audio.sfx('block');
-
   } else {
-    // --- HIT: full damage, hitstun, potential combo ---
-    defender.health = clamp(defender.health - move.damage, 0, 100);
-    defender.state = move.knockdown ? 'knockdown' : 'hitstun';
-    defender.hitstun = move.hitstun;
+    let damage = Math.max(1, Math.round(scaledDamage(attacker, move) * incomingFactor(defender)));
+    if (counter) damage = Math.round(damage * 1.15);
+    if (move.superMove) damage = Math.round(damage * 1.08);
+
+    defender.health = clamp(defender.health - damage, 0, 100);
+    defender.launched = Boolean(move.launch);
+    defender.state = move.knockdown && !move.launch ? 'knockdown' : 'hitstun';
+    defender.hitstun = move.hitstun + (counter ? 6 : 0);
     defender.knockdown = move.knockdown || 0;
-    defender.vx = attacker.facing * move.push * 0.2;
+    defender.move = null;
+    defender.moveFrame = 0;
+    defender.dashTimer = 0;
+    defender.vx = attacker.facing * move.push * 0.22;
     if (move.launch) defender.vy = -move.launch;
 
+    if (move.level === 'throw') {
+      defender.x = clamp(attacker.x + attacker.facing * 88, LEFT_WALL, RIGHT_WALL);
+      defender.vx = attacker.facing * 6;
+      defender.state = 'knockdown';
+      defender.knockdown = move.knockdown;
+      defender.y = GROUND;
+      defender.vy = 0;
+      audio.sfx('throw');
+    }
+
     attacker.gainMeter(move.meter * METER_GAIN.hit);
-    defender.gainMeter(Math.max(4, move.damage * METER_GAIN.damage));
+    defender.gainMeter(Math.max(4, damage * METER_GAIN.damage));
     attacker.moveConnected = true;
-
-    // Combo tracking
     attacker.combo = attacker.comboClock > 0 ? attacker.combo + 1 : 1;
-    attacker.comboClock = 55;
+    attacker.comboClock = 58;
+    attacker.comboDamage += damage;
 
-    match.hitStop = move.hitstop;
-    match.shake = move.damage >= 10 ? 7 : 4;
-    addImpact(match, impactX, impactY, attacker.data.color, move.damage >= 10);
-    addDamageNumber(match, impactX, impactY - 40, move.damage, 'hit', attacker.data.color);
-    audio.sfx(move.damage >= 10 ? 'heavy' : 'light', move.damage / 10);
+    match.hitStop = move.hitstop + (counter ? 2 : 0);
+    match.shake = damage >= 12 || move.superMove ? 9 : damage >= 8 ? 5 : 3;
+    addImpact(match, impactX, impactY, attacker.data.color, damage >= 10 || counter);
+    addDamageNumber(match, impactX, impactY - 42, counter ? `${damage}!` : damage, attacker.data.color);
+    audio.sfx(damage >= 10 || move.superMove ? 'heavy' : 'light', damage / 10);
 
-    // Emit combo event for UI
     if (attacker.combo >= 2) {
       match.events.push({ type: 'combo', fighter: attacker });
     }
+
+    if (defender.health <= 0) {
+      defender.state = 'knockdown';
+      defender.knockdown = 90;
+      defender.vy = move.launch ? defender.vy : -7;
+      defender.launched = true;
+      match.koZoom = 28;
+      match.shake = 14;
+    }
   }
 
-  // Mark projectile as dead, or flag melee move as having hit
   if (projectile) projectile.dead = true;
   else attacker.moveHit = true;
 }
 
-/** Spawn a projectile from a fighter's special move */
 export function spawnProjectile(match, owner, move) {
-  const superScale = move.superMove ? 1.8 : 1;
+  const superScale = move.superMove ? 1.85 : 1;
+  const speed = (move.projectileSpeed || 10.5) * (move.superMove ? 1.22 : 1);
   match.projectiles.push({
     owner, move,
-    x: owner.x + owner.facing * 75,
+    x: owner.x + owner.facing * 78,
     y: owner.y - 155,
-    vx: owner.facing * (move.superMove ? 13 : owner.data.id === 'lennon' ? 9.5 : 10.5),
-    radius: 30 * superScale,
-    life: move.superMove ? 95 : 75,
+    vx: owner.facing * speed,
+    radius: (move.projectileRadius || 30) * superScale,
+    life: move.superMove ? 100 : 78,
     color: owner.data.color,
-    dead: false
+    dead: false,
+    superMove: move.superMove
   });
   match.rings.push({
-    x: owner.x + owner.facing * 50,
+    x: owner.x + owner.facing * 54,
     y: owner.y - 160,
     life: 22, max: 22,
     color: owner.data.color
   });
 }
 
-/** Update all active projectiles — movement, collision, cleanup */
 export function updateProjectiles(match) {
   for (let i = match.projectiles.length - 1; i >= 0; i--) {
     const p = match.projectiles[i];
     p.x += p.vx;
     p.life--;
 
-    const defender = p.owner === match.p1 ? match.p2 : match.p1;
-
     const box = {
       left: p.x - p.radius, right: p.x + p.radius,
       top: p.y - p.radius, bottom: p.y + p.radius
     };
 
+    for (let j = match.projectiles.length - 1; j > i; j--) {
+      const other = match.projectiles[j];
+      if (other.owner === p.owner) continue;
+      const dx = p.x - other.x;
+      const dy = p.y - other.y;
+      if (dx * dx + dy * dy < (p.radius + other.radius) ** 2) {
+        if (p.superMove && !other.superMove) {
+          other.dead = true;
+        } else if (other.superMove && !p.superMove) {
+          p.dead = true;
+        } else {
+          p.dead = true;
+          other.dead = true;
+        }
+        addImpact(match, (p.x + other.x) / 2, (p.y + other.y) / 2, '#fff4d0', true);
+        audio.sfx('block');
+      }
+    }
+
+    const defender = p.owner === match.p1 ? match.p2 : match.p1;
     if (!p.dead && defender.invuln <= 0 && overlap(box, defender.hurtBox())) {
       applyHit(match, p.owner, defender, p.move, p);
     }
 
-    if (p.life <= 0 || p.x < 0 || p.x > W) p.dead = true;
+    if (p.life <= 0 || p.x < -40 || p.x > W + 40) p.dead = true;
     if (p.dead) match.projectiles.splice(i, 1);
   }
 }
 
-/** Check if attacker's active hitbox overlaps defender's hurtbox */
 export function resolveCombat(match, attacker, defender) {
   if (defender.invuln > 0) return;
   if (overlap(attacker.activeBox(), defender.hurtBox())) {
@@ -186,48 +243,46 @@ export function resolveCombat(match, attacker, defender) {
   }
 }
 
-/** Push fighters apart when overlapping on the ground */
 export function bodyPush(match) {
   const a = match.p1, b = match.p2;
-  if (!a.grounded() || !b.grounded()) return;
   const gap = b.x - a.x;
-  if (Math.abs(gap) < PUSH_DISTANCE) {
-    const push = (PUSH_DISTANCE - Math.abs(gap)) / 2;
-    const sign = gap >= 0 ? 1 : -1;
-    a.x -= push * sign;
-    b.x += push * sign;
-    a.x = clamp(a.x, LEFT_WALL, RIGHT_WALL);
-    b.x = clamp(b.x, LEFT_WALL, RIGHT_WALL);
-  }
+  if (Math.abs(gap) >= PUSH_DISTANCE) return;
+  const push = (PUSH_DISTANCE - Math.abs(gap)) / 2;
+  const sign = gap >= 0 ? 1 : -1;
+  const airScale = (a.grounded() && b.grounded()) ? 1 : 0.45;
+  a.x -= push * sign * airScale;
+  b.x += push * sign * airScale;
+  a.x = clamp(a.x, LEFT_WALL, RIGHT_WALL);
+  b.x = clamp(b.x, LEFT_WALL, RIGHT_WALL);
 }
 
-/** Update all visual effects: particles, rings, damage numbers, screen shake */
 export function updateEffects(match) {
-  // Impact particles
   for (let i = match.effects.length - 1; i >= 0; i--) {
     const fx = match.effects[i];
     fx.x += fx.vx;
     fx.y += fx.vy;
-    fx.vx *= 0.94;
-    fx.vy *= 0.94;
+    fx.vx *= 0.93;
+    fx.vy *= 0.93;
+    fx.vy += 0.08;
     if (--fx.life <= 0) match.effects.splice(i, 1);
   }
 
-  // Expanding rings
   for (let i = match.rings.length - 1; i >= 0; i--) {
     if (--match.rings[i].life <= 0) match.rings.splice(i, 1);
   }
 
-  // Floating damage numbers
   if (match.damageNumbers) {
     for (let i = match.damageNumbers.length - 1; i >= 0; i--) {
       const dn = match.damageNumbers[i];
       dn.y += dn.vy;
+      dn.vy *= 0.96;
       if (--dn.life <= 0) match.damageNumbers.splice(i, 1);
     }
   }
 
-  // Screen shake decay
+  if (match.superFlash > 0) match.superFlash--;
+  if (match.koZoom > 0) match.koZoom--;
+
   match.shake *= 0.78;
   if (match.shake < 0.15) match.shake = 0;
 }
