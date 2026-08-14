@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#050814">
+    <title>Castelo Estelar — abertura cinematográfica | Diogo Paulino</title>
+    <meta name="description"
+        content="Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos. Um lab de Diogo Paulino.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/castelo-estelar/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/castelo-estelar/">
+    <meta property="og:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
+    <meta property="og:description"
+        content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Castelo 3D hiper-realista em three.js: lua, lago, fanfarra e fogos no navegador.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Castelo Estelar",
+          "url": "https://diogopaulino.com.br/labs/castelo-estelar/",
+          "description": "Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos.",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Castelo Estelar",
+              "item": "https://diogopaulino.com.br/labs/castelo-estelar/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body data-state="boot">
+    <main class="game-shell">
+        <header data-lab-header data-title="Castelo Estelar" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>Castelo Estelar</span>
+                </div>
+            </template>
+        </header>
+
+        <section class="stage" aria-label="Abertura cinematográfica em 3D">
+            <canvas id="scene" aria-label="Castelo iluminado à beira do lago, sob a lua"></canvas>
+            <div class="vignette" aria-hidden="true"></div>
+        </section>
+
+        <div id="titleCard" class="title-card" hidden>
+            <p class="title-kicker">Diogo Paulino apresenta</p>
+            <h1>Castelo Estelar</h1>
+            <i class="title-rule" aria-hidden="true"></i>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <p id="hint" class="hint">Arraste para orbitar · rolagem aproxima · R reproduz a abertura</p>
+            <div class="dock" role="toolbar" aria-label="Controles da abertura">
+                <button id="replayButton" class="dock-btn accent" type="button" title="Reproduzir abertura (R)">
+                    Abertura
+                </button>
+                <button id="skipButton" class="dock-btn" type="button" title="Pular (Espaço)" hidden>
+                    Pular
+                </button>
+                <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">
+                    Som
+                </button>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> three.js · PBR · noite</p>
+                <h2>Acendendo<br>as torres.</h2>
+                <p class="lede">A lua sobe sobre o lago. Um instante.</p>
+            </div>
+        </div>
+
+        <div id="intro" class="overlay" hidden>
+            <div class="overlay-card intro-card">
+                <p class="eyebrow"><i></i> Abertura cinematográfica</p>
+                <h2>Castelo Estelar</h2>
+                <p class="lede">A câmera voa sobre a água sob a lua. O calcário acende, uma fada de
+                    faíscas desenha o arco dourado e os fogos estouram no céu — o prólogo dos
+                    grandes filmes, reconstruído em three.js.</p>
+                <ul class="feature-list">
+                    <li>Castelo procedural com torres cónicas, relógio e janelas quentes</li>
+                    <li>Lago com reflexo da lua, pinheiros e fanfarra original</li>
+                    <li>Depois da abertura, orbite o reino à vontade</li>
+                </ul>
+                <div class="settings-row">
+                    <label class="field">
+                        <span>Qualidade</span>
+                        <select id="qualitySelect">
+                            <option value="auto">Automática</option>
+                            <option value="low">Leve</option>
+                            <option value="medium">Equilibrada</option>
+                            <option value="high">Cinemática</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Volume <b id="volumeValue">72</b></span>
+                        <input id="volumeSlider" type="range" min="0" max="100" step="1" value="72">
+                    </label>
+                </div>
+                <footer class="card-actions">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Assistir a abertura</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O céu não abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
