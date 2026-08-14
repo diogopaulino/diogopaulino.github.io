@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Rock Kombat — 2D Arcade Fight</title>
-  <meta name="description" content="Jogo de luta 2D com lendas do rock, combate baseado em frame data e arte digitalizada.">
+  <meta name="description" content="Jogo de luta 2D estilo arcade com lendas do rock, combos, throws, dash e especiais.">
   <meta name="theme-color" content="#090a0c">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/rock-kombat/">
   <meta property="og:title" content="Rock Kombat — 2D Arcade Fight">
   <meta property="og:description" content="Escolha sua lenda. Leia a distância. Domine o palco.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/rock-kombat/">
   <link rel="stylesheet" href="/labs/shared.css?v=6">
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
-<body>
+<body data-screen="hero-screen">
   <div class="grain" aria-hidden="true"></div>
 
   <header data-lab-header data-title="Rock Kombat">
@@ -36,11 +36,11 @@
       </div>
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="hero-copy">
-        <p class="overline">A NEW 2D ARCADE FIGHT</p>
+        <p class="overline">ARCADE FIGHTING GAME</p>
         <h1 id="hero-title"><span>ROCK</span> KOMBAT</h1>
-        <p>Três eras. Um palco. Combate preciso, impacto pesado e nenhuma pose desmontada.</p>
-        <button class="cta" id="enter-button" type="button"><b>PRESS START</b><span>ENTRAR NO TORNEIO</span></button>
-        <small>TECLADO · TOUCH · 60 FPS</small>
+        <p>Três lendas. Um palco. Combate preciso no estilo Street Fighter e Mortal Kombat.</p>
+        <button class="cta press-start" id="enter-button" type="button"><b>PRESS START</b><span>ENTRAR NO TORNEIO</span></button>
+        <small>TECLADO · TOUCH · BEST OF 3</small>
       </div>
     </section>
 
@@ -48,17 +48,23 @@
       <div class="select-head">
         <p class="overline">SELECT YOUR FIGHTER</p>
         <h2 id="select-title">ESCOLHA SUA <em>LENDA</em></h2>
-        <p>Personagens completos, estilos distintos e especiais próprios.</p>
+        <p>Primeiro o lutador 1. Depois o CPU. Espelho liberado. Teclas 1–3 selecionam.</p>
       </div>
 
       <div class="selection-layout">
         <div class="roster" id="roster" role="list" aria-label="Lutadores"></div>
 
         <aside class="match-setup" aria-label="Configuração da partida">
+          <div class="pick-row" role="group" aria-label="Quem está escolhendo">
+            <button data-pick="p1" class="is-active" type="button">P1</button>
+            <button data-pick="cpu" type="button">CPU</button>
+            <button id="cpu-random" type="button">CPU ALEATÓRIO</button>
+          </div>
+
           <div class="versus-preview">
             <div><small>P1</small><strong id="p1-preview">ESCOLHA</strong></div>
             <b>VS</b>
-            <div><small>CPU</small><strong id="cpu-preview">ALEATÓRIO</strong></div>
+            <div><small>CPU</small><strong id="cpu-preview">ESCOLHA</strong></div>
           </div>
 
           <fieldset>
@@ -85,27 +91,47 @@
       </div>
     </section>
 
+    <section class="screen versus" id="versus-screen" aria-label="Versus">
+      <div class="versus-duel">
+        <div class="versus-fighter p1">
+          <i class="versus-sprite" id="vs-p1-sprite"></i>
+          <small>PLAYER 1</small>
+          <strong id="vs-p1-name">KURT</strong>
+        </div>
+        <div class="versus-center">
+          <b>VS</b>
+          <span id="vs-stage-name">SEATTLE RAIN</span>
+          <em>TOQUE PARA PULAR</em>
+        </div>
+        <div class="versus-fighter p2">
+          <i class="versus-sprite" id="vs-p2-sprite"></i>
+          <small>CPU</small>
+          <strong id="vs-p2-name">AXL</strong>
+        </div>
+      </div>
+    </section>
+
     <section class="screen arena" id="arena-screen" aria-label="Arena de luta">
       <div class="arena-shell">
-        <div class="hud" aria-live="polite">
-          <div class="hud-side p1">
-            <div class="hud-name"><strong id="p1-name">KURT</strong><span>P1</span></div>
-            <div class="life"><i id="p1-life"></i><b id="p1-chip"></b></div>
-            <div class="meter"><span>AMPLIFIER</span><div><i id="p1-meter"></i></div><b id="p1-meter-label">0%</b></div>
-          </div>
-          <div class="round-hud">
-            <span id="round-label">ROUND 1</span>
-            <strong id="timer">99</strong>
-            <div class="round-wins"><i id="p1-win-1"></i><i id="p1-win-2"></i><b></b><i id="p2-win-1"></i><i id="p2-win-2"></i></div>
-          </div>
-          <div class="hud-side p2">
-            <div class="hud-name"><span>CPU</span><strong id="p2-name">AXL</strong></div>
-            <div class="life"><i id="p2-life"></i><b id="p2-chip"></b></div>
-            <div class="meter right"><b id="p2-meter-label">0%</b><div><i id="p2-meter"></i></div><span>AMPLIFIER</span></div>
-          </div>
-        </div>
-
         <div class="canvas-frame">
+          <div class="hud" aria-live="polite">
+            <div class="hud-side p1">
+              <div class="hud-name"><strong id="p1-name">KURT</strong><span>P1</span></div>
+              <div class="life"><i id="p1-life"></i><b id="p1-chip"></b></div>
+              <div class="meter"><span>AMPLIFIER</span><div><i id="p1-meter"></i></div><b id="p1-meter-label">0%</b></div>
+            </div>
+            <div class="round-hud">
+              <span id="round-label">ROUND 1</span>
+              <strong id="timer">99</strong>
+              <div class="round-wins"><i id="p1-win-1"></i><i id="p1-win-2"></i><b></b><i id="p2-win-1"></i><i id="p2-win-2"></i></div>
+            </div>
+            <div class="hud-side p2">
+              <div class="hud-name"><span>CPU</span><strong id="p2-name">AXL</strong></div>
+              <div class="life"><i id="p2-life"></i><b id="p2-chip"></b></div>
+              <div class="meter right"><b id="p2-meter-label">0%</b><div><i id="p2-meter"></i></div><span>AMPLIFIER</span></div>
+            </div>
+          </div>
+
           <canvas id="game" width="1280" height="720" aria-label="Rock Kombat, jogo de luta 2D"></canvas>
           <div class="announce" id="announce" aria-live="assertive"></div>
           <div class="combo p1" id="p1-combo"></div>
@@ -115,25 +141,28 @@
         </div>
 
         <div class="fight-help">
-          <span><b>MOVER</b> A/D ou ←/→</span>
-          <span><b>PULAR</b> W ou ↑</span>
+          <span><b>MOVER</b> A/D · ←/→</span>
+          <span><b>DASH</b> toque 2× frente</span>
+          <span><b>PULAR</b> W · ↑</span>
           <span><b>SOCO</b> J/Q</span>
           <span><b>CHUTE</b> K/E</span>
+          <span><b>THROW</b> U/O ou P+K</span>
           <span><b>ESPECIAL</b> L/R</span>
-          <span><b>DEFESA</b> segure para trás</span>
+          <span><b>DEFESA</b> para trás</span>
         </div>
 
         <div class="touch-controls" aria-label="Controles touch">
-          <div class="touch-move">
-            <button data-input="left" type="button" aria-label="Esquerda">←</button>
-            <button data-input="jump" type="button" aria-label="Pular">↑</button>
-            <button data-input="right" type="button" aria-label="Direita">→</button>
-            <button data-input="down" type="button" aria-label="Agachar">↓</button>
+          <div class="touch-dpad">
+            <button data-input="jump" class="dir up" type="button" aria-label="Pular">↑</button>
+            <button data-input="left" class="dir left" type="button" aria-label="Esquerda">←</button>
+            <button data-input="down" class="dir down" type="button" aria-label="Agachar">↓</button>
+            <button data-input="right" class="dir right" type="button" aria-label="Direita">→</button>
           </div>
           <div class="touch-action">
             <button data-input="punch" class="punch" type="button">P</button>
             <button data-input="kick" class="kick" type="button">K</button>
-            <button data-input="special" class="special" type="button">★</button>
+            <button data-input="throw" class="throw" type="button">T</button>
+            <button data-input="special" class="special" type="button">SP</button>
           </div>
         </div>
       </div>
@@ -158,21 +187,26 @@
     <p class="overline">PLAYER GUIDE</p>
     <h2>COMO JOGAR</h2>
     <div class="guide-grid">
-      <article><b>POSICIONAMENTO</b><p>Ande com A/D ou setas. Segure a direção oposta ao rival para defender. Para ataques baixos, defenda agachado.</p></article>
-      <article><b>GOLPES</b><p>J/Q dá soco. K/E dá chute. Agachado + soco executa antiaéreo; agachado + chute aplica rasteira.</p></article>
-      <article><b>COMBOS</b><p>Soco confirmado pode cancelar em chute ou especial. O buffer curto aceita o próximo comando sem exigir precisão de um frame.</p></article>
-      <article><b>AMPLIFIER</b><p>Atacar, acertar, defender e receber dano carregam a barra, que continua entre rounds. Com 40%, L/R ativa o especial. Com 100%, o mesmo comando executa a versão Super.</p></article>
+      <article><b>POSICIONAMENTO</b><p>Ande com A/D ou setas. Toque duas vezes para frente para dash, duas vezes para trás para backdash. Segure a direção oposta ao rival para defender. Agachado defende rasteira.</p></article>
+      <article><b>GOLPES</b><p>J/Q soco. K/E chute. Agachado + soco é o anti-aéreo. Agachado + chute é rasteira. No ar, soco é overhead e chute é jump-in.</p></article>
+      <article><b>THROW E COMBOS</b><p>Perto do rival, U/O ou P+K executa throw (quebra guarda). Fora de alcance, o botão de throw vira soco. Soco confirmado cancela em chute ou especial.</p></article>
+      <article><b>AMPLIFIER</b><p>Atacar, acertar, defender e tomar dano carregam a barra entre rounds. Com 40%, L/R/Espaço dispara o especial. Com 100%, o mesmo comando vira Super.</p></article>
     </div>
-    <p class="frame-note">Cada golpe possui startup, frames ativos e recovery. Ataque no vazio é punível; acerto confirmado cria vantagem.</p>
+    <p class="frame-note">Cada golpe tem startup, frames ativos e recovery. Whiff é punível. Uppercut tem invulnerabilidade no arranque. Perfect e Double K.O. encerram o round com estilo.</p>
   </dialog>
 
   <div class="pause-layer" id="pause-layer" hidden>
-    <div><p class="overline">INTERMISSION</p><h2>PAUSADO</h2><button class="cta" id="resume-button" type="button"><b>CONTINUAR</b></button><button class="quiet-button" id="quit-button" type="button">SAIR DA LUTA</button></div>
+    <div>
+      <p class="overline">INTERMISSION</p>
+      <h2>PAUSADO</h2>
+      <button class="cta" id="resume-button" type="button"><b>CONTINUAR</b></button>
+      <button class="quiet-button" id="quit-button" type="button">SAIR DA LUTA</button>
+    </div>
   </div>
 
   <footer data-lab-footer data-home-href="/"></footer>
 
   <script src="/labs/shared.js?v=6" defer></script>
-  <script type="module" src="main.js?v=1"></script>
+  <script type="module" src="main.js?v=4"></script>
 </body>
 </html>

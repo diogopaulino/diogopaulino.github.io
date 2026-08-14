@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#05060f">
+    <title>Aetherion — Observatório Estelar | Labs</title>
+    <meta name="description"
+        content="Observatório 3D em three.js: voe por um sistema estelar gerado em tempo real, com planetas em shaders, cinturão de asteroides e um buraco negro.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/aetherion/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/aetherion/">
+    <meta property="og:title" content="Aetherion — Observatório Estelar">
+    <meta property="og:description"
+        content="Um sistema solar forjado em shaders. Cada visita nasce de uma semente nova.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Aetherion — Observatório Estelar">
+    <meta name="twitter:description"
+        content="Voe entre mundos, aproxime-se de um buraco negro e forje um novo sistema no navegador.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body data-state="intro">
+    <main class="game-shell">
+        <header data-lab-header data-title="Aetherion" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>Aetherion</span>
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="helpButton" class="icon-btn" type="button" aria-label="Ajuda" title="Ajuda (?)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </button>
+            </template>
+        </header>
+
+        <section class="stage" aria-label="Observatório estelar">
+            <canvas id="scene" aria-label="Sistema estelar em 3D"></canvas>
+            <div class="vignette" aria-hidden="true"></div>
+        </section>
+
+        <div id="hud" class="hud" hidden>
+            <aside class="catalog" aria-label="Catálogo de corpos">
+                <p class="panel-kicker">Catálogo</p>
+                <nav id="bodyList" class="body-list"></nav>
+            </aside>
+
+            <article class="dossier" id="dossier" aria-live="polite">
+                <p class="panel-kicker" id="dossierKind">Estrela</p>
+                <h2 id="dossierName">Helion</h2>
+                <dl class="stats">
+                    <div><dt>Distância</dt><dd id="statDistance">—</dd></div>
+                    <div><dt>Raio</dt><dd id="statRadius">—</dd></div>
+                    <div><dt>Período</dt><dd id="statPeriod">—</dd></div>
+                    <div><dt>Composição</dt><dd id="statComp">—</dd></div>
+                </dl>
+                <p class="blurb" id="dossierBlurb"></p>
+            </article>
+
+            <div class="hint" id="hint">
+                Arraste para orbitar · clique num mundo para viajar · rolagem para zoom
+            </div>
+
+            <div class="dock" role="toolbar" aria-label="Controles do observatório">
+                <button id="systemViewBtn" class="dock-btn" type="button" title="Visão do sistema (0)">
+                    Sistema
+                </button>
+                <div class="warp" aria-label="Dilatação do tempo">
+                    <span class="warp-label">Tempo</span>
+                    <div id="warpBtns" class="warp-btns">
+                        <button type="button" data-warp="0">0</button>
+                        <button type="button" data-warp="1" class="is-on">1×</button>
+                        <button type="button" data-warp="8">8×</button>
+                        <button type="button" data-warp="32">32×</button>
+                        <button type="button" data-warp="96">96×</button>
+                    </div>
+                </div>
+                <button id="newSystemBtn" class="dock-btn accent" type="button" title="Novo sistema (N)">
+                    Novo sistema
+                </button>
+                <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">
+                    Som
+                </button>
+            </div>
+        </div>
+
+        <div id="intro" class="overlay">
+            <div class="overlay-card intro-card">
+                <p class="eyebrow"><i></i> Laboratório three.js</p>
+                <h2>Aetherion</h2>
+                <p class="lede">Um observatório estelar forjado no navegador. Cada semente nasce um sistema
+                    diferente — estrelas vivas, mundos com atmosfera, um cinturão de pedra e, às vezes,
+                    um abismo que devora a luz.</p>
+                <ul class="feature-list">
+                    <li>Voe e foque qualquer corpo com um clique</li>
+                    <li>Shaders próprios para estrela, terra, gás, lava e gelo</li>
+                    <li>Buraco negro com disco de acreção e jatos relativísticos</li>
+                </ul>
+                <div class="settings-row">
+                    <label class="field">
+                        <span>Qualidade</span>
+                        <select id="qualitySelect">
+                            <option value="auto">Automática</option>
+                            <option value="low">Performance</option>
+                            <option value="medium">Equilibrada</option>
+                            <option value="high">Cinemática</option>
+                        </select>
+                    </label>
+                </div>
+                <footer class="card-actions">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Entrar no sistema</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="helpOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> Comandos</p>
+                <h2>Como observar</h2>
+                <div class="keys">
+                    <span><kbd>Arrastar</kbd> orbitar a câmera</span>
+                    <span><kbd>Scroll</kbd> / <kbd>pinch</kbd> zoom</span>
+                    <span><kbd>Clique</kbd> viajar até um mundo</span>
+                    <span><kbd>[</kbd> <kbd>]</kbd> corpo anterior / próximo</span>
+                    <span><kbd>0</kbd> visão do sistema</span>
+                    <span><kbd>N</kbd> novo sistema · <kbd>M</kbd> som</span>
+                    <span><kbd>Espaço</kbd> pausar o tempo · <kbd>F</kbd> tela cheia</span>
+                </div>
+                <div class="card-actions">
+                    <button id="helpClose" class="primary-button" type="button">
+                        <span>Fechar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O céu não abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="src/main.js?v=2"></script>
+</body>
+
+</html>

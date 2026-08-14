@@ -1,23 +1,28 @@
-import { INPUT_BUFFER } from './constants.js';
+import { INPUT_BUFFER, DASH_WINDOW } from './constants.js';
 
 /**
- * Input buffer with frame-aware press tracking.
- * Held = currently pressed keys, Pressed = timestamped key presses for buffered input.
+ * Frame-aware input buffer with dash double-tap tracking.
+ * Presses are stamped with the simulation frame so buffering stays stable at 60Hz.
  */
 export class InputBuffer {
   constructor() {
     this.held = new Set();
     this.pressed = new Map();
+    this.tapHistory = [];
     this.frameNumber = 0;
+    this.lastDashFrame = -99;
   }
 
-  /** Sync the internal frame counter (called each fixedUpdate) */
   updateFrame(frame) {
     this.frameNumber = frame;
   }
 
   down(action) {
-    if (!this.held.has(action)) this.pressed.set(action, this.frameNumber);
+    if (!this.held.has(action)) {
+      this.pressed.set(action, this.frameNumber);
+      this.tapHistory.push({ action, frame: this.frameNumber });
+      if (this.tapHistory.length > 10) this.tapHistory.shift();
+    }
     this.held.add(action);
   }
 
@@ -27,21 +32,39 @@ export class InputBuffer {
 
   tap(action) {
     this.pressed.set(action, this.frameNumber);
+    this.tapHistory.push({ action, frame: this.frameNumber });
+    if (this.tapHistory.length > 10) this.tapHistory.shift();
   }
 
   has(action) {
     return this.held.has(action);
   }
 
-  /** Was action pressed within the last `window` frames? (non-consuming) */
   fresh(action, window = 1) {
     return this.pressed.has(action) && this.frameNumber - this.pressed.get(action) <= window;
   }
 
-  /** Was action pressed within buffer window? Consumes the press. */
   consume(action, window = INPUT_BUFFER) {
     if (!this.pressed.has(action) || this.frameNumber - this.pressed.get(action) > window) return false;
     this.pressed.delete(action);
+    return true;
+  }
+
+  /**
+   * True on the frame a direction was double-tapped (Street Fighter dash).
+   * Consumes the gesture so it cannot retrigger until the next pair of taps.
+   */
+  consumeDash(action, window = DASH_WINDOW) {
+    if (this.frameNumber - this.lastDashFrame < 18) return false;
+    const taps = this.tapHistory.filter(t => t.action === action);
+    if (taps.length < 2) return false;
+    const latest = taps[taps.length - 1];
+    const previous = taps[taps.length - 2];
+    const recent = this.frameNumber - latest.frame <= 1;
+    const gap = latest.frame - previous.frame;
+    if (!recent || gap < 3 || gap > window) return false;
+    this.lastDashFrame = this.frameNumber;
+    this.tapHistory = this.tapHistory.filter(t => t.action !== action);
     return true;
   }
 
@@ -52,11 +75,11 @@ export class InputBuffer {
   clear() {
     this.held.clear();
     this.pressed.clear();
+    this.tapHistory.length = 0;
   }
 }
 
-/** Bind keyboard input to a player's InputBuffer */
-export function bindKeyboard(playerInput, onPause) {
+export function bindKeyboard(playerInput, hooks = {}) {
   const keyMap = {
     KeyA: 'left', ArrowLeft: 'left',
     KeyD: 'right', ArrowRight: 'right',
@@ -64,16 +87,31 @@ export function bindKeyboard(playerInput, onPause) {
     KeyW: 'jump', ArrowUp: 'jump',
     KeyJ: 'punch', KeyQ: 'punch',
     KeyK: 'kick', KeyE: 'kick',
+    KeyU: 'throw', KeyO: 'throw',
     KeyL: 'special', KeyR: 'special', Space: 'special'
   };
 
   addEventListener('keydown', event => {
+    if (event.repeat) return;
+
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      if (hooks.onEscape) hooks.onEscape();
+      return;
+    }
+
+    if (hooks.shouldIgnore && hooks.shouldIgnore()) return;
+
+    if (hooks.onMenuKey && hooks.onMenuKey(event)) {
+      event.preventDefault();
+      return;
+    }
+
     const action = keyMap[event.code];
     if (action) {
       event.preventDefault();
-      playerInput.down(action);
+      if (hooks.isArena && hooks.isArena()) playerInput.down(action);
     }
-    if (event.code === 'Escape' && onPause) onPause();
   });
 
   addEventListener('keyup', event => {
@@ -82,13 +120,14 @@ export function bindKeyboard(playerInput, onPause) {
   });
 }
 
-/** Bind touch/pointer controls to on-screen buttons */
 export function bindTouch(playerInput) {
   const buttons = [...document.querySelectorAll('[data-input]')];
   buttons.forEach(button => {
     const action = button.dataset.input;
     const down = event => {
       event.preventDefault();
+      if (event.button != null && event.button !== 0) return;
+      button.setPointerCapture?.(event.pointerId);
       playerInput.down(action);
       button.classList.add('is-down');
     };
@@ -100,6 +139,7 @@ export function bindTouch(playerInput) {
     button.addEventListener('pointerdown', down);
     button.addEventListener('pointerup', up);
     button.addEventListener('pointercancel', up);
-    button.addEventListener('pointerleave', up);
+    button.addEventListener('lostpointercapture', up);
+    button.addEventListener('contextmenu', event => event.preventDefault());
   });
 }
