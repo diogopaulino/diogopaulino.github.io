@@ -12,7 +12,7 @@ export function updateCpu(match, difficulty, cpuInput) {
   const player = match.p1;
   const config = AI_CONFIG[difficulty] || AI_CONFIG.normal;
 
-  if (cpu.state === 'attack' && cpu.moveConnected && cpu.move?.cancel && Math.random() < config.attack) {
+  if (cpu.state === 'attack' && cpu.moveConnected && cpu.move?.cancel && Math.random() < config.attack * 0.4) {
     if (cpu.move.cancel.includes('kick')) cpuInput.tap('kick');
     else if (cpu.move.cancel.includes('special') && cpu.meter >= SPECIAL_COST) cpuInput.tap('special');
     return;

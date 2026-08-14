@@ -11,11 +11,11 @@ export const RIGHT_WALL = 1120;
 
 export const STEP = 1000 / 60;
 export const INPUT_BUFFER = 10;
-export const DASH_WINDOW = 14;
+export const DASH_WINDOW = 20;
 export const PARRY_WINDOW = 3;
 export const PARRY_COOLDOWN = 30;
 export const SPECIAL_COST = 40;
-export const THROW_RANGE = 78;
+export const THROW_RANGE = 96;
 export const GRAVITY = 0.78;
 export const BACK_WALK = 0.68;
 export const LAND_LAG = 5;

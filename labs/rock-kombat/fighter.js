@@ -57,7 +57,7 @@ export function moveFor(fighter, name) {
 }
 
 const LOCKED_FACE = new Set(['attack', 'hitstun', 'blockstun', 'knockdown', 'getup', 'dash', 'backdash']);
-const UNTHROWABLE = new Set(['hitstun', 'blockstun', 'knockdown', 'getup', 'victory']);
+const UNTHROWABLE = new Set(['hitstun', 'knockdown', 'getup', 'victory']);
 
 export class Fighter {
   constructor(data, input, isCpu = false) {
@@ -215,7 +215,10 @@ export class Fighter {
   chooseAction() {
     if (this.input.consume('special')) return this.beginMove('special');
 
-    if (this.input.fresh('punch', INPUT_BUFFER) && this.input.fresh('kick', INPUT_BUFFER) && this.canThrow()) {
+    const throwChord = this.input.has('punch') && this.input.has('kick')
+      && (this.input.fresh('punch', 4) || this.input.fresh('kick', 4));
+    const throwTaps = this.input.fresh('punch', INPUT_BUFFER) && this.input.fresh('kick', INPUT_BUFFER);
+    if (this.canThrow() && (throwChord || throwTaps)) {
       this.input.consume('punch');
       this.input.consume('kick');
       return this.beginMove('throw');

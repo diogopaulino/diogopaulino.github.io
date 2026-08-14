@@ -1157,11 +1157,10 @@ legend {
 .versus-center em {
   display: block;
   margin-top: 14px;
-  color: #8e8b86;
-  font-size: 9px;
+  color: var(--amber);
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.16em;
-  animation: press-blink 1.15s step-end infinite;
 }
 
 @keyframes vs-pop {
@@ -1308,9 +1307,10 @@ dialog h2 {
   font-size: 58px;
 }
 
-.pause-layer button {
-  display: block;
-  margin: 18px auto 0;
+.pause-layer .quiet-button {
+  border: 1px solid var(--line);
+  width: 100%;
+  margin-top: 10px;
 }
 
 
