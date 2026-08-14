@@ -113,7 +113,7 @@ class CasteloEstelar {
         }
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.62;
+        this.renderer.toneMappingExposure = 0.88;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0x050814, 1);
@@ -124,7 +124,7 @@ class CasteloEstelar {
         this.renderer.shadowMap.enabled = this.quality.shadows;
 
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0x071018, 0.0085);
+        this.scene.fog = new THREE.FogExp2(0x0a1528, 0.0032);
 
         this.camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.2, 700);
         this.cine = new CineCamera(this.camera, this.canvas);
@@ -191,7 +191,7 @@ class CasteloEstelar {
         this.cine.skip();
         this.introT = INTRO_DURATION;
         this.kingdom.setGlow(1);
-        this.renderer.toneMappingExposure = 0.92;
+        this.renderer.toneMappingExposure = 1.08;
         this.finishIntro();
     }
 
@@ -245,7 +245,7 @@ class CasteloEstelar {
             this.introT = this.cine.t;
             const glow = smoothstep(12.5, 16.5, this.introT);
             this.kingdom.setGlow(glow);
-            this.renderer.toneMappingExposure = 0.58 + glow * 0.34;
+            this.renderer.toneMappingExposure = 0.88 + glow * 0.22;
             this.magic.setIntro(this.introT, this.audio);
             if (this.introT >= 18) this.show('#titleCard');
             if (this.cine.mode === 'orbit') this.finishIntro();

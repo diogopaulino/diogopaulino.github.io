@@ -40,22 +40,26 @@ function makeMats() {
     const goldMap = goldOrnament();
 
     const stoneMat = new THREE.MeshStandardMaterial({
-        color: 0xf0e6d4,
+        color: 0xfff6ea,
         map: stone.map,
         normalMap: stone.normalMap,
-        normalScale: new THREE.Vector2(0.85, 0.85),
+        normalScale: new THREE.Vector2(0.7, 0.7),
         roughnessMap: stone.roughnessMap,
-        roughness: 0.78,
-        metalness: 0.04
+        roughness: 0.72,
+        metalness: 0.03,
+        emissive: 0x2a241c,
+        emissiveIntensity: 0.16
     });
 
     const roofMat = new THREE.MeshStandardMaterial({
-        color: 0x4a6db5,
+        color: 0x5b82d4,
         map: roof.map,
         normalMap: roof.normalMap,
-        normalScale: new THREE.Vector2(1.1, 1.1),
-        roughness: 0.52,
-        metalness: 0.12
+        normalScale: new THREE.Vector2(1.0, 1.0),
+        roughness: 0.48,
+        metalness: 0.14,
+        emissive: 0x14244a,
+        emissiveIntensity: 0.12
     });
 
     const goldMat = new THREE.MeshStandardMaterial({

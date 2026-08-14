@@ -12,12 +12,12 @@ import { clamp, smoothstep } from './utils.js';
 export const INTRO_DURATION = 22;
 
 const KEYS = [
-    { t: 0.0, pos: [22, 5.2, 168], look: [0, 18, 0], fov: 28 },
-    { t: 3.5, pos: [12, 7.5, 118], look: [0, 20, 0], fov: 30 },
-    { t: 8.0, pos: [6, 11.5, 78], look: [0, 22, -2], fov: 33 },
-    { t: 13.5, pos: [-8, 16, 54], look: [1, 24, -2], fov: 36 },
-    { t: 18.0, pos: [4, 14.5, 46], look: [0, 22, 0], fov: 38 },
-    { t: 22.0, pos: [2.5, 13.2, 44], look: [0, 21, 0], fov: 40 }
+    { t: 0.0, pos: [16, 7.2, 132], look: [0, 12, 10], fov: 30 },
+    { t: 3.5, pos: [10, 8.4, 96], look: [0, 14, 4], fov: 32 },
+    { t: 8.0, pos: [5, 11.0, 68], look: [0, 18, 0], fov: 34 },
+    { t: 13.5, pos: [-7, 15.2, 50], look: [1, 21, -1], fov: 36 },
+    { t: 18.0, pos: [4, 13.8, 42], look: [0, 20, 0], fov: 38 },
+    { t: 22.0, pos: [2.2, 12.6, 40], look: [0, 19, 0], fov: 40 }
 ];
 
 function easeInOutCubic(t) {

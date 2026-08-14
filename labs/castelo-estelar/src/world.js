@@ -269,20 +269,22 @@ export class Kingdom {
                 textureWidth: quality.waterSize,
                 textureHeight: quality.waterSize,
                 waterNormals: waterNormals(),
-                sunDirection: new THREE.Vector3(-0.35, 0.62, 0.55).normalize(),
-                sunColor: 0xc8d6ff,
-                waterColor: 0x04101c,
-                distortionScale: 2.4,
-                fog: true
+                sunDirection: new THREE.Vector3(-0.28, 0.58, 0.72).normalize(),
+                sunColor: 0xe8f0ff,
+                waterColor: 0x16344c,
+                distortionScale: 1.6,
+                fog: true,
+                alpha: 1
             });
             this.water.rotation.x = -Math.PI / 2;
             this.water.position.y = 0.08;
         } else {
             this.water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({
-                color: 0x0a1828,
-                roughness: 0.18,
-                metalness: 0.72,
-                envMapIntensity: 1.1
+                color: 0x1a3a58,
+                roughness: 0.14,
+                metalness: 0.78,
+                emissive: 0x061018,
+                emissiveIntensity: 0.2
             }));
             this.water.rotation.x = -Math.PI / 2;
             this.water.position.y = 0.08;
@@ -293,44 +295,53 @@ export class Kingdom {
     }
 
     _lights() {
-        this.hemi = new THREE.HemisphereLight(0x6a7aa8, 0x080a10, 0.28);
+        this.ambient = new THREE.AmbientLight(0x3a4868, 0.42);
+        this.group.add(this.ambient);
+
+        this.hemi = new THREE.HemisphereLight(0x9ab0d8, 0x12161e, 0.62);
         this.group.add(this.hemi);
 
-        this.moonLight = new THREE.DirectionalLight(0xd8e4ff, 1.15);
-        this.moonLight.position.set(-48, 70, 28);
+        // Key: lua à esquerda-frente, para a fachada não virar silhueta.
+        this.moonLight = new THREE.DirectionalLight(0xe8f0ff, 1.85);
+        this.moonLight.position.set(-28, 58, 72);
         this.moonLight.castShadow = this.quality.shadows;
         if (this.quality.shadows) {
             const s = this.moonLight.shadow;
             s.mapSize.set(this.quality.shadowMap, this.quality.shadowMap);
             s.camera.near = 10;
-            s.camera.far = 160;
-            s.camera.left = s.camera.bottom = -40;
-            s.camera.right = s.camera.top = 40;
+            s.camera.far = 180;
+            s.camera.left = s.camera.bottom = -48;
+            s.camera.right = s.camera.top = 48;
             s.bias = -0.00025;
             s.normalBias = 0.04;
         }
         this.group.add(this.moonLight);
         this.group.add(this.moonLight.target);
-        this.moonLight.target.position.set(0, 12, 0);
+        this.moonLight.target.position.set(0, 14, 0);
 
-        this.fill = new THREE.DirectionalLight(0x334466, 0.22);
-        this.fill.position.set(30, 20, 40);
+        this.rim = new THREE.DirectionalLight(0x9bb4ff, 0.55);
+        this.rim.position.set(-40, 36, -55);
+        this.group.add(this.rim);
+
+        this.fill = new THREE.DirectionalLight(0xffe2b8, 0.38);
+        this.fill.position.set(18, 22, 50);
         this.group.add(this.fill);
 
-        this.warm = new THREE.PointLight(0xffb066, 12, 38, 1.6);
-        this.warm.position.set(0, 10, 8);
+        this.warm = new THREE.PointLight(0xffb066, 16, 42, 1.5);
+        this.warm.position.set(0, 11, 9);
         this.warm.castShadow = false;
         this.group.add(this.warm);
 
-        this.spireLight = new THREE.PointLight(0xffc878, 8, 28, 1.8);
+        this.spireLight = new THREE.PointLight(0xffc878, 10, 32, 1.7);
         this.spireLight.position.set(0, 42, -1);
         this.group.add(this.spireLight);
     }
 
     setGlow(t) {
-        this.castle.userData.setGlow(0.35 + t * 2.1);
-        this.warm.intensity = 4 + t * 18;
-        this.spireLight.intensity = 3 + t * 14;
+        this.castle.userData.setGlow(0.85 + t * 1.8);
+        this.warm.intensity = 10 + t * 16;
+        this.spireLight.intensity = 6 + t * 12;
+        this.fill.intensity = 0.38 + t * 0.22;
     }
 
     tick(time) {
