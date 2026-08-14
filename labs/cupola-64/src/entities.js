@@ -90,7 +90,7 @@ export class Entities {
         }
 
         const fungusSpots = [
-            [6, 8], [-8, 10], [10, 2], [-12, 4], [4, -8], [-6, -2], [14, 12], [-4, 16]
+            [10, 4], [-14, 2], [12, -6], [-10, -6], [18, 14], [-16, 16], [8, -12], [-6, 20]
         ];
         for (const [x, z] of fungusSpots) {
             const mesh = createFungus();
