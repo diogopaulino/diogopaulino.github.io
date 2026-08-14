@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#02141c">
+    <title>Nereida — voo da arraia-manta | Diogo Paulino</title>
+    <meta name="description"
+        content="Voe como uma arraia-manta por um recife bioluminescente em three.js: anéis de luz, pérolas, correntes e a catedral no abismo.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/nereida/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/nereida/">
+    <meta property="og:title" content="Nereida — voo da arraia-manta | Diogo Paulino">
+    <meta property="og:description"
+        content="Um recife que canta. Encadeie anéis, colete pérolas e deslize com a baleia até o templo náutilo.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Nereida | Diogo Paulino">
+    <meta name="twitter:description" content="Voo 3D de uma arraia-manta no recife bioluminescente. three.js, anéis e pérolas.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Nereida",
+          "url": "https://diogopaulino.com.br/labs/nereida/",
+          "description": "Voe como uma arraia-manta por um recife bioluminescente em three.js: anéis de luz, pérolas, correntes e a catedral no abismo.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Nereida",
+              "item": "https://diogopaulino.com.br/labs/nereida/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Nereida" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◈</span>
+                    <span>Nereida</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Recife 3D com uma arraia-manta em voo"></canvas>
+        <div class="vignette" aria-hidden="true"></div>
+        <div class="caustic-glass" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel depth-panel">
+                    <span class="hud-label">Profundidade</span>
+                    <strong id="depthValue" class="mono">024 m</strong>
+                    <span id="zoneValue" class="hud-tag">Jardim de coral</span>
+                </div>
+                <div class="panel race-panel">
+                    <span class="hud-label">Recife</span>
+                    <div class="progress" title="Progresso">
+                        <i id="progressFill"></i>
+                    </div>
+                    <div class="boost-meter" title="Impulso">
+                        <i id="boostFill"></i>
+                    </div>
+                    <span id="speedValue" class="hud-tag mono">00 nós</span>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Pérolas</span>
+                        <strong id="pearlValue" class="mono">00</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Combo</span>
+                        <strong id="comboValue" class="mono">0×</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Escamas</span>
+                        <strong id="livesValue" class="mono lives">■■■</strong>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="look-zone" id="lookZone" aria-label="Arraste para guiar">
+                    <span class="steer-hint">guiar</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-roll" id="touchRoll" aria-label="Pirueta">GIRO</button>
+                    <button type="button" class="pad pad-boost" id="touchBoost" aria-label="Impulso">PULSO</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">◈</span>
+                <h1>NEREIDA</h1>
+                <p id="loadingText">A maré sobe…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · recife · bioluminescência</p>
+                    <h1>Nerei<span>da</span></h1>
+                    <p class="lede">Você é a arraia-manta do recife que canta. Deslize pelas
+                        correntes, atravesse os anéis de luz, colete pérolas e acompanhe a baleia
+                        até o templo náutilo. O abismo perdoa pouco — o combo, quase nada.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Maré</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>WASD</kbd> / setas guiar</span>
+                            <span><kbd>Espaço</kbd> impulso · <kbd>Q</kbd> <kbd>E</kbd> pirueta</span>
+                            <span>Mouse: olhar / refinar o voo</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> mudo</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Abissal</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor canto: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Entrar na corrente</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> PAUSA</p>
+                <h2>A maré<br>espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow" id="overEyebrow"><i></i> ABISMO</p>
+                <h2 id="overTitle">A corrente<br>te soltou.</h2>
+                <div id="overStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Outra maré</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> Falha na maré</p>
+                <h2>O recife não<br>abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
