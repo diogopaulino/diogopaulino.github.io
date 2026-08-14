@@ -1279,4 +1279,15 @@ input[type="range"]::-moz-range-thumb {
 @media (max-height: 520px) and (orientation: landscape) {
     .touch-controls { height: 40%; }
     .pad-throw { width: 80px; height: 80px; }
+
+    /* Deitado a tela passa de 640px e o reposicionamento do retrato não valia
+       mais: som e pausa voltavam para o canto inferior direito, em cima dos
+       botões de ação. */
+    .hud-actions {
+        align-self: start;
+        grid-row: 1;
+        position: absolute;
+        top: calc(3.2rem + var(--safe-top));
+        right: calc(0.7rem + var(--safe-right));
+    }
 }

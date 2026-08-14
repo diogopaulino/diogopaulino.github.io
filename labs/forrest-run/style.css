@@ -716,3 +716,20 @@ kbd {
     .menu-head h1 { font-size: 1.35rem; }
     .menu-grid { margin: 0.6rem 0; gap: 0.6rem; }
 }
+
+/* Som e pausa saem do canto inferior direito no toque: ali eles ficavam
+   exatamente em cima do botão de pulo. */
+@media (pointer: coarse) {
+    .hud-actions {
+        position: absolute;
+        grid-row: 1;
+        align-self: start;
+        top: calc(3.4rem + var(--safe-top));
+        right: calc(0.8rem + var(--safe-right));
+    }
+
+    .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+}
