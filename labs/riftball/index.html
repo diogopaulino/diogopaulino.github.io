@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#070b18">
+    <title>Riftball — gol 1v1 no rift | Diogo Paulino</title>
+    <meta name="description"
+        content="Duelo 1v1 em three.js: dois hovers, uma bola de éter e um gol no rift. Crie uma sala, mande o código e jogue online com outra pessoa.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/riftball/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/riftball/">
+    <meta property="og:title" content="Riftball — gol 1v1 no rift | Diogo Paulino">
+    <meta property="og:description"
+        content="Arena flutuante, hovers de néon e uma bola de éter. three.js, WebRTC e um código de sala.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Riftball | Diogo Paulino">
+    <meta name="twitter:description" content="Duelo 1v1 no rift. Crie uma sala e jogue online com outra pessoa.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Riftball",
+          "url": "https://diogopaulino.com.br/labs/riftball/",
+          "description": "Duelo 1v1 em three.js: dois hovers, uma bola de éter e um gol no rift. Crie uma sala, mande o código e jogue online com outra pessoa.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Riftball",
+              "item": "https://diogopaulino.com.br/labs/riftball/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Riftball" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◎</span>
+                    <span>Riftball</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Arena 3D do Riftball"></canvas>
+        <div class="vignette" aria-hidden="true"></div>
+        <div class="scan" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="scoreboard">
+                <div class="score-side score-side--p1">
+                    <span class="score-name" id="p1Name">Ciano</span>
+                    <strong class="score-num mono" id="p1Score">0</strong>
+                </div>
+                <div class="score-mid">
+                    <span class="score-clock mono" id="matchClock">3:00</span>
+                    <span class="score-best" id="scoreTo">primeiro a 5</span>
+                </div>
+                <div class="score-side score-side--p2">
+                    <strong class="score-num mono" id="p2Score">0</strong>
+                    <span class="score-name" id="p2Name">Magenta</span>
+                </div>
+            </div>
+
+            <div class="boost-wrap boost-wrap--self">
+                <span class="boost-label">Boost</span>
+                <div class="boost-rail"><i id="boostFill"></i></div>
+            </div>
+
+            <p id="announce" class="announce" data-show="false" role="status" aria-live="polite"></p>
+            <p id="netBadge" class="net-badge" hidden>P2P</p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono" hidden>—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="steer-zone" id="steerZone" aria-label="Arraste para dirigir">
+                    <span id="steerKnob" class="steer-knob"></span>
+                    <span class="steer-hint">dirigir</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-jump" id="jumpPad" aria-label="Pular">PULO</button>
+                    <button type="button" class="pad pad-boost" id="boostPad" aria-label="Boost">BOOST</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">◎</span>
+                <h1>Riftball</h1>
+                <p id="loadingText">Abrindo o rift…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · WebRTC · 1v1</p>
+                    <h1>Rift<span>ball</span></h1>
+                    <p class="lede">Dois hovers, uma bola de éter, um gol. A arena flutua no rift —
+                        crie uma sala, mande o código e dispute online. Ou sente alguém do seu lado
+                        no teclado.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Como jogar</h2>
+                        <div class="keys">
+                            <span><kbd>WASD</kbd> acelerar e virar · P2 usa <kbd>↑←↓→</kbd></span>
+                            <span><kbd>Shift</kbd> / <kbd>Ctrl</kbd> boost · <kbd>Espaço</kbd> / <kbd>.</kbd> pulo</span>
+                            <span>Empurre a bola para o portal do rival. Primeiro a 5 gols.</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+                    <section class="menu-section">
+                        <h2>Online</h2>
+                        <p class="section-note">Ponto a ponto no navegador — sem servidor de jogo.
+                            A física fica com quem cria a sala. Se o NAT for teimoso, use duas abas
+                            neste mesmo computador ou o modo teclado.</p>
+                    </section>
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="play-grid">
+                    <button id="hostButton" class="primary-button" type="button">
+                        <span>Criar sala online</span><i aria-hidden="true">◎</i>
+                    </button>
+                    <button id="joinToggle" class="ghost-button" type="button">Entrar com código</button>
+                    <button id="localButton" class="ghost-button" type="button">Dois no teclado</button>
+                    <button id="cpuButton" class="ghost-button" type="button">Contra a CPU</button>
+                </div>
+
+                <form id="joinForm" class="join-form" hidden>
+                    <label class="field">
+                        <span>Código da sala</span>
+                        <input id="joinCode" type="text" maxlength="6" autocomplete="off" spellcheck="false"
+                            placeholder="A7KX" aria-label="Código da sala">
+                    </label>
+                    <button id="joinButton" class="primary-button" type="submit">
+                        <span>Entrar no rift</span><i aria-hidden="true">→</i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div id="lobbyOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card lobby-card">
+                <p class="eyebrow"><i></i> sala aberta</p>
+                <h2>Manda o código</h2>
+                <p class="lede">Quem abrir o link entra como Magenta. Você é Ciano, no portal oeste.</p>
+                <div class="room-code-row">
+                    <strong id="roomCode" class="room-code mono">————</strong>
+                    <button id="copyLinkButton" class="ghost-button" type="button">Copiar link</button>
+                </div>
+                <p id="lobbyStatus" class="section-note">Esperando o segundo hover atravessar o rift…</p>
+                <div class="card-actions">
+                    <button id="cancelLobbyButton" class="ghost-button" type="button">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> pausa</p>
+                <h2>O rift espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card result-card">
+                <p class="eyebrow" id="resultEyebrow"><i></i> fim de jogo</p>
+                <h2 id="resultTitle">Gol de ouro.</h2>
+                <p id="resultStats" class="lede"></p>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Revide</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="resultMenuButton" class="ghost-button" type="button">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> falha no rift</p>
+                <h2>Não abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Ative a aceleração
+                    de hardware ou tente um navegador atualizado.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
