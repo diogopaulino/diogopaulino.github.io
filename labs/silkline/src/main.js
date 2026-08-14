@@ -37,6 +37,7 @@ class Game {
         this.cameraMode = 0;
         this.fpsAccum = 0;
         this.fpsFrames = 0;
+        this.orbit = 0.8;
         this.bestDistrict = 'Midtown';
     }
 
@@ -379,102 +380,125 @@ class Game {
     simulate(dt) {
         const playing = this.state === 'playing';
         this.input.sample();
-        if (!playing) {
-            this.input.moveX = 0;
-            this.input.moveZ = 1;
-            this.input.webHeld = true;
-        }
-        const ev = this.player.update(dt, this.input, this.city);
-        this.city.update(dt, this.camera.position);
-        this.cityGlow.position.lerp(this.player.pos, 0.04);
-        this.cityGlow.position.y = 36;
-
         if (playing) {
-            this.time += dt;
-            this.maxCombo = Math.max(this.maxCombo, Math.floor(this.player.combo));
-            this.bestDistrict = this.city.districtName(this.player.pos.x, this.player.pos.z);
+            const ev = this.player.update(dt, this.input, this.city);
+            this.handlePlayEvents(dt, ev);
+        }
+        this.city.update(dt, this.camera.position);
+        this.cityGlow.position.lerp(
+            playing ? this.player.pos : this.camera.position,
+            0.04
+        );
+        this.cityGlow.position.y = 36;
+        this.effects.update(dt, this.camera.position);
+        this.audio.update(dt, playing ? this.player.speed : 12, playing && this.player.swinging);
+    }
 
-            if (ev.attached) {
-                this.audio.attach();
-                this.effects.spawn(this.player.anchor.x, this.player.anchor.y, this.player.anchor.z, {
-                    count: 16,
-                    color: [0.9, 0.95, 1],
-                    speed: 5,
-                    size: 0.45,
-                    life: 0.35
-                });
-            }
-            if (ev.released) this.audio.release();
-            if (ev.missed) this.audio.miss();
+    handlePlayEvents(dt, ev) {
+        this.time += dt;
+        this.maxCombo = Math.max(this.maxCombo, Math.floor(this.player.combo));
+        this.bestDistrict = this.city.districtName(this.player.pos.x, this.player.pos.z);
 
-            const got = this.city.collectPulses(
-                this.player.pos.x,
-                this.player.pos.y + 0.8,
-                this.player.pos.z,
-                2.4
-            );
-            if (got.length) {
-                this.pulses += got.length;
-                this.player.combo += got.length;
-                this.audio.collect();
-                this.hud.message(this.player.combo >= 8 ? 'COMBO' : 'PULSO', 700);
-                for (const p of got) {
-                    this.effects.spawn(p.x, p.y, p.z, {
-                        count: 20,
-                        color: hexToArr(PALETTE.pulse),
-                        speed: 7,
-                        size: 0.7,
-                        life: 0.5
-                    });
-                }
-            }
-
-            if (ev.splash) {
-                this.audio.splash();
-                this.effects.spawn(this.player.pos.x, 1, this.player.pos.z, {
-                    count: 30,
-                    color: [0.4, 0.65, 0.9],
-                    speed: 8,
-                    size: 0.8,
-                    life: 0.55
-                });
-                if (this.player.hit()) {
-                    this.lives -= 1;
-                    if (this.lives <= 0) this.gameOver();
-                    else {
-                        const s = this.city.spawn;
-                        this.player.spawn(s.x, s.y + 2, s.z);
-                        this.hud.message('O RIO', 900);
-                    }
-                }
-            }
-
-            const dir = this.player.lookDir();
-            const lock = this.city.pickAnchor(
-                this.player.pos.x,
-                this.player.pos.y + 1.3,
-                this.player.pos.z,
-                dir.x, dir.y, dir.z,
-                this.player.webMax
-            );
-            this.hud.setReticle(true, Boolean(lock));
-
-            this.hud.update({
-                speed: this.player.speed,
-                district: this.bestDistrict,
-                altitude: this.player.pos.y,
-                pulses: this.pulses,
-                combo: this.player.combo,
-                lives: this.lives,
-                comboHeat: Math.min(1, this.player.combo / 12)
+        if (ev.attached) {
+            this.audio.attach();
+            this.effects.spawn(this.player.anchor.x, this.player.anchor.y, this.player.anchor.z, {
+                count: 16,
+                color: [0.9, 0.95, 1],
+                speed: 5,
+                size: 0.45,
+                life: 0.35
             });
         }
+        if (ev.released) this.audio.release();
+        if (ev.missed) this.audio.miss();
 
-        this.effects.update(dt, this.camera.position);
-        this.audio.update(dt, this.player.speed, this.player.swinging);
+        const got = this.city.collectPulses(
+            this.player.pos.x,
+            this.player.pos.y + 0.8,
+            this.player.pos.z,
+            2.4
+        );
+        if (got.length) {
+            this.pulses += got.length;
+            this.player.combo += got.length;
+            this.audio.collect();
+            this.hud.message(this.player.combo >= 8 ? 'COMBO' : 'PULSO', 700);
+            for (const p of got) {
+                this.effects.spawn(p.x, p.y, p.z, {
+                    count: 20,
+                    color: hexToArr(PALETTE.pulse),
+                    speed: 7,
+                    size: 0.7,
+                    life: 0.5
+                });
+            }
+        }
+
+        if (ev.splash) {
+            this.audio.splash();
+            this.effects.spawn(this.player.pos.x, 1, this.player.pos.z, {
+                count: 30,
+                color: [0.4, 0.65, 0.9],
+                speed: 8,
+                size: 0.8,
+                life: 0.55
+            });
+            if (this.player.hit()) {
+                this.lives -= 1;
+                if (this.lives <= 0) this.gameOver();
+                else {
+                    const s = this.city.spawn;
+                    this.player.spawn(s.x, s.y + 2, s.z, s.yaw);
+                    this.hud.message('O RIO', 900);
+                }
+            }
+        }
+
+        const dir = this.player.lookDir();
+        const lock = this.city.pickAnchor(
+            this.player.pos.x,
+            this.player.pos.y + 1.3,
+            this.player.pos.z,
+            dir.x, dir.y, dir.z,
+            this.player.webMax
+        );
+        this.hud.setReticle(true, Boolean(lock));
+
+        this.hud.update({
+            speed: this.player.speed,
+            district: this.bestDistrict,
+            altitude: this.player.pos.y,
+            pulses: this.pulses,
+            combo: this.player.combo,
+            lives: this.lives,
+            comboHeat: Math.min(1, this.player.combo / 12)
+        });
     }
 
     updateCamera(dt, instant) {
+        if (this.state === 'menu') {
+            this.orbit += dt * 0.08;
+            const mid = this.city.cellOf(5, 11);
+            const radius = 210;
+            CAM.set(
+                mid.x + Math.cos(this.orbit) * radius,
+                78 + Math.sin(this.orbit * 0.7) * 16,
+                mid.z + Math.sin(this.orbit) * radius
+            );
+            AIM.set(mid.x, 52, mid.z);
+            const k = instant ? 1 : 1 - Math.exp(-dt * 0.7);
+            this.camera.position.lerp(CAM, k);
+            if (!this._aim) this._aim = AIM.clone();
+            this._aim.lerp(AIM, k);
+            this.camera.lookAt(this._aim);
+            this.camera.fov = damp(this.camera.fov, 48, 2, dt);
+            this.camera.far = this.quality.drawDistance * 2.2;
+            this.camera.updateProjectionMatrix();
+            this.moon.target.position.copy(AIM);
+            this.moon.position.set(CAM.x - 40, CAM.y + 80, CAM.z + 20);
+            return;
+        }
+
         const rig = CAM_RIGS[this.cameraMode];
         const look = this.player.lookDir(LOOK);
         BACK.set(-look.x, 0, -look.z);
@@ -508,6 +532,7 @@ class Game {
 
         const fovTarget = rig.fov + Math.min(14, this.player.speed * 0.12);
         this.camera.fov = damp(this.camera.fov, fovTarget, 4, dt);
+        this.camera.far = this.quality.drawDistance * 1.8;
         this.camera.updateProjectionMatrix();
 
         this.moon.target.position.copy(this.player.pos);
