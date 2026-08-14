@@ -803,3 +803,11 @@ kbd {
         height: min(42%, 38dvh);
     }
 }
+
+/* Som e pausa vivem no canto superior direito, na mesma altura do .hud-top:
+   no toque eles caíam em cima do painel do trilho. O painel abre espaço. */
+@media (pointer: coarse) {
+    .voyage-panel {
+        padding-right: 10.5rem;
+    }
+}
