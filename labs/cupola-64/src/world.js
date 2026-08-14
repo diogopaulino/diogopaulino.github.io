@@ -292,8 +292,9 @@ export class World {
             }
         }
         const r = Math.hypot(nx, nz);
-        if (r > ISLAND.radius + 4) {
-            const k = (ISLAND.radius + 4) / r;
+        const rim = ISLAND.radius - 1.2;
+        if (r > rim) {
+            const k = rim / r;
             nx *= k;
             nz *= k;
         }

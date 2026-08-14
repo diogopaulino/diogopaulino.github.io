@@ -173,7 +173,7 @@ class Game {
         this.audio.setMode('play');
         this.elapsed = 0;
         this.player.lives = QUEST.lives;
-        this.player.spawn();
+        this.player.spawn(this.world);
         this.entities.reset();
         this.state = 'play';
         this.hud.showPlay();
