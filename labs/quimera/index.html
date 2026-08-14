@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1b1430">
+    <title>Quimera — misture cabeças, corpos e acessórios | Diogo Paulino</title>
+    <meta name="description"
+        content="Ateliê 3D relaxante de Diogo Paulino: combine cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/quimera/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/quimera/">
+    <meta property="og:title" content="Quimera — misture cabeças, corpos e acessórios | Diogo Paulino">
+    <meta property="og:description"
+        content="Ateliê 3D relaxante: pirata, marinheiro, astronauta, guerreiro e mais — misture as peças e invente uma criatura.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Quimera — misture cabeças, corpos e acessórios | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Ateliê 3D relaxante de Diogo Paulino: combine cabeça, corpo e acessórios no navegador.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,500&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Quimera",
+          "url": "https://diogopaulino.com.br/labs/quimera/",
+          "description": "Ateliê 3D relaxante de Diogo Paulino: combine cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Quimera",
+              "item": "https://diogopaulino.com.br/labs/quimera/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="shell">
+        <header data-lab-header data-title="Quimera" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true"></span>
+                    <span>Quimera</span>
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="rotateBtn" class="icon-btn" type="button" aria-pressed="true" title="Autorrotação"
+                    aria-label="Autorrotação da câmera">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-3-6.7" />
+                        <path d="M21 3v6h-6" />
+                    </svg>
+                </button>
+                <button id="muteBtn" class="icon-btn" type="button" aria-pressed="false" title="Mudo (M)"
+                    aria-label="Alternar som">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    </svg>
+                </button>
+                <button id="fullscreen" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia (F)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                </button>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Boneco 3D para misturar cabeça, corpo e acessórios"></canvas>
+
+        <div id="loading" class="loading" role="status">
+            <div class="loading-orb" aria-hidden="true"></div>
+            <p>Acendendo as lanternas…</p>
+        </div>
+
+        <aside class="hud-left" aria-label="Combinação atual">
+            <p class="eyebrow" id="mixKicker">Quimera livre</p>
+            <h2 id="mixTitle">Pirata · Marinheiro · Astronauta</h2>
+            <p class="meta-line">Toque uma peça para trocar · arraste para orbitar</p>
+            <div class="readout">
+                <span><i>combinações</i><strong id="comboRead">2.744</strong></span>
+                <span><i>kits</i><strong>14</strong></span>
+            </div>
+        </aside>
+
+        <section class="dock" aria-label="Peças">
+            <div class="slot" data-slot-ui="head">
+                <p class="slot-name">Cabeça</p>
+                <div class="slot-row">
+                    <button type="button" class="step" data-slot="head" data-step="-1" aria-label="Cabeça anterior">‹</button>
+                    <div class="slot-face">
+                        <span data-slot-label="head">🏴‍☠️ Pirata</span>
+                        <label class="sr-only" for="sel-head">Escolher cabeça</label>
+                        <select id="sel-head" data-slot-select="head"></select>
+                    </div>
+                    <button type="button" class="step" data-slot="head" data-step="1" aria-label="Próxima cabeça">›</button>
+                </div>
+            </div>
+            <div class="slot" data-slot-ui="body">
+                <p class="slot-name">Corpo</p>
+                <div class="slot-row">
+                    <button type="button" class="step" data-slot="body" data-step="-1" aria-label="Corpo anterior">‹</button>
+                    <div class="slot-face">
+                        <span data-slot-label="body">⚓ Marinheiro</span>
+                        <label class="sr-only" for="sel-body">Escolher corpo</label>
+                        <select id="sel-body" data-slot-select="body"></select>
+                    </div>
+                    <button type="button" class="step" data-slot="body" data-step="1" aria-label="Próximo corpo">›</button>
+                </div>
+            </div>
+            <div class="slot" data-slot-ui="accessory">
+                <p class="slot-name">Acessório</p>
+                <div class="slot-row">
+                    <button type="button" class="step" data-slot="accessory" data-step="-1"
+                        aria-label="Acessório anterior">‹</button>
+                    <div class="slot-face">
+                        <span data-slot-label="accessory">🚀 Astronauta</span>
+                        <label class="sr-only" for="sel-accessory">Escolher acessório</label>
+                        <select id="sel-accessory" data-slot-select="accessory"></select>
+                    </div>
+                    <button type="button" class="step" data-slot="accessory" data-step="1"
+                        aria-label="Próximo acessório">›</button>
+                </div>
+            </div>
+            <div class="dock-actions">
+                <button id="randomBtn" class="btn" type="button">Surpresa</button>
+                <button id="themeBtn" class="btn ghost" type="button">Conjunto</button>
+            </div>
+        </section>
+
+        <p class="hint">Clique uma peça para trocá-la · <kbd>R</kbd> surpresa · <kbd>T</kbd> conjunto ·
+            <kbd>←→</kbd> cabeça · <kbd>H</kbd> esconde UI</p>
+
+        <footer data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>

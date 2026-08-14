@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a140c">
+    <title>Forrest Run — a corrida que não acaba | Labs</title>
+    <meta name="description"
+        content="Forrest corre sem parar pelos Estados Unidos: Alabama, asfalto, deserto, montanhas e chuva. Endless runner 3D em three.js, com penas brancas e o pessoal atrás.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/forrest-run/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/forrest-run/">
+    <meta property="og:title" content="Forrest Run">
+    <meta property="og:description"
+        content="Uma estrada que não acaba. Desvie, pule, colete a pena. Homagem 3D à corrida mais longa do cinema.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Forrest Run">
+    <meta name="twitter:description" content="Endless runner em three.js: corre, Forrest. Sem parar.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Outfit:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Forrest Run" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>Forrest Run</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Forrest correndo numa estrada americana em 3D"></canvas>
+
+        <div class="film-overlay" aria-hidden="true">
+            <div class="grain"></div>
+            <div class="vignette"></div>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel speed-panel">
+                    <span class="hud-label">Ritmo</span>
+                    <strong id="speedValue" class="mono speed-num">00</strong>
+                    <span class="hud-unit">mph</span>
+                </div>
+                <div class="panel place-panel">
+                    <span class="hud-label">Trecho</span>
+                    <strong id="placeValue">Greenbow, Alabama</strong>
+                    <span id="placeTag" class="hud-tag">estrada de terra</span>
+                    <span id="daysValue" class="hud-days mono">0 d</span>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Travessia</span>
+                        <strong id="milesValue" class="mono">0 yd</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Penas</span>
+                        <strong id="featherValue" class="mono">00</strong>
+                    </div>
+                    <div class="score-row lives-row">
+                        <span class="hud-label">Fôlego</span>
+                        <strong id="livesValue" class="mono lives">●●●</strong>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+            <p id="quote" class="quote" data-show="false"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="touch-lanes">
+                    <button type="button" class="pad" id="touchLeft" aria-label="Faixa esquerda">←</button>
+                    <button type="button" class="pad" id="touchRight" aria-label="Faixa direita">→</button>
+                </div>
+                <button type="button" class="pad pad-jump" id="touchJump" aria-label="Pular">PULO</button>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">✦</span>
+                <h1>FORREST RUN</h1>
+                <p id="loadingText">Amarrando os tênis…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · 3 anos, 2 meses, 14 dias</p>
+                    <h1>Forrest <span>Run</span></h1>
+                    <p class="lede">Ele amarrou o tênis e não parou mais. Corra pela terra de Greenbow,
+                        o asfalto quente, o deserto e a chuva. Desvie de caminhões e vacas, colete a pena
+                        branca — e, se o pessoal vier atrás, é porque a estrada não acaba.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Ritmo</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> faixas</span>
+                            <span><kbd>Espaço</kbd> / <kbd>W</kbd> pular</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> mudo</span>
+                            <span><kbd>Enter</kbd> começar a correr</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinema</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor travessia: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Correr</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> PAUSA</p>
+                <h2>A estrada espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow"><i></i> FIM DA CORRIDA</p>
+                <h2 id="overTitle">Acho que vou<br>pra casa agora.</h2>
+                <div id="overStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Correr de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> Falha ao ligar</p>
+                <h2>A estrada<br>não abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

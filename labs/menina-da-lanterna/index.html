@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1020">
+    <title>A Menina da Lanterna — conto 3D | Diogo Paulino</title>
+    <meta name="description"
+        content="Clara carrega a última chama da avó Nara. Jogo 3D em three.js: acenda lampiões, afaste sombras e traga o primeiro sol de volta a Vale-da-Bruma.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/menina-da-lanterna/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/menina-da-lanterna/">
+    <meta property="og:title" content="A Menina da Lanterna — conto 3D | Diogo Paulino">
+    <meta property="og:description"
+        content="Uma historinha completa em cinco noites: a aldeia apagada, a trilha, o rio, a árvore oca e o primeiro sol. three.js.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="A Menina da Lanterna | Diogo Paulino">
+    <meta name="twitter:description" content="Clara e a última chama. Conto 3D no navegador. three.js.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "A Menina da Lanterna",
+          "url": "https://diogopaulino.com.br/labs/menina-da-lanterna/",
+          "description": "Clara carrega a última chama da avó Nara. Jogo 3D em three.js: acenda lampiões, afaste sombras e traga o primeiro sol de volta a Vale-da-Bruma.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "A Menina da Lanterna",
+              "item": "https://diogopaulino.com.br/labs/menina-da-lanterna/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="A Menina da Lanterna" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>A Menina da Lanterna</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Mundo 3D de Clara e a lanterna"></canvas>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+        <div id="vignette" class="vignette" aria-hidden="true"></div>
+        <div id="hitFlash" class="hit-flash" aria-hidden="true"></div>
+
+        <div id="chapterCard" class="chapter-card" hidden>
+            <span id="chapterRoman" class="chapter-roman">I</span>
+            <h2 id="chapterTitle">A Aldeia Apagada</h2>
+            <p id="chapterSub">Vale-da-Bruma</p>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel heart-panel">
+                    <span class="hud-label">Clara</span>
+                    <div id="hearts" class="hearts" aria-label="Vida"></div>
+                    <div class="fuel" data-low="false">
+                        <span class="hud-label">Chama</span>
+                        <i><b id="fuelFill"></b></i>
+                        <strong id="fuelValue" class="mono">100</strong>
+                    </div>
+                </div>
+                <div class="panel quest-panel">
+                    <span id="chapterTag" class="hud-label">I · A Aldeia Apagada</span>
+                    <p id="objective" class="objective">Fale com Tomás e acenda os lampiões.</p>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Lembranças</span>
+                        <strong id="memoriesValue" class="mono">0/5</strong>
+                    </div>
+                    <div class="score-row score-row--sub">
+                        <span id="timeValue" class="mono">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="stealthMeter" class="stealth" hidden data-danger="false">
+                <span>A sombra fareja a chama</span>
+                <i><b id="stealthFill"></b></i>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+            <p id="prompt" class="prompt" hidden></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" aria-label="Andar">
+                    <i id="moveKnob"></i>
+                    <span>andar</span>
+                </div>
+                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
+                <div class="touch-buttons">
+                    <button type="button" id="btnSprint" class="pad">correr</button>
+                    <button type="button" id="btnFlash" class="pad pad-atk">✦</button>
+                    <button type="button" id="btnInteract" class="pad pad-use">E</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="ring-loader" aria-hidden="true"></span>
+                <h1>A Menina da Lanterna</h1>
+                <p id="loadingText">Acendendo o pavio…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · conto · cinco noites</p>
+                    <h1>A Menina <span>da Lanterna</span></h1>
+                    <p class="lede">Em Vale-da-Bruma a noite esqueceu de acabar. Clara, com a última chama da avó Nara,
+                        acende o que foi esquecido — lampiões, bóias, raízes — e lembra o dia de que ele existe.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Capítulo</h2>
+                        <div id="chapterList" class="chapter-list" role="list"></div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
+                            <span><kbd>Shift</kbd> correr · mouse olhar</span>
+                            <span><kbd>Espaço</kbd> pulso da lanterna</span>
+                            <span><kbd>E</kbd> interagir · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor chama: <b id="bestScore" class="mono">—</b>
+                            · qualidade vale na próxima noite</p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Levantar a lanterna</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> A chama espera</p>
+                <h2>A noite<br>está pausada.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dialogueOverlay" class="overlay dialogue-overlay" hidden>
+            <div class="dialogue-card">
+                <p id="dialogueSpeaker" class="dialogue-speaker">Tomás</p>
+                <p id="dialogueText" class="dialogue-text"></p>
+                <button id="dialogueContinue" class="ghost-button" type="button">Continuar</button>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> A chama tremeu</p>
+                <h2>A noite ficou<br>grande demais.</h2>
+                <p id="defeatReason" class="lede"></p>
+                <div id="defeatStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Acender de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victoryOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card victory-card">
+                <p class="eyebrow eyebrow--gold"><i></i> O primeiro sol</p>
+                <h2>Clara trouxe<br>o dia de volta.</h2>
+                <p class="lede">A lanterna agora é dela — não para afastar o escuro, mas para lembrar o dia
+                    de que ele existe. Nara ficou na chama, bem quietinha.</p>
+                <div id="victoryStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Recomeçar em Vale-da-Bruma</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>A lanterna não<br>pôde acender.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js?v=1"></script>
+</body>
+
+</html>
