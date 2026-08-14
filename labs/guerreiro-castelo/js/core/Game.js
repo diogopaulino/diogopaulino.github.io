@@ -399,7 +399,8 @@ export class Game {
 
     render() {
         this.renderer.toneMappingExposure = this.weather.exposure ?? 1;
-        this.renderer.render(this.scene, this.camera);
+        if (this.composer && this.quality.bloom) this.composer.render();
+        else this.renderer.render(this.scene, this.camera);
     }
 
     onResize() {
