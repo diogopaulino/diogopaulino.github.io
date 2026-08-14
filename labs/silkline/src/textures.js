@@ -36,15 +36,15 @@ export function windowTexture(THREE, seed = 1) {
             for (let x = 0; x < cols; x++) {
                 const n = Math.sin((x + 1.7) * (y + 3.1) * (seed + 2.2) * 12.9898) * 43758.5453;
                 const r = n - Math.floor(n);
-                const on = r > 0.32;
+                const on = r > 0.28;
                 if (!on) {
-                    ctx.fillStyle = `rgb(${12 + (r * 10) | 0},${14 + (r * 8) | 0},${18})`;
+                    ctx.fillStyle = `rgb(${8 + (r * 8) | 0},${10 + (r * 8) | 0},${14})`;
                 } else {
-                    const warm = r > 0.72;
-                    const shade = 150 + r * 90;
+                    const warm = r > 0.62;
+                    const shade = 200 + r * 55;
                     ctx.fillStyle = warm
-                        ? `rgb(${shade | 0},${(shade * 0.72) | 0},${(shade * 0.42) | 0})`
-                        : `rgb(${(shade * 0.55) | 0},${(shade * 0.7) | 0},${shade | 0})`;
+                        ? `rgb(${shade | 0},${(shade * 0.78) | 0},${(shade * 0.42) | 0})`
+                        : `rgb(${(shade * 0.62) | 0},${(shade * 0.78) | 0},${shade | 0})`;
                 }
                 ctx.fillRect(padX + x * (bw + padX), padY + y * (bh + padY), bw, bh * 0.82);
             }

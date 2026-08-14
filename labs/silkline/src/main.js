@@ -44,6 +44,8 @@ class Game {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
         if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        const cores = navigator.hardwareConcurrency || 8;
+        if (cores <= 4) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -69,7 +71,7 @@ class Game {
         this.renderer.setPixelRatio(pr);
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.92;
+        this.renderer.toneMappingExposure = 1.05;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -307,7 +309,7 @@ class Game {
         this.player.webMax = diff.webMax;
         this.player.gravity = diff.gravity;
         const s = this.city.spawn;
-        this.player.spawn(s.x, s.y + 1.2, s.z);
+        this.player.spawn(s.x, s.y + 1.2, s.z, s.yaw ?? -Math.PI / 2);
         this.player.auto = attract;
         this.city.seedPulses();
         this.cityGlow.position.set(s.x, 40, s.z);
@@ -481,7 +483,19 @@ class Game {
 
         CAM.copy(this.player.pos);
         CAM.add(BACK);
-        CAM.y += rig.height - look.y * 2.4;
+        CAM.y += rig.height - look.y * 1.6;
+        CAM.y = Math.max(CAM.y, this.player.pos.y + 2.4);
+
+        const from = this.player.pos;
+        const cdx = CAM.x - from.x;
+        const cdy = CAM.y - from.y;
+        const cdz = CAM.z - from.z;
+        const cdist = Math.hypot(cdx, cdy, cdz) || 1;
+        const blocked = this.city?.raycast(from.x, from.y + 1.1, from.z, cdx, cdy, cdz, cdist);
+        if (blocked && blocked.dist < cdist - 0.6) {
+            const t = Math.max(1.4, blocked.dist - 0.9) / cdist;
+            CAM.set(from.x + cdx * t, from.y + cdy * t, from.z + cdz * t);
+        }
 
         AIM.copy(this.player.pos).addScaledVector(look, 14);
         AIM.y += rig.look + 0.4;

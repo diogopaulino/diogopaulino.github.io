@@ -10,7 +10,7 @@ import {
     windowTexture, facadeTexture, asphaltTexture, waterTexture, grassTexture,
     billboardTexture, SIGN_WORDS
 } from './textures.js';
-import { createSky, createGroundShader } from './sky.js';
+import { createSky, createGroundShader, createFacadeMaterial } from './sky.js';
 import {
     createMaterials, boxCollider,
     createEmpire, createChrysler, createWTC, createFlatiron,
@@ -48,6 +48,11 @@ export class City {
         this.waterMap = waterTexture(THREE);
         this.grassMap = grassTexture(THREE);
         this.mats = createMaterials(this.windowMap, this.facadeMap);
+        this.facadeMat = createFacadeMaterial(this.windowMap, PALETTE.fog, quality.fogDensity);
+        this.stoneMat = createFacadeMaterial(this.facadeMap, PALETTE.fog, quality.fogDensity);
+        this.stoneMat.uniforms.uTint.value.set(0x1c2028);
+        this.stoneMat.uniforms.uWarm.value.set(0xc8d0dc);
+        this.mats.facade = this.facadeMat;
 
         this.root = new THREE.Group();
         scene.add(this.root);
@@ -158,13 +163,13 @@ export class City {
 
     buildGrid() {
         const maxBoxes = GRID.cols * GRID.rows * 3;
-        this.buildingMesh = new THREE.InstancedMesh(BOX, this.mats.glass, maxBoxes);
+        this.buildingMesh = new THREE.InstancedMesh(BOX, this.facadeMat, maxBoxes);
         this.buildingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         this.buildingMesh.castShadow = this.quality.shadows;
         this.buildingMesh.receiveShadow = true;
         this.buildingMesh.frustumCulled = false;
 
-        const darkMesh = new THREE.InstancedMesh(BOX, this.mats.stone, Math.floor(maxBoxes * 0.4));
+        const darkMesh = new THREE.InstancedMesh(BOX, this.stoneMat, Math.floor(maxBoxes * 0.4));
         darkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         darkMesh.castShadow = this.quality.shadows;
         darkMesh.frustumCulled = false;
@@ -224,7 +229,7 @@ export class City {
                         this.dummy.rotation.set(0, 0, 0);
                         this.dummy.updateMatrix();
                         mesh.setMatrixAt(idx, this.dummy.matrix);
-                        this.color.setHSL(0.58 + rng() * 0.08, 0.12, 0.16 + rng() * 0.08);
+                        this.color.setHSL(0.58 + rng() * 0.1, 0.18, 0.72 + rng() * 0.18);
                         if (mesh.setColorAt) mesh.setColorAt(idx, this.color);
                         this.addCollider(boxCollider(px, L.y, pz, L.w, L.h, L.d));
                     }
@@ -303,7 +308,12 @@ export class City {
         this.beacons = [e.beacon];
         const roof = this.cellOf(6, 11);
         const roofY = this.heightAt(roof.x, roof.z);
-        this.spawn = { x: roof.x, y: Math.max(28, roofY) + 1.4, z: roof.z };
+        this.spawn = {
+            x: roof.x,
+            y: Math.max(28, roofY) + 1.4,
+            z: roof.z,
+            yaw: -Math.PI / 2
+        };
     }
 
     buildPark() {
@@ -490,6 +500,22 @@ export class City {
         if (iz < 14) return 'Midtown';
         if (iz < 20) return 'Uptown';
         return 'Harlem';
+    }
+
+    raycast(ox, oy, oz, dx, dy, dz, maxDist) {
+        const len = Math.hypot(dx, dy, dz) || 1;
+        dx /= len; dy /= len; dz /= len;
+        let bestT = maxDist;
+        let best = null;
+        const list = this.query(ox + dx * maxDist * 0.5, oz + dz * maxDist * 0.5, maxDist + 8);
+        for (const b of list) {
+            const t = rayAABB(ox, oy, oz, dx, dy, dz, b, maxDist);
+            if (t == null || t < 0.4 || t >= bestT) continue;
+            bestT = t;
+            best = b;
+        }
+        if (!best) return null;
+        return { dist: bestT, box: best };
     }
 
     pickAnchor(ox, oy, oz, dx, dy, dz, maxDist) {

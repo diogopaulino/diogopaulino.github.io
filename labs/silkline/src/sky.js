@@ -58,6 +58,78 @@ export function createSky() {
     return { mesh, uniforms };
 }
 
+/**
+ * Fachada com UV em espaço-mundo: janelas do tamanho certo em qualquer
+ * arranha-céu instanciado. Telhado sem janela; néon nas arestas.
+ */
+export function createFacadeMaterial(windowTex, fogColor, fogDensity) {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            uWindows: { value: windowTex },
+            uFog: { value: new THREE.Color(fogColor) },
+            uFogDensity: { value: fogDensity },
+            uTint: { value: new THREE.Color(0x141820) },
+            uWarm: { value: new THREE.Color(0xffc48a) }
+        },
+        vertexShader: /* glsl */ `
+            varying vec3 vWorld;
+            varying vec3 vNormal;
+            varying vec3 vView;
+            varying vec3 vColor;
+            void main() {
+                #ifdef USE_INSTANCING
+                    mat4 local = instanceMatrix;
+                #else
+                    mat4 local = mat4(1.0);
+                #endif
+                vec4 world = modelMatrix * local * vec4(position, 1.0);
+                vWorld = world.xyz;
+                vNormal = normalize(mat3(modelMatrix * local) * normal);
+                vec4 mv = viewMatrix * world;
+                vView = -mv.xyz;
+                #ifdef USE_INSTANCING_COLOR
+                    vColor = instanceColor;
+                #else
+                    vColor = vec3(1.0);
+                #endif
+                gl_Position = projectionMatrix * mv;
+            }
+        `,
+        fragmentShader: /* glsl */ `
+            varying vec3 vWorld;
+            varying vec3 vNormal;
+            varying vec3 vView;
+            varying vec3 vColor;
+            uniform sampler2D uWindows;
+            uniform vec3 uFog;
+            uniform float uFogDensity;
+            uniform vec3 uTint;
+            uniform vec3 uWarm;
+            void main() {
+                vec3 n = normalize(vNormal);
+                vec2 uv;
+                if (abs(n.x) > abs(n.z)) uv = vec2(vWorld.z, vWorld.y);
+                else uv = vec2(vWorld.x, vWorld.y);
+                uv *= vec2(0.085, 0.095);
+                vec3 win = texture2D(uWindows, uv).rgb;
+                float roof = smoothstep(0.42, 0.78, abs(n.y));
+                vec3 col = mix(uTint * vColor, win * 1.35, 0.85);
+                col = mix(col, vec3(0.07, 0.08, 0.1), roof);
+                float rim = pow(1.0 - max(dot(n, normalize(vView)), 0.0), 2.6);
+                col += uWarm * rim * 0.12 * (1.0 - roof);
+                float lit = 0.45 + 0.7 * max(dot(n, normalize(vec3(-0.35, 0.7, 0.25))), 0.0);
+                col *= mix(lit, 1.0, 0.55);
+                float dist = length(vView);
+                float fogAmt = 1.0 - exp(-uFogDensity * uFogDensity * dist * dist);
+                col = mix(col, uFog, clamp(fogAmt, 0.0, 1.0));
+                gl_FragColor = vec4(col, 1.0);
+                #include <tonemapping_fragment>
+                #include <colorspace_fragment>
+            }
+        `
+    });
+}
+
 export function createGroundShader(asphaltMap, fogColor, fogDensity) {
     const uniforms = {
         uMap: { value: asphaltMap },

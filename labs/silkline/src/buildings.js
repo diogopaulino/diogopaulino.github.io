@@ -25,9 +25,9 @@ export function createMaterials(windowMap, facadeMap) {
             map: windowMap,
             emissiveMap: windowMap,
             emissive: new THREE.Color(PALETTE.window),
-            emissiveIntensity: 0.95,
-            roughness: 0.42,
-            metalness: 0.35
+            emissiveIntensity: 1.15,
+            roughness: 0.38,
+            metalness: 0.42
         }),
         stone: new THREE.MeshStandardMaterial({
             color: 0x2a2e38,
@@ -105,8 +105,8 @@ export function createEmpire(mats, x, z) {
     const h3 = 110;
     const spire = 78;
     g.add(mesh(BOX, mats.stone, 22, h1, 22, x, h1 / 2, z));
-    g.add(mesh(BOX, mats.glass, 16, h2, 16, x, h1 + h2 / 2, z));
-    g.add(mesh(BOX, mats.glass, 10, h3, 10, x, h1 + h2 + h3 / 2, z));
+    g.add(mesh(BOX, mats.facade || mats.glass, 16, h2, 16, x, h1 + h2 / 2, z));
+    g.add(mesh(BOX, mats.facade || mats.glass, 10, h3, 10, x, h1 + h2 + h3 / 2, z));
     const mastY = h1 + h2 + h3 + spire / 2;
     g.add(mesh(CYL, mats.light, 0.7, spire, 0.7, x, mastY, z));
     const beacon = mesh(CYL, mats.red, 1.4, 3.2, 1.4, x, h1 + h2 + h3 + spire + 2, z);
@@ -122,7 +122,7 @@ export function createEmpire(mats, x, z) {
 export function createChrysler(mats, x, z) {
     const g = new THREE.Group();
     g.add(mesh(BOX, mats.stone, 20, 88, 20, x, 44, z));
-    g.add(mesh(BOX, mats.glass, 14, 72, 14, x, 88 + 36, z));
+    g.add(mesh(BOX, mats.facade || mats.glass, 14, 72, 14, x, 88 + 36, z));
     g.add(mesh(BOX, mats.light, 8, 28, 8, x, 88 + 72 + 14, z));
     const crownY = 88 + 72 + 28 + 10;
     for (let i = 0; i < 8; i++) {
@@ -143,7 +143,7 @@ export function createChrysler(mats, x, z) {
 export function createWTC(mats, x, z) {
     const g = new THREE.Group();
     const h = 310;
-    const prism = mesh(BOX, mats.glass, 18, h, 18, x, h / 2, z);
+    const prism = mesh(BOX, mats.facade || mats.glass, 18, h, 18, x, h / 2, z);
     prism.rotation.y = Math.PI / 8;
     g.add(prism);
     g.add(mesh(CYL, mats.light, 0.55, 70, 0.55, x, h + 35, z));
