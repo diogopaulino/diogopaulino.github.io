@@ -14,10 +14,23 @@ const QUALITY = {
     low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1 }
 };
 
+function detectSoftwareGL() {
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return true;
+        const info = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
+    } catch {
+        return false;
+    }
+}
+
 function detectQuality() {
     const mobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
     const cores = navigator.hardwareConcurrency || 4;
-    if (mobile || cores <= 4) return 'low';
+    if (detectSoftwareGL() || mobile || cores <= 4) return 'low';
     if (cores <= 8) return 'medium';
     return 'high';
 }
@@ -146,7 +159,7 @@ class Orbis {
         this.controls.minDistance = 5.5;
         this.controls.maxDistance = 28;
         this.controls.autoRotate = this.autoRotate;
-        this.system.setOrbitVisible(true);
+        this.system.setSolo(-1);
         this.system.highlight(-1);
         if (cinematic) {
             this.camera.position.set(0, 7.2, 16);
@@ -160,7 +173,7 @@ class Orbis {
         if (index < 0 || index >= this.data.planets.length) return;
         this.focus = index;
         this.mode = 'planet';
-        this.system.setOrbitVisible(false);
+        this.system.setSolo(index);
         this.system.highlight(index);
         this.system.getPlanetWorldPos(index, this.planetPos);
         const r = this.system.getPlanetRadius(index);

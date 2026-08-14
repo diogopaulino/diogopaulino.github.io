@@ -477,6 +477,14 @@ export class StarSystem {
         return hits[0].object.userData.planetIndex ?? -1;
     }
 
+    setSolo(index) {
+        this.bodies.forEach((b, i) => {
+            b.root.visible = index < 0 || i === index;
+        });
+        this.orbitLines.visible = index < 0;
+        if (this.belt) this.belt.visible = index < 0;
+    }
+
     setOrbitVisible(visible) {
         this.orbitLines.visible = visible;
         if (this.belt) this.belt.visible = visible;
