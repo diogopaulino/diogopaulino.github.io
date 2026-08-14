@@ -41,7 +41,7 @@ Um laboratório aberto com **51 experimentos** que rodam direto no navegador —
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
 | ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
 | 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
-| 🪸 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Voo da arraia-manta num recife bioluminescente — anéis de luz, pérolas e o templo náutilo |
+| 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
 | 🪼 **[Noctiluca](https://diogopaulino.com.br/labs/noctiluca/)** | Medusa de luz no abismo — pulse no ritmo, atravesse anéis de ruína e desça a cidade submersa |
 | 🦕 **[Ilha do Âmbar](https://diogopaulino.com.br/labs/ilha-do-ambar/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |

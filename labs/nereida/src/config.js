@@ -1,163 +1,98 @@
 /**
- * Nereida — escala do recife, física do voo e presets.
+ * Nereida — constantes, paleta e fórmulas da natação.
  *
- * Unidades ≈ metros. A arraia segue um spline (a “corrente”) com liberdade
- * lateral; o impulso é um tanque que recarrega e explode em velocidade.
+ * Física (água viscosa, sem gravidade efetiva):
+ *   a = input * ACCEL
+ *   v ← v + a·dt
+ *   v ← v · exp(-DRAG · dt)
+ *   p ← p + v·dt
+ *   y ∈ [FLOOR + CLEARANCE, SURFACE - CLEARANCE]
+ *   se |xz| > BOUND: projeta de volta e amortece v.xz
  *
- * Fórmulas (arcade, não Navier–Stokes):
- *   v'     = v + (vAlvo − v) * (1 − exp(−λ * dt))          // amortecimento exp.
- *   vAlvo  = cruise * maré + boost * BOOST_MUL + anelBonus
- *   roll   = damp(roll, −steerX * MAX_BANK, 8, dt)
- *   pitch  = damp(pitch,  steerY * MAX_PITCH, 7, dt)
- *   pos   += forward * v * dt
- *   erro   = pos − path(s);  se |erro| > corredor, puxa com k * (1 − rMax/|erro|)
- *   combo  = min(12, combo + 1) ao atravessar anel; decai se dtGap > COMBO_WINDOW
- *   score  += pérola * 40 * combo + anel * 80 * combo + pirueta * 120
+ * Coleta:  |p − p_maré| < COLLECT_R  e  maré ainda visível.
+ *
+ * Sonar: raio(t) = SONAR_SPEED · t, t ∈ [0, SONAR_LIFE].
+ *   ping se a maré está dentro do raio neste frame.
+ *
+ * Despertar α = coletadas / TOTAL_TIDES ∈ [0, 1]
+ *   whaleRadius  = lerp(WHALE_R0, WHALE_R1, α)
+ *   fogDensity   = lerp(FOG0, FOG1, α)
+ *   coralGlow    = lerp(0.18, 1.15, α)
  */
 
-export const STORAGE_KEY = 'nereida-v1';
+export const TOTAL_TIDES = 7;
 
-export const COURSE = {
-    length: 520,
-    /** Raio do corredor mole em torno do spline. */
-    corridor: 16,
-    /** Amostragem do spline para câmera e corrente (m). */
-    sample: 0.85
-};
+export const FLOOR = 0;
+export const SURFACE = 26;
+export const BOUND = 46;
+export const CLEARANCE = 1.35;
 
-export const PHYS = {
-    cruise: 18,
-    maxSpeed: 46,
-    boostMul: 1.85,
-    boostCost: 0.38,
-    boostRegen: 0.22,
-    steer: 1.55,
-    maxBank: 0.72,
-    maxPitch: 0.48,
-    railK: 3.4,
-    dragLambda: 2.6,
-    radius: 1.15,
-    invuln: 1.25,
-    comboWindow: 2.4,
-    rollDuration: 0.72,
-    hitSlow: 0.55
-};
+export const ACCEL = 16;
+export const DRAG = 1.65;
+export const MAX_SPEED = 9.2;
+export const VERTICAL = 7.4;
 
-export const CAMERA = {
-    chase: { dist: 9.2, height: 3.1, look: 4.8, fov: 62 },
-    shoulder: { dist: 5.4, height: 1.8, look: 5.2, fov: 72 },
-    cinematic: { dist: 16, height: 6.2, look: 3.2, fov: 52 },
-    mouse: 0.0024
-};
+export const COLLECT_R = 2.35;
+export const SONAR_SPEED = 18;
+export const SONAR_LIFE = 1.35;
+export const SONAR_PING_R = 22;
 
-export const DIFFICULTY = {
-    lagoon: {
-        id: 'lagoon',
-        label: 'Lagoa',
-        blurb: 'Corrente mansa, corredor largo, pérolas à vontade. Para flanar.',
-        lives: 5,
-        speed: 0.84,
-        corridor: 19,
-        pearls: 1.25,
-        jellies: 0.65
-    },
-    tide: {
-        id: 'tide',
-        label: 'Maré',
-        blurb: 'O ritmo certo: anéis no ponto, a baleia no meio, o templo no fim.',
-        lives: 3,
-        speed: 1,
-        corridor: 16,
-        pearls: 1,
-        jellies: 1
-    },
-    abyss: {
-        id: 'abyss',
-        label: 'Abismo',
-        blurb: 'Corrente cruel, corredor estreito. Encadeie ou a escuridão te come.',
-        lives: 2,
-        speed: 1.22,
-        corridor: 12.5,
-        pearls: 0.85,
-        jellies: 1.35
-    }
-};
+export const WHALE_R0 = 34;
+export const WHALE_R1 = 13;
+
+export const FOG0 = 0.015;
+export const FOG1 = 0.009;
+export const FOG_COLOR = 0x06202c;
 
 export const QUALITY = {
     low: {
+        pr: 1,
         antialias: false,
-        pixelRatio: 1,
         bloom: false,
         shadows: false,
-        caustics: false,
+        kelp: 28,
         fish: 48,
-        coral: 70,
-        kelp: 40,
-        bubbles: 50,
-        rays: 4
+        jellies: 5,
+        plankton: 160,
+        rays: 0,
+        coral: 18
     },
     medium: {
+        pr: 1.35,
         antialias: true,
-        pixelRatio: 1.35,
         bloom: true,
         shadows: true,
-        caustics: true,
-        fish: 110,
-        coral: 130,
-        kelp: 70,
-        bubbles: 90,
-        rays: 8
+        kelp: 48,
+        fish: 90,
+        jellies: 8,
+        plankton: 280,
+        rays: 7,
+        coral: 28
     },
     high: {
+        pr: 1.7,
         antialias: true,
-        pixelRatio: 1.7,
         bloom: true,
         shadows: true,
-        caustics: true,
-        fish: 180,
-        coral: 190,
-        kelp: 110,
-        bubbles: 140,
-        rays: 12
+        kelp: 70,
+        fish: 130,
+        jellies: 11,
+        plankton: 420,
+        rays: 10,
+        coral: 40
     }
 };
 
-export const PALETTE = {
-    abyss: 0x02141c,
-    fog: 0x053445,
-    lumen: 0x5ef0d8,
-    pearl: 0xf4d9a6,
-    coral: 0xff7a8a,
-    sand: 0xc4a574,
-    kelp: 0x1f6b4a
-};
-
-export const ZONES = [
-    { t: 0, name: 'Jardim de coral', fog: 0.016, tint: 0x0a5a62 },
-    { t: 0.28, name: 'Nau partida', fog: 0.02, tint: 0x063048 },
-    { t: 0.58, name: 'Catedral de lúmen', fog: 0.024, tint: 0x1a1848 },
-    { t: 0.88, name: 'Templo náutilo', fog: 0.018, tint: 0x06283a }
+export const TIDES = [
+    { pos: [0.4, 4.2, -18.5], name: 'Anêmona', hint: 'O jardim acendeu.' },
+    { pos: [17.2, 5.6, -7.4], name: 'Leque', hint: 'Os corais cantam em silêncio.' },
+    { pos: [-18.6, 5.1, 5.2], name: 'Kelp', hint: 'A floresta balança com você.' },
+    { pos: [9.4, 11.8, 15.6], name: 'Cardume', hint: 'Os peixes aprenderam o seu rastro.' },
+    { pos: [-13.2, 13.6, -11.4], name: 'Medusas', hint: 'As águas-vivas pulsam mais fundo.' },
+    { pos: [21.5, 7.8, 9.6], name: 'Arco', hint: 'A pedra lembra a lua.' },
+    { pos: [0, 9.4, 0.6], name: 'Coração', hint: 'O santuário reconhece Nereida.' }
 ];
 
-export function loadSettings() {
-    try {
-        return {
-            quality: 'auto',
-            volume: 70,
-            muted: false,
-            difficulty: 'tide',
-            best: 0,
-            ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-        };
-    } catch {
-        return { quality: 'auto', volume: 70, muted: false, difficulty: 'tide', best: 0 };
-    }
-}
-
-export function saveSettings(s) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    } catch {
-        /* private mode */
-    }
+export function lerp(a, b, t) {
+    return a + (b - a) * t;
 }
