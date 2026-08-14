@@ -1,154 +1,155 @@
 /**
- * Teclado, mouse e toque. steerX/steerY ∈ [-1, 1].
+ * Teclado, mouse e stick virtual. A natação lê `axis` (x, y, z) a cada frame.
+ * Espaço dispara o sonar (consumePulse).
  */
 
-const MOVE_X = { KeyA: -1, ArrowLeft: -1, KeyD: 1, ArrowRight: 1 };
-const MOVE_Y = { KeyW: 1, ArrowUp: 1, KeyS: -1, ArrowDown: -1 };
-
-const ACTIONS = {
-    KeyP: 'pause',
-    Escape: 'pause',
-    KeyM: 'mute',
-    KeyC: 'camera',
-    Enter: 'confirm',
-    KeyQ: 'rollLeft',
-    KeyE: 'rollRight'
-};
-
 export class Input {
-    constructor() {
-        this.steerX = 0;
-        this.steerY = 0;
-        this.lookX = 0;
-        this.lookY = 0;
-        this.boost = false;
+    constructor(canvas) {
+        this.canvas = canvas;
         this.keys = new Set();
+        this.axis = { x: 0, y: 0, z: 0 };
+        this.look = { dx: 0, dy: 0 };
+        this.zoom = 0;
+        this.pulsePressed = false;
+        this.dragging = false;
+        this.pointers = new Map();
+        this.stick = { x: 0, y: 0 };
         this.listeners = new Map();
-        this.enabled = true;
-        this.pointerLocked = false;
-        this._lookAccX = 0;
-        this._lookAccY = 0;
-        this.touchLook = { x: 0, y: 0 };
-        this.touchBoost = false;
-        this.touchSteer = { x: 0, y: 0 };
-
-        this._onKeyDown = (e) => {
-            if (ACTIONS[e.code]) {
-                if (ACTIONS[e.code] === 'confirm' && document.activeElement?.tagName === 'BUTTON') return;
-                this.emit(ACTIONS[e.code]);
-                e.preventDefault();
-                return;
-            }
-            if (
-                MOVE_X[e.code] !== undefined ||
-                MOVE_Y[e.code] !== undefined ||
-                e.code === 'Space'
-            ) {
-                this.keys.add(e.code);
-                e.preventDefault();
-            }
-        };
-        this._onKeyUp = (e) => this.keys.delete(e.code);
-        this._onMouseMove = (e) => {
-            if (!this.pointerLocked) return;
-            this._lookAccX += e.movementX || 0;
-            this._lookAccY += e.movementY || 0;
-        };
-        this._onPointerLock = () => {
-            this.pointerLocked = document.pointerLockElement != null;
-        };
-
-        window.addEventListener('keydown', this._onKeyDown);
-        window.addEventListener('keyup', this._onKeyUp);
-        window.addEventListener('mousemove', this._onMouseMove);
-        document.addEventListener('pointerlockchange', this._onPointerLock);
+        this._bind();
     }
 
-    bindTouch({ lookZone, boost, roll }) {
-        const steerFrom = (el, e) => {
-            const r = el.getBoundingClientRect();
-            const t = e.touches?.[0] || e;
-            const x = ((t.clientX - r.left) / r.width) * 2 - 1;
-            const y = -(((t.clientY - r.top) / r.height) * 2 - 1);
-            this.touchSteer.x = Math.max(-1, Math.min(1, x * 1.4));
-            this.touchSteer.y = Math.max(-1, Math.min(1, y * 1.4));
-        };
-        lookZone.addEventListener('pointerdown', (e) => {
-            lookZone.setPointerCapture(e.pointerId);
-            steerFrom(lookZone, e);
-        });
-        lookZone.addEventListener('pointermove', (e) => {
-            if (e.buttons || e.pressure) steerFrom(lookZone, e);
-        });
-        const clearSteer = () => {
-            this.touchSteer.x = 0;
-            this.touchSteer.y = 0;
-        };
-        lookZone.addEventListener('pointerup', clearSteer);
-        lookZone.addEventListener('pointercancel', clearSteer);
-        lookZone.addEventListener('pointerleave', clearSteer);
+    on(name, fn) {
+        if (!this.listeners.has(name)) this.listeners.set(name, new Set());
+        this.listeners.get(name).add(fn);
+    }
 
-        const hold = (el, flag) => {
-            const on = (e) => {
+    emit(name) {
+        this.listeners.get(name)?.forEach((fn) => fn());
+    }
+
+    consumePulse() {
+        const v = this.pulsePressed;
+        this.pulsePressed = false;
+        return v;
+    }
+
+    _bind() {
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            if (e.code === 'KeyP' || e.code === 'Escape') this.emit('pause');
+            if (e.code === 'KeyM') this.emit('mute');
+            if (e.code === 'Space') {
+                this.pulsePressed = true;
                 e.preventDefault();
-                this[flag] = true;
-            };
-            const off = () => {
-                this[flag] = false;
-            };
-            el.addEventListener('pointerdown', on);
-            el.addEventListener('pointerup', off);
-            el.addEventListener('pointercancel', off);
-            el.addEventListener('pointerleave', off);
+            }
+            this.keys.add(e.code);
+        }, { passive: false });
+
+        window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+        window.addEventListener('blur', () => {
+            this.keys.clear();
+            this.stick.x = this.stick.y = 0;
+        });
+
+        const el = this.canvas;
+        el.addEventListener('pointerdown', (e) => {
+            el.setPointerCapture(e.pointerId);
+            this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (this.pointers.size === 1) {
+                this.dragging = true;
+                el.classList.add('is-dragging');
+            }
+        });
+        el.addEventListener('pointermove', (e) => {
+            const prev = this.pointers.get(e.pointerId);
+            if (!prev) return;
+            this.look.dx += e.clientX - prev.x;
+            this.look.dy += e.clientY - prev.y;
+            this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        });
+        const up = (e) => {
+            this.pointers.delete(e.pointerId);
+            if (this.pointers.size === 0) {
+                this.dragging = false;
+                el.classList.remove('is-dragging');
+            }
         };
-        hold(boost, 'touchBoost');
-        roll.addEventListener('pointerdown', (e) => {
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointercancel', up);
+        el.addEventListener('wheel', (e) => {
             e.preventDefault();
-            this.emit('rollRight');
+            this.zoom += e.deltaY;
+        }, { passive: false });
+        el.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    bindTouch({ stick, knob, up, down, pulse }) {
+        if (!stick) return;
+        const setKnob = (x, y) => {
+            knob.style.transform = `translate(${x * 28}px, ${y * 28}px)`;
+        };
+        const onMove = (e) => {
+            const r = stick.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const p = e.touches ? e.touches[0] : e;
+            let x = (p.clientX - cx) / (r.width * 0.42);
+            let y = (p.clientY - cy) / (r.height * 0.42);
+            const mag = Math.hypot(x, y) || 1;
+            if (mag > 1) { x /= mag; y /= mag; }
+            this.stick.x = x;
+            this.stick.y = y;
+            setKnob(x, y);
+        };
+        const end = () => {
+            this.stick.x = this.stick.y = 0;
+            setKnob(0, 0);
+        };
+        stick.addEventListener('pointerdown', (e) => {
+            stick.setPointerCapture(e.pointerId);
+            onMove(e);
         });
-    }
+        stick.addEventListener('pointermove', (e) => {
+            if (e.pressure === 0 && e.buttons === 0) return;
+            onMove(e);
+        });
+        stick.addEventListener('pointerup', end);
+        stick.addEventListener('pointercancel', end);
 
-    on(action, fn) {
-        if (!this.listeners.has(action)) this.listeners.set(action, new Set());
-        this.listeners.get(action).add(fn);
-    }
-
-    emit(action) {
-        this.listeners.get(action)?.forEach((fn) => fn());
-    }
-
-    requestLock(el) {
-        el?.requestPointerLock?.();
-    }
-
-    exitLock() {
-        if (document.pointerLockElement) document.exitPointerLock();
+        const hold = (btn, code) => {
+            if (!btn) return;
+            const down = (e) => { e.preventDefault(); this.keys.add(code); };
+            const upFn = () => this.keys.delete(code);
+            btn.addEventListener('pointerdown', down);
+            btn.addEventListener('pointerup', upFn);
+            btn.addEventListener('pointerleave', upFn);
+            btn.addEventListener('pointercancel', upFn);
+        };
+        hold(up, 'ShiftLeft');
+        hold(down, 'ControlLeft');
+        pulse?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.pulsePressed = true;
+        });
     }
 
     sample() {
-        this.lookX = this._lookAccX;
-        this.lookY = this._lookAccY;
-        this._lookAccX = 0;
-        this._lookAccY = 0;
-
-        if (!this.enabled) {
-            this.steerX = 0;
-            this.steerY = 0;
-            this.boost = false;
-            return this;
-        }
-
-        let mx = this.touchSteer.x;
-        let my = this.touchSteer.y;
-        for (const code of this.keys) {
-            if (MOVE_X[code] !== undefined) mx += MOVE_X[code];
-            if (MOVE_Y[code] !== undefined) my += MOVE_Y[code];
-        }
-        mx += this.lookX * 0.04;
-        my -= this.lookY * 0.04;
-        this.steerX = Math.max(-1, Math.min(1, mx));
-        this.steerY = Math.max(-1, Math.min(1, my));
-        this.boost = this.touchBoost || this.keys.has('Space');
-        return this;
+        let x = this.stick.x;
+        let z = this.stick.y;
+        if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) x -= 1;
+        if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) x += 1;
+        if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) z -= 1;
+        if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) z += 1;
+        let y = 0;
+        if (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.keys.has('KeyR')) y += 1;
+        if (this.keys.has('ControlLeft') || this.keys.has('ControlRight') || this.keys.has('KeyF') || this.keys.has('KeyC')) y -= 1;
+        const mag = Math.hypot(x, z) || 1;
+        this.axis.x = x / (mag > 1 ? mag : 1);
+        this.axis.z = z / (mag > 1 ? mag : 1);
+        this.axis.y = y;
+        const look = { dx: this.look.dx, dy: this.look.dy, zoom: this.zoom };
+        this.look.dx = this.look.dy = 0;
+        this.zoom = 0;
+        return look;
     }
 }
