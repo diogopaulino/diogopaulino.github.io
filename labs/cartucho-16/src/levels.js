@@ -85,7 +85,7 @@ function parse(tiles, signs = {}, blocks = {}) {
                 entities.push({ type: 'mover', x: px, y: py, w: 48, h: 8, vx: 0.7, minX: px - 32, maxX: px + 80, origin: py });
                 solids[y][x] = '.';
             } else {
-                const ent = { type: kind, x: px, y: py, w: 16, h: 16, vx: kind === 'walker' || kind === 'armored' ? -0.45 : 0, vy: 0, hp: kind === 'armored' ? 2 : 1, facing: -1, alive: true };
+                const ent = { type: kind, x: px, y: py, w: 16, h: 16, vx: kind === 'walker' || kind === 'armored' ? (px < 80 ? 0.45 : -0.45) : 0, vy: 0, hp: kind === 'armored' ? 2 : 1, facing: -1, alive: true };
                 if (kind === 'flyer') {
                     ent.y0 = py;
                     ent.vx = 0.55;
@@ -119,7 +119,7 @@ function pradaria() {
     put(g, 2, 11, 's');
     put(g, 6, 10, '@');
     coins(g, 8, 9, 4);
-    put(g, 12, 11, 'e');
+    put(g, 18, 11, 'e');
     fill(g, 16, 9, 1, 1, '?');
     fill(g, 17, 9, 1, 1, 'B');
     fill(g, 18, 9, 1, 1, '?');

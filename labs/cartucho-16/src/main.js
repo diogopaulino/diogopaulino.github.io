@@ -41,6 +41,7 @@ let simApi = null;
 let selected = 0;
 let selectHold = 0;
 let continueT = 10;
+let canvasTap = false;
 let muted = save.muted;
 let crtOn = save.crt !== false;
 let lastTs = 0;
@@ -158,7 +159,8 @@ function drawTitle(pad) {
         attack: 0, star: 0, spin: 0, dash: 0, hurt: false,
     });
 
-    if (pad.startPressed || pad.jumpPressed || pad.attackPressed) {
+    if (pad.startPressed || pad.jumpPressed || pad.attackPressed || canvasTap) {
+        canvasTap = false;
         audio.unlock();
         audio.playSfx('start');
         audio.playSong('title');
@@ -209,7 +211,8 @@ function drawSelect(pad) {
     text(ctx, cur.name, 14, 188, '#f8e038', 1);
     text(ctx, cur.homage, 14, 200, '#90b0d0', 1);
 
-    if ((pad.startPressed || pad.jumpPressed) && unlocked(selected)) {
+    if ((pad.startPressed || pad.jumpPressed || canvasTap) && unlocked(selected)) {
+        canvasTap = false;
         audio.playSfx('insert');
         persist.lives = Math.max(persist.lives, 1);
         startWorld(selected);
@@ -311,7 +314,8 @@ function drawDied(pad) {
     centerText(ctx, 'LEO CAIU', 80, '#f83058', 2);
     centerText(ctx, 'VIDAS x' + Math.max(0, simApi.sim.lives), 108, '#f8f8f8', 1);
     centerText(ctx, 'START PARA RETRY', 140, '#f8e038', 1);
-    if (pad.startPressed || pad.jumpPressed) {
+    if (pad.startPressed || pad.jumpPressed || canvasTap) {
+        canvasTap = false;
         const idx = simApi.sim.worldIndex;
         Object.assign(persist, simApi.snapshot());
         persist.lives = Math.max(0, persist.lives);
@@ -344,7 +348,7 @@ function drawGameOver(pad) {
         continueT -= 1;
         audio.playSfx('continue');
     }
-    if (pad.startPressed || pad.jumpPressed) {
+    if (pad.startPressed || pad.jumpPressed || canvasTap) {
         persist.lives = PLAYER.START_LIVES;
         continueT = 10;
         startWorld(simApi?.sim.worldIndex || selected);
@@ -400,7 +404,8 @@ function tick() {
         if (sceneT === 12) audio.playSfx('boot');
         if (sceneT === 170) audio.playSfx('insert');
         drawBoot();
-        if (sceneT > 220 || pad.startPressed || pad.jumpPressed) {
+        if (sceneT > 220 || pad.startPressed || pad.jumpPressed || canvasTap) {
+            canvasTap = false;
             audio.playSong('title');
             go('title', false);
             scene = 'title';
@@ -464,6 +469,7 @@ function tick() {
         ctx.fillStyle = `rgba(0,0,0,${fade})`;
         ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
+    canvasTap = false;
 }
 
 function loop(ts) {
@@ -480,5 +486,7 @@ function loop(ts) {
 
 requestAnimationFrame(loop);
 
-document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
-document.addEventListener('keydown', () => audio.unlock(), { once: true });
+canvas.addEventListener('pointerdown', () => {
+    audio.unlock();
+    canvasTap = true;
+});

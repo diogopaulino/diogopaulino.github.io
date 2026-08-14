@@ -52,7 +52,7 @@ export function createSim(worldIndex, audio, persist) {
         attackCd: 0,
         charge: 0,
         dash: 0,
-        invuln: 0,
+        invuln: 80,
         star: 0,
         spin: 0,
         running: false,
