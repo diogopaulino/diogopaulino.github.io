@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#041018">
+    <title>Aurelia — medusa de luz no abismo | Labs</title>
+    <meta name="description"
+        content="Voe como uma medusa bioluminescente por uma cidade submersa em three.js. Pulse no ritmo, atravesse anéis de ruína e desça o abismo.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/aurelia/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/aurelia/">
+    <meta property="og:title" content="Aurelia">
+    <meta property="og:description"
+        content="Arcade 3D submarino: medusa de luz, cáusticas, ruínas e o pulso da maré. Sem motor — só three.js.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Aurelia">
+    <meta name="twitter:description" content="Uma medusa de luz no abismo, em three.js. Pulse, colete, desça.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Aurelia" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◉</span>
+                    <span>Aurelia</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Cidade submersa em 3D com a medusa de luz"></canvas>
+
+        <div class="water-overlay" aria-hidden="true">
+            <div class="caustic-veil"></div>
+            <div class="vignette"></div>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel depth-panel">
+                    <span class="hud-label">Profundidade</span>
+                    <strong id="depthValue" class="mono depth-num">0 m</strong>
+                    <span id="layerName" class="hud-tag">Rasa</span>
+                </div>
+                <div class="panel pulse-panel">
+                    <span class="hud-label">Pulso</span>
+                    <div class="beat-row">
+                        <i id="beatDot" class="beat-dot" data-on="false"></i>
+                        <strong>no ritmo</strong>
+                    </div>
+                    <div class="boost-meter" title="Impulso">
+                        <i id="pulseFill"></i>
+                    </div>
+                    <div class="boost-meter glow-meter" title="Brilho">
+                        <i id="glowFill"></i>
+                    </div>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Lúmens</span>
+                        <strong id="lumenValue" class="mono">00</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Combo</span>
+                        <strong id="comboValue" class="mono combo">×1</strong>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="steer-zone" id="steerZone" aria-label="Arraste para nadar">
+                    <span class="steer-hint">nadar</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-boost" id="touchPulse" aria-label="Pulsar">PULSO</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">◉</span>
+                <h1>AURELIA</h1>
+                <p id="loadingText">A superfície fecha…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · abismo · bioluminescência</p>
+                    <h1>Aure<i>lia</i></h1>
+                    <p class="lede">Você é uma medusa de luz. Pulse para nadar, atravesse os anéis
+                        das ruínas e colete lúmens antes que o brilho se apague. No tempo da música,
+                        o pulso rende impulso — e o abismo muda de cor conforme você desce.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Maré</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>WASD</kbd> ou <kbd>←↑↓→</kbd> esterçar</span>
+                            <span><kbd>Espaço</kbd> / clique pulso · mouse olhar</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> mudo</span>
+                            <span><kbd>Enter</kbd> mergulhar</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">74</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="74">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor descida: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Mergulhar</span>
+                        <i aria-hidden="true">↓</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> SUSPENSO</p>
+                <h2>A corrente<br>espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> A LUZ SE APAGOU</p>
+                <h2>O abismo<br>ficou mudo.</h2>
+                <div id="overStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Outro mergulho</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> Falha ao afundar</p>
+                <h2>A água não<br>abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
