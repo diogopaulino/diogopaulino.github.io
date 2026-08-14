@@ -143,7 +143,7 @@ export class World {
     scatterLavender() {
         const count = this.quality.lavender;
         const geo = lavenderGeometry();
-        const mat = lavenderMaterial();
+        const mat = lavenderMaterial(this.quality.id !== 'low');
         this.windMats.push(mat);
         const mesh = new THREE.InstancedMesh(geo, mat, count);
         mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -180,7 +180,7 @@ export class World {
     scatterWheat() {
         const count = this.quality.wheat;
         const geo = lavenderGeometry();
-        const mat = wheatMaterial();
+        const mat = wheatMaterial(this.quality.id !== 'low');
         this.windMats.push(mat);
         const mesh = new THREE.InstancedMesh(geo, mat, count);
         mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);

@@ -83,7 +83,7 @@ export function lavenderGeometry() {
     return geo;
 }
 
-export function lavenderMaterial() {
+export function lavenderMaterial(wind = true) {
     const m = new THREE.MeshStandardMaterial({
         map: lavenderTexture(),
         color: 0xffffff,
@@ -94,11 +94,11 @@ export function lavenderMaterial() {
         alphaTest: 0.22,
         depthWrite: false
     });
-    applyWind(m, 0.18);
+    if (wind) applyWind(m, 0.18);
     return m;
 }
 
-export function wheatMaterial() {
+export function wheatMaterial(wind = true) {
     const m = new THREE.MeshStandardMaterial({
         map: wheatTexture(),
         color: 0xffffff,
@@ -109,7 +109,7 @@ export function wheatMaterial() {
         alphaTest: 0.22,
         depthWrite: false
     });
-    applyWind(m, 0.28);
+    if (wind) applyWind(m, 0.28);
     return m;
 }
 
