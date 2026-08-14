@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=6">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -100,6 +100,7 @@
                 <span class="reticle-dot"></span>
                 <span id="reticleLabel" class="reticle-label"></span>
             </div>
+            <p id="hintBar" class="hint-bar" aria-hidden="true">Aponte o navio e clique — a mira trava sozinha nos inimigos</p>
             <div class="throw-meter" title="Canhão pronto">
                 <i id="throwFill"></i>
             </div>
@@ -141,9 +142,8 @@
                 <header class="menu-head">
                     <p class="eyebrow"><i></i> three.js · ondas de Gerstner · céu procedural</p>
                     <h1>River <span>Knight</span></h1>
-                    <p class="lede">A princesa está presa na torre de Morvain. Entre o seu drakkar e o
-                        castelo há quatro quilômetros de rio, arqueiros nas margens, barcos de guerra e
-                        uma barcaça negra bloqueando o portão. Reme.</p>
+                    <p class="lede">A princesa está presa na torre de Morvain. O barco já avança — você
+                        aponta, dispara e desvia. A mira trava sozinha no alvo mais próximo.</p>
                 </header>
 
                 <div class="menu-grid">
@@ -248,7 +248,7 @@
     </main>
 
     <script src="/labs/shared.js?v=6" defer></script>
-    <script type="module" src="src/main.js?v=13"></script>
+    <script type="module" src="src/main.js?v=15"></script>
 </body>
 
 </html>

@@ -15,30 +15,30 @@ export const CASTLE_Z = -COURSE_LENGTH;
 export const BOSS_Z = CASTLE_Z + 240;
 
 export const BOAT = {
-    baseSpeed: 26,
-    boostSpeed: 41,
-    brakeSpeed: 13,
-    accel: 16,
-    strafeSpeed: 15.5,
-    strafeAccel: 46,
+    baseSpeed: 32,
+    boostSpeed: 49,
+    brakeSpeed: 15,
+    accel: 18,
+    strafeSpeed: 17.5,
+    strafeAccel: 52,
     maxHull: 5,
     /** Recarga de canhão (uma salva). */
-    throwCooldown: 0.78,
-    furyCooldown: 0.34,
-    invulnAfterHit: 1.4,
-    bankLimitPadding: 3.4
+    throwCooldown: 0.56,
+    furyCooldown: 0.26,
+    invulnAfterHit: 1.65,
+    bankLimitPadding: 3.2
 };
 
 /** Canhão de bordo — mira automática (estilo jogos de navio). */
 export const CANNON = {
-    speed: 108,
+    speed: 118,
     gravity: 11,
     life: 3.4,
     damage: 1,
     /** Alcance de trava automática. */
-    assistRange: 155,
-    /** Cone bem amplo (~87°): só precisa apontar o navio. */
-    assistCone: 0.05,
+    assistRange: 175,
+    /** Cone bem amplo: só precisa apontar o navio. */
+    assistCone: 0.02,
     loft: 6.2,
     ballRadius: 1.85
 };
@@ -51,8 +51,8 @@ export const DIFFICULTY = {
         id: 'squire',
         label: 'Escudeiro',
         blurb: 'Rio calmo, inimigos raros. Ideal para conhecer o trecho.',
-        spawnScale: 0.68,
-        enemyFireScale: 0.72,
+        spawnScale: 0.62,
+        enemyFireScale: 0.58,
         damageScale: 1,
         hull: 6,
         scoreScale: 0.8
@@ -106,22 +106,28 @@ export const QUALITY = {
         terrainSegments: 150,
         waterSegments: 110,
         scatterScale: 0.5,
-        fogDensity: 0.0024,
-        drawDistance: 620
+        fogDensity: 0.0022,
+        drawDistance: 620,
+        pointLights: false,
+        reeds: 160,
+        birds: 0
     },
     medium: {
         id: 'medium',
         label: 'Equilibrada',
-        pixelRatio: 1.35,
+        pixelRatio: 1.25,
         antialias: true,
         shadows: true,
         shadowSize: 1536,
         bloom: true,
-        terrainSegments: 216,
-        waterSegments: 168,
-        scatterScale: 0.8,
-        fogDensity: 0.0017,
-        drawDistance: 900
+        terrainSegments: 200,
+        waterSegments: 156,
+        scatterScale: 0.85,
+        fogDensity: 0.0015,
+        drawDistance: 900,
+        pointLights: false,
+        reeds: 280,
+        birds: 10
     },
     high: {
         id: 'high',
@@ -131,11 +137,14 @@ export const QUALITY = {
         shadows: true,
         shadowSize: 2048,
         bloom: true,
-        terrainSegments: 268,
-        waterSegments: 220,
+        terrainSegments: 248,
+        waterSegments: 200,
         scatterScale: 1,
-        fogDensity: 0.0014,
-        drawDistance: 1150
+        fogDensity: 0.00125,
+        drawDistance: 1150,
+        pointLights: true,
+        reeds: 380,
+        birds: 14
     }
 };
 
@@ -146,52 +155,61 @@ export const QUALITY = {
 export const SKY_STOPS = [
     {
         at: 0,
-        zenith: [0.09, 0.19, 0.38],
-        horizon: [0.52, 0.50, 0.50],
-        ground: [0.11, 0.12, 0.14],
-        sun: [1.0, 0.88, 0.68],
-        sunDir: [0.80, 0.28, -0.53],
-        fog: [0.44, 0.47, 0.54],
-        light: [1.0, 0.94, 0.84],
-        lightIntensity: 1.35,
-        ambient: [0.30, 0.38, 0.52]
+        zenith: [0.16, 0.32, 0.58],
+        horizon: [0.78, 0.72, 0.62],
+        ground: [0.16, 0.18, 0.16],
+        sun: [1.0, 0.93, 0.74],
+        sunDir: [0.62, 0.42, -0.66],
+        fog: [0.62, 0.68, 0.72],
+        light: [1.0, 0.96, 0.88],
+        lightIntensity: 1.72,
+        ambient: [0.38, 0.46, 0.58]
     },
     {
         at: 0.45,
-        zenith: [0.07, 0.16, 0.40],
-        horizon: [0.82, 0.50, 0.24],
-        ground: [0.14, 0.11, 0.10],
-        sun: [1.0, 0.74, 0.38],
-        sunDir: [0.90, 0.20, -0.39],
-        fog: [0.52, 0.38, 0.30],
-        light: [1.0, 0.80, 0.56],
-        lightIntensity: 1.5,
-        ambient: [0.30, 0.32, 0.46]
+        zenith: [0.10, 0.22, 0.48],
+        horizon: [0.92, 0.58, 0.28],
+        ground: [0.16, 0.12, 0.10],
+        sun: [1.0, 0.78, 0.42],
+        sunDir: [0.84, 0.28, -0.46],
+        fog: [0.58, 0.42, 0.32],
+        light: [1.0, 0.84, 0.58],
+        lightIntensity: 1.68,
+        ambient: [0.36, 0.34, 0.44]
     },
     {
         at: 0.82,
-        zenith: [0.035, 0.055, 0.17],
-        horizon: [0.60, 0.21, 0.14],
-        ground: [0.09, 0.06, 0.08],
-        sun: [1.0, 0.46, 0.22],
-        sunDir: [0.62, 0.11, -0.78],
-        fog: [0.27, 0.15, 0.17],
-        light: [1.0, 0.56, 0.34],
-        lightIntensity: 1.25,
-        ambient: [0.20, 0.21, 0.36]
+        zenith: [0.05, 0.08, 0.22],
+        horizon: [0.72, 0.28, 0.16],
+        ground: [0.10, 0.06, 0.07],
+        sun: [1.0, 0.52, 0.24],
+        sunDir: [0.58, 0.16, -0.80],
+        fog: [0.30, 0.16, 0.16],
+        light: [1.0, 0.60, 0.36],
+        lightIntensity: 1.38,
+        ambient: [0.24, 0.22, 0.36]
     },
     {
         at: 1,
-        zenith: [0.018, 0.026, 0.085],
-        horizon: [0.32, 0.10, 0.11],
+        zenith: [0.022, 0.032, 0.10],
+        horizon: [0.38, 0.12, 0.12],
         ground: [0.05, 0.035, 0.055],
-        sun: [1.0, 0.36, 0.18],
-        sunDir: [0.34, 0.05, -0.94],
-        fog: [0.14, 0.08, 0.11],
-        light: [1.0, 0.44, 0.28],
-        lightIntensity: 1.05,
-        ambient: [0.16, 0.17, 0.32]
+        sun: [1.0, 0.40, 0.20],
+        sunDir: [0.32, 0.08, -0.94],
+        fog: [0.16, 0.08, 0.10],
+        light: [1.0, 0.48, 0.30],
+        lightIntensity: 1.12,
+        ambient: [0.18, 0.18, 0.32]
     }
+];
+
+/** Batidas narrativas — o rio deixa de ser um corredor vazio. */
+export const LANDMARKS = [
+    { at: 0.04, text: 'O vale de Eld' },
+    { at: 0.22, text: 'As corredeiras' },
+    { at: 0.48, text: 'As torres de vigia' },
+    { at: 0.72, text: 'O desfiladeiro de Morvain' },
+    { at: 0.90, text: 'As muralhas à vista!' }
 ];
 
 export const COLORS = {

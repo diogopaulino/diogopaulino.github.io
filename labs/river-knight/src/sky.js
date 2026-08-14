@@ -8,7 +8,7 @@
  */
 
 import * as THREE from 'three';
-import { SKY_STOPS } from './config.js';
+import { SKY_STOPS } from './config.js?v=14';
 
 export const SKY_GLSL = /* glsl */ `
 uniform vec3 uZenith;
@@ -182,9 +182,12 @@ export function createSky(uniforms) {
                 float up = max(dir.y, 0.015);
                 vec2 cp = dir.xz / up;
                 vec2 drift = vec2(uTime * 0.0065, uTime * 0.0022);
-                float clouds = rkFbm(cp * 0.55 + drift);
-                clouds = smoothstep(0.46, 0.92, clouds) * uCloud;
-                clouds *= smoothstep(0.0, 0.20, dir.y);
+                float clouds = rkFbm(cp * 0.48 + drift);
+                float wisps = rkFbm(cp * 1.15 + drift * 1.4 + 8.2);
+                clouds = smoothstep(0.38, 0.88, clouds) * uCloud;
+                clouds += smoothstep(0.55, 0.95, wisps) * uCloud * 0.35;
+                clouds *= smoothstep(0.0, 0.18, dir.y);
+                clouds = clamp(clouds, 0.0, 1.0);
 
                 float sunFacing = max(dot(dir, uSunDir), 0.0);
                 vec3 cloudLit = mix(uHorizon * 0.85, uSunColor, pow(sunFacing, 2.0) * 0.7);

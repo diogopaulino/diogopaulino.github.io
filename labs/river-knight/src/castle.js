@@ -11,10 +11,10 @@ import {
     metalMaterial,
     plainMaterial,
     woodMaterial
-} from './models.js';
+} from './models.js?v=14';
 import { centerX, halfWidth, terrainHeight } from './river.js';
-import { waterHeight, waterSlope } from './water.js';
-import { COLORS, CASTLE_Z, SCORE } from './config.js';
+import { waterHeight, waterSlope } from './water.js?v=15';
+import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
 import { clamp, damp, randRange } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -94,45 +94,66 @@ function buildTorch(color = 0xff9a3c, intensity = 9) {
 /** A princesa acenando na janela da torre. */
 function buildPrincess() {
     const group = new THREE.Group();
+    const skin = plainMaterial(0xf0c9a4, 0.75, 0);
+    const hairMat = plainMaterial(0x6b3b1c, 0.8, 0);
+    const gold = metalMaterial(0xf0cf7a, 0.3);
 
-    const dress = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.1, 12), plainMaterial(COLORS.princess, 0.7, 0.03));
+    const dress = new THREE.Mesh(new THREE.ConeGeometry(0.46, 1.18, 12), plainMaterial(COLORS.princess, 0.7, 0.03));
     dress.position.y = 0.55;
     group.add(dress);
 
-    const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.42, 10), plainMaterial(0xb85a8a, 0.7, 0.03));
-    bodice.position.y = 1.18;
+    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 14), metalMaterial(0xf3c96b, 0.45));
+    hem.rotation.x = Math.PI / 2;
+    hem.position.y = 0.08;
+    group.add(hem);
+
+    const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.25, 0.44, 10), plainMaterial(0xb85a8a, 0.7, 0.03));
+    bodice.position.y = 1.2;
     group.add(bodice);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), plainMaterial(0xf0c9a4, 0.75, 0));
-    head.position.y = 1.55;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
+    head.position.y = 1.58;
     group.add(head);
 
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.7),
-        plainMaterial(0x6b3b1c, 0.8, 0));
-    hair.position.y = 1.58;
+    for (const sx of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), plainMaterial(0x2a1c12, 0.5, 0));
+        eye.position.set(sx * 0.05, 1.6, 0.15);
+        group.add(eye);
+    }
+
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.7), hairMat);
+    hair.position.y = 1.62;
     group.add(hair);
 
-    const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.8, 6), plainMaterial(0x6b3b1c, 0.8, 0));
-    braid.position.set(0, 1.25, -0.18);
+    const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.9, 6), hairMat);
+    braid.position.set(0, 1.22, -0.2);
     group.add(braid);
 
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.09, 10), metalMaterial(0xf0cf7a, 0.3));
-    crown.position.y = 1.7;
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), gold);
+    crown.position.y = 1.74;
     group.add(crown);
+    for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.14, 5), gold);
+        spike.position.set(Math.cos(a) * 0.12, 1.84, Math.sin(a) * 0.12);
+        group.add(spike);
+    }
 
     const arm = new THREE.Group();
-    arm.position.set(0.22, 1.36, 0);
-    const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.5, 8), plainMaterial(0xf0c9a4, 0.75, 0));
+    arm.position.set(0.24, 1.38, 0.06);
+    const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.52, 8), skin);
     armMesh.position.y = -0.22;
     arm.add(armMesh);
     group.add(arm);
 
-    const scarf = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.22), new THREE.MeshStandardMaterial({
+    const scarf = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.28), new THREE.MeshStandardMaterial({
         color: 0xffe9f2,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.9,
+        emissive: new THREE.Color(0xffc8d8),
+        emissiveIntensity: 0.25
     }));
-    scarf.position.set(0.3, -0.42, 0);
+    scarf.position.set(0.32, -0.44, 0.04);
     arm.add(scarf);
 
     group.traverse((c) => {

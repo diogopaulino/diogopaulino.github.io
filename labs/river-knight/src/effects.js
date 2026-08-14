@@ -8,8 +8,8 @@
  */
 
 import * as THREE from 'three';
-import { sparkTexture, smokeTexture, foamTexture } from './textures.js';
-import { waterHeight } from './water.js';
+import { sparkTexture, smokeTexture, foamTexture } from './textures.js?v=14';
+import { waterHeight } from './water.js?v=15';
 
 /* ------------------------------------------------------------------ */
 /* Partículas                                                          */
@@ -270,7 +270,7 @@ class Wake {
             const px = -dz;
             const pz = dx;
 
-            const w = Math.min(s.width, 4.2);
+            const w = Math.min(s.width, 5.2);
             const y = waterHeight(s.x, s.z, time) + 0.04;
             this.positions[a] = s.x - px * w;
             this.positions[a + 1] = y;
@@ -285,7 +285,7 @@ class Wake {
             this.uvs[u + 3] = idx / this.samples;
 
             const headFade = Math.min(1, s.age / 0.35);
-            const fade = Math.max(0, 1 - s.age / 3.3) ** 1.45 * s.strength * 0.7 * headFade;
+            const fade = Math.max(0, 1 - s.age / 3.3) ** 1.45 * s.strength * 0.85 * headFade;
             this.alphas[i * 2] = fade;
             this.alphas[i * 2 + 1] = fade;
         }

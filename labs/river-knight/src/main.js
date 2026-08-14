@@ -12,30 +12,31 @@ import {
     COURSE_LENGTH,
     CASTLE_Z,
     BOSS_Z,
+    LANDMARKS,
     STORAGE_KEY,
     BOAT
-} from './config.js?v=12';
-import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from './sky.js';
-import { createWater, waterHeight } from './water.js';
-import { createTerrain } from './terrain.js';
-import { Effects } from './effects.js?v=12';
-import { Entities } from './entities.js?v=12';
-import { World } from './world.js';
-import { Player } from './player.js?v=12';
-import { createCastle, BossBarge } from './castle.js';
-import { Hud } from './hud.js';
+} from './config.js?v=14';
+import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from './sky.js?v=14';
+import { createWater, waterHeight } from './water.js?v=15';
+import { createTerrain } from './terrain.js?v=14';
+import { Effects } from './effects.js?v=15';
+import { Entities } from './entities.js?v=15';
+import { World } from './world.js?v=14';
+import { Player } from './player.js?v=14';
+import { createCastle, BossBarge } from './castle.js?v=14';
+import { Hud } from './hud.js?v=14';
 import { Input } from './input.js';
-import { GameAudio } from './audio.js?v=12';
-import { updateCloth } from './models.js?v=12';
+import { GameAudio } from './audio.js?v=14';
+import { updateCloth } from './models.js?v=14';
 import { centerX, halfWidth } from './river.js';
-import { clamp, damp, detectMobile, formatTime, randRange } from './utils.js';
+import { clamp, damp, detectMobile, detectSoftwareGL, formatTime, randRange } from './utils.js?v=15';
 
 const WHITE = new THREE.Color(1, 1, 1);
 
 const CAMERA_MODES = [
-    { name: 'perseguição', offset: new THREE.Vector3(0, 9.4, 20.5), look: new THREE.Vector3(0, 4.8, -12) },
-    { name: 'proa', offset: new THREE.Vector3(0, 7.2, 15.5), look: new THREE.Vector3(0, 3.6, -22) },
-    { name: 'aérea', offset: new THREE.Vector3(0, 17, 30), look: new THREE.Vector3(0, 1.5, -12) }
+    { name: 'perseguição', offset: new THREE.Vector3(0, 6.35, 13.0), look: new THREE.Vector3(0, 3.05, -14) },
+    { name: 'proa', offset: new THREE.Vector3(0, 5.4, 10.4), look: new THREE.Vector3(0, 2.7, -20) },
+    { name: 'aérea', offset: new THREE.Vector3(0, 15, 26), look: new THREE.Vector3(0, 1.5, -14) }
 ];
 
 class Game {
@@ -60,6 +61,10 @@ class Game {
         this.fpsFrames = 0;
         this.hudAccum = 0;
         this.pullVec = { x: 0, drag: 0 };
+        this.landmarkIndex = 0;
+        this.fpsLowTime = 0;
+        this.adapted = false;
+        this._aimNdc = new THREE.Vector3();
     }
 
     /* ------------------------------------------------------------------ */
@@ -93,7 +98,7 @@ class Game {
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile()) return QUALITY.low;
+        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -129,13 +134,13 @@ class Game {
         this.renderer.setPixelRatio(pixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.98;
+        this.renderer.toneMappingExposure = 1.06;
         this.renderer.shadowMap.enabled = quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
-            58,
+            62,
             window.innerWidth / window.innerHeight,
             0.4,
             quality.drawDistance * 3.2
@@ -171,7 +176,7 @@ class Game {
 
         // Luz de preenchimento presa à câmera: sem ela o barco fica só silhueta
         // quando o sol está de frente.
-        this.fill = new THREE.DirectionalLight(0xbcd2ff, 0.55);
+        this.fill = new THREE.DirectionalLight(0xc5d8ff, 0.7);
         this.fill.castShadow = false;
         this.scene.add(this.fill, this.fill.target);
 
@@ -245,9 +250,9 @@ class Game {
 
             const bloom = new UnrealBloomPass(
                 new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.30,
-                0.75,
-                0.92
+                0.18,
+                0.7,
+                0.88
             );
             composer.addPass(bloom);
             composer.addPass(new OutputPass());
@@ -345,6 +350,7 @@ class Game {
         this.hud.showMenu();
         this.hud.setTouchVisible(false);
         this.hud.clearMessage();
+        this.hud.setHint(false);
         this.hud.showBoss(false);
         this.hud.setBestScore(this.settings.best);
 
@@ -385,6 +391,8 @@ class Game {
         this.victoryTimer = 0;
         this.defeatTimer = 0;
         this.cameraMode = 0;
+        this.landmarkIndex = 0;
+        this.hud.setHint(true);
 
         this.entities.reset();
         this.boss.reset();
@@ -399,7 +407,7 @@ class Game {
         this.hud.setScore(0);
         this.hud.setCombo(1);
         this.hud.setTime(0);
-        this.hud.message('Rumo ao castelo!', 'gold', 1800);
+        this.hud.message('Rumo ao castelo — aponte o navio e dispare!', 'gold', 2200);
 
         this.updateCamera(1, true);
     }
@@ -510,7 +518,18 @@ class Game {
         this.fpsAccum += raw;
         this.fpsFrames++;
         if (this.fpsAccum > 0.5) {
-            this.hud.setFps(this.fpsFrames / this.fpsAccum);
+            const fps = this.fpsFrames / this.fpsAccum;
+            this.hud.setFps(fps);
+            if (this.state === 'playing' && !this.adapted) {
+                if (fps < 38) this.fpsLowTime += 0.5;
+                else this.fpsLowTime = Math.max(0, this.fpsLowTime - 0.35);
+                if (this.fpsLowTime > 1.2) {
+                    this.adapted = true;
+                    this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.05));
+                    this.composer = null;
+                    this.hud.message('Qualidade ajustada para o rio fluir', 'gold', 2400);
+                }
+            }
             this.fpsAccum = 0;
             this.fpsFrames = 0;
         }
@@ -523,22 +542,26 @@ class Game {
         this.time += dt;
         updateCloth(this.time);
 
-        switch (this.state) {
-            case 'menu':
-                this.updateMenu(dt);
-                break;
-            case 'playing':
-                this.updatePlaying(dt);
-                break;
-            case 'defeat':
-                this.updateDefeat(dt);
-                break;
-            case 'victory-seq':
-                this.updateVictorySequence(dt);
-                break;
-            default:
-                this.updateIdle(dt);
-                break;
+        try {
+            switch (this.state) {
+                case 'menu':
+                    this.updateMenu(dt);
+                    break;
+                case 'playing':
+                    this.updatePlaying(dt);
+                    break;
+                case 'defeat':
+                    this.updateDefeat(dt);
+                    break;
+                case 'victory-seq':
+                    this.updateVictorySequence(dt);
+                    break;
+                default:
+                    this.updateIdle(dt);
+                    break;
+            }
+        } catch (err) {
+            console.error('[River Knight]', err);
         }
 
         this.effects.update(dt, this.time);
@@ -548,7 +571,7 @@ class Game {
 
     updateIdle(dt) {
         // Telas finais: o rio continua vivo ao fundo.
-        this.world.update(dt, this.time, this.player.z);
+        this.world.update(dt, this.time, this.player.z, this.effects);
         this.entities.update(dt, this.makeContext(dt));
         this.castle.update(dt, this.time);
         this.updateCamera(dt);
@@ -582,7 +605,7 @@ class Game {
         this.camera.position.set(cx, wy + 9 + Math.sin(this.menuAngle * 2) * 2.2, cz);
         this.camera.lookAt(p.x, wy + 2.6, p.z);
 
-        this.world.update(dt, this.time, p.z);
+        this.world.update(dt, this.time, p.z, this.effects);
         this.castle.update(dt, this.time);
     }
 
@@ -640,10 +663,18 @@ class Game {
 
         this.player.update(dt, ctx);
 
-        // Mira automática — só aponta o navio; a retícula trava sozinha.
+        // Mira automática — a retícula segue o alvo no mundo.
         {
             const lock = this.player.getAimLock(this.entities);
-            this.hud.setAim(lock);
+            if (lock) {
+                this._aimNdc.set(lock.x, lock.y, lock.z).project(this.camera);
+                const x = (this._aimNdc.x * 0.5 + 0.5) * 100;
+                const y = (-this._aimNdc.y * 0.5 + 0.5) * 100;
+                const onScreen = this._aimNdc.z < 1 && x > 8 && x < 92 && y > 10 && y < 88;
+                this.hud.setAim(lock, onScreen ? x : 50, onScreen ? y : 46);
+            } else {
+                this.hud.setAim(null, 50, 46);
+            }
             const cd = this.player.hasFury ? BOAT.furyCooldown : BOAT.throwCooldown;
             const ready = 1 - clamp(this.player.throwTimer / cd, 0, 1);
             this.hud.setThrowReady(ready);
@@ -666,7 +697,7 @@ class Game {
         }
 
         this.world.direct(this.player.z, this.entities, this.difficulty);
-        this.world.update(dt, this.time, this.player.z);
+        this.world.update(dt, this.time, this.player.z, this.effects);
         this.entities.update(dt, ctx);
         this.entities.resolveAxeHits(ctx);
         this.castle.update(dt, this.time);
@@ -682,6 +713,13 @@ class Game {
         }
 
         this.score += this.player.speed * dt * SCORE.distancePerMeter * (this.difficulty?.scoreScale ?? 1);
+
+        const progress = clamp(this.player.distance / COURSE_LENGTH, 0, 1);
+        while (this.landmarkIndex < LANDMARKS.length && progress >= LANDMARKS[this.landmarkIndex].at) {
+            this.hud.message(LANDMARKS[this.landmarkIndex].text, 'gold', 2400);
+            this.landmarkIndex++;
+        }
+        if (this.elapsed > 8) this.hud.setHint(false);
 
         if (!this.player.alive) {
             this.gameOver();
@@ -915,7 +953,7 @@ class Game {
             this.effects.smokePuff(p.x, p.root.position.y + 2, p.z, 1, 1.8);
         }
 
-        this.world.update(dt, this.time, p.z);
+        this.world.update(dt, this.time, p.z, this.effects);
         this.entities.update(dt, this.makeContext(dt));
         this.castle.update(dt, this.time);
         this.updateCamera(dt);
@@ -927,7 +965,7 @@ class Game {
         this.victoryTimer += dt;
         const ctx = this.makeContext(dt);
         this.player.update(dt, ctx);
-        this.world.update(dt, this.time, this.player.z);
+        this.world.update(dt, this.time, this.player.z, this.effects);
         this.entities.update(dt, ctx);
         this.castle.update(dt, this.time);
 
@@ -1012,6 +1050,14 @@ class Game {
             p.position.z + lookZ
         );
         this.camera.lookAt(this.lookTarget);
+
+        if (this.state === 'playing') {
+            const span = Math.max(1, BOAT.boostSpeed - BOAT.baseSpeed);
+            const boostT = clamp((p.speed - BOAT.baseSpeed) / span, 0, 1);
+            const fov = 61 + boostT * 7 + Math.abs(p.roll) * 8;
+            this.camera.fov = damp(this.camera.fov, fov, 3.4, dt);
+            this.camera.updateProjectionMatrix();
+        }
     }
 
     updateEnvironment(dt) {

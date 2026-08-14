@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { buildRadialGrid } from './utils.js';
 import { RIVER_GLSL } from './river.js';
-import { NOISE_GLSL } from './sky.js';
+import { NOISE_GLSL } from './sky.js?v=14';
 
 export function createTerrain(quality) {
     const geometry = buildRadialGrid(
@@ -77,19 +77,27 @@ export function createTerrain(quality) {
                 vec3 rkTerrainColor(vec3 p, float slope) {
                     float h = p.y;
 
-                    vec3 silt = vec3(0.11, 0.10, 0.08);
-                    vec3 sand = vec3(0.46, 0.40, 0.29);
-                    vec3 grass = vec3(0.13, 0.21, 0.09);
-                    vec3 grassDry = vec3(0.25, 0.24, 0.11);
-                    vec3 rock = vec3(0.22, 0.21, 0.20);
+                    vec3 silt = vec3(0.10, 0.11, 0.08);
+                    vec3 sand = vec3(0.50, 0.42, 0.28);
+                    vec3 mud = vec3(0.22, 0.18, 0.11);
+                    vec3 grass = vec3(0.16, 0.28, 0.10);
+                    vec3 grassLush = vec3(0.10, 0.22, 0.07);
+                    vec3 grassDry = vec3(0.32, 0.30, 0.14);
+                    vec3 rock = vec3(0.24, 0.23, 0.21);
+                    vec3 pebble = vec3(0.38, 0.36, 0.32);
                     vec3 snow = vec3(0.82, 0.84, 0.88);
 
                     float n1 = rkFbm(p.xz * 0.045);
                     float n2 = rkValueNoise(p.xz * 0.35);
+                    float n3 = rkValueNoise(p.xz * 1.15);
 
-                    // Leito submerso → areia da praia → grama.
-                    vec3 col = mix(silt, sand, smoothstep(-3.4, -0.4, h));
-                    col = mix(col, mix(grass, grassDry, n1), smoothstep(0.15, 2.4, h));
+                    vec3 col = mix(silt, mud, smoothstep(-3.4, -0.6, h));
+                    col = mix(col, sand, smoothstep(-0.8, 0.55, h));
+                    vec3 turf = mix(grassLush, grass, n1);
+                    turf = mix(turf, grassDry, smoothstep(0.55, 0.9, n1) * 0.7);
+                    col = mix(col, turf, smoothstep(0.2, 2.1, h));
+                    float pebbles = smoothstep(0.55, 0.92, n3) * (1.0 - smoothstep(1.8, 4.5, h)) * smoothstep(-0.2, 0.8, h);
+                    col = mix(col, pebble, pebbles * 0.55);
 
                     // Faixas de rocha nas encostas íngremes.
                     float rocky = 1.0 - smoothstep(0.52, 0.82, slope);
