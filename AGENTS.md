@@ -1,86 +1,37 @@
-# 🤖 Instruções para Agentes de IA
+# Agentes
 
-Olá, Agente! Se você está lendo isso, significa que você está atuando no desenvolvimento deste projeto. Este documento centraliza o contexto, as diretrizes de arquitetura e as melhores práticas que você deve seguir rigorosamente ao criar, modificar ou analisar código neste repositório.
+Portfólio e playground estático do Diogo Paulino. HTML, CSS e JS puro no GitHub Pages — **sem build, sem npm**. O fonte é o que vai ao ar.
 
-## 📌 Contexto do Projeto
+## Layout
 
-Este repositório é o portfólio pessoal e *Playground* de laboratórios do Diogo Paulino. O site principal e a vasta maioria dos laboratórios (localizados na pasta `/labs/`) são construídos de forma limpa, direta e estática.
+- `/index.html` — home · `/assets/` — CSS/JS/imagens da home
+- `/labs/<kebab-case>/` — lab autocontido (`index.html`, CSS, JS, `assets/`)
+- `/labs/index.html` — galeria que lista todos os labs
+- `/CLAUDE.md` — só `@AGENTS.md` (não escreva mais nada nele)
+- `/.github/PULL_REQUEST_TEMPLATE.md` — template de todo PR
 
-- **Stack Principal**: HTML, CSS e JavaScript puros (Vanilla).
-- **Deploy**: GitHub Pages.
-- **Sem Build Step**: O código fonte geralmente é o próprio código de produção. Não utilizamos Node.js, Webpack, Vite ou empacotadores na raiz do projeto (salvo exceções explícitas em alguns laboratórios). Tudo roda diretamente no navegador.
+## Regras
 
-## 🏗 Estrutura de Diretórios
+- **Vanilla.** ES modules, CSS nativo (custom properties, flex/grid). Sem libs ou frameworks a menos que o usuário peça.
+- **UI.** Visual premium (dark mode elegante, microinterações). Sem bloco cinza no lugar de asset.
+- **Cirúrgico.** Não reescreva o que está fora do pedido. Preserve comentários e assinaturas existentes.
+- **HTML novo.** `title`, `viewport`, description, tags semânticas (`main`, `header`, `footer`).
+- **Jogo/simulação.** Documente regras e fórmulas no código.
+- **Dúvida de arquitetura.** Pergunte; não invente um rumo novo.
 
-- `/index.html`: Arquivo raiz do portfólio.
-- `/assets/`: Recursos compartilhados do site principal (estilos, imagens).
-- `/labs/`: Diretório que contém todos os experimentos e mini-projetos.
-  - Cada laboratório vive em sua própria subpasta em *kebab-case* (ex: `/labs/rock-kombat/`).
-  - Cada pasta de laboratório é autocontida (possui seu próprio `index.html`, arquivos `.css`, `.js` e pastas de `assets/`), facilitando a manutenção e a visualização estática.
-- `/AGENTS.md`: regras para agentes (fonte única).
-- `/CLAUDE.md`: só `@AGENTS.md` — o Claude Code exige este nome (maiúsculas) e importa as regras daqui. Não coloque mais nada nesse arquivo.
-- `/.github/PULL_REQUEST_TEMPLATE.md`: template obrigatório de todo PR.
+## Links
 
-## 🛠 Melhores Práticas e Regras de Desenvolvimento
+Slug do lab = pasta = card da galeria = README = `sitemap.xml`. Ao criar, mover ou renomear um lab, **corrija os quatro na mesma mudança**.
 
-### 1. Stack e Tecnologias
-- **Vanilla First**: Utilize recursos modernos e nativos dos navegadores (ES6+, Web APIs, Canvas, WebGL, Web Audio, LocalStorage) ao invés de introduzir dependências externas (bibliotecas/frameworks), a menos que estritamente solicitado pelo usuário.
-- **JavaScript Modular**: Adote ES Modules (`<script type="module">`). Mantenha a lógica separada, utilize classes ou funções puras, e escreva código assíncrono moderno (`async/await`).
-- **CSS Moderno**: Utilize Variáveis CSS (Custom Properties), Flexbox, CSS Grid e animações nativas. Evite frameworks CSS (como Tailwind ou Bootstrap) a menos que explicitamente solicitado.
+- Galeria: `href="/labs/<slug>/"`
+- README e sitemap: `https://diogopaulino.com.br/labs/<slug>/`
+- Voltar: header `/labs/`, footer `/`
+- Teste servindo a **raiz**: `python3 -m http.server 8000` — nunca `file://` (quebra `/favicon.ico` e módulos ES)
 
-### 2. Padrões de Design e UI/UX
-- **Aparência Premium (WOW Factor)**: O design é essencial. Crie interfaces modernas, fluídas, responsivas e visualmente impressionantes. Considere o uso de:
-  - Paletas de cores harmônicas (preferência por Dark Modes elegantes).
-  - Tipografia moderna.
-  - Efeitos de *glassmorphism*, gradientes sutis e sombras bem calibradas.
-  - Micro-interações e *feedbacks* visuais ao passar o mouse ou clicar.
-- **Sem "Placeholders" Definitivos**: Se um laboratório precisar de uma imagem ou *asset* visual, crie ou simule algo coerente em vez de usar blocos cinzas genéricos.
+## PRs
 
-### 3. Workflow de Modificação (Aja com Precisão)
-- **Não quebre o que está funcionando**: Faça modificações cirúrgicas. Evite reescrever arquivos inteiros ou refatorar códigos e lógicas que estão fora do escopo da solicitação do usuário.
-- **Respeite Comentários e Lógica Existente**: Mantenha as assinaturas de funções antigas ou comentários de explicação a não ser que a tarefa seja especificamente limpar o código.
-- **Caminhos de Arquivos (Paths)**: Como o projeto é servido no GitHub Pages, garanta que os caminhos para imagens e scripts estejam corretos, preferindo caminhos relativos (ex: `./assets/img.png` ou `../style.css`). Caminhos absolutos da raiz (`/labs/`, `/favicon.ico`, `/assets/...`) também são válidos — testar sempre via HTTP, nunca via `file://`.
-
-### 4. SEO e Semântica
-- Para novos arquivos HTML, inclua sempre as *tags* fundamentais: `<title>`, `<meta name="viewport">` adequada, meta descrições e utilize HTML semântico (`<main>`, `<section>`, `<article>`, `<header>`, `<footer>`).
-
-### 5. Resolução de Problemas e Autonomia
-- Analise, planeje e só então codifique. Se encontrar uma ambiguidade significativa nos requisitos do usuário que impacte a arquitetura, pare e peça esclarecimentos.
-- Sempre documente o código de lógicas complexas (como fórmulas matemáticas para simulações ou regras de jogos).
-
-### 6. Auditoria de links (obrigatória)
-Toda vez que um lab for criado, movido, renomeado ou a galeria/README for tocado — e de preferência ao fechar qualquer PR — **verifique os links e corrija o que estiver quebrado na mesma mudança**. Não deixe 404, card órfão ou README desatualizado para depois.
-
-Checklist mínimo (estas listas devem ter os **mesmos slugs**):
-
-1. Pastas em `/labs/<kebab-case>/` com `index.html`
-2. Card em [`labs/index.html`](labs/index.html) com `href="/labs/<slug>/"`
-3. Linha no playground do [`README.md`](README.md) apontando para `https://diogopaulino.com.br/labs/<slug>/`
-4. Entrada em [`sitemap.xml`](sitemap.xml) com a mesma URL canônica
-
-Também conferir, e corrigir se falhar:
-
-- Link **Labs** da home (`/labs/`) e voltar de cada lab (`/labs/` no header, `/` no footer)
-- Assets, CSS e JS do lab (caminhos relativos ou absolutos a partir da raiz)
-- Canonical / Open Graph `https://diogopaulino.com.br/labs/<slug>/`
-- Servir a **raiz** do repo (`python3 -m http.server 8000`) e abrir home, galeria e o lab alterado — `file://` quebra módulos ES e `/favicon.ico`
-
-### 7. Pull requests
-**Todo PR novo deve nascer do template** [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Não envie descrição vazia, genérica ou só com a mensagem do commit.
-
-- Título: emoji + resumo (`✨`, `🐛`, `📚`, `⚡️`, `🎨`, `🧪` conforme o objetivo)
-- Preencha **Objetivo**, **O que mudou** e **Como testar** — apague os comentários placeholder
-- Marque o checklist; se um item não se aplica, diga o porquê em vez de fingir que testou
-- Agentes: ao criar/atualizar o PR, copie a estrutura do template no body (o GitHub só injeta o arquivo automaticamente na UI)
-
----
+Use [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md): emoji no título (`✨` feat · `🐛` fix · `📚` docs · `⚡️` perf · `🎨` UI · `🧪` lab), Objetivo, O que mudou, Como testar, checklist. Sem descrição vazia.
 
 ## Cursor Cloud specific instructions
 
-Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json` nem `npm install`. O código-fonte é o artefato do GitHub Pages.
-
-- Sirva **a raiz do repo** por HTTP (`python3 -m http.server 8000` → home em `/`, playground em `/labs/`). `file://` quebra `/favicon.ico` e módulos ES.
-- Verificação = [§6 auditoria de links](#6-auditoria-de-links-obrigatória). PRs = [§7](#7-pull-requests).
-
----
-*Lembre-se: O objetivo principal do projeto é criatividade, performance e experimentação tecnológica na web sem barreiras.*
+Sirva a raiz por HTTP. Não rode `npm install`. Verificação = seção Links. PRs = template acima.
