@@ -38,6 +38,7 @@ class Game {
         this.fpsAccum = 0;
         this.fpsFrames = 0;
         this.orbit = 0.8;
+        this.introSwing = 0;
         this.bestDistrict = 'Midtown';
     }
 
@@ -297,7 +298,8 @@ class Game {
         this.hud.showHud(true);
         this.hud.setTouchVisible(this.isTouch);
         this.hud.setReticle(true, false);
-        this.hud.message('DISPARE A TEIA', 1600);
+        this.hud.message('DISPARE A TEIA', 1800);
+        this.hookIntroSwing();
         this.updateCamera(1, true);
         if (!this.isTouch) this.input.requestLock(this.canvas);
     }
@@ -311,11 +313,22 @@ class Game {
         this.player.webMax = diff.webMax;
         this.player.gravity = diff.gravity;
         const s = this.city.spawn;
-        this.player.spawn(s.x, s.y + 1.2, s.z, s.yaw ?? -Math.PI / 2);
+        this.player.spawn(s.x, s.y + 1.2, s.z, s.yaw ?? 0);
         this.player.auto = attract;
         this.city.seedPulses();
+        this.introSwing = attract ? 0 : 2.8;
         this.cityGlow.position.set(s.x, 40, s.z);
         if (this.state === 'playing') this.updateCamera(1, true);
+    }
+
+    hookIntroSwing() {
+        const emp = this.city.cellOf(5, 11);
+        this.player.anchor.set(emp.x + 6, 155, emp.z + 18);
+        this.player.webLen = Math.max(28, this.player.pos.distanceTo(this.player.anchor) * 0.92);
+        this.player.swinging = true;
+        this.player.grounded = false;
+        this.player.web.attach(this.player.anchor);
+        this.introSwing = 2.8;
     }
 
     pause() {
@@ -382,6 +395,10 @@ class Game {
         const playing = this.state === 'playing';
         this.input.sample();
         if (playing) {
+            if (this.introSwing > 0) {
+                this.introSwing -= dt;
+                this.input.webHeld = true;
+            }
             const ev = this.player.update(dt, this.input, this.city);
             this.handlePlayEvents(dt, ev);
         }

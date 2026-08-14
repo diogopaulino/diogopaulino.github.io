@@ -308,7 +308,7 @@ export class City {
         this.beacons = [e.beacon];
         this.spawn = {
             x: empire.x + GRID.avenue * 0.5,
-            y: 92,
+            y: 128,
             z: empire.z,
             yaw: 0
         };
