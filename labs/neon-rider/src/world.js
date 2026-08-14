@@ -74,6 +74,7 @@ export function createRoad(station) {
                 vec4 mv = viewMatrix * world;
                 vView = -mv.xyz;
                 gl_Position = projectionMatrix * mv;
+                vec4 mvPosition = mv;
                 #include <fog_vertex>
             }
         `,

@@ -96,9 +96,9 @@ class Game {
         this.scene.background = new THREE.Color(st.zenith);
 
         this.hud.setLoading(0.22, 'Pintando a madrugada…');
-        this.sky = createSky();
-        this.scene.add(this.sky.mesh);
-        this.applyStation(st, true);
+        try {
+            this.sky = createSky();
+            this.scene.add(this.sky.mesh);
 
         this.hemi = new THREE.HemisphereLight(st.horizon, st.ground, 0.55);
         this.scene.add(this.hemi);
@@ -139,6 +139,8 @@ class Game {
         this.audio.volume = this.settings.volume / 100;
         this.input = new Input();
 
+        this.applyStation(st, true);
+
         this.hud.setLoading(0.86, 'Ligando o bloom…');
         await this.setupPostProcessing();
 
@@ -155,9 +157,13 @@ class Game {
         this.lastFrame = performance.now();
         this.renderer.setAnimationLoop((now) => this.frame(now));
         window.addEventListener('resize', () => this.resize());
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.state === 'playing') this.pause();
-        });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && this.state === 'playing') this.pause();
+            });
+        } catch (err) {
+            console.error(err);
+            this.hud.showError(err?.message || 'Falha ao montar a avenida 3D.');
+        }
     }
 
     async setupPostProcessing() {
@@ -197,12 +203,12 @@ class Game {
     flushStation(st) {
         this.scene.fog.color.setHex(st.fog);
         this.scene.background.setHex(st.zenith);
-        this.sky.uniforms.uHorizon.value.setHex(st.horizon);
-        this.sky.uniforms.uZenith.value.setHex(st.zenith);
-        this.sky.uniforms.uGround.value.setHex(st.ground);
-        this.road.uniforms.uNeonA.value.setHex(st.neonA);
-        this.road.uniforms.uNeonB.value.setHex(st.neonB);
-        this.road.uniforms.uAsphalt.value.setHex(st.asphalt);
+        this.sky?.uniforms.uHorizon.value.setHex(st.horizon);
+        this.sky?.uniforms.uZenith.value.setHex(st.zenith);
+        this.sky?.uniforms.uGround.value.setHex(st.ground);
+        this.road?.uniforms.uNeonA.value.setHex(st.neonA);
+        this.road?.uniforms.uNeonB.value.setHex(st.neonB);
+        this.road?.uniforms.uAsphalt.value.setHex(st.asphalt);
         if (this.hemi) {
             this.hemi.color.setHex(st.horizon);
             this.hemi.groundColor.setHex(st.ground);
@@ -538,4 +544,7 @@ function hexToArr(hex) {
 }
 
 const game = new Game();
-game.init();
+game.init().catch((err) => {
+    console.error(err);
+    game.hud.showError(err?.message || 'Falha ao iniciar o Neon Rider.');
+});
