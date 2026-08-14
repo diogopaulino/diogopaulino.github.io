@@ -18,7 +18,7 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
   - Cada laboratório vive em sua própria subpasta em *kebab-case* (ex: `/labs/rock-kombat/`).
   - Cada pasta de laboratório é autocontida (possui seu próprio `index.html`, arquivos `.css`, `.js` e pastas de `assets/`), facilitando a manutenção e a visualização estática.
 - `/AGENTS.md`: regras para agentes (fonte única).
-- `/CLAUDE.md`: ponteiro para o `AGENTS.md` — o Claude Code só lê este nome (maiúsculas).
+- `/CLAUDE.md`: só `@AGENTS.md` — o Claude Code exige este nome (maiúsculas) e importa as regras daqui. Não coloque mais nada nesse arquivo.
 - `/.github/PULL_REQUEST_TEMPLATE.md`: template obrigatório de todo PR.
 
 ## 🛠 Melhores Práticas e Regras de Desenvolvimento
