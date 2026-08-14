@@ -391,12 +391,6 @@ body.kong-lab {
     }
 }
 
-@media (pointer: fine) {
-    .touch-pad {
-        display: none;
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .ambient {
         display: none;

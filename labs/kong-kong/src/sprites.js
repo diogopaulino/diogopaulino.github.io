@@ -756,15 +756,15 @@ export function drawHud(ctx, snap) {
   letters.forEach((ch, i) => {
     const on = snap.letters[ch];
     ctx.fillStyle = on ? '#f6d03a' : 'rgba(255,255,255,0.18)';
-    ctx.font = 'bold 14px "Titan One", system-ui';
+    ctx.font = 'bold 13px "Titan One", system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(ch, VIEW_W / 2 - 22 + i * 14, 46);
+    ctx.fillText(ch, 20 + i * 14, 48);
   });
 
   if (!snap.scarf) {
-    ctx.fillStyle = 'rgba(227, 27, 35, 0.85)';
+    ctx.fillStyle = 'rgba(227, 27, 35, 0.9)';
     ctx.font = '9px "Nunito", system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText('pegue o lenço!', VIEW_W / 2, 48);
+    ctx.fillText('pegue o lenço!', VIEW_W / 2, 50);
   }
 }
