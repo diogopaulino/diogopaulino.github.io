@@ -117,8 +117,10 @@ export class Player {
         const t = performance.now() * 0.001;
         for (const tent of u.tentacles) {
             const s = tent.userData.seed;
-            tent.rotation.x = Math.sin(t * 3.2 + s) * 0.35 + 0.15;
-            tent.rotation.z = Math.cos(t * 2.4 + s * 1.3) * 0.28;
+            tent.rotation.x = Math.sin(t * 3.2 + s) * 0.55 + 0.35;
+            tent.rotation.z = Math.cos(t * 2.4 + s * 1.3) * 0.45;
+            tent.position.x = Math.cos(s) * 0.62 + Math.sin(t * 2.6 + s) * 0.18;
+            tent.position.z = Math.sin(s) * 0.62 + Math.cos(t * 2.1 + s) * 0.18;
             tent.scale.y = 1 + pulseAmt * 0.15;
         }
         for (const arm of u.arms) {

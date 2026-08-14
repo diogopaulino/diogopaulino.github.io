@@ -90,7 +90,7 @@ class Game {
         this.scene = new THREE.Scene();
         const pal = depthPalette(0);
         this.scene.background = new THREE.Color(pal.zenith);
-        this.scene.fog = new THREE.FogExp2(pal.fog, 0.018);
+        this.scene.fog = new THREE.FogExp2(pal.fog, 0.012);
 
         this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.2, 280);
         this.camera.position.set(0, 10, 10);

@@ -33,7 +33,7 @@ export class Ocean {
             uGlowB: { value: new THREE.Color(pal.glowB) },
             uFog: { value: new THREE.Color(pal.fog) },
             uJelly: { value: new THREE.Color(pal.jelly) },
-            uFogDensity: { value: 0.018 },
+            uFogDensity: { value: 0.012 },
             uSeed: { value: 0 },
             uGain: { value: 1 },
             uScale: { value: 420 },
@@ -132,7 +132,6 @@ export class Ocean {
         this.plankton = new THREE.Points(geo, planktonMaterial(THREE, this.u));
         this.plankton.frustumCulled = false;
         this.scene.add(this.plankton);
-        this._planktonPos = pos;
     }
 
     _fish(count) {
@@ -286,15 +285,7 @@ export class Ocean {
             r.rotation.y = Math.sin(this.time * 0.08 + i) * 0.15;
         }
 
-        const pos = this._planktonPos;
-        const n = pos.length / 3;
-        const rear = playerZ + 20;
-        const front = playerZ - PLAY.chunkLength * PLAY.chunkCount;
-        for (let i = 0; i < n; i++) {
-            if (pos[i * 3 + 2] > rear) pos[i * 3 + 2] -= PLAY.chunkLength * PLAY.chunkCount;
-            if (pos[i * 3 + 2] < front) pos[i * 3 + 2] += PLAY.chunkLength * 0.2;
-        }
-        this.plankton.geometry.attributes.position.needsUpdate = true;
+        if (this.plankton) this.plankton.position.z = playerZ;
 
         for (const s of this.schools) {
             s.position.z -= s.userData.speed * dt;

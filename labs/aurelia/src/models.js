@@ -16,7 +16,7 @@ export function createSharedGeo() {
         plane: new THREE.PlaneGeometry(1, 1, 1, 1),
         kelp: new THREE.PlaneGeometry(0.35, 8, 1, 8),
         bell: new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.62),
-        tent: new THREE.CylinderGeometry(0.045, 0.012, 2.4, 5, 6),
+        tent: new THREE.CylinderGeometry(0.07, 0.018, 2.8, 6, 8),
         arm: new THREE.CylinderGeometry(0.09, 0.04, 1.3, 6, 4),
         fish: new THREE.ConeGeometry(0.12, 0.42, 5)
     };
@@ -165,7 +165,7 @@ export function createJellyfish(THREE, geo, pal) {
     for (let i = 0; i < 10; i++) {
         const t = new THREE.Mesh(geo.tent, tentMat);
         const a = (i / 10) * Math.PI * 2;
-        t.position.set(Math.cos(a) * 0.55, -1.05, Math.sin(a) * 0.55);
+        t.position.set(Math.cos(a) * 0.62, -1.35, Math.sin(a) * 0.62);
         t.userData.seed = a;
         tentacles.push(t);
         root.add(t);

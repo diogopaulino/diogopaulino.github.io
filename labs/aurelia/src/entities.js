@@ -66,7 +66,7 @@ export class Entities {
     _makeOrb() {
         const g = new THREE.Group();
         const core = new THREE.Mesh(this.geo.sphere, this.orbMat);
-        core.scale.setScalar(0.38);
+            core.scale.setScalar(0.52);
         const halo = new THREE.Mesh(this.geo.sphere, this.orbMat);
         halo.scale.setScalar(0.7);
         halo.material = this.orbMat.clone();
