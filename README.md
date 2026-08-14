@@ -75,6 +75,7 @@ Um laboratório aberto com **59 experimentos** que rodam direto no navegador —
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — surfe, skate, bola, bike, raquete e barco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
