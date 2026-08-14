@@ -351,8 +351,8 @@ body[data-state="playing"] .game-shell > header .app-logo {
 }
 
 .icon-button {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--panel-strong);
     border: 1px solid var(--line-soft);
@@ -707,4 +707,55 @@ body[data-state="playing"] .theme-switch-wrapper {
 @media (max-width: 560px) {
     .overlay-card { padding: 1rem; }
     .menu-head h1 { font-size: 2.4rem; }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 560px) {
+    .hud-actions {
+        position: absolute;
+        top: calc(0.85rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        right: calc(1rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+        bottom: auto;
+        grid-row: auto;
+        z-index: 22;
+    }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
+    }
 }

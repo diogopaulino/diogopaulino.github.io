@@ -51,7 +51,8 @@ export class PixelSurface {
         const maxH = Math.max(32, (stage?.clientHeight || 224) - 4);
 
         const dpr = Math.min(window.devicePixelRatio || 1, 3);
-        const cssScale = Math.max(1, Math.floor(Math.min(maxW / W, maxH / H)));
+        const raw = Math.min(maxW / W, maxH / H);
+        const cssScale = raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.5, raw);
         this.wrap.style.width = `${W * cssScale}px`;
         this.wrap.style.height = `${H * cssScale}px`;
 

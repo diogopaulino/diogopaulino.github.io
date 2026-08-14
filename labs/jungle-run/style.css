@@ -145,7 +145,7 @@ body.jungle-lab::before {
     width: 100% !important;
     height: 100% !important;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     touch-action: none;
 }
@@ -681,9 +681,14 @@ kbd {
     pointer-events: none;
 }
 
-.control-left {
+.control-left,
+.control-climb {
     display: flex;
     gap: 0.55rem;
+}
+
+.control-climb {
+    flex-direction: column;
 }
 
 .mobile-btn {
@@ -717,11 +722,17 @@ kbd {
     background: rgba(119, 93, 35, 0.5);
 }
 
-.jump-btn small {
+.jump-btn small,
+.control-climb .mobile-btn small {
     display: block;
     margin-top: -0.55rem;
     font-size: 0.42rem;
     letter-spacing: 0.12em;
+}
+
+.control-climb .mobile-btn {
+    height: 64px;
+    border-radius: 18px;
 }
 
 .frame-bottom {
@@ -812,7 +823,8 @@ button:focus-visible {
     }
 
     #gameCanvas {
-        object-position: 20% center;
+        object-fit: contain;
+        object-position: center;
     }
 
     .mobile-controls {
@@ -1219,4 +1231,13 @@ body.jungle-lab {
     font-size: 0.9rem;
     line-height: 1.5;
     text-align: center;
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    #gameCanvas {
+        object-fit: contain;
+        object-position: center;
+        width: 100%;
+        height: 100%;
+    }
 }

@@ -128,7 +128,6 @@ header[data-lab-header] .subtitle {
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   pointer-events: none;
-  z-index: 2;
 }
 
 .hud-spacer {
@@ -223,3 +222,5 @@ header[data-lab-header] .subtitle {
   white-space: nowrap;
   border: 0;
 }
+/* --- lab-responsive-pass --- */
+#hud { z-index: 30; }

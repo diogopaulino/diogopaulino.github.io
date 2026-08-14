@@ -557,8 +557,8 @@ body[data-state="landing"] .game-shell > header .app-logo {
 }
 
 .icon-button {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     background: var(--panel-strong);
     border: 1px solid var(--line-soft);
@@ -926,4 +926,63 @@ kbd {
     .hud-bottom { grid-template-columns: 1fr; }
     .hud-actions { justify-self: start; }
     .stats { grid-template-columns: 1fr; }
+}
+/* --- lab-responsive-pass --- */
+.overlay {
+    padding: calc(1.2rem + var(--safe-top, 0px))
+             calc(1.2rem + var(--safe-right, 0px))
+             calc(1.2rem + var(--safe-bottom, 0px))
+             calc(1.2rem + var(--safe-left, 0px));
+}
+
+@media (max-width: 860px) {
+    .hud-bottom { bottom: calc(8.5rem + var(--safe-bottom, 0px)); }
+    .stick { width: min(100px, 28vw); height: min(100px, 28vw); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-top { gap: 0.35rem; }
+    .quest-panel { display: none; }
+    .health-panel { max-width: 180px; }
+    .stick { width: 88px; height: 88px; }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
+    }
 }
