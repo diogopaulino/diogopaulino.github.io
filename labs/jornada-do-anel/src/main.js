@@ -246,18 +246,13 @@ class Game {
         this.chapterIndex = index;
         this.chapter = ch;
 
-        if (this.world) {
-            this.scene.remove(this.world.group);
-            this.world = null;
-        }
-        if (this.lights) {
-            this.scene.remove(this.lights.group);
-            this.lights = null;
-        }
-
-        this.world = buildChapter(ch.id, this.quality);
+        const world = buildChapter(ch.id, this.quality);
+        const lights = createLights(this.scene, ch, this.quality);
+        if (this.world) this.scene.remove(this.world.group);
+        if (this.lights) this.scene.remove(this.lights.group);
+        this.world = world;
+        this.lights = lights;
         this.scene.add(this.world.group);
-        this.lights = createLights(this.scene, ch, this.quality);
         applyChapterSky(this.sky, ch);
         this.scene.fog = new THREE.Fog(ch.fog.color, ch.fog.near, ch.fog.far);
         this.renderer.setClearColor(ch.clear);
@@ -393,7 +388,7 @@ class Game {
         document.getElementById('fade').style.opacity = String(this.fade);
 
         if (this.state === 'menu') {
-            this._updateMenuCam(dt);
+            if (this.world) this._updateMenuCam(dt);
             return;
         }
         if (this.state === 'intro') {

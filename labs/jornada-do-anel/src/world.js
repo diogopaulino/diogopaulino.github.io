@@ -174,16 +174,32 @@ export function buildShire(quality) {
     const doorZ = -3.6;
     ring.position.set(doorX, world.heightAt(doorX, doorZ) + 1.15, doorZ);
     world.group.add(ring);
-    world.addInteract({
+    const ringIt = {
         x: doorX, z: doorZ, r: 1.8, id: 'ring', kind: 'ring',
         label: 'Pegar o Anel', mesh: ring, done: false
-    });
+    };
+    world.addInteract(ringIt);
     world.goal = 'ring';
+    const beacon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.45, 6.5, 8, 1, true),
+        new THREE.MeshBasicMaterial({
+            color: 0xffcc55,
+            transparent: true,
+            opacity: 0.18,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        })
+    );
+    beacon.position.set(doorX, world.heightAt(doorX, doorZ) + 3.4, doorZ);
+    world.group.add(beacon);
     world.updateFns.push((t) => {
-        if (ring.parent) {
-            ring.rotation.y = t * 0.9;
-            ring.position.y = world.heightAt(doorX, doorZ) + 1.15 + Math.sin(t * 2) * 0.08;
+        if (ringIt.done) {
+            beacon.visible = false;
+            return;
         }
+        ring.rotation.y = t * 0.9;
+        ring.position.y = world.heightAt(doorX, doorZ) + 1.15 + Math.sin(t * 2) * 0.08;
+        beacon.material.opacity = 0.12 + Math.sin(t * 2.4) * 0.06;
     });
 
     const colors = ['#2d6b38', '#6b3a2d', '#3a4a8a', '#8a5a2a', '#4a6b3a'];
