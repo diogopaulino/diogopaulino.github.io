@@ -646,8 +646,10 @@ kbd {
 .victory-card h2 { color: var(--amber); }
 
 body[data-state="play"] .lab-foot,
-body[data-state="pause"] .lab-foot {
-    display: none;
+body[data-state="pause"] .lab-foot,
+body[data-state="play"] [data-lab-footer],
+body[data-state="pause"] [data-lab-footer] {
+    display: none !important;
 }
 
 @media (max-width: 860px) {

@@ -238,8 +238,8 @@ export class World {
     _station() {
         const concrete = new THREE.MeshStandardMaterial({ color: 0x8a8678, roughness: 0.8, map: rockTexture() });
         const rust = new THREE.MeshStandardMaterial({ color: 0x6a4030, roughness: 0.7, metalness: 0.3 });
-        const x = 2;
-        const z = 88;
+        const x = 4;
+        const z = 108;
         const y = this.heightAt(x, z);
         const hall = new THREE.Mesh(new THREE.BoxGeometry(10, 4.2, 6.5), concrete);
         hall.position.set(x, y + 2.1, z);
@@ -251,18 +251,18 @@ export class World {
         roof.position.set(x, y + 4.3, z);
         this.group.add(roof);
         const gateL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.4, 0.25), rust);
-        gateL.position.set(-4, y + 1.7, 80);
+        gateL.position.set(-4, this.heightAt(-4, 94) + 1.7, 94);
         this.group.add(gateL);
         const gateR = gateL.clone();
-        gateR.position.x = 12;
+        gateR.position.set(12, this.heightAt(12, 94) + 1.7, 94);
         this.group.add(gateR);
         const arch = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.3, 0.3), rust);
-        arch.position.set(4, y + 3.5, 80);
+        arch.position.set(4, this.heightAt(4, 94) + 3.5, 94);
         this.group.add(arch);
         const amber = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), new THREE.MeshStandardMaterial({
             color: 0xe09020, emissive: 0xc46a10, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.1
         }));
-        amber.position.set(4, y + 5.1, 88);
+        amber.position.set(4, y + 5.1, z);
         this.group.add(amber);
         this.amber = amber;
     }
@@ -328,7 +328,7 @@ export class World {
                 if (this.onRoad(x, z)) continue;
                 if (avoidLake && Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z) < WORLD.lake.r + 6) continue;
                 if (Math.hypot(x - 42, z - 14) < 18) continue;
-                if (Math.hypot(x, z - 88) < 12) continue;
+                if (Math.hypot(x, z - 102) < 12) continue;
                 const clone = proto.clone();
                 const s = 0.75 + rng() * 0.7;
                 clone.scale.setScalar(s);
@@ -340,7 +340,7 @@ export class World {
         };
         scatter(palmProto, palms, 28, this.islandRadius - 8);
         scatter(treeProto, trees, 22, this.islandRadius - 6);
-        const gateSpots = [[-8, 72], [14, 74], [-12, 62], [16, 58], [9, 46], [-7, 48], [2, 54]];
+        const gateSpots = [[-8, 50], [16, 52], [-10, 42], [18, 40], [11, 32], [-6, 34], [4, 44]];
         for (const [x, z] of gateSpots) {
             const c = palmProto.clone();
             c.scale.setScalar(1.15);

@@ -11,7 +11,7 @@ export const WORLD = {
     islandRadius: 118,
     oceanRadius: 240,
     lake: { x: -14, z: -6, r: 22 },
-    spawn: { x: 4, z: 78, yaw: Math.PI },
+    spawn: { x: 8, z: 56, yaw: Math.PI },
     boundsPad: 6
 };
 
