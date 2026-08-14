@@ -283,6 +283,7 @@ class Atelier {
         document.getElementById('hud').hidden = false;
         document.body.dataset.state = 'play';
         if (this.controls) this.controls.autoRotate = false;
+        this.resize();
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
         this.setMode(mode);
     }
