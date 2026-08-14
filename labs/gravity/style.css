@@ -8,6 +8,10 @@
     --text-primary: rgba(255, 255, 255, 0.95);
     --text-secondary: rgba(255, 255, 255, 0.55);
     --accent-gradient: linear-gradient(135deg, var(--g1), var(--g2));
+    /* O palco é sempre escuro (#05050b), inclusive no tema claro: o header
+       que flutua sobre ele precisa de cor própria, senão some no fundo. */
+    --on-canvas: rgba(255, 255, 255, 0.78);
+    --on-canvas-border: rgba(255, 255, 255, 0.16);
 }
 
 [data-theme="light"] {
@@ -78,8 +82,8 @@ header .back-link {
     grid-column: 1;
     justify-self: start;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--panel-border);
-    color: var(--text-secondary);
+    border: 1px solid var(--on-canvas-border);
+    color: var(--on-canvas);
     min-height: 44px;
     min-width: 44px;
 }
@@ -121,11 +125,11 @@ header .app-logo svg {
 
 .icon-btn {
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--panel-border);
+    border: 1px solid var(--on-canvas-border);
     border-radius: 10px;
     padding: 0.55rem;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: var(--on-canvas);
     transition: all 0.2s ease;
     display: flex;
     align-items: center;

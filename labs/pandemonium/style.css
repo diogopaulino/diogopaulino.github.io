@@ -787,8 +787,10 @@ kbd {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    /* Abaixo do header compartilhado: em 0.75rem os botões caíam em cima do
+       seletor de tema. */
     .hud-actions {
-        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        top: calc(4.4rem + var(--safe-top, env(safe-area-inset-top, 0px)));
         bottom: auto;
         right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
     }
@@ -799,5 +801,13 @@ kbd {
     }
     .touch-controls {
         height: min(42%, 38dvh);
+    }
+}
+
+/* Som e pausa vivem no canto superior direito, na mesma altura do .hud-top:
+   no toque eles caíam em cima do painel do trilho. O painel abre espaço. */
+@media (pointer: coarse) {
+    .voyage-panel {
+        padding-right: 10.5rem;
     }
 }

@@ -761,3 +761,18 @@ body.is-fullscreen .mobile-controls.fullscreen-mode:active {
         }
     }
 }
+/* Aviso de controles na tela: o painel de teclas não conta a história toda
+   para quem abre o lab no celular. */
+.controls-touch {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    .controls-touch {
+        display: block;
+        margin: 0.75rem 0 0;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        opacity: 0.75;
+    }
+}

@@ -584,7 +584,12 @@
             const orb = addOrb(pos.x, pos.y, true);
             dragState = { orb: orb, isNew: true, moved: false, startX: pos.x, startY: pos.y };
         }
-        canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+        // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+        try {
+            canvas.setPointerCapture(e.pointerId);
+        } catch (err) {
+            /* segue sem captura */
+        }
     });
 
     canvas.addEventListener('pointermove', function (e) {

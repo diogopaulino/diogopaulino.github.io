@@ -544,7 +544,12 @@ class JungleRun {
             if (control === 'jump') this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
             button.classList.add('is-active');
             if (button.setPointerCapture && event.pointerId !== undefined) {
-                button.setPointerCapture(event.pointerId);
+                // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+                try {
+                    button.setPointerCapture(event.pointerId);
+                } catch (err) {
+                    /* segue sem captura */
+                }
             }
         };
         const release = (event) => {

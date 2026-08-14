@@ -830,7 +830,14 @@ kbd {
         width: 44px;
         height: 44px;
     }
-    .touch-controls {
-        height: min(42%, 38dvh);
+    /* A camada de toque é ancorada no topo (inset: 0): limitar a altura aqui
+       fazia o `bottom` dos filhos medir por uma caixa de ~140px e jogava o
+       stick e os botões para fora da tela em paisagem. */
+    .stick {
+        bottom: calc(0.8rem + var(--safe-bottom, 0px));
+    }
+
+    .touch-buttons {
+        bottom: calc(0.8rem + var(--safe-bottom, 0px));
     }
 }

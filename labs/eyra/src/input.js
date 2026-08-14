@@ -61,7 +61,12 @@ export class Input {
 
         const el = this.canvas;
         el.addEventListener('pointerdown', (e) => {
-            el.setPointerCapture(e.pointerId);
+            // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+            try {
+                el.setPointerCapture(e.pointerId);
+            } catch (err) {
+                /* segue sem captura */
+            }
             this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (this.pointers.size === 1) {
                 this.dragging = true;
@@ -110,7 +115,12 @@ export class Input {
             setKnob(0, 0);
         };
         stick.addEventListener('pointerdown', (e) => {
-            stick.setPointerCapture(e.pointerId);
+            // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+            try {
+                stick.setPointerCapture(e.pointerId);
+            } catch (err) {
+                /* segue sem captura */
+            }
             onMove(e);
         });
         stick.addEventListener('pointermove', (e) => {

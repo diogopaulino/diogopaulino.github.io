@@ -711,7 +711,12 @@ function bind() {
     const canvas = $('curve');
     canvas.addEventListener('pointermove', (event) => showHover(event.clientX));
     canvas.addEventListener('pointerdown', (event) => {
-        canvas.setPointerCapture(event.pointerId);
+        // Best-effort: lança InvalidStateError se o ponteiro já terminou.
+        try {
+            canvas.setPointerCapture(event.pointerId);
+        } catch (err) {
+            /* segue sem captura */
+        }
         showHover(event.clientX);
     });
     canvas.addEventListener('pointerup', () => setTimeout(hideHover, 900));

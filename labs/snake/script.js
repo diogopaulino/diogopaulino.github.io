@@ -11,7 +11,10 @@ const powerLed = document.querySelector('.power-led');
 
 // Game Constants
 const GRID_SIZE = 20;
-const TILE_COUNT = canvas.width / GRID_SIZE;
+// O tabuleiro é retangular (20x17) porque a tela do aparelho é retangular:
+// um grid quadrado esticado para caber no LCD deixaria as células ovais.
+const TILE_COUNT_X = canvas.width / GRID_SIZE;
+const TILE_COUNT_Y = canvas.height / GRID_SIZE;
 const BASE_SPEED = 130; // ms per step at score 0
 const MIN_SPEED = 65;   // fastest step interval
 const STORAGE_KEY = 'snakeHighScore';
@@ -76,10 +79,11 @@ function announce(message) {
 
 // Initialize Game
 function initGame() {
+    const startY = Math.floor(TILE_COUNT_Y / 2);
     snake = [
-        { x: 10, y: 10 },
-        { x: 9, y: 10 },
-        { x: 8, y: 10 }
+        { x: 10, y: startY },
+        { x: 9, y: startY },
+        { x: 8, y: startY }
     ];
     dx = 1;
     dy = 0;
@@ -117,8 +121,8 @@ function placeFood() {
     // Collect the free cells first: this avoids the unbounded recursion the
     // previous version could hit once the snake filled most of the board.
     const free = [];
-    for (let x = 0; x < TILE_COUNT; x++) {
-        for (let y = 0; y < TILE_COUNT; y++) {
+    for (let x = 0; x < TILE_COUNT_X; x++) {
+        for (let y = 0; y < TILE_COUNT_Y; y++) {
             if (!snake.some(segment => segment.x === x && segment.y === y)) free.push({ x, y });
         }
     }
@@ -159,7 +163,7 @@ function update() {
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
     // Check Wall Collision
-    if (head.x < 0 || head.x >= TILE_COUNT || head.y < 0 || head.y >= TILE_COUNT) {
+    if (head.x < 0 || head.x >= TILE_COUNT_X || head.y < 0 || head.y >= TILE_COUNT_Y) {
         gameOver();
         return;
     }
@@ -369,7 +373,38 @@ new MutationObserver(() => {
     draw();
 }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
+// O aparelho é desenhado numa base fixa de 320x562px e escalado para caber na
+// tela — cresce no desktop, encolhe no celular e em paisagem curta.
+const DEVICE_BASE = { portrait: [320, 562], landscape: [560, 300] };
+const device = document.querySelector('.handheld-device');
+
+function fitDevice() {
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.visualViewport?.height || document.documentElement.clientHeight;
+    const shortLandscape = viewportHeight <= 500 && viewportWidth > viewportHeight;
+    const [baseWidth, baseHeight] = shortLandscape ? DEVICE_BASE.landscape : DEVICE_BASE.portrait;
+
+    const chrome = ['[data-lab-header]', '.instructions', '[data-lab-footer]']
+        .map(selector => document.querySelector(selector))
+        .reduce((total, el) => total + (el ? el.getBoundingClientRect().height : 0), 0)
+        + (shortLandscape ? 24 : 56);
+
+    const scale = Math.min(
+        1.3,
+        (viewportWidth - 24) / baseWidth,
+        (viewportHeight - chrome) / baseHeight
+    );
+
+    device.style.setProperty('--device-scale', Math.max(scale, 0.55).toFixed(3));
+    device.style.setProperty('--device-base-height', `${baseHeight}px`);
+}
+
+window.addEventListener('resize', fitDevice);
+window.addEventListener('orientationchange', fitDevice);
+window.visualViewport?.addEventListener('resize', fitDevice);
+
 // Initial Draw
 syncColors();
 updateHud();
+fitDevice();
 draw();

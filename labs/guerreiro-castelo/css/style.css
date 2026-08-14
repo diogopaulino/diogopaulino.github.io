@@ -484,4 +484,222 @@ kbd {
     }
     .menu-head h1 { font-size: 1.2rem; }
     .lede { margin-bottom: 0.8rem; }
+
+    /* Deitado sobra largura e falta altura: os painéis voltam para uma linha. */
+    .hud-top {
+        flex-direction: row;
+        padding-top: 3.6rem;
+    }
+    .line { font-size: 0.95rem; }
+}
+
+.keys-touch {
+    display: none;
+    margin: 0 0 1rem;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: #cdd5e4;
+    opacity: 0.85;
+}
+
+@media (pointer: coarse) {
+    .keys-touch {
+        display: block;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Controles de toque
+   Só existem quando não há teclado nem pointer lock (ponteiro grosso). O stick
+   fica à esquerda, os botões de ação à direita e o resto da tela é a câmera.
+   --------------------------------------------------------------------------- */
+.touch-controls {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    .touch-controls {
+        position: absolute;
+        inset: 0;
+        z-index: 14;
+        display: block;
+        pointer-events: none;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    /* A camada de câmera cobre a tela inteira e fica atrás dos controles:
+       arrastar em qualquer área livre gira a câmera. */
+    .touch-look {
+        position: absolute;
+        inset: 0;
+        pointer-events: auto;
+        touch-action: none;
+    }
+
+    .touch-stick {
+        position: absolute;
+        left: calc(1.1rem + env(safe-area-inset-left, 0px));
+        bottom: calc(1.4rem + env(safe-area-inset-bottom, 0px));
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: radial-gradient(circle at 50% 50%, rgba(12, 16, 26, 0.5), rgba(8, 10, 18, 0.28));
+        backdrop-filter: blur(3px);
+        pointer-events: auto;
+        touch-action: none;
+    }
+
+    .touch-stick-knob {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 54px;
+        height: 54px;
+        margin: -27px 0 0 -27px;
+        border-radius: 50%;
+        background: rgba(226, 200, 138, 0.32);
+        border: 1px solid rgba(226, 200, 138, 0.55);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        transition: transform 0.08s ease-out;
+    }
+
+    .touch-stick.is-active .touch-stick-knob {
+        transition: none;
+        background: rgba(226, 200, 138, 0.5);
+    }
+
+    .touch-pad {
+        position: absolute;
+        right: calc(1rem + env(safe-area-inset-right, 0px));
+        bottom: calc(1.4rem + env(safe-area-inset-bottom, 0px));
+        display: grid;
+        grid-template-columns: repeat(2, auto);
+        gap: 10px;
+        justify-items: end;
+        pointer-events: none;
+    }
+
+    .touch-btn {
+        pointer-events: auto;
+        touch-action: none;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(12, 16, 26, 0.5);
+        backdrop-filter: blur(3px);
+        color: #f4ead2;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 1.25rem;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+    }
+
+    .touch-btn.is-active {
+        background: rgba(226, 200, 138, 0.38);
+        transform: scale(0.94);
+    }
+
+    .touch-btn-attack {
+        background: rgba(120, 32, 32, 0.55);
+        border-color: rgba(226, 138, 138, 0.4);
+    }
+
+    .touch-btn-jump {
+        background: rgba(226, 200, 138, 0.22);
+        border-color: rgba(226, 200, 138, 0.45);
+    }
+
+    .touch-side {
+        position: absolute;
+        right: calc(1rem + env(safe-area-inset-right, 0px));
+        bottom: calc(9.6rem + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+        pointer-events: none;
+    }
+
+    .touch-chip {
+        pointer-events: auto;
+        touch-action: none;
+        min-height: 34px;
+        padding: 0 0.85rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(12, 16, 26, 0.5);
+        backdrop-filter: blur(3px);
+        color: #cdd5e4;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .touch-chip[aria-pressed="true"] {
+        background: rgba(226, 200, 138, 0.34);
+        border-color: rgba(226, 200, 138, 0.55);
+        color: #fff5e0;
+    }
+
+    /* O botão de pausa mora no canto superior direito: os painéis do HUD abrem
+       espaço para ele em vez de passarem por baixo. */
+    .hud-top {
+        padding-right: 3.8rem;
+    }
+
+    .touch-pause {
+        position: absolute;
+        right: calc(1rem + env(safe-area-inset-right, 0px));
+        top: calc(4.6rem + env(safe-area-inset-top, 0px));
+        pointer-events: auto;
+        touch-action: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(12, 16, 26, 0.5);
+        backdrop-filter: blur(3px);
+        color: #cdd5e4;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 0.9rem;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+    }
+
+    /* Paisagem curta: encolhe o stick e os botões para não cobrirem a cena. */
+    @media (max-height: 460px) {
+        .touch-stick {
+            width: 104px;
+            height: 104px;
+            bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .touch-stick-knob {
+            width: 44px;
+            height: 44px;
+            margin: -22px 0 0 -22px;
+        }
+
+        .touch-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.05rem;
+        }
+
+        .touch-pad {
+            bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .touch-side {
+            bottom: calc(7.4rem + env(safe-area-inset-bottom, 0px));
+        }
+    }
 }

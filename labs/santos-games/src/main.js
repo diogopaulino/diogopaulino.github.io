@@ -43,7 +43,7 @@ const state = {
 };
 
 const SCENE_ANNOUNCE = {
-    title: 'Tela de título. Aperte Enter para começar.',
+    title: 'Tela de título. Toque na tela ou aperte Enter para começar.',
     menu: 'Menu principal.',
     sponsor: 'Escolha de patrocinador.',
     eventSelect: 'Escolha de prova.',

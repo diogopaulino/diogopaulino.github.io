@@ -123,8 +123,10 @@ header[data-lab-header] .subtitle {
   z-index: 30;
   display: flex;
   gap: 8px;
-  /* abaixo do header compartilhado (voltar + tema) */
-  padding: calc(3.1rem + env(safe-area-inset-top, 0px)) 12px 10px;
+  /* abaixo do header compartilhado (voltar + tema). Em px porque o rem daqui
+     acompanha a fonte do jogo: em 3.1rem os botões subiam para cima do
+     seletor de tema. */
+  padding: calc(60px + env(safe-area-inset-top, 0px)) 12px 10px;
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   pointer-events: none;
@@ -136,8 +138,8 @@ header[data-lab-header] .subtitle {
 
 .hud-btn {
   pointer-events: auto;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 2px solid var(--hud-edge);
   border-radius: 6px;
   background:
