@@ -41,8 +41,8 @@ export class Entities {
         });
 
         const kinds = ['imp', 'imp', 'spike', 'wisp'];
-        const gap = 18 / scale;
-        for (let s = 22; s < len - 20; s += gap) {
+        const gap = 20 / scale;
+        for (let s = 42; s < len - 20; s += gap) {
             if (!this.course.floorAt(s, 0)) continue;
             if (hash01(s * 7.7) < 0.22) continue;
             const kind = pick(kinds);
@@ -146,7 +146,7 @@ export class Entities {
 
             const ds = Math.abs(player.s - en.s);
             const dy = player.y - en.mesh.position.y;
-            if (ds > 1.35) continue;
+            if (ds > 1.05) continue;
 
             if (player.attacking && dy > -0.4 && dy < 1.8) {
                 this._kill(en, events, 'spin');
@@ -160,7 +160,7 @@ export class Entities {
                 continue;
             }
 
-            if (player.invuln <= 0 && dy > -0.3 && dy < 1.4) {
+            if (player.invuln <= 0 && dy > -0.15 && dy < 1.15) {
                 events.push({ type: 'hurt' });
             }
         }

@@ -53,7 +53,7 @@ export function createLyra() {
     const hair = toon(0xff2d95, { emissive: 0xff2d95, em: 0.12 });
     const tunic = toon(0x1ec8b0);
     const gold = toon(0xffd166);
-    const boot = toon(0x3a1848);
+    const boot = toon(0x6c2bd9);
 
     const torso = mesh(geo.box, tunic, { scale: [0.62, 0.72, 0.38] });
     torso.position.y = 0.42;

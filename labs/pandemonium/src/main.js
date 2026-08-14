@@ -321,6 +321,7 @@ class Game {
         this.player.reset(0);
         const floor = this.course.floorAt(0, this.time);
         this.player.y = (floor ? floor.y : 6.5) + 0.05;
+        this.player.invuln = preview ? 0 : 0.9;
         this.player._place(this.course, this.time, 0.016);
         this.entities.difficulty = diff;
         this.entities.spawn();
@@ -473,6 +474,7 @@ class Game {
         const floor = this.course.floorAt(s, this.time);
         this.player.y = (floor ? floor.y : 6.5) + 0.4;
         this.player.invuln = PLAYER.invuln;
+        this.player._place(this.course, this.time, 0.016);
         this.hud.message('De novo!', 'teal', 1000);
         this.updateCamera(1, true);
     }
