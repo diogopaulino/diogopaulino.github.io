@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0c12">
+    <title>O Guerreiro e o Castelo — aventura 3D | Diogo Paulino</title>
+    <meta name="description"
+        content="Aventura 3D em three.js de Diogo Paulino: Dico, Teco e a travessia do mar até o castelo para resgatar Camila. Terceira pessoa, stealth, puzzles e fuga cinematográfica.">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/guerreiro-castelo/">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/guerreiro-castelo/">
+    <meta property="og:title" content="O Guerreiro e o Castelo do Outro Lado do Mar | Diogo Paulino">
+    <meta property="og:description"
+        content="Uma história antes de dormir vira travessia, tempestade, stealth e fuga. Jogo 3D em terceira pessoa no navegador.">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="O Guerreiro e o Castelo do Outro Lado do Mar | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Aventura 3D cinematográfica: navio, castelo, Teco e o resgate de Camila. three.js no navegador.">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="css/style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "O Guerreiro e o Castelo do Outro Lado do Mar",
+          "url": "https://diogopaulino.com.br/labs/guerreiro-castelo/",
+          "description": "Aventura 3D em three.js: Dico, Teco e a travessia do mar até o castelo para resgatar Camila.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "O Guerreiro e o Castelo",
+              "item": "https://diogopaulino.com.br/labs/guerreiro-castelo/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="O Guerreiro e o Castelo" data-back-href="/labs/" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">⚔</span>
+                    <span>O Guerreiro e o Castelo</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Mundo 3D da aventura"></canvas>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+        <div class="vignette" aria-hidden="true"></div>
+
+        <div id="chapterCard" class="chapter-card" hidden>
+            <h2 id="chapterTitle"></h2>
+            <p id="chapterSub"></p>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel heart-panel">
+                    <span class="hud-label">Dico</span>
+                    <div id="hearts" class="hearts" aria-label="Vida"></div>
+                </div>
+                <div class="panel quest-panel">
+                    <span class="hud-label">Objetivo</span>
+                    <p id="objective" class="objective">Explore o navio</p>
+                </div>
+            </div>
+
+            <div id="stealth" class="stealth" hidden data-danger="false">
+                <span>Silêncio</span>
+                <i><b id="stealthFill"></b></i>
+            </div>
+
+            <p id="toast" class="toast" hidden></p>
+            <p id="prompt" class="prompt" hidden></p>
+
+            <div id="dialogue" class="dialogue" hidden>
+                <span id="speaker" class="speaker"></span>
+                <p id="line" class="line"></p>
+            </div>
+
+            <div class="hud-actions">
+                <span id="fpsCounter" class="fps">—</span>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="ember" aria-hidden="true"></span>
+                <h1>O Guerreiro e o Castelo</h1>
+                <p class="sub">do outro lado do mar</p>
+                <p id="loadingText">Carregando...</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+                <p id="loadingPct" class="pct">0%</p>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay">
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow">uma história antes de dormir</p>
+                    <h1>O Guerreiro e o Castelo<br><span>do Outro Lado do Mar</span></h1>
+                    <p class="lede">Dico atravessa o mar com Teco para resgatar Camila. Tempestade, stealth, um tigre e a fuga sob flechas.</p>
+                </header>
+                <div class="menu-actions">
+                    <button id="btnContinue" class="primary-button" type="button" disabled>Continuar</button>
+                    <button id="btnNewGame" class="primary-button" type="button">Novo jogo</button>
+                    <button id="btnControls" class="ghost-button" type="button">Controles</button>
+                    <button id="btnSettings" class="ghost-button" type="button">Configurações</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="controlsOverlay" class="overlay" hidden>
+            <div class="overlay-card">
+                <h2>Controles</h2>
+                <div class="keys">
+                    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</span>
+                    <span><kbd>Mouse</kbd> câmera · clique para capturar</span>
+                    <span><kbd>Shift</kbd> correr · <kbd>C</kbd> agachar · <kbd>Espaço</kbd> pular</span>
+                    <span><kbd>E</kbd> interagir · <kbd>F</kbd> atacar · <kbd>Q</kbd> defender</span>
+                    <span><kbd>Tab</kbd> objetivo · <kbd>Esc</kbd> pausa</span>
+                </div>
+                <button id="btnCloseControls" class="primary-button" type="button">Fechar</button>
+            </div>
+        </div>
+
+        <div id="settingsOverlay" class="overlay" hidden>
+            <div class="overlay-card">
+                <h2>Configurações</h2>
+                <label class="field">
+                    <span>Qualidade</span>
+                    <select id="qualitySelect">
+                        <option value="low">Baixo</option>
+                        <option value="medium">Médio</option>
+                        <option value="high">Alto</option>
+                        <option value="ultra">Ultra</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Volume <b id="volumeValue">75</b></span>
+                    <input id="volumeSlider" type="range" min="0" max="100" step="1" value="75">
+                </label>
+                <button id="btnCloseSettings" class="primary-button" type="button">Fechar</button>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card">
+                <h2>Pausa</h2>
+                <div class="menu-actions">
+                    <button id="btnResume" class="primary-button" type="button">Continuar</button>
+                    <button id="btnRestartCp" class="ghost-button" type="button">Reiniciar checkpoint</button>
+                    <button id="btnPauseSettings" class="ghost-button" type="button">Configurações</button>
+                    <button id="btnQuitMenu" class="ghost-button" type="button">Sair para o menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="endOverlay" class="overlay end-overlay" hidden>
+            <div class="overlay-card end-card">
+                <p class="eyebrow">fim</p>
+                <h1>O Guerreiro e o Castelo<br><span>do Outro Lado do Mar</span></h1>
+                <p class="lede">Fim</p>
+                <div class="menu-actions">
+                    <button id="btnPlayAgain" class="primary-button" type="button">Jogar novamente</button>
+                    <button id="btnEndMenu" class="ghost-button" type="button">Menu</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/labs/shared.js" defer></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
