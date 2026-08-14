@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyMaps } from './textures.js?v=1';
+import { applyMaps } from './textures.js?v=2';
 
 const interactives = [];
 
@@ -293,65 +293,48 @@ function buildCrt(root, mats, tex, screenTexture, refs) {
     const crt = new THREE.Group();
     crt.position.set(0.06, 0.762, -0.18);
 
-    add(crt, new RoundedBoxGeometry(0.40, 0.34, 0.36, 4, 0.03), mats.beige, { pos: [0, 0.20, -0.02] });
-    add(crt, new RoundedBoxGeometry(0.36, 0.04, 0.34, 2, 0.01), mats.beigeDark, { pos: [0, 0.01, 0] });
-    add(crt, new RoundedBoxGeometry(0.33, 0.26, 0.04, 2, 0.008), mats.charcoal, { pos: [0, 0.21, 0.155] });
+    add(crt, new RoundedBoxGeometry(0.42, 0.36, 0.34, 4, 0.028), mats.beige, { pos: [0, 0.21, -0.04] });
+    add(crt, new RoundedBoxGeometry(0.38, 0.045, 0.32, 2, 0.01), mats.beigeDark, { pos: [0, 0.012, 0] });
+    add(crt, new RoundedBoxGeometry(0.36, 0.28, 0.03, 2, 0.006), phys({
+        color: 0x1a1c1a, roughness: 0.35, metalness: 0.08
+    }), { pos: [0, 0.225, 0.125] });
 
-    const screenGeo = new THREE.PlaneGeometry(0.286, 0.214, 28, 20);
+    const screenGeo = new THREE.PlaneGeometry(0.30, 0.225, 32, 24);
     const pos = screenGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i) / 0.143;
-        const y = pos.getY(i) / 0.107;
-        pos.setZ(i, -0.018 * (x * x + y * y));
+        const x = pos.getX(i) / 0.15;
+        const y = pos.getY(i) / 0.112;
+        pos.setZ(i, 0.012 * (1.0 - (x * x + y * y) * 0.55));
     }
     screenGeo.computeVertexNormals();
 
-    const screenMat = new THREE.MeshStandardMaterial({
+    const screenMat = new THREE.MeshBasicMaterial({
         map: screenTexture,
-        emissiveMap: screenTexture,
-        emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.85,
-        roughness: 0.22,
-        metalness: 0.05
+        toneMapped: false
     });
-    screenMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = refs.screenTime = { value: 0 };
-        shader.fragmentShader = shader.fragmentShader
-            .replace('#include <common>', /* glsl */ `
-                #include <common>
-                uniform float uTime;
-            `)
-            .replace('#include <map_fragment>', /* glsl */ `
-                #include <map_fragment>
-                vec2 suv = vMapUv;
-                float scan = sin((suv.y + uTime * 0.12) * 520.0) * 0.07;
-                diffuseColor.rgb -= scan;
-                vec2 vc = suv * 2.0 - 1.0;
-                float vig = 1.0 - dot(vc, vc) * 0.28;
-                diffuseColor.rgb *= vig;
-                float ca = 0.0018;
-                // leve aberração nas bordas
-                diffuseColor.r *= 1.02;
-                diffuseColor.b *= 0.98;
-                float flicker = 0.97 + 0.03 * sin(uTime * 47.0);
-                diffuseColor.rgb *= flicker;
-            `);
-    };
-    const screen = add(crt, screenGeo, screenMat, { pos: [0, 0.21, 0.172], cast: false });
+    const screen = add(crt, screenGeo, screenMat, { pos: [0, 0.225, 0.148], cast: false });
     refs.screenMesh = screen;
     refs.screenMat = screenMat;
+    refs.screenTime = { value: 0 };
 
-    const glass = add(crt, screenGeo, mats.glass, { pos: [0, 0.21, 0.178], cast: false });
-    glass.material = mats.glass;
+    add(crt, new THREE.PlaneGeometry(0.305, 0.228), phys({
+        color: 0x88aa99,
+        roughness: 0.06,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.08,
+        clearcoat: 1,
+        clearcoatRoughness: 0.04
+    }), { pos: [0, 0.225, 0.162], cast: false });
 
     refs.crtLed = add(crt, new THREE.CylinderGeometry(0.012, 0.012, 0.01, 16), std({
         color: 0x111, roughness: 0.4, emissive: 0x22ff66, emissiveIntensity: 0
-    }), { pos: [-0.155, 0.055, 0.175], rot: [Math.PI / 2, 0, 0] });
+    }), { pos: [-0.16, 0.058, 0.145], rot: [Math.PI / 2, 0, 0] });
 
     const knobs = [-0.06, 0.02, 0.10];
-    knobs.forEach((x, i) => {
+    knobs.forEach((x) => {
         add(crt, new THREE.CylinderGeometry(0.012, 0.012, 0.016, 12), mats.charcoal, {
-            pos: [x, 0.055, 0.175], rot: [Math.PI / 2, 0, 0]
+            pos: [x, 0.058, 0.145], rot: [Math.PI / 2, 0, 0]
         });
     });
 
@@ -368,11 +351,11 @@ function buildCrt(root, mats, tex, screenTexture, refs) {
     const badgeTex = new THREE.CanvasTexture(badge);
     badgeTex.colorSpace = THREE.SRGBColorSpace;
     add(crt, new THREE.PlaneGeometry(0.16, 0.04), std({ map: badgeTex, roughness: 0.5 }), {
-        pos: [0.12, 0.055, 0.182], cast: false
+        pos: [0.12, 0.058, 0.148], cast: false
     });
 
     const power = add(crt, new THREE.BoxGeometry(0.028, 0.018, 0.012), mats.charcoal, {
-        pos: [0.155, 0.055, 0.178]
+        pos: [0.16, 0.058, 0.148]
     });
     refs.crtPower = power;
 
@@ -514,29 +497,33 @@ function buildMouse(root, mats, tex, refs) {
 
 function buildLamp(root, mats, refs) {
     const lamp = new THREE.Group();
-    lamp.position.set(0.72, 0.762, -0.22);
-    add(lamp, new THREE.CylinderGeometry(0.055, 0.07, 0.02, 20), mats.metal, { pos: [0, 0.01, 0] });
-    add(lamp, new THREE.CylinderGeometry(0.012, 0.012, 0.08, 10), mats.metal, { pos: [0, 0.05, 0] });
+    lamp.position.set(0.70, 0.762, -0.12);
+    const brass = std({ color: 0xb8a070, roughness: 0.28, metalness: 0.82 });
+    add(lamp, new THREE.CylinderGeometry(0.06, 0.08, 0.025, 20), brass, { pos: [0, 0.012, 0] });
+    add(lamp, new THREE.SphereGeometry(0.028, 12, 8), brass, { pos: [0, 0.04, 0] });
 
     const arm1 = new THREE.Group();
-    arm1.position.set(0, 0.09, 0);
-    arm1.rotation.z = -0.55;
-    add(arm1, new THREE.BoxGeometry(0.018, 0.32, 0.018), mats.metal, { pos: [0, 0.16, 0] });
+    arm1.position.set(0, 0.05, 0);
+    arm1.rotation.set(0, 0, 0.55);
+    add(arm1, new THREE.CylinderGeometry(0.01, 0.01, 0.38, 10), brass, { pos: [0, 0.19, 0] });
     lamp.add(arm1);
 
     const arm2 = new THREE.Group();
-    arm2.position.set(0, 0.32, 0);
-    arm2.rotation.z = 1.15;
-    add(arm2, new THREE.BoxGeometry(0.016, 0.28, 0.016), mats.metal, { pos: [0, 0.14, 0] });
+    arm2.position.set(0, 0.38, 0);
+    arm2.rotation.set(0, 0, -1.35);
+    add(arm2, new THREE.CylinderGeometry(0.009, 0.009, 0.32, 10), brass, { pos: [0, 0.16, 0] });
     arm1.add(arm2);
 
     const head = new THREE.Group();
-    head.position.set(0, 0.28, 0);
-    head.rotation.z = 0.85;
-    add(head, new THREE.ConeGeometry(0.07, 0.1, 20, 1, true), mats.metal, { pos: [0, -0.02, 0] });
-    const bulb = add(head, new THREE.SphereGeometry(0.022, 12, 8), std({
-        color: 0xfff2cc, emissive: 0xffcc77, emissiveIntensity: 1.8, roughness: 0.35
-    }), { pos: [0, -0.04, 0], cast: false });
+    head.position.set(0, 0.32, 0);
+    head.rotation.set(0.15, 0, 1.15);
+    add(head, new THREE.ConeGeometry(0.09, 0.12, 22, 1, true), brass, { pos: [0, -0.02, 0] });
+    add(head, new THREE.CircleGeometry(0.088, 22), std({
+        color: 0xffe2a8, emissive: 0xffcc77, emissiveIntensity: 0.8, side: THREE.DoubleSide
+    }), { pos: [0, -0.078, 0], rot: [Math.PI / 2, 0, 0], cast: false });
+    const bulb = add(head, new THREE.SphereGeometry(0.024, 12, 8), std({
+        color: 0xfff6d8, emissive: 0xffdd99, emissiveIntensity: 2.2, roughness: 0.25
+    }), { pos: [0, -0.05, 0], cast: false });
     arm2.add(head);
 
     refs.lamp = lamp;
@@ -581,8 +568,9 @@ function buildFloppies(root, mats, tex, refs) {
     root.add(stack);
 
     const loose = makeFloppy(mats, tex, 'SECRET', '#8a50aa');
-    loose.position.set(-0.16, 0.767, 0.28);
-    loose.rotation.y = 0.4;
+    loose.position.set(-0.12, 0.769, 0.30);
+    loose.rotation.set(0, 0.55, 0);
+    loose.scale.setScalar(1.15);
     const hit = new THREE.Mesh(
         new THREE.BoxGeometry(0.12, 0.03, 0.12),
         new THREE.MeshBasicMaterial({ visible: false })

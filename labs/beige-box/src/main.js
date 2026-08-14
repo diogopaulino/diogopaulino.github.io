@@ -8,13 +8,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-import { createTextures } from './textures.js?v=1';
-import { buildWorld } from './models.js?v=1';
-import { CrtOs } from './crt.js?v=1';
-import { DeskAudio } from './audio.js?v=1';
+import { createTextures } from './textures.js?v=2';
+import { buildWorld } from './models.js?v=2';
+import { CrtOs } from './crt.js?v=2';
+import { DeskAudio } from './audio.js?v=2';
 
-const HOME_CAM = new THREE.Vector3(1.55, 1.28, 1.72);
-const HOME_TARGET = new THREE.Vector3(0.05, 0.92, -0.05);
+const HOME_CAM = new THREE.Vector3(1.35, 1.22, 1.85);
+const HOME_TARGET = new THREE.Vector3(0.02, 0.96, -0.04);
 
 function isMobile() {
     return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
@@ -112,8 +112,8 @@ class BeigeBox {
         this.scene.background = new THREE.Color(0x0a0810);
         this.scene.fog = new THREE.FogExp2(0x0a0810, 0.045);
 
-        this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.08, 30);
-        this.camera.position.set(-2.1, 1.55, -0.2);
+        this.camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.08, 30);
+        this.camera.position.set(2.05, 1.55, 2.45);
 
         this.setLoad(0.22, 'Gerando texturas PBR…');
         const tex = createTextures(quality.aniso);
@@ -267,7 +267,7 @@ class BeigeBox {
             composer.setPixelRatio(this.renderer.getPixelRatio());
             composer.setSize(window.innerWidth, window.innerHeight);
             composer.addPass(new RenderPass(this.scene, this.camera));
-            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.22, 0.65, 0.82);
+            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.14, 0.55, 0.9);
             composer.addPass(bloom);
             composer.addPass(new OutputPass());
             this.composer = composer;
@@ -615,8 +615,8 @@ class BeigeBox {
         if (this.intro > 0) {
             this.intro = Math.max(0, this.intro - dt * 0.35);
             const k = 1 - Math.pow(this.intro, 2);
-            this.camera.position.lerpVectors(new THREE.Vector3(-2.15, 1.55, -0.35), HOME_CAM, k);
-            this.controls.target.lerpVectors(new THREE.Vector3(-2.4, 1.45, -0.35), HOME_TARGET, k);
+            this.camera.position.lerpVectors(new THREE.Vector3(2.05, 1.55, 2.45), HOME_CAM, k);
+            this.controls.target.lerpVectors(new THREE.Vector3(0.02, 0.88, 0.05), HOME_TARGET, k);
         }
 
         if (this.focus) {
