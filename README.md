@@ -38,6 +38,7 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🍞 **[Torradeira 64](https://diogopaulino.com.br/labs/toaster-64/)** | Kart 3D cômico em three.js — disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval 3D em three.js — drakkar, machados e o resgate da princesa no castelo |
 | 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — toque na tela e jogue surfe, skate, bola, bike, raquete e barco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
