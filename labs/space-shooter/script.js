@@ -97,7 +97,7 @@ function resize() {
     canvas.width = Math.floor(gameWidth * dpr);
     canvas.height = Math.floor(gameHeight * dpr);
 
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     player.y = gameHeight - player.height - 26;
     player.x = previousWidth

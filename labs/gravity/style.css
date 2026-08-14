@@ -855,3 +855,11 @@ body.fullscreen:hover header {
         transition: none;
     }
 }
+/* --- lab-responsive-pass --- */
+.icon-btn,
+.toggle-controls-btn,
+.close-btn { min-width: 44px; min-height: 44px; }
+
+@media (max-width: 900px) {
+    footer { bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+}

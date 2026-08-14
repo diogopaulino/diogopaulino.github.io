@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1018">
+    <title>Lavandula — campos ao entardecer | Diogo Paulino</title>
+    <meta name="description"
+        content="Passeio 3D relaxante em three.js: ande pelos campos de lavanda ao entardecer, sente-se no banco de pedra e deixe o vento passar.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/lavandula/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/lavandula/">
+    <meta property="og:title" content="Lavandula — campos ao entardecer | Diogo Paulino">
+    <meta property="og:description"
+        content="Ande pelos campos de lavanda ao fim da tarde. Sem combate, sem pressa — só o vento nas fileiras.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Lavandula — campos ao entardecer | Diogo Paulino">
+    <meta name="twitter:description" content="Passeio 3D relaxante em three.js pelos campos de lavanda ao entardecer.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=7">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Lavandula",
+          "url": "https://diogopaulino.com.br/labs/lavandula/",
+          "description": "Passeio 3D relaxante em three.js: ande pelos campos de lavanda ao entardecer, sente-se no banco de pedra e deixe o vento passar.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Lavandula",
+              "item": "https://diogopaulino.com.br/labs/lavandula/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Lavandula" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>Lavandula</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Campos de lavanda em três dimensões"></canvas>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+        <div class="vignette" aria-hidden="true"></div>
+
+        <div id="memoryCard" class="memory-card" hidden>
+            <h2 id="memoryTitle">A estrada de terra</h2>
+            <p id="memoryLine">O pó sob os pés.</p>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel quest-panel">
+                    <span class="hud-label">O campo</span>
+                    <p id="objective" class="objective">Ande pela estrada. Os campos não pedem nada.</p>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Memórias</span>
+                        <strong id="memoriesValue" class="mono">0/5</strong>
+                    </div>
+                    <div class="score-row score-row--sub">
+                        <span id="timeValue" class="mono">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+            <p id="prompt" class="prompt" hidden></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" aria-label="Andar">
+                    <i id="moveKnob"></i>
+                    <span>andar</span>
+                </div>
+                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
+                <div class="touch-buttons">
+                    <button type="button" id="btnStride" class="pad">passo</button>
+                    <button type="button" id="btnSit" class="pad">sentar</button>
+                    <button type="button" id="btnInteract" class="pad pad-use">E</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="bloom-loader" aria-hidden="true"></span>
+                <h1>Lavandula</h1>
+                <p id="loadingText">O vento chega primeiro…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · hora dourada · campos de lavanda</p>
+                    <h1>Lavan<span>dula</span></h1>
+                    <p class="lede">Um passeio lento pelos campos ao entardecer. Ande, sente-se, recolha cinco
+                        lugares quietos. Não há combate nem pressa — só o vento nas fileiras e a casa no cume.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>O caminho</h2>
+                        <ol class="place-list">
+                            <li>A estrada de terra</li>
+                            <li>Entre as fileiras</li>
+                            <li>O banco de pedra</li>
+                            <li>O olival</li>
+                            <li>A casa no cume</li>
+                        </ol>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
+                            <span><kbd>Shift</kbd> passo largo · mouse olhar</span>
+                            <span><kbd>Espaço</kbd> sentar · <kbd>E</kbd> lembrar</span>
+                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som · <kbd>C</kbd> câmera</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Qualidade vale no próximo passeio. Trilha original — nada de filme.</p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Entrar nos campos</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> O vento espera</p>
+                <h2>O campo<br>está em silêncio.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao início</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="restOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card rest-card">
+                <p class="eyebrow"><i></i> Os campos ficam</p>
+                <h2>Você chegou<br>em casa.</h2>
+                <p class="lede">Cinco lugares quietos. O sol ainda não se foi — e não precisa ir.</p>
+                <div id="restStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="againButton" class="primary-button" type="button">
+                        <span>Andar de novo</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="restMenuButton" class="ghost-button" type="button">Voltar ao início</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>Os campos não<br>puderam abrir.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js?v=2"></script>
+</body>
+
+</html>

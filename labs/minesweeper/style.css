@@ -295,3 +295,8 @@ body {
         font-size: 11px;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 480px) {
+    .window { max-width: 100%; overflow-x: auto; }
+    .board { max-width: 100%; }
+}

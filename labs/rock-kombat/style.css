@@ -1678,4 +1678,15 @@ dialog h2 {
     scroll-behavior: auto !important;
   }
 }
+/* --- lab-responsive-pass --- */
+header {
+    padding-top: max(0px, env(safe-area-inset-top, 0px));
+}
 
+@media (orientation: landscape) and (max-height: 620px) {
+    .touch-controls {
+        bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+        left: calc(5px + env(safe-area-inset-left, 0px));
+        right: calc(5px + env(safe-area-inset-right, 0px));
+    }
+}

@@ -5,16 +5,15 @@
     border-radius: 1.5rem;
     box-shadow: 0 4px 6px -1px var(--shadow-md), 0 2px 4px -1px var(--shadow-sm);
     overflow: hidden;
-    min-height: 600px;
+    min-height: min(600px, calc(100dvh - 10rem));
     border: 1px solid var(--border-subtle);
     --shadow-accent: var(--accent-glow);
 }
 
 .editor-wrapper {
     display: grid;
-    grid-template-columns: 1fr 320px;
-    grid-template-columns: 1fr 320px;
-    min-height: 600px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    min-height: min(600px, calc(100dvh - 10rem));
     height: auto;
 }
 
@@ -392,4 +391,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
     .preview-area {
         min-height: min(50vh, 360px);
     }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .editor-container,
+    .editor-wrapper { min-height: 0; }
+    .preview-area { min-height: min(45dvh, 320px); }
+    .controls-area { max-height: none; }
+    .tab-btn { min-height: 44px; }
 }
