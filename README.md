@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/img/diogo-avatar.png" alt="Diogo Paulino" width="150" />
+<img src="assets/img/diogo-avatar.png" alt="Diogo Paulino" width="150" height="150" />
 
 # Diogo Paulino
 
@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-Playground-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-34_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,21 +32,32 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto onde guardo os experimentos e mini-projetos que fui criando ao longo do tempo. Tudo roda direto no navegador, sem instalar nada.
+Um laboratório aberto com **34 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+
+### 🪐 Mundos 3D
+
+| Projeto | O que é? |
+| :--- | :--- |
+| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Observatório de exoplanetas — gere sistemas, aproxime a órbita e forje oceanos, magma e anéis |
+| ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
+| 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
+| 🍞 **[Torradeira 64](https://diogopaulino.com.br/labs/toaster-64/)** | Kart 3D cômico — disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt |
+| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
+| 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
+| 😈 **[Pandemônio](https://diogopaulino.com.br/labs/pandemonium/)** | Platformer no trilho — corra, pule abismos e alcance o portal |
+| 💻 **[Beige Box](https://diogopaulino.com.br/labs/beige-box/)** | Quarto retrô: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa |
+| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador WebGPU com circuitos reais, física de pneus, DRS/ERS e IA |
 
 ### 🎮 Games & Retrô
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 🍞 **[Torradeira 64](https://diogopaulino.com.br/labs/toaster-64/)** | Kart 3D cômico em three.js — disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt |
-| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval 3D em three.js — drakkar, machados e o resgate da princesa no castelo |
-| 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — toque na tela e jogue surfe, skate, bola, bike, raquete e barco |
+| 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — surfe, skate, bola, bike, raquete e barco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
 | 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |
-| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador 3D WebGPU com IA e telemetria |
-| 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Plataforma retrô |
+| 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Plataforma retrô pela selva |
 | 🌌 **[Neon Invaders](https://diogopaulino.com.br/labs/space-shooter/)** | Arcade cyberpunk neon |
 | 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy |
 | 🐍 **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha Nokia 3310 |
