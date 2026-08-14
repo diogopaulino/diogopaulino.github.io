@@ -123,8 +123,8 @@ export class Vehicle {
         this.handbrake = handbrake;
 
         const gripMul = SURFACE_GRIP[this.surface] * spec.grip;
-        const topSpeed = 52 + spec.power / 18000;
-        const peakAccel = 9 + spec.power / spec.mass * 0.016;
+        const topSpeed = 68 + spec.power / 38000;
+        const peakAccel = 7.2 + spec.power / spec.mass * 0.0075;
         const speedSteer = 1 / (1 + this.speed * 0.038);
         this.steer = damp(this.steer, steerInput * spec.steer * speedSteer, 11, dt);
 
@@ -152,7 +152,7 @@ export class Vehicle {
         accel -= SURFACE_DRAG[this.surface] / spec.mass * this.speed * 0.015;
         if (throttle < 0.05 && brake < 0.05) accel -= 3.2;
 
-        const cap = topSpeed * (0.55 + 0.45 * gripMul);
+        const cap = Math.min(96, topSpeed * (0.72 + 0.28 * clamp(gripMul, 0.6, 1.4)));
         this.speed = clamp(this.speed + accel * dt, 0, cap);
 
         const driftWant = Math.abs(steerInput) * (0.12 + handbrake * 0.85) * saturate(this.speed / 18);
