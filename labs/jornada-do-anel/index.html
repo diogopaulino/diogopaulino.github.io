@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0c0a08">
+    <title>A Jornada do Anel — aventura 3D | Labs</title>
+    <meta name="description"
+        content="Jogo 3D em three.js inspirado no primeiro filme da trilogia: o Condado, a fuga dos Cavaleiros, o vale élfico, as minas e o Monte da Visão.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/jornada-do-anel/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/jornada-do-anel/">
+    <meta property="og:title" content="A Jornada do Anel">
+    <meta property="og:description"
+        content="Cinco cenas em third-person: colinas douradas, floresta noturna, conselho élfico, ponte nas minas e o cume ao entardecer.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="A Jornada do Anel">
+    <meta name="twitter:description" content="Aventura 3D no navegador, homenagem ao primeiro filme. three.js.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="A Jornada do Anel" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">○</span>
+                    <span>A Jornada do Anel</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Mundo 3D da jornada"></canvas>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+        <div id="vignette" class="vignette" aria-hidden="true"></div>
+        <div id="hitFlash" class="hit-flash" aria-hidden="true"></div>
+
+        <div id="chapterCard" class="chapter-card" hidden>
+            <span id="chapterRoman" class="chapter-roman">I</span>
+            <h2 id="chapterTitle">O Condado</h2>
+            <p id="chapterSub">A toca redonda</p>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel heart-panel">
+                    <span class="hud-label">Portador</span>
+                    <div id="hearts" class="hearts" aria-label="Vida"></div>
+                    <span id="ringBadge" class="ring-badge" data-on="false" title="O Anel">○ Anel</span>
+                </div>
+                <div class="panel quest-panel">
+                    <span id="chapterTag" class="hud-label">I · O Condado</span>
+                    <p id="objective" class="objective">Encontre a toca de porta verde e pegue o Anel.</p>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Crônica</span>
+                        <strong id="pagesValue" class="mono">0/5</strong>
+                    </div>
+                    <div class="score-row score-row--sub">
+                        <span id="timeValue" class="mono">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="stealthMeter" class="stealth" hidden data-danger="false">
+                <span>Os Cavaleiros farejam</span>
+                <i><b id="stealthFill"></b></i>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+            <p id="prompt" class="prompt" hidden></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" aria-label="Andar">
+                    <i id="moveKnob"></i>
+                    <span>andar</span>
+                </div>
+                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
+                <div class="touch-buttons">
+                    <button type="button" id="btnSprint" class="pad">correr</button>
+                    <button type="button" id="btnAttack" class="pad pad-atk">⚔</button>
+                    <button type="button" id="btnInteract" class="pad pad-use">E</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="ring-loader" aria-hidden="true"></span>
+                <h1>A Jornada do Anel</h1>
+                <p id="loadingText">Acendendo as lanternas…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · third-person · cinco cenas</p>
+                    <h1>A Jornada <span>do Anel</span></h1>
+                    <p class="lede">Uma homenagem visual ao primeiro filme: do Condado dourado à fuga noturna,
+                        do conselho élfico às minas e ao cume ao entardecer. Textos e música originais.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Capítulo</h2>
+                        <div id="chapterList" class="chapter-list" role="list"></div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
+                            <span><kbd>Shift</kbd> correr · mouse olhar</span>
+                            <span><kbd>E</kbd> interagir · <kbd>Espaço</kbd> atacar</span>
+                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som · <kbd>C</kbd> câmera</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor glória: <b id="bestScore" class="mono">—</b>
+                            · qualidade vale na próxima jornada</p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Seguir a estrada</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> A estrada espera</p>
+                <h2>A jornada<br>está pausada.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dialogueOverlay" class="overlay dialogue-overlay" hidden>
+            <div class="dialogue-card">
+                <p id="dialogueSpeaker" class="dialogue-speaker">O Cinzento</p>
+                <p id="dialogueText" class="dialogue-text"></p>
+                <button id="dialogueContinue" class="ghost-button" type="button">Continuar</button>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> A sombra venceu</p>
+                <h2>A jornada<br>se quebrou.</h2>
+                <p id="defeatReason" class="lede"></p>
+                <div id="defeatStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Tentar de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victoryOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card victory-card">
+                <p class="eyebrow eyebrow--gold"><i></i> A companhia se parte</p>
+                <h2>O Anel segue<br>para o leste.</h2>
+                <p class="lede">Você atravessou cinco cenas do primeiro ato. A estrada não acaba aqui — mas esta jornada, sim.</p>
+                <div id="victoryStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Recomeçar no Condado</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O mapa não<br>pôde abrir.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js?v=1"></script>
+</body>
+
+</html>
