@@ -5,29 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0b0a12">
-    <title>River Knight — resgate a princesa no castelo | Labs</title>
+    <meta name="theme-color" content="#14061f">
+    <title>Pandemônio — platformer 3D no trilho | Labs</title>
     <meta name="description"
-        content="Jogo 3D em three.js: guie o drakkar do guerreiro medieval rio abaixo, derrube barcos inimigos e torres, enfrente a barcaça negra e resgate a princesa no castelo.">
-    <link rel="canonical" href="https://diogopaulino.com.br/labs/river-knight/">
+        content="Jogo 3D em three.js inspirado em Pandemonium: corra no trilho flutuante, pule abismos, esmague impes e colete cristais até o portal de Lyrion.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/pandemonium/">
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
-    <meta property="og:url" content="https://diogopaulino.com.br/labs/river-knight/">
-    <meta property="og:title" content="River Knight">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/pandemonium/">
+    <meta property="og:title" content="Pandemônio">
     <meta property="og:description"
-        content="Aventura medieval 3D no navegador: rio com ondas de Gerstner, drakkar com canhões e um castelo à espera.">
+        content="Platformer 3D no trilho: Lyra corre por ilhas flutuantes, pula abismos e enfrenta o caos de Lyrion.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="River Knight">
-    <meta name="twitter:description" content="Navegue, lute e resgate a princesa. Aventura medieval 3D em three.js.">
+    <meta name="twitter:title" content="Pandemônio">
+    <meta name="twitter:description" content="Aventura 3D estilo Pandemonium no navegador, feita com three.js.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=6">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=1">
 
     <script type="importmap">
     {
@@ -41,69 +41,49 @@
 
 <body>
     <main class="game-shell">
-        <header data-lab-header data-title="River Knight" data-back-label="Labs">
+        <header data-lab-header data-title="Pandemônio" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="brand-mark" aria-hidden="true">⚔️</span>
-                    <span>River Knight</span>
+                    <span class="brand-mark" aria-hidden="true">✦</span>
+                    <span>Pandemônio</span>
                 </div>
             </template>
         </header>
 
-        <canvas id="scene" aria-label="Rio medieval em 3D com o barco do guerreiro"></canvas>
+        <canvas id="scene" aria-label="Percurso 3D de Lyrion com a acrobata Lyra"></canvas>
 
-        <!-- ================= HUD ================= -->
         <div id="hud" class="hud" hidden>
             <div class="hud-top">
-                <div class="panel hull-panel">
-                    <span class="hud-label">Casco</span>
-                    <div id="hullPips" class="pips" aria-label="Integridade do casco"></div>
-                    <div class="fury">
-                        <span class="hud-label">Fúria</span>
-                        <div class="meter"><i id="furyFill"></i></div>
-                    </div>
+                <div class="panel lives-panel">
+                    <span class="hud-label">Vidas</span>
+                    <div id="lifePips" class="pips" aria-label="Vidas restantes"></div>
                 </div>
 
                 <div class="panel voyage-panel">
                     <div class="voyage-head">
-                        <span class="hud-label">Rumo ao castelo</span>
-                        <strong id="distanceValue" class="mono">4200 m</strong>
+                        <span class="hud-label">Trilho de Lyrion</span>
+                        <strong id="distanceValue" class="mono">0%</strong>
                     </div>
                     <div class="rail">
                         <i id="progressFill"></i>
-                        <span id="progressBoat" class="rail-boat" aria-hidden="true">⛵</span>
-                        <span class="rail-castle" aria-hidden="true">🏰</span>
+                        <span id="progressHero" class="rail-hero" aria-hidden="true">✦</span>
+                        <span class="rail-gate" aria-hidden="true">⬡</span>
                     </div>
                 </div>
 
                 <div class="panel score-panel">
                     <div class="score-row">
-                        <span class="hud-label">Glória</span>
-                        <strong id="scoreValue" class="mono">0</strong>
+                        <span class="hud-label">Cristais</span>
+                        <strong id="gemsValue" class="mono">0</strong>
                     </div>
                     <div class="score-row score-row--sub">
-                        <span id="comboBadge" class="combo" data-active="false">x1.0</span>
-                        <span id="timeValue" class="mono">0:00</span>
+                        <span id="comboBadge" class="combo" data-active="false">x1</span>
+                        <strong id="scoreValue" class="mono">0</strong>
                     </div>
                 </div>
             </div>
 
-            <div id="bossPanel" class="boss-panel" hidden>
-                <span class="boss-name">Barcaça Negra de Morvain</span>
-                <div class="boss-bar"><i id="bossFill"></i></div>
-            </div>
-
             <p id="message" class="message" role="status" aria-live="polite"></p>
-
-            <div id="reticle" class="reticle" aria-hidden="true">
-                <span class="reticle-ring"></span>
-                <span class="reticle-dot"></span>
-                <span id="reticleLabel" class="reticle-label"></span>
-            </div>
-            <p id="hintBar" class="hint-bar" aria-hidden="true">Aponte o navio e clique — a mira trava sozinha nos inimigos</p>
-            <div class="throw-meter" title="Canhão pronto">
-                <i id="throwFill"></i>
-            </div>
 
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
@@ -113,26 +93,25 @@
                 <span id="fpsCounter" class="fps mono" hidden>—</span>
             </div>
 
-            <!-- Controles de toque -->
             <div id="touchControls" class="touch-controls" hidden>
-                <div class="steer-zone" id="steerZone" aria-label="Arraste para navegar">
-                    <span class="steer-hint">navegar</span>
+                <div class="pad-group pad-left">
+                    <button type="button" class="pad" data-control="left" aria-label="Correr para trás">◀</button>
+                    <button type="button" class="pad" data-control="right" aria-label="Correr para frente">▶</button>
                 </div>
-                <div class="touch-buttons">
-                    <button type="button" class="pad pad-boost" data-control="boost" aria-label="Acelerar">REMAR</button>
-                    <button type="button" class="pad pad-throw" data-control="throw" aria-label="Disparar canhão">🔥</button>
+                <div class="pad-group pad-right">
+                    <button type="button" class="pad pad-attack" data-control="attack" aria-label="Girar">GIRO</button>
+                    <button type="button" class="pad pad-jump" data-control="jump" aria-label="Pular">PULO</button>
                 </div>
             </div>
         </div>
 
         <div id="hitFlash" class="hit-flash" aria-hidden="true"></div>
 
-        <!-- ================= Overlays ================= -->
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="loading-card">
-                <span class="loading-mark" aria-hidden="true">⚔️</span>
-                <h1>River Knight</h1>
-                <p id="loadingText">Forjando o rio…</p>
+                <span class="loading-mark" aria-hidden="true">✦</span>
+                <h1>Pandemônio</h1>
+                <p id="loadingText">Abrindo o portal de Lyrion…</p>
                 <div class="loading-bar"><i id="loadingFill"></i></div>
             </div>
         </div>
@@ -140,15 +119,15 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · ondas de Gerstner · céu procedural</p>
-                    <h1>River <span>Knight</span></h1>
-                    <p class="lede">A princesa está presa na torre de Morvain. O barco já avança — você
-                        aponta, dispara e desvia. A mira trava sozinha no alvo mais próximo.</p>
+                    <p class="eyebrow"><i></i> three.js · trilho 2.5D · salto duplo</p>
+                    <h1>Pande<span>mônio</span></h1>
+                    <p class="lede">Lyra e o crânio Bico atravessam o reino flutuante de Lyrion.
+                        Corra no trilho, pule abismos, esmague impes e alcance o portal de cristal.</p>
                 </header>
 
                 <div class="menu-grid">
                     <section class="menu-section">
-                        <h2>Jornada</h2>
+                        <h2>Ritmo</h2>
                         <div id="difficultyOptions" class="chip-row" role="radiogroup"
                             aria-label="Dificuldade"></div>
                         <p id="difficultyBlurb" class="section-note"></p>
@@ -157,9 +136,9 @@
                     <section class="menu-section">
                         <h2>Comandos</h2>
                         <div class="keys">
-                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> governar o navio</span>
-                            <span><kbd>W</kbd> remar forte · <kbd>S</kbd> segurar</span>
-                            <span><kbd>Espaço</kbd> / <kbd>clique</kbd> canhão (mira automática)</span>
+                            <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> correr no trilho</span>
+                            <span><kbd>Espaço</kbd> / <kbd>W</kbd> pular · de novo no ar: salto duplo</span>
+                            <span><kbd>J</kbd> / <kbd>K</kbd> giro de ataque</span>
                             <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                     </section>
@@ -173,7 +152,7 @@
                                     <option value="auto">Automática</option>
                                     <option value="low">Performance</option>
                                     <option value="medium">Equilibrada</option>
-                                    <option value="high">Cinemática</option>
+                                    <option value="high">Carnaval</option>
                                 </select>
                             </label>
                             <label class="field">
@@ -187,7 +166,7 @@
 
                 <footer class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Zarpar</span>
+                        <span>Correr</span>
                         <i aria-hidden="true">→</i>
                     </button>
                 </footer>
@@ -196,41 +175,41 @@
 
         <div id="pauseOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> Âncora lançada</p>
-                <h2>O rio espera.</h2>
+                <p class="eyebrow"><i></i> O trilho espera</p>
+                <h2>Respiro no caos.</h2>
                 <div class="card-actions">
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
                     </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao portal</button>
                 </div>
             </div>
         </div>
 
         <div id="gameOverOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card defeat-card">
-                <p class="eyebrow eyebrow--danger"><i></i> O casco cedeu</p>
-                <h2>O rio levou<br>o guerreiro.</h2>
+                <p class="eyebrow eyebrow--danger"><i></i> Queda no vazio</p>
+                <h2>Lyrion cobrou<br>o pedágio.</h2>
                 <div id="defeatStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="retryButton" class="primary-button" type="button">
                         <span>Tentar de novo</span><i aria-hidden="true">↻</i>
                     </button>
-                    <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                    <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao portal</button>
                 </div>
             </div>
         </div>
 
         <div id="victoryOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card victory-card">
-                <p class="eyebrow eyebrow--gold"><i></i> Portão tomado</p>
-                <h2>A princesa<br>está livre.</h2>
+                <p class="eyebrow eyebrow--gold"><i></i> Portal aberto</p>
+                <h2>Lyra atravessou<br>o caos.</h2>
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="replayButton" class="primary-button" type="button">
-                        <span>Nova jornada</span><i aria-hidden="true">→</i>
+                        <span>Nova corrida</span><i aria-hidden="true">→</i>
                     </button>
-                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao portal</button>
                 </div>
             </div>
         </div>
@@ -238,7 +217,7 @@
         <div id="errorOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
                 <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
-                <h2>Seu navegador não<br>conseguiu abrir o rio.</h2>
+                <h2>Seu navegador não<br>abriu Lyrion.</h2>
                 <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
             </div>
@@ -248,7 +227,7 @@
     </main>
 
     <script src="/labs/shared.js?v=6" defer></script>
-    <script type="module" src="src/main.js?v=16"></script>
+    <script type="module" src="src/main.js?v=1"></script>
 </body>
 
 </html>

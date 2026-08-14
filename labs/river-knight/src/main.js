@@ -680,8 +680,8 @@ class Game {
             this.hud.setThrowReady(ready);
         }
 
-        // O chefe fecha o rio: não dá para passar por ele.
-        if (this.boss.active && this.boss.dying <= 0) {
+        // O chefe fecha o rio até morrer (ou o portão abrir).
+        if (this.boss.active && this.boss.dying <= 0 && !this.gateOpened) {
             const wall = this.boss.group.position.z + 34;
             if (this.player.z < wall) {
                 this.player.z = wall;
@@ -727,7 +727,7 @@ class Game {
         }
 
         // Chegada: o drakkar cruza o vão do portão.
-        if (this.player.z <= CASTLE_Z - 4 && this.gateOpened) {
+        if (this.gateOpened && this.player.z <= CASTLE_Z + 2) {
             this.startVictory();
         }
 

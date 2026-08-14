@@ -128,7 +128,7 @@ header .header-actions {
 }
 
 header .theme-switch-wrapper {
-  margin-left: 8px;
+  display: none !important;
 }
 
 .mini-brand {
@@ -153,6 +153,15 @@ header .theme-switch-wrapper {
 
 .screen.is-active {
   display: flex;
+}
+
+body[data-screen="arena-screen"] footer,
+body[data-screen="versus-screen"] footer {
+  display: none;
+}
+
+body[data-screen="arena-screen"] header .back-link span {
+  display: none;
 }
 
 .overline {
@@ -341,6 +350,14 @@ em {
   cursor: not-allowed;
 }
 
+.cta.press-start b {
+  animation: press-blink 1.15s step-end infinite;
+}
+
+@keyframes press-blink {
+  50% { opacity: 0.38; }
+}
+
 
 /* --------------------------------------------------------------------------
    8. Select Screen (Fighter Selection)
@@ -405,9 +422,40 @@ em {
   box-shadow: 0 20px 50px #000b;
 }
 
-.fighter-card.is-selected {
+.fighter-card.is-p1 {
   border-color: var(--amber);
   box-shadow: 0 0 0 2px var(--amber), 0 20px 60px #000;
+}
+
+.fighter-card.is-cpu {
+  border-color: var(--red);
+}
+
+.fighter-card.is-p1.is-cpu {
+  box-shadow: 0 0 0 2px var(--amber), 0 0 0 5px var(--red), 0 20px 60px #000;
+}
+
+.card-badges {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  border: 1px solid #ffffff44;
+  background: #08090be8;
+  color: var(--amber);
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.badge.cpu {
+  color: #e37a6b;
 }
 
 /* Fighter card visual area */
@@ -501,6 +549,28 @@ em {
   box-shadow: 0 22px 70px #0008;
 }
 
+.pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pick-row button {
+  border: 1px solid var(--line);
+  background: #15171a;
+  padding: 9px 8px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.pick-row button.is-active {
+  border-color: var(--amber);
+  background: #211b13;
+  color: var(--amber);
+}
+
 /* VS preview header */
 .versus-preview {
   display: grid;
@@ -574,9 +644,21 @@ legend {
   letter-spacing: 0.08em;
 }
 
+.option {
+  background:
+    linear-gradient(#15171ae6, #15171af2),
+    var(--stage) center/cover no-repeat;
+}
+
+.option[data-stage="seattle"] { --stage: url("assets/stage-seattle.webp"); }
+.option[data-stage="coliseum"] { --stage: url("assets/stage-coliseum.webp"); }
+.option[data-stage="cellar"] { --stage: url("assets/stage-cellar.webp"); }
+
 .option.is-active {
   border-color: var(--amber);
-  background: #211b13;
+  background:
+    linear-gradient(#211b13d0, #211b13f0),
+    var(--stage) center/cover no-repeat;
 }
 
 /* Difficulty selector */
@@ -633,23 +715,28 @@ legend {
    -------------------------------------------------------------------------- */
 .arena {
   align-items: center;
-  padding: 66px 10px 18px;
+  padding: 58px 10px 12px;
   background: radial-gradient(circle at center top, #241410, #08090b 55%);
 }
 
 .arena-shell {
   width: 100%;
-  max-width: min(1260px, calc((100svh - 190px) * 16/9));
+  max-width: min(1260px, calc((100svh - 130px) * 16/9));
   margin: 0 auto;
 }
 
 /* HUD — top bar during fight */
 .hud {
+  position: absolute;
+  z-index: 5;
+  inset: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr 116px 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr 108px 1fr;
+  gap: 12px;
   align-items: end;
-  margin-bottom: 8px;
+  padding: 10px 14px 18px;
+  pointer-events: none;
+  background: linear-gradient(#000000d4, #0000 92%);
 }
 
 .hud-name {
@@ -706,8 +793,17 @@ legend {
 }
 
 .life i {
-  background: linear-gradient(#e5d871, #7ebc3f 48%, #357222);
-  box-shadow: 0 0 12px #9bd94766;
+  background: linear-gradient(#ff6a45, #d31818 48%, #6d0b0b);
+  box-shadow: 0 0 12px #ff3a2066;
+}
+
+.life.is-danger i {
+  animation: danger-pulse 0.45s ease-in-out infinite;
+  background: linear-gradient(#ffe066, #ff3b2f 55%, #9a0d0d);
+}
+
+@keyframes danger-pulse {
+  50% { filter: brightness(1.35); }
 }
 
 .p2 .life i,
@@ -817,9 +913,12 @@ legend {
   position: relative;
   overflow: hidden;
   aspect-ratio: 16/9;
-  border: 2px solid #4a3828;
+  border: 3px solid #3d2a1c;
   background: #08090b;
-  box-shadow: 0 0 0 5px #15110e, 0 28px 90px #000;
+  box-shadow:
+    inset 0 0 40px #0006,
+    0 0 0 6px #15110e,
+    0 28px 90px #000;
 }
 
 #game {
@@ -832,6 +931,7 @@ legend {
 /* Announcement overlay */
 .announce {
   position: absolute;
+  z-index: 5;
   inset: 0;
   display: grid;
   place-items: center;
@@ -863,11 +963,20 @@ legend {
 /* Combo counter */
 .combo {
   position: absolute;
-  top: 28%;
-  font: italic 900 44px var(--display);
+  z-index: 5;
+  top: 32%;
+  display: flex;
+  flex-direction: column;
+  font: italic 900 52px/0.85 var(--display);
   color: var(--amber);
-  text-shadow: 3px 3px #000;
+  text-shadow: 3px 3px #000, 0 0 18px #d6a54e88;
   opacity: 0;
+  pointer-events: none;
+}
+
+.combo small {
+  font-size: 12px;
+  letter-spacing: 0.16em;
 }
 
 .combo.p1 {
@@ -901,8 +1010,9 @@ legend {
 /* Pause button */
 .pause-button {
   position: absolute;
+  z-index: 6;
   right: 10px;
-  top: 10px;
+  top: 86px;
   width: 38px;
   height: 38px;
   border: 1px solid #ffffff33;
@@ -967,7 +1077,100 @@ legend {
 
 
 /* --------------------------------------------------------------------------
-   12. Results Screen
+   12. Versus Screen
+   -------------------------------------------------------------------------- */
+.versus {
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, #4a1812, #08090b 62%),
+    #08090b;
+}
+
+.versus-duel {
+  width: min(1180px, 96vw);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 12px;
+  padding: 80px 16px 40px;
+}
+
+.versus-fighter {
+  text-align: center;
+}
+
+.versus-sprite {
+  --sheet: none;
+  display: block;
+  width: min(42vw, 430px);
+  aspect-ratio: 1;
+  margin: 0 auto -28px;
+  background: var(--sheet) 0 0 / 400% 300% no-repeat;
+  filter: drop-shadow(0 24px 28px #000) drop-shadow(0 0 24px color-mix(in srgb, var(--fighter, #d6a54e) 35%, transparent));
+}
+
+.versus-fighter.p2 .versus-sprite {
+  transform: scaleX(-1);
+}
+
+.versus-fighter small {
+  display: block;
+  color: var(--steel);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+}
+
+.versus-fighter.p2 small {
+  color: #e37a6b;
+}
+
+.versus-fighter strong {
+  font: italic 900 clamp(36px, 6vw, 72px)/0.9 var(--display);
+  text-shadow: 4px 5px #000;
+}
+
+.versus-center {
+  text-align: center;
+  padding-bottom: 48px;
+}
+
+.versus-center b {
+  display: block;
+  color: var(--amber);
+  font: italic 900 clamp(64px, 10vw, 140px)/0.8 var(--display);
+  text-shadow: 0 8px var(--red-dark), 0 0 40px #d6a54e66;
+  animation: vs-pop 0.55s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+
+.versus-center span {
+  display: block;
+  margin-top: 8px;
+  color: #cfc8bc;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.versus-center em {
+  display: block;
+  margin-top: 14px;
+  color: var(--amber);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+@keyframes vs-pop {
+  from { transform: scale(2.4) rotate(-8deg); opacity: 0; }
+  to { transform: scale(1) rotate(-2deg); opacity: 1; }
+}
+
+
+/* --------------------------------------------------------------------------
+   13. Results Screen
    -------------------------------------------------------------------------- */
 .results {
   position: relative;
@@ -1104,9 +1307,15 @@ dialog h2 {
   font-size: 58px;
 }
 
-.pause-layer button {
+.pause-layer .cta {
   display: block;
   margin: 18px auto 0;
+}
+
+.pause-layer .quiet-button {
+  border: 1px solid var(--line);
+  width: 100%;
+  margin-top: 10px;
 }
 
 
@@ -1254,6 +1463,7 @@ dialog h2 {
   .hud {
     grid-template-columns: 1fr 68px 1fr;
     gap: 5px;
+    padding: 6px 8px 12px;
   }
 
   .hud-name strong {
@@ -1284,8 +1494,24 @@ dialog h2 {
   /* Arena layout mobile */
   .arena {
     align-items: flex-start;
-    padding: 56px 4px 8px;
+    padding: 52px 4px 8px;
   }
+
+  .pause-button {
+    top: 70px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .versus-duel {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding-top: 72px;
+  }
+
+  .versus-fighter.p2 { order: 3; }
+  .versus-center { order: 2; padding-bottom: 8px; }
+  .versus-sprite { width: min(58vw, 280px); margin-bottom: -36px; }
 
   .canvas-frame {
     border-width: 1px;
@@ -1299,19 +1525,24 @@ dialog h2 {
   .touch-controls {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 5px calc(8px + env(safe-area-inset-bottom));
+    align-items: flex-end;
+    padding: 12px 8px calc(10px + env(safe-area-inset-bottom));
     user-select: none;
     touch-action: none;
   }
 
-  .touch-move {
+  .touch-dpad {
     display: grid;
-    grid-template-columns: repeat(3, 46px);
-    gap: 5px;
+    grid-template: ". up ." 58px "left down right" 58px / 58px 58px 58px;
+    gap: 6px;
   }
 
-  .touch-move button,
+  .touch-dpad .up { grid-area: up; }
+  .touch-dpad .left { grid-area: left; }
+  .touch-dpad .down { grid-area: down; }
+  .touch-dpad .right { grid-area: right; }
+
+  .touch-dpad button,
   .touch-action button {
     border: 1px solid #ffffff2d;
     background: #16191d;
@@ -1319,26 +1550,22 @@ dialog h2 {
     touch-action: none;
   }
 
-  .touch-move button {
-    width: 46px;
-    height: 46px;
-    border-radius: 10px;
-    font-size: 18px;
-  }
-
-  .touch-move button:nth-child(2) {
-    translate: 0 -8px;
+  .touch-dpad button {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+    font-size: 20px;
   }
 
   .touch-action {
     display: grid;
-    grid-template-columns: repeat(2, 52px);
-    gap: 7px;
+    grid-template-columns: repeat(2, 62px);
+    gap: 10px;
   }
 
   .touch-action button {
-    width: 52px;
-    height: 52px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     font: 900 18px var(--display);
   }
@@ -1353,11 +1580,16 @@ dialog h2 {
     background: #3d2f16;
   }
 
+  .touch-action .throw {
+    border-color: #9ad0c4;
+    background: #1a3330;
+  }
+
   .touch-action .special {
-    grid-column: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
     border-color: var(--red);
     background: var(--red-dark);
-    translate: 0 -8px;
   }
 
   .touch-controls button.is-down {
@@ -1395,7 +1627,7 @@ dialog h2 {
 
   .arena-shell {
     width: 100%;
-    max-width: calc((100svh - 90px) * 16/9);
+    max-width: calc((100svh - 64px) * 16/9);
     margin: 0 auto;
   }
 
