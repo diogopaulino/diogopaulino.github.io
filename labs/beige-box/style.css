@@ -435,3 +435,18 @@ button {
     .hint-bar { font-size: 0.64rem; }
     .hud-left { max-width: 100%; }
 }
+/* --- lab-responsive-pass --- */
+.icon-button { width: 2.75rem; height: 2.75rem; min-width: 44px; min-height: 44px; }
+
+@media (max-width: 720px) {
+    .hud-left {
+        max-width: min(18rem, calc(100% - var(--safe-left, 0px) - var(--safe-right, 0px) - 1rem));
+        padding: 0.65rem 0.8rem;
+        font-size: 0.92rem;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-left { max-width: 14rem; }
+    .hint-bar { display: none; }
+}

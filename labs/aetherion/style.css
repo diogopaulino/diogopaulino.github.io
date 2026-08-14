@@ -696,3 +696,63 @@ kbd {
         display: none;
     }
 }
+/* --- lab-responsive-pass --- */
+.dock-btn, .warp-btns button { min-height: 44px; min-width: 44px; }
+
+@media (max-width: 820px) {
+    .catalog {
+        bottom: calc(5.5rem + var(--safe-bottom, 0px));
+        max-height: 4.5rem;
+    }
+    .dossier {
+        top: calc(4.2rem + var(--safe-top, 0px));
+        width: min(240px, calc(50vw - 0.5rem));
+        max-width: calc(100% - 1rem);
+    }
+    .dock { max-width: calc(100% - var(--safe-left, 0px) - var(--safe-right, 0px) - 1rem); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .catalog { bottom: calc(4.8rem + var(--safe-bottom, 0px)); }
+    .hint { display: none; }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
+    }
+}

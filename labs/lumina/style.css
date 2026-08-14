@@ -306,8 +306,8 @@ button {
 }
 
 .icon-button {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--panel-strong);
     border: 1px solid var(--line);
@@ -661,5 +661,52 @@ kbd {
 @media (pointer: fine) {
     .touch-controls {
         display: none !important;
+    }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 820px) {
+    .hud-actions {
+        top: calc(4.2rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+    }
+    .message { bottom: calc(11rem + var(--safe-bottom, env(safe-area-inset-bottom, 0px))); }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
     }
 }

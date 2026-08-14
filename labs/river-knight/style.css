@@ -612,8 +612,8 @@ body:not([data-state="playing"]) .throw-meter {
 }
 
 .icon-button {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     display: grid;
     place-items: center;
     border-radius: 12px;
@@ -1267,4 +1267,13 @@ input[type="range"]::-moz-range-thumb {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 640px) {
+    .icon-button { width: 44px; height: 44px; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .touch-controls { height: 40%; }
+    .pad-throw { width: 80px; height: 80px; }
 }
