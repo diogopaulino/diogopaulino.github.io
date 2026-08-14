@@ -673,3 +673,11 @@ footer a {
         animation: none;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 900px) {
+    .touch-controls {
+        bottom: max(14px, env(safe-area-inset-bottom, 0px));
+        left: max(14px, env(safe-area-inset-left, 0px));
+        right: max(14px, env(safe-area-inset-right, 0px));
+    }
+}

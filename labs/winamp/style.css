@@ -1536,3 +1536,9 @@ noscript {
         transition: none !important;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 760px) {
+    header[data-lab-header] .back-link { min-height: 44px; min-width: 44px; }
+    .task-button { width: auto; flex: 1 1 0; min-width: 0; }
+    .system-tray { flex-shrink: 0; }
+}

@@ -476,3 +476,13 @@ body {
 .btn-refresh.loading i {
     animation: spin 1s linear infinite;
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 480px) {
+    .mode-switch { flex-wrap: wrap; }
+    .mode-btn { flex: 1 1 calc(50% - 5px); min-height: 44px; }
+    .scientific-grid { gap: 8px; }
+    .scientific-grid .btn { padding: 12px 0; font-size: 0.95rem; min-height: 44px; }
+    .btn-swap { width: 44px; height: 44px; }
+    .btn-refresh { min-width: 44px; min-height: 44px; }
+    .calculator-wrapper.scientific-mode { max-width: 100%; }
+}

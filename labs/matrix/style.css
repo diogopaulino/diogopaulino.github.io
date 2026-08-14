@@ -1022,3 +1022,17 @@ body.cinema.pointer-idle .cinema-exit {
         animation: none;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    header {
+        padding-top: max(0.9rem, env(safe-area-inset-top, 0px)) !important;
+        padding-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px)) !important;
+    }
+    header .app-logo {
+        letter-spacing: 0.12em;
+        text-indent: 0;
+        font-size: clamp(0.8rem, 3.5vw, 0.95rem);
+    }
+    .icon-btn,
+    .close-btn { min-width: 44px; min-height: 44px; }
+}
