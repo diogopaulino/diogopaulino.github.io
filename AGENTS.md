@@ -17,6 +17,9 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
 - `/labs/`: Diretório que contém todos os experimentos e mini-projetos.
   - Cada laboratório vive em sua própria subpasta em *kebab-case* (ex: `/labs/rock-kombat/`).
   - Cada pasta de laboratório é autocontida (possui seu próprio `index.html`, arquivos `.css`, `.js` e pastas de `assets/`), facilitando a manutenção e a visualização estática.
+- `/AGENTS.md`: regras para agentes (fonte única).
+- `/CLAUDE.md`: ponteiro para o `AGENTS.md` — o Claude Code só lê este nome (maiúsculas).
+- `/.github/PULL_REQUEST_TEMPLATE.md`: template obrigatório de todo PR.
 
 ## 🛠 Melhores Práticas e Regras de Desenvolvimento
 
@@ -74,16 +77,10 @@ Também conferir, e corrigir se falhar:
 
 ## Cursor Cloud specific instructions
 
-Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json`, `npm install`, etc. O código-fonte é o próprio artefato servido no GitHub Pages.
+Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json` nem `npm install`. O código-fonte é o artefato do GitHub Pages.
 
-- **Rodar em desenvolvimento**: sirva a raiz do repositório por HTTP (abrir os arquivos via `file://` quebra caminhos absolutos como `/favicon.ico` e módulos ES). A partir de `/workspace`:
-  - `python3 -m http.server 8000` → site principal em `http://localhost:8000/`, playground em `http://localhost:8000/labs/`.
-- **Estrutura**: `index.html` (portfólio raiz) + `labs/<nome-do-lab>/index.html` (cada lab é autocontido). `labs/index.html` é a galeria que linka todos os labs.
-- **Caminhos**: o `manifest.json` e alguns assets usam caminhos absolutos (`/favicon.ico`, `/assets/...`), por isso é necessário servir a partir da raiz do repositório, não de uma subpasta.
-- **Verificação/"testes"**: não existe suíte automatizada. Sirva a raiz por HTTP e:
-  - carregue a home (toggle de tema) e a galeria (`/labs/`)
-  - rode a [auditoria de links](#6-auditoria-de-links-obrigatória) e **corrija** 404, cards órfãos e README/sitemap desatualizados
-- **PRs**: todo PR novo usa [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) (objetivo, o que mudou, como testar, checklist). Sem descrição placeholder.
+- Sirva **a raiz do repo** por HTTP (`python3 -m http.server 8000` → home em `/`, playground em `/labs/`). `file://` quebra `/favicon.ico` e módulos ES.
+- Verificação = [§6 auditoria de links](#6-auditoria-de-links-obrigatória). PRs = [§7](#7-pull-requests).
 
 ---
 *Lembre-se: O objetivo principal do projeto é criatividade, performance e experimentação tecnológica na web sem barreiras.*

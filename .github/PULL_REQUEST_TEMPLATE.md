@@ -4,6 +4,7 @@
 
 ## ✨ O que mudou
 
+<!-- Lista curta. Um item por mudança visível. -->
 -
 
 ## 🧪 Como testar
