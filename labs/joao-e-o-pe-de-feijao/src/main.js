@@ -582,6 +582,11 @@ class Game {
             this.world.flags.hasCow = true;
             near.done = true;
             this.audio.moo();
+            const gx = 16;
+            const gz = 9;
+            this.player.facing = Math.atan2(gx - this.player.x, gz - this.player.z);
+            this.player.yaw = this.player.facing;
+            this.player.camYaw = this.player.facing + Math.PI;
             this.hud.say('A Mimosa te segue. Siga o caminho de terra até o arco dourado.', 4);
             this.hud.setObjective('Siga o caminho de terra até o arco da feira.');
             this.score += 40;
@@ -677,7 +682,7 @@ class Game {
     _updateChapterLogic(dt) {
         if (this.chapter.id === 'cottage' && this.player.hasCow) {
             const gate = this.world.interactables.find((i) => i.id === 'gate');
-            if (gate && !gate.done && Math.hypot(this.player.x - gate.x, this.player.z - gate.z) < 3.6) {
+            if (gate && !gate.done && Math.hypot(this.player.x - gate.x, this.player.z - gate.z) < 4.2) {
                 gate.done = true;
                 this.audio.chime();
                 this._completeChapter();

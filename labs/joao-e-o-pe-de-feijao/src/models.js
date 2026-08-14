@@ -681,12 +681,14 @@ export function buildGateArch() {
     enableShadows(group);
     return group;
 }
+
+export function makeBeacon(color = 0xaaff66) {
     const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.4, 5.5, 8, 1, true),
+        new THREE.CylinderGeometry(0.18, 0.55, 8.5, 8, 1, true),
         new THREE.MeshBasicMaterial({
             color,
             transparent: true,
-            opacity: 0.2,
+            opacity: 0.38,
             side: THREE.DoubleSide,
             depthWrite: false
         })

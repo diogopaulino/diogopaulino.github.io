@@ -137,7 +137,7 @@ export function buildCottageChapter(quality) {
     const world = new ChapterWorld();
     world.bounds = { minX: -46, maxX: 46, minZ: -46, maxZ: 46 };
     world.spawn = { x: 6, z: 10, yaw: -2.6 };
-    world.overview.set(18, 11, 22);
+    world.overview.set(18, 10, 16);
     world.flags = { talkedMother: false, hasCow: false };
 
     world.heightAt = (x, z) => {
