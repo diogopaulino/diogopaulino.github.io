@@ -8,8 +8,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-import { createTextures } from './textures.js?v=2';
-import { buildWorld } from './models.js?v=2';
+import { createTextures } from './textures.js?v=3';
+import { buildWorld } from './models.js?v=3';
 import { CrtOs } from './crt.js?v=2';
 import { DeskAudio } from './audio.js?v=2';
 
@@ -109,11 +109,11 @@ class BeigeBox {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x0a0810);
-        this.scene.fog = new THREE.FogExp2(0x0a0810, 0.045);
+        this.scene.background = new THREE.Color(0x120e0c);
+        this.scene.fog = new THREE.FogExp2(0x120e0c, 0.022);
 
         this.camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.08, 30);
-        this.camera.position.set(2.05, 1.55, 2.45);
+        this.camera.position.set(1.8, 1.42, 2.05);
 
         this.setLoad(0.22, 'Gerando texturas PBR…');
         const tex = createTextures(quality.aniso);
@@ -136,7 +136,7 @@ class BeigeBox {
 
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.scene.environmentIntensity = 0.22;
+        this.scene.environmentIntensity = 0.34;
         pmrem.dispose();
 
         this.controls = new OrbitControls(this.camera, this.canvas);
@@ -144,7 +144,7 @@ class BeigeBox {
         this.controls.dampingFactor = 0.07;
         this.controls.target.copy(HOME_TARGET);
         this.controls.minDistance = 0.85;
-        this.controls.maxDistance = 4.6;
+        this.controls.maxDistance = 3.2;
         this.controls.minPolarAngle = 0.22;
         this.controls.maxPolarAngle = 1.42;
         this.controls.maxAzimuthAngle = Math.PI * 0.92;
@@ -173,7 +173,7 @@ class BeigeBox {
     setupLights() {
         RectAreaLightUniformsLib.init();
 
-        this.hemi = new THREE.HemisphereLight(0x8aa0c8, 0x2a1c12, 0.28);
+        this.hemi = new THREE.HemisphereLight(0x9aaccc, 0x3a2818, 0.48);
         this.scene.add(this.hemi);
 
         this.moon = new THREE.DirectionalLight(0xb8c8ff, 1.15);
@@ -202,9 +202,12 @@ class BeigeBox {
         this.crtLight = new THREE.PointLight(0x44ff88, 0, 1.8, 1.6);
         this.scene.add(this.crtLight);
 
-        this.fill = new THREE.PointLight(0xffc8a0, 0.18, 5, 1.4);
+        this.fill = new THREE.PointLight(0xffc8a0, 0.32, 6, 1.2);
         this.fill.position.set(0.4, 1.6, 1.1);
         this.scene.add(this.fill);
+        const fill2 = new THREE.PointLight(0xa8b8d8, 0.16, 5, 1.3);
+        fill2.position.set(-0.6, 1.8, -0.8);
+        this.scene.add(fill2);
 
         const windowGlow = new THREE.RectAreaLight(0x8899cc, 2.4, 1.3, 1.05);
         windowGlow.position.set(-2.55, 1.45, -0.35);
@@ -225,9 +228,9 @@ class BeigeBox {
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         this.dust = new THREE.Points(geo, new THREE.PointsMaterial({
             color: 0xffe6c4,
-            size: 0.012,
+            size: 0.007,
             transparent: true,
-            opacity: 0.28,
+            opacity: 0.22,
             depthWrite: false,
             blending: THREE.AdditiveBlending
         }));
@@ -615,7 +618,7 @@ class BeigeBox {
         if (this.intro > 0) {
             this.intro = Math.max(0, this.intro - dt * 0.35);
             const k = 1 - Math.pow(this.intro, 2);
-            this.camera.position.lerpVectors(new THREE.Vector3(2.05, 1.55, 2.45), HOME_CAM, k);
+            this.camera.position.lerpVectors(new THREE.Vector3(1.8, 1.42, 2.05), HOME_CAM, k);
             this.controls.target.lerpVectors(new THREE.Vector3(0.02, 0.88, 0.05), HOME_TARGET, k);
         }
 

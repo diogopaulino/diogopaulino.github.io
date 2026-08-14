@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyMaps } from './textures.js?v=2';
+import { applyMaps } from './textures.js?v=3';
 
 const interactives = [];
 
@@ -128,11 +128,21 @@ function buildRoom(root, mats, tex, refs) {
     add(room, new THREE.PlaneGeometry(4.6, 2.6), mats.wall, {
         pos: [2.68, 1.3, 0], rot: [0, -Math.PI / 2, 0], receive: true, cast: false
     });
+    const base = std({ color: 0x8a6a48, roughness: 0.7 });
+    add(room, new THREE.PlaneGeometry(5.4, 2.6), mats.wall, {
+        pos: [0, 1.3, 2.28], rot: [0, Math.PI, 0], receive: true, cast: false
+    });
+    add(room, new THREE.BoxGeometry(5.4, 0.12, 0.08), base, { pos: [0, 0.06, 2.24] });
+
+    const door = new THREE.Group();
+    door.position.set(-1.35, 0, 2.24);
+    add(door, new THREE.BoxGeometry(0.72, 1.85, 0.05), std({ color: 0x5a3a28, roughness: 0.7 }), { pos: [0, 0.925, 0] });
+    add(door, new THREE.SphereGeometry(0.025, 10, 8), mats.metal, { pos: [0.26, 0.92, 0.04] });
+    room.add(door);
     add(room, new THREE.PlaneGeometry(5.4, 4.6), mats.ceiling, {
         pos: [0, 2.58, 0], rot: [Math.PI / 2, 0, 0], receive: true, cast: false
     });
 
-    const base = std({ color: 0x8a6a48, roughness: 0.7 });
     add(room, new THREE.BoxGeometry(5.4, 0.12, 0.08), base, { pos: [0, 0.06, -2.24] });
     add(room, new THREE.BoxGeometry(0.08, 0.12, 4.6), base, { pos: [-2.64, 0.06, 0] });
     add(room, new THREE.BoxGeometry(0.08, 0.12, 4.6), base, { pos: [2.64, 0.06, 0] });
