@@ -1,0 +1,437 @@
+/* ================================================================
+   Beige Box — quarto retrô 3D
+   Paleta: ébano quente + âmbar de fósforo + plástico bege.
+   ================================================================ */
+
+:root {
+    --ink: oklch(11% 0.02 70);
+    --ink-deep: oklch(8% 0.018 70);
+    --amber: oklch(82% 0.14 78);
+    --amber-deep: oklch(68% 0.14 62);
+    --phosphor: oklch(86% 0.18 142);
+    --beige: oklch(86% 0.04 85);
+    --plastic: oklch(74% 0.04 80);
+
+    --text: oklch(96% 0.015 85);
+    --text-soft: oklch(82% 0.03 80);
+    --text-dim: oklch(64% 0.03 75);
+
+    --panel: color-mix(in oklab, oklch(16% 0.03 70) 68%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(12% 0.03 70) 84%, transparent);
+    --line: color-mix(in oklab, var(--amber) 28%, transparent);
+    --line-soft: color-mix(in oklab, var(--beige) 14%, transparent);
+
+    --radius: 14px;
+    --radius-lg: 22px;
+    --blur: 18px;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: clip;
+    overscroll-behavior: none;
+    background: var(--ink-deep);
+}
+
+body {
+    min-height: 100dvh;
+    padding: 0;
+    color: var(--text);
+    font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+}
+
+.game-shell {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(90% 70% at 20% 0%, oklch(22% 0.05 70) 0%, var(--ink-deep) 62%);
+}
+
+.game-shell::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    opacity: 0.07;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+#scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+    cursor: grab;
+}
+
+#scene.is-hover {
+    cursor: pointer;
+}
+
+#scene.is-drag {
+    cursor: grabbing;
+}
+
+.game-shell > header {
+    position: absolute;
+    top: calc(0.7rem + var(--safe-top));
+    left: calc(0.85rem + var(--safe-left));
+    right: calc(0.85rem + var(--safe-right));
+    z-index: 5;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: auto;
+    pointer-events: none;
+    gap: 0.55rem;
+}
+
+.game-shell > header > * {
+    pointer-events: auto;
+}
+
+.game-shell > header .back-link {
+    background: var(--panel-strong);
+    backdrop-filter: blur(var(--blur));
+    border-color: var(--line);
+    color: var(--text-soft);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.game-shell > header .app-logo {
+    color: var(--text);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+
+.app-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 6px;
+    background: linear-gradient(180deg, var(--amber), var(--amber-deep));
+    color: var(--ink-deep);
+    font-size: 0.85rem;
+    box-shadow: 0 0 18px color-mix(in oklab, var(--amber) 55%, transparent);
+}
+
+.logo-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.15rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: color-mix(in oklab, var(--ink) 55%, transparent);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+}
+
+.logo-status i {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: var(--phosphor);
+    box-shadow: 0 0 8px var(--phosphor);
+    animation: pulseLed 1.6s ease-in-out infinite;
+}
+
+@keyframes pulseLed {
+    50% { opacity: 0.45; }
+}
+
+.icon-button {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 11px;
+    border: 1px solid var(--line-soft);
+    background: var(--panel);
+    backdrop-filter: blur(var(--blur));
+    display: grid;
+    place-items: center;
+    transition: transform 0.2s var(--ease), border-color 0.2s, background 0.2s;
+}
+
+.icon-button:hover {
+    transform: translateY(-1px);
+    border-color: var(--line);
+    background: var(--panel-strong);
+}
+
+.icon-button[aria-pressed="false"] {
+    color: var(--text-dim);
+}
+
+.hud {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    padding: calc(4.6rem + var(--safe-top)) max(1.1rem, var(--safe-right))
+        max(1.2rem, var(--safe-bottom)) max(1.1rem, var(--safe-left));
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+}
+
+.hud-left {
+    justify-self: start;
+    max-width: min(28rem, 92vw);
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line-soft);
+    background: var(--panel);
+    backdrop-filter: blur(var(--blur));
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.35rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber);
+}
+
+.eyebrow i,
+.eyebrow--danger i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 10px var(--amber);
+}
+
+.eyebrow--danger {
+    color: oklch(72% 0.18 28);
+}
+
+.eyebrow--danger i {
+    background: oklch(68% 0.2 28);
+    box-shadow: 0 0 10px oklch(68% 0.2 28);
+}
+
+.status-line {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.tooltip {
+    justify-self: center;
+    align-self: end;
+    margin-bottom: 3.2rem;
+    min-width: 11rem;
+    padding: 0.7rem 1rem 0.75rem;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+    backdrop-filter: blur(var(--blur));
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    animation: tipIn 0.28s var(--ease);
+}
+
+.tooltip strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.tooltip span {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+}
+
+@keyframes tipIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+.hint-bar {
+    justify-self: center;
+    align-self: end;
+    margin: 0;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-soft);
+    background: var(--panel);
+    backdrop-filter: blur(12px);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: grid;
+    place-items: center;
+    padding: 1.2rem;
+    background:
+        radial-gradient(80% 70% at 50% 40%, oklch(16% 0.04 70 / 0.55), oklch(6% 0.02 70 / 0.92));
+}
+
+.overlay[hidden] {
+    display: none;
+}
+
+.loading-card,
+.overlay-card {
+    width: min(28rem, 92vw);
+    padding: 1.6rem 1.5rem 1.4rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: color-mix(in oklab, var(--ink) 78%, transparent);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.loading-card h1,
+.overlay-card h2 {
+    margin: 0.15rem 0 0.7rem;
+    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+}
+
+.bios-kicker,
+.bios-foot,
+.bios-line {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    color: var(--phosphor);
+    text-shadow: 0 0 12px color-mix(in oklab, var(--phosphor) 50%, transparent);
+}
+
+.bios-kicker {
+    margin: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.bios-line {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    min-height: 1.2em;
+}
+
+.bios-foot {
+    margin: 0.85rem 0 0;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+}
+
+.loading-bar {
+    height: 6px;
+    border-radius: 99px;
+    background: rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--phosphor) 30%, transparent);
+}
+
+.loading-bar i {
+    display: block;
+    height: 100%;
+    width: 8%;
+    background: linear-gradient(90deg, oklch(62% 0.16 142), var(--phosphor));
+    box-shadow: 0 0 16px var(--phosphor);
+    transition: width 0.35s var(--ease);
+}
+
+.lede {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.45;
+}
+
+.lab-foot {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(0.35rem + var(--safe-bottom));
+    z-index: 5;
+    margin: 0;
+    padding: 0.4rem;
+    border: 0;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.lab-foot a {
+    color: var(--text-soft);
+    pointer-events: auto;
+}
+
+@media (max-width: 720px) {
+    .logo-status { display: none; }
+    .hint-bar { font-size: 0.64rem; }
+    .hud-left { max-width: 100%; }
+}
