@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grão — Labs</title>
+    <meta name="description"
+        content="Companheiro de cafeína no navegador: registre o café, veja quanto ainda circula no corpo e a que horas parar para dormir bem.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/grao/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/grao/">
+    <meta property="og:title" content="Grão">
+    <meta property="og:description"
+        content="Quanto cafeína ainda circula em você — e a que horas parar de beber café.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Grão">
+    <meta name="twitter:description"
+        content="Companheiro de cafeína: curva em tempo real, corte para o sono e histórico local.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="ambient" aria-hidden="true"></div>
+
+    <div class="container">
+        <header data-lab-header data-title="Grão">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <svg class="logo-mark" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
+                        <ellipse cx="12" cy="13" rx="6.2" ry="7.4" />
+                        <path d="M12 6.2c1.4 1.6 1.6 3.6 0 5.4-1.6 1.8-1.4 3.8 0 5.4" />
+                        <path d="M9.2 4.4c.8-.8 2.2-1.3 2.8-1.3" opacity="0.7" />
+                    </svg>
+                    Grão
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="btn-settings" class="icon-btn" type="button" aria-label="Abrir configurações"
+                    title="Configurações" aria-haspopup="dialog">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </button>
+            </template>
+        </header>
+
+        <main class="app">
+            <section class="card hero-card" aria-labelledby="level-heading">
+                <p class="hero-kicker" id="greeting">Bom dia</p>
+                <h2 id="level-heading" class="sr-only">Cafeína agora</h2>
+                <div class="hero-level">
+                    <span class="hero-value" id="current-mg">0</span>
+                    <span class="hero-unit">mg</span>
+                </div>
+                <p class="hero-status" id="status-label">Nenhum café registrado hoje</p>
+                <p class="hero-meta" id="hero-meta">A cafeína cai pela metade a cada 5 horas.</p>
+            </section>
+
+            <section class="card chart-card" aria-labelledby="chart-heading">
+                <div class="card-head">
+                    <h2 id="chart-heading">Curva do dia</h2>
+                    <p class="card-aside" id="chart-range">hoje</p>
+                </div>
+                <div class="chart-frame">
+                    <canvas id="curve" aria-hidden="true"></canvas>
+                    <div class="chart-hover" id="chart-hover" hidden>
+                        <span id="chart-hover-time"></span>
+                        <strong id="chart-hover-mg"></strong>
+                    </div>
+                </div>
+                <p class="chart-caption" id="chart-caption">
+                    A linha pontilhada é o teto na hora de dormir. Passe o cursor (ou o dedo) para ver o mg em cada
+                    horário.
+                </p>
+            </section>
+
+            <section class="card sleep-card" aria-labelledby="sleep-heading">
+                <div class="card-head">
+                    <h2 id="sleep-heading">Portão do sono</h2>
+                    <label class="bedtime-field">
+                        <span class="sr-only">Horário de dormir</span>
+                        <input id="bedtime" type="time" value="23:00" aria-label="Horário de dormir">
+                    </label>
+                </div>
+                <p class="sleep-lead" id="sleep-lead">Defina a hora de deitar para calcular o último café.</p>
+                <div class="sleep-grid">
+                    <article class="sleep-stat">
+                        <p class="sleep-label">Último café</p>
+                        <p class="sleep-value" id="cutoff-time">—</p>
+                        <p class="sleep-hint" id="cutoff-hint">para um espresso</p>
+                    </article>
+                    <article class="sleep-stat">
+                        <p class="sleep-label">Livre às</p>
+                        <p class="sleep-value" id="clear-time">—</p>
+                        <p class="sleep-hint" id="clear-hint">abaixo do teto</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="card drinks-card" aria-labelledby="drinks-heading">
+                <div class="card-head">
+                    <h2 id="drinks-heading">Registrar</h2>
+                    <button id="btn-custom" class="text-btn" type="button">Personalizar</button>
+                </div>
+                <div class="drink-grid" id="drink-grid"></div>
+            </section>
+
+            <section class="card log-card" aria-labelledby="log-heading">
+                <div class="card-head">
+                    <h2 id="log-heading">Hoje</h2>
+                    <p class="card-aside" id="today-total">0 mg</p>
+                </div>
+                <ul class="log-list" id="log-list"></ul>
+            </section>
+
+            <section class="card week-card" aria-labelledby="week-heading">
+                <div class="card-head">
+                    <h2 id="week-heading">Semana</h2>
+                    <p class="card-aside" id="week-avg">média —</p>
+                </div>
+                <div class="week-bars" id="week-bars" role="img" aria-label="Consumo de cafeína nos últimos 7 dias">
+                </div>
+            </section>
+        </main>
+
+        <footer data-lab-footer data-home-href="/"></footer>
+    </div>
+
+    <div class="modal-backdrop" id="settings-modal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div class="modal-head">
+                <h2 id="settings-title">Ajustes</h2>
+                <button id="btn-close-settings" class="icon-btn" type="button" aria-label="Fechar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" aria-hidden="true">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <label class="field">
+                    <span>Meia-vida da cafeína</span>
+                    <div class="field-row">
+                        <input id="setting-halflife" type="range" min="3" max="7" step="0.5" value="5">
+                        <strong id="halflife-label">5 h</strong>
+                    </div>
+                    <small>A maioria das pessoas elimina metade em cerca de 5 horas. Gravidez, pílula e genética
+                        podem alongar isso.</small>
+                </label>
+                <label class="field">
+                    <span>Teto na hora de dormir</span>
+                    <div class="field-row">
+                        <input id="setting-threshold" type="range" min="10" max="120" step="5" value="50">
+                        <strong id="threshold-label">50 mg</strong>
+                    </div>
+                    <small>Quanto ainda pode circular no corpo quando você deitar. 50 mg é um espresso fraco.</small>
+                </label>
+                <label class="field">
+                    <span>Dose usada no “último café”</span>
+                    <div class="field-row">
+                        <input id="setting-dose" type="range" min="40" max="200" step="5" value="80">
+                        <strong id="dose-label">80 mg</strong>
+                    </div>
+                    <small>O horário-limite assume essa dose (um pingado / espresso duplo).</small>
+                </label>
+                <div class="field">
+                    <span>Dados</span>
+                    <div class="field-actions">
+                        <button id="btn-export" class="btn-soft" type="button">Exportar JSON</button>
+                        <button id="btn-clear" class="btn-soft btn-danger" type="button">Apagar histórico</button>
+                    </div>
+                    <small>Tudo fica neste aparelho. Nada vai para a nuvem.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="custom-modal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="custom-title">
+            <div class="modal-head">
+                <h2 id="custom-title">Dose personalizada</h2>
+                <button id="btn-close-custom" class="icon-btn" type="button" aria-label="Fechar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" aria-hidden="true">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="custom-form">
+                <label class="field">
+                    <span>O que foi</span>
+                    <input id="custom-name" type="text" maxlength="40" placeholder="Café do padaria, mate…" required>
+                </label>
+                <label class="field">
+                    <span>Cafeína (mg)</span>
+                    <input id="custom-mg" type="number" min="1" max="500" step="1" value="80" required>
+                </label>
+                <label class="field">
+                    <span>Quando</span>
+                    <input id="custom-when" type="datetime-local">
+                </label>
+                <button class="btn-primary" type="submit">Registrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <p class="sr-only" id="live-region" role="status" aria-live="polite"></p>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>

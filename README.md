@@ -67,6 +67,7 @@ Um laboratório aberto onde guardo os experimentos e mini-projetos que fui crian
 
 | Projeto | O que é? |
 | :--- | :--- |
+| ☕ **[Grão](https://diogopaulino.com.br/labs/grao/)** | Companheiro de cafeína — curva em tempo real e horário de parar o café |
 | ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão rápida 100% no cliente |
 | 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Filtros, cortes e ajustes na hora |
 | ⏱️ **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com soundscapes |
