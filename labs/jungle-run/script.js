@@ -531,6 +531,8 @@ class JungleRun {
 
         this.bindHoldButton('leftBtn', 'left');
         this.bindHoldButton('rightBtn', 'right');
+        this.bindHoldButton('climbUpBtn', 'climbUp');
+        this.bindHoldButton('climbDownBtn', 'climbDown');
         this.bindHoldButton('jumpBtn', 'jump');
     }
 

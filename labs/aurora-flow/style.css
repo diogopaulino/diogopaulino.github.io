@@ -509,3 +509,9 @@ input[type="range"]::-moz-range-thumb {
         white-space: nowrap;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 720px) {
+    .dock { bottom: max(22px, env(safe-area-inset-bottom, 0px)); }
+    .icon-btn,
+    .tool-btn { min-width: 44px; min-height: 44px; }
+}

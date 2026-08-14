@@ -377,3 +377,12 @@ footer {
     .floating-toolbar { bottom: 20px; width: calc(100% - 32px); justify-content: space-between; }
     .tool-btn .preset-name { max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .floating-toolbar {
+        bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+        max-width: calc(100% - 1.5rem);
+    }
+    .tool-btn,
+    #cyclePreset { min-height: 44px; min-width: 44px; padding: 12px; }
+}
