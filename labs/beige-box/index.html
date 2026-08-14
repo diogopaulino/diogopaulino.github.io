@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0806">
+    <title>Beige Box — quarto retrô 3D | Labs</title>
+    <meta name="description"
+        content="Diorama 3D de um PC dos anos 90: CRT âmbar, disquete, lâmpada de arquiteto e dezenas de objetos interativos. Three.js, PBR procedural e Web Audio.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/beige-box/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/beige-box/">
+    <meta property="og:title" content="Beige Box">
+    <meta property="og:description"
+        content="Entre no quarto de 1994. Ligue o 486, insira o disquete e mexa em tudo o que brilha.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Beige Box">
+    <meta name="twitter:description" content="Cenário 3D retrô interativo: CRT, disquete e uma mesa cheia de segredos.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Beige Box" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">▣</span>
+                    <span>Beige Box</span>
+                    <span class="logo-status"><i></i> 486DX</span>
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="resetCamera" class="icon-button" type="button" title="Resetar câmera (R)"
+                    aria-label="Resetar câmera">◎</button>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Quarto retrô em 3D com um computador antigo"></canvas>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-left">
+                <p class="eyebrow"><i></i> 1994 · PACKET BELL 486DX2</p>
+                <p id="statusLine" class="status-line">A lua entra pelas persianas. Clique no que brilha.</p>
+            </div>
+            <div id="tooltip" class="tooltip" hidden>
+                <strong id="tooltipTitle">—</strong>
+                <span id="tooltipHint">clique para interagir</span>
+            </div>
+            <p class="hint-bar">Arraste para orbitar · scroll para zoom · clique para mexer</p>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <p class="bios-kicker">AMBERTRON BIOS 4.94</p>
+                <h1>Beige Box</h1>
+                <p id="loadingText" class="bios-line">Detectando 486DX2-66…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+                <p class="bios-foot">640K OK · CMOS checksum good</p>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O 486 não conseguiu<br>ligar o vídeo.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="src/main.js?v=3"></script>
+</body>
+
+</html>
