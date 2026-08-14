@@ -658,7 +658,29 @@ export function applyGrassWind(mat) {
     };
 }
 
-export function makeBeacon(color = 0xaaff66) {
+export function buildGateArch() {
+    const group = new THREE.Group();
+    const wood = std(0x6a3e1c, 0.85);
+    for (const sx of [-1.6, 1.6]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.4, 0.28), wood);
+        post.position.set(sx, 1.7, 0);
+        group.add(post);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.28, 0.28), wood);
+    bar.position.y = 3.25;
+    group.add(bar);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.08), std(0xc4a050, 0.7));
+    sign.position.set(0, 3.7, 0);
+    group.add(sign);
+    const glow = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.9, 1.1, 0.12, 16),
+        new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.55 })
+    );
+    glow.position.y = 0.08;
+    group.add(glow);
+    enableShadows(group);
+    return group;
+}
     const mesh = new THREE.Mesh(
         new THREE.CylinderGeometry(0.12, 0.4, 5.5, 8, 1, true),
         new THREE.MeshBasicMaterial({

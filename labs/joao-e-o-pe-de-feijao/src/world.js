@@ -10,7 +10,7 @@ import {
     buildCottage, buildFence, buildTree, buildStall, buildBeanstalk, buildCloudIsland,
     buildCastle, buildTable, buildGoldBag, buildHen, buildHarp, buildAxe, buildWell,
     buildMother, buildMerchant, buildCow, buildGiant, grassBladeGeometry, applyGrassWind,
-    makeBeacon, std
+    makeBeacon, buildGateArch, std
 } from './models.js';
 import { CowAI, GiantAI } from './npcs.js';
 
@@ -192,12 +192,17 @@ export function buildCottageChapter(quality) {
         get z() { return cow.z; }
     });
 
-    const gateX = 22;
-    const gateZ = 8;
-    const beacon = placeBeacon(world, gateX, gateZ, 0x88ff66);
+    const gateX = 16;
+    const gateZ = 9;
+    const arch = buildGateArch();
+    arch.position.set(gateX, world.heightAt(gateX, gateZ), gateZ);
+    arch.rotation.y = Math.atan2(gateX + 2, gateZ);
+    world.group.add(arch);
+    const beacon = placeBeacon(world, gateX, gateZ, 0xffee66);
+    beacon.scale.set(1.4, 1.8, 1.4);
     world.gateBeacon = beacon;
     world.addInteract({
-        x: gateX, z: gateZ, r: 2.4, id: 'gate', kind: 'goal',
+        x: gateX, z: gateZ, r: 3.8, id: 'gate', kind: 'goal',
         label: 'Seguir para a feira'
     });
 
@@ -208,10 +213,27 @@ export function buildCottageChapter(quality) {
 
     const rng = seeded(21);
     scatterTrees(world, Math.round(18 * quality.trees), rng, {
-        minR: 16, maxR: 42, avoid: [{ x: -6, z: -4, r: 8 }, { x: 4.5, z: 3.2, r: 4 }, { x: 22, z: 8, r: 5 }]
+        minR: 16, maxR: 42, avoid: [{ x: -6, z: -4, r: 8 }, { x: 4.5, z: 3.2, r: 4 }, { x: 16, z: 9, r: 7 }]
     });
     scatterGrass(world, Math.round(420 * quality.grass));
-    addPath(world, { x: -2, z: 0 }, { x: gateX, z: gateZ });
+    addPath(world, { x: -2, z: 0 }, { x: 16, z: 9 });
+    for (let i = 1; i <= 4; i++) {
+        const t = i / 5;
+        const lx = -2 + (16 + 2) * t;
+        const lz = 0 + 9 * t;
+        const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), std(0x5a3a18, 0.85));
+        lamp.position.set(lx, world.heightAt(lx, lz) + 0.8, lz);
+        world.group.add(lamp);
+        const flame = new THREE.Mesh(
+            new THREE.SphereGeometry(0.14, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffcc66 })
+        );
+        flame.position.set(lx, world.heightAt(lx, lz) + 1.7, lz);
+        world.group.add(flame);
+        const light = new THREE.PointLight(0xffcc66, 0.55, 8);
+        light.position.copy(flame.position);
+        if (quality.lights) world.group.add(light);
+    }
 
     world.updateFns.push((t, dt) => {
         // cow follow is driven from main via world.cow.update
