@@ -66,7 +66,7 @@ export function createTatu() {
 
     const body = new THREE.Group();
     body.name = 'body';
-    const shell = mesh(geo('tatu-shell', () => new THREE.SphereGeometry(0.55, 7, 5)), 0xd4a04a);
+    const shell = mesh(geo('tatu-shell', () => new THREE.SphereGeometry(0.55, 7, 5)), 0xf0b44a);
     shell.scale.set(1.15, 0.85, 1.35);
     body.add(shell);
 
@@ -154,7 +154,7 @@ export function createTatu() {
     tail.name = 'tail';
     root.add(tail);
 
-    const ball = mesh(geo('tatu-ball', () => new THREE.SphereGeometry(0.58, 8, 6)), 0xd4a04a);
+    const ball = mesh(geo('tatu-ball', () => new THREE.SphereGeometry(0.58, 8, 6)), 0xf0b44a);
     ball.name = 'ball';
     ball.visible = false;
     ball.position.y = 0.58;
