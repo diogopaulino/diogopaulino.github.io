@@ -1,37 +1,21 @@
 /* ==========================================================================
    Ravi 1·2·3 — sprites do elenco, brinquedos, comidas e veículos
    --------------------------------------------------------------------------
-   Heróis e Ravi vêm das folhas com chroma key. Brinquedos, comidas e veículos
-   são pixel art procedural — cada um com silhueta própria, como no Mickey's
-   123 original (nenhuma vitrine pode repetir o mesmo desenho).
+   Personagens vêm de chars.js (pixel art na paleta). Brinquedos, comidas e
+   veículos são ícones gordos, cada um com silhueta própria — a criança de
+   3–4 anos escolhe pela figura, não pelo nome.
    ========================================================================== */
 
-import { K, bakeSprite, sliceSpriteSheet } from './assets.js';
+import { K, bakeSprite } from './assets.js';
+import { paintRavi, paintHero, HERO_SPECS } from './chars.js';
 
-/* --------------------------------------------------------------------------
-   Dados (nomes alinhados ao Mickey's 123; a arte é original)
-   -------------------------------------------------------------------------- */
-
-/* `short` é o rótulo que cabe na caixa postal dos correios (5 chars no máximo);
-   `name` é o usado na narração falada.
-   Ordem alinhada à folha heroes_sprites (3×3, idle = 1ª pose de cada herói). */
-export const HEROES = [
-  { id: 'bolt', name: 'Sir Bolt', short: 'BOLT', title: 'Cavaleiro', color: K.BLU, dark: K.BLU_D },
-  { id: 'shade', name: 'Shade', short: 'SHADE', title: 'Ninja', color: K.GRAY_D, dark: K.GRAY_XD },
-  { id: 'luna', name: 'Luna', short: 'LUNA', title: 'Feiticeira', color: K.PUR, dark: K.PUR_L },
-  { id: 'ember', name: 'Ember', short: 'EMBER', title: 'Dragão', color: K.GRN, dark: K.GRN_D },
-  { id: 'aria', name: 'Aria', short: 'ARIA', title: 'Princesa', color: K.PINK, dark: K.PUR },
-  { id: 'max', name: 'Maximus', short: 'MAX', title: 'Robô', color: K.GRAY, dark: K.GRAY_D },
-  { id: 'freya', name: 'Freya', short: 'FREYA', title: 'Fada', color: K.GRN_L, dark: K.GRN },
-  { id: 'kenzo', name: 'Kenzo', short: 'KENZO', title: 'Samurai', color: K.RED, dark: K.RED_D },
-  { id: 'bjorn', name: 'Bjorn', short: 'BJORN', title: 'Arqueiro', color: K.GRN_D, dark: K.WOOD_D }
-];
+export const HEROES = HERO_SPECS;
 
 /* Ordem = Mickey's 123: urso, boneca, dino, foguete, trator, robô, trombeta, bola, boneco. */
 export const TOYS = [
   { id: 'urso', name: 'Urso' },
   { id: 'boneca', name: 'Boneca' },
-  { id: 'dino', name: 'Dinossauro' },
+  { id: 'dino', name: 'Dino' },
   { id: 'foguete', name: 'Foguete' },
   { id: 'trator', name: 'Trator' },
   { id: 'robo', name: 'Robô' },
@@ -42,40 +26,33 @@ export const TOYS = [
 
 export const FOODS = [
   { id: 'burger', name: 'Hambúrguer', ask: 'hambúrgueres', how: 'Quantos' },
-  { id: 'fries', name: 'Batata frita', ask: 'porções de batata', how: 'Quantas' },
+  { id: 'fries', name: 'Batata', ask: 'batatas', how: 'Quantas' },
   { id: 'apple', name: 'Maçã', ask: 'maçãs', how: 'Quantas' },
-  { id: 'milk', name: 'Leite', ask: 'caixas de leite', how: 'Quantas' },
+  { id: 'milk', name: 'Leite', ask: 'leites', how: 'Quantos' },
   { id: 'balloon', name: 'Balão', ask: 'balões', how: 'Quantos' }
 ];
 
-/* Rodas = número da tecla (0–9), como no original: a criança conta o que vê. */
 export const VEHICLES = [
-  { id: 'walk', name: 'A pé', wheels: 0, w: 26 },
-  { id: 'uni', name: 'Monociclo', wheels: 1, w: 26 },
-  { id: 'moto', name: 'Moto', wheels: 2, w: 42 },
-  { id: 'tri', name: 'Triciclo', wheels: 3, w: 44 },
-  { id: 'car', name: 'Carrinho', wheels: 4, w: 52 },
-  { id: 'spare', name: 'Estepe', wheels: 5, w: 58 },
+  { id: 'walk', name: 'A pé', wheels: 0, w: 28 },
+  { id: 'uni', name: 'Monociclo', wheels: 1, w: 28 },
+  { id: 'moto', name: 'Moto', wheels: 2, w: 44 },
+  { id: 'tri', name: 'Triciclo', wheels: 3, w: 48 },
+  { id: 'car', name: 'Carro', wheels: 4, w: 56 },
+  { id: 'spare', name: 'Jipe', wheels: 5, w: 58 },
   { id: 'van', name: 'Van', wheels: 6, w: 64 },
-  { id: 'van7', name: 'Van+', wheels: 7, w: 70 },
-  { id: 'skates', name: 'Patins', wheels: 8, w: 54 },
+  { id: 'van7', name: 'Kombi', wheels: 7, w: 70 },
+  { id: 'skates', name: 'Patins', wheels: 8, w: 56 },
   { id: 'truck', name: 'Caminhão', wheels: 9, w: 86 }
 ];
 
-/** Preenchido por buildSprites(). */
 export const SPR = {
   ravi: {},
   hero: {},
-  heroSmall: {},
   toy: {},
   food: {},
   vehicle: {},
   misc: {}
 };
-
-/* --------------------------------------------------------------------------
-   Helpers de forma
-   -------------------------------------------------------------------------- */
 
 function blob(pen, cx, cy, rx, ry, fill) {
   pen.col(K.BLACK).ellipse(cx, cy, rx + 1, ry + 1);
@@ -88,242 +65,213 @@ function box(pen, x, y, w, h, fill) {
 }
 
 /* --------------------------------------------------------------------------
-   Brinquedos — ícones 16×16 (cada um com silhueta única)
+   Brinquedos 20×20 — gordos e legíveis na coluna da fábrica
    -------------------------------------------------------------------------- */
 
 const TOY_PAINTERS = {
   urso(pen) {
-    blob(pen, 4, 4, 2, 2, K.WOOD_D);
-    blob(pen, 11, 4, 2, 2, K.WOOD_D);
-    blob(pen, 8, 6, 5, 4, K.OCHRE);
-    blob(pen, 8, 12, 5, 4, K.OCHRE);
-    pen.col(K.BLACK).px(6, 5).px(10, 5).px(8, 7);
-    pen.col(K.SAND).ellipse(8, 12, 2, 2);
+    blob(pen, 5, 5, 3, 3, K.WOOD_D);
+    blob(pen, 15, 5, 3, 3, K.WOOD_D);
+    blob(pen, 10, 8, 7, 6, K.OCHRE);
+    blob(pen, 10, 14, 6, 5, K.OCHRE);
+    pen.col(K.SAND).ellipse(10, 10, 3, 2);
+    pen.col(K.BLACK).px(7, 7).px(13, 7);
+    pen.col(K.RED).px(9, 10).px(10, 11).px(11, 10);
+    pen.col(K.SAND).ellipse(10, 15, 3, 2);
   },
   boneca(pen) {
-    blob(pen, 8, 4, 3, 3, K.SKIN);
-    pen.col(K.YEL).ellipse(8, 2, 5, 2);
-    pen.col(K.PINK).rect(5, 7, 7, 6);
-    pen.col(K.WHITE).hline(5, 10, 7);
-    pen.col(K.BLACK).px(7, 4).px(9, 4);
-    pen.col(K.PINK).px(8, 5);
-    pen.col(K.SKIN).px(3, 9).px(12, 9);
-    pen.col(K.PINK).rect(5, 13, 3, 2).rect(9, 13, 3, 2);
+    blob(pen, 10, 5, 4, 4, K.SKIN);
+    pen.col(K.YEL).ellipse(10, 3, 6, 3);
+    pen.col(K.YEL_L).px(6, 4).px(14, 4);
+    pen.col(K.BLACK).px(8, 5).px(12, 5);
+    pen.col(K.PINK).px(10, 7);
+    box(pen, 6, 9, 8, 7, K.PINK);
+    pen.col(K.WHITE).hline(6, 12, 8);
+    pen.col(K.SKIN).px(4, 11).px(15, 11);
+    pen.col(K.PINK).rect(6, 16, 3, 3).rect(11, 16, 3, 3);
   },
   dino(pen) {
-    blob(pen, 7, 10, 6, 4, K.GRN);
-    blob(pen, 12, 5, 3, 3, K.GRN);
-    pen.col(K.GRN_D).px(4, 6).px(6, 5).px(8, 5).px(10, 5);
-    pen.col(K.BLACK).px(13, 4);
-    pen.col(K.GRN_D).rect(1, 11, 3, 2);
-    pen.col(K.GRN_D).rect(5, 13, 2, 2).rect(9, 13, 2, 2);
+    blob(pen, 8, 12, 7, 5, K.GRN);
+    blob(pen, 15, 6, 4, 4, K.GRN);
+    pen.col(K.GRN_D).px(4, 8).px(6, 6).px(8, 6).px(10, 7);
+    pen.col(K.WHITE).px(16, 5);
+    pen.col(K.BLACK).px(17, 5);
+    pen.col(K.RED).px(18, 7);
+    pen.col(K.YEL_L).ellipse(8, 13, 3, 2);
+    pen.col(K.GRN_D).rect(5, 16, 3, 3).rect(11, 16, 3, 3);
   },
   foguete(pen) {
-    pen.col(K.BLACK).ellipse(8, 7, 4, 7);
-    pen.col(K.WHITE).ellipse(8, 7, 3, 6);
-    pen.col(K.RED).ellipse(8, 2, 2, 2);
-    pen.col(K.CYAN).ellipse(8, 6, 2, 2);
-    pen.col(K.RED).rect(3, 10, 3, 4).rect(11, 10, 3, 4);
-    pen.col(K.ORANGE).px(7, 14).px(8, 15).px(9, 14);
-    pen.col(K.YEL).px(8, 13);
+    pen.col(K.BLACK).ellipse(10, 9, 5, 8);
+    pen.col(K.WHITE).ellipse(10, 9, 4, 7);
+    pen.col(K.RED).ellipse(10, 2, 3, 3);
+    pen.col(K.CYAN).ellipse(10, 8, 2, 2);
+    pen.col(K.RED).rect(4, 12, 4, 5).rect(13, 12, 4, 5);
+    pen.col(K.ORANGE).px(8, 18).px(10, 19).px(12, 18);
+    pen.col(K.YEL).px(10, 17);
   },
   trator(pen) {
-    // Trator: cabine alta + chassi curto + roda grande atrás
-    box(pen, 1, 9, 8, 4, K.GRN);
-    box(pen, 7, 3, 6, 10, K.GRN_D);
-    pen.col(K.CYAN).rect(8, 5, 4, 3);
-    pen.col(K.BLACK).ellipse(4, 14, 2, 2);
-    pen.col(K.BLACK).ellipse(12, 13, 3, 3);
-    pen.col(K.GRAY).ellipse(4, 14, 1, 1).ellipse(12, 13, 1, 1);
-    pen.col(K.YEL).rect(0, 7, 2, 2);
-    pen.col(K.GRAY_XD).rect(3, 6, 2, 3);
+    box(pen, 1, 11, 10, 5, K.GRN);
+    box(pen, 9, 4, 8, 12, K.GRN_D);
+    pen.col(K.CYAN).rect(11, 6, 5, 4);
+    pen.col(K.YEL).rect(0, 9, 3, 3);
+    blob(pen, 5, 17, 3, 3, K.GRAY_XD);
+    blob(pen, 15, 16, 4, 4, K.GRAY_XD);
+    pen.col(K.GRAY_L).px(5, 17).px(15, 16);
   },
   robo(pen) {
-    box(pen, 4, 5, 8, 8, K.GRAY_L);
-    box(pen, 5, 1, 6, 4, K.GRAY);
-    pen.col(K.RED).px(7, 2).px(9, 2);
-    pen.col(K.GRAY).rect(1, 6, 3, 2).rect(12, 6, 3, 2);
-    pen.col(K.CYAN).rect(6, 8, 4, 3);
-    pen.col(K.YEL).px(3, 0).px(12, 0);
+    box(pen, 6, 1, 8, 5, K.GRAY);
+    pen.col(K.RED).px(8, 3).px(12, 3);
+    box(pen, 5, 7, 10, 8, K.GRAY_L);
+    pen.col(K.CYAN).rect(8, 9, 4, 4);
+    pen.col(K.GRAY).rect(1, 8, 4, 3).rect(15, 8, 4, 3);
+    pen.col(K.YEL).px(4, 0).px(15, 0);
+    pen.col(K.GRAY_D).rect(6, 16, 3, 3).rect(11, 16, 3, 3);
   },
   trombeta(pen) {
-    pen.col(K.YEL).rect(3, 7, 8, 3);
-    pen.col(K.BLACK).frame(2, 6, 10, 5);
-    pen.col(K.YEL).ellipse(13, 8, 2, 4);
-    pen.col(K.BLACK).ring(13, 8, 4);
-    pen.col(K.OCHRE).px(5, 5).px(7, 5).px(9, 5);
-    pen.col(K.BLACK).px(5, 4).px(7, 4).px(9, 4);
+    // Boquilha + tubo + campânula — tem que parecer corneta, não chave
+    pen.col(K.OCHRE).rect(0, 8, 3, 4);
+    pen.col(K.YEL).rect(2, 8, 8, 4);
+    pen.col(K.BLACK).frame(1, 7, 10, 6);
+    pen.col(K.YEL).rect(10, 6, 2, 8);
+    blob(pen, 16, 10, 4, 7, K.YEL);
+    pen.col(K.YEL_L).ellipse(15, 8, 2, 3);
+    pen.col(K.BLACK).px(19, 10);
   },
   bola(pen) {
-    blob(pen, 8, 8, 6, 6, K.WHITE);
-    pen.col(K.RED).ellipse(8, 5, 5, 2);
-    pen.col(K.BLU).ellipse(8, 11, 5, 2);
-    pen.col(K.WHITE).ellipse(6, 6, 1, 1);
+    blob(pen, 10, 10, 8, 8, K.WHITE);
+    pen.col(K.RED).ellipse(10, 6, 6, 3);
+    pen.col(K.BLU).ellipse(10, 14, 6, 3);
+    pen.col(K.BLACK).hline(4, 10, 12).vline(10, 4, 12);
+    pen.col(K.WHITE).ellipse(7, 7, 2, 2);
   },
   boneco(pen) {
-    blob(pen, 8, 4, 3, 3, K.SKIN);
-    pen.col(K.WOOD_D).hline(6, 1, 5);
-    pen.col(K.BLACK).px(7, 4).px(9, 4);
-    box(pen, 5, 7, 7, 5, K.BLU);
-    pen.col(K.RED).rect(5, 12, 7, 2);
-    pen.col(K.YEL).px(5, 14).px(11, 14);
-    pen.col(K.SKIN).px(3, 8).px(12, 8);
+    blob(pen, 10, 5, 4, 4, K.SKIN);
+    pen.col(K.WOOD_D).hline(7, 1, 6);
+    pen.col(K.BLACK).px(8, 5).px(12, 5);
+    pen.col(K.RED).px(10, 7);
+    box(pen, 6, 9, 8, 6, K.BLU);
+    pen.col(K.YEL).hline(6, 12, 8);
+    pen.col(K.SKIN).px(4, 10).px(15, 10);
+    pen.col(K.RED).rect(6, 15, 3, 4).rect(11, 15, 3, 4);
   }
 };
-
-/* --------------------------------------------------------------------------
-   Comidas / balão — ícones 14×16
-   -------------------------------------------------------------------------- */
 
 const FOOD_PAINTERS = {
   burger(pen) {
-    pen.col(K.OCHRE).ellipse(7, 6, 6, 3);
-    pen.col(K.SAND).ellipse(7, 5, 5, 2);
-    pen.col(K.GRN).rect(1, 8, 12, 2);
-    pen.col(K.WOOD_D).rect(1, 10, 12, 2);
-    pen.col(K.OCHRE).ellipse(7, 12, 6, 2);
-    pen.col(K.BLACK).px(5, 4).px(9, 3);
+    pen.col(K.OCHRE).ellipse(8, 6, 7, 4);
+    pen.col(K.SAND).ellipse(8, 5, 6, 3);
+    pen.col(K.GRN).rect(2, 9, 12, 2);
+    pen.col(K.RED).rect(3, 11, 10, 2);
+    pen.col(K.WOOD_D).rect(2, 13, 12, 2);
+    pen.col(K.OCHRE).ellipse(8, 16, 7, 3);
+    pen.col(K.SAND).px(5, 4).px(10, 3);
   },
   fries(pen) {
-    pen.col(K.YEL).rect(3, 2, 2, 6).rect(6, 1, 2, 7).rect(9, 3, 2, 5);
-    pen.col(K.YEL_L).vline(3, 2, 6).vline(6, 1, 7);
-    pen.col(K.RED).rect(2, 7, 10, 8);
-    pen.col(K.RED_D).hline(2, 14, 10);
-    pen.col(K.WHITE).rect(4, 9, 6, 3);
-    pen.col(K.BLACK).frame(1, 6, 12, 10);
+    pen.col(K.YEL).rect(3, 1, 3, 8).rect(7, 0, 3, 9).rect(11, 2, 3, 7);
+    pen.col(K.YEL_L).vline(3, 1, 8).vline(7, 0, 9);
+    box(pen, 2, 8, 12, 9, K.RED);
+    pen.col(K.WHITE).rect(5, 11, 6, 4);
   },
   apple(pen) {
-    blob(pen, 7, 9, 5, 5, K.RED);
-    pen.col(K.RED_L).ellipse(5, 7, 1, 2);
-    pen.col(K.WOOD_D).vline(7, 2, 3);
-    pen.col(K.GRN).ellipse(10, 3, 2, 1);
+    blob(pen, 8, 10, 6, 6, K.RED);
+    pen.col(K.RED_L).ellipse(6, 8, 2, 3);
+    pen.col(K.WOOD_D).vline(8, 2, 4);
+    pen.col(K.GRN).ellipse(11, 3, 3, 2);
+    pen.col(K.WHITE).px(5, 8);
   },
   milk(pen) {
-    box(pen, 4, 4, 7, 11, K.WHITE);
-    pen.col(K.BLU).rect(4, 4, 7, 3);
-    pen.col(K.BLACK).line(4, 4, 7, 1).line(11, 4, 7, 1);
-    pen.col(K.WHITE).px(7, 2).px(8, 3);
-    pen.col(K.BLU_L).rect(5, 9, 5, 4);
+    box(pen, 4, 4, 8, 13, K.WHITE);
+    pen.col(K.BLU).rect(4, 4, 8, 4);
+    pen.col(K.BLACK).line(4, 4, 8, 1).line(12, 4, 8, 1);
+    pen.col(K.WHITE).px(8, 2);
+    pen.col(K.CYAN).rect(6, 10, 4, 4);
   },
   balloon(pen) {
-    blob(pen, 7, 6, 5, 6, K.PINK);
-    pen.col(K.WHITE).ellipse(5, 4, 1, 2);
-    pen.col(K.PINK).px(7, 12).px(6, 13).px(8, 13);
-    pen.col(K.CREAM).line(7, 13, 7, 15);
+    blob(pen, 8, 7, 6, 7, K.PINK);
+    pen.col(K.WHITE).ellipse(6, 5, 2, 3);
+    pen.col(K.PINK).px(8, 14).px(7, 15).px(9, 15);
+    pen.col(K.CREAM).vline(8, 15, 3);
   }
 };
-
-/* --------------------------------------------------------------------------
-   Veículos — silhuetas distintas; rodas alinhadas para contar
-   -------------------------------------------------------------------------- */
 
 function wheel(pen, cx, cy, r) {
   pen.col(K.BLACK).ellipse(cx, cy, r, r);
   pen.col(K.GRAY_L).ellipse(cx, cy, Math.max(1, r - 2), Math.max(1, r - 2));
-  pen.col(K.GRAY_D).ellipse(cx, cy, 1, 1);
+  pen.col(K.WHITE).ellipse(cx, cy, 1, 1);
+  pen.col(K.GRAY_D).px(cx, cy);
 }
 
 function drawVehicle(pen, v, w) {
-  const groundY = 23;
+  const groundY = 24;
   const r = v.wheels >= 8 ? 3 : v.wheels >= 5 ? 4 : 5;
   const wheelY = groundY - r;
 
   switch (v.id) {
-    case 'walk':
-      break;
     case 'uni':
-      pen.col(K.GRAY_XD).vline(w >> 1, 8, 8);
-      pen.col(K.WOOD_D).hline((w >> 1) - 4, 8, 9);
+      pen.col(K.GRAY_XD).vline(w >> 1, 6, 10);
+      pen.col(K.RED).hline((w >> 1) - 5, 6, 11);
+      pen.col(K.YEL).rect((w >> 1) - 3, 4, 7, 3);
       break;
     case 'moto':
-      // Motocicleta de perfil: guidão, banco e duas rodas bem separadas
-      pen.col(K.RED).rect(14, 11, 16, 5);
-      pen.col(K.BLACK).frame(13, 10, 18, 7);
-      pen.col(K.GRAY_XD).line(14, 11, 8, 6).line(8, 6, 5, 6);
-      pen.col(K.GRAY_L).hline(3, 5, 6);
-      pen.col(K.GRAY).rect(22, 8, 6, 3);
-      pen.col(K.YEL).rect(28, 12, 2, 2);
+      // Moto de perfil: duas rodas grandes bem separadas
+      pen.col(K.RED).rect(12, 9, 20, 6);
+      pen.col(K.BLACK).frame(11, 8, 22, 8);
+      pen.col(K.GRAY_XD).line(12, 9, 6, 5);
+      pen.col(K.GRAY_L).hline(3, 4, 8);
+      pen.col(K.GRAY).rect(22, 6, 8, 4);
+      pen.col(K.YEL).rect(30, 11, 3, 3);
       break;
     case 'tri':
-      pen.col(K.BLU).rect(8, 11, 26, 6);
-      pen.col(K.BLACK).frame(7, 10, 28, 8);
-      pen.col(K.GRAY_XD).line(10, 11, 7, 6);
-      pen.col(K.RED).rect(22, 7, 8, 4);
+      // Triciclo: 1 roda na frente, 2 atrás — silhueta de três pontos
+      pen.col(K.BLU).rect(10, 9, 26, 7);
+      pen.col(K.BLACK).frame(9, 8, 28, 9);
+      pen.col(K.RED).rect(22, 4, 10, 6);
+      pen.col(K.CYAN).rect(24, 5, 6, 4);
+      pen.col(K.GRAY_XD).vline(14, 5, 5);
       break;
     case 'car': {
       const y = groundY - r - 12;
-      pen.col(K.BLACK).rect(3, y + 4, w - 6, 10);
-      pen.col(K.RED).rect(4, y + 5, w - 8, 8);
-      pen.col(K.RED_D).hline(4, y + 12, w - 8);
-      pen.col(K.BLACK).rect(14, y - 4, w - 30, 9);
-      pen.col(K.RED_L).rect(15, y - 3, w - 32, 7);
-      pen.col(K.CYAN).rect(17, y - 1, (w - 36) / 2, 4).rect(19 + (w - 36) / 2, y - 1, (w - 36) / 2, 4);
-      pen.col(K.YEL_L).rect(w - 6, y + 7, 2, 3);
+      box(pen, 4, y + 5, w - 8, 8, K.RED);
+      box(pen, 16, y - 3, w - 32, 8, K.RED_L);
+      pen.col(K.CYAN).rect(18, y - 1, (w - 38) / 2, 4).rect(20 + (w - 38) / 2, y - 1, (w - 38) / 2, 4);
+      pen.col(K.YEL_L).rect(w - 7, y + 7, 3, 3);
       break;
     }
     case 'spare': {
-      // Carrinho + estepe no teto (5 rodas)
       const y = groundY - r - 12;
-      pen.col(K.BLACK).rect(3, y + 4, w - 6, 10);
-      pen.col(K.BLU).rect(4, y + 5, w - 8, 8);
-      pen.col(K.BLU_D).hline(4, y + 12, w - 8);
-      pen.col(K.BLACK).rect(14, y - 4, w - 30, 9);
-      pen.col(K.BLU_L).rect(15, y - 3, w - 32, 7);
-      pen.col(K.CYAN).rect(17, y - 1, (w - 36) / 2, 4).rect(19 + (w - 36) / 2, y - 1, (w - 36) / 2, 4);
-      // Estepe no teto
-      wheel(pen, w >> 1, y - 2, 4);
-      pen.col(K.YEL_L).rect(w - 6, y + 7, 2, 3);
+      box(pen, 4, y + 5, w - 8, 8, K.BLU);
+      box(pen, 16, y - 3, w - 32, 8, K.BLU_L);
+      pen.col(K.CYAN).rect(18, y - 1, (w - 38) / 2, 4);
+      wheel(pen, w >> 1, y - 1, 4);
       break;
     }
     case 'van': {
-      const bodyH = 14;
-      const bodyY = groundY - r - bodyH - 1;
-      pen.col(K.BLACK).rect(2, bodyY - 1, w - 4, bodyH + 2);
-      pen.col(K.GRN).rect(3, bodyY, w - 6, bodyH);
-      pen.col(K.GRN_D).hline(3, bodyY + bodyH - 1, w - 6);
+      const bodyY = groundY - r - 15;
+      box(pen, 3, bodyY, w - 6, 14, K.GRN);
       pen.col(K.CYAN);
-      for (let x = 7; x < w - 10; x += 12) pen.rect(x, bodyY + 3, 8, 6);
-      pen.col(K.BLACK);
-      for (let x = 7; x < w - 10; x += 12) pen.frame(x - 1, bodyY + 2, 10, 8);
-      pen.col(K.YEL_L).rect(w - 5, bodyY + bodyH - 5, 2, 3);
+      for (let x = 8; x < w - 12; x += 12) pen.rect(x, bodyY + 3, 8, 6);
+      pen.col(K.YEL_L).rect(w - 6, bodyY + 9, 3, 3);
       break;
     }
     case 'van7': {
-      // Van + estepe lateral (7 rodas)
-      const bodyH = 14;
-      const bodyY = groundY - r - bodyH - 1;
-      pen.col(K.BLACK).rect(2, bodyY - 1, w - 4, bodyH + 2);
-      pen.col(K.PUR).rect(3, bodyY, w - 6, bodyH);
-      pen.col(K.PUR_L).hline(3, bodyY + bodyH - 1, w - 6);
+      const bodyY = groundY - r - 15;
+      box(pen, 3, bodyY, w - 6, 14, K.PUR);
       pen.col(K.CYAN);
-      for (let x = 7; x < w - 14; x += 12) pen.rect(x, bodyY + 3, 8, 6);
-      pen.col(K.BLACK);
-      for (let x = 7; x < w - 14; x += 12) pen.frame(x - 1, bodyY + 2, 10, 8);
-      wheel(pen, w - 10, bodyY + 6, 4);
-      pen.col(K.YEL_L).rect(w - 5, bodyY + bodyH - 5, 2, 3);
+      for (let x = 8; x < w - 16; x += 12) pen.rect(x, bodyY + 3, 8, 6);
+      wheel(pen, w - 12, bodyY + 6, 4);
       break;
     }
-    case 'skates': {
-      // Dois patins com 4 rodinhas cada = 8
-      pen.col(K.RED).rect(4, 10, 18, 5);
-      pen.col(K.BLU).rect(32, 10, 18, 5);
-      pen.col(K.BLACK).frame(3, 9, 20, 7).frame(31, 9, 20, 7);
-      pen.col(K.CREAM).rect(8, 6, 10, 4).rect(36, 6, 10, 4);
-      pen.col(K.GRAY_XD).vline(13, 4, 3).vline(41, 4, 3);
+    case 'skates':
+      box(pen, 4, 10, 20, 6, K.RED);
+      box(pen, 32, 10, 20, 6, K.BLU);
+      pen.col(K.CREAM).rect(8, 6, 12, 4).rect(36, 6, 12, 4);
       break;
-    }
     case 'truck': {
-      const bodyH = 14;
-      const bodyY = groundY - r - bodyH - 1;
-      pen.col(K.BLACK).rect(2, bodyY + 3, w - 30, bodyH - 2);
-      pen.col(K.GRAY_L).rect(3, bodyY + 4, w - 32, bodyH - 4);
-      pen.col(K.GRAY_D).hline(3, bodyY + bodyH - 1, w - 32);
-      pen.col(K.BLACK).rect(w - 28, bodyY - 1, 26, bodyH + 2);
-      pen.col(K.ORANGE).rect(w - 27, bodyY, 24, bodyH);
-      pen.col(K.OCHRE).hline(w - 27, bodyY + bodyH - 1, 24);
+      const bodyY = groundY - r - 15;
+      box(pen, 3, bodyY + 4, w - 32, 10, K.GRAY_L);
+      box(pen, w - 28, bodyY, 24, 14, K.ORANGE);
       pen.col(K.CYAN).rect(w - 24, bodyY + 3, 12, 6);
-      pen.col(K.BLACK).frame(w - 25, bodyY + 2, 14, 8);
-      pen.col(K.YEL_L).rect(w - 5, bodyY + bodyH - 5, 2, 3);
+      pen.col(K.YEL_L).rect(w - 6, bodyY + 9, 3, 3);
       break;
     }
     default:
@@ -332,9 +280,8 @@ function drawVehicle(pen, v, w) {
 
   const n = v.wheels;
   if (n === 1) {
-    wheel(pen, w >> 1, groundY - 7, 7);
+    wheel(pen, w >> 1, groundY - 8, 8);
   } else if (n > 1) {
-    // Patins: 4+4 em dois grupos; demais: fila única contável
     if (v.id === 'skates') {
       for (let i = 0; i < 4; i++) wheel(pen, 6 + i * 5, wheelY, 3);
       for (let i = 0; i < 4; i++) wheel(pen, 34 + i * 5, wheelY, 3);
@@ -349,91 +296,83 @@ function drawVehicle(pen, v, w) {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Diversos
-   -------------------------------------------------------------------------- */
-
 function drawSheep(pen) {
-  blob(pen, 11, 8, 8, 5, K.WHITE);
-  pen.col(K.GRAY_L).ellipse(6, 6, 2, 2).ellipse(11, 5, 2, 2).ellipse(16, 6, 2, 2);
-  blob(pen, 19, 6, 3, 3, K.GRAY_XD);
-  pen.col(K.WHITE).px(19, 5);
-  pen.col(K.BLACK).px(20, 6);
-  pen.col(K.GRAY_XD).vline(6, 12, 3).vline(10, 12, 3).vline(14, 12, 3).vline(17, 12, 3);
+  blob(pen, 12, 9, 9, 6, K.WHITE);
+  pen.col(K.GRAY_L).ellipse(6, 7, 3, 3).ellipse(12, 5, 3, 3).ellipse(18, 7, 3, 3);
+  blob(pen, 22, 7, 4, 4, K.GRAY_XD);
+  pen.col(K.WHITE).px(22, 6);
+  pen.col(K.BLACK).px(24, 7);
+  pen.col(K.PINK).px(25, 8);
+  pen.col(K.GRAY_XD).vline(6, 14, 4).vline(11, 14, 4).vline(16, 14, 4).vline(20, 14, 4);
 }
 
 function drawMailman(pen) {
-  pen.col(K.BLACK).ring(8, 24, 6).ring(26, 24, 6);
-  pen.col(K.GRAY).ring(8, 24, 3).ring(26, 24, 3);
-  pen.col(K.GRAY_XD).line(8, 24, 17, 14).line(26, 24, 17, 14).line(17, 14, 17, 9);
-  pen.col(K.BLU_D).hline(13, 9, 9);
-  box(pen, 12, 12, 10, 9, K.BLU);
-  blob(pen, 17, 7, 5, 5, K.SKIN);
-  pen.col(K.BLACK).px(15, 6).px(19, 6);
-  pen.col(K.BLU_D).rect(11, 1, 13, 3);
-  pen.col(K.BLACK).frame(10, 0, 15, 5);
-  box(pen, 22, 15, 8, 6, K.CREAM);
-  pen.col(K.RED).px(26, 17);
+  blob(pen, 17, 8, 6, 6, K.SKIN);
+  pen.col(K.BLU_D).rect(11, 1, 13, 4);
+  pen.col(K.YEL).rect(14, 1, 7, 2);
+  eye(pen, 14, 8);
+  eye(pen, 20, 8);
+  box(pen, 12, 14, 10, 10, K.BLU);
+  pen.col(K.BLU_L).hline(13, 15, 8);
+  box(pen, 22, 16, 10, 7, K.CREAM);
+  pen.col(K.RED).rect(24, 18, 6, 3);
+  pen.col(K.BLACK).ring(8, 28, 5).ring(26, 28, 5);
+  pen.col(K.GRAY).ring(8, 28, 2).ring(26, 28, 2);
+}
+
+function eye(pen, x, y) {
+  pen.col(K.WHITE).px(x, y);
+  pen.col(K.BLACK).px(x + 1, y);
 }
 
 function drawEnvelope(pen) {
-  box(pen, 0, 0, 13, 9, K.CREAM);
-  pen.col(K.BLACK).line(0, 0, 6, 5).line(12, 0, 6, 5);
-  pen.col(K.RED).px(11, 7).px(10, 7);
+  box(pen, 0, 0, 14, 10, K.CREAM);
+  pen.col(K.BLACK).line(0, 0, 7, 6).line(14, 0, 7, 6);
+  pen.col(K.RED).rect(10, 6, 3, 3);
 }
 
 function drawGift(pen) {
-  box(pen, 1, 6, 18, 13, K.RED);
-  pen.col(K.YEL).rect(8, 6, 4, 13);
-  pen.col(K.YEL).hline(1, 11, 18);
-  pen.col(K.YEL).ellipse(7, 4, 3, 3).ellipse(13, 4, 3, 3);
-  pen.col(K.BLACK).ring(7, 4, 4).ring(13, 4, 4);
+  box(pen, 2, 8, 20, 14, K.RED);
+  pen.col(K.YEL).rect(10, 8, 4, 14);
+  pen.col(K.YEL).hline(2, 14, 20);
+  blob(pen, 9, 5, 4, 4, K.YEL);
+  blob(pen, 15, 5, 4, 4, K.YEL);
 }
 
 function drawCake(pen) {
-  pen.col(K.BLACK).rect(1, 12, 30, 12);
-  pen.col(K.CREAM).rect(2, 13, 28, 10);
-  pen.col(K.PINK).hline(2, 13, 28).hline(2, 14, 28);
-  pen.col(K.BLACK).rect(6, 4, 20, 9);
-  pen.col(K.WHITE).rect(7, 5, 18, 7);
-  pen.col(K.PINK).hline(7, 5, 18);
-  pen.col(K.BLU).vline(11, 0, 5).vline(16, 0, 5).vline(21, 0, 5);
-  pen.col(K.YEL_L).px(11, -1).px(16, -1).px(21, -1);
-  pen.col(K.ORANGE).px(11, 0).px(16, 0).px(21, 0);
-}
-
-/** Carrinho de supermercado — cesto aberto para as compras ficarem visíveis. */
-function drawCart(pen) {
-  // Alça (lado esquerdo, onde o Ravi empurra)
-  pen.col(K.BLACK).line(1, 18, 8, 4).line(8, 4, 16, 4);
-  pen.col(K.GRAY_L).line(2, 18, 8, 5).line(8, 5, 15, 5);
-  // Cesto: fundo escuro para os itens contrastarem
-  pen.col(K.BLACK).rect(10, 10, 50, 26);
-  pen.col(K.GRAY_XD).rect(11, 11, 48, 24);
-  // Interior (chão do cesto)
-  pen.col(K.CREAM).rect(13, 14, 44, 18);
-  // Grades laterais (não cobrem o miolo)
-  pen.col(K.GRAY);
-  for (let x = 13; x <= 55; x += 7) {
-    pen.vline(x, 11, 3);
-    pen.vline(x, 29, 5);
+  box(pen, 2, 14, 30, 12, K.CREAM);
+  pen.col(K.PINK).hline(2, 14, 30).hline(2, 15, 30);
+  box(pen, 7, 6, 20, 9, K.WHITE);
+  pen.col(K.PINK).hline(7, 6, 20);
+  const xs = [12, 17, 22];
+  for (const x of xs) {
+    pen.col(K.CYAN).vline(x, 1, 6);
+    pen.col(K.YEL_L).px(x, 0);
+    pen.col(K.ORANGE).px(x, 1);
   }
-  pen.col(K.GRAY_L).hline(11, 11, 48).hline(11, 33, 48);
-  // Borda superior
-  pen.col(K.BLACK).rect(9, 8, 52, 3);
-  pen.col(K.GRAY).rect(10, 9, 50, 1);
-  // Base
-  pen.col(K.BLACK).rect(16, 35, 38, 3);
-  pen.col(K.GRAY_D).rect(17, 36, 36, 1);
-  // Rodas
-  pen.col(K.BLACK).ellipse(20, 43, 6, 6).ellipse(50, 43, 6, 6);
-  pen.col(K.GRAY_XD).ellipse(20, 43, 4, 4).ellipse(50, 43, 4, 4);
-  pen.col(K.GRAY_L).ellipse(20, 43, 1, 1).ellipse(50, 43, 1, 1);
 }
 
-/* --------------------------------------------------------------------------
-   Boot
-   -------------------------------------------------------------------------- */
+function drawCart(pen) {
+  pen.col(K.BLACK).line(2, 20, 10, 4).line(10, 4, 18, 4);
+  pen.col(K.GRAY_L).line(3, 20, 10, 5);
+  box(pen, 12, 10, 48, 24, K.GRAY_XD);
+  pen.col(K.CREAM).rect(15, 14, 42, 16);
+  pen.col(K.GRAY);
+  for (let x = 16; x <= 54; x += 8) pen.vline(x, 10, 4);
+  pen.col(K.GRAY_L).hline(12, 10, 48);
+  blob(pen, 20, 40, 6, 6, K.GRAY_XD);
+  blob(pen, 50, 40, 6, 6, K.GRAY_XD);
+  pen.col(K.GRAY_L).px(20, 40).px(50, 40);
+}
+
+function drawArrow(pen) {
+  pen.col(K.YEL).rect(6, 2, 8, 10);
+  pen.col(K.BLACK).frame(6, 2, 8, 10);
+  for (let i = 0; i < 8; i++) {
+    pen.col(K.BLACK).hline(10 - i, 12 + i, 2 + i * 2);
+    pen.col(K.YEL).hline(11 - i, 12 + i, i * 2);
+  }
+}
 
 let built = false;
 
@@ -441,42 +380,49 @@ export async function buildSprites() {
   if (built) return SPR;
   built = true;
 
-  const raviSlices = sliceSpriteSheet('ravi_sprites', 56);
-  const poses = ['idle', 'walk0', 'walk1', 'wave', 'cheer', 'sleep', 'sit'];
-  for (let i = 0; i < poses.length; i++) {
-    SPR.ravi[poses[i]] = raviSlices[i] || raviSlices[0];
+  const poses = ['idle', 'blink', 'walk0', 'walk1', 'wave', 'cheer', 'sleep', 'sit'];
+  for (const pose of poses) {
+    const w = pose === 'sleep' ? 42 : 24;
+    const h = pose === 'sleep' ? 22 : 42;
+    SPR.ravi[pose] = bakeSprite(w, h, (pen) => paintRavi(pen, pose));
   }
 
-  // Folha com dezenas de poses: fica só com silhuetas de personagem (sem faixas largas / texto)
-  // e pega a 1ª pose de cada bloco para os 9 heróis.
-  const heroSlices = sliceSpriteSheet('heroes_sprites', 56)
-    .filter((s) => s.w >= 28 && s.w <= 58 && s.w / s.h <= 1.1);
-  const step = Math.max(1, Math.floor(heroSlices.length / HEROES.length) || 1);
-  for (let i = 0; i < HEROES.length; i++) {
-    SPR.hero[HEROES[i].id] = heroSlices[Math.min(i * step, heroSlices.length - 1)] || heroSlices[0];
+  for (const hero of HEROES) {
+    SPR.hero[hero.id] = bakeSprite(24, 42, (pen) => paintHero(pen, hero, 'idle'));
+    SPR.hero[hero.id + '_cheer'] = bakeSprite(24, 42, (pen) => paintHero(pen, hero, 'cheer'));
   }
 
   for (const toy of TOYS) {
-    SPR.toy[toy.id] = bakeSprite(16, 16, (pen) => TOY_PAINTERS[toy.id](pen));
+    SPR.toy[toy.id] = bakeSprite(20, 20, (pen) => TOY_PAINTERS[toy.id](pen));
   }
-
   for (const food of FOODS) {
-    SPR.food[food.id] = bakeSprite(14, 16, (pen) => FOOD_PAINTERS[food.id](pen));
+    SPR.food[food.id] = bakeSprite(16, 18, (pen) => FOOD_PAINTERS[food.id](pen));
   }
-
   for (const v of VEHICLES) {
     SPR.vehicle[v.id] = bakeSprite(v.w, 26, (pen) => drawVehicle(pen, v, v.w));
   }
 
-  SPR.misc.sheep = bakeSprite(24, 16, drawSheep);
-  SPR.misc.mailman = bakeSprite(34, 31, drawMailman);
-  SPR.misc.envelope = bakeSprite(14, 10, drawEnvelope);
-  SPR.misc.gift = bakeSprite(21, 21, drawGift);
-  SPR.misc.cake = bakeSprite(32, 27, (pen) => {
+  SPR.misc.sheep = bakeSprite(28, 18, drawSheep);
+  SPR.misc.mailman = bakeSprite(36, 34, drawMailman);
+  SPR.misc.envelope = bakeSprite(16, 11, drawEnvelope);
+  SPR.misc.gift = bakeSprite(24, 24, drawGift);
+  SPR.misc.cake = bakeSprite(34, 28, (pen) => {
     pen.ctx.translate(0, 2);
     drawCake(pen);
   });
-  SPR.misc.cart = bakeSprite(64, 50, drawCart);
+  SPR.misc.cart = bakeSprite(64, 48, drawCart);
+  SPR.misc.arrow = bakeSprite(20, 22, drawArrow);
 
   return SPR;
+}
+
+/** Pose viva do Ravi: pisca e, andando, troca as pernas. */
+export function raviPose(name, clock) {
+  if (name === 'idle' && (clock % 3.2) > 3.0) return SPR.ravi.blink;
+  if (name === 'walk') return (Math.floor(clock * 6) % 2) ? SPR.ravi.walk1 : SPR.ravi.walk0;
+  return SPR.ravi[name] || SPR.ravi.idle;
+}
+
+export function heroSprite(id, dancing) {
+  return dancing && SPR.hero[id + '_cheer'] ? SPR.hero[id + '_cheer'] : SPR.hero[id];
 }

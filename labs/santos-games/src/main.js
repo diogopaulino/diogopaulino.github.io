@@ -150,9 +150,10 @@ function applyOptions() {
 function setTouchLayout(layout) {
     const overlay = document.getElementById('svcTouch');
     if (!overlay) return;
-    // coarse pointer OU dispositivos sem hover (celulares/tablets) — o overlay some no desktop
     const touchy = matchMedia('(pointer: coarse), (hover: none)').matches;
-    state.input.attachTouch(overlay, touchy ? (layout || 'FULL') : null);
+    overlay.classList.toggle('tp--kids', layout === 'PLAY' || layout === 'FULL');
+    overlay.classList.toggle('tp--coarse', touchy);
+    state.input.attachTouch(overlay, layout ? 'FULL' : null);
 }
 
 function updateSoundButton() {
@@ -161,9 +162,9 @@ function updateSoundButton() {
     const muted = !!state.store.getOpts().mute;
     btn.setAttribute('aria-pressed', String(!muted));
     const label = btn.querySelector('[data-label]');
-    if (label) label.textContent = muted ? 'Som desativado' : 'Som ativado';
+    if (label) label.textContent = muted ? 'Som desligado' : 'Som ligado';
     const icon = btn.querySelector('[data-icon]');
-    if (icon) icon.textContent = muted ? '◌' : '◉';
+    if (icon) icon.textContent = muted ? '🔇' : '🔊';
 }
 
 // ---------------------------------------------------------------------------
@@ -253,12 +254,14 @@ function boot() {
 
     state.px = new PixelSurface(wrap, stage, screen);
     state.input = new InputManager();
+    state.input.attachPointer(screen);
     state.font = createFont();
     state.store = new Store();
     state.audio = createAudio();
     state.rng = makeRng(Date.now() & 0xffffffff);
     state.scenery = buildScenery();
     state.sprites = buildAtlas({ shirt: 'c', trim: 'y', skin: 'u', hair: '0' });
+    setSponsor(SPONSORS[0]);
 
     applyOptions();
 
@@ -305,7 +308,7 @@ function boot() {
 
     const resetBtn = document.getElementById('svcResetBtn');
     on(resetBtn, 'click', () => {
-        if (!window.confirm('Apagar todos os recordes e medalhas do Santos Games?')) return;
+        if (!window.confirm('Apagar as estrelas e medalhas?')) return;
         state.store.reset();
         applyOptions();
     });

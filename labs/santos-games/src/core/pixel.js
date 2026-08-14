@@ -102,9 +102,10 @@ export class PixelSurface {
     /** Desenha um sprite (mundo, sujeito à câmera + shake). */
     blit(sprite, wx, wy, opts = {}) {
         if (!sprite) return;
+        const s = opts.scale || 1;
         const so = this.shakeOffset || { x: 0, y: 0 };
-        const dx = Math.round(wx - this.cam.x - sprite.ox + so.x);
-        const dy = Math.round(wy - this.cam.y - sprite.oy + so.y);
+        const dx = Math.round(wx - this.cam.x - sprite.ox * s + so.x);
+        const dy = Math.round(wy - this.cam.y - sprite.oy * s + so.y);
         this._draw(sprite, dx, dy, opts);
     }
 
@@ -115,7 +116,8 @@ export class PixelSurface {
      */
     blitScreen(sprite, sx, sy, opts = {}) {
         if (!sprite) return;
-        this._draw(sprite, Math.round(sx - sprite.ox), Math.round(sy - sprite.oy), opts);
+        const s = opts.scale || 1;
+        this._draw(sprite, Math.round(sx - sprite.ox * s), Math.round(sy - sprite.oy * s), opts);
     }
 
     _draw(sprite, dx, dy, opts) {

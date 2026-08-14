@@ -8,6 +8,7 @@
 
 export const W = 320;
 export const H = 200;
+export const STAGE_H = 166;  // palco; o resto é a barra de fala
 
 let canvas = null;
 let ctx = null;

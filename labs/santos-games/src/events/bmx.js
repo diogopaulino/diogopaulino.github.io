@@ -16,7 +16,7 @@ const GROUND_Y = 182;
 // Janela de "coyote time": por um instante depois de sair do chão o pulo ainda é aceito.
 // Sem isso, saltar no fim de uma rampa exigia precisão de frame e a prova parecia injusta.
 const COYOTE_SEC = 0.14;
-const COURSE_LEN = 5200;      // px de ciclovia até a linha de chegada
+const COURSE_LEN = 3400;      // px de ciclovia até a linha de chegada
 const GRAVITY = 1050;
 const MAX_SPEED = 320;
 
@@ -95,20 +95,26 @@ export class BmxEvent extends EventBase {
         // --- aceleração ---
         const ax = input.axisX();
         if (ax > 0) this.speed += 200 * dt;
-        else if (ax < 0) this.speed -= 260 * dt;
-        else this.speed -= 20 * dt;
-        this.speed = clamp(this.speed, 50, MAX_SPEED);
+        else if (ax < 0) this.speed -= 160 * dt;
+        else this.speed += 150 * dt;
+        this.speed = clamp(this.speed, 70, MAX_SPEED);
 
-        // --- salto ---
-        // Coyote time + buffer de toque: o pulo sai se o botão foi apertado pouco antes de
-        // encostar no chão OU pouco depois de sair dele.
         this.coyote = this.grounded ? COYOTE_SEC : Math.max(0, (this.coyote || 0) - dt);
-        if (this.coyote > 0 && input.buffered('a', 130)) {
-            input.consume('a');
+
+        const nearObs = this.obstacles.find((o) => !o.hit && (o.x - this.dist) > 4 && (o.x - this.dist) < 110);
+        this.cueReady = (this.grounded && !!nearObs) || (!this.grounded && this.y > 18);
+        this.cueX = 96;
+        this.cueY = GROUND_Y - 56;
+
+        const wantJump = this.coyote > 0 && input.buffered('a', 180);
+        const autoHop = this.grounded && nearObs && (nearObs.x - this.dist) < 22;
+        if (wantJump || autoHop) {
+            if (wantJump) input.consume('a');
             this.vy = 300 + this.speed * 0.5;
             this.grounded = false;
             this.coyote = 0;
             audio.play('jump');
+            if (autoHop && !wantJump) this.float.push('PULO!', 96, GROUND_Y - 40, 'y', 400);
         }
 
         if (!this.grounded) {
@@ -116,7 +122,7 @@ export class BmxEvent extends EventBase {
             this.vy -= GRAVITY * dt;
 
             // manobra no ar: só vale com altura sobrando, senão vira queda
-            if (input.state.b.pressed && this.trickT <= 0 && this.y > 26) {
+            if (input.state.a.pressed && this.trickT <= 0 && this.y > 20) {
                 this.trickT = 0.55;
                 this.trickName = TRICKS[this.tricks % TRICKS.length];
                 this.trickRot = 0;
@@ -158,7 +164,7 @@ export class BmxEvent extends EventBase {
                 this.vy = 250 + this.speed * 1.15;
                 this.grounded = false;
                 audio.play('jump');
-                this.float.push('RAMP!', 96, GROUND_Y - this.y - 36, 'y', 500);
+                this.float.push('UAU!', 96, GROUND_Y - this.y - 36, 'y', 500);
                 px.shake(1, 80);
             }
         }
@@ -205,7 +211,7 @@ export class BmxEvent extends EventBase {
         this.speed *= 1 - damage;
         audio.play('crash');
         px.shake(4, 280);
-        this.float.push(label, 96, GROUND_Y - 50, 'B', 1100);
+        this.float.push('OPS!', 96, GROUND_Y - 50, 'B', 1100);
     }
 
     arrive() {

@@ -9,8 +9,7 @@
 import { initScreen, fit, toBuffer } from './screen.js';
 import { Audio } from './audio.js';
 import { hitTest } from './scenes.js';
-import { initGame, update, draw, handleNumber, currentSpots } from './game.js';
-import { loadImages } from './assets.js';
+import { initGame, update, draw, handleNumber, currentSpots, debugApi } from './game.js';
 import { buildSprites } from './sprites.js';
 
 const STEP = 1 / 60;      // passo lógico fixo
@@ -73,9 +72,8 @@ function onPointerDown(event) {
   const point = toBuffer(event.clientX, event.clientY);
   if (!point) return;
   const n = hitTest(currentSpots(), point.x, point.y);
-  if (n === null) return;
   event.preventDefault();
-  handleNumber(n);
+  handleNumber(n === null ? -1 : n);
 }
 
 /**
@@ -114,14 +112,9 @@ async function boot() {
   ctx.fillText('CARREGANDO...', 120, 100);
 
   try {
-    await loadImages([
-      'ravi_sprites', 'heroes_sprites', 'items_sprites',
-      'house_day', 'house_night', 'field_night', 'street',
-      'factory', 'market', 'post', 'party'
-    ]);
-    
     await buildSprites();
     initGame();
+    if (typeof window !== 'undefined') window.__ravi = debugApi();
 
     window.addEventListener('keydown', onKeyDown);
     canvas.addEventListener('pointerdown', onPointerDown);

@@ -5,13 +5,14 @@
 // gameplay cuidando só da sua mecânica, e garante que as seis se comportem igual em pausa,
 // em `prefers-reduced-motion` e na entrega da pontuação.
 
-import { EVENTS } from '../game/config.js';
+import { EVENTS, KID_PICK } from '../game/config.js';
 import { FloatingText, topBar, countdown, controlHint } from '../game/hud.js';
 import { clamp } from '../core/util.js';
+import { tapped, consumeTap, drawTapCue, drawSparkles } from '../game/kids.js';
 
-const COUNTDOWN_SEC = 3.2;
-const OUTRO_SEC = 1.4;
-const HINT_SEC = 4.5;
+const COUNTDOWN_SEC = 2.4;
+const OUTRO_SEC = 1.1;
+const HINT_SEC = 6;
 
 export class EventBase {
     /**
@@ -33,7 +34,10 @@ export class EventBase {
         this.hintT = HINT_SEC;
         this.practice = false;
         /** Duração do miolo jogável; cada prova pode sobrescrever em `setup()`. */
-        this.duration = 60;
+        this.duration = 40;
+        this.cueReady = false;
+        this.cueX = 160;
+        this.cueY = 72;
     }
 
     // --- ganchos que cada prova implementa ---
@@ -79,6 +83,13 @@ export class EventBase {
         this.float.update(dtMs);
 
         if (this.phase === 'countdown') {
+            if (tapped(this.app.input)) {
+                consumeTap(this.app.input);
+                this.phase = 'play';
+                this.phaseT = 0;
+                this.start();
+                return null;
+            }
             this.phaseT -= dt;
             const prev = Math.ceil(this.phaseT + dt);
             const now = Math.ceil(this.phaseT);
@@ -118,16 +129,18 @@ export class EventBase {
     draw() {
         this.render();
         topBar(this.app.px, this.app.font, {
-            title: this.def.name,
+            title: (KID_PICK[this.id] && KID_PICK[this.id].label) || this.def.name,
             score: Math.round(this.score),
-            middle: this.middleLabel(),
+            middle: this.cueReady ? '★' : this.middleLabel(),
             tint: this.def.tint
         });
         this.float.draw(this.app.px, this.app.font);
-        this.renderOverlay();
 
         if (this.phase === 'countdown') {
             countdown(this.app.px, this.app.font, this.phaseT - 0.2);
+        } else if (this.phase === 'play' && this.cueReady) {
+            drawTapCue(this.app.px, this.app.font, this.app.sprites, this.cueX, this.cueY, this.elapsed);
+            drawSparkles(this.app.px, this.app.sprites, this.cueX, this.cueY, this.elapsed, 4);
         } else if (this.hintT > 0) {
             controlHint(this.app.px, this.app.font, this.def.hint, clamp(this.hintT / 1.2, 0, 1));
         }
