@@ -66,8 +66,8 @@ export const QUALITY = {
         rocks: 6,
         wildlife: 4,
         birds: 5,
-        drawDistance: 280,
-        fogDensity: 0.0064
+        drawDistance: 360,
+        fogDensity: 0.0048
     },
     medium: {
         id: 'medium',
@@ -85,7 +85,7 @@ export const QUALITY = {
         wildlife: 8,
         birds: 9,
         drawDistance: 420,
-        fogDensity: 0.0044
+        fogDensity: 0.0032
     },
     high: {
         id: 'high',
@@ -103,7 +103,7 @@ export const QUALITY = {
         wildlife: 12,
         birds: 14,
         drawDistance: 560,
-        fogDensity: 0.0034
+        fogDensity: 0.0024
     }
 };
 

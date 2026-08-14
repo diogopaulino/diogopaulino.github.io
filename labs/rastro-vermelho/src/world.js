@@ -4,12 +4,13 @@
  * Altura h(x, z):
  *   continent = fBm(x·0.00105, z·0.00105) ^ 1.55           → serras longas
  *   ridge     = ridged(x·0.0022, z·0.0022) ^ 2.1            → cristas
- *   hills     = (fBm(x·0.008, z·0.008) − 0.45) · 8
- *   detail    = (fBm(x·0.034, z·0.034) − 0.5) · 1.7
+ *   hills     = (fBm(x·0.0065, z·0.0065) − 0.38) · 14
+ *   rolling   = fBm(x·0.0026, z·0.0026) ^ 1.25 · 20         → lombadas
+ *   detail    = (fBm(x·0.034, z·0.034) − 0.5) · 2.1
  *   river     = |sin(warpX·0.004) · cos(warpZ·0.003)|        → talvegue
  *   carve     = (1 − smoothstep(0.02, 0.16, river))^2 · 15
  *   canyon    = −(1 − |2n−1|)^3 · 20 · máscara árida
- *   h         = continent·58 + ridge·continent·36 + hills + detail + canyon − carve
+ *   h         = continent·72 + ridge·continent·42 + hills + rolling + detail + canyon − carve
  *   mesa      = achata 14 < h < 32 onde arid > 0.62
  *
  * Bioma: alpine / pine / prairie / desert / mesa / canyon / riparian.
@@ -31,11 +32,12 @@ export function aridAt(x, z) {
 }
 
 export function heightAt(x, z) {
-    const continent = Math.pow(fbm(x * 0.00105, z * 0.00105, 1, 5), 1.55);
+    const continent = Math.pow(fbm(x * 0.00105, z * 0.00105, 1, 5), 1.22);
     const ridge = Math.pow(ridged(x * 0.0022, z * 0.0022, 11, 4), 2.1);
-    const mountains = continent * 58 + ridge * continent * 36;
-    const hills = (fbm(x * 0.008, z * 0.008, 3, 4) - 0.45) * 8;
-    const detail = (fbm(x * 0.034, z * 0.034, 9, 3) - 0.5) * 1.7;
+    const mountains = continent * 72 + ridge * continent * 42;
+    const hills = (fbm(x * 0.0065, z * 0.0065, 3, 5) - 0.38) * 14;
+    const rolling = Math.pow(fbm(x * 0.0026, z * 0.0026, 15, 4), 1.25) * 20;
+    const detail = (fbm(x * 0.034, z * 0.034, 9, 3) - 0.5) * 2.1;
 
     const warpX = x + (fbm(x * 0.002, z * 0.002, 21, 3) - 0.5) * 180;
     const warpZ = z + (fbm(x * 0.002, z * 0.002, 27, 3) - 0.5) * 180;
@@ -47,7 +49,7 @@ export function heightAt(x, z) {
     const nCan = ridged(x * 0.0062, z * 0.0062, 33, 3);
     const canyon = -Math.pow(nCan, 3) * 20 * canyonMask;
 
-    let h = mountains + hills + detail + canyon - carve;
+    let h = mountains + hills + rolling + detail + canyon - carve;
     if (arid > 0.62 && h > 14 && h < 32) {
         h = lerp(h, 18 + (h - 18) * 0.18, smoothstep(0.62, 0.8, arid));
     }
@@ -155,6 +157,7 @@ export class World {
         });
 
         this.addWater();
+        this.addHorizon();
         this.scatterGrass();
     }
 
@@ -172,6 +175,48 @@ export class World {
         this.water.position.y = WATER_Y;
         this.water.receiveShadow = true;
         this.group.add(this.water);
+    }
+
+    /**
+     * Silhuetas de serra no horizonte — acompanham o cavalo para o oeste
+     * nunca parecer uma mesa infinita.
+     */
+    addHorizon() {
+        this.peaks = [];
+        const rock = new THREE.MeshStandardMaterial({
+            color: 0x6a3a28,
+            roughness: 0.96,
+            flatShading: true
+        });
+        const snow = new THREE.MeshStandardMaterial({
+            color: 0xd8d0c4,
+            roughness: 0.88,
+            flatShading: true
+        });
+        for (let i = 0; i < 16; i++) {
+            const g = new THREE.Group();
+            const n = 2 + (i % 3);
+            for (let k = 0; k < n; k++) {
+                const h = 28 + hash2(i, k, 4) * 48;
+                const r = 10 + hash2(i, k, 8) * 16;
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), k === 0 && h > 52 ? snow : rock);
+                cone.position.set((k - 1) * r * 1.1, h * 0.5, (hash2(i, k, 2) - 0.5) * 12);
+                cone.rotation.y = hash2(i, k, 11) * 6;
+                g.add(cone);
+            }
+            g.traverse((c) => {
+                if (c.isMesh) {
+                    c.castShadow = false;
+                    c.receiveShadow = false;
+                }
+            });
+            this.group.add(g);
+            this.peaks.push({
+                group: g,
+                angle: (i / 16) * Math.PI * 2,
+                dist: 260 + hash2(i, 1, 19) * 90
+            });
+        }
     }
 
     scatterGrass() {
@@ -416,6 +461,7 @@ export class World {
         this.water.position.x = player.x;
         this.water.position.z = player.z;
         this.refreshGrass(player.x, player.z);
+        this.updateHorizon(player);
 
         if (this.grassMat.userData.shader) {
             this.grassMat.userData.shader.uniforms.uTime.value = time;
@@ -427,6 +473,17 @@ export class World {
                 c.rotation.y += dt * 2.4;
             }
         });
+    }
+
+    updateHorizon(player) {
+        if (!this.peaks) return;
+        for (const p of this.peaks) {
+            const x = player.x + Math.cos(p.angle) * p.dist;
+            const z = player.z + Math.sin(p.angle) * p.dist;
+            const y = heightAt(x, z);
+            p.group.position.set(x, Math.max(y - 6, 2), z);
+            p.group.rotation.y = p.angle;
+        }
     }
 
     collide(x, z, radius) {
@@ -466,15 +523,22 @@ export class World {
     }
 
     findSpawn() {
-        for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 100; i++) {
             const a = hash2(i, 4, 5) * Math.PI * 2;
-            const r = 20 + hash2(i, 9, 6) * 80;
+            const r = 18 + hash2(i, 9, 6) * 90;
             const x = Math.cos(a) * r;
             const z = Math.sin(a) * r;
             const y = heightAt(x, z);
             const b = biomeAt(x, z, y);
-            const slope = Math.abs(heightAt(x + 3, z) - y);
-            if (y > WATER_Y + 1.5 && y < 22 && slope < 2.5 && (b === 'prairie' || b === 'desert')) {
+            const slope = Math.abs(heightAt(x + 4, z) - y) + Math.abs(heightAt(x, z + 4) - y);
+            const horizon = Math.max(
+                heightAt(x + 80, z),
+                heightAt(x - 80, z),
+                heightAt(x, z + 80),
+                heightAt(x, z - 80)
+            );
+            if (y > WATER_Y + 1.8 && y < 26 && slope < 5 && horizon > y + 10
+                && (b === 'prairie' || b === 'desert' || b === 'mesa')) {
                 return { x, z, yaw: a + Math.PI, y };
             }
         }

@@ -31,7 +31,7 @@ function enableShadows(root) {
 export function buildHorse() {
     const root = new THREE.Group();
     const coat = new THREE.MeshStandardMaterial({
-        map: hideTexture(), color: 0x5a3018, roughness: 0.72
+        map: hideTexture(), color: 0xb86a32, roughness: 0.68
     });
     const dark = std(0x1a120c, 0.78);
     const cream = std(0xd8c8a8, 0.7);

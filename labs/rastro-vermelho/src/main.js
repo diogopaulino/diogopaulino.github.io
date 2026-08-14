@@ -30,7 +30,7 @@ class Game {
         this.state = 'loading';
         this.time = 0;
         this.elapsed = 0;
-        this.hour = 0.18;
+        this.hour = 0.72;
         this.cameraMode = 0;
         this.lookYaw = 0;
         this.lookPitch = CAMERA.defaultPitch;
@@ -226,7 +226,7 @@ class Game {
         this.audio.setVolume(this.settings.volume / 100);
         this.player.reset(this.spawn);
         this.elapsed = 0;
-        this.hour = 0.18;
+        this.hour = 0.72;
         this.marks = new Set();
         this.lastRegion = '';
         this.lookYaw = this.player.yaw;
@@ -299,7 +299,7 @@ class Game {
 
         if (this.state === 'play') {
             this.elapsed += dt;
-            this.hour = wrap01(0.18 + this.elapsed / DAY_LENGTH);
+            this.hour = wrap01(0.72 + this.elapsed / DAY_LENGTH);
             this.tickPlay(dt);
         } else {
             this.idleCamera(dt);
