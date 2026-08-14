@@ -13,7 +13,10 @@ let step = 0;
 let theme = 'street';
 
 function ensure() {
+    if (typeof window === 'undefined') return null;
     if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         master = ctx.createGain();
         master.gain.value = 0.7;
@@ -25,6 +28,7 @@ function ensure() {
         sfxGain.gain.value = 0.55;
         sfxGain.connect(master);
     }
+    if (!ctx) return null;
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
 }
@@ -84,7 +88,8 @@ export function toggleMute() {
 
 export function sfx(name, strength = 1) {
     if (muted && !ctx) return;
-    ensure();
+    const ac = ensure();
+    if (!ac) return;
     const t = ctx.currentTime;
     const s = strength;
     if (name === 'ui') {
@@ -183,7 +188,7 @@ function tick() {
 }
 
 export function startMusic(name) {
-    ensure();
+    if (!ensure()) return;
     theme = name || 'street';
     stopMusic();
     step = 0;

@@ -395,7 +395,9 @@ h2 { font-size: clamp(1.4rem, 4vw, 2.2rem); }
 .act.special { background: #5a3a10cc; border-color: var(--gold); width: 56px; height: 56px; margin-bottom: 18px; }
 .act.is-down { filter: brightness(1.4); transform: scale(0.94); }
 
-body[data-screen="play"] .touch-controls { display: none; }
+body[data-screen="play"] .game-shell > header .app-logo {
+    display: none;
+}
 
 @media (pointer: coarse) {
     body[data-screen="play"] .touch-controls { display: flex; }

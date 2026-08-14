@@ -333,7 +333,11 @@ export class Game {
     }
 
     updateCamera() {
-        const target = clamp(this.hero.x - VW * 0.34, 0, Math.max(0, this.lockX - VW + 80));
+        const v = this.view;
+        const follow = v
+            ? (0.36 * v.cssW - v.ox) / v.scale
+            : VW * 0.34;
+        const target = clamp(this.hero.x - follow, 0, Math.max(0, this.lockX - VW + 80));
         this.camX = lerp(this.camX, target, 0.12);
         if (this.cleared) {
             this.lockX = Math.min(this.stageLength, this.lockX + 14);
@@ -466,93 +470,114 @@ export class Game {
         this.drawHud(ctx);
     }
 
+    visRect() {
+        const v = this.view;
+        if (!v?.scale) return { x: 0, y: 0, w: VW, h: VH };
+        return {
+            x: -v.ox / v.scale,
+            y: -v.oy / v.scale,
+            w: v.cssW / v.scale,
+            h: v.cssH / v.scale
+        };
+    }
+
     drawHud(ctx) {
         const h = this.hero;
         const c = CHARACTERS[this.charId];
+        const vis = this.visRect();
+        const x = vis.x + 18;
+        const y = vis.y + 52;
+        const w = vis.w;
+        const narrow = w < 760;
         ctx.save();
         ctx.fillStyle = 'rgba(8,6,12,0.55)';
-        ctx.fillRect(0, 0, VW, 78);
+        ctx.fillRect(vis.x, vis.y, vis.w, 78);
 
         ctx.fillStyle = '#1a1014';
-        ctx.fillRect(24, 18, 54, 54);
+        ctx.fillRect(x, y, 54, 54);
         ctx.strokeStyle = c.accent;
         ctx.lineWidth = 2;
-        ctx.strokeRect(24, 18, 54, 54);
+        ctx.strokeRect(x, y, 54, 54);
         ctx.save();
         ctx.beginPath();
-        ctx.rect(24, 18, 54, 54);
+        ctx.rect(x, y, 54, 54);
         ctx.clip();
-        drawActor(ctx, { ...h, sx: 52, sy: 78, facing: 1, state: 'idle', stateT: 0, y: 0, invuln: 0, flash: 0, scale: 0.42 }, this.tick);
+        drawActor(ctx, { ...h, sx: x + 28, sy: y + 60, facing: 1, state: 'idle', stateT: 0, y: 0, invuln: 0, flash: 0, scale: 0.42 }, this.tick);
         ctx.restore();
 
         ctx.font = '700 14px "Press Start 2P", monospace';
         ctx.fillStyle = c.color;
-        ctx.fillText(c.name, 92, 34);
+        ctx.fillText(c.name, x + 68, y + 16);
         ctx.fillStyle = '#8a8090';
         ctx.font = '10px "Press Start 2P", monospace';
-        ctx.fillText(`1P`, 92, 50);
+        ctx.fillText('1P', x + 68, y + 32);
 
+        const barW = Math.min(280, w * (narrow ? 0.22 : 0.34));
         const ratio = h.hp / h.maxHp;
         ctx.fillStyle = '#1a1018';
-        ctx.fillRect(92, 56, 280, 14);
+        ctx.fillRect(x + 68, y + 38, barW, 14);
         ctx.fillStyle = ratio > 0.5 ? '#3ecf6a' : ratio > 0.25 ? '#e0c040' : '#e04040';
-        ctx.fillRect(92, 56, 280 * Math.max(0, ratio), 14);
+        ctx.fillRect(x + 68, y + 38, barW * Math.max(0, ratio), 14);
         ctx.strokeStyle = '#f0e8d0';
         ctx.lineWidth = 2;
-        ctx.strokeRect(92, 56, 280, 14);
+        ctx.strokeRect(x + 68, y + 38, barW, 14);
 
         ctx.fillStyle = c.accent;
         for (let i = 0; i < Math.max(0, this.lives); i++) {
             ctx.beginPath();
-            ctx.arc(390 + i * 18, 36, 6, 0, Math.PI * 2);
+            ctx.arc(x + 92 + i * 14, y + 32, 5, 0, Math.PI * 2);
             ctx.fill();
         }
 
         ctx.textAlign = 'center';
-        ctx.font = '700 28px "Press Start 2P", monospace';
+        ctx.font = `700 ${narrow ? 18 : 28}px "Press Start 2P", monospace`;
         ctx.fillStyle = this.time < 15 ? '#ff5050' : '#f4ead8';
-        ctx.fillText(String(Math.max(0, this.time)).padStart(2, '0'), VW / 2, 48);
+        const tx = narrow ? vis.x + w - 70 : vis.x + w / 2;
+        const ty = narrow ? y + 22 : y + 36;
+        if (narrow) ctx.textAlign = 'right';
+        ctx.fillText(String(Math.max(0, this.time)).padStart(2, '0'), tx, ty);
         ctx.font = '10px "Press Start 2P", monospace';
         ctx.fillStyle = '#8a8090';
-        ctx.fillText('TEMPO', VW / 2, 22);
+        if (!narrow) ctx.fillText('TEMPO', vis.x + w / 2, y + 10);
 
         ctx.textAlign = 'right';
         ctx.fillStyle = '#f4ead8';
-        ctx.font = '700 14px "Press Start 2P", monospace';
-        ctx.fillText(String(this.score).padStart(7, '0'), VW - 28, 40);
+        ctx.font = `700 ${narrow ? 11 : 14}px "Press Start 2P", monospace`;
+        ctx.fillText(String(this.score).padStart(7, '0'), vis.x + w - 16, narrow ? y + 42 : y + 28);
         ctx.font = '10px "Press Start 2P", monospace';
         ctx.fillStyle = '#8a8090';
-        ctx.fillText(this.stage.name, VW - 28, 58);
+        if (!narrow) ctx.fillText(this.stage.name, vis.x + w - 16, y + 46);
         ctx.textAlign = 'left';
 
         const boss = this.foes.find((f) => f.boss && !f.dead);
         if (boss) {
+            const bw = Math.min(400, w - 48);
             ctx.fillStyle = 'rgba(8,6,12,0.5)';
-            ctx.fillRect(VW / 2 - 220, 86, 440, 28);
+            ctx.fillRect(vis.x + w / 2 - bw / 2 - 12, y + 68, bw + 24, 28);
             ctx.fillStyle = '#1a1018';
-            ctx.fillRect(VW / 2 - 200, 96, 400, 12);
+            ctx.fillRect(vis.x + w / 2 - bw / 2, y + 78, bw, 12);
             ctx.fillStyle = '#c43b3b';
-            ctx.fillRect(VW / 2 - 200, 96, 400 * (boss.hp / boss.maxHp), 12);
+            ctx.fillRect(vis.x + w / 2 - bw / 2, y + 78, bw * (boss.hp / boss.maxHp), 12);
             ctx.strokeStyle = '#f0e8d0';
-            ctx.strokeRect(VW / 2 - 200, 96, 400, 12);
+            ctx.strokeRect(vis.x + w / 2 - bw / 2, y + 78, bw, 12);
             ctx.textAlign = 'center';
             ctx.font = '10px "Press Start 2P", monospace';
             ctx.fillStyle = '#f0e8d0';
-            ctx.fillText(boss.name, VW / 2, 92);
+            ctx.fillText(boss.name, vis.x + w / 2, y + 74);
             ctx.textAlign = 'left';
         }
 
         if (this.combo >= 2 && this.comboT > 0) {
             ctx.font = '700 16px "Press Start 2P", monospace';
             ctx.fillStyle = '#f0c14a';
-            ctx.fillText(`${this.combo} HIT`, 92, 100);
+            ctx.fillText(`${this.combo} HIT`, x + 68, y + 88);
         }
 
         if (this.cleared && !this.bossIntro) {
             ctx.textAlign = 'right';
             ctx.font = '700 28px "Press Start 2P", monospace';
             ctx.fillStyle = `rgba(244, 234, 216, ${0.6 + Math.sin(this.goT * 0.15) * 0.4})`;
-            ctx.fillText('GO ▶', VW - 36, VH * 0.48);
+            ctx.fillText('GO ▶', vis.x + w - 24, vis.y + vis.h * 0.42);
             ctx.textAlign = 'left';
         }
 
@@ -560,14 +585,14 @@ export class Game {
             const a = Math.min(1, this.bannerT / 12, (90 - Math.min(90, this.bannerT)) / 12);
             ctx.globalAlpha = Math.max(0, a);
             ctx.fillStyle = 'rgba(8,4,10,0.72)';
-            ctx.fillRect(0, VH * 0.38, VW, 90);
+            ctx.fillRect(vis.x, vis.y + vis.h * 0.36, vis.w, 90);
             ctx.textAlign = 'center';
             ctx.fillStyle = '#f4ead8';
-            ctx.font = '700 22px "Press Start 2P", monospace';
-            ctx.fillText(this.banner.title, VW / 2, VH * 0.38 + 42);
+            ctx.font = '700 18px "Press Start 2P", monospace';
+            ctx.fillText(this.banner.title, vis.x + w / 2, vis.y + vis.h * 0.36 + 42);
             ctx.font = '12px "Press Start 2P", monospace';
             ctx.fillStyle = CHARACTERS[this.charId].color;
-            ctx.fillText(this.banner.sub, VW / 2, VH * 0.38 + 70);
+            ctx.fillText(this.banner.sub, vis.x + w / 2, vis.y + vis.h * 0.36 + 70);
             ctx.globalAlpha = 1;
             ctx.textAlign = 'left';
         }

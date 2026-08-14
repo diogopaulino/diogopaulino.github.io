@@ -46,12 +46,14 @@ function resize() {
     const h = canvas.clientHeight || window.innerHeight;
     canvas.width = Math.max(1, w * dpr);
     canvas.height = Math.max(1, h * dpr);
-    const scale = Math.min(w / VW, h / VH);
+    const scale = Math.max(w / VW, h / VH);
     view = {
         scale,
         ox: (w - VW * scale) / 2,
         oy: (h - VH * scale) / 2,
-        dpr
+        dpr,
+        cssW: w,
+        cssH: h
     };
 }
 
@@ -202,6 +204,7 @@ function loop(now) {
 
     beginDraw();
     if (game && (mode === 'play' || mode === 'pause' || mode === 'over' || mode === 'win')) {
+        game.view = view;
         game.render(ctx);
     } else {
         drawStage(ctx, STAGES[0], (bgTick * 0.6) % 800, bgTick);
