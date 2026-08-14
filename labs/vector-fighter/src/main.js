@@ -32,7 +32,7 @@ class Game {
         this.roundTime = ROUND_TIME;
         this.lock = 0;
         this.endHold = 0;
-        this.clock = new THREE.Clock();
+        this.lastTime = performance.now();
         this.fpsAccum = 0;
         this.fpsFrames = 0;
         this.paused = false;
@@ -129,7 +129,7 @@ class Game {
         this.hud.setLoading(1, 'JUDGE');
         this.hud.hideLoading();
         this.goTitle();
-        this.clock.start();
+        this.lastTime = performance.now();
         this.renderer.setAnimationLoop(() => this.frame());
     }
 
@@ -376,7 +376,9 @@ class Game {
     }
 
     frame() {
-        const raw = Math.min(0.05, this.clock.getDelta());
+        const now = performance.now();
+        const raw = Math.min(0.05, (now - this.lastTime) / 1000);
+        this.lastTime = now;
         const dt = raw * this.timeScale;
         this.input.tick(raw);
         this.hud.tickAnnounce();
