@@ -500,6 +500,7 @@ header {
 }
 
 .bottom-key {
+  position: relative;
   width: 58px;
   height: 28px;
   padding: 0;
@@ -515,6 +516,14 @@ header {
     0 4px 0 #801713,
     0 8px 8px rgba(76, 24, 6, 0.29);
   transition: transform 70ms ease, box-shadow 70ms ease;
+}
+
+/* Área de toque: as teclas mantêm os 58x28px do aparelho de 1997, mas o alvo
+   real cresce para cima e para baixo, onde há espaço livre. */
+.bottom-key::after {
+  content: '';
+  position: absolute;
+  inset: -10px -4px;
 }
 
 .bottom-key.pressed {
