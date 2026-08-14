@@ -1,0 +1,637 @@
+/* ================================================================
+   Lavandula — interface
+   Paleta: violeta da lavanda, ouro da hora dourada, linho, terra.
+   ================================================================ */
+
+:root {
+    --ink: oklch(12% 0.04 340);
+    --ink-deep: oklch(8% 0.03 340);
+    --linen: oklch(92% 0.03 85);
+    --gold: oklch(78% 0.13 75);
+    --gold-deep: oklch(62% 0.12 62);
+    --lilac: oklch(68% 0.14 320);
+    --violet: oklch(48% 0.14 320);
+
+    --text: oklch(95% 0.02 85);
+    --text-soft: oklch(82% 0.04 80);
+    --text-dim: oklch(64% 0.03 80);
+
+    --panel: color-mix(in oklab, oklch(16% 0.04 340) 64%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(11% 0.04 340) 84%, transparent);
+    --line: color-mix(in oklab, var(--lilac) 32%, transparent);
+    --line-soft: color-mix(in oklab, var(--linen) 12%, transparent);
+
+    --radius: 14px;
+    --radius-lg: 22px;
+    --blur: 20px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: clip;
+    overscroll-behavior: none;
+    background: var(--ink-deep);
+}
+
+body {
+    min-height: 100dvh;
+    color: var(--text);
+    font-family: 'Outfit', system-ui, sans-serif;
+    user-select: none;
+    touch-action: none;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; }
+
+.mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+}
+
+:focus-visible {
+    outline: 2px solid var(--lilac);
+    outline-offset: 3px;
+}
+
+.game-shell {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 0%, oklch(24% 0.06 40) 0%, var(--ink-deep) 70%);
+}
+
+#scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+}
+
+.fade {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    background: #140c12;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 42%, transparent 48%, oklch(12% 0.05 340 / 0.45) 100%),
+        linear-gradient(180deg, oklch(18% 0.06 40 / 0.18), transparent 28%, transparent 72%, oklch(12% 0.05 340 / 0.35));
+}
+
+.game-shell > header {
+    position: absolute;
+    top: calc(0.9rem + var(--safe-top));
+    left: calc(1rem + var(--safe-left));
+    right: calc(1rem + var(--safe-right));
+    z-index: 40;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: auto;
+    pointer-events: none;
+    gap: 0.6rem;
+}
+
+.game-shell > header > * { pointer-events: auto; }
+
+.game-shell > header .back-link {
+    background: var(--panel-strong);
+    backdrop-filter: blur(var(--blur));
+    border-color: var(--line);
+    color: var(--text-soft);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.game-shell > header .back-link:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+}
+
+.game-shell > header .app-logo {
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    color: var(--linen);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+
+.brand-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-right: 0.35rem;
+    color: var(--lilac);
+    text-shadow: 0 0 12px oklch(70% 0.16 320 / 0.7);
+}
+
+.lab-foot {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(0.4rem + var(--safe-bottom));
+    z-index: 30;
+    margin: 0;
+    padding: 0.4rem;
+    border: 0;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.lab-foot a { color: var(--text-soft); pointer-events: auto; }
+
+body[data-state="playing"] .lab-foot,
+body[data-state="intro"] .lab-foot,
+body[data-state="playing"] .game-shell > header .app-logo {
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+}
+
+.hud {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    padding: calc(4.2rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(1rem + var(--safe-bottom))
+        calc(1rem + var(--safe-left));
+}
+
+.hud[hidden] { display: none; }
+
+.panel {
+    background: var(--panel);
+    backdrop-filter: blur(var(--blur)) saturate(1.15);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    padding: 0.6rem 0.85rem;
+}
+
+.hud-label {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.9;
+}
+
+.hud-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.7rem;
+    align-items: start;
+}
+
+.objective {
+    margin: 0.25rem 0 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--linen);
+    max-width: 42ch;
+}
+
+.score-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.2rem;
+}
+
+.score-row--sub { margin-top: 0.2rem; color: var(--text-dim); font-size: 0.85rem; }
+
+.message {
+    position: absolute;
+    left: 50%;
+    bottom: calc(5.2rem + var(--safe-bottom));
+    transform: translateX(-50%);
+    width: min(36rem, calc(100% - 2rem));
+    margin: 0;
+    text-align: center;
+    font-size: 1.05rem;
+    line-height: 1.45;
+    color: var(--linen);
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+}
+
+.message[data-show="true"] { opacity: 1; }
+
+.prompt {
+    position: absolute;
+    left: 50%;
+    bottom: calc(8.4rem + var(--safe-bottom));
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--linen);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.prompt kbd {
+    margin-right: 0.35rem;
+}
+
+.hud-actions {
+    position: absolute;
+    right: calc(1rem + var(--safe-right));
+    bottom: calc(1.2rem + var(--safe-bottom));
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    pointer-events: auto;
+}
+
+.icon-button {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+    color: var(--linen);
+}
+
+.icon-button:hover { border-color: var(--gold); color: var(--gold); }
+
+.fps {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    min-width: 3.2rem;
+}
+
+.memory-card {
+    position: absolute;
+    left: 50%;
+    top: calc(5.4rem + var(--safe-top));
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 22;
+    width: min(28rem, calc(100% - 2rem));
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+}
+
+.memory-card.is-on {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.memory-card h2 {
+    margin: 0 0 0.35rem;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.memory-card p {
+    margin: 0;
+    color: var(--linen);
+    font-size: 1rem;
+    line-height: 1.5;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    display: grid;
+    place-items: center;
+    padding: calc(4.5rem + var(--safe-top)) 1rem 1.5rem;
+    background: color-mix(in oklab, var(--ink-deep) 42%, transparent);
+    backdrop-filter: blur(8px);
+}
+
+.overlay[hidden] { display: none; }
+
+.overlay-card {
+    width: min(860px, 100%);
+    background: color-mix(in oklab, oklch(14% 0.04 340) 78%, transparent);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    padding: 1.6rem 1.7rem 1.4rem;
+}
+
+.compact-card { width: min(440px, 100%); text-align: center; }
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+.eyebrow i {
+    width: 28px;
+    height: 1px;
+    background: var(--gold);
+    display: inline-block;
+}
+
+.eyebrow--danger { color: oklch(72% 0.16 25); }
+
+.menu-head h1, .overlay-card h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    line-height: 1.15;
+    color: var(--linen);
+}
+
+.menu-head h1 {
+    font-size: clamp(2rem, 5vw, 3.1rem);
+}
+
+.menu-head h1 span { color: var(--lilac); }
+
+.lede {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.5;
+    max-width: 52ch;
+}
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr;
+    gap: 1.1rem;
+    margin: 1.3rem 0 1.1rem;
+}
+
+.menu-section h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 0.55rem;
+}
+
+.place-list {
+    margin: 0;
+    padding-left: 1.15rem;
+    color: var(--text-soft);
+    line-height: 1.7;
+    font-size: 0.9rem;
+}
+
+.keys {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-soft);
+}
+
+kbd {
+    display: inline-block;
+    min-width: 1.3rem;
+    padding: 0.08rem 0.32rem;
+    margin-right: 0.15rem;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    font-size: 0.72rem;
+    color: var(--linen);
+}
+
+.settings-grid { display: grid; gap: 0.7rem; }
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    color: var(--text-soft);
+}
+
+.field select, .field input[type="range"] {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+}
+
+.section-note {
+    margin: 0.7rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+}
+
+.menu-foot { display: flex; justify-content: flex-end; }
+
+.primary-button, .ghost-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.75rem 1.15rem;
+    border-radius: 999px;
+    pointer-events: auto;
+}
+
+.primary-button {
+    background: linear-gradient(180deg, oklch(72% 0.14 320), oklch(48% 0.14 320));
+    color: oklch(96% 0.02 85);
+    font-weight: 650;
+    box-shadow: 0 10px 28px oklch(55% 0.14 320 / 0.4);
+}
+
+.primary-button:hover { filter: brightness(1.08); }
+
+.ghost-button {
+    margin-top: 0.55rem;
+    border: 1px solid var(--line);
+    color: var(--text-soft);
+}
+
+.ghost-button:hover { color: var(--gold); border-color: var(--gold); }
+
+.card-actions { display: flex; flex-direction: column; align-items: center; margin-top: 1rem; }
+
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem 1rem;
+    margin: 1rem 0 0;
+    text-align: left;
+}
+
+.stats div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.stats span {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.stats strong { color: var(--linen); }
+
+.loading-overlay { background: var(--ink-deep); }
+.loading-card { text-align: center; }
+
+.loading-card h1 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    margin: 0.8rem 0 0.4rem;
+}
+
+.bloom-loader {
+    display: inline-block;
+    width: 54px;
+    height: 54px;
+    border: 4px solid oklch(70% 0.14 320 / 0.25);
+    border-top-color: var(--lilac);
+    border-radius: 50%;
+    box-shadow: 0 0 24px oklch(70% 0.16 320 / 0.45);
+    animation: spin 1.1s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-bar {
+    width: min(280px, 70vw);
+    height: 6px;
+    margin: 0.9rem auto 0;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.loading-bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--violet), var(--lilac), var(--gold));
+    box-shadow: 0 0 12px var(--lilac);
+}
+
+.touch-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.stick {
+    pointer-events: auto;
+    position: absolute;
+    left: calc(1.2rem + var(--safe-left));
+    bottom: calc(1.2rem + var(--safe-bottom));
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    display: grid;
+    place-items: center;
+}
+
+.stick i {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--lilac);
+    opacity: 0.85;
+}
+
+.stick span {
+    position: absolute;
+    bottom: -1.2rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.look-zone {
+    pointer-events: auto;
+    position: absolute;
+    right: 0;
+    top: 20%;
+    width: 48%;
+    height: 55%;
+}
+
+.touch-buttons {
+    pointer-events: auto;
+    position: absolute;
+    right: calc(1rem + var(--safe-right));
+    bottom: calc(1.2rem + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pad {
+    min-width: 72px;
+    padding: 0.65rem 0.8rem;
+    border-radius: 14px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--linen);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+}
+
+.pad-use {
+    background: color-mix(in oklab, var(--lilac) 32%, var(--panel-strong));
+}
+
+@media (max-width: 860px) {
+    .menu-grid { grid-template-columns: 1fr; }
+    .hud-top { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+    .overlay-card { padding: 1.15rem 1rem 1rem; }
+    .menu-head h1 { font-size: 1.7rem; }
+    .hud-actions { bottom: calc(7.5rem + var(--safe-bottom)); }
+}
