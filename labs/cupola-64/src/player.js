@@ -54,10 +54,10 @@ export class Player {
         this.spawn();
     }
 
-    spawn() {
+    spawn(world) {
         this.x = 0;
         this.z = 12;
-        this.y = 2.4;
+        this.y = world ? world.groundAt(0, 12, 40) : 1.6;
         this.vx = this.vy = this.vz = 0;
         this.facing = 0;
         this.yaw = 0;
@@ -104,6 +104,7 @@ export class Player {
         this.hurtT = Math.max(0, this.hurtT - dt);
         this.landTimer = Math.max(0, this.landTimer - dt);
         this.starPose = Math.max(0, this.starPose - dt);
+        this._world = world;
 
         input.sample();
         this._camera(dt, input, world, camera);
@@ -335,7 +336,7 @@ export class Player {
 
     _fall() {
         this.hurt();
-        if (this.alive) this.spawn();
+        if (this.alive) this.spawn(this._world);
     }
 
     _camera(dt, input, world, camera) {
