@@ -128,13 +128,14 @@ const TOY_PAINTERS = {
     pen.col(K.GRAY_D).rect(6, 16, 3, 3).rect(11, 16, 3, 3);
   },
   trombeta(pen) {
-    // Corneta: boquilha + tubo + campânula — cabe no ícone 20×20
-    pen.col(K.YEL).rect(1, 8, 9, 4);
-    pen.col(K.BLACK).frame(0, 7, 11, 6);
-    pen.col(K.OCHRE).rect(1, 8, 3, 4);
-    pen.col(K.YEL).ellipse(15, 10, 5, 7);
-    pen.col(K.BLACK).ring(15, 10, 6);
-    pen.col(K.YEL_L).ellipse(14, 8, 2, 2);
+    // Boquilha + tubo + campânula — tem que parecer corneta, não chave
+    pen.col(K.OCHRE).rect(0, 8, 3, 4);
+    pen.col(K.YEL).rect(2, 8, 8, 4);
+    pen.col(K.BLACK).frame(1, 7, 10, 6);
+    pen.col(K.YEL).rect(10, 6, 2, 8);
+    blob(pen, 16, 10, 4, 7, K.YEL);
+    pen.col(K.YEL_L).ellipse(15, 8, 2, 3);
+    pen.col(K.BLACK).px(19, 10);
   },
   bola(pen) {
     blob(pen, 10, 10, 8, 8, K.WHITE);

@@ -836,7 +836,7 @@ const SCENES = {
     draw(ctx) {
       drawPartyBack(ctx);
       drawPartyFront(ctx);
-      blitFoot(ctx, raviPose('wave', clock), 46, 160 - hop(clock, 3.2, 2) - extraHop());
+      blitFoot(ctx, raviPose('wave', clock), 28, 160 - hop(clock, 3.2, 2) - extraHop());
     }
   },
 
@@ -874,7 +874,7 @@ const SCENES = {
       drawPartyBack(ctx);
       drawGuests(ctx);
       drawPartyFront(ctx);
-      blitFoot(ctx, raviPose('cheer', clock), 46, 160 - hop(clock, 5.5, 4) - extraHop());
+      blitFoot(ctx, raviPose('cheer', clock), 28, 160 - hop(clock, 5.5, 4) - extraHop());
       if (S.guestsIn > S.invited.length) {
         Sc.drawConfetti(ctx, S.confetti, clock);
       }
@@ -1012,7 +1012,7 @@ const SCENES = {
       drawGuests(ctx, Math.round(this.leave * 210));
       drawGuestMeals(ctx, Math.round(this.leave * 210));
       drawPartyFront(ctx);
-      blitFoot(ctx, raviPose('cheer', clock), 46, 160 - hop(clock, 5.2, 3) - extraHop());
+      blitFoot(ctx, raviPose('cheer', clock), 28, 160 - hop(clock, 5.2, 3) - extraHop());
       Sc.drawConfetti(ctx, S.confetti, clock);
 
       if (this.done) {
@@ -1101,13 +1101,13 @@ function drawPartyBack(ctx) {
   Sc.drawBalloons(ctx, S.balloonsHung, clock);
 }
 
-/** Bolo e presente nas laterais — não cobrem o meio onde estão os convidados. */
+/** Bolo à esquerda do tapete e presente à direita — longe do Ravi e dos convidados. */
 function drawPartyFront(ctx) {
   const cakeBob = hop(clock, 2.4, 2);
-  blitFoot(ctx, SPR.misc.cake, 48, 128 - cakeBob);
+  blitFoot(ctx, SPR.misc.cake, 72, 150 - cakeBob);
   if (S.presentDone && S.present) {
     const giftBob = hop(clock, 2.1, 2, 1);
-    blitFoot(ctx, SPR.misc.gift, 278, 128 - giftBob);
+    blitFoot(ctx, SPR.misc.gift, 278, 150 - giftBob);
   }
 }
 
