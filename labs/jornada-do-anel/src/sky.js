@@ -52,7 +52,7 @@ export function createLights(scene, chapter, quality) {
     const group = new THREE.Group();
     scene.add(group);
 
-    const amb = new THREE.AmbientLight(chapter.ambient, 0.35);
+    const amb = new THREE.AmbientLight(chapter.ambient, chapter.ambientIntensity ?? 0.5);
     group.add(amb);
 
     const hemi = new THREE.HemisphereLight(chapter.hemi.sky, chapter.hemi.ground, chapter.hemi.intensity);

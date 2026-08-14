@@ -96,7 +96,8 @@ export class Input {
 
     requestLock() {
         if (this.locked) return;
-        this.canvas.requestPointerLock?.();
+        const result = this.canvas.requestPointerLock?.();
+        if (result && typeof result.catch === 'function') result.catch(() => {});
     }
 
     exitLock() {

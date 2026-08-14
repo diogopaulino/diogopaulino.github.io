@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js';
-import { clamp, detectMobile, detectSoftwareGL, formatTime } from './utils.js';
+import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
@@ -91,10 +91,16 @@ class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = CHAPTERS[0].exposure ?? 1.2;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(CHAPTERS[0].clear);
+
+        if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
+            this.quality = QUALITY.low;
+            this.renderer.setPixelRatio(1);
+            this.renderer.shadowMap.enabled = false;
+        }
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.12, 520);
@@ -107,7 +113,8 @@ class Game {
         this.player = new Player(this.scene);
         this.player.root.visible = false;
 
-        this.clock = new THREE.Clock();
+        this.timer = new THREE.Timer();
+        this.timer.connect(document);
         this._bindUi();
         window.addEventListener('resize', () => this._resize());
 
@@ -256,6 +263,7 @@ class Game {
         applyChapterSky(this.sky, ch);
         this.scene.fog = new THREE.Fog(ch.fog.color, ch.fog.near, ch.fog.far);
         this.renderer.setClearColor(ch.clear);
+        this.renderer.toneMappingExposure = ch.exposure ?? 1.15;
         this.audio.setTheme(ch.music);
 
         if (this.lights.dir && this.quality.shadows) {
@@ -278,6 +286,7 @@ class Game {
         this.audio.setMuted(this.settings.muted);
 
         this.quality = this.resolveQuality();
+        if (rendererIsSoftware(this.renderer)) this.quality = QUALITY.low;
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
         this.renderer.shadowMap.enabled = this.quality.shadows;
 
@@ -359,9 +368,10 @@ class Game {
         this.saveSettings();
     }
 
-    _loop() {
-        requestAnimationFrame(() => this._loop());
-        const dt = Math.min(0.05, this.clock.getDelta());
+    _loop(timestamp) {
+        requestAnimationFrame((t) => this._loop(t));
+        this.timer.update(timestamp);
+        const dt = Math.min(0.05, this.timer.getDelta());
         this.time += dt;
         this._update(dt);
         this.renderer.render(this.scene, this.camera);
@@ -471,7 +481,7 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            if (!this.mobile) this.input.requestLock();
+            this.hud.say('Clique no mundo para olhar com o mouse.', 3.2);
         }
     }
 

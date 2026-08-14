@@ -83,8 +83,10 @@ export const CHAPTERS = [
         fog: { color: 0xc8d6a8, near: 28, far: 118 },
         clear: 0x8eb4d4,
         ambient: 0xffe2b0,
-        sun: { color: 0xffd39a, intensity: 2.05, dir: [-0.55, 0.72, 0.38] },
-        hemi: { sky: 0xffe8c4, ground: 0x6a8a3a, intensity: 0.72 }
+        ambientIntensity: 0.62,
+        exposure: 1.32,
+        sun: { color: 0xffd39a, intensity: 2.55, dir: [-0.45, 0.82, 0.32] },
+        hemi: { sky: 0xffe8c4, ground: 0x6a8a3a, intensity: 1.05 }
     },
     {
         id: 'forest',
@@ -98,6 +100,8 @@ export const CHAPTERS = [
         fog: { color: 0x1a2230, near: 8, far: 62 },
         clear: 0x0c1018,
         ambient: 0x2a3348,
+        ambientIntensity: 0.4,
+        exposure: 0.92,
         sun: { color: 0x8aa0c8, intensity: 0.35, dir: [0.2, 0.85, -0.4] },
         hemi: { sky: 0x1c2740, ground: 0x0a120c, intensity: 0.45 }
     },
@@ -113,6 +117,8 @@ export const CHAPTERS = [
         fog: { color: 0xb7d4d8, near: 35, far: 130 },
         clear: 0x9ec8d6,
         ambient: 0xdcecff,
+        ambientIntensity: 0.55,
+        exposure: 1.22,
         sun: { color: 0xfff1d2, intensity: 1.55, dir: [0.35, 0.8, 0.45] },
         hemi: { sky: 0xd8f0ff, ground: 0x5a7a4a, intensity: 0.8 }
     },
@@ -128,6 +134,8 @@ export const CHAPTERS = [
         fog: { color: 0x0a0706, near: 6, far: 48 },
         clear: 0x070504,
         ambient: 0x3a2214,
+        ambientIntensity: 0.45,
+        exposure: 0.88,
         sun: { color: 0xff7a32, intensity: 0.15, dir: [0, 1, 0] },
         hemi: { sky: 0x2a1810, ground: 0x140804, intensity: 0.35 }
     },
@@ -143,6 +151,8 @@ export const CHAPTERS = [
         fog: { color: 0xd08a5a, near: 40, far: 140 },
         clear: 0xe8a060,
         ambient: 0xffc080,
+        ambientIntensity: 0.58,
+        exposure: 1.18,
         sun: { color: 0xff8a3a, intensity: 1.7, dir: [-0.75, 0.35, 0.2] },
         hemi: { sky: 0xffc090, ground: 0x4a3020, intensity: 0.7 }
     }
