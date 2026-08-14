@@ -3,6 +3,8 @@
  * Injetados em MeshStandardMaterial via onBeforeCompile quando preciso.
  */
 
+import * as THREE from 'three';
+
 const WATER_KEY = 'eyra-water-v1';
 const ROCK_KEY = 'eyra-rock-v1';
 const LEAF_KEY = 'eyra-leaf-v1';

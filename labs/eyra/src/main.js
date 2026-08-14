@@ -87,32 +87,31 @@ class Eyra {
         this.hud.setLoading(0.08, 'Abrindo o céu…');
         try {
             await this.setupRenderer();
+            this.hud.setLoading(0.32, 'Erguendo os picos…');
+            this.world = new World(this.scene, this.quality);
+
+            this.hud.setLoading(0.58, 'Chamando a ira…');
+            this.player = new Player(this.scene, this.camera);
+            this.effects = new Effects(this.scene, this.quality);
+
+            this.hud.setLoading(0.82, 'Acendendo o sol…');
+            await this.setupBloom();
+
+            this.renderer.compile(this.scene, this.camera);
+            this.render();
+            this.hud.setLoading(1, 'Pronto');
+            setTimeout(() => {
+                this.hud.hideLoading();
+                this.enterMenu();
+                this.last = performance.now();
+                this.fpsAcc = 0;
+                this.fpsFrames = 0;
+                this.renderer.setAnimationLoop((now) => this.frame(now));
+            }, 280);
         } catch (err) {
+            console.error(err);
             this.hud.fail(err?.message || 'Falha ao iniciar o WebGL.');
-            return;
         }
-
-        this.hud.setLoading(0.32, 'Erguendo os picos…');
-        this.world = new World(this.scene, this.quality);
-
-        this.hud.setLoading(0.58, 'Chamando a ira…');
-        this.player = new Player(this.scene, this.camera);
-        this.effects = new Effects(this.scene, this.quality);
-
-        this.hud.setLoading(0.82, 'Acendendo o sol…');
-        await this.setupBloom();
-
-        this.renderer.compile(this.scene, this.camera);
-        this.render();
-        this.hud.setLoading(1, 'Pronto');
-        setTimeout(() => {
-            this.hud.hideLoading();
-            this.enterMenu();
-            this.last = performance.now();
-            this.fpsAcc = 0;
-            this.fpsFrames = 0;
-            this.renderer.setAnimationLoop((now) => this.frame(now));
-        }, 280);
     }
 
     async setupRenderer() {
