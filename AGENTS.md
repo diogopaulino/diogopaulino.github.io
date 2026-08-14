@@ -23,8 +23,11 @@ Portfólio e playground estático do Diogo Paulino. HTML, CSS e JS puro no GitHu
 
 Slug do lab = pasta = card da galeria = README = `sitemap.xml`. Ao criar, mover ou renomear um lab, **corrija os quatro na mesma mudança**.
 
-- Galeria: `href="/labs/<slug>/"`
-- README e sitemap: `https://diogopaulino.com.br/labs/<slug>/`
+**Sempre ajuste o link no README.** Toda pasta em `/labs/<slug>/` precisa de uma linha na tabela do Playground apontando para `https://diogopaulino.com.br/labs/<slug>/`. Sem essa linha, o lab some do catálogo do GitHub. Atualize também o número de experimentos (badge + texto).
+
+- Galeria (`labs/index.html`): card com `href="/labs/<slug>/"`, ícone SVG e contagem nos metas
+- README: linha na tabela certa + URL absoluta + contagem
+- sitemap.xml: `https://diogopaulino.com.br/labs/<slug>/`
 - Voltar: header `/labs/`, footer `/`
 - Teste servindo a **raiz**: `python3 -m http.server 8000` — nunca `file://` (quebra `/favicon.ico` e módulos ES)
 
