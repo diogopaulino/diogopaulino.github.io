@@ -418,3 +418,17 @@ canvas {
         animation: none;
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 600px) {
+    .win31-window { width: 100%; max-width: 100%; }
+    .hud-stats { min-width: 0; max-width: 48%; font-size: 12px; }
+    .onscreen-controls {
+        bottom: max(2px, env(safe-area-inset-bottom, 0px));
+        right: max(14px, env(safe-area-inset-right, 0px));
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .instructions, footer { display: none; }
+    .game-viewport { max-height: calc(100dvh - 6rem); }
+}

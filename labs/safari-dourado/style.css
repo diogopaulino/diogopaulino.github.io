@@ -423,8 +423,8 @@ body[data-state="play"] .hud-actions {
 }
 
 .icon-button {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     background: var(--panel);
     border: 1px solid var(--line-soft);
@@ -740,4 +740,63 @@ kbd {
     .overlay-card { padding: 20px; }
     .polaroid { display: none; }
     body[data-state="play"] .hud-actions { margin-top: 0; top: auto; bottom: calc(160px + var(--safe-bottom)); right: calc(18px + var(--safe-right)); }
+}
+/* --- lab-responsive-pass --- */
+.overlay {
+    padding: calc(1.2rem + var(--safe-top, 0px))
+             calc(1.2rem + var(--safe-right, 0px))
+             calc(1.2rem + var(--safe-bottom, 0px))
+             calc(1.2rem + var(--safe-left, 0px));
+}
+
+@media (max-width: 860px) {
+    .hud-top { top: calc(4.2rem + var(--safe-top, 0px)); }
+    .message { bottom: calc(11rem + var(--safe-bottom, 0px)); }
+    .prompt { bottom: calc(9.5rem + var(--safe-bottom, 0px)); max-width: min(92vw, 420px); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-top { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .journal-panel { display: none; }
+    .stick { width: 96px; height: 96px; }
+}
+
+/* --- mobile: HUD, toque, landscape curto --- */
+@media (pointer: coarse) {
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .overlay,
+    .overlay-card,
+    .menu-card {
+        max-height: min(92dvh, 900px);
+    }
+    .overlay-card,
+    .menu-card {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        bottom: auto;
+        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+    }
+    .icon-button,
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .touch-controls {
+        height: min(42%, 38dvh);
+    }
 }
