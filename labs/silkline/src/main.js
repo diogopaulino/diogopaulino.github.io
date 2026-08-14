@@ -297,7 +297,8 @@ class Game {
         this.hud.showHud(true);
         this.hud.setTouchVisible(this.isTouch);
         this.hud.setReticle(true, false);
-        this.hud.message('SILKLINE', 1400);
+        this.hud.message('DISPARE A TEIA', 1600);
+        this.updateCamera(1, true);
         if (!this.isTouch) this.input.requestLock(this.canvas);
     }
 
@@ -314,7 +315,7 @@ class Game {
         this.player.auto = attract;
         this.city.seedPulses();
         this.cityGlow.position.set(s.x, 40, s.z);
-        this.updateCamera(1, true);
+        if (this.state === 'playing') this.updateCamera(1, true);
     }
 
     pause() {
@@ -515,10 +516,11 @@ class Game {
         const cdy = CAM.y - from.y;
         const cdz = CAM.z - from.z;
         const cdist = Math.hypot(cdx, cdy, cdz) || 1;
-        const blocked = this.city?.raycast(from.x, from.y + 1.1, from.z, cdx, cdy, cdz, cdist);
-        if (blocked && blocked.dist < cdist - 0.6) {
-            const t = Math.max(1.4, blocked.dist - 0.9) / cdist;
+        const blocked = this.city?.raycast(from.x, from.y + 1.4, from.z, cdx, cdy, cdz, cdist);
+        if (blocked && blocked.dist < cdist - 1.2 && blocked.dist > 2.8) {
+            const t = Math.max(2.6, blocked.dist - 1.2) / cdist;
             CAM.set(from.x + cdx * t, from.y + cdy * t, from.z + cdz * t);
+            CAM.y = Math.max(CAM.y, from.y + 1.8);
         }
 
         AIM.copy(this.player.pos).addScaledVector(look, 14);

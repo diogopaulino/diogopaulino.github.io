@@ -54,18 +54,18 @@ export class Player {
         this.lookLock = false;
     }
 
-    spawn(x, y, z, yaw = Math.PI) {
+    spawn(x, y, z, yaw = 0) {
         this.pos.set(x, y, z);
-        this.vel.set(0, 0, 0);
+        this.vel.set(Math.sin(yaw) * 16, -4, Math.cos(yaw) * 16);
         this.yaw = yaw;
-        this.pitch = 0.08;
+        this.pitch = 0.02;
         this.facing = yaw;
-        this.grounded = true;
+        this.grounded = false;
         this.swinging = false;
         this.web.release();
         this.webCd = 0;
         this.combo = 0;
-        this.airTime = 0;
+        this.airTime = 0.2;
         this.invuln = 0;
         this.alive = true;
         this.sync();

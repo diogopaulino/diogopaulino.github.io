@@ -37,9 +37,9 @@ export const PHYS = {
 };
 
 export const CAMERA = {
-    chase: { dist: 7.4, height: 5.2, look: 0.15, fov: 64 },
-    shoulder: { dist: 4.8, height: 2.4, look: 0.35, fov: 70 },
-    cinematic: { dist: 13.5, height: 6.2, look: -0.1, fov: 54 },
+    chase: { dist: 10.5, height: 3.8, look: 0.35, fov: 66 },
+    shoulder: { dist: 5.2, height: 2.2, look: 0.45, fov: 72 },
+    cinematic: { dist: 16, height: 7.4, look: 0.1, fov: 52 },
     pitchMin: -1.15,
     pitchMax: 0.62,
     mouse: 0.0022

@@ -306,13 +306,11 @@ export class City {
         }
         this.empire = e;
         this.beacons = [e.beacon];
-        const roof = this.cellOf(6, 11);
-        const roofY = this.heightAt(roof.x, roof.z);
         this.spawn = {
-            x: roof.x,
-            y: Math.max(28, roofY) + 1.4,
-            z: roof.z,
-            yaw: -Math.PI / 2
+            x: empire.x + GRID.avenue * 0.5,
+            y: 92,
+            z: empire.z,
+            yaw: 0
         };
     }
 
