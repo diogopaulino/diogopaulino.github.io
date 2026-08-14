@@ -11,13 +11,14 @@ import { SVC } from '../core/palette.js';
 import { clamp, lerp } from '../core/util.js';
 import { drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { gauge, needleGauge } from '../game/hud.js';
+import { assistToward } from '../game/kids.js';
 
 const NEAR_Y = 196;      // linha do jogador
 const FAR_Y = 126;       // linha do parceiro
 const NEAR_SPREAD = 118; // meia-largura da quadra perto
 const FAR_SPREAD = 58;   // meia-largura longe
-const HIT_WINDOW = 0.24; // faixa de z em que o rebate é possível
-const REACH = 44;        // alcance lateral da raquete (Aumentado)
+const HIT_WINDOW = 0.38;
+const REACH = 64;
 
 const screenY = (z, h) => lerp(NEAR_Y, FAR_Y, z) - h * lerp(1, 0.55, z);
 const screenX = (x, z) => W / 2 + x * lerp(NEAR_SPREAD, FAR_SPREAD, z);
@@ -25,7 +26,7 @@ const groundY = (z) => lerp(NEAR_Y, FAR_Y, z);
 
 export class FrescobolEvent extends EventBase {
     setup() {
-        this.duration = 72;
+        this.duration = 40;
         this.playerX = 0;            // -1..1
         this.partnerX = 0;
         this.rally = 0;
@@ -71,7 +72,11 @@ export class FrescobolEvent extends EventBase {
         }
 
         // --- posição do jogador ---
-        this.playerX = clamp(this.playerX + input.axisX() * 2.3 * dt, -1, 1);
+        const ax = input.axisX();
+        if (ax !== 0) this.playerX = clamp(this.playerX + ax * 2.3 * dt, -1, 1);
+        else if (this.ball.live && this.ball.owner === 'player') {
+            this.playerX = assistToward(this.playerX, clamp(this.ball.x, -1, 1), 2.4, dt, 0.04);
+        }
 
         // --- carga do rebate: segurar A acumula força, soltar/apertar rebate ---
         if (input.state.a.down) this.charge = Math.min(1, this.charge + dt * 2.8);
@@ -93,7 +98,11 @@ export class FrescobolEvent extends EventBase {
         if (Math.abs(b.x) > 1.25) { this.miss('SAIU'); return; }
 
         // --- rebate do jogador ---
-        if (b.owner === 'player' && input.buffered('a', 110)) { input.consume('a'); this.tryHit(); }
+        this.cueReady = b.owner === 'player' && b.z < 0.5 && b.z > -0.08;
+        this.cueX = screenX(this.playerX, 0);
+        this.cueY = NEAR_Y - 58;
+
+        if (b.owner === 'player' && input.buffered('a', 180)) { input.consume('a'); this.tryHit(); }
 
         // --- chegou ao chão ---
         if (b.h <= 0) {
@@ -126,9 +135,14 @@ export class FrescobolEvent extends EventBase {
         const reachable = b.h < 62;
 
         if (!inZ || !inX || !reachable) {
-            audio.play('ui_deny');
-            this.float.push('ERROU O TEMPO', W / 2, 150, 'o', 600);
-            return;
+            // criança: ainda rebate se estiver perto o bastante
+            if (b.z < 0.55 && dx <= REACH + 24 && b.h < 80) {
+                /* segue o acerto */
+            } else {
+                audio.play('ui_deny');
+                this.float.push('OPS!', W / 2, 150, 'o', 600);
+                return;
+            }
         }
 
         // qualidade do timing: acertar no centro da janela vale mais
@@ -149,9 +163,8 @@ export class FrescobolEvent extends EventBase {
         b.h = Math.max(b.h, 6);
 
         audio.play('hit');
-        const label = quality > 0.8 ? 'NO CHEIO!' : quality > 0.45 ? 'BOA' : 'RASPOU';
+        const label = quality > 0.8 ? 'UAU!' : 'BOA!';
         this.float.push(`${label} +${pts}`, screenX(this.playerX, 0), NEAR_Y - 44, quality > 0.8 ? 'z' : 'y', 750);
-        if (charge > 0.75) this.float.push('FORTE!', screenX(this.playerX, 0), NEAR_Y - 58, 'x', 550);
         if (this.rally > 0 && this.rally % 10 === 0) {
             this.score += 60;
             this.float.push(`${this.rally} TROCAS!`, W / 2, 84, 'x', 1200);
@@ -186,7 +199,7 @@ export class FrescobolEvent extends EventBase {
         this.pauseT = 0.95;
         audio.play('miss');
         px.shake(2, 160);
-        this.float.push(reason, W / 2, 150, 'B', 1000);
+        this.float.push('OPS!', W / 2, 150, 'B', 1000);
     }
 
     finish(detail) {

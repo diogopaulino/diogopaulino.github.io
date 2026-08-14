@@ -54,7 +54,7 @@ const GRAB_NAMES = ['INDY', 'MELON', 'STALEFISH', 'MUTE'];
 
 export class SkateEvent extends EventBase {
     setup() {
-        this.duration = 62;
+        this.duration = 40;
         this.s = -12;
         this.v = 40;
         this.state = 'ride';        // ride | air | bail
@@ -95,6 +95,10 @@ export class SkateEvent extends EventBase {
         }
 
         if (this.state === 'air') {
+            this.cueReady = true;
+            const lip = surfaceAt(this.s);
+            this.cueX = lip.x;
+            this.cueY = COPING_Y - this.airY - 28;
             this.stepAir(dt);
             return;
         }
@@ -109,12 +113,25 @@ export class SkateEvent extends EventBase {
         // O ganho é proporcional à inclinação, então bombear no fundo reto não faz nada —
         // é preciso pegar o tempo da parede, como no bowl de verdade.
         const dir = input.axisX();
-        if (dir !== 0 && Math.sign(dir) === Math.sign(this.v) && pt.slope > 0.12) {
-            this.v += PUMP_ACCEL * Math.sin(pt.slope) * Math.sign(this.v) * dt;
+        const pumping = dir !== 0 && Math.sign(dir) === Math.sign(this.v) && pt.slope > 0.12;
+        const autoPump = dir === 0 && pt.slope > 0.12 && Math.abs(this.v) > 8;
+        if (pumping || autoPump) {
+            this.v += PUMP_ACCEL * (autoPump ? 0.75 : 1) * Math.sin(pt.slope) * Math.sign(this.v) * dt;
             if (Math.random() < dt * 6) audio.play('pump');
         }
         this.v = clamp(this.v, -420, 420);
         this.s += this.v * dt;
+
+        const nearLip = Math.abs(this.s) > S_MAX * 0.55 && Math.abs(this.v) > MIN_LAUNCH * 0.45;
+        this.cueReady = this.state === 'ride' && nearLip;
+        const lip = surfaceAt(this.s);
+        this.cueX = lip.x;
+        this.cueY = lip.y - 40;
+
+        if (this.cueReady && input.buffered('a', 180)) {
+            input.consume('a');
+            this.v += Math.sign(this.v) * 80;
+        }
 
         // --- decolagem no coping ---
         if (Math.abs(this.s) >= S_MAX) {
@@ -172,8 +189,7 @@ export class SkateEvent extends EventBase {
         this.airY = 0;
         const spins = Math.abs(this.rotation) / 360;
         const norm = ((this.rotation % 360) + 360) % 360;
-        const aligned = norm < LAND_TOLERANCE || norm > 360 - LAND_TOLERANCE ||
-            (norm > 180 - LAND_TOLERANCE && norm < 180 + LAND_TOLERANCE);
+        const aligned = true;
 
         if (!aligned || this.bestAirThisJump() < 4) {
             this.bail();
@@ -194,7 +210,7 @@ export class SkateEvent extends EventBase {
         const label = spinPts > 0 ? `${Math.floor(spins * 2) * 180}°` : this.grabName || 'AIR';
         this.float.push(`${label} +${Math.round(pts)}`, surfaceAt(this.s).x, COPING_Y - 30, 'z', 900);
         if (norm < 20 && height >= 12) {
-            this.float.push('PERFEITO!', surfaceAt(this.s).x, COPING_Y - 54, 'y', 700);
+            this.float.push('UAU!', surfaceAt(this.s).x, COPING_Y - 54, 'y', 700);
         }
         if (this.combo > 1) {
             this.float.push(`x${this.combo}`, surfaceAt(this.s).x, COPING_Y - 44, 'x', 700);
@@ -224,7 +240,7 @@ export class SkateEvent extends EventBase {
         this.rotSpeed = 0;
         audio.play('crash');
         px.shake(4, 260);
-        this.float.push('CAIU!', surfaceAt(this.s).x, COPING_Y - 20, 'B', 1100);
+        this.float.push('OPS!', surfaceAt(this.s).x, COPING_Y - 20, 'B', 1100);
     }
 
     middleLabel() {

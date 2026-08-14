@@ -52,6 +52,79 @@ function makeBall(r, main, spot) {
     const buf = makeBuf(size, size);
     fillDisc(buf, r, r, r, main);
     fillDisc(buf, r - Math.max(1, r / 3), r - Math.max(1, r / 3), Math.max(1, Math.floor(r / 2.4)), spot);
+    ring(buf, r, r, r, 1, '0');
+    put(buf, r + 1, r - 2, 'E');
+    return buf;
+}
+
+function makeCrab(frame) {
+    const buf = makeBuf(16, 10);
+    fillEllipse(buf, 8, 5, 5, 3, 'x');
+    fillEllipse(buf, 8, 5, 4, 2, 'N');
+    put(buf, 6, 4, '0');
+    put(buf, 10, 4, '0');
+    const lift = frame === 0 ? 0 : 1;
+    line(buf, 3, 5, 0, 3 + lift, 1, 'x');
+    line(buf, 13, 5, 15, 3 + (1 - lift), 1, 'x');
+    fillRect(buf, 4, 7 + lift, 2, 2, 'x');
+    fillRect(buf, 10, 7 + (1 - lift), 2, 2, 'x');
+    return buf;
+}
+
+function makeBalloon() {
+    const buf = makeBuf(12, 20);
+    fillDisc(buf, 6, 6, 5, 'B');
+    fillDisc(buf, 5, 5, 2, 'G');
+    put(buf, 4, 4, 'E');
+    fillRect(buf, 5, 11, 2, 2, 'x');
+    for (let y = 13; y < 20; y++) put(buf, 6 + ((y % 4) < 2 ? 0 : 1), y, 'p');
+    return buf;
+}
+
+function makeCloud() {
+    const buf = makeBuf(36, 14);
+    fillEllipse(buf, 12, 8, 10, 5, 'E');
+    fillEllipse(buf, 22, 8, 12, 6, 'E');
+    fillEllipse(buf, 18, 5, 8, 5, 'r');
+    return buf;
+}
+
+function makeHand() {
+    const buf = makeBuf(12, 14);
+    fillDisc(buf, 6, 9, 4, 'v');
+    fillRect(buf, 5, 2, 3, 7, 'v');
+    fillRect(buf, 8, 5, 3, 3, 'v');
+    put(buf, 6, 1, 'v');
+    return buf;
+}
+
+function makeSpark(n) {
+    const buf = makeBuf(7, 7);
+    put(buf, 3, 3, 'A');
+    if (n > 0) {
+        put(buf, 3, 1, '8');
+        put(buf, 3, 5, '8');
+        put(buf, 1, 3, '8');
+        put(buf, 5, 3, '8');
+    }
+    if (n > 1) {
+        put(buf, 1, 1, 'h');
+        put(buf, 5, 1, 'h');
+        put(buf, 1, 5, 'h');
+        put(buf, 5, 5, 'h');
+    }
+    return buf;
+}
+
+function makeHeart() {
+    const buf = makeBuf(11, 10);
+    fillDisc(buf, 3, 3, 3, 'B');
+    fillDisc(buf, 7, 3, 3, 'B');
+    fillRect(buf, 2, 4, 7, 3, 'B');
+    put(buf, 5, 8, 'B');
+    put(buf, 4, 7, 'B');
+    put(buf, 6, 7, 'B');
+    put(buf, 3, 2, 'G');
     return buf;
 }
 
@@ -334,10 +407,10 @@ export function buildAtlas(kit = {}) {
     for (const group of Object.keys(FIGURE_SET)) {
         for (const poseName of FIGURE_SET[group]) {
             const fig = buildFigure(POSES[poseName], playerKit);
-            reg.add('chars', poseName, fig.rows, fig.pal, { ox: 13, oy: fig.bottom + 1 });
+            reg.add('chars', poseName, fig.rows, fig.pal, { ox: 14, oy: fig.bottom + 1 });
             const flipped = buildFigure(POSES[poseName], playerKit, { flip: true });
             reg.add('chars', poseName + '_flip', flipped.rows, flipped.pal,
-                { ox: 13, oy: flipped.bottom + 1 });
+                { ox: 14, oy: flipped.bottom + 1 });
         }
     }
 
@@ -350,18 +423,18 @@ export function buildAtlas(kit = {}) {
     ];
     crowdKits.forEach((ck, i) => {
         const idle = buildFigure(POSES.ballIdle, ck);
-        reg.add('chars', `crowd#${i}`, idle.rows, idle.pal, { ox: 13, oy: idle.bottom + 1 });
+        reg.add('chars', `crowd#${i}`, idle.rows, idle.pal, { ox: 14, oy: idle.bottom + 1 });
         const cheer = buildFigure({ ...POSES.ballIdle, armFront: [70, 95], armBack: [110, 85] }, ck);
-        reg.add('chars', `cheer#${i}`, cheer.rows, cheer.pal, { ox: 13, oy: cheer.bottom + 1 });
+        reg.add('chars', `cheer#${i}`, cheer.rows, cheer.pal, { ox: 14, oy: cheer.bottom + 1 });
         const rowPose = buildFigure(POSES.rowPull, ck);
-        reg.add('chars', `rowRival#${i}`, rowPose.rows, rowPose.pal, { ox: 13, oy: rowPose.bottom + 1 });
+        reg.add('chars', `rowRival#${i}`, rowPose.rows, rowPose.pal, { ox: 14, oy: rowPose.bottom + 1 });
     });
 
     // --- equipamentos ---
     addBuf(reg, 'props', 'board', makeSurfboard('E', playerKit.shirt), { ox: 17, oy: 4, flip: true });
     addBuf(reg, 'props', 'deck', makeSkateDeck(), { ox: 12, oy: 4 });
-    addBuf(reg, 'props', 'ballBig', makeBall(6, 'E', 'x'), { ox: 6, oy: 6 });
-    addBuf(reg, 'props', 'ballSmall', makeBall(3, 'A', 'B'), { ox: 3, oy: 3 });
+    addBuf(reg, 'props', 'ballBig', makeBall(8, 'E', 'x'), { ox: 8, oy: 8 });
+    addBuf(reg, 'props', 'ballSmall', makeBall(4, 'A', 'B'), { ox: 4, oy: 4 });
     addBuf(reg, 'props', 'racket', makeRacket(), { ox: 6, oy: 17 });
     addBuf(reg, 'props', 'bike', makeBike(), { ox: 15, oy: 19 });
     addBuf(reg, 'props', 'canoe', makeCanoe(), { ox: 32, oy: 20 });
@@ -378,6 +451,10 @@ export function buildAtlas(kit = {}) {
     addBuf(reg, 'scene', 'pothole', makePothole(), { ox: 12, oy: 7 });
     addBuf(reg, 'scene', 'gull#0', makeGull(0), { ox: 7, oy: 4 });
     addBuf(reg, 'scene', 'gull#1', makeGull(1), { ox: 7, oy: 4 });
+    addBuf(reg, 'scene', 'crab#0', makeCrab(0), { ox: 8, oy: 10 });
+    addBuf(reg, 'scene', 'crab#1', makeCrab(1), { ox: 8, oy: 10 });
+    addBuf(reg, 'scene', 'balloon', makeBalloon(), { ox: 6, oy: 20 });
+    addBuf(reg, 'scene', 'cloud', makeCloud(), { ox: 18, oy: 12 });
 
     // --- partículas ---
     for (let i = 0; i < 3; i++) {
@@ -390,6 +467,11 @@ export function buildAtlas(kit = {}) {
     addBuf(reg, 'ui', 'medal_bronze', makeMedal('6'), { ox: 8, oy: 20 });
     addBuf(reg, 'ui', 'star', makeStar(), { ox: 5, oy: 5 });
     addBuf(reg, 'ui', 'cursor', makeCursor(), { ox: 0, oy: 5 });
+    addBuf(reg, 'ui', 'hand', makeHand(), { ox: 6, oy: 14 });
+    addBuf(reg, 'ui', 'heart', makeHeart(), { ox: 5, oy: 9 });
+    addBuf(reg, 'fx', 'spark#0', makeSpark(0), { ox: 3, oy: 3 });
+    addBuf(reg, 'fx', 'spark#1', makeSpark(1), { ox: 3, oy: 3 });
+    addBuf(reg, 'fx', 'spark#2', makeSpark(2), { ox: 3, oy: 3 });
 
     // Emblemas dos patrocinadores: cada um nas SUAS cores, não nas do uniforme atual —
     // a tela de escolha mostra os seis lado a lado e eles precisam se distinguir entre si.

@@ -1,5 +1,6 @@
-// core/input.js — 8 ações canônicas: teclado + touch (overlay DOM) + gamepad, tudo por OR.
-// Teto: ~230 linhas.
+// core/input.js — 8 ações canônicas: teclado + toque + clique no canvas + gamepad.
+
+import { W, H } from './pixel.js';
 
 const ACTIONS = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'];
 
@@ -42,6 +43,41 @@ export class InputManager {
         this._bindWindow();
         this._touchLayout = null;
         this._touchButtons = [];
+        this.pointer = { x: W / 2, y: H / 2, down: false, clicked: false };
+        this._clickLatch = false;
+        this._pointerBound = false;
+    }
+
+    /** Clique/toque no canvas vira TAP (botão A) e guarda a posição em pixels do jogo. */
+    attachPointer(canvas) {
+        if (!canvas || this._pointerBound) return;
+        this._pointerBound = true;
+        const { signal } = this.ac;
+        const toGame = (e) => {
+            const r = canvas.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) return;
+            this.pointer.x = ((e.clientX - r.left) / r.width) * W;
+            this.pointer.y = ((e.clientY - r.top) / r.height) * H;
+        };
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            toGame(e);
+            this.pointer.down = true;
+            this._clickLatch = true;
+            this._buffered.add('a');
+            this._touchDown.add('a');
+            try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
+        }, { signal });
+        canvas.addEventListener('pointermove', toGame, { signal });
+        const release = () => {
+            this.pointer.down = false;
+            this._touchDown.delete('a');
+        };
+        canvas.addEventListener('pointerup', release, { signal });
+        canvas.addEventListener('pointercancel', release, { signal });
+        canvas.addEventListener('lostpointercapture', release, { signal });
+        canvas.style.touchAction = 'none';
+        canvas.style.cursor = 'pointer';
     }
 
     onPause(cb) { this._pauseCb = cb; }
@@ -120,6 +156,8 @@ export class InputManager {
 
     /** Chamar uma vez por frame de update, com dt em ms. */
     update(dtMs) {
+        this.pointer.clicked = this._clickLatch;
+        this._clickLatch = false;
         this.pollGamepad();
         for (const a of ACTIONS) {
             const down = this._kbDown.has(a) || this._touchDown.has(a) ||

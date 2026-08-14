@@ -17,6 +17,7 @@ import { SVC } from '../core/palette.js';
 import { clamp, lerp } from '../core/util.js';
 import { tile, drawWater, drawShoreFoam, drawShadow } from '../art/scenery.js';
 import { gauge, judgePanel } from '../game/hud.js';
+import { assistToward } from '../game/kids.js';
 
 const START_X = 296;        // onde o pico nasce, perto da borda direita
 const FACE_LEN = 186;       // extensão da parede para a esquerda do pico
@@ -25,7 +26,7 @@ const TROUGH_Y = 190;       // linha da base da onda
 const CREST_H = 92;         // altura da parede no pico
 const SHOULDER_H = 22;      // altura do ombro, lá na ponta esquerda da parede
 const SEA_Y = 124;          // horizonte da água
-const WAVES = 3;
+const WAVES = 2;
 
 export class SurfEvent extends EventBase {
     setup() {
@@ -104,17 +105,17 @@ export class SurfEvent extends EventBase {
         }
 
         // --- posição na parede ---
-        // Subir custa velocidade, descer ganha: é o bombeio que mantém a prancha viva.
         const vy = input.axisY();
         if (this.state === 'ride') {
-            this.face = clamp(this.face - vy * 0.95 * dt, 0, 1);
-            this.speed += (vy > 0 ? 52 : vy < 0 ? -26 : -6) * dt;
+            if (vy !== 0) this.face = clamp(this.face - vy * 0.95 * dt, 0, 1);
+            else this.face = assistToward(this.face, 0.68, 0.55, dt, 0.03);
+            this.speed += (vy > 0 ? 52 : vy < 0 ? -26 : 18) * dt;
         }
-        this.speed = clamp(this.speed, 26, 170);
+        this.speed = clamp(this.speed, 40, 170);
 
-        // --- posição na linha (esquerda = fugir, direita = bolso) ---
         const vx = input.axisX();
-        this.playerX = clamp(this.playerX + vx * 82 * dt, 40, this.foamX - 6);
+        if (vx !== 0) this.playerX = clamp(this.playerX + vx * 82 * dt, 40, this.foamX - 6);
+        else this.playerX = clamp(assistToward(this.playerX, this.foamX - 52, 70, dt, 4), 40, this.foamX - 8);
 
         // --- a onda fecha ---
         this.foamX -= this.foamSpeed * dt;
@@ -124,6 +125,9 @@ export class SurfEvent extends EventBase {
 
         const gap = this.foamX - this.playerX;
         this.danger = clamp(1 - gap / 34, 0, 1);
+        this.cueReady = this.state === 'ride' && this.trickCooldown <= 0 && this.face > 0.4;
+        this.cueX = this.playerX;
+        this.cueY = this.playerY() - 36;
 
         // --- manobras (com buffer: um toque logo antes do fim do cooldown ainda vale) ---
         if (this.state === 'ride' && input.buffered('a', 150) && this.trickCooldown <= 0) {
@@ -174,9 +178,11 @@ export class SurfEvent extends EventBase {
         // --- fim de onda ---
         // A margem de 2 px (em vez de 4) e o aviso visual de perigo dão ao jogador um quadro
         // inteiro para reagir: antes a queda vinha sem nenhum sinal.
-        if (gap < 2) {
-            this.wipeout();
-        } else if (this.foamX < 52 || this.waveT > 26) {
+        if (gap < 10) {
+            this.playerX = this.foamX - 22;
+            this.speed = Math.max(40, this.speed * 0.92);
+            if (this.state === 'ride') this.float.push('CUIDADO!', this.playerX, this.playerY() - 28, 'x', 500);
+        } else if (this.foamX < 52 || this.waveT > 22) {
             this.closeWave();
         }
     }
@@ -189,18 +195,18 @@ export class SurfEvent extends EventBase {
             this.airT = 0;
             this.airPeak = 0;
             const pts = Math.round(60 + this.speed * 0.7);
-            this.addPoints(pts, 'AÉREO!', 'x');
+            this.addPoints(pts, 'UAU!', 'x');
             audio.play('air');
             px.shake(2, 160);
         } else if (this.face > 0.55) {
             const pts = Math.round(30 + this.speed * 0.35);
-            this.addPoints(pts, 'RASGADA', 'z');
+            this.addPoints(pts, 'BOA!', 'z');
             audio.play('carve');
             this.face = clamp(this.face - 0.22, 0, 1);
             this.speed *= 0.92;
         } else {
             const pts = Math.round(20 + this.speed * 0.2);
-            this.addPoints(pts, 'CUTBACK', 'y');
+            this.addPoints(pts, 'BOA!', 'y');
             audio.play('carve');
             // o cutback joga o surfista de volta pra dentro do bolso — risco e recompensa
             this.playerX = clamp(this.playerX + 22, 40, this.foamX - 6);

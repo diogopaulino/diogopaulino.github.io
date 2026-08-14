@@ -27,13 +27,12 @@ export const EVENTS = {
         judged: true,
         par: 620,
         song: 'mar',
-        tagline: 'Pegue a série, fique no bolso da onda e assine na parede.',
+        tagline: 'Toque quando a estrela brilhar!',
         brief: [
-            'A ondulação entra pelo canto do Quebra-Mar.',
-            'Suba e desça a parede para ganhar velocidade,',
-            'e assine manobras antes da onda fechar.'
+            'A onda leva você.',
+            'Quando a estrela aparecer, TOQUE!'
         ],
-        hint: 'CIMA/BAIXO SOBE A PAREDE · Z MANOBRA · X TUBO',
+        hint: 'TOQUE QUANDO BRILHAR',
         judgeNote: 'Jurados avaliam manobras, tubo e tempo na parede.'
     },
     skate: {
@@ -45,13 +44,12 @@ export const EVENTS = {
         judged: true,
         par: 560,
         song: 'bowl',
-        tagline: 'Bombeie o bowl, estoure o coping e caia de pé.',
+        tagline: 'Toque no alto para pular!',
         brief: [
-            'Bowl de concreto embaixo dos prédios tortos.',
-            'Bombeie no fundo para ganhar altura e solte',
-            'a manobra no ar — mas alinhe a aterrissagem.'
+            'O skate anda sozinho no bowl.',
+            'Quando brilhar no alto, TOQUE!'
         ],
-        hint: 'ESQ/DIR BOMBEIA · Z SOLTA O AR · DIR+Z GIRA · X GRAB',
+        hint: 'TOQUE NO ALTO',
         judgeNote: 'Jurados avaliam altura, variedade e aterrissagem.'
     },
     altinha: {
@@ -63,13 +61,12 @@ export const EVENTS = {
         judged: false,
         par: 480,
         song: 'areia',
-        tagline: 'A bola não pode cair. Simples assim.',
+        tagline: 'Não deixe a bola cair!',
         brief: [
-            'Roda de altinha na areia fofa do Gonzaga.',
-            'Fique embaixo da bola e toque no tempo certo.',
-            'Cada parte do corpo vale diferente — encadeie.'
+            'Corra até a bola.',
+            'TOQUE quando ela chegar perto!'
         ],
-        hint: 'ESQ/DIR ANDA · Z TOCA · CIMA+Z CABECEIA · BAIXO+Z PÉ',
+        hint: 'TOQUE A BOLA',
         judgeNote: ''
     },
     bmx: {
@@ -81,13 +78,12 @@ export const EVENTS = {
         judged: false,
         par: 700,
         song: 'orla',
-        tagline: 'Sete quilômetros de jardim, um relógio contra você.',
+        tagline: 'Toque para pular os obstáculos!',
         brief: [
-            'Descida pela ciclovia mais famosa do país.',
-            'Salte os obstáculos, use as rampas dos canteiros',
-            'e solte manobra no ar sem perder o ritmo.'
+            'A bike corre sozinha.',
+            'TOQUE para pular cone e buraco!'
         ],
-        hint: 'DIR ACELERA · ESQ FREIA · Z SALTA · X MANOBRA NO AR',
+        hint: 'TOQUE PARA PULAR',
         judgeNote: ''
     },
     frescobol: {
@@ -99,13 +95,12 @@ export const EVENTS = {
         judged: false,
         par: 520,
         song: 'peteca',
-        tagline: 'Sem ganhador, sem perdedor — só a bola no ar.',
+        tagline: 'Toque para devolver a bolinha!',
         brief: [
-            'Frescobol é jogo de cooperação: ninguém marca ponto,',
-            'a graça é a troca não cair. Leia a sombra da bola,',
-            'posicione-se e devolva no timing — o vento atrapalha.'
+            'A bolinha vem até você.',
+            'TOQUE para mandar de volta!'
         ],
-        hint: 'ESQ/DIR POSIÇÃO · Z REBATE · SEGURE Z PARA FORÇA',
+        hint: 'TOQUE PARA REBATER',
         judgeNote: ''
     },
     canoa: {
@@ -117,13 +112,12 @@ export const EVENTS = {
         judged: false,
         par: 640,
         song: 'baia',
-        tagline: 'Remada no ritmo certo vale mais que remada com raiva.',
+        tagline: 'Toque no ritmo para remar!',
         brief: [
-            'Largada na frente do Clube, boia de retorno lá longe.',
-            'Alterne as remadas no ritmo (Z, X, Z, X) para',
-            'manter a cadência e desvie do tráfego da baía.'
+            'Toque quando o barquinho brilhar.',
+            'Reme, reme, reme o barco!'
         ],
-        hint: 'Z E X ALTERNADOS NO TEMPO · CIMA/BAIXO TROCA DE RAIA',
+        hint: 'TOQUE NO BRILHO',
         judgeNote: ''
     }
 };
@@ -201,12 +195,22 @@ export const RIVALS = [
 /** Nome do atleta do jogador no placar. */
 export const PLAYER_NAME = 'VOCÊ';
 
+/** Nomes curtos e desenhos para o seletor infantil. */
+export const KID_PICK = {
+    surf: { label: 'SURFE', emoji: '🌊' },
+    skate: { label: 'SKATE', emoji: '🛹' },
+    altinha: { label: 'BOLA', emoji: '⚽' },
+    bmx: { label: 'BIKE', emoji: '🚲' },
+    frescobol: { label: 'RAQUETE', emoji: '🎾' },
+    canoa: { label: 'BARCO', emoji: '🛶' }
+};
+
 /**
  * Faixas de medalha, como fração do `par` do evento.
  * Deliberadamente generosas no bronze e duras no ouro: o California Games premiava a
  * tentativa, mas guardava o ouro pra quem entendeu a mecânica.
  */
-export const MEDAL_CUTS = { gold: 1.0, silver: 0.72, bronze: 0.45 };
+export const MEDAL_CUTS = { gold: 0.72, silver: 0.42, bronze: 0.18 };
 
 export function medalFor(eventId, score) {
     const ev = EVENTS[eventId];

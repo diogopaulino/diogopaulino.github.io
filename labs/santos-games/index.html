@@ -4,32 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>Santos Games — Mega Drive / California Games | Labs</title>
+    <title>Santos Games — praia para crianças | Labs</title>
     <meta name="description"
-        content="Homenagem ao California Games (Mega Drive) em Santos: surfe, skate, altinha, BMX, frescobol e canoa. Pixel art 16-bit limpo no navegador.">
-    <meta name="theme-color" content="#101018">
+        content="Seis brincadeiras da orla de Santos: surfe, skate, bola, bike, raquete e barco. Toque na tela para jogar — feito para crianças.">
+    <meta name="theme-color" content="#1aa7c4">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-games/">
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="Santos Games">
-    <meta property="og:description" content="California Games, mas caiçara. Seis provas 16-bit no estilo Mega Drive.">
+    <meta property="og:description" content="Toque e brinque na praia de Santos: seis jogos coloridos.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-games/">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=6">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=9">
 </head>
 
 <body>
     <div class="sg-bg" aria-hidden="true"></div>
+    <div class="sg-sun" aria-hidden="true"></div>
 
     <div class="sg-layout">
         <header data-lab-header data-title="Santos Games" class="sg-header">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <span class="brand-mark" aria-hidden="true">🏖</span>
+                    <span class="brand-mark" aria-hidden="true">🏖️</span>
                     <span>Santos Games</span>
                 </div>
             </template>
@@ -40,58 +41,42 @@
                 <div class="sg-emu" id="svcWrap">
                     <canvas id="svcStage" width="320" height="224" hidden></canvas>
                     <canvas id="svcScreen" role="img"
-                        aria-label="Santos Games — esportes de praia em pixel art 16-bit"></canvas>
+                        aria-label="Santos Games — toque na tela para brincar na praia"></canvas>
 
-                    <div class="svc-touch tp--hidden" id="svcTouch" aria-label="Controles por toque">
-                        <div class="tp-dpad">
-                            <button type="button" data-btn="up" aria-label="Cima" class="tp-up">▲</button>
-                            <button type="button" data-btn="left" aria-label="Esquerda" class="tp-left">◀</button>
-                            <button type="button" data-btn="right" aria-label="Direita" class="tp-right">▶</button>
-                            <button type="button" data-btn="down" aria-label="Baixo" class="tp-down">▼</button>
-                        </div>
-                        <div class="tp-actions">
-                            <button type="button" data-btn="b" aria-label="Botão B" class="tp-b">B</button>
-                            <button type="button" data-btn="a" aria-label="Botão A" class="tp-a">A</button>
-                        </div>
-                        <button type="button" data-btn="start" aria-label="Iniciar ou pausar" class="tp-start">II</button>
+                    <div class="svc-touch tp--hidden" id="svcTouch" aria-label="Toque para jogar">
+                        <button type="button" data-btn="left" aria-label="Esquerda" class="tp-left">◀</button>
+                        <button type="button" data-btn="right" aria-label="Direita" class="tp-right">▶</button>
+                        <button type="button" data-btn="a" aria-label="Toque" class="tp-tap">TOQUE</button>
+                        <button type="button" data-btn="start" aria-label="Pausa" class="tp-start">II</button>
                     </div>
                 </div>
+                <p class="sg-hint">Toque na tela. Quando a estrela brilhar, toque de novo!</p>
                 <p class="sr-only" aria-live="polite" id="svcAnnouncer"></p>
             </section>
 
-            <aside class="sg-side" aria-label="Sobre o jogo">
+            <aside class="sg-side" aria-label="Escolha o jogo">
                 <div class="sg-side-block">
-                    <span class="sg-kicker">Mega Drive · 320×224</span>
-                    <h2>California Games,<br>mas caiçara</h2>
-                    <p>Escolha o patrocinador, dispute seis provas na orla de Santos e dispute o pódio.</p>
+                    <span class="sg-kicker">Praia de Santos</span>
+                    <h2>Toque e brinque</h2>
+                    <p>Seis desenhos. Um toque. Estrela quando for a hora.</p>
                 </div>
 
                 <ol class="sg-events">
-                    <li><b>Surfe</b><span>Quebra-Mar</span></li>
-                    <li><b>Skate Vert</b><span>Bowl da Orla</span></li>
-                    <li><b>Altinha</b><span>Gonzaga</span></li>
-                    <li><b>BMX</b><span>Ciclovia</span></li>
-                    <li><b>Frescobol</b><span>José Menino</span></li>
-                    <li><b>Canoa</b><span>Baía</span></li>
+                    <li data-event="surf"><span class="sg-ico" aria-hidden="true">🌊</span><b>Surfe</b></li>
+                    <li data-event="skate"><span class="sg-ico" aria-hidden="true">🛹</span><b>Skate</b></li>
+                    <li data-event="altinha"><span class="sg-ico" aria-hidden="true">⚽</span><b>Bola</b></li>
+                    <li data-event="bmx"><span class="sg-ico" aria-hidden="true">🚲</span><b>Bike</b></li>
+                    <li data-event="frescobol"><span class="sg-ico" aria-hidden="true">🎾</span><b>Raquete</b></li>
+                    <li data-event="canoa"><span class="sg-ico" aria-hidden="true">🛶</span><b>Barco</b></li>
                 </ol>
-
-                <div class="sg-side-block">
-                    <span class="sg-kicker">Controles</span>
-                    <div class="sg-key-row"><kbd>↑↓←→</kbd><span>Mover</span></div>
-                    <div class="sg-key-row"><kbd>Z</kbd><span>Botão A</span></div>
-                    <div class="sg-key-row"><kbd>X</kbd><span>Botão B</span></div>
-                    <div class="sg-key-row"><kbd>Enter</kbd><span>Start / pausa</span></div>
-                    <div class="sg-key-row"><kbd>M</kbd><span>Mudo</span></div>
-                    <p class="sg-note">Gamepad e botões na tela no celular.</p>
-                </div>
 
                 <div class="sg-actions">
                     <button id="svcSoundToggle" class="sg-btn" type="button" aria-pressed="true">
-                        <span aria-hidden="true" data-icon>◉</span>
-                        <span data-label>Som ativado</span>
+                        <span aria-hidden="true" data-icon>🔊</span>
+                        <span data-label>Som ligado</span>
                     </button>
                     <button id="svcResetBtn" class="sg-btn sg-btn--ghost" type="button">
-                        Apagar recordes
+                        Apagar estrelas
                     </button>
                 </div>
             </aside>
@@ -101,7 +86,7 @@
     </div>
 
     <script src="/labs/shared.js?v=5" defer></script>
-    <script type="module" src="src/main.js?v=7"></script>
+    <script type="module" src="src/main.js?v=9"></script>
 </body>
 
 </html>
