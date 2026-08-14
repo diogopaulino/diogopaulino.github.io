@@ -100,6 +100,7 @@ export class Game {
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatio));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setClearColor(0x87b8d0, 1);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;

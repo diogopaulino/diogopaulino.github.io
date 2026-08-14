@@ -9,7 +9,6 @@ import { TigerRoomLevel } from '../levels/TigerRoomLevel.js';
 import { EscapeLevel } from '../levels/EscapeLevel.js';
 import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js';
 import { EndingLevel } from '../levels/EndingLevel.js';
-import { disposeSceneGroup } from '../utils/dispose.js';
 
 const FACTORIES = {
     home: HomeLevel,
@@ -147,7 +146,9 @@ export class SceneManager {
     async unload() {
         for (const lv of this.levels) {
             lv.exit();
-            if (lv.group) disposeSceneGroup(lv.group, this.game.scene);
+            if (lv.group) {
+                this.game.scene.remove(lv.group);
+            }
         }
         this.levels = [];
         this.game.level = null;
