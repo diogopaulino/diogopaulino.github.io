@@ -117,9 +117,9 @@ export function roofTiles({ size = 512, repeat = [3, 5] } = {}) {
                 const edge = Math.min(lx, 1 - lx, ly);
                 const n = fbm(x * 0.05, y * 0.07, 11, 3);
                 const ridge = edge < 0.08 ? 1 : 0;
-                const b = 72 + n * 40 + (1 - ly) * 18;
-                const g = 88 + n * 22;
-                const r = 42 + n * 16;
+        const b = 110 + n * 36 + (1 - ly) * 22;
+        const g = 92 + n * 20;
+        const r = 38 + n * 14;
                 const i = (y * size + x) * 4;
                 img.data[i] = ridge ? r + 18 : r;
                 img.data[i + 1] = ridge ? g + 10 : g;

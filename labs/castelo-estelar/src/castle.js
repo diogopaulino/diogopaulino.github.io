@@ -13,14 +13,14 @@ import { makeFlagMaterial } from './shaders.js';
 
 const GEO = {
     box: new THREE.BoxGeometry(1, 1, 1),
-    cyl: new THREE.CylinderGeometry(1, 1, 1, 28, 1),
-    cylHi: new THREE.CylinderGeometry(1, 1, 1, 36, 1),
-    cone: new THREE.ConeGeometry(1, 1, 28, 1),
-    coneHi: new THREE.ConeGeometry(1, 1, 36, 3),
-    sphere: new THREE.SphereGeometry(1, 24, 16),
+    cyl: new THREE.CylinderGeometry(1, 1, 1, 40, 1),
+    cylHi: new THREE.CylinderGeometry(1, 1, 1, 48, 1),
+    cone: new THREE.ConeGeometry(1, 1, 40, 1),
+    coneHi: new THREE.ConeGeometry(1, 1, 48, 4),
+    sphere: new THREE.SphereGeometry(1, 32, 20),
     sphereLo: new THREE.SphereGeometry(1, 12, 8),
-    plane: new THREE.PlaneGeometry(1, 1, 8, 4),
-    torus: new THREE.TorusGeometry(1, 0.12, 10, 24)
+    plane: new THREE.PlaneGeometry(1, 1, 12, 6),
+    torus: new THREE.TorusGeometry(1, 0.12, 12, 32)
 };
 
 function mesh(geo, mat, { pos, scale, rot, cast = true, receive = true, name } = {}) {
@@ -72,9 +72,9 @@ function makeMats() {
     });
 
     const windowMat = new THREE.MeshStandardMaterial({
-        color: 0xffc878,
+        color: 0xffd090,
         emissive: 0xffb14a,
-        emissiveIntensity: 1.15,
+        emissiveIntensity: 1.35,
         roughness: 0.22,
         metalness: 0.05
     });

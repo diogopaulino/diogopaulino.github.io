@@ -12,8 +12,8 @@ import { clamp, smoothstep } from './utils.js';
 export const INTRO_DURATION = 22;
 
 const KEYS = [
-    { t: 0.0, pos: [16, 7.2, 132], look: [0, 12, 10], fov: 30 },
-    { t: 3.5, pos: [10, 8.4, 96], look: [0, 14, 4], fov: 32 },
+    { t: 0.0, pos: [10, 8.8, 118], look: [0, 8, 18], fov: 32 },
+    { t: 3.5, pos: [8, 9.2, 88], look: [0, 12, 6], fov: 33 },
     { t: 8.0, pos: [5, 11.0, 68], look: [0, 18, 0], fov: 34 },
     { t: 13.5, pos: [-7, 15.2, 50], look: [1, 21, -1], fov: 36 },
     { t: 18.0, pos: [4, 13.8, 42], look: [0, 20, 0], fov: 38 },

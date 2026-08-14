@@ -16,10 +16,10 @@ const dummy = new THREE.Object3D();
 
 export function heightAt(x, z) {
     const r = Math.hypot(x, z);
-    const island = Math.max(0, 1 - r / 38);
-    const hill = Math.pow(island, 1.35) * 6.4;
-    const noise = fbm(x * 0.045, z * 0.045, 5, 4) * 1.4 * island;
-    const rim = r < 22 ? 0 : -Math.max(0, (r - 22) * 0.35);
+    const island = Math.max(0, 1 - r / 26);
+    const hill = Math.pow(island, 1.45) * 5.6;
+    const noise = fbm(x * 0.045, z * 0.045, 5, 4) * 1.15 * island;
+    const rim = r < 16 ? 0 : -Math.max(0, (r - 16) * 0.55);
     return hill + noise + rim;
 }
 
@@ -30,9 +30,9 @@ function makeTerrain(quality) {
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
     const colors = [];
-    const cGrass = new THREE.Color(0x1a2a18);
-    const cStone = new THREE.Color(0x3a3a36);
-    const cSand = new THREE.Color(0x2a3228);
+    const cGrass = new THREE.Color(0x243a28);
+    const cStone = new THREE.Color(0x4a4840);
+    const cSand = new THREE.Color(0x2e3a32);
     const tmp = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
@@ -89,8 +89,8 @@ function makePines(quality) {
             : 32 + rng() * 22;
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        if (z > 8 && r < 28) continue;
-        if (Math.hypot(x, z) < 14) continue;
+        if (z > 6 && Math.abs(x) < 14) continue;
+        if (Math.hypot(x, z) < 15) continue;
         spots.push([x, z, 0.85 + rng() * 1.6, rng() * Math.PI]);
         placed++;
     }
@@ -115,10 +115,10 @@ function makePines(quality) {
         leavesB.setMatrixAt(i, dummy.matrix);
     });
 
-    // Pinheiros de primeiro plano — o enquadramento clássico da abertura
+    // Pinheiros só nas laterais — o corredor central fica para o lago
     const fg = [
-        [-16, 28, 2.4], [-12, 32, 1.9], [15, 30, 2.2], [19, 26, 2.6],
-        [-22, 22, 1.7], [24, 20, 1.8]
+        [-22, 34, 2.5], [-26, 24, 2.0], [24, 32, 2.3], [28, 22, 2.5],
+        [-30, 18, 1.8], [32, 16, 1.9]
     ];
     fg.forEach(([x, z, sc], k) => {
         const i = Math.min(spots.length - 1, k);
@@ -216,23 +216,29 @@ function makeStars(count) {
 
 function makeClouds(count) {
     const group = new THREE.Group();
-    const geo = new THREE.SphereGeometry(1, 10, 8);
+    const geo = new THREE.SphereGeometry(1, 14, 10);
     const mat = new THREE.MeshStandardMaterial({
-        color: 0x1a2438,
+        color: 0x2a3548,
         roughness: 1,
         transparent: true,
-        opacity: 0.42,
+        opacity: 0.32,
         depthWrite: false
     });
     const rng = seeded(77);
     for (let i = 0; i < count; i++) {
-        const c = new THREE.Mesh(geo, mat);
+        const puff = new THREE.Group();
         const a = rng() * Math.PI * 2;
-        const r = 40 + rng() * 70;
-        c.position.set(Math.cos(a) * r, 18 + rng() * 16, Math.sin(a) * r - 20);
-        c.scale.set(8 + rng() * 10, 2.2 + rng() * 1.8, 5 + rng() * 6);
-        c.castShadow = false;
-        group.add(c);
+        const r = 55 + rng() * 80;
+        puff.position.set(Math.cos(a) * r, 22 + rng() * 18, Math.sin(a) * r - 40);
+        const n = 3 + (rng() * 3) | 0;
+        for (let k = 0; k < n; k++) {
+            const c = new THREE.Mesh(geo, mat);
+            c.position.set((rng() - 0.5) * 10, (rng() - 0.5) * 2.2, (rng() - 0.5) * 6);
+            c.scale.set(6 + rng() * 7, 2.4 + rng() * 1.6, 4.5 + rng() * 5);
+            c.castShadow = false;
+            puff.add(c);
+        }
+        group.add(puff);
     }
     return group;
 }
@@ -290,6 +296,21 @@ export class Kingdom {
             this.water.position.y = 0.08;
         }
         this.group.add(this.water);
+
+        const streak = new THREE.Mesh(
+            new THREE.PlaneGeometry(7, 90),
+            new THREE.MeshBasicMaterial({
+                color: 0xd0def8,
+                transparent: true,
+                opacity: 0.16,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            })
+        );
+        streak.rotation.x = -Math.PI / 2;
+        streak.position.set(-8, 0.14, 42);
+        streak.renderOrder = 1;
+        this.group.add(streak);
 
         this._lights();
     }
