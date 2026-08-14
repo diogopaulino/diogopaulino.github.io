@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-34_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-39_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,12 +32,15 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **34 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **39 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 ### 🪐 Mundos 3D
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🕸️ **[Silkline](https://diogopaulino.com.br/labs/silkline/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
+| 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
+| 🌅 **[Aurelia Festival](https://diogopaulino.com.br/labs/aurelia/)** | Festival de velocidade estilo Forza — supercarros, Costa Aurélia ao pôr do sol e photo mode |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Observatório de exoplanetas — gere sistemas, aproxime a órbita e forje oceanos, magma e anéis |
 | ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
@@ -89,6 +92,7 @@ Um laboratório aberto com **34 experimentos** que rodam direto no navegador —
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🌐 **[Armilla](https://diogopaulino.com.br/labs/armilla/)** | Esfera armilar 3D que canta — plante estrelas nos anéis e ouça a música das esferas |
 | 🎼 **[Partitura: Maestro Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
 | 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Sintetizador de 4 oitavas no navegador |
 | 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Nostalgia pura: player estilo Winamp 2.x |
