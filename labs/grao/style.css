@@ -637,3 +637,9 @@ header .app-logo .logo-mark {
     .log-item .mg { grid-area: mg; }
     .log-item .remove { grid-area: remove; }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .icon-btn,
+    .log-item .remove { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .week-bars { gap: 0.35rem; }
+}

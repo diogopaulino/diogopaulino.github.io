@@ -173,7 +173,7 @@ input[type="number"] {
 /* Results Grid */
 .results-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
     gap: 1.5rem;
 }
 
@@ -250,4 +250,11 @@ input[type="number"] {
     .container {
         padding: 1rem;
     }
+}
+/* --- lab-responsive-pass --- */
+@media (max-width: 768px) {
+    .results-grid { grid-template-columns: 1fr; }
+    .settings-group { min-width: 0; flex: 1 1 100%; }
+    .format-btn,
+    .download-btn { min-height: 44px; }
 }
