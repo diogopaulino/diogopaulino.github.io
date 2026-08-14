@@ -247,6 +247,7 @@ class Atelier {
         document.getElementById('loadingOverlay').hidden = true;
         document.getElementById('intro').hidden = false;
         document.body.dataset.state = 'intro';
+        requestAnimationFrame(() => this.resize());
 
         this.clock.start();
         this.renderer.setAnimationLoop(() => this.frame());
