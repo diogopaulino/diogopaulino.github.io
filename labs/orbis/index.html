@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#02040a">
+    <title>Orbis — observatório de exoplanetas | Labs</title>
+    <meta name="description"
+        content="Gere sistemas estelares em 3D: exoplanetas procedurais com atmosferas, anéis, auroras e um atelier para forjar mundos no navegador.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/orbis/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/orbis/">
+    <meta property="og:title" content="Orbis — observatório de exoplanetas">
+    <meta property="og:description"
+        content="Sistemas estelares procedurais em three.js: clique um planeta, aproxime a órbita e forje oceanos, magma e anéis em tempo real.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Orbis — observatório de exoplanetas">
+    <meta name="twitter:description"
+        content="Sistemas estelares procedurais em three.js com shaders de superfície, atmosfera e bloom.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=6">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body data-view="system">
+    <main class="shell">
+        <header data-lab-header data-title="Orbis" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true"></span>
+                    <span>Orbis</span>
+                </div>
+            </template>
+            <template data-slot="actions">
+                <button id="pauseBtn" class="icon-btn" type="button" aria-pressed="false" title="Pausar (Espaço)"
+                    aria-label="Pausar órbitas">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="4" width="4" height="16" rx="1" />
+                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                    </svg>
+                </button>
+                <button id="rotateBtn" class="icon-btn" type="button" aria-pressed="true" title="Autorrotação"
+                    aria-label="Autorrotação da câmera">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-3-6.7" />
+                        <path d="M21 3v6h-6" />
+                    </svg>
+                </button>
+                <button id="fullscreen" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia (F)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                </button>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Sistema estelar em 3D"></canvas>
+
+        <div id="loading" class="loading" role="status">
+            <div class="loading-orb" aria-hidden="true"></div>
+            <p>Calibrando o observatório…</p>
+        </div>
+
+        <aside class="hud-left" aria-label="Catálogo do sistema">
+            <p class="eyebrow">Sistema</p>
+            <h2 id="systemName">—</h2>
+            <p class="meta-line">
+                <span id="starType">—</span>
+                · <span id="planetCount">0</span> mundos
+                · seed <span id="seedValue" class="mono">0</span>
+            </p>
+            <div id="planetList" class="planet-list"></div>
+        </aside>
+
+        <section class="hud-right" aria-label="Mundo focado">
+            <p class="eyebrow" id="viewLabel">Sistema</p>
+            <h2 id="planetName">—</h2>
+            <p class="meta-line"><span id="planetTag">—</span> · <span id="planetKind">—</span></p>
+            <p id="planetLore" class="lore">Clique um planeta para aproximar a órbita e forjar o mundo.</p>
+            <div class="hud-actions">
+                <button id="backSystem" class="btn ghost" type="button">Ver sistema</button>
+                <button id="forgeToggle" class="btn" type="button">Atelier</button>
+            </div>
+        </section>
+
+        <div id="forge" class="forge" hidden>
+            <div class="forge-head">
+                <strong>Atelier do mundo</strong>
+                <span>Shaders em tempo real</span>
+            </div>
+            <div id="sliders" class="sliders"></div>
+        </div>
+
+        <footer class="dock">
+            <div id="presetRail" class="preset-rail" role="list"></div>
+            <form id="seedForm" class="seed-form" autocomplete="off">
+                <label class="sr-only" for="seedInput">Seed ou nome</label>
+                <input id="seedInput" type="text" placeholder="Seed ou nome…" maxlength="32">
+                <button type="submit" class="btn ghost">Abrir</button>
+            </form>
+            <button id="newSystem" class="btn primary" type="button">Novo sistema</button>
+        </footer>
+
+        <p class="hint">Arraste para orbitar · clique um mundo · <kbd>R</kbd> novo sistema · <kbd>H</kbd> esconde UI</p>
+        <p class="fps-badge" aria-hidden="true"><span id="fps">60</span> fps</p>
+    </main>
+
+    <script src="/labs/shared.js?v=6" defer></script>
+    <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>
