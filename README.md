@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-48_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-49_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,12 +32,13 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **48 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **49 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 ### 🪐 Mundos 3D
 
 | Projeto | O que é? |
 | :--- | :--- |
+| ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
 | 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
 | 🪸 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Voo da arraia-manta num recife bioluminescente — anéis de luz, pérolas e o templo náutilo |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
