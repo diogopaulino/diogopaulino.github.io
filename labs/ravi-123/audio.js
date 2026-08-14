@@ -96,8 +96,8 @@ function pump() {
     const u = new SpeechSynthesisUtterance(item);
     if (voice) u.voice = voice;
     u.lang = 'pt-BR';
-    u.rate = 0.88;
-    u.pitch = 1.12;
+    u.rate = 0.8;
+    u.pitch = 1.18;
     u.volume = muted ? 0 : 0.95;
     const next = () => { speaking = false; pump(); };
     u.onend = next;
