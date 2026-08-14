@@ -51,7 +51,7 @@ class Aetherion {
         this.bodyList = document.getElementById('bodyList');
         this.hint = document.getElementById('hint');
         this.audio = new SpaceAudio();
-        this.clock = new THREE.Clock();
+        this.lastTick = performance.now();
         this.simTime = 0;
         this.warp = 1;
         this.focusedId = 'star';
@@ -112,7 +112,7 @@ class Aetherion {
         this.intro.hidden = true;
         this.hud.hidden = false;
         document.body.dataset.state = 'observing';
-        this.clock.start();
+        this.lastTick = performance.now();
         this.loop();
         this.hintTimer = 8;
     }
@@ -324,7 +324,9 @@ class Aetherion {
 
     loop = () => {
         requestAnimationFrame(this.loop);
-        const dt = Math.min(this.clock.getDelta(), 0.05);
+        const now = performance.now();
+        const dt = Math.min((now - this.lastTick) / 1000, 0.05);
+        this.lastTick = now;
         this.simTime += dt * this.warp;
         this.system.update(this.simTime, dt * Math.max(this.warp, 0.15));
 
