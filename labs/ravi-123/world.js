@@ -10,6 +10,7 @@
 import { W, STAGE_H, makeSurface } from './screen.js';
 import { K, Pen } from './assets.js';
 import { wave, hop, wrap } from './anim.js';
+import * as F from './font.js';
 
 const baked = new Map();
 
@@ -26,12 +27,24 @@ function windowFrame(pen, x, y, w, h, night) {
   pen.col(night ? K.NAVY : K.BLU_L).rect(x, y, w, h);
   pen.col(K.WOOD_D).vline(x + (w >> 1), y, h).hline(x, y + (h >> 1), w);
   if (night) {
-    pen.col(K.YEL_L).ellipse(x + w - 8, y + 6, 4, 4);
-    pen.col(K.YEL).ellipse(x + w - 7, y + 6, 2, 2);
+    pen.col(K.YEL_L).ellipse(x + w - 10, y + 8, 6, 6);
+    pen.col(K.YEL).ellipse(x + w - 9, y + 8, 4, 4);
+    pen.col(K.WHITE).px(x + 8, y + 10).px(x + 18, y + 22).px(x + 28, y + 12);
+    pen.col(K.YEL_L).px(x + 14, y + 30).px(x + 22, y + 8);
   } else {
     pen.col(K.YEL_L).ellipse(x + 8, y + 6, 5, 5);
     pen.col(K.YEL).ellipse(x + 8, y + 6, 3, 3);
   }
+  // Varão + cortinas + peitoril — a janela deixa de ser um retângulo azul
+  pen.col(K.OCHRE).rect(x - 4, y - 5, w + 8, 3);
+  const cloth = night ? K.PUR : K.RED;
+  const fold = night ? K.PUR_L : K.RED_L;
+  pen.col(cloth).rect(x - 1, y, 7, h);
+  pen.col(fold).vline(x + 1, y + 2, h - 4).vline(x + 4, y + 6, h - 10);
+  pen.col(cloth).rect(x + w - 6, y, 7, h);
+  pen.col(fold).vline(x + w - 4, y + 2, h - 4).vline(x + w - 1, y + 6, h - 10);
+  pen.col(K.WOOD_D).rect(x - 4, y + h, w + 8, 4);
+  pen.col(K.OCHRE).hline(x - 3, y + h, w + 6);
 }
 
 function houseRoom(pen, night) {
@@ -169,6 +182,16 @@ function paintMarket(pen) {
       pen.col((((x + y) / 10) | 0) % 2 ? K.BLU_L : K.WHITE).rect(x, y, 10, 10);
     }
   }
+  // Placa MERCADO sob o toldo
+  pen.col(K.WOOD_D).rect(118, 22, 84, 14);
+  pen.col(K.YEL).rect(120, 24, 80, 10);
+  F.textCenter(pen.ctx, 'MERCADO', 160, 25, K.RED, { shadow: K.SAND });
+  // Cebolas e pimentões pendurados
+  pen.col(K.WOOD_D).hline(22, 24, 40);
+  for (let i = 0; i < 4; i++) {
+    pen.col(i % 2 ? K.PUR : K.GRN).ellipse(28 + i * 10, 32, 4, 5);
+    pen.col(K.WOOD_D).vline(28 + i * 10, 24, 4);
+  }
   // Bancada de frutas (esquerda, atrás do Ravi)
   pen.col(K.WOOD_D).rect(8, 58, 70, 40);
   pen.col(K.OCHRE).rect(10, 60, 66, 12);
@@ -176,6 +199,10 @@ function paintMarket(pen) {
   blobFruit(pen, 38, 80, K.YEL);
   blobFruit(pen, 54, 78, K.GRN);
   blobFruit(pen, 70, 80, K.ORANGE);
+  // Caixote extra
+  pen.col(K.OCHRE).rect(78, 86, 16, 12);
+  pen.col(K.WOOD_D).frame(78, 86, 16, 12);
+  blobFruit(pen, 86, 90, K.PINK);
   // Prateleira ao fundo
   pen.col(K.WOOD_D).rect(100, 40, 90, 50);
   const cans = [K.RED, K.BLU, K.GRN, K.PUR, K.ORANGE, K.CYAN, K.PINK, K.YEL];
@@ -183,6 +210,10 @@ function paintMarket(pen) {
     pen.col(cans[i]).rect(106 + (i % 4) * 20, 46 + ((i / 4) | 0) * 20, 14, 16);
     pen.col(K.WHITE).rect(108 + (i % 4) * 20, 48 + ((i / 4) | 0) * 20, 10, 4);
   }
+  // Pôster de maçã na parede livre (direita do fundo)
+  pen.col(K.WOOD_D).rect(196, 40, 22, 28);
+  pen.col(K.CREAM).rect(198, 42, 18, 24);
+  blobFruit(pen, 207, 54, K.RED);
 }
 
 function blobFruit(pen, x, y, c) {

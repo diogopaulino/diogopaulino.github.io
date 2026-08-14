@@ -372,15 +372,17 @@ export function drawVehicleRack(ctx, spots, clock = 0) {
     const nW = v.wheels;
     const pipY = y + spot.h - 8;
     if (nW === 0) {
-      raised(pen, Math.round(spot.x + (spot.w - 16) / 2), pipY - 2, 16, 9, K.YEL, K.YEL_L, K.OCHRE);
-      F.textCenter(ctx, '0', spot.x + spot.w / 2, pipY, K.RED_D);
+      raised(pen, Math.round(spot.x + (spot.w - 20) / 2), pipY - 3, 20, 11, K.YEL, K.YEL_L, K.OCHRE);
+      F.textCenter(ctx, '0', spot.x + spot.w / 2, pipY - 1, K.RED_D);
     } else {
-      const span = Math.min(spot.w - 8, nW * 6);
+      const pipR = nW >= 8 ? 2 : 3;
+      const span = Math.min(spot.w - 10, nW * (pipR * 2 + 2));
       const x0 = Math.round(spot.x + (spot.w - span) / 2);
       for (let i = 0; i < nW; i++) {
         const px = x0 + Math.round((i * span) / Math.max(1, nW - 1));
-        pen.col(K.BLACK).ellipse(px, pipY + 3, 3, 3);
-        pen.col(K.GRAY_L).ellipse(px, pipY + 3, 1, 1);
+        pen.col(K.WHITE).ellipse(px, pipY + 3, pipR + 1, pipR + 1);
+        pen.col(K.BLACK).ellipse(px, pipY + 3, pipR, pipR);
+        pen.col(K.GRAY_L).px(px, pipY + 2);
       }
     }
   }
