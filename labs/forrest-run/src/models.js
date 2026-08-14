@@ -60,15 +60,17 @@ function getBark(THREERef) {
 export function createForrest(THREERef = THREE, { follower = false } = {}) {
     const g = new THREE.Group();
     const skin = std(follower ? 0xd4a07a : 0xe8c4a0, 0.72);
-    const hair = std(follower ? 0x3a2a18 : 0xc4a060, 0.9);
+    const hair = std(follower ? 0x3a2a18 : 0xe0c070, 0.9);
     const khaki = std(follower ? 0x4a5a70 : 0xc4b07a, 0.88);
     const shirtMat = follower
         ? std(0x6a3040, 0.86)
         : new THREE.MeshStandardMaterial({
             map: getPlaid(THREERef),
             color: 0xffffff,
-            roughness: 0.86,
-            metalness: 0.02
+            roughness: 0.78,
+            metalness: 0.02,
+            emissive: 0x1a3060,
+            emissiveIntensity: 0.18
         });
     const shoe = std(0xf4f0ea, 0.55);
     const stripe = std(0xc42828, 0.5);

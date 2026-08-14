@@ -13,15 +13,15 @@ function canvas(size, draw) {
 
 export function plaidTexture(THREE) {
     const c = canvas(64, (ctx, s) => {
-        ctx.fillStyle = '#3a5f9a';
+        ctx.fillStyle = '#4a78c4';
         ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = '#2a4a7a';
+        ctx.fillStyle = '#2e5aa8';
         for (let i = 0; i < s; i += 8) ctx.fillRect(i, 0, 3, s);
-        ctx.fillStyle = '#c44';
+        ctx.fillStyle = '#e04040';
         for (let i = 4; i < s; i += 16) ctx.fillRect(i, 0, 1.5, s);
-        ctx.fillStyle = '#2a4a7a';
+        ctx.fillStyle = '#2e5aa8';
         for (let i = 0; i < s; i += 8) ctx.fillRect(0, i, s, 3);
-        ctx.fillStyle = '#c44';
+        ctx.fillStyle = '#e04040';
         for (let i = 4; i < s; i += 16) ctx.fillRect(0, i, s, 1.5);
         ctx.fillStyle = 'rgba(255,255,255,0.12)';
         for (let i = 0; i < s; i += 8) {

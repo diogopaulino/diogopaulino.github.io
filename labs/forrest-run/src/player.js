@@ -13,6 +13,7 @@ import { createForrest } from './models.js';
 export class Player {
     constructor(scene) {
         this.root = createForrest(THREE);
+        this.root.scale.setScalar(1.12);
         scene.add(this.root);
         this.reset({});
     }

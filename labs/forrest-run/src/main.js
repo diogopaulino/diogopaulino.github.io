@@ -108,7 +108,7 @@ class Game {
             this.clouds = createClouds();
             this.scene.add(this.clouds.group);
 
-            this.hemi = new THREE.HemisphereLight(start.hemiSky, start.hemiGround, 0.85);
+            this.hemi = new THREE.HemisphereLight(start.hemiSky, start.hemiGround, 1.05);
             this.scene.add(this.hemi);
             this.sun = new THREE.DirectionalLight(start.sun, 1.35);
             this.sun.position.set(-18, 28, 12);
