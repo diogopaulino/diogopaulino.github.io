@@ -119,7 +119,7 @@ class Game {
         this.mats = createSharedMaterials(st);
 
         this.hud.setLoading(0.4, 'Asfaltando a avenida…');
-        this.road = createRoad(st);
+            this.road = createRoad(st, this.quality.fogDensity);
         this.scene.add(this.road.group);
 
         this.hud.setLoading(0.55, 'Erguendo o distrito…');
@@ -209,6 +209,7 @@ class Game {
         this.road?.uniforms.uNeonA.value.setHex(st.neonA);
         this.road?.uniforms.uNeonB.value.setHex(st.neonB);
         this.road?.uniforms.uAsphalt.value.setHex(st.asphalt);
+        this.road?.uniforms.uFogColor.value.setHex(st.fog);
         if (this.hemi) {
             this.hemi.color.setHex(st.horizon);
             this.hemi.groundColor.setHex(st.ground);

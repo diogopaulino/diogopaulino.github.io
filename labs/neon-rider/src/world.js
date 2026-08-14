@@ -50,23 +50,24 @@ export function createSky() {
     return { mesh, uniforms };
 }
 
-export function createRoad(station) {
+export function createRoad(station, fogDensity = 0.008) {
     const uniforms = {
         uZ: { value: 0 },
         uNeonA: { value: new THREE.Color(station.neonA) },
         uNeonB: { value: new THREE.Color(station.neonB) },
-        uAsphalt: { value: new THREE.Color(station.asphalt) }
+        uAsphalt: { value: new THREE.Color(station.asphalt) },
+        uFogColor: { value: new THREE.Color(station.fog) },
+        uFogDensity: { value: fogDensity }
     };
 
     const mat = new THREE.ShaderMaterial({
         uniforms,
         lights: false,
-        fog: true,
+        fog: false,
         vertexShader: /* glsl */ `
             varying vec3 vWorld;
             varying vec3 vView;
             varying vec3 vNormal;
-            #include <fog_pars_vertex>
             void main() {
                 vec4 world = modelMatrix * vec4(position, 1.0);
                 vWorld = world.xyz;
@@ -74,8 +75,6 @@ export function createRoad(station) {
                 vec4 mv = viewMatrix * world;
                 vView = -mv.xyz;
                 gl_Position = projectionMatrix * mv;
-                vec4 mvPosition = mv;
-                #include <fog_vertex>
             }
         `,
         fragmentShader: /* glsl */ `
@@ -86,7 +85,8 @@ export function createRoad(station) {
             uniform vec3 uNeonA;
             uniform vec3 uNeonB;
             uniform vec3 uAsphalt;
-            #include <fog_pars_fragment>
+            uniform vec3 uFogColor;
+            uniform float uFogDensity;
             void main() {
                 float x = vWorld.x;
                 float z = vWorld.z + uZ;
@@ -119,10 +119,13 @@ export function createRoad(station) {
                 float fres = pow(1.0 - max(dot(N, V), 0.0), 3.2);
                 col = mix(col, mix(uNeonA, uNeonB, 0.45), fres * 0.55);
 
+                float dist = length(vView);
+                float fogAmt = 1.0 - exp(-uFogDensity * uFogDensity * dist * dist);
+                col = mix(col, uFogColor, clamp(fogAmt, 0.0, 1.0));
+
                 gl_FragColor = vec4(col, 1.0);
                 #include <tonemapping_fragment>
                 #include <colorspace_fragment>
-                #include <fog_fragment>
             }
         `
     });

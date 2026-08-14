@@ -29,6 +29,7 @@ export class Effects {
         this.points = new THREE.Points(geo, new THREE.ShaderMaterial({
             transparent: true,
             depthWrite: false,
+            fog: false,
             blending: THREE.AdditiveBlending,
             uniforms: {
                 uMap: { value: sparkTexture(THREE) },
