@@ -925,3 +925,18 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 480px) {
+    .crt-screen > header[data-lab-header] {
+        padding-top: max(0.45rem, env(safe-area-inset-top, 0px));
+        padding-inline: max(0.75rem, env(safe-area-inset-left, 0px)) max(0.75rem, env(safe-area-inset-right, 0px));
+    }
+    .crt-screen .back-link {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.45rem 0.75rem !important;
+    }
+    .dock { bottom: max(2.4rem, env(safe-area-inset-bottom, 0px)); }
+    .window { height: 52% !important; top: 10% !important; max-width: calc(100% - 1rem); }
+    .phos-btn { min-width: 44px; min-height: 44px; padding: 0.35rem 0.5rem; }
+}

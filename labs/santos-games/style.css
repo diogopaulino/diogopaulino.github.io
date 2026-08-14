@@ -381,3 +381,15 @@ html, body {
     .sg-bg, .sg-sun, .sg-hint, .tp-tap { animation: none; }
     .sg-events li { transition: none; }
 }
+/* --- lab-responsive-pass --- */
+.sg-header, .sg-footer {
+    padding-left: max(1.1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.1rem, env(safe-area-inset-right, 0px));
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+    .sg-shell { flex-direction: column; }
+    .sg-side { width: 100%; max-width: 100%; max-height: 38vh; overflow-y: auto; }
+    .sg-stage { min-height: 0; flex: 1; }
+    .sg-emu { max-width: 100%; height: auto; }
+}

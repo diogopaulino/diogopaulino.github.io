@@ -449,3 +449,8 @@ body {
     margin-bottom: 1rem;
   }
 }
+/* --- lab-responsive-pass --- */
+@media (max-width: 480px) {
+    .octave-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .controls { padding-bottom: max(0.875rem, env(safe-area-inset-bottom, 0px)); }
+}

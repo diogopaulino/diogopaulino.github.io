@@ -430,3 +430,14 @@ canvas {
         margin-bottom: calc((var(--device-scale) - 1) * 562px);
     }
 }
+/* --- lab-responsive-pass --- */
+@media (max-height: 500px) and (orientation: landscape) {
+    .game-boy,
+    .handheld-device {
+        --device-scale: min(1, calc((100dvh - 72px) / 560px));
+        transform: scale(var(--device-scale));
+        transform-origin: top center;
+        margin-bottom: calc((var(--device-scale) - 1) * 560px);
+    }
+    .instructions { display: none; }
+}
