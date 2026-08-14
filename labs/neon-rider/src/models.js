@@ -262,19 +262,17 @@ export function createLamp(mats) {
     return g;
 }
 
-export function createBuilding(mats, rng, density) {
+export function createBuilding(mats, rng, density, side = 1) {
     const g = new THREE.Group();
     const w = 5.5 + rng() * 7.5;
     const d = 7 + rng() * 11;
     const h = 8 + rng() ** 1.4 * (28 + density * 18);
 
     const body = mesh(BOX, mats.body, w, h, d, 0, h / 2, 0);
-    body.material = mats.body;
     g.add(body);
 
-    const stripSide = rng() > 0.5 ? 1 : -1;
     const strip = mesh(BOX, rng() > 0.5 ? mats.neonA : mats.neonB, 0.16, h * 0.92, 0.16,
-        stripSide * (w / 2 + 0.08), h / 2, d / 2 + 0.08);
+        -side * (w / 2 + 0.08), h / 2, (rng() - 0.5) * d * 0.6);
     g.add(strip);
 
     if (rng() > 0.35) {
@@ -288,7 +286,8 @@ export function createBuilding(mats, rng, density) {
             side: THREE.DoubleSide
         });
         const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.9, 6.5), 1.15), signMat);
-        sign.position.set(0, 3.2 + rng() * (h * 0.4), d / 2 + 0.12);
+        sign.position.set(-side * (w / 2 + 0.12), 3.2 + rng() * (h * 0.4), 0);
+        sign.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(sign);
         g.userData.signMat = signMat;
         g.userData.signColor = color;

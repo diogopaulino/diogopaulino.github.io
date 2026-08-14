@@ -419,12 +419,14 @@ class Game {
         const playing = this.state === 'playing';
         this.input.sample();
         const auto = (!playing || this.player.auto) ? this.traffic.autoSteer(this.player) : 0;
-        const input = playing ? this.input : { steer: auto, boost: false, brake: false };
+        const input = playing
+            ? this.input
+            : { steer: auto, boost: false, brake: false };
 
         if (playing && this.input.boost && !this.boostHeld) this.audio.boostWhoosh();
         this.boostHeld = playing && this.input.boost;
 
-        this.player.update(dt, input, playing ? 0 : auto);
+        this.player.update(dt, input, 0);
         this.city.recycle(this.player.z);
         this.city.updateLights(this.player.z);
         this.traffic.update(dt, this.player);

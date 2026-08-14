@@ -61,10 +61,12 @@ export function createRoad(station) {
     const mat = new THREE.ShaderMaterial({
         uniforms,
         lights: false,
+        fog: true,
         vertexShader: /* glsl */ `
             varying vec3 vWorld;
             varying vec3 vView;
             varying vec3 vNormal;
+            #include <fog_pars_vertex>
             void main() {
                 vec4 world = modelMatrix * vec4(position, 1.0);
                 vWorld = world.xyz;
@@ -72,6 +74,7 @@ export function createRoad(station) {
                 vec4 mv = viewMatrix * world;
                 vView = -mv.xyz;
                 gl_Position = projectionMatrix * mv;
+                #include <fog_vertex>
             }
         `,
         fragmentShader: /* glsl */ `
@@ -82,6 +85,7 @@ export function createRoad(station) {
             uniform vec3 uNeonA;
             uniform vec3 uNeonB;
             uniform vec3 uAsphalt;
+            #include <fog_pars_fragment>
             void main() {
                 float x = vWorld.x;
                 float z = vWorld.z + uZ;
@@ -117,6 +121,7 @@ export function createRoad(station) {
                 gl_FragColor = vec4(col, 1.0);
                 #include <tonemapping_fragment>
                 #include <colorspace_fragment>
+                #include <fog_fragment>
             }
         `
     });
@@ -191,10 +196,9 @@ export class City {
         const addSide = (side) => {
             const count = 1 + Math.floor(rng() * 2 * density + 0.4);
             for (let i = 0; i < count; i++) {
-                const b = createBuilding(this.mats, rng, density);
+                const b = createBuilding(this.mats, rng, density, side);
                 const z = (i - (count - 1) / 2) * (CHUNK.length / Math.max(count, 1)) * 0.7;
                 b.position.set(side * (ROAD.buildingGap + 4 + rng() * 3.5), 0, z);
-                b.rotation.y = side > 0 ? 0 : Math.PI;
                 group.add(b);
             }
 
@@ -208,7 +212,7 @@ export class City {
             if (rng() < 0.85) {
                 const lamp = createLamp(this.mats);
                 lamp.position.set(side * 8.9, 0, (rng() - 0.5) * CHUNK.length * 0.5);
-                lamp.rotation.y = side > 0 ? 0 : Math.PI;
+                lamp.rotation.y = side > 0 ? Math.PI : 0;
                 lamp.userData.isLamp = true;
                 group.add(lamp);
             }
@@ -258,7 +262,8 @@ export class City {
             const world = lamp.getWorldPosition(light.position);
             light.position.copy(world);
             light.position.y = 5.05;
-            light.position.x += lamp.rotation.y > 1 ? -1.05 : 1.05;
+            const towardRoad = lamp.position.x > 0 ? -1.05 : 1.05;
+            light.position.x += towardRoad;
             light.intensity = 2.2;
         }
     }
