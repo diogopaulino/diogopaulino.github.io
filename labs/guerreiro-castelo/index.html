@@ -140,6 +140,35 @@
             <div class="hud-actions">
                 <span id="fpsCounter" class="fps">—</span>
             </div>
+
+            <!-- Controles de toque: só aparecem em ponteiro grosso (celular e
+                 tablet), onde não existe teclado nem pointer lock. -->
+            <div id="touchControls" class="touch-controls" aria-label="Controles de toque">
+                <div class="touch-look" data-touch-look aria-hidden="true"></div>
+
+                <div class="touch-stick" data-touch-stick>
+                    <span class="touch-stick-knob" aria-hidden="true"></span>
+                    <span class="sr-only">Analógico de movimento</span>
+                </div>
+
+                <div class="touch-pad">
+                    <button type="button" class="touch-btn" data-touch="interact" aria-label="Interagir">E</button>
+                    <button type="button" class="touch-btn" data-touch="block" aria-label="Defender">🛡</button>
+                    <button type="button" class="touch-btn touch-btn-attack" data-touch="attack"
+                        aria-label="Atacar">⚔</button>
+                    <button type="button" class="touch-btn touch-btn-jump" data-touch="jump"
+                        aria-label="Pular ou avançar o diálogo">⤴</button>
+                </div>
+
+                <div class="touch-side">
+                    <button type="button" class="touch-chip" data-touch="sprint" aria-pressed="false"
+                        aria-label="Correr">Correr</button>
+                    <button type="button" class="touch-chip" data-touch="crouch" aria-pressed="false"
+                        aria-label="Agachar">Agachar</button>
+                </div>
+
+                <button type="button" class="touch-pause" data-touch="pause" aria-label="Pausar">II</button>
+            </div>
         </div>
 
         <div id="loadingOverlay" class="overlay loading-overlay">
@@ -179,6 +208,8 @@
                     <span><kbd>E</kbd> interagir · <kbd>F</kbd> atacar · <kbd>Q</kbd> defender</span>
                     <span><kbd>Tab</kbd> objetivo · <kbd>Esc</kbd> pausa</span>
                 </div>
+                <p class="keys-touch">No celular: analógico à esquerda para andar, arraste na tela para girar a
+                    câmera e use os botões da direita para pular, interagir, atacar e defender.</p>
                 <button id="btnCloseControls" class="primary-button" type="button">Fechar</button>
             </div>
         </div>

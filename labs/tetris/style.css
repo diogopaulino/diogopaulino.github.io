@@ -34,10 +34,18 @@ body {
     align-items: center;
 }
 
-/* Game Boy Styling */
+/* Game Boy Styling
+   O console é desenhado numa base fixa de 320x540 e escalado com transform:
+   assim cresce no desktop e encolhe no celular sem refazer a matemática interna.
+   O margin-bottom compensa a altura que o scale tira (ou soma) do fluxo. */
 .game-boy {
     margin: auto;
     /* Center in container */
+    --device-scale: 1;
+    --device-base-height: 540px;
+    transform: scale(var(--device-scale));
+    transform-origin: top center;
+    margin-bottom: calc((var(--device-scale) - 1) * var(--device-base-height));
     background-color: var(--gb-body);
     width: 320px;
     height: 540px;
@@ -58,9 +66,11 @@ body {
     width: 100%;
     height: 240px;
     border-radius: 10px 10px 30px 10px;
-    padding: 20px 30px;
+    padding: 18px 30px 6px;
     position: relative;
     box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
 }
 
 .power-led {
@@ -78,7 +88,8 @@ body {
 .screen-glass {
     background-color: #8b9bb4;
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     border: 2px solid #555;
     box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
     display: flex;
@@ -92,64 +103,124 @@ body {
     height: 90%;
     box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2);
     display: flex;
+    justify-content: center;
     padding: 2px;
     image-rendering: pixelated;
+    position: relative;
+    overflow: hidden;
 }
 
 .game-area {
     border-right: 2px solid var(--gb-pixel-dark);
     padding-right: 2px;
+    display: flex;
 }
 
+/* O tabuleiro tem 10 colunas por 20 linhas: manter aspect-ratio 1/2 é o que
+   garante células quadradas — esticar a largura deforma as peças. */
 #tetris {
-    width: 120px;
-    /* Scaled down for GB look */
-    height: 160px;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 1 / 2;
     display: block;
 }
 
 .sidebar {
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 56px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     padding-left: 4px;
     font-family: 'Press Start 2P', monospace;
     /* Need a pixel font ideally */
     font-size: 8px;
+    line-height: 1.2;
     color: var(--gb-pixel-dark);
-}
-
-.score-box,
-.level-box,
-.next-box {
-    margin-bottom: 8px;
 }
 
 .label {
     font-weight: bold;
     margin-bottom: 2px;
+    opacity: 0.75;
 }
 
 #next {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+}
+
+/* Overlay de estado (pronto / pausa / fim de jogo) sobre a tela do console. */
+.screen-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    text-align: center;
+    background-color: rgba(155, 188, 15, 0.88);
+    color: var(--gb-pixel-dark);
+    font-family: 'Press Start 2P', monospace;
+}
+
+.screen-overlay[hidden] {
+    display: none;
+}
+
+.overlay-title {
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.overlay-text {
+    font-size: 8px;
+    line-height: 1.6;
+    animation: gb-blink 1.1s steps(1, end) infinite;
+}
+
+.overlay-text.steady {
+    animation: none;
+}
+
+@keyframes gb-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.25;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .overlay-text {
+        animation: none;
+    }
 }
 
 .brand {
     color: #b0b0b0;
     font-style: italic;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1;
     margin-top: 5px;
+    flex: 0 0 auto;
     text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
     display: flex;
-    gap: 5px;
+    align-items: baseline;
+    gap: 6px;
 }
 
 .brand .model {
     font-family: sans-serif;
     font-style: normal;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .controls {
@@ -157,6 +228,20 @@ body {
     height: 180px;
     margin-top: 20px;
     position: relative;
+}
+
+/* Controles de toque: sem seleção de texto, sem zoom de duplo toque e sem
+   scroll roubado pelo gesto durante a partida. */
+.controls button {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .d-pad {
@@ -178,6 +263,11 @@ body {
     box-shadow:
         2px 2px 0 rgba(0, 0, 0, 0.2),
         inset 1px 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.controls button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
 }
 
 .d-pad .center {
@@ -265,19 +355,36 @@ body {
 
 .option-buttons {
     position: absolute;
-    bottom: 20px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     gap: 15px;
 }
 
+.option-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.option-group .label {
+    font-family: sans-serif;
+    font-weight: bold;
+    color: var(--gb-dpad);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    margin-bottom: 0;
+    opacity: 1;
+}
+
 .btn-select,
 .btn-start {
-    width: 40px;
-    height: 12px;
+    width: 44px;
+    height: 14px;
     background-color: var(--gb-select-start);
-    border-radius: 6px;
+    border-radius: 7px;
     transform: rotate(-15deg);
     box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
     cursor: pointer;
@@ -312,23 +419,60 @@ body {
     font-size: 0.9rem;
 }
 
-/* Responsive adjustments — fit ~390px width with shared header + footer */
+/* Responsivo — a escala do console vem do JS (`--device-scale`), porque o CSS
+   não divide comprimento por comprimento para virar um fator sem unidade. */
 @media (max-width: 420px) {
-    .game-boy {
-        --device-scale: min(1, calc((100vw - 24px) / 320px));
-        transform: scale(var(--device-scale));
-        transform-origin: top center;
-        margin-bottom: calc((var(--device-scale) - 1) * 540px);
+    .instructions {
+        margin-top: 1rem;
+        font-size: 0.8rem;
     }
 }
-/* --- lab-responsive-pass --- */
-@media (max-height: 500px) and (orientation: landscape) {
-    .game-boy,
-    .handheld-device {
-        --device-scale: min(1, calc((100dvh - 72px) / 560px));
-        transform: scale(var(--device-scale));
-        transform-origin: top center;
-        margin-bottom: calc((var(--device-scale) - 1) * 560px);
+
+/* Paisagem curta: o console vira "widescreen" — tela à esquerda, controles à
+   direita. Encolher o formato retrato deixaria o tabuleiro ilegível. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .game-boy {
+        width: 560px;
+        height: 300px;
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 20px;
+        border-radius: 14px 14px 40px 14px;
     }
-    .instructions { display: none; }
+
+    .screen-border {
+        flex: 1;
+        height: 100%;
+        padding: 14px 16px 4px;
+    }
+
+    .controls {
+        flex: 0 0 250px;
+        width: 250px;
+        height: 200px;
+        margin-top: 0;
+    }
+
+    .d-pad {
+        top: 30px;
+        left: 6px;
+    }
+
+    .action-buttons {
+        top: 42px;
+        right: 16px;
+    }
+
+    .option-buttons {
+        bottom: 4px;
+    }
+
+    .speaker {
+        display: none;
+    }
+
+    .instructions {
+        display: none;
+    }
 }

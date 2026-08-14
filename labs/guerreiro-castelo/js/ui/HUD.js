@@ -25,6 +25,8 @@ export class HUD {
         };
         this._toastT = 0;
         this._chapterT = 0;
+        /* Em telas de toque o prompt aponta o botão da tela, não a tecla E. */
+        this.isTouch = Boolean(window.matchMedia?.('(pointer: coarse)').matches);
     }
 
     setLoading(p, text) {
@@ -67,7 +69,8 @@ export class HUD {
             return;
         }
         this.el.prompt.hidden = false;
-        this.el.prompt.innerHTML = `<kbd>E</kbd> ${item.interactionLabel || 'Interagir'}`;
+        const key = this.isTouch ? 'Botão E' : '<kbd>E</kbd>';
+        this.el.prompt.innerHTML = `${key} ${item.interactionLabel || 'Interagir'}`;
     }
 
     setDialogue(line) {

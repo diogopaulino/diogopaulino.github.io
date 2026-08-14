@@ -86,21 +86,36 @@
                 <div class="screen-glass">
                     <div class="screen">
                         <div class="game-area">
-                            <canvas id="tetris" width="200" height="400"></canvas>
+                            <canvas id="tetris" width="200" height="400" role="img"
+                                aria-label="Tabuleiro do Tetris"></canvas>
                         </div>
                         <div class="sidebar">
                             <div class="score-box">
                                 <div class="label">SCORE</div>
                                 <div id="score">0</div>
                             </div>
+                            <div class="score-box">
+                                <div class="label">HI</div>
+                                <div id="highscore">0</div>
+                            </div>
                             <div class="level-box">
                                 <div class="label">LEVEL</div>
                                 <div id="level">1</div>
                             </div>
+                            <div class="level-box">
+                                <div class="label">LINES</div>
+                                <div id="lines">0</div>
+                            </div>
                             <div class="next-box">
                                 <div class="label">NEXT</div>
-                                <canvas id="next" width="80" height="80"></canvas>
+                                <canvas id="next" width="80" height="80" role="img"
+                                    aria-label="Próxima peça"></canvas>
                             </div>
+                        </div>
+                        <!-- Overlay do estado do jogo: pronto, pausa e fim de jogo. -->
+                        <div class="screen-overlay" id="overlay" role="status" aria-live="polite">
+                            <p class="overlay-title" id="overlayTitle">TETRIS</p>
+                            <p class="overlay-text" id="overlayText">START para jogar</p>
                         </div>
                     </div>
                 </div>
@@ -108,25 +123,31 @@
             </div>
             <div class="controls">
                 <div class="d-pad">
-                    <div class="up"></div>
-                    <div class="right"></div>
-                    <div class="down"></div>
-                    <div class="left"></div>
-                    <div class="center"></div>
+                    <button type="button" class="up" aria-label="Girar peça"></button>
+                    <button type="button" class="right" aria-label="Mover para a direita"></button>
+                    <button type="button" class="down" aria-label="Descer peça"></button>
+                    <button type="button" class="left" aria-label="Mover para a esquerda"></button>
+                    <div class="center" aria-hidden="true"></div>
                 </div>
                 <div class="action-buttons">
                     <div class="btn-group">
-                        <div class="btn-a"></div>
-                        <div class="label">A</div>
+                        <button type="button" class="btn-b" aria-label="B: queda rápida"></button>
+                        <div class="label" aria-hidden="true">B</div>
                     </div>
                     <div class="btn-group">
-                        <div class="btn-b"></div>
-                        <div class="label">B</div>
+                        <button type="button" class="btn-a" aria-label="A: girar peça"></button>
+                        <div class="label" aria-hidden="true">A</div>
                     </div>
                 </div>
                 <div class="option-buttons">
-                    <div class="btn-select"></div>
-                    <div class="btn-start"></div>
+                    <div class="option-group">
+                        <button type="button" class="btn-select" aria-label="Select: reiniciar partida"></button>
+                        <div class="label" aria-hidden="true">SELECT</div>
+                    </div>
+                    <div class="option-group">
+                        <button type="button" class="btn-start" aria-label="Start: jogar ou pausar"></button>
+                        <div class="label" aria-hidden="true">START</div>
+                    </div>
                 </div>
             </div>
             <div class="speaker">
@@ -139,8 +160,11 @@
             </div>
         </div>
 
+        <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
+
         <div class="instructions">
-            <p>Setas: Mover • Cima: Rodar • Espaço: Drop</p>
+            <p><strong>Setas</strong> mover • <strong>Cima</strong> girar • <strong>Espaço</strong> queda rápida</p>
+            <p><strong>Enter</strong> ou <strong>Start</strong> jogar/pausar • <strong>R</strong> reiniciar</p>
         </div>
 
         <footer data-lab-footer data-home-href="/"></footer>

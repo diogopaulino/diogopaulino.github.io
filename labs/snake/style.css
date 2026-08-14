@@ -116,6 +116,9 @@
 canvas {
     width: 100%;
     height: 100%;
+    /* `contain` mantém as células quadradas em qualquer proporção de tela; a
+       sobra fica invisível porque o LCD tem a mesma cor de fundo do canvas. */
+    object-fit: contain;
     image-rendering: pixelated;
     display: block;
 }
@@ -262,6 +265,30 @@ canvas {
     outline: 3px solid var(--focus-ring);
     outline-offset: 3px;
     z-index: 3;
+}
+
+/* Área de toque: as setas continuam com 30px de desenho (o d-pad precisa caber
+   no aparelho), mas o alvo real cresce para fora até ~44px. */
+.d-pad > button::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+}
+
+.d-pad-up::after {
+    inset: -14px -7px 0 -7px;
+}
+
+.d-pad-down::after {
+    inset: 0 -7px -14px -7px;
+}
+
+.d-pad-left::after {
+    inset: -7px 0 -7px -14px;
+}
+
+.d-pad-right::after {
+    inset: -7px -14px -7px 0;
 }
 
 .d-pad-center {
@@ -421,23 +448,65 @@ canvas {
     line-height: 1.5;
 }
 
-@media (max-width: 420px) {
-    .handheld-device {
-        /* Absolute-positioned controls break with height:auto; scale the shell instead. */
-        --device-scale: min(1, calc((100vw - 24px) / 320px));
-        transform: scale(var(--device-scale));
-        transform-origin: top center;
-        margin-bottom: calc((var(--device-scale) - 1) * 562px);
-    }
+/* Absolute-positioned controls break with height:auto, então o shell inteiro é
+   escalado. O fator vem do JS (`--device-scale`): o CSS não divide comprimento
+   por comprimento para produzir o número que `scale()` exige. */
+.handheld-device {
+    --device-scale: 1;
+    --device-base-height: 562px;
+    transform: scale(var(--device-scale));
+    transform-origin: top center;
+    margin-bottom: calc((var(--device-scale) - 1) * var(--device-base-height));
 }
-/* --- lab-responsive-pass --- */
+
+/* Paisagem curta: o aparelho vira widescreen — tela à esquerda, controles à
+   direita. Encolher o formato retrato deixaria o LCD ilegível. */
 @media (max-height: 500px) and (orientation: landscape) {
-    .game-boy,
     .handheld-device {
-        --device-scale: min(1, calc((100dvh - 72px) / 560px));
-        transform: scale(var(--device-scale));
-        transform-origin: top center;
-        margin-bottom: calc((var(--device-scale) - 1) * 560px);
+        width: 560px;
+        height: 300px;
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 20px;
+        border-radius: 18px 18px 40px 18px;
     }
-    .instructions { display: none; }
+
+    .screen-bezel {
+        flex: 1;
+        height: 100%;
+        padding: 16px 20px;
+    }
+
+    .controls-area {
+        flex: 0 0 250px;
+        width: 250px;
+        height: 100%;
+        margin-top: 0;
+    }
+
+    .d-pad {
+        top: 50%;
+        left: 6px;
+        transform: translateY(-50%);
+    }
+
+    .action-buttons {
+        top: 50%;
+        right: 6px;
+        transform: translateY(-50%) rotate(-15deg);
+    }
+
+    .meta-controls {
+        bottom: 4px;
+        gap: 16px;
+    }
+
+    .speaker-grill {
+        display: none;
+    }
+
+    .instructions {
+        display: none;
+    }
 }
