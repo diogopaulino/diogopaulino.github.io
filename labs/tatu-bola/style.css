@@ -406,9 +406,9 @@ button {
     place-items: center;
     padding: calc(4.5rem + var(--safe-top)) 1rem calc(1rem + var(--safe-bottom));
     background:
-        radial-gradient(80% 60% at 50% 20%, rgb(255 122 69 / 0.22), transparent 55%),
-        rgb(10 6 14 / 0.74);
-    backdrop-filter: blur(10px);
+        radial-gradient(80% 60% at 50% 18%, rgb(255 122 69 / 0.18), transparent 58%),
+        rgb(10 6 14 / 0.48);
+    backdrop-filter: blur(5px);
 }
 
 .overlay[hidden] {

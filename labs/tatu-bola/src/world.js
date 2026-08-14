@@ -167,11 +167,11 @@ export class World {
         this.sun = sun;
         this.scene.add(sun);
 
-        const fill = new THREE.DirectionalLight(0x88a0ff, 0.32);
+        const fill = new THREE.DirectionalLight(0xffc8a0, 0.38);
         fill.position.set(-18, 10, -14);
         this.scene.add(fill);
 
-        const mag = new THREE.PointLight(0xff3d8a, 0.55, 28);
+        const mag = new THREE.PointLight(0xff6aa0, 0.35, 22);
         mag.position.set(2, 6, -18);
         this.scene.add(mag);
     }
