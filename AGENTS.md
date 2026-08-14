@@ -17,6 +17,9 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
 - `/labs/`: Diretório que contém todos os experimentos e mini-projetos.
   - Cada laboratório vive em sua própria subpasta em *kebab-case* (ex: `/labs/rock-kombat/`).
   - Cada pasta de laboratório é autocontida (possui seu próprio `index.html`, arquivos `.css`, `.js` e pastas de `assets/`), facilitando a manutenção e a visualização estática.
+- `/AGENTS.md`: regras para agentes (fonte única).
+- `/CLAUDE.md`: só `@AGENTS.md` — o Claude Code exige este nome (maiúsculas) e importa as regras daqui. Não coloque mais nada nesse arquivo.
+- `/.github/PULL_REQUEST_TEMPLATE.md`: template obrigatório de todo PR.
 
 ## 🛠 Melhores Práticas e Regras de Desenvolvimento
 
@@ -36,7 +39,7 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
 ### 3. Workflow de Modificação (Aja com Precisão)
 - **Não quebre o que está funcionando**: Faça modificações cirúrgicas. Evite reescrever arquivos inteiros ou refatorar códigos e lógicas que estão fora do escopo da solicitação do usuário.
 - **Respeite Comentários e Lógica Existente**: Mantenha as assinaturas de funções antigas ou comentários de explicação a não ser que a tarefa seja especificamente limpar o código.
-- **Caminhos de Arquivos (Paths)**: Como o projeto é servido no GitHub Pages, garanta que os caminhos para imagens e scripts estejam corretos, preferindo caminhos relativos (ex: `./assets/img.png` ou `../style.css`).
+- **Caminhos de Arquivos (Paths)**: Como o projeto é servido no GitHub Pages, garanta que os caminhos para imagens e scripts estejam corretos, preferindo caminhos relativos (ex: `./assets/img.png` ou `../style.css`). Caminhos absolutos da raiz (`/labs/`, `/favicon.ico`, `/assets/...`) também são válidos — testar sempre via HTTP, nunca via `file://`.
 
 ### 4. SEO e Semântica
 - Para novos arquivos HTML, inclua sempre as *tags* fundamentais: `<title>`, `<meta name="viewport">` adequada, meta descrições e utilize HTML semântico (`<main>`, `<section>`, `<article>`, `<header>`, `<footer>`).
@@ -45,17 +48,39 @@ Este repositório é o portfólio pessoal e *Playground* de laboratórios do Dio
 - Analise, planeje e só então codifique. Se encontrar uma ambiguidade significativa nos requisitos do usuário que impacte a arquitetura, pare e peça esclarecimentos.
 - Sempre documente o código de lógicas complexas (como fórmulas matemáticas para simulações ou regras de jogos).
 
+### 6. Auditoria de links (obrigatória)
+Toda vez que um lab for criado, movido, renomeado ou a galeria/README for tocado — e de preferência ao fechar qualquer PR — **verifique os links e corrija o que estiver quebrado na mesma mudança**. Não deixe 404, card órfão ou README desatualizado para depois.
+
+Checklist mínimo (estas listas devem ter os **mesmos slugs**):
+
+1. Pastas em `/labs/<kebab-case>/` com `index.html`
+2. Card em [`labs/index.html`](labs/index.html) com `href="/labs/<slug>/"`
+3. Linha no playground do [`README.md`](README.md) apontando para `https://diogopaulino.com.br/labs/<slug>/`
+4. Entrada em [`sitemap.xml`](sitemap.xml) com a mesma URL canônica
+
+Também conferir, e corrigir se falhar:
+
+- Link **Labs** da home (`/labs/`) e voltar de cada lab (`/labs/` no header, `/` no footer)
+- Assets, CSS e JS do lab (caminhos relativos ou absolutos a partir da raiz)
+- Canonical / Open Graph `https://diogopaulino.com.br/labs/<slug>/`
+- Servir a **raiz** do repo (`python3 -m http.server 8000`) e abrir home, galeria e o lab alterado — `file://` quebra módulos ES e `/favicon.ico`
+
+### 7. Pull requests
+**Todo PR novo deve nascer do template** [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Não envie descrição vazia, genérica ou só com a mensagem do commit.
+
+- Título: emoji + resumo (`✨`, `🐛`, `📚`, `⚡️`, `🎨`, `🧪` conforme o objetivo)
+- Preencha **Objetivo**, **O que mudou** e **Como testar** — apague os comentários placeholder
+- Marque o checklist; se um item não se aplica, diga o porquê em vez de fingir que testou
+- Agentes: ao criar/atualizar o PR, copie a estrutura do template no body (o GitHub só injeta o arquivo automaticamente na UI)
+
 ---
 
 ## Cursor Cloud specific instructions
 
-Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json`, `npm install`, etc. O código-fonte é o próprio artefato servido no GitHub Pages.
+Site 100% estático (HTML/CSS/JS puro). **Não há build, dependências, lockfiles, nem testes/lint automatizados** — não procure por `package.json` nem `npm install`. O código-fonte é o artefato do GitHub Pages.
 
-- **Rodar em desenvolvimento**: sirva a raiz do repositório por HTTP (abrir os arquivos via `file://` quebra caminhos absolutos como `/favicon.ico` e módulos ES). A partir de `/workspace`:
-  - `python3 -m http.server 8000` → site principal em `http://localhost:8000/`, playground em `http://localhost:8000/labs/`.
-- **Estrutura**: `index.html` (portfólio raiz) + `labs/<nome-do-lab>/index.html` (cada lab é autocontido). `labs/index.html` é a galeria que linka todos os labs.
-- **Caminhos**: o `manifest.json` e alguns assets usam caminhos absolutos (`/favicon.ico`, `/assets/...`), por isso é necessário servir a partir da raiz do repositório, não de uma subpasta.
-- **Verificação/"testes"**: não existe suíte automatizada. Valide manualmente carregando as páginas no navegador (o toggle de tema na home e abrir um lab da galeria são bons smoke tests).
+- Sirva **a raiz do repo** por HTTP (`python3 -m http.server 8000` → home em `/`, playground em `/labs/`). `file://` quebra `/favicon.ico` e módulos ES.
+- Verificação = [§6 auditoria de links](#6-auditoria-de-links-obrigatória). PRs = [§7](#7-pull-requests).
 
 ---
 *Lembre-se: O objetivo principal do projeto é criatividade, performance e experimentação tecnológica na web sem barreiras.*
