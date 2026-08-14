@@ -40,7 +40,7 @@ void main() {
     col = mix(col, uSky, fres * 0.45);
     float spark = step(0.96, fract(sin(dot(vWorld.xz * 0.7, vec2(12.9898, 78.233)) + uTime) * 43758.5453));
     col += vec3(1.0, 0.95, 0.8) * spark * 0.55;
-    gl_FragColor = vec4(col, 0.88);
+    gl_FragColor = vec4(col, 0.92);
 }`;
 
 function createWater(radius) {
@@ -49,8 +49,8 @@ function createWater(radius) {
     const material = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0 },
-            uDeep: { value: new THREE.Color('#1f7f8a') },
-            uShallow: { value: new THREE.Color('#7ee8e0') },
+            uDeep: { value: new THREE.Color('#178a96') },
+            uShallow: { value: new THREE.Color('#6af0e4') },
             uSky: { value: new THREE.Color('#ffc4a8') }
         },
         vertexShader: waterVert,
@@ -99,11 +99,22 @@ export class Kingdom {
         island.add(mesh(geo.cyl, MAT.grass, { scale: [36, 1.2, 36], pos: [0, -0.4, 0], receive: true }));
         island.add(mesh(geo.cyl, MAT.dirt, { scale: [35.4, 7.5, 35.4], pos: [0, -4.4, 0] }));
         island.add(mesh(geo.sphere, MAT.dirt, { scale: [34, 8, 34], pos: [0, -8.2, 0], receive: true }));
-        island.add(mesh(geo.cyl, MAT.rock, { scale: [18, 0.5, 18], pos: [0, 0.12, 8], receive: true }));
 
-        this.water = createWater(11.5);
-        this.water.position.set(0, 0.22, 10.5);
+        // colina do castelo — o silhueta Disney precisa de pedestal
+        island.add(mesh(geo.cyl, MAT.grass, { scale: [11, 2.2, 11], pos: [0, 0.9, -12], receive: true }));
+        island.add(mesh(geo.cyl, MAT.dirt, { scale: [10.6, 2.4, 10.6], pos: [0, -0.4, -12] }));
+
+        this.water = createWater(10.5);
+        this.water.position.set(0, 0.42, 11.2);
         island.add(this.water);
+
+        const beach = mesh(geo.torus, MAT.rock, {
+            scale: [10.8, 0.55, 10.8],
+            pos: [0, 0.22, 11.2],
+            rot: [Math.PI / 2, 0, 0],
+            receive: true
+        });
+        island.add(beach);
 
         // queda d'água na borda sul
         const fall = mesh(geo.box, toon(0x7ee8e0, { transparent: true, opacity: 0.45, emissive: 0x4ecdc4, em: 0.2 }), {
@@ -129,8 +140,8 @@ export class Kingdom {
 
     _castle() {
         this.castle = createCastle();
-        this.castle.position.set(0, 0.2, -12);
-        this.castle.scale.setScalar(1.15);
+        this.castle.position.set(0, 2.2, -12);
+        this.castle.scale.setScalar(1.45);
         this.root.add(this.castle);
         this.castle.traverse((obj) => {
             if (obj.userData?.flag) this.flags.push(obj.userData.flag);
@@ -195,8 +206,8 @@ export class Kingdom {
             const lantern = createLantern([0xffb347, 0xff6fae, 0xffe066, 0x9ad8ff][i % 4]);
             const a = (i / hangingCount) * Math.PI * 2;
             const r = 10 + hash(i) * 16;
-            lantern.position.set(Math.cos(a) * r, 2.4 + hash(i + 3) * 3.5, Math.sin(a) * r - 4);
-            lantern.scale.setScalar(0.85);
+            lantern.position.set(Math.cos(a) * r, 3.8 + hash(i + 3) * 4.2, Math.sin(a) * r - 4);
+            lantern.scale.setScalar(1.15);
             this.root.add(lantern);
             this.hanging.push(lantern);
         }
@@ -216,12 +227,12 @@ export class Kingdom {
 
     _wishes() {
         const spots = [
-            { pos: [0, 3.2, 10.5], label: 'a lagoa de cristal' },
+            { pos: [0, 3.2, 11.2], label: 'a lagoa de cristal' },
             { pos: [-8, 2.6, 18], label: 'o carrossel' },
             { pos: [7.5, 2.8, 4.5], label: 'o poço dos desejos' },
             { pos: [22, 3.0, 16], label: 'o ilhéu' },
             { pos: [-18, 5.2, -8], label: 'a árvore gigante' },
-            { pos: [0, 3.4, -5.5], label: 'o pátio do castelo' },
+            { pos: [0, 6.2, -5.2], label: 'o pátio do castelo' },
             { pos: [18, 3.4, -16], label: 'o bosque leste' },
             { pos: [-22, 3.6, 8], label: 'o jardim oeste' }
         ];
@@ -259,6 +270,7 @@ export class Kingdom {
     }
 
     groundHeight(x, z) {
+        if (Math.hypot(x, z + 12) < 11.5) return 2.1;
         const r = Math.hypot(x, z);
         if (r < 36.5) return 0.2;
         if (Math.hypot(x - 22, z - 16) < 6) return 0.2;

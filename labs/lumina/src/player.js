@@ -17,21 +17,21 @@ export class Player {
 
         this.vel = new THREE.Vector3();
         this.yaw = 0;
-        this.spherical = new THREE.Spherical(13, 1.12, 0.15);
+        this.spherical = new THREE.Spherical(16, 1.32, 0.05);
         this.desired = this.spherical.clone();
         this.lookTarget = new THREE.Vector3();
         this.forward = new THREE.Vector3();
         this.right = new THREE.Vector3();
         this.tmp = new THREE.Vector3();
-        this.minR = 6;
-        this.maxR = 28;
+        this.minR = 8;
+        this.maxR = 34;
     }
 
     reset() {
         this.mesh.position.set(0, 2.4, 18);
         this.vel.set(0, 0, 0);
         this.yaw = 0;
-        this.spherical.set(13, 1.12, 0.15);
+        this.spherical.set(16, 1.32, 0.05);
         this.desired.copy(this.spherical);
         this.mesh.rotation.set(0, Math.PI, 0);
     }

@@ -119,18 +119,18 @@ export function createCastle() {
     root.name = 'castle';
 
     root.add(mesh(geo.cyl, MAT.cream, { scale: [7.2, 1.1, 7.2], pos: [0, 0.55, 0] }));
-    root.add(mesh(geo.box, MAT.cream, { scale: [8.4, 5.4, 6.2], pos: [0, 3.7, 0] }));
-    root.add(mesh(geo.box, MAT.roofBlue, { scale: [8.9, 0.45, 6.7], pos: [0, 6.5, 0] }));
+    root.add(mesh(geo.box, MAT.cream, { scale: [8.4, 6.2, 6.2], pos: [0, 4.1, 0] }));
+    root.add(mesh(geo.box, MAT.roofBlue, { scale: [8.9, 0.45, 6.7], pos: [0, 7.3, 0] }));
 
-    const keep = tower({ h: 9.5, r: 1.55, roof: MAT.roofPink, onion: true });
-    keep.position.set(0, 6.4, 0);
+    const keep = tower({ h: 12.5, r: 1.7, roof: MAT.roofPink, onion: true });
+    keep.position.set(0, 7.2, 0);
     root.add(keep);
 
     const corners = [
-        [-3.6, 0, -2.6, 7.2, 0.95, MAT.roofBlue, false],
-        [3.6, 0, -2.6, 6.4, 0.9, MAT.roofTeal, true],
-        [-3.8, 0, 2.5, 5.6, 0.85, MAT.roofPink, false],
-        [3.8, 0, 2.5, 8.1, 1.05, MAT.roofBlue, true]
+        [-3.8, 0, -2.8, 9.2, 1.05, MAT.roofBlue, false],
+        [3.8, 0, -2.8, 8.4, 1.0, MAT.roofTeal, true],
+        [-4.0, 0, 2.6, 7.2, 0.95, MAT.roofPink, false],
+        [4.0, 0, 2.6, 10.4, 1.15, MAT.roofBlue, true]
     ];
     for (const [x, y, z, h, r, roof, onion] of corners) {
         const t = tower({ h, r, roof, onion });
@@ -143,7 +143,7 @@ export function createCastle() {
     }
 
     const spireFlag = flag('#ff6fae', '#fff4c0');
-    spireFlag.position.set(0, 18.6, 0);
+    spireFlag.position.set(0, 23.2, 0);
     root.add(spireFlag);
 
     // Portão e escadaria
@@ -377,8 +377,8 @@ export function createLuma() {
     smile.scale.z = 0.4;
     root.add(smile);
 
-    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), MAT.star);
-    star.position.set(0, 0.78, 0);
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), MAT.star);
+    star.position.set(0, 0.72, 0);
     star.castShadow = false;
     root.add(star);
 
