@@ -54,6 +54,7 @@ Um laboratório aberto com **48 experimentos** que rodam direto no navegador —
 | ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
 | 🍞 **[Torradeira 64](https://diogopaulino.com.br/labs/toaster-64/)** | Kart 3D cômico — disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt |
+| ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D — Dico e Teco atravessam o mar e resgatam Camila no castelo |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 😈 **[Pandemônio](https://diogopaulino.com.br/labs/pandemonium/)** | Platformer no trilho — corra, pule abismos e alcance o portal |
