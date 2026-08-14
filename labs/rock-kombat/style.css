@@ -1385,13 +1385,21 @@ dialog h2 {
     display: none;
   }
 
+  /* O !important da regra genérica acima vencia estas duas: sem ele o rótulo
+     longo voltava e estourava a largura do botão no header estreito. */
   #sound-button {
-    font-size: 0;
+    font-size: 0 !important;
   }
 
   #sound-button::after {
     content: "♪";
-    font-size: 13px;
+    font-size: 15px;
+  }
+
+  #help-button {
+    font-size: 10px !important;
+    letter-spacing: 0 !important;
+    padding: 8px 7px !important;
   }
 
   /* Hero screen mobile */

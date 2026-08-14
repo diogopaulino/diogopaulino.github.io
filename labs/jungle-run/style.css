@@ -817,14 +817,18 @@ button:focus-visible {
         height: 24px;
     }
 
+    /* O palco fica no topo do container e toda a folga sobra embaixo, onde os
+       controles de toque moram. Centralizado, o `contain` desperdiçava uma
+       faixa vazia acima da cena e ainda deixava o pad sobre a ação. */
     .game-container {
-        min-height: min(68dvh, 620px);
+        /* Altura = faixa 16/10 da cena (≈59vw aqui) + a tira dos controles. */
+        min-height: min(calc(59vw + 150px), 64dvh);
         aspect-ratio: auto;
     }
 
     #gameCanvas {
         object-fit: contain;
-        object-position: center;
+        object-position: center top;
     }
 
     .mobile-controls {
@@ -1231,13 +1235,4 @@ body.jungle-lab {
     font-size: 0.9rem;
     line-height: 1.5;
     text-align: center;
-}
-/* --- lab-responsive-pass --- */
-@media (max-width: 768px) {
-    #gameCanvas {
-        object-fit: contain;
-        object-position: center;
-        width: 100%;
-        height: 100%;
-    }
 }
