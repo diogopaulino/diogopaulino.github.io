@@ -10,7 +10,7 @@ import {
     buildAcacia, buildBaobab, buildKopje, buildDistantHill,
     grassBladeGeometry, grassMaterial
 } from './models.js';
-import { createWater } from './water.js';
+import { createWater } from './water.js?v=3';
 
 /**
  * Altura do solo. O poço é uma bacia suave; o resto são colinas em fBm

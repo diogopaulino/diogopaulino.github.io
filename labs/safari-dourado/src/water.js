@@ -1,69 +1,72 @@
 /**
- * Poço d’água: superfície com ondas leves e reflexo do céu procedural.
+ * Poço d’água: superfície escura da savana, ondulação leve e spec do sol.
+ * Sem reflexo do disco solar — isso estourava para branco com bloom.
  */
 
 import * as THREE from 'three';
 import { WATER } from './config.js';
-import { SKY_GLSL, NOISE_GLSL } from './sky.js';
 
 export function createWater(skyUniforms, quality) {
-    const segs = quality.id === 'low' ? 48 : 96;
+    const segs = quality.id === 'low' ? 48 : 80;
     const geo = new THREE.CircleGeometry(WATER.radius + 1.4, segs);
     geo.rotateX(-Math.PI / 2);
 
     const uniforms = {
-        ...skyUniforms,
+        uSunDir: skyUniforms.uSunDir,
+        uSunColor: skyUniforms.uSunColor,
+        uHorizon: skyUniforms.uHorizon,
         uTime: { value: 0 },
-        uFogColor: { value: new THREE.Color(0.78, 0.62, 0.42) },
-        uFogDensity: { value: quality.fogDensity },
-        uShallow: { value: new THREE.Color(0.16, 0.22, 0.18) },
-        uDeep: { value: new THREE.Color(0.05, 0.08, 0.07) }
+        uFogColor: { value: new THREE.Color(0.55, 0.38, 0.22) },
+        uFogDensity: { value: quality.fogDensity }
     };
 
     const material = new THREE.ShaderMaterial({
         uniforms,
         transparent: true,
         fog: false,
+        toneMapped: true,
         vertexShader: /* glsl */ `
             varying vec3 vWorld;
             varying vec3 vN;
             uniform float uTime;
             void main() {
                 vec3 p = position;
-                float w = sin(p.x * 0.38 + uTime * 0.7) * 0.06
-                        + cos(p.z * 0.46 + uTime * 0.55) * 0.05;
+                float w = sin(p.x * 0.32 + uTime * 0.55) * 0.05
+                        + cos(p.z * 0.41 + uTime * 0.42) * 0.04;
                 p.y += w;
-                vWorld = (modelMatrix * vec4(p, 1.0)).xyz;
-                vN = normalize(mat3(modelMatrix) * vec3(-cos(p.x * 0.38 + uTime * 0.7) * 0.04, 1.0,
-                    sin(p.z * 0.46 + uTime * 0.55) * 0.03));
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+                vec4 world = modelMatrix * vec4(p, 1.0);
+                vWorld = world.xyz;
+                vN = normalize(mat3(modelMatrix) * vec3(
+                    -cos(p.x * 0.32 + uTime * 0.55) * 0.03,
+                    1.0,
+                    sin(p.z * 0.41 + uTime * 0.42) * 0.025
+                ));
+                gl_Position = projectionMatrix * viewMatrix * world;
             }
         `,
         fragmentShader: /* glsl */ `
             varying vec3 vWorld;
             varying vec3 vN;
+            uniform vec3 uSunDir;
+            uniform vec3 uSunColor;
+            uniform vec3 uHorizon;
             uniform vec3 uFogColor;
             uniform float uFogDensity;
-            uniform vec3 uShallow;
-            uniform vec3 uDeep;
-            ${SKY_GLSL}
-            ${NOISE_GLSL}
             void main() {
                 vec3 n = normalize(vN);
                 vec3 view = normalize(cameraPosition - vWorld);
-                vec3 reflDir = reflect(-view, n);
-                reflDir.y = abs(reflDir.y);
-                vec3 sky = min(sfSky(normalize(reflDir)), vec3(1.15));
-                float fres = pow(1.0 - max(dot(view, n), 0.0), 5.0);
+                float fres = pow(1.0 - max(dot(view, n), 0.0), 4.0);
                 float dist = length(vWorld.xz);
-                float depth = smoothstep(6.0, 24.0, dist);
-                vec3 water = mix(uDeep, uShallow, depth);
-                vec3 col = mix(water, sky * 0.55, 0.10 + fres * 0.28);
-                float spark = pow(max(dot(normalize(uSunDir + view), n), 0.0), 220.0);
-                col += uSunColor * spark * 0.18;
-                float fog = 1.0 - exp(-uFogDensity * length(vWorld - cameraPosition));
-                col = mix(col, uFogColor, clamp(fog, 0.0, 0.85));
-                gl_FragColor = vec4(col, 0.94);
+                float shore = smoothstep(18.0, 4.0, dist);
+                vec3 deep = vec3(0.08, 0.10, 0.08);
+                vec3 mud = vec3(0.22, 0.16, 0.09);
+                vec3 col = mix(deep, mud, shore);
+                col = mix(col, uHorizon * 0.22, fres * 0.18);
+                float spec = pow(max(dot(normalize(uSunDir + view), n), 0.0), 480.0);
+                col += uSunColor * spec * 0.06;
+                float fog = 1.0 - exp(-uFogDensity * 0.65 * length(vWorld - cameraPosition));
+                col = mix(col, uFogColor, clamp(fog, 0.0, 0.55));
+                gl_FragColor = vec4(col, 0.9);
                 #include <tonemapping_fragment>
                 #include <colorspace_fragment>
             }

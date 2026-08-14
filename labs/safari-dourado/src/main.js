@@ -344,7 +344,7 @@ class Game {
 
         if (this.input.consumeShutter()) {
             if (!photoMode) {
-                this.hud.say('Segure F (ou o botão direito) para levantar a lente.', 2.8);
+                this.hud.say('Aperte F para levantar a lente, depois clique ou Espaço.', 2.8);
             } else {
                 const shot = this.photo.shoot(aim);
                 this.audio.shutter();
