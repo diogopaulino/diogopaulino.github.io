@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#120c0a">
+    <title>Xadrez — atelier 3D que ensina | Diogo Paulino</title>
+    <meta name="description"
+        content="Xadrez 3D em three.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas. Um lab de Diogo Paulino.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/xadrez/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/xadrez/">
+    <meta property="og:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
+    <meta property="og:description"
+        content="Peças Staunton com reflexo, tabuleiro laqueado e um mestre que ensina a jogar — three.js no navegador.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Xadrez 3D em three.js: marfim, ébano, reflexos e lições. Um lab de Diogo Paulino.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=8">
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Xadrez",
+          "url": "https://diogopaulino.com.br/labs/xadrez/",
+          "description": "Xadrez 3D em three.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Xadrez",
+              "item": "https://diogopaulino.com.br/labs/xadrez/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body data-state="boot">
+    <main class="game-shell">
+        <header data-lab-header data-title="Xadrez" data-back-href="/labs/" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">♛</span>
+                    <span>Xadrez</span>
+                </div>
+            </template>
+        </header>
+
+        <section class="stage" aria-label="Tabuleiro de xadrez em 3D">
+            <canvas id="scene" aria-label="Atelier com tabuleiro Staunton de marfim e ébano"></canvas>
+            <div class="vignette" aria-hidden="true"></div>
+        </section>
+
+        <div id="hud" class="hud" hidden>
+            <aside id="coach" class="coach" aria-label="Mestre">
+                <button id="coachToggle" class="coach-toggle" type="button" aria-expanded="true">
+                    <span class="eyebrow"><i></i> Mestre</span>
+                    <span id="coachTitle">As 64 casas</span>
+                </button>
+                <div id="coachBody" class="coach-body">
+                    <p id="coachText" class="coach-text"></p>
+                    <p id="coachTip" class="coach-tip"></p>
+                    <div id="lessonNav" class="lesson-nav" hidden>
+                        <button id="prevLesson" class="dock-btn" type="button">Anterior</button>
+                        <button id="nextLesson" class="dock-btn accent" type="button">Próxima</button>
+                    </div>
+                    <ul id="lessonList" class="lesson-list" hidden></ul>
+                    <ul id="puzzleList" class="lesson-list" hidden></ul>
+                </div>
+            </aside>
+
+            <aside class="tray" aria-label="Partida">
+                <p id="statusLine" class="status">Brancas jogam</p>
+                <div id="captured" class="captured" aria-label="Peças capturadas"></div>
+                <ol id="moves" class="moves" aria-label="Histórico de lances"></ol>
+            </aside>
+
+            <div class="dock" role="toolbar" aria-label="Controles da partida">
+                <button id="modePlay" class="dock-btn" type="button">Jogar</button>
+                <button id="modeAcademy" class="dock-btn" type="button">Academia</button>
+                <button id="modePuzzles" class="dock-btn" type="button">Puzzles</button>
+                <button id="hintBtn" class="dock-btn accent" type="button" title="Dica">Dica</button>
+                <button id="undoBtn" class="dock-btn" type="button" title="Desfazer">Desfazer</button>
+                <button id="flipBtn" class="dock-btn" type="button" title="Virar tabuleiro">Virar</button>
+                <button id="newBtn" class="dock-btn" type="button">Nova</button>
+                <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">Som</button>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> three.js · PBR · Staunton</p>
+                <h2>Polindo<br>o ébano.</h2>
+                <p class="lede" id="loadingText">O atelier acende as lâmpadas.</p>
+                <div class="load-bar" aria-hidden="true"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="intro" class="overlay" hidden>
+            <div class="overlay-card intro-card">
+                <p class="eyebrow"><i></i> Atelier 3D</p>
+                <h2>Xadrez</h2>
+                <p class="lede">Peças Staunton de marfim e ébano sobre mogno laqueado. Um mestre comenta cada lance —
+                    da primeira casa até o xeque-mate.</p>
+                <ul class="feature-list">
+                    <li>Regras FIDE: roque, en passant, promoção, xeque e mate</li>
+                    <li>Academia com 14 lições e 8 puzzles táticos</li>
+                    <li>IA em três níveis · dois jogadores · tabuleiro livre</li>
+                </ul>
+                <div class="settings-row">
+                    <label class="field">
+                        <span>Modo</span>
+                        <select id="modeSelect">
+                            <option value="cpu">Contra a máquina</option>
+                            <option value="academy">Academia</option>
+                            <option value="puzzles">Puzzles</option>
+                            <option value="local">Dois jogadores</option>
+                            <option value="free">Tabuleiro livre</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Nível</span>
+                        <select id="levelSelect">
+                            <option value="iniciante">Iniciante</option>
+                            <option value="praticante" selected>Praticante</option>
+                            <option value="clube">Clube</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Qualidade</span>
+                        <select id="qualitySelect">
+                            <option value="auto">Automática</option>
+                            <option value="low">Leve</option>
+                            <option value="medium">Equilibrada</option>
+                            <option value="high">Atelier</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Peças</span>
+                        <select id="themeSelect">
+                            <option value="classic">Marfim &amp; ébano</option>
+                            <option value="crystal">Cristal</option>
+                        </select>
+                    </label>
+                </div>
+                <footer class="card-actions">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Entrar no atelier</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="promoOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> Promoção</p>
+                <h2>O peão chegou.</h2>
+                <p class="lede">Escolha a peça. Quase sempre a dama.</p>
+                <div class="promo-row">
+                    <button class="promo-btn" data-promo="q" type="button">Dama</button>
+                    <button class="promo-btn" data-promo="r" type="button">Torre</button>
+                    <button class="promo-btn" data-promo="b" type="button">Bispo</button>
+                    <button class="promo-btn" data-promo="n" type="button">Cavalo</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow" id="resultKicker"><i></i> Fim</p>
+                <h2 id="resultTitle">Xeque-mate</h2>
+                <p class="lede" id="resultText"></p>
+                <footer class="card-actions">
+                    <button id="resultAgain" class="primary-button" type="button">
+                        <span>Jogar de novo</span>
+                    </button>
+                    <button id="resultClose" class="dock-btn" type="button">Fechar</button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O atelier não abriu.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=7" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

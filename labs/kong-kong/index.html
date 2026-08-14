@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <title>Kong Kong — O macaquinho do lenço vermelho | Diogo Paulino</title>
+  <meta name="description"
+    content="Kong Kong, o macaquinho do lenço vermelho, recupera as bananas da Ilha do Lenço. Platformer estilo Super Nintendo: role, canhões, cipós e o Rei Croco.">
+  <meta name="author" content="Diogo Paulino">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#1a3a18">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/kong-kong/">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diogo Paulino · Labs">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/kong-kong/">
+  <meta property="og:title" content="Kong Kong — O macaquinho do lenço vermelho | Diogo Paulino">
+  <meta property="og:description"
+    content="Platformer estilo SNES: Kong Kong corre, rola e dispara de canhões-barril para salvar as bananas do Rei Croco.">
+  <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:image:alt" content="Diogo Paulino">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Kong Kong — O macaquinho do lenço vermelho | Diogo Paulino">
+  <meta name="twitter:description"
+    content="Platformer estilo SNES: Kong Kong corre, rola e dispara de canhões-barril para salvar as bananas do Rei Croco.">
+  <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&family=Titan+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=8">
+  <link rel="stylesheet" href="style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Kong Kong",
+        "url": "https://diogopaulino.com.br/labs/kong-kong/",
+        "description": "Kong Kong, o macaquinho do lenço vermelho, recupera as bananas da Ilha do Lenço. Platformer estilo Super Nintendo: role, canhões, cipós e o Rei Croco.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "pt-BR",
+        "isAccessibleForFree": true,
+        "author": {
+          "@type": "Person",
+          "name": "Diogo Paulino",
+          "url": "https://diogopaulino.com.br/"
+        },
+        "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Diogo Paulino",
+            "item": "https://diogopaulino.com.br/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Labs",
+            "item": "https://diogopaulino.com.br/labs/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Kong Kong",
+            "item": "https://diogopaulino.com.br/labs/kong-kong/"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body class="kong-lab">
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <div class="container">
+    <header data-lab-header data-title="Kong Kong">
+      <template data-slot="logo">
+        <div class="app-logo">
+          <span class="logo-mark" aria-hidden="true">◆</span>
+          Kong Kong
+        </div>
+      </template>
+    </header>
+
+    <main class="stage-wrap">
+      <section class="cabinet" aria-label="Jogo Kong Kong">
+        <div class="rail rail-top" aria-hidden="true">
+          <span></span>
+          <strong>KK — ILHA DO LENÇO</strong>
+          <span></span>
+        </div>
+
+        <div class="stage" id="stage">
+          <canvas id="game" width="480" height="270" aria-label="Área do jogo Kong Kong">
+            Seu navegador não oferece suporte a canvas.
+          </canvas>
+          <div class="vignette" aria-hidden="true"></div>
+
+          <div class="hud-dock">
+            <button class="icon-btn" id="muteBtn" type="button" aria-label="Desativar som" aria-pressed="false">♪</button>
+            <button class="icon-btn" id="pauseBtn" type="button" aria-label="Pausar">Ⅱ</button>
+          </div>
+
+          <div class="touch-pad" id="touchPad" aria-label="Controles por toque">
+            <div class="dpad">
+              <button class="pad-btn" id="btnLeft" type="button" aria-label="Esquerda">←</button>
+              <div class="dpad-mid">
+                <button class="pad-btn pad-sm" id="btnUp" type="button" aria-label="Subir">▲</button>
+                <button class="pad-btn pad-sm" id="btnDown" type="button" aria-label="Descer">▼</button>
+              </div>
+              <button class="pad-btn" id="btnRight" type="button" aria-label="Direita">→</button>
+            </div>
+            <div class="actions">
+              <button class="pad-btn pad-roll" id="btnRoll" type="button" aria-label="Rolar">
+                <span>ROLA</span>
+              </button>
+              <button class="pad-btn pad-jump" id="btnJump" type="button" aria-label="Pular">
+                <span>PULA</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail rail-bottom">
+          <p><strong>DICA</strong> O lenço vermelho é um hit extra. Role nos ouriços. Canhão: pule de novo para disparar.</p>
+          <span class="sig">DIOGO LABS</span>
+        </div>
+      </section>
+
+      <p class="help">
+        <kbd>A</kbd><kbd>D</kbd> mover · <kbd>espaço</kbd> pular · <kbd>shift</kbd> rolar · <kbd>W</kbd> cipó · <kbd>S</kbd> entrar no barril
+      </p>
+    </main>
+
+    <footer data-lab-footer data-home-href="/"></footer>
+  </div>
+
+  <p class="sr-only" id="announcer" aria-live="assertive"></p>
+  <script src="/labs/shared.js?v=7" defer></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
