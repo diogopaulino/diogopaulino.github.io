@@ -30,71 +30,87 @@ function merge(list) {
     return g;
 }
 
+function collar(radius, y, tube, seg) {
+    const t = new THREE.TorusGeometry(radius, tube, 8, Math.max(16, seg >> 1));
+    t.rotateX(Math.PI / 2);
+    t.translate(0, y, 0);
+    return t;
+}
+
 export function buildPieceGeometries(seg = 48) {
-    const pawn = lathe([
-        [0, 0], [0.34, 0], [0.36, 0.04], [0.30, 0.09],
-        [0.28, 0.16], [0.20, 0.22], [0.18, 0.42],
-        [0.16, 0.52], [0.22, 0.56], [0.18, 0.60],
-        [0.14, 0.66], [0.20, 0.72], [0.22, 0.82],
-        [0.18, 0.90], [0.10, 0.94], [0, 0.95]
-    ], seg);
+    const pawn = merge([
+        lathe([
+            [0, 0], [0.33, 0], [0.35, 0.035], [0.30, 0.08],
+            [0.27, 0.14], [0.16, 0.20], [0.135, 0.46],
+            [0.13, 0.54], [0.20, 0.58], [0.13, 0.62],
+            [0.12, 0.68], [0.185, 0.74], [0.20, 0.84],
+            [0.16, 0.91], [0.08, 0.94], [0, 0.95]
+        ], seg),
+        collar(0.175, 0.58, 0.028, seg)
+    ]);
 
     const merlons = [];
-    const rookR = 0.22;
-    const rookY = 1.02;
+    const rookR = 0.20;
+    const rookY = 1.04;
     for (let i = 0; i < 4; i++) {
         const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-        merlons.push(box(0.16, 0.16, 0.14, Math.cos(a) * rookR, rookY, Math.sin(a) * rookR));
+        merlons.push(box(0.15, 0.15, 0.13, Math.cos(a) * rookR, rookY, Math.sin(a) * rookR));
     }
     const rook = merge([
         lathe([
-            [0, 0], [0.38, 0], [0.40, 0.05], [0.33, 0.11],
-            [0.30, 0.20], [0.24, 0.28], [0.22, 0.70],
-            [0.26, 0.76], [0.28, 0.82], [0.30, 0.90],
-            [0.30, 0.96], [0.18, 0.96], [0.18, 0.88],
+            [0, 0], [0.36, 0], [0.38, 0.04], [0.32, 0.10],
+            [0.28, 0.18], [0.20, 0.26], [0.175, 0.68],
+            [0.24, 0.74], [0.26, 0.80], [0.28, 0.90],
+            [0.28, 0.96], [0.16, 0.96], [0.16, 0.88],
             [0, 0.88]
         ], seg),
+        collar(0.22, 0.74, 0.03, seg),
         ...merlons
     ]);
 
-    const bishop = lathe([
-        [0, 0], [0.36, 0], [0.38, 0.045], [0.31, 0.10],
-        [0.28, 0.18], [0.20, 0.26], [0.17, 0.55],
-        [0.22, 0.62], [0.18, 0.68], [0.14, 0.78],
-        [0.16, 0.92], [0.20, 1.08], [0.16, 1.22],
-        [0.10, 1.32], [0.055, 1.34], [0.09, 1.36], [0, 1.38]
-    ], seg);
+    const bishop = merge([
+        lathe([
+            [0, 0], [0.34, 0], [0.36, 0.04], [0.30, 0.09],
+            [0.26, 0.16], [0.16, 0.24], [0.135, 0.52],
+            [0.20, 0.60], [0.14, 0.66], [0.12, 0.78],
+            [0.14, 0.94], [0.175, 1.10], [0.14, 1.24],
+            [0.08, 1.33], [0.05, 1.35], [0.085, 1.37], [0, 1.38]
+        ], seg),
+        collar(0.175, 0.60, 0.028, seg)
+    ]);
 
     const jewels = [];
     for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        const c = new THREE.ConeGeometry(0.045, 0.14, 8);
-        c.translate(Math.cos(a) * 0.16, 1.50, Math.sin(a) * 0.16);
+        const c = new THREE.ConeGeometry(0.042, 0.13, 8);
+        c.translate(Math.cos(a) * 0.155, 1.50, Math.sin(a) * 0.155);
         jewels.push(c);
     }
     const queen = merge([
         lathe([
-            [0, 0], [0.38, 0], [0.40, 0.05], [0.33, 0.11],
-            [0.30, 0.20], [0.22, 0.28], [0.18, 0.62],
-            [0.24, 0.70], [0.20, 0.76], [0.15, 0.90],
-            [0.14, 1.12], [0.18, 1.28], [0.20, 1.40],
-            [0.16, 1.44], [0.08, 1.46], [0, 1.48]
+            [0, 0], [0.36, 0], [0.38, 0.045], [0.32, 0.10],
+            [0.28, 0.18], [0.175, 0.26], [0.145, 0.60],
+            [0.22, 0.68], [0.15, 0.74], [0.125, 0.92],
+            [0.12, 1.14], [0.16, 1.30], [0.185, 1.40],
+            [0.15, 1.44], [0.07, 1.46], [0, 1.48]
         ], seg),
+        collar(0.195, 0.68, 0.03, seg),
         ...jewels
     ]);
 
     const cross = merge([
-        box(0.055, 0.28, 0.055, 0, 1.66, 0),
-        box(0.18, 0.05, 0.05, 0, 1.70, 0)
+        box(0.05, 0.26, 0.05, 0, 1.66, 0),
+        box(0.17, 0.045, 0.045, 0, 1.70, 0)
     ]);
     const king = merge([
         lathe([
-            [0, 0], [0.40, 0], [0.42, 0.05], [0.34, 0.12],
-            [0.31, 0.22], [0.22, 0.30], [0.19, 0.68],
-            [0.26, 0.76], [0.21, 0.82], [0.16, 0.96],
-            [0.15, 1.22], [0.20, 1.40], [0.22, 1.50],
-            [0.16, 1.54], [0.08, 1.52], [0, 1.52]
+            [0, 0], [0.38, 0], [0.40, 0.045], [0.33, 0.11],
+            [0.29, 0.20], [0.18, 0.28], [0.15, 0.64],
+            [0.24, 0.74], [0.16, 0.80], [0.13, 0.96],
+            [0.125, 1.22], [0.175, 1.40], [0.20, 1.50],
+            [0.15, 1.54], [0.07, 1.52], [0, 1.52]
         ], seg),
+        collar(0.21, 0.74, 0.032, seg),
         cross
     ]);
 
@@ -127,6 +143,12 @@ export function buildKnightTemplate(seg, material, accent) {
     base.castShadow = true;
     base.receiveShadow = true;
     g.add(base);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.03, 8, 24), material);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.50;
+    ring.castShadow = true;
+    g.add(ring);
 
     const neck = new THREE.Mesh(lathe([
         [0, 0], [0.16, 0], [0.15, 0.18], [0.13, 0.36], [0.11, 0.48], [0, 0.50]
@@ -182,31 +204,31 @@ export function buildKnightTemplate(seg, material, accent) {
 
 export function makeMaterials(tex, theme = 'classic') {
     const ivory = new THREE.MeshPhysicalMaterial({
-        color: 0xf3ead8,
+        color: 0xe4d2b4,
         map: tex.ivory.map,
         normalMap: tex.ivory.normalMap,
         roughnessMap: tex.ivory.roughnessMap,
-        roughness: 0.22,
-        metalness: 0.04,
-        clearcoat: 0.85,
-        clearcoatRoughness: 0.18,
-        sheen: 0.4,
-        sheenColor: new THREE.Color(0xf7e7c6),
-        sheenRoughness: 0.45,
-        envMapIntensity: 1.15
+        roughness: 0.34,
+        metalness: 0.02,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.32,
+        sheen: 0.12,
+        sheenColor: new THREE.Color(0xe8d7b8),
+        sheenRoughness: 0.6,
+        envMapIntensity: 0.55
     });
     const ebony = new THREE.MeshPhysicalMaterial({
-        color: 0x1c1410,
+        color: 0x16100c,
         map: tex.ebony.map,
         normalMap: tex.ebony.normalMap,
         roughnessMap: tex.ebony.roughnessMap,
-        roughness: 0.18,
-        metalness: 0.12,
-        clearcoat: 1,
-        clearcoatRoughness: 0.12,
-        sheen: 0.2,
-        sheenColor: new THREE.Color(0x4a2010),
-        envMapIntensity: 1.25
+        roughness: 0.22,
+        metalness: 0.08,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.18,
+        sheen: 0.12,
+        sheenColor: new THREE.Color(0x3a1c10),
+        envMapIntensity: 0.85
     });
     const accentDark = new THREE.MeshPhysicalMaterial({
         color: 0x0a0604, roughness: 0.4, metalness: 0.2

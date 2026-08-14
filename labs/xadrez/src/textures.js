@@ -134,10 +134,10 @@ export function createTextures(aniso = 8) {
 
     const ivory = pack((ctx, w) => {
         const rand = rng(53);
-        const g = ctx.createRadialGradient(w * 0.4, w * 0.3, 10, w * 0.5, w * 0.5, w * 0.8);
-        g.addColorStop(0, '#f7f0e2');
-        g.addColorStop(0.5, '#efe2c8');
-        g.addColorStop(1, '#e2d0b0');
+        const g = ctx.createLinearGradient(0, 0, w, w);
+        g.addColorStop(0, '#eadcc4');
+        g.addColorStop(0.45, '#e2d0b4');
+        g.addColorStop(1, '#d4c09a');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, w);
         ctx.strokeStyle = 'rgba(160,130,90,0.18)';

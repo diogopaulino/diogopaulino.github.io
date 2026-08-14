@@ -63,6 +63,14 @@ body {
     touch-action: none;
 }
 
+.overlay,
+.overlay-card,
+.hud,
+button,
+select {
+    touch-action: manipulation;
+}
+
 button,
 input,
 select {
@@ -275,6 +283,11 @@ button {
     margin-bottom: 0.7rem;
 }
 
+.lesson-nav[hidden],
+.lesson-list[hidden] {
+    display: none !important;
+}
+
 .lesson-list {
     list-style: none;
     margin: 0;
@@ -422,7 +435,7 @@ button {
     padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right)) max(1rem, var(--safe-bottom)) max(1rem, var(--safe-left));
     background:
         radial-gradient(ellipse at 50% 18%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 52%),
-        oklch(6% 0.02 50 / 0.62);
+        oklch(6% 0.02 50 / 0.42);
     backdrop-filter: blur(10px);
 }
 
@@ -533,6 +546,9 @@ button {
     font-weight: 650;
     letter-spacing: 0.02em;
     box-shadow: 0 10px 30px color-mix(in oklab, var(--gold) 40%, transparent);
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
 }
 
 .primary-button i {

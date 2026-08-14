@@ -57,8 +57,12 @@ export function buildWorld(tex, quality) {
     board.name = 'board';
     root.add(board);
 
-    const lightMat = phys(tex.maple, { color: 0xf0d7b0, clearcoat: 0.95, roughness: 0.22 });
-    const darkMat = phys(tex.walnut, { color: 0x5a3014, clearcoat: 0.9, roughness: 0.26 });
+    const lightMat = phys(tex.maple, {
+        color: 0xf4deba, clearcoat: 0.28, roughness: 0.42, envMapIntensity: 0.45
+    });
+    const darkMat = phys(tex.walnut, {
+        color: 0x4a2410, clearcoat: 0.32, roughness: 0.48, envMapIntensity: 0.4
+    });
     const squares = [];
     const squareGeo = new THREE.BoxGeometry(SQUARE * 0.985, 0.07, SQUARE * 0.985);
 
@@ -313,7 +317,7 @@ export function setupLights(scene, quality) {
     const hemi = new THREE.HemisphereLight(0x9eb4d4, 0x3a2214, 0.45);
     scene.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xffe6c4, 2.15);
+    const key = new THREE.DirectionalLight(0xffe6c4, 1.65);
     key.position.set(4.5, 10, 6.5);
     key.castShadow = quality.shadows;
     if (quality.shadows) {
@@ -338,7 +342,7 @@ export function setupLights(scene, quality) {
     windowLight.lookAt(0, 0.5, 0);
     scene.add(windowLight);
 
-    const chandelier = new THREE.SpotLight(0xffd9a8, 4.5, 22, 0.55, 0.45, 1.1);
+    const chandelier = new THREE.SpotLight(0xffd9a8, 3.2, 22, 0.55, 0.45, 1.1);
     chandelier.position.set(0, 7.4, 0.4);
     chandelier.target.position.set(0, 0, 0);
     chandelier.castShadow = quality.shadows;

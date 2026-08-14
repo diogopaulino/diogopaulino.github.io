@@ -119,7 +119,17 @@ class Atelier {
     }
 
     bindUi() {
-        document.getElementById('startButton')?.addEventListener('click', () => this.start());
+        document.getElementById('startButton')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.start();
+        });
+        document.getElementById('intro')?.addEventListener('pointerup', (e) => {
+            if (e.target.closest('#startButton')) {
+                e.preventDefault();
+                this.start();
+            }
+        });
         document.getElementById('modePlay')?.addEventListener('click', () => this.setMode('cpu'));
         document.getElementById('modeAcademy')?.addEventListener('click', () => this.setMode('academy'));
         document.getElementById('modePuzzles')?.addEventListener('click', () => this.setMode('puzzles'));
@@ -157,9 +167,14 @@ class Atelier {
             });
         });
         window.addEventListener('keydown', (e) => {
+            if (document.body.dataset.state === 'intro' && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) {
+                e.preventDefault();
+                this.start();
+                return;
+            }
             if (e.code === 'KeyM') this.toggleMute();
             if (e.code === 'KeyH') this.hint();
-            if (e.code === 'KeyU' || (e.metaKey || e.ctrlKey) && e.code === 'KeyZ') this.undo();
+            if (e.code === 'KeyU' || ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ')) this.undo();
             if (e.code === 'KeyF') this.toggleFlip();
         });
     }
@@ -178,7 +193,7 @@ class Atelier {
         }
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = 0.92;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0x120c0a, 1);
@@ -234,6 +249,7 @@ class Atelier {
         this.clock.start();
         this.renderer.setAnimationLoop(() => this.frame());
         window.addEventListener('resize', () => this.resize());
+        window.visualViewport?.addEventListener('resize', () => this.resize());
     }
 
     resize() {
@@ -248,6 +264,7 @@ class Atelier {
     }
 
     start() {
+        if (document.body.dataset.state !== 'intro') return;
         this.audio.init();
         this.audio.setEnabled(!this.settings.muted);
         this.syncMute();
@@ -280,7 +297,7 @@ class Atelier {
         lessonList.hidden = mode !== 'academy';
         puzzleList.hidden = mode !== 'puzzles';
         if (isMobile()) {
-            coach?.classList.toggle('is-collapsed', mode !== 'academy' && mode !== 'puzzles');
+            coach?.classList.add('is-collapsed');
         }
         if (mode === 'academy') this.loadLesson(this.lessonIndex);
         else if (mode === 'puzzles') this.loadPuzzle(this.puzzleIndex);
