@@ -15,6 +15,7 @@ export class Player {
         this.parts = built.parts;
         this.animator = new CharacterAnimator(built.group, built.clips);
         scene.add(this.root);
+        this.root.traverse((c) => { if (c.isMesh) c.userData.ignoreCamera = true; });
 
         this.position = new THREE.Vector3(0, 0, 0);
         this.facing = 0;

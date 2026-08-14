@@ -14,6 +14,8 @@ export class WeatherSystem {
         this.sun = new THREE.Vector3();
         this.hemi = new THREE.HemisphereLight(0xb8d0e8, 0x3a2a18, 0.55);
         scene.add(this.hemi);
+        this.ambient = new THREE.AmbientLight(0xfff4e8, 0.28);
+        scene.add(this.ambient);
         this.dir = new THREE.DirectionalLight(0xfff2d0, 1.6);
         this.dir.castShadow = true;
         this.dir.shadow.mapSize.set(2048, 2048);
@@ -109,6 +111,7 @@ export class WeatherSystem {
         this.dir.position.copy(this.sun).multiplyScalar(40);
         this.dir.intensity = dirI;
         this.hemi.intensity = hemi;
+        if (this.ambient) this.ambient.intensity = preset === 'interior' ? 0.08 : preset === 'night' ? 0.12 : 0.28;
         this.scene.fog = new THREE.FogExp2(fogCol, fogDen);
         this.scene.background = new THREE.Color(fogCol);
         this.exposure = exposure;

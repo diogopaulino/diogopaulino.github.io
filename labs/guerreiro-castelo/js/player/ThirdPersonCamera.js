@@ -41,12 +41,35 @@ export class ThirdPersonCamera {
     }
 
     setObstacles(meshes) {
-        this._obstacles = meshes;
+        this._obstacles = meshes.filter((m) => {
+            if (!m || !m.isMesh) return false;
+            if (m.userData.ignoreCamera) return false;
+            if (m.name === 'sail') return false;
+            return true;
+        });
     }
 
     addShake(amp = 0.12, time = 0.25) {
         this.shake = Math.max(this.shake, time);
         this.shakeAmp = Math.max(this.shakeAmp, amp);
+    }
+
+    snapToPlayer(player) {
+        this.cutscene = false;
+        const origin = player.worldPosition ? player.worldPosition() : player.position;
+        this.smoothLook.set(origin.x, origin.y + this.lookHeight, origin.z);
+        const cosP = Math.cos(this.pitch);
+        const sinP = Math.sin(this.pitch);
+        const sinY = Math.sin(this.yaw);
+        const cosY = Math.cos(this.yaw);
+        this.currentPos.set(
+            origin.x + sinY * cosP * this.distance + cosY * this.shoulder,
+            origin.y + this.lookHeight + sinP * this.distance,
+            origin.z + cosY * cosP * this.distance - sinY * this.shoulder
+        );
+        this.camera.position.copy(this.currentPos);
+        this.camera.lookAt(this.smoothLook);
+        this.camera.updateMatrixWorld();
     }
 
     lookAtImmediate(target) {

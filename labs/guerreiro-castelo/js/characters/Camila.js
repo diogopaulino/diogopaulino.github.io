@@ -10,6 +10,7 @@ export class Camila {
         this.parts = built.parts;
         this.animator = new CharacterAnimator(built.group, built.clips);
         scene.add(this.root);
+        this.root.traverse((c) => { if (c.isMesh) c.userData.ignoreCamera = true; });
         this.position = new THREE.Vector3();
         this.facing = 0;
         this.ai = new PrincessAI(this);

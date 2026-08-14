@@ -14,6 +14,8 @@ export class ShipLevel extends Level {
         this.ship = buildShip();
         this.group.add(this.ship);
         this.game.scene.add(this.group);
+        const fill = new THREE.HemisphereLight(0xc8e4ff, 0x3a2a18, 0.4);
+        this.ship.add(fill);
 
         addShipColliders(this.game.collision);
 
