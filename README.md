@@ -41,7 +41,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | Projeto | O que é? |
 | :--- | :--- |
 | ♟️ **[Xadrez](https://diogopaulino.com.br/labs/xadrez/)** | Atelier 3D — peças Staunton de marfim e ébano, reflexos e um mestre que ensina a jogar |
-| 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D — galope sem parar por serras, cânions e pradarias; o cavalo não cansa |
+| 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D em Babylon.js — galope sem parar por serras, cânions e pradarias; o cavalo não cansa |
 | 🟡 **[Tatu Bola](https://diogopaulino.com.br/labs/tatu-bola/)** | Platformer 3D estilo PS1 — pule, role e colete cristais na ilha low-poly |
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D no espírito Super Mario 64 — Nico, câmera Lakitu, pulo triplo e sete estrelas |
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D — Clara carrega a última chama, acende Vale-da-Bruma e traz o primeiro sol |
