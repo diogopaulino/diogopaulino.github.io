@@ -1,311 +1,187 @@
 /**
- * Cavalo + cavaleiro.
- *
- * Física arcade:
- *   v' = v + throttle * accel * dt
- *   yaw' = yaw − steer * turn * (v / cruise) * dt
- *   y = heightAt(x, z)
- *
- * Galope livre: a velocidade nunca cai abaixo de HORSE.cruise (ou walk se
- * o jogador segura S). O cavalo não cansa — “sem parar” é a regra.
- *
- * Marcha (gait) pela velocidade: passo → trote → galope → disparada.
- * Pernas em diagonal (trote): FL+HR vs FR+HL, fase = distance * 2.4.
+ * Cavalo + cavaleiro em Babylon.js com marcha procedural (passo, trote, galope).
  */
 
-import * as THREE from 'three';
-import { HORSE } from './config.js';
-import { clamp, damp, wrapPi, lerp } from './utils.js';
-import { std } from './models.js';
+import { stdMat } from './models.js';
 
-function enableShadows(root) {
-    root.traverse((c) => {
-        if (c.isMesh) {
-            c.castShadow = true;
-            c.receiveShadow = true;
-        }
-    });
-}
+export function buildHorse(BABYLON, scene) {
+    const root = new BABYLON.TransformNode('horse_root', scene);
 
-export function buildHorse() {
-    const root = new THREE.Group();
-    const coat = std(0xc47838, 0.62);
-    const dark = std(0x1a120c, 0.78);
-    const cream = std(0xe8dcc4, 0.65);
-    const leather = std(0x4a2412, 0.7);
-    const cloth = std(0x6a1c14, 0.75);
-    const skin = std(0xc4a07a, 0.65);
-    const hat = std(0x2a2018, 0.8);
+    const coat = stdMat(BABYLON, 'mat_horse_coat', '#c47838', 0.65, scene);
+    const dark = stdMat(BABYLON, 'mat_horse_dark', '#1a120c', 0.8, scene);
+    const cream = stdMat(BABYLON, 'mat_horse_cream', '#e8dcc4', 0.65, scene);
+    const leather = stdMat(BABYLON, 'mat_leather', '#4a2412', 0.7, scene);
+    const shirt = stdMat(BABYLON, 'mat_shirt', '#8c281e', 0.75, scene);
+    const skin = stdMat(BABYLON, 'mat_skin', '#c4a07a', 0.65, scene);
+    const hat = stdMat(BABYLON, 'mat_hat', '#2a2018', 0.8, scene);
 
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 10, 8), coat);
-    body.scale.set(1.05, 0.92, 1.85);
+    // 1. CORPO DO CAVALO
+    const body = BABYLON.MeshBuilder.CreateSphere('h_body', { diameter: 1.05, segments: 12 }, scene);
+    body.scaling.set(1.05, 0.92, 1.85);
     body.position.set(0, 1.18, 0);
-    root.add(body);
+    body.material = coat;
+    body.parent = root;
 
-    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), coat);
+    const chest = BABYLON.MeshBuilder.CreateSphere('h_chest', { diameter: 0.8, segments: 10 }, scene);
     chest.position.set(0, 1.16, 0.68);
-    root.add(chest);
+    chest.material = coat;
+    chest.parent = root;
 
-    const rump = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 8), coat);
-    rump.position.set(0, 1.2, -0.72);
-    root.add(rump);
+    const rump = BABYLON.MeshBuilder.CreateSphere('h_rump', { diameter: 0.76, segments: 10 }, scene);
+    rump.position.set(0, 1.20, -0.72);
+    rump.material = coat;
+    rump.parent = root;
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 0.78, 8), coat);
-    neck.position.set(0, 1.58, 0.92);
-    neck.rotation.x = 0.62;
-    root.add(neck);
+    // Pescoço
+    const neck = BABYLON.MeshBuilder.CreateCylinder('h_neck', { height: 0.82, diameterTop: 0.32, diameterBottom: 0.52, tessellation: 12 }, scene);
+    neck.position.set(0, 1.62, 0.92);
+    neck.rotation.x = 0.65;
+    neck.material = coat;
+    neck.parent = root;
 
-    const headG = new THREE.Group();
-    headG.position.set(0, 2.02, 1.28);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), coat);
-    head.scale.set(0.72, 0.78, 1.4);
-    headG.add(head);
-    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 6), cream);
-    muzzle.position.set(0, -0.04, 0.28);
-    muzzle.scale.set(0.75, 0.65, 1.15);
-    headG.add(muzzle);
+    // Cabeça
+    const headG = new BABYLON.TransformNode('h_head_node', scene);
+    headG.position.set(0, 2.05, 1.28);
+    headG.parent = root;
+
+    const head = BABYLON.MeshBuilder.CreateSphere('h_head', { diameter: 0.42, segments: 10 }, scene);
+    head.scaling.set(0.72, 0.78, 1.4);
+    head.material = coat;
+    head.parent = headG;
+
+    const muzzle = BABYLON.MeshBuilder.CreateSphere('h_muzzle', { diameter: 0.24, segments: 8 }, scene);
+    muzzle.position.set(0, -0.04, 0.32);
+    muzzle.scaling.set(0.75, 0.65, 1.15);
+    muzzle.material = cream;
+    muzzle.parent = headG;
+
+    // Orelhas e Olhos
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 4), coat);
-        ear.position.set(sx * 0.1, 0.2, -0.04);
-        ear.rotation.z = sx * 0.25;
-        headG.add(ear);
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), dark);
-        eye.position.set(sx * 0.1, 0.04, 0.12);
-        headG.add(eye);
+        const ear = BABYLON.MeshBuilder.CreateCylinder(`h_ear_${sx}`, { height: 0.18, diameterTop: 0, diameterBottom: 0.1, tessellation: 6 }, scene);
+        ear.position.set(sx * 0.1, 0.22, -0.04);
+        ear.rotation.z = -sx * 0.25;
+        ear.material = coat;
+        ear.parent = headG;
+
+        const eye = BABYLON.MeshBuilder.CreateSphere(`h_eye_${sx}`, { diameter: 0.06, segments: 6 }, scene);
+        eye.position.set(sx * 0.11, 0.04, 0.12);
+        eye.material = dark;
+        eye.parent = headG;
     }
-    root.add(headG);
 
-    const mane = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.7), dark);
-    mane.position.set(0, 1.72, 0.72);
-    mane.rotation.x = 0.5;
-    root.add(mane);
+    // Crina e Cauda
+    const mane = BABYLON.MeshBuilder.CreateBox('h_mane', { width: 0.08, height: 0.58, depth: 0.72 }, scene);
+    mane.position.set(0, 1.76, 0.72);
+    mane.rotation.x = 0.55;
+    mane.material = dark;
+    mane.parent = root;
 
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 0.95, 6), dark);
-    tail.position.set(0, 1.05, -1.15);
-    tail.rotation.x = 0.45;
-    root.add(tail);
+    const tailG = new BABYLON.TransformNode('h_tail_node', scene);
+    tailG.position.set(0, 1.15, -1.05);
+    tailG.parent = root;
 
-    const legs = [];
-    const spots = [
-        { x: 0.22, z: 0.55, name: 'fl' },
-        { x: -0.22, z: 0.55, name: 'fr' },
-        { x: 0.22, z: -0.55, name: 'hl' },
-        { x: -0.22, z: -0.55, name: 'hr' }
+    const tail = BABYLON.MeshBuilder.CreateCylinder('h_tail', { height: 0.95, diameterTop: 0.08, diameterBottom: 0.18, tessellation: 8 }, scene);
+    tail.position.y = -0.45;
+    tail.rotation.x = 0.35;
+    tail.material = dark;
+    tail.parent = tailG;
+
+    // Sela
+    const saddle = BABYLON.MeshBuilder.CreateBox('h_saddle', { width: 0.6, height: 0.15, depth: 0.65 }, scene);
+    saddle.position.set(0, 1.68, 0);
+    saddle.material = leather;
+    saddle.parent = root;
+
+    // 2. PERNAS ARTICULADAS (4 patas)
+    const legs = {};
+    const legConfigs = [
+        { key: 'fl', x: 0.24, z: 0.55 },
+        { key: 'fr', x: -0.24, z: 0.55 },
+        { key: 'hl', x: 0.24, z: -0.55 },
+        { key: 'hr', x: -0.24, z: -0.55 }
     ];
-    for (const s of spots) {
-        const hip = new THREE.Group();
-        hip.position.set(s.x, 1.05, s.z);
-        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.52, 6), coat);
-        thigh.position.y = -0.22;
-        hip.add(thigh);
-        const shinG = new THREE.Group();
-        shinG.position.y = -0.48;
-        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.48, 6), coat);
-        shin.position.y = -0.2;
-        shinG.add(shin);
-        const hoof = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.14), dark);
-        hoof.position.y = -0.46;
-        shinG.add(hoof);
-        hip.add(shinG);
-        root.add(hip);
-        legs.push({ hip, shin: shinG, name: s.name });
-    }
 
-    const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.7), leather);
-    saddle.position.set(0, 1.58, 0.02);
-    root.add(saddle);
+    legConfigs.forEach((cfg) => {
+        const hip = new BABYLON.TransformNode(`hip_${cfg.key}`, scene);
+        hip.position.set(cfg.x, 1.05, cfg.z);
+        hip.parent = root;
 
-    const rider = new THREE.Group();
-    rider.position.set(0, 1.62, 0.02);
-    const hips = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.28), cloth);
-    hips.position.y = 0.22;
-    rider.add(hips);
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.48, 0.28), cloth);
-    torso.position.y = 0.52;
-    rider.add(torso);
-    const poncho = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.55, 6, 1, true), std(0x8a3a18, 0.8));
-    poncho.position.y = 0.42;
-    rider.add(poncho);
-    const headR = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), skin);
-    headR.position.y = 0.88;
-    rider.add(headR);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 10), hat);
-    brim.position.y = 0.98;
-    rider.add(brim);
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 8), hat);
-    crown.position.y = 1.08;
-    rider.add(crown);
-    for (const sx of [-1, 1]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.42, 6), cloth);
-        arm.position.set(sx * 0.28, 0.48, 0.12);
-        arm.rotation.x = 0.85;
-        arm.rotation.z = -sx * 0.25;
-        rider.add(arm);
-        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.18), dark);
-        boot.position.set(sx * 0.16, 0.02, 0.12);
-        rider.add(boot);
-    }
-    root.add(rider);
+        const thigh = BABYLON.MeshBuilder.CreateCylinder(`thigh_${cfg.key}`, { height: 0.55, diameterTop: 0.18, diameterBottom: 0.14, tessellation: 8 }, scene);
+        thigh.position.y = -0.25;
+        thigh.material = coat;
+        thigh.parent = hip;
 
-    enableShadows(root);
-    return { root, parts: { legs, neck, head: headG, tail, rider, mane } };
+        const knee = new BABYLON.TransformNode(`knee_${cfg.key}`, scene);
+        knee.position.y = -0.52;
+        knee.parent = hip;
+
+        const shin = BABYLON.MeshBuilder.CreateCylinder(`shin_${cfg.key}`, { height: 0.52, diameterTop: 0.13, diameterBottom: 0.10, tessellation: 8 }, scene);
+        shin.position.y = -0.24;
+        shin.material = coat;
+        shin.parent = knee;
+
+        const hoof = BABYLON.MeshBuilder.CreateCylinder(`hoof_${cfg.key}`, { height: 0.12, diameter: 0.14, tessellation: 8 }, scene);
+        hoof.position.y = -0.50;
+        hoof.material = dark;
+        hoof.parent = knee;
+
+        legs[cfg.key] = { hip, knee };
+    });
+
+    // 3. CAVALEIRO
+    const rider = new BABYLON.TransformNode('rider_root', scene);
+    rider.position.set(0, 1.75, 0.05);
+    rider.parent = root;
+
+    const torso = BABYLON.MeshBuilder.CreateBox('r_torso', { width: 0.44, height: 0.56, depth: 0.3 }, scene);
+    torso.position.y = 0.32;
+    torso.material = shirt;
+    torso.parent = rider;
+
+    const rHead = BABYLON.MeshBuilder.CreateSphere('r_head', { diameter: 0.28, segments: 10 }, scene);
+    rHead.position.y = 0.72;
+    rHead.material = skin;
+    rHead.parent = rider;
+
+    const rHatBrim = BABYLON.MeshBuilder.CreateDisc('r_hat_brim', { radius: 0.34, tessellation: 24 }, scene);
+    rHatBrim.rotation.x = Math.PI / 2;
+    rHatBrim.position.y = 0.85;
+    rHatBrim.material = hat;
+    rHatBrim.parent = rider;
+
+    const rHatCrown = BABYLON.MeshBuilder.CreateCylinder('r_hat_crown', { height: 0.18, diameter: 0.26, tessellation: 16 }, scene);
+    rHatCrown.position.y = 0.94;
+    rHatCrown.material = hat;
+    rHatCrown.parent = rider;
+
+    return { root, body, headG, tailG, legs, rider };
 }
 
-function gaitName(speed) {
-    if (speed < 5) return 'passo';
-    if (speed < 9.5) return 'trote';
-    if (speed < 16.5) return 'galope';
-    return 'disparada';
-}
+export function animateHorse(horseObj, speed, distance, dt) {
+    if (!horseObj) return;
 
-export class Horse {
-    constructor(scene, world) {
-        this.world = world;
-        const built = buildHorse();
-        this.mesh = built.root;
-        this.parts = built.parts;
-        scene.add(this.mesh);
-        this.x = 0;
-        this.z = 0;
-        this.y = 0;
-        this.yaw = 0;
-        this.speed = HORSE.cruise;
-        this.pitch = 0;
-        this.roll = 0;
-        this.phase = 0;
-        this.spurT = 0;
-        this.cruise = true;
-        this.distance = 0;
-        this.air = 0;
-        this.hoofTimer = 0;
-        this.gait = 'galope';
-        this.inWater = false;
-    }
+    // Fase do galope
+    const freq = Math.max(1.0, speed * 0.35);
+    const phase = distance * 2.8;
 
-    reset(spawn) {
-        this.x = spawn.x;
-        this.z = spawn.z;
-        this.yaw = spawn.yaw;
-        this.speed = HORSE.cruise;
-        this.pitch = 0;
-        this.roll = 0;
-        this.phase = 0;
-        this.spurT = 0;
-        this.distance = 0;
-        this.y = this.world.heightAt(this.x, this.z);
-        this.sync();
-    }
+    // Balanço diagonal das pernas
+    const flAngle = Math.sin(phase) * 0.55;
+    const frAngle = Math.sin(phase + Math.PI) * 0.55;
+    const hlAngle = Math.sin(phase + Math.PI * 0.8) * 0.55;
+    const hrAngle = Math.sin(phase - Math.PI * 0.2) * 0.55;
 
-    get forward() {
-        return { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
-    }
+    horseObj.legs.fl.hip.rotation.x = flAngle;
+    horseObj.legs.fr.hip.rotation.x = frAngle;
+    horseObj.legs.hl.hip.rotation.x = hlAngle;
+    horseObj.legs.hr.hip.rotation.x = hrAngle;
 
-    toggleCruise() {
-        this.cruise = !this.cruise;
-        return this.cruise;
-    }
+    horseObj.legs.fl.knee.rotation.x = Math.max(0, -flAngle * 0.8);
+    horseObj.legs.fr.knee.rotation.x = Math.max(0, -frAngle * 0.8);
+    horseObj.legs.hl.knee.rotation.x = Math.max(0, -hlAngle * 0.8);
+    horseObj.legs.hr.knee.rotation.x = Math.max(0, -hrAngle * 0.8);
 
-    update(dt, input) {
-        const steer = input.move.x;
-        const throttle = input.move.z;
-        const sprint = input.move.sprint;
-
-        const spurred = input.consumeSpur();
-        if (spurred) this.spurT = HORSE.spurTime;
-
-        this.spurT = Math.max(0, this.spurT - dt);
-
-        let target;
-        if (this.spurT > 0 || sprint) {
-            target = this.spurT > 0 ? HORSE.spur : HORSE.gallop;
-        } else if (throttle > 0.12) {
-            target = lerp(HORSE.canter, HORSE.gallop, clamp(throttle, 0, 1));
-        } else if (throttle < -0.12) {
-            const brake = clamp(-throttle, 0, 1);
-            target = this.cruise
-                ? lerp(HORSE.cruise, HORSE.walk, brake)
-                : lerp(HORSE.walk, 0, brake);
-        } else {
-            target = this.cruise ? HORSE.cruise : HORSE.walk;
-        }
-
-        const rate = target > this.speed ? HORSE.accel : HORSE.brake;
-        this.speed = damp(this.speed, target, rate * 0.22, dt);
-        if (this.cruise) this.speed = Math.max(this.speed, HORSE.walk * 0.92);
-
-        const f = this.forward;
-        const look = 2.4;
-        const aheadY = this.world.heightAt(this.x + f.x * look, this.z + f.z * look);
-        const slope = (aheadY - this.y) / look;
-        if (slope > HORSE.maxClimb) this.speed *= 1 - clamp((slope - HORSE.maxClimb) * 1.6, 0, 0.55) * dt * 8;
-
-        const turnScale = clamp(Math.abs(this.speed) / 7, 0.28, 1.15);
-        this.yaw -= steer * HORSE.turn * turnScale * dt;
-        this.yaw = wrapPi(this.yaw);
-
-        const f2 = this.forward;
-        let x = this.x + f2.x * this.speed * dt;
-        let z = this.z + f2.z * this.speed * dt;
-        const hit = this.world.collide(x, z, HORSE.radius);
-        x = hit.x;
-        z = hit.z;
-
-        const ground = this.world.heightAt(x, z);
-        this.inWater = ground < this.world.waterY + 0.35;
-        if (this.inWater) this.speed = Math.min(this.speed, HORSE.trot * 1.05);
-
-        const dist = Math.hypot(x - this.x, z - this.z);
-        this.distance += dist;
-        this.x = x;
-        this.z = z;
-        this.y = ground;
-        this.gait = gaitName(this.speed);
-
-        const right = this.world.heightAt(
-            x + Math.cos(this.yaw) * 1.4,
-            z - Math.sin(this.yaw) * 1.4
-        );
-        this.pitch = damp(this.pitch, clamp((this.y - aheadY) * 0.16, -0.28, 0.28), 7, dt);
-        this.roll = damp(this.roll, clamp((this.y - right) * 0.1 - steer * 0.14, -0.22, 0.22), 8, dt);
-
-        this.phase += this.speed * dt * 2.35;
-        this.animate(dt, steer);
-        this.sync();
-
-        this.hoofTimer += this.speed * dt;
-        const stride = this.speed > 14 ? 1.35 : this.speed > 8 ? 1.7 : 2.15;
-        const hoof = this.hoofTimer > stride;
-        if (hoof) this.hoofTimer = 0;
-        return { hoof, spur: spurred };
-    }
-
-    animate(dt, steer) {
-        const amp = clamp(this.speed / HORSE.gallop, 0.12, 1) * 0.72;
-        const g = Math.sin(this.phase);
-        const g2 = Math.sin(this.phase + Math.PI);
-        const legs = this.parts.legs;
-        legs[0].hip.rotation.x = g * amp;
-        legs[3].hip.rotation.x = g * amp * 0.92;
-        legs[1].hip.rotation.x = g2 * amp;
-        legs[2].hip.rotation.x = g2 * amp * 0.92;
-        legs[0].shin.rotation.x = Math.max(0, -g) * amp * 0.7;
-        legs[3].shin.rotation.x = Math.max(0, -g) * amp * 0.6;
-        legs[1].shin.rotation.x = Math.max(0, -g2) * amp * 0.7;
-        legs[2].shin.rotation.x = Math.max(0, -g2) * amp * 0.6;
-
-        this.parts.neck.rotation.x = 0.62 - amp * 0.12 + Math.sin(this.phase * 0.5) * 0.04;
-        this.parts.head.rotation.x = Math.sin(this.phase * 0.5) * 0.05;
-        this.parts.tail.rotation.x = 0.45 + Math.sin(this.phase * 0.8) * 0.18;
-        this.parts.tail.rotation.z = steer * 0.25 + Math.sin(this.phase) * 0.08;
-        this.parts.rider.rotation.z = -steer * 0.12;
-        this.parts.rider.rotation.x = -this.pitch * 0.4 + Math.sin(this.phase) * 0.03;
-    }
-
-    sync() {
-        this.mesh.position.set(this.x, this.y, this.z);
-        this.mesh.rotation.order = 'YXZ';
-        this.mesh.rotation.y = this.yaw;
-        this.mesh.rotation.x = this.pitch;
-        this.mesh.rotation.z = this.roll;
-    }
+    // Oscilação vertical do corpo no galope
+    horseObj.body.position.y = 1.18 + Math.abs(Math.sin(phase * 2)) * 0.12 * Math.min(1, speed / 10);
+    horseObj.headG.rotation.x = Math.sin(phase) * 0.08;
+    horseObj.tailG.rotation.z = Math.sin(phase * 0.5) * 0.2;
 }

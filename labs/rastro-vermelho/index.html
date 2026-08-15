@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#1a0e08">
     <title>Rastro Vermelho — galope sem fim pelo faroeste | Diogo Paulino</title>
     <meta name="description"
-        content="Mundo aberto 3D em three.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste. O cavalo não cansa — o oeste não acaba.">
+        content="Mundo aberto 3D em Babylon.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste. O cavalo não cansa — o oeste não acaba.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/rastro-vermelho/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,27 +23,19 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/rastro-vermelho/">
     <meta property="og:title" content="Rastro Vermelho — galope sem fim pelo faroeste | Diogo Paulino">
     <meta property="og:description"
-        content="Mundo aberto 3D em three.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste.">
+        content="Mundo aberto 3D em Babylon.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Rastro Vermelho | Diogo Paulino">
-    <meta name="twitter:description" content="Cavalo, montanhas e faroeste infinito no navegador. three.js.">
+    <meta name="twitter:description" content="Cavalo, montanhas e faroeste infinito no navegador em Babylon.js.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=8">
     <link rel="stylesheet" href="style.css?v=1">
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -52,7 +44,7 @@
           "@type": "WebApplication",
           "name": "Rastro Vermelho",
           "url": "https://diogopaulino.com.br/labs/rastro-vermelho/",
-          "description": "Mundo aberto 3D em three.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste. O cavalo não cansa — o oeste não acaba.",
+          "description": "Mundo aberto 3D em Babylon.js: galope sem parar por serras, cânions e pradarias no espírito do faroeste. O cavalo não cansa — o oeste não acaba.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -136,23 +128,17 @@
                     <span class="hud-label">Rastro</span>
                     <div class="speed-row">
                         <strong id="distanceValue" class="mono">0 m</strong>
-                        <span id="hourLabel">manhã</span>
+                        <span id="hourLabel">entardecer</span>
                     </div>
-                    <span id="clockValue" class="mono meta">4:00</span>
-                    · <span id="markCount" class="mono meta">0/6</span>
-                    <div id="markPips" class="mark-pips" aria-label="Marcos encontrados"></div>
                 </div>
             </div>
 
             <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
-            <p id="prompt" class="prompt">W galope · A D curva · Espaço espora · G livre</p>
+            <p id="prompt" class="prompt">W galope · A D curva · Espaço espora · M som</p>
 
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
                     title="Som (M)" aria-label="Alternar som">♪</button>
-                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
-                    aria-label="Pausar">II</button>
-                <span id="fpsCounter" class="fps mono">—</span>
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
@@ -160,7 +146,6 @@
                     <i id="moveKnob"></i>
                     <span>rédea</span>
                 </div>
-                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
                 <div class="touch-buttons">
                     <button type="button" id="btnSpur" class="pad pad-spur">espora</button>
                 </div>
@@ -172,18 +157,16 @@
                 <span class="sun-loader" aria-hidden="true"></span>
                 <h1>Rastro Vermelho</h1>
                 <p id="loadingText">O oeste acorda…</p>
-                <div class="loading-bar"><i id="loadingFill"></i></div>
             </div>
         </div>
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · mundo aberto · faroeste</p>
+                    <p class="eyebrow"><i></i> Babylon.js · mundo aberto · faroeste</p>
                     <h1>Rastro <span>Vermelho</span></h1>
-                    <p class="lede">O cavalo já está em galope e não para. Serras, cânions, rios e povoados
-                        nascem na frente — um oeste procedural que não acaba. Espore, cruze a pradaria,
-                        ache a fogueira. O sol faz o dia inteiro.</p>
+                    <p class="lede">O cavalo já está em galope e não para. Serras, cânions e pradarias
+                        nascem na frente em Babylon.js — um oeste procedural sem fim.</p>
                 </header>
 
                 <div class="menu-grid">
@@ -191,11 +174,9 @@
                         <h2>O oeste</h2>
                         <ul class="species-preview">
                             <li>Pradaria dourada</li>
-                            <li>Serras e pinheiros</li>
-                            <li>Cânions de pedra</li>
-                            <li>Mesas e cactos</li>
-                            <li>Rios e cachoeiras</li>
-                            <li>Povoados de madeira</li>
+                            <li>Serras e montanhas</li>
+                            <li>Cânions de pedra vermelha</li>
+                            <li>Mesas e cactos saguaro</li>
                         </ul>
                     </section>
 
@@ -203,31 +184,9 @@
                         <h2>Comandos</h2>
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> rédea e curva</span>
-                            <span><kbd>Espaço</kbd> espora · <kbd>Shift</kbd> disparada</span>
-                            <span><kbd>G</kbd> galope livre (não para)</span>
-                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
-                            <span>mouse olha · roda aproxima</span>
+                            <span><kbd>Espaço</kbd> espora</span>
+                            <span><kbd>M</kbd> som</span>
                         </div>
-                    </section>
-
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
-                        <div class="settings-grid">
-                            <label class="field">
-                                <span>Qualidade</span>
-                                <select id="qualitySelect">
-                                    <option value="auto">Automática</option>
-                                    <option value="low">Performance</option>
-                                    <option value="medium">Equilibrada</option>
-                                    <option value="high">Cinemática</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Volume <b id="volumeValue">70</b></span>
-                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
-                            </label>
-                        </div>
-                        <p class="section-note">Maior rastro: <b id="bestScore" class="mono">—</b></p>
                     </section>
                 </div>
 
@@ -237,19 +196,6 @@
                         <i aria-hidden="true">→</i>
                     </button>
                 </footer>
-            </div>
-        </div>
-
-        <div id="pauseOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> O cavalo espera</p>
-                <h2>A trilha<br>está pausada.</h2>
-                <div class="card-actions">
-                    <button id="resumeButton" class="primary-button" type="button">
-                        <span>Continuar</span><i aria-hidden="true">→</i>
-                    </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao acampamento</button>
-                </div>
             </div>
         </div>
 
@@ -265,25 +211,9 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="/labs/shared.js?v=6" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
     <script type="module" src="src/main.js"></script>
 </body>
 
