@@ -2,7 +2,7 @@
 
 ## Personagem
 
-- `assets/characters/knight.gltf` e `KnightCharacter.bin`: Knight Character do repositório [three.js](https://github.com/mrdoob/three.js/tree/master/manual/examples/resources/models/knight), distribuído com o projeto sob licença MIT.
+- `KnightCharacter.gltf` e `KnightCharacter.bin`: Knight Character carregado em tempo de execução do repositório [three.js](https://github.com/mrdoob/three.js/tree/master/manual/examples/resources/models/knight), distribuído com o projeto sob licença MIT.
 
 ## Poly Haven — CC0
 
