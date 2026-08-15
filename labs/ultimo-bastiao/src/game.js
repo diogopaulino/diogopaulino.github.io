@@ -1,8 +1,8 @@
 import { PLAYER, ATTACKS, DIFFICULTY, WAVES, ENEMY_TYPES, QUALITY, STORAGE_KEY } from './config.js';
 import { BattleAudio } from './audio.js';
 import { BattleInput } from './input.js';
-import { createWorld } from './world.js';
-import { createKnight, animateKnight } from './characters.js';
+import { createWorld, loadWorldAssets } from './world.js';
+import { createKnight, animateKnight, loadCharacterAssets } from './characters.js';
 
 const B = window.BABYLON;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -468,7 +468,12 @@ class Game {
       this.scene.activeCamera = this.camera;
       this.setLoading(.32, 'Erguendo as muralhas…');
       this.world = createWorld(this.scene, this.quality);
-      this.setLoading(.68, 'Forjando as espadas…');
+      this.setLoading(.41, 'Vestindo as armaduras…');
+      await Promise.all([
+        loadCharacterAssets(this.scene, progress => this.setLoading(.41 + progress * .28, 'Vestindo as armaduras…')),
+        loadWorldAssets(this.scene, this.world)
+      ]);
+      this.setLoading(.74, 'Espalhando os destroços…');
       this.player = new PlayerController(this);
       this.setCameraImmediate();
       this.bindUi();
