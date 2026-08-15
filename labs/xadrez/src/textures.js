@@ -1,9 +1,7 @@
 /**
- * Texturas PBR procedurais — madeira, marfim, ébano, feltro e mármore.
- * Sem arquivos externos: cada mapa é um canvas reutilizado pelos materiais.
+ * Texturas PBR procedurais — madeira, marfim, ébano, feltro e mármore para Babylon.js.
+ * Sem arquivos externos: cada mapa é gerado em canvas e instanciado como BABYLON.Texture.
  */
-
-import * as THREE from 'three';
 
 function canvas(w, h = w) {
     const el = document.createElement('canvas');
@@ -21,13 +19,15 @@ function rng(seed = 1) {
     return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
 }
 
-function toTex(el, { repeat = [1, 1], srgb = true, aniso = 8, wrap = true } = {}) {
-    const tex = new THREE.CanvasTexture(el);
-    tex.wrapS = tex.wrapT = wrap ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-    tex.repeat.set(repeat[0], repeat[1]);
-    tex.anisotropy = aniso;
-    if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
+function toBabylonTexture(el, scene, { uScale = 1, vScale = 1 } = {}) {
+    const BABYLON = window.BABYLON;
+    if (!BABYLON) return null;
+    const url = el.toDataURL('image/png');
+    const tex = new BABYLON.Texture(url, scene, false, false);
+    tex.uScale = uScale;
+    tex.vScale = vScale;
+    tex.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    tex.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
     return tex;
 }
 
@@ -73,16 +73,16 @@ function roughnessFrom(srcCtx, w, h, base = 0.35, contrast = 0.25) {
     return out;
 }
 
-function pack(draw, { w = 512, strength = 1.8, roughBase = 0.32, roughContrast = 0.22, aniso = 8, repeat = [1, 1] } = {}) {
+function pack(scene, draw, { w = 512, strength = 1.8, roughBase = 0.32, roughContrast = 0.22, repeat = [1, 1] } = {}) {
     const el = canvas(w);
     const ctx = ctx2d(el);
     draw(ctx, w);
     const n = heightToNormal(ctx, w, w, strength);
     const r = roughnessFrom(ctx, w, w, roughBase, roughContrast);
     return {
-        map: toTex(el, { aniso, repeat }),
-        normalMap: toTex(n, { aniso, repeat, srgb: false }),
-        roughnessMap: toTex(r, { aniso, repeat, srgb: false })
+        map: toBabylonTexture(el, scene, { uScale: repeat[0], vScale: repeat[1] }),
+        normalMap: toBabylonTexture(n, scene, { uScale: repeat[0], vScale: repeat[1] }),
+        roughnessMap: toBabylonTexture(r, scene, { uScale: repeat[0], vScale: repeat[1] })
     };
 }
 
@@ -106,20 +106,20 @@ function grain(ctx, w, rand, colorA, colorB, bands = 28) {
     }
 }
 
-export function createTextures(aniso = 8) {
-    const maple = pack((ctx, w) => {
+export function createTextures(scene) {
+    const maple = pack(scene, (ctx, w) => {
         grain(ctx, w, rng(11), '#e2c9a0', '#c9a574', 22);
-    }, { aniso, repeat: [1, 1], roughBase: 0.28, strength: 1.4 });
+    }, { repeat: [1, 1], roughBase: 0.28, strength: 1.4 });
 
-    const walnut = pack((ctx, w) => {
+    const walnut = pack(scene, (ctx, w) => {
         grain(ctx, w, rng(29), '#5a3418', '#3a1e0c', 18);
-    }, { aniso, repeat: [1, 1], roughBase: 0.34, strength: 1.6 });
+    }, { repeat: [1, 1], roughBase: 0.34, strength: 1.6 });
 
-    const mahogany = pack((ctx, w) => {
+    const mahogany = pack(scene, (ctx, w) => {
         grain(ctx, w, rng(71), '#6b2e18', '#3d140c', 16);
-    }, { aniso, repeat: [3, 3], roughBase: 0.22, strength: 1.2 });
+    }, { repeat: [3, 3], roughBase: 0.22, strength: 1.2 });
 
-    const ebony = pack((ctx, w) => {
+    const ebony = pack(scene, (ctx, w) => {
         const rand = rng(101);
         ctx.fillStyle = '#1a120f';
         ctx.fillRect(0, 0, w, w);
@@ -130,9 +130,9 @@ export function createTextures(aniso = 8) {
             ctx.fillRect(rand() * w, 0, 1 + rand() * 2, w);
         }
         ctx.globalAlpha = 1;
-    }, { aniso, repeat: [2, 2], roughBase: 0.18, roughContrast: 0.15, strength: 1.1 });
+    }, { repeat: [2, 2], roughBase: 0.18, roughContrast: 0.15, strength: 1.1 });
 
-    const ivory = pack((ctx, w) => {
+    const ivory = pack(scene, (ctx, w) => {
         const rand = rng(53);
         const g = ctx.createLinearGradient(0, 0, w, w);
         g.addColorStop(0, '#eadcc4');
@@ -149,46 +149,42 @@ export function createTextures(aniso = 8) {
             ctx.bezierCurveTo(w * 0.3, y + (rand() - 0.5) * 40, w * 0.7, y + (rand() - 0.5) * 40, w, y + (rand() - 0.5) * 20);
             ctx.stroke();
         }
-    }, { aniso, repeat: [1, 1], roughBase: 0.16, strength: 0.9 });
+    }, { repeat: [2, 2], roughBase: 0.28, strength: 0.8 });
 
-    const felt = pack((ctx, w) => {
+    const felt = pack(scene, (ctx, w) => {
         const rand = rng(7);
-        ctx.fillStyle = '#1e4a32';
+        ctx.fillStyle = '#1e6840';
         ctx.fillRect(0, 0, w, w);
-        for (let i = 0; i < 8000; i++) {
-            ctx.fillStyle = `rgba(${20 + rand() * 40},${80 + rand() * 50},${40 + rand() * 30},${0.15})`;
-            ctx.fillRect(rand() * w, rand() * w, 1.2, 1.2);
+        const img = ctx.getImageData(0, 0, w, w);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+            const noise = (rand() - 0.5) * 26;
+            d[i] = Math.max(0, Math.min(255, d[i] + noise));
+            d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + noise));
+            d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + noise));
         }
-    }, { aniso, repeat: [4, 4], roughBase: 0.92, strength: 2.4 });
+        ctx.putImageData(img, 0, 0);
+    }, { repeat: [4, 4], roughBase: 0.95, strength: 0.4 });
 
-    const marble = pack((ctx, w) => {
-        const rand = rng(90);
-        ctx.fillStyle = '#d8d2c8';
+    const marble = pack(scene, (ctx, w) => {
+        const rand = rng(88);
+        ctx.fillStyle = '#dcd4c8';
         ctx.fillRect(0, 0, w, w);
-        for (let i = 0; i < 12; i++) {
+        for (let v = 0; v < 14; v++) {
             ctx.strokeStyle = `rgba(90,80,70,${0.08 + rand() * 0.12})`;
-            ctx.lineWidth = 1 + rand() * 3;
+            ctx.lineWidth = 1 + rand() * 3.5;
             ctx.beginPath();
-            ctx.moveTo(rand() * w, 0);
-            ctx.bezierCurveTo(rand() * w, w * 0.3, rand() * w, w * 0.6, rand() * w, w);
+            let x = rand() * w;
+            let y = rand() * w;
+            ctx.moveTo(x, y);
+            for (let step = 0; step < 5; step++) {
+                x += (rand() - 0.5) * 160;
+                y += (rand() - 0.5) * 160;
+                ctx.lineTo(x, y);
+            }
             ctx.stroke();
         }
-    }, { aniso, repeat: [2, 2], roughBase: 0.12, strength: 0.8 });
+    }, { repeat: [2, 2], roughBase: 0.12, strength: 0.6 });
 
-    const rim = (() => {
-        const el = canvas(1024, 128);
-        const ctx = ctx2d(el);
-        grain(ctx, 1024, rng(17), '#6b3a1c', '#3d1c0c', 20);
-        ctx.fillStyle = '#e8d2a8';
-        ctx.font = '600 52px "Cinzel", Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const letters = 'ABCDEFGH';
-        for (let i = 0; i < 8; i++) {
-            ctx.fillText(letters[i], 64 + i * 128, 64);
-        }
-        return toTex(el, { wrap: false, aniso });
-    })();
-
-    return { maple, walnut, mahogany, ebony, ivory, felt, marble, rim };
+    return { maple, walnut, mahogany, ebony, ivory, felt, marble };
 }

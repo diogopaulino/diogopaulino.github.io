@@ -1,325 +1,271 @@
 /**
- * Peças Staunton procedurais — torno (LatheGeometry) + ornamentos.
- *
- * Alturas relativas ao rei (1.78 u, casa = 1 u): peão 0.95, torre 1.15,
- * cavalo 1.22, bispo 1.38, dama 1.58. Materiais PBR: marfim / ébano / cristal.
+ * Peças Staunton procedurais de alta definição em Babylon.js.
+ * Torno (Lathe) + ornamentos detalhados + materiais PBR (Marfim, Ébano, Cristal).
  */
 
-import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-
-function lathe(xy, seg) {
-    const pts = xy.map(([x, y]) => new THREE.Vector2(x, y));
-    const g = new THREE.LatheGeometry(pts, seg);
-    g.computeVertexNormals();
-    return g;
+function lathe(BABYLON, name, xy, seg, scene) {
+    const shape = xy.map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    const mesh = BABYLON.MeshBuilder.CreateLathe(name, {
+        shape,
+        tessellation: seg,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        updatable: false
+    }, scene);
+    return mesh;
 }
 
-function box(w, h, d, x, y, z) {
-    const g = new THREE.BoxGeometry(w, h, d);
-    g.translate(x, y, z);
-    return g;
+function box(BABYLON, name, w, h, d, x, y, z, scene) {
+    const mesh = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, scene);
+    mesh.position.set(x, y, z);
+    return mesh;
 }
 
-function merge(list) {
-    const geos = list.filter(Boolean);
-    const g = mergeGeometries(geos, false);
-    if (!g) return geos[0];
-    geos.forEach((x) => x.dispose?.());
-    g.computeVertexNormals();
-    return g;
+function collar(BABYLON, name, radius, y, tube, seg, scene) {
+    const mesh = BABYLON.MeshBuilder.CreateTorus(name, {
+        diameter: radius * 2,
+        thickness: tube * 2,
+        tessellation: Math.max(16, seg)
+    }, scene);
+    mesh.position.y = y;
+    return mesh;
 }
 
-function collar(radius, y, tube, seg) {
-    const t = new THREE.TorusGeometry(radius, tube, 8, Math.max(16, seg >> 1));
-    t.rotateX(Math.PI / 2);
-    t.translate(0, y, 0);
-    return t;
+function merge(BABYLON, name, list, scene) {
+    const meshes = list.filter(Boolean);
+    if (meshes.length === 0) return null;
+    if (meshes.length === 1) {
+        meshes[0].name = name;
+        return meshes[0];
+    }
+    const merged = BABYLON.Mesh.MergeMeshes(meshes, true, true, undefined, false, false);
+    if (merged) merged.name = name;
+    return merged;
 }
 
-export function buildPieceGeometries(seg = 48) {
-    const pawn = merge([
-        lathe([
-            [0, 0], [0.33, 0], [0.35, 0.035], [0.30, 0.08],
-            [0.27, 0.14], [0.16, 0.20], [0.135, 0.46],
-            [0.13, 0.54], [0.20, 0.58], [0.13, 0.62],
-            [0.12, 0.68], [0.185, 0.74], [0.20, 0.84],
-            [0.16, 0.91], [0.08, 0.94], [0, 0.95]
-        ], seg),
-        collar(0.175, 0.58, 0.028, seg)
-    ]);
+export function buildPieceGeometries(BABYLON, scene, seg = 48) {
+    // 1. PEÃO (Pawn)
+    const pawnLathe = lathe(BABYLON, 'pawn_base', [
+        [0, 0], [0.33, 0], [0.35, 0.035], [0.30, 0.08],
+        [0.27, 0.14], [0.16, 0.20], [0.135, 0.46],
+        [0.13, 0.54], [0.20, 0.58], [0.13, 0.62],
+        [0.12, 0.68], [0.185, 0.74], [0.20, 0.84],
+        [0.16, 0.91], [0.08, 0.94], [0, 0.95]
+    ], seg, scene);
+    const pawnCollar = collar(BABYLON, 'pawn_col', 0.175, 0.58, 0.028, seg, scene);
+    const pawn = merge(BABYLON, 'geo_pawn', [pawnLathe, pawnCollar], scene);
 
+    // 2. TORRE (Rook)
+    const rookLathe = lathe(BABYLON, 'rook_base', [
+        [0, 0], [0.36, 0], [0.38, 0.04], [0.32, 0.10],
+        [0.28, 0.18], [0.20, 0.26], [0.175, 0.68],
+        [0.24, 0.74], [0.26, 0.80], [0.28, 0.90],
+        [0.28, 0.96], [0.16, 0.96], [0.16, 0.88],
+        [0, 0.88]
+    ], seg, scene);
+    const rookCollar = collar(BABYLON, 'rook_col', 0.22, 0.74, 0.03, seg, scene);
     const merlons = [];
     const rookR = 0.20;
     const rookY = 1.04;
     for (let i = 0; i < 4; i++) {
         const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-        merlons.push(box(0.15, 0.15, 0.13, Math.cos(a) * rookR, rookY, Math.sin(a) * rookR));
+        merlons.push(box(BABYLON, `rook_m_${i}`, 0.15, 0.15, 0.13, Math.cos(a) * rookR, rookY, Math.sin(a) * rookR, scene));
     }
-    const rook = merge([
-        lathe([
-            [0, 0], [0.36, 0], [0.38, 0.04], [0.32, 0.10],
-            [0.28, 0.18], [0.20, 0.26], [0.175, 0.68],
-            [0.24, 0.74], [0.26, 0.80], [0.28, 0.90],
-            [0.28, 0.96], [0.16, 0.96], [0.16, 0.88],
-            [0, 0.88]
-        ], seg),
-        collar(0.22, 0.74, 0.03, seg),
-        ...merlons
-    ]);
+    const rook = merge(BABYLON, 'geo_rook', [rookLathe, rookCollar, ...merlons], scene);
 
-    const bishop = merge([
-        lathe([
-            [0, 0], [0.34, 0], [0.36, 0.04], [0.30, 0.09],
-            [0.26, 0.16], [0.16, 0.24], [0.135, 0.52],
-            [0.20, 0.60], [0.14, 0.66], [0.12, 0.78],
-            [0.14, 0.94], [0.175, 1.10], [0.14, 1.24],
-            [0.08, 1.33], [0.05, 1.35], [0.085, 1.37], [0, 1.38]
-        ], seg),
-        collar(0.175, 0.60, 0.028, seg)
-    ]);
+    // 3. BISPO (Bishop)
+    const bishopLathe = lathe(BABYLON, 'bishop_base', [
+        [0, 0], [0.34, 0], [0.36, 0.04], [0.30, 0.09],
+        [0.26, 0.16], [0.16, 0.24], [0.135, 0.52],
+        [0.20, 0.60], [0.14, 0.66], [0.12, 0.78],
+        [0.14, 0.94], [0.175, 1.10], [0.14, 1.24],
+        [0.08, 1.33], [0.05, 1.35], [0.085, 1.37], [0, 1.38]
+    ], seg, scene);
+    const bishopCollar = collar(BABYLON, 'bishop_col', 0.175, 0.60, 0.028, seg, scene);
+    const bishopBall = BABYLON.MeshBuilder.CreateSphere('bishop_ball', { diameter: 0.14, segments: 16 }, scene);
+    bishopBall.position.set(0, 1.40, 0);
+    const bishop = merge(BABYLON, 'geo_bishop', [bishopLathe, bishopCollar, bishopBall], scene);
 
+    // 4. DAMA (Queen)
+    const queenLathe = lathe(BABYLON, 'queen_base', [
+        [0, 0], [0.36, 0], [0.38, 0.045], [0.32, 0.10],
+        [0.28, 0.18], [0.175, 0.26], [0.145, 0.60],
+        [0.22, 0.68], [0.15, 0.74], [0.125, 0.92],
+        [0.12, 1.14], [0.16, 1.30], [0.185, 1.40],
+        [0.15, 1.44], [0.07, 1.46], [0, 1.48]
+    ], seg, scene);
+    const queenCollar = collar(BABYLON, 'queen_col', 0.195, 0.68, 0.03, seg, scene);
     const jewels = [];
     for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        const c = new THREE.ConeGeometry(0.042, 0.13, 8);
-        c.translate(Math.cos(a) * 0.155, 1.50, Math.sin(a) * 0.155);
+        const c = BABYLON.MeshBuilder.CreateCylinder(`queen_j_${i}`, { height: 0.13, diameterTop: 0, diameterBottom: 0.08, tessellation: 8 }, scene);
+        c.position.set(Math.cos(a) * 0.155, 1.50, Math.sin(a) * 0.155);
         jewels.push(c);
     }
-    const queen = merge([
-        lathe([
-            [0, 0], [0.36, 0], [0.38, 0.045], [0.32, 0.10],
-            [0.28, 0.18], [0.175, 0.26], [0.145, 0.60],
-            [0.22, 0.68], [0.15, 0.74], [0.125, 0.92],
-            [0.12, 1.14], [0.16, 1.30], [0.185, 1.40],
-            [0.15, 1.44], [0.07, 1.46], [0, 1.48]
-        ], seg),
-        collar(0.195, 0.68, 0.03, seg),
-        ...jewels
-    ]);
+    const queen = merge(BABYLON, 'geo_queen', [queenLathe, queenCollar, ...jewels], scene);
 
-    const cross = merge([
-        box(0.05, 0.26, 0.05, 0, 1.66, 0),
-        box(0.17, 0.045, 0.045, 0, 1.70, 0)
-    ]);
-    const king = merge([
-        lathe([
-            [0, 0], [0.38, 0], [0.40, 0.045], [0.33, 0.11],
-            [0.29, 0.20], [0.18, 0.28], [0.15, 0.64],
-            [0.24, 0.74], [0.16, 0.80], [0.13, 0.96],
-            [0.125, 1.22], [0.175, 1.40], [0.20, 1.50],
-            [0.15, 1.54], [0.07, 1.52], [0, 1.52]
-        ], seg),
-        collar(0.21, 0.74, 0.032, seg),
-        cross
-    ]);
+    // 5. REI (King)
+    const kingLathe = lathe(BABYLON, 'king_base', [
+        [0, 0], [0.38, 0], [0.40, 0.045], [0.33, 0.11],
+        [0.29, 0.20], [0.18, 0.28], [0.15, 0.64],
+        [0.24, 0.74], [0.16, 0.80], [0.13, 0.96],
+        [0.125, 1.22], [0.175, 1.40], [0.20, 1.50],
+        [0.15, 1.54], [0.07, 1.52], [0, 1.52]
+    ], seg, scene);
+    const kingCollar = collar(BABYLON, 'king_col', 0.21, 0.74, 0.032, seg, scene);
+    const crossV = box(BABYLON, 'cross_v', 0.05, 0.26, 0.05, 0, 1.66, 0, scene);
+    const crossH = box(BABYLON, 'cross_h', 0.17, 0.045, 0.045, 0, 1.70, 0, scene);
+    const king = merge(BABYLON, 'geo_king', [kingLathe, kingCollar, crossV, crossH], scene);
 
-    return { p: pawn, r: rook, b: bishop, q: queen, k: king, n: null };
-}
-
-function knightHeadShape() {
-    const s = new THREE.Shape();
-    s.moveTo(0.00, 0.02);
-    s.bezierCurveTo(0.10, 0.00, 0.18, 0.08, 0.20, 0.22);
-    s.bezierCurveTo(0.22, 0.38, 0.18, 0.52, 0.16, 0.62);
-    s.bezierCurveTo(0.14, 0.74, 0.10, 0.84, 0.12, 0.94);
-    s.lineTo(0.22, 0.86);
-    s.bezierCurveTo(0.28, 0.80, 0.36, 0.70, 0.46, 0.58);
-    s.bezierCurveTo(0.54, 0.50, 0.58, 0.42, 0.56, 0.34);
-    s.bezierCurveTo(0.54, 0.28, 0.48, 0.26, 0.42, 0.30);
-    s.lineTo(0.34, 0.34);
-    s.bezierCurveTo(0.30, 0.24, 0.24, 0.14, 0.14, 0.08);
-    s.bezierCurveTo(0.08, 0.05, 0.03, 0.04, 0.00, 0.02);
-    return s;
-}
-
-export function buildKnightTemplate(seg, material, accent) {
-    const g = new THREE.Group();
-    const base = new THREE.Mesh(lathe([
+    // 6. CAVALO (Knight)
+    const knightBase = lathe(BABYLON, 'knight_base', [
         [0, 0], [0.36, 0], [0.38, 0.045], [0.31, 0.10],
         [0.28, 0.18], [0.22, 0.26], [0.20, 0.42],
         [0.22, 0.50], [0.18, 0.54]
-    ], seg), material);
-    base.castShadow = true;
-    base.receiveShadow = true;
-    g.add(base);
+    ], seg, scene);
+    const knightRing = collar(BABYLON, 'knight_ring', 0.20, 0.50, 0.03, seg, scene);
+    const neck = BABYLON.MeshBuilder.CreateCylinder('knight_neck', { height: 0.52, diameterTop: 0.24, diameterBottom: 0.32, tessellation: 16 }, scene);
+    neck.position.set(0.04, 0.70, 0);
+    neck.rotation.z = -0.22;
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.03, 8, 24), material);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.50;
-    ring.castShadow = true;
-    g.add(ring);
-
-    const neck = new THREE.Mesh(lathe([
-        [0, 0], [0.16, 0], [0.15, 0.18], [0.13, 0.36], [0.11, 0.48], [0, 0.50]
-    ], Math.max(12, seg >> 1)), material);
-    neck.position.set(0.02, 0.48, 0);
-    neck.rotation.z = -0.18;
-    neck.castShadow = true;
-    g.add(neck);
-
-    const extrude = new THREE.ExtrudeGeometry(knightHeadShape(), {
-        depth: 0.22,
-        bevelEnabled: true,
-        bevelThickness: 0.035,
-        bevelSize: 0.03,
-        bevelSegments: Math.max(2, seg >> 3),
-        steps: 1
-    });
-    extrude.translate(0, 0, -0.11);
-    const head = new THREE.Mesh(extrude, material);
-    head.position.set(-0.06, 0.58, 0);
-    head.rotation.y = Math.PI / 2;
-    head.scale.set(0.95, 0.95, 1);
-    head.castShadow = true;
-    g.add(head);
-
-    const earG = new THREE.ConeGeometry(0.045, 0.16, 8);
-    const earL = new THREE.Mesh(earG, material);
-    earL.position.set(0.02, 1.16, 0.07);
+    const headMuzzle = box(BABYLON, 'knight_head', 0.38, 0.24, 0.22, 0.18, 0.95, 0, scene);
+    headMuzzle.rotation.z = -0.32;
+    const snout = box(BABYLON, 'knight_snout', 0.22, 0.18, 0.18, 0.34, 0.84, 0, scene);
+    snout.rotation.z = -0.15;
+    const earL = BABYLON.MeshBuilder.CreateCylinder('knight_ear_l', { height: 0.16, diameterTop: 0, diameterBottom: 0.09, tessellation: 8 }, scene);
+    earL.position.set(0.04, 1.15, 0.07);
     earL.rotation.z = -0.35;
     earL.rotation.x = 0.25;
-    earL.castShadow = true;
-    const earR = earL.clone();
-    earR.position.z = -0.07;
+    const earR = BABYLON.MeshBuilder.CreateCylinder('knight_ear_r', { height: 0.16, diameterTop: 0, diameterBottom: 0.09, tessellation: 8 }, scene);
+    earR.position.set(0.04, 1.15, -0.07);
+    earR.rotation.z = -0.35;
     earR.rotation.x = -0.25;
-    g.add(earL, earR);
 
-    const eyeG = new THREE.SphereGeometry(0.025, 10, 8);
-    const eyeL = new THREE.Mesh(eyeG, accent);
-    eyeL.position.set(0.22, 1.02, 0.09);
-    const eyeR = eyeL.clone();
-    eyeR.position.z = -0.09;
-    g.add(eyeL, eyeR);
+    const mane = box(BABYLON, 'knight_mane', 0.10, 0.45, 0.08, -0.08, 0.88, 0, scene);
+    mane.rotation.z = 0.25;
 
-    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), accent);
-    nostril.position.set(0.42, 0.90, 0.04);
-    const nostril2 = nostril.clone();
-    nostril2.position.z = -0.04;
-    g.add(nostril, nostril2);
+    const eyeL = BABYLON.MeshBuilder.CreateSphere('knight_eye_l', { diameter: 0.05, segments: 8 }, scene);
+    eyeL.position.set(0.20, 1.00, 0.10);
+    const eyeR = BABYLON.MeshBuilder.CreateSphere('knight_eye_r', { diameter: 0.05, segments: 8 }, scene);
+    eyeR.position.set(0.20, 1.00, -0.10);
 
-    g.userData.kind = 'n';
-    return g;
+    const knight = merge(BABYLON, 'geo_knight', [
+        knightBase, knightRing, neck, headMuzzle, snout, earL, earR, mane, eyeL, eyeR
+    ], scene);
+
+    return { p: pawn, r: rook, n: knight, b: bishop, q: queen, k: king };
 }
 
-export function makeMaterials(tex, theme = 'classic') {
-    const ivory = new THREE.MeshPhysicalMaterial({
-        color: 0xe4d2b4,
-        map: tex.ivory.map,
-        normalMap: tex.ivory.normalMap,
-        roughnessMap: tex.ivory.roughnessMap,
-        roughness: 0.34,
-        metalness: 0.02,
-        clearcoat: 0.45,
-        clearcoatRoughness: 0.32,
-        sheen: 0.12,
-        sheenColor: new THREE.Color(0xe8d7b8),
-        sheenRoughness: 0.6,
-        envMapIntensity: 0.55
-    });
-    const ebony = new THREE.MeshPhysicalMaterial({
-        color: 0x16100c,
-        map: tex.ebony.map,
-        normalMap: tex.ebony.normalMap,
-        roughnessMap: tex.ebony.roughnessMap,
-        roughness: 0.22,
-        metalness: 0.08,
-        clearcoat: 0.7,
-        clearcoatRoughness: 0.18,
-        sheen: 0.12,
-        sheenColor: new THREE.Color(0x3a1c10),
-        envMapIntensity: 0.85
-    });
-    const accentDark = new THREE.MeshPhysicalMaterial({
-        color: 0x0a0604, roughness: 0.4, metalness: 0.2
-    });
-    const accentLight = new THREE.MeshPhysicalMaterial({
-        color: 0x3a2418, roughness: 0.35, metalness: 0.15
-    });
+export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
+    const ivory = new BABYLON.PBRMaterial('mat_ivory', scene);
+    ivory.albedoColor = new BABYLON.Color3(0.92, 0.85, 0.74);
+    if (tex.ivory) {
+        ivory.albedoTexture = tex.ivory.map;
+        ivory.bumpTexture = tex.ivory.normalMap;
+    }
+    ivory.metallic = 0.02;
+    ivory.roughness = 0.32;
+    ivory.clearCoat.isEnabled = true;
+    ivory.clearCoat.intensity = 0.45;
+    ivory.clearCoat.roughness = 0.3;
+    ivory.sheen.isEnabled = true;
+    ivory.sheen.intensity = 0.2;
+    ivory.sheen.color = new BABYLON.Color3(0.95, 0.88, 0.78);
+
+    const ebony = new BABYLON.PBRMaterial('mat_ebony', scene);
+    ebony.albedoColor = new BABYLON.Color3(0.12, 0.08, 0.06);
+    if (tex.ebony) {
+        ebony.albedoTexture = tex.ebony.map;
+        ebony.bumpTexture = tex.ebony.normalMap;
+    }
+    ebony.metallic = 0.08;
+    ebony.roughness = 0.22;
+    ebony.clearCoat.isEnabled = true;
+    ebony.clearCoat.intensity = 0.7;
+    ebony.clearCoat.roughness = 0.18;
+    ebony.sheen.isEnabled = true;
+    ebony.sheen.intensity = 0.15;
+    ebony.sheen.color = new BABYLON.Color3(0.25, 0.14, 0.09);
+
+    const accentLight = new BABYLON.PBRMaterial('mat_acc_light', scene);
+    accentLight.albedoColor = new BABYLON.Color3(0.35, 0.20, 0.12);
+    accentLight.metallic = 0.15;
+    accentLight.roughness = 0.35;
+
+    const accentDark = new BABYLON.PBRMaterial('mat_acc_dark', scene);
+    accentDark.albedoColor = new BABYLON.Color3(0.06, 0.04, 0.03);
+    accentDark.metallic = 0.2;
+    accentDark.roughness = 0.4;
 
     if (theme === 'crystal') {
-        const glassW = new THREE.MeshPhysicalMaterial({
-            color: 0xf2fbff,
-            roughness: 0.04,
-            metalness: 0.05,
-            transmission: 0.72,
-            thickness: 0.55,
-            ior: 1.52,
-            clearcoat: 1,
-            clearcoatRoughness: 0.04,
-            attenuationColor: new THREE.Color(0xd8f0ff),
-            attenuationDistance: 0.8,
-            envMapIntensity: 1.6
-        });
-        const glassB = new THREE.MeshPhysicalMaterial({
-            color: 0x1a0c08,
-            roughness: 0.06,
-            metalness: 0.35,
-            transmission: 0.35,
-            thickness: 0.5,
-            ior: 1.5,
-            clearcoat: 1,
-            clearcoatRoughness: 0.08,
-            attenuationColor: new THREE.Color(0x4a1808),
-            attenuationDistance: 0.6,
-            envMapIntensity: 1.8
-        });
-        const gold = new THREE.MeshPhysicalMaterial({
-            color: 0xd4a657, roughness: 0.18, metalness: 1, envMapIntensity: 1.5
-        });
-        return {
-            w: glassW, b: glassB, accentW: gold, accentB: gold, theme: 'crystal'
-        };
+        const glassW = new BABYLON.PBRMaterial('mat_glass_w', scene);
+        glassW.albedoColor = new BABYLON.Color3(0.95, 0.98, 1.0);
+        glassW.metallic = 0.05;
+        glassW.roughness = 0.04;
+        glassW.alpha = 0.55;
+        glassW.subSurface.isRefractionEnabled = true;
+        glassW.subSurface.indexOfRefraction = 1.52;
+        glassW.clearCoat.isEnabled = true;
+        glassW.clearCoat.intensity = 1.0;
+
+        const glassB = new BABYLON.PBRMaterial('mat_glass_b', scene);
+        glassB.albedoColor = new BABYLON.Color3(0.15, 0.08, 0.06);
+        glassB.metallic = 0.3;
+        glassB.roughness = 0.06;
+        glassB.alpha = 0.65;
+        glassB.subSurface.isRefractionEnabled = true;
+        glassB.subSurface.indexOfRefraction = 1.5;
+        glassB.clearCoat.isEnabled = true;
+        glassB.clearCoat.intensity = 1.0;
+
+        const gold = new BABYLON.PBRMaterial('mat_gold', scene);
+        gold.albedoColor = new BABYLON.Color3(0.85, 0.68, 0.32);
+        gold.metallic = 0.95;
+        gold.roughness = 0.18;
+
+        return { w: glassW, b: glassB, accentW: gold, accentB: gold, theme: 'crystal' };
     }
 
-    return {
-        w: ivory, b: ebony, accentW: accentLight, accentB: accentDark, theme: 'classic'
-    };
+    return { w: ivory, b: ebony, accentW: accentLight, accentB: accentDark, theme: 'classic' };
 }
 
 export class PieceFactory {
-    constructor(tex, quality) {
-        this.seg = quality.seg;
-        this.geos = buildPieceGeometries(quality.seg);
+    constructor(scene, tex, quality) {
+        this.BABYLON = window.BABYLON;
+        this.scene = scene;
         this.tex = tex;
-        this.mats = makeMaterials(tex, 'classic');
-        this.knightW = buildKnightTemplate(quality.seg, this.mats.w, this.mats.accentW);
-        this.knightB = buildKnightTemplate(quality.seg, this.mats.b, this.mats.accentB);
-        this.knightW.visible = false;
-        this.knightB.visible = false;
+        this.quality = quality;
+        this.mats = makeMaterials(this.BABYLON, scene, tex, 'classic');
+        this.prototypes = buildPieceGeometries(this.BABYLON, scene, quality.seg || 40);
+
+        // Esconder os protótipos mestres
+        for (const key in this.prototypes) {
+            const mesh = this.prototypes[key];
+            if (mesh) {
+                mesh.setEnabled(false);
+                mesh.isVisible = false;
+            }
+        }
     }
 
     setTheme(theme) {
-        this.mats = makeMaterials(this.tex, theme);
-        this.knightW.traverse((o) => {
-            if (o.isMesh) o.material = o.geometry.type === 'SphereGeometry' ? this.mats.accentW : this.mats.w;
-        });
-        this.knightB.traverse((o) => {
-            if (o.isMesh) o.material = o.geometry.type === 'SphereGeometry' ? this.mats.accentB : this.mats.b;
-        });
+        this.mats = makeMaterials(this.BABYLON, this.scene, this.tex, theme);
     }
 
     spawn(type, color) {
-        if (type === 'n') {
-            const src = color === 'w' ? this.knightW : this.knightB;
-            const g = src.clone(true);
-            g.visible = true;
-            g.traverse((o) => {
-                if (o.isMesh) {
-                    o.castShadow = true;
-                    o.receiveShadow = true;
-                }
-            });
-            g.userData.kind = 'n';
-            g.userData.color = color;
-            if (color === 'b') g.rotation.y = Math.PI;
-            return g;
+        const proto = this.prototypes[type];
+        if (!proto) return null;
+
+        const mesh = proto.clone(`piece_${type}_${color}_${Date.now()}_${Math.random()}`);
+        mesh.setEnabled(true);
+        mesh.isVisible = true;
+        mesh.material = color === 'w' ? this.mats.w : this.mats.b;
+        mesh.metadata = { kind: type, color };
+        mesh.isPickable = true;
+
+        if (type === 'n' && color === 'b') {
+            mesh.rotation.y = Math.PI;
         }
-        const mesh = new THREE.Mesh(this.geos[type], color === 'w' ? this.mats.w : this.mats.b);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData.kind = type;
-        mesh.userData.color = color;
+
         return mesh;
     }
 }
