@@ -165,10 +165,10 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
     ivory.metallic = 0.02;
     ivory.roughness = 0.32;
     ivory.clearCoat.isEnabled = true;
-    ivory.clearCoat.intensity = 0.45;
-    ivory.clearCoat.roughness = 0.3;
+    ivory.clearCoat.intensity = 0.75;
+    ivory.clearCoat.roughness = 0.2;
     ivory.sheen.isEnabled = true;
-    ivory.sheen.intensity = 0.2;
+    ivory.sheen.intensity = 0.35;
     ivory.sheen.color = new BABYLON.Color3(0.95, 0.88, 0.78);
 
     const ebony = new BABYLON.PBRMaterial('mat_ebony', scene);
@@ -180,10 +180,10 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
     ebony.metallic = 0.08;
     ebony.roughness = 0.22;
     ebony.clearCoat.isEnabled = true;
-    ebony.clearCoat.intensity = 0.7;
-    ebony.clearCoat.roughness = 0.18;
+    ebony.clearCoat.intensity = 0.9;
+    ebony.clearCoat.roughness = 0.12;
     ebony.sheen.isEnabled = true;
-    ebony.sheen.intensity = 0.15;
+    ebony.sheen.intensity = 0.3;
     ebony.sheen.color = new BABYLON.Color3(0.25, 0.14, 0.09);
 
     const accentLight = new BABYLON.PBRMaterial('mat_acc_light', scene);

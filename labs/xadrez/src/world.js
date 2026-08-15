@@ -54,13 +54,13 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
 export function buildWorld(BABYLON, scene, tex, quality) {
     const lightMat = makePhysMat(BABYLON, 'mat_sq_light', scene, tex.maple, {
         color: new BABYLON.Color3(0.96, 0.87, 0.73),
-        clearcoat: 0.35,
-        roughness: 0.38
+        clearcoat: 0.8,
+        roughness: 0.3
     });
     const darkMat = makePhysMat(BABYLON, 'mat_sq_dark', scene, tex.walnut, {
         color: new BABYLON.Color3(0.32, 0.16, 0.08),
-        clearcoat: 0.4,
-        roughness: 0.42
+        clearcoat: 0.8,
+        roughness: 0.35
     });
 
     const squares = [];
