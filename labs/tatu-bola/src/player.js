@@ -122,12 +122,14 @@ export class Player {
         this._wasRolling = this.rollT > 0;
         this._setBall(this.rolling);
 
+        // Eixos relativos à câmera: frente = (sin camYaw, cos camYaw);
+        // direita da tela = frente × cima = (-cos camYaw, sin camYaw).
         const sx = Math.sin(camYaw);
         const sz = Math.cos(camYaw);
         this._wish.set(
-            input.axisX * sz + input.axisY * sx,
+            input.axisY * sx - input.axisX * sz,
             0,
-            -input.axisX * sx + input.axisY * sz
+            input.axisY * sz + input.axisX * sx
         );
         const wishLen = this._wish.length();
         if (wishLen > 1) this._wish.multiplyScalar(1 / wishLen);

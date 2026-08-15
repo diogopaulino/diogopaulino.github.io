@@ -13,7 +13,7 @@ import { World } from './world.js';
 import { Player } from './player.js';
 import { Entities } from './entities.js';
 import { Effects } from './effects.js';
-import { setSnap } from './models.js';
+import { setSnap, setSnapAspect } from './models.js';
 
 const CAMERAS = [
     { name: 'atrás', dist: 7.4, height: 3.6, look: 0.55 },
@@ -176,6 +176,7 @@ class Game {
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / Math.max(1, h);
         this.camera.updateProjectionMatrix();
+        setSnapAspect(this.camera.aspect);
     }
 
     gotoMenu() {
