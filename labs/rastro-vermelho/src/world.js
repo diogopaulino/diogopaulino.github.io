@@ -274,10 +274,11 @@ export class World {
         chunk.position.set((cx + 0.5) * CHUNK_SIZE, 0, (cz + 0.5) * CHUNK_SIZE);
 
         const geo = makeTerrainGeometry(cx, cz, this.quality.terrainSegments);
+        // A geometria já nasce centrada em (0, 0) local — o offset do mundo está
+        // no `chunk`. Reposicionar a malha aqui empilharia todo chunk na origem.
         const mesh = new THREE.Mesh(geo, this.terrainMat);
         mesh.receiveShadow = true;
         mesh.castShadow = false;
-        mesh.position.set(-(cx + 0.5) * CHUNK_SIZE, 0, -(cz + 0.5) * CHUNK_SIZE);
         chunk.add(mesh);
 
         const colliders = [];

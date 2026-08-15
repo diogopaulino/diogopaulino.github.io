@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { WATER_Y } from './config.js';
+import { puffTexture } from './textures.js';
 
 export class Dust {
     constructor(scene, quality) {
@@ -25,9 +26,10 @@ export class Dust {
 
         const mat = new THREE.PointsMaterial({
             color: 0xc4a070,
-            size: 0.28,
+            map: puffTexture(),
+            size: 0.42,
             transparent: true,
-            opacity: 0.45,
+            opacity: 0.4,
             depthWrite: false,
             sizeAttenuation: true
         });
