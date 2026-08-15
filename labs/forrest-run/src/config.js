@@ -1,5 +1,5 @@
 /**
- * Forrest Run — constantes, biomas da travessia e presets.
+ * Forrest Run — constantes, biomas da travessia e presets de renderização Babylon.js.
  *
  * Distância em metros de cena. A HUD mostra milhas (1 mi = 1609.34 m).
  * Velocidade: Forrest nunca para — v = clamp(v0 + k·s, vMin, vMax).
@@ -7,46 +7,46 @@
  * 3 faixas: x = (lane − 1) · LANE_W, lane ∈ {0,1,2}.
  */
 
-export const STORAGE_KEY = 'forrest-run-v1';
+export const STORAGE_KEY = 'forrest-run-babylon-v2';
 
 export const ROAD = {
     lanes: 3,
-    laneW: 2.45,
-    halfWidth: 4.2,
-    shoulder: 6.4
+    laneW: 2.6,
+    halfWidth: 4.6,
+    shoulder: 7.2
 };
 
 export const CHUNK = {
-    length: 42,
+    length: 46,
     count: 14
 };
 
-/** Física do corredor. Documentado também em player.js. */
+/** Física e cinemática do corredor. */
 export const RUNNER = {
-    v0: 11.5,
-    vMin: 8.2,
+    v0: 12.0,
+    vMin: 8.5,
     accelPerMeter: 0.0018,
-    gravity: 32,
-    jumpVy: 10.4,
-    coyote: 0.1,
-    jumpBuffer: 0.12,
-    laneLerp: 14,
-    invuln: 1.55,
-    stumbleSlow: 0.62,
-    recover: 2.4,
+    gravity: 34,
+    jumpVy: 11.2,
+    coyote: 0.12,
+    jumpBuffer: 0.15,
+    laneLerp: 16,
+    invuln: 1.6,
+    stumbleSlow: 0.65,
+    recover: 2.5,
     /** Ciclo de passada: ω = strideHz · 2π · (v / v0). */
-    strideHz: 1.35
+    strideHz: 1.4
 };
 
 export const FOLLOWERS_AT = 1400;
 
-/** Troca de bioma a cada BIOME_METERS (com blend nos últimos 80 m). */
-export const BIOME_METERS = 920;
-export const BIOME_BLEND = 80;
+/** Troca de bioma a cada BIOME_METERS (com blend nos últimos 100 m). */
+export const BIOME_METERS = 960;
+export const BIOME_BLEND = 100;
 
 /**
- * Cinco trechos da corrida pelos EUA. Cores alimentam céu, névoa, chão e sol.
- * Homagem visual ao filme — sem diálogo literal.
+ * Cinco trechos icônicos da corrida cinematográfica de Forrest.
+ * Cores ricas PBR para céu, iluminação solar, névoa atmosférica e chão.
  */
 export const BIOMES = [
     {
@@ -55,17 +55,20 @@ export const BIOMES = [
         tagline: 'estrada de terra · pés descalços viraram tênis',
         quote: 'Eu só senti vontade de correr.',
         horizon: 0xf3c27a,
-        zenith: 0x7eb6e6,
-        fog: 0xc5d8b8,
-        ground: 0x5d8a38,
-        road: 0x8d734c,
-        shoulder: 0x6a8f3e,
-        sun: 0xffe2a0,
-        hemiSky: 0xffe8c4,
-        hemiGround: 0x4a6a28,
-        scatter: 0xd8ecff,
+        zenith: 0x6ca6dc,
+        fog: 0xc4d8b8,
+        ground: 0x4f7d2f,
+        road: 0x8a6d46,
+        shoulder: 0x628838,
+        sun: 0xffdf99,
+        sunIntensity: 2.2,
+        hemiSky: 0xffe2b8,
+        hemiGround: 0x3d5c22,
+        hemiIntensity: 1.1,
+        bloomWeight: 0.35,
         rain: false,
-        dirt: true
+        dirt: true,
+        wetRoughness: 0.9
     },
     {
         id: 'highway',
@@ -73,71 +76,83 @@ export const BIOMES = [
         tagline: 'asfalto quente · placas e caminhões',
         quote: 'Corri até o oceano. E virei, e continuei.',
         horizon: 0xf0b56a,
-        zenith: 0x5aa0d8,
-        fog: 0xd4c4a0,
-        ground: 0x6b8f3a,
-        road: 0x3a3a3c,
-        shoulder: 0x8a7a4a,
-        sun: 0xffd078,
-        hemiSky: 0xffe0b0,
-        hemiGround: 0x5a4a28,
-        scatter: 0xffe8c8,
+        zenith: 0x4a94d4,
+        fog: 0xd2c09c,
+        ground: 0x5e8234,
+        road: 0x2e2f33,
+        shoulder: 0x807044,
+        sun: 0xffce70,
+        sunIntensity: 2.5,
+        hemiSky: 0xffdcab,
+        hemiGround: 0x4d3e20,
+        hemiIntensity: 1.15,
+        bloomWeight: 0.45,
         rain: false,
-        dirt: false
+        dirt: false,
+        wetRoughness: 0.75
     },
     {
         id: 'desert',
         name: 'Sudoeste',
         tagline: 'calor, mesas e o silêncio',
         quote: 'Uma senhora perguntou se eu corria pela paz. Eu não sei.',
-        horizon: 0xf0a060,
-        zenith: 0x6aa8e0,
-        fog: 0xe8c8a0,
-        ground: 0xc4a06a,
-        road: 0x5a5048,
-        shoulder: 0xd0b070,
-        sun: 0xffc060,
-        hemiSky: 0xffd8a8,
-        hemiGround: 0xa07840,
-        scatter: 0xffe0b8,
+        horizon: 0xf29f5c,
+        zenith: 0x569ee0,
+        fog: 0xe6c49c,
+        ground: 0xc29c66,
+        road: 0x524840,
+        shoulder: 0xcca86c,
+        sun: 0xffba54,
+        sunIntensity: 2.8,
+        hemiSky: 0xffd29f,
+        hemiGround: 0x946e38,
+        hemiIntensity: 1.2,
+        bloomWeight: 0.55,
         rain: false,
-        dirt: false
+        dirt: false,
+        wetRoughness: 0.85
     },
     {
         id: 'rockies',
         name: 'Montanhas',
         tagline: 'pinheiros, frio e o ar fino',
         quote: 'De Alabama até o mar, e de volta.',
-        horizon: 0xc8d8e8,
-        zenith: 0x4a78b0,
-        fog: 0xb8c8c0,
-        ground: 0x3d6a32,
-        road: 0x454448,
-        shoulder: 0x4a6038,
-        sun: 0xf0e8d0,
-        hemiSky: 0xd8e8f8,
-        hemiGround: 0x2a4a28,
-        scatter: 0xe8f0ff,
+        horizon: 0xc4d4e6,
+        zenith: 0x3d70a8,
+        fog: 0xb4c4be,
+        ground: 0x365f2b,
+        road: 0x3d3c40,
+        shoulder: 0x425632,
+        sun: 0xede4cc,
+        sunIntensity: 2.1,
+        hemiSky: 0xd2e4f6,
+        hemiGround: 0x223d20,
+        hemiIntensity: 1.0,
+        bloomWeight: 0.3,
         rain: false,
-        dirt: false
+        dirt: false,
+        wetRoughness: 0.8
     },
     {
         id: 'rain',
         name: 'A chuva',
         tagline: 'alguém veio até a estrada',
         quote: 'Eu não sei por que saí correndo.',
-        horizon: 0x8aa0b0,
-        zenith: 0x4a6078,
-        fog: 0x7a8a94,
-        ground: 0x3a5a32,
-        road: 0x2c2c30,
-        shoulder: 0x3a4a38,
-        sun: 0xc8d0d8,
-        hemiSky: 0xa8b8c8,
-        hemiGround: 0x243028,
-        scatter: 0xc8d8e8,
+        horizon: 0x8298a8,
+        zenith: 0x3c5268,
+        fog: 0x72828c,
+        ground: 0x2e4a28,
+        road: 0x1f2024,
+        shoulder: 0x303e30,
+        sun: 0xb8c4cc,
+        sunIntensity: 1.3,
+        hemiSky: 0x98a8b8,
+        hemiGround: 0x1c2620,
+        hemiIntensity: 0.9,
+        bloomWeight: 0.25,
         rain: true,
-        dirt: false
+        dirt: false,
+        wetRoughness: 0.2
     }
 ];
 
@@ -149,16 +164,16 @@ export const DIFFICULTY = {
         obstacle: 0.55,
         feathers: 1.35,
         lives: 5,
-        vMax: 18
+        vMax: 19
     },
     cross: {
         id: 'cross',
         label: 'Campo afora',
         blurb: 'O ritmo certo: faixas, pulos e o pessoal começando a seguir.',
-        obstacle: 1,
-        feathers: 1,
+        obstacle: 1.0,
+        feathers: 1.0,
         lives: 3,
-        vMax: 24
+        vMax: 25
     },
     never: {
         id: 'never',
@@ -167,7 +182,7 @@ export const DIFFICULTY = {
         obstacle: 1.45,
         feathers: 0.72,
         lives: 2,
-        vMax: 30
+        vMax: 31
     }
 };
 
@@ -176,34 +191,39 @@ export const QUALITY = {
         antialias: false,
         pixelRatio: 1,
         shadows: false,
-        drawDistance: 220,
-        fogDensity: 0.011,
-        chunkProps: 0.5,
-        particles: 90,
+        bloom: false,
+        drawDistance: 240,
+        fogDensity: 0.010,
+        chunkProps: 0.6,
+        particles: 120,
         followers: 4,
-        rain: 220
+        rain: 260
     },
     medium: {
         antialias: true,
         pixelRatio: 1.5,
-        shadows: false,
-        drawDistance: 340,
-        fogDensity: 0.0076,
-        chunkProps: 0.85,
-        particles: 180,
+        shadows: true,
+        shadowMapSize: 1024,
+        bloom: true,
+        drawDistance: 380,
+        fogDensity: 0.0072,
+        chunkProps: 0.9,
+        particles: 240,
         followers: 8,
-        rain: 420
+        rain: 500
     },
     high: {
         antialias: true,
         pixelRatio: 2,
         shadows: true,
-        drawDistance: 460,
-        fogDensity: 0.0056,
-        chunkProps: 1,
-        particles: 280,
-        followers: 12,
-        rain: 700
+        shadowMapSize: 2048,
+        bloom: true,
+        drawDistance: 520,
+        fogDensity: 0.0052,
+        chunkProps: 1.15,
+        particles: 400,
+        followers: 14,
+        rain: 800
     }
 };
 

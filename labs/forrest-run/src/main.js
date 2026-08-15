@@ -1,16 +1,16 @@
 /**
- * Forrest Run — laço principal.
- * Forrest corre no −Z e nunca para: o mundo recicla à frente,
- * os biomas mudam com a milhagem e o pessoal se junta depois de 1400 m.
+ * Forrest Run — Laço Principal com Babylon.js.
+ *
+ * Gráficos Hyper Realistas com PBR, Iluminação Solar Direcional com Sombras PCF,
+ * Pipeline de Pós-Processamento Cinemático (ACES Tone Mapping, Bloom, Vinheta, Aberração Cromática),
+ * e transição contínua entre biomas da histórica travessia americana.
  */
-
-import * as THREE from 'three';
 
 import {
     QUALITY, DIFFICULTY, BIOMES, FOLLOWERS_AT, BIOME_METERS,
     loadSettings, saveSettings, biomeAt, biomeBlend
 } from './config.js';
-import { clamp, damp, detectMobile, detectSoftwareGL, hexToArr, lerp } from './utils.js';
+import { clamp, damp, detectMobile, detectSoftwareGL, hexToColor3, hexToColor4, mixHexColor3, lerp } from './utils.js';
 import { createSky, createClouds, createRoad, America } from './world.js';
 import { Player } from './player.js';
 import { Track } from './obstacles.js';
@@ -22,22 +22,10 @@ import { Hud } from './hud.js';
 import { createFeatherMesh } from './models.js';
 
 const CAMERAS = [
-    { name: 'perseguição', offset: new THREE.Vector3(0, 2.35, 7.2), look: new THREE.Vector3(0, 1.05, -10) },
-    { name: 'cinema', offset: new THREE.Vector3(4.2, 1.35, 3.4), look: new THREE.Vector3(-0.6, 0.95, -8) },
-    { name: 'ombro', offset: new THREE.Vector3(-1.4, 1.85, 3.8), look: new THREE.Vector3(0.3, 1.1, -12) }
+    { name: 'perseguição', offset: new BABYLON.Vector3(0, 2.5, 7.8), look: new BABYLON.Vector3(0, 1.1, -12) },
+    { name: 'cinema', offset: new BABYLON.Vector3(4.5, 1.6, 4.0), look: new BABYLON.Vector3(-0.6, 1.0, -9) },
+    { name: 'ombro', offset: new BABYLON.Vector3(-1.6, 1.9, 4.2), look: new BABYLON.Vector3(0.3, 1.15, -14) }
 ];
-
-const LOOK = new THREE.Vector3();
-const CAM = new THREE.Vector3();
-const COL_A = new THREE.Color();
-const COL_B = new THREE.Color();
-
-function mixHex(a, b, k) {
-    COL_A.setHex(a);
-    COL_B.setHex(b);
-    COL_A.lerp(COL_B, k);
-    return COL_A;
-}
 
 class Game {
     constructor() {
@@ -54,13 +42,15 @@ class Game {
         this.lastBiome = '';
         this.packAnnounced = false;
         this.heroFeather = null;
+        this.camPos = new BABYLON.Vector3(0, 2.5, 7.8);
+        this.camLook = new BABYLON.Vector3(0, 1.1, -12);
     }
 
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
         if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
+        const big = Math.min(window.innerWidth, window.innerHeight) >= 880;
         return big ? QUALITY.high : QUALITY.medium;
     }
 
@@ -70,126 +60,173 @@ class Game {
         this.quality = this.resolveQuality();
 
         try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: this.quality.antialias,
+            this.engine = new BABYLON.Engine(this.canvas, this.quality.antialias, {
+                preserveDrawingBuffer: false,
+                stencil: false,
                 powerPreference: 'high-performance',
-                stencil: false
+                adaptToDeviceRatio: true
             });
+            const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
+            this.engine.setHardwareScalingLevel(1 / pr);
         } catch (err) {
-            this.hud.showError('Não foi possível iniciar o WebGL neste navegador.');
+            this.hud.showError('Não foi possível iniciar o WebGL/Babylon.js neste navegador.');
             return;
         }
 
-        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
-        this.renderer.setPixelRatio(pr);
-        this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(
-            52,
-            window.innerWidth / window.innerHeight,
-            0.2,
-            this.quality.drawDistance * 1.5
-        );
-
+        this.scene = new BABYLON.Scene(this.engine);
         const start = BIOMES[0];
-        this.scene.fog = new THREE.FogExp2(start.fog, this.quality.fogDensity);
-        this.scene.background = new THREE.Color(start.zenith);
 
+        // 1. Atmosfera e Névoa
+        this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+        this.scene.fogDensity = this.quality.fogDensity;
+        this.scene.fogColor = hexToColor3(start.fog);
+        this.scene.clearColor = hexToColor4(start.zenith, 1.0);
+
+        // 2. Câmera
+        this.camera = new BABYLON.UniversalCamera(
+            'camera',
+            new BABYLON.Vector3(0, 2.5, 7.8),
+            this.scene
+        );
+        this.camera.fov = 0.88; // ~50 graus
+        this.camera.minZ = 0.2;
+        this.camera.maxZ = this.quality.drawDistance * 1.5;
+        this.camera.setTarget(new BABYLON.Vector3(0, 1.1, -12));
+
+        // 3. Iluminação PBR Solar e Ambiente
         this.hud.setLoading(0.22, 'Abrindo o céu do Alabama…');
-        try {
-            this.sky = createSky();
-            this.scene.add(this.sky.mesh);
-            this.clouds = createClouds();
-            this.scene.add(this.clouds.group);
+        this.hemi = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
+        this.hemi.diffuse = hexToColor3(start.hemiSky);
+        this.hemi.groundColor = hexToColor3(start.hemiGround);
+        this.hemi.intensity = start.hemiIntensity;
 
-            this.hemi = new THREE.HemisphereLight(start.hemiSky, start.hemiGround, 1.05);
-            this.scene.add(this.hemi);
-            this.sun = new THREE.DirectionalLight(start.sun, 1.35);
-            this.sun.position.set(-18, 28, 12);
-            this.sun.castShadow = this.quality.shadows;
-            if (this.quality.shadows) {
-                this.sun.shadow.mapSize.set(1024, 1024);
-                this.sun.shadow.camera.near = 2;
-                this.sun.shadow.camera.far = 90;
-                this.sun.shadow.camera.left = -24;
-                this.sun.shadow.camera.right = 24;
-                this.sun.shadow.camera.top = 24;
-                this.sun.shadow.camera.bottom = -24;
-            }
-            this.scene.add(this.sun, this.sun.target);
+        this.sun = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(0.4, -0.75, 0.45), this.scene);
+        this.sun.position = new BABYLON.Vector3(-18, 28, 12);
+        this.sun.diffuse = hexToColor3(start.sun);
+        this.sun.intensity = start.sunIntensity;
 
-            this.hud.setLoading(0.4, 'Abrindo a estrada de terra…');
-            this.road = createRoad();
-            this.road.uniforms.uFogDensity.value = this.quality.fogDensity;
-            this.scene.add(this.road.group);
-
-            this.hud.setLoading(0.55, 'Plantando os nogueiras…');
-            this.land = new America(this.scene, this.quality);
-
-            this.hud.setLoading(0.7, 'O Forrest está se levantando…');
-            this.player = new Player(this.scene);
-            this.track = new Track(this.scene, this.quality);
-            this.pack = new Pack(this.scene, this.quality.followers);
-            this.effects = new Effects(this.scene, this.quality);
-            this.audio = new GameAudio();
-            this.audio.enabled = !this.settings.muted;
-            this.audio.volume = this.settings.volume / 100;
-            this.input = new Input();
-
-            this.heroFeather = createFeatherMesh();
-            this.heroFeather.scale.setScalar(1.8);
-            this.scene.add(this.heroFeather);
-
-            this.flushBiome(start, 0);
-            this.bindUi();
-            this.isTouch = detectMobile();
-
-            this.enterAttract();
-            this.renderer.compile(this.scene, this.camera);
-            this.render();
-
-            this.hud.setLoading(1, 'Eu só senti vontade de correr.');
-            setTimeout(() => this.hud.hideLoading(), 320);
-
-            this.lastFrame = performance.now();
-            this.renderer.setAnimationLoop((now) => this.frame(now));
-            window.addEventListener('resize', () => this.resize());
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden && this.state === 'playing') this.pause();
-            });
-        } catch (err) {
-            console.error(err);
-            this.hud.showError(err?.message || 'Falha ao montar a estrada 3D.');
+        if (this.quality.shadows) {
+            this.shadowGenerator = new BABYLON.ShadowGenerator(this.quality.shadowMapSize || 1024, this.sun);
+            this.shadowGenerator.useBlurExponentialShadowMap = true;
+            this.shadowGenerator.blurKernel = 32;
+            this.shadowGenerator.bias = 0.0005;
+        } else {
+            this.shadowGenerator = null;
         }
+
+        // 4. Pipeline de Pós-Processamento Cinemático
+        if (this.quality.bloom) {
+            this.pipeline = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
+            this.pipeline.bloomEnabled = true;
+            this.pipeline.bloomThreshold = 0.72;
+            this.pipeline.bloomWeight = start.bloomWeight;
+            this.pipeline.bloomKernel = 48;
+
+            this.pipeline.chromaticAberrationEnabled = true;
+            this.pipeline.chromaticAberration.aberrationAmount = 10;
+
+            this.pipeline.grainEnabled = true;
+            this.pipeline.grain.intensity = 5;
+
+            this.pipeline.imageProcessing.toneMappingEnabled = true;
+            this.pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+            this.pipeline.imageProcessing.vignetteEnabled = true;
+            this.pipeline.imageProcessing.vignetteWeight = 1.1;
+            this.pipeline.imageProcessing.exposure = 1.08;
+        }
+
+        // 5. Mundo, Céu e Estrada PBR
+        this.hud.setLoading(0.38, 'Plantando as nogueiras de Greenbow…');
+        this.sky = createSky(this.scene);
+        this.clouds = createClouds(this.scene);
+        this.road = createRoad(this.scene, this.shadowGenerator);
+        this.land = new America(this.scene, this.shadowGenerator, this.quality);
+
+        // 6. Personagem, Pista, Seguidores e Áudio
+        this.hud.setLoading(0.65, 'O Forrest está amarrando os tênis…');
+        this.player = new Player(this.scene, this.shadowGenerator);
+        this.track = new Track(this.scene, this.shadowGenerator, this.quality);
+        this.pack = new Pack(this.scene, this.shadowGenerator, this.quality.followers);
+        this.effects = new Effects(this.scene, this.quality);
+        this.audio = new GameAudio();
+        this.audio.enabled = !this.settings.muted;
+        this.audio.volume = this.settings.volume / 100;
+        this.input = new Input();
+
+        // Pena de destaque para o menu
+        this.heroFeather = createFeatherMesh(this.scene);
+        this.heroFeather.scaling.setAll(2.0);
+
+        this.flushBiome(start, 0);
+        this.bindUi();
+        this.isTouch = detectMobile();
+
+        this.enterAttract();
+        this.hud.setLoading(1, 'Eu só senti vontade de correr.');
+        setTimeout(() => this.hud.hideLoading(), 340);
+
+        // Loop de Renderização
+        this.lastFrame = performance.now();
+        this.engine.runRenderLoop(() => {
+            const now = performance.now();
+            const dt = clamp((now - this.lastFrame) / 1000, 0, 0.05);
+            this.lastFrame = now;
+
+            if (this.state === 'playing' || this.state === 'menu') {
+                this.simulate(dt);
+            }
+            this.updateCamera(dt, false);
+            this.scene.render();
+
+            this.fpsAccum += dt;
+            this.fpsFrames += 1;
+            if (this.fpsAccum >= 0.4) {
+                this.hud.setFps(this.fpsFrames / this.fpsAccum);
+                this.fpsAccum = 0;
+                this.fpsFrames = 0;
+            }
+        });
+
+        window.addEventListener('resize', () => this.engine.resize());
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.state === 'playing') this.pause();
+        });
     }
 
     flushBiome(biome, k) {
         const dist = this.player ? this.player.distance : 0;
         const next = biomeAt(dist + BIOME_METERS);
-        const mix = (a, b) => mixHex(a, b, k);
-        const fog = mix(biome.fog, next.fog);
-        this.scene.fog.color.copy(fog);
-        this.scene.background.copy(mix(biome.zenith, next.zenith));
-        this.sky.uniforms.uHorizon.value.copy(mix(biome.horizon, next.horizon));
-        this.sky.uniforms.uZenith.value.copy(mix(biome.zenith, next.zenith));
-        this.sky.uniforms.uGround.value.copy(mix(biome.ground, next.ground));
-        this.sky.uniforms.uSun.value.copy(mix(biome.sun, next.sun));
-        this.hemi.color.copy(mix(biome.hemiSky, next.hemiSky));
-        this.hemi.groundColor.copy(mix(biome.hemiGround, next.hemiGround));
-        this.sun.color.copy(mix(biome.sun, next.sun));
-        this.road.uniforms.uRoad.value.copy(mix(biome.road, next.road));
-        this.road.uniforms.uShoulder.value.copy(mix(biome.shoulder, next.shoulder));
-        this.road.uniforms.uFogColor.value.copy(fog);
-        this.road.uniforms.uDirt.value = lerp(biome.dirt ? 1 : 0, next.dirt ? 1 : 0, k);
-        this.road.grassMat.color.copy(mix(biome.ground, next.ground));
-        this.effects.setRain(biome.rain || (next.rain && k > 0.4));
-        this.audio.setRain(biome.rain || (next.rain && k > 0.4));
+
+        const fogCol = mixHexColor3(biome.fog, next.fog, k);
+        const zenithCol = mixHexColor3(biome.zenith, next.zenith, k);
+        const groundCol = mixHexColor3(biome.ground, next.ground, k);
+        const sunCol = mixHexColor3(biome.sun, next.sun, k);
+        const hemiSkyCol = mixHexColor3(biome.hemiSky, next.hemiSky, k);
+        const hemiGndCol = mixHexColor3(biome.hemiGround, next.hemiGround, k);
+
+        this.scene.fogColor = fogCol;
+        this.scene.clearColor = new BABYLON.Color4(zenithCol.r, zenithCol.g, zenithCol.b, 1.0);
+        this.sky.material.emissiveColor = zenithCol;
+        this.hemi.diffuse = hemiSkyCol;
+        this.hemi.groundColor = hemiGndCol;
+        this.sun.diffuse = sunCol;
+
+        const sunInt = lerp(biome.sunIntensity, next.sunIntensity, k);
+        this.sun.intensity = sunInt;
+
+        if (this.pipeline && this.pipeline.bloomEnabled) {
+            this.pipeline.bloomWeight = lerp(biome.bloomWeight, next.bloomWeight, k);
+        }
+
+        // Estrada PBR (Rugosidade e Brilho de chuva)
+        const isRain = biome.rain || (next.rain && k > 0.4);
+        const wetR = lerp(biome.wetRoughness, next.wetRoughness, k);
+        this.road.roadMat.roughness = wetR;
+        this.road.grassMat.albedoColor = groundCol;
+
+        this.effects.setRain(isRain);
+        this.audio.setRain(isRain);
+
         document.documentElement.style.setProperty('--amber', '#' + biome.horizon.toString(16).padStart(6, '0'));
     }
 
@@ -233,11 +270,10 @@ class Game {
         this.input.on('mute', () => this.toggleMute());
         this.input.on('camera', () => {
             this.cameraMode = (this.cameraMode + 1) % CAMERAS.length;
-            this.hud.message(CAMERAS[this.cameraMode].name, 900);
+            this.hud.message(`Câmera: ${CAMERAS[this.cameraMode].name}`, 900);
         });
         this.input.on('confirm', () => {
-            if (this.state === 'menu') this.start();
-            else if (this.state === 'over') this.start();
+            if (this.state === 'menu' || this.state === 'over') this.start();
             else if (this.state === 'paused') this.resume();
         });
 
@@ -249,16 +285,16 @@ class Game {
         const right = document.getElementById('touchRight');
         const jump = document.getElementById('touchJump');
         if (!left) return;
+
         const tap = (el, fn) => {
             el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
             el.addEventListener('mousedown', (e) => { e.preventDefault(); fn(); });
         };
+
         tap(left, () => this.input.tapLane(-1));
         tap(right, () => this.input.tapLane(1));
         jump.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.tapJump(); }, { passive: false });
-        jump.addEventListener('touchend', () => this.input.releaseJump());
         jump.addEventListener('mousedown', (e) => { e.preventDefault(); this.input.tapJump(); });
-        jump.addEventListener('mouseup', () => this.input.releaseJump());
     }
 
     toggleMute() {
@@ -290,7 +326,7 @@ class Game {
         this.hud.showPause(false);
         this.hud.showHud(true);
         this.hud.setTouchVisible(this.isTouch);
-        this.hud.message('CORRE, FORREST', 1600);
+        this.hud.message('CORRE, FORREST', 1700);
         this.hud.quote(BIOMES[0].quote);
     }
 
@@ -330,7 +366,7 @@ class Game {
     gameOver() {
         this.state = 'over';
         this.player.sitDown();
-        const score = Math.floor(this.player.distance + this.feathers * 220);
+        const score = Math.floor(this.player.distance + this.feathers * 240);
         if (this.player.distance > (this.settings.best || 0)) {
             this.settings.best = Math.floor(this.player.distance);
             saveSettings(this.settings);
@@ -349,22 +385,6 @@ class Game {
         this.hud.quote('Estou bastante cansado. Acho que vou pra casa agora.');
     }
 
-    frame(now) {
-        const dt = clamp((now - this.lastFrame) / 1000, 0, 0.05);
-        this.lastFrame = now;
-        if (this.state === 'playing' || this.state === 'menu') this.simulate(dt);
-        this.updateCamera(dt, false);
-        this.render();
-
-        this.fpsAccum += dt;
-        this.fpsFrames += 1;
-        if (this.fpsAccum >= 0.4) {
-            this.hud.setFps(this.fpsFrames / this.fpsAccum);
-            this.fpsAccum = 0;
-            this.fpsFrames = 0;
-        }
-    }
-
     simulate(dt) {
         const playing = this.state === 'playing';
         const input = this.input.sample();
@@ -376,22 +396,22 @@ class Game {
         this.track.update(dt, this.player);
         this.pack.update(dt, this.player, this.player.distance);
 
-        this.road.group.position.z = this.player.z - 90;
-        this.road.uniforms.uZ.value = this.player.z;
-        this.sky.mesh.position.set(this.player.x * 0.04, 0, this.player.z);
-        this.clouds.group.position.set(0, 0, this.player.z);
+        // Reposicionar nós que seguem o corredor
+        this.road.root.position.z = this.player.z - 90;
+        this.sky.mesh.position.set(this.player.x * 0.05, 0, this.player.z);
+        this.clouds.root.position.set(0, 0, this.player.z);
         this.sun.position.set(this.player.x - 18, 28, this.player.z + 12);
-        this.sun.target.position.set(this.player.x, 0, this.player.z - 20);
 
+        // Pena Flutuante do Menu / Hero
         if (this.heroFeather) {
-            const t = nowSec(this);
+            const t = (this.time || 0) + (this.player?.cycle || 0) * 0.1;
             this.heroFeather.position.set(
-                this.player.x + Math.sin(t * 0.4) * 1.4,
-                1.6 + Math.sin(t * 0.7) * 0.35,
-                this.player.z - 2.2 + Math.cos(t * 0.5) * 0.8
+                this.player.x + Math.sin(t * 0.45) * 1.5,
+                1.7 + Math.sin(t * 0.75) * 0.35,
+                this.player.z - 2.5 + Math.cos(t * 0.55) * 0.9
             );
-            this.heroFeather.rotation.set(0.5, t, 0.4);
-            this.heroFeather.visible = this.state === 'menu' || this.state === 'over';
+            this.heroFeather.rotation.set(0.4, t * 1.2, 0.3);
+            this.heroFeather.setEnabled(this.state === 'menu' || this.state === 'over');
         }
 
         if (playing) {
@@ -400,47 +420,54 @@ class Game {
 
             if (cur.id !== this.lastBiome) {
                 this.lastBiome = cur.id;
-                this.hud.message(cur.name, 1600);
+                this.hud.message(cur.name, 1700);
                 this.hud.quote(cur.quote);
             }
+
             if (!this.packAnnounced && this.player.distance >= FOLLOWERS_AT) {
                 this.packAnnounced = true;
-                this.hud.message('O pessoal veio atrás', 1800);
+                this.hud.message('O pessoal veio atrás', 1900);
                 this.hud.quote('De Alabama até o mar, e de volta. Aí começaram a me seguir.');
             }
 
+            // Coleta de penas
             const got = this.track.collect(this.player);
             if (got.length) {
                 this.feathers += got.length;
                 this.audio.collect();
                 for (const f of got) {
                     this.effects.spawn(f.mesh.position.x, 1.2, f.z, {
-                        count: 18,
-                        color: [1, 1, 0.92],
-                        speed: 4,
-                        size: 0.7,
-                        life: 0.55
+                        count: 20,
+                        color: [1, 0.98, 0.85, 1],
+                        speed: 4.5,
+                        size: 0.45,
+                        life: 0.6
                     });
                 }
             }
 
+            // Colisões com obstáculos
             const hit = this.track.collide(this.player);
             if (hit && this.player.hit()) {
                 this.lives -= 1;
                 this.audio.stumble();
-                this.effects.spawn(this.player.x, 0.6, this.player.z, {
-                    count: 22,
-                    color: hexToArr(cur.horizon),
-                    speed: 6,
-                    size: 0.7,
-                    life: 0.45
+                this.effects.spawn(this.player.x, 0.7, this.player.z, {
+                    count: 24,
+                    color: [0.9, 0.65, 0.35, 1],
+                    speed: 6.0,
+                    size: 0.5,
+                    life: 0.5
                 });
-                if (this.lives <= 0) this.gameOver();
-                else this.hud.message('Tropeço', 700);
+                if (this.lives <= 0) {
+                    this.gameOver();
+                } else {
+                    this.hud.message('Tropeço', 700);
+                }
             }
 
+            // Poeira de passos
             if (this.player.grounded && this.player.speed > 8 && Math.sin(this.player.cycle) > 0.92) {
-                this.effects.dust(this.player.x, 0.08, this.player.z + 0.4);
+                this.effects.dust(this.player.x, 0.08, this.player.z + 0.4, cur.dirt);
             }
 
             this.hud.update({
@@ -454,45 +481,40 @@ class Game {
         }
 
         this.effects.update(dt, this.player);
-        this.audio.update(dt, this.player.speed, this.player.grounded && playing);
+        this.audio.update(dt, this.player.speed, this.player.grounded && playing, cur.dirt);
     }
 
     updateCamera(dt, instant) {
         const rig = CAMERAS[this.cameraMode];
-        CAM.copy(rig.offset);
-        CAM.x += this.player.x;
-        CAM.z += this.player.z;
-        LOOK.copy(rig.look);
-        LOOK.x += this.player.x;
-        LOOK.z += this.player.z;
-        const k = instant ? 1 : 1 - Math.exp(-dt * (this.cameraMode === 2 ? 10 : 5.5));
-        this.camera.position.lerp(CAM, k);
-        if (!this._look) this._look = LOOK.clone();
-        this._look.lerp(LOOK, k);
-        this.camera.lookAt(this._look);
-        this.camera.fov = damp(this.camera.fov, 50 + this.player.speed * 0.22, 3.5, dt);
-        this.camera.updateProjectionMatrix();
-    }
 
-    render() {
-        this.renderer.render(this.scene, this.camera);
-    }
+        const targetPos = new BABYLON.Vector3(
+            this.player.x + rig.offset.x,
+            this.player.y + rig.offset.y,
+            this.player.z + rig.offset.z
+        );
 
-    resize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h, false);
-    }
-}
+        const targetLook = new BABYLON.Vector3(
+            this.player.x + rig.look.x,
+            this.player.y + rig.look.y,
+            this.player.z + rig.look.z
+        );
 
-function nowSec(game) {
-    return (game.time || 0) + (game.player?.cycle || 0) * 0.1;
+        const k = instant ? 1.0 : 1.0 - Math.exp(-dt * (this.cameraMode === 2 ? 12 : 6.5));
+
+        this.camPos = BABYLON.Vector3.Lerp(this.camPos, targetPos, k);
+        this.camLook = BABYLON.Vector3.Lerp(this.camLook, targetLook, k);
+
+        this.camera.position.copyFrom(this.camPos);
+        this.camera.setTarget(this.camLook);
+
+        // Dilatação de FOV sutil com a velocidade para sensação de ritmo
+        const targetFov = 0.88 + (this.player.speed / 30) * 0.08;
+        this.camera.fov = damp(this.camera.fov, targetFov, 4.0, dt);
+    }
 }
 
 const game = new Game();
 game.init().catch((err) => {
     console.error(err);
-    game.hud.showError(err?.message || 'Falha ao iniciar o Forrest Run.');
+    game.hud.showError(err?.message || 'Falha ao iniciar o Forrest Run em Babylon.js.');
 });
