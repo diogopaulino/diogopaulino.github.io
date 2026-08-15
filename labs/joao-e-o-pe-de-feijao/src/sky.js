@@ -1,80 +1,122 @@
 /**
- * Céu procedural (gradiente em esfera) e rig de iluminação por capítulo.
+ * Céu procedural (gradiente em domo) e sistema de iluminação/sombras no Babylon.js.
  */
 
-import * as THREE from 'three';
+const B = window.BABYLON;
 
-export function createSky() {
-    const geo = new THREE.SphereGeometry(480, 24, 16);
-    const uniforms = {
-        top: { value: new THREE.Color(0x7ec8f0) },
-        mid: { value: new THREE.Color(0xc8e4f0) },
-        bot: { value: new THREE.Color(0xe8dcc0) }
-    };
-    const mat = new THREE.ShaderMaterial({
-        uniforms,
-        side: THREE.BackSide,
-        depthWrite: false,
-        vertexShader: /* glsl */ `
-            varying vec3 vPos;
-            void main() {
-                vPos = position;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: /* glsl */ `
-            varying vec3 vPos;
-            uniform vec3 top;
-            uniform vec3 mid;
-            uniform vec3 bot;
-            void main() {
-                float h = normalize(vPos).y * 0.5 + 0.5;
-                vec3 col = mix(bot, mid, smoothstep(0.0, 0.42, h));
-                col = mix(col, top, smoothstep(0.38, 1.0, h));
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.frustumCulled = false;
-    return { mesh, uniforms };
+export function hexToColor3(hex) {
+    if (typeof hex === 'string') {
+        return B.Color3.FromHexString(hex.startsWith('#') ? hex : `#${hex}`);
+    }
+    const r = ((hex >> 16) & 255) / 255;
+    const g = ((hex >> 8) & 255) / 255;
+    const b = (hex & 255) / 255;
+    return new B.Color3(r, g, b);
 }
 
-export function applyChapterSky(sky, chapter) {
-    const fog = new THREE.Color(chapter.fog.color);
-    const sun = new THREE.Color(chapter.sun.color);
-    sky.uniforms.top.value.copy(new THREE.Color(chapter.clear)).multiplyScalar(1.05);
-    sky.uniforms.mid.value.copy(fog).lerp(sun, 0.28);
-    sky.uniforms.bot.value.copy(fog).lerp(new THREE.Color(chapter.hemi.ground), 0.32);
+export function hexToColor4(hex, alpha = 1) {
+    const c = hexToColor3(hex);
+    return new B.Color4(c.r, c.g, c.b, alpha);
+}
+
+export function createSky(scene) {
+    const dome = B.MeshBuilder.CreateSphere('skyDome', { diameter: 700, segments: 16, sideOrientation: B.Mesh.BACKSIDE }, scene);
+    dome.isPickable = false;
+    dome.infiniteDistance = true;
+
+    const skyMat = new B.StandardMaterial('skyMat', scene);
+    skyMat.disableLighting = true;
+    skyMat.backFaceCulling = false;
+    skyMat.specularColor = new B.Color3(0, 0, 0);
+
+    const dynamicTex = new B.DynamicTexture('skyTex', { width: 128, height: 256 }, scene, false);
+    skyMat.emissiveTexture = dynamicTex;
+    dome.material = skyMat;
+
+    return {
+        mesh: dome,
+        texture: dynamicTex,
+        material: skyMat
+    };
+}
+
+export function applyChapterSky(sky, chapter, scene) {
+    const topCol = hexToColor3(chapter.clear);
+    const midCol = hexToColor3(chapter.fog.color);
+    const botCol = hexToColor3(chapter.hemi.ground);
+
+    const ctx = sky.texture.getContext();
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, topCol.toHexString());
+    grad.addColorStop(0.5, midCol.toHexString());
+    grad.addColorStop(1, botCol.toHexString());
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 256);
+    sky.texture.update(false);
+
+    if (scene) {
+        scene.clearColor = hexToColor4(chapter.clear, 1);
+        scene.fogMode = B.Scene.FOGMODE_LINEAR;
+        scene.fogStart = chapter.fog.near;
+        scene.fogEnd = chapter.fog.far;
+        scene.fogColor = hexToColor3(chapter.fog.color);
+
+        if (scene.imageProcessingConfiguration) {
+            scene.imageProcessingConfiguration.toneMappingEnabled = true;
+            scene.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
+            scene.imageProcessingConfiguration.exposure = chapter.exposure ?? 1.15;
+            scene.imageProcessingConfiguration.contrast = 1.1;
+        }
+    }
 }
 
 export function createLights(scene, chapter, quality) {
-    const group = new THREE.Group();
-    scene.add(group);
+    const hemi = new B.HemisphericLight('hemiLight', new B.Vector3(0, 1, 0), scene);
+    hemi.diffuse = hexToColor3(chapter.hemi.sky);
+    hemi.groundColor = hexToColor3(chapter.hemi.ground);
+    hemi.intensity = chapter.hemi.intensity ?? 0.85;
 
-    const amb = new THREE.AmbientLight(chapter.ambient, chapter.ambientIntensity ?? 0.5);
-    group.add(amb);
+    const sunDir = new B.Vector3(
+        -chapter.sun.dir[0],
+        -chapter.sun.dir[1],
+        -chapter.sun.dir[2]
+    ).normalize();
 
-    const hemi = new THREE.HemisphereLight(chapter.hemi.sky, chapter.hemi.ground, chapter.hemi.intensity);
-    group.add(hemi);
+    const dir = new B.DirectionalLight('sunLight', sunDir, scene);
+    dir.position = new B.Vector3(
+        chapter.sun.dir[0] * 70,
+        chapter.sun.dir[1] * 70,
+        chapter.sun.dir[2] * 70
+    );
+    dir.diffuse = hexToColor3(chapter.sun.color);
+    dir.intensity = chapter.sun.intensity ?? 2.0;
 
-    const dir = new THREE.DirectionalLight(chapter.sun.color, chapter.sun.intensity);
-    const d = chapter.sun.dir;
-    dir.position.set(d[0] * 80, d[1] * 80, d[2] * 80);
-    dir.castShadow = quality.shadows;
+    let shadow = null;
     if (quality.shadows) {
-        dir.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
-        const s = 52;
-        dir.shadow.camera.left = -s;
-        dir.shadow.camera.right = s;
-        dir.shadow.camera.top = s;
-        dir.shadow.camera.bottom = -s;
-        dir.shadow.camera.near = 8;
-        dir.shadow.camera.far = 200;
-        dir.shadow.bias = -0.0008;
+        shadow = new B.ShadowGenerator(quality.shadowSize, dir);
+        shadow.useBlurExponentialShadowMap = true;
+        shadow.blurKernel = quality.shadowSize >= 2048 ? 24 : 14;
+        shadow.bias = 0.0006;
+        shadow.normalBias = 0.03;
+        shadow.darkness = 0.35;
     }
-    group.add(dir);
-    group.add(dir.target);
 
-    return { group, dir, hemi, amb };
+    return {
+        dir,
+        hemi,
+        shadow,
+        addShadow(mesh, receive = true) {
+            if (!mesh) return mesh;
+            if (shadow) shadow.addShadowCaster(mesh);
+            mesh.receiveShadows = Boolean(receive && quality.shadows);
+            return mesh;
+        },
+        dispose() {
+            if (shadow) shadow.dispose();
+            dir.dispose();
+            hemi.dispose();
+        }
+    };
 }
+

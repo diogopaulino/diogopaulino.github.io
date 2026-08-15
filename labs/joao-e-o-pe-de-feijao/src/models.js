@@ -1,37 +1,67 @@
 /**
- * Modelos 3D construídos por código — nenhum GLB externo.
+ * Modelos 3D construídos por código no Babylon.js — nenhum GLB externo.
  * João, mãe, mercador, Mimosa, gigante, cabana, pé de feijão, castelo e tesouros.
  */
 
-import * as THREE from 'three';
+import { hexToColor3 } from './sky.js';
 import {
     grassTexture, barkTexture, leafTexture, thatchTexture, woodTexture,
     stoneTexture, goldTexture, cloudTexture, clothTexture
 } from './textures.js';
 
+const B = window.BABYLON;
 const matCache = new Map();
 
-function mat(key, factory) {
-    if (!matCache.has(key)) matCache.set(key, factory());
-    return matCache.get(key);
+function mat(scene, key, factory) {
+    const sceneKey = scene?.uid || 'default';
+    const fullKey = `${sceneKey}:${key}`;
+    if (!matCache.has(fullKey)) {
+        matCache.set(fullKey, factory());
+    }
+    return matCache.get(fullKey);
 }
 
-export function std(color, roughness = 0.78, metalness = 0.04, extra = {}) {
-    return mat(`std:${color}:${roughness}:${metalness}:${JSON.stringify(extra)}`, () =>
-        new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra }));
+export function clearMaterialCache() {
+    matCache.clear();
 }
 
-function enableShadows(root) {
-    root.traverse((c) => {
-        if (c.isMesh) {
-            c.castShadow = true;
-            c.receiveShadow = true;
+export function std(scene, hex, roughness = 0.78, metallic = 0.04, extra = {}) {
+    const colStr = typeof hex === 'number' ? hex.toString(16) : String(hex);
+    return mat(scene, `std:${colStr}:${roughness}:${metallic}:${JSON.stringify(extra)}`, () => {
+        const material = new B.PBRMaterial(`mat_${colStr}`, scene);
+        material.albedoColor = hexToColor3(hex);
+        material.roughness = roughness;
+        material.metallic = metallic;
+
+        if (extra.emissive) {
+            material.emissiveColor = hexToColor3(extra.emissive);
+            material.emissiveIntensity = extra.emissiveIntensity ?? 0.5;
         }
+        if (extra.map) {
+            material.albedoTexture = extra.map;
+        }
+        if (extra.alpha != null) {
+            material.alpha = extra.alpha;
+            material.transparencyMode = B.PBRMaterial.PBRMATERIAL_ALPHABLEND;
+        }
+        if (extra.doubleSided) {
+            material.backFaceCulling = false;
+        }
+        return material;
     });
 }
 
-function limb(geo, material, y) {
-    const mesh = new THREE.Mesh(geo, material);
+function limb(scene, name, type, options, material, parent, y = 0) {
+    let mesh;
+    if (type === 'cylinder') {
+        mesh = B.MeshBuilder.CreateCylinder(name, options, scene);
+    } else if (type === 'box') {
+        mesh = B.MeshBuilder.CreateBox(name, options, scene);
+    } else if (type === 'sphere') {
+        mesh = B.MeshBuilder.CreateSphere(name, options, scene);
+    }
+    mesh.material = material;
+    if (parent) mesh.parent = parent;
     mesh.position.y = y;
     return mesh;
 }
@@ -40,411 +70,659 @@ function limb(geo, material, y) {
 /* Personagens                                                         */
 /* ------------------------------------------------------------------ */
 
-export function buildJoao() {
-    const group = new THREE.Group();
-    const skin = std(0xf0c49a, 0.7);
-    const hair = std(0x5a3218, 0.9);
-    const vest = std(0x2e7a3a, 0.86);
-    const pants = std(0x6a4428, 0.88);
-    const cap = std(0xc43a2a, 0.7);
+export function buildJoao(scene) {
+    const root = new B.TransformNode('joaoRoot', scene);
+    const skin = std(scene, 0xf0c49a, 0.65, 0.02);
+    const hair = std(scene, 0x5a3218, 0.88, 0.02);
+    const vest = std(scene, 0x2e7a3a, 0.84, 0.04);
+    const pants = std(scene, 0x6a4428, 0.86, 0.02);
+    const cap = std(scene, 0xc43a2a, 0.68, 0.05);
 
-    const hips = new THREE.Group();
-    group.add(hips);
+    const hips = new B.TransformNode('joaoHips', scene);
+    hips.parent = root;
+
     const parts = { legs: [], arms: [], feet: [] };
 
-    for (const sx of [-1, 1]) {
-        const leg = new THREE.Group();
-        leg.position.set(sx * 0.11, 0.42, 0);
-        hips.add(leg);
-        leg.add(limb(new THREE.CylinderGeometry(0.075, 0.065, 0.38, 8), pants, -0.19));
-        const foot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), std(0x3a2414, 0.85));
-        foot.scale.set(1.1, 0.5, 1.5);
-        foot.position.set(0, -0.4, 0.04);
-        leg.add(foot);
+    // Pernas e pés
+    [-1, 1].forEach((sx, i) => {
+        const leg = new B.TransformNode(`joaoLeg_${i}`, scene);
+        leg.parent = hips;
+        leg.position.set(sx * 0.12, 0.42, 0);
+
+        const thigh = limb(scene, `joaoThigh_${i}`, 'cylinder', {
+            height: 0.38,
+            diameterTop: 0.15,
+            diameterBottom: 0.13,
+            tessellation: 8
+        }, pants, leg, -0.19);
+
+        const foot = limb(scene, `joaoFoot_${i}`, 'sphere', {
+            diameterX: 0.16,
+            diameterY: 0.08,
+            diameterZ: 0.24,
+            segments: 8
+        }, std(scene, 0x3a2414, 0.82), leg, -0.4);
+        foot.position.z = 0.04;
+
         parts.legs.push(leg);
         parts.feet.push(foot);
-    }
+    });
 
-    const torso = new THREE.Group();
+    // Torso
+    const torso = new B.TransformNode('joaoTorso', scene);
+    torso.parent = hips;
     torso.position.y = 0.44;
-    hips.add(torso);
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.42, 10), vest);
-    body.position.y = 0.28;
-    torso.add(body);
-    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.12, 8), std(0xf2e8d0, 0.9));
-    shirt.position.y = 0.48;
-    torso.add(shirt);
+    const body = limb(scene, 'joaoBody', 'cylinder', {
+        height: 0.42,
+        diameterTop: 0.32,
+        diameterBottom: 0.40,
+        tessellation: 10
+    }, vest, torso, 0.28);
 
-    const head = new THREE.Group();
+    const shirt = limb(scene, 'joaoShirt', 'cylinder', {
+        height: 0.12,
+        diameterTop: 0.24,
+        diameterBottom: 0.28,
+        tessellation: 8
+    }, std(scene, 0xf2e8d0, 0.9), torso, 0.48);
+
+    // Cabeça e chapéu
+    const head = new B.TransformNode('joaoHead', scene);
+    head.parent = torso;
     head.position.y = 0.62;
-    torso.add(head);
-    head.add(new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 10), skin));
 
-    for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), std(0xf7f2ea, 0.35));
+    const skull = limb(scene, 'joaoSkull', 'sphere', {
+        diameter: 0.31,
+        segments: 12
+    }, skin, head, 0);
+
+    // Olhos
+    [-1, 1].forEach((sx, i) => {
+        const eye = limb(scene, `joaoEye_${i}`, 'sphere', {
+            diameter: 0.048,
+            segments: 8
+        }, std(scene, 0xf7f2ea, 0.35), head, 0.02);
         eye.position.set(sx * 0.05, 0.02, 0.135);
-        head.add(eye);
-        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.013, 6, 5), std(0x2a5a18, 0.4));
+
+        const iris = limb(scene, `joaoIris_${i}`, 'sphere', {
+            diameter: 0.026,
+            segments: 6
+        }, std(scene, 0x2a5a18, 0.4), head, 0.02);
         iris.position.set(sx * 0.05, 0.02, 0.152);
-        head.add(iris);
-    }
-    const haircap = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
-    haircap.position.y = 0.04;
-    head.add(haircap);
-    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 0.1, 12), cap);
-    hat.position.y = 0.16;
-    head.add(hat);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 12), cap);
-    brim.position.y = 0.12;
-    head.add(brim);
+    });
 
-    const armGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.34, 8);
-    for (const sx of [-1, 1]) {
-        const arm = new THREE.Group();
+    const haircap = limb(scene, 'joaoHair', 'sphere', {
+        diameterX: 0.32,
+        diameterY: 0.22,
+        diameterZ: 0.32,
+        segments: 10
+    }, hair, head, 0.04);
+
+    const hat = limb(scene, 'joaoHat', 'cylinder', {
+        height: 0.1,
+        diameterTop: 0.32,
+        diameterBottom: 0.34,
+        tessellation: 12
+    }, cap, head, 0.16);
+
+    const brim = limb(scene, 'joaoBrim', 'cylinder', {
+        height: 0.03,
+        diameter: 0.44,
+        tessellation: 12
+    }, cap, head, 0.12);
+
+    // Braços
+    [-1, 1].forEach((sx, i) => {
+        const arm = new B.TransformNode(`joaoArm_${i}`, scene);
+        arm.parent = torso;
         arm.position.set(sx * 0.22, 0.44, 0);
-        torso.add(arm);
-        arm.add(limb(armGeo, skin, -0.16));
-        parts.arms.push(arm);
-    }
 
-    enableShadows(group);
-    group.userData.parts = { ...parts, torso, head, hips };
-    return { group, parts: group.userData.parts };
+        limb(scene, `joaoArmMesh_${i}`, 'cylinder', {
+            height: 0.34,
+            diameterTop: 0.10,
+            diameterBottom: 0.09,
+            tessellation: 8
+        }, skin, arm, -0.16);
+
+        parts.arms.push(arm);
+    });
+
+    const resultParts = { ...parts, torso, head, hips, root };
+    root.userData = { parts: resultParts };
+    return { group: root, parts: resultParts };
 }
 
-export function buildMother() {
-    const group = new THREE.Group();
-    const skin = std(0xe8b888, 0.72);
-    const dress = std(0x6a3a78, 0.88);
-    const apron = std(0xf0e4c8, 0.9);
-    const hair = std(0x3a2414, 0.9);
+export function buildMother(scene) {
+    const root = new B.TransformNode('motherRoot', scene);
+    const skin = std(scene, 0xe8b888, 0.7);
+    const dress = std(scene, 0x6a3a78, 0.85);
+    const apron = std(scene, 0xf0e4c8, 0.9);
+    const hair = std(scene, 0x3a2414, 0.9);
 
-    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.85, 12), dress);
-    skirt.position.y = 0.42;
-    group.add(skirt);
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.4, 10), dress);
-    torso.position.y = 0.95;
-    group.add(torso);
-    const ap = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.45), apron);
-    ap.position.set(0, 0.72, 0.22);
-    group.add(ap);
+    const skirt = limb(scene, 'motherSkirt', 'cylinder', {
+        height: 0.85,
+        diameterTop: 0.1,
+        diameterBottom: 0.84,
+        tessellation: 12
+    }, dress, root, 0.42);
 
-    const head = new THREE.Group();
+    const torso = limb(scene, 'motherTorso', 'cylinder', {
+        height: 0.4,
+        diameterTop: 0.36,
+        diameterBottom: 0.44,
+        tessellation: 10
+    }, dress, root, 0.95);
+
+    const ap = limb(scene, 'motherApron', 'box', {
+        width: 0.32,
+        height: 0.45,
+        depth: 0.02
+    }, apron, root, 0.72);
+    ap.position.z = 0.22;
+
+    const head = new B.TransformNode('motherHead', scene);
+    head.parent = root;
     head.position.y = 1.28;
-    group.add(head);
-    head.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), skin));
-    const bun = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), hair);
-    bun.position.set(0, 0.12, -0.1);
-    head.add(bun);
-    const haircap = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, 1.2), hair);
-    haircap.position.y = 0.03;
-    head.add(haircap);
-    for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), std(0x2a2018, 0.4));
-        eye.position.set(sx * 0.05, 0.02, 0.145);
-        head.add(eye);
-    }
 
-    for (const sx of [-1, 1]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.42, 8), skin);
+    limb(scene, 'motherSkull', 'sphere', {
+        diameter: 0.32,
+        segments: 12
+    }, skin, head, 0);
+
+    const bun = limb(scene, 'motherBun', 'sphere', {
+        diameter: 0.18,
+        segments: 8
+    }, hair, head, 0.12);
+    bun.position.z = -0.1;
+
+    [-1, 1].forEach((sx, i) => {
+        const eye = limb(scene, `motherEye_${i}`, 'sphere', {
+            diameter: 0.044,
+            segments: 6
+        }, std(scene, 0x2a2018, 0.4), head, 0.02);
+        eye.position.set(sx * 0.05, 0.02, 0.145);
+
+        const arm = limb(scene, `motherArm_${i}`, 'cylinder', {
+            height: 0.42,
+            diameterTop: 0.10,
+            diameterBottom: 0.09,
+            tessellation: 8
+        }, skin, root, 0.88);
         arm.position.set(sx * 0.26, 0.88, 0.05);
         arm.rotation.z = sx * 0.35;
-        group.add(arm);
-    }
-    enableShadows(group);
-    return group;
-}
-
-export function buildMerchant() {
-    const group = new THREE.Group();
-    const robe = new THREE.MeshStandardMaterial({
-        map: clothTexture(), color: 0xc8a0e0, roughness: 0.82
     });
-    const skin = std(0xd4b08a, 0.7);
-    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.35, 12), robe);
-    cloak.position.y = 0.68;
-    group.add(cloak);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), skin);
-    head.position.y = 1.42;
-    group.add(head);
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 10), std(0x3a1848, 0.7));
-    hat.position.y = 1.72;
-    group.add(hat);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), std(0x3a1848, 0.7));
-    brim.position.y = 1.5;
-    group.add(brim);
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 8), std(0xd8d0c0, 0.9));
-    beard.position.set(0, 1.28, 0.12);
+
+    return root;
+}
+
+export function buildMerchant(scene) {
+    const root = new B.TransformNode('merchantRoot', scene);
+    const robeTex = clothTexture(scene);
+    const robe = std(scene, 0xc8a0e0, 0.82, 0.02, { map: robeTex });
+    const skin = std(scene, 0xd4b08a, 0.7);
+    const hatMat = std(scene, 0x3a1848, 0.7, 0.05);
+
+    const cloak = limb(scene, 'merchantCloak', 'cylinder', {
+        height: 1.35,
+        diameterTop: 0.12,
+        diameterBottom: 0.96,
+        tessellation: 12
+    }, robe, root, 0.68);
+
+    const head = limb(scene, 'merchantHead', 'sphere', {
+        diameter: 0.32,
+        segments: 12
+    }, skin, root, 1.42);
+
+    const hat = limb(scene, 'merchantHat', 'cylinder', {
+        height: 0.55,
+        diameterTop: 0.02,
+        diameterBottom: 0.44,
+        tessellation: 10
+    }, hatMat, root, 1.72);
+
+    const brim = limb(scene, 'merchantBrim', 'cylinder', {
+        height: 0.04,
+        diameter: 0.64,
+        tessellation: 12
+    }, hatMat, root, 1.5);
+
+    const beard = limb(scene, 'merchantBeard', 'cylinder', {
+        height: 0.24,
+        diameterTop: 0.20,
+        diameterBottom: 0.02,
+        tessellation: 8
+    }, std(scene, 0xd8d0c0, 0.9), root, 1.28);
+    beard.position.z = 0.12;
     beard.rotation.x = 0.4;
-    group.add(beard);
-    for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 5), std(0x201828, 0.3));
-        eye.position.set(sx * 0.05, 1.45, 0.14);
-        group.add(eye);
-    }
-    const pouch = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), std(0x5a3a18, 0.85));
+
+    const pouch = limb(scene, 'merchantPouch', 'sphere', {
+        diameter: 0.24,
+        segments: 8
+    }, std(scene, 0x5a3a18, 0.85), root, 0.7);
     pouch.position.set(0.28, 0.7, 0.1);
-    group.add(pouch);
-    enableShadows(group);
-    return group;
+
+    return root;
 }
 
-export function buildCow() {
-    const group = new THREE.Group();
-    const hide = std(0xf2efe8, 0.85);
-    const spot = std(0x5a3a22, 0.88);
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), hide);
-    body.scale.set(1.45, 0.9, 0.85);
-    body.position.y = 0.55;
-    group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), hide);
+export function buildCow(scene) {
+    const root = new B.TransformNode('cowRoot', scene);
+    const hide = std(scene, 0xf2efe8, 0.85);
+    const spot = std(scene, 0x5a3a22, 0.88);
+
+    const body = limb(scene, 'cowBody', 'sphere', {
+        diameterX: 1.2,
+        diameterY: 0.75,
+        diameterZ: 0.7,
+        segments: 12
+    }, hide, root, 0.55);
+
+    const head = new B.TransformNode('cowHead', scene);
+    head.parent = root;
     head.position.set(0, 0.72, 0.52);
-    group.add(head);
-    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), std(0xe8c8b0, 0.8));
-    snout.scale.set(1.1, 0.7, 1.2);
-    snout.position.set(0, 0.64, 0.7);
-    group.add(snout);
-    for (const sx of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.14, 6), std(0xf0e8d0, 0.5, 0.2));
-        horn.position.set(sx * 0.12, 0.92, 0.48);
+
+    limb(scene, 'cowHeadMesh', 'sphere', {
+        diameter: 0.44,
+        segments: 10
+    }, hide, head, 0);
+
+    const snout = limb(scene, 'cowSnout', 'sphere', {
+        diameterX: 0.26,
+        diameterY: 0.17,
+        diameterZ: 0.28,
+        segments: 8
+    }, std(scene, 0xe8c8b0, 0.8), head, -0.08);
+    snout.position.z = 0.18;
+
+    [-1, 1].forEach((sx, i) => {
+        const horn = limb(scene, `cowHorn_${i}`, 'cylinder', {
+            height: 0.14,
+            diameterTop: 0.01,
+            diameterBottom: 0.06,
+            tessellation: 6
+        }, std(scene, 0xf0e8d0, 0.5, 0.2), head, 0.20);
+        horn.position.set(sx * 0.12, 0.20, -0.04);
         horn.rotation.z = sx * -0.4;
-        group.add(horn);
-        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), hide);
-        ear.scale.set(0.5, 1, 0.7);
-        ear.position.set(sx * 0.2, 0.8, 0.42);
-        group.add(ear);
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), std(0x1a140e, 0.4));
-        eye.position.set(sx * 0.1, 0.78, 0.68);
-        group.add(eye);
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.055, 0.48, 6), hide);
-        leg.position.set(sx * 0.22, 0.24, sx * 0.18);
-        group.add(leg);
-        const legB = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.055, 0.48, 6), hide);
+
+        const ear = limb(scene, `cowEar_${i}`, 'sphere', {
+            diameterX: 0.07,
+            diameterY: 0.14,
+            diameterZ: 0.10,
+            segments: 6
+        }, hide, head, 0.08);
+        ear.position.set(sx * 0.2, 0.08, -0.1);
+
+        const eye = limb(scene, `cowEye_${i}`, 'sphere', {
+            diameter: 0.06,
+            segments: 6
+        }, std(scene, 0x1a140e, 0.4), head, 0.06);
+        eye.position.set(sx * 0.1, 0.06, 0.16);
+
+        // Pernas
+        const legF = limb(scene, `cowLegF_${i}`, 'cylinder', {
+            height: 0.48,
+            diameterTop: 0.14,
+            diameterBottom: 0.11,
+            tessellation: 6
+        }, hide, root, 0.24);
+        legF.position.set(sx * 0.22, 0.24, 0.18);
+
+        const legB = limb(scene, `cowLegB_${i}`, 'cylinder', {
+            height: 0.48,
+            diameterTop: 0.14,
+            diameterBottom: 0.11,
+            tessellation: 6
+        }, hide, root, 0.24);
         legB.position.set(sx * 0.22, 0.24, -0.22);
-        group.add(legB);
-        const blot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), spot);
+
+        const blot = limb(scene, `cowBlot_${i}`, 'sphere', {
+            diameter: 0.32,
+            segments: 8
+        }, spot, root, 0.62);
         blot.position.set(sx * 0.28, 0.62, sx * 0.05);
-        group.add(blot);
-    }
-    const udder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), std(0xf0c8c0, 0.8));
-    udder.position.set(0, 0.28, -0.05);
-    group.add(udder);
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.4, 5), hide);
-    tail.position.set(0, 0.55, -0.48);
+    });
+
+    const udder = limb(scene, 'cowUdder', 'sphere', {
+        diameter: 0.24,
+        segments: 8
+    }, std(scene, 0xf0c8c0, 0.8), root, 0.28);
+    udder.position.z = -0.05;
+
+    const tail = limb(scene, 'cowTail', 'cylinder', {
+        height: 0.4,
+        diameterTop: 0.06,
+        diameterBottom: 0.04,
+        tessellation: 5
+    }, hide, root, 0.55);
+    tail.position.z = -0.48;
     tail.rotation.x = 0.6;
-    group.add(tail);
-    enableShadows(group);
-    group.userData.parts = { head };
-    return group;
+
+    root.userData = { parts: { head } };
+    return root;
 }
 
-export function buildGiant() {
-    const group = new THREE.Group();
-    const skin = std(0xc49a72, 0.75);
-    const cloth = std(0x4a3020, 0.88);
-    const hair = std(0x3a2010, 0.9);
+export function buildGiant(scene) {
+    const root = new B.TransformNode('giantRoot', scene);
+    const skin = std(scene, 0xc49a72, 0.72);
+    const cloth = std(scene, 0x4a3020, 0.88);
+    const hair = std(scene, 0x3a2010, 0.9);
 
-    const hips = new THREE.Group();
-    group.add(hips);
+    const hips = new B.TransformNode('giantHips', scene);
+    hips.parent = root;
+
     const parts = { legs: [], arms: [] };
 
-    for (const sx of [-1, 1]) {
-        const leg = new THREE.Group();
+    // Pernas colossais
+    [-1, 1].forEach((sx, i) => {
+        const leg = new B.TransformNode(`giantLeg_${i}`, scene);
+        leg.parent = hips;
         leg.position.set(sx * 0.55, 1.6, 0);
-        hips.add(leg);
-        leg.add(limb(new THREE.CylinderGeometry(0.32, 0.26, 1.5, 8), cloth, -0.75));
-        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.28, 0.7), std(0x2a1810, 0.85));
-        boot.position.set(0, -1.55, 0.12);
-        leg.add(boot);
+
+        limb(scene, `giantThigh_${i}`, 'cylinder', {
+            height: 1.5,
+            diameterTop: 0.64,
+            diameterBottom: 0.52,
+            tessellation: 8
+        }, cloth, leg, -0.75);
+
+        const boot = limb(scene, `giantBoot_${i}`, 'box', {
+            width: 0.42,
+            height: 0.28,
+            depth: 0.7
+        }, std(scene, 0x2a1810, 0.85), leg, -1.55);
+        boot.position.z = 0.12;
+
         parts.legs.push(leg);
-    }
+    });
 
-    const torso = new THREE.Group();
+    // Torso e Barriga
+    const torso = new B.TransformNode('giantTorso', scene);
+    torso.parent = hips;
     torso.position.y = 1.7;
-    hips.add(torso);
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(1.05, 14, 12), cloth);
-    belly.scale.set(1.05, 0.85, 0.8);
-    belly.position.y = 1.15;
-    torso.add(belly);
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 1.1, 10), cloth);
-    chest.position.y = 1.7;
-    torso.add(chest);
 
-    const head = new THREE.Group();
+    const belly = limb(scene, 'giantBelly', 'sphere', {
+        diameterX: 2.2,
+        diameterY: 1.8,
+        diameterZ: 1.7,
+        segments: 14
+    }, cloth, torso, 1.15);
+
+    const chest = limb(scene, 'giantChest', 'cylinder', {
+        height: 1.1,
+        diameterTop: 1.4,
+        diameterBottom: 1.8,
+        tessellation: 10
+    }, cloth, torso, 1.7);
+
+    // Cabeça
+    const head = new B.TransformNode('giantHead', scene);
+    head.parent = torso;
     head.position.y = 2.55;
-    torso.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10), skin);
-    head.add(skull);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.2), hair);
-    brow.position.set(0, 0.18, 0.48);
-    head.add(brow);
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 8), hair);
-    beard.position.set(0, -0.45, 0.28);
+
+    limb(scene, 'giantSkull', 'sphere', {
+        diameter: 1.24,
+        segments: 12
+    }, skin, head, 0);
+
+    const brow = limb(scene, 'giantBrow', 'box', {
+        width: 0.9,
+        height: 0.12,
+        depth: 0.2
+    }, hair, head, 0.18);
+    brow.position.z = 0.48;
+
+    const beard = limb(scene, 'giantBeard', 'cylinder', {
+        height: 0.7,
+        diameterTop: 0.7,
+        diameterBottom: 0.05,
+        tessellation: 8
+    }, hair, head, -0.45);
+    beard.position.z = 0.28;
     beard.rotation.x = 0.25;
-    head.add(beard);
-    for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), std(0xf0e8d8, 0.3));
+
+    [-1, 1].forEach((sx, i) => {
+        const eye = limb(scene, `giantEye_${i}`, 'sphere', {
+            diameter: 0.18,
+            segments: 8
+        }, std(scene, 0xf0e8d8, 0.3), head, 0.08);
         eye.position.set(sx * 0.18, 0.08, 0.52);
-        head.add(eye);
-        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), std(0x3a2010, 0.4));
+
+        const iris = limb(scene, `giantIris_${i}`, 'sphere', {
+            diameter: 0.08,
+            segments: 6
+        }, std(scene, 0x3a2010, 0.4), head, 0.06);
         iris.position.set(sx * 0.18, 0.06, 0.58);
-        head.add(iris);
-    }
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.28, 6), skin);
+    });
+
+    const nose = limb(scene, 'giantNose', 'cylinder', {
+        height: 0.28,
+        diameterTop: 0.02,
+        diameterBottom: 0.24,
+        tessellation: 6
+    }, skin, head, -0.02);
+    nose.position.z = 0.62;
     nose.rotation.x = Math.PI / 2;
-    nose.position.set(0, -0.02, 0.62);
-    head.add(nose);
 
-    for (const sx of [-1, 1]) {
-        const arm = new THREE.Group();
+    // Braços
+    [-1, 1].forEach((sx, i) => {
+        const arm = new B.TransformNode(`giantArm_${i}`, scene);
+        arm.parent = torso;
         arm.position.set(sx * 1.05, 2.0, 0);
-        torso.add(arm);
-        arm.add(limb(new THREE.CylinderGeometry(0.22, 0.18, 1.5, 8), skin, -0.7));
-        const fist = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), skin);
-        fist.position.y = -1.5;
-        arm.add(fist);
-        parts.arms.push(arm);
-    }
 
-    const club = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 2.2, 8), std(0x5a3a18, 0.8));
+        limb(scene, `giantArmMesh_${i}`, 'cylinder', {
+            height: 1.5,
+            diameterTop: 0.44,
+            diameterBottom: 0.36,
+            tessellation: 8
+        }, skin, arm, -0.7);
+
+        const fist = limb(scene, `giantFist_${i}`, 'sphere', {
+            diameter: 0.44,
+            segments: 8
+        }, skin, arm, -1.5);
+
+        parts.arms.push(arm);
+    });
+
+    // Clava de madeira na mão direita
+    const club = limb(scene, 'giantClub', 'cylinder', {
+        height: 2.2,
+        diameterTop: 0.24,
+        diameterBottom: 0.56,
+        tessellation: 8
+    }, std(scene, 0x5a3a18, 0.8), parts.arms[1], -1.4);
     club.position.set(0.15, -1.4, 0.3);
     club.rotation.z = 0.3;
-    parts.arms[1].add(club);
 
-    enableShadows(group);
-    group.userData.parts = { ...parts, torso, head, hips, belly, club };
-    return { group, parts: group.userData.parts };
+    const resultParts = { ...parts, torso, head, hips, belly, club, root };
+    root.userData = { parts: resultParts };
+    return { group: root, parts: resultParts };
 }
 
 /* ------------------------------------------------------------------ */
-/* Arquitetura e props                                                 */
+/* Arquitetura e Cenários                                              */
 /* ------------------------------------------------------------------ */
 
-export function buildCottage() {
-    const group = new THREE.Group();
-    const wall = new THREE.MeshStandardMaterial({ map: woodTexture(), color: 0xe8d2a8, roughness: 0.9 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.6, 4.2), wall);
-    body.position.y = 1.3;
-    group.add(body);
-    const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(4.2, 2.2, 4),
-        new THREE.MeshStandardMaterial({ map: thatchTexture(), roughness: 0.95 })
-    );
+export function buildCottage(scene) {
+    const root = new B.TransformNode('cottageRoot', scene);
+    const wallTex = woodTexture(scene);
+    const thatchTex = thatchTexture(scene);
+    const wall = std(scene, 0xe8d2a8, 0.9, 0.02, { map: wallTex });
+    const roofMat = std(scene, 0xc4a050, 0.95, 0.02, { map: thatchTex });
+
+    const body = limb(scene, 'cottageBody', 'box', {
+        width: 5.2,
+        height: 2.6,
+        depth: 4.2
+    }, wall, root, 1.3);
+
+    const roof = limb(scene, 'cottageRoof', 'cylinder', {
+        height: 2.2,
+        diameterTop: 0.2,
+        diameterBottom: 5.9,
+        tessellation: 4
+    }, roofMat, root, 3.5);
     roof.rotation.y = Math.PI / 4;
-    roof.position.y = 3.5;
-    group.add(roof);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.12), std(0x5a3218, 0.8));
-    door.position.set(0, 0.75, 2.16);
-    group.add(door);
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), std(0xd4a020, 0.3, 0.8));
+
+    const door = limb(scene, 'cottageDoor', 'box', {
+        width: 0.9,
+        height: 1.5,
+        depth: 0.12
+    }, std(scene, 0x5a3218, 0.8), root, 0.75);
+    door.position.z = 2.16;
+
+    const knob = limb(scene, 'cottageKnob', 'sphere', {
+        diameter: 0.1,
+        segments: 6
+    }, std(scene, 0xd4a020, 0.3, 0.8), root, 0.7);
     knob.position.set(0.32, 0.7, 2.24);
-    group.add(knob);
-    for (const sx of [-1.4, 1.4]) {
-        const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.08), std(0x88c8e8, 0.3, 0.1, {
-            emissive: 0xffcc66, emissiveIntensity: 0.25
-        }));
+
+    [-1.4, 1.4].forEach((sx, i) => {
+        const win = limb(scene, `cottageWin_${i}`, 'box', {
+            width: 0.7,
+            height: 0.7,
+            depth: 0.08
+        }, std(scene, 0x88c8e8, 0.3, 0.1, {
+            emissive: 0xffcc66,
+            emissiveIntensity: 0.35
+        }), root, 1.55);
         win.position.set(sx, 1.55, 2.14);
-        group.add(win);
-    }
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.4, 0.55), std(0x8a7060, 0.9));
+    });
+
+    const chimney = limb(scene, 'cottageChimney', 'box', {
+        width: 0.55,
+        height: 1.4,
+        depth: 0.55
+    }, std(scene, 0x8a7060, 0.9), root, 4.1);
     chimney.position.set(1.6, 4.1, -0.6);
-    group.add(chimney);
-    enableShadows(group);
-    return group;
+
+    return root;
 }
 
-export function buildFence(len = 6) {
-    const group = new THREE.Group();
-    const wood = std(0x8a6a40, 0.88);
+export function buildFence(scene, len = 6) {
+    const root = new B.TransformNode('fenceRoot', scene);
+    const wood = std(scene, 0x8a6a40, 0.88);
     const posts = Math.max(2, Math.round(len / 1.2));
+
     for (let i = 0; i < posts; i++) {
         const x = (i / (posts - 1) - 0.5) * len;
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), wood);
+        const p = limb(scene, `fencePost_${i}`, 'box', {
+            width: 0.12,
+            height: 0.9,
+            depth: 0.12
+        }, wood, root, 0.45);
         p.position.set(x, 0.45, 0);
-        group.add(p);
     }
-    for (const y of [0.28, 0.62]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.08), wood);
-        rail.position.y = y;
-        group.add(rail);
-    }
-    enableShadows(group);
-    return group;
+
+    [0.28, 0.62].forEach((y, i) => {
+        const rail = limb(scene, `fenceRail_${i}`, 'box', {
+            width: len,
+            height: 0.08,
+            depth: 0.08
+        }, wood, root, y);
+    });
+
+    return root;
 }
 
-export function buildTree(rng = Math.random) {
-    const group = new THREE.Group();
-    const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.28, 2.2, 8),
-        new THREE.MeshStandardMaterial({ map: barkTexture(), color: 0x6a4a28, roughness: 0.92 })
-    );
-    trunk.position.y = 1.1;
-    group.add(trunk);
-    const leafMat = new THREE.MeshStandardMaterial({
-        map: leafTexture(), color: 0x4aaa3a, roughness: 0.85
-    });
+export function buildTree(scene, rng = Math.random) {
+    const root = new B.TransformNode('treeRoot', scene);
+    const barkTex = barkTexture(scene);
+    const leafTex = leafTexture(scene);
+
+    const trunk = limb(scene, 'treeTrunk', 'cylinder', {
+        height: 2.2,
+        diameterTop: 0.36,
+        diameterBottom: 0.56,
+        tessellation: 8
+    }, std(scene, 0x6a4a28, 0.92, 0.02, { map: barkTex }), root, 1.1);
+
+    const leafMat = std(scene, 0x4aaa3a, 0.85, 0.02, { map: leafTex });
+
     for (let i = 0; i < 4; i++) {
-        const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7 + rng() * 0.35, 0), leafMat);
+        const s = limb(scene, `treeFoliage_${i}`, 'sphere', {
+            diameter: (1.4 + rng() * 0.7),
+            segments: 8
+        }, leafMat, root, 2.2 + i * 0.35);
         s.position.set((rng() - 0.5) * 0.8, 2.2 + i * 0.35, (rng() - 0.5) * 0.8);
-        s.scale.setScalar(0.9 + rng() * 0.4);
-        group.add(s);
     }
-    enableShadows(group);
-    return group;
+
+    return root;
 }
 
-export function buildStall(color = 0xc45a2a) {
-    const group = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.88 });
-    const table = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 1.1), wood);
-    table.position.y = 0.85;
-    group.add(table);
-    for (const sx of [-0.9, 0.9]) {
-        for (const sz of [-0.4, 0.4]) {
-            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.85, 0.1), wood);
+export function buildStall(scene, color = 0xc45a2a) {
+    const root = new B.TransformNode('stallRoot', scene);
+    const woodTex = woodTexture(scene);
+    const wood = std(scene, 0x8a5a32, 0.88, 0.02, { map: woodTex });
+
+    const table = limb(scene, 'stallTable', 'box', {
+        width: 2.2,
+        height: 0.12,
+        depth: 1.1
+    }, wood, root, 0.85);
+
+    [-0.9, 0.9].forEach(sx => {
+        [-0.4, 0.4].forEach(sz => {
+            const leg = limb(scene, 'stallLeg', 'box', {
+                width: 0.1,
+                height: 0.85,
+                depth: 0.1
+            }, wood, root, 0.42);
             leg.position.set(sx, 0.42, sz);
-            group.add(leg);
-        }
-    }
-    const cloth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 1.6), std(color, 0.85));
-    cloth.position.set(0, 1.85, 0);
-    group.add(cloth);
-    const poleL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 6), wood);
-    poleL.position.set(-1.05, 1.0, -0.5);
-    group.add(poleL);
-    const poleR = poleL.clone();
-    poleR.position.x = 1.05;
-    group.add(poleR);
-    enableShadows(group);
-    return group;
+        });
+    });
+
+    const cloth = limb(scene, 'stallCloth', 'box', {
+        width: 2.4,
+        height: 0.06,
+        depth: 1.6
+    }, std(scene, color, 0.85), root, 1.85);
+
+    [-1.05, 1.05].forEach(sx => {
+        const pole = limb(scene, 'stallPole', 'cylinder', {
+            height: 2.0,
+            diameter: 0.1,
+            tessellation: 6
+        }, wood, root, 1.0);
+        pole.position.set(sx, 1.0, -0.5);
+    });
+
+    return root;
 }
 
-export function buildBeanstalk(height = 78, quality = 'high') {
-    const group = new THREE.Group();
-    const stemMat = new THREE.MeshStandardMaterial({
-        map: barkTexture(), color: 0x3a8a32, roughness: 0.82
-    });
-    const leafMat = new THREE.MeshStandardMaterial({
-        map: leafTexture(), color: 0x4cba40, roughness: 0.78, side: THREE.DoubleSide
-    });
+export function buildBeanstalk(scene, height = 78, quality = 'high') {
+    const root = new B.TransformNode('beanstalkRoot', scene);
+    const barkTex = barkTexture(scene);
+    const leafTex = leafTexture(scene);
 
-    const twist = new THREE.Group();
+    const stemMat = std(scene, 0x3a8a32, 0.82, 0.04, { map: barkTex });
+    const leafMat = std(scene, 0x4cba40, 0.78, 0.02, { map: leafTex, doubleSided: true });
+
+    const twist = new B.TransformNode('beanstalkTwist', scene);
+    twist.parent = root;
+
     const segs = quality === 'low' ? 10 : 18;
     for (let i = 0; i < segs; i++) {
         const y = (i / segs) * height;
-        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, height / segs + 0.4, 8), stemMat);
-        vine.position.y = y + height / segs * 0.5;
+        const segHeight = height / segs + 0.4;
+        const vine = limb(scene, `stalkVine_${i}`, 'cylinder', {
+            height: segHeight,
+            diameterTop: 1.1,
+            diameterBottom: 1.4,
+            tessellation: 8
+        }, stemMat, twist, y + segHeight * 0.5);
         vine.rotation.y = i * 0.45;
         vine.rotation.z = 0.08;
-        twist.add(vine);
-        const tendril = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.12, 6, 12, Math.PI * 1.4), stemMat);
-        tendril.position.y = y + 1.2;
-        tendril.rotation.x = Math.PI / 2;
+
+        const tendril = limb(scene, `stalkTendril_${i}`, 'cylinder', {
+            height: 0.24,
+            diameterTop: 1.7,
+            diameterBottom: 1.7,
+            tessellation: 8
+        }, stemMat, twist, y + 1.2);
         tendril.rotation.z = i * 0.7;
-        twist.add(tendril);
     }
-    group.add(twist);
 
     const platforms = [];
     const count = quality === 'low' ? 12 : 18;
@@ -454,244 +732,350 @@ export function buildBeanstalk(height = 78, quality = 'high') {
         const r = 3.15;
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        const leaf = new THREE.Mesh(new THREE.CircleGeometry(1.55, 10), leafMat);
-        leaf.rotation.x = -Math.PI / 2;
-        leaf.position.set(x, y, z);
-        group.add(leaf);
-        const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.45, 0.18, 10), stemMat);
+
+        const pad = limb(scene, `stalkPad_${i}`, 'cylinder', {
+            height: 0.18,
+            diameterTop: 2.7,
+            diameterBottom: 2.9,
+            tessellation: 10
+        }, leafMat, root, y - 0.08);
         pad.position.set(x, y - 0.08, z);
-        group.add(pad);
+
         platforms.push({ x, y, z, r: 1.45 });
     }
 
-    const flower = new THREE.Mesh(
-        new THREE.ConeGeometry(1.4, 2.2, 8),
-        std(0x7a3aaa, 0.6, 0.05, { emissive: 0x5a2088, emissiveIntensity: 0.35 })
-    );
-    flower.position.y = height + 0.4;
-    group.add(flower);
+    const flower = limb(scene, 'stalkFlower', 'cylinder', {
+        height: 2.2,
+        diameterTop: 0.2,
+        diameterBottom: 2.8,
+        tessellation: 8
+    }, std(scene, 0x7a3aaa, 0.6, 0.05, {
+        emissive: 0x5a2088,
+        emissiveIntensity: 0.45
+    }), root, height + 0.4);
 
-    enableShadows(group);
-    return { group, platforms, height };
+    return { group: root, platforms, height };
 }
 
-export function buildCloudIsland(radius = 28) {
-    const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({
-        map: cloudTexture(), color: 0xf4f8fc, roughness: 0.92
-    });
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, 2.2, 24), mat);
-    top.position.y = 0;
-    group.add(top);
+export function buildCloudIsland(scene, radius = 28) {
+    const root = new B.TransformNode('cloudIslandRoot', scene);
+    const cloudTex = cloudTexture(scene);
+    const cloudMat = std(scene, 0xf4f8fc, 0.92, 0.02, { map: cloudTex });
+
+    const top = limb(scene, 'cloudTop', 'cylinder', {
+        height: 2.2,
+        diameterTop: radius * 2,
+        diameterBottom: radius * 1.84,
+        tessellation: 24
+    }, cloudMat, root, 0);
+
     for (let i = 0; i < 10; i++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(4 + (i % 3) * 1.4, 10, 8), mat);
         const a = (i / 10) * Math.PI * 2;
+        const puff = limb(scene, `cloudPuff_${i}`, 'sphere', {
+            diameterX: 8 + (i % 3) * 2.8,
+            diameterY: 4 + (i % 3) * 1.4,
+            diameterZ: 8 + (i % 3) * 2.8,
+            segments: 8
+        }, cloudMat, root, -1.2);
         puff.position.set(Math.cos(a) * (radius * 0.82), -1.2, Math.sin(a) * (radius * 0.82));
-        puff.scale.set(1.4, 0.7, 1.2);
-        group.add(puff);
     }
-    enableShadows(group);
-    return group;
+
+    return root;
 }
 
-export function buildCastle() {
-    const group = new THREE.Group();
-    const stone = new THREE.MeshStandardMaterial({ map: stoneTexture(), color: 0xb8c0c8, roughness: 0.9 });
-    const keep = new THREE.Mesh(new THREE.BoxGeometry(16, 10, 14), stone);
-    keep.position.y = 5;
-    group.add(keep);
-    const hall = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 12), stone);
-    hall.position.set(0, 3, 10);
-    group.add(hall);
-    for (const [x, z] of [[-7, -6], [7, -6], [-7, 6], [7, 6], [-4, 15], [4, 15]]) {
-        const t = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.6, 14, 10), stone);
+export function buildCastle(scene) {
+    const root = new B.TransformNode('castleRoot', scene);
+    const stoneTex = stoneTexture(scene);
+    const stone = std(scene, 0xb8c0c8, 0.9, 0.05, { map: stoneTex });
+    const roofMat = std(scene, 0x5a2a68, 0.7, 0.05);
+
+    const keep = limb(scene, 'castleKeep', 'box', {
+        width: 16,
+        height: 10,
+        depth: 14
+    }, stone, root, 5);
+
+    const hall = limb(scene, 'castleHall', 'box', {
+        width: 10,
+        height: 6,
+        depth: 12
+    }, stone, root, 3);
+    hall.position.z = 10;
+
+    [
+        [-7, -6], [7, -6], [-7, 6], [7, 6], [-4, 15], [4, 15]
+    ].forEach(([x, z], i) => {
+        const t = limb(scene, `castleTower_${i}`, 'cylinder', {
+            height: 14,
+            diameterTop: 2.8,
+            diameterBottom: 3.2,
+            tessellation: 10
+        }, stone, root, 7);
         t.position.set(x, 7, z);
-        group.add(t);
-        const cap = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.4, 8), std(0x5a2a68, 0.7));
+
+        const cap = limb(scene, `castleCap_${i}`, 'cylinder', {
+            height: 2.4,
+            diameterTop: 0.2,
+            diameterBottom: 3.6,
+            tessellation: 8
+        }, roofMat, root, 15.1);
         cap.position.set(x, 15.1, z);
-        group.add(cap);
-    }
-    const door = new THREE.Mesh(new THREE.BoxGeometry(3.2, 4.4, 0.4), std(0x3a2414, 0.8));
-    door.position.set(0, 2.2, 16.1);
-    group.add(door);
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.25, 8, 16, Math.PI), stone);
-    arch.position.set(0, 4.4, 16.15);
-    arch.rotation.x = Math.PI;
-    group.add(arch);
-    enableShadows(group);
-    return group;
+    });
+
+    const door = limb(scene, 'castleDoor', 'box', {
+        width: 3.2,
+        height: 4.4,
+        depth: 0.4
+    }, std(scene, 0x3a2414, 0.8), root, 2.2);
+    door.position.z = 16.1;
+
+    return root;
 }
 
-export function buildTable() {
-    const group = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.75 });
-    const top = new THREE.Mesh(new THREE.BoxGeometry(8, 0.35, 4.2), wood);
-    top.position.y = 1.8;
-    group.add(top);
-    for (const sx of [-3.4, 3.4]) {
-        for (const sz of [-1.6, 1.6]) {
-            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.8, 0.28), wood);
+export function buildTable(scene) {
+    const root = new B.TransformNode('tableRoot', scene);
+    const woodTex = woodTexture(scene);
+    const wood = std(scene, 0x8a5a32, 0.75, 0.04, { map: woodTex });
+
+    const top = limb(scene, 'tableTop', 'box', {
+        width: 8,
+        height: 0.35,
+        depth: 4.2
+    }, wood, root, 1.8);
+
+    [-3.4, 3.4].forEach(sx => {
+        [-1.6, 1.6].forEach(sz => {
+            const leg = limb(scene, 'tableLeg', 'box', {
+                width: 0.28,
+                height: 1.8,
+                depth: 0.28
+            }, wood, root, 0.9);
             leg.position.set(sx, 0.9, sz);
-            group.add(leg);
-        }
-    }
-    enableShadows(group);
-    return group;
-}
-
-export function buildGoldBag() {
-    const group = new THREE.Group();
-    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), std(0xc4a030, 0.45, 0.65, {
-        map: goldTexture(), emissive: 0xaa7700, emissiveIntensity: 0.35
-    }));
-    bag.scale.set(1, 1.15, 1);
-    group.add(bag);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.22, 8), std(0x8a6a20, 0.6, 0.4));
-    neck.position.y = 0.42;
-    group.add(neck);
-    enableShadows(group);
-    return group;
-}
-
-export function buildHen() {
-    const group = new THREE.Group();
-    const gold = new THREE.MeshStandardMaterial({
-        map: goldTexture(), color: 0xffe080, metalness: 0.75, roughness: 0.32,
-        emissive: 0xaa7700, emissiveIntensity: 0.28
+        });
     });
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), gold);
-    body.scale.set(1.15, 0.9, 1);
-    body.position.y = 0.28;
-    group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), gold);
-    head.position.set(0.22, 0.48, 0);
-    group.add(head);
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 6), std(0xffaa33, 0.4, 0.5));
+
+    return root;
+}
+
+export function buildGoldBag(scene) {
+    const root = new B.TransformNode('goldBagRoot', scene);
+    const goldTex = goldTexture(scene);
+    const goldMat = std(scene, 0xc4a030, 0.45, 0.65, {
+        map: goldTex,
+        emissive: 0xaa7700,
+        emissiveIntensity: 0.4
+    });
+
+    const bag = limb(scene, 'goldBagMesh', 'sphere', {
+        diameterX: 0.76,
+        diameterY: 0.88,
+        diameterZ: 0.76,
+        segments: 10
+    }, goldMat, root, 0);
+
+    const neck = limb(scene, 'goldBagNeck', 'cylinder', {
+        height: 0.22,
+        diameterTop: 0.24,
+        diameterBottom: 0.36,
+        tessellation: 8
+    }, std(scene, 0x8a6a20, 0.6, 0.4), root, 0.42);
+
+    return root;
+}
+
+export function buildHen(scene) {
+    const root = new B.TransformNode('henRoot', scene);
+    const goldTex = goldTexture(scene);
+    const gold = std(scene, 0xffe080, 0.32, 0.75, {
+        map: goldTex,
+        emissive: 0xaa7700,
+        emissiveIntensity: 0.35
+    });
+
+    const body = limb(scene, 'henBody', 'sphere', {
+        diameterX: 0.64,
+        diameterY: 0.50,
+        diameterZ: 0.56,
+        segments: 10
+    }, gold, root, 0.28);
+
+    const head = limb(scene, 'henHead', 'sphere', {
+        diameter: 0.28,
+        segments: 8
+    }, gold, root, 0.48);
+    head.position.x = 0.22;
+
+    const beak = limb(scene, 'henBeak', 'cylinder', {
+        height: 0.12,
+        diameterTop: 0.01,
+        diameterBottom: 0.08,
+        tessellation: 6
+    }, std(scene, 0xffaa33, 0.4, 0.5), root, 0.46);
+    beak.position.x = 0.36;
     beak.rotation.z = -Math.PI / 2;
-    beak.position.set(0.36, 0.46, 0);
-    group.add(beak);
-    const comb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 5), std(0xff6644, 0.5));
-    comb.position.set(0.2, 0.62, 0);
-    group.add(comb);
-    for (const sx of [-1, 1]) {
-        const wing = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), gold);
-        wing.scale.set(0.4, 0.7, 1.1);
+
+    const comb = limb(scene, 'henComb', 'sphere', {
+        diameter: 0.12,
+        segments: 6
+    }, std(scene, 0xff6644, 0.5), root, 0.62);
+    comb.position.x = 0.2;
+
+    [-1, 1].forEach(sx => {
+        const wing = limb(scene, 'henWing', 'sphere', {
+            diameterX: 0.28,
+            diameterY: 0.20,
+            diameterZ: 0.08,
+            segments: 8
+        }, gold, root, 0.3);
         wing.position.set(-0.05, 0.3, sx * 0.22);
-        group.add(wing);
-    }
-    enableShadows(group);
-    return group;
-}
-
-export function buildHarp() {
-    const group = new THREE.Group();
-    const gold = new THREE.MeshStandardMaterial({
-        map: goldTexture(), metalness: 0.8, roughness: 0.28,
-        emissive: 0xaa8800, emissiveIntensity: 0.4
     });
-    const frame = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.07, 8, 24, Math.PI * 1.15), gold);
+
+    return root;
+}
+
+export function buildHarp(scene) {
+    const root = new B.TransformNode('harpRoot', scene);
+    const goldTex = goldTexture(scene);
+    const gold = std(scene, 0xffe080, 0.28, 0.8, {
+        map: goldTex,
+        emissive: 0xaa8800,
+        emissiveIntensity: 0.45
+    });
+
+    const frame = limb(scene, 'harpFrame', 'torus', {
+        diameter: 1.1,
+        thickness: 0.14,
+        tessellation: 16
+    }, gold, root, 0.55);
     frame.rotation.y = Math.PI / 2;
-    frame.position.y = 0.55;
-    group.add(frame);
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.15, 8), gold);
-    pillar.position.set(0.55, 0.55, 0);
-    group.add(pillar);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.22), gold);
-    base.position.y = 0.05;
-    group.add(base);
+
+    const pillar = limb(scene, 'harpPillar', 'cylinder', {
+        height: 1.15,
+        diameter: 0.1,
+        tessellation: 8
+    }, gold, root, 0.55);
+    pillar.position.x = 0.55;
+
+    const base = limb(scene, 'harpBase', 'box', {
+        width: 0.7,
+        height: 0.1,
+        depth: 0.22
+    }, gold, root, 0.05);
+
     for (let i = 0; i < 7; i++) {
-        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.7 + i * 0.05, 4), std(0xfff8d0, 0.4));
-        s.position.set(-0.2 + i * 0.1, 0.5, 0);
-        group.add(s);
+        const s = limb(scene, `harpString_${i}`, 'cylinder', {
+            height: 0.7 + i * 0.05,
+            diameter: 0.016,
+            tessellation: 4
+        }, std(scene, 0xfff8d0, 0.4, 0.1, {
+            emissive: 0xffeedd,
+            emissiveIntensity: 0.5
+        }), root, 0.5);
+        s.position.x = -0.2 + i * 0.1;
     }
-    enableShadows(group);
-    return group;
+
+    return root;
 }
 
-export function buildAxe() {
-    const group = new THREE.Group();
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.1, 8), std(0x6a3a18, 0.8));
-    handle.position.y = 0.55;
-    group.add(handle);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.08), std(0xc8d0d8, 0.35, 0.7));
-    head.position.set(0.18, 1.05, 0);
-    group.add(head);
-    enableShadows(group);
-    return group;
+export function buildAxe(scene) {
+    const root = new B.TransformNode('axeRoot', scene);
+    const handle = limb(scene, 'axeHandle', 'cylinder', {
+        height: 1.1,
+        diameterTop: 0.08,
+        diameterBottom: 0.1,
+        tessellation: 8
+    }, std(scene, 0x6a3a18, 0.8), root, 0.55);
+
+    const head = limb(scene, 'axeHead', 'box', {
+        width: 0.45,
+        height: 0.28,
+        depth: 0.08
+    }, std(scene, 0xc8d0d8, 0.35, 0.7), root, 1.05);
+    head.position.x = 0.18;
+
+    return root;
 }
 
-export function buildWell() {
-    const group = new THREE.Group();
-    const stone = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.7, 12), stone);
-    ring.position.y = 0.35;
-    group.add(ring);
-    const water = new THREE.Mesh(new THREE.CircleGeometry(0.7, 12), std(0x3a88aa, 0.2, 0.3, {
-        transparent: true, opacity: 0.7
-    }));
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = 0.42;
-    group.add(water);
-    enableShadows(group);
-    return group;
+export function buildWell(scene) {
+    const root = new B.TransformNode('wellRoot', scene);
+    const stoneTex = stoneTexture(scene);
+    const stone = std(scene, 0x8a9098, 0.9, 0.04, { map: stoneTex });
+
+    const ring = limb(scene, 'wellRing', 'cylinder', {
+        height: 0.7,
+        diameterTop: 1.7,
+        diameterBottom: 1.9,
+        tessellation: 12
+    }, stone, root, 0.35);
+
+    const water = limb(scene, 'wellWater', 'cylinder', {
+        height: 0.02,
+        diameter: 1.4,
+        tessellation: 12
+    }, std(scene, 0x3a88aa, 0.2, 0.3, {
+        alpha: 0.75
+    }), root, 0.42);
+
+    return root;
 }
 
-export function grassBladeGeometry() {
-    const geo = new THREE.PlaneGeometry(0.12, 0.55, 1, 3);
-    geo.translate(0, 0.28, 0);
-    return geo;
-}
+export function buildGateArch(scene) {
+    const root = new B.TransformNode('gateArchRoot', scene);
+    const wood = std(scene, 0x6a3e1c, 0.85);
 
-export function applyGrassWind(mat) {
-    mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = { value: 0 };
-        mat.userData.uTime = shader.uniforms.uTime;
-        shader.vertexShader = `
-            uniform float uTime;
-            ${shader.vertexShader}
-        `.replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>
-            float h = position.y;
-            transformed.x += sin(uTime * 1.4 + position.z * 0.4) * h * 0.18;`
-        );
-    };
-}
-
-export function buildGateArch() {
-    const group = new THREE.Group();
-    const wood = std(0x6a3e1c, 0.85);
-    for (const sx of [-1.6, 1.6]) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.4, 0.28), wood);
+    [-1.6, 1.6].forEach(sx => {
+        const post = limb(scene, 'gatePost', 'box', {
+            width: 0.28,
+            height: 3.4,
+            depth: 0.28
+        }, wood, root, 1.7);
         post.position.set(sx, 1.7, 0);
-        group.add(post);
-    }
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.28, 0.28), wood);
-    bar.position.y = 3.25;
-    group.add(bar);
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.08), std(0xc4a050, 0.7));
-    sign.position.set(0, 3.7, 0);
-    group.add(sign);
-    const glow = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 1.1, 0.12, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.55 })
-    );
-    glow.position.y = 0.08;
-    group.add(glow);
-    enableShadows(group);
-    return group;
+    });
+
+    const bar = limb(scene, 'gateBar', 'box', {
+        width: 3.6,
+        height: 0.28,
+        depth: 0.28
+    }, wood, root, 3.25);
+
+    const sign = limb(scene, 'gateSign', 'box', {
+        width: 1.6,
+        height: 0.55,
+        depth: 0.08
+    }, std(scene, 0xc4a050, 0.7), root, 3.7);
+
+    const glow = limb(scene, 'gateGlow', 'cylinder', {
+        height: 0.12,
+        diameterTop: 1.8,
+        diameterBottom: 2.2,
+        tessellation: 16
+    }, std(scene, 0xffee88, 0.4, 0.1, {
+        alpha: 0.6,
+        emissive: 0xffee88,
+        emissiveIntensity: 0.6
+    }), root, 0.08);
+
+    return root;
 }
 
-export function makeBeacon(color = 0xaaff66) {
-    const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.55, 8.5, 8, 1, true),
-        new THREE.MeshBasicMaterial({
-            color,
-            transparent: true,
-            opacity: 0.38,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        })
-    );
-    return mesh;
+export function makeBeacon(scene, colorHex = 0xaaff66) {
+    const beacon = B.MeshBuilder.CreateCylinder('beacon', {
+        height: 8.5,
+        diameterTop: 0.36,
+        diameterBottom: 1.1,
+        tessellation: 8
+    }, scene);
+
+    const mat = new B.StandardMaterial('beaconMat', scene);
+    const col = hexToColor3(colorHex);
+    mat.diffuseColor = col;
+    mat.emissiveColor = col;
+    mat.alpha = 0.42;
+    mat.backFaceCulling = false;
+    mat.disableLighting = true;
+    beacon.material = mat;
+    beacon.isPickable = false;
+
+    return beacon;
 }
+
