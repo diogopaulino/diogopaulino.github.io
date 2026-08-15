@@ -1,9 +1,14 @@
-/** Utilitários numéricos, ruído e detecção de dispositivo. */
+/** Utilitários numéricos, ruído e descarte para Babylon.js. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const damp = (current, target, lambda, dt) =>
     lerp(current, target, 1 - Math.exp(-lambda * dt));
+
+export const lerpAngle = (current, target, smoothing, dt) => {
+    const diff = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+    return current + diff * (1 - Math.exp(-smoothing * dt));
+};
 
 export const smoothstep = (edge0, edge1, x) => {
     const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
@@ -84,23 +89,14 @@ export function detectSoftwareGL() {
     }
 }
 
-export function rendererIsSoftware(renderer) {
-    try {
-        const gl = renderer.getContext();
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return isSoftwareGLName(name);
-    } catch (err) {
-        return false;
+export function disposeNode(node) {
+    if (!node) return;
+    if (node.getChildren) {
+        const children = [...node.getChildren()];
+        children.forEach(disposeNode);
+    }
+    if (typeof node.dispose === 'function') {
+        node.dispose(false, true);
     }
 }
 
-export function disposeObject(obj) {
-    obj.traverse((child) => {
-        if (child.geometry) child.geometry.dispose();
-        const mat = child.material;
-        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-        else if (mat) mat.dispose();
-    });
-    obj.parent?.remove(obj);
-}

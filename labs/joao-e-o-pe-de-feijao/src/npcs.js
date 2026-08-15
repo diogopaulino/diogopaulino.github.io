@@ -1,5 +1,5 @@
 /**
- * Mimosa (segue o João), gigante (dorme / fareja / persegue) e utilitário de interação.
+ * Mimosa (segue o João), gigante (dorme / fareja / persegue) e utilitário de interação no Babylon.js.
  */
 
 import { clamp, damp } from './utils.js';
@@ -39,6 +39,10 @@ export class CowAI {
         const y = heightAt(this.x, this.z);
         this.group.position.set(this.x, y + Math.abs(Math.sin(this.phase)) * 0.04, this.z);
         this.group.rotation.y = this.yaw;
+
+        if (this.group.userData?.parts?.head) {
+            this.group.userData.parts.head.rotation.x = Math.sin(this.phase * 2) * 0.08;
+        }
     }
 }
 
@@ -96,9 +100,11 @@ export class GiantAI {
             }
             if (this.parts?.belly) {
                 const s = 1 + Math.sin(this.phase * 1.4) * 0.04;
-                this.parts.belly.scale.set(1.05 * s, 0.85, 0.8);
+                this.parts.belly.scaling.set(1.05 * s, 0.85, 0.8);
             }
-            if (this.parts?.head) this.parts.head.rotation.x = Math.sin(this.phase * 1.4) * 0.08;
+            if (this.parts?.head) {
+                this.parts.head.rotation.x = Math.sin(this.phase * 1.4) * 0.08;
+            }
         } else if (this.state === 'chase') {
             this.alert = 1;
             const sp = this.chaseSpeed;
@@ -111,6 +117,10 @@ export class GiantAI {
             if (this.parts?.legs) {
                 this.parts.legs[0].rotation.x = Math.sin(gait) * 0.45;
                 this.parts.legs[1].rotation.x = -Math.sin(gait) * 0.45;
+            }
+            if (this.parts?.arms) {
+                this.parts.arms[0].rotation.x = -Math.sin(gait) * 0.35;
+                this.parts.arms[1].rotation.x = Math.sin(gait) * 0.35;
             }
             if (dist < this.catchR && dy < 3.2) return 'caught';
         }
@@ -176,3 +186,4 @@ export function clampToBounds(x, z, bounds) {
         z: clamp(z, bounds.minZ, bounds.maxZ)
     };
 }
+

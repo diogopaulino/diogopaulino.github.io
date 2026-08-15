@@ -1,18 +1,19 @@
 /**
- * João em terceira pessoa: movimento relativo à câmera, pulo com coyote,
+ * João em terceira pessoa no Babylon.js: movimento relativo à câmera, pulo com coyote,
  * trepar no caule e pouso em folhas-plataforma.
  */
 
-import * as THREE from 'three';
 import { PLAYER, CAMERA } from './config.js';
 import { clamp, damp } from './utils.js';
 import { buildJoao } from './models.js';
 
+const B = window.BABYLON;
+
 export class Player {
     constructor(scene) {
-        const { group, parts } = buildJoao();
+        this.scene = scene;
+        const { group, parts } = buildJoao(scene);
         this.root = group;
-        scene.add(group);
         this.parts = parts;
 
         this.x = 0;
@@ -46,6 +47,10 @@ export class Player {
         return Number(this.treasures.gold) + Number(this.treasures.hen) + Number(this.treasures.harp);
     }
 
+    setVisible(v) {
+        if (this.root) this.root.setEnabled(Boolean(v));
+    }
+
     spawn(x, z, yaw, heightAt, y) {
         this.x = x;
         this.z = z;
@@ -59,7 +64,7 @@ export class Player {
         this.invuln = 0;
         this.alive = true;
         this.climbing = false;
-        this.root.visible = true;
+        this.setVisible(true);
         this.sync();
     }
 
@@ -191,20 +196,30 @@ export class Player {
         this.bob = Math.abs(Math.sin(this.walkPhase)) * (len > 0.08 && this.grounded ? 0.05 : 0);
 
         const gait = (this.grounded || this.climbing) && len > 0.08 ? Math.sin(this.walkPhase) : 0;
-        this.parts.legs[0].rotation.x = gait * 0.75;
-        this.parts.legs[1].rotation.x = -gait * 0.75;
-        this.parts.arms[0].rotation.x = -gait * 0.55;
-        this.parts.arms[1].rotation.x = gait * 0.55;
-        this.parts.torso.rotation.y = gait * 0.08;
-        this.parts.head.rotation.y = gait * 0.05;
+        if (this.parts?.legs?.length >= 2) {
+            this.parts.legs[0].rotation.x = gait * 0.75;
+            this.parts.legs[1].rotation.x = -gait * 0.75;
+        }
+        if (this.parts?.arms?.length >= 2) {
+            this.parts.arms[0].rotation.x = -gait * 0.55;
+            this.parts.arms[1].rotation.x = gait * 0.55;
+        }
+        if (this.parts?.torso) this.parts.torso.rotation.y = gait * 0.08;
+        if (this.parts?.head) this.parts.head.rotation.y = gait * 0.05;
+
         if (!this.grounded && !this.climbing) {
-            this.parts.legs[0].rotation.x = -0.45;
-            this.parts.legs[1].rotation.x = 0.35;
-            this.parts.arms[0].rotation.x = 0.6;
-            this.parts.arms[1].rotation.x = 0.6;
+            if (this.parts?.legs?.length >= 2) {
+                this.parts.legs[0].rotation.x = -0.45;
+                this.parts.legs[1].rotation.x = 0.35;
+            }
+            if (this.parts?.arms?.length >= 2) {
+                this.parts.arms[0].rotation.x = 0.6;
+                this.parts.arms[1].rotation.x = 0.6;
+            }
         }
 
-        this.root.visible = this.invuln <= 0 || Math.sin(this.invuln * 28) > 0;
+        const isBlinking = this.invuln > 0 && Math.sin(this.invuln * 28) <= 0;
+        this.setVisible(!isBlinking);
         this.sync();
 
         footstep = this.grounded && this.footTimer > 0.36;
@@ -242,6 +257,7 @@ export class Player {
     }
 
     sync() {
+        if (!this.root) return;
         this.root.position.set(this.x, this.y + this.bob, this.z);
         this.root.rotation.y = this.yaw;
     }
@@ -250,16 +266,21 @@ export class Player {
         const dist = this.climbing ? this.camDist * 1.15 : this.camDist;
         const cp = this.camPitch;
         const cy = this.camYaw;
-        target.set(
-            this.x + Math.sin(cy) * Math.cos(cp) * dist,
-            this.y + CAMERA.height + Math.sin(cp) * dist,
-            this.z + Math.cos(cy) * Math.cos(cp) * dist
-        );
+        const cx = this.x + Math.sin(cy) * Math.cos(cp) * dist;
+        const cyPos = this.y + CAMERA.height + Math.sin(cp) * dist;
+        const cz = this.z + Math.cos(cy) * Math.cos(cp) * dist;
+        if (target.copyFromFloats) target.copyFromFloats(cx, cyPos, cz);
+        else if (target.set) target.set(cx, cyPos, cz);
         return target;
     }
 
     lookAt(target) {
-        target.set(this.x, this.y + CAMERA.lookY, this.z);
+        const lx = this.x;
+        const ly = this.y + CAMERA.lookY;
+        const lz = this.z;
+        if (target.copyFromFloats) target.copyFromFloats(lx, ly, lz);
+        else if (target.set) target.set(lx, ly, lz);
         return target;
     }
 }
+
