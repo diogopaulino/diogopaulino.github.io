@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>O Último Bastião — batalha medieval 3D | Diogo Paulino</title>
+  <meta name="description" content="Batalha medieval 3D em Babylon.js: defenda o último portão, domine espada, escudo e esquiva e sobreviva ao cerco de Vardheim.">
+  <meta name="author" content="Diogo Paulino">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#090a0c">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/ultimo-bastiao/">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diogo Paulino · Labs">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/ultimo-bastiao/">
+  <meta property="og:title" content="O Último Bastião — batalha medieval 3D">
+  <meta property="og:description" content="Defenda o portão de Vardheim em um combate medieval cinematográfico criado com Babylon.js.">
+  <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:image:alt" content="O Último Bastião, jogo 3D de Diogo Paulino">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="O Último Bastião — batalha medieval 3D">
+  <meta name="twitter:description" content="Espada, escudo e sobrevivência em um cerco medieval feito com Babylon.js.">
+  <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=1">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "O Último Bastião",
+        "url": "https://diogopaulino.com.br/labs/ultimo-bastiao/",
+        "description": "Batalha medieval 3D em Babylon.js: defenda o último portão de Vardheim.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "WebGL 2",
+        "inLanguage": "pt-BR",
+        "isAccessibleForFree": true,
+        "author": { "@type": "Person", "name": "Diogo Paulino", "url": "https://diogopaulino.com.br/" },
+        "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Diogo Paulino", "item": "https://diogopaulino.com.br/" },
+          { "@type": "ListItem", "position": 2, "name": "Labs", "item": "https://diogopaulino.com.br/labs/" },
+          { "@type": "ListItem", "position": 3, "name": "O Último Bastião", "item": "https://diogopaulino.com.br/labs/ultimo-bastiao/" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+  <main class="game-shell">
+    <canvas id="renderCanvas" aria-label="Batalha medieval no pátio do castelo de Vardheim"></canvas>
+
+    <header class="topbar">
+      <a class="back-link" href="/labs/" aria-label="Voltar aos Labs">
+        <span aria-hidden="true">←</span><span>Labs</span>
+      </a>
+      <div class="brand"><i aria-hidden="true"></i><span>O Último Bastião</span></div>
+      <div class="top-actions">
+        <button id="soundButton" class="icon-button" type="button" aria-label="Alternar som" aria-pressed="true">♪</button>
+        <button id="pauseButton" class="icon-button" type="button" aria-label="Pausar jogo">Ⅱ</button>
+      </div>
+    </header>
+
+    <section id="hud" class="hud" hidden aria-label="Estado da batalha">
+      <div class="vitals panel">
+        <div class="portrait" aria-hidden="true">V</div>
+        <div class="bars">
+          <div class="bar-line"><span>Vida</span><div class="bar health"><i id="healthFill"></i></div><b id="healthValue">100</b></div>
+          <div class="bar-line"><span>Fôlego</span><div class="bar stamina"><i id="staminaFill"></i></div><b id="staminaValue">100</b></div>
+        </div>
+      </div>
+
+      <div class="battle-status panel">
+        <span id="waveLabel" class="eyebrow">ONDA I</span>
+        <strong id="objectiveLabel">Segure o pátio</strong>
+        <span id="enemyCount">3 invasores</span>
+      </div>
+
+      <div id="targetPanel" class="target-panel" hidden>
+        <div><span id="targetName">Invasor</span><b id="targetDistance">4 m</b></div>
+        <div class="target-bar"><i id="targetFill"></i></div>
+      </div>
+
+      <div class="combo panel">
+        <span>ABATES</span>
+        <strong id="killCount">0</strong>
+        <i id="comboLabel">SEM FERIMENTOS</i>
+      </div>
+
+      <p id="battleMessage" class="battle-message" role="status" aria-live="polite"></p>
+      <div id="damageFlash" class="damage-flash" aria-hidden="true"></div>
+      <div id="vignette" class="vignette" aria-hidden="true"></div>
+    </section>
+
+    <section id="touchControls" class="touch-controls" hidden aria-label="Controles do jogo">
+      <div id="moveStick" class="move-stick" aria-label="Mover personagem">
+        <span class="stick-ring"></span><i id="stickKnob"></i>
+      </div>
+      <div class="combat-buttons">
+        <button id="blockButton" class="combat-button block" type="button" aria-label="Defender"><span>◈</span><small>DEFESA</small></button>
+        <button id="dodgeButton" class="combat-button dodge" type="button" aria-label="Esquivar"><span>↯</span><small>ESQUIVA</small></button>
+        <button id="attackButton" class="combat-button attack" type="button" aria-label="Atacar"><span>⚔</span><small>ATAQUE</small></button>
+      </div>
+    </section>
+
+    <section id="loadingOverlay" class="overlay loading-overlay">
+      <div class="loading-content">
+        <div class="crest" aria-hidden="true"><span>V</span></div>
+        <p class="eyebrow">VARDHEIM · ANO 1247</p>
+        <h1>O Último<br><em>Bastião</em></h1>
+        <p id="loadingText">Erguendo as muralhas…</p>
+        <div class="loading-bar"><i id="loadingFill"></i></div>
+      </div>
+    </section>
+
+    <section id="menuOverlay" class="overlay menu-overlay" hidden>
+      <div class="menu-card">
+        <div class="menu-copy">
+          <p class="eyebrow"><i></i> BABYLON.JS · COMBATE EM TERCEIRA PESSOA</p>
+          <h1>O Último<br><em>Bastião</em></h1>
+          <p class="lede">Vardheim caiu. Só o portão interno permanece de pé. Domine a espada, proteja sua guarda e sobreviva até enfrentar o comandante do cerco.</p>
+        </div>
+
+        <div class="menu-options">
+          <section>
+            <h2>Escolha sua batalha</h2>
+            <div id="difficultyOptions" class="difficulty-options" role="radiogroup" aria-label="Dificuldade">
+              <button type="button" data-difficulty="squire"><span>Escudeiro</span><small>Mais resistência</small></button>
+              <button type="button" data-difficulty="knight" class="active"><span>Cavaleiro</span><small>Experiência equilibrada</small></button>
+              <button type="button" data-difficulty="legend"><span>Lenda</span><small>Sem margem para erro</small></button>
+            </div>
+          </section>
+
+          <section class="controls-copy">
+            <h2>Comandos</h2>
+            <div class="key-grid">
+              <span><kbd>WASD</kbd> mover</span>
+              <span><kbd>Mouse</kbd> câmera</span>
+              <span><kbd>Click</kbd> ataque</span>
+              <span><kbd>F</kbd> ataque forte</span>
+              <span><kbd>Q</kbd> defesa</span>
+              <span><kbd>Espaço</kbd> esquiva</span>
+            </div>
+            <p>Segure <b>Shift</b> para correr. Ataques no instante certo quebram a guarda inimiga.</p>
+          </section>
+
+          <div class="settings-row">
+            <label>Gráficos
+              <select id="qualitySelect">
+                <option value="auto">Automático</option>
+                <option value="cinematic">Cinemático</option>
+                <option value="performance">Performance</option>
+              </select>
+            </label>
+            <span>Melhor defesa <b id="bestScore">—</b></span>
+          </div>
+          <button id="startButton" class="primary-button" type="button"><span>Defender o portão</span><i>→</i></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pauseOverlay" class="overlay compact-overlay" hidden>
+      <div class="compact-card">
+        <p class="eyebrow">TEMPO SUSPENSO</p>
+        <h2>A batalha espera.</h2>
+        <button id="resumeButton" class="primary-button" type="button"><span>Continuar</span><i>→</i></button>
+        <button id="pauseMenuButton" class="text-button" type="button">Abandonar defesa</button>
+      </div>
+    </section>
+
+    <section id="endOverlay" class="overlay compact-overlay" hidden>
+      <div class="compact-card end-card">
+        <p id="endEyebrow" class="eyebrow">A MURALHA RESISTIU</p>
+        <h2 id="endTitle">Vardheim<br>amanhece.</h2>
+        <div id="endStats" class="end-stats"></div>
+        <button id="retryButton" class="primary-button" type="button"><span>Lutar novamente</span><i>↻</i></button>
+        <a href="/labs/" class="text-button">Voltar aos Labs</a>
+      </div>
+    </section>
+
+    <section id="errorOverlay" class="overlay compact-overlay" hidden>
+      <div class="compact-card">
+        <p class="eyebrow danger">WEBGL INDISPONÍVEL</p>
+        <h2>A batalha não pôde começar.</h2>
+        <p id="errorText">Use um navegador atualizado com aceleração gráfica habilitada.</p>
+      </div>
+    </section>
+
+    <footer class="credit"><a href="/">Diogo Paulino</a><span>·</span><span>Experimento em Babylon.js</span></footer>
+  </main>
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script type="module" src="src/game.js?v=1"></script>
+</body>
+
+</html>
