@@ -1,37 +1,39 @@
 /**
- * Texturas PBR procedurais — calcário, telha azul, água, lua e bandeira.
- * Sem PNG externos: o lab gera albedo, normal e roughness em canvas.
+ * Castelo Estelar — Texturas PBR procedurais em Babylon.js.
+ * Gera mapas de Albedo, Normal (bump), Rugosidade e Emissão diretamente em Canvas 2D.
  */
 
-import * as THREE from 'three';
-import { hash2, fbm } from './utils.js';
+import { fbm, hash2 } from './utils.js';
 
-const cache = new Map();
+const canvasCache = new Map();
 
-function canvas(size, height = size) {
+function canvas(width, height = width) {
     const el = document.createElement('canvas');
-    el.width = size;
+    el.width = width;
     el.height = height;
     return el;
 }
 
-function toTexture(el, { repeat = [1, 1], srgb = true, aniso = 8, normal = false } = {}) {
-    const tex = new THREE.CanvasTexture(el);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeat[0], repeat[1]);
-    tex.anisotropy = aniso;
-    if (normal) tex.colorSpace = THREE.NoColorSpace;
-    else if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
+function cachedCanvas(key, factory) {
+    if (!canvasCache.has(key)) {
+        canvasCache.set(key, factory());
+    }
+    return canvasCache.get(key);
 }
 
-function cached(key, factory) {
-    if (!cache.has(key)) cache.set(key, factory());
-    return cache.get(key);
+function createDynamicTexture(scene, canvasEl, { uScale = 1, vScale = 1, hasAlpha = false } = {}) {
+    const B = window.BABYLON;
+    const dt = new B.DynamicTexture(`dt_${Math.random()}`, canvasEl, scene, true);
+    dt.uScale = uScale;
+    dt.vScale = vScale;
+    dt.wrapU = B.Texture.WRAP_ADDRESSMODE;
+    dt.wrapV = B.Texture.WRAP_ADDRESSMODE;
+    dt.hasAlpha = hasAlpha;
+    dt.update(false);
+    return dt;
 }
 
-function heightToNormal(height, size, strength = 4.2) {
+function heightToNormal(height, size, strength = 4.5) {
     const nEl = canvas(size);
     const nctx = nEl.getContext('2d');
     const img = nctx.createImageData(size, size);
@@ -43,9 +45,9 @@ function heightToNormal(height, size, strength = 4.2) {
             const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
             const inv = 1 / Math.hypot(dx, dy, 1);
             const i = (y * size + x) * 4;
-            d[i] = (0.5 - dx * inv * 0.5) * 255;
-            d[i + 1] = (0.5 - dy * inv * 0.5) * 255;
-            d[i + 2] = (0.5 + inv * 0.5) * 255;
+            d[i] = Math.floor((0.5 - dx * inv * 0.5) * 255);
+            d[i + 1] = Math.floor((0.5 - dy * inv * 0.5) * 255);
+            d[i + 2] = Math.floor((0.5 + inv * 0.5) * 255);
             d[i + 3] = 255;
         }
     }
@@ -54,172 +56,171 @@ function heightToNormal(height, size, strength = 4.2) {
 }
 
 /**
- * Calcário de conto: junta de argamassa, blocos irregulares e granulação.
- * Devolve { map, normalMap, roughnessMap }.
+ * Calcário de cantaria (Ashlar Limestone)
+ * Albedo creme quente, mapas normais com relevo de blocos e argamassa.
  */
-export function limestone({ size = 512, repeat = [6, 8] } = {}) {
-    return cached(`lime:${size}:${repeat}`, () => {
+export function getLimestoneTextures(scene, { uScale = 4, vScale = 6 } = {}) {
+    const size = 512;
+    const albedoEl = cachedCanvas('limestone_albedo', () => {
         const el = canvas(size);
-        const rEl = canvas(size);
         const ctx = el.getContext('2d');
-        const rctx = rEl.getContext('2d');
         const img = ctx.createImageData(size, size);
-        const rimg = rctx.createImageData(size, size);
-        const height = new Float32Array(size * size);
-        const bw = 28;
-        const bh = 14;
+        const bw = 32;
+        const bh = 16;
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
-                const row = (y / bh) | 0;
+                const row = Math.floor(y / bh);
                 const ox = row % 2 === 0 ? 0 : bw * 0.5;
+                const col = Math.floor((x + ox) / bw);
                 const lx = ((x + ox) % bw) / bw;
                 const ly = (y % bh) / bh;
-                const mortar = lx < 0.08 || ly < 0.12 ? 1 : 0;
-                const n = fbm(x * 0.04, y * 0.04, 3, 4);
-                const chip = fbm(x * 0.11, y * 0.11, 9, 3);
-                const base = 210 + n * 28 - chip * 18;
-                const shade = mortar ? 168 : base;
+                const mortar = lx < 0.07 || ly < 0.12;
+
+                const blockHash = hash2(col * 17.1, row * 23.3);
+                const blockTint = (blockHash - 0.5) * 18;
+
+                const n = fbm(x * 0.035, y * 0.035, 3, 4);
+                const chip = fbm(x * 0.12, y * 0.12, 9, 3);
+                const base = mortar ? 160 : (220 + blockTint + n * 24 - chip * 16);
+
                 const i = (y * size + x) * 4;
-                img.data[i] = shade + 8;
-                img.data[i + 1] = shade;
-                img.data[i + 2] = shade - 10;
+                img.data[i] = Math.min(255, base + 12);
+                img.data[i + 1] = Math.min(255, base + 4);
+                img.data[i + 2] = Math.max(0, base - 8);
                 img.data[i + 3] = 255;
-                rimg.data[i] = rimg.data[i + 1] = rimg.data[i + 2] = mortar ? 210 : 150 + n * 40;
-                rimg.data[i + 3] = 255;
-                height[y * size + x] = mortar ? 0.15 : 0.55 + n * 0.35 - chip * 0.2;
             }
         }
         ctx.putImageData(img, 0, 0);
-        rctx.putImageData(rimg, 0, 0);
-        return {
-            map: toTexture(el, { repeat, aniso: 8 }),
-            normalMap: toTexture(heightToNormal(height, size, 5.5), { repeat, srgb: false, normal: true }),
-            roughnessMap: toTexture(rEl, { repeat, srgb: false })
-        };
+        return el;
     });
+
+    const normalEl = cachedCanvas('limestone_normal', () => {
+        const height = new Float32Array(size * size);
+        const bw = 32;
+        const bh = 16;
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const row = Math.floor(y / bh);
+                const ox = row % 2 === 0 ? 0 : bw * 0.5;
+                const lx = ((x + ox) % bw) / bw;
+                const ly = (y % bh) / bh;
+                const mortar = lx < 0.07 || ly < 0.12;
+                const bevel = Math.min(lx, 1 - lx, ly, 1 - ly) * 10;
+                const n = fbm(x * 0.035, y * 0.035, 3, 4);
+                const chip = fbm(x * 0.12, y * 0.12, 9, 3);
+                height[y * size + x] = mortar ? 0.15 : (0.6 + Math.min(0.3, bevel) + n * 0.2 - chip * 0.15);
+            }
+        }
+        return heightToNormal(height, size, 5.2);
+    });
+
+    return {
+        albedo: createDynamicTexture(scene, albedoEl, { uScale, vScale }),
+        bump: createDynamicTexture(scene, normalEl, { uScale, vScale })
+    };
 }
 
-/** Telha cónica azul — losangos empilhados, o azul da silhueta clássica. */
-export function roofTiles({ size = 512, repeat = [3, 5] } = {}) {
-    return cached(`roof:${size}`, () => {
+/**
+ * Telhas de ardósia azul das torres (Roof Tiles)
+ */
+export function getRoofTextures(scene, { uScale = 3, vScale = 6 } = {}) {
+    const size = 512;
+    const albedoEl = cachedCanvas('roof_albedo', () => {
         const el = canvas(size);
         const ctx = el.getContext('2d');
         const img = ctx.createImageData(size, size);
-        const height = new Float32Array(size * size);
-        const tw = 22;
-        const th = 16;
+        const tw = 24;
+        const th = 18;
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
-                const row = (y / th) | 0;
+                const row = Math.floor(y / th);
                 const ox = row % 2 ? tw * 0.5 : 0;
                 const lx = ((x + ox) % tw) / tw;
                 const ly = (y % th) / th;
                 const edge = Math.min(lx, 1 - lx, ly);
                 const n = fbm(x * 0.05, y * 0.07, 11, 3);
-                const ridge = edge < 0.08 ? 1 : 0;
-        const b = 110 + n * 36 + (1 - ly) * 22;
-        const g = 92 + n * 20;
-        const r = 38 + n * 14;
+                const ridge = edge < 0.09;
+
+                const tileHash = hash2(Math.floor((x + ox) / tw) * 11.3, row * 29.7);
+                const tileVar = (tileHash - 0.5) * 20;
+
+                const b = 135 + n * 30 + (1 - ly) * 28 + tileVar;
+                const g = 100 + n * 18 + tileVar * 0.6;
+                const r = 46 + n * 12 + tileVar * 0.3;
+
                 const i = (y * size + x) * 4;
-                img.data[i] = ridge ? r + 18 : r;
-                img.data[i + 1] = ridge ? g + 10 : g;
-                img.data[i + 2] = ridge ? b + 30 : b;
+                img.data[i] = Math.min(255, ridge ? r + 22 : r);
+                img.data[i + 1] = Math.min(255, ridge ? g + 14 : g);
+                img.data[i + 2] = Math.min(255, ridge ? b + 36 : b);
                 img.data[i + 3] = 255;
-                height[y * size + x] = ridge ? 0.85 : 0.4 + (1 - ly) * 0.25 + n * 0.1;
             }
         }
         ctx.putImageData(img, 0, 0);
-        return {
-            map: toTexture(el, { repeat }),
-            normalMap: toTexture(heightToNormal(height, size, 6.2), { repeat, srgb: false, normal: true })
-        };
+        return el;
     });
-}
 
-/** Normal tiling de ondas — usado pelo Water do three.js. */
-export function waterNormals(size = 512) {
-    return cached(`waterN:${size}`, () => {
+    const normalEl = cachedCanvas('roof_normal', () => {
         const height = new Float32Array(size * size);
+        const tw = 24;
+        const th = 18;
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
-                const u = x / size;
-                const v = y / size;
-                const h = Math.sin(u * Math.PI * 8) * 0.35
-                    + Math.sin(v * Math.PI * 6 + u * 4) * 0.28
-                    + fbm(u * 6, v * 6, 21, 4) * 0.7;
-                height[y * size + x] = h;
+                const row = Math.floor(y / th);
+                const ox = row % 2 ? tw * 0.5 : 0;
+                const lx = ((x + ox) % tw) / tw;
+                const ly = (y % th) / th;
+                const edge = Math.min(lx, 1 - lx, ly);
+                const n = fbm(x * 0.05, y * 0.07, 11, 3);
+                const ridge = edge < 0.09;
+                height[y * size + x] = ridge ? 0.9 : (0.42 + (1 - ly) * 0.38 + n * 0.12);
             }
         }
-        const tex = toTexture(heightToNormal(height, size, 3.4), {
-            repeat: [4, 4],
-            srgb: false,
-            normal: true,
-            aniso: 4
-        });
-        return tex;
+        return heightToNormal(height, size, 6.0);
     });
+
+    return {
+        albedo: createDynamicTexture(scene, albedoEl, { uScale, vScale }),
+        bump: createDynamicTexture(scene, normalEl, { uScale, vScale })
+    };
 }
 
-export function moonTexture(size = 512) {
-    return cached('moon', () => {
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
-        const img = ctx.createImageData(size, size);
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-                const n = fbm(x * 0.018, y * 0.018, 4, 5);
-                const crater = fbm(x * 0.06, y * 0.06, 17, 3);
-                const v = 210 + n * 28 - crater * crater * 50;
-                const i = (y * size + x) * 4;
-                img.data[i] = v;
-                img.data[i + 1] = v - 4;
-                img.data[i + 2] = v - 14;
-                img.data[i + 3] = 255;
-            }
-        }
-        ctx.putImageData(img, 0, 0);
-        return toTexture(el, { repeat: [1, 1], aniso: 4 });
-    });
-}
-
-export function flagTexture(a = '#1e3a8a', b = '#f4d06f') {
-    return cached(`flag:${a}:${b}`, () => {
-        const el = canvas(256, 160);
-        const ctx = el.getContext('2d');
-        ctx.fillStyle = a;
-        ctx.fillRect(0, 0, 256, 160);
-        ctx.fillStyle = b;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(256, 80);
-        ctx.lineTo(0, 160);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,240,200,0.35)';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(8, 8, 240, 144);
-        const tex = toTexture(el, { repeat: [1, 1] });
-        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-        return tex;
-    });
-}
-
-export function clockTexture(size = 256) {
-    return cached('clock', () => {
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
+/**
+ * Mostrador de relógio clássico com algarismos romanos
+ */
+export function getClockTexture(scene) {
+    const el = cachedCanvas('clock_texture', () => {
+        const size = 512;
+        const c = canvas(size);
+        const ctx = c.getContext('2d');
         const cx = size / 2;
         const cy = size / 2;
         const r = size * 0.46;
-        ctx.fillStyle = '#f3ead2';
+
+        // Fundo pérola / marfim envelhecido
+        ctx.fillStyle = '#f6edd9';
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#c9a227';
-        ctx.lineWidth = size * 0.04;
+
+        // Anel externo dourado
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#ffd868');
+        grad.addColorStop(0.5, '#c89d2d');
+        grad.addColorStop(1, '#7a520e');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = size * 0.05;
         ctx.stroke();
-        ctx.fillStyle = '#3a2a12';
-        ctx.font = `700 ${size * 0.09}px Georgia, serif`;
+
+        // Anel interno fino
+        ctx.strokeStyle = 'rgba(74, 52, 20, 0.4)';
+        ctx.lineWidth = size * 0.012;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.86, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Algarismos romanos
+        ctx.fillStyle = '#2a1a0c';
+        ctx.font = `bold ${size * 0.088}px 'Cinzel', Georgia, serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         const romans = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
@@ -227,81 +228,174 @@ export function clockTexture(size = 256) {
             const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
             ctx.fillText(romans[i], cx + Math.cos(a) * r * 0.72, cy + Math.sin(a) * r * 0.72);
         }
-        ctx.strokeStyle = '#2a1a0a';
-        ctx.lineWidth = size * 0.035;
+
+        // Ponteiros
+        ctx.lineCap = 'round';
+        // Hora
+        ctx.strokeStyle = '#1a0e05';
+        ctx.lineWidth = size * 0.038;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + r * 0.18, cy + r * 0.05);
+        ctx.lineTo(cx + r * 0.35, cy + r * 0.12);
         ctx.stroke();
-        ctx.lineWidth = size * 0.022;
+        // Minuto
+        ctx.lineWidth = size * 0.024;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx - r * 0.08, cy - r * 0.42);
+        ctx.lineTo(cx - r * 0.12, cy - r * 0.55);
         ctx.stroke();
-        ctx.fillStyle = '#c9a227';
+
+        // Centro dourado
+        ctx.fillStyle = '#e6b83b';
         ctx.beginPath();
-        ctx.arc(cx, cy, size * 0.03, 0, Math.PI * 2);
+        ctx.arc(cx, cy, size * 0.036, 0, Math.PI * 2);
         ctx.fill();
-        const tex = toTexture(el, { repeat: [1, 1] });
-        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-        return tex;
+
+        return c;
     });
+
+    return createDynamicTexture(scene, el);
 }
 
-export function barkTexture() {
-    return cached('bark', () => {
-        const size = 256;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
+/**
+ * Textura da lua com mares e crateras
+ */
+export function getMoonTexture(scene) {
+    const el = cachedCanvas('moon_surface', () => {
+        const size = 512;
+        const c = canvas(size);
+        const ctx = c.getContext('2d');
         const img = ctx.createImageData(size, size);
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
-                const n = fbm(x * 0.08, y * 0.02, 8, 4);
-                const v = 28 + n * 22;
+                const n = fbm(x * 0.02, y * 0.02, 4, 5);
+                const crater = fbm(x * 0.07, y * 0.07, 17, 3);
+                const v = 215 + n * 26 - crater * crater * 52;
                 const i = (y * size + x) * 4;
-                img.data[i] = v + 8;
-                img.data[i + 1] = v;
-                img.data[i + 2] = v - 6;
+                img.data[i] = Math.min(255, v + 2);
+                img.data[i + 1] = Math.min(255, v);
+                img.data[i + 2] = Math.max(0, v - 10);
                 img.data[i + 3] = 255;
             }
         }
         ctx.putImageData(img, 0, 0);
-        return toTexture(el, { repeat: [1, 3] });
+        return c;
     });
+
+    return createDynamicTexture(scene, el);
 }
 
-export function grassNight() {
-    return cached('grassN', () => {
+/**
+ * Textura da bandeira heráldica
+ */
+export function getFlagTexture(scene) {
+    const el = cachedCanvas('flag_royal', () => {
+        const c = canvas(256, 160);
+        const ctx = c.getContext('2d');
+        // Fundo azul imperial
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(0, 0, 256, 160);
+
+        // Triângulo dourado
+        ctx.fillStyle = '#f4d06f';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(256, 80);
+        ctx.lineTo(0, 160);
+        ctx.closePath();
+        ctx.fill();
+
+        // Borda e estrela
+        ctx.strokeStyle = '#ffd868';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(6, 6, 244, 148);
+
+        // Estrela central
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 36px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✦', 80, 80);
+
+        return c;
+    });
+
+    return createDynamicTexture(scene, el);
+}
+
+/**
+ * Textura de orla / casca de pinheiro
+ */
+export function getBarkTexture(scene) {
+    const el = cachedCanvas('bark_pine', () => {
         const size = 256;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
+        const c = canvas(size);
+        const ctx = c.getContext('2d');
+        const img = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const n = fbm(x * 0.08, y * 0.02, 8, 4);
+                const v = 32 + n * 24;
+                const i = (y * size + x) * 4;
+                img.data[i] = Math.min(255, v + 10);
+                img.data[i + 1] = Math.min(255, v + 2);
+                img.data[i + 2] = Math.max(0, v - 8);
+                img.data[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        return c;
+    });
+
+    return createDynamicTexture(scene, el, { uScale: 1, vScale: 4 });
+}
+
+/**
+ * Textura de grama noturna
+ */
+export function getGrassTexture(scene) {
+    const el = cachedCanvas('grass_night', () => {
+        const size = 256;
+        const c = canvas(size);
+        const ctx = c.getContext('2d');
         const img = ctx.createImageData(size, size);
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
                 const n = fbm(x * 0.09, y * 0.09, 2, 4);
                 const i = (y * size + x) * 4;
-                img.data[i] = 18 + n * 16;
-                img.data[i + 1] = 28 + n * 22;
-                img.data[i + 2] = 22 + n * 10;
+                img.data[i] = Math.min(255, 20 + n * 18);
+                img.data[i + 1] = Math.min(255, 34 + n * 24);
+                img.data[i + 2] = Math.min(255, 26 + n * 14);
                 img.data[i + 3] = 255;
             }
         }
         ctx.putImageData(img, 0, 0);
-        return toTexture(el, { repeat: [18, 18] });
+        return c;
     });
+
+    return createDynamicTexture(scene, el, { uScale: 20, vScale: 20 });
 }
 
-export function goldOrnament() {
-    return cached('gold', () => {
-        const size = 128;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
-        const g = ctx.createLinearGradient(0, 0, size, size);
-        g.addColorStop(0, '#fff1b8');
-        g.addColorStop(0.4, '#d4af37');
-        g.addColorStop(1, '#8a5a12');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, size, size);
-        return toTexture(el, { repeat: [2, 2] });
+/**
+ * Normal map procedural de ondas do lago para WaterMaterial / PBR
+ */
+export function getWaterBumpTexture(scene) {
+    const el = cachedCanvas('water_bump', () => {
+        const size = 512;
+        const height = new Float32Array(size * size);
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const u = x / size;
+                const v = y / size;
+                const h = Math.sin(u * Math.PI * 10) * 0.3
+                    + Math.sin(v * Math.PI * 8 + u * 5) * 0.28
+                    + fbm(u * 8, v * 8, 33, 4) * 0.55;
+                height[y * size + x] = h;
+            }
+        }
+        return heightToNormal(height, size, 3.8);
     });
+
+    return createDynamicTexture(scene, el, { uScale: 6, vScale: 6 });
 }
+

@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#050814">
     <title>Castelo Estelar — abertura cinematográfica | Diogo Paulino</title>
     <meta name="description"
-        content="Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos. Um lab de Diogo Paulino.">
+        content="Castelo 3D hiper-realista em Babylon.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos. Um lab de Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/castelo-estelar/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,28 +23,23 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/castelo-estelar/">
     <meta property="og:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
     <meta property="og:description"
-        content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram.">
+        content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram em Babylon.js.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
     <meta name="twitter:description"
-        content="Castelo 3D hiper-realista em three.js: lua, lago, fanfarra e fogos no navegador.">
+        content="Castelo 3D hiper-realista em Babylon.js: lua, lago, fanfarra e fogos no navegador.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css">
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -53,7 +48,7 @@
           "@type": "WebApplication",
           "name": "Castelo Estelar",
           "url": "https://diogopaulino.com.br/labs/castelo-estelar/",
-          "description": "Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos.",
+          "description": "Castelo 3D hiper-realista em Babylon.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos.",
           "applicationCategory": "MultimediaApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -132,7 +127,7 @@
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> three.js · PBR · noite</p>
+                <p class="eyebrow"><i></i> Babylon.js · PBR · noite</p>
                 <h2>Acendendo<br>as torres.</h2>
                 <p class="lede">A lua sobe sobre o lago. Um instante.</p>
             </div>
@@ -144,7 +139,7 @@
                 <h2>Castelo Estelar</h2>
                 <p class="lede">A câmera voa sobre a água sob a lua. O calcário acende, uma fada de
                     faíscas desenha o arco dourado e os fogos estouram no céu — o prólogo dos
-                    grandes filmes, reconstruído em three.js.</p>
+                    grandes filmes, reconstruído em Babylon.js.</p>
                 <ul class="feature-list">
                     <li>Castelo procedural com torres cónicas, relógio e janelas quentes</li>
                     <li>Lago com reflexo da lua, pinheiros e fanfarra original</li>

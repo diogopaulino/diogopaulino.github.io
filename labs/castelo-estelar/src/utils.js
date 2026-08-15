@@ -1,4 +1,6 @@
-/** Utilitários numéricos, ruído e detecção de GPU. */
+/**
+ * Castelo Estelar — Utilitários numéricos, ruído e detecção de GPU.
+ */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -10,14 +12,24 @@ export const smoothstep = (edge0, edge1, x) => {
     return t * t * (3 - 2 * t);
 };
 
-/** Hermite cúbico — interpolação de câmera entre keyframes. */
-export function hermite(p0, p1, m0, m1, t) {
+export const easeInOutCubic = (t) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+export const easeOutQuad = (t) => t * (2 - t);
+export const easeInOutSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
+
+/**
+ * Catmull-Rom 1D interpolation
+ */
+export function catmullRom(p0, p1, p2, p3, t) {
     const t2 = t * t;
     const t3 = t2 * t;
-    return (2 * t3 - 3 * t2 + 1) * p0
-        + (t3 - 2 * t2 + t) * m0
-        + (-2 * t3 + 3 * t2) * p1
-        + (t3 - t2) * m1;
+    return 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+    );
 }
 
 export function hash2(x, y, seed = 0) {
@@ -70,9 +82,10 @@ export function detectMobile() {
 
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b|software/i;
 
-export function detectSoftwareGL(renderer) {
+export function detectSoftwareGL(engine) {
     try {
-        const gl = renderer.getContext();
+        const gl = engine?._gl;
+        if (!gl) return false;
         const info = gl.getExtension('WEBGL_debug_renderer_info');
         if (!info) return false;
         const name = gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '';
