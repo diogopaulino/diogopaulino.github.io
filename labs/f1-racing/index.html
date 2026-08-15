@@ -7,7 +7,7 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#07080c">
     <meta name="description"
-        content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+        content="F1 Grand Prix — corrida 3D hiper-realista em Babylon.js: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/f1-racing/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -20,28 +20,18 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/f1-racing/">
     <meta property="og:title" content="F1 Grand Prix — Crazy Realism | Diogo Paulino">
-    <meta property="og:description" content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+    <meta property="og:description" content="F1 Grand Prix — corrida 3D hiper-realista em Babylon.js: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="F1 Grand Prix — Crazy Realism | Diogo Paulino">
-    <meta name="twitter:description" content="F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
+    <meta name="twitter:description" content="F1 Grand Prix — corrida 3D hiper-realista em Babylon.js: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.">
     <title>F1 Grand Prix — Crazy Realism | Diogo Paulino</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css?v=13">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&display=swap"
         rel="stylesheet">
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
-            "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
-            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.tsl.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -50,7 +40,7 @@
           "@type": "WebApplication",
           "name": "F1 Grand Prix",
           "url": "https://diogopaulino.com.br/labs/f1-racing/",
-          "description": "F1 Grand Prix — corrida 3D hiper-realista no navegador: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.",
+          "description": "F1 Grand Prix — corrida 3D hiper-realista em Babylon.js: física Pacejka, carga aerodinâmica, DRS, ERS, circuitos detalhados e telemetria ao vivo.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -97,7 +87,7 @@
                 <div class="app-logo">
                     <span class="f1-mark">F1</span>
                     <span>Grand Prix</span>
-                    <span class="logo-status"><i></i> <span id="backendBadge">3D</span></span>
+                    <span class="logo-status"><i></i> <span id="backendBadge">Babylon.js</span></span>
                 </div>
             </template>
         </header>
@@ -106,61 +96,17 @@
             <canvas id="scene" aria-label="Circuito em 3D"></canvas>
 
             <!-- ============ HUD ============ -->
-            <div id="hud" class="hud" aria-label="Telemetria">
-                <div class="hud-corner hud-top-left">
-                    <div class="panel stat-panel">
-                        <span class="stat-label">Posição</span>
-                        <p class="stat-value"><strong id="positionValue">1</strong><span>/<span id="positionTotal">8</span></span></p>
-                    </div>
-                    <div class="panel stat-panel">
-                        <span class="stat-label">Volta</span>
-                        <p class="stat-value"><strong id="lapValue">1</strong><span>/<span id="lapTotal">4</span></span></p>
-                    </div>
-                    <ol id="timingTower" class="timing-tower" aria-label="Classificação"></ol>
-                </div>
-
-                <div class="hud-corner hud-top-right">
-                    <div class="panel timing-panel">
-                        <div class="timing-row">
-                            <span class="stat-label">Volta atual</span>
-                            <strong id="currentLapTime" class="mono">0:00.000</strong>
-                        </div>
-                        <div class="timing-row">
-                            <span class="stat-label">Melhor</span>
-                            <strong id="bestLapTime" class="mono">--:--.---</strong>
-                        </div>
-                        <div class="timing-row delta-row">
-                            <span id="sectorLabel" class="sector-label"></span>
-                            <span id="lastDelta" class="mono delta"></span>
-                        </div>
-                    </div>
-                    <div class="panel map-panel">
-                        <div class="map-head">
-                            <span class="stat-label">Circuito</span>
-                            <strong id="circuitName">MONZA</strong>
-                        </div>
-                        <canvas id="minimap" aria-label="Mapa do circuito"></canvas>
-                    </div>
-                </div>
-
+            <div id="hud" class="hud" aria-label="Telemetria" hidden>
                 <div class="hud-bottom">
                     <div class="panel systems-panel">
                         <div class="system-block">
-                            <span class="stat-label">ERS <b id="ersValue">4.0</b></span>
-                            <div class="meter ers"><i id="ersFill"></i></div>
+                            <span class="stat-label">ERS</span>
+                            <div class="meter ers"><i id="ersFill" style="width: 100%;"></i></div>
                         </div>
-                        <div class="system-block">
-                            <span class="stat-label">Pneu <b id="tyreLabel">M</b></span>
-                            <div class="meter tyre"><i id="tyreWear"></i></div>
-                            <span class="small" id="tyreTemp">80°C</span>
-                        </div>
-                        <span id="drsBadge" class="drs-badge" data-state="off">DRS</span>
+                        <span id="drsBadge" class="drs-badge" data-state="available">DRS</span>
                     </div>
 
                     <div class="cluster">
-                        <div class="shift-lights" id="shiftLights" aria-hidden="true">
-                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-                        </div>
                         <div class="cluster-main">
                             <div class="speedo">
                                 <strong id="speedValue">0</strong>
@@ -170,25 +116,18 @@
                                 <strong id="gearValue">N</strong>
                             </div>
                         </div>
-                        <div class="rpm-track"><i id="rpmFill"></i></div>
+                        <div class="rpm-track"><i id="rpmFill" style="width: 0%;"></i></div>
                     </div>
 
                     <div class="hud-actions">
-                        <button id="cameraButton" class="icon-button" type="button" title="Câmera (C)" aria-label="Trocar câmera">Cam</button>
-                        <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">II</button>
-                        <span id="fpsCounter" class="fps mono">—</span>
+                        <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                            title="Som (M)" aria-label="Alternar som">♪</button>
                     </div>
                 </div>
-
-                <p id="raceMessage" class="race-message" role="status"></p>
-            </div>
-
-            <div id="countdown" class="countdown" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i>
             </div>
 
             <!-- ============ Touch controls ============ -->
-            <div id="touchControls" class="touch-controls" aria-label="Controles">
+            <div id="touchControls" class="touch-controls" aria-label="Controles" hidden>
                 <div class="pad-group pad-left">
                     <button type="button" class="pad" data-control="left" aria-label="Esquerda">◀</button>
                     <button type="button" class="pad" data-control="right" aria-label="Direita">▶</button>
@@ -202,70 +141,14 @@
             </div>
 
             <!-- ============ Menu ============ -->
-            <div id="menuOverlay" class="overlay menu-overlay">
+            <div id="menuOverlay" class="overlay menu-overlay is-visible">
                 <div class="overlay-card menu-card">
                     <header class="menu-head">
-                        <p class="eyebrow"><i></i> WebGPU · Pacejka · Aero</p>
+                        <p class="eyebrow"><i></i> Babylon.js · Pacejka · PBR</p>
                         <h1>F1 <span>Grand Prix</span></h1>
-                        <p class="lede">Corrida estilo Grand Prix com pista PBR, carro detalhado, física de pneus com
-                            carga aerodinâmica, DRS, ERS e IA agressiva — no navegador.</p>
+                        <p class="lede">Corrida de Formula 1 em Babylon.js com pista PBR, carro detalhado com halo e asa DRS móvel,
+                            física de downforce, ERS e telemetria ao vivo.</p>
                     </header>
-
-                    <div class="menu-grid">
-                        <section class="menu-section menu-section--wide">
-                            <h2>Circuito</h2>
-                            <div id="circuitList" class="option-list circuit-list"></div>
-                            <p id="circuitBlurb" class="section-note"></p>
-                        </section>
-
-                        <section class="menu-section">
-                            <h2>Equipe</h2>
-                            <div id="teamList" class="option-list team-list"></div>
-                        </section>
-
-                        <section class="menu-section">
-                            <h2>Composto</h2>
-                            <div id="compoundOptions" class="chip-row"></div>
-
-                            <h2>Clima</h2>
-                            <div id="weatherOptions" class="chip-row"></div>
-
-                            <h2>Nível da IA</h2>
-                            <div id="difficultyOptions" class="chip-row"></div>
-                        </section>
-
-                        <section class="menu-section menu-section--wide">
-                            <h2>Ajustes</h2>
-                            <div class="settings-grid">
-                                <label class="field">
-                                    <span>Adversários <b id="opponentsValue">7</b></span>
-                                    <input id="opponentsSlider" type="range" min="1" max="7" step="1">
-                                </label>
-                                <label class="field">
-                                    <span>Volume</span>
-                                    <input id="volumeSlider" type="range" min="0" max="100" step="1">
-                                </label>
-                                <label class="field">
-                                    <span>Qualidade</span>
-                                    <select id="qualitySelect">
-                                        <option value="auto">Automática</option>
-                                        <option value="low">Performance</option>
-                                        <option value="medium">Equilibrada</option>
-                                        <option value="high">Ultra</option>
-                                    </select>
-                                </label>
-                                <label class="field field--switch">
-                                    <span>Assistências de pilotagem</span>
-                                    <input id="assistsToggle" type="checkbox">
-                                </label>
-                                <label class="field field--switch">
-                                    <span>Áudio do motor</span>
-                                    <input id="audioToggle" type="checkbox">
-                                </label>
-                                <button id="clearRecords" class="ghost-button" type="button">Apagar recordes</button>
-                            </div>
-                        </section>
-                    </div>
 
                     <footer class="menu-foot">
                         <div class="keys">
@@ -273,9 +156,7 @@
                             <span><kbd>A</kbd><kbd>D</kbd> direção</span>
                             <span><kbd>Espaço</kbd> ERS</span>
                             <span><kbd>E</kbd> DRS</span>
-                            <span><kbd>B</kbd> olhar atrás</span>
-                            <span><kbd>C</kbd> câmera</span>
-                            <span><kbd>P</kbd> pausa</span>
+                            <span><kbd>M</kbd> som</span>
                         </div>
                         <button id="startButton" class="primary-button" type="button">
                             <span>Ir para o grid</span>
@@ -285,126 +166,22 @@
                 </div>
             </div>
 
-            <!-- ============ Pause ============ -->
-            <div id="pauseOverlay" class="overlay">
-                <div class="overlay-card compact-card">
-                    <p class="eyebrow"><i></i> Corrida pausada</p>
-                    <h2>Respire.<br>Volte mais rápido.</h2>
-                    <button id="resumeButton" class="primary-button" type="button"><span>Continuar</span><i aria-hidden="true">→</i></button>
-                    <button id="restartButton" class="ghost-button" type="button">Reiniciar corrida</button>
-                    <button id="quitButton" class="text-button" type="button">Voltar ao menu</button>
-                </div>
-            </div>
-
-            <!-- ============ Results ============ -->
-            <div id="resultsOverlay" class="overlay">
-                <div class="overlay-card results-card">
-                    <p class="eyebrow"><i></i> Bandeira quadriculada</p>
-                    <h2 id="resultTitle">CORRIDA FINALIZADA</h2>
-                    <p id="resultTeam" class="result-team"></p>
-                    <div class="result-highlights">
-                        <div><span>Posição</span><strong id="resultPosition">1º</strong></div>
-                        <div><span>Melhor volta</span><strong id="resultBest" class="mono">--:--.---</strong></div>
-                        <div><span>Tempo total</span><strong id="resultTotal" class="mono">--:--.---</strong></div>
-                    </div>
-                    <ol id="resultBoard" class="result-board"></ol>
-                    <div class="result-actions">
-                        <button id="resultsRestartButton" class="primary-button" type="button"><span>Correr de novo</span><i aria-hidden="true">↻</i></button>
-                        <button id="resultsMenuButton" class="text-button" type="button">Trocar circuito / equipe</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- ============ Loading ============ -->
             <div id="loadingOverlay" class="overlay loading-overlay is-visible">
                 <div class="loading-card">
                     <div class="loading-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-                    <p id="loadingText">carregando…</p>
-                    <div id="bootFallback" class="boot-fallback" hidden>
-                        <h2 id="bootFallbackTitle">Não foi possível iniciar a corrida</h2>
-                        <p id="bootFallbackText">
-                            Este simulador precisa de WebGPU (ou WebGL2) e da biblioteca 3D carregada pela rede.
-                            Verifique sua conexão e use um navegador atualizado — Chrome, Edge ou Safari recentes.
-                        </p>
-                        <div class="boot-fallback-actions">
-                            <button id="bootRetry" class="primary-button" type="button">
-                                <span>Tentar novamente</span><i aria-hidden="true">↻</i>
-                            </button>
-                            <a class="text-button" href="/labs/">Voltar para os labs</a>
-                        </div>
-                    </div>
+                    <p id="loadingText">carregando pista e motores…</p>
                 </div>
             </div>
-
-            <p id="raceAnnouncer" class="sr-only" aria-live="polite"></p>
         </section>
     </main>
 
     <footer data-lab-footer data-home-href="/"></footer>
 
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="/labs/shared.js?v=8" defer></script>
-
-    <!--
-        Boot watchdog (classic script on purpose): if the ES module never runs — CDN
-        offline, import blocked, browser without WebGPU/WebGL2 — nothing inside main.js
-        can report it. This keeps the loading screen from spinning forever.
-    -->
-    <script>
-        (function () {
-            'use strict';
-            var failed = false;
-
-            function hasGpu() {
-                if (navigator.gpu) return true;
-                try {
-                    var probe = document.createElement('canvas');
-                    return !!(probe.getContext('webgl2') || probe.getContext('webgl'));
-                } catch (error) {
-                    return false;
-                }
-            }
-
-            function fail(reason) {
-                if (failed || window.__f1Booted) return;
-                failed = true;
-                var overlay = document.getElementById('loadingOverlay');
-                var lights = overlay && overlay.querySelector('.loading-lights');
-                var text = document.getElementById('loadingText');
-                var box = document.getElementById('bootFallback');
-                if (!box) return;
-                if (overlay) overlay.classList.add('is-visible', 'has-error');
-                if (lights) lights.hidden = true;
-                if (text) text.hidden = true;
-                if (reason === 'gpu') {
-                    document.getElementById('bootFallbackTitle').textContent = 'Seu navegador não suporta WebGPU';
-                    document.getElementById('bootFallbackText').textContent =
-                        'Esta corrida usa WebGPU com fallback para WebGL2, e nenhum dos dois está disponível aqui. ' +
-                        'Tente um navegador atualizado (Chrome, Edge ou Safari) com aceleração de hardware ativada.';
-                }
-                box.hidden = false;
-                var retry = document.getElementById('bootRetry');
-                if (retry) retry.addEventListener('click', function () { location.reload(); }, { once: true });
-            }
-
-            window.__f1BootFail = fail;
-
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () { fail('gpu'); }, { once: true });
-                return;
-            }
-
-            // A module whose imports fail to load fires `error` on its <script> element.
-            document.addEventListener('error', function (event) {
-                var target = event.target;
-                if (target && target.tagName === 'SCRIPT' && target.type === 'module') fail('network');
-            }, true);
-
-            window.addEventListener('load', function () {
-                setTimeout(function () { fail('timeout'); }, 12000);
-            });
-        })();
-    </script>
-    <script type="module" src="src/main.js?v=5"></script>
+    <script type="module" src="src/main.js"></script>
 </body>
 
 </html>
