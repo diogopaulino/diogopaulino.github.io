@@ -1,8 +1,7 @@
 /**
- * Cutscenes curtas: interpola câmera, bloqueia controle, dispara eventos.
+ * Cutscenes: interpolação de câmera em Babylon.js, bloqueio de controle e eventos de história.
  */
 
-import * as THREE from 'three';
 import { getEasing } from '../utils/easing.js';
 
 export class CutsceneManager {
@@ -11,17 +10,17 @@ export class CutsceneManager {
         this.blocking = false;
         this.t = 0;
         this.duration = 0;
-        this.fromPos = new THREE.Vector3();
-        this.toPos = new THREE.Vector3();
-        this.fromLook = new THREE.Vector3();
-        this.toLook = new THREE.Vector3();
+        this.fromPos = new BABYLON.Vector3();
+        this.toPos = new BABYLON.Vector3();
+        this.fromLook = new BABYLON.Vector3();
+        this.toLook = new BABYLON.Vector3();
         this.ease = getEasing('inOutCubic');
         this.midAt = 0.5;
         this.midFired = false;
         this.onMid = null;
         this.onEnd = null;
-        this._pos = new THREE.Vector3();
-        this._look = new THREE.Vector3();
+        this._pos = new BABYLON.Vector3();
+        this._look = new BABYLON.Vector3();
     }
 
     play({
@@ -32,10 +31,10 @@ export class CutsceneManager {
         this.rig.cutscene = true;
         this.t = 0;
         this.duration = duration;
-        this.fromPos.copy(from);
-        this.toPos.copy(to);
-        this.fromLook.copy(lookFrom);
-        this.toLook.copy(lookTo);
+        this.fromPos.copyFrom(from);
+        this.toPos.copyFrom(to);
+        this.fromLook.copyFrom(lookFrom);
+        this.toLook.copyFrom(lookTo);
         this.ease = getEasing(easing);
         this.onMid = onMid;
         this.onEnd = onEnd;
@@ -65,13 +64,17 @@ export class CutsceneManager {
         this.t += dt;
         const u = Math.min(1, this.t / this.duration);
         const e = this.ease(u);
-        this._pos.lerpVectors(this.fromPos, this.toPos, e);
-        this._look.lerpVectors(this.fromLook, this.toLook, e);
+
+        BABYLON.Vector3.LerpToRef(this.fromPos, this.toPos, e, this._pos);
+        BABYLON.Vector3.LerpToRef(this.fromLook, this.toLook, e, this._look);
+
         this.rig.setCutscenePose(this._pos, this._look);
+
         if (!this.midFired && u >= this.midAt) {
             this.midFired = true;
             this.onMid?.();
         }
+
         if (u >= 1) this._finish();
     }
 }

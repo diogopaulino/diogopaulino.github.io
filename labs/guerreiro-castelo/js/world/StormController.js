@@ -1,8 +1,7 @@
 /**
- * Tempestade: chuva, vento, ondas, fog, relâmpago (luz real, não flash de tela).
+ * Controlador de tempestade: partículas de chuva, vento, trovões e relâmpagos em Babylon.js.
  */
 
-import * as THREE from 'three';
 import { clamp, damp } from '../utils/math.js';
 
 export class StormController {
@@ -18,42 +17,69 @@ export class StormController {
         this.target = 0;
         this.time = 0;
 
-        const count = Math.floor(900 * quality.particles);
-        this._rainGeo = new THREE.BufferGeometry();
-        const pos = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            pos[i * 3] = (Math.random() - 0.5) * 40;
-            pos[i * 3 + 1] = Math.random() * 18;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 40;
-        }
-        this._rainGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        this.rain = new THREE.Points(
-            this._rainGeo,
-            new THREE.PointsMaterial({
-                color: 0xa8c4d8,
-                size: 0.08,
-                transparent: true,
-                opacity: 0,
-                depthWrite: false
-            })
-        );
-        this.rain.visible = false;
-        scene.add(this.rain);
+        this.emitter = new BABYLON.TransformNode('stormEmitter', scene);
 
-        this.flashLight = new THREE.DirectionalLight(0xc8d8ff, 0);
-        this.flashLight.position.set(-4, 18, 6);
-        scene.add(this.flashLight);
-        this._count = count;
-        this.origin = new THREE.Vector3();
+        // Sistema de partículas de chuva
+        const count = Math.floor(1200 * (quality?.particles || 1));
+        const rainSystem = new BABYLON.ParticleSystem('rain', count, scene);
+
+        // Criar textura de gota procedural em canvas
+        const c = document.createElement('canvas');
+        c.width = 16;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 64);
+        grad.addColorStop(0, 'rgba(200, 225, 255, 0)');
+        grad.addColorStop(0.5, 'rgba(200, 225, 255, 0.7)');
+        grad.addColorStop(1, 'rgba(240, 250, 255, 0.9)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 16, 64);
+
+        const tex = new BABYLON.DynamicTexture('rainDrop', c, scene, false);
+        rainSystem.particleTexture = tex;
+
+        rainSystem.emitter = this.emitter;
+        rainSystem.minEmitBox = new BABYLON.Vector3(-25, 18, -25);
+        rainSystem.maxEmitBox = new BABYLON.Vector3(25, 22, 25);
+
+        rainSystem.color1 = new BABYLON.Color4(0.8, 0.9, 1.0, 0.6);
+        rainSystem.color2 = new BABYLON.Color4(0.7, 0.85, 0.95, 0.4);
+        rainSystem.colorDead = new BABYLON.Color4(0.5, 0.7, 0.9, 0.0);
+
+        rainSystem.minSize = 0.15;
+        rainSystem.maxSize = 0.35;
+        rainSystem.minScaleY = 2.5;
+        rainSystem.maxScaleY = 5.0;
+
+        rainSystem.minLifeTime = 0.8;
+        rainSystem.maxLifeTime = 1.4;
+
+        rainSystem.emitRate = 0;
+        rainSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+        rainSystem.gravity = new BABYLON.Vector3(0, -32, 0);
+        rainSystem.direction1 = new BABYLON.Vector3(-2, -28, -1);
+        rainSystem.direction2 = new BABYLON.Vector3(-4, -34, -2);
+        rainSystem.start();
+
+        this.rainSystem = rainSystem;
+        this.maxEmitRate = count;
+
+        // Luz de relâmpago
+        this.flashLight = new BABYLON.DirectionalLight('lightningFlash', new BABYLON.Vector3(0.2, -1, 0.1), scene);
+        this.flashLight.diffuse = new BABYLON.Color3(0.85, 0.92, 1.0);
+        this.flashLight.intensity = 0;
     }
 
     setIntensity(v) {
         this.target = clamp(v, 0, 1);
     }
 
-    follow(origin) {
-        this.origin.copy(origin);
-        this.rain.position.copy(origin);
+    follow(pos) {
+        if (pos) {
+            this.emitter.position.x = pos.x;
+            this.emitter.position.y = pos.y;
+            this.emitter.position.z = pos.z;
+        }
     }
 
     update(dt, game) {
@@ -61,47 +87,40 @@ export class StormController {
         this.rainIntensity = damp(this.rainIntensity, this.target, 1.2, dt);
         this.windIntensity = this.rainIntensity;
         this.waveIntensity = this.rainIntensity;
-        this.fogDensity = 0.008 + this.rainIntensity * 0.028;
+        this.fogDensity = 0.008 + this.rainIntensity * 0.025;
         this.lightLevel = 1 - this.rainIntensity * 0.55;
 
-        if (this.rainIntensity > 0.05) {
-            this.rain.visible = true;
-            this.rain.material.opacity = this.rainIntensity * 0.65;
-            const arr = this._rainGeo.attributes.position.array;
-            const vy = (18 + this.rainIntensity * 22) * dt;
-            const wind = this.windIntensity * 8 * dt;
-            for (let i = 0; i < this._count; i++) {
-                arr[i * 3] += wind;
-                arr[i * 3 + 1] -= vy;
-                if (arr[i * 3 + 1] < 0) {
-                    arr[i * 3] = (Math.random() - 0.5) * 40;
-                    arr[i * 3 + 1] = 16 + Math.random() * 6;
-                    arr[i * 3 + 2] = (Math.random() - 0.5) * 40;
-                }
-            }
-            this._rainGeo.attributes.position.needsUpdate = true;
-        } else {
-            this.rain.visible = false;
+        this.rainSystem.emitRate = Math.floor(this.maxEmitRate * this.rainIntensity);
+
+        // Vento inclina a chuva
+        this.rainSystem.direction1.x = -2 - this.windIntensity * 8;
+        this.rainSystem.direction2.x = -4 - this.windIntensity * 12;
+
+        // Relâmpagos aleatórios durante tempestade intensa
+        if (this.rainIntensity > 0.45 && Math.random() < dt * 0.25) {
+            this.lightning = 0.12 + Math.random() * 0.08;
+            this.thunderDelay = 0.3 + Math.random() * 1.2;
         }
 
-        if (this.rainIntensity > 0.45 && Math.random() < dt * 0.22) {
-            this.lightning = 0.12 + Math.random() * 0.08;
-            this.thunderDelay = 0.4 + Math.random() * 1.4;
-        }
         if (this.lightning > 0) {
             this.lightning -= dt;
-            this.flashLight.intensity = this.lightning > 0.04 ? 3.2 : 0.4;
+            this.flashLight.intensity = this.lightning > 0.04 ? 3.5 : 0.6;
         } else {
             this.flashLight.intensity = 0;
         }
+
         if (this.thunderDelay >= 0) {
             this.thunderDelay -= dt;
-            if (this.thunderDelay < 0) game.audio.play('thunder');
+            if (this.thunderDelay < 0) {
+                game.audio.play('thunder');
+                game.cameraRig?.addShake(0.12, 0.4);
+            }
         }
 
-        if (game.scene.fog) {
-            game.scene.fog.density = this.fogDensity;
+        if (this.scene.fogMode !== BABYLON.Scene.FOGMODE_NONE && game.stageId === 'ship') {
+            this.scene.fogDensity = this.fogDensity;
         }
+
         game.ocean?.setStorm(this.waveIntensity);
     }
 }

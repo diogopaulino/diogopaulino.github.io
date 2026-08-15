@@ -1,4 +1,7 @@
-import * as THREE from 'three';
+/**
+ * Capítulo 11: Zarpando e Fuga de Navio em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { buildShip, addShipColliders } from '../world/Ship.js';
 import { makeRock } from '../world/Environment.js';
@@ -10,18 +13,19 @@ export class ShipEscapeLevel extends Level {
     }
 
     async build() {
-        this.group = new THREE.Group();
-        this.ship = buildShip();
-        this.group.add(this.ship);
-        this.game.scene.add(this.group);
+        const scene = this.game.scene;
+        this.group = new BABYLON.TransformNode('shipEscapeGroup', scene);
+        this.ship = buildShip(scene);
+        this.ship.parent = this.group;
+
         addShipColliders(this.game.collision);
 
         this.friends = [];
         for (let i = 0; i < 3; i++) {
-            const f = buildFriend(i);
-            f.group.position.set(-1.5 + i * 1.4, 1.44, 2);
-            this.ship.add(f.group);
-            this.friends.push(new CharacterAnimator(f.group, f.clips));
+            const f = buildFriend(scene, i);
+            f.root.position.set(-1.5 + i * 1.4, 1.44, 2);
+            f.root.parent = this.ship;
+            this.friends.push(new CharacterAnimator(f.root, f.clips));
         }
 
         this.addInteract({
@@ -31,11 +35,12 @@ export class ShipEscapeLevel extends Level {
             interact: (_p, game) => {
                 if (this.untied) return;
                 this.untied = true;
-                this.ship.userData.mooring.visible = false;
+                this.ship.userData.mooring.setEnabled(false);
                 game.audio.play('interact');
                 game.story.notify('untie');
             }
         });
+
         this.addInteract({
             object: this.ship.userData.sail,
             interactionLabel: 'Levantar a vela',
@@ -47,6 +52,7 @@ export class ShipEscapeLevel extends Level {
                 game.story.notify('sail');
             }
         });
+
         this.addInteract({
             object: this.ship.userData.helm,
             interactionLabel: 'Assumir o leme',
@@ -62,16 +68,15 @@ export class ShipEscapeLevel extends Level {
 
         this.rocks = [];
         for (const [x, z] of [[-8, -18], [9, -28], [0, -40]]) {
-            const r = makeRock(5);
-            r.scale.set(3, 6, 4);
+            const r = makeRock(5, scene);
+            r.scaling.set(3, 6, 4);
             r.position.set(x, 1.5, z);
-            this.game.scene.add(r);
             this.rocks.push(r);
         }
 
-        this.obstacles = [];
-        this.ship.traverse((c) => { if (c.isMesh) this.obstacles.push(c); });
+        this.obstacles = this.ship.getChildMeshes ? this.ship.getChildMeshes() : [];
         this.game.arrows.setColliders(this.obstacles.concat(this.rocks));
+
         this.phase = 'prep';
         this.steer = 0;
         this.shipX = 0;
@@ -92,14 +97,16 @@ export class ShipEscapeLevel extends Level {
         g.camila.ai.state = 'WAIT';
         g.weather.apply('day');
         g.audio.setTheme('chase');
-        g.ocean.water.visible = true;
+        g.ocean.visible = true;
         g.quests.set('untie');
         g.input.enabled = true;
         g.player.controller.setMode('walk');
         g.cameraRig.setObstacles(this.obstacles);
+
         g.arrows.onHitPlayer = () => {
             if (g.player.hurt(0.5)) g.cameraRig.addShake(0.1, 0.2);
         };
+
         g.input.requestLock();
         g.dialogue.say('DICO', 'Soltem as amarras!');
     }
@@ -108,8 +115,8 @@ export class ShipEscapeLevel extends Level {
         this.phase = 'helm';
         this.game.player.controller.setMode('helm');
         this.game.player.spawn(0, 2.23, 7.1, Math.PI);
-        this.game.hud.showObjective('Saia da costa sem bater');
-        this.game.dialogue.say('DICO', 'Vento nas velas!');
+        this.game.hud.showObjective('Saia da costa sem bater nos recifes');
+        this.game.dialogue.say('DICO', 'Vento nas velas! Segurem-se!');
     }
 
     update(dt) {
@@ -119,13 +126,14 @@ export class ShipEscapeLevel extends Level {
         this.ship.rotation.x = wave.pitch * 0.4;
         this.ship.rotation.z = wave.roll * 0.4;
         this.ship.userData.helm.rotation.z = this.steer * 0.5;
+
         for (const a of this.friends) a.update(dt);
 
         this.arrowT += dt;
         if (this.phase !== 'done' && this.arrowT > 0.9 && this.shipZ > -25) {
             this.arrowT = 0;
-            const origin = new THREE.Vector3((Math.random() - 0.5) * 16, 8, 18);
-            const dir = new THREE.Vector3((Math.random() - 0.5) * 0.3, -0.1, -1).normalize();
+            const origin = new BABYLON.Vector3((Math.random() - 0.5) * 16, 8, 18);
+            const dir = new BABYLON.Vector3((Math.random() - 0.5) * 0.3, -0.1, -1).normalize();
             this.game.arrows.fire(origin, dir, 22);
             this.game.audio.play('arrow');
         }
@@ -137,6 +145,7 @@ export class ShipEscapeLevel extends Level {
             this.shipX += this.steer * 8 * dt;
             this.shipZ -= 14 * dt;
             this.group.position.set(this.shipX, 0, this.shipZ);
+
             for (const r of this.rocks) {
                 if (Math.hypot(this.shipX - r.position.x, this.shipZ - r.position.z) < 6.5) {
                     this.game.failCheckpoint('Pedras na costa…');
@@ -144,6 +153,7 @@ export class ShipEscapeLevel extends Level {
                     return;
                 }
             }
+
             if (this.shipZ < -55) {
                 this.phase = 'done';
                 this.game.player.controller.setMode('locked');
@@ -154,7 +164,9 @@ export class ShipEscapeLevel extends Level {
 
     exit() {
         super.exit();
-        for (const r of this.rocks) this.game.scene.remove(r);
+        for (const r of this.rocks) {
+            try { r.dispose(); } catch { /* ignore */ }
+        }
         this.game.arrows.clear();
         this.game.arrows.onHitPlayer = null;
         this.game.player.controller.setMode('walk');

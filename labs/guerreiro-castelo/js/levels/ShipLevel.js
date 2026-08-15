@@ -1,4 +1,7 @@
-import * as THREE from 'three';
+/**
+ * Capítulos 2 e 3: Exploração marítima & Tempestade no mar em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { buildShip, addShipColliders } from '../world/Ship.js';
 import { buildFriend, CharacterAnimator } from '../characters/builders.js';
@@ -10,12 +13,10 @@ export class ShipLevel extends Level {
     }
 
     async build() {
-        this.group = new THREE.Group();
-        this.ship = buildShip();
-        this.group.add(this.ship);
-        this.game.scene.add(this.group);
-        const fill = new THREE.HemisphereLight(0xc8e4ff, 0x3a2a18, 0.4);
-        this.ship.add(fill);
+        const scene = this.game.scene;
+        this.group = new BABYLON.TransformNode('shipLevelRoot', scene);
+        this.ship = buildShip(scene);
+        this.ship.parent = this.group;
 
         addShipColliders(this.game.collision);
 
@@ -25,15 +26,17 @@ export class ShipLevel extends Level {
             { x: 1.8, z: 1.4, y: 1.44, yaw: -0.8, line: ['AMIGO', 'Espadas, cordas, água… está tudo a bordo.'] },
             { x: -1.4, z: 4.6, y: 1.44, yaw: 2.4, line: ['AMIGO', 'Teco já subiu em três barris hoje.'] }
         ];
+
         spots.forEach((s, i) => {
-            const f = buildFriend(i);
-            f.group.position.set(s.x, s.y, s.z);
-            f.group.rotation.y = s.yaw;
-            this.ship.add(f.group);
-            const anim = new CharacterAnimator(f.group, f.clips);
-            this.friends.push({ root: f.group, anim, line: s.line });
+            const f = buildFriend(scene, i);
+            f.root.position.set(s.x, s.y, s.z);
+            f.root.rotation.y = s.yaw;
+            f.root.parent = this.ship;
+            const anim = new CharacterAnimator(f.root, f.clips);
+            this.friends.push({ root: f.root, anim, line: s.line });
+
             this.addInteract({
-                object: f.group,
+                object: f.root,
                 interactionLabel: 'Conversar',
                 interactionDistance: 2.4,
                 interact: (_p, game) => {
@@ -45,15 +48,15 @@ export class ShipLevel extends Level {
             });
         });
 
-        const horizon = new THREE.Object3D();
+        const horizon = new BABYLON.TransformNode('horizonProxy', scene);
         horizon.position.set(0, 1.8, -7.5);
-        this.ship.add(horizon);
+        horizon.parent = this.ship;
         this.addInteract({
             object: horizon,
             interactionLabel: 'Observar o horizonte',
             interactionDistance: 2.8,
             interact: (_p, game) => {
-                game.dialogue.say('DICO', 'Do outro lado do mar… uma cidade, e um castelo.');
+                game.dialogue.say('DICO', 'Do outro lado do mar… uma ilha, e um castelo.');
                 game.story.notify('horizon');
             }
         });
@@ -93,16 +96,12 @@ export class ShipLevel extends Level {
             interact: (_p, game) => this.sendTecoRope(game)
         });
 
-        this.rock = makeRock(6);
-        this.rock.scale.set(4.5, 8, 5);
+        this.rock = makeRock(6, scene);
+        this.rock.scaling.set(4.5, 8, 5);
         this.rock.position.set(2, 2, -70);
-        this.game.scene.add(this.rock);
-        this.rock.visible = false;
+        this.rock.setEnabled(false);
 
-        this.obstacles = [];
-        this.ship.traverse((c) => {
-            if (c.isMesh) this.obstacles.push(c);
-        });
+        this.obstacles = this.ship.getChildMeshes ? this.ship.getChildMeshes() : [];
 
         this.phase = 'explore';
         this.steer = 0;
@@ -123,20 +122,14 @@ export class ShipLevel extends Level {
         g.weather.apply('day');
         g.audio.setTheme('sea');
         g.storm.setIntensity(0);
-        g.ocean.water.visible = true;
+        g.ocean.visible = true;
         g.quests.set('explore_ship');
         g.checkpoints.save('ship_start', g.story._saveBlob());
         g.cameraRig.setObstacles(this.obstacles);
         g.cameraRig.yaw = Math.PI;
         g.cameraRig.pitch = 0.28;
         g.cameraRig.cutscene = false;
-        this.ship.updateMatrixWorld(true);
-        g.player.root.updateMatrixWorld(true);
         g.cameraRig.snapToPlayer(g.player);
-        g.camera.position.set(0, 6.5, 9.5);
-        g.camera.lookAt(0, 2, 1);
-        g.cameraRig.currentPos.copy(g.camera.position);
-        g.cameraRig.smoothLook.set(0, 2, 1);
         g.hud.showObjective('Explore o navio');
         g.input.requestLock();
     }
@@ -145,7 +138,7 @@ export class ShipLevel extends Level {
         if (this.nightStarted) return;
         this.nightStarted = true;
         const g = this.game;
-        g.hud.showChapter('Terceira noite', '');
+        g.hud.showChapter('A Tempestade', 'ondas ferozes na escuridão');
         g.fadeTo(1.2, () => {
             this.phase = 'storm';
             g.weather.apply('storm');
@@ -154,9 +147,9 @@ export class ShipLevel extends Level {
             g.dialogue.say('DICO', 'Segurem firme!');
             g.quests.set('free_helm');
             g.checkpoints.save('storm_start', g.story._saveBlob());
-            this.ship.userData.rope.visible = true;
+            this.ship.userData.rope.setEnabled(true);
             this.ropeItem.enabled = true;
-            this.rock.visible = true;
+            this.rock.setEnabled(true);
             g.cameraRig.addShake(0.04, 8);
             g.player.spawn(0, 1.44, 4.5, 0);
             g.fadeTo(0, null, 0.9);
@@ -167,15 +160,15 @@ export class ShipLevel extends Level {
         this.ropeItem.enabled = false;
         game.dialogue.say('DICO', 'Cuidado, Teco!');
         const path = [
-            new THREE.Vector3(1.8, 1.7, 2),
-            new THREE.Vector3(2.1, 2.1, 4.2),
-            new THREE.Vector3(1.2, 2.6, 6.4),
-            new THREE.Vector3(0.3, 2.7, 7.4)
+            new BABYLON.Vector3(1.8, 1.7, 2),
+            new BABYLON.Vector3(2.1, 2.1, 4.2),
+            new BABYLON.Vector3(1.2, 2.6, 6.4),
+            new BABYLON.Vector3(0.3, 2.7, 7.4)
         ];
         game.teco.ai.command(path, {
             climb: true,
             onComplete: () => {
-                this.ship.userData.rope.visible = false;
+                this.ship.userData.rope.setEnabled(false);
                 game.audio.play('success');
                 game.story.notify('rope_freed');
             }
@@ -192,7 +185,7 @@ export class ShipLevel extends Level {
         this.shipX = 0;
         this.steer = 0;
         this.rock.position.set(3, 2, -55);
-        this.rock.visible = true;
+        this.rock.setEnabled(true);
     }
 
     endStorm() {
@@ -202,18 +195,19 @@ export class ShipLevel extends Level {
         g.storm.setIntensity(0.15);
         g.weather.apply('dawn');
         g.audio.setTheme('land');
-        const castleHint = new THREE.Mesh(
-            new THREE.BoxGeometry(18, 28, 18),
-            new THREE.MeshStandardMaterial({ color: 0x8a8070, roughness: 0.9 })
-        );
+
+        const castleHint = BABYLON.MeshBuilder.CreateBox('castleHint', { width: 18, height: 28, depth: 18 }, this.game.scene);
+        const cMat = new BABYLON.StandardMaterial('cHintMat', this.game.scene);
+        cMat.diffuseColor = new BABYLON.Color3(0.55, 0.5, 0.45);
+        castleHint.material = cMat;
         castleHint.position.set(8, 16, -160);
-        this.game.scene.add(castleHint);
         this._hint = castleHint;
+
         g.cutscenes.play({
-            from: new THREE.Vector3(4, 8, 16),
-            to: new THREE.Vector3(10, 14, 6),
-            lookFrom: new THREE.Vector3(8, 10, -40),
-            lookTo: new THREE.Vector3(8, 18, -160),
+            from: new BABYLON.Vector3(4, 8, 16),
+            to: new BABYLON.Vector3(10, 14, 6),
+            lookFrom: new BABYLON.Vector3(8, 10, -40),
+            lookTo: new BABYLON.Vector3(8, 18, -160),
             duration: 5.2,
             onEnd: () => {}
         });
@@ -261,14 +255,18 @@ export class ShipLevel extends Level {
 
         if (this.phase === 'storm') {
             this.game.cameraRig.addShake(0.015, 0.2);
-            this.game.storm.follow(this.ship.getWorldPosition(new THREE.Vector3()));
+            this.game.storm.follow(this.ship.position);
         }
     }
 
     exit() {
         super.exit();
-        this.game.scene.remove(this.rock);
-        if (this._hint) this.game.scene.remove(this._hint);
+        if (this.rock) {
+            try { this.rock.dispose(); } catch { /* ignore */ }
+        }
+        if (this._hint) {
+            try { this._hint.dispose(); } catch { /* ignore */ }
+        }
         this.game.player.controller.setMode('walk');
     }
 }

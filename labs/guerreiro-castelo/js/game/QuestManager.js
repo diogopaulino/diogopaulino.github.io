@@ -1,5 +1,5 @@
 /**
- * Objetivos da aventura. O HUD mostra o atual; Tab reexibe.
+ * Objetivos da aventura. O HUD mostra o atual; atualizações exibem banner.
  */
 
 export const QUEST_ORDER = [
@@ -29,19 +29,19 @@ export const QUEST_ORDER = [
 ];
 
 export class QuestManager {
-    constructor() {
+    constructor(game) {
+        this.game = game;
         this.current = QUEST_ORDER[0];
         this.completed = new Set();
-        this.bannerT = 0;
-        this.onChange = null;
     }
 
     set(id) {
         const q = QUEST_ORDER.find((x) => x.id === id);
         if (!q) return;
         this.current = q;
-        this.bannerT = 4.2;
-        this.onChange?.(q);
+        if (this.game && this.game.hud) {
+            this.game.hud.showObjective(q.text, id === 'flee');
+        }
     }
 
     complete(id) {
@@ -50,9 +50,5 @@ export class QuestManager {
         if (i >= 0 && i + 1 < QUEST_ORDER.length && this.current.id === id) {
             this.set(QUEST_ORDER[i + 1].id);
         }
-    }
-
-    update(dt) {
-        if (this.bannerT > 0) this.bannerT -= dt;
     }
 }

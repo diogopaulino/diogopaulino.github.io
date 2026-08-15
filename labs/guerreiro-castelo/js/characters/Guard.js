@@ -1,62 +1,69 @@
-import * as THREE from 'three';
-import { buildGuard, CharacterAnimator, applyLocomotion } from './builders.js';
+/**
+ * Guarda do castelo / Arqueiro para Babylon.js.
+ */
+
+import { buildGuard, CharacterAnimator } from './builders.js';
 import { GuardAI } from '../ai/GuardAI.js';
 import { angleDamp } from '../utils/math.js';
 
 export class Guard {
-    constructor(scene, opts = {}) {
-        const built = buildGuard(opts);
-        this.root = built.group;
+    constructor(parentOrScene, opts = {}) {
+        const scene = parentOrScene.getScene ? parentOrScene.getScene() : parentOrScene;
+        const built = buildGuard(scene, opts);
+        this.root = built.root;
         this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.group, built.clips);
-        scene.add(this.root);
-        this.position = new THREE.Vector3();
+        this.animator = new CharacterAnimator(built.root, built.clips);
+
+        if (parentOrScene.getScene) {
+            this.root.parent = parentOrScene;
+        }
+
+        this.position = new BABYLON.Vector3(0, 0, 0);
         this.facing = 0;
-        this.ai = new GuardAI(this, opts);
-        this.health = 3;
-        this.maxHealth = 3;
-        this.alive = true;
-        this.fat = Boolean(opts.fat);
-        this.archer = Boolean(opts.archer);
-        this.hasKeys = Boolean(opts.fat);
         this.speed = 0;
-        this.hitT = 0;
+        this.health = opts.health || 2;
+        this.alive = true;
+        this.hasKeys = Boolean(opts.fat);
+        this.ai = new GuardAI(this, opts);
     }
 
     spawn(x, y, z, yaw = 0) {
         this.position.set(x, y, z);
         this.facing = yaw;
-        this.ai.home.set(x, y, z);
+        this.root.position.copyFrom(this.position);
+        this.root.rotation.y = this.facing;
+        this.ai.home.copyFrom(this.position);
         this.ai.facing = yaw;
-        this.root.position.copy(this.position);
-        this.root.rotation.y = yaw;
-        this.alive = true;
-        this.health = this.maxHealth;
     }
 
     takeHit(amount = 1) {
-        if (!this.alive) return;
         this.health -= amount;
-        this.hitT = 0.2;
         if (this.health <= 0) {
+            this.health = 0;
             this.alive = false;
-            this.ai.state = 'IDLE';
+            this.root.setEnabled(false);
+        } else {
+            this.ai.state = 'ATTACK';
         }
     }
 
     update(dt, game) {
-        if (!this.alive) {
-            this.root.rotation.x = Math.min(1.4, this.root.rotation.x + dt * 3);
-            return;
-        }
-        this.hitT = Math.max(0, this.hitT - dt);
+        if (!this.alive) return;
         this.ai.update(dt, game);
         this.facing = angleDamp(this.facing, this.ai.facing, 8, dt);
-        this.root.position.copy(this.position);
+        this.root.position.copyFrom(this.position);
         this.root.rotation.y = this.facing;
-        if (this.ai.state === 'SLEEP') this.animator.play('Idle');
-        else applyLocomotion(this.animator, this.speed, false, true, this.ai.state === 'ATTACK', false, false);
+
+        if (this.ai.state === 'ATTACK') {
+            this.animator.play('Attack', 0.1);
+        } else if (this.speed > 2.5) {
+            this.animator.play('Run', 0.12);
+        } else if (this.speed > 0.2) {
+            this.animator.play('Walk', 0.14);
+        } else {
+            this.animator.play('Idle', 0.2);
+        }
+
         this.animator.update(dt);
-        if (this.parts.keys) this.parts.keys.visible = this.hasKeys;
     }
 }

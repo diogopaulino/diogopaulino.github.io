@@ -86,7 +86,6 @@ export class SceneManager {
         this.game.cameraRig.setObstacles(obstacles);
         for (const lv of levels) lv.enter(checkpoint);
         this._applyCheckpointSpawn(checkpoint);
-        this.game.scene.updateMatrixWorld(true);
         this.game.cameraRig.snapToPlayer(this.game.player);
         return levels;
     }
@@ -103,7 +102,7 @@ export class SceneManager {
                 this.game.level.nightStarted = true;
                 this.game.weather.apply('storm');
                 this.game.storm.setIntensity(0.85);
-                this.game.level.ship.userData.rope.visible = true;
+                this.game.level.ship.userData.rope.setEnabled(true);
                 this.game.level.ropeItem.enabled = true;
                 p.spawn(0, 1.44, 5, 0);
                 break;
@@ -147,9 +146,6 @@ export class SceneManager {
     async unload() {
         for (const lv of this.levels) {
             lv.exit();
-            if (lv.group) {
-                this.game.scene.remove(lv.group);
-            }
         }
         this.levels = [];
         this.game.level = null;

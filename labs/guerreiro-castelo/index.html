@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#0a0c12">
     <title>O Guerreiro e o Castelo — aventura 3D | Diogo Paulino</title>
     <meta name="description"
-        content="Aventura 3D em three.js de Diogo Paulino: Dico, Teco e a travessia do mar até o castelo para resgatar Camila. Terceira pessoa, stealth, puzzles e fuga cinematográfica.">
+        content="Aventura 3D cinematográfica em Babylon.js de Diogo Paulino: Dico, Teco e a travessia do mar até o castelo para resgatar Camila. Terceira pessoa, stealth, puzzles e fuga.">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/guerreiro-castelo/">
@@ -18,32 +18,24 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/guerreiro-castelo/">
     <meta property="og:title" content="O Guerreiro e o Castelo do Outro Lado do Mar | Diogo Paulino">
     <meta property="og:description"
-        content="Uma história antes de dormir vira travessia, tempestade, stealth e fuga. Jogo 3D em terceira pessoa no navegador.">
+        content="Uma história antes de dormir vira travessia, tempestade, stealth e fuga. Jogo 3D em terceira pessoa no navegador feito em Babylon.js.">
     <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
-    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:image:alt" content="Diogo Paulino - O Guerreiro e o Castelo">
     <meta property="og:locale" content="pt_BR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="O Guerreiro e o Castelo do Outro Lado do Mar | Diogo Paulino">
     <meta name="twitter:description"
-        content="Aventura 3D cinematográfica: navio, castelo, Teco e o resgate de Camila. three.js no navegador.">
+        content="Aventura 3D cinematográfica: navio, castelo, Teco e o resgate de Camila em Babylon.js.">
     <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="css/style.css">
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -52,9 +44,10 @@
           "@type": "WebApplication",
           "name": "O Guerreiro e o Castelo do Outro Lado do Mar",
           "url": "https://diogopaulino.com.br/labs/guerreiro-castelo/",
-          "description": "Aventura 3D em three.js: Dico, Teco e a travessia do mar até o castelo para resgatar Camila.",
+          "description": "Aventura 3D em Babylon.js: Dico, Teco e a travessia do mar até o castelo para resgatar Camila.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
+          "browserRequirements": "WebGL 2",
           "inLanguage": "pt-BR",
           "isAccessibleForFree": true,
           "author": {
@@ -141,8 +134,7 @@
                 <span id="fpsCounter" class="fps">—</span>
             </div>
 
-            <!-- Controles de toque: só aparecem em ponteiro grosso (celular e
-                 tablet), onde não existe teclado nem pointer lock. -->
+            <!-- Controles de toque para celular e tablet -->
             <div id="touchControls" class="touch-controls" aria-label="Controles de toque">
                 <div class="touch-look" data-touch-look aria-hidden="true"></div>
 
@@ -222,7 +214,7 @@
                     <select id="qualitySelect">
                         <option value="low">Baixo</option>
                         <option value="medium">Médio</option>
-                        <option value="high">Alto</option>
+                        <option value="high" selected>Alto</option>
                         <option value="ultra">Ultra</option>
                     </select>
                 </label>
@@ -250,7 +242,7 @@
             <div class="overlay-card end-card">
                 <p class="eyebrow">fim</p>
                 <h1>O Guerreiro e o Castelo<br><span>do Outro Lado do Mar</span></h1>
-                <p class="lede">Fim</p>
+                <p class="lede">Fim da história. Dico, Teco e Camila voltaram em segurança para casa.</p>
                 <div class="menu-actions">
                     <button id="btnPlayAgain" class="primary-button" type="button">Jogar novamente</button>
                     <button id="btnEndMenu" class="ghost-button" type="button">Menu</button>
@@ -261,6 +253,9 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
     <script src="/labs/shared.js?v=8" defer></script>
     <script type="module" src="js/main.js"></script>
 </body>

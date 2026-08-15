@@ -1,52 +1,53 @@
-import * as THREE from 'three';
-import { buildCamila, CharacterAnimator, applyLocomotion } from './builders.js';
+/**
+ * Princesa Camila para Babylon.js.
+ */
+
+import { buildCamila, CharacterAnimator } from './builders.js';
 import { PrincessAI } from '../ai/PrincessAI.js';
 import { angleDamp } from '../utils/math.js';
 
 export class Camila {
     constructor(scene) {
-        const built = buildCamila();
-        this.root = built.group;
+        this.scene = scene;
+        const built = buildCamila(scene);
+        this.root = built.root;
         this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.group, built.clips);
-        scene.add(this.root);
-        this.root.traverse((c) => { if (c.isMesh) c.userData.ignoreCamera = true; });
-        this.position = new THREE.Vector3();
+        this.animator = new CharacterAnimator(built.root, built.clips);
+        this.position = new BABYLON.Vector3(0, 0, 0);
         this.facing = 0;
-        this.ai = new PrincessAI(this);
-        this.freed = false;
-        this.shackled = true;
-        this.active = false;
-        this.root.visible = false;
         this.speed = 0;
+        this.active = false;
+        this.freed = false;
+        this.ai = new PrincessAI(this);
     }
 
     spawn(x, y, z) {
         this.position.set(x, y, z);
-        this.root.position.copy(this.position);
-        this.root.visible = true;
-        this.active = true;
+        this.root.position.copyFrom(this.position);
         this.ai.reset();
     }
 
-    setShackles(on) {
-        this.shackled = on;
-        if (this.parts.shackles) this.parts.shackles.visible = on;
+    attachTo(parent) {
+        this.root.parent = parent;
     }
 
-    attachTo(parent) {
-        if (this.root.parent) this.root.parent.remove(this.root);
-        parent.add(this.root);
+    setShackles(on) {
+        if (this.parts.shackles) {
+            this.parts.shackles.setEnabled(on);
+        }
     }
 
     update(dt, game) {
         if (!this.active) return;
         this.ai.update(dt, game);
-        this.facing = angleDamp(this.facing, this.ai.facing, 8, dt);
-        this.root.position.copy(this.position);
+        this.facing = angleDamp(this.facing, this.ai.facing, 10, dt);
+        this.root.position.copyFrom(this.position);
         this.root.rotation.y = this.facing;
-        applyLocomotion(this.animator, this.speed, false, true, false, false, false);
-        if (this.ai.state === 'HIDE' || this.ai.state === 'SCARED') this.animator.play('Idle');
+
+        if (this.speed > 4.5) this.animator.play('Run', 0.12);
+        else if (this.speed > 0.2) this.animator.play('Walk', 0.14);
+        else this.animator.play('Idle', 0.2);
+
         this.animator.update(dt);
     }
 }

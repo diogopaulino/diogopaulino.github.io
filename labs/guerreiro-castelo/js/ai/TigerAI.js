@@ -1,16 +1,14 @@
 /**
- * Tigre da sala — tensão e puzzle, não boss fight.
- * Reage a Teco na rota superior; permanece na sala.
+ * IA do Tigre na sala do castelo em Babylon.js.
  */
 
-import * as THREE from 'three';
 import { damp } from '../utils/math.js';
 
 export class TigerAI {
     constructor(tiger) {
         this.tiger = tiger;
         this.state = 'REST';
-        this.home = new THREE.Vector3();
+        this.home = new BABYLON.Vector3();
         this.timer = 0;
         this.bounds = { minX: -6, maxX: 6, minZ: -6, maxZ: 6 };
     }
@@ -18,7 +16,7 @@ export class TigerAI {
     reset() {
         this.state = 'REST';
         this.timer = 0;
-        this.home.copy(this.tiger.position);
+        this.home.copyFrom(this.tiger.position);
     }
 
     setBounds(minX, maxX, minZ, maxZ) {
@@ -36,7 +34,7 @@ export class TigerAI {
             if (this.timer > 0.4) {
                 this.state = 'WATCH';
                 t.animator.play('Growl');
-                game.audio.play('growl');
+                game.audio?.play('growl');
             }
             return;
         }

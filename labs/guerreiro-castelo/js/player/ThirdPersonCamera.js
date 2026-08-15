@@ -1,17 +1,8 @@
 /**
- * Câmera em terceira pessoa — ombro, órbita, zoom, raycast contra paredes.
- * Nunca é parenteda no personagem.
+ * Câmera em terceira pessoa em Babylon.js — órbita, ombro, zoom, raycast contra paredes e screen shake.
  */
 
-import * as THREE from 'three';
 import { clamp, damp } from '../utils/math.js';
-
-const _from = new THREE.Vector3();
-const _to = new THREE.Vector3();
-const _desired = new THREE.Vector3();
-const _look = new THREE.Vector3();
-const _up = new THREE.Vector3(0, 1, 0);
-const _hit = new THREE.Vector3();
 
 export class ThirdPersonCamera {
     constructor(camera, scene) {
@@ -27,24 +18,21 @@ export class ThirdPersonCamera {
         this.pitchMax = 1.15;
         this.shoulder = 0.55;
         this.lookHeight = 1.55;
-        this.fov = 55;
-        this.targetFov = 55;
+        this.fov = 0.95; // radianos (~55 deg)
+        this.targetFov = 0.95;
         this.shake = 0;
         this.shakeAmp = 0;
-        this.locked = false;
-        this.ray = new THREE.Raycaster();
-        this.ray.far = 12;
         this._obstacles = [];
-        this.currentPos = new THREE.Vector3(0, 2, 6);
-        this.smoothLook = new THREE.Vector3();
+        this.currentPos = new BABYLON.Vector3(0, 2, 6);
+        this.smoothLook = new BABYLON.Vector3(0, 1.5, 0);
         this.cutscene = false;
     }
 
     setObstacles(meshes) {
-        this._obstacles = meshes.filter((m) => {
-            if (!m || !m.isMesh) return false;
-            if (m.userData.ignoreCamera) return false;
-            if (m.name === 'sail') return false;
+        this._obstacles = (meshes || []).filter((m) => {
+            if (!m) return false;
+            if (m.userData?.ignoreCamera) return false;
+            if (m.name === 'shipSail') return false;
             return true;
         });
     }
@@ -58,23 +46,20 @@ export class ThirdPersonCamera {
         this.cutscene = false;
         const origin = player.worldPosition ? player.worldPosition() : player.position;
         this.smoothLook.set(origin.x, origin.y + this.lookHeight, origin.z);
+
         const cosP = Math.cos(this.pitch);
         const sinP = Math.sin(this.pitch);
         const sinY = Math.sin(this.yaw);
         const cosY = Math.cos(this.yaw);
+
         this.currentPos.set(
             origin.x + sinY * cosP * this.distance + cosY * this.shoulder,
             origin.y + this.lookHeight + sinP * this.distance,
             origin.z + cosY * cosP * this.distance - sinY * this.shoulder
         );
-        this.camera.position.copy(this.currentPos);
-        this.camera.lookAt(this.smoothLook);
-        this.camera.updateMatrixWorld();
-    }
 
-    lookAtImmediate(target) {
-        this.smoothLook.copy(target);
-        this.currentPos.copy(this.camera.position);
+        this.camera.position.copyFrom(this.currentPos);
+        this.camera.setTarget(this.smoothLook);
     }
 
     update(dt, player, lookDelta, zoomDelta, sprinting) {
@@ -85,14 +70,13 @@ export class ThirdPersonCamera {
         this.targetDistance = clamp(this.targetDistance + zoomDelta * 0.45, this.minDistance, this.maxDistance);
         this.distance = damp(this.distance, this.targetDistance, 8, dt);
 
-        this.targetFov = sprinting ? 62 : 55;
+        this.targetFov = sprinting ? 1.08 : 0.95;
         this.fov = damp(this.fov, this.targetFov, 4, dt);
         this.camera.fov = this.fov;
-        this.camera.updateProjectionMatrix();
 
         const origin = player.worldPosition ? player.worldPosition() : player.position;
         const lookY = origin.y + (player.crouching ? 1.15 : this.lookHeight);
-        _look.set(origin.x, lookY, origin.z);
+        const targetLook = new BABYLON.Vector3(origin.x, lookY, origin.z);
 
         const cosP = Math.cos(this.pitch);
         const sinP = Math.sin(this.pitch);
@@ -104,35 +88,41 @@ export class ThirdPersonCamera {
         const rightX = cosY;
         const rightZ = -sinY;
 
-        _desired.set(
-            _look.x + backX * this.distance + rightX * this.shoulder,
-            _look.y + sinP * this.distance,
-            _look.z + backZ * this.distance + rightZ * this.shoulder
+        const desired = new BABYLON.Vector3(
+            targetLook.x + backX * this.distance + rightX * this.shoulder,
+            targetLook.y + sinP * this.distance,
+            targetLook.z + backZ * this.distance + rightZ * this.shoulder
         );
 
-        let dist = this.distance;
+        // Raycast contra obstáculos
         if (this._obstacles.length) {
-            _from.copy(_look);
-            _to.copy(_desired).sub(_from);
-            const len = _to.length();
-            if (len > 0.01) {
-                this.ray.set(_from, _to.normalize());
-                this.ray.far = len;
-                const hits = this.ray.intersectObjects(this._obstacles, true);
-                if (hits.length) {
-                    const h = hits[0];
-                    dist = Math.max(0.6, h.distance - 0.28);
-                    _desired.copy(_from).addScaledVector(this.ray.ray.direction, dist);
+            const rayDir = desired.subtract(targetLook);
+            const rayLen = rayDir.length();
+            if (rayLen > 0.01) {
+                rayDir.normalize();
+                const ray = new BABYLON.Ray(targetLook, rayDir, rayLen);
+                let hit = null;
+                for (const obs of this._obstacles) {
+                    if (!obs || !obs.isEnabled?.()) continue;
+                    const pick = ray.intersectsMesh(obs, false);
+                    if (pick.hit && (!hit || pick.distance < hit.distance)) {
+                        hit = pick;
+                    }
+                }
+                if (hit) {
+                    const safeDist = Math.max(0.6, hit.distance - 0.28);
+                    desired.copyFrom(targetLook.add(rayDir.scale(safeDist)));
                 }
             }
         }
 
-        this.currentPos.x = damp(this.currentPos.x, _desired.x, 14, dt);
-        this.currentPos.y = damp(this.currentPos.y, _desired.y, 12, dt);
-        this.currentPos.z = damp(this.currentPos.z, _desired.z, 14, dt);
-        this.smoothLook.x = damp(this.smoothLook.x, _look.x, 16, dt);
-        this.smoothLook.y = damp(this.smoothLook.y, _look.y, 16, dt);
-        this.smoothLook.z = damp(this.smoothLook.z, _look.z, 16, dt);
+        this.currentPos.x = damp(this.currentPos.x, desired.x, 14, dt);
+        this.currentPos.y = damp(this.currentPos.y, desired.y, 12, dt);
+        this.currentPos.z = damp(this.currentPos.z, desired.z, 14, dt);
+
+        this.smoothLook.x = damp(this.smoothLook.x, targetLook.x, 16, dt);
+        this.smoothLook.y = damp(this.smoothLook.y, targetLook.y, 16, dt);
+        this.smoothLook.z = damp(this.smoothLook.z, targetLook.z, 16, dt);
 
         if (this.shake > 0) {
             this.shake -= dt;
@@ -141,19 +131,14 @@ export class ThirdPersonCamera {
             this.currentPos.y += (Math.random() - 0.5) * a * 0.6;
         }
 
-        this.camera.position.copy(this.currentPos);
-        this.camera.up.copy(_up);
-        this.camera.lookAt(this.smoothLook);
-        _hit.copy(_desired);
+        this.camera.position.copyFrom(this.currentPos);
+        this.camera.setTarget(this.smoothLook);
     }
 
-    /**
-     * Cutscene: interpola posição e lookAt. Chamado pelo CutsceneManager.
-     */
     setCutscenePose(pos, look) {
-        this.camera.position.copy(pos);
-        this.camera.lookAt(look);
-        this.currentPos.copy(pos);
-        this.smoothLook.copy(look);
+        this.camera.position.copyFrom(pos);
+        this.camera.setTarget(look);
+        this.currentPos.copyFrom(pos);
+        this.smoothLook.copyFrom(look);
     }
 }

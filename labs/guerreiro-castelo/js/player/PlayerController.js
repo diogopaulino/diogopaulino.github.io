@@ -1,5 +1,5 @@
 /**
- * Controlador de movimento: aceleração, gravidade, pulo, sprint, agachar.
+ * Controlador de movimento do guerreiro: aceleração, física de gravidade, pulo, corrida e agachar.
  */
 
 import { clamp } from '../utils/math.js';
@@ -35,7 +35,7 @@ export class PlayerController {
             return;
         }
 
-        const crouch = input.move.crouch && p.grounded;
+        const crouch = Boolean(input.move.crouch && p.grounded);
         p.collider.setCrouch(crouch);
         p.crouching = crouch;
 
@@ -72,7 +72,7 @@ export class PlayerController {
         const res = this.collision.resolveCapsule(
             p.position.x, y, p.position.z,
             p.collider.radius, p.collider.height,
-            this.vx, this.vz, 1, 0.4
+            this.vx, this.vz, dt, 0.4
         );
 
         p.position.set(res.x, res.y, res.z);

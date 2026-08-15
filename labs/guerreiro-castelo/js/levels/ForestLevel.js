@@ -1,4 +1,7 @@
-import * as THREE from 'three';
+/**
+ * Capítulo 5: Travessia pela Floresta em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { makeTree, makeBush, makeRock, makeGrassInstanced } from '../world/Environment.js';
 import { grassTexture } from '../world/Textures.js';
@@ -10,47 +13,55 @@ export class ForestLevel extends Level {
     }
 
     async build() {
-        this.group = new THREE.Group();
+        const scene = this.game.scene;
+        this.group = new BABYLON.TransformNode('forestGroup', scene);
         this.group.position.set(0, 0, -36);
+
         const rng = seeded(42);
-        const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(48, 50),
-            new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 0.92 })
-        );
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        this.group.add(ground);
+        const ground = BABYLON.MeshBuilder.CreateGround('forestGround', { width: 48, height: 50 }, scene);
+        ground.position.y = 0.02;
+        const gMat = new BABYLON.StandardMaterial('forestGroundMat', scene);
+        gMat.diffuseTexture = grassTexture(scene, 10, 10);
+        ground.material = gMat;
+        ground.parent = this.group;
+        ground.receiveShadows = true;
 
         this.trees = [];
-        for (let i = 0; i < 28 * this.game.quality.vegetation; i++) {
-            const t = makeTree(rng);
+        const treeCount = Math.floor(28 * (this.game.quality?.vegetation || 1));
+        for (let i = 0; i < treeCount; i++) {
+            const t = makeTree(rng, scene);
             let x = (rng() - 0.5) * 36;
             let z = (rng() - 0.5) * 42;
             if (Math.abs(x) < 2.4) x += x < 0 ? -3 : 3;
             t.position.set(x, 0, z);
-            this.group.add(t);
+            t.parent = this.group;
             this.trees.push(t);
             this.game.collision.addWall(x, z - 36, 0.8, 0.8, 4);
         }
-        for (let i = 0; i < 12; i++) {
-            const b = makeBush();
-            b.position.set((rng() - 0.5) * 20, 0.2, (rng() - 0.5) * 30);
-            this.group.add(b);
-        }
-        const rocks = makeRock(1.2);
-        rocks.position.set(3, 0.2, 8);
-        this.group.add(rocks);
-        this.group.add(makeGrassInstanced(220, 40, this.game.quality.vegetation));
 
-        this.game.scene.add(this.group);
-        this.obstacles = [];
-        this.group.traverse((c) => { if (c.isMesh) this.obstacles.push(c); });
+        for (let i = 0; i < 12; i++) {
+            const b = makeBush(scene);
+            b.position.set((rng() - 0.5) * 20, 0.2, (rng() - 0.5) * 30);
+            b.parent = this.group;
+        }
+
+        const rocks = makeRock(1.2, scene);
+        rocks.position.set(3, 0.2, 8);
+        rocks.parent = this.group;
+
+        const grassI = makeGrassInstanced(220, 40, this.game.quality?.vegetation || 1, scene);
+        grassI.parent = this.group;
+
+        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
     }
 
-    update() {
+    update(dt) {
+        this.time += dt;
         for (const t of this.trees) {
-            const c = t.children[1];
-            if (c) c.rotation.y = Math.sin(this.game.clockTime * 0.4) * 0.04;
+            const foliage = t.getChildren ? t.getChildren()[1] : null;
+            if (foliage) {
+                foliage.rotation.y = Math.sin(this.time * 0.4) * 0.04;
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
-import * as THREE from 'three';
+/**
+ * Capítulo 7: Entrada Secreta do Castelo em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { woodTexture, mossTexture, rustTexture } from '../world/Textures.js';
-import { std } from '../characters/builders.js';
 
 export class SecretEntranceLevel extends Level {
     get id() {
@@ -9,40 +11,56 @@ export class SecretEntranceLevel extends Level {
     }
 
     async build() {
-        this.group = new THREE.Group();
+        const scene = this.game.scene;
+        this.group = new BABYLON.TransformNode('secretEntranceGroup', scene);
         this.group.position.set(-18, 0, -94);
-        const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.85 });
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.2, 0.4), wood);
+
+        const woodMat = new BABYLON.StandardMaterial('secretWoodMat', scene);
+        woodMat.diffuseTexture = woodTexture(scene, 2, 2);
+
+        const frame = BABYLON.MeshBuilder.CreateBox('doorFrame', { width: 2.2, height: 3.2, depth: 0.4 }, scene);
         frame.position.y = 1.6;
-        this.group.add(frame);
-        this.door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.16), wood);
+        frame.material = woodMat;
+        frame.parent = this.group;
+
+        this.door = BABYLON.MeshBuilder.CreateBox('secretDoorMesh', { width: 1.4, height: 2.4, depth: 0.16 }, scene);
         this.door.position.set(0, 1.25, 0.1);
-        this.group.add(this.door);
-        const lock = new THREE.Mesh(
-            new THREE.BoxGeometry(0.2, 0.24, 0.12),
-            new THREE.MeshStandardMaterial({ map: rustTexture(), color: 0x8a4a18, metalness: 0.6, roughness: 0.5 })
-        );
+        this.door.material = woodMat;
+        this.door.parent = this.group;
+
+        const lock = BABYLON.MeshBuilder.CreateBox('secretLockMesh', { width: 0.2, height: 0.24, depth: 0.12 }, scene);
         lock.position.set(0.45, 1.2, 0.22);
-        this.group.add(lock);
-        const moss = new THREE.Mesh(
-            new THREE.PlaneGeometry(2.6, 3.4),
-            new THREE.MeshStandardMaterial({ map: mossTexture(), side: THREE.DoubleSide, roughness: 0.9 })
-        );
+        const rustMat = new BABYLON.StandardMaterial('secretRustMat', scene);
+        rustMat.diffuseTexture = rustTexture(scene, 1, 1);
+        rustMat.diffuseColor = new BABYLON.Color3(0.6, 0.35, 0.15);
+        lock.material = rustMat;
+        lock.parent = this.group;
+
+        const moss = BABYLON.MeshBuilder.CreatePlane('secretMossMesh', { width: 2.6, height: 3.4 }, scene);
         moss.position.set(0, 1.5, -0.25);
-        this.group.add(moss);
-        const roots = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 2.2, 5), std(0x3a2a14, 0.9));
+        const mossMat = new BABYLON.StandardMaterial('sMossMat', scene);
+        mossMat.diffuseTexture = mossTexture(scene, 2, 2);
+        mossMat.backFaceCulling = false;
+        moss.material = mossMat;
+        moss.parent = this.group;
+
+        const roots = BABYLON.MeshBuilder.CreateCylinder('secretRoots', { diameter: 0.08, height: 2.2 }, scene);
         roots.rotation.z = 0.6;
         roots.position.set(-0.8, 0.8, 0.2);
-        this.group.add(roots);
+        const rootMat = new BABYLON.StandardMaterial('rootMat', scene);
+        rootMat.diffuseColor = new BABYLON.Color3(0.25, 0.18, 0.1);
+        roots.material = rootMat;
+        roots.parent = this.group;
 
         this.addInteract({
             object: this.door,
             interactionLabel: 'Abrir',
             interactionDistance: 2.2,
             interact: (_p, game) => {
-                game.dialogue.say('DICO', 'Trancada.');
+                game.dialogue.say('DICO', 'Trancada por dentro.');
             }
         });
+
         this.addInteract({
             object: lock,
             interactionLabel: 'Pedir ajuda a Teco',
@@ -50,17 +68,17 @@ export class SecretEntranceLevel extends Level {
             interact: (_p, game) => this.sendTeco(game)
         });
 
-        this.game.scene.add(this.group);
         this.opened = false;
     }
 
     sendTeco(game) {
         if (this.opened) return;
-        const dest = this.lockWorld || this.door.getWorldPosition(new THREE.Vector3());
+        const dest = this.door.getAbsolutePosition();
         dest.y += 0.4;
-        const local = dest.clone();
-        game.teco.root.parent.worldToLocal(local);
-        game.teco.ai.command([game.teco.position.clone(), local], {
+
+        game.teco.ai.command([game.teco.position.clone(), dest], {
+            climb: true,
+            celebrate: true,
             onComplete: () => {
                 this.opened = true;
                 game.audio.play('click');

@@ -1,9 +1,8 @@
 /**
- * Áudio procedural — categorias master/music/ambient/sfx/dialogue.
- * THREE.AudioListener é anexado à câmera; SFX posicionais usam PositionalAudio.
+ * Áudio procedural via Web Audio API puro — sem dependência de engine gráfica.
+ * Temas musicais dinâmicos por estágio, SFX táteis, passos e áudio posicional.
  */
 
-import * as THREE from 'three';
 import { clamp } from '../utils/math.js';
 
 const THEMES = {
@@ -21,7 +20,6 @@ const THEMES = {
 
 export class AudioManager {
     constructor() {
-        this.listener = new THREE.AudioListener();
         this.ctx = null;
         this.master = null;
         this.buses = {};
@@ -31,7 +29,6 @@ export class AudioManager {
         this._t = 0;
         this._step = 0;
         this._enabled = false;
-        this._ambients = [];
     }
 
     async unlock() {
@@ -41,7 +38,7 @@ export class AudioManager {
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        this.ctx = this.listener.context || new Ctx();
+        this.ctx = new Ctx();
         this.master = this.ctx.createGain();
         this.master.gain.value = this.muted ? 0 : this.volume.master;
         this.master.connect(this.ctx.destination);
@@ -71,14 +68,13 @@ export class AudioManager {
         this._enabled = true;
     }
 
-    attach(camera) {
-        if (this.listener.parent) this.listener.parent.remove(this.listener);
-        camera.add(this.listener);
+    attach() {
+        // Nativo Web Audio Listener
     }
 
     setMuted(muted) {
         this.muted = muted;
-        if (this.master) {
+        if (this.master && this.ctx) {
             this.master.gain.setTargetAtTime(muted ? 0 : this.volume.master, this.ctx.currentTime, 0.05);
         }
     }
@@ -132,7 +128,6 @@ export class AudioManager {
             this._step -= 1;
             this._note(theme);
         }
-        for (const amb of this._ambients) amb(this._t, dt);
     }
 
     _note(theme) {
@@ -149,7 +144,7 @@ export class AudioManager {
     }
 
     tone(freq, dur = 0.2, type = 'sine', gain = 0.12, bus = 'sfx') {
-        if (!this._enabled || this.muted) return;
+        if (!this._enabled || this.muted || !this.ctx) return;
         const osc = this.ctx.createOscillator();
         osc.type = type;
         osc.frequency.value = freq;
@@ -162,7 +157,7 @@ export class AudioManager {
     }
 
     noise(dur = 0.3, gain = 0.08, bus = 'sfx') {
-        if (!this._enabled || this.muted) return;
+        if (!this._enabled || this.muted || !this.ctx) return;
         const n = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
         const data = n.getChannelData(0);
         for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;

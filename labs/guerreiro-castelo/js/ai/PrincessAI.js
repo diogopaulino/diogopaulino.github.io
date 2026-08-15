@@ -1,8 +1,7 @@
 /**
- * Camila segue Dico com offset, sem bloquear portas.
+ * Camila segue Dico com offset sem bloquear passagens estreitas.
  */
 
-import * as THREE from 'three';
 import { damp } from '../utils/math.js';
 
 export class PrincessAI {
@@ -10,9 +9,8 @@ export class PrincessAI {
         this.camila = camila;
         this.state = 'WAIT';
         this.facing = 0;
-        this.offset = new THREE.Vector3(-0.7, 0, -0.9);
         this.stuck = 0;
-        this.last = new THREE.Vector3();
+        this.last = new BABYLON.Vector3();
     }
 
     reset() {
@@ -69,7 +67,9 @@ export class PrincessAI {
                 c.position.z = tz;
                 this.stuck = 0;
             }
-        } else this.stuck = 0;
-        this.last.copy(c.position);
+        } else {
+            this.stuck = 0;
+        }
+        this.last.copyFrom(c.position);
     }
 }
