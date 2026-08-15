@@ -1,28 +1,21 @@
 /**
- * Abertura cinematográfica.
- * Keyframes interpolados com Catmull-Rom no espaço e ease suave no tempo.
- *
- * easeInOutCubic(t) = t<½ ? 4t³ : 1 − (−2t+2)³ / 2
+ * Castelo Estelar — Câmera Cinemática e Órbita Livre em Babylon.js.
+ * Interpolação suave em Catmull-Rom para a abertura cinematográfica (22s)
+ * com transição perfeita para ArcRotateCamera livre.
  */
 
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { clamp, smoothstep } from './utils.js';
+import { clamp, smoothstep, easeInOutCubic } from './utils.js';
 
 export const INTRO_DURATION = 22;
 
 const KEYS = [
-    { t: 0.0, pos: [10, 8.8, 118], look: [0, 8, 18], fov: 32 },
-    { t: 3.5, pos: [8, 9.2, 88], look: [0, 12, 6], fov: 33 },
-    { t: 8.0, pos: [5, 11.0, 68], look: [0, 18, 0], fov: 34 },
-    { t: 13.5, pos: [-7, 15.2, 50], look: [1, 21, -1], fov: 36 },
-    { t: 18.0, pos: [4, 13.8, 42], look: [0, 20, 0], fov: 38 },
-    { t: 22.0, pos: [2.2, 12.6, 40], look: [0, 19, 0], fov: 40 }
+    { t: 0.0, pos: [12, 8.5, 115], look: [0, 8, 16], fov: 0.56 },
+    { t: 4.0, pos: [8, 9.4, 86], look: [0, 12, 6], fov: 0.58 },
+    { t: 8.5, pos: [5, 11.5, 65], look: [0, 18, 0], fov: 0.60 },
+    { t: 14.0, pos: [-7, 15.6, 48], look: [1, 21, -1], fov: 0.63 },
+    { t: 18.2, pos: [4, 14.2, 40], look: [0, 20, 0], fov: 0.66 },
+    { t: 22.0, pos: [2.0, 13.0, 38], look: [0, 19, 0], fov: 0.70 }
 ];
-
-function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
 
 function sampleKeys(time) {
     const t = clamp(time, 0, INTRO_DURATION);
@@ -39,28 +32,36 @@ function sampleKeys(time) {
 }
 
 export class CineCamera {
-    constructor(camera, canvas) {
-        this.camera = camera;
+    constructor(scene, canvas) {
+        const B = window.BABYLON;
+        this.scene = scene;
+        this.canvas = canvas;
         this.mode = 'intro';
         this.t = 0;
-        this.controls = new OrbitControls(camera, canvas);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.06;
-        this.controls.target.set(0, 18, 0);
-        this.controls.minDistance = 18;
-        this.controls.maxDistance = 160;
-        this.controls.maxPolarAngle = Math.PI * 0.49;
-        this.controls.minPolarAngle = 0.18;
-        this.controls.enablePan = false;
-        this.controls.enabled = false;
-        this._pos = new THREE.Vector3();
-        this._look = new THREE.Vector3();
+
+        // Câmera Orbital com limites e amortecimento
+        this.camera = new B.ArcRotateCamera('cineCam', -Math.PI / 2, Math.PI / 3, 45, new B.Vector3(0, 18, 0), scene);
+        this.camera.fov = 0.56;
+        this.camera.minZ = 0.3;
+        this.camera.maxZ = 1200;
+
+        this.camera.lowerRadiusLimit = 16;
+        this.camera.upperRadiusLimit = 160;
+        this.camera.lowerBetaLimit = 0.15;
+        this.camera.upperBetaLimit = Math.PI * 0.485; // Evita atravessar a água
+
+        this.camera.inertia = 0.88;
+        this.camera.wheelDeltaPercentage = 0.015;
+        this.camera.pinchDeltaPercentage = 0.015;
+        this.camera.panningSensibility = 0; // Desativa pan para focar no castelo
+
+        this.apply(0);
     }
 
     playIntro() {
         this.mode = 'intro';
         this.t = 0;
-        this.controls.enabled = false;
+        this.camera.detachControl();
         this.apply(0);
     }
 
@@ -70,34 +71,33 @@ export class CineCamera {
     }
 
     enterOrbit() {
+        const B = window.BABYLON;
         this.mode = 'orbit';
         const end = sampleKeys(INTRO_DURATION);
-        this.camera.position.set(...end.pos);
-        this.controls.target.set(...end.look);
+
+        this.camera.setTarget(new B.Vector3(end.look[0], end.look[1], end.look[2]));
+        this.camera.setPosition(new B.Vector3(end.pos[0], end.pos[1], end.pos[2]));
         this.camera.fov = end.fov;
-        this.camera.updateProjectionMatrix();
-        this.controls.enabled = true;
-        this.controls.update();
+
+        this.camera.attachControl(this.canvas, true);
     }
 
     apply(time) {
+        const B = window.BABYLON;
         const k = sampleKeys(time);
-        this.camera.position.set(...k.pos);
-        this._look.set(...k.look);
-        this.camera.lookAt(this._look);
-        if (Math.abs(this.camera.fov - k.fov) > 0.05) {
-            this.camera.fov = k.fov;
-            this.camera.updateProjectionMatrix();
-        }
+        this.camera.setPosition(new B.Vector3(k.pos[0], k.pos[1], k.pos[2]));
+        this.camera.setTarget(new B.Vector3(k.look[0], k.look[1], k.look[2]));
+        this.camera.fov = k.fov;
     }
 
     tick(dt) {
         if (this.mode === 'intro') {
             this.t += dt;
             this.apply(this.t);
-            if (this.t >= INTRO_DURATION) this.enterOrbit();
-            return;
+            if (this.t >= INTRO_DURATION) {
+                this.enterOrbit();
+            }
         }
-        this.controls.update();
     }
 }
+

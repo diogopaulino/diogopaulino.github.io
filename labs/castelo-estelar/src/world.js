@@ -1,81 +1,105 @@
 /**
- * Reino noturno: colina, lago, pinheiros, lua e céu.
- * A água usa o Reflector/Water do three.js para o reflexo da lua e do castelo.
+ * Castelo Estelar — Reino Noturno em Babylon.js:
+ * Terreno insular, floresta de pinheiros, lago com reflexos em tempo real,
+ * cúpula celeste com estrelas, lua com halo e iluminação PBR com sombras suaves.
  */
 
-import * as THREE from 'three';
-import { Water } from 'three/addons/objects/Water.js';
 import { createCastle } from './castle.js';
-import { makeSkyMaterial } from './shaders.js';
 import {
-    waterNormals, moonTexture, barkTexture, grassNight
+    getGrassTexture,
+    getBarkTexture,
+    getMoonTexture,
+    getWaterBumpTexture
 } from './textures.js';
 import { fbm, seeded } from './utils.js';
 
-const dummy = new THREE.Object3D();
-
 export function heightAt(x, z) {
     const r = Math.hypot(x, z);
-    const island = Math.max(0, 1 - r / 26);
-    const hill = Math.pow(island, 1.45) * 5.6;
-    const noise = fbm(x * 0.045, z * 0.045, 5, 4) * 1.15 * island;
-    const rim = r < 16 ? 0 : -Math.max(0, (r - 16) * 0.55);
+    const island = Math.max(0, 1 - r / 28);
+    const hill = Math.pow(island, 1.45) * 5.8;
+    const noise = fbm(x * 0.045, z * 0.045, 5, 4) * 1.25 * island;
+    const rim = r < 16 ? 0 : -Math.max(0, (r - 16) * 0.52);
     return hill + noise + rim;
 }
 
-function makeTerrain(quality) {
+function createTerrain(scene, quality) {
+    const B = window.BABYLON;
     const segs = quality.id === 'low' ? 64 : quality.id === 'high' ? 128 : 96;
-    const size = 90;
-    const geo = new THREE.PlaneGeometry(size, size, segs, segs);
-    geo.rotateX(-Math.PI / 2);
-    const pos = geo.attributes.position;
-    const colors = [];
-    const cGrass = new THREE.Color(0x243a28);
-    const cStone = new THREE.Color(0x4a4840);
-    const cSand = new THREE.Color(0x2e3a32);
-    const tmp = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const z = pos.getZ(i);
-        const y = Math.max(0.05, heightAt(x, z));
-        pos.setY(i, y);
-        const r = Math.hypot(x, z);
-        tmp.copy(cGrass);
-        if (y < 1.2) tmp.lerp(cSand, 0.7);
-        if (r < 16) tmp.lerp(cStone, 0.35);
-        colors.push(tmp.r, tmp.g, tmp.b);
+    const size = 95;
+
+    const ground = B.MeshBuilder.CreateGround('terrain_mesh', {
+        width: size,
+        height: size,
+        subdivisions: segs,
+        updatable: true
+    }, scene);
+
+    const positions = ground.getVerticesData(B.VertexBuffer.PositionKind);
+    const normals = ground.getVerticesData(B.VertexBuffer.NormalKind);
+    const indices = ground.getIndices();
+
+    for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const z = positions[i + 2];
+        const y = Math.max(0.06, heightAt(x, z));
+        positions[i + 1] = y;
     }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
-    return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        map: grassNight(),
-        vertexColors: true,
-        roughness: 0.92,
-        metalness: 0.02
-    }));
+
+    B.VertexData.ComputeNormals(positions, indices, normals);
+    ground.setVerticesData(B.VertexBuffer.PositionKind, positions);
+    ground.setVerticesData(B.VertexBuffer.NormalKind, normals);
+
+    const terrainMat = new B.PBRMaterial('mat_terrain', scene);
+    terrainMat.albedoTexture = getGrassTexture(scene);
+    terrainMat.roughness = 0.92;
+    terrainMat.metallic = 0.02;
+    terrainMat.ambientColor = new B.Color3(0.08, 0.12, 0.16);
+
+    ground.material = terrainMat;
+    ground.receiveShadows = true;
+
+    return ground;
 }
 
-function makePines(quality) {
+function createPines(scene, quality, shadowGenerator) {
+    const B = window.BABYLON;
     const rng = seeded(20260814);
     const count = quality.trees;
-    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 2.2, 6);
-    const leafGeo = new THREE.ConeGeometry(1, 2.4, 8);
-    const trunkMat = new THREE.MeshStandardMaterial({
-        color: 0x2a1a10,
-        map: barkTexture(),
-        roughness: 0.92
-    });
-    const leafMat = new THREE.MeshStandardMaterial({
-        color: 0x163322,
-        roughness: 0.78,
-        metalness: 0.02
-    });
 
-    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
-    const leavesA = new THREE.InstancedMesh(leafGeo, leafMat, count);
-    const leavesB = new THREE.InstancedMesh(leafGeo, leafMat, count);
-    trunks.castShadow = leavesA.castShadow = leavesB.castShadow = true;
-    trunks.receiveShadow = true;
+    // Protótipo do Pinheiro
+    const trunkProto = B.MeshBuilder.CreateCylinder('pine_trunk_proto', {
+        diameterBottom: 0.55,
+        diameterTop: 0.35,
+        height: 2.4,
+        tessellation: 8
+    }, scene);
+    const trunkMat = new B.PBRMaterial('mat_pine_trunk', scene);
+    trunkMat.albedoTexture = getBarkTexture(scene);
+    trunkMat.roughness = 0.95;
+    trunkProto.material = trunkMat;
+    trunkProto.isVisible = false;
+
+    const leafProtoA = B.MeshBuilder.CreateCylinder('pine_leaf_proto_a', {
+        diameterBottom: 2.6,
+        diameterTop: 0,
+        height: 2.8,
+        tessellation: 8
+    }, scene);
+    const leafMat = new B.PBRMaterial('mat_pine_leaf', scene);
+    leafMat.albedoColor = new B.Color3(0.08, 0.22, 0.14);
+    leafMat.roughness = 0.82;
+    leafMat.metallic = 0.02;
+    leafProtoA.material = leafMat;
+    leafProtoA.isVisible = false;
+
+    const leafProtoB = B.MeshBuilder.CreateCylinder('pine_leaf_proto_b', {
+        diameterBottom: 2.0,
+        diameterTop: 0,
+        height: 2.2,
+        tessellation: 8
+    }, scene);
+    leafProtoB.material = leafMat;
+    leafProtoB.isVisible = false;
 
     const spots = [];
     let placed = 0;
@@ -86,279 +110,285 @@ function makePines(quality) {
         const ring = rng();
         const r = ring < 0.45
             ? 18 + rng() * 16
-            : 32 + rng() * 22;
+            : 32 + rng() * 24;
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
         if (z > 6 && Math.abs(x) < 14) continue;
         if (Math.hypot(x, z) < 15) continue;
-        spots.push([x, z, 0.85 + rng() * 1.6, rng() * Math.PI]);
+        spots.push([x, z, 0.85 + rng() * 1.5, rng() * Math.PI]);
         placed++;
     }
 
-    spots.forEach((s, i) => {
-        const [x, z, sc, rot] = s;
-        const y = Math.max(0.2, heightAt(x, z));
-        dummy.position.set(x, y + 1.1 * sc, z);
-        dummy.rotation.set(0, rot, 0);
-        dummy.scale.set(sc, sc * 1.15, sc);
-        dummy.updateMatrix();
-        trunks.setMatrixAt(i, dummy.matrix);
-
-        dummy.position.set(x, y + 2.5 * sc, z);
-        dummy.scale.set(sc * 1.55, sc * 1.4, sc * 1.55);
-        dummy.updateMatrix();
-        leavesA.setMatrixAt(i, dummy.matrix);
-
-        dummy.position.set(x, y + 3.7 * sc, z);
-        dummy.scale.set(sc * 1.15, sc * 1.2, sc * 1.15);
-        dummy.updateMatrix();
-        leavesB.setMatrixAt(i, dummy.matrix);
-    });
-
-    // Pinheiros só nas laterais — o corredor central fica para o lago
+    // Pinheiros de primeiro plano nas laterais
     const fg = [
-        [-22, 34, 2.5], [-26, 24, 2.0], [24, 32, 2.3], [28, 22, 2.5],
+        [-22, 34, 2.4], [-26, 24, 2.0], [24, 32, 2.3], [28, 22, 2.5],
         [-30, 18, 1.8], [32, 16, 1.9]
     ];
     fg.forEach(([x, z, sc], k) => {
-        const i = Math.min(spots.length - 1, k);
-        if (i < 0) return;
-        const y = Math.max(0.15, heightAt(x, z));
-        dummy.position.set(x, y + 1.1 * sc, z);
-        dummy.rotation.set(0, k, 0);
-        dummy.scale.set(sc, sc * 1.2, sc);
-        dummy.updateMatrix();
-        trunks.setMatrixAt(i, dummy.matrix);
-        dummy.position.set(x, y + 2.6 * sc, z);
-        dummy.scale.set(sc * 1.6, sc * 1.45, sc * 1.6);
-        dummy.updateMatrix();
-        leavesA.setMatrixAt(i, dummy.matrix);
-        dummy.position.set(x, y + 4.0 * sc, z);
-        dummy.scale.set(sc * 1.15, sc * 1.25, sc * 1.15);
-        dummy.updateMatrix();
-        leavesB.setMatrixAt(i, dummy.matrix);
+        spots.push([x, z, sc, k * 0.8]);
     });
 
-    const group = new THREE.Group();
-    group.add(trunks, leavesA, leavesB);
-    return group;
+    const pineMeshes = [];
+
+    spots.forEach(([x, z, sc, rot], i) => {
+        const y = Math.max(0.18, heightAt(x, z));
+
+        const trunk = trunkProto.createInstance(`trunk_${i}`);
+        trunk.position.set(x, y + 1.2 * sc, z);
+        trunk.rotation.y = rot;
+        trunk.scaling.set(sc, sc * 1.15, sc);
+        trunk.receiveShadows = true;
+        if (shadowGenerator && quality.id !== 'low') shadowGenerator.addShadowCaster(trunk);
+        pineMeshes.push(trunk);
+
+        const leafA = leafProtoA.createInstance(`leafA_${i}`);
+        leafA.position.set(x, y + 2.5 * sc, z);
+        leafA.rotation.y = rot + 0.3;
+        leafA.scaling.set(sc * 1.5, sc * 1.4, sc * 1.5);
+        leafA.receiveShadows = true;
+        if (shadowGenerator && quality.id !== 'low') shadowGenerator.addShadowCaster(leafA);
+        pineMeshes.push(leafA);
+
+        const leafB = leafProtoB.createInstance(`leafB_${i}`);
+        leafB.position.set(x, y + 3.8 * sc, z);
+        leafB.rotation.y = rot + 0.7;
+        leafB.scaling.set(sc * 1.15, sc * 1.25, sc * 1.15);
+        leafB.receiveShadows = true;
+        if (shadowGenerator && quality.id !== 'low') shadowGenerator.addShadowCaster(leafB);
+        pineMeshes.push(leafB);
+    });
+
+    return { trunkProto, leafProtoA, leafProtoB, pineMeshes };
 }
 
-function makeMoon() {
-    const group = new THREE.Group();
-    const moon = new THREE.Mesh(
-        new THREE.SphereGeometry(7.5, 48, 32),
-        new THREE.MeshStandardMaterial({
-            map: moonTexture(),
-            emissive: 0xcfd8ee,
-            emissiveIntensity: 0.55,
-            roughness: 1,
-            metalness: 0,
-            toneMapped: true
-        })
-    );
-    moon.position.set(-42, 58, -38);
-    moon.castShadow = false;
-    moon.receiveShadow = false;
-    group.add(moon);
+function createMoon(scene) {
+    const B = window.BABYLON;
+    const group = new B.TransformNode('moon_group', scene);
 
-    const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(11, 24, 16),
-        new THREE.MeshBasicMaterial({
-            color: 0xb8c8ff,
-            transparent: true,
-            opacity: 0.12,
-            depthWrite: false,
-            side: THREE.BackSide
-        })
-    );
-    glow.position.copy(moon.position);
-    group.add(glow);
-    group.userData.moon = moon;
-    return group;
+    // Globo Lunar
+    const moonMesh = B.MeshBuilder.CreateSphere('moon_mesh', {
+        diameter: 15,
+        segments: 48
+    }, scene);
+    moonMesh.position.set(-42, 58, -38);
+    moonMesh.parent = group;
+
+    const moonMat = new B.PBRMaterial('mat_moon', scene);
+    moonMat.albedoTexture = getMoonTexture(scene);
+    moonMat.emissiveTexture = getMoonTexture(scene);
+    moonMat.emissiveColor = new B.Color3(0.85, 0.9, 1.0);
+    moonMat.roughness = 0.95;
+    moonMat.metallic = 0.0;
+    moonMesh.material = moonMat;
+
+    // Halo Lunar suave (Corona)
+    const haloMesh = B.MeshBuilder.CreateSphere('moon_halo', {
+        diameter: 24,
+        segments: 24,
+        sideOrientation: B.Mesh.DOUBLESIDE
+    }, scene);
+    haloMesh.position.copyFrom(moonMesh.position);
+    haloMesh.parent = group;
+
+    const haloMat = new B.StandardMaterial('mat_moon_halo', scene);
+    haloMat.diffuseColor = new B.Color3(0.65, 0.78, 1.0);
+    haloMat.emissiveColor = new B.Color3(0.45, 0.6, 0.95);
+    haloMat.alpha = 0.18;
+    haloMat.alphaMode = B.Engine.ALPHA_ADD;
+    haloMat.backFaceCulling = false;
+    haloMat.disableDepthWrite = true;
+    haloMesh.material = haloMat;
+
+    return { group, moonMesh, haloMesh };
 }
 
-function makeStars(count) {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const color = new THREE.Color();
-    for (let i = 0; i < count; i++) {
+function createStars(scene, count) {
+    const B = window.BABYLON;
+    const pcs = new B.PointsCloudSystem('star_system', 1, scene);
+
+    pcs.addPoints(count, (particle, i) => {
         const u = Math.random();
         const v = Math.random();
         const theta = u * Math.PI * 2;
         const phi = Math.acos(2 * v - 1);
         const r = 420 + Math.random() * 80;
-        pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        pos[i * 3 + 1] = Math.abs(r * Math.cos(phi));
-        pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+        particle.position.x = r * Math.sin(phi) * Math.cos(theta);
+        particle.position.y = Math.abs(r * Math.cos(phi)) + 15;
+        particle.position.z = r * Math.sin(phi) * Math.sin(theta);
+
         const t = Math.random();
-        if (t < 0.15) color.setRGB(0.7, 0.82, 1);
-        else if (t < 0.28) color.setRGB(1, 0.82, 0.55);
-        else color.setRGB(0.95, 0.96, 1);
-        const mag = 0.45 + Math.random() * 0.7;
-        col[i * 3] = color.r * mag;
-        col[i * 3 + 1] = color.g * mag;
-        col[i * 3 + 2] = color.b * mag;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    return new THREE.Points(geo, new THREE.PointsMaterial({
-        size: 1.6,
-        sizeAttenuation: false,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.92,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-    }));
+        let cr = 0.95, cg = 0.96, cb = 1.0;
+        if (t < 0.18) { cr = 0.72; cg = 0.85; cb = 1.0; } // Estrela azul
+        else if (t < 0.32) { cr = 1.0; cg = 0.84; cb = 0.58; } // Estrela dourada
+
+        const mag = 0.5 + Math.random() * 0.7;
+        particle.color = new B.Color4(cr * mag, cg * mag, cb * mag, 0.92);
+    });
+
+    pcs.buildMeshAsync();
+    return pcs;
 }
 
-function makeClouds(count) {
-    const group = new THREE.Group();
-    const geo = new THREE.SphereGeometry(1, 14, 10);
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0x2a3548,
-        roughness: 1,
-        transparent: true,
-        opacity: 0.32,
-        depthWrite: false
-    });
-    const rng = seeded(77);
-    for (let i = 0; i < count; i++) {
-        const puff = new THREE.Group();
-        const a = rng() * Math.PI * 2;
-        const r = 55 + rng() * 80;
-        puff.position.set(Math.cos(a) * r, 22 + rng() * 18, Math.sin(a) * r - 40);
-        const n = 3 + (rng() * 3) | 0;
-        for (let k = 0; k < n; k++) {
-            const c = new THREE.Mesh(geo, mat);
-            c.position.set((rng() - 0.5) * 10, (rng() - 0.5) * 2.2, (rng() - 0.5) * 6);
-            c.scale.set(6 + rng() * 7, 2.4 + rng() * 1.6, 4.5 + rng() * 5);
-            c.castShadow = false;
-            puff.add(c);
-        }
-        group.add(puff);
-    }
-    return group;
+function createSkyDome(scene) {
+    const B = window.BABYLON;
+    const sky = B.MeshBuilder.CreateSphere('celestial_sky', {
+        diameter: 650,
+        segments: 24,
+        sideOrientation: B.Mesh.BACKSIDE
+    }, scene);
+
+    const skyMat = new B.StandardMaterial('mat_sky', scene);
+    skyMat.backFaceCulling = false;
+    skyMat.disableLighting = true;
+
+    // Gradiente dinâmico no céu noturno com Via Láctea
+    const size = 512;
+    const dt = new B.DynamicTexture('sky_texture', size, scene, true);
+    const ctx = dt.getContext();
+
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    grad.addColorStop(0, '#03050c'); // Zênite
+    grad.addColorStop(0.45, '#070f22');
+    grad.addColorStop(0.78, '#101d3a'); // Horizonte
+    grad.addColorStop(1.0, '#040711'); // Nadir
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    // Bruma e nebulosa da Via Láctea
+    ctx.fillStyle = 'rgba(120, 150, 220, 0.08)';
+    ctx.beginPath();
+    ctx.ellipse(size * 0.45, size * 0.4, size * 0.35, size * 0.15, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    dt.update();
+    skyMat.diffuseTexture = dt;
+    skyMat.emissiveTexture = dt;
+    sky.material = skyMat;
+
+    return sky;
 }
 
 export class Kingdom {
-    constructor(scene, renderer, quality) {
+    constructor(scene, engine, quality) {
         this.scene = scene;
+        this.engine = engine;
         this.quality = quality;
-        this.group = new THREE.Group();
-        scene.add(this.group);
+        const B = window.BABYLON;
 
-        this.skyMat = makeSkyMaterial();
-        const sky = new THREE.Mesh(new THREE.SphereGeometry(520, 32, 20), this.skyMat);
-        sky.frustumCulled = false;
-        this.group.add(sky);
-        this.group.add(makeStars(quality.stars));
-        this.moon = makeMoon();
-        this.group.add(this.moon);
-        this.group.add(makeClouds(quality.clouds));
+        // Configuração de Neblina Atmosférica
+        scene.fogMode = B.Scene.FOGMODE_EXP2;
+        scene.fogColor = new B.Color3(0.04, 0.08, 0.16);
+        scene.fogDensity = 0.0034;
 
-        const terrain = makeTerrain(quality);
-        terrain.receiveShadow = true;
-        terrain.castShadow = false;
-        this.group.add(terrain);
+        // Luzes e Sombras
+        this._setupLights(quality);
 
-        this.castle = createCastle();
-        this.castle.position.y = 0.05;
-        this.group.add(this.castle);
-        this.group.add(makePines(quality));
+        // Elementos do Reino
+        this.sky = createSkyDome(scene);
+        this.stars = createStars(scene, quality.stars);
+        this.moon = createMoon(scene);
+        this.terrain = createTerrain(scene, quality);
+        this.pines = createPines(scene, quality, this.shadowGenerator);
+        this.castle = createCastle(scene, this.shadowGenerator);
 
-        const waterGeo = new THREE.PlaneGeometry(220, 220);
-        if (quality.waterSize >= 256) {
-            this.water = new Water(waterGeo, {
-                textureWidth: quality.waterSize,
-                textureHeight: quality.waterSize,
-                waterNormals: waterNormals(),
-                sunDirection: new THREE.Vector3(-0.28, 0.58, 0.72).normalize(),
-                sunColor: 0xe8f0ff,
-                waterColor: 0x16344c,
-                distortionScale: 1.6,
-                fog: true,
-                alpha: 1
-            });
-            this.water.rotation.x = -Math.PI / 2;
-            this.water.position.y = 0.08;
+        // Lago com Água Refletora
+        this._setupWater(quality);
+    }
+
+    _setupLights(quality) {
+        const B = window.BABYLON;
+
+        // Luz Ambiente Noturna
+        this.hemi = new B.HemisphericLight('hemiLight', new B.Vector3(0, 1, 0), this.scene);
+        this.hemi.diffuse = new B.Color3(0.24, 0.32, 0.48);
+        this.hemi.groundColor = new B.Color3(0.04, 0.05, 0.08);
+        this.hemi.intensity = 0.65;
+
+        // Luz Direcional Principal da Lua
+        this.moonLight = new B.DirectionalLight('moonLight', new B.Vector3(0.35, -0.65, -0.55), this.scene);
+        this.moonLight.position = new B.Vector3(-35, 65, 80);
+        this.moonLight.intensity = 2.2;
+        this.moonLight.diffuse = new B.Color3(0.88, 0.94, 1.0);
+        this.moonLight.specular = new B.Color3(0.9, 0.95, 1.0);
+
+        // Luz de Preenchimento Quente (Fill Light)
+        this.fillLight = new B.DirectionalLight('fillLight', new B.Vector3(-0.3, -0.4, 0.6), this.scene);
+        this.fillLight.position = new B.Vector3(25, 30, -40);
+        this.fillLight.intensity = 0.45;
+        this.fillLight.diffuse = new B.Color3(0.95, 0.75, 0.45);
+
+        // Luz Pontual Quente na Entrada do Castelo
+        this.warmGate = new B.PointLight('warmGate', new B.Vector3(0, 7.8, 9.6), this.scene);
+        this.warmGate.diffuse = new B.Color3(1.0, 0.72, 0.32);
+        this.warmGate.intensity = 24;
+        this.warmGate.range = 38;
+
+        // Farol no Coruchéu Central
+        this.spireBeacon = new B.PointLight('spireBeacon', new B.Vector3(0, 42, -1.4), this.scene);
+        this.spireBeacon.diffuse = new B.Color3(1.0, 0.82, 0.45);
+        this.spireBeacon.intensity = 16;
+        this.spireBeacon.range = 45;
+
+        // Gerador de Sombras Suaves (Cascaded / PCF)
+        if (quality.shadows) {
+            this.shadowGenerator = new B.ShadowGenerator(quality.shadowMap, this.moonLight);
+            this.shadowGenerator.usePercentageCloserFiltering = true;
+            this.shadowGenerator.filteringQuality = B.ShadowGenerator.QUALITY_HIGH;
+            this.shadowGenerator.bias = 0.0004;
+            this.shadowGenerator.normalBias = 0.02;
+        }
+    }
+
+    _setupWater(quality) {
+        const B = window.BABYLON;
+        const waterMesh = B.MeshBuilder.CreateGround('water_plane', {
+            width: 240,
+            height: 240,
+            subdivisions: 32
+        }, this.scene);
+        waterMesh.position.y = 0.12;
+
+        if (B.WaterMaterial && quality.waterSize >= 256) {
+            const water = new B.WaterMaterial('lake_water_mat', this.scene, new B.Vector2(quality.waterSize, quality.waterSize));
+            water.bumpTexture = getWaterBumpTexture(this.scene);
+            water.windForce = -6;
+            water.waveHeight = 0.22;
+            water.bumpHeight = 0.6;
+            water.waveLength = 0.18;
+            water.waterColor = new B.Color3(0.04, 0.14, 0.26);
+            water.colorBlendFactor = 0.38;
+
+            water.addToRenderList(this.terrain);
+            water.addToRenderList(this.moon.moonMesh);
+
+            waterMesh.material = water;
+            this.waterMat = water;
         } else {
-            this.water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({
-                color: 0x1a3a58,
-                roughness: 0.14,
-                metalness: 0.78,
-                emissive: 0x061018,
-                emissiveIntensity: 0.2
-            }));
-            this.water.rotation.x = -Math.PI / 2;
-            this.water.position.y = 0.08;
+            // Material PBR para água leve
+            const pbrWater = new B.PBRMaterial('pbr_water_mat', this.scene);
+            pbrWater.albedoColor = new B.Color3(0.03, 0.1, 0.18);
+            pbrWater.bumpTexture = getWaterBumpTexture(this.scene);
+            pbrWater.roughness = 0.12;
+            pbrWater.metallic = 0.85;
+            pbrWater.emissiveColor = new B.Color3(0.01, 0.04, 0.08);
+            waterMesh.material = pbrWater;
+            this.waterMat = pbrWater;
         }
-        this.group.add(this.water);
-
-        this._lights();
     }
 
-    _lights() {
-        this.ambient = new THREE.AmbientLight(0x3a4868, 0.42);
-        this.group.add(this.ambient);
-
-        this.hemi = new THREE.HemisphereLight(0x9ab0d8, 0x12161e, 0.62);
-        this.group.add(this.hemi);
-
-        // Key: lua à esquerda-frente, para a fachada não virar silhueta.
-        this.moonLight = new THREE.DirectionalLight(0xe8f0ff, 1.85);
-        this.moonLight.position.set(-28, 58, 72);
-        this.moonLight.castShadow = this.quality.shadows;
-        if (this.quality.shadows) {
-            const s = this.moonLight.shadow;
-            s.mapSize.set(this.quality.shadowMap, this.quality.shadowMap);
-            s.camera.near = 10;
-            s.camera.far = 180;
-            s.camera.left = s.camera.bottom = -48;
-            s.camera.right = s.camera.top = 48;
-            s.bias = -0.00025;
-            s.normalBias = 0.04;
-        }
-        this.group.add(this.moonLight);
-        this.group.add(this.moonLight.target);
-        this.moonLight.target.position.set(0, 14, 0);
-
-        this.rim = new THREE.DirectionalLight(0x9bb4ff, 0.55);
-        this.rim.position.set(-40, 36, -55);
-        this.group.add(this.rim);
-
-        this.fill = new THREE.DirectionalLight(0xffe2b8, 0.38);
-        this.fill.position.set(18, 22, 50);
-        this.group.add(this.fill);
-
-        this.warm = new THREE.PointLight(0xffb066, 16, 42, 1.5);
-        this.warm.position.set(0, 11, 9);
-        this.warm.castShadow = false;
-        this.group.add(this.warm);
-
-        this.spireLight = new THREE.PointLight(0xffc878, 10, 32, 1.7);
-        this.spireLight.position.set(0, 42, -1);
-        this.group.add(this.spireLight);
-    }
-
-    setGlow(t) {
-        this.castle.userData.setGlow(0.85 + t * 1.8);
-        this.warm.intensity = 10 + t * 16;
-        this.spireLight.intensity = 6 + t * 12;
-        this.fill.intensity = 0.38 + t * 0.22;
+    setGlow(intensity) {
+        this.castle.setGlow(intensity);
+        this.warmGate.intensity = 14 + intensity * 26;
+        this.spireBeacon.intensity = 10 + intensity * 20;
+        this.fillLight.intensity = 0.45 + intensity * 0.3;
     }
 
     tick(time) {
-        this.castle.userData.tick(time);
-        if (this.water.material?.uniforms?.time) {
-            this.water.material.uniforms.time.value = time * 0.35;
-        } else if (this.water.material) {
-            this.water.material.roughness = 0.16 + Math.sin(time * 0.4) * 0.03;
+        this.castle.tick(time);
+        if (this.moon?.moonMesh) {
+            this.moon.moonMesh.rotation.y = time * 0.012;
         }
-        this.skyMat.uniforms.uTime.value = time;
-        const moon = this.moon.userData.moon;
-        if (moon) moon.rotation.y = time * 0.01;
     }
 }
+

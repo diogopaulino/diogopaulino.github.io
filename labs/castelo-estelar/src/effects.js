@@ -1,167 +1,289 @@
 /**
- * Fada de faíscas, arco dourado, estrela cadente e fogos.
- *
- * Fogo: p(t) = p0 + v0 t + ½ g t², com g = (0, −18, 0).
- * Arco: Catmull-Rom amostrada; o tubo cresce com o parâmetro u ∈ [0, 1].
+ * Castelo Estelar — Efeitos Mágicos e Cinemáticos em Babylon.js.
+ * Fada de faíscas com rastro de partículas douradas, estrela cadente,
+ * arco tridimensional sobre os pináculos e show pirotécnico sincronizado.
  */
 
-import * as THREE from 'three';
-import { makeSparkMaterial } from './shaders.js';
-
-function makePoints(max) {
-    const pos = new Float32Array(max * 3);
-    const col = new Float32Array(max * 3);
-    const size = new Float32Array(max);
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
-    geo.setDrawRange(0, 0);
-    const pts = new THREE.Points(geo, makeSparkMaterial());
-    pts.frustumCulled = false;
-    return { pts, pos, col, size, max, n: 0 };
-}
+import { catmullRom, clamp } from './utils.js';
 
 export class Magic {
     constructor(scene, quality) {
         this.scene = scene;
         this.quality = quality;
-        this.group = new THREE.Group();
-        scene.add(this.group);
+        const B = window.BABYLON;
 
-        this.sparks = makePoints(quality.sparks);
-        this.group.add(this.sparks.pts);
+        this.root = new B.TransformNode('magic_root', scene);
 
+        // Estrela Cadente
+        this.shootingStar = B.MeshBuilder.CreateSphere('shooting_star', {
+            diameter: 0.6,
+            segments: 12
+        }, scene);
+        this.shootingStar.parent = this.root;
+        const shootingMat = new B.StandardMaterial('mat_shooting_star', scene);
+        shootingMat.emissiveColor = new B.Color3(1, 1, 0.95);
+        shootingMat.disableLighting = true;
+        shootingMat.alpha = 0;
+        this.shootingStar.material = shootingMat;
+        this.shootingMat = shootingMat;
+
+        // Fada de Faíscas (Magic Sprite)
+        this.fairy = B.MeshBuilder.CreateSphere('fairy_core', {
+            diameter: 0.45,
+            segments: 16
+        }, scene);
+        this.fairy.parent = this.root;
+        const fairyMat = new B.StandardMaterial('mat_fairy', scene);
+        fairyMat.emissiveColor = new B.Color3(1.0, 0.96, 0.75);
+        fairyMat.disableLighting = true;
+        fairyMat.alpha = 0;
+        this.fairy.material = fairyMat;
+        this.fairyMat = fairyMat;
+
+        // Brilho da Fada (Glow Aura)
+        this.fairyGlow = B.MeshBuilder.CreateSphere('fairy_glow', {
+            diameter: 1.4,
+            segments: 16
+        }, scene);
+        this.fairyGlow.parent = this.fairy;
+        const fairyGlowMat = new B.StandardMaterial('mat_fairy_glow', scene);
+        fairyGlowMat.emissiveColor = new B.Color3(1.0, 0.85, 0.45);
+        fairyGlowMat.alpha = 0;
+        fairyGlowMat.alphaMode = B.Engine.ALPHA_ADD;
+        fairyGlowMat.disableLighting = true;
+        fairyGlowMat.disableDepthWrite = true;
+        this.fairyGlow.material = fairyGlowMat;
+        this.fairyGlowMat = fairyGlowMat;
+
+        // Luz da fada iluminando as torres de passagem
+        this.fairyLight = new B.PointLight('fairy_light', new B.Vector3(0, 0, 0), scene);
+        this.fairyLight.diffuse = new B.Color3(1.0, 0.85, 0.45);
+        this.fairyLight.intensity = 0;
+        this.fairyLight.range = 28;
+        this.fairyLight.parent = this.fairy;
+
+        // Caminho 3D da Fada (Trajetória de voo sobre as torres)
+        this.fairyPathPoints = [
+            new B.Vector3(-38, 16, 36),
+            new B.Vector3(-22, 26, 20),
+            new B.Vector3(-6, 35, 6),
+            new B.Vector3(12, 41, 2),
+            new B.Vector3(28, 33, 14),
+            new B.Vector3(20, 22, 24)
+        ];
+
+        // Arco Dourado
+        this.arcMesh = null;
+        this.arcMat = new B.StandardMaterial('mat_golden_arc', scene);
+        this.arcMat.emissiveColor = new B.Color3(1.0, 0.88, 0.42);
+        this.arcMat.alpha = 0;
+        this.arcMat.alphaMode = B.Engine.ALPHA_ADD;
+        this.arcMat.disableLighting = true;
+        this.arcMat.disableDepthWrite = true;
+        this.arcU = 0;
+        this._initArc();
+
+        // Sistema de Partículas de Faíscas (Sparks & Fireworks)
         this.particles = [];
-        this.fairy = new THREE.Mesh(
-            new THREE.SphereGeometry(0.18, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 0 })
-        );
-        this.fairyGlow = new THREE.Mesh(
-            new THREE.SphereGeometry(0.55, 12, 10),
-            new THREE.MeshBasicMaterial({
-                color: 0xffe08a,
-                transparent: true,
-                opacity: 0,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
-            })
-        );
-        this.group.add(this.fairy, this.fairyGlow);
+        this.maxParticles = quality.sparks || 1200;
+        this._initParticleMesh();
 
-        this.arc = this._makeArc();
-        this.group.add(this.arc.mesh);
-
-        this.shooting = new THREE.Mesh(
-            new THREE.SphereGeometry(0.22, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
-        );
-        this.group.add(this.shooting);
-
-        this.fairyPath = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(-38, 18, 36),
-            new THREE.Vector3(-18, 28, 18),
-            new THREE.Vector3(-2, 36, 6),
-            new THREE.Vector3(14, 40, 4),
-            new THREE.Vector3(28, 32, 14),
-            new THREE.Vector3(22, 24, 22)
-        ]);
-        this.tmp = new THREE.Vector3();
         this.burstAt = [];
     }
 
-    _makeArc() {
-        const pts = this._arcPts(0.001);
-        const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.06, 6, false);
-        const mat = new THREE.MeshBasicMaterial({
-            color: 0xffe566,
-            transparent: true,
-            opacity: 0,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        return { mesh: new THREE.Mesh(geo, mat), u: 0 };
+    _initArc() {
+        const B = window.BABYLON;
+        const pts = this._sampleArcPoints(0.01);
+        this.arcMesh = B.MeshBuilder.CreateTube('golden_arc_tube', {
+            path: pts,
+            radius: 0.12,
+            tessellation: 12,
+            updatable: true
+        }, this.scene);
+        this.arcMesh.material = this.arcMat;
+        this.arcMesh.parent = this.root;
     }
 
-    _arcPts(u) {
-        const n = 24;
+    _sampleArcPoints(u) {
+        const B = window.BABYLON;
+        const n = 32;
         const pts = [];
         const um = Math.max(0.02, u);
         for (let i = 0; i <= n; i++) {
             const t = (i / n) * um;
-            const x = -22 + t * 48;
-            const y = 22 + Math.sin(t * Math.PI) * 18;
-            const z = 8 + Math.sin(t * Math.PI) * -4;
-            pts.push(new THREE.Vector3(x, y, z));
+            const x = -24 + t * 50;
+            const y = 22 + Math.sin(t * Math.PI) * 20;
+            const z = 8 + Math.sin(t * Math.PI) * -5;
+            pts.push(new B.Vector3(x, y, z));
         }
         return pts;
     }
 
-    spawnBurst(origin, color, count = 80) {
-        const c = new THREE.Color(color);
+    _updateArc(u) {
+        const B = window.BABYLON;
+        const pts = this._sampleArcPoints(u);
+        if (this.arcMesh) {
+            this.arcMesh.dispose();
+        }
+        this.arcMesh = B.MeshBuilder.CreateTube('golden_arc_tube', {
+            path: pts,
+            radius: 0.12,
+            tessellation: 12,
+            updatable: true
+        }, this.scene);
+        this.arcMesh.material = this.arcMat;
+        this.arcMesh.parent = this.root;
+    }
+
+    _initParticleMesh() {
+        const B = window.BABYLON;
+        this.particleMesh = new B.Mesh('spark_particles', this.scene);
+        this.particleMesh.parent = this.root;
+
+        const max = this.maxParticles;
+        this.positions = new Float32Array(max * 3);
+        this.colors = new Float32Array(max * 4);
+        this.indices = new Int32Array(max);
+        for (let i = 0; i < max; i++) this.indices[i] = i;
+
+        const vData = new B.VertexData();
+        vData.positions = this.positions;
+        vData.colors = this.colors;
+        vData.indices = this.indices;
+        vData.applyToMesh(this.particleMesh, true);
+
+        const sparkMat = new B.StandardMaterial('mat_sparks', this.scene);
+        sparkMat.emissiveColor = new B.Color3(1, 1, 1);
+        sparkMat.disableLighting = true;
+        sparkMat.alphaMode = B.Engine.ALPHA_ADD;
+        sparkMat.pointsCloud = true;
+        sparkMat.pointSize = 4.5;
+        sparkMat.disableDepthWrite = true;
+        this.particleMesh.material = sparkMat;
+    }
+
+    _sampleFairyPath(u) {
+        const B = window.BABYLON;
+        const pts = this.fairyPathPoints;
+        const tClamped = clamp(u, 0, 0.999);
+        const segment = tClamped * (pts.length - 1);
+        const idx = Math.floor(segment);
+        const frac = segment - idx;
+
+        const p0 = pts[Math.max(0, idx - 1)];
+        const p1 = pts[idx];
+        const p2 = pts[Math.min(pts.length - 1, idx + 1)];
+        const p3 = pts[Math.min(pts.length - 1, idx + 2)];
+
+        return new B.Vector3(
+            catmullRom(p0.x, p1.x, p2.x, p3.x, frac),
+            catmullRom(p0.y, p1.y, p2.y, p3.y, frac),
+            catmullRom(p0.z, p1.z, p2.z, p3.z, frac)
+        );
+    }
+
+    _emit(pos, hexColor, count = 3, size = 4.0) {
+        const B = window.BABYLON;
+        const color = B.Color3.FromHexString(hexColor);
         for (let i = 0; i < count; i++) {
+            if (this.particles.length >= this.maxParticles) break;
+            this.particles.push({
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+                vx: (Math.random() - 0.5) * 1.8,
+                vy: (Math.random() - 0.5) * 1.8,
+                vz: (Math.random() - 0.5) * 1.8,
+                r: color.r,
+                g: color.g,
+                b: color.b,
+                life: 0.65 + Math.random() * 0.55,
+                age: 0,
+                size: size * (0.6 + Math.random() * 0.6)
+            });
+        }
+    }
+
+    spawnBurst(origin, hexColor, count = 90) {
+        const B = window.BABYLON;
+        const color = B.Color3.FromHexString(hexColor);
+        for (let i = 0; i < count; i++) {
+            if (this.particles.length >= this.maxParticles) break;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
-            const sp = 6 + Math.random() * 10;
+            const speed = 7.5 + Math.random() * 12.0;
+
             this.particles.push({
-                x: origin.x, y: origin.y, z: origin.z,
-                vx: Math.sin(phi) * Math.cos(theta) * sp,
-                vy: Math.sin(phi) * Math.sin(theta) * sp + 4,
-                vz: Math.cos(phi) * sp,
-                life: 1.4 + Math.random() * 0.6,
+                x: origin.x,
+                y: origin.y,
+                z: origin.z,
+                vx: Math.sin(phi) * Math.cos(theta) * speed,
+                vy: Math.sin(phi) * Math.sin(theta) * speed + 5.0,
+                vz: Math.cos(phi) * speed,
+                r: color.r,
+                g: color.g,
+                b: color.b,
+                life: 1.5 + Math.random() * 0.7,
                 age: 0,
-                r: c.r, g: c.g, b: c.b,
-                size: 4 + Math.random() * 7
+                size: 5 + Math.random() * 8
             });
         }
     }
 
     setIntro(t, audio) {
-        // Estrela cadente 2.8s–4.6s
-        if (t > 2.8 && t < 4.8) {
-            const u = (t - 2.8) / 2;
-            this.shooting.position.set(-60 + u * 90, 52 - u * 8, -20);
-            this.shooting.material.opacity = u < 0.15 ? u / 0.15 : Math.max(0, 1 - (u - 0.7) / 0.3);
-            this._emit(this.shooting.position, 0xfff6d0, 2, 3.5);
+        const B = window.BABYLON;
+
+        // 1. Estrela Cadente (2.8s – 5.0s)
+        if (t > 2.8 && t < 5.0) {
+            const u = (t - 2.8) / 2.2;
+            this.shootingStar.position.set(-62 + u * 94, 54 - u * 10, -22);
+            const alpha = u < 0.15 ? u / 0.15 : Math.max(0, 1 - (u - 0.7) / 0.3);
+            this.shootingMat.alpha = alpha;
+            this._emit(this.shootingStar.position, '#fff8d8', 3, 3.8);
         } else {
-            this.shooting.material.opacity = 0;
+            this.shootingMat.alpha = 0;
         }
 
-        // Fada 9.5s–16.5s
-        const fairyOn = t > 9.5 && t < 16.8;
+        // 2. Fada de Faíscas e Arco Dourado (9.5s – 17.0s)
+        const fairyOn = t > 9.5 && t < 17.0;
         if (fairyOn) {
-            const u = (t - 9.5) / 7.3;
-            this.fairyPath.getPointAt(Math.min(0.999, u), this.tmp);
-            this.fairy.position.copy(this.tmp);
-            this.fairyGlow.position.copy(this.tmp);
-            this.fairy.material.opacity = 1;
-            this.fairyGlow.material.opacity = 0.55;
-            this._emit(this.tmp, 0xffe9a0, 3, 5);
-            const nextU = Math.min(1, u * 1.15);
-            if (nextU - this.arc.u > 0.02 || nextU === 1) {
-                this.arc.u = nextU;
-                this._updateArc(this.arc.u);
+            const u = (t - 9.5) / 7.5;
+            const pos = this._sampleFairyPath(Math.min(0.999, u));
+
+            this.fairy.position.copyFrom(pos);
+            this.fairyMat.alpha = 1.0;
+            this.fairyGlowMat.alpha = 0.65;
+            this.fairyLight.intensity = 18;
+
+            this._emit(pos, '#ffeaa7', 4, 5.0);
+
+            const nextU = Math.min(1.0, u * 1.14);
+            if (nextU - this.arcU > 0.02 || nextU === 1.0) {
+                this.arcU = nextU;
+                this._updateArc(this.arcU);
             }
-            this.arc.mesh.material.opacity = Math.min(0.85, u * 2);
-        } else if (t >= 16.8) {
-            this.fairy.material.opacity = 0;
-            this.fairyGlow.material.opacity = 0;
-            this.arc.mesh.material.opacity = Math.max(0, 0.85 - (t - 16.8) * 0.25);
+            this.arcMat.alpha = Math.min(0.95, u * 2.2);
+        } else if (t >= 17.0) {
+            this.fairyMat.alpha = 0;
+            this.fairyGlowMat.alpha = 0;
+            this.fairyLight.intensity = 0;
+            this.arcMat.alpha = Math.max(0, 0.95 - (t - 17.0) * 0.28);
         }
 
-        // Fogos 15.2s em diante
-        const cues = [
-            [15.2, 8, 28, 10, 0xffd166],
-            [16.0, -10, 32, 6, 0xff6b8a],
-            [16.6, 14, 36, 4, 0x7ad7ff],
-            [17.4, 0, 40, 2, 0xfff1a8],
-            [18.2, -6, 30, 12, 0xff9f43],
-            [19.0, 10, 34, 8, 0xe0aaff]
+        // 3. Show de Fogos de Artifício (15.2s em diante)
+        const fireworkCues = [
+            [15.2, 8, 30, 10, '#ffd166'],  // Ouro Imperial
+            [16.0, -10, 34, 6, '#ff477e'], // Rosa Rubi
+            [16.6, 14, 38, 4, '#4cc9f0'],  // Safira Celestial
+            [17.4, 0, 42, 2, '#ffeaa7'],   // Diamante Dourado
+            [18.2, -7, 32, 12, '#ff9f43'], // Âmbar Real
+            [19.0, 10, 36, 8, '#b5179e']   // Ametista
         ];
-        for (const [when, x, y, z, color] of cues) {
+
+        for (const [when, x, y, z, color] of fireworkCues) {
             if (t >= when && !this.burstAt.includes(when)) {
                 this.burstAt.push(when);
-                this.spawnBurst(new THREE.Vector3(x, y, z), color, this.quality.burst);
+                this.spawnBurst(new B.Vector3(x, y, z), color, this.quality.burst || 90);
                 audio?.firework?.();
             }
         }
@@ -170,63 +292,51 @@ export class Magic {
     replay() {
         this.burstAt.length = 0;
         this.particles.length = 0;
-        this.arc.u = 0;
-        this.arc.mesh.material.opacity = 0;
-        this.fairy.material.opacity = 0;
-        this.fairyGlow.material.opacity = 0;
-    }
-
-    _updateArc(u) {
-        const pts = this._arcPts(u);
-        const curve = new THREE.CatmullRomCurve3(pts);
-        const geo = new THREE.TubeGeometry(curve, 80, 0.055, 6, false);
-        this.arc.mesh.geometry.dispose();
-        this.arc.mesh.geometry = geo;
-    }
-
-    _emit(p, hex, n, size) {
-        const c = new THREE.Color(hex);
-        for (let i = 0; i < n; i++) {
-            this.particles.push({
-                x: p.x, y: p.y, z: p.z,
-                vx: (Math.random() - 0.5) * 1.4,
-                vy: (Math.random() - 0.5) * 1.4,
-                vz: (Math.random() - 0.5) * 1.4,
-                life: 0.7 + Math.random() * 0.5,
-                age: 0,
-                r: c.r, g: c.g, b: c.b,
-                size: size * (0.6 + Math.random() * 0.6)
-            });
-        }
+        this.arcU = 0;
+        this.arcMat.alpha = 0;
+        this.fairyMat.alpha = 0;
+        this.fairyGlowMat.alpha = 0;
+        this.fairyLight.intensity = 0;
+        this.shootingMat.alpha = 0;
     }
 
     tick(dt) {
-        const g = -18;
+        const g = -14.0;
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.age += dt;
-            p.vy += g * dt * 0.35;
+            p.vy += g * dt * 0.38;
             p.x += p.vx * dt;
             p.y += p.vy * dt;
             p.z += p.vz * dt;
-            if (p.age >= p.life) this.particles.splice(i, 1);
+
+            if (p.age >= p.life) {
+                this.particles.splice(i, 1);
+            }
         }
-        const s = this.sparks;
-        const n = Math.min(this.particles.length, s.max);
+
+        const n = Math.min(this.particles.length, this.maxParticles);
         for (let i = 0; i < n; i++) {
             const p = this.particles[i];
             const fade = 1 - p.age / p.life;
-            s.pos[i * 3] = p.x;
-            s.pos[i * 3 + 1] = p.y;
-            s.pos[i * 3 + 2] = p.z;
-            s.col[i * 3] = p.r * fade;
-            s.col[i * 3 + 1] = p.g * fade;
-            s.col[i * 3 + 2] = p.b * fade;
-            s.size[i] = p.size * fade;
+            this.positions[i * 3] = p.x;
+            this.positions[i * 3 + 1] = p.y;
+            this.positions[i * 3 + 2] = p.z;
+
+            this.colors[i * 4] = p.r * fade;
+            this.colors[i * 4 + 1] = p.g * fade;
+            this.colors[i * 4 + 2] = p.b * fade;
+            this.colors[i * 4 + 3] = fade;
         }
-        s.pts.geometry.setDrawRange(0, n);
-        s.pts.geometry.attributes.position.needsUpdate = true;
-        s.pts.geometry.attributes.aColor.needsUpdate = true;
-        s.pts.geometry.attributes.aSize.needsUpdate = true;
+
+        // Zera posições restantes
+        for (let i = n; i < this.maxParticles; i++) {
+            this.positions[i * 3 + 1] = -1000;
+            this.colors[i * 4 + 3] = 0;
+        }
+
+        this.particleMesh.updateVerticesData(window.BABYLON.VertexBuffer.PositionKind, this.positions);
+        this.particleMesh.updateVerticesData(window.BABYLON.VertexBuffer.ColorKind, this.colors);
     }
 }
+
