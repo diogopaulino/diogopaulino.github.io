@@ -30,6 +30,7 @@ export class Hud {
             chapterTitle: $('chapterTitle'),
             chapterSub: $('chapterSub'),
             touch: $('touchControls'),
+            btnInteract: $('btnInteract'),
             soundButton: $('soundButton'),
             pauseButton: $('pauseButton'),
             loading: $('loadingOverlay'),
@@ -101,6 +102,9 @@ export class Hud {
     }
 
     setPrompt(text) {
+        /* O botão "usar" do toque acende junto com o balão: no celular não há
+           tecla E para procurar. */
+        if (this.el.btnInteract) this.el.btnInteract.dataset.ready = text ? 'true' : 'false';
         if (!text) {
             this.el.prompt.hidden = true;
             return;

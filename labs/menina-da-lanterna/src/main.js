@@ -5,7 +5,9 @@
 
 import * as THREE from 'three';
 import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js';
-import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, lerp } from './utils.js';
+import {
+    clamp, detectMobile, detectTouch, detectSoftwareGL, rendererIsSoftware, formatTime, lerp
+} from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
@@ -18,6 +20,10 @@ import { nearestInteractable } from './npcs.js';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
+
+/* Um arrasto de dedo percorre bem menos pixels que o mouse na mesa: sem esse
+   ganho a câmera do celular custa três deslizadas para dar meia volta. */
+const TOUCH_LOOK_GAIN = 2.2;
 
 class Game {
     constructor() {
@@ -72,6 +78,7 @@ class Game {
         this.hud.setLoading(0.12, 'Acendendo o pavio…');
         this.quality = this.resolveQuality();
         this.mobile = detectMobile();
+        this.touch = detectTouch();
 
         try {
             this.renderer = new THREE.WebGLRenderer({
@@ -199,7 +206,10 @@ class Game {
             }
             this.input.touchMove.x = dx;
             this.input.touchMove.y = -dy;
-            knob.style.transform = `translate(${dx * 22}px, ${dy * 22}px)`;
+            /* O curso do knob acompanha o raio do stick, que muda com a
+               media query de paisagem. */
+            const travel = r.width * 0.2;
+            knob.style.transform = `translate(${dx * travel}px, ${dy * travel}px)`;
         };
         const capturePointer = (el, pointerId) => {
             try {
@@ -243,8 +253,12 @@ class Game {
         });
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
-            this.input.lookX += e.clientX - lx;
-            this.input.lookY += e.clientY - ly;
+            /* Sem o guarda, o arrasto durante a abertura do capítulo se
+               acumulava e a câmera pulava assim que o jogo liberava o input. */
+            if (this.input.enabled) {
+                this.input.lookX += (e.clientX - lx) * TOUCH_LOOK_GAIN;
+                this.input.lookY += (e.clientY - ly) * TOUCH_LOOK_GAIN;
+            }
             lx = e.clientX;
             ly = e.clientY;
         });
@@ -254,17 +268,39 @@ class Game {
         lookZone?.addEventListener('pointerup', endLook);
         lookZone?.addEventListener('pointercancel', endLook);
 
-        document.getElementById('btnInteract')?.addEventListener('click', () => {
+        /* pointerdown em vez de click: responde no toque, sem o atraso e sem
+           depender do dedo levantar em cima do botão. */
+        const press = (id, fn) => {
+            const el = document.getElementById(id);
+            el?.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                capturePointer(el, e.pointerId);
+                fn();
+            });
+            return el;
+        };
+
+        press('btnInteract', () => {
             this.input.interactPressed = true;
         });
-        document.getElementById('btnFlash')?.addEventListener('click', () => {
+        press('btnFlash', () => {
             this.input.flashPressed = true;
         });
-        document.getElementById('btnSprint')?.addEventListener('pointerdown', () => {
+
+        const sprint = press('btnSprint', () => {
             this.input.touchSprint = true;
         });
-        document.getElementById('btnSprint')?.addEventListener('pointerup', () => {
+        /* pointerup sozinho deixava o "correr" preso quando o dedo saía do
+           botão antes de levantar. */
+        const endSprint = () => {
             this.input.touchSprint = false;
+        };
+        sprint?.addEventListener('pointerup', endSprint);
+        sprint?.addEventListener('pointercancel', endSprint);
+        sprint?.addEventListener('pointerleave', endSprint);
+        window.addEventListener('blur', () => {
+            endSprint();
+            end();
         });
     }
 
@@ -328,7 +364,7 @@ class Game {
         this.introT = 0;
         this.player.root.visible = true;
         this.hud.showHud(true);
-        this.hud.setTouchVisible(this.mobile);
+        this.hud.setTouchVisible(this.touch);
         this.hud.setChapter(this.chapter);
         this.hud.setHearts(this.player.health, this.player.maxHealth);
         this.hud.setFuel(this.player.fuel);
@@ -355,7 +391,7 @@ class Game {
         this.hud.setState('playing');
         this.hud.showPause(false);
         this.input.enabled = true;
-        if (!this.mobile) this.input.requestLock();
+        if (!this.touch) this.input.requestLock();
     }
 
     async toMenu() {
@@ -491,7 +527,7 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.hud.say(this.mobile ? 'Arraste na tela para olhar. O botão da lanterna pulsa a chama.' : 'Clique no mundo para olhar. Espaço pulsa a lanterna.', 3.4);
+            this.hud.say(this.touch ? 'Arraste na tela para olhar. O botão da lanterna pulsa a chama.' : 'Clique no mundo para olhar. Espaço pulsa a lanterna.', 3.4);
         }
     }
 
@@ -731,7 +767,7 @@ class Game {
         }
         this.state = 'playing';
         this.hud.setState('playing');
-        if (!this.mobile) this.input.requestLock();
+        if (!this.touch) this.input.requestLock();
     }
 
     async _completeChapter() {
@@ -798,6 +834,13 @@ class Game {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+
+        /* Girar o aparelho ou plugar um teclado troca o ponteiro: o HUD de
+           toque acompanha em vez de ficar preso na decisão do carregamento. */
+        const touch = detectTouch();
+        if (touch === this.touch) return;
+        this.touch = touch;
+        if (this.state !== 'loading' && this.state !== 'menu') this.hud.setTouchVisible(touch);
     }
 }
 

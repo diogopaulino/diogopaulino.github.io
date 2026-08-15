@@ -376,6 +376,7 @@ body[data-state="playing"] .game-shell > header .app-logo {
 
 .hud-actions {
     position: absolute;
+    z-index: 3; /* acima da zona de olhar, que cobre a tela inteira */
     right: calc(1rem + var(--safe-right));
     bottom: calc(1.1rem + var(--safe-bottom));
     display: flex;
@@ -441,21 +442,32 @@ body[data-state="playing"] .game-shell > header .app-logo {
     100% { opacity: 0; }
 }
 
+/* O card pode passar da tela (celular deitado, menu cheio): o overlay rola.
+   O body trava o toque para o jogo, então o overlay libera o pan vertical. */
 .overlay {
     position: absolute;
     inset: 0;
     z-index: 35;
-    display: grid;
-    place-items: center;
-    padding: calc(4.5rem + var(--safe-top)) 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(4.4rem + var(--safe-top)) calc(1rem + var(--safe-right))
+        calc(1.2rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
     background: color-mix(in oklab, var(--ink-deep) 42%, transparent);
     backdrop-filter: blur(8px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .overlay[hidden] { display: none; }
 
 .overlay-card {
     width: min(860px, 100%);
+    /* margin auto centraliza sem cortar o topo quando o card é mais alto
+       que a tela — `align-items: center` sozinho tornaria o topo inalcançável. */
+    margin: auto;
     background: color-mix(in oklab, oklch(14% 0.04 270) 80%, transparent);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
@@ -486,6 +498,19 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .eyebrow--danger { color: oklch(72% 0.16 25); }
 .eyebrow--gold { color: var(--gold); }
 
+/* O menu nunca esconde o botão de começar: só o miolo (.menu-grid) rola,
+   cabeçalho e rodapé ficam fora da área de scroll — de propósito sem
+   position:sticky aqui, que em alguns motores vaza conteúdo não rolado
+   por cima da borda arredondada do card. */
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    min-height: 0;
+}
+
+.menu-head { flex: 0 0 auto; }
+
 .menu-head h1, .overlay-card h2 {
     font-family: 'Cormorant Garamond', Georgia, serif;
     font-weight: 700;
@@ -509,6 +534,12 @@ body[data-state="playing"] .game-shell > header .app-logo {
     grid-template-columns: 1.15fr 1fr 1fr;
     gap: 1.1rem;
     margin: 1.3rem 0 1.1rem;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .menu-section h2 {
@@ -595,7 +626,13 @@ kbd {
     color: var(--text-dim);
 }
 
-.menu-foot { display: flex; justify-content: flex-end; }
+.menu-foot {
+    display: flex;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line-soft);
+}
 
 .primary-button, .ghost-button {
     display: inline-flex;
@@ -719,76 +756,298 @@ kbd {
 .stick {
     pointer-events: auto;
     position: absolute;
-    left: calc(1.2rem + var(--safe-left));
-    bottom: calc(1.2rem + var(--safe-bottom));
-    width: 112px;
-    height: 112px;
+    z-index: 2;
+    left: calc(1rem + var(--safe-left));
+    bottom: calc(1.4rem + var(--safe-bottom));
+    width: 124px;
+    height: 124px;
     border-radius: 50%;
     border: 1px solid var(--line);
     background: var(--panel);
+    backdrop-filter: blur(var(--blur));
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     display: grid;
     place-items: center;
 }
 
 .stick i {
-    width: 42px;
-    height: 42px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: var(--gold);
-    opacity: 0.85;
+    background: radial-gradient(circle at 38% 32%, oklch(92% 0.1 88), var(--gold));
+    box-shadow: 0 0 18px oklch(80% 0.16 78 / 0.45);
+    opacity: 0.9;
 }
 
-.stick span {
-    position: absolute;
-    bottom: -1.2rem;
-    font-size: 0.65rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-}
+/* O rótulo é redundante no toque (o aria-label descreve o stick) e encostava
+   na borda de baixo em telas curtas. */
+.stick span { display: none; }
 
+/* Camada base: qualquer arrasto livre da tela gira a câmera. */
 .look-zone {
     pointer-events: auto;
     position: absolute;
-    right: 0;
-    top: 20%;
-    width: 48%;
-    height: 55%;
+    inset: 0;
+    z-index: 0;
 }
 
 .touch-buttons {
     pointer-events: auto;
     position: absolute;
+    z-index: 2;
     right: calc(1rem + var(--safe-right));
-    bottom: calc(1.2rem + var(--safe-bottom));
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
+    bottom: calc(1.4rem + var(--safe-bottom));
+    display: grid;
+    grid-template-areas:
+        ".   use"
+        "run atk";
+    gap: 0.5rem;
+    align-items: end;
+    justify-items: end;
 }
 
 .pad {
-    min-width: 72px;
-    padding: 0.65rem 0.8rem;
-    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
     background: var(--panel-strong);
+    backdrop-filter: blur(var(--blur));
     border: 1px solid var(--line);
     color: var(--parchment);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 0.12s var(--ease), filter 0.12s ease;
 }
 
-.pad-atk { background: color-mix(in oklab, var(--ember) 38%, var(--panel-strong)); }
-.pad-use { background: color-mix(in oklab, var(--gold) 30%, var(--panel-strong)); color: var(--ink); }
+.pad:active { transform: scale(0.93); filter: brightness(1.15); }
 
-@media (max-width: 860px) {
-    .menu-grid { grid-template-columns: 1fr; }
-    .hud-top { grid-template-columns: 1fr 1fr; }
-    .quest-panel { grid-column: 1 / -1; justify-self: stretch; width: auto; }
+.pad-run { grid-area: run; width: 64px; height: 64px; }
+
+.pad-atk {
+    grid-area: atk;
+    width: 86px;
+    height: 86px;
+    font-size: 1.6rem;
+    background: radial-gradient(circle at 40% 34%,
+            color-mix(in oklab, var(--ember) 62%, transparent),
+            color-mix(in oklab, var(--ember) 30%, var(--panel-strong)));
+    color: var(--parchment);
 }
 
-@media (max-width: 560px) {
+.pad-use {
+    grid-area: use;
+    width: 68px;
+    height: 68px;
+    background: color-mix(in oklab, var(--gold) 26%, var(--panel-strong));
+    color: var(--parchment);
+}
+
+/* Acende junto com o balão de "E interagir": mostra onde tocar. */
+.pad-use[data-ready="true"] {
+    background: linear-gradient(180deg, oklch(82% 0.15 78), oklch(64% 0.14 62));
+    color: oklch(16% 0.04 70);
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px oklch(80% 0.16 78 / 0.22), 0 10px 26px rgba(0, 0, 0, 0.42);
+    animation: padReady 1.5s ease-in-out infinite;
+}
+
+@keyframes padReady {
+    50% { box-shadow: 0 0 0 7px oklch(80% 0.16 78 / 0.12), 0 10px 26px rgba(0, 0, 0, 0.42); }
+}
+
+/* ================================================================
+   Responsivo
+   Alvos: 375×667, 390×844 e paisagem curta (~667×375).
+   Regra do HUD no estreito: vitais + placar na primeira linha, objetivo
+   na segunda, e uma faixa livre à direita para som/pausa — que descem do
+   canto inferior (onde cobriam os botões de toque) para o alto.
+   ================================================================ */
+
+@media (max-width: 900px) {
+    .menu-grid { grid-template-columns: 1fr; gap: 0.9rem; }
+
+    .hud-top {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "vitals score"
+            "quest  quest";
+    }
+
+    .heart-panel { grid-area: vitals; }
+    .score-panel { grid-area: score; justify-self: end; min-width: 0; }
+    .quest-panel { grid-area: quest; justify-self: stretch; width: auto; }
+    .message { bottom: calc(12.5rem + var(--safe-bottom)); max-width: min(420px, 80vw); font-size: 1.05rem; }
+    .prompt { bottom: calc(10.6rem + var(--safe-bottom)); }
+
+    /* No fluxo, logo abaixo do topo do HUD: um objetivo de duas linhas
+       empurrava a barra de alerta para cima do painel quando ela era fixa. */
+    .stealth {
+        position: static;
+        translate: none;
+        width: min(280px, 62vw);
+        margin: 0.5rem auto 0;
+    }
+}
+
+@media (max-width: 900px), (max-height: 560px) and (orientation: landscape) {
+    /* No canto inferior direito os botões de som/pausa ficavam embaixo dos
+       pads de ação. Sobem para a faixa reservada no alto. */
+    .hud-actions {
+        top: calc(4rem + var(--safe-top));
+        right: calc(0.7rem + var(--safe-right));
+        bottom: auto;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .hud-top { padding-right: 3rem; }
+    .icon-button { width: 44px; height: 44px; }
+    .fps { display: none; }
+}
+
+@media (max-width: 768px) {
+    .hud {
+        padding: calc(4rem + var(--safe-top)) calc(0.7rem + var(--safe-right))
+            calc(0.7rem + var(--safe-bottom)) calc(0.7rem + var(--safe-left));
+    }
+
+    .hud-top { gap: 0.45rem; }
+    .panel { padding: 0.5rem 0.65rem; border-radius: 12px; }
+    .hud-label { font-size: 0.58rem; letter-spacing: 0.14em; }
+
+    /* Vida e chama numa linha só: ♥♥♥ ▬▬▬ 100 */
+    .heart-panel { display: flex; align-items: center; gap: 0.55rem; }
+    .heart-panel > .hud-label { display: none; }
+    .hearts { margin: 0; gap: 0.22rem; }
+    .heart { width: 14px; height: 14px; }
+    /* Sem o rótulo sobram duas colunas: a barra precisa ficar na fração,
+       senão colapsa na coluna `auto` e some. */
+    .fuel { flex: 1; min-width: 78px; grid-template-columns: minmax(0, 1fr) auto; }
+    .fuel .hud-label { display: none; }
+    .fuel strong { font-size: 0.85rem; }
+
+    .score-panel .hud-label { display: none; }
+    .score-panel { padding: 0.5rem 0.55rem; text-align: right; }
+    .score-row { justify-content: flex-end; gap: 0.35rem; }
+    #memoriesValue::before { content: '✦ '; color: var(--gold); }
+
+    .objective { font-size: 0.82rem; line-height: 1.35; }
+    .overlay { padding-top: calc(4rem + var(--safe-top)); }
     .overlay-card { padding: 1.15rem 1rem 1rem; }
     .menu-head h1 { font-size: 1.7rem; }
-    .hud-actions { bottom: calc(7.5rem + var(--safe-bottom)); }
+    .lede { font-size: 0.92rem; }
+    .menu-foot { justify-content: stretch; }
+    .menu-foot .primary-button { flex: 1; justify-content: center; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+    .dialogue-card { margin-bottom: calc(0.9rem + var(--safe-bottom)); padding: 0.95rem 1.05rem; }
+    .dialogue-text { font-size: 1.08rem; }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+    .hud {
+        padding: calc(3.6rem + var(--safe-top)) calc(0.7rem + var(--safe-right))
+            calc(0.6rem + var(--safe-bottom)) calc(0.7rem + var(--safe-left));
+    }
+
+    /* Deitado sobra largura e falta altura: as três caixas voltam para uma
+       linha só. */
+    .hud-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "vitals quest score";
+        gap: 0.4rem;
+    }
+
+    .quest-panel { justify-self: stretch; width: auto; }
+    .panel { padding: 0.4rem 0.6rem; }
+
+    .objective {
+        margin-top: 0.2rem;
+        font-size: 0.76rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .stealth {
+        position: static;
+        translate: none;
+        width: min(240px, 46vw);
+        margin: 0.4rem auto 0;
+        font-size: 0.66rem;
+    }
+
+    .message { bottom: calc(8.8rem + var(--safe-bottom)); font-size: 0.98rem; max-width: min(360px, 46vw); }
+    .prompt { bottom: calc(7.2rem + var(--safe-bottom)); font-size: 0.8rem; }
+
+    .stick { width: 104px; height: 104px; bottom: calc(0.9rem + var(--safe-bottom)); }
+    .stick i { width: 44px; height: 44px; }
+    .touch-buttons { bottom: calc(0.9rem + var(--safe-bottom)); gap: 0.4rem; }
+    .pad-atk { width: 72px; height: 72px; font-size: 1.35rem; }
+    .pad-use { width: 56px; height: 56px; font-size: 0.62rem; }
+    .pad-run { width: 54px; height: 54px; font-size: 0.58rem; }
+
+    .overlay { padding-top: calc(3.4rem + var(--safe-top)); }
+    .overlay-card { padding: 0.9rem 1.1rem; }
+
+    /* Cabeçalho enxuto para sobrar tela de rolagem no card. */
+    .eyebrow { margin-bottom: 0.35rem; font-size: 0.65rem; }
+    .menu-head h1 { font-size: 1.35rem; margin-bottom: 0.3rem; }
+    .menu-head .lede { font-size: 0.8rem; line-height: 1.4; }
+    .menu-grid { margin: 0.7rem 0 0.5rem; gap: 0.7rem; }
+    .menu-section h2 { font-size: 0.85rem; margin-bottom: 0.4rem; }
+    .menu-foot { padding: 0.6rem 0 0.9rem; }
+    /* Fim de noite (derrota/vitória) deitado: estatísticas em quatro colunas e
+       botões lado a lado, senão o card estoura os 375px de altura. */
+    .compact-card { width: min(600px, 100%); }
+    /* <br> sempre força a quebra, display não muda isso — mas display:none
+       também apaga o ::before, então o espaço entre as duas metades da
+       frase ("trouxe" / "o dia") sumia junto. content:" " devolve o espaço
+       sem remover a quebra. */
+    .compact-card h2 { font-size: 1.4rem; }
+    .compact-card h2 br { display: inline; }
+    .compact-card h2 br::before { content: ' '; }
+    .compact-card .lede { font-size: 0.82rem; line-height: 1.4; }
+    .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; margin-top: 0.7rem; }
+    .stats div { padding: 0.35rem 0.45rem; }
+    .stats span { font-size: 0.62rem; }
+
+    .card-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.6rem;
+        margin-top: 0.8rem;
+    }
+
+    .card-actions .ghost-button { margin-top: 0; }
+    .chapter-card h2 { font-size: clamp(1.6rem, 5vw, 2.4rem); }
+    .dialogue-card { margin-bottom: calc(0.6rem + var(--safe-bottom)); padding: 0.75rem 1rem; }
+    .dialogue-text { font-size: 0.95rem; line-height: 1.35; margin-bottom: 0.6rem; }
+}
+
+/* Aparelho de toque: alvos de 44px e dicas sem teclado. */
+@media (pointer: coarse) {
+    .keys--board { display: none; }
+    .prompt kbd { display: none; }
+    .chapter-chip { min-height: 46px; align-items: center; }
+    .primary-button, .ghost-button { min-height: 46px; }
+    .field select, .field input[type="range"] { min-height: 44px; }
+    .dialogue-card .ghost-button { width: 100%; justify-content: center; }
+}
+
+@media (pointer: fine) {
+    .keys--touch { display: none; }
+}
+
+/* O range precisa do gesto horizontal próprio dentro do overlay que rola. */
+.field input[type="range"] { touch-action: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .pad-use[data-ready="true"] { animation: none; }
 }
