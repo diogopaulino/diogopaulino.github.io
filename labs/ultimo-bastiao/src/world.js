@@ -2,6 +2,12 @@ const B = window.BABYLON;
 
 const color = hex => B.Color3.FromHexString(hex);
 const rand = (min, max) => min + Math.random() * (max - min);
+const POLY_TEXTURES = 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k';
+const POLY_MODELS = 'https://dl.polyhaven.org/file/ph-assets/Models';
+const CASTLE_HDR = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/monkstown_castle_1k.hdr';
+const POLY_MODEL_BIN_RESOLUTION = { CheeseBox_01: '4k', Lantern_01: '4k' };
+
+const surfaceUrl = (asset, map) => `${POLY_TEXTURES}/${asset}/${asset}_${map}_1k.jpg`;
 
 function pbr(scene, name, hex, metallic = 0, roughness = .8) {
   const material = new B.PBRMaterial(name, scene);
@@ -21,59 +27,35 @@ function texture(scene, name, size, painter) {
   return dynamic;
 }
 
-function stoneTexture(scene) {
-  return texture(scene, 'rough stone', 512, (ctx, size) => {
-    ctx.fillStyle = '#77736b'; ctx.fillRect(0, 0, size, size);
-    const row = 58;
-    for (let y = -row; y < size + row; y += row) {
-      const offset = (Math.floor(y / row) % 2) * 48;
-      for (let x = -96; x < size + 96; x += 96) {
-        const px = x + offset + rand(-4, 4);
-        const py = y + rand(-2, 2);
-        const shade = Math.floor(rand(91, 132));
-        ctx.fillStyle = `rgb(${shade},${shade - 3},${shade - 8})`;
-        ctx.fillRect(px + 2, py + 2, 90 + rand(-7, 5), row - 7);
-        ctx.strokeStyle = 'rgba(35,32,28,.42)'; ctx.lineWidth = 3;
-        ctx.strokeRect(px + 1, py + 1, 92, row - 5);
-        for (let i = 0; i < 18; i += 1) {
-          ctx.fillStyle = `rgba(255,255,255,${rand(.012, .055)})`;
-          ctx.fillRect(px + rand(4, 87), py + rand(4, row - 11), rand(1, 4), rand(1, 3));
-        }
-      }
+function photoTexture(scene, path, scale, gammaSpace = true) {
+  const image = new B.Texture(path, scene, false, false, B.Texture.TRILINEAR_SAMPLINGMODE);
+  image.wrapU = B.Texture.WRAP_ADDRESSMODE;
+  image.wrapV = B.Texture.WRAP_ADDRESSMODE;
+  image.uScale = scale;
+  image.vScale = scale;
+  image.gammaSpace = gammaSpace;
+  return image;
+}
+
+function clothTexture(scene) {
+  return texture(scene, 'woven wool fibers', 512, (ctx, size) => {
+    ctx.fillStyle = '#b7afa2'; ctx.fillRect(0, 0, size, size);
+    for (let x = 0; x < size; x += 4) {
+      ctx.strokeStyle = x % 8 ? 'rgba(45,38,32,.2)' : 'rgba(255,250,236,.18)';
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 7, size); ctx.stroke();
+    }
+    for (let y = 0; y < size; y += 4) {
+      ctx.strokeStyle = y % 8 ? 'rgba(42,34,28,.18)' : 'rgba(255,250,236,.13)';
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(size, y + 5); ctx.stroke();
     }
   });
 }
 
-function earthTexture(scene) {
-  return texture(scene, 'mud and stone', 768, (ctx, size) => {
-    ctx.fillStyle = '#444239'; ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 4400; i += 1) {
-      const light = Math.floor(rand(35, 92));
-      ctx.fillStyle = `rgba(${light},${light - 4},${Math.max(18, light - 13)},${rand(.08, .34)})`;
-      const r = rand(.5, 4.5);
-      ctx.beginPath(); ctx.ellipse(rand(0, size), rand(0, size), r * 1.8, r, rand(0, Math.PI), 0, Math.PI * 2); ctx.fill();
-    }
-    for (let i = 0; i < 34; i += 1) {
-      ctx.strokeStyle = `rgba(21,19,16,${rand(.12,.28)})`; ctx.lineWidth = rand(1, 4);
-      ctx.beginPath();
-      const x = rand(0, size), y = rand(0, size);
-      ctx.moveTo(x, y); ctx.bezierCurveTo(x + rand(-40, 40), y + rand(5, 45), x + rand(-55, 55), y + rand(20, 70), x + rand(-30, 30), y + rand(45, 100)); ctx.stroke();
-    }
-  });
-}
-
-function woodTexture(scene) {
-  return texture(scene, 'aged oak', 512, (ctx, size) => {
-    ctx.fillStyle = '#68482e'; ctx.fillRect(0, 0, size, size);
-    for (let x = 0; x < size; x += 64) {
-      ctx.fillStyle = x % 128 ? '#725035' : '#5f412a'; ctx.fillRect(x, 0, 61, size);
-      ctx.fillStyle = 'rgba(20,12,7,.42)'; ctx.fillRect(x + 60, 0, 4, size);
-      for (let i = 0; i < 18; i += 1) {
-        ctx.strokeStyle = `rgba(25,14,8,${rand(.08,.25)})`; ctx.lineWidth = rand(1, 3);
-        ctx.beginPath(); const y = rand(0, size); ctx.moveTo(x, y); ctx.bezierCurveTo(x + 19, y + rand(-7,7), x + 43, y + rand(-7,7), x + 60, y + rand(-2,2)); ctx.stroke();
-      }
-    }
-  });
+function setRoughnessMap(material, image) {
+  material.metallicTexture = image;
+  material.useRoughnessFromMetallicTextureAlpha = false;
+  material.useRoughnessFromMetallicTextureGreen = true;
+  material.useMetallnessFromMetallicTextureBlue = false;
 }
 
 function particleTexture(scene, name, inner, outer) {
@@ -94,6 +76,11 @@ export function createWorld(scene, quality) {
   scene.imageProcessingConfiguration.toneMappingEnabled = true;
   scene.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
 
+  const environment = new B.HDRCubeTexture(CASTLE_HDR, scene, 128, false, true, false, true);
+  environment.rotationY = 2.18;
+  scene.environmentTexture = environment;
+  scene.environmentIntensity = .82;
+
   const materials = {
     stone: pbr(scene, 'castle stone', '#8a867c', 0, .94),
     stoneDark: pbr(scene, 'wet stone', '#53534f', 0, .98),
@@ -107,12 +94,44 @@ export function createWorld(scene, quality) {
     leather: pbr(scene, 'leather', '#493124', .01, .87),
     gold: pbr(scene, 'old gold', '#a88446', .78, .38)
   };
-  materials.stone.albedoTexture = stoneTexture(scene);
-  materials.stone.albedoTexture.uScale = 4.8; materials.stone.albedoTexture.vScale = 2.6;
-  materials.earth.albedoTexture = earthTexture(scene);
-  materials.earth.albedoTexture.uScale = 7; materials.earth.albedoTexture.vScale = 7;
-  materials.wood.albedoTexture = woodTexture(scene);
-  materials.wood.albedoTexture.uScale = 2; materials.wood.albedoTexture.vScale = 2;
+  materials.stone.albedoTexture = photoTexture(scene, surfaceUrl('castle_brick_01', 'diff'), 3.8);
+  materials.stone.bumpTexture = photoTexture(scene, surfaceUrl('castle_brick_01', 'nor_gl'), 3.8, false);
+  materials.stone.bumpTexture.level = .58;
+  setRoughnessMap(materials.stone, photoTexture(scene, surfaceUrl('castle_brick_01', 'rough'), 3.8, false));
+  materials.stoneDark.albedoTexture = materials.stone.albedoTexture;
+  materials.stoneDark.bumpTexture = materials.stone.bumpTexture;
+  materials.stoneDark.metallicTexture = materials.stone.metallicTexture;
+  materials.stoneDark.useRoughnessFromMetallicTextureAlpha = false;
+  materials.stoneDark.useRoughnessFromMetallicTextureGreen = true;
+  materials.stoneDark.useMetallnessFromMetallicTextureBlue = false;
+  materials.earth.albedoTexture = photoTexture(scene, surfaceUrl('brown_mud_03', 'diff'), 8);
+  materials.earth.bumpTexture = photoTexture(scene, surfaceUrl('brown_mud_03', 'nor_gl'), 8, false);
+  materials.earth.bumpTexture.level = .72;
+  setRoughnessMap(materials.earth, photoTexture(scene, surfaceUrl('brown_mud_03', 'rough'), 8, false));
+  materials.wood.albedoTexture = photoTexture(scene, surfaceUrl('rough_wood', 'diff'), 2.4);
+  materials.wood.bumpTexture = photoTexture(scene, surfaceUrl('rough_wood', 'nor_gl'), 2.4, false);
+  materials.wood.bumpTexture.level = .5;
+  setRoughnessMap(materials.wood, photoTexture(scene, surfaceUrl('rough_wood', 'rough'), 2.4, false));
+  materials.iron.albedoTexture = photoTexture(scene, surfaceUrl('metal_plate', 'diff'), 3.2);
+  materials.iron.bumpTexture = photoTexture(scene, surfaceUrl('metal_plate', 'nor_gl'), 3.2, false);
+  materials.iron.bumpTexture.level = .24;
+  setRoughnessMap(materials.iron, photoTexture(scene, surfaceUrl('metal_plate', 'rough'), 3.2, false));
+  materials.gold.albedoTexture = materials.iron.albedoTexture;
+  materials.gold.bumpTexture = materials.iron.bumpTexture;
+  materials.gold.metallicTexture = materials.iron.metallicTexture;
+  materials.gold.useRoughnessFromMetallicTextureAlpha = false;
+  materials.gold.useRoughnessFromMetallicTextureGreen = true;
+  materials.gold.useMetallnessFromMetallicTextureBlue = false;
+  materials.leather.albedoTexture = photoTexture(scene, surfaceUrl('brown_leather', 'albedo'), 2.8);
+  materials.leather.bumpTexture = photoTexture(scene, surfaceUrl('brown_leather', 'nor_gl'), 2.8, false);
+  materials.leather.bumpTexture.level = .34;
+  setRoughnessMap(materials.leather, photoTexture(scene, surfaceUrl('brown_leather', 'rough'), 2.8, false));
+  materials.grass.albedoTexture = materials.earth.albedoTexture;
+  materials.grass.bumpTexture = materials.earth.bumpTexture;
+  const weave = clothTexture(scene);
+  weave.uScale = 5; weave.vScale = 8;
+  materials.clothRed.albedoTexture = weave;
+  materials.clothBlack.albedoTexture = weave;
 
   const hemi = new B.HemisphericLight('overcast sky', new B.Vector3(.15, 1, -.2), scene);
   hemi.intensity = .56;
@@ -200,38 +219,9 @@ export function createWorld(scene, quality) {
     mountain.receiveShadows = true;
   }
 
-  // Céu procedural com horizonte quente e nuvens em camadas.
-  const sky = B.MeshBuilder.CreateSphere('storm sky', { diameter: 430, segments: 20, sideOrientation: B.Mesh.BACKSIDE }, scene);
-  const skyMat = new B.StandardMaterial('storm sky material', scene);
-  skyMat.disableLighting = true;
-  skyMat.emissiveTexture = texture(scene, 'painted storm sky', 1024, (ctx, size) => {
-    const gradient = ctx.createLinearGradient(0, 0, 0, size);
-    gradient.addColorStop(0, '#17212c'); gradient.addColorStop(.47, '#39444a'); gradient.addColorStop(.72, '#8b6a4d'); gradient.addColorStop(1, '#262825');
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 120; i += 1) {
-      ctx.fillStyle = `rgba(${Math.floor(rand(23,70))},${Math.floor(rand(28,69))},${Math.floor(rand(34,73))},${rand(.07,.25)})`;
-      ctx.beginPath(); ctx.ellipse(rand(0,size), rand(90,600), rand(45,180), rand(8,32), rand(-.1,.1), 0, Math.PI * 2); ctx.fill();
-    }
-  });
-  skyMat.emissiveTexture.vScale = .98;
-  skyMat.backFaceCulling = false;
-  skyMat.disableDepthWrite = true;
-  sky.material = skyMat;
-  sky.infiniteDistance = true;
-  sky.isPickable = false;
-
-  // Vegetação e destroços dão escala e escondem a forma simples das muralhas.
-  for (let i = 0; i < quality.vegetation; i += 1) {
-    const outside = i < quality.vegetation * .68;
-    const x = outside ? (Math.random() > .5 ? rand(48, 78) : rand(-78, -48)) : rand(-36, 36);
-    const z = outside ? rand(-70, 70) : rand(-33, 34);
-    if (!outside && Math.hypot(x, z) < 15) continue;
-    const trunk = B.MeshBuilder.CreateCylinder(`pine trunk ${i}`, { height: rand(2.6, 4.7), diameterTop: .18, diameterBottom: .48, tessellation: 7 }, scene);
-    trunk.position.copyFromFloats(x, 1.5, z); trunk.material = materials.wood;
-    const crown = B.MeshBuilder.CreateCylinder(`pine crown ${i}`, { height: rand(4, 7), diameterTop: 0, diameterBottom: rand(2.4, 4.1), tessellation: 8 }, scene);
-    crown.position.copyFromFloats(x, rand(4.4, 5.5), z); crown.material = materials.grass;
-    if (!outside) { addShadow(trunk); addShadow(crown); }
-  }
+  // O céu e os reflexos vêm de uma captura HDR real de ruínas de castelo.
+  const sky = scene.createDefaultSkybox(environment, true, 430, .24);
+  if (sky) { sky.name = 'Monkstown castle HDR sky'; sky.isPickable = false; }
 
   for (let i = 0; i < 22; i += 1) {
     const angle = rand(0, Math.PI * 2); const radius = rand(14, 36);
@@ -239,16 +229,6 @@ export function createWorld(scene, quality) {
     rock.position.copyFromFloats(Math.cos(angle) * radius, rand(.08, .35), Math.sin(angle) * radius);
     rock.scaling.y = rand(.4, .8); rock.rotation.y = rand(0, Math.PI); rock.material = materials.stoneDark; addShadow(rock);
   }
-
-  const barrel = (x, z, rotation = 0) => {
-    const body = B.MeshBuilder.CreateCylinder('broken barrel', { height: 1.4, diameter: 1.05, tessellation: 12 }, scene);
-    body.position.copyFromFloats(x, .7, z); body.rotation.z = rotation; body.material = materials.wood; addShadow(body);
-    [-.48, .48].forEach(y => {
-      const ring = B.MeshBuilder.CreateTorus('barrel iron hoop', { diameter: 1.06, thickness: .07, tessellation: 12 }, scene);
-      ring.parent = body; ring.position.y = y; ring.material = materials.iron; addShadow(ring);
-    });
-  };
-  barrel(-21, -17, 0); barrel(-20, -15.8, Math.PI / 2); barrel(25, 19, Math.PI / 2);
 
   // Estandartes no portão.
   const banners = [];
@@ -332,5 +312,83 @@ export function createWorld(scene, quality) {
     }
   }
 
-  return { materials, shadow, addShadow, update, burst, gate, pipeline };
+  return { materials, shadow, addShadow, update, burst, gate, pipeline, environment, propRoots: [], propContainers: [] };
+}
+
+async function loadPolyHavenModel(scene, asset) {
+  const gltfUrl = `${POLY_MODELS}/gltf/1k/${asset}/${asset}_1k.gltf`;
+  const response = await fetch(gltfUrl);
+  if (!response.ok) throw new Error(`Falha ao carregar ${asset}: HTTP ${response.status}`);
+  const document = await response.json();
+  document.buffers?.forEach(buffer => {
+    if (buffer.uri && !buffer.uri.startsWith('data:')) {
+      const filename = buffer.uri.split('/').pop();
+      const resolution = POLY_MODEL_BIN_RESOLUTION[asset] || '8k';
+      buffer.uri = `${POLY_MODELS}/gltf/${resolution}/${asset}/${filename}`;
+    }
+  });
+  document.images?.forEach(image => {
+    if (image.uri && !image.uri.startsWith('data:')) {
+      const filename = image.uri.split('/').pop();
+      image.uri = `${POLY_MODELS}/jpg/1k/${asset}/${filename}`;
+    }
+  });
+  const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(document)], { type: 'model/gltf+json' }));
+  try {
+    return await B.SceneLoader.LoadAssetContainerAsync('', objectUrl, scene, undefined, '.gltf');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function instantiateProp(scene, world, asset, placements) {
+  const container = await loadPolyHavenModel(scene, asset);
+  placements.forEach((placement, index) => {
+    const name = `${asset}-${index}`;
+    const root = new B.TransformNode(name, scene);
+    root.position.copyFromFloats(...placement.position);
+    root.rotation.copyFromFloats(...(placement.rotation || [0, 0, 0]));
+    const scale = placement.scale || 1;
+    root.scaling.copyFromFloats(scale, scale, scale);
+    const entries = container.instantiateModelsToScene(nodeName => `${name}-${nodeName}`, true, { doNotInstantiate: true });
+    entries.rootNodes.forEach(node => { node.parent = root; });
+    root.getChildMeshes(false).forEach(mesh => {
+      mesh.isPickable = false;
+      mesh.receiveShadows = true;
+      world.addShadow(mesh);
+    });
+    world.propRoots.push(root);
+  });
+  world.propContainers.push(container);
+}
+
+/** Acrescenta objetos fotogramétricos sem bloquear o início da cena base. */
+export async function loadWorldAssets(scene, world) {
+  const assets = [
+    instantiateProp(scene, world, 'wine_barrel_01', [
+      { position: [-21, 0, -17], rotation: [0, .32, 0], scale: 1.18 },
+      { position: [-20, .62, -15.5], rotation: [0, -.7, Math.PI / 2], scale: 1.18 },
+      { position: [25, .62, 19], rotation: [Math.PI / 2, .2, 0], scale: 1.12 }
+    ]),
+    instantiateProp(scene, world, 'wooden_bucket_01', [
+      { position: [-18.6, 0, -17.5], rotation: [0, 1.1, 0], scale: 1.25 },
+      { position: [27.2, 0, 18.3], rotation: [0, -1.3, 0], scale: 1.18 },
+      { position: [-31.2, 0, 23], rotation: [.12, .4, -.18], scale: 1.12 }
+    ]),
+    instantiateProp(scene, world, 'cannon_01', [
+      { position: [29, 0, -19], rotation: [0, -2.22, 0], scale: 1.08 }
+    ]),
+    instantiateProp(scene, world, 'CheeseBox_01', [
+      { position: [24.2, 0, 20.2], rotation: [0, -.3, 0], scale: 1.15 },
+      { position: [23.8, .64, 20], rotation: [.04, .52, -.03], scale: 1.05 },
+      { position: [-22.5, 0, -16.2], rotation: [0, 1.2, 0], scale: 1.08 }
+    ]),
+    instantiateProp(scene, world, 'Lantern_01', [
+      { position: [-18.8, 0, -15.8], rotation: [0, -.8, 0], scale: 1.15 },
+      { position: [27.4, 0, 17.1], rotation: [0, .35, 0], scale: 1.08 }
+    ])
+  ];
+  const results = await Promise.allSettled(assets);
+  const failures = results.filter(result => result.status === 'rejected');
+  if (failures.length) console.warn('Alguns objetos realistas não puderam ser carregados.', failures);
 }
