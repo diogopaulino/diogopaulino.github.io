@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#120c0a">
     <title>Xadrez — atelier 3D que ensina | Diogo Paulino</title>
     <meta name="description"
-        content="Xadrez 3D em three.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas. Um lab de Diogo Paulino.">
+        content="Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas. Um lab de Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/xadrez/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -22,26 +22,18 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/xadrez/">
     <meta property="og:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
     <meta property="og:description"
-        content="Peças Staunton com reflexo, tabuleiro laqueado e um mestre que ensina a jogar — three.js no navegador.">
+        content="Peças Staunton com reflexo, tabuleiro laqueado e um mestre que ensina a jogar — Babylon.js no navegador.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
     <meta name="twitter:description"
-        content="Xadrez 3D em three.js: marfim, ébano, reflexos e lições. Um lab de Diogo Paulino.">
+        content="Xadrez 3D em Babylon.js: marfim, ébano, reflexos e lições. Um lab de Diogo Paulino.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=8">
     <link rel="stylesheet" href="style.css">
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -50,7 +42,7 @@
           "@type": "WebApplication",
           "name": "Xadrez",
           "url": "https://diogopaulino.com.br/labs/xadrez/",
-          "description": "Xadrez 3D em three.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas.",
+          "description": "Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -144,7 +136,7 @@
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> three.js · PBR · Staunton</p>
+                <p class="eyebrow"><i></i> Babylon.js · PBR · Staunton</p>
                 <h2>Polindo<br>o ébano.</h2>
                 <p class="lede" id="loadingText">O atelier acende as lâmpadas.</p>
                 <div class="load-bar" aria-hidden="true"><i id="loadingFill"></i></div>
@@ -155,7 +147,7 @@
             <div class="overlay-card intro-card">
                 <p class="eyebrow"><i></i> Atelier 3D</p>
                 <h2>Xadrez</h2>
-                <p class="lede">Peças Staunton de marfim e ébano sobre mogno laqueado. Um mestre comenta cada lance —
+                <p class="lede">Peças Staunton de marfim e ébano sobre mogno laqueado em Babylon.js. Um mestre comenta cada lance —
                     da primeira casa até o xeque-mate.</p>
                 <ul class="feature-list">
                     <li>Regras FIDE: roque, en passant, promoção, xeque e mate</li>
@@ -247,25 +239,9 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="/labs/shared.js?v=7" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
     <script type="module" src="src/main.js"></script>
 </body>
 

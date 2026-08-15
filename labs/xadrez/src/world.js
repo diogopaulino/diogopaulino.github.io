@@ -1,13 +1,10 @@
 /**
- * Atelier — tabuleiro laqueado, mesa de mogno, piso de mármore com reflexo.
+ * Atelier — tabuleiro laqueado, mesa de mogno, piso de mármore com reflexo em Babylon.js.
  *
- * Casa = 1 u. Origem no centro. Brancas em z positivo (câmera inicial).
+ * Casa = 1 u. Origem no centro. Brancas em z positivo.
  * Destaques: disco de lance legal, anel de captura, brilho de seleção e xeque.
  */
 
-import * as THREE from 'three';
-import { Reflector } from 'three/addons/objects/Reflector.js';
-import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { fileOf, rankOf } from './engine.js';
 
 export const SQUARE = 1;
@@ -37,320 +34,292 @@ export function worldToSquare(x, z, flip = false) {
     return r * 8 + f;
 }
 
-function phys(tex, extra = {}) {
-    return new THREE.MeshPhysicalMaterial({
-        map: tex.map,
-        normalMap: tex.normalMap,
-        roughnessMap: tex.roughnessMap,
-        roughness: 0.28,
-        metalness: 0.04,
-        clearcoat: 0.7,
-        clearcoatRoughness: 0.2,
-        envMapIntensity: 1.1,
-        ...extra
-    });
+function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
+    const mat = new BABYLON.PBRMaterial(name, scene);
+    if (texMap) {
+        if (texMap.map) mat.albedoTexture = texMap.map;
+        if (texMap.normalMap) mat.bumpTexture = texMap.normalMap;
+    }
+    mat.roughness = extra.roughness !== undefined ? extra.roughness : 0.35;
+    mat.metallic = extra.metallic !== undefined ? extra.metallic : 0.04;
+    mat.clearCoat.isEnabled = true;
+    mat.clearCoat.intensity = extra.clearcoat !== undefined ? extra.clearcoat : 0.6;
+    mat.clearCoat.roughness = 0.2;
+    if (extra.color) {
+        mat.albedoColor = extra.color;
+    }
+    return mat;
 }
 
-export function buildWorld(tex, quality) {
-    const root = new THREE.Group();
-    const board = new THREE.Group();
-    board.name = 'board';
-    root.add(board);
+export function buildWorld(BABYLON, scene, tex, quality) {
+    const lightMat = makePhysMat(BABYLON, 'mat_sq_light', scene, tex.maple, {
+        color: new BABYLON.Color3(0.96, 0.87, 0.73),
+        clearcoat: 0.35,
+        roughness: 0.38
+    });
+    const darkMat = makePhysMat(BABYLON, 'mat_sq_dark', scene, tex.walnut, {
+        color: new BABYLON.Color3(0.32, 0.16, 0.08),
+        clearcoat: 0.4,
+        roughness: 0.42
+    });
 
-    const lightMat = phys(tex.maple, {
-        color: 0xf4deba, clearcoat: 0.28, roughness: 0.42, envMapIntensity: 0.45
-    });
-    const darkMat = phys(tex.walnut, {
-        color: 0x4a2410, clearcoat: 0.32, roughness: 0.48, envMapIntensity: 0.4
-    });
     const squares = [];
-    const squareGeo = new THREE.BoxGeometry(SQUARE * 0.985, 0.07, SQUARE * 0.985);
-
     for (let r = 0; r < 8; r++) {
         for (let f = 0; f < 8; f++) {
             const dark = (f + r) % 2 === 0;
-            const mesh = new THREE.Mesh(squareGeo, dark ? darkMat : lightMat);
-            mesh.position.set(f - ORIGIN, 0.035, ORIGIN - r);
-            mesh.receiveShadow = true;
-            mesh.castShadow = true;
-            mesh.userData.index = r * 8 + f;
-            mesh.userData.kind = 'square';
-            board.add(mesh);
-            squares.push(mesh);
+            const sq = BABYLON.MeshBuilder.CreateBox(`sq_${r}_${f}`, {
+                width: SQUARE * 0.985,
+                height: 0.07,
+                depth: SQUARE * 0.985
+            }, scene);
+            sq.position.set(f - ORIGIN, 0.035, ORIGIN - r);
+            sq.material = dark ? darkMat : lightMat;
+            sq.receiveShadows = true;
+            sq.metadata = { kind: 'square', index: r * 8 + f };
+            sq.isPickable = true;
+            squares.push(sq);
         }
     }
 
-    const frameMat = phys(tex.mahogany, { color: 0x4a2212, clearcoat: 0.8, roughness: 0.3 });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(9.15, 0.14, 9.15), frameMat);
-    frame.position.y = -0.08;
-    frame.receiveShadow = true;
-    frame.castShadow = true;
-    board.add(frame);
+    // Moldura do tabuleiro (Mogno laqueado)
+    const frameMat = makePhysMat(BABYLON, 'mat_frame', scene, tex.mahogany, {
+        color: new BABYLON.Color3(0.30, 0.14, 0.08),
+        clearcoat: 0.85,
+        roughness: 0.25
+    });
+    const frame = BABYLON.MeshBuilder.CreateBox('board_frame', {
+        width: 9.25,
+        height: 0.16,
+        depth: 9.25
+    }, scene);
+    frame.position.y = -0.06;
+    frame.material = frameMat;
+    frame.receiveShadows = true;
+    frame.isPickable = false;
 
-    const felt = new THREE.Mesh(
-        new THREE.BoxGeometry(8.02, 0.02, 8.02),
-        new THREE.MeshStandardMaterial({
-            map: tex.felt.map,
-            roughness: 0.95,
-            metalness: 0,
-            color: 0x1a5a38
-        })
-    );
+    // Feltro sob as casas
+    const feltMat = new BABYLON.PBRMaterial('mat_felt', scene);
+    feltMat.albedoColor = new BABYLON.Color3(0.08, 0.28, 0.16);
+    feltMat.roughness = 0.95;
+    feltMat.metallic = 0.0;
+    const felt = BABYLON.MeshBuilder.CreateBox('board_felt', {
+        width: 8.04,
+        height: 0.02,
+        depth: 8.04
+    }, scene);
     felt.position.y = 0.0;
-    felt.receiveShadow = true;
-    board.add(felt);
+    felt.material = feltMat;
+    felt.isPickable = false;
 
-    const labels = makeCoordLabels(tex);
-    board.add(labels);
-
-    const table = new THREE.Mesh(new THREE.BoxGeometry(16, 0.28, 12), phys(tex.mahogany, {
-        color: 0x3d1a0e, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.08
-    }));
+    // Mesa de mogno
+    const tableMat = makePhysMat(BABYLON, 'mat_table', scene, tex.mahogany, {
+        color: new BABYLON.Color3(0.24, 0.10, 0.06),
+        roughness: 0.16,
+        clearcoat: 0.95
+    });
+    const table = BABYLON.MeshBuilder.CreateBox('table_top', {
+        width: 16,
+        height: 0.28,
+        depth: 12
+    }, scene);
     table.position.y = -0.28;
-    table.receiveShadow = true;
-    table.castShadow = true;
-    root.add(table);
+    table.material = tableMat;
+    table.receiveShadows = true;
+    table.isPickable = false;
 
-    const legGeo = new THREE.CylinderGeometry(0.22, 0.28, 2.4, 12);
-    const legMat = phys(tex.mahogany, { color: 0x2a120a });
+    // Pés da mesa
+    const legMat = makePhysMat(BABYLON, 'mat_leg', scene, tex.mahogany, {
+        color: new BABYLON.Color3(0.18, 0.08, 0.04),
+        roughness: 0.3
+    });
     for (const [x, z] of [[-6.8, -4.6], [6.8, -4.6], [-6.8, 4.6], [6.8, 4.6]]) {
-        const leg = new THREE.Mesh(legGeo, legMat);
+        const leg = BABYLON.MeshBuilder.CreateCylinder(`leg_${x}_${z}`, {
+            height: 2.4,
+            diameterTop: 0.44,
+            diameterBottom: 0.56,
+            tessellation: 16
+        }, scene);
         leg.position.set(x, -1.62, z);
-        leg.castShadow = true;
-        root.add(leg);
+        leg.material = legMat;
+        leg.isPickable = false;
     }
 
-    const floor = new THREE.Mesh(
-        new THREE.CircleGeometry(18, 64),
-        phys(tex.marble, { color: 0xc8c0b4, roughness: 0.12, clearcoat: 1, metalness: 0.08 })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -2.85;
-    floor.receiveShadow = true;
-    root.add(floor);
-
-    let mirror = null;
-    if (quality.reflect > 0) {
-        mirror = new Reflector(new THREE.CircleGeometry(10, 48), {
-            clipBias: 0.003,
-            textureWidth: quality.reflect,
-            textureHeight: quality.reflect,
-            color: 0x6a5a48
-        });
-        mirror.rotation.x = -Math.PI / 2;
-        mirror.position.y = -2.84;
-        root.add(mirror);
-    }
-
-    const rug = new THREE.Mesh(
-        new THREE.CircleGeometry(7.5, 48),
-        new THREE.MeshStandardMaterial({
-            map: tex.felt.map,
-            color: 0x6a1c1c,
-            roughness: 0.9
-        })
-    );
-    rug.rotation.x = -Math.PI / 2;
+    // Tapete de veludo bordô sob a mesa
+    const rugMat = new BABYLON.PBRMaterial('mat_rug', scene);
+    rugMat.albedoColor = new BABYLON.Color3(0.42, 0.10, 0.10);
+    rugMat.roughness = 0.92;
+    rugMat.metallic = 0.0;
+    const rug = BABYLON.MeshBuilder.CreateDisc('rug', {
+        radius: 7.5,
+        tessellation: 48
+    }, scene);
+    rug.rotation.x = Math.PI / 2;
     rug.position.y = -2.83;
-    rug.receiveShadow = true;
-    root.add(rug);
+    rug.material = rugMat;
+    rug.receiveShadows = true;
+    rug.isPickable = false;
 
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 });
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(28, 12), wallMat);
-    back.position.set(0, 2.2, -14);
-    root.add(back);
-    const sideL = new THREE.Mesh(new THREE.PlaneGeometry(28, 12), wallMat);
-    sideL.rotation.y = Math.PI / 2;
-    sideL.position.set(-14, 2.2, 0);
-    root.add(sideL);
-    const sideR = sideL.clone();
-    sideR.position.x = 14;
-    sideR.rotation.y = -Math.PI / 2;
-    root.add(sideR);
-
-    const lamp = makeLamp();
-    lamp.position.set(6.2, 0.1, -3.4);
-    root.add(lamp);
-
-    const marks = buildMarks();
-    root.add(marks.group);
-
-    return { root, board, squares, marks, mirror, lamp };
-}
-
-function makeCoordLabels() {
-    const g = new THREE.Group();
-    const files = 'abcdefgh';
-    const make = (text) => {
-        const el = document.createElement('canvas');
-        el.width = 128;
-        el.height = 128;
-        const ctx = el.getContext('2d');
-        ctx.fillStyle = '#e6d2a8';
-        ctx.font = '700 78px Cinzel, Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, 64, 68);
-        const tex = new THREE.CanvasTexture(el);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.28), mat);
-        m.rotation.x = -Math.PI / 2;
-        return m;
-    };
-    for (let i = 0; i < 8; i++) {
-        const f = make(files[i]);
-        f.position.set(i - ORIGIN, 0.12, ORIGIN + 0.62);
-        g.add(f);
-        const f2 = make(files[i]);
-        f2.position.set(i - ORIGIN, 0.12, -ORIGIN - 0.62);
-        f2.rotation.z = Math.PI;
-        g.add(f2);
-        const r = make(String(i + 1));
-        r.position.set(-ORIGIN - 0.62, 0.12, ORIGIN - i);
-        g.add(r);
-        const r2 = make(String(i + 1));
-        r2.position.set(ORIGIN + 0.62, 0.12, ORIGIN - i);
-        g.add(r2);
-    }
-    return g;
-}
-
-function makeLamp() {
-    const g = new THREE.Group();
-    const brass = new THREE.MeshPhysicalMaterial({
-        color: 0xb8863a, metalness: 1, roughness: 0.22, envMapIntensity: 1.4
+    // Piso de mármore do salão
+    const floorMat = makePhysMat(BABYLON, 'mat_floor', scene, tex.marble, {
+        color: new BABYLON.Color3(0.85, 0.82, 0.78),
+        roughness: 0.14,
+        clearcoat: 0.9,
+        metallic: 0.05
     });
-    const shade = new THREE.MeshPhysicalMaterial({
-        color: 0xf0d8a8, roughness: 0.6, transmission: 0.35, thickness: 0.2, emissive: 0x6a4010, emissiveIntensity: 0.25
-    });
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.36, 0.12, 20), brass);
-    g.add(base);
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.6, 12), brass);
-    stem.position.y = 0.86;
-    g.add(stem);
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.38, 20, 1, true), shade);
-    hat.position.y = 1.72;
-    g.add(hat);
-    const bulb = new THREE.PointLight(0xffcc88, 3.2, 9, 1.6);
-    bulb.position.y = 1.55;
-    bulb.castShadow = false;
-    g.add(bulb);
-    return g;
+    const floor = BABYLON.MeshBuilder.CreateDisc('floor', {
+        radius: 18,
+        tessellation: 64
+    }, scene);
+    floor.rotation.x = Math.PI / 2;
+    floor.position.y = -2.85;
+    floor.material = floorMat;
+    floor.receiveShadows = true;
+    floor.isPickable = false;
+
+    const marks = buildMarks(BABYLON, scene);
+
+    return { squares, frame, table, floor, marks };
 }
 
-export function buildMarks() {
-    const group = new THREE.Group();
-    group.name = 'marks';
+function buildMarks(BABYLON, scene) {
+    const dotMat = new BABYLON.StandardMaterial('mat_mark_dot', scene);
+    dotMat.diffuseColor = new BABYLON.Color3(0.15, 0.85, 0.45);
+    dotMat.emissiveColor = new BABYLON.Color3(0.2, 0.75, 0.35);
+    dotMat.alpha = 0.85;
+
+    const capMat = new BABYLON.StandardMaterial('mat_mark_cap', scene);
+    capMat.diffuseColor = new BABYLON.Color3(0.95, 0.25, 0.25);
+    capMat.emissiveColor = new BABYLON.Color3(0.85, 0.15, 0.15);
+    capMat.alpha = 0.9;
+
+    const selMat = new BABYLON.StandardMaterial('mat_mark_sel', scene);
+    selMat.diffuseColor = new BABYLON.Color3(0.95, 0.8, 0.2);
+    selMat.emissiveColor = new BABYLON.Color3(0.85, 0.65, 0.1);
+    selMat.alpha = 0.85;
+
+    const lastMat = new BABYLON.StandardMaterial('mat_mark_last', scene);
+    lastMat.diffuseColor = new BABYLON.Color3(0.85, 0.65, 0.2);
+    lastMat.emissiveColor = new BABYLON.Color3(0.5, 0.35, 0.1);
+    lastMat.alpha = 0.45;
+
+    const checkMat = new BABYLON.StandardMaterial('mat_mark_check', scene);
+    checkMat.diffuseColor = new BABYLON.Color3(1.0, 0.1, 0.1);
+    checkMat.emissiveColor = new BABYLON.Color3(0.9, 0.05, 0.05);
+    checkMat.alpha = 0.85;
+
+    const hintMat = new BABYLON.StandardMaterial('mat_mark_hint', scene);
+    hintMat.diffuseColor = new BABYLON.Color3(0.3, 0.85, 1.0);
+    hintMat.emissiveColor = new BABYLON.Color3(0.2, 0.6, 0.9);
+    hintMat.alpha = 0.9;
 
     const dots = [];
-    const dotGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.04, 20);
-    const dotMat = new THREE.MeshBasicMaterial({
-        color: 0xd4b06a, transparent: true, opacity: 0.72, depthWrite: false
-    });
-    const capGeo = new THREE.RingGeometry(0.28, 0.40, 28);
-    const capMat = new THREE.MeshBasicMaterial({
-        color: 0xc45c48, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false
-    });
-    const caps = [];
-    for (let i = 0; i < 32; i++) {
-        const d = new THREE.Mesh(dotGeo, dotMat.clone());
-        d.visible = false;
-        d.position.y = 0.09;
-        group.add(d);
+    for (let i = 0; i < 28; i++) {
+        const d = BABYLON.MeshBuilder.CreateDisc(`dot_${i}`, { radius: 0.16, tessellation: 24 }, scene);
+        d.rotation.x = Math.PI / 2;
+        d.material = dotMat;
+        d.isVisible = false;
+        d.isPickable = false;
         dots.push(d);
-        const c = new THREE.Mesh(capGeo, capMat.clone());
-        c.rotation.x = -Math.PI / 2;
-        c.visible = false;
-        c.position.y = 0.09;
-        group.add(c);
+    }
+
+    const caps = [];
+    for (let i = 0; i < 16; i++) {
+        const c = BABYLON.MeshBuilder.CreateTorus(`cap_${i}`, { diameter: 0.82, thickness: 0.06, tessellation: 32 }, scene);
+        c.material = capMat;
+        c.isVisible = false;
+        c.isPickable = false;
         caps.push(c);
     }
 
-    const selectGeo = new THREE.RingGeometry(0.42, 0.50, 32);
-    const select = new THREE.Mesh(selectGeo, new THREE.MeshBasicMaterial({
-        color: 0xf0d48a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false
-    }));
-    select.rotation.x = -Math.PI / 2;
-    select.position.y = 0.1;
-    select.visible = false;
-    group.add(select);
+    const select = BABYLON.MeshBuilder.CreateTorus('mark_select', { diameter: 0.88, thickness: 0.07, tessellation: 32 }, scene);
+    select.material = selMat;
+    select.isVisible = false;
+    select.isPickable = false;
 
-    const lastFrom = select.clone();
-    lastFrom.material = new THREE.MeshBasicMaterial({
-        color: 0x7aa0d4, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false
-    });
-    const lastTo = lastFrom.clone();
-    lastTo.material = lastFrom.material.clone();
-    group.add(lastFrom, lastTo);
+    const lastFrom = BABYLON.MeshBuilder.CreateDisc('mark_last_from', { radius: 0.44, tessellation: 4 }, scene);
+    lastFrom.rotation.x = Math.PI / 2;
+    lastFrom.rotation.y = Math.PI / 4;
+    lastFrom.material = lastMat;
+    lastFrom.isVisible = false;
+    lastFrom.isPickable = false;
 
-    const check = new THREE.Mesh(
-        new THREE.RingGeometry(0.36, 0.52, 32),
-        new THREE.MeshBasicMaterial({
-            color: 0xe05040, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false
-        })
-    );
-    check.rotation.x = -Math.PI / 2;
-    check.position.y = 0.11;
-    check.visible = false;
-    group.add(check);
+    const lastTo = BABYLON.MeshBuilder.CreateDisc('mark_last_to', { radius: 0.44, tessellation: 4 }, scene);
+    lastTo.rotation.x = Math.PI / 2;
+    lastTo.rotation.y = Math.PI / 4;
+    lastTo.material = lastMat;
+    lastTo.isVisible = false;
+    lastTo.isPickable = false;
 
-    const hint = select.clone();
-    hint.material = new THREE.MeshBasicMaterial({
-        color: 0x6ad4a0, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false
-    });
-    group.add(hint);
+    const check = BABYLON.MeshBuilder.CreateTorus('mark_check', { diameter: 0.92, thickness: 0.08, tessellation: 32 }, scene);
+    check.material = checkMat;
+    check.isVisible = false;
+    check.isPickable = false;
 
-    return { group, dots, caps, select, lastFrom, lastTo, check, hint };
+    const hint = BABYLON.MeshBuilder.CreateTorus('mark_hint', { diameter: 0.86, thickness: 0.06, tessellation: 32 }, scene);
+    hint.material = hintMat;
+    hint.isVisible = false;
+    hint.isPickable = false;
+
+    return { dots, caps, select, lastFrom, lastTo, check, hint };
 }
 
-export function placeMark(mesh, index, flip) {
-    const p = squareToWorld(index, flip);
-    mesh.position.x = p.x;
-    mesh.position.z = p.z;
-    mesh.visible = true;
+export function placeMark(mesh, index, flip = false) {
+    if (!mesh || index < 0) return;
+    const pos = squareToWorld(index, flip);
+    mesh.position.set(pos.x, 0.075, pos.z);
+    mesh.isVisible = true;
 }
 
-export function setupLights(scene, quality) {
-    RectAreaLightUniformsLib.init();
+export function setupLights(BABYLON, scene, quality) {
+    // Luz ambiente suave
+    const hemi = new BABYLON.HemisphericLight('hemi_light', new BABYLON.Vector3(0, 1, 0), scene);
+    hemi.diffuse = new BABYLON.Color3(0.7, 0.65, 0.58);
+    hemi.groundColor = new BABYLON.Color3(0.25, 0.20, 0.15);
+    hemi.intensity = 0.85;
 
-    const hemi = new THREE.HemisphereLight(0x9eb4d4, 0x3a2214, 0.45);
-    scene.add(hemi);
+    // Sol / Luz direcionada com sombras
+    const sun = new BABYLON.DirectionalLight('sun_light', new BABYLON.Vector3(-4, -10, 6).normalize(), scene);
+    sun.position = new BABYLON.Vector3(8, 18, -12);
+    sun.diffuse = new BABYLON.Color3(1.0, 0.95, 0.88);
+    sun.intensity = 1.6;
 
-    const key = new THREE.DirectionalLight(0xffe6c4, 1.65);
-    key.position.set(4.5, 10, 6.5);
-    key.castShadow = quality.shadows;
+    let shadowGen = null;
     if (quality.shadows) {
-        key.shadow.mapSize.set(quality.shadowMap, quality.shadowMap);
-        key.shadow.camera.near = 1;
-        key.shadow.camera.far = 28;
-        key.shadow.camera.left = -10;
-        key.shadow.camera.right = 10;
-        key.shadow.camera.top = 10;
-        key.shadow.camera.bottom = -10;
-        key.shadow.bias = -0.0002;
-        key.shadow.normalBias = 0.03;
+        shadowGen = new BABYLON.ShadowGenerator(quality.shadowMap || 2048, sun);
+        shadowGen.usePoissonSampling = true;
+        shadowGen.bias = 0.001;
+        shadowGen.normalBias = 0.002;
     }
-    scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0x88a4cc, 0.55);
-    fill.position.set(-6, 5, -4);
-    scene.add(fill);
+    // Ponto de luz quente sobre a mesa
+    const warmLamp = new BABYLON.PointLight('warm_lamp', new BABYLON.Vector3(0, 5, 0), scene);
+    warmLamp.diffuse = new BABYLON.Color3(1.0, 0.85, 0.65);
+    warmLamp.intensity = 0.6;
+    warmLamp.range = 14;
 
-    const windowLight = new THREE.RectAreaLight(0xc8dcff, 8, 6, 4);
-    windowLight.position.set(0, 4.2, -13.2);
-    windowLight.lookAt(0, 0.5, 0);
-    scene.add(windowLight);
+    return { hemi, sun, shadowGen, warmLamp };
+}
 
-    const chandelier = new THREE.SpotLight(0xffd9a8, 3.2, 22, 0.55, 0.45, 1.1);
-    chandelier.position.set(0, 7.4, 0.4);
-    chandelier.target.position.set(0, 0, 0);
-    chandelier.castShadow = quality.shadows;
-    if (quality.shadows) {
-        chandelier.shadow.mapSize.set(Math.min(quality.shadowMap, 2048), Math.min(quality.shadowMap, 2048));
-        chandelier.shadow.bias = -0.00015;
-    }
-    scene.add(chandelier, chandelier.target);
+export function setupPostProcess(BABYLON, scene, quality) {
+    const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, scene, [scene.activeCamera]);
+    pipe.samples = quality.pr > 1 ? 4 : 1;
+    pipe.fxaaEnabled = true;
 
-    return { key, chandelier, hemi };
+    // Bloom elegante para destaques e reflexos
+    pipe.bloomEnabled = true;
+    pipe.bloomThreshold = 0.78;
+    pipe.bloomWeight = 0.25;
+    pipe.bloomKernel = 64;
+
+    // Tonemapping e contraste
+    pipe.imageProcessing.toneMappingEnabled = true;
+    pipe.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+    pipe.imageProcessing.contrast = 1.15;
+    pipe.imageProcessing.exposure = 1.05;
+
+    // Glow Layer para anéis e discos de lance legal
+    const glow = new BABYLON.GlowLayer('glow', scene);
+    glow.intensity = 0.65;
+
+    return { pipe, glow };
 }

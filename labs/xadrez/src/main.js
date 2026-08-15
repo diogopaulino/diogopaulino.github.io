@@ -1,21 +1,15 @@
 /**
- * Xadrez — atelier 3D.
+ * Xadrez — atelier 3D em Babylon.js.
  * Cena PBR, seleção por raycast, animações em arco e o mestre comentando.
  */
 
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-
 import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js';
 import { pickMove, hintMove } from './ai.js';
-import {
-    LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress
-} from './coach.js';
+import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js';
 import { createTextures } from './textures.js';
 import { PieceFactory } from './pieces.js';
 import {
-    buildWorld, setupLights, squareToWorld, worldToSquare, placeMark
+    buildWorld, setupLights, setupPostProcess, squareToWorld, worldToSquare, placeMark
 } from './world.js';
 import { SalonAudio } from './audio.js';
 
@@ -26,30 +20,19 @@ const GLYPH = {
 };
 
 const QUALITY = {
-    low: { id: 'low', pr: 1, seg: 24, shadows: true, shadowMap: 1024, reflect: 0, aniso: 4 },
-    medium: { id: 'medium', pr: 1.35, seg: 40, shadows: true, shadowMap: 2048, reflect: 512, aniso: 8 },
-    high: { id: 'high', pr: 1.75, seg: 56, shadows: true, shadowMap: 2048, reflect: 1024, aniso: 8 }
+    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024 },
+    medium: { id: 'medium', pr: 1.35, seg: 40, shadows: true, shadowMap: 2048 },
+    high: { id: 'high', pr: 1.75, seg: 56, shadows: true, shadowMap: 2048 }
 };
 
 function isMobile() {
     return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
 }
 
-function detectSoftwareGL(renderer) {
-    try {
-        const gl = renderer.getContext();
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const r = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '';
-        return /SwiftShader|llvmpipe|Soft/i.test(String(r));
-    } catch {
-        return false;
-    }
-}
-
-function pickQuality(mode, renderer) {
+function pickQuality(mode) {
     if (QUALITY[mode]) return QUALITY[mode];
-    if (detectSoftwareGL(renderer) || isMobile()) return QUALITY.low;
-    if ((window.devicePixelRatio || 1) >= 2 && innerWidth >= 1400) return QUALITY.high;
+    if (isMobile()) return QUALITY.low;
+    if ((window.devicePixelRatio || 1) >= 2 && window.innerWidth >= 1400) return QUALITY.high;
     return QUALITY.medium;
 }
 
@@ -73,16 +56,13 @@ class Atelier {
         this.busy = false;
         this.anims = [];
         this.pieces = new Map();
-        this.pieceRoot = new THREE.Group();
         this.progress = loadProgress();
         this.lessonIndex = 0;
         this.puzzleIndex = 0;
         this.expect = null;
         this.pendingPromo = null;
-        this.clock = new THREE.Clock();
-        this.pointer = new THREE.Vector2();
-        this.raycaster = new THREE.Raycaster();
         this.drag = { x: 0, y: 0, active: false };
+
         this.bindUi();
         this.boot();
     }
@@ -111,9 +91,10 @@ class Atelier {
 
     fail(err) {
         console.error(err);
-        document.getElementById('loadingOverlay').hidden = true;
         const overlay = document.getElementById('errorOverlay');
-        overlay.hidden = false;
+        const load = document.getElementById('loadingOverlay');
+        if (load) load.hidden = true;
+        if (overlay) overlay.hidden = false;
         const t = document.getElementById('errorText');
         if (t && err) t.textContent = String(err.message || err);
     }
@@ -180,64 +161,56 @@ class Atelier {
     }
 
     async boot() {
+        const BABYLON = window.BABYLON;
+        if (!BABYLON) {
+            this.fail(new Error('Babylon.js não foi carregado.'));
+            return;
+        }
+
         try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: true,
-                alpha: false,
-                powerPreference: 'high-performance'
+            this.engine = new BABYLON.Engine(this.canvas, true, {
+                preserveDrawingBuffer: false,
+                stencil: true,
+                adaptToDeviceRatio: true
             });
+            this.scene = new BABYLON.Scene(this.engine);
+            this.scene.clearColor = new BABYLON.Color4(0.07, 0.05, 0.04, 1.0);
         } catch (err) {
             this.fail(err);
             return;
         }
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.92;
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.setClearColor(0x120c0a, 1);
 
-        this.quality = pickQuality(this.settings.quality, this.renderer);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pr));
-        this.resize();
+        this.quality = pickQuality(this.settings.quality);
 
-        this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.Fog(0x120c0a, 16, 32);
-        this.camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 80);
-        this.camera.position.set(0, 8.4, 10.6);
+        // Câmera orbital elegante
+        this.camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3.4, 13.5, new BABYLON.Vector3(0, 0.3, 0), this.scene);
+        this.camera.lowerRadiusLimit = 6;
+        this.camera.upperRadiusLimit = 20;
+        this.camera.lowerBetaLimit = 0.25;
+        this.camera.upperBetaLimit = Math.PI / 2.2;
+        this.camera.wheelDeltaPercentage = 0.015;
+        this.camera.pinchDeltaPercentage = 0.015;
+        this.camera.inertia = 0.85;
+        this.camera.useAutoRotationBehavior = true;
+        if (this.camera.autoRotationBehavior) {
+            this.camera.autoRotationBehavior.idleRotationSpeed = 0.15;
+            this.camera.autoRotationBehavior.idleRotationWaitTime = 2000;
+        }
+        this.camera.attachControl(this.canvas, true);
 
-        this.setLoad(0.2, 'Talhando o marfim…');
-        const tex = createTextures(this.quality.aniso);
-        this.setLoad(0.45, 'Montando o tabuleiro…');
-        this.world = buildWorld(tex, this.quality);
-        this.scene.add(this.world.root);
-        this.scene.add(this.pieceRoot);
-        this.factory = new PieceFactory(tex, this.quality);
+        this.setLoad(0.2, 'Talhando o marfim em Babylon.js…');
+        const tex = createTextures(this.scene);
+
+        this.setLoad(0.45, 'Montando o atelier…');
+        this.world = buildWorld(BABYLON, this.scene, tex, this.quality);
+        this.lights = setupLights(BABYLON, this.scene, this.quality);
+        this.postProcess = setupPostProcess(BABYLON, this.scene, this.quality);
+
+        this.factory = new PieceFactory(this.scene, tex, this.quality);
         if (this.settings.theme === 'crystal') this.factory.setTheme('crystal');
 
-        this.setLoad(0.7, 'Acendendo o lustre…');
-        setupLights(this.scene, this.quality);
-        const pmrem = new THREE.PMREMGenerator(this.renderer);
-        this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.scene.environmentIntensity = 0.85;
-        pmrem.dispose();
-
-        this.controls = new OrbitControls(this.camera, this.canvas);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.07;
-        this.controls.target.set(0, 0.35, 0);
-        this.controls.minDistance = 6;
-        this.controls.maxDistance = 18;
-        this.controls.minPolarAngle = 0.35;
-        this.controls.maxPolarAngle = 1.25;
-        this.controls.enablePan = false;
-        this.controls.autoRotate = true;
-        this.controls.autoRotateSpeed = 0.55;
-
+        this.setLoad(0.8, 'Posicionando as peças no tabuleiro…');
         this.rebuildPieces();
-        this.renderer.compile(this.scene, this.camera);
-        this.renderer.render(this.scene, this.camera);
 
         this.canvas.addEventListener('pointerdown', (e) => this.onDown(e));
         this.canvas.addEventListener('pointerup', (e) => this.onUp(e));
@@ -247,23 +220,14 @@ class Atelier {
         document.getElementById('loadingOverlay').hidden = true;
         document.getElementById('intro').hidden = false;
         document.body.dataset.state = 'intro';
-        requestAnimationFrame(() => this.resize());
 
-        this.clock.start();
-        this.renderer.setAnimationLoop(() => this.frame());
-        window.addEventListener('resize', () => this.resize());
-        window.visualViewport?.addEventListener('resize', () => this.resize());
-    }
+        this.engine.runRenderLoop(() => {
+            this.frame();
+            this.scene.render();
+        });
 
-    resize() {
-        if (!this.renderer) return;
-        const w = innerWidth;
-        const h = innerHeight;
-        this.renderer.setSize(w, h, false);
-        if (this.camera) {
-            this.camera.aspect = w / Math.max(1, h);
-            this.camera.updateProjectionMatrix();
-        }
+        window.addEventListener('resize', () => this.engine.resize());
+        window.visualViewport?.addEventListener('resize', () => this.engine.resize());
     }
 
     start() {
@@ -277,13 +241,16 @@ class Atelier {
         if (theme !== this.factory.mats.theme) {
             this.factory.setTheme(theme);
             this.settings.theme = theme;
+            this.rebuildPieces();
         }
         this.saveSettings();
         document.getElementById('intro').hidden = true;
         document.getElementById('hud').hidden = false;
         document.body.dataset.state = 'play';
-        if (this.controls) this.controls.autoRotate = false;
-        this.resize();
+        if (this.camera.autoRotationBehavior) {
+            this.camera.autoRotationBehavior.idleRotationSpeed = 0;
+        }
+        this.engine.resize();
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
         this.setMode(mode);
     }
@@ -397,19 +364,24 @@ class Atelier {
     }
 
     rebuildPieces() {
-        while (this.pieceRoot.children.length) {
-            this.pieceRoot.remove(this.pieceRoot.children[0]);
+        for (const [idx, mesh] of this.pieces) {
+            mesh.dispose();
         }
         this.pieces.clear();
+
         for (let i = 0; i < 64; i++) {
             const p = this.game.board[i];
             if (!p) continue;
             const mesh = this.factory.spawn(p.t, p.c);
-            const pos = squareToWorld(i, this.flip);
-            mesh.position.set(pos.x, 0.07, pos.z);
-            mesh.userData.index = i;
-            this.pieceRoot.add(mesh);
-            this.pieces.set(i, mesh);
+            if (mesh) {
+                const pos = squareToWorld(i, this.flip);
+                mesh.position.set(pos.x, 0.07, pos.z);
+                mesh.metadata = { kind: p.t, color: p.c, index: i };
+                if (this.lights?.shadowGen) {
+                    this.lights.shadowGen.addShadowCaster(mesh, true);
+                }
+                this.pieces.set(i, mesh);
+            }
         }
         this.refreshMarks();
     }
@@ -429,7 +401,7 @@ class Atelier {
         const dy = e.clientY - this.drag.y;
         if (Math.hypot(dx, dy) > 8) return;
         if (this.busy || this.pendingPromo) return;
-        const hit = this.hit(e);
+        const hit = this.hit();
         if (hit < 0) {
             this.selected = -1;
             this.refreshMarks();
@@ -438,22 +410,22 @@ class Atelier {
         this.onSquare(hit);
     }
 
-    hit(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-        this.raycaster.setFromCamera(this.pointer, this.camera);
-        const objs = [...this.world.squares, ...this.pieceRoot.children];
-        const hits = this.raycaster.intersectObjects(objs, true);
-        for (const h of hits) {
-            let o = h.object;
-            while (o && o.userData.index === undefined) o = o.parent;
-            if (o && o.userData.index !== undefined) return o.userData.index;
+    hit() {
+        const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
+            return mesh.isPickable && (mesh.metadata?.index !== undefined || mesh.metadata?.kind === 'square');
+        });
+        if (pick && pick.hit && pick.pickedMesh) {
+            let m = pick.pickedMesh;
+            if (m.metadata && m.metadata.index !== undefined) {
+                return m.metadata.index;
+            }
         }
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const p = new THREE.Vector3();
-        this.raycaster.ray.intersectPlane(plane, p);
-        if (p) return worldToSquare(p.x, p.z, this.flip);
+        const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
+        const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, 0));
+        if (hit !== null && hit !== undefined) {
+            const pt = ray.origin.add(ray.direction.scale(hit));
+            return worldToSquare(pt.x, pt.z, this.flip);
+        }
         return -1;
     }
 
@@ -582,12 +554,12 @@ class Atelier {
     }
 
     fadeOut(mesh) {
-        const start = mesh.position.clone();
+        const startY = mesh.position.y;
         return this.tween(0.32, (t) => {
-            mesh.position.y = start.y - t * 0.4;
-            mesh.scale.setScalar(1 - t * 0.85);
+            mesh.position.y = startY - t * 0.4;
+            mesh.scaling.setAll(1 - t * 0.85);
         }).then(() => {
-            mesh.visible = false;
+            mesh.isVisible = false;
         });
     }
 
@@ -700,9 +672,8 @@ class Atelier {
     toggleFlip() {
         this.flip = !this.flip;
         this.rebuildPieces();
-        const az = this.flip ? Math.PI : 0;
-        this.camera.position.set(Math.sin(az) * 10.6, 8.4, Math.cos(az) * 10.6);
-        this.controls.target.set(0, 0.35, 0);
+        const targetAlpha = this.flip ? Math.PI / 2 : -Math.PI / 2;
+        window.BABYLON.Animation.CreateAndStartAnimation('flipCam', this.camera, 'alpha', 60, 30, this.camera.alpha, targetAlpha, window.BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
     }
 
     fresh() {
@@ -730,13 +701,13 @@ class Atelier {
 
     clearMarks() {
         const m = this.world.marks;
-        m.dots.forEach((d) => { d.visible = false; });
-        m.caps.forEach((c) => { c.visible = false; });
-        m.select.visible = false;
-        m.lastFrom.visible = false;
-        m.lastTo.visible = false;
-        m.check.visible = false;
-        m.hint.visible = false;
+        m.dots.forEach((d) => { d.isVisible = false; });
+        m.caps.forEach((c) => { c.isVisible = false; });
+        m.select.isVisible = false;
+        m.lastFrom.isVisible = false;
+        m.lastTo.isVisible = false;
+        m.check.isVisible = false;
+        m.hint.isVisible = false;
     }
 
     refreshMarks() {
@@ -829,7 +800,7 @@ class Atelier {
     }
 
     frame() {
-        const dt = Math.min(0.05, this.clock.getDelta());
+        const dt = this.engine.getDeltaTime() / 1000;
         for (let i = this.anims.length - 1; i >= 0; i--) {
             const a = this.anims[i];
             a.t += dt;
@@ -840,14 +811,13 @@ class Atelier {
                 this.anims.splice(i, 1);
             }
         }
-        if (this.world?.marks?.select?.visible) {
-            this.world.marks.select.rotation.z += dt * 0.6;
+        if (this.world?.marks?.select?.isVisible) {
+            this.world.marks.select.rotation.y += dt * 0.8;
         }
-        if (this.world?.marks?.check?.visible) {
-            this.world.marks.check.material.opacity = 0.55 + Math.sin(this.clock.elapsedTime * 4) * 0.3;
+        if (this.world?.marks?.check?.isVisible) {
+            const mat = this.world.marks.check.material;
+            if (mat) mat.alpha = 0.55 + Math.sin(Date.now() * 0.006) * 0.35;
         }
-        this.controls?.update();
-        this.renderer.render(this.scene, this.camera);
     }
 }
 
