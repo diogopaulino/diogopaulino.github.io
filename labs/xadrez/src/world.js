@@ -81,8 +81,8 @@ export function buildWorld(tex, quality) {
     }
 
     const frameMat = phys(tex.mahogany, { color: 0x4a2212, clearcoat: 0.8, roughness: 0.3 });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(9.15, 0.22, 9.15), frameMat);
-    frame.position.y = -0.04;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(9.15, 0.14, 9.15), frameMat);
+    frame.position.y = -0.08;
     frame.receiveShadow = true;
     frame.castShadow = true;
     board.add(frame);
