@@ -430,6 +430,8 @@ button {
 
 .overlay-card, .loading-card {
     width: min(52rem, 100%);
+    max-height: min(92dvh, 44rem);
+    overflow-y: auto;
     background: color-mix(in oklab, oklch(16% 0.07 340) 82%, transparent);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
@@ -442,6 +444,26 @@ button {
 .loading-card {
     width: min(26rem, 100%);
     text-align: center;
+}
+
+/* .menu-head is a <header> tag; reset shared.css's site-header grid so it
+   doesn't collapse this in-game header's title into a "logo" grid column. */
+.menu-head {
+    display: block;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+.menu-head h1 {
+    grid-area: auto;
+    justify-self: auto;
+    max-width: none;
+    min-width: 0;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .loading-card h1, .menu-head h1, .compact-card h2 {
@@ -672,5 +694,119 @@ kbd {
 @media (pointer: fine) {
     .touch-controls {
         display: none !important;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-top {
+        top: calc(4.5rem + var(--safe-top));
+        right: calc(6.6rem + var(--safe-right));
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.45rem;
+    }
+
+    .quest-panel {
+        grid-column: auto;
+    }
+
+    .hud-actions {
+        gap: 0.35rem;
+    }
+
+    .icon-button {
+        width: 2.1rem;
+        height: 2.1rem;
+        font-size: 0.85rem;
+    }
+
+    .panel {
+        padding: 0.4rem 0.6rem;
+    }
+
+    .hud-label {
+        font-size: 0.6rem;
+    }
+
+    .friend-panel, .berry-panel {
+        min-width: 6.2rem;
+    }
+
+    .friend-panel .mono, .berry-panel .mono {
+        font-size: 0.95rem;
+        margin-top: 0.05rem;
+    }
+
+    .hud-sub {
+        font-size: 0.62rem;
+    }
+
+    .objective {
+        font-size: 0.78rem;
+        line-height: 1.2;
+        margin-top: 0.15rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .message {
+        bottom: calc(6.2rem + var(--safe-bottom));
+        max-width: min(20rem, 46vw);
+        padding: 0.4rem 0.75rem;
+        font-size: 0.78rem;
+        line-height: 1.25;
+    }
+
+    .touch-controls {
+        bottom: calc(0.5rem + var(--safe-bottom));
+        inset-inline: calc(0.7rem + var(--safe-right)) calc(0.7rem + var(--safe-left));
+    }
+
+    .stick {
+        width: 4.8rem;
+        height: 4.8rem;
+    }
+
+    .stick i {
+        width: 1.8rem;
+        height: 1.8rem;
+        margin: -0.9rem 0 0 -0.9rem;
+    }
+
+    .stick span {
+        bottom: -1.1rem;
+        font-size: 0.6rem;
+    }
+
+    .pad {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 0.95rem;
+    }
+
+    .pad-magic {
+        width: 3.1rem;
+        height: 3.1rem;
+        font-size: 0.78rem;
+    }
+
+    .overlay {
+        padding: calc(3.4rem + var(--safe-top)) 1rem calc(1rem + var(--safe-bottom));
+    }
+
+    .overlay-card, .loading-card {
+        max-height: min(92dvh, 34rem);
+        overflow-y: auto;
+    }
+
+    .menu-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.9rem;
+        margin: 0.9rem 0 0.8rem;
+    }
+
+    .loading-card h1, .menu-head h1, .compact-card h2 {
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
     }
 }
