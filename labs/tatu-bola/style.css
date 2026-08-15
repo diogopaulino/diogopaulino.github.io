@@ -701,6 +701,11 @@ kbd {
         width: 44px;
         height: 44px;
     }
+    /* O rodapé fica por cima do HUD (z-index 7 > 6) e engolia os toques em
+       PULO e ROLA. No toque o caminho de volta é o link do header. */
+    .lab-foot {
+        display: none;
+    }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
@@ -714,10 +719,14 @@ kbd {
     .panel {
         padding: 0.4rem 0.55rem;
     }
+    /* No topo à direita mora o botão de tema do header — som e pausa descem
+       para a folga entre o analógico e os pads. */
     .hud-actions {
-        top: calc(0.75rem + var(--safe-top));
-        bottom: auto;
-        right: calc(0.75rem + var(--safe-right));
+        top: auto;
+        bottom: calc(0.9rem + var(--safe-bottom));
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
     }
     .steer-zone {
         width: 100px;

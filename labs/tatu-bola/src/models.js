@@ -13,6 +13,20 @@ function geo(key, factory) {
 
 export const retroMaterials = [];
 
+/** Aspecto (largura/altura) do canvas — mantém a célula do snap quadrada em pixels. */
+let snapAspect = 1;
+
+/** Grade do snap em NDC: uSnap.x células na horizontal, uSnap.y na vertical. */
+function snapCell(mat, out) {
+    const s = mat.userData.snap;
+    return out.set(s, s / snapAspect);
+}
+
+function refreshSnap(mat) {
+    const uniform = mat.userData.shader?.uniforms.uSnap;
+    if (uniform) snapCell(mat, uniform.value);
+}
+
 export function retroMat(color, { snap = 80, ...props } = {}) {
     const mat = new THREE.MeshLambertMaterial({
         color,
@@ -22,9 +36,9 @@ export function retroMat(color, { snap = 80, ...props } = {}) {
     mat.userData.retro = true;
     mat.userData.snap = snap;
     mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uSnap = { value: mat.userData.snap };
+        shader.uniforms.uSnap = { value: snapCell(mat, new THREE.Vector2()) };
         mat.userData.shader = shader;
-        shader.vertexShader = `uniform float uSnap;\n${shader.vertexShader}`.replace(
+        shader.vertexShader = `uniform vec2 uSnap;\n${shader.vertexShader}`.replace(
             '#include <project_vertex>',
             /* glsl */ `
             vec4 mvPosition = vec4( transformed, 1.0 );
@@ -36,11 +50,17 @@ export function retroMat(color, { snap = 80, ...props } = {}) {
             #endif
             mvPosition = modelViewMatrix * mvPosition;
             gl_Position = projectionMatrix * mvPosition;
-            gl_Position.xy = floor(gl_Position.xy / max(gl_Position.w, 0.0001) * uSnap) / uSnap * gl_Position.w;
+            // Snap de vértice PS1 — só vale à frente do olho. Atrás da câmera
+            // w é negativo: dividir por ele inverte o sinal do NDC e atira o
+            // triângulo para o outro lado da tela (polígonos gigantes piscando).
+            if ( gl_Position.w > 0.0001 ) {
+                vec2 ndc = gl_Position.xy / gl_Position.w;
+                gl_Position.xy = floor( ndc * uSnap + 0.5 ) / uSnap * gl_Position.w;
+            }
             `
         );
     };
-    mat.customProgramCacheKey = () => `tatubola-ps1-${snap}`;
+    mat.customProgramCacheKey = () => 'tatubola-ps1';
     retroMaterials.push(mat);
     return mat;
 }
@@ -48,8 +68,14 @@ export function retroMat(color, { snap = 80, ...props } = {}) {
 export function setSnap(value) {
     for (const mat of retroMaterials) {
         mat.userData.snap = value;
-        if (mat.userData.shader) mat.userData.shader.uniforms.uSnap.value = value;
+        refreshSnap(mat);
     }
+}
+
+/** Chamar no resize: `aspect` = largura/altura do canvas. */
+export function setSnapAspect(aspect) {
+    snapAspect = aspect > 0 ? aspect : 1;
+    for (const mat of retroMaterials) refreshSnap(mat);
 }
 
 function mesh(geometry, color, extras) {
