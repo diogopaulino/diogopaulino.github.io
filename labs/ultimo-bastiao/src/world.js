@@ -315,6 +315,7 @@ export function createWorld(scene, quality) {
   }
 
   function applyQuality(nextQuality) {
+    pipeline.samples = nextQuality.hardwareScale < 1 ? 2 : 1;
     pipeline.bloomWeight = nextQuality.bloom;
     pipeline.chromaticAberrationEnabled = nextQuality.aberration;
     pipeline.grainEnabled = nextQuality.grain;

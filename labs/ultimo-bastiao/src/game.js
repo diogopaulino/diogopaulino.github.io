@@ -663,7 +663,7 @@ class Game {
   constrainCharacterPosition(position, radius, source) {
     position.x = clamp(position.x, -36.2 + radius, 36.2 - radius);
     position.z = clamp(position.z, -34.8 + radius, 36.2 - radius);
-    const fighters = [this.player, ...this.enemies].filter(fighter => fighter && fighter !== source && !fighter.dead);
+    const fighters = [this.player, ...this.enemies].filter(fighter => fighter && fighter !== source && !fighter.dead && fighter.rig?.root?.position);
     for (const fighter of fighters) {
       const other = fighter.rig.root.position;
       const offset = position.subtract(other);
