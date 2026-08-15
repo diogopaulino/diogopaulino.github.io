@@ -1,24 +1,25 @@
 /**
- * Obstáculos e penas na pista.
+ * Obstáculos e Penas flutuantes na pista em Babylon.js.
  *
- * Colisão AABB no plano XZ: |Δx| < 0.7 e |Δz| < 1.1.
- * kind === 'low' é pulável se player.y > 0.55.
- * Penas: coleta se |Δx| < 0.85 e |Δz| < 0.9, independente do pulo.
+ * Colisão precisa no espaço 3D:
+ * - Obstáculos baixos (fardos, caixotes, vacas, cones) podem ser pulados com folga justa.
+ * - Obstáculos altos (caminhões) bloqueiam a faixa inteira e exigem desvio lateral.
+ * - Penas: coletadas ao cruzar a proximidade 3D da pena.
  */
 
-import * as THREE from 'three';
 import { ROAD, CHUNK } from './config.js';
 import { mulberry32 } from './utils.js';
 import {
-    createTruck, createHay, createCrate, createCow, createCone, createFeatherMesh
+    createTruck, createHay, createCrate, createCow, createCone,
+    createFeatherMesh, disposeTransformNode
 } from './models.js';
 
 const KINDS = [
-    { make: createTruck, kind: 'block', w: 1.1, chance: 0.22 },
-    { make: createHay, kind: 'low', w: 0.7, chance: 0.22 },
-    { make: createCrate, kind: 'low', w: 0.55, chance: 0.18 },
-    { make: createCow, kind: 'low', w: 0.8, chance: 0.14 },
-    { make: createCone, kind: 'low', w: 0.35, chance: 0.24 }
+    { make: createTruck, kind: 'block', w: 1.2, clearance: 3.5, chance: 0.22 },
+    { make: createHay, kind: 'low', w: 0.8, clearance: 1.15, chance: 0.22 },
+    { make: createCrate, kind: 'low', w: 0.65, clearance: 1.1, chance: 0.18 },
+    { make: createCow, kind: 'low', w: 0.9, clearance: 1.25, chance: 0.14 },
+    { make: createCone, kind: 'low', w: 0.45, clearance: 0.9, chance: 0.24 }
 ];
 
 function pickKind(rng) {
@@ -31,16 +32,17 @@ function pickKind(rng) {
 }
 
 export class Track {
-    constructor(scene, quality) {
+    constructor(scene, shadowGenerator, quality) {
         this.scene = scene;
+        this.shadowGenerator = shadowGenerator;
         this.quality = quality;
         this.items = [];
         this.feathers = [];
         this.density = 1;
         this.featherRate = 1;
         this.seed = 1;
-        this.nextZ = -20;
-        this.nextFeather = -12;
+        this.nextZ = -24;
+        this.nextFeather = -14;
     }
 
     setDifficulty(diff) {
@@ -49,12 +51,12 @@ export class Track {
     }
 
     reset(playerZ) {
-        for (const it of this.items) this.scene.remove(it.mesh);
-        for (const f of this.feathers) this.scene.remove(f.mesh);
+        for (const it of this.items) disposeTransformNode(it.mesh);
+        for (const f of this.feathers) disposeTransformNode(f.mesh);
         this.items = [];
         this.feathers = [];
-        this.nextZ = playerZ - 28;
-        this.nextFeather = playerZ - 16;
+        this.nextZ = playerZ - 30;
+        this.nextFeather = playerZ - 18;
         this.seed = (Math.random() * 99999) | 0;
     }
 
@@ -62,61 +64,104 @@ export class Track {
         const rng = mulberry32((this.seed + Math.floor(-z)) | 0);
         const spec = pickKind(rng);
         const lane = Math.floor(rng() * ROAD.lanes);
-        const mesh = spec.make();
+        const mesh = spec.make(this.scene, this.shadowGenerator);
         mesh.position.set((lane - 1) * ROAD.laneW, 0, z);
-        this.scene.add(mesh);
-        this.items.push({ mesh, lane, z, kind: spec.kind, w: spec.w, live: true });
+
+        if (spec.kind === 'block') {
+            mesh.rotation.y = Math.PI; // Caminhão apontando para o jogador
+        }
+
+        this.items.push({
+            mesh,
+            lane,
+            z,
+            kind: spec.kind,
+            w: spec.w,
+            clearance: spec.clearance,
+            live: true
+        });
     }
 
     spawnFeather(z) {
         const rng = mulberry32((this.seed * 3 + Math.floor(-z * 1.7)) | 0);
         const lane = Math.floor(rng() * ROAD.lanes);
-        const mesh = createFeatherMesh();
-        mesh.position.set((lane - 1) * ROAD.laneW, 1.15, z);
-        this.scene.add(mesh);
-        this.feathers.push({ mesh, lane, z, live: true, spin: rng() * Math.PI });
+        const mesh = createFeatherMesh(this.scene);
+        const y = 1.15 + rng() * 0.4;
+        mesh.position.set((lane - 1) * ROAD.laneW, y, z);
+
+        this.feathers.push({
+            mesh,
+            lane,
+            z,
+            baseY: y,
+            live: true,
+            spin: rng() * Math.PI
+        });
     }
 
     update(dt, player) {
-        const horizon = player.z - CHUNK.length * 6;
+        const horizon = player.z - CHUNK.length * 6.5;
+
+        // Gerar obstáculos à frente
         while (this.nextZ > horizon) {
             const gap = 18 / Math.max(0.4, this.density) + Math.random() * 8;
             this.nextZ -= gap;
-            if (Math.random() < 0.82 * this.density) this.spawnObstacle(this.nextZ);
-        }
-        while (this.nextFeather > horizon) {
-            this.nextFeather -= 14 / Math.max(0.5, this.featherRate) + Math.random() * 10;
-            if (Math.random() < 0.7 * this.featherRate) this.spawnFeather(this.nextFeather);
+            if (Math.random() < 0.84 * this.density) {
+                this.spawnObstacle(this.nextZ);
+            }
         }
 
-        const behind = player.z + 16;
+        // Gerar penas à frente
+        while (this.nextFeather > horizon) {
+            const gap = 14 / Math.max(0.5, this.featherRate) + Math.random() * 9;
+            this.nextFeather -= gap;
+            if (Math.random() < 0.75 * this.featherRate) {
+                this.spawnFeather(this.nextFeather);
+            }
+        }
+
+        const behind = player.z + 18;
+
+        // Reciclar obstáculos que ficaram para trás
         this.items = this.items.filter((it) => {
             if (it.z > behind) {
-                this.scene.remove(it.mesh);
+                disposeTransformNode(it.mesh);
                 return false;
             }
             return true;
         });
+
+        // Atualizar animação das penas e reciclar
         this.feathers = this.feathers.filter((f) => {
             if (!f.live || f.z > behind) {
-                this.scene.remove(f.mesh);
+                disposeTransformNode(f.mesh);
                 return false;
             }
-            f.spin += dt * 1.6;
-            f.mesh.rotation.set(0.4, f.spin, 0.35);
-            f.mesh.position.y = 1.05 + Math.sin(f.spin * 2.2) * 0.18;
+            f.spin += dt * 2.2;
+            f.mesh.rotation.y = f.spin;
+            f.mesh.rotation.z = Math.sin(f.spin * 1.5) * 0.25;
+            f.mesh.position.y = f.baseY + Math.sin(f.spin * 2.4) * 0.22;
             return true;
         });
     }
 
     collide(player) {
         if (player.invuln > 0 || !player.alive) return null;
+
         for (const it of this.items) {
             if (!it.live) continue;
             const dx = Math.abs(it.mesh.position.x - player.x);
             const dz = Math.abs(it.z - player.z);
-            if (dx < 0.7 + it.w * 0.25 && dz < 1.15) {
-                if (it.kind === 'low' && player.y > 0.55) continue;
+
+            // Tolerância lateral e frontal proporcional à largura do obstáculo
+            const hitX = dx < (0.65 + it.w * 0.35);
+            const hitZ = dz < 1.25;
+
+            if (hitX && hitZ) {
+                // Obstáculo baixo: se Forrest pulou alto o suficiente, ele passa por cima!
+                if (it.kind === 'low' && player.y > (it.clearance * 0.72)) {
+                    continue; // Pulo bem-sucedido!
+                }
                 it.live = false;
                 return it;
             }
@@ -130,7 +175,9 @@ export class Track {
             if (!f.live) continue;
             const dx = Math.abs(f.mesh.position.x - player.x);
             const dz = Math.abs(f.z - player.z);
-            if (dx < 0.85 && dz < 0.95) {
+            const dy = Math.abs(f.mesh.position.y - (player.y + 0.9));
+
+            if (dx < 0.95 && dz < 1.15 && dy < 1.4) {
                 f.live = false;
                 got.push(f);
             }

@@ -1,4 +1,7 @@
-/** Utilitários numéricos, detecção de dispositivo e RNG determinístico. */
+/**
+ * Utilitários numéricos, conversores de cor para Babylon.js,
+ * detecção de dispositivo e RNG determinístico.
+ */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -54,6 +57,29 @@ export function formatDays(meters) {
 
 export function hexToArr(hex) {
     return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+}
+
+/** Converte hex para BABYLON.Color3 */
+export function hexToColor3(hex) {
+    const [r, g, b] = hexToArr(hex);
+    return new BABYLON.Color3(r, g, b);
+}
+
+/** Converte hex para BABYLON.Color4 */
+export function hexToColor4(hex, alpha = 1.0) {
+    const [r, g, b] = hexToArr(hex);
+    return new BABYLON.Color4(r, g, b, alpha);
+}
+
+/** Interpola entre duas cores Hex e retorna BABYLON.Color3 */
+export function mixHexColor3(hexA, hexB, t) {
+    const [r1, g1, b1] = hexToArr(hexA);
+    const [r2, g2, b2] = hexToArr(hexB);
+    return new BABYLON.Color3(
+        lerp(r1, r2, t),
+        lerp(g1, g2, t),
+        lerp(b1, b2, t)
+    );
 }
 
 export function detectMobile() {

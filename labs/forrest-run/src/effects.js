@@ -1,155 +1,99 @@
 /**
- * Poeira da passada, faíscas da pena e chuva no bioma molhado.
- * Buffer pré-alocado para não acordar o GC no meio da corrida.
+ * Efeitos de partículas e atmosfera em Babylon.js:
+ * - Poeira de passos na terra/asfalto
+ * - Faíscas brilhantes ao coletar penas
+ * - Impacto e poeira ao tropeçar
+ * - Chuva torrencial volumétrica no bioma de tempestade
  */
 
-import * as THREE from 'three';
-import { sparkTexture } from './textures.js';
+import { createParticleTexture } from './textures.js';
+import { hexToColor4 } from './utils.js';
 
 export class Effects {
     constructor(scene, quality) {
-        this.max = quality.particles;
-        this.cursor = 0;
-        this.pos = new Float32Array(this.max * 3);
-        this.col = new Float32Array(this.max * 3);
-        this.size = new Float32Array(this.max);
-        this.alpha = new Float32Array(this.max);
-        this.vel = new Float32Array(this.max * 3);
-        this.life = new Float32Array(this.max);
+        this.scene = scene;
+        this.quality = quality;
 
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-        geo.setAttribute('aColor', new THREE.BufferAttribute(this.col, 3));
-        geo.setAttribute('aSize', new THREE.BufferAttribute(this.size, 1));
-        geo.setAttribute('aAlpha', new THREE.BufferAttribute(this.alpha, 1));
-        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
+        const particleTex = createParticleTexture(scene);
 
-        this.geo = geo;
-        this.points = new THREE.Points(geo, new THREE.ShaderMaterial({
-            transparent: true,
-            depthWrite: false,
-            fog: false,
-            blending: THREE.AdditiveBlending,
-            uniforms: {
-                uMap: { value: sparkTexture(THREE) },
-                uScale: { value: 420 }
-            },
-            vertexShader: /* glsl */ `
-                attribute vec3 aColor;
-                attribute float aSize;
-                attribute float aAlpha;
-                varying vec3 vColor;
-                varying float vAlpha;
-                uniform float uScale;
-                void main() {
-                    vColor = aColor;
-                    vAlpha = aAlpha;
-                    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-                    gl_PointSize = aSize * uScale / max(0.001, -mv.z);
-                    gl_Position = projectionMatrix * mv;
-                }
-            `,
-            fragmentShader: /* glsl */ `
-                uniform sampler2D uMap;
-                varying vec3 vColor;
-                varying float vAlpha;
-                void main() {
-                    if (vAlpha < 0.01) discard;
-                    vec4 tex = texture2D(uMap, gl_PointCoord);
-                    gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
-                    #include <tonemapping_fragment>
-                    #include <colorspace_fragment>
-                }
-            `
-        }));
-        scene.add(this.points);
+        // 1. Sistema de Partículas para Faíscas e Poeira
+        const sparkSys = new BABYLON.ParticleSystem('sparkSys', quality.particles * 2, scene);
+        sparkSys.particleTexture = particleTex;
+        sparkSys.emitter = new BABYLON.Vector3(0, 0, 0);
+        sparkSys.minSize = 0.15;
+        sparkSys.maxSize = 0.45;
+        sparkSys.minLifeTime = 0.3;
+        sparkSys.maxLifeTime = 0.65;
+        sparkSys.manualEmitCount = 0;
+        sparkSys.disposeOnStop = false;
+        sparkSys.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+        sparkSys.gravity = new BABYLON.Vector3(0, -9.8, 0);
+        sparkSys.start();
+        this.sparkSys = sparkSys;
 
-        this.rainMax = quality.rain;
-        this.rainPos = new Float32Array(this.rainMax * 3);
-        this.rainGeo = new THREE.BufferGeometry();
-        this.rainGeo.setAttribute('position', new THREE.BufferAttribute(this.rainPos, 3));
-        this.rain = new THREE.Points(this.rainGeo, new THREE.PointsMaterial({
-            color: 0xb0c4d4,
-            size: 0.08,
-            transparent: true,
-            opacity: 0,
-            depthWrite: false
-        }));
-        scene.add(this.rain);
-        for (let i = 0; i < this.rainMax; i++) {
-            this.rainPos[i * 3] = (Math.random() - 0.5) * 40;
-            this.rainPos[i * 3 + 1] = Math.random() * 18;
-            this.rainPos[i * 3 + 2] = -Math.random() * 80;
-        }
-        this.raining = 0;
+        // 2. Sistema de Chuva
+        const rainSys = new BABYLON.ParticleSystem('rainSys', quality.rain, scene);
+        rainSys.particleTexture = particleTex;
+        rainSys.emitter = new BABYLON.Vector3(0, 16, 0);
+        rainSys.minEmitBox = new BABYLON.Vector3(-24, 0, -45);
+        rainSys.maxEmitBox = new BABYLON.Vector3(24, 0, 15);
+        rainSys.color1 = new BABYLON.Color4(0.7, 0.8, 0.9, 0.45);
+        rainSys.color2 = new BABYLON.Color4(0.8, 0.9, 1.0, 0.6);
+        rainSys.colorDead = new BABYLON.Color4(0.5, 0.6, 0.7, 0.0);
+        rainSys.minSize = 0.08;
+        rainSys.maxSize = 0.14;
+        rainSys.minLifeTime = 0.6;
+        rainSys.maxLifeTime = 1.0;
+        rainSys.emitRate = quality.rain * 1.5;
+        rainSys.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+        rainSys.direction1 = new BABYLON.Vector3(-2, -32, -6);
+        rainSys.direction2 = new BABYLON.Vector3(2, -38, -10);
+        rainSys.minAngularSpeed = 0;
+        rainSys.maxAngularSpeed = 0;
+        rainSys.disposeOnStop = false;
+        this.rainSys = rainSys;
+        this.raining = false;
     }
 
-    spawn(x, y, z, { count = 12, color = [1, 0.95, 0.8], speed = 5, size = 0.65, life = 0.5 } = {}) {
-        for (let i = 0; i < count; i++) {
-            const id = this.cursor++ % this.max;
-            const i3 = id * 3;
-            this.pos[i3] = x;
-            this.pos[i3 + 1] = y;
-            this.pos[i3 + 2] = z;
-            this.vel[i3] = (Math.random() - 0.5) * speed;
-            this.vel[i3 + 1] = Math.random() * speed * 0.7;
-            this.vel[i3 + 2] = (Math.random() - 0.5) * speed;
-            this.col[i3] = color[0];
-            this.col[i3 + 1] = color[1];
-            this.col[i3 + 2] = color[2];
-            this.size[id] = size * (0.5 + Math.random());
-            this.life[id] = life * (0.6 + Math.random() * 0.6);
-            this.alpha[id] = 1;
-        }
-        this.geo.attributes.position.needsUpdate = true;
-        this.geo.attributes.aColor.needsUpdate = true;
+    spawn(x, y, z, { count = 16, color = [1, 0.95, 0.8, 1], speed = 5, size = 0.4, life = 0.5 } = {}) {
+        const sys = this.sparkSys;
+        sys.emitter = new BABYLON.Vector3(x, y, z);
+        sys.minSize = size * 0.7;
+        sys.maxSize = size * 1.3;
+        sys.minLifeTime = life * 0.6;
+        sys.maxLifeTime = life * 1.2;
+        sys.color1 = new BABYLON.Color4(color[0], color[1], color[2], color[3] || 1);
+        sys.color2 = new BABYLON.Color4(color[0] * 0.9, color[1] * 0.9, color[2] * 0.9, 0.8);
+        sys.minEmitPower = speed * 0.5;
+        sys.maxEmitPower = speed * 1.2;
+        sys.manualEmitCount = count;
     }
 
-    dust(x, y, z) {
+    dust(x, y, z, isDirt = true) {
         this.spawn(x, y, z, {
-            count: 4,
-            color: [0.72, 0.6, 0.38],
-            speed: 1.6,
-            size: 0.55,
-            life: 0.35
+            count: 5,
+            color: isDirt ? [0.75, 0.58, 0.38, 0.8] : [0.55, 0.55, 0.58, 0.6],
+            speed: 2.2,
+            size: 0.35,
+            life: 0.4
         });
     }
 
     setRain(on) {
-        this.raining = on ? 1 : 0;
-        this.rain.material.opacity = on ? 0.55 : 0;
+        if (this.raining === on) return;
+        this.raining = on;
+        if (on) {
+            this.rainSys.start();
+        } else {
+            this.rainSys.stop();
+        }
     }
 
     update(dt, player) {
-        for (let i = 0; i < this.max; i++) {
-            if (this.life[i] <= 0) {
-                this.alpha[i] = 0;
-                continue;
-            }
-            this.life[i] -= dt;
-            const i3 = i * 3;
-            this.pos[i3] += this.vel[i3] * dt;
-            this.pos[i3 + 1] += this.vel[i3 + 1] * dt;
-            this.pos[i3 + 2] += this.vel[i3 + 2] * dt;
-            this.vel[i3 + 1] -= 8 * dt;
-            this.alpha[i] = Math.max(0, this.life[i] * 2);
-        }
-        this.geo.attributes.position.needsUpdate = true;
-        this.geo.attributes.aAlpha.needsUpdate = true;
-
         if (this.raining) {
-            for (let i = 0; i < this.rainMax; i++) {
-                const i3 = i * 3;
-                this.rainPos[i3 + 1] -= dt * 18;
-                this.rainPos[i3 + 2] += dt * 4;
-                if (this.rainPos[i3 + 1] < 0) {
-                    this.rainPos[i3] = player.x + (Math.random() - 0.5) * 36;
-                    this.rainPos[i3 + 1] = 10 + Math.random() * 10;
-                    this.rainPos[i3 + 2] = player.z - Math.random() * 70;
-                }
-            }
-            this.rain.position.set(0, 0, 0);
-            this.rainGeo.attributes.position.needsUpdate = true;
+            this.rainSys.emitter.x = player.x;
+            this.rainSys.emitter.y = 14;
+            this.rainSys.emitter.z = player.z - 12;
         }
     }
 }
