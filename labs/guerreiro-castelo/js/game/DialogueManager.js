@@ -1,11 +1,10 @@
 /**
- * Diálogos discretos na parte inferior.
- * DICO
- * Segurem firme!
+ * Gerenciador de diálogos contextuais discretos na parte inferior da tela em Babylon.js.
  */
 
 export class DialogueManager {
-    constructor() {
+    constructor(game) {
+        this.game = game;
         this.queue = [];
         this.current = null;
         this.timer = 0;
@@ -13,7 +12,11 @@ export class DialogueManager {
         this.onDone = null;
     }
 
-    say(speaker, text, duration = 3.2) {
+    get active() {
+        return Boolean(this.current);
+    }
+
+    say(speaker, text, duration = 3.4) {
         this.queue.push({ speaker, text, duration });
         if (!this.current) this._next();
     }
@@ -28,7 +31,12 @@ export class DialogueManager {
     _next() {
         this.current = this.queue.shift() || null;
         this.timer = this.current ? this.current.duration : 0;
-        if (!this.current) {
+        if (this.game && this.game.hud) {
+            this.game.hud.setDialogue(this.current);
+        }
+        if (this.current) {
+            this.game.audio?.play('speech');
+        } else {
             this.blocking = false;
             const cb = this.onDone;
             this.onDone = null;
@@ -36,7 +44,7 @@ export class DialogueManager {
         }
     }
 
-    skip() {
+    advance() {
         if (this.current) this._next();
     }
 

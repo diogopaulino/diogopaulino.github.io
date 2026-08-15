@@ -1,13 +1,9 @@
 /**
- * Mundo de colisão sem engine externa.
- * Caixas AABB, chão, degraus pequenos e rampas até o limite.
+ * Mundo de colisão geométrico sem dependência externa.
+ * Caixas AABB, pisos, paredes e resolução de cápsula com step-up e rampas.
  */
 
-import * as THREE from 'three';
 import { clamp } from '../utils/math.js';
-
-const _center = new THREE.Vector3();
-const _size = new THREE.Vector3();
 
 export class CollisionWorld {
     constructor() {
@@ -24,8 +20,8 @@ export class CollisionWorld {
 
     addBox(minx, miny, minz, maxx, maxy, maxz, opts = {}) {
         this.boxes.push({
-            min: new THREE.Vector3(minx, miny, minz),
-            max: new THREE.Vector3(maxx, maxy, maxz),
+            min: { x: minx, y: miny, z: minz },
+            max: { x: maxx, y: maxy, z: maxz },
             solid: opts.solid !== false,
             climb: Boolean(opts.climb),
             oneWay: Boolean(opts.oneWay),
@@ -44,8 +40,8 @@ export class CollisionWorld {
     addTrigger(id, minx, miny, minz, maxx, maxy, maxz) {
         this.triggers.push({
             id,
-            min: new THREE.Vector3(minx, miny, minz),
-            max: new THREE.Vector3(maxx, maxy, maxz),
+            min: { x: minx, y: miny, z: minz },
+            max: { x: maxx, y: maxy, z: maxz },
             inside: false
         });
     }
@@ -131,11 +127,5 @@ export class CollisionWorld {
             if (inside) hits.push(t.id);
         }
         return hits;
-    }
-
-    debugBox(box) {
-        box.getCenter(_center);
-        box.getSize(_size);
-        return { center: _center, size: _size };
     }
 }

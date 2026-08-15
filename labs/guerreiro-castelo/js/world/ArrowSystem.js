@@ -1,8 +1,7 @@
 /**
- * Pool de flechas: trajetória, gravidade, colisão, impacto, reciclagem.
+ * Pool de flechas físicas disparadas por arqueiros em Babylon.js.
  */
 
-import * as THREE from 'three';
 import { Pool } from '../utils/pool.js';
 
 export class ArrowSystem {
@@ -13,89 +12,126 @@ export class ArrowSystem {
         this.gravity = 18;
         this.colliders = [];
         this.onHitPlayer = null;
-        this.geo = new THREE.CylinderGeometry(0.015, 0.015, 0.55, 5);
-        this.mat = new THREE.MeshStandardMaterial({ color: 0x5a3a18, roughness: 0.6 });
-        this.tipMat = new THREE.MeshStandardMaterial({ color: 0xb0b8c0, metalness: 0.8, roughness: 0.3 });
-        this._n = new THREE.Vector3();
     }
 
     _make() {
-        const g = new THREE.Group();
-        const shaft = new THREE.Mesh(this.geo, this.mat);
+        const root = new BABYLON.TransformNode('arrowRoot', this.scene);
+
+        const shaft = BABYLON.MeshBuilder.CreateCylinder('arrowShaft', {
+            diameter: 0.03,
+            height: 0.6,
+            tessellation: 6
+        }, this.scene);
         shaft.rotation.x = Math.PI / 2;
-        g.add(shaft);
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 5), this.tipMat);
+        shaft.parent = root;
+
+        const shaftMat = new BABYLON.StandardMaterial('shaftMat', this.scene);
+        shaftMat.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.1);
+        shaft.material = shaftMat;
+
+        const tip = BABYLON.MeshBuilder.CreateCylinder('arrowTip', {
+            diameterTop: 0,
+            diameterBottom: 0.08,
+            height: 0.14,
+            tessellation: 5
+        }, this.scene);
         tip.rotation.x = Math.PI / 2;
-        tip.position.z = 0.3;
-        g.add(tip);
-        g.visible = false;
-        this.scene.add(g);
+        tip.position.z = 0.35;
+        tip.parent = root;
+
+        const tipMat = new BABYLON.StandardMaterial('tipMat', this.scene);
+        tipMat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.8);
+        tipMat.specularColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+        tip.material = tipMat;
+
+        root.setEnabled(false);
+
         return {
-            mesh: g,
-            vel: new THREE.Vector3(),
+            root,
+            vel: new BABYLON.Vector3(),
             alive: false,
-            stuck: 0,
-            from: 'world'
+            stuck: 0
         };
     }
 
     setColliders(meshes) {
-        this.colliders = meshes;
+        this.colliders = meshes || [];
     }
 
     fire(origin, direction, speed = 28) {
         const a = this.pool.obtain();
-        a.mesh.position.copy(origin);
-        a.mesh.visible = true;
-        a.vel.copy(direction).normalize().multiplyScalar(speed);
+        a.root.position.copyFrom(origin);
+        a.root.setEnabled(true);
+        a.vel.copyFrom(direction).normalize().scaleInPlace(speed);
         a.alive = true;
         a.stuck = 0;
-        a.mesh.lookAt(origin.clone().add(a.vel));
+
+        const lookTarget = a.root.position.add(a.vel);
+        a.root.lookAt(lookTarget);
+
         this.active.push(a);
         return a;
     }
 
     update(dt, game) {
-        const ray = game._arrowRay || (game._arrowRay = new THREE.Raycaster());
         for (let i = this.active.length - 1; i >= 0; i--) {
             const a = this.active[i];
             if (a.stuck > 0) {
                 a.stuck -= dt;
                 if (a.stuck <= 0) {
-                    a.mesh.visible = false;
+                    a.root.setEnabled(false);
                     this.active.splice(i, 1);
                     this.pool.release(a);
                 }
                 continue;
             }
+
             a.vel.y -= this.gravity * dt;
-            const next = a.mesh.position.clone().addScaledVector(a.vel, dt);
-            const dist = a.mesh.position.distanceTo(next);
-            ray.set(a.mesh.position, this._n.copy(a.vel).normalize());
-            ray.far = dist + 0.1;
+            const delta = a.vel.scale(dt);
+            const currentPos = a.root.position.clone();
+            const nextPos = currentPos.add(delta);
+
+            // Raycast check against colliders
+            const rayDir = delta.normalizeToNew();
+            const rayDist = BABYLON.Vector3.Distance(currentPos, nextPos);
+            const ray = new BABYLON.Ray(currentPos, rayDir, rayDist + 0.1);
+
             let hit = null;
             if (this.colliders.length) {
-                const hits = ray.intersectObjects(this.colliders, true);
-                if (hits.length) hit = hits[0];
+                for (const col of this.colliders) {
+                    if (!col || !col.isEnabled?.()) continue;
+                    const pick = ray.intersectsMesh(col, false);
+                    if (pick.hit && (!hit || pick.distance < hit.distance)) {
+                        hit = pick;
+                    }
+                }
             }
-            const p = game.player.position;
-            const toP = Math.hypot(next.x - p.x, next.y - (p.y + 1), next.z - p.z);
-            if (toP < 0.45) {
+
+            // Check hit player
+            const playerPos = game.player.position;
+            const playerCenter = new BABYLON.Vector3(playerPos.x, playerPos.y + 0.9, playerPos.z);
+            const distToPlayer = BABYLON.Vector3.Distance(nextPos, playerCenter);
+
+            if (distToPlayer < 0.65) {
                 this.onHitPlayer?.(1);
                 a.stuck = 0.01;
-                a.mesh.visible = false;
+                a.root.setEnabled(false);
                 continue;
             }
-            if (hit || next.y < 0.02) {
-                a.mesh.position.copy(hit ? hit.point : next);
-                a.stuck = 2.4;
-                game.audio.play('impact');
+
+            if (hit || nextPos.y < 0.02) {
+                a.root.position.copyFrom(hit ? hit.pickedPoint : nextPos);
+                a.stuck = 2.0;
+                game.audio?.play('impact');
                 continue;
             }
-            a.mesh.position.copy(next);
-            a.mesh.lookAt(next.clone().add(a.vel));
-            if (a.mesh.position.length() > 400) {
-                a.mesh.visible = false;
+
+            a.root.position.copyFrom(nextPos);
+            const lookTarget = a.root.position.add(a.vel);
+            a.root.lookAt(lookTarget);
+
+            if (a.root.position.length() > 400) {
+                a.root.setEnabled(false);
                 this.active.splice(i, 1);
                 this.pool.release(a);
             }
@@ -104,7 +140,7 @@ export class ArrowSystem {
 
     clear() {
         for (const a of this.active) {
-            a.mesh.visible = false;
+            a.root.setEnabled(false);
             this.pool.release(a);
         }
         this.active.length = 0;

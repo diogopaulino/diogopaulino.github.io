@@ -1,4 +1,7 @@
-import * as THREE from 'three';
+/**
+ * Capítulo 1 & Epílogo: Sala da Lareira em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { buildHomeInterior, addHomeColliders } from '../world/Home.js';
 import { buildRavi, CharacterAnimator } from '../characters/builders.js';
@@ -10,47 +13,48 @@ export class HomeLevel extends Level {
     }
 
     async build() {
-        const g = buildHomeInterior();
+        const scene = this.game.scene;
+        const g = buildHomeInterior(scene);
         this.group = g;
         this.fx = new EnvironmentFX();
         this.fx.addFire(g.userData.fire);
         addHomeColliders(this.game.collision);
 
-        const ravi = buildRavi();
-        ravi.group.position.set(0.55, 0, 1.55);
-        ravi.group.rotation.y = -0.6;
-        g.add(ravi.group);
+        const ravi = buildRavi(scene);
+        ravi.root.position.set(0.55, 0, 1.55);
+        ravi.root.rotation.y = -0.6;
+        ravi.root.parent = g;
         this.ravi = ravi;
-        this.raviAnim = new CharacterAnimator(ravi.group, ravi.clips);
+        this.raviAnim = new CharacterAnimator(ravi.root, ravi.clips);
 
-        const lamp = new THREE.PointLight(0xff9030, 1.35, 7);
-        lamp.position.set(0, 1.1, -2.8);
-        g.add(lamp);
+        const lamp = new BABYLON.PointLight('hearthPointLight', new BABYLON.Vector3(0, 1.1, -2.8), scene);
+        lamp.diffuse = new BABYLON.Color3(1.0, 0.55, 0.2);
+        lamp.intensity = 1.35;
+        lamp.range = 8;
+        lamp.parent = g;
         this.hearthLight = lamp;
 
-        const fill = new THREE.PointLight(0xffc8a0, 0.35, 10);
-        fill.position.set(1.5, 2.2, 1);
-        g.add(fill);
+        const fill = new BABYLON.PointLight('homeFillLight', new BABYLON.Vector3(1.5, 2.2, 1), scene);
+        fill.diffuse = new BABYLON.Color3(1.0, 0.78, 0.62);
+        fill.intensity = 0.35;
+        fill.range = 10;
+        fill.parent = g;
 
-        this.game.scene.add(g);
-        this.obstacles = [];
-        g.traverse((c) => {
-            if (c.isMesh) this.obstacles.push(c);
-        });
+        this.obstacles = g.getChildMeshes ? g.getChildMeshes() : [];
     }
 
     enter(checkpoint) {
         const g = this.game;
         g.player.attachTo(this.group);
         g.teco.attachTo(this.group);
-        g.teco.root.visible = false;
+        g.teco.root.setEnabled(false);
         g.player.spawn(0.15, 0, 1.7, Math.PI);
         g.player.controller.setMode('locked');
         g.input.enabled = false;
         g.weather.apply('night');
         g.audio.setTheme('home');
         g.storm.setIntensity(0);
-        g.ocean.water.visible = false;
+        g.ocean.visible = false;
         g.cameraRig.setObstacles(this.obstacles);
 
         if (checkpoint === 'ending') {
@@ -59,10 +63,10 @@ export class HomeLevel extends Level {
         }
 
         g.cutscenes.play({
-            from: new THREE.Vector3(2.8, 1.6, 3.2),
-            to: new THREE.Vector3(1.4, 1.45, 2.6),
-            lookFrom: new THREE.Vector3(0, 1.1, 1.2),
-            lookTo: new THREE.Vector3(0.2, 1.2, 1.5),
+            from: new BABYLON.Vector3(2.8, 1.6, 3.2),
+            to: new BABYLON.Vector3(1.4, 1.45, 2.6),
+            lookFrom: new BABYLON.Vector3(0, 1.1, 1.2),
+            lookTo: new BABYLON.Vector3(0.2, 1.2, 1.5),
             duration: 4.2,
             onEnd: () => this._introDialogue()
         });
@@ -85,12 +89,12 @@ export class HomeLevel extends Level {
     _intoFire() {
         const g = this.game;
         g.cutscenes.play({
-            from: new THREE.Vector3(1.2, 1.4, 2.4),
-            to: new THREE.Vector3(0.1, 0.9, -2.2),
-            lookFrom: new THREE.Vector3(0, 1.1, 0.4),
-            lookTo: new THREE.Vector3(0, 0.7, -3.1),
+            from: new BABYLON.Vector3(1.2, 1.4, 2.4),
+            to: new BABYLON.Vector3(0.1, 0.9, -2.2),
+            lookFrom: new BABYLON.Vector3(0, 1.1, 0.4),
+            lookTo: new BABYLON.Vector3(0, 0.7, -3.1),
             duration: 3.6,
-            onMid: () => g.hud.showChapter('', ''),
+            onMid: () => g.hud.showChapter('A Travessia', 'rumo ao outro lado do mar'),
             onEnd: () => {
                 g.audio.play('wave');
                 g.fadeTo(1.4, () => {
@@ -104,12 +108,12 @@ export class HomeLevel extends Level {
         const g = this.game;
         g.player.spawn(0.15, 0, 1.7, Math.PI);
         g.player.controller.setMode('locked');
-        g.teco.root.visible = false;
+        g.teco.root.setEnabled(false);
         g.cutscenes.play({
-            from: new THREE.Vector3(2.2, 1.5, 3),
-            to: new THREE.Vector3(1.3, 1.4, 2.5),
-            lookFrom: new THREE.Vector3(0.2, 1.2, 1.4),
-            lookTo: new THREE.Vector3(0.2, 1.2, 1.5),
+            from: new BABYLON.Vector3(2.2, 1.5, 3),
+            to: new BABYLON.Vector3(1.3, 1.4, 2.5),
+            lookFrom: new BABYLON.Vector3(0.2, 1.2, 1.4),
+            lookTo: new BABYLON.Vector3(0.2, 1.2, 1.5),
             duration: 2.5,
             onEnd: () => {
                 g.dialogue.play(
@@ -129,17 +133,18 @@ export class HomeLevel extends Level {
         const shiny = this.group.userData.shiny;
         g.audio.play('click');
         if (shiny) {
-            const start = shiny.position.clone();
+            const startX = shiny.position.x;
+            const startY = shiny.position.y;
             let t = 0;
             this._fly = (dt) => {
                 t += dt;
-                shiny.position.x = start.x + t * 1.8;
-                shiny.position.y = start.y + Math.sin(t * 6) * 0.1 + t * 0.2;
+                shiny.position.x = startX + t * 1.8;
+                shiny.position.y = startY + Math.sin(t * 6) * 0.1 + t * 0.2;
                 if (t > 1.2) {
-                    shiny.visible = false;
+                    shiny.setEnabled(false);
                     this._fly = null;
-                    g.dialogue.say('DICO', '…', 1.2);
-                    setTimeout(() => g.story.notify('the_end'), 1600);
+                    g.dialogue.say('DICO', '… Teco levou o brinquedo de novo.', 2.4);
+                    setTimeout(() => g.story.notify('the_end'), 2000);
                 }
             };
         } else {
@@ -152,16 +157,16 @@ export class HomeLevel extends Level {
         this.fx.update(this.time);
         this.raviAnim?.update(dt);
         if (this.hearthLight) {
-            this.hearthLight.intensity = 1.2 + Math.sin(this.time * 9) * 0.2;
+            this.hearthLight.intensity = 1.2 + Math.sin(this.time * 9) * 0.25;
         }
         this._fly?.(dt);
     }
 
     exit() {
         super.exit();
-        this.game.ocean.water.visible = true;
+        this.game.ocean.visible = true;
         this.game.player.controller.setMode('walk');
         this.game.input.enabled = true;
-        this.game.teco.root.visible = true;
+        this.game.teco.root.setEnabled(true);
     }
 }

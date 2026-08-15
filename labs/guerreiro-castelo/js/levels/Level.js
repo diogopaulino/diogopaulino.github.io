@@ -1,4 +1,6 @@
-/** Nível base — grupo, colisão e ciclo de vida. */
+/**
+ * Nível base em Babylon.js — transformNode raiz, obstáculos, ciclo de vida e interação.
+ */
 
 export class Level {
     constructor(game) {
@@ -19,7 +21,18 @@ export class Level {
     enter() {}
 
     exit() {
+        for (const item of this.interactables) {
+            this.game.interact.remove(item);
+        }
         this.interactables.length = 0;
+        this.obstacles.length = 0;
+        this.npcs.length = 0;
+        if (this.group) {
+            try {
+                this.group.dispose(false, true);
+            } catch { /* ignore */ }
+            this.group = null;
+        }
     }
 
     update() {}

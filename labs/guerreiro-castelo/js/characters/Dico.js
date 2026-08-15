@@ -2,9 +2,9 @@ import { CharacterAnimator, applyLocomotion } from './builders.js';
 
 export class Dico {
     constructor(built) {
-        this.root = built.group;
+        this.root = built.root;
         this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.group, built.clips);
+        this.animator = new CharacterAnimator(built.root, built.clips);
     }
 
     update(dt, state) {

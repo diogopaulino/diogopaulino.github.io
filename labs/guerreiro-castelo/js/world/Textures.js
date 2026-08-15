@@ -1,32 +1,17 @@
 /**
- * Texturas procedurais em canvas — o lab não depende de PNG externos.
+ * Texturas procedurais geradas via HTML Canvas para Babylon.js.
+ * Sem dependência de PNGs externos.
  */
 
-import * as THREE from 'three';
 import { hash2 } from '../utils/math.js';
 
 const cache = new Map();
 
-function canvas(size, height = size) {
+function createCanvas(width, height = width) {
     const el = document.createElement('canvas');
-    el.width = size;
+    el.width = width;
     el.height = height;
     return el;
-}
-
-function toTexture(el, { repeat = [1, 1], srgb = true, aniso = 4, normal = false } = {}) {
-    const tex = new THREE.CanvasTexture(el);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeat[0], repeat[1]);
-    tex.anisotropy = aniso;
-    if (srgb && !normal) tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
-}
-
-function cached(key, factory) {
-    if (!cache.has(key)) cache.set(key, factory());
-    return cache.get(key);
 }
 
 function grain(ctx, w, h, amount, seed = 0) {
@@ -43,10 +28,28 @@ function grain(ctx, w, h, amount, seed = 0) {
     ctx.putImageData(img, 0, 0);
 }
 
-export function woodTexture() {
-    return cached('wood', () => {
+function createBabylonDynamicTexture(name, canvasEl, scene, uScale = 1, vScale = 1) {
+    const texture = new BABYLON.DynamicTexture(name, canvasEl, scene, true);
+    texture.uScale = uScale;
+    texture.vScale = vScale;
+    texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.update();
+    return texture;
+}
+
+function cached(key, scene, factory) {
+    const cacheKey = `${key}_${scene?.uid || 'default'}`;
+    if (!cache.has(cacheKey)) {
+        cache.set(cacheKey, factory());
+    }
+    return cache.get(cacheKey);
+}
+
+export function woodTexture(scene, uScale = 4, vScale = 4) {
+    return cached('wood', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#6b4423';
         ctx.fillRect(0, 0, size, size);
@@ -60,14 +63,14 @@ export function woodTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 28, 4);
-        return toTexture(el, { repeat: [4, 4] });
+        return createBabylonDynamicTexture('tex_wood', el, scene, uScale, vScale);
     });
 }
 
-export function darkWoodTexture() {
-    return cached('darkwood', () => {
+export function darkWoodTexture(scene, uScale = 3, vScale = 3) {
+    return cached('darkwood', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#3a2414';
         ctx.fillRect(0, 0, size, size);
@@ -81,14 +84,14 @@ export function darkWoodTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 22, 6);
-        return toTexture(el, { repeat: [3, 3] });
+        return createBabylonDynamicTexture('tex_darkwood', el, scene, uScale, vScale);
     });
 }
 
-export function stoneTexture() {
-    return cached('stone', () => {
+export function stoneTexture(scene, uScale = 8, vScale = 8) {
+    return cached('stone', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#6a665e';
         ctx.fillRect(0, 0, size, size);
@@ -100,14 +103,14 @@ export function stoneTexture() {
             ctx.fillRect(x, y, 18 + hash2(i, 4) * 30, 12 + hash2(i, 5) * 20);
         }
         grain(ctx, size, size, 36, 9);
-        return toTexture(el, { repeat: [8, 8] });
+        return createBabylonDynamicTexture('tex_stone', el, scene, uScale, vScale);
     });
 }
 
-export function castleStoneTexture() {
-    return cached('castlestone', () => {
+export function castleStoneTexture(scene, uScale = 6, vScale = 8) {
+    return cached('castlestone', scene, () => {
         const size = 512;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#7a7468';
         ctx.fillRect(0, 0, size, size);
@@ -125,14 +128,14 @@ export function castleStoneTexture() {
             }
         }
         grain(ctx, size, size, 24, 11);
-        return toTexture(el, { repeat: [6, 8] });
+        return createBabylonDynamicTexture('tex_castlestone', el, scene, uScale, vScale);
     });
 }
 
-export function mossTexture() {
-    return cached('moss', () => {
+export function mossTexture(scene, uScale = 6, vScale = 6) {
+    return cached('moss', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#3a5a28';
         ctx.fillRect(0, 0, size, size);
@@ -144,14 +147,14 @@ export function mossTexture() {
             ctx.fill();
         }
         grain(ctx, size, size, 20, 3);
-        return toTexture(el, { repeat: [6, 6] });
+        return createBabylonDynamicTexture('tex_moss', el, scene, uScale, vScale);
     });
 }
 
-export function grassTexture() {
-    return cached('grass', () => {
+export function grassTexture(scene, uScale = 14, vScale = 14) {
+    return cached('grass', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#3d6a28';
         ctx.fillRect(0, 0, size, size);
@@ -166,14 +169,14 @@ export function grassTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 22, 3);
-        return toTexture(el, { repeat: [14, 14] });
+        return createBabylonDynamicTexture('tex_grass', el, scene, uScale, vScale);
     });
 }
 
-export function sandTexture() {
-    return cached('sand', () => {
+export function sandTexture(scene, uScale = 10, vScale = 10) {
+    return cached('sand', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#cbb48a';
         ctx.fillRect(0, 0, size, size);
@@ -185,26 +188,26 @@ export function sandTexture() {
             ctx.bezierCurveTo(80, hash2(i, 2) * size, 180, hash2(i, 3) * size, size, hash2(i, 4) * size);
             ctx.stroke();
         }
-        return toTexture(el, { repeat: [10, 10] });
+        return createBabylonDynamicTexture('tex_sand', el, scene, uScale, vScale);
     });
 }
 
-export function leatherTexture() {
-    return cached('leather', () => {
+export function leatherTexture(scene, uScale = 2, vScale = 2) {
+    return cached('leather', scene, () => {
         const size = 128;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#5a3a22';
         ctx.fillRect(0, 0, size, size);
         grain(ctx, size, size, 36, 7);
-        return toTexture(el, { repeat: [2, 2] });
+        return createBabylonDynamicTexture('tex_leather', el, scene, uScale, vScale);
     });
 }
 
-export function clothTexture() {
-    return cached('cloth', () => {
+export function clothTexture(scene, uScale = 3, vScale = 3) {
+    return cached('cloth', scene, () => {
         const size = 128;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#4a3a2a';
         ctx.fillRect(0, 0, size, size);
@@ -213,38 +216,38 @@ export function clothTexture() {
             ctx.fillRect(0, y, size, 1);
         }
         grain(ctx, size, size, 18, 2);
-        return toTexture(el, { repeat: [3, 3] });
+        return createBabylonDynamicTexture('tex_cloth', el, scene, uScale, vScale);
     });
 }
 
-export function rustTexture() {
-    return cached('rust', () => {
+export function rustTexture(scene, uScale = 2, vScale = 2) {
+    return cached('rust', scene, () => {
         const size = 128;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#6a3a18';
         ctx.fillRect(0, 0, size, size);
         grain(ctx, size, size, 50, 15);
-        return toTexture(el, { repeat: [2, 2] });
+        return createBabylonDynamicTexture('tex_rust', el, scene, uScale, vScale);
     });
 }
 
-export function plasterTexture() {
-    return cached('plaster', () => {
+export function plasterTexture(scene, uScale = 3, vScale = 3) {
+    return cached('plaster', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#c4b49a';
         ctx.fillRect(0, 0, size, size);
         grain(ctx, size, size, 28, 5);
-        return toTexture(el, { repeat: [3, 3] });
+        return createBabylonDynamicTexture('tex_plaster', el, scene, uScale, vScale);
     });
 }
 
-export function rugTexture() {
-    return cached('rug', () => {
+export function rugTexture(scene, uScale = 1, vScale = 1) {
+    return cached('rug', scene, () => {
         const size = 256;
-        const el = canvas(size);
+        const el = createCanvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#1e3a7a';
         ctx.fillRect(0, 0, size, size);
@@ -259,76 +262,13 @@ export function rugTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 16, 1);
-        return toTexture(el, { repeat: [1, 1] });
+        return createBabylonDynamicTexture('tex_rug', el, scene, uScale, vScale);
     });
 }
 
-export function leafTexture() {
-    return cached('leaf', () => {
-        const size = 128;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
-        ctx.fillStyle = '#2f6a24';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < 80; i++) {
-            ctx.fillStyle = hash2(i, 1) > 0.5 ? '#3e8a30' : '#245818';
-            ctx.globalAlpha = 0.6;
-            ctx.beginPath();
-            ctx.ellipse(hash2(i, 2) * size, hash2(i, 3) * size, 8, 14, hash2(i, 4) * 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        return toTexture(el, { repeat: [2, 2] });
-    });
-}
-
-export function barkTexture() {
-    return cached('bark', () => {
-        const size = 256;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
-        ctx.fillStyle = '#4a321c';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < 18; i++) {
-            ctx.strokeStyle = '#2e1e10';
-            ctx.lineWidth = 4 + hash2(i, 1) * 6;
-            ctx.globalAlpha = 0.6;
-            ctx.beginPath();
-            ctx.moveTo(i * 14, 0);
-            ctx.bezierCurveTo(i * 14 + 6, 80, i * 14 - 4, 160, i * 14 + 2, size);
-            ctx.stroke();
-        }
-        grain(ctx, size, size, 24, 8);
-        return toTexture(el, { repeat: [2, 4] });
-    });
-}
-
-export function waterNormalTexture() {
-    return cached('watern', () => {
-        const size = 256;
-        const el = canvas(size);
-        const ctx = el.getContext('2d');
-        const img = ctx.createImageData(size, size);
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-                const n1 = hash2(x * 0.08, y * 0.08, 1);
-                const n2 = hash2(x * 0.2, y * 0.2, 4);
-                const nx = (n1 - 0.5) * 0.6 + 0.5;
-                const ny = (n2 - 0.5) * 0.6 + 0.5;
-                const i = (y * size + x) * 4;
-                img.data[i] = nx * 255;
-                img.data[i + 1] = ny * 255;
-                img.data[i + 2] = 255;
-                img.data[i + 3] = 255;
-            }
-        }
-        ctx.putImageData(img, 0, 0);
-        return toTexture(el, { repeat: [8, 8], srgb: false, normal: true });
-    });
-}
-
-export function flagTexture(color = '#6b1c1c') {
-    return cached(`flag:${color}`, () => {
-        const el = canvas(128, 80);
+export function flagTexture(scene, color = '#6b1c1c') {
+    return cached(`flag_${color}`, scene, () => {
+        const el = createCanvas(128, 80);
         const ctx = el.getContext('2d');
         ctx.fillStyle = color;
         ctx.fillRect(0, 0, 128, 80);
@@ -346,11 +286,37 @@ export function flagTexture(color = '#6b1c1c') {
         ctx.lineTo(58, 36);
         ctx.closePath();
         ctx.fill();
-        return toTexture(el, { repeat: [1, 1] });
+        return createBabylonDynamicTexture(`tex_flag_${color}`, el, scene, 1, 1);
+    });
+}
+
+export function waterNormalTexture(scene, uScale = 8, vScale = 8) {
+    return cached('watern', scene, () => {
+        const size = 256;
+        const el = createCanvas(size);
+        const ctx = el.getContext('2d');
+        const img = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const n1 = hash2(x * 0.08, y * 0.08, 1);
+                const n2 = hash2(x * 0.2, y * 0.2, 4);
+                const nx = (n1 - 0.5) * 0.6 + 0.5;
+                const ny = (n2 - 0.5) * 0.6 + 0.5;
+                const i = (y * size + x) * 4;
+                img.data[i] = nx * 255;
+                img.data[i + 1] = ny * 255;
+                img.data[i + 2] = 255;
+                img.data[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        return createBabylonDynamicTexture('tex_watern', el, scene, uScale, vScale);
     });
 }
 
 export function clearTextureCache() {
-    for (const tex of cache.values()) tex.dispose();
+    for (const tex of cache.values()) {
+        try { tex.dispose(); } catch { /* ignore */ }
+    }
     cache.clear();
 }

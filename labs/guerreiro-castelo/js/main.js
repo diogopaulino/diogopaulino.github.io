@@ -1,18 +1,16 @@
-import * as THREE from 'three';
+/**
+ * Ponto de entrada do jogo O Guerreiro e o Castelo com Babylon.js.
+ */
+
 import { Game } from './core/Game.js';
 
-const game = new Game();
-const clock = new THREE.Clock();
-
-function animate() {
-    requestAnimationFrame(animate);
-    const delta = Math.min(clock.getDelta(), 0.05);
-    game.update(delta);
-    game.render();
-}
+const canvas = document.getElementById('scene') || document.getElementById('gameCanvas');
+const game = new Game(canvas);
 
 game.init()
-    .then(() => animate())
+    .then(() => {
+        game.start();
+    })
     .catch((err) => {
         console.error('[Guerreiro] falha na inicialização', err);
         const el = document.getElementById('loadingText');

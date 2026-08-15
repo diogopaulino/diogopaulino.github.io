@@ -1,17 +1,19 @@
-import * as THREE from 'three';
+/**
+ * Companheiro Teco (Macaco) para Babylon.js.
+ */
+
 import { buildTeco, CharacterAnimator } from './builders.js';
 import { MonkeyAI } from '../ai/MonkeyAI.js';
 import { angleDamp } from '../utils/math.js';
 
 export class Teco {
     constructor(scene) {
-        const built = buildTeco();
-        this.root = built.group;
+        this.scene = scene;
+        const built = buildTeco(scene);
+        this.root = built.root;
         this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.group, built.clips);
-        scene.add(this.root);
-        this.root.traverse((c) => { if (c.isMesh) c.userData.ignoreCamera = true; });
-        this.position = new THREE.Vector3();
+        this.animator = new CharacterAnimator(built.root, built.clips);
+        this.position = new BABYLON.Vector3(0, 0, 0);
         this.facing = 0;
         this.ai = new MonkeyAI(this);
         this.onShoulder = false;
@@ -20,13 +22,12 @@ export class Teco {
 
     spawn(x, y, z) {
         this.position.set(x, y, z);
-        this.root.position.copy(this.position);
+        this.root.position.copyFrom(this.position);
         this.ai.reset();
     }
 
     attachTo(parent) {
-        if (this.root.parent) this.root.parent.remove(this.root);
-        parent.add(this.root);
+        this.root.parent = parent;
     }
 
     play(name) {
@@ -36,9 +37,9 @@ export class Teco {
     update(dt, game) {
         this.ai.update(dt, game);
         this.facing = angleDamp(this.facing, this.ai.facing, 10, dt);
-        this.root.position.copy(this.position);
+        this.root.position.copyFrom(this.position);
         this.root.rotation.y = this.facing;
-        this.root.visible = this.visible;
+        this.root.setEnabled(this.visible);
         this.animator.update(dt);
     }
 }

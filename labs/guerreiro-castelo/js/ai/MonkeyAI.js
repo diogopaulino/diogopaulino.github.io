@@ -1,9 +1,7 @@
 /**
- * Companion Teco — estados reutilizáveis para seguir, pousar no ombro,
- * ir a um alvo, escalar, interagir e voltar.
+ * Companheiro Teco (Macaco) — IA de acompanhamento, ombro, escalada e interação.
  */
 
-import * as THREE from 'three';
 import { damp } from '../utils/math.js';
 
 export const MonkeyState = {
@@ -17,8 +15,6 @@ export const MonkeyState = {
     SCARED: 'SCARED',
     CELEBRATE: 'CELEBRATE'
 };
-
-const _tmp = new THREE.Vector3();
 
 export class MonkeyAI {
     constructor(teco) {
@@ -42,12 +38,8 @@ export class MonkeyAI {
         this.teco.onShoulder = false;
     }
 
-    /**
-     * Tarefa especial: waypoints em espaço local do parent do Teco.
-     * onArrive é chamado no INTERACT.
-     */
     command(path, { climb = false, scared = false, celebrate = false, onComplete = null } = {}) {
-        this.path = path.map((p) => p.clone());
+        this.path = path.map((p) => p.clone ? p.clone() : new BABYLON.Vector3(p.x, p.y, p.z));
         this.pathI = 0;
         this.onComplete = onComplete;
         this.state = climb ? MonkeyState.CLIMB : MonkeyState.MOVE_TO;
@@ -63,12 +55,12 @@ export class MonkeyAI {
         this.timer += dt;
 
         if (this.state === MonkeyState.PERCHED) {
-            const shoulder = _tmp.set(0.22, 1.52, 0.05);
-            shoulder.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.facing);
+            const shoulderX = Math.cos(player.facing) * 0.22 - Math.sin(player.facing) * 0.05;
+            const shoulderZ = -Math.sin(player.facing) * 0.22 - Math.cos(player.facing) * 0.05;
             teco.position.set(
-                player.position.x + shoulder.x,
-                player.position.y + shoulder.y,
-                player.position.z + shoulder.z
+                player.position.x + shoulderX,
+                player.position.y + 1.52,
+                player.position.z + shoulderZ
             );
             this.facing = player.facing;
             teco.play('Shoulder');

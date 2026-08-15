@@ -1,625 +1,853 @@
 /**
- * Humanoides procedurais com ossos nomeados + AnimationMixer.
- * Fallbacks apresentáveis para quando o GLB não existe.
+ * Humanoides e animais procedurais estilizados em Babylon.js com hierarquia de nós e animador procedural.
  */
 
-import * as THREE from 'three';
 import { leatherTexture, clothTexture } from '../world/Textures.js';
-
-const matCache = new Map();
-
-export function std(color, roughness = 0.78, metalness = 0.04, extra = {}) {
-    const key = `s:${color}:${roughness}:${metalness}:${JSON.stringify(extra)}`;
-    if (!matCache.has(key)) {
-        matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra }));
-    }
-    return matCache.get(key);
-}
-
-export function mapped(map, color = 0xffffff, roughness = 0.86, metalness = 0.03) {
-    return new THREE.MeshStandardMaterial({ map, color, roughness, metalness });
-}
-
-export function enableShadows(root) {
-    root.traverse((c) => {
-        if (c.isMesh) {
-            c.castShadow = true;
-            c.receiveShadow = true;
-        }
-    });
-}
-
-function nameBone(obj, name) {
-    obj.name = name;
-    return obj;
-}
-
-function makeClips(parts) {
-    const clips = {};
-    const mk = (name, duration, channels) => {
-        const tracks = channels.map((ch) => {
-            const n = 8;
-            const times = [];
-            const values = [];
-            for (let i = 0; i <= n; i++) {
-                const t = (i / n) * duration;
-                times.push(t);
-                values.push(Math.sin((i / n) * Math.PI * 2 + ch.phase) * ch.amp + (ch.base || 0));
-            }
-            return new THREE.NumberKeyframeTrack(`${ch.target.name}.rotation[${ch.axis}]`, times, values);
-        });
-        clips[name] = new THREE.AnimationClip(name, duration, tracks);
-    };
-
-    mk('Idle', 2.4, [
-        { target: parts.chest, axis: 'x', amp: 0.03, phase: 0 },
-        { target: parts.head, axis: 'y', amp: 0.04, phase: 1 }
-    ]);
-    mk('Walk', 0.85, [
-        { target: parts.legL, axis: 'x', amp: 0.55, phase: 0 },
-        { target: parts.legR, axis: 'x', amp: 0.55, phase: Math.PI },
-        { target: parts.armL, axis: 'x', amp: 0.45, phase: Math.PI },
-        { target: parts.armR, axis: 'x', amp: 0.45, phase: 0 }
-    ]);
-    mk('Run', 0.55, [
-        { target: parts.legL, axis: 'x', amp: 0.85, phase: 0 },
-        { target: parts.legR, axis: 'x', amp: 0.85, phase: Math.PI },
-        { target: parts.armL, axis: 'x', amp: 0.7, phase: Math.PI },
-        { target: parts.armR, axis: 'x', amp: 0.7, phase: 0 },
-        { target: parts.chest, axis: 'z', amp: 0.06, phase: 0 }
-    ]);
-    mk('Sprint', 0.42, [
-        { target: parts.legL, axis: 'x', amp: 1.05, phase: 0 },
-        { target: parts.legR, axis: 'x', amp: 1.05, phase: Math.PI },
-        { target: parts.armL, axis: 'x', amp: 0.9, phase: Math.PI },
-        { target: parts.armR, axis: 'x', amp: 0.9, phase: 0 }
-    ]);
-    mk('Crouch', 1.2, [
-        { target: parts.legL, axis: 'x', amp: 0.12, phase: 0, base: 0.55 },
-        { target: parts.legR, axis: 'x', amp: 0.12, phase: Math.PI, base: 0.55 }
-    ]);
-    mk('Attack', 0.45, [
-        { target: parts.armR, axis: 'x', amp: 1.1, phase: 0, base: -0.4 },
-        { target: parts.chest, axis: 'y', amp: 0.25, phase: 0 }
-    ]);
-    mk('Block', 0.8, [
-        { target: parts.armL, axis: 'x', amp: 0.05, phase: 0, base: -0.9 }
-    ]);
-    mk('Interact', 0.9, [
-        { target: parts.armR, axis: 'x', amp: 0.4, phase: 0, base: -0.6 }
-    ]);
-    mk('Jump', 0.6, [
-        { target: parts.legL, axis: 'x', amp: 0.2, phase: 0, base: 0.4 },
-        { target: parts.legR, axis: 'x', amp: 0.2, phase: 0, base: 0.4 }
-    ]);
-    return clips;
-}
+import { angleLerp, damp } from '../utils/math.js';
 
 export class CharacterAnimator {
     constructor(root, clips) {
-        this.mixer = new THREE.AnimationMixer(root);
-        this.actions = {};
-        for (const [name, clip] of Object.entries(clips)) {
-            const action = this.mixer.clipAction(clip);
-            action.enabled = true;
-            this.actions[name] = action;
-        }
-        this.current = null;
+        this.root = root;
+        this.clips = clips || {};
         this.currentName = 'Idle';
-        this.play('Idle', 0);
+        this.targetName = 'Idle';
+        this.time = 0;
+        this.transitionTime = 0;
+        this.transitionDuration = 0.15;
+        this.prevClip = null;
+        this.currentClip = this.clips.Idle || null;
     }
 
-    play(name, fade = 0.18) {
-        const next = this.actions[name] || this.actions.Idle;
-        if (!next || this.current === next) return;
-        next.reset();
-        next.setEffectiveWeight(1);
-        next.play();
-        if (this.current) this.current.crossFadeTo(next, fade, false);
-        else next.fadeIn(fade);
-        this.current = next;
-        this.currentName = name;
+    play(name, fade = 0.15) {
+        if (this.targetName === name) return;
+        if (!this.clips[name]) return;
+        this.prevClip = this.currentClip;
+        this.targetName = name;
+        this.currentClip = this.clips[name];
+        this.transitionTime = 0;
+        this.transitionDuration = Math.max(0.01, fade);
     }
 
     update(dt) {
-        this.mixer.update(dt);
+        this.time += dt;
+        this.transitionTime += dt;
+        const blend = Math.min(1, this.transitionTime / this.transitionDuration);
+
+        if (this.currentClip) {
+            const curPose = this.currentClip.sample(this.time);
+            if (blend < 1 && this.prevClip) {
+                const prevPose = this.prevClip.sample(this.time);
+                for (const nodeName of Object.keys(curPose)) {
+                    const node = this.root.userData?.parts?.[nodeName];
+                    if (node && node.rotation) {
+                        const p = prevPose[nodeName] || { x: 0, y: 0, z: 0 };
+                        const c = curPose[nodeName];
+                        node.rotation.x = angleLerp(p.x || 0, c.x || 0, blend);
+                        node.rotation.y = angleLerp(p.y || 0, c.y || 0, blend);
+                        node.rotation.z = angleLerp(p.z || 0, c.z || 0, blend);
+                    }
+                }
+            } else {
+                for (const nodeName of Object.keys(curPose)) {
+                    const node = this.root.userData?.parts?.[nodeName];
+                    if (node && node.rotation) {
+                        const c = curPose[nodeName];
+                        if (c.x !== undefined) node.rotation.x = c.x;
+                        if (c.y !== undefined) node.rotation.y = c.y;
+                        if (c.z !== undefined) node.rotation.z = c.z;
+                    }
+                }
+            }
+        }
     }
 }
 
-function addEyes(head, skin, sx, color = 0x2a2418) {
-    for (const s of [-1, 1]) {
-        const white = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), std(0xf4efe6, 0.35));
-        white.position.set(s * sx, 0.04, 0.12);
-        head.add(white);
-        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), std(color, 0.35));
-        iris.position.set(s * sx, 0.04, 0.142);
-        head.add(iris);
-        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 5), std(0x111111, 0.2));
-        pupil.position.set(s * sx, 0.04, 0.154);
-        head.add(pupil);
+class ProceduralClip {
+    constructor(duration, channels) {
+        this.duration = duration;
+        this.channels = channels; // array of { target, axis, amp, phase, base }
+    }
+
+    sample(time) {
+        const pose = {};
+        const t = (time % this.duration) / this.duration;
+        for (const ch of this.channels) {
+            if (!pose[ch.target]) pose[ch.target] = {};
+            const val = Math.sin(t * Math.PI * 2 + (ch.phase || 0)) * ch.amp + (ch.base || 0);
+            pose[ch.target][ch.axis] = val;
+        }
+        return pose;
     }
 }
 
-function curlyHair(head, mat, radius, count, yOff = 0.1) {
-    for (let i = 0; i < count; i++) {
-        const curl = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), mat);
-        const a = (i / count) * Math.PI * 2;
-        const h = 0.04 + (i % 3) * 0.03;
-        curl.position.set(Math.cos(a) * radius, yOff + h, Math.sin(a) * radius * 0.9);
-        head.add(curl);
-    }
+function makeHumanoidClips() {
+    return {
+        Idle: new ProceduralClip(2.4, [
+            { target: 'chest', axis: 'x', amp: 0.03, phase: 0 },
+            { target: 'head', axis: 'y', amp: 0.04, phase: 1 }
+        ]),
+        Walk: new ProceduralClip(0.85, [
+            { target: 'legL', axis: 'x', amp: 0.55, phase: 0 },
+            { target: 'legR', axis: 'x', amp: 0.55, phase: Math.PI },
+            { target: 'armL', axis: 'x', amp: 0.45, phase: Math.PI },
+            { target: 'armR', axis: 'x', amp: 0.45, phase: 0 }
+        ]),
+        Run: new ProceduralClip(0.55, [
+            { target: 'legL', axis: 'x', amp: 0.85, phase: 0 },
+            { target: 'legR', axis: 'x', amp: 0.85, phase: Math.PI },
+            { target: 'armL', axis: 'x', amp: 0.7, phase: Math.PI },
+            { target: 'armR', axis: 'x', amp: 0.7, phase: 0 },
+            { target: 'chest', axis: 'z', amp: 0.06, phase: 0 }
+        ]),
+        Sprint: new ProceduralClip(0.42, [
+            { target: 'legL', axis: 'x', amp: 1.05, phase: 0 },
+            { target: 'legR', axis: 'x', amp: 1.05, phase: Math.PI },
+            { target: 'armL', axis: 'x', amp: 0.9, phase: Math.PI },
+            { target: 'armR', axis: 'x', amp: 0.9, phase: 0 }
+        ]),
+        Crouch: new ProceduralClip(1.2, [
+            { target: 'legL', axis: 'x', amp: 0.12, phase: 0, base: 0.55 },
+            { target: 'legR', axis: 'x', amp: 0.12, phase: Math.PI, base: 0.55 }
+        ]),
+        Attack: new ProceduralClip(0.45, [
+            { target: 'armR', axis: 'x', amp: 1.1, phase: 0, base: -0.4 },
+            { target: 'chest', axis: 'y', amp: 0.25, phase: 0 }
+        ]),
+        Block: new ProceduralClip(0.8, [
+            { target: 'armL', axis: 'x', amp: 0.05, phase: 0, base: -0.9 }
+        ]),
+        Interact: new ProceduralClip(0.9, [
+            { target: 'armR', axis: 'x', amp: 0.4, phase: 0, base: -0.6 }
+        ]),
+        Jump: new ProceduralClip(0.6, [
+            { target: 'legL', axis: 'x', amp: 0.2, phase: 0, base: 0.4 },
+            { target: 'legR', axis: 'x', amp: 0.2, phase: 0, base: 0.4 }
+        ])
+    };
 }
 
-/**
- * Ossos compartilhados: hips, spine, chest, head, armL/R, legL/R.
- */
 export function buildHumanoid({
+    scene,
     height = 1.8,
     thin = 1,
-    skin = 0xe0b089,
-    hair = 0x1a120e,
-    shirt = 0x4a3a2a,
-    pants = 0x2c2418,
-    boots = 0x3a2414,
-    eye = 0x3a2a18
+    skinColor = new BABYLON.Color3(0.88, 0.7, 0.55),
+    hairColor = new BABYLON.Color3(0.12, 0.08, 0.05),
+    shirtColor = new BABYLON.Color3(0.3, 0.22, 0.16),
+    pantsColor = new BABYLON.Color3(0.18, 0.15, 0.1),
+    bootColor = new BABYLON.Color3(0.24, 0.16, 0.1)
 } = {}) {
     const scale = height / 1.8;
-    const group = new THREE.Group();
-    const skinM = std(skin, 0.7);
-    const shirtM = mapped(clothTexture(), shirt, 0.9);
-    const pantsM = mapped(clothTexture(), pants, 0.88);
-    const bootM = mapped(leatherTexture(), boots, 0.7, 0.05);
-    const hairM = std(hair, 0.92);
+    const root = new BABYLON.TransformNode('humanoidRoot', scene);
 
-    const hips = nameBone(new THREE.Group(), 'hips');
-    group.add(hips);
+    const skinMat = new BABYLON.StandardMaterial('skinMat', scene);
+    skinMat.diffuseColor = skinColor;
+    skinMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
-    const legL = nameBone(new THREE.Group(), 'legL');
-    const legR = nameBone(new THREE.Group(), 'legR');
+    const hairMat = new BABYLON.StandardMaterial('hairMat', scene);
+    hairMat.diffuseColor = hairColor;
+
+    const shirtMat = new BABYLON.StandardMaterial('shirtMat', scene);
+    shirtMat.diffuseColor = shirtColor;
+
+    const pantsMat = new BABYLON.StandardMaterial('pantsMat', scene);
+    pantsMat.diffuseColor = pantsColor;
+
+    const bootMat = new BABYLON.StandardMaterial('bootMat', scene);
+    bootMat.diffuseColor = bootColor;
+
+    // Hips
+    const hips = new BABYLON.TransformNode('hips', scene);
+    hips.parent = root;
+
+    // Legs
+    const legL = new BABYLON.TransformNode('legL', scene);
+    const legR = new BABYLON.TransformNode('legR', scene);
     legL.position.set(-0.12 * thin * scale, 0.92 * scale, 0);
     legR.position.set(0.12 * thin * scale, 0.92 * scale, 0);
-    hips.add(legL, legR);
+    legL.parent = hips;
+    legR.parent = hips;
 
     for (const leg of [legL, legR]) {
-        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * thin * scale, 0.06 * thin * scale, 0.46 * scale, 8), pantsM);
+        const thigh = BABYLON.MeshBuilder.CreateCylinder('thigh', {
+            diameterTop: 0.14 * thin * scale,
+            diameterBottom: 0.12 * thin * scale,
+            height: 0.46 * scale,
+            tessellation: 8
+        }, scene);
         thigh.position.y = -0.23 * scale;
-        leg.add(thigh);
-        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * thin * scale, 0.05 * thin * scale, 0.42 * scale, 8), pantsM);
+        thigh.material = pantsMat;
+        thigh.parent = leg;
+
+        const shin = BABYLON.MeshBuilder.CreateCylinder('shin', {
+            diameterTop: 0.11 * thin * scale,
+            diameterBottom: 0.1 * thin * scale,
+            height: 0.42 * scale,
+            tessellation: 8
+        }, scene);
         shin.position.y = -0.66 * scale;
-        leg.add(shin);
-        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1 * scale, 0.08 * scale, 0.22 * scale), bootM);
+        shin.material = pantsMat;
+        shin.parent = leg;
+
+        const foot = BABYLON.MeshBuilder.CreateBox('foot', {
+            width: 0.1 * scale,
+            height: 0.08 * scale,
+            depth: 0.22 * scale
+        }, scene);
         foot.position.set(0, -0.9 * scale, 0.04 * scale);
-        leg.add(foot);
+        foot.material = bootMat;
+        foot.parent = leg;
     }
 
-    const spine = nameBone(new THREE.Group(), 'spine');
+    // Spine & Chest
+    const spine = new BABYLON.TransformNode('spine', scene);
     spine.position.y = 0.95 * scale;
-    hips.add(spine);
+    spine.parent = hips;
 
-    const chest = nameBone(new THREE.Group(), 'chest');
-    spine.add(chest);
-    const torso = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.2 * thin * scale, 0.42 * scale, 6, 10),
-        shirtM
-    );
+    const chest = new BABYLON.TransformNode('chest', scene);
+    chest.parent = spine;
+
+    const torso = BABYLON.MeshBuilder.CreateCapsule('torso', {
+        radius: 0.16 * thin * scale,
+        height: 0.58 * scale,
+        tessellation: 8
+    }, scene);
     torso.position.y = 0.28 * scale;
-    chest.add(torso);
+    torso.material = shirtMat;
+    torso.parent = chest;
 
-    const armL = nameBone(new THREE.Group(), 'armL');
-    const armR = nameBone(new THREE.Group(), 'armR');
+    // Arms
+    const armL = new BABYLON.TransformNode('armL', scene);
+    const armR = new BABYLON.TransformNode('armR', scene);
     armL.position.set(-0.26 * thin * scale, 0.42 * scale, 0);
     armR.position.set(0.26 * thin * scale, 0.42 * scale, 0);
-    chest.add(armL, armR);
+    armL.parent = chest;
+    armR.parent = chest;
+
     for (const arm of [armL, armR]) {
-        const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.045 * scale, 0.32 * scale, 8), shirtM);
+        const upper = BABYLON.MeshBuilder.CreateCylinder('armUpper', {
+            diameterTop: 0.1 * scale,
+            diameterBottom: 0.09 * scale,
+            height: 0.32 * scale,
+            tessellation: 8
+        }, scene);
         upper.position.y = -0.16 * scale;
-        arm.add(upper);
-        const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.042 * scale, 0.038 * scale, 0.3 * scale, 8), skinM);
+        upper.material = shirtMat;
+        upper.parent = arm;
+
+        const fore = BABYLON.MeshBuilder.CreateCylinder('armFore', {
+            diameterTop: 0.084 * scale,
+            diameterBottom: 0.076 * scale,
+            height: 0.3 * scale,
+            tessellation: 8
+        }, scene);
         fore.position.y = -0.46 * scale;
-        arm.add(fore);
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045 * scale, 8, 6), skinM);
+        fore.material = skinMat;
+        fore.parent = arm;
+
+        const hand = BABYLON.MeshBuilder.CreateSphere('hand', {
+            diameter: 0.09 * scale,
+            segments: 6
+        }, scene);
         hand.position.y = -0.64 * scale;
-        arm.add(hand);
-        arm.userData.hand = hand;
+        hand.material = skinMat;
+        hand.parent = arm;
+        arm.userData = { hand };
     }
 
-    const head = nameBone(new THREE.Group(), 'head');
+    // Head
+    const head = new BABYLON.TransformNode('head', scene);
     head.position.y = 0.62 * scale;
-    chest.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.125 * scale, 14, 12), skinM);
-    skull.scale.set(0.92, 1.05, 0.95);
-    head.add(skull);
-    addEyes(head, skinM, 0.045 * scale, eye);
+    head.parent = chest;
 
-    const parts = { hips, spine, chest, head, armL, armR, legL, legR, group, scale, skinM, hairM };
-    const clips = makeClips(parts);
-    enableShadows(group);
-    group.userData.parts = parts;
-    group.userData.clips = clips;
-    return { group, parts, clips };
+    const skull = BABYLON.MeshBuilder.CreateSphere('skull', {
+        diameter: 0.25 * scale,
+        segments: 10
+    }, scene);
+    skull.scaling.set(0.92, 1.05, 0.95);
+    skull.material = skinMat;
+    skull.parent = head;
+
+    // Olhos
+    for (const s of [-1, 1]) {
+        const eye = BABYLON.MeshBuilder.CreateSphere('eye', { diameter: 0.04 * scale, segments: 6 }, scene);
+        eye.position.set(s * 0.045 * scale, 0.04 * scale, 0.11 * scale);
+        const eyeMat = new BABYLON.StandardMaterial('eyeMat', scene);
+        eyeMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        eye.material = eyeMat;
+        eye.parent = head;
+    }
+
+    const parts = { hips, spine, chest, head, armL, armR, legL, legR, root, skinMat, hairMat };
+    const clips = makeHumanoidClips();
+    root.userData = { parts, clips };
+
+    return { root, parts, clips };
 }
 
-export function buildDico() {
-    const { group, parts, clips } = buildHumanoid({
+export function buildDico(scene) {
+    const built = buildHumanoid({
+        scene,
         height: 1.9,
         thin: 0.88,
-        skin: 0xd9a878,
-        hair: 0x1a140f,
-        shirt: 0x4a3a2c,
-        pants: 0x2a2218,
-        boots: 0x3a2416,
-        eye: 0x3d4a28
+        skinColor: new BABYLON.Color3(0.85, 0.66, 0.48),
+        hairColor: new BABYLON.Color3(0.1, 0.08, 0.06),
+        shirtColor: new BABYLON.Color3(0.3, 0.23, 0.17),
+        pantsColor: new BABYLON.Color3(0.16, 0.13, 0.1),
+        bootColor: new BABYLON.Color3(0.22, 0.14, 0.09)
     });
 
-    curlyHair(parts.head, parts.hairM, 0.12, 16, 0.08);
-    const bang = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), parts.hairM);
-    bang.position.set(0, 0.12, 0.08);
-    parts.head.add(bang);
+    const parts = built.parts;
 
-    const mustache = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.015, 0.03), parts.hairM);
+    // Cabelo crespo e barba
+    const hairCluster = new BABYLON.TransformNode('dicoHair', scene);
+    hairCluster.parent = parts.head;
+    for (let i = 0; i < 16; i++) {
+        const curl = BABYLON.MeshBuilder.CreateSphere(`curl_${i}`, { diameter: 0.09, segments: 6 }, scene);
+        const a = (i / 16) * Math.PI * 2;
+        curl.position.set(Math.cos(a) * 0.12, 0.1 + (i % 3) * 0.03, Math.sin(a) * 0.11);
+        curl.material = parts.hairMat;
+        curl.parent = hairCluster;
+    }
+
+    const mustache = BABYLON.MeshBuilder.CreateBox('mustache', { width: 0.09, height: 0.015, depth: 0.03 }, scene);
     mustache.position.set(0, -0.02, 0.12);
-    parts.head.add(mustache);
-    const goatee = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), parts.hairM);
-    goatee.scale.set(0.7, 1.1, 0.6);
+    mustache.material = parts.hairMat;
+    mustache.parent = parts.head;
+
+    const goatee = BABYLON.MeshBuilder.CreateSphere('goatee', { diameter: 0.06, segments: 6 }, scene);
     goatee.position.set(0, -0.08, 0.1);
-    parts.head.add(goatee);
+    goatee.material = parts.hairMat;
+    goatee.parent = parts.head;
 
-    const leather = mapped(leatherTexture(), 0x5a3a22, 0.7, 0.08);
-    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.36, 10), leather);
+    // Colete de couro
+    const vest = BABYLON.MeshBuilder.CreateCylinder('vest', {
+        diameterTop: 0.4,
+        diameterBottom: 0.44,
+        height: 0.36,
+        tessellation: 10
+    }, scene);
     vest.position.y = 0.26;
-    parts.chest.add(vest);
+    const vestMat = new BABYLON.StandardMaterial('vestMat', scene);
+    vestMat.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.13);
+    vest.material = vestMat;
+    vest.parent = parts.chest;
 
-    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 6, 16), std(0x3a2414, 0.6, 0.15));
-    belt.rotation.x = Math.PI / 2;
-    belt.position.y = 0.08;
-    parts.chest.add(belt);
-
-    const sword = new THREE.Group();
-    sword.name = 'sword';
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.72, 0.012), std(0xc5cdd6, 0.25, 0.85));
-    blade.position.y = 0.36;
-    sword.add(blade);
-    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.03), std(0xb08a3a, 0.35, 0.8));
-    sword.add(guard);
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.14, 8), std(0x3a2414, 0.7));
-    hilt.position.y = -0.08;
-    sword.add(hilt);
+    // Espada na mão direita
+    const sword = new BABYLON.TransformNode('swordRoot', scene);
+    sword.parent = parts.armR.userData.hand;
     sword.position.set(0.02, -0.2, 0.02);
     sword.rotation.z = 0.15;
-    parts.armR.userData.hand.add(sword);
 
-    const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 10), mapped(leatherTexture(), 0x6b1c1c, 0.55, 0.2));
+    const blade = BABYLON.MeshBuilder.CreateBox('swordBlade', { width: 0.04, height: 0.72, depth: 0.012 }, scene);
+    blade.position.y = 0.36;
+    const bladeMat = new BABYLON.StandardMaterial('bladeMat', scene);
+    bladeMat.diffuseColor = new BABYLON.Color3(0.78, 0.82, 0.86);
+    bladeMat.specularColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+    blade.material = bladeMat;
+    blade.parent = sword;
+
+    const guard = BABYLON.MeshBuilder.CreateBox('swordGuard', { width: 0.16, height: 0.03, depth: 0.03 }, scene);
+    const goldMat = new BABYLON.StandardMaterial('goldMat', scene);
+    goldMat.diffuseColor = new BABYLON.Color3(0.7, 0.55, 0.2);
+    guard.material = goldMat;
+    guard.parent = sword;
+
+    const hilt = BABYLON.MeshBuilder.CreateCylinder('swordHilt', { diameter: 0.04, height: 0.14 }, scene);
+    hilt.position.y = -0.08;
+    const hiltMat = new BABYLON.StandardMaterial('hiltMat', scene);
+    hiltMat.diffuseColor = new BABYLON.Color3(0.2, 0.12, 0.08);
+    hilt.material = hiltMat;
+    hilt.parent = sword;
+
+    // Escudo no braço esquerdo
+    const shield = BABYLON.MeshBuilder.CreateCylinder('shield', {
+        diameter: 0.38,
+        height: 0.04,
+        tessellation: 10
+    }, scene);
     shield.rotation.z = Math.PI / 2;
     shield.position.set(-0.08, -0.15, 0.06);
-    parts.armL.add(shield);
+    const shieldMat = new BABYLON.StandardMaterial('shieldMat', scene);
+    shieldMat.diffuseColor = new BABYLON.Color3(0.45, 0.12, 0.12);
+    shield.material = shieldMat;
+    shield.parent = parts.armL;
 
-    const torch = new THREE.Group();
-    torch.visible = false;
-    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.32, 6), std(0x4a3218, 0.9));
-    torch.add(stick);
-    const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 8, 6),
-        new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff7711, emissiveIntensity: 2.2 })
-    );
-    flame.position.y = 0.2;
-    torch.add(flame);
+    // Tocha portátil na mão esquerda
+    const torch = new BABYLON.TransformNode('torchDico', scene);
+    torch.parent = parts.armL.userData.hand;
     torch.position.set(0.05, -0.2, 0.05);
-    parts.armL.userData.hand.add(torch);
+
+    const stick = BABYLON.MeshBuilder.CreateCylinder('torchStickDico', { diameter: 0.04, height: 0.32 }, scene);
+    stick.material = hiltMat;
+    stick.parent = torch;
+
+    const flame = BABYLON.MeshBuilder.CreateSphere('flameDico', { diameter: 0.12, segments: 6 }, scene);
+    flame.position.y = 0.2;
+    const flameMat = new BABYLON.StandardMaterial('flameMatDico', scene);
+    flameMat.diffuseColor = new BABYLON.Color3(1.0, 0.6, 0.2);
+    flameMat.emissiveColor = new BABYLON.Color3(1.0, 0.5, 0.1);
+    flame.material = flameMat;
+    flame.parent = torch;
+    torch.setEnabled(false);
+
     parts.torch = torch;
     parts.torchFlame = flame;
     parts.sword = sword;
     parts.shield = shield;
 
-    enableShadows(group);
-    return { group, parts, clips };
-}
-
-export function buildRavi() {
-    const { group, parts, clips } = buildHumanoid({
-        height: 1.05,
-        thin: 0.95,
-        skin: 0xe8c49a,
-        hair: 0xd8c48a,
-        shirt: 0x3a5a8a,
-        pants: 0x4a3a28,
-        boots: 0x5a3a22,
-        eye: 0x4a6a8a
-    });
-    curlyHair(parts.head, std(0xe8d4a0, 0.9), 0.08, 14, 0.06);
-    const blanket = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.7), std(0x6a2a2a, 0.92));
-    blanket.position.set(0, 0.4, 0.05);
-    blanket.visible = true;
-    group.add(blanket);
-    parts.blanket = blanket;
-    return { group, parts, clips };
-}
-
-export function buildCamila() {
-    const { group, parts, clips } = buildHumanoid({
-        height: 1.68,
-        thin: 0.9,
-        skin: 0xf0c8a8,
-        hair: 0xe8d48a,
-        shirt: 0xc9b8d4,
-        pants: 0x8a6a9a,
-        boots: 0x5a3a44,
-        eye: 0x4a6a8a
-    });
-    const hairM = std(0xe8d48a, 0.55);
-    const hair = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.35, 6, 10), hairM);
-    hair.position.set(0, 0.02, -0.04);
-    parts.head.add(hair);
-    const bangs = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.08), hairM);
-    bangs.position.set(0, 0.1, 0.1);
-    parts.head.add(bangs);
-    const dress = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 10), std(0xc9b8d4, 0.88));
-    dress.position.y = 0.55;
-    parts.hips.add(dress);
-    const shackles = new THREE.Group();
-    const left = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 6, 12), std(0x888888, 0.4, 0.8));
-    left.position.set(-0.12, 0.9, 0.12);
-    const right = left.clone();
-    right.position.x = 0.12;
-    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.24, 6), std(0x777777, 0.4, 0.8));
-    chain.rotation.z = Math.PI / 2;
-    chain.position.set(0, 0.9, 0.12);
-    shackles.add(left, right, chain);
-    parts.hips.add(shackles);
-    parts.shackles = shackles;
-    return { group, parts, clips };
-}
-
-export function buildGuard({ fat = false, archer = false } = {}) {
-    const { group, parts, clips } = buildHumanoid({
-        height: fat ? 1.7 : 1.82,
-        thin: fat ? 1.35 : 1.08,
-        skin: 0xd2a07a,
-        hair: 0x3a2a18,
-        shirt: 0x4a4a3a,
-        pants: 0x2a2a22,
-        boots: 0x3a2a18,
-        eye: 0x2a2a18
-    });
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), std(0x8a8a82, 0.35, 0.7));
-    helm.position.y = 0.04;
-    parts.head.add(helm);
-    const tunic = new THREE.Mesh(
-        new THREE.CylinderGeometry(fat ? 0.32 : 0.22, fat ? 0.28 : 0.2, 0.5, 10),
-        std(0x5a1c1c, 0.85)
-    );
-    tunic.position.y = 0.22;
-    parts.chest.add(tunic);
-    if (fat) {
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), std(0x5a1c1c, 0.88));
-        belly.position.y = 0.12;
-        parts.chest.add(belly);
-    }
-    const spear = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.6, 6), std(0x5a3a18, 0.8));
-    spear.add(shaft);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 6), std(0xb0b8c0, 0.3, 0.8));
-    tip.position.y = 0.86;
-    spear.add(tip);
-    spear.position.set(0.05, -0.2, 0.1);
-    parts.armR.userData.hand.add(spear);
-    if (archer) {
-        spear.visible = false;
-        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.018, 6, 16, Math.PI), std(0x5a3a18, 0.7));
-        bow.rotation.y = Math.PI / 2;
-        parts.armL.add(bow);
-    }
-    const keys = new THREE.Group();
-    for (let i = 0; i < 3; i++) {
-        const k = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.02), std(0xc9a227, 0.4, 0.7));
-        k.position.set(0.08, 0.7 + i * 0.02, 0.14);
-        k.rotation.z = 0.3 * i;
-        keys.add(k);
-    }
-    keys.visible = fat;
-    parts.hips.add(keys);
-    parts.keys = keys;
-    parts.spear = spear;
-    return { group, parts, clips };
-}
-
-export function buildFriend(variant = 0) {
-    const palettes = [
-        { shirt: 0x3a4a3a, pants: 0x2a2218, hair: 0x3a2414 },
-        { shirt: 0x3a3a5a, pants: 0x2a2a22, hair: 0x1a1a12 },
-        { shirt: 0x5a3a2a, pants: 0x3a2a18, hair: 0x6a4a22 }
-    ];
-    const p = palettes[variant % 3];
-    const built = buildHumanoid({
-        height: 1.78 + variant * 0.04,
-        thin: 1,
-        shirt: p.shirt,
-        pants: p.pants,
-        hair: p.hair
-    });
-    curlyHair(built.parts.head, std(p.hair, 0.9), 0.11, 10, 0.08);
-    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.32, 0.16), mapped(leatherTexture(), 0x4a3218, 0.8));
-    pack.position.set(0, 0.28, -0.22);
-    built.parts.chest.add(pack);
     return built;
 }
 
-export function buildTeco() {
-    const group = new THREE.Group();
-    const fur = std(0x6a4a2a, 0.9);
-    const dark = std(0x3a2a18, 0.88);
-    const face = std(0xe0b090, 0.65);
+export function buildRavi(scene) {
+    const built = buildHumanoid({
+        scene,
+        height: 1.05,
+        thin: 0.95,
+        skinColor: new BABYLON.Color3(0.9, 0.76, 0.6),
+        hairColor: new BABYLON.Color3(0.85, 0.75, 0.5),
+        shirtColor: new BABYLON.Color3(0.22, 0.35, 0.55),
+        pantsColor: new BABYLON.Color3(0.3, 0.22, 0.16),
+        bootColor: new BABYLON.Color3(0.35, 0.22, 0.14)
+    });
 
-    const hips = nameBone(new THREE.Group(), 'hips');
-    group.add(hips);
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), fur);
-    body.scale.set(0.9, 1.15, 0.8);
-    body.position.y = 0.22;
-    hips.add(body);
+    const blanket = BABYLON.MeshBuilder.CreateBox('raviBlanket', { width: 0.55, height: 0.08, depth: 0.7 }, scene);
+    blanket.position.set(0, 0.4, 0.05);
+    const bMat = new BABYLON.StandardMaterial('blanketMat', scene);
+    bMat.diffuseColor = new BABYLON.Color3(0.42, 0.16, 0.16);
+    blanket.material = bMat;
+    blanket.parent = built.root;
 
-    const chest = nameBone(new THREE.Group(), 'chest');
-    chest.position.y = 0.28;
-    hips.add(chest);
-
-    const head = nameBone(new THREE.Group(), 'head');
-    head.position.y = 0.16;
-    chest.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), fur);
-    head.add(skull);
-    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), face);
-    muzzle.scale.set(1, 0.8, 1.2);
-    muzzle.position.set(0, -0.02, 0.07);
-    head.add(muzzle);
-    addEyes(head, face, 0.03, 0x221808);
-    for (const s of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), fur);
-        ear.position.set(s * 0.08, 0.06, 0);
-        head.add(ear);
-    }
-
-    const armL = nameBone(new THREE.Group(), 'armL');
-    const armR = nameBone(new THREE.Group(), 'armR');
-    armL.position.set(-0.12, 0.06, 0);
-    armR.position.set(0.12, 0.06, 0);
-    chest.add(armL, armR);
-    for (const arm of [armL, armR]) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.22, 6), fur);
-        m.position.y = -0.1;
-        arm.add(m);
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), dark);
-        hand.position.y = -0.22;
-        arm.add(hand);
-        arm.userData.hand = hand;
-    }
-
-    const legL = nameBone(new THREE.Group(), 'legL');
-    const legR = nameBone(new THREE.Group(), 'legR');
-    legL.position.set(-0.06, 0.12, 0);
-    legR.position.set(0.06, 0.12, 0);
-    hips.add(legL, legR);
-    for (const leg of [legL, legR]) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.022, 0.18, 6), fur);
-        m.position.y = -0.08;
-        leg.add(m);
-        const foot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), dark);
-        foot.scale.set(1, 0.6, 1.4);
-        foot.position.set(0, -0.18, 0.02);
-        leg.add(foot);
-    }
-
-    const tail = nameBone(new THREE.Group(), 'tail');
-    tail.position.set(0, 0.16, -0.1);
-    hips.add(tail);
-    const tailM = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.01, 0.32, 6), fur);
-    tailM.rotation.x = 0.9;
-    tailM.position.set(0, 0.05, -0.12);
-    tail.add(tailM);
-
-    const parts = { hips, chest, head, armL, armR, legL, legR, tail, group };
-    const clips = makeClips(parts);
-    const extra = [
-        new THREE.NumberKeyframeTrack('tail.rotation[1]', [0, 0.4, 0.8], [0.4, -0.4, 0.4])
-    ];
-    clips.Climb = new THREE.AnimationClip('Climb', 0.6, [
-        new THREE.NumberKeyframeTrack('armL.rotation[0]', [0, 0.3, 0.6], [0.8, -0.8, 0.8]),
-        new THREE.NumberKeyframeTrack('armR.rotation[0]', [0, 0.3, 0.6], [-0.8, 0.8, -0.8]),
-        new THREE.NumberKeyframeTrack('legL.rotation[0]', [0, 0.3, 0.6], [-0.5, 0.5, -0.5])
-    ]);
-    clips.Grab = new THREE.AnimationClip('Grab', 0.5, extra);
-    clips.Shoulder = clips.Idle;
-    clips.Scared = new THREE.AnimationClip('Scared', 0.4, [
-        new THREE.NumberKeyframeTrack('head.rotation[0]', [0, 0.2, 0.4], [0.2, -0.1, 0.2])
-    ]);
-    clips.Celebrate = new THREE.AnimationClip('Celebrate', 0.6, [
-        new THREE.NumberKeyframeTrack('armL.rotation[0]', [0, 0.3, 0.6], [-1.2, -0.2, -1.2]),
-        new THREE.NumberKeyframeTrack('armR.rotation[0]', [0, 0.3, 0.6], [-0.2, -1.2, -0.2])
-    ]);
-    enableShadows(group);
-    group.userData.parts = parts;
-    group.userData.clips = clips;
-    return { group, parts, clips };
+    built.parts.blanket = blanket;
+    return built;
 }
 
-export function buildTiger() {
-    const group = new THREE.Group();
-    const orange = std(0xc45a18, 0.75);
-    const white = std(0xeee6d6, 0.8);
-    const black = std(0x1a120c, 0.85);
+export function buildCamila(scene) {
+    const built = buildHumanoid({
+        scene,
+        height: 1.68,
+        thin: 0.9,
+        skinColor: new BABYLON.Color3(0.94, 0.78, 0.65),
+        hairColor: new BABYLON.Color3(0.9, 0.82, 0.52),
+        shirtColor: new BABYLON.Color3(0.8, 0.72, 0.84),
+        pantsColor: new BABYLON.Color3(0.55, 0.42, 0.6),
+        bootColor: new BABYLON.Color3(0.35, 0.22, 0.28)
+    });
 
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 1.15, 8, 12), orange);
-    body.rotation.z = Math.PI / 2;
-    body.position.set(0, 0.55, 0);
-    group.add(body);
+    const parts = built.parts;
 
-    const belly = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.9, 6, 10), white);
-    belly.rotation.z = Math.PI / 2;
-    belly.position.set(0, 0.38, 0.05);
-    group.add(belly);
+    // Cabelo longo da princesa
+    const hair = BABYLON.MeshBuilder.CreateCapsule('camilaHair', { radius: 0.12, height: 0.45 }, scene);
+    hair.position.set(0, 0.02, -0.04);
+    hair.material = parts.hairMat;
+    hair.parent = parts.head;
 
-    const head = nameBone(new THREE.Group(), 'head');
-    head.position.set(0.85, 0.62, 0);
-    group.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), orange);
-    skull.scale.set(1.15, 0.9, 0.85);
-    head.add(skull);
-    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), white);
-    muzzle.position.set(0.18, -0.04, 0);
-    head.add(muzzle);
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), black);
-    nose.position.set(0.3, 0.02, 0);
-    head.add(nose);
+    // Vestido
+    const dress = BABYLON.MeshBuilder.CreateCylinder('camilaDress', {
+        diameterTop: 0.35,
+        diameterBottom: 0.65,
+        height: 0.7,
+        tessellation: 10
+    }, scene);
+    dress.position.y = 0.55;
+    const dressMat = new BABYLON.StandardMaterial('dressMat', scene);
+    dressMat.diffuseColor = new BABYLON.Color3(0.8, 0.72, 0.84);
+    dress.material = dressMat;
+    dress.parent = parts.hips;
+
+    // Grilhões nos pulsos
+    const shackles = new BABYLON.TransformNode('camilaShackles', scene);
+    shackles.parent = parts.hips;
+
+    const shackleMat = new BABYLON.StandardMaterial('shackleMat', scene);
+    shackleMat.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+
+    const leftRing = BABYLON.MeshBuilder.CreateTorus('leftRing', { diameter: 0.1, thickness: 0.024 }, scene);
+    leftRing.position.set(-0.12, 0.9, 0.12);
+    leftRing.material = shackleMat;
+    leftRing.parent = shackles;
+
+    const rightRing = BABYLON.MeshBuilder.CreateTorus('rightRing', { diameter: 0.1, thickness: 0.024 }, scene);
+    rightRing.position.set(0.12, 0.9, 0.12);
+    rightRing.material = shackleMat;
+    rightRing.parent = shackles;
+
+    const chain = BABYLON.MeshBuilder.CreateCylinder('shackleChain', { diameter: 0.024, height: 0.24 }, scene);
+    chain.rotation.z = Math.PI / 2;
+    chain.position.set(0, 0.9, 0.12);
+    chain.material = shackleMat;
+    chain.parent = shackles;
+
+    parts.shackles = shackles;
+    return built;
+}
+
+export function buildGuard(scene, { fat = false, archer = false } = {}) {
+    const built = buildHumanoid({
+        scene,
+        height: fat ? 1.7 : 1.82,
+        thin: fat ? 1.35 : 1.08,
+        skinColor: new BABYLON.Color3(0.82, 0.62, 0.48),
+        hairColor: new BABYLON.Color3(0.2, 0.15, 0.1),
+        shirtColor: new BABYLON.Color3(0.35, 0.12, 0.12),
+        pantsColor: new BABYLON.Color3(0.16, 0.16, 0.14),
+        bootColor: new BABYLON.Color3(0.2, 0.15, 0.1)
+    });
+
+    const parts = built.parts;
+
+    // Elmo de ferro
+    const helm = BABYLON.MeshBuilder.CreateSphere('guardHelm', { diameter: 0.3, segments: 8 }, scene);
+    helm.position.y = 0.04;
+    const ironMat = new BABYLON.StandardMaterial('ironMat', scene);
+    ironMat.diffuseColor = new BABYLON.Color3(0.55, 0.55, 0.52);
+    ironMat.specularColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    helm.material = ironMat;
+    helm.parent = parts.head;
+
+    if (fat) {
+        const belly = BABYLON.MeshBuilder.CreateSphere('guardBelly', { diameter: 0.56, segments: 8 }, scene);
+        belly.position.y = 0.12;
+        const tunicMat = new BABYLON.StandardMaterial('tunicMat', scene);
+        tunicMat.diffuseColor = new BABYLON.Color3(0.35, 0.12, 0.12);
+        belly.material = tunicMat;
+        belly.parent = parts.chest;
+    }
+
+    // Lança ou Arco
+    const spear = new BABYLON.TransformNode('guardSpear', scene);
+    spear.parent = parts.armR.userData.hand;
+    spear.position.set(0.05, -0.2, 0.1);
+
+    const shaft = BABYLON.MeshBuilder.CreateCylinder('spearShaft', { diameter: 0.036, height: 1.6 }, scene);
+    const woodM = new BABYLON.StandardMaterial('spearWood', scene);
+    woodM.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.1);
+    shaft.material = woodM;
+    shaft.parent = spear;
+
+    const tip = BABYLON.MeshBuilder.CreateCylinder('spearTip', { diameterTop: 0, diameterBottom: 0.08, height: 0.16 }, scene);
+    tip.position.y = 0.86;
+    tip.material = ironMat;
+    tip.parent = spear;
+
+    if (archer) {
+        spear.setEnabled(false);
+        const bow = BABYLON.MeshBuilder.CreateTorus('guardBow', {
+            diameter: 0.56,
+            thickness: 0.036,
+            tessellation: 12
+        }, scene);
+        bow.rotation.y = Math.PI / 2;
+        bow.material = woodM;
+        bow.parent = parts.armL;
+    }
+
+    // Molho de chaves na cintura
+    const keys = new BABYLON.TransformNode('guardKeys', scene);
+    keys.parent = parts.hips;
+    const goldKeyMat = new BABYLON.StandardMaterial('goldKeyMat', scene);
+    goldKeyMat.diffuseColor = new BABYLON.Color3(0.8, 0.65, 0.15);
+
+    for (let i = 0; i < 3; i++) {
+        const k = BABYLON.MeshBuilder.CreateBox(`guardKey_${i}`, { width: 0.04, height: 0.12, depth: 0.02 }, scene);
+        k.position.set(0.08, 0.7 + i * 0.02, 0.14);
+        k.rotation.z = 0.3 * i;
+        k.material = goldKeyMat;
+        k.parent = keys;
+    }
+    keys.setEnabled(fat);
+
+    parts.keys = keys;
+    parts.spear = spear;
+    return built;
+}
+
+export function buildFriend(scene, variant = 0) {
+    const palettes = [
+        { shirt: new BABYLON.Color3(0.22, 0.3, 0.22), pants: new BABYLON.Color3(0.16, 0.13, 0.1), hair: new BABYLON.Color3(0.22, 0.14, 0.08) },
+        { shirt: new BABYLON.Color3(0.22, 0.22, 0.35), pants: new BABYLON.Color3(0.16, 0.16, 0.13), hair: new BABYLON.Color3(0.1, 0.1, 0.08) },
+        { shirt: new BABYLON.Color3(0.35, 0.22, 0.16), pants: new BABYLON.Color3(0.22, 0.16, 0.1), hair: new BABYLON.Color3(0.4, 0.28, 0.14) }
+    ];
+    const p = palettes[variant % 3];
+    const built = buildHumanoid({
+        scene,
+        height: 1.78 + variant * 0.04,
+        thin: 1,
+        shirtColor: p.shirt,
+        pantsColor: p.pants,
+        hairColor: p.hair
+    });
+
+    const pack = BABYLON.MeshBuilder.CreateBox('friendPack', { width: 0.28, height: 0.32, depth: 0.16 }, scene);
+    pack.position.set(0, 0.28, -0.22);
+    const packMat = new BABYLON.StandardMaterial('packMat', scene);
+    packMat.diffuseColor = new BABYLON.Color3(0.28, 0.2, 0.1);
+    pack.material = packMat;
+    pack.parent = built.parts.chest;
+
+    return built;
+}
+
+export function buildTeco(scene) {
+    const root = new BABYLON.TransformNode('tecoRoot', scene);
+
+    const furMat = new BABYLON.StandardMaterial('tecoFurMat', scene);
+    furMat.diffuseColor = new BABYLON.Color3(0.42, 0.28, 0.16);
+
+    const darkMat = new BABYLON.StandardMaterial('tecoDarkMat', scene);
+    darkMat.diffuseColor = new BABYLON.Color3(0.22, 0.16, 0.1);
+
+    const faceMat = new BABYLON.StandardMaterial('tecoFaceMat', scene);
+    faceMat.diffuseColor = new BABYLON.Color3(0.88, 0.7, 0.56);
+
+    // Hips
+    const hips = new BABYLON.TransformNode('hips', scene);
+    hips.parent = root;
+
+    const body = BABYLON.MeshBuilder.CreateSphere('tecoBody', { diameter: 0.24, segments: 8 }, scene);
+    body.scaling.set(0.9, 1.15, 0.8);
+    body.position.y = 0.22;
+    body.material = furMat;
+    body.parent = hips;
+
+    const chest = new BABYLON.TransformNode('chest', scene);
+    chest.position.y = 0.28;
+    chest.parent = hips;
+
+    const head = new BABYLON.TransformNode('head', scene);
+    head.position.y = 0.16;
+    head.parent = chest;
+
+    const skull = BABYLON.MeshBuilder.CreateSphere('tecoSkull', { diameter: 0.18, segments: 8 }, scene);
+    skull.material = furMat;
+    skull.parent = head;
+
+    const muzzle = BABYLON.MeshBuilder.CreateSphere('tecoMuzzle', { diameter: 0.1, segments: 6 }, scene);
+    muzzle.scaling.set(1, 0.8, 1.2);
+    muzzle.position.set(0, -0.02, 0.07);
+    muzzle.material = faceMat;
+    muzzle.parent = head;
+
     for (const s of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.12, 6), orange);
-        ear.position.set(-0.05, 0.24, s * 0.14);
-        head.add(ear);
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), std(0x1a3a08, 0.3));
-        eye.position.set(0.16, 0.08, s * 0.12);
-        head.add(eye);
+        const ear = BABYLON.MeshBuilder.CreateSphere('tecoEar', { diameter: 0.07, segments: 6 }, scene);
+        ear.position.set(s * 0.08, 0.06, 0);
+        ear.material = furMat;
+        ear.parent = head;
+
+        const eye = BABYLON.MeshBuilder.CreateSphere('tecoEye', { diameter: 0.025, segments: 6 }, scene);
+        eye.position.set(s * 0.03, 0.02, 0.09);
+        eye.material = darkMat;
+        eye.parent = head;
     }
 
-    for (const [x, z] of [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.45, 8), orange);
-        leg.position.set(x, 0.22, z);
-        group.add(leg);
-        const paw = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), black);
-        paw.scale.set(1, 0.5, 1.2);
-        paw.position.set(x, 0.04, z);
-        group.add(paw);
+    // Braços
+    const armL = new BABYLON.TransformNode('armL', scene);
+    const armR = new BABYLON.TransformNode('armR', scene);
+    armL.position.set(-0.12, 0.06, 0);
+    armR.position.set(0.12, 0.06, 0);
+    armL.parent = chest;
+    armR.parent = chest;
+
+    for (const arm of [armL, armR]) {
+        const limb = BABYLON.MeshBuilder.CreateCylinder('tecoArmMesh', { diameter: 0.045, height: 0.22 }, scene);
+        limb.position.y = -0.1;
+        limb.material = furMat;
+        limb.parent = arm;
+
+        const hand = BABYLON.MeshBuilder.CreateSphere('tecoHand', { diameter: 0.06, segments: 6 }, scene);
+        hand.position.y = -0.22;
+        hand.material = darkMat;
+        hand.parent = arm;
     }
 
-    const tail = nameBone(new THREE.Group(), 'tail');
-    tail.position.set(-0.75, 0.7, 0);
-    group.add(tail);
-    const tailM = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.03, 0.9, 6), orange);
-    tailM.rotation.z = 0.8;
-    tailM.position.set(-0.25, 0.2, 0);
-    tail.add(tailM);
+    // Pernas
+    const legL = new BABYLON.TransformNode('legL', scene);
+    const legR = new BABYLON.TransformNode('legR', scene);
+    legL.position.set(-0.06, 0.12, 0);
+    legR.position.set(0.06, 0.12, 0);
+    legL.parent = hips;
+    legR.parent = hips;
 
-    for (let i = 0; i < 12; i++) {
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.55), black);
-        stripe.position.set(-0.4 + i * 0.12, 0.62, 0);
-        stripe.rotation.y = 0.15;
-        group.add(stripe);
+    for (const leg of [legL, legR]) {
+        const limb = BABYLON.MeshBuilder.CreateCylinder('tecoLegMesh', { diameter: 0.05, height: 0.18 }, scene);
+        limb.position.y = -0.08;
+        limb.material = furMat;
+        limb.parent = leg;
+
+        const foot = BABYLON.MeshBuilder.CreateSphere('tecoFoot', { diameter: 0.06, segments: 6 }, scene);
+        foot.scaling.set(1, 0.6, 1.4);
+        foot.position.set(0, -0.18, 0.02);
+        foot.material = darkMat;
+        foot.parent = leg;
     }
 
-    const parts = { head, tail, group };
+    // Cauda
+    const tail = new BABYLON.TransformNode('tail', scene);
+    tail.position.set(0, 0.16, -0.1);
+    tail.parent = hips;
+
+    const tailMesh = BABYLON.MeshBuilder.CreateCylinder('tecoTailMesh', {
+        diameterTop: 0.036,
+        diameterBottom: 0.02,
+        height: 0.32
+    }, scene);
+    tailMesh.rotation.x = 0.9;
+    tailMesh.position.set(0, 0.05, -0.12);
+    tailMesh.material = furMat;
+    tailMesh.parent = tail;
+
+    const parts = { hips, chest, head, armL, armR, legL, legR, tail, root };
     const clips = {
-        Idle: new THREE.AnimationClip('Idle', 2, [
-            new THREE.NumberKeyframeTrack('head.rotation[1]', [0, 1, 2], [0.1, -0.1, 0.1])
+        Idle: new ProceduralClip(2.0, [
+            { target: 'head', axis: 'y', amp: 0.15, phase: 0 },
+            { target: 'tail', axis: 'y', amp: 0.3, phase: 1 }
         ]),
-        Walk: new THREE.AnimationClip('Walk', 0.8, [
-            new THREE.NumberKeyframeTrack('head.rotation[0]', [0, 0.4, 0.8], [0.05, -0.05, 0.05])
+        Walk: new ProceduralClip(0.65, [
+            { target: 'legL', axis: 'x', amp: 0.6, phase: 0 },
+            { target: 'legR', axis: 'x', amp: 0.6, phase: Math.PI },
+            { target: 'armL', axis: 'x', amp: 0.5, phase: Math.PI },
+            { target: 'armR', axis: 'x', amp: 0.5, phase: 0 }
         ]),
-        Growl: new THREE.AnimationClip('Growl', 0.6, [
-            new THREE.NumberKeyframeTrack('head.rotation[0]', [0, 0.3, 0.6], [0, -0.25, 0])
+        Run: new ProceduralClip(0.45, [
+            { target: 'legL', axis: 'x', amp: 0.9, phase: 0 },
+            { target: 'legR', axis: 'x', amp: 0.9, phase: Math.PI },
+            { target: 'armL', axis: 'x', amp: 0.8, phase: Math.PI },
+            { target: 'armR', axis: 'x', amp: 0.8, phase: 0 }
         ]),
-        Jump: new THREE.AnimationClip('Jump', 0.5, [
-            new THREE.NumberKeyframeTrack('head.rotation[0]', [0, 0.25, 0.5], [-0.2, 0.3, -0.2])
+        Climb: new ProceduralClip(0.55, [
+            { target: 'armL', axis: 'x', amp: 0.8, phase: 0 },
+            { target: 'armR', axis: 'x', amp: 0.8, phase: Math.PI },
+            { target: 'legL', axis: 'x', amp: 0.5, phase: Math.PI }
+        ]),
+        Grab: new ProceduralClip(0.5, [
+            { target: 'armR', axis: 'x', amp: 0.6, phase: 0, base: -0.8 }
+        ]),
+        Shoulder: new ProceduralClip(2.0, [
+            { target: 'head', axis: 'y', amp: 0.2, phase: 0 }
+        ]),
+        Scared: new ProceduralClip(0.4, [
+            { target: 'head', axis: 'x', amp: 0.25, phase: 0, base: -0.2 }
+        ]),
+        Celebrate: new ProceduralClip(0.5, [
+            { target: 'armL', axis: 'x', amp: 0.6, phase: 0, base: -1.2 },
+            { target: 'armR', axis: 'x', amp: 0.6, phase: 0, base: -1.2 }
         ])
     };
-    enableShadows(group);
-    group.userData.parts = parts;
-    group.userData.clips = clips;
-    return { group, parts, clips };
+
+    root.userData = { parts, clips };
+    return { root, parts, clips };
+}
+
+export function buildTiger(scene) {
+    const root = new BABYLON.TransformNode('tigerRoot', scene);
+
+    const orangeMat = new BABYLON.StandardMaterial('tigerOrangeMat', scene);
+    orangeMat.diffuseColor = new BABYLON.Color3(0.85, 0.4, 0.1);
+
+    const whiteMat = new BABYLON.StandardMaterial('tigerWhiteMat', scene);
+    whiteMat.diffuseColor = new BABYLON.Color3(0.95, 0.92, 0.85);
+
+    const blackMat = new BABYLON.StandardMaterial('tigerBlackMat', scene);
+    blackMat.diffuseColor = new BABYLON.Color3(0.1, 0.08, 0.06);
+
+    const body = BABYLON.MeshBuilder.CreateCapsule('tigerBody', { radius: 0.38, height: 1.5 }, scene);
+    body.rotation.z = Math.PI / 2;
+    body.position.set(0, 0.55, 0);
+    body.material = orangeMat;
+    body.parent = root;
+
+    const belly = BABYLON.MeshBuilder.CreateCapsule('tigerBelly', { radius: 0.22, height: 1.1 }, scene);
+    belly.rotation.z = Math.PI / 2;
+    belly.position.set(0, 0.38, 0.05);
+    belly.material = whiteMat;
+    belly.parent = root;
+
+    const head = new BABYLON.TransformNode('head', scene);
+    head.position.set(0.85, 0.62, 0);
+    head.parent = root;
+
+    const skull = BABYLON.MeshBuilder.CreateSphere('tigerSkull', { diameter: 0.56, segments: 8 }, scene);
+    skull.scaling.set(1.15, 0.9, 0.85);
+    skull.material = orangeMat;
+    skull.parent = head;
+
+    const muzzle = BABYLON.MeshBuilder.CreateSphere('tigerMuzzle', { diameter: 0.28, segments: 6 }, scene);
+    muzzle.position.set(0.18, -0.04, 0);
+    muzzle.material = whiteMat;
+    muzzle.parent = head;
+
+    const nose = BABYLON.MeshBuilder.CreateSphere('tigerNose', { diameter: 0.1, segments: 6 }, scene);
+    nose.position.set(0.3, 0.02, 0);
+    nose.material = blackMat;
+    nose.parent = head;
+
+    for (const s of [-1, 1]) {
+        const ear = BABYLON.MeshBuilder.CreateCylinder('tigerEar', { diameterTop: 0, diameterBottom: 0.16, height: 0.12 }, scene);
+        ear.position.set(-0.05, 0.24, s * 0.14);
+        ear.material = orangeMat;
+        ear.parent = head;
+
+        const eye = BABYLON.MeshBuilder.CreateSphere('tigerEye', { diameter: 0.07, segments: 6 }, scene);
+        eye.position.set(0.16, 0.08, s * 0.12);
+        const tigerEyeMat = new BABYLON.StandardMaterial('tigerEyeMat', scene);
+        tigerEyeMat.diffuseColor = new BABYLON.Color3(0.2, 0.6, 0.1);
+        eye.material = tigerEyeMat;
+        eye.parent = head;
+    }
+
+    // 4 Patas
+    for (const [x, z] of [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]]) {
+        const leg = BABYLON.MeshBuilder.CreateCylinder('tigerLeg', { diameter: 0.16, height: 0.45 }, scene);
+        leg.position.set(x, 0.22, z);
+        leg.material = orangeMat;
+        leg.parent = root;
+
+        const paw = BABYLON.MeshBuilder.CreateSphere('tigerPaw', { diameter: 0.2, segments: 6 }, scene);
+        paw.scaling.set(1, 0.5, 1.2);
+        paw.position.set(x, 0.04, z);
+        paw.material = blackMat;
+        paw.parent = root;
+    }
+
+    // Cauda
+    const tail = new BABYLON.TransformNode('tail', scene);
+    tail.position.set(-0.75, 0.7, 0);
+    tail.parent = root;
+
+    const tailMesh = BABYLON.MeshBuilder.CreateCylinder('tigerTailMesh', { diameter: 0.08, height: 0.9 }, scene);
+    tailMesh.rotation.z = 0.8;
+    tailMesh.position.set(-0.25, 0.2, 0);
+    tailMesh.material = orangeMat;
+    tailMesh.parent = tail;
+
+    // Listras pretas
+    for (let i = 0; i < 10; i++) {
+        const stripe = BABYLON.MeshBuilder.CreateBox(`stripe_${i}`, { width: 0.06, height: 0.42, depth: 0.55 }, scene);
+        stripe.position.set(-0.4 + i * 0.12, 0.62, 0);
+        stripe.rotation.y = 0.15;
+        stripe.material = blackMat;
+        stripe.parent = root;
+    }
+
+    const parts = { head, tail, root };
+    const clips = {
+        Idle: new ProceduralClip(2.0, [
+            { target: 'head', axis: 'y', amp: 0.15, phase: 0 },
+            { target: 'tail', axis: 'z', amp: 0.25, phase: 1 }
+        ]),
+        Walk: new ProceduralClip(0.8, [
+            { target: 'head', axis: 'x', amp: 0.08, phase: 0 },
+            { target: 'tail', axis: 'z', amp: 0.4, phase: 0 }
+        ]),
+        Growl: new ProceduralClip(0.6, [
+            { target: 'head', axis: 'x', amp: 0.2, phase: 0, base: -0.15 }
+        ]),
+        Jump: new ProceduralClip(0.5, [
+            { target: 'head', axis: 'x', amp: 0.3, phase: 0, base: 0.2 }
+        ])
+    };
+
+    root.userData = { parts, clips };
+    return { root, parts, clips };
 }
 
 export function applyLocomotion(animator, speed, crouch, grounded, attacking, blocking, interacting) {

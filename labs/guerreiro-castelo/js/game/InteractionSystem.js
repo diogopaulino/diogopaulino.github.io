@@ -1,19 +1,12 @@
 /**
- * Interação por raycast da câmera. Objetos implementam:
- * { interactionLabel, interactionDistance, interact(player, game) }
+ * Sistema de interação contextual por proximidade e foco da câmera em Babylon.js.
  */
-
-import * as THREE from 'three';
 
 export class InteractionSystem {
     constructor(camera) {
         this.camera = camera;
         this.items = [];
-        this.ray = new THREE.Raycaster();
-        this.ray.far = 6;
         this.prompt = null;
-        this._dir = new THREE.Vector3();
-        this._origin = new THREE.Vector3();
     }
 
     clear() {
@@ -34,8 +27,12 @@ export class InteractionSystem {
     update(player, game) {
         this.prompt = null;
         if (game.cutscenes?.blocking) return null;
-        this.camera.getWorldDirection(this._dir);
-        this._origin.copy(this.camera.position);
+
+        const camPos = this.camera.position;
+        const camTarget = this.camera.getTarget ? this.camera.getTarget() : new BABYLON.Vector3(0, 0, 0);
+        const camDir = camTarget.subtract(camPos).normalize();
+
+        const playerPos = player.position;
         let best = null;
         let bestScore = Infinity;
 
@@ -43,15 +40,23 @@ export class InteractionSystem {
             if (item.enabled === false) continue;
             const obj = item.object;
             if (!obj) continue;
-            obj.getWorldPosition(this._origin);
-            const dist = this._origin.distanceTo(player.position);
-            const maxd = item.interactionDistance ?? 2.2;
+
+            const objPos = obj.getAbsolutePosition ? obj.getAbsolutePosition() : obj.position;
+            if (!objPos) continue;
+
+            const dx = objPos.x - playerPos.x;
+            const dy = objPos.y - playerPos.y;
+            const dz = objPos.z - playerPos.z;
+            const dist = Math.hypot(dx, dy, dz);
+
+            const maxd = item.interactionDistance ?? 2.4;
             if (dist > maxd) continue;
-            const to = this._origin.clone().sub(this.camera.position).normalize();
-            this.camera.getWorldDirection(this._dir);
-            const dot = this._dir.dot(to);
-            if (dot < 0.35 && dist > 1.1) continue;
-            const score = dist * (1.4 - dot);
+
+            const toDir = objPos.subtract(camPos).normalize();
+            const dot = BABYLON.Vector3.Dot(camDir, toDir);
+            if (dot < 0.25 && dist > 1.2) continue;
+
+            const score = dist * (1.5 - dot);
             if (score < bestScore) {
                 bestScore = score;
                 best = item;

@@ -1,4 +1,7 @@
-import * as THREE from 'three';
+/**
+ * Capítulo 4: Desembarque na praia em Babylon.js.
+ */
+
 import { Level } from './Level.js';
 import { sandTexture, grassTexture } from '../world/Textures.js';
 import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js';
@@ -9,70 +12,80 @@ export class BeachLevel extends Level {
     }
 
     async build() {
-        this.group = new THREE.Group();
-        this.group.position.set(0, 0, 0);
-        const sand = new THREE.Mesh(
-            new THREE.CircleGeometry(42, 32),
-            new THREE.MeshStandardMaterial({ map: sandTexture(), roughness: 0.95, color: 0xe8d2a8 })
-        );
-        sand.rotation.x = -Math.PI / 2;
-        sand.position.y = 0.02;
-        sand.receiveShadow = true;
-        this.group.add(sand);
+        const scene = this.game.scene;
+        this.group = new BABYLON.TransformNode('beachGroup', scene);
 
-        const grass = new THREE.Mesh(
-            new THREE.CircleGeometry(38, 24),
-            new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 0.92 })
-        );
-        grass.rotation.x = -Math.PI / 2;
+        // Disco de areia
+        const sand = BABYLON.MeshBuilder.CreateDisc('beachSand', { radius: 42, tessellation: 32 }, scene);
+        sand.rotation.x = Math.PI / 2;
+        sand.position.y = 0.02;
+        const sandMat = new BABYLON.StandardMaterial('sandMat', scene);
+        sandMat.diffuseTexture = sandTexture(scene, 8, 8);
+        sandMat.diffuseColor = new BABYLON.Color3(0.95, 0.88, 0.72);
+        sand.material = sandMat;
+        sand.parent = this.group;
+        sand.receiveShadows = true;
+
+        // Disco de grama interior
+        const grass = BABYLON.MeshBuilder.CreateDisc('beachGrass', { radius: 38, tessellation: 24 }, scene);
+        grass.rotation.x = Math.PI / 2;
         grass.position.set(0, 0.04, -22);
-        grass.receiveShadow = true;
-        this.group.add(grass);
+        const grassMat = new BABYLON.StandardMaterial('bGrassMat', scene);
+        grassMat.diffuseTexture = grassTexture(scene, 8, 8);
+        grass.material = grassMat;
+        grass.parent = this.group;
+        grass.receiveShadows = true;
 
         for (let i = 0; i < 10; i++) {
-            const r = makeRock(0.8 + Math.random());
+            const r = makeRock(0.8 + Math.random(), scene);
             r.position.set((Math.random() - 0.5) * 22, 0.2, 6 + Math.random() * 10);
-            this.group.add(r);
+            r.parent = this.group;
         }
-        const wood = new THREE.Mesh(
-            new THREE.BoxGeometry(1.6, 0.18, 0.35),
-            new THREE.MeshStandardMaterial({ color: 0x6a4a28, roughness: 0.9 })
-        );
+
+        const wood = BABYLON.MeshBuilder.CreateBox('driftWood', { width: 1.6, height: 0.18, depth: 0.35 }, scene);
         wood.position.set(-4, 0.12, 8);
         wood.rotation.y = 0.4;
-        this.group.add(wood);
+        const woodMat = new BABYLON.StandardMaterial('driftWoodMat', scene);
+        woodMat.diffuseColor = new BABYLON.Color3(0.4, 0.28, 0.16);
+        wood.material = woodMat;
+        wood.parent = this.group;
 
-        const grassI = makeGrassInstanced(180, 28, this.game.quality.vegetation);
+        const grassI = makeGrassInstanced(180, 28, this.game.quality?.vegetation || 1, scene);
         grassI.position.z = -8;
-        this.group.add(grassI);
+        grassI.parent = this.group;
+
         for (let i = 0; i < 8; i++) {
-            const b = makeBush();
+            const b = makeBush(scene);
             b.position.set((Math.random() - 0.5) * 18, 0.2, -8 + Math.random() * 8);
-            this.group.add(b);
+            b.parent = this.group;
         }
 
         this.game.collision.addFloor(0, -4, 70, 70, 0);
-        this.game.scene.add(this.group);
-        this.obstacles = [];
-        this.group.traverse((c) => { if (c.isMesh) this.obstacles.push(c); });
+        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
 
         this.gulls = [];
+        const gullMat = new BABYLON.StandardMaterial('gullMat', scene);
+        gullMat.diffuseColor = new BABYLON.Color3(0.95, 0.95, 0.92);
+
         for (let i = 0; i < 4; i++) {
-            const gull = new THREE.Mesh(
-                new THREE.ConeGeometry(0.15, 0.5, 4),
-                new THREE.MeshStandardMaterial({ color: 0xf2f0ea })
-            );
+            const gull = BABYLON.MeshBuilder.CreateCylinder(`gull_${i}`, {
+                diameterTop: 0,
+                diameterBottom: 0.3,
+                height: 0.5,
+                tessellation: 4
+            }, scene);
             gull.position.set(-8 + i * 5, 6 + i, 10);
-            this.group.add(gull);
+            gull.material = gullMat;
+            gull.parent = this.group;
             this.gulls.push({ m: gull, p: i });
         }
     }
 
     enter() {
         const g = this.game;
-        g.player.attachTo(g.scene);
-        g.teco.attachTo(g.scene);
-        g.camila.attachTo(g.scene);
+        g.player.attachTo(this.group);
+        g.teco.attachTo(this.group);
+        g.camila.attachTo(this.group);
         g.player.spawn(0, 0, 10, Math.PI);
         g.teco.spawn(0.7, 0, 9);
         g.weather.apply('dawn');

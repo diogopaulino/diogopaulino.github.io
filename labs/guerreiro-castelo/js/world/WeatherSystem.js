@@ -1,129 +1,127 @@
 /**
- * Céu (Sky addon), sol/lua, fog e PMREM para PBR.
+ * Sistema de iluminação, sol, sombras, clima e nevoeiro em Babylon.js.
  */
 
-import * as THREE from 'three';
-import { Sky } from 'three/addons/objects/Sky.js';
-
 export class WeatherSystem {
-    constructor(scene, renderer) {
+    constructor(scene, engine) {
         this.scene = scene;
-        this.sky = new Sky();
-        this.sky.scale.setScalar(4500);
-        scene.add(this.sky);
-        this.sun = new THREE.Vector3();
-        this.hemi = new THREE.HemisphereLight(0xb8d0e8, 0x3a2a18, 0.55);
-        scene.add(this.hemi);
-        this.ambient = new THREE.AmbientLight(0xfff4e8, 0.55);
-        scene.add(this.ambient);
-        this.dir = new THREE.DirectionalLight(0xfff2d0, 1.6);
-        this.dir.castShadow = true;
-        this.dir.shadow.mapSize.set(2048, 2048);
-        this.dir.shadow.camera.near = 1;
-        this.dir.shadow.camera.far = 180;
-        this.dir.shadow.camera.left = -40;
-        this.dir.shadow.camera.right = 40;
-        this.dir.shadow.camera.top = 40;
-        this.dir.shadow.camera.bottom = -40;
-        this.dir.shadow.bias = -0.0003;
-        scene.add(this.dir);
-        this.pmrem = new THREE.PMREMGenerator(renderer);
+        this.engine = engine;
+
+        // Luz hemisférica (ambiente)
+        this.hemi = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), scene);
+        this.hemi.intensity = 0.6;
+        this.hemi.groundColor = new BABYLON.Color3(0.2, 0.16, 0.12);
+
+        // Luz direcional (sol/lua)
+        this.dir = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-0.4, -0.8, -0.4), scene);
+        this.dir.position = new BABYLON.Vector3(40, 80, 40);
+        this.dir.intensity = 1.6;
+
+        // Gerador de sombras
+        this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.dir);
+        this.shadowGenerator.usePoissonSampling = true;
+        this.shadowGenerator.bias = 0.002;
+        this.shadowGenerator.darkness = 0.45;
+
         this.preset = 'day';
+        this.exposure = 1.0;
         this.apply('day');
     }
 
     apply(preset) {
         this.preset = preset;
-        const u = this.sky.material.uniforms;
-        let elevation = 18;
-        let azimuth = 160;
-        let turbidity = 4;
-        let rayleigh = 1.2;
-        let exposure = 1;
-        let hemi = 0.55;
-        let dirI = 1.6;
-        let fogCol = 0x9ec4d4;
-        let fogDen = 0.006;
+        const scene = this.scene;
+        scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
 
         if (preset === 'night') {
-            elevation = -4;
-            azimuth = 200;
-            turbidity = 2;
-            rayleigh = 0.4;
-            exposure = 0.45;
-            hemi = 0.18;
-            dirI = 0.15;
-            fogCol = 0x0a1020;
-            fogDen = 0.02;
-            this.dir.color.set(0x8899cc);
-            this.hemi.color.set(0x334466);
-            this.hemi.groundColor.set(0x1a1210);
+            this.hemi.diffuse = new BABYLON.Color3(0.15, 0.2, 0.35);
+            this.hemi.groundColor = new BABYLON.Color3(0.08, 0.08, 0.12);
+            this.hemi.intensity = 0.35;
+
+            this.dir.direction = new BABYLON.Vector3(-0.3, -0.6, 0.5).normalize();
+            this.dir.diffuse = new BABYLON.Color3(0.35, 0.45, 0.7);
+            this.dir.intensity = 0.4;
+
+            scene.clearColor = new BABYLON.Color4(0.04, 0.06, 0.12, 1);
+            scene.fogColor = new BABYLON.Color3(0.04, 0.06, 0.12);
+            scene.fogDensity = 0.015;
+            this.exposure = 0.6;
         } else if (preset === 'storm') {
-            elevation = 8;
-            azimuth = 140;
-            turbidity = 12;
-            rayleigh = 0.6;
-            exposure = 0.55;
-            hemi = 0.22;
-            dirI = 0.35;
-            fogCol = 0x4a5560;
-            fogDen = 0.018;
-            this.dir.color.set(0xc0c8d0);
-            this.hemi.color.set(0x6a7380);
-            this.hemi.groundColor.set(0x2a2420);
+            this.hemi.diffuse = new BABYLON.Color3(0.3, 0.35, 0.4);
+            this.hemi.groundColor = new BABYLON.Color3(0.15, 0.16, 0.18);
+            this.hemi.intensity = 0.4;
+
+            this.dir.direction = new BABYLON.Vector3(0.2, -0.8, -0.3).normalize();
+            this.dir.diffuse = new BABYLON.Color3(0.5, 0.55, 0.6);
+            this.dir.intensity = 0.6;
+
+            scene.clearColor = new BABYLON.Color4(0.18, 0.22, 0.26, 1);
+            scene.fogColor = new BABYLON.Color3(0.18, 0.22, 0.26);
+            scene.fogDensity = 0.022;
+            this.exposure = 0.7;
         } else if (preset === 'dawn') {
-            elevation = 6;
-            azimuth = 110;
-            turbidity = 6;
-            rayleigh = 2.2;
-            exposure = 0.9;
-            hemi = 0.5;
-            dirI = 1.3;
-            fogCol = 0xf0c8a0;
-            fogDen = 0.008;
-            this.dir.color.set(0xffd0a0);
-            this.hemi.color.set(0xffe0c0);
-            this.hemi.groundColor.set(0x4a3020);
+            this.hemi.diffuse = new BABYLON.Color3(0.9, 0.65, 0.5);
+            this.hemi.groundColor = new BABYLON.Color3(0.3, 0.2, 0.15);
+            this.hemi.intensity = 0.65;
+
+            this.dir.direction = new BABYLON.Vector3(-0.8, -0.3, -0.2).normalize();
+            this.dir.diffuse = new BABYLON.Color3(1.0, 0.75, 0.5);
+            this.dir.intensity = 1.8;
+
+            scene.clearColor = new BABYLON.Color4(0.7, 0.5, 0.4, 1);
+            scene.fogColor = new BABYLON.Color3(0.7, 0.5, 0.4);
+            scene.fogDensity = 0.008;
+            this.exposure = 1.0;
         } else if (preset === 'interior') {
-            elevation = 12;
-            turbidity = 8;
-            rayleigh = 0.3;
-            exposure = 0.35;
-            hemi = 0.08;
-            dirI = 0.05;
-            fogCol = 0x0c0a08;
-            fogDen = 0.045;
-            this.dir.color.set(0xffcc88);
+            this.hemi.diffuse = new BABYLON.Color3(0.25, 0.22, 0.2);
+            this.hemi.groundColor = new BABYLON.Color3(0.1, 0.08, 0.06);
+            this.hemi.intensity = 0.25;
+
+            this.dir.direction = new BABYLON.Vector3(0, -1, 0);
+            this.dir.diffuse = new BABYLON.Color3(0.8, 0.6, 0.4);
+            this.dir.intensity = 0.2;
+
+            scene.clearColor = new BABYLON.Color4(0.04, 0.03, 0.03, 1);
+            scene.fogColor = new BABYLON.Color3(0.04, 0.03, 0.03);
+            scene.fogDensity = 0.035;
+            this.exposure = 0.5;
         } else {
-            this.dir.color.set(0xfff2d0);
-            this.hemi.color.set(0xb8d0e8);
-            this.hemi.groundColor.set(0x3a2a18);
+            // Day default
+            this.hemi.diffuse = new BABYLON.Color3(0.75, 0.85, 0.95);
+            this.hemi.groundColor = new BABYLON.Color3(0.35, 0.28, 0.2);
+            this.hemi.intensity = 0.75;
+
+            this.dir.direction = new BABYLON.Vector3(-0.4, -0.85, -0.35).normalize();
+            this.dir.diffuse = new BABYLON.Color3(1.0, 0.96, 0.88);
+            this.dir.intensity = 1.7;
+
+            scene.clearColor = new BABYLON.Color4(0.55, 0.72, 0.85, 1);
+            scene.fogColor = new BABYLON.Color3(0.55, 0.72, 0.85);
+            scene.fogDensity = 0.005;
+            this.exposure = 1.0;
         }
 
-        u.turbidity.value = turbidity;
-        u.rayleigh.value = rayleigh;
-        u.mieCoefficient.value = 0.005;
-        u.mieDirectionalG.value = 0.8;
-        const phi = THREE.MathUtils.degToRad(90 - elevation);
-        const theta = THREE.MathUtils.degToRad(azimuth);
-        this.sun.setFromSphericalCoords(1, phi, theta);
-        u.sunPosition.value.copy(this.sun);
-        this.dir.position.copy(this.sun).multiplyScalar(40);
-        this.dir.intensity = dirI;
-        this.hemi.intensity = hemi;
-        if (this.ambient) {
-            this.ambient.intensity = preset === 'interior' ? 0.12 : preset === 'night' ? 0.18 : 0.55;
-        }
-        this.scene.fog = new THREE.FogExp2(fogCol, fogDen);
-        this.scene.background = new THREE.Color(fogCol);
-        this.exposure = exposure;
-        this.scene.environment = null;
-        return exposure;
+        return this.exposure;
     }
 
-    setShadowSize(size) {
-        this.dir.shadow.mapSize.set(size, size);
-        this.dir.shadow.map?.dispose();
-        this.dir.shadow.map = null;
+    setShadowQuality(quality) {
+        let size = 1024;
+        if (quality === 'low') {
+            this.shadowGenerator.getShadowMap().renderList = [];
+            return;
+        } else if (quality === 'medium') {
+            size = 1024;
+            this.shadowGenerator.usePoissonSampling = true;
+        } else if (quality === 'high' || quality === 'ultra') {
+            size = 2048;
+            this.shadowGenerator.useContactHardeningShadow = true;
+            this.shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+        }
+        this.shadowGenerator.mapSize = size;
+    }
+
+    addShadowCaster(mesh, includeChildren = true) {
+        if (!this.shadowGenerator) return;
+        this.shadowGenerator.addShadowCaster(mesh, includeChildren);
     }
 }

@@ -1,8 +1,7 @@
 /**
- * Dico jogável — vida, tocha, combate leve, animação.
+ * Dico jogável: movimentação física, animação, combate, tocha e vida em Babylon.js.
  */
 
-import * as THREE from 'three';
 import { CapsuleCollider } from './CapsuleCollider.js';
 import { PlayerController } from './PlayerController.js';
 import { buildDico, CharacterAnimator, applyLocomotion } from '../characters/builders.js';
@@ -10,14 +9,13 @@ import { angleDamp } from '../utils/math.js';
 
 export class Player {
     constructor(scene, collision) {
-        const built = buildDico();
-        this.root = built.group;
+        this.scene = scene;
+        const built = buildDico(scene);
+        this.root = built.root;
         this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.group, built.clips);
-        scene.add(this.root);
-        this.root.traverse((c) => { if (c.isMesh) c.userData.ignoreCamera = true; });
+        this.animator = new CharacterAnimator(built.root, built.clips);
 
-        this.position = new THREE.Vector3(0, 0, 0);
+        this.position = new BABYLON.Vector3(0, 0, 0);
         this.facing = 0;
         this.yaw = 0;
         this.speed = 0;
@@ -36,14 +34,11 @@ export class Player {
         this.collider = new CapsuleCollider({ radius: 0.32, height: 1.78 });
         this.controller = new PlayerController(this, collision);
         this.footTimer = 0;
-        this.parent = scene;
-        this._worldPos = new THREE.Vector3();
+        this._worldPos = new BABYLON.Vector3();
     }
 
     attachTo(parent) {
-        if (this.root.parent) this.root.parent.remove(this.root);
-        parent.add(this.root);
-        this.parent = parent;
+        this.root.parent = parent;
     }
 
     spawn(x, y, z, yaw = 0) {
@@ -61,7 +56,9 @@ export class Player {
 
     setTorch(on) {
         this.torchOn = on;
-        if (this.parts.torch) this.parts.torch.visible = on;
+        if (this.parts.torch) {
+            this.parts.torch.setEnabled(on);
+        }
     }
 
     hurt(amount = 1) {
@@ -82,14 +79,14 @@ export class Player {
     }
 
     worldPosition() {
-        this.root.getWorldPosition(this._worldPos);
-        return this._worldPos;
+        return this.root.getAbsolutePosition();
     }
 
     sync() {
-        this.root.position.copy(this.position);
+        this.root.position.copyFrom(this.position);
         this.root.rotation.y = this.facing;
-        this.root.scale.setScalar(this.crouching ? 0.92 : 1);
+        const scale = this.crouching ? 0.92 : 1.0;
+        this.root.scaling.set(scale, scale, scale);
     }
 
     update(dt, input, camYaw) {
@@ -105,7 +102,7 @@ export class Player {
         if (input.block) this.blockT = 0.1;
 
         const speed = this.controller.update(dt, input, camYaw) ?? 0;
-        this.facing = angleDamp(this.facing, this.controller.mode === 'walk' ? this.facing : this.facing, 10, dt);
+        this.facing = angleDamp(this.facing, this.facing, 10, dt);
         if (speed > 0.25 && this.controller.mode === 'walk') {
             this.facing = angleDamp(this.facing, Math.atan2(this.controller.vx, this.controller.vz), 12, dt);
         }
@@ -131,8 +128,9 @@ export class Player {
 
         if (this.parts.torchFlame) {
             const s = 0.9 + Math.sin(performance.now() * 0.012) * 0.15;
-            this.parts.torchFlame.scale.setScalar(s);
+            this.parts.torchFlame.scaling.set(s, s, s);
         }
+
         this.sync();
         return this._footstep ? (this._footstep = false, true) : false;
     }
