@@ -1,647 +1,351 @@
 /**
- * Honor Front — laço principal, desembarque cinematográfico e a missão.
+ * Honor Front — FPS 3D em Babylon.js inspirado em Medal of Honor.
+ * Desembarque na praia, travessia da muralha e bateria costeira.
  */
 
-import * as THREE from 'three';
-import {
-    QUALITY, DIFFICULTY, OBJECTIVES, WORLD, PLAYER,
-    loadSettings, saveSettings
-} from './config.js';
-import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime } from './utils.js';
-import { Input } from './input.js';
-import { GameAudio } from './audio.js';
-import { Hud, statsBlock } from './hud.js';
 import { Player } from './player.js';
 import { Loadout } from './weapons.js';
 import { Enemies } from './enemies.js';
-import { Effects } from './effects.js';
-import { createSkyUniforms, createSky, createOcean, createLights } from './sky.js';
-import { buildWorld } from './world.js';
+import { CombatEffects } from './effects.js';
+import { CombatAudio } from './audio.js';
+import { heightAt, buildCombatWorld } from './world.js';
+import { setupAtmosphere } from './sky.js';
+import { clamp } from './utils.js';
 
-const AIM = new THREE.Vector3();
-const ORIGIN = new THREE.Vector3();
-const HIT = new THREE.Vector3();
-const DIR = new THREE.Vector3();
-
-class Game {
+class HonorFront {
     constructor() {
-        this.hud = new Hud();
         this.canvas = document.getElementById('scene');
-        this.settings = loadSettings();
-        this.state = 'loading';
-        this.time = 0;
-        this.elapsed = 0;
+        this.state = 'boot';
+
+        this.player = new Player();
+        this.audio = new CombatAudio();
+        this.keys = {};
+        this.input = {
+            move: { x: 0, z: 0, sprint: false },
+            look: { x: 0, y: 0 },
+            adsHeld: false,
+            consumeLook: () => {
+                const l = { ...this.input.look };
+                this.input.look.x = 0;
+                this.input.look.y = 0;
+                return l;
+            }
+        };
+
+        this.locked = false;
+        this.fireHeld = false;
         this.kills = 0;
-        this.objIndex = 0;
-        this.fade = 1;
-        this.fadeDir = -1;
-        this.fpsAccum = 0;
-        this.fpsFrames = 0;
-        this.hudAccum = 0;
-        this.shellT = 1.2;
-        this.landingT = 0;
-        this.pendingCharge = null;
-        this.flareT = 0;
+
+        this.bindUi();
+        this.boot();
     }
 
-    resolveQuality() {
-        const choice = this.settings.quality;
-        if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.high : QUALITY.medium;
+    bindUi() {
+        document.getElementById('startButton')?.addEventListener('click', () => this.start());
+        document.getElementById('soundButton')?.addEventListener('click', () => this.toggleMute());
+        document.getElementById('btnFire')?.addEventListener('pointerdown', () => this.fireHeld = true);
+        document.getElementById('btnFire')?.addEventListener('pointerup', () => this.fireHeld = false);
+        document.getElementById('btnReload')?.addEventListener('click', () => this.tryReload());
+        document.getElementById('btnSprint')?.addEventListener('pointerdown', () => this.input.move.sprint = true);
+        document.getElementById('btnSprint')?.addEventListener('pointerup', () => this.input.move.sprint = false);
+
+        // Pointer Lock no canvas
+        this.canvas.addEventListener('click', () => {
+            if (this.state === 'play' && document.pointerLockElement !== this.canvas) {
+                this.canvas.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            this.locked = document.pointerLockElement === this.canvas;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (this.locked) {
+                this.input.look.x += e.movementX;
+                this.input.look.y += e.movementY;
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (this.locked) {
+                if (e.button === 0) this.fireHeld = true;
+                if (e.button === 2) this.input.adsHeld = true;
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                this.fireHeld = false;
+                this.loadout?.releaseTrigger();
+            }
+            if (e.button === 2) this.input.adsHeld = false;
+        });
+
+        window.addEventListener('contextmenu', (e) => {
+            if (this.locked) e.preventDefault();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            if (e.code === 'KeyR') this.tryReload();
+            if (e.code === 'Digit1') this.loadout?.switchTo(1);
+            if (e.code === 'Digit2') this.loadout?.switchTo(2);
+            if (e.code === 'KeyM') this.toggleMute();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+
+        // Touch joystick rédea/movimento
+        const stick = document.getElementById('moveStick');
+        const knob = document.getElementById('moveKnob');
+        if (stick && knob) {
+            let active = false;
+            let startX = 0, startY = 0;
+
+            const onMove = (clientX, clientY) => {
+                if (!active) return;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+                const max = 44;
+                const dist = Math.hypot(dx, dy);
+                const k = dist > 0 ? Math.min(dist, max) / dist : 0;
+                knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+                this.input.move.x = clamp((dx * k) / max, -1, 1);
+                this.input.move.z = -clamp((dy * k) / max, -1, 1);
+            };
+
+            stick.addEventListener('pointerdown', (e) => {
+                active = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                stick.setPointerCapture(e.pointerId);
+            });
+
+            stick.addEventListener('pointermove', (e) => onMove(e.clientX, e.clientY));
+
+            const onEnd = () => {
+                active = false;
+                knob.style.transform = 'translate(0px, 0px)';
+                this.input.move.x = 0;
+                this.input.move.z = 0;
+            };
+
+            stick.addEventListener('pointerup', onEnd);
+            stick.addEventListener('pointercancel', onEnd);
+        }
     }
 
-    difficulty() {
-        return DIFFICULTY[this.settings.difficulty] || DIFFICULTY.ranger;
+    tryReload() {
+        if (this.loadout?.tryReload()) {
+            this.audio.reload(this.loadout.current);
+        }
     }
 
-    async init() {
-        this.hud.setLoading(0.1, 'Abrindo o canal de rádio…');
-        this.quality = this.resolveQuality();
-        this.mobile = detectMobile();
+    async boot() {
+        const BABYLON = window.BABYLON;
+        if (!BABYLON) return;
 
         try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: this.quality.antialias,
-                powerPreference: 'high-performance',
-                alpha: false
+            this.engine = new BABYLON.Engine(this.canvas, true, {
+                preserveDrawingBuffer: false,
+                stencil: true,
+                adaptToDeviceRatio: true
             });
+            this.scene = new BABYLON.Scene(this.engine);
+            this.scene.clearColor = new BABYLON.Color4(0.45, 0.52, 0.6, 1.0);
         } catch (err) {
-            this.hud.showError('Não foi possível criar o contexto WebGL.');
+            console.error(err);
             return;
         }
 
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.setClearColor(0xc48a58);
+        // Iluminação & Atmosfera
+        this.lights = setupAtmosphere(BABYLON, this.scene);
 
-        if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
-            this.quality = QUALITY.low;
-            this.renderer.setPixelRatio(1);
-            this.renderer.shadowMap.enabled = false;
-        }
+        // Cenário da Praia e Bunkers
+        this.world = buildCombatWorld(BABYLON, this.scene);
 
-        this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0xc49268, this.quality.fog);
+        // Câmera do Jogador
+        this.camera = new BABYLON.FreeCamera('fpsCam', new BABYLON.Vector3(0, 1.6, -70), this.scene);
+        this.camera.minZ = 0.05;
+        this.camera.maxZ = 800;
 
-        this.camera = new THREE.PerspectiveCamera(
-            PLAYER.hipFov,
-            window.innerWidth / window.innerHeight,
-            0.08,
-            this.quality.far
-        );
+        // Armas
+        this.loadout = new Loadout(BABYLON, this.camera, this.scene);
 
-        this.hud.setLoading(0.28, 'Pintando a alvorada sobre o Canal…');
-        this.skyUniforms = createSkyUniforms();
-        this.sky = createSky(this.skyUniforms);
-        this.scene.add(this.sky);
-        this.ocean = createOcean(this.skyUniforms, this.quality);
-        this.scene.add(this.ocean);
-        this.lights = createLights(this.scene, this.quality);
+        // Efeitos
+        this.effects = new CombatEffects(BABYLON, this.scene);
 
-        this.hud.setLoading(0.52, 'Erguendo Sainte-Claire…');
-        this.world = buildWorld(this.scene, this.quality);
+        // Inimigos
+        this.enemies = new Enemies(BABYLON, this.scene, heightAt);
 
-        this.hud.setLoading(0.72, 'Distribuindo o armamento…');
-        this.input = new Input(this.canvas);
-        this.audio = new GameAudio();
-        this.player = new Player();
-        this.loadout = new Loadout(this.camera);
-        this.enemies = new Enemies(this.scene);
-        this.effects = new Effects(this.scene, this.quality);
+        // Pipeline PBR
+        const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
+        pipe.fxaaEnabled = true;
+        pipe.bloomEnabled = true;
+        pipe.bloomThreshold = 0.82;
+        pipe.bloomWeight = 0.22;
+        pipe.imageProcessing.toneMappingEnabled = true;
+        pipe.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+        pipe.imageProcessing.contrast = 1.18;
 
-        this.clock = new THREE.Clock();
-        this._bindUi();
-        this.input.bindTouch(this.hud);
-        window.addEventListener('resize', () => this._resize());
+        document.getElementById('loadingOverlay').hidden = true;
+        document.getElementById('menuOverlay').hidden = false;
+        document.body.dataset.state = 'intro';
 
-        this.hud.setLoading(1, 'Rampa pronta.');
-        this.hud.hideLoading();
-        this._showMenu();
-        this.clock.start();
-        this.renderer.setAnimationLoop(() => this._frame());
+        this.engine.runRenderLoop(() => {
+            this.frame();
+            this.scene.render();
+        });
+
+        window.addEventListener('resize', () => this.engine.resize());
     }
 
-    _bindUi() {
-        const h = this.hud;
-        h.el.qualitySelect.value = this.settings.quality;
-        h.el.volumeSlider.value = this.settings.volume;
-        h.setVolumeLabel(this.settings.volume);
-        h.setMuted(this.settings.muted);
-        h.setBest(this.settings.best);
-        this._refreshDifficulty();
+    start() {
+        this.state = 'play';
+        document.getElementById('menuOverlay').hidden = true;
+        document.getElementById('hud').hidden = false;
+        document.getElementById('crosshair').hidden = false;
+        document.getElementById('touchControls').hidden = !('ontouchstart' in window);
+        document.body.dataset.state = 'play';
 
-        h.el.startButton.addEventListener('click', () => this.start());
-        h.el.resumeButton.addEventListener('click', () => this.resume());
-        h.el.pauseMenuButton.addEventListener('click', () => this.toMenu());
-        h.el.retryButton.addEventListener('click', () => this.start());
-        h.el.defeatMenuButton.addEventListener('click', () => this.toMenu());
-        h.el.replayButton.addEventListener('click', () => this.start());
-        h.el.victoryMenuButton.addEventListener('click', () => this.toMenu());
-        h.el.pauseButton.addEventListener('click', () => this.togglePause());
-        h.el.soundButton.addEventListener('click', () => this.toggleMute());
-
-        h.el.qualitySelect.addEventListener('change', () => {
-            this.settings.quality = h.el.qualitySelect.value;
-            saveSettings(this.settings);
-        });
-        h.el.volumeSlider.addEventListener('input', () => {
-            this.settings.volume = Number(h.el.volumeSlider.value);
-            h.setVolumeLabel(this.settings.volume);
-            this.audio.setVolume(this.settings.volume / 100);
-            saveSettings(this.settings);
-        });
-
-        this.input.on('pause', () => this.togglePause());
-        this.input.on('mute', () => this.toggleMute());
-        this.input.on('confirm', () => {
-            if (this.state === 'menu') this.start();
-        });
-
-        this.canvas.addEventListener('click', () => {
-            if (this.state === 'playing' || this.state === 'landing') this.input.requestLock();
-        });
-    }
-
-    _showMenu() {
-        this.state = 'menu';
-        this.hud.setState('menu');
-        this.hud.showHud(false);
-        this.hud.showMenu(true);
-        this.hud.showPause(false);
-        this.hud.hideDefeat();
-        this.hud.hideVictory();
-        this._refreshDifficulty();
-        this.input.exitLock();
-        this.input.enabled = false;
-        this.fade = 0.35;
-        this._refreshDifficulty();
-    }
-
-    _refreshDifficulty() {
-        this.hud.fillDifficulty(this.settings.difficulty, (id) => {
-            this.settings.difficulty = id;
-            saveSettings(this.settings);
-            this._refreshDifficulty();
-        });
-    }
-
-    async start() {
-        await this.audio.unlock();
-        this.audio.setVolume(this.settings.volume / 100);
-        this.audio.setMuted(this.settings.muted);
-
-        const diff = this.difficulty();
-        this.player.maxHealth = diff.health;
-        this.player.spawn(0, WORLD.boatStartZ + 0.4, Math.PI, this.world.heightAt);
-        this.player.onBoat = true;
-        this.loadout.reset(diff.magBonus);
-        this.enemies.reset();
+        this.player.spawn(0, -60, Math.PI, heightAt);
+        this.loadout.reset();
+        this.enemies.reset(heightAt);
         this.kills = 0;
-        this.elapsed = 0;
-        this.objIndex = 0;
-        this.landingT = 0;
-        this.pendingCharge = null;
-        this.flareT = 0;
-        this.world.boat.position.set(0, 0.08, WORLD.boatStartZ);
-        for (const it of this.world.interactables) it.done = false;
-        for (const p of this.world.pickups) {
-            p.used = false;
-            p.mesh.visible = true;
-        }
 
-        this.hud.hideDefeat();
-        this.hud.hideVictory();
-        this.hud.showMenu(false);
-        this.hud.showHud(true);
-        this.hud.setTouchVisible(this.mobile);
-        this.hud.setHealth(this.player.health, this.player.maxHealth);
-        this.hud.setKills(0);
-        this.hud.setTime(0);
-        this.hud.setObjective(OBJECTIVES[0]);
-        this.hud.showObjectiveCard(OBJECTIVES[0]);
-        this.audio.radioBeep();
-        this.hud.radio('06 JUN 1944 — SETOR CHARLIE. Ranger, a bateria silencia a praia. A rampa cai em instantes.');
-        this.hud.say('Aguarde a rampa', 4);
-
-        this.state = 'landing';
-        this.hud.setState('landing');
-        this.input.enabled = true;
-        this.input.requestLock();
-        this.fade = 1;
-        this.fadeDir = -1;
-    }
-
-    togglePause() {
-        if (this.state === 'playing' || this.state === 'landing') {
-            this.state = 'pause';
-            this.hud.setState('pause');
-            this.hud.showPause(true);
-            this.input.exitLock();
-            this.input.enabled = false;
-        } else if (this.state === 'pause') {
-            this.resume();
-        }
-    }
-
-    resume() {
-        if (this.state !== 'pause') return;
-        this.state = this.player.onBoat ? 'landing' : 'playing';
-        this.hud.setState(this.state);
-        this.hud.showPause(false);
-        this.input.enabled = true;
-        this.input.requestLock();
-    }
-
-    toMenu() {
-        this.hud.showPause(false);
-        this.hud.hideDefeat();
-        this.hud.hideVictory();
-        this._showMenu();
+        this.audio.init();
+        this.canvas.requestPointerLock?.();
     }
 
     toggleMute() {
-        this.settings.muted = !this.settings.muted;
-        this.audio.setMuted(this.settings.muted);
-        this.hud.setMuted(this.settings.muted);
-        saveSettings(this.settings);
-    }
-
-    _setObjective(i) {
-        this.objIndex = i;
-        const obj = OBJECTIVES[i];
-        this.hud.setObjective(obj);
-        this.hud.showObjectiveCard(obj);
-        this.audio.radioBeep();
-        this.hud.radio(obj.radio);
-    }
-
-    _completeObjective() {
-        const next = this.objIndex + 1;
-        if (next >= OBJECTIVES.length) {
-            this._victory();
-            return;
-        }
-        this._setObjective(next);
-        if (OBJECTIVES[this.objIndex - 1]?.id === 'mg') {
-            this.loadout.unlockThompson();
-            this.hud.say('Thompson recuperado', 3);
+        const muted = this.audio.toggleMute();
+        const btn = document.getElementById('soundButton');
+        if (btn) {
+            btn.setAttribute('aria-pressed', String(!muted));
         }
     }
 
-    _victory() {
-        this.state = 'victory';
-        this.hud.setState('victory');
-        this.input.exitLock();
-        this.input.enabled = false;
-        const score = this.kills * 120 + Math.max(0, 900 - Math.floor(this.elapsed)) + Math.round(this.player.health);
-        if (score > this.settings.best) {
-            this.settings.best = score;
-            saveSettings(this.settings);
-            this.hud.setBest(score);
-        }
-        this.hud.showHud(false);
-        this.hud.showVictory(statsBlock([
-            ['Baixas', String(this.kills)],
-            ['Tempo', formatTime(this.elapsed)],
-            ['Medalha', String(score)]
-        ]));
-    }
+    frame() {
+        const dt = Math.min(0.05, this.engine.getDeltaTime() / 1000);
 
-    _defeat(reason) {
-        this.state = 'defeat';
-        this.hud.setState('defeat');
-        this.input.exitLock();
-        this.input.enabled = false;
-        this.hud.showHud(false);
-        this.hud.showDefeat(reason, statsBlock([
-            ['Baixas', String(this.kills)],
-            ['Tempo', formatTime(this.elapsed)],
-            ['Objetivo', OBJECTIVES[this.objIndex].title]
-        ]));
-    }
+        if (this.state === 'play') {
+            // Teclado
+            if (this.keys['KeyW'] || this.keys['ArrowUp']) this.input.move.z = 1;
+            else if (this.keys['KeyS'] || this.keys['ArrowDown']) this.input.move.z = -1;
+            else if (!('ontouchstart' in window)) this.input.move.z = 0;
 
-    _resize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
-    }
+            if (this.keys['KeyA'] || this.keys['ArrowLeft']) this.input.move.x = -1;
+            else if (this.keys['KeyD'] || this.keys['ArrowRight']) this.input.move.x = 1;
+            else if (!('ontouchstart' in window)) this.input.move.x = 0;
 
-    _frame() {
-        const dt = Math.min(0.05, this.clock.getDelta());
-        this.time += dt;
-        this.skyUniforms.uTime.value = this.time;
-        this.world.update(this.time);
-        this.effects.update(dt);
+            this.input.move.sprint = !!(this.keys['ShiftLeft'] || this.keys['ShiftRight']);
 
-        this.fade = clamp(this.fade + this.fadeDir * dt * 1.2, 0, 1);
-        this.hud.setFade(this.fade);
+            // Jogador
+            const pRes = this.player.update(dt, this.input, heightAt);
+            if (pRes.footstep) this.audio.footstep(this.player.wet ? 'water' : 'sand');
 
-        if (this.state === 'menu' || this.state === 'pause' || this.state === 'victory' || this.state === 'defeat') {
-            this._orbitPreview(dt);
-            this.renderer.render(this.scene, this.camera);
-            return;
-        }
+            // Atualização da câmera
+            this.camera.position.set(this.player.x, this.player.y + this.player.bob, this.player.z);
+            this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
 
-        if (this.state === 'landing') this._updateLanding(dt);
-        if (this.state === 'playing' || this.state === 'landing') this._updatePlay(dt);
+            // Disparo de armas
+            if (this.fireHeld) {
+                const res = this.loadout.tryFire(true);
+                if (res.shot) {
+                    this.audio.shoot(this.loadout.current);
+                    const tipPos = this.camera.position.add(this.camera.getDirection(new window.BABYLON.Vector3(0.18, -0.12, 0.75)));
+                    this.effects.muzzleFlash(tipPos);
 
-        this.renderer.render(this.scene, this.camera);
-    }
-
-    _orbitPreview() {
-        const t = this.time * 0.08;
-        this.camera.position.set(Math.sin(t) * 18, 9, 40 + Math.cos(t) * 22);
-        this.camera.lookAt(0, 3, 90);
-        this.loadout.garandView.visible = false;
-        this.loadout.thompsonView.visible = false;
-    }
-
-    _updateLanding(dt) {
-        this.landingT += dt;
-        const u = clamp(this.landingT / WORLD.boatDuration, 0, 1);
-        const ease = 1 - (1 - u) * (1 - u);
-        this.world.boat.position.z = THREE.MathUtils.lerp(WORLD.boatStartZ, WORLD.boatEndZ, ease);
-        this.world.boat.position.y = 0.1 + Math.sin(this.time * 1.4) * 0.08;
-        this.player.x = this.world.boat.position.x;
-        this.player.z = this.world.boat.position.z + 0.6;
-        this.player.y = this.world.boat.position.y + 0.55;
-
-        this.shellT -= dt;
-        if (this.shellT <= 0) {
-            this.shellT = 0.7 + Math.random() * 1.4;
-            const x = (Math.random() - 0.5) * 36;
-            const z = 12 + Math.random() * 70;
-            this.effects.explosion(x, this.world.heightAt(x, z) + 0.4, z, 0.85);
-            this.audio.explosion();
-        }
-
-        if (u >= 1) {
-            this.player.onBoat = false;
-            this.player.z = WORLD.boatEndZ + 3.2;
-            this.player.y = this.world.heightAt(this.player.x, this.player.z);
-            this.state = 'playing';
-            this.hud.setState('playing');
-            this.hud.say('Move! Move! Move!', 2.4);
-            this.hud.radio(OBJECTIVES[0].radio);
-            this.loadout._syncView();
-        }
-    }
-
-    _updatePlay(dt) {
-        this.elapsed += dt;
-        const locked = this.input.locked || this.mobile;
-        this.input.enabled = this.state === 'playing' || this.state === 'landing';
-
-        if (this.state === 'landing') {
-            const look = this.input.consumeLook();
-            this.player.yaw -= look.x * 0.0022;
-            this.player.pitch = clamp(this.player.pitch - look.y * 0.002, -1.1, 1.1);
-        }
-
-        const movingInfo = this.state === 'playing'
-            ? this.player.update(dt, this.input, this.world, locked)
-            : { footstep: false, moving: false };
-
-        if (movingInfo.footstep) this.audio.footstep(this.player.wet);
-
-        this.player.applyToCamera(this.camera);
-        const fov = THREE.MathUtils.lerp(PLAYER.hipFov, PLAYER.adsFov, this.player.ads);
-        if (Math.abs(this.camera.fov - fov) > 0.05) {
-            this.camera.fov = fov;
-            this.camera.updateProjectionMatrix();
-        }
-
-        const slot = this.input.consumeWeapon();
-        if (slot) this.loadout.switchTo(slot);
-
-        if (this.input.consumeReload()) {
-            if (this.loadout.tryReload()) this.audio.reload();
-        }
-
-        if (this.state === 'playing') {
-            const fire = this.loadout.tryFire(this.input.fireHeld);
-            if (fire.empty && this.input.fireHeld) {
-                if (this.loadout.tryReload()) this.audio.reload();
-            }
-            if (fire.shot) this._firePlayer();
-            if (fire.ping) this.audio.ping();
-
-            if (this.input.consumeGrenade()) {
-                this.camera.getWorldDirection(DIR);
-                ORIGIN.copy(this.camera.position).addScaledVector(DIR, 0.6);
-                ORIGIN.y -= 0.1;
-                const g = this.loadout.throwGrenade(ORIGIN, DIR);
-                if (g) this.scene.add(g.mesh);
-            }
-        }
-
-        this.loadout.update(dt, movingInfo.moving, this.player.ads, this.world.heightAt);
-
-        for (const g of this.loadout.popExploded()) {
-            const p = g.mesh.position;
-            this.effects.explosion(p.x, p.y, p.z, 1.15);
-            this.audio.explosion();
-            this.scene.remove(g.mesh);
-            const killed = this.enemies.explodeAt(p.x, p.y, p.z, 6.5, 90);
-            this.kills += killed.length;
-            if (Math.hypot(this.player.x - p.x, this.player.z - p.z) < 5.5) {
-                if (this.player.hurt(28)) this.hud.flashHit();
-            }
-        }
-
-        this.enemies.update(dt, this.player, this.world, this.difficulty(), (enemy, lead) => {
-            ORIGIN.set(enemy.x, enemy.y + 1.35, enemy.z);
-            if (lead) {
-                HIT.set(this.player.x, this.player.y + PLAYER.eye, this.player.z);
-            } else {
-                HIT.set(
-                    this.player.x + (Math.random() - 0.5) * 3.2,
-                    this.player.y + PLAYER.eye + (Math.random() - 0.5) * 1.4,
-                    this.player.z + (Math.random() - 0.5) * 3.2
-                );
-            }
-            this.effects.tracer(ORIGIN, HIT);
-            this.effects.muzzleFlash(ORIGIN.x, ORIGIN.y, ORIGIN.z);
-            if (enemy.mg && Math.random() < 0.4) this.audio.shot('thompson');
-            else if (Math.random() < 0.35) this.audio.shot('garand');
-            if (lead && this.player.alive) {
-                const dmg = this.difficulty().enemyDamage * (enemy.mg ? 1.15 : 1);
-                if (this.player.hurt(dmg)) {
-                    this.hud.flashHit();
-                    this.audio.hit();
-                    this.hud.setHealth(this.player.health, this.player.maxHealth);
+                    // Raycast de tiro
+                    const camRay = this.camera.getForwardRay(180);
+                    const hit = this.enemies.hitTest(this.camera.position, camRay.direction);
+                    if (hit) {
+                        const died = this.enemies.damage(hit.enemy, this.loadout.spec.damage || 45);
+                        this.effects.impactSparks(new window.BABYLON.Vector3(hit.enemy.x, hit.enemy.y + 1.2, hit.enemy.z));
+                        this.audio.hit();
+                        this.flashHitmarker();
+                        if (died) {
+                            this.kills++;
+                            this.checkObjectives();
+                        }
+                    }
+                }
+                if (res.ping) {
+                    this.audio.ping();
+                }
+                if (res.empty) {
+                    this.audio.empty();
                 }
             }
-        });
 
-        this._interact(dt);
-        this._pickups();
-        this._checkObjective();
-        this._ambientShells(dt);
+            this.loadout.update(dt);
 
-        if (!this.player.alive) this._defeat('O fogo da muralha encontrou você na areia.');
+            // Inimigos AI
+            this.enemies.update(dt, this.player, (e, dist) => {
+                this.audio.enemyShoot();
+                if (Math.random() < 0.28) {
+                    this.player.hurt(12);
+                    this.audio.playerHurt();
+                    this.flashDamage();
+                }
+            });
 
-        this.audio.update(dt, this.player.z < 40);
-        this.hud.tick(dt);
-        this.hud.setHealth(this.player.health, this.player.maxHealth);
-        this.hud.setWeapon(
-            this.loadout.spec.name,
-            this.loadout.ammo.mag,
-            this.loadout.ammo.reserve,
-            this.loadout.grenades
-        );
-        this.hud.setKills(this.kills);
-        this.hud.setTime(this.elapsed);
-        let heading = Math.atan2(-Math.sin(this.player.yaw), -Math.cos(this.player.yaw)) * 180 / Math.PI;
-        heading = (Math.round(heading) + 360) % 360;
-        this.hud.setHeading(heading);
-
-        this.fpsFrames += 1;
-        this.fpsAccum += dt;
-        if (this.fpsAccum >= 0.4) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
-            this.fpsFrames = 0;
-            this.fpsAccum = 0;
-        }
-
-        if (this.flareT > 0) {
-            this.flareT -= dt;
-            if (this.flareT <= 0 && this.objIndex === OBJECTIVES.length - 1) this._completeObjective();
+            // HUD
+            this.updateHud();
         }
     }
 
-    _firePlayer() {
-        this.audio.shot(this.loadout.current);
-        this.player.kick(this.loadout.spec.recoil);
-        this.camera.getWorldDirection(DIR);
-        const spread = this.loadout.spread(this.player.ads);
-        DIR.x += (Math.random() - 0.5) * spread;
-        DIR.y += (Math.random() - 0.5) * spread;
-        DIR.z += (Math.random() - 0.5) * spread;
-        DIR.normalize();
-        ORIGIN.copy(this.camera.position);
-        AIM.copy(ORIGIN).addScaledVector(DIR, 140);
-
-        this.effects.muzzleFlash(
-            ORIGIN.x + DIR.x * 0.8,
-            ORIGIN.y + DIR.y * 0.8 - 0.05,
-            ORIGIN.z + DIR.z * 0.8
-        );
-
-        const hit = this.enemies.hitTest(ORIGIN, DIR, 140);
-        if (hit) {
-            const e = hit.enemy;
-            HIT.copy(ORIGIN).addScaledVector(DIR, hit.dist);
-            this.effects.tracer(ORIGIN, HIT);
-            this.effects.blood(HIT.x, HIT.y, HIT.z);
-            this.hud.markHit();
-            if (this.enemies.damage(e, this.loadout.spec.damage)) {
-                this.kills += 1;
-                this.hud.say('Baixa confirmada', 1.2);
-            }
-            return;
-        }
-
-        HIT.copy(AIM);
-        this.effects.tracer(ORIGIN, HIT);
-        const gx = ORIGIN.x + DIR.x * 40;
-        const gz = ORIGIN.z + DIR.z * 40;
-        this.effects.sparks(gx, this.world.heightAt(gx, gz) + 0.4, gz);
-    }
-
-    _interact(dt) {
-        const obj = OBJECTIVES[this.objIndex];
-        let prompt = '';
-        let near = null;
-        for (const it of this.world.interactables) {
-            if (it.done) continue;
-            const d = Math.hypot(this.player.x - it.x, this.player.z - it.z);
-            if (d < it.radius) {
-                near = it;
-                prompt = it.label;
-                break;
-            }
-        }
-        this.hud.setPrompt(prompt);
-
-        if (this.pendingCharge) {
-            this.pendingCharge.t -= dt;
-            if (this.pendingCharge.t <= 0) {
-                const it = this.pendingCharge.it;
-                it.done = true;
-                this.effects.explosion(it.x, this.world.heightAt(it.x, it.z) + 1.2, it.z, 1.6);
-                this.audio.explosion();
-                this.hud.say('Carga detonada', 2);
-                this.pendingCharge = null;
-                if (obj.check === 'interact' && obj.interact === it.id) this._completeObjective();
-            }
-        }
-
-        if (!near || !this.input.consumeInteract()) return;
-        if (obj.check === 'interact' && obj.interact !== near.id) {
-            this.hud.say('Ainda não. Siga o objetivo.', 2);
-            return;
-        }
-
-        if (near.id === 'flare') {
-            near.done = true;
-            this.hud.setPrompt('');
-            this.effects.flare(near.x, this.world.heightAt(near.x, near.z) + 2, near.z);
-            this.audio.flare();
-            this.hud.say('Sinalizador no ar', 3);
-            this.flareT = 2.4;
-            return;
-        }
-
-        this.pendingCharge = { it: near, t: 1.6 };
-        this.hud.say('Carga armada — afaste-se', 2);
-        this.hud.setPrompt('');
-    }
-
-    _pickups() {
-        for (const p of this.world.pickups) {
-            if (p.used) continue;
-            const d = Math.hypot(this.player.x - p.x, this.player.z - p.z);
-            if (d < p.radius) {
-                p.used = true;
-                p.mesh.visible = false;
-                this.player.heal(40);
-                this.hud.say('Kit médico', 1.6);
-                this.audio.radioBeep();
-            }
+    flashHitmarker() {
+        const hm = document.getElementById('hitMarker');
+        if (hm) {
+            hm.style.opacity = '1';
+            setTimeout(() => { hm.style.opacity = '0'; }, 90);
         }
     }
 
-    _checkObjective() {
-        const obj = OBJECTIVES[this.objIndex];
-        if (obj.check === 'z' && this.player.z >= obj.z) this._completeObjective();
+    flashDamage() {
+        const hf = document.getElementById('hitFlash');
+        if (hf) {
+            hf.style.opacity = '0.5';
+            setTimeout(() => { hf.style.opacity = '0'; }, 150);
+        }
     }
 
-    _ambientShells(dt) {
-        if (this.player.z > 90) return;
-        this.shellT -= dt;
-        if (this.shellT > 0) return;
-        this.shellT = 2.5 + Math.random() * 3.5;
-        const x = this.player.x + (Math.random() - 0.5) * 28;
-        const z = this.player.z + 8 + Math.random() * 22;
-        if (Math.hypot(x - this.player.x, z - this.player.z) < 6) return;
-        this.effects.explosion(x, this.world.heightAt(x, z) + 0.3, z, 0.7);
-        if (Math.random() < 0.5) this.audio.explosion();
+    checkObjectives() {
+        const aliveCount = this.enemies.list.filter(e => e.alive).length;
+        if (aliveCount <= 8 && !this.loadout.unlocked.thompson) {
+            this.loadout.unlockThompson();
+        }
+    }
+
+    updateHud() {
+        const hpEl = document.getElementById('healthValue');
+        const magEl = document.getElementById('magValue');
+        const resEl = document.getElementById('reserveValue');
+        const wNameEl = document.getElementById('weaponName');
+        const killsEl = document.getElementById('killsValue');
+        const objEl = document.getElementById('objective');
+
+        if (hpEl) hpEl.textContent = `${Math.round(this.player.health)}`;
+        if (magEl) magEl.textContent = String(this.loadout.ammo.mag).padStart(2, '0');
+        if (resEl) resEl.textContent = String(this.loadout.ammo.reserve).padStart(2, '0');
+        if (wNameEl) wNameEl.textContent = this.loadout.current === 'garand' ? 'M1 GARAND' : 'THOMPSON SMG';
+        if (killsEl) killsEl.textContent = String(this.kills).padStart(2, '0');
+
+        const alive = this.enemies.list.filter(e => e.alive).length;
+        if (objEl) {
+            if (this.player.z < 40) objEl.textContent = 'Alcance a muralha da praia.';
+            else if (this.player.z < 180) objEl.textContent = `Limpe os defensores da muralha (${alive} restantes).`;
+            else objEl.textContent = 'Silencie a bateria costeira no penhasco.';
+        }
     }
 }
 
-const game = new Game();
-game.init().catch((err) => {
+try {
+    new HonorFront();
+} catch (err) {
     console.error(err);
-    game.hud.showError('Falha ao iniciar a missão. Recarregue a página.');
-});
+}
