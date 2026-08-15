@@ -34,7 +34,15 @@ export function n64Mat(color, { snap = 88, emissive = 0x000000, opacity = 1 } = 
             #endif
             mvPosition = modelViewMatrix * mvPosition;
             gl_Position = projectionMatrix * mvPosition;
-            gl_Position.xy = floor(gl_Position.xy / max(gl_Position.w, 0.0001) * uSnap) / uSnap * gl_Position.w;
+            // Só faz o snap com w positivo e seguro: perto do plano near (ou atrás da
+            // câmera) w ~0 ou negativo, e dividir por ele explode gl_Position.xy —
+            // o triângulo vira uma faixa gigante que o hardware não consegue recortar
+            // direito (tela inteira em "chuva" verde no SwiftShader assim que a
+            // câmera se move). Sem o snap nesses vértices, o clipping padrão cuida
+            // deles normalmente.
+            if (gl_Position.w > 1e-4) {
+                gl_Position.xy = floor(gl_Position.xy / gl_Position.w * uSnap) / uSnap * gl_Position.w;
+            }
             `
         );
     };

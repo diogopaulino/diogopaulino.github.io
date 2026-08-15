@@ -463,6 +463,9 @@ button {
     inset: 0;
     z-index: 30;
     display: grid;
+    /* A linha precisa caber na altura útil: com `auto` o card cresce além da
+       tela e, centralizado, o topo e o rodapé ficam fora de alcance. */
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     padding: calc(5.5rem + var(--safe-top)) 1.2rem calc(1.4rem + var(--safe-bottom));
     background:
@@ -478,10 +481,18 @@ button {
 
 .overlay-card, .loading-card {
     width: min(52rem, 100%);
+    /* Nunca ultrapassa a área útil da overlay; o que sobrar rola dentro do card
+       (senão "Entrar na ilha" fica fora da tela em notebook e paisagem). */
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background: color-mix(in oklab, #143060 84%, transparent);
     border: 2px solid var(--line);
     border-radius: var(--radius-lg);
-    padding: 1.6rem 1.7rem 1.4rem;
+    --card-pad-x: 1.7rem;
+    --card-pad-b: 1.4rem;
+    padding: 1.6rem var(--card-pad-x) var(--card-pad-b);
     box-shadow:
         0 30px 80px rgb(8 20 50 / 0.5),
         inset 0 1px 0 rgb(255 255 255 / 0.12);
@@ -502,6 +513,28 @@ button {
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+}
+
+/* `.menu-head` é um <header> e herda o grid de 3 colunas do shared.css, que
+   manda o h1 para a área "logo" e o espreme até width: 0 (título some no
+   celular). Aqui ele volta a ser um bloco empilhado. */
+.menu-head {
+    display: block;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+.menu-head h1 {
+    grid-area: auto;
+    justify-self: start;
+    text-align: left;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .menu-head h1 span {
@@ -633,6 +666,29 @@ kbd {
     gap: 0.7rem;
 }
 
+/* Em tela baixa quem rola é o miolo do menu: cabeçalho e o botão de entrar
+   ficam sempre visíveis, sem depender de o usuário descobrir a rolagem. */
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Título e botão ficam fixos; só o miolo rola — assim nada aparece cortado no
+   meio de uma frase. */
+.menu-card .menu-head,
+.menu-card .menu-foot {
+    flex: none;
+}
+
+.menu-card .menu-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
 .primary-button, .ghost-button {
     pointer-events: auto;
     display: inline-flex;
@@ -730,6 +786,56 @@ kbd {
     }
 }
 
+/* Notebook e telas baixas: o menu inteiro precisa caber sem rolagem, senão o
+   miolo aparece cortado no meio de uma linha. */
+@media (max-height: 860px) {
+    .overlay {
+        padding: calc(4.6rem + var(--safe-top)) 1.2rem calc(1rem + var(--safe-bottom));
+    }
+
+    .overlay-card, .loading-card {
+        --card-pad-b: 1.1rem;
+        padding: 1.15rem var(--card-pad-x) var(--card-pad-b);
+    }
+
+    .loading-card h1, .menu-head h1, .compact-card h2 {
+        font-size: clamp(1.9rem, 4vw, 2.5rem);
+        margin: 0.1rem 0 0.4rem;
+    }
+
+    .menu-head .lede {
+        font-size: 0.92rem;
+        line-height: 1.42;
+    }
+
+    .menu-grid {
+        margin: 0.9rem 0 0.9rem;
+        gap: 1rem;
+    }
+
+    .keys {
+        gap: 0.32rem;
+        font-size: 0.88rem;
+    }
+
+    .settings-grid {
+        gap: 0.6rem;
+        margin-top: 0.7rem;
+    }
+
+    .section-note {
+        margin-top: 0.6rem;
+    }
+}
+
+/* Tela muito baixa: a lede é enfeite e custa várias linhas — sai para o miolo
+   e o botão caberem inteiros. */
+@media (max-height: 620px) {
+    .menu-head .lede {
+        display: none;
+    }
+}
+
 @media (pointer: fine) {
     .touch-controls {
         display: none !important;
@@ -747,15 +853,23 @@ kbd {
 }
 
 @media (max-width: 560px) {
-    .overlay,
-    .overlay-card,
-    .menu-card {
-        max-height: min(92dvh, 900px);
+    .overlay {
+        padding: calc(4.6rem + var(--safe-top)) 0.9rem calc(1rem + var(--safe-bottom));
     }
-    .overlay-card,
-    .menu-card {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+
+    .overlay-card, .loading-card {
+        --card-pad-x: 1.2rem;
+        --card-pad-b: 1.2rem;
+        padding: 1.3rem var(--card-pad-x) var(--card-pad-b);
+    }
+
+    .menu-foot, .card-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .menu-foot .primary-button, .card-actions .primary-button, .card-actions .ghost-button {
+        justify-content: center;
     }
 }
 
@@ -770,5 +884,37 @@ kbd {
     }
     .hud-top {
         top: calc(3.4rem + var(--safe-top));
+    }
+
+    /* Paisagem curta: sobra largura e falta altura — recupera as 2 colunas e
+       comprime o miolo para o botão de entrar caber sem rolagem. */
+    .overlay {
+        padding: calc(3.3rem + var(--safe-top)) 1rem calc(0.8rem + var(--safe-bottom));
+    }
+
+    .overlay-card, .loading-card {
+        --card-pad-x: 1.2rem;
+        --card-pad-b: 1rem;
+        padding: 1.1rem var(--card-pad-x) var(--card-pad-b);
+    }
+
+    .menu-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 1rem;
+        margin: 0.85rem 0 0.85rem;
+    }
+
+    .loading-card h1, .menu-head h1, .compact-card h2 {
+        font-size: clamp(1.6rem, 4.2vw, 2.2rem);
+        margin: 0.1rem 0 0.35rem;
+    }
+
+    .keys {
+        gap: 0.3rem;
+        font-size: 0.84rem;
+    }
+
+    .stats {
+        margin: 0.7rem 0 0.85rem;
     }
 }
