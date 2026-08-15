@@ -34,7 +34,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=2">
 
     <script type="importmap">
     {
@@ -157,15 +157,20 @@
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
+                <!-- A zona de olhar é a camada de baixo: arraste em qualquer
+                     lugar livre da tela. Stick e botões ficam por cima dela. -->
+                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
                 <div id="moveStick" class="stick" aria-label="Andar">
                     <i id="moveKnob"></i>
                     <span>andar</span>
                 </div>
-                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
                 <div class="touch-buttons">
-                    <button type="button" id="btnSprint" class="pad">correr</button>
-                    <button type="button" id="btnFlash" class="pad pad-atk">✦</button>
-                    <button type="button" id="btnInteract" class="pad pad-use">E</button>
+                    <button type="button" id="btnSprint" class="pad pad-run"
+                        aria-label="Correr">correr</button>
+                    <button type="button" id="btnInteract" class="pad pad-use"
+                        aria-label="Interagir">usar</button>
+                    <button type="button" id="btnFlash" class="pad pad-atk"
+                        aria-label="Pulso da lanterna">✦</button>
                 </div>
             </div>
         </div>
@@ -181,12 +186,14 @@
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
-                <header class="menu-head">
+                <!-- div, e não <header>/<footer>: o shared.css estiliza essas
+                     tags como cabeçalho/rodapé de página e quebrava o card. -->
+                <div class="menu-head">
                     <p class="eyebrow"><i></i> three.js · conto · cinco noites</p>
                     <h1>A Menina <span>da Lanterna</span></h1>
                     <p class="lede">Em Vale-da-Bruma a noite esqueceu de acabar. Clara, com a última chama da avó Nara,
                         acende o que foi esquecido — lampiões, bóias, raízes — e lembra o dia de que ele existe.</p>
-                </header>
+                </div>
 
                 <div class="menu-grid">
                     <section class="menu-section">
@@ -196,11 +203,17 @@
 
                     <section class="menu-section">
                         <h2>Comandos</h2>
-                        <div class="keys">
+                        <div class="keys keys--board">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
                             <span><kbd>Shift</kbd> correr · mouse olhar</span>
                             <span><kbd>Espaço</kbd> pulso da lanterna</span>
                             <span><kbd>E</kbd> interagir · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                        <div class="keys keys--touch">
+                            <span><b>Stick</b> à esquerda para andar</span>
+                            <span><b>Arraste</b> a tela para olhar</span>
+                            <span><b>✦</b> pulso da lanterna · <b>correr</b> acelera</span>
+                            <span><b>usar</b> acende, fala e recolhe</span>
                         </div>
                     </section>
 
@@ -226,12 +239,12 @@
                     </section>
                 </div>
 
-                <footer class="menu-foot">
+                <div class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
                         <span>Levantar a lanterna</span>
                         <i aria-hidden="true">→</i>
                     </button>
-                </footer>
+                </div>
             </div>
         </div>
 
@@ -318,7 +331,7 @@
             }
         })();
     </script>
-    <script type="module" src="src/main.js?v=1"></script>
+    <script type="module" src="src/main.js?v=2"></script>
 </body>
 
 </html>

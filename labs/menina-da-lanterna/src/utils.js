@@ -66,6 +66,16 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/**
+ * Quem manda no HUD de toque é o ponteiro, não o tamanho da tela: tablet
+ * grande também joga no dedo e não tem pointer lock nem teclado.
+ */
+export function detectTouch() {
+    if (typeof navigator === 'undefined') return false;
+    const coarse = window.matchMedia?.('(pointer: coarse)')?.matches;
+    return Boolean(coarse) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b|software/i;
 
 export function isSoftwareGLName(name) {
