@@ -157,6 +157,26 @@ export function canopyTexture() {
     });
 }
 
+/** Sprite radial da poeira dos cascos — sem ela o ponto vira um quadrado duro. */
+export function puffTexture() {
+    return cached('puff', () => {
+        const size = 64;
+        const el = canvas(size);
+        const ctx = el.getContext('2d');
+        const grd = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        grd.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+        grd.addColorStop(0.42, 'rgba(255, 255, 255, 0.4)');
+        grd.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(el);
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.needsUpdate = true;
+        return tex;
+    });
+}
+
 export function hideTexture() {
     return cached('hide', () => {
         const size = 128;

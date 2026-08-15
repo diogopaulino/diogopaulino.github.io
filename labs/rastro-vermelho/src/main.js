@@ -429,6 +429,10 @@ class Game {
         CAM.y = Math.max(CAM.y, ground + 1.35);
 
         this.camera.position.lerp(CAM, 1 - Math.exp(-6.5 * dt));
+        // O alvo respeita o relevo, mas a interpolação atravessa a encosta
+        // quando o cavalo despenca ladeira abaixo — reergue a posição final.
+        const camGround = this.world.heightAt(this.camera.position.x, this.camera.position.z);
+        this.camera.position.y = Math.max(this.camera.position.y, camGround + 1.35);
         this.camera.lookAt(LOOK);
 
         this.lights.dir.target.position.copy(origin);
