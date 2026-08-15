@@ -6,9 +6,9 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#140c08">
-    <title>Aurelia Festival — costa dourada em three.js | Diogo Paulino</title>
+    <title>Aurelia Festival — costa dourada em Babylon.js | Diogo Paulino</title>
     <meta name="description"
-        content="Festival de velocidade estilo Forza Horizon: supercarros com verniz, Costa Aurélia ao pôr do sol, speed traps, drift zones e photo mode em three.js.">
+        content="Festival de velocidade estilo Forza Horizon: supercarros com verniz PBR, Costa Aurélia ao pôr do sol, drift zones e física de velocidade em Babylon.js.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/aurelia/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,27 +23,19 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/aurelia/">
     <meta property="og:title" content="Aurelia Festival | Diogo Paulino">
     <meta property="og:description"
-        content="Dirija supercarros pela Costa Aurélia ao pôr do sol. Speed traps, drift e photo mode cinematográfico.">
+        content="Dirija supercarros pela Costa Aurélia ao pôr do sol em Babylon.js. Drift, nitro e festival de velocidade.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Aurelia Festival | Diogo Paulino">
-    <meta name="twitter:description" content="Um festival de velocidade em three.js, estilo Forza Horizon.">
+    <meta name="twitter:description" content="Um festival de velocidade em Babylon.js, estilo Forza Horizon.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css">
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -52,7 +44,7 @@
           "@type": "WebApplication",
           "name": "Aurelia Festival",
           "url": "https://diogopaulino.com.br/labs/aurelia/",
-          "description": "Festival de velocidade estilo Forza Horizon: supercarros com verniz, Costa Aurélia ao pôr do sol, speed traps, drift zones e photo mode em three.js.",
+          "description": "Festival de velocidade estilo Forza Horizon: supercarros com verniz PBR, Costa Aurélia ao pôr do sol, drift zones e física de velocidade em Babylon.js.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -111,67 +103,28 @@
             <div class="hud-top">
                 <div class="panel event-panel">
                     <span class="hud-label" id="hudCarName">Veloce GT</span>
-                    <strong id="eventName">Festival livre</strong>
-                    <span id="eventScore" class="mono">explore a costa</span>
-                    <span id="eventStars" class="stars">☆☆☆</span>
-                </div>
-                <div class="panel radio-panel">
-                    <span class="hud-label">Rádio</span>
-                    <strong id="radioName">Aurelia FM</strong>
-                    <span id="radioTag" class="hud-tag">indie · sunset</span>
+                    <strong id="eventName">Festival Livre</strong>
+                    <span id="eventScore" class="mono">rasgue a costa</span>
                 </div>
                 <div class="panel score-panel">
-                    <span class="hud-label">Festival</span>
+                    <span class="hud-label">Pontos de Drift</span>
                     <strong id="scoreValue" class="mono">0</strong>
-                    <span id="hudSkyName" class="hud-tag">Hora dourada</span>
-                    <canvas id="minimap" width="160" height="120" aria-label="Mapa da costa"></canvas>
                 </div>
             </div>
 
-            <p id="raceMessage" class="message" data-show="false" role="status" aria-live="polite"></p>
             <div id="driftBadge" class="drift-badge" data-active="false">DRIFT</div>
 
             <div class="hud-bottom">
                 <div class="cluster">
-                    <svg class="tach" viewBox="0 0 200 200" aria-hidden="true">
-                        <defs>
-                            <linearGradient id="tachArc" x1="0" y1="1" x2="1" y2="0">
-                                <stop offset="0%" stop-color="#ffe08a" />
-                                <stop offset="70%" stop-color="#ff8a3a" />
-                                <stop offset="100%" stop-color="#ff2d2d" />
-                            </linearGradient>
-                        </defs>
-                        <circle cx="100" cy="100" r="86" fill="rgba(8,10,16,0.55)" stroke="rgba(255,200,120,0.18)"
-                            stroke-width="2" />
-                        <path d="M28 148 A86 86 0 1 1 172 148" fill="none" stroke="url(#tachArc)" stroke-width="6"
-                            stroke-linecap="round" />
-                        <g id="tachNeedle" class="needle">
-                            <line x1="100" y1="100" x2="100" y2="28" stroke="#ffe8c2" stroke-width="3"
-                                stroke-linecap="round" />
-                            <circle cx="100" cy="100" r="6" fill="#ff6b2c" />
-                        </g>
-                    </svg>
                     <div class="cluster-readout">
                         <strong id="speedValue" class="mono">000</strong>
                         <span>km/h</span>
-                        <em id="gearValue">N</em>
-                        <small id="rpmValue">800</small>
                     </div>
-                </div>
-                <div class="boost-wrap">
-                    <span class="hud-label">Boost de festival</span>
-                    <div class="boost-meter"><i id="boostFill"></i></div>
                 </div>
             </div>
 
             <div class="hud-actions">
-                <button id="cameraButton" class="icon-button" type="button" title="Câmera (C)" aria-label="Trocar câmera">Cam</button>
-                <button id="photoButton" class="icon-button" type="button" title="Photo mode (F)" aria-label="Photo mode">Φ</button>
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true" title="Som (M)" aria-label="Som">♪</button>
-                <button id="resetButton" class="icon-button" type="button" title="Reset (R)" aria-label="Resetar carro">↺</button>
-                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">II</button>
-                <span id="cameraLabel" class="hud-tag">Perseguição</span>
-                <span id="fpsCounter" class="fps mono">—</span>
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
@@ -180,7 +133,7 @@
                     <button type="button" class="pad" data-control="right" aria-label="Direita">▶</button>
                 </div>
                 <div class="pad-group pad-right">
-                    <button type="button" class="pad pad-small" data-control="handbrake" aria-label="Freio de mão">HANDBRAKE</button>
+                    <button type="button" class="pad pad-small" data-control="handbrake" aria-label="Freio de mão">DRIFT</button>
                     <button type="button" class="pad pad-brake" data-control="brake" aria-label="Freio">FREIO</button>
                     <button type="button" class="pad pad-throttle" data-control="throttle" aria-label="Acelerar">GÁS</button>
                 </div>
@@ -192,108 +145,45 @@
                 <span class="loading-mark" aria-hidden="true">◆</span>
                 <h1>AURELIA</h1>
                 <p id="loadingText">Abrindo o festival…</p>
-                <div class="loading-bar"><i></i></div>
-                <div id="bootFallback" class="boot-fallback" hidden>
-                    <h2 id="bootFallbackTitle">Não foi possível iniciar</h2>
-                    <p id="bootFallbackText">Este laboratório precisa de WebGL e da biblioteca 3D na rede.</p>
-                    <button id="bootRetry" class="primary-button" type="button" onclick="location.reload()">
-                        <span>Tentar de novo</span>
-                    </button>
-                </div>
             </div>
         </div>
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · Forza Horizon · Costa Aurélia</p>
+                    <p class="eyebrow"><i></i> Babylon.js · Forza Horizon · Costa Aurélia</p>
                     <h1>Aurelia <span>Festival</span></h1>
-                    <p class="lede">Um festival de velocidade à beira-mar. Escolha o supercarro, a hora do dia e
-                        rasgue a costa — speed traps, drift zones e photo mode cinematográfico.</p>
+                    <p class="lede">Um festival de velocidade à beira-mar em Babylon.js. Dirija o supercarro na hora de ouro,
+                        rasgue a costa com drifts e aproveite o pôr do sol.</p>
                 </header>
 
                 <div class="menu-grid">
-                    <section class="menu-section menu-section--wide">
-                        <h2>Garagem</h2>
-                        <div id="carList" class="option-list"></div>
-                        <p id="carBlurb" class="section-note"></p>
-                    </section>
                     <section class="menu-section">
-                        <h2>Céu</h2>
-                        <div id="skyList" class="chip-row"></div>
                         <h2>Comandos</h2>
                         <div class="keys">
-                            <span><kbd>W</kbd><kbd>S</kbd> gás / freio</span>
+                            <span><kbd>W</kbd><kbd>S</kbd> acelerar / frear</span>
                             <span><kbd>A</kbd><kbd>D</kbd> direção</span>
-                            <span><kbd>Espaço</kbd> handbrake</span>
-                            <span><kbd>C</kbd> câmera · <kbd>F</kbd> foto</span>
-                            <span><kbd>N</kbd> rádio · <kbd>H</kbd> céu</span>
+                            <span><kbd>Espaço</kbd> freio de mão (drift)</span>
+                            <span><kbd>Shift</kbd> nitro boost</span>
                         </div>
-                    </section>
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
-                        <div class="settings-grid">
-                            <label class="field">
-                                <span>Qualidade</span>
-                                <select id="qualitySelect">
-                                    <option value="auto">Automática</option>
-                                    <option value="low">Performance</option>
-                                    <option value="medium">Equilibrada</option>
-                                    <option value="high">Festival Ultra</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Volume <b id="volumeValue">72</b></span>
-                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="72">
-                            </label>
-                        </div>
-                        <p class="section-note">Melhor festival: <b id="bestScore" class="mono">—</b></p>
                     </section>
                 </div>
 
                 <footer class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Entrar no festival</span>
+                        <span>Entrar na Costa</span>
                         <i aria-hidden="true">→</i>
                     </button>
                 </footer>
             </div>
         </div>
 
-        <div id="pauseOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> Pausado</p>
-                <h2>A costa espera.</h2>
-                <div class="card-actions">
-                    <button id="resumeButton" class="primary-button" type="button">
-                        <span>Continuar</span><i aria-hidden="true">→</i>
-                    </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao festival</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="photoOverlay" class="overlay photo-overlay" hidden>
-            <div class="photo-bar">
-                <p class="eyebrow"><i></i> Photo mode</p>
-                <div class="chip-row">
-                    <button type="button" class="chip is-active" data-filter="none">Natural</button>
-                    <button type="button" class="chip" data-filter="golden">Golden</button>
-                    <button type="button" class="chip" data-filter="chrome">Chrome</button>
-                    <button type="button" class="chip" data-filter="noir">Noir</button>
-                    <button type="button" class="chip" data-filter="vivid">Vivid</button>
-                </div>
-                <p class="section-note">Arraste para orbitar · scroll para zoom · F para sair</p>
-                <button id="photoClose" class="ghost-button" type="button">Fechar</button>
-            </div>
-        </div>
-
-        <div id="resultsOverlay" class="overlay" hidden></div>
-
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=8" defer></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="/labs/shared.js?v=9" defer></script>
     <script type="module" src="src/main.js"></script>
 </body>
 
