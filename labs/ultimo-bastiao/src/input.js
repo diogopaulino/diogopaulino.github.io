@@ -106,13 +106,31 @@ export class BattleInput {
 
     const attack = document.getElementById('attackButton');
     let attackHoldTimer = null;
-    const stopAttackHold = () => { if (attackHoldTimer) clearTimeout(attackHoldTimer); attackHoldTimer = null; attack.classList.remove('pressed'); };
+    let attackPointer = null;
+    let heavyAttack = false;
+    const stopAttackHold = event => {
+      if (event && event.pointerId !== attackPointer) return;
+      if (attackHoldTimer) clearTimeout(attackHoldTimer);
+      attackHoldTimer = null;
+      if (this.enabled) {
+        if (heavyAttack) this.heavyQueued = true;
+        else this.attackQueued = true;
+      }
+      attackPointer = null;
+      heavyAttack = false;
+      attack.classList.remove('pressed');
+    };
     attack.addEventListener('pointerdown', event => {
       event.preventDefault();
       if (!this.enabled) return;
       attack.classList.add('pressed');
-      this.attackQueued = true;
-      attackHoldTimer = setTimeout(() => { this.heavyQueued = true; this.attackQueued = false; }, 340);
+      attackPointer = event.pointerId;
+      attack.setPointerCapture?.(event.pointerId);
+      heavyAttack = false;
+      attackHoldTimer = setTimeout(() => {
+        heavyAttack = true;
+        attackHoldTimer = null;
+      }, 340);
     });
     attack.addEventListener('pointerup', stopAttackHold);
     attack.addEventListener('pointercancel', stopAttackHold);

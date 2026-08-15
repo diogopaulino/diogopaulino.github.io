@@ -41,9 +41,9 @@ export const ENEMY_TYPES = {
 };
 
 export const QUALITY = {
-  performance: { hardwareScale: 1.45, shadows: 1024, particles: .55, ssao: false, vegetation: 34 },
-  balanced: { hardwareScale: 1, shadows: 1536, particles: .8, ssao: false, vegetation: 58 },
-  cinematic: { hardwareScale: .75, shadows: 2048, particles: 1, ssao: true, vegetation: 86 }
+  performance: { hardwareScale: 1.45, shadows: 1024, particles: .55, bloom: .07, grain: false, aberration: false, ssao: false },
+  balanced: { hardwareScale: 1, shadows: 1536, particles: .8, bloom: .11, grain: true, aberration: false, ssao: false },
+  cinematic: { hardwareScale: .75, shadows: 2048, particles: 1, bloom: .15, grain: true, aberration: true, ssao: true }
 };
 
 export const STORAGE_KEY = 'ultimo-bastiao:v1';

@@ -180,6 +180,7 @@ class PlayerController {
     this.game.shake = Math.max(this.game.shake, .24);
     const away = this.rig.root.position.subtract(attacker.rig.root.position); away.y = 0;
     if (away.lengthSquared() > .01) this.rig.root.position.addInPlace(away.normalize().scale(.55));
+    this.game.constrainCharacterPosition(this.rig.root.position, .62, this);
     if (this.health <= 0) {
       this.dead = true;
       this.rig.pose.dead = true;
@@ -256,9 +257,7 @@ class PlayerController {
     if (!busy && !input.running) this.stamina = Math.min(PLAYER.maxStamina, this.stamina + PLAYER.staminaRecovery * dt);
     else if (!busy) this.stamina = Math.min(PLAYER.maxStamina, this.stamina + PLAYER.staminaRecovery * .35 * dt);
 
-    // Colisão simples: o pátio útil termina antes das muralhas.
-    this.rig.root.position.x = clamp(this.rig.root.position.x, -36.2, 36.2);
-    this.rig.root.position.z = clamp(this.rig.root.position.z, -34.8, 36.2);
+    this.game.constrainCharacterPosition(this.rig.root.position, .62, this);
     this.rig.root.rotation.y = this.yaw;
     this.rig.pose.moving = movingAmount;
     this.rig.pose.attacking = this.attack?.kind || null;
@@ -316,6 +315,7 @@ class Enemy {
     this.game.audio.hit(this.type === 'guard' || this.type === 'warlord');
     this.game.world.burst(this.rig.root.position.add(new B.Vector3(0, 1.45, 0)), this.type === 'guard' ? 'spark' : 'blood', kind === 'heavy' ? 13 : 8);
     this.rig.root.position.addInPlace(direction.scale(kind === 'heavy' ? ATTACKS.heavy.knockback : ATTACKS.light.knockback));
+    this.game.constrainCharacterPosition(this.rig.root.position, .62, this);
     this.game.shake = Math.max(this.game.shake, kind === 'heavy' ? .21 : .11);
     if (this.health <= 0) this.die();
     return true;
@@ -339,7 +339,10 @@ class Enemy {
     const limit = this.game.settings.difficulty === 'legend' ? 3 : 2;
     if (activeAttackers >= limit) return;
     const heavy = this.type === 'brute' || (this.type === 'warlord' && Math.random() < .55);
-    this.attack = { time: 0, hit: false, duration: heavy ? 1.22 : .96, hitAt: heavy ? .74 : .57, heavy };
+    this.attack = {
+      time: 0, hit: false, duration: heavy ? 1.22 : .96, hitAt: heavy ? .74 : .57, heavy,
+      facing: forwardFrom(this.yaw)
+    };
     this.guarding = false;
   }
 
@@ -368,7 +371,11 @@ class Enemy {
         const progress = clamp(this.attack.time / this.attack.duration, 0, 1);
         if (!this.attack.hit && this.attack.time >= this.attack.hitAt) {
           this.attack.hit = true;
-          if (distance <= this.data.range + (this.attack.heavy ? .42 : 0)) {
+          const directionToPlayer = playerPosition.subtract(position);
+          directionToPlayer.y = 0;
+          const inFront = directionToPlayer.lengthSquared() > .01
+            && B.Vector3.Dot(this.attack.facing, directionToPlayer.normalize()) > .28;
+          if (inFront && distance <= this.data.range + (this.attack.heavy ? .42 : 0)) {
             const damage = this.data.damage * (this.attack.heavy ? 1.32 : 1) * DIFFICULTY[this.game.settings.difficulty].enemyDamage;
             this.game.player.receiveDamage(damage, this);
           }
@@ -399,8 +406,7 @@ class Enemy {
       }
     }
 
-    position.x = clamp(position.x, -36, 36);
-    position.z = clamp(position.z, -34.4, 36);
+    this.game.constrainCharacterPosition(position, .62, this);
     this.rig.pose.moving = moving;
     if (!this.attack) { this.rig.pose.attacking = null; this.rig.pose.attackProgress = 0; }
     this.rig.pose.blocking = this.guarding;
@@ -515,6 +521,7 @@ class Game {
       this.settings.quality = qualitySelect.value;
       this.quality = this.resolveQuality(qualitySelect.value);
       this.engine.setHardwareScalingLevel(this.quality.hardwareScale);
+      this.world.applyQuality?.(this.quality);
       this.saveSettings();
     });
     document.getElementById('bestScore').textContent = this.settings.best ? this.settings.best.toLocaleString('pt-BR') : '—';
@@ -649,6 +656,29 @@ class Game {
     return force;
   }
 
+  /**
+   * Mantém lutadores dentro do pátio e impede sobreposição corpo-a-corpo.
+   * É uma colisão arcade deliberada: leve para mobile, mas previsível no combate.
+   */
+  constrainCharacterPosition(position, radius, source) {
+    position.x = clamp(position.x, -36.2 + radius, 36.2 - radius);
+    position.z = clamp(position.z, -34.8 + radius, 36.2 - radius);
+    const fighters = [this.player, ...this.enemies].filter(fighter => fighter && fighter !== source && !fighter.dead && fighter.rig?.root?.position);
+    for (const fighter of fighters) {
+      const other = fighter.rig.root.position;
+      const offset = position.subtract(other);
+      offset.y = 0;
+      const minimum = radius + .62;
+      const distance = offset.length();
+      if (distance >= minimum) continue;
+      if (distance < .001) offset.copyFromFloats(Math.sin(this.elapsed * 8 + 1), 0, Math.cos(this.elapsed * 8 + 1));
+      offset.normalize();
+      position.addInPlace(offset.scale(minimum - distance));
+      position.x = clamp(position.x, -36.2 + radius, 36.2 - radius);
+      position.z = clamp(position.z, -34.8 + radius, 36.2 - radius);
+    }
+  }
+
   performPlayerHit(kind) {
     const data = ATTACKS[kind];
     const playerPosition = this.player.rig.root.position;
@@ -693,6 +723,15 @@ class Game {
       desired.y += rand(-this.shake, this.shake);
       desired.z += rand(-this.shake, this.shake);
       this.shake = Math.max(0, this.shake - dt * 1.7);
+    }
+    const rayDirection = desired.subtract(look);
+    const rayLength = rayDirection.length();
+    if (rayLength > .01) {
+      const ray = new B.Ray(look, rayDirection.scale(1 / rayLength), rayLength);
+      const collision = this.scene.pickWithRay(ray, mesh => mesh.metadata?.cameraCollider === true);
+      if (collision?.hit && collision.distance < rayLength) {
+        desired = look.add(ray.direction.scale(Math.max(1.1, collision.distance - .35)));
+      }
     }
     this.camera.position = B.Vector3.Lerp(this.camera.position, desired, 1 - Math.exp(-9 * dt));
     this.camera.setTarget(look);

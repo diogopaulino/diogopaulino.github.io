@@ -166,6 +166,7 @@ export function createWorld(scene, quality) {
     mesh.position.copyFromFloats(position[0], position[1], position[2]);
     mesh.rotation.y = rotationY;
     mesh.material = material;
+    mesh.metadata = { cameraCollider: material === materials.stone || material === materials.stoneDark || material === materials.wood };
     mesh.receiveShadows = true;
     addShadow(mesh);
     return mesh;
@@ -200,7 +201,7 @@ export function createWorld(scene, quality) {
   const towerPositions = [[-42, -42], [42, -42], [-42, 42], [42, 42]];
   towerPositions.forEach(([x, z], towerIndex) => {
     const tower = B.MeshBuilder.CreateCylinder(`round tower ${towerIndex}`, { height: 15, diameter: 12, tessellation: 18 }, scene);
-    tower.position.copyFromFloats(x, 7.5, z); tower.material = materials.stone; addShadow(tower);
+    tower.position.copyFromFloats(x, 7.5, z); tower.material = materials.stone; tower.metadata = { cameraCollider: true }; addShadow(tower);
     for (let i = 0; i < 10; i += 1) {
       const angle = i / 10 * Math.PI * 2;
       makeBox(`tower merlon ${towerIndex}-${i}`, { width: 2, height: 2.5, depth: 2.3 }, [x + Math.cos(angle) * 5, 16.1, z + Math.sin(angle) * 5], materials.stone, -angle);
@@ -262,7 +263,7 @@ export function createWorld(scene, quality) {
     smoke.minSize = .45 * scale; smoke.maxSize = 1.8 * scale; smoke.minLifeTime = 1.5; smoke.maxLifeTime = 3.8;
     smoke.emitRate = 14 * quality.particles; smoke.direction1 = new B.Vector3(-.15, .9, -.15); smoke.direction2 = new B.Vector3(.15, 1.7, .15); smoke.gravity = new B.Vector3(.05, .18, 0);
     smoke.start();
-    fires.push({ light, fire, smoke, seed: Math.random() * 10 });
+    fires.push({ light, fire, smoke, fireRate: 70, smokeRate: 14, seed: Math.random() * 10 });
   }
   createFire([-27, .25, -22], 1.1); createFire([31, .25, 10], .85); createFire([-34, .25, 24], .7);
   [-16, 16].forEach(x => createFire([x, 8.8, -38.1], .35));
@@ -273,13 +274,14 @@ export function createWorld(scene, quality) {
   pipeline.fxaaEnabled = true;
   pipeline.bloomEnabled = true;
   pipeline.bloomThreshold = .84;
-  pipeline.bloomWeight = .13;
+  pipeline.bloomWeight = quality.bloom;
   pipeline.bloomKernel = 48;
-  pipeline.chromaticAberrationEnabled = true;
+  pipeline.chromaticAberrationEnabled = quality.aberration;
   pipeline.chromaticAberration.aberrationAmount = 4;
-  pipeline.grainEnabled = true;
+  pipeline.grainEnabled = quality.grain;
   pipeline.grain.intensity = 5;
   pipeline.grain.animated = true;
+  if ('ssaoEnabled' in pipeline) pipeline.ssaoEnabled = quality.ssao;
 
   const bursts = [];
   function burst(position, type = 'spark', count = 7) {
@@ -312,7 +314,19 @@ export function createWorld(scene, quality) {
     }
   }
 
-  return { materials, shadow, addShadow, update, burst, gate, pipeline, environment, propRoots: [], propContainers: [] };
+  function applyQuality(nextQuality) {
+    pipeline.samples = nextQuality.hardwareScale < 1 ? 2 : 1;
+    pipeline.bloomWeight = nextQuality.bloom;
+    pipeline.chromaticAberrationEnabled = nextQuality.aberration;
+    pipeline.grainEnabled = nextQuality.grain;
+    if ('ssaoEnabled' in pipeline) pipeline.ssaoEnabled = nextQuality.ssao;
+    fires.forEach(fire => {
+      fire.fire.emitRate = fire.fireRate * nextQuality.particles;
+      fire.smoke.emitRate = fire.smokeRate * nextQuality.particles;
+    });
+  }
+
+  return { materials, shadow, addShadow, update, burst, applyQuality, gate, pipeline, environment, propRoots: [], propContainers: [] };
 }
 
 async function loadPolyHavenModel(scene, asset) {
