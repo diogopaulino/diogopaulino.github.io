@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#1a1008">
     <title>Safari Dourado — hora dourada na savana | Diogo Paulino</title>
     <meta name="description"
-        content="Safari fotográfico 3D em three.js: dirija o jeep pela savana ao entardecer, enquadre elefantes, girafas e leões e complete o caderno de campo.">
+        content="Safari fotográfico 3D em Babylon.js: dirija o jeep pela savana ao entardecer, enquadre elefantes, girafas e zebras e complete o caderno de campo.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/safari-dourado/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,27 +23,19 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/safari-dourado/">
     <meta property="og:title" content="Safari Dourado | Diogo Paulino">
     <meta property="og:description"
-        content="A savana ao entardecer em three.js: jeep, acácias, poço d’água e um caderno de campo para fotografar a vida selvagem.">
+        content="A savana ao entardecer em Babylon.js: jeep, acácias, poço d’água e um caderno de campo para fotografar a vida selvagem.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Safari Dourado | Diogo Paulino">
-    <meta name="twitter:description" content="Fotografe a savana na hora dourada. three.js no navegador.">
+    <meta name="twitter:description" content="Fotografe a savana na hora dourada em Babylon.js no navegador.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css?v=1">
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-        }
-    }
-    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -52,7 +44,7 @@
           "@type": "WebApplication",
           "name": "Safari Dourado",
           "url": "https://diogopaulino.com.br/labs/safari-dourado/",
-          "description": "Safari fotográfico 3D em three.js: dirija o jeep pela savana ao entardecer, enquadre elefantes, girafas e leões e complete o caderno de campo.",
+          "description": "Safari fotográfico 3D em Babylon.js: dirija o jeep pela savana ao entardecer, enquadre elefantes, girafas e zebras e complete o caderno de campo.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -108,8 +100,6 @@
         <div id="shutterFlash" class="shutter-flash" aria-hidden="true"></div>
 
         <div id="viewfinder" class="viewfinder" hidden>
-            <div class="vf-letterbox vf-letterbox--top"></div>
-            <div class="vf-letterbox vf-letterbox--bottom"></div>
             <div class="vf-frame">
                 <i class="vf-corner vf-tl"></i>
                 <i class="vf-corner vf-tr"></i>
@@ -119,57 +109,38 @@
             </div>
             <div class="vf-meta vf-meta--left">
                 <span id="vfSpecies">—</span>
-                <span id="vfHint" class="vf-hint">enquadre e clique</span>
-            </div>
-            <div class="vf-meta vf-meta--right">
-                <span id="vfZoom" class="mono">85mm</span>
-                <span id="vfRating">foco</span>
+                <span id="vfHint" class="vf-hint">Espaço · disparar obturador</span>
             </div>
         </div>
 
         <div id="polaroid" class="polaroid" hidden>
             <div class="polaroid-shot">
                 <strong id="polaroidSpecies">Elefante</strong>
-                <span id="polaroidScore" class="mono">+420</span>
-                <em id="polaroidTag">primeiro registro</em>
+                <em id="polaroidTag">registro de campo</em>
             </div>
         </div>
 
         <div id="hud" class="hud" hidden>
             <div class="hud-top">
                 <div class="panel journal-panel">
-                    <span class="hud-label">Caderno de campo</span>
-                    <div id="journalPips" class="journal-pips" aria-label="Espécies fotografadas"></div>
-                    <span id="journalCount" class="mono">0/8</span>
-                </div>
-                <div class="panel hour-panel">
-                    <span class="hud-label">Hora dourada</span>
-                    <div class="rail">
-                        <i id="hourFill"></i>
-                    </div>
-                    <span id="hourLabel">entardecer</span>
+                    <span class="hud-label">Caderno de Campo</span>
+                    <span id="shotsValue" class="mono">0 fotos</span>
                 </div>
                 <div class="panel score-panel">
                     <div class="score-row">
-                        <span class="hud-label">Revelações</span>
-                        <strong id="scoreValue" class="mono">0</strong>
-                    </div>
-                    <div class="score-row score-row--sub">
-                        <span id="shotsValue" class="mono">0 fotos</span>
-                        <span id="timeValue" class="mono">0:00</span>
+                        <span class="hud-label">Velocidade</span>
+                        <strong id="speedValue" class="mono">0</strong>
+                        <span class="meta">km/h</span>
                     </div>
                 </div>
             </div>
 
             <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
-            <p id="prompt" class="prompt">F · levantar a lente</p>
+            <p id="prompt" class="prompt">F · alternar modo câmera</p>
 
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
                     title="Som (M)" aria-label="Alternar som">♪</button>
-                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
-                    aria-label="Pausar">II</button>
-                <span id="fpsCounter" class="fps mono">—</span>
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
@@ -177,7 +148,6 @@
                     <i id="moveKnob"></i>
                     <span>jeep</span>
                 </div>
-                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
                 <div class="touch-buttons">
                     <button type="button" id="btnPhoto" class="pad pad-photo">lente</button>
                     <button type="button" id="btnShutter" class="pad pad-shutter">●</button>
@@ -190,32 +160,25 @@
                 <span class="sun-loader" aria-hidden="true"></span>
                 <h1>Safari Dourado</h1>
                 <p id="loadingText">A savana acorda…</p>
-                <div class="loading-bar"><i id="loadingFill"></i></div>
             </div>
         </div>
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · savana procedural · hora dourada</p>
+                    <p class="eyebrow"><i></i> Babylon.js · savana procedural · hora dourada</p>
                     <h1>Safari <span>Dourado</span></h1>
-                    <p class="lede">O sol baixa sobre as acácias. Você dirige o jeep, levanta a lente
-                        e registra a vida selvagem antes que a luz se apague. Oito espécies, um caderno,
-                        a hora mais bonita do dia.</p>
+                    <p class="lede">O sol baixa sobre as acácias em Babylon.js. Você dirige o jeep 4x4, levanta a lente
+                        e registra a vida selvagem antes que a luz se apague.</p>
                 </header>
 
                 <div class="menu-grid">
                     <section class="menu-section">
-                        <h2>Caderno</h2>
+                        <h2>Caderno de Campo</h2>
                         <ul class="species-preview">
-                            <li>Elefante</li>
-                            <li>Girafa</li>
-                            <li>Leão</li>
-                            <li>Zebra</li>
-                            <li>Gnu</li>
-                            <li>Gazela</li>
-                            <li>Hipopótamo</li>
-                            <li>Flamingo</li>
+                            <li>Elefante-africano</li>
+                            <li>Girafa-da-savana</li>
+                            <li>Zebra-da-planície</li>
                         </ul>
                     </section>
 
@@ -223,103 +186,28 @@
                         <h2>Comandos</h2>
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> dirigir o jeep</span>
-                            <span><kbd>F</kbd> lente (liga/desliga) · botão direito segura</span>
-                            <span><kbd>clique</kbd> ou <kbd>Espaço</kbd> disparar</span>
-                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                            <span><kbd>F</kbd> lente fotográfica</span>
+                            <span><kbd>Espaço</kbd> bater foto</span>
                         </div>
-                    </section>
-
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
-                        <div class="settings-grid">
-                            <label class="field">
-                                <span>Qualidade</span>
-                                <select id="qualitySelect">
-                                    <option value="auto">Automática</option>
-                                    <option value="low">Performance</option>
-                                    <option value="medium">Equilibrada</option>
-                                    <option value="high">Cinemática</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Volume <b id="volumeValue">70</b></span>
-                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
-                            </label>
-                        </div>
-                        <p class="section-note">Melhor caderno: <b id="bestScore" class="mono">—</b></p>
                     </section>
                 </div>
 
                 <footer class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Entrar na savana</span>
+                        <span>Iniciar Expedição</span>
                         <i aria-hidden="true">→</i>
                     </button>
                 </footer>
             </div>
         </div>
 
-        <div id="pauseOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> O jeep espera</p>
-                <h2>A savana<br>está pausada.</h2>
-                <div class="card-actions">
-                    <button id="resumeButton" class="primary-button" type="button">
-                        <span>Continuar</span><i aria-hidden="true">→</i>
-                    </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao acampamento</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="victoryOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card victory-card">
-                <p class="eyebrow eyebrow--gold"><i></i> Caderno completo</p>
-                <h2>A hora dourada<br>ficou revelada.</h2>
-                <p class="lede">Oito espécies, o poço, as acácias. O sol já toca o horizonte —
-                    e o jeep ainda tem poeira nos paralamas.</p>
-                <div id="victoryStats" class="stats"></div>
-                <div class="card-actions">
-                    <button id="replayButton" class="primary-button" type="button">
-                        <span>Outro safari</span><i aria-hidden="true">→</i>
-                    </button>
-                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao acampamento</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="errorOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
-                <h2>A savana não<br>pôde abrir.</h2>
-                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
-                    atualizado ou reative a aceleração de hardware.</p>
-            </div>
-        </div>
-
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=8" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
-    <script type="module" src="src/main.js?v=4"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="/labs/shared.js?v=9" defer></script>
+    <script type="module" src="src/main.js"></script>
 </body>
 
 </html>
