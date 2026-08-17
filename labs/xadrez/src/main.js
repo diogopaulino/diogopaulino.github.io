@@ -391,15 +391,68 @@ class Atelier {
     }
 
     onDown(e) {
-        this.drag = { x: e.clientX, y: e.clientY, active: true };
+        if (this.busy || this.pendingPromo) return;
+        this.drag = { x: e.clientX, y: e.clientY, active: true, mesh: null, origin: null, square: -1 };
+        
+        const hit = this.hit();
+        if (hit >= 0) {
+            const piece = this.game.board[hit];
+            const side = this.game.side;
+            const canSelect = this.mode !== 'cpu' || side === this.player;
+            if (piece && piece.c === side && canSelect) {
+                this.drag.square = hit;
+                this.drag.mesh = this.pieceAt(hit);
+                if (this.drag.mesh) {
+                    this.drag.origin = this.drag.mesh.position.clone();
+                    if (this.camera) this.camera.detachControl();
+                    this.canvas.classList.add('is-dragging');
+                }
+                if (this.selected !== hit) {
+                    this.onSquare(hit);
+                }
+            }
+        }
+    }
+
+    onMove(e) {
+        if (!this.drag.active || !this.drag.mesh) return;
+        const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
+        // Plane at y = 0.5 to lift the piece slightly
+        const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.6));
+        if (hit !== null && hit !== undefined) {
+            const pt = ray.origin.add(ray.direction.scale(hit));
+            this.drag.mesh.position.x = pt.x;
+            this.drag.mesh.position.z = pt.z;
+            this.drag.mesh.position.y = 0.6;
+        }
     }
 
     onUp(e) {
         if (!this.drag.active) return;
         this.drag.active = false;
+        if (this.camera) this.camera.attachControl(this.canvas, true);
+        this.canvas.classList.remove('is-dragging');
+
         const dx = e.clientX - this.drag.x;
         const dy = e.clientY - this.drag.y;
-        if (Math.hypot(dx, dy) > 8) return;
+        const dropped = this.drag.mesh && Math.hypot(dx, dy) > 8;
+
+        if (dropped) {
+            const hit = this.hit();
+            if (hit >= 0 && hit !== this.drag.square) {
+                const move = this.game.findMove(this.drag.square, hit, this.expect?.promo || 'q');
+                if (move) {
+                    // Reset position for hop animation
+                    this.drag.mesh.position.copyFrom(this.drag.origin);
+                    this.tryMove(move);
+                    return;
+                }
+            }
+            // Invalid drop
+            this.hop(this.drag.mesh, this.drag.square, this.drag.square);
+            return;
+        }
+
         if (this.busy || this.pendingPromo) return;
         const hit = this.hit();
         if (hit < 0) {
@@ -412,6 +465,7 @@ class Atelier {
 
     hit() {
         const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
+            if (this.drag && this.drag.mesh && mesh === this.drag.mesh) return false;
             return mesh.isPickable && (mesh.metadata?.index !== undefined || mesh.metadata?.kind === 'square');
         });
         if (pick && pick.hit && pick.pickedMesh) {
@@ -545,11 +599,13 @@ class Atelier {
     hop(mesh, from, to) {
         const a = squareToWorld(from, this.flip);
         const b = squareToWorld(to, this.flip);
+        const dist = Math.hypot(b.x - a.x, b.z - a.z);
+        const h = mesh.metadata?.kind === 'n' ? Math.max(0.6, dist * 0.2) : Math.min(1.2, Math.max(0.2, dist * 0.15));
         return this.tween(0.38, (t) => {
             const k = easeInOut(t);
             mesh.position.x = a.x + (b.x - a.x) * k;
             mesh.position.z = a.z + (b.z - a.z) * k;
-            mesh.position.y = 0.07 + Math.sin(k * Math.PI) * 0.55;
+            mesh.position.y = 0.07 + Math.sin(k * Math.PI) * h;
         });
     }
 
