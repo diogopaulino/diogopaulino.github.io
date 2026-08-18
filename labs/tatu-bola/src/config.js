@@ -20,20 +20,20 @@ export const ISLAND = {
 export const PLAYER = {
     radius: 0.52,
     height: 0.95,
-    accel: 42,
-    airAccel: 18,
-    maxSpeed: 9.2,
-    rollSpeed: 14.5,
-    friction: 7.2,
-    airFriction: 1.4,
-    jump: 11.4,
-    doubleJump: 9.4,
-    gravity: 38,
-    coyote: 0.12,
+    accel: 60,
+    airAccel: 25,
+    maxSpeed: 10.5,
+    rollSpeed: 16.0,
+    friction: 10.0,
+    airFriction: 2.0,
+    jump: 12.0,
+    doubleJump: 10.0,
+    gravity: 42,
+    coyote: 0.15,
     rollTime: 0.72,
     rollCooldown: 0.28,
     invuln: 1.65,
-    swimSpeed: 3.4,
+    swimSpeed: 4.0,
     drownTime: 2.6
 };
 
@@ -50,10 +50,10 @@ export const QUEST = {
 };
 
 export const QUALITY = {
-    auto: { pixel: 0.72, shadows: true, snap: 88, particles: 1 },
-    low: { pixel: 0.42, shadows: false, snap: 52, particles: 0.4 },
-    medium: { pixel: 0.62, shadows: true, snap: 72, particles: 0.75 },
-    high: { pixel: 1, shadows: true, snap: 110, particles: 1.15 }
+    auto: { pixel: 1.0, shadows: true, particles: 1.0 },
+    low: { pixel: 1.0, shadows: false, particles: 0.5 },
+    medium: { pixel: 1.0, shadows: true, particles: 0.8 },
+    high: { pixel: 1.0, shadows: true, particles: 1.2 }
 };
 
 /** Cristais — (x, z). Y é amostrado do terreno + offset. */

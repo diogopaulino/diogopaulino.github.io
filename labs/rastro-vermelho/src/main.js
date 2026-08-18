@@ -154,7 +154,7 @@ async function loadHorse(scene, shadow) {
     const result = await B.SceneLoader.ImportMeshAsync('', '', ASSETS.horse, scene, undefined, '.gltf');
     const root = result.meshes[0];
     root.name = 'cavalo-realista';
-    root.scaling.setAll(1.62);
+    root.scaling.setAll(0.85);
     root.rotationQuaternion = null;
     root.rotation.y = Math.PI;
     result.meshes.forEach((mesh) => {
@@ -206,9 +206,27 @@ class RastroVermelho {
         this.camera.minZ = 0.1; this.camera.maxZ = 800; this.camera.fov = 0.92;
         this.camera.inputs.clear();
         this.sky = B.MeshBuilder.CreateSphere('céu', { diameter: 1400, sideOrientation: B.Mesh.BACKSIDE, segments: 24 }, scene);
-        this.skyMaterial = new B.StandardMaterial('atmosfera', scene);
-        this.skyMaterial.disableLighting = true;
+        this.skyMaterial = new B.SkyMaterial('atmosfera', scene);
+        this.skyMaterial.backFaceCulling = false;
+        this.skyMaterial.luminance = 1.0;
+        this.skyMaterial.turbidity = 4;
+        this.skyMaterial.rayleigh = 1.2;
+        this.skyMaterial.mieCoefficient = 0.005;
+        this.skyMaterial.mieDirectionalG = 0.8;
         this.sky.material = this.skyMaterial;
+
+        this.clouds = B.MeshBuilder.CreateSphere('nuvens', { diameter: 1350, sideOrientation: B.Mesh.BACKSIDE, segments: 32 }, scene);
+        const cloudMat = new B.StandardMaterial('nuvensMat', scene);
+        const noiseTex = new B.NoiseProceduralTexture("perlin", 512, scene);
+        noiseTex.octaves = 6;
+        noiseTex.persistence = 1.2;
+        noiseTex.animationSpeedFactor = 1.5;
+        cloudMat.emissiveTexture = noiseTex;
+        cloudMat.opacityTexture = noiseTex;
+        cloudMat.disableLighting = true;
+        cloudMat.alpha = 0.45;
+        this.clouds.material = cloudMat;
+
         this.sun = new B.DirectionalLight('sol', new B.Vector3(-0.45, -0.7, 0.35), scene);
         this.sun.position.set(90, 130, -90); this.sun.intensity = 4.1;
         const hemi = new B.HemisphericLight('céu-ambiente', new B.Vector3(0, 1, 0), scene);
@@ -323,15 +341,23 @@ class RastroVermelho {
 
     frame() {
         const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.05);
+        this.elapsed += dt;
         if (this.state === 'play') this.update(dt);
         else this.menuCamera(dt);
         this.sky.position.copyFrom(this.camera.position);
+        if (this.water) {
+            this.water.position.x = this.camera.position.x;
+            this.water.position.z = this.camera.position.z;
+        }
+        if (this.clouds) {
+            this.clouds.position.copyFrom(this.camera.position);
+        }
         this.scene.render();
     }
 
     update(dt) {
-        const steer = (this.keys.KeyA ? 1 : 0) - (this.keys.KeyD ? 1 : 0) + (this.keys.touchX || 0);
-        const throttle = (this.keys.KeyW ? 1 : 0) - (this.keys.KeyS ? 1 : 0) + (this.keys.touchZ || 0);
+        const steer = (this.keys.KeyA || this.keys.ArrowLeft ? 1 : 0) - (this.keys.KeyD || this.keys.ArrowRight ? 1 : 0) + (this.keys.touchX || 0);
+        const throttle = (this.keys.KeyW || this.keys.ArrowUp ? 1 : 0) - (this.keys.KeyS || this.keys.ArrowDown ? 1 : 0) + (this.keys.touchZ || 0);
         if (this.keys.Space) this.player.spur = 1.4;
         this.player.spur = Math.max(0, this.player.spur - dt);
         const target = this.player.spur > 0 || this.keys.ShiftLeft ? 24 : throttle > 0.1 ? 19 : throttle < -0.1 ? 5 : (this.player.cruise ? 12 : 2.5);
@@ -365,11 +391,20 @@ class RastroVermelho {
 
     updateAtmosphere() {
         const sun = (Math.sin(this.elapsed / 90) + 1) * 0.5;
-        const sky = B.Color3.Lerp(B.Color3.FromHexString('#110a19'), B.Color3.FromHexString('#e89a55'), sun);
-        this.skyMaterial.emissiveColor = sky;
-        this.scene.fogColor = B.Color3.Lerp(B.Color3.FromHexString('#1b0b18'), B.Color3.FromHexString('#c77342'), sun);
         this.sun.intensity = 0.6 + sun * 3.8;
         this.sun.direction = new B.Vector3(-0.55, -0.22 - sun * 0.75, 0.35);
+
+        if (this.skyMaterial) {
+            this.skyMaterial.sunPosition = this.sun.direction.scale(-100);
+            this.skyMaterial.rayleigh = lerp(2.5, 1.2, sun);
+        }
+
+        this.scene.fogColor = B.Color3.Lerp(B.Color3.FromHexString('#1b0b18'), B.Color3.FromHexString('#c77342'), sun);
+
+        if (this.clouds && this.clouds.material) {
+            const cloudTint = B.Color3.Lerp(B.Color3.FromHexString('#110a19'), B.Color3.FromHexString('#ffffff'), sun);
+            this.clouds.material.emissiveColor = cloudTint;
+        }
     }
 
     updateHud() {

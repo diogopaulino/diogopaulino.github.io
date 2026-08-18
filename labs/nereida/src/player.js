@@ -58,14 +58,13 @@ export class Player {
         this.spherical.radius = THREE.MathUtils.damp(this.spherical.radius, this.desired.radius, 5, dt);
 
         this.camera.getWorldDirection(this.forward);
-        this.forward.y = 0;
         if (this.forward.lengthSq() < 1e-6) this.forward.set(0, 0, -1);
         this.forward.normalize();
         this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
 
         this.vel.x += (this.right.x * input.axis.x + this.forward.x * -input.axis.z) * ACCEL * dt;
         this.vel.z += (this.right.z * input.axis.x + this.forward.z * -input.axis.z) * ACCEL * dt;
-        this.vel.y += input.axis.y * VERTICAL * dt;
+        this.vel.y += (this.forward.y * -input.axis.z) * ACCEL * dt + input.axis.y * VERTICAL * dt;
         this.vel.multiplyScalar(Math.exp(-DRAG * dt));
 
         const spd = this.vel.length();
@@ -88,10 +87,12 @@ export class Player {
         if (this.speed > 0.25) {
             const targetYaw = Math.atan2(this.vel.x, this.vel.z);
             this.yaw = THREE.MathUtils.damp(this.yaw, targetYaw, 4.2, dt);
+            const targetPitch = Math.asin(THREE.MathUtils.clamp(this.vel.y / this.speed, -0.99, 0.99));
+            this.mesh.userData.pitch = THREE.MathUtils.damp(this.mesh.userData.pitch || 0, -targetPitch, 4.2, dt);
         }
         this.mesh.rotation.y = this.yaw;
         this.mesh.rotation.z = THREE.MathUtils.damp(this.mesh.rotation.z, -input.axis.x * 0.38, 5, dt);
-        this.mesh.rotation.x = THREE.MathUtils.damp(this.mesh.rotation.x, this.vel.y * 0.06, 5, dt);
+        this.mesh.rotation.x = this.mesh.userData.pitch || 0;
 
         const t = performance.now() * 0.001;
         const flap = Math.sin(t * (2.1 + this.speed * 0.35)) * (0.18 + this.speed * 0.04);

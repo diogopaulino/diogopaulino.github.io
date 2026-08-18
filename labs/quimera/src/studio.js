@@ -115,6 +115,7 @@ function addLanterns(root) {
         g.add(bulb, string);
         g.position.set(p[0], p[1], p[2]);
         g.userData.phase = i * 1.3;
+        g.userData.baseY = p[1];
         root.add(g);
         g.userData.lantern = true;
     });
@@ -123,14 +124,18 @@ function addLanterns(root) {
 function addMotes(root, count) {
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(count * 3);
+    const baseX = new Float32Array(count);
     const phase = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-        pos[i * 3] = (Math.random() - 0.5) * 8;
+        const x = (Math.random() - 0.5) * 8;
+        pos[i * 3] = x;
+        baseX[i] = x;
         pos[i * 3 + 1] = 0.3 + Math.random() * 3.2;
         pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
         phase[i] = Math.random() * Math.PI * 2;
     }
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('baseX', new THREE.BufferAttribute(baseX, 1));
     geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
     const mat = new THREE.PointsMaterial({
         color: 0xffe6b0,
@@ -176,17 +181,18 @@ export function lightStudio(scene) {
 export function updateStudio(studio, t) {
     studio.root.children.forEach((c) => {
         if (c.userData.lantern) {
-            c.position.y += Math.sin(t * 0.8 + c.userData.phase) * 0.0007;
+            c.position.y = c.userData.baseY + Math.sin(t * 0.8 + c.userData.phase) * 0.05;
             c.rotation.z = Math.sin(t * 0.6 + c.userData.phase) * 0.04;
         }
     });
     if (studio.motes) {
         const pos = studio.motes.geometry.attributes.position;
         const phase = studio.motes.geometry.attributes.phase;
+        const baseX = studio.motes.geometry.attributes.baseX;
         for (let i = 0; i < pos.count; i++) {
             const p = phase.getX(i);
             pos.setY(i, 0.4 + ((Math.sin(t * 0.35 + p) * 0.5 + 0.5) * 3.0));
-            pos.setX(i, pos.getX(i) + Math.sin(t * 0.2 + p) * 0.0015);
+            pos.setX(i, baseX.getX(i) + Math.sin(t * 0.2 + p) * 0.4);
         }
         pos.needsUpdate = true;
     }

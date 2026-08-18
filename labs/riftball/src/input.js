@@ -42,20 +42,35 @@ export class Input {
     sample(slot) {
         let x = slot === 0 ? this.touchX : 0;
         let y = slot === 0 ? this.touchY : 0;
-        const map = slot === 0 ? P1 : P2;
-        if (this.keys.has(slot === 0 ? 'p1-left' : 'p2-left')) x -= 1;
-        if (this.keys.has(slot === 0 ? 'p1-right' : 'p2-right')) x += 1;
-        if (this.keys.has(slot === 0 ? 'p1-up' : 'p2-up')) y += 1;
-        if (this.keys.has(slot === 0 ? 'p1-down' : 'p2-down')) y -= 1;
+        
+        if (slot === 0) {
+            if (this.keys.has('p1-left') || (!this.localMultiplayer && this.keys.has('p2-left'))) x -= 1;
+            if (this.keys.has('p1-right') || (!this.localMultiplayer && this.keys.has('p2-right'))) x += 1;
+            if (this.keys.has('p1-up') || (!this.localMultiplayer && this.keys.has('p2-up'))) y += 1;
+            if (this.keys.has('p1-down') || (!this.localMultiplayer && this.keys.has('p2-down'))) y -= 1;
+        } else {
+            if (this.keys.has('p2-left')) x -= 1;
+            if (this.keys.has('p2-right')) x += 1;
+            if (this.keys.has('p2-up')) y += 1;
+            if (this.keys.has('p2-down')) y -= 1;
+        }
+
         const mag = Math.hypot(x, y);
         if (mag > 1) {
             x /= mag;
             y /= mag;
         }
-        const boost = slot === 0
-            ? this.keys.has('p1-boost') || this.touchBoost
-            : this.keys.has('p2-boost');
-        const jump = this.consumeJump(slot);
+        
+        let boost = false;
+        let jump = false;
+        if (slot === 0) {
+            boost = this.keys.has('p1-boost') || this.touchBoost || (!this.localMultiplayer && this.keys.has('p2-boost'));
+            jump = this.consumeJump(0) || (!this.localMultiplayer && this.consumeJump(1));
+        } else {
+            boost = this.keys.has('p2-boost');
+            jump = this.consumeJump(1);
+        }
+
         return { throttle: y, steer: x, boost, jump };
     }
 

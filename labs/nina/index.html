@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3a1848">
+    <title>Nina — o vale dos filhotes | Diogo Paulino</title>
+    <meta name="description"
+        content="Jogo 3D infantil em three.js: seja a raposinha Nina, colete amoras, resgate pintinhos, patinhos e amigos e leve todos ao piquenique.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/nina/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/nina/">
+    <meta property="og:title" content="Nina — o vale dos filhotes | Diogo Paulino">
+    <meta property="og:description"
+        content="Um vale toon em three.js: pule, colete amoras e leve os filhotes de volta ao ninho. Feito para crianças — e para quem ainda pula de alegria.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Nina | Diogo Paulino">
+    <meta name="twitter:description" content="Raposinha, filhotes e piquenique 3D. three.js no navegador.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=9">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Nina",
+          "url": "https://diogopaulino.com.br/labs/nina/",
+          "description": "Jogo 3D infantil em three.js: seja a raposinha Nina, colete amoras, resgate pintinhos, patinhos e amigos e leve todos ao piquenique.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Nina",
+              "item": "https://diogopaulino.com.br/labs/nina/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body data-state="intro">
+    <main class="game-shell">
+        <header data-lab-header data-title="Nina" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">🫐</span>
+                    <span>Nina</span>
+                </div>
+            </template>
+        </header>
+
+        <section class="stage" aria-label="Vale 3D dos filhotes">
+            <canvas id="scene" aria-label="Vale de Nina"></canvas>
+            <div class="vignette" aria-hidden="true"></div>
+        </section>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel friend-panel">
+                    <span class="hud-label">Filhotes</span>
+                    <div id="friendPips" class="pips" aria-label="Filhotes no ninho"></div>
+                    <strong id="friendCount" class="mono">0 / 7</strong>
+                </div>
+                <div class="panel quest-panel">
+                    <span class="hud-label" id="questTag">O vale acordou</span>
+                    <p id="objective" class="objective">Pegue amoras e chame o primeiro filhote.</p>
+                </div>
+                <div class="panel berry-panel">
+                    <span class="hud-label">Amoras</span>
+                    <strong id="berryCount" class="mono">0</strong>
+                    <span class="hud-sub">fila <b id="followCount">0</b></span>
+                </div>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" aria-label="Correr">
+                    <i id="moveKnob"></i>
+                    <span>correr</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" id="btnRun" class="pad">⇧</button>
+                    <button type="button" id="btnJump" class="pad pad-magic">hop</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="star-loader" aria-hidden="true">🫐</span>
+                <h1>Nina</h1>
+                <p id="loadingText">Acordando os filhotes…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · toon · vale infantil</p>
+                    <h1>Nina</h1>
+                    <p class="lede">Uma raposinha, um vale de amoras e sete filhotes que se perderam
+                        depois da chuva. Pule, ofereça uma fruta e leve todo mundo de volta ao
+                        piquenique no ninho.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Como brincar</h2>
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> correr</span>
+                            <span><kbd>Shift</kbd> correr rápido · <kbd>Espaço</kbd> pular / chamar</span>
+                            <span>Mouse arrasta a câmera · roda aproxima</span>
+                            <span>Ofereça uma amora ao filhote e leve-o ao ninho</span>
+                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Leve</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor piquenique: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Entrar no vale</span>
+                        <i aria-hidden="true">🐾</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> Os filhotes esperam</p>
+                <h2>O vale<br>está em pausa.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao início</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victoryOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card victory-card">
+                <p class="eyebrow"><i></i> Piquenique completo</p>
+                <h2>Todos<br>chegaram em casa.</h2>
+                <p class="lede">Piu, Pata, Fofo, Lã, Miau, Ouri e Tata comem amoras no ninho.
+                    A raposinha abana o rabo. O vale inteiro festeja.</p>
+                <div id="victoryStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="replayButton" class="primary-button" type="button">
+                        <span>Brincar de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao início</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>O vale não<br>pôde abrir.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=8" defer></script>
+    <script>
+        (function () {
+            function hasGpu() {
+                try {
+                    var c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                } catch (e) { return false; }
+            }
+            if (!hasGpu()) {
+                document.addEventListener('DOMContentLoaded', function () {
+                    var err = document.getElementById('errorOverlay');
+                    var load = document.getElementById('loadingOverlay');
+                    if (load) load.hidden = true;
+                    if (err) err.hidden = false;
+                });
+            }
+        })();
+    </script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

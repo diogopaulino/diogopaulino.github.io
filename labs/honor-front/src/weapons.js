@@ -4,20 +4,20 @@
  */
 
 import { WEAPONS } from './config.js';
-import { buildViewGarand, buildViewThompson } from './models.js';
 
 export class Loadout {
-    constructor(BABYLON, camera, scene) {
+    constructor(BABYLON, camera, scene, assets) {
         this.BABYLON = BABYLON;
         this.camera = camera;
         this.scene = scene;
 
-        this.garandView = buildViewGarand(BABYLON, scene);
-        this.thompsonView = buildViewThompson(BABYLON, scene);
+        this.garandView = assets.garandView;
+        this.thompsonView = assets.thompsonView;
 
         this.garandView.parent = camera;
         this.thompsonView.parent = camera;
 
+        this.garandView.setEnabled(true);
         this.thompsonView.setEnabled(false);
 
         this.current = 'garand';
@@ -32,6 +32,8 @@ export class Loadout {
         this.fireLatch = false;
         this.recoilZ = 0;
         this.recoilRotX = 0;
+        this.baseZGarand = 0.5;
+        this.baseZThompson = 0.6;
     }
 
     reset() {
@@ -134,7 +136,8 @@ export class Loadout {
 
         const v = this.activeView;
         if (v) {
-            v.position.z = -this.recoilZ;
+            const baseZ = this.current === 'thompson' ? this.baseZThompson : this.baseZGarand;
+            v.position.z = baseZ - this.recoilZ;
             v.rotation.x = -this.recoilRotX;
         }
     }

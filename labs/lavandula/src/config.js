@@ -10,8 +10,8 @@ export const STORAGE_KEY = 'lavandula-v1';
 
 /** Caminhada lenta, no espírito de um filme — nunca uma corrida. */
 export const PLAYER = {
-    walk: 2.15,
-    stride: 3.35,
+    walk: 3.5,
+    stride: 5.5,
     radius: 0.42,
     height: 1.72,
     turnSpeed: 7.2,
