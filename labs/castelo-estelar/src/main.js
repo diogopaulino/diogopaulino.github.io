@@ -1,7 +1,12 @@
 /**
- * Castelo Estelar — Babylon.js Engine, Pipeline PBR Hiper-Realista,
- * Abertura Cinemática e Órbita Interativa.
+ * Castelo Estelar — renderer, pós-processamento, abertura e órbita livre.
  */
+
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { Kingdom } from './world.js';
 import { Magic } from './effects.js';
@@ -13,26 +18,26 @@ const STORAGE = 'castelo-estelar-settings';
 
 const QUALITY = {
     low: {
-        id: 'low', pr: 1.0, antialias: false, bloom: false, shadows: false,
-        shadowMap: 1024, waterSize: 128, stars: 1600, trees: 40,
-        sparks: 500, burst: 45
+        id: 'low', pr: 1, antialias: false, bloom: false, shadows: false,
+        shadowMap: 1024, waterSize: 128, stars: 1800, trees: 40, clouds: 5,
+        sparks: 400, burst: 40
     },
     medium: {
         id: 'medium', pr: 1.35, antialias: true, bloom: true, shadows: true,
-        shadowMap: 2048, waterSize: 256, stars: 4000, trees: 70,
-        sparks: 1000, burst: 85
+        shadowMap: 2048, waterSize: 256, stars: 4200, trees: 70, clouds: 8,
+        sparks: 900, burst: 70
     },
     high: {
         id: 'high', pr: 1.75, antialias: true, bloom: true, shadows: true,
-        shadowMap: 4096, waterSize: 512, stars: 7000, trees: 110,
-        sparks: 1600, burst: 120
+        shadowMap: 4096, waterSize: 512, stars: 7000, trees: 110, clouds: 12,
+        sparks: 1400, burst: 110
     }
 };
 
-function pickQuality(mode, engine) {
+function pickQuality(mode, renderer) {
     if (QUALITY[mode]) return QUALITY[mode];
-    if (detectSoftwareGL(engine) || detectMobile()) return QUALITY.low;
-    if (window.devicePixelRatio >= 2 && window.innerWidth >= 1400) return QUALITY.high;
+    if (detectSoftwareGL(renderer) || detectMobile()) return QUALITY.low;
+    if (devicePixelRatio >= 2 && innerWidth >= 1400) return QUALITY.high;
     return QUALITY.medium;
 }
 
@@ -41,8 +46,8 @@ class CasteloEstelar {
         this.canvas = document.getElementById('scene');
         this.settings = this.loadSettings();
         this.state = 'boot';
+        this.clock = new THREE.Clock();
         this.introT = 0;
-        this.lastTime = performance.now();
         this.audio = new FanfareAudio();
         this.bindUi();
         this.boot();
@@ -57,9 +62,7 @@ class CasteloEstelar {
     }
 
     saveSettings() {
-        try {
-            localStorage.setItem(STORAGE, JSON.stringify(this.settings));
-        } catch { /* storage privado */ }
+        try { localStorage.setItem(STORAGE, JSON.stringify(this.settings)); } catch { /* privado */ }
     }
 
     bindUi() {
@@ -70,26 +73,21 @@ class CasteloEstelar {
         document.getElementById('qualitySelect')?.addEventListener('change', (e) => {
             this.settings.quality = e.target.value;
             this.saveSettings();
-            location.reload();
         });
         document.getElementById('volumeSlider')?.addEventListener('input', (e) => {
             const v = Number(e.target.value) / 100;
             this.settings.volume = Number(e.target.value);
-            const valLabel = document.getElementById('volumeValue');
-            if (valLabel) valLabel.textContent = String(this.settings.volume);
+            document.getElementById('volumeValue').textContent = String(this.settings.volume);
             this.audio.setVolume(v);
             this.saveSettings();
         });
-
         const vol = document.getElementById('volumeSlider');
         if (vol) {
             vol.value = String(this.settings.volume);
-            const valLabel = document.getElementById('volumeValue');
-            if (valLabel) valLabel.textContent = String(this.settings.volume);
+            document.getElementById('volumeValue').textContent = String(this.settings.volume);
         }
         const q = document.getElementById('qualitySelect');
         if (q) q.value = this.settings.quality;
-
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && this.state === 'intro') {
                 e.preventDefault();
@@ -102,78 +100,54 @@ class CasteloEstelar {
     }
 
     boot() {
-        const B = window.BABYLON;
-        if (!B) {
-            this.fail('Babylon.js não pôde ser carregado.');
-            return;
-        }
-
         try {
-            this.engine = new B.Engine(this.canvas, true, {
-                preserveDrawingBuffer: false,
-                stencil: true,
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.canvas,
                 antialias: true,
+                alpha: false,
                 powerPreference: 'high-performance'
             });
         } catch (err) {
             this.fail(err);
             return;
         }
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.88;
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.setClearColor(0x050814, 1);
 
-        this.quality = pickQuality(this.settings.quality, this.engine);
-        this.engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, this.quality.pr));
+        this.quality = pickQuality(this.settings.quality, this.renderer);
+        this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.quality.pr));
+        this.renderer.setSize(innerWidth, innerHeight);
+        this.renderer.shadowMap.enabled = this.quality.shadows;
 
-        this.scene = new B.Scene(this.engine);
-        this.scene.clearColor = new B.Color4(0.02, 0.03, 0.07, 1);
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.FogExp2(0x0a1528, 0.0032);
 
-        this.kingdom = new Kingdom(this.scene, this.engine, this.quality);
+        this.camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.2, 700);
+        this.cine = new CineCamera(this.camera, this.canvas);
+
+        this.kingdom = new Kingdom(this.scene, this.renderer, this.quality);
         this.magic = new Magic(this.scene, this.quality);
-        this.cine = new CineCamera(this.scene, this.canvas);
 
-        // Pipeline de Pós-processamento Hiper-Realista
-        this.pipeline = new B.DefaultRenderingPipeline('default_pipeline', true, this.scene, [this.cine.camera]);
-        this.pipeline.bloomEnabled = this.quality.bloom;
-        this.pipeline.bloomThreshold = 0.55;
-        this.pipeline.bloomWeight = 0.65;
-        this.pipeline.bloomKernel = 64;
-        this.pipeline.bloomScale = 0.5;
-
-        this.pipeline.imageProcessingEnabled = true;
-        this.pipeline.imageProcessing.toneMappingEnabled = true;
-        this.pipeline.imageProcessing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-        this.pipeline.imageProcessing.exposure = 0.95;
-        this.pipeline.imageProcessing.contrast = 1.14;
-
-        this.pipeline.imageProcessing.vignetteEnabled = true;
-        this.pipeline.imageProcessing.vignetteWeight = 1.25;
-        this.pipeline.imageProcessing.vignetteStretch = 0.5;
-
-        this.pipeline.fxaaEnabled = this.quality.antialias;
-        this.pipeline.samples = this.quality.id === 'high' ? 4 : 2;
-
-        if (this.quality.id === 'high') {
-            this.pipeline.chromaticAberrationEnabled = true;
-            this.pipeline.chromaticAberration.aberrationAmount = 14;
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(new RenderPass(this.scene, this.camera));
+        if (this.quality.bloom) {
+            this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.7, 0.72);
+            this.composer.addPass(this.bloom);
         }
+        this.composer.addPass(new OutputPass());
 
-        // Camada de Brilho Emissivo (GlowLayer)
-        this.glow = new B.GlowLayer('glow_layer', this.scene, {
-            mainTextureFixedSize: 512,
-            blurKernelSize: 32
-        });
-        this.glow.intensity = 0.85;
-
-        window.addEventListener('resize', () => {
-            this.engine.resize();
-        });
-
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
         this.cine.apply(0);
         this.hide('#loadingOverlay');
         this.show('#intro');
         document.body.dataset.state = 'menu';
-
-        this.lastTime = performance.now();
-        this.engine.runRenderLoop(() => this.frame());
+        this.clock.start();
+        this.renderer.setAnimationLoop(() => this.frame());
     }
 
     fail(err) {
@@ -216,8 +190,8 @@ class CasteloEstelar {
         if (this.state !== 'intro') return;
         this.cine.skip();
         this.introT = INTRO_DURATION;
-        this.kingdom.setGlow(1.0);
-        this.pipeline.imageProcessing.exposure = 1.12;
+        this.kingdom.setGlow(1);
+        this.renderer.toneMappingExposure = 1.08;
         this.finishIntro();
     }
 
@@ -226,11 +200,8 @@ class CasteloEstelar {
         document.body.dataset.state = 'orbit';
         this.hide('#skipButton');
         this.show('#titleCard');
-        const hint = document.getElementById('hint');
-        if (hint) {
-            hint.classList.remove('is-gone');
-            setTimeout(() => hint.classList.add('is-gone'), 5500);
-        }
+        document.getElementById('hint')?.classList.remove('is-gone');
+        setTimeout(() => document.getElementById('hint')?.classList.add('is-gone'), 5200);
     }
 
     toggleMute() {
@@ -253,12 +224,19 @@ class CasteloEstelar {
         else document.exitFullscreen?.();
     }
 
-    frame() {
-        const now = performance.now();
-        const dt = Math.min((now - this.lastTime) / 1000, 0.05);
-        this.lastTime = now;
-        const time = now / 1000;
+    resize() {
+        const w = innerWidth;
+        const h = innerHeight;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+        this.composer.setSize(w, h);
+        this.bloom?.setSize(w, h);
+    }
 
+    frame() {
+        const dt = Math.min(this.clock.getDelta(), 0.05);
+        const time = this.clock.elapsedTime;
         this.kingdom.tick(time);
         this.magic.tick(dt);
         this.cine.tick(dt);
@@ -267,16 +245,20 @@ class CasteloEstelar {
             this.introT = this.cine.t;
             const glow = smoothstep(12.5, 16.5, this.introT);
             this.kingdom.setGlow(glow);
-            this.pipeline.imageProcessing.exposure = 0.95 + glow * 0.22;
+            this.renderer.toneMappingExposure = 0.88 + glow * 0.22;
             this.magic.setIntro(this.introT, this.audio);
-
-            if (this.introT >= 18.0) this.show('#titleCard');
+            if (this.introT >= 18) this.show('#titleCard');
             if (this.cine.mode === 'orbit') this.finishIntro();
         } else if (this.state === 'orbit') {
-            this.kingdom.setGlow(1.0);
+            this.kingdom.setGlow(1);
         }
 
-        this.scene.render();
+        const sparkMat = this.magic.sparks.pts.material;
+        if (sparkMat.uniforms?.uPixel) {
+            sparkMat.uniforms.uPixel.value = 220 * clamp(this.quality.pr, 1, 2);
+        }
+
+        this.composer.render();
     }
 
     show(sel) {
