@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Aurora Flow | Diogo Paulino</title>
+    <title>Aurora Flow — noite polar generativa | Diogo Paulino</title>
     <meta name="description"
-        content="Aurora generativa: cortinas de luz, vórtices e tempestades de partículas que reagem ao seu movimento.">
+        content="Noite polar no browser: cortinas de oxigênio, fitas de plasma e um fiorde que reflete o céu. Arraste o campo magnético — por Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/aurora-flow/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#02060e">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
     <meta property="og:image:alt" content="Diogo Paulino">
@@ -18,14 +19,16 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/aurora-flow/">
-    <meta property="og:title" content="Aurora Flow | Diogo Paulino">
-    <meta property="og:description" content="Aurora generativa: cortinas de luz, vórtices e tempestades de partículas que reagem ao seu movimento.">
+    <meta property="og:title" content="Aurora Flow — noite polar generativa | Diogo Paulino">
+    <meta property="og:description"
+        content="Noite polar no browser: cortinas de oxigênio, fitas de plasma e um fiorde que reflete o céu. Arraste o campo magnético — por Diogo Paulino.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Aurora Flow | Diogo Paulino">
-    <meta name="twitter:description" content="Aurora generativa: cortinas de luz, vórtices e tempestades de partículas que reagem ao seu movimento.">
+    <meta name="twitter:title" content="Aurora Flow — noite polar generativa | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Noite polar no browser: cortinas de oxigênio, fitas de plasma e um fiorde que reflete o céu.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css">
     <script type="application/ld+json">
@@ -36,7 +39,7 @@
           "@type": "WebApplication",
           "name": "Aurora Flow",
           "url": "https://diogopaulino.com.br/labs/aurora-flow/",
-          "description": "Aurora generativa: cortinas de luz, vórtices e tempestades de partículas que reagem ao seu movimento.",
+          "description": "Noite polar no browser: cortinas de oxigênio, fitas de plasma e um fiorde que reflete o céu. Arraste o campo magnético — por Diogo Paulino.",
           "applicationCategory": "WebApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -81,7 +84,8 @@
         <header data-lab-header data-title="Aurora Flow">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        aria-hidden="true">
                         <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
                         <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
                         <path d="M19 11h2m-1 -1v2" />
@@ -97,30 +101,35 @@
                             d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                     </svg>
                     <svg class="fullscreen-exit" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" style="display:none">
-                        <path
-                            d="M8 3v3a2 2 0 0 1-2 2H3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        stroke="currentColor" stroke-width="2" hidden>
+                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0v-3a2 2 0 0 0-2-2h-3M3 16h3a2 2 0 0 1 2 2v3m18 0h-3a2 2 0 0 1-2-2v-3" />
                     </svg>
                 </button>
             </template>
         </header>
 
-        <canvas id="canvas"></canvas>
+        <canvas id="canvas" aria-label="Céu polar interativo"></canvas>
+        <div class="vignette" aria-hidden="true"></div>
 
         <div class="hud" aria-live="polite">
+            <span class="hud-kicker" id="hudTag">Cortinas</span>
             <span class="hud-scene" id="hudScene">Boreal</span>
-            <span class="hud-meta"><span id="fps">60</span> fps · <span id="particleCount">0</span></span>
+            <span class="hud-meta">
+                Kp <span id="kpIndex">3.2</span>
+                · <span id="fps">60</span> fps
+                · <span id="particleCount">0</span>
+            </span>
         </div>
 
         <div class="hint" id="hint">
-            <p>Arraste para guiar · clique para um pulso · <kbd>1</kbd>–<kbd>6</kbd> cenas</p>
+            <p>Arraste o campo magnético · toque para uma flare · <kbd>1</kbd>–<kbd>6</kbd> cenas</p>
         </div>
 
         <div class="dock">
             <div class="scene-rail" id="sceneRail" role="listbox" aria-label="Cenas"></div>
 
             <div class="dock-tools">
-                <div class="tool-group" role="group" aria-label="Interação">
+                <div class="tool-group" role="group" aria-label="Campo magnético">
                     <button class="tool-btn active" data-mode="attract" title="Atrair (A)" aria-label="Atrair">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
@@ -153,7 +162,15 @@
                 </div>
 
                 <div class="tool-group">
-                    <button id="random" class="tool-btn accent" title="Cena aleatória (R)" aria-label="Aleatório">
+                    <button id="meteor" class="tool-btn accent" title="Meteoro (M)" aria-label="Meteoro">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M4 20 20 4" />
+                            <path d="M14 4h6v6" />
+                            <circle cx="7" cy="17" r="2.2" />
+                        </svg>
+                    </button>
+                    <button id="random" class="tool-btn" title="Cena aleatória (R)" aria-label="Aleatório">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
@@ -168,8 +185,7 @@
                             <rect x="6" y="4" width="4" height="16" rx="1" />
                             <rect x="14" y="4" width="4" height="16" rx="1" />
                         </svg>
-                        <svg class="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
-                            style="display:none">
+                        <svg class="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" hidden>
                             <path d="M7 4l13 8-13 8V4z" />
                         </svg>
                     </button>
@@ -198,16 +214,24 @@
                     <input type="range" id="flowSpeed" min="0.2" max="2.5" step="0.1" value="1">
                 </div>
                 <div class="slider-row">
-                    <label for="density">Densidade <span id="densityValue">2200</span></label>
-                    <input type="range" id="density" min="400" max="6000" step="100" value="2200">
+                    <label for="density">Densidade <span id="densityValue">1600</span></label>
+                    <input type="range" id="density" min="300" max="4200" step="100" value="1600">
                 </div>
                 <div class="slider-row">
-                    <label for="trailLength">Rastro <span id="trailValue">94%</span></label>
-                    <input type="range" id="trailLength" min="82" max="98" step="1" value="94">
+                    <label for="trailLength">Rastro <span id="trailValue">93%</span></label>
+                    <input type="range" id="trailLength" min="80" max="97" step="1" value="93">
                 </div>
                 <div class="slider-row">
                     <label for="force">Força <span id="forceValue">3.5</span></label>
                     <input type="range" id="force" min="1" max="10" step="0.5" value="3.5">
+                </div>
+                <div class="slider-row">
+                    <label for="altitude">Altitude <span id="altitudeValue">70%</span></label>
+                    <input type="range" id="altitude" min="30" max="100" step="1" value="70">
+                </div>
+                <div class="slider-row">
+                    <label for="glow">Brilho <span id="glowValue">80%</span></label>
+                    <input type="range" id="glow" min="0" max="100" step="1" value="80">
                 </div>
             </div>
         </div>

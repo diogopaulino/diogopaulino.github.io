@@ -100,7 +100,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | :--- | :--- |
 | 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: terminal, firewall, Oracle e cipher |
 | 🟢 **[Matrix](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
-| 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Aurora boreal em flow fields |
+| 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Noite polar generativa — cortinas, fiorde e campo magnético |
 | 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital na web |
 | 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox gravitacional e física |
 
