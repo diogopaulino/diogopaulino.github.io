@@ -13,25 +13,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/aetherion/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/amora/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/armilla/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/aurelia/</loc>
+    <loc>https://diogopaulino.com.br/labs/nina/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -121,7 +103,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/ilha-do-ambar/</loc>
+    <loc>https://diogopaulino.com.br/labs/jurassic/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -175,12 +157,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/lumina/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/matrix/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -206,12 +182,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/nereida/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/noctiluca/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -295,7 +265,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/silkline/</loc>
+    <loc>https://diogopaulino.com.br/labs/spider-swing/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -331,18 +301,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/toaster-64/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/vector-fighter/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/videogame/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -364,6 +322,11 @@
     <loc>https://diogopaulino.com.br/labs/ultimo-bastiao/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://diogopaulino.com.br/labs/claude-bros/</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 </urlset>

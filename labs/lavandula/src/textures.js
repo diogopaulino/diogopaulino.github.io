@@ -252,3 +252,34 @@ export function linenTexture() {
         return toTexture(el, { repeat: [2, 2] });
     });
 }
+
+export function loadGreenScreenTexture(url) {
+    return cached(url, () => {
+        const tex = new THREE.Texture();
+        const img = new Image();
+        img.onload = () => {
+            const el = canvas(img.width, img.height);
+            const ctx = el.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const data = ctx.getImageData(0, 0, img.width, img.height);
+            for(let i=0; i<data.data.length; i+=4) {
+                const r = data.data[i];
+                const g = data.data[i+1];
+                const b = data.data[i+2];
+                if (g > 150 && r < 120 && b < 120) {
+                    data.data[i+3] = 0;
+                } else if (g > r * 1.2 && g > b * 1.2) {
+                    const diff = g - Math.max(r, b);
+                    data.data[i+3] = Math.max(0, 255 - diff * 3);
+                    data.data[i+1] = Math.max(r, b); // Desaturate green
+                }
+            }
+            ctx.putImageData(data, 0, 0);
+            tex.image = el;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.needsUpdate = true;
+        };
+        img.src = url;
+        return tex;
+    });
+}

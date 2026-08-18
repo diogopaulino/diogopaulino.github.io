@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#070b14">
+    <title>Spider Swing — teias sobre Manhattan | Diogo Paulino</title>
+    <meta name="description"
+        content="Balanço 3D pelos arranha-céus de Manhattan à noite: dispare teias, encadeie combos na chuva e costure o skyline em three.js.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/spider-swing/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/spider-swing/">
+    <meta property="og:title" content="Spider Swing | Diogo Paulino">
+    <meta property="og:description"
+        content="Um tecelão vermelho sobre Nova York: física de pêndulo, chuva, néon e arranha-céus procedurais.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Spider Swing | Diogo Paulino">
+    <meta name="twitter:description" content="Balanço urbano em Manhattan, em three.js. Teias, chuva e skyline.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=9">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Spider Swing",
+          "url": "https://diogopaulino.com.br/labs/spider-swing/",
+          "description": "Balanço 3D pelos arranha-céus de Manhattan à noite: dispare teias, encadeie combos na chuva e costure o skyline em three.js.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Spider Swing",
+              "item": "https://diogopaulino.com.br/labs/spider-swing/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Spider Swing" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◈</span>
+                    <span>Spider Swing</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Manhattan 3D com um acrobata balançando entre arranha-céus"></canvas>
+
+        <div class="film-overlay" aria-hidden="true">
+            <div class="rain-glass"></div>
+            <div class="vignette"></div>
+        </div>
+
+        <div id="reticle" class="reticle" hidden>
+            <i></i>
+        </div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel speed-panel">
+                    <span class="hud-label">Velocidade</span>
+                    <strong id="speedValue" class="mono speed-num">000</strong>
+                    <span class="hud-unit">km/h</span>
+                </div>
+                <div class="panel district-panel">
+                    <span class="hud-label">Distrito</span>
+                    <strong id="districtValue">Midtown</strong>
+                    <span id="altValue" class="hud-tag">00 m</span>
+                    <div class="combo-meter" title="Combo">
+                        <i id="comboFill"></i>
+                    </div>
+                </div>
+                <div class="panel score-panel">
+                    <div class="score-row">
+                        <span class="hud-label">Pulsos</span>
+                        <strong id="pulseValue" class="mono">00</strong>
+                    </div>
+                    <div class="score-row">
+                        <span class="hud-label">Combo</span>
+                        <strong id="comboValue" class="mono">0×</strong>
+                    </div>
+                    <div class="score-row lives-row">
+                        <span class="hud-label">Fios</span>
+                        <strong id="livesValue" class="mono lives">■■■</strong>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div class="look-zone" id="lookZone" aria-label="Arraste para olhar">
+                    <span class="steer-hint">olhar</span>
+                </div>
+                <div class="touch-buttons">
+                    <button type="button" class="pad pad-jump" id="touchJump" aria-label="Pular">PULO</button>
+                    <button type="button" class="pad pad-web" id="touchWeb" aria-label="Teia">TEIA</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">◈</span>
+                <h1>SPIDER SWING</h1>
+                <p id="loadingText">Tecendo Manhattan…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · manhattan · chuva</p>
+                    <h1>Silk<span>line</span></h1>
+                    <p class="lede">Uma silhueta vermelha sobre o skyline. Dispare teias nos
+                        arranha-céus, encadeie o pêndulo e colete os pulsos dourados da cidade.
+                        A chuva brilha no asfalto. Não caia no rio.</p>
+                </header>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Noite</h2>
+                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                        <p id="difficultyBlurb" class="section-note"></p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>WASD</kbd> mover · mouse olhar</span>
+                            <span><kbd>Clique</kbd> / <kbd>Espaço</kbd> teia (segurar)</span>
+                            <span><kbd>Shift</kbd> pular · <kbd>E</kbd> recolher fio</span>
+                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> mudo</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">70</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                            </label>
+                        </div>
+                        <p class="section-note">Melhor patrulha: <b id="bestScore" class="mono">—</b></p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Subir no telhado</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> PAUSA</p>
+                <h2>A cidade<br>espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card defeat-card">
+                <p class="eyebrow eyebrow--danger"><i></i> QUEDA</p>
+                <h2>O fio<br>estourou.</h2>
+                <div id="overStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button">
+                        <span>Outra noite</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> Falha ao tecer</p>
+                <h2>A teia não<br>pegou.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=8" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
