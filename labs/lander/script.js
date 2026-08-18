@@ -47,6 +47,96 @@ let engineParticleBudget = 0;
 
 const keys = {};
 
+/* --- Som -------------------------------------------------------------------
+   O propulsor não é um "efeito": é um ruído contínuo cuja intensidade segue o
+   acelerador. Por isso ele tem grafo próprio (ruído em loop + passa-baixa),
+   enquanto pouso, colisão e reabastecimento passam pelo LabAudio.
+
+   O contexto só nasce no primeiro gesto do jogador — navegadores recusam áudio
+   antes disso. */
+const labAudio = window.LabAudio;
+
+const engine = {
+    ctx: null,
+    source: null,
+    gain: null,
+    filter: null,
+    running: false,
+};
+
+function ensureEngineAudio() {
+    if (!labAudio || labAudio.isMuted()) return null;
+    if (engine.ctx) {
+        if (engine.ctx.state === 'suspended') engine.ctx.resume();
+        return engine.ctx;
+    }
+
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+
+    const ctxAudio = new Ctx();
+    const seconds = 2;
+    const buffer = ctxAudio.createBuffer(1, ctxAudio.sampleRate * seconds, ctxAudio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+    const source = ctxAudio.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = ctxAudio.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    filter.Q.value = 0.9;
+
+    const gain = ctxAudio.createGain();
+    gain.gain.value = 0;
+
+    source.connect(filter).connect(gain).connect(ctxAudio.destination);
+    source.start();
+
+    engine.ctx = ctxAudio;
+    engine.source = source;
+    engine.filter = filter;
+    engine.gain = gain;
+    engine.running = true;
+    return ctxAudio;
+}
+
+/* `level` é a fração de empuxo efetivo (0 sem combustível, 1 no talo). */
+function setEngineLevel(level) {
+    const ctxAudio = engine.running ? engine.ctx : ensureEngineAudio();
+    if (!ctxAudio || !engine.gain) return;
+
+    const muted = labAudio ? labAudio.isMuted() : false;
+    const target = muted ? 0 : level * 0.12;
+    // setTargetAtTime evita o estalo que um corte seco no ganho produziria.
+    engine.gain.gain.setTargetAtTime(target, ctxAudio.currentTime, 0.04);
+    engine.filter.frequency.setTargetAtTime(360 + level * 520, ctxAudio.currentTime, 0.06);
+}
+
+function sfx(name) {
+    if (!labAudio) return;
+    switch (name) {
+        case 'land':
+            labAudio.sequence([523, 659, 784], { step: 0.09, duration: 0.18, gain: 0.13, type: 'triangle' });
+            break;
+        case 'refuel':
+            labAudio.tone({ freq: 300, duration: 0.35, gain: 0.1, slideTo: 720, type: 'sine' });
+            break;
+        case 'crash':
+            labAudio.noise({ duration: 0.7, gain: 0.28, filter: 260 });
+            labAudio.tone({ freq: 110, duration: 0.8, gain: 0.18, slideTo: 35, type: 'sawtooth' });
+            break;
+        case 'launch':
+            labAudio.tone({ freq: 180, duration: 0.5, gain: 0.1, slideTo: 420, type: 'triangle' });
+            break;
+        case 'lowfuel':
+            labAudio.tone({ freq: 880, duration: 0.09, gain: 0.09, type: 'square' });
+            break;
+    }
+}
+
 function setGameState(nextState) {
     gameState = nextState;
     document.querySelector('.game-viewport').dataset.state = nextState.toLowerCase();
@@ -60,6 +150,9 @@ const lander = {
     angle: 0,
     fuel: INITIAL_FUEL,
     thrusting: false,
+    // Espelha `thrusting` mas só muda quando o propulsor de fato queima
+    // combustível — é o que liga e desliga o ruído contínuo do motor.
+    engineOn: false,
     rotatingLeft: false,
     rotatingRight: false,
     onGround: true,
@@ -75,6 +168,7 @@ const lander = {
         this.angle = 0;
         this.fuel = INITIAL_FUEL;
         this.thrusting = false;
+        this.engineOn = false;
         this.rotatingLeft = false;
         this.rotatingRight = false;
         this.onGround = true;
@@ -115,6 +209,11 @@ const lander = {
             this.vy -= Math.cos(this.angle) * acceleration;
             this.fuel -= usedFuel;
             emitEngineParticles(dt);
+            setEngineLevel(thrustFraction);
+            this.engineOn = true;
+        } else if (this.engineOn) {
+            setEngineLevel(0);
+            this.engineOn = false;
         }
 
         this.x += this.vx * dt;
@@ -305,6 +404,7 @@ function checkCollision() {
 }
 
 function land(pad) {
+    setEngineLevel(0);
     const landingVerticalSpeed = lander.vy;
     lander.x = Math.max(pad.x1 + LANDER_HALF_WIDTH, Math.min(pad.x2 - LANDER_HALF_WIDTH, lander.x));
     lander.y = pad.y - LANDER_FOOT_OFFSET;
@@ -317,6 +417,7 @@ function land(pad) {
         lander.onGround = true;
         lander.fuel = INITIAL_FUEL;
         setFlightStatus('REFUELED', 'safe');
+        sfx('refuel');
         return;
     }
 
@@ -332,12 +433,16 @@ function land(pad) {
         'success'
     );
     setFlightStatus('LANDED', 'safe');
+    sfx('land');
 }
 
 function crash() {
     setGameState('CRASHED');
     lander.crashed = true;
     lander.thrusting = false;
+    lander.engineOn = false;
+    setEngineLevel(0);
+    sfx('crash');
     createCrashDebris();
     setStatusMessage('CRASHED<br><small>Press Space to try again</small>', 'danger');
     setFlightStatus('HULL LOST', 'danger');
@@ -370,7 +475,28 @@ function startMission({ nextLevel = false, newGame = false } = {}) {
     document.getElementById('startMsg').classList.add('hidden');
     document.getElementById('gameOverMsg').classList.add('hidden');
     lander.reset();
+    lander.engineOn = false;
+    setEngineLevel(0);
+    lowFuelWarned = false;
     setFlightStatus('READY');
+    sfx('launch');
+}
+
+/* Bipe único ao cruzar 15% de combustível: repetir a cada frame viraria alarme
+   de incêndio, e avisar tarde demais não deixa tempo de reagir. */
+const LOW_FUEL_RATIO = 0.15;
+let lowFuelWarned = false;
+
+function checkLowFuel() {
+    if (gameState !== 'PLAYING') return;
+    const low = lander.fuel <= INITIAL_FUEL * LOW_FUEL_RATIO;
+    if (low && !lowFuelWarned) {
+        lowFuelWarned = true;
+        sfx('lowfuel');
+        setFlightStatus('LOW FUEL', 'danger');
+    } else if (!low) {
+        lowFuelWarned = false;
+    }
 }
 
 function emitEngineParticles(dt) {
@@ -532,6 +658,7 @@ function gameLoop(timestamp) {
         updateParticles(frameTime);
     }
 
+    checkLowFuel();
     updateHUD();
     draw();
     requestAnimationFrame(gameLoop);
@@ -588,6 +715,19 @@ document.getElementById('btnStart').addEventListener('click', () => {
 bindButton('btnLeft', 'ArrowLeft');
 bindButton('btnRight', 'ArrowRight');
 bindButton('btnThrust', 'ArrowUp');
+
+if (labAudio) {
+    labAudio.configure({ storageKey: 'lander:muted', volume: 0.5 });
+    const host = document.querySelector('[data-lab-header] .header-actions');
+    if (host) labAudio.mountToggle(host);
+    // Mudo pelo botão precisa calar o propulsor contínuo na hora.
+    labAudio.onChange(() => setEngineLevel(lander.engineOn ? 1 : 0));
+}
+
+// Aba escondida: o motor não pode continuar roncando em segundo plano.
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) setEngineLevel(0);
+});
 
 generateStars();
 generateTerrain();

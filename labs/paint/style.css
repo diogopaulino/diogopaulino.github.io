@@ -359,6 +359,9 @@ input[type="color"] {
 }
 
 .color-palette .color-swatch {
+    /* A amostra continua com 32px de desenho (a paleta precisa caber na barra),
+       mas o alvo cresce por pseudo-elemento até 44px — ver ::after abaixo. */
+    position: relative;
     width: 32px;
     height: 32px;
     min-width: 32px;
@@ -369,6 +372,15 @@ input[type="color"] {
     background: var(--swatch, transparent);
     border: 1px solid var(--border-subtle);
     transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.color-palette .color-swatch::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
 }
 
 .color-swatch:hover {

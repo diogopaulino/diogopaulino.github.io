@@ -467,6 +467,8 @@ kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border: none;
     border-radius: 10px;
     background: var(--mode-color);

@@ -217,13 +217,27 @@ body {
 
 #volume {
   width: 100px;
-  height: 3px;
-  background: #222;
-  border-radius: 1.5px;
+  /* 44px de alvo; o trilho de 3px passa a viver nos pseudo-elementos. */
+  height: var(--touch-target);
+  background: transparent;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+  touch-action: pan-y;
+}
+
+#volume::-webkit-slider-runnable-track {
+  height: 3px;
+  background: #222;
+  border-radius: 1.5px;
+}
+
+#volume::-moz-range-track {
+  height: 3px;
+  background: #222;
+  border-radius: 1.5px;
+  border: 0;
 }
 
 #volume::-webkit-slider-thumb {
@@ -275,8 +289,8 @@ body {
 }
 
 .octave-btn {
-  width: 32px;
-  height: 32px;
+  width: var(--touch-target);
+  height: var(--touch-target);
   background: var(--bg-body);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);

@@ -57,7 +57,7 @@ body {
     gap: 2px;
 }
 
-.title-bar-controls button {
+.title-bar-controls span {
     width: 16px;
     height: 14px;
     background: var(--win-gray);
@@ -258,6 +258,7 @@ body {
 }
 
 #difficulty-select {
+    min-height: var(--touch-target);
     background: var(--win-gray);
     border: 2px solid;
     border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);

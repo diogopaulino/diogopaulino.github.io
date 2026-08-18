@@ -336,6 +336,7 @@ h2 {
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
+    min-height: var(--touch-target);
     padding: 0.55rem 0.9rem;
     border-radius: 999px;
     border: 1px solid var(--line);

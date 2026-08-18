@@ -84,6 +84,18 @@ body {
     font: inherit;
     padding: 1px 4px;
     cursor: pointer;
+    /* A barra de menu imita o Windows 95, então o item continua raso; o alvo
+       tocável cresce por pseudo-elemento sem engordar a barra. */
+    position: relative;
+}
+
+.menu-item::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 100%;
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
 }
 
 .menu-item:hover,

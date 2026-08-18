@@ -83,10 +83,13 @@
         <div class="window">
             <div class="title-bar">
                 <div class="title-bar-text">Campo Minado</div>
-                <div class="title-bar-controls">
-                    <button aria-label="Minimize"></button>
-                    <button aria-label="Maximize"></button>
-                    <button aria-label="Close"></button>
+                <!-- Enfeite da moldura Win95: não fazem nada, então não são
+                     botões — como <button> eles entravam na navegação por Tab e
+                     eram anunciados como controles acionáveis. -->
+                <div class="title-bar-controls" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
             </div>
             <div class="window-body">

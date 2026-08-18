@@ -407,6 +407,8 @@ header .app-logo svg {
 }
 
 .depth-btn {
+    /* 44px: o seletor troca o modo do lab inteiro, errar o alvo é caro. */
+    min-height: var(--touch-target);
     padding: 9px 4px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid transparent;
