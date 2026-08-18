@@ -48,7 +48,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
 | 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
-| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em Babylon.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
+| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
 | ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
 | 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
 | 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
