@@ -105,6 +105,9 @@ body {
 }
 
 .face-btn {
+    /* O desenho continua sendo o botão quadradinho do Windows 95; o alvo real
+       cresce por pseudo-elemento (ver .face-btn::after). */
+    position: relative;
     width: 26px;
     height: 26px;
     font-size: 18px;
@@ -122,6 +125,50 @@ body {
     border-color: var(--win-black) var(--win-light) var(--win-light) var(--win-black);
     padding: 1px 0 0 1px;
     /* Shift content */
+}
+
+.face-btn::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
+}
+
+.face-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.status-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Modo bandeira ligado: o botão fica afundado, como um toggle do Win95. */
+.flag-toggle.is-on {
+    border-color: var(--win-black) var(--win-light) var(--win-light) var(--win-black);
+    background: var(--win-light);
+}
+
+/* O tabuleiro rola dentro da janela em vez de esticar a página: no
+   Especialista (30 colunas) nenhuma célula tocável cabe em 375px. */
+.board-scroll {
+    max-width: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.best-time {
+    margin-left: auto;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
 }
 
 /* Game Board */
@@ -205,6 +252,8 @@ body {
 .menu-bar {
     margin-bottom: 6px;
     display: flex;
+    align-items: center;
+    gap: 8px;
     justify-content: flex-start;
 }
 
@@ -233,7 +282,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: var(--text-primary);
     text-align: center;
-    max-width: 300px;
+    /* Quatro instruções em 300px viravam quatro colunas de uma palavra cada. */
+    max-width: min(34rem, 100%);
 }
 
 .instructions-card h3 {
@@ -245,9 +295,12 @@ body {
 }
 
 .instruction-row {
-    display: flex;
+    /* Grid fluido: 4 colunas no desktop, 2 no celular — sem media query e sem
+       coluna de uma palavra por linha. */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
     justify-content: center;
-    gap: 20px;
+    gap: 14px 20px;
 }
 
 .key-combo {
@@ -281,6 +334,10 @@ body {
         width: 24px;
         height: 24px;
         font-size: 16px;
+    }
+
+    .status-actions {
+        gap: 8px;
     }
 
     .title-bar-text {

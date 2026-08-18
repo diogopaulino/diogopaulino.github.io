@@ -25,8 +25,8 @@
     <meta property="og:description"
         content="Snake retrô em um console portátil 8-bit: colete frutas, ganhe velocidade e bata o seu recorde.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/snake/">
-    <link rel="stylesheet" href="/labs/shared.css?v=9">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=10">
+    <link rel="stylesheet" href="style.css?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -84,6 +84,10 @@
             <template data-slot="logo">
                 🐍 Retro Snake
             </template>
+            <template data-slot="actions">
+                <button type="button" id="btnMute" class="lab-icon-btn" aria-pressed="false"
+                    aria-label="Desativar som">🔊</button>
+            </template>
         </header>
 
         <main class="game-container">
@@ -92,6 +96,7 @@
                     <div class="screen-glass">
                         <div class="lcd-hud" aria-hidden="true">
                             <span class="lcd-item"><span class="lcd-key">SC</span><span id="hudScore">000</span></span>
+                            <span class="lcd-item"><span class="lcd-key">LV</span><span id="hudLevel">1</span></span>
                             <span class="lcd-item"><span class="lcd-key">HI</span><span id="hudBest">000</span></span>
                         </div>
                         <div class="screen-play">
@@ -99,7 +104,7 @@
                                 aria-label="Tabuleiro do jogo Snake"></canvas>
                             <div class="ui-overlay" id="startScreen">
                                 <h2>SNAKE</h2>
-                                <p>Pressione Start</p>
+                                <p>Toque a tela ou Start</p>
                             </div>
                             <div class="ui-overlay hidden" id="pauseScreen">
                                 <h2>PAUSA</h2>
@@ -164,6 +169,8 @@
             <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
 
             <div class="instructions">
+                <p class="touch-only"><strong>Deslize na tela</strong> para virar · <strong>toque</strong> para
+                    jogar/pausar</p>
                 <p>Use as <strong>Setas</strong> ou o <strong>D-Pad</strong> para mover</p>
                 <p>Pressione <strong>Enter</strong> ou <strong>Start</strong> para Jogar/Pausar</p>
             </div>
@@ -172,8 +179,8 @@
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
-    <script src="/labs/shared.js?v=8" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script src="/labs/shared.js?v=9" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>
