@@ -509,15 +509,17 @@ body {
         margin-bottom: 12px;
     }
 
+    /* Em paisagem o teclado encolhe para caber na altura, mas 44px é o piso:
+       é o controle que o usuário mais toca no lab. */
     .btn {
         padding: 8px 0;
-        min-height: 40px;
+        min-height: var(--touch-target);
         font-size: 1.05rem;
     }
 
     .scientific-grid .btn {
         padding: 8px 0;
-        min-height: 40px;
+        min-height: var(--touch-target);
     }
 }
 
