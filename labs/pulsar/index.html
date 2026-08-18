@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Pulsar | Diogo Paulino</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#05060d">
+    <title>Pulsar — instrumento generativo | Diogo Paulino</title>
     <meta name="description"
-        content="Instrumento musical generativo: toque na tela para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos.">
+        content="Constelação musical de Diogo Paulino: plante orbes — a altura é a nota, a posição o tempo, e eles pulsam no BPM e se respondem em cânone.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/pulsar/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -18,14 +19,16 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/pulsar/">
-    <meta property="og:title" content="Pulsar | Diogo Paulino">
-    <meta property="og:description" content="Instrumento musical generativo: toque na tela para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos.">
+    <meta property="og:title" content="Pulsar — instrumento generativo | Diogo Paulino">
+    <meta property="og:description"
+        content="Constelação musical de Diogo Paulino: plante orbes — a altura é a nota, a posição o tempo, e eles pulsam no BPM e se respondem em cânone.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Pulsar | Diogo Paulino">
-    <meta name="twitter:description" content="Instrumento musical generativo: toque na tela para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos.">
+    <meta name="twitter:title" content="Pulsar — instrumento generativo | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Constelação musical de Diogo Paulino: plante orbes — a altura é a nota, a posição o tempo, e eles pulsam no BPM e se respondem em cânone.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
     <link rel="stylesheet" href="style.css">
     <script type="application/ld+json">
@@ -36,7 +39,7 @@
           "@type": "WebApplication",
           "name": "Pulsar",
           "url": "https://diogopaulino.com.br/labs/pulsar/",
-          "description": "Instrumento musical generativo: toque na tela para criar orbes que pulsam, se conectam e compõem música ambiente sozinhos.",
+          "description": "Constelação musical de Diogo Paulino: plante orbes — a altura é a nota, a posição o tempo, e eles pulsam no BPM e se respondem em cânone.",
           "applicationCategory": "MultimediaApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -82,7 +85,7 @@
             <template data-slot="logo">
                 <div class="app-logo">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="2.2" />
                         <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" opacity="0.85" />
                         <path d="M12 2a10 10 0 0 1 10 10" opacity="0.5" />
@@ -93,7 +96,7 @@
                 </div>
             </template>
             <template data-slot="actions">
-                <button id="muteBtn" class="icon-btn" aria-label="Mudo" title="Mudo">
+                <button id="muteBtn" class="icon-btn" aria-label="Mudo" title="Mudo (M)">
                     <svg class="icon-sound" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -101,21 +104,20 @@
                         <path d="M19.07 4.93a10 10 0 0 1 0 14.14" opacity="0.6" />
                     </svg>
                     <svg class="icon-mute" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        style="display:none">
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
                         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                         <line x1="23" y1="9" x2="17" y2="15" />
                         <line x1="17" y1="9" x2="23" y2="15" />
                     </svg>
                 </button>
-                <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia">
+                <button id="fullscreen" class="icon-btn" aria-label="Tela cheia" title="Tela cheia (F)">
                     <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2">
                         <path
                             d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                     </svg>
                     <svg class="fullscreen-exit" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" style="display:none">
+                        stroke="currentColor" stroke-width="2" hidden>
                         <path
                             d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
                     </svg>
@@ -123,41 +125,58 @@
             </template>
         </header>
 
-        <div class="css-bg">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-            <div class="blob blob-3"></div>
+        <main class="stage">
+            <canvas id="canvas" aria-label="Campo de orbes do Pulsar"></canvas>
+        </main>
+
+        <div class="hud" aria-live="polite">
+            <span id="hudPreset">Nebula</span>
+            <span class="hud-dot" aria-hidden="true"></span>
+            <span id="hudMeta">72 BPM · 0 orbes</span>
         </div>
 
-        <canvas id="canvas"></canvas>
+        <div class="instructions" id="hint">
+            <p>Toque para plantar um orbe. Alto é agudo, baixo é grave — a esquerda começa o compasso.</p>
+            <p class="sub">Arraste para afinar · toque duplo para apagar · <kbd>1</kbd>–<kbd>4</kbd> modos</p>
+        </div>
 
         <div class="floating-toolbar">
-            <button id="cyclePreset" class="tool-btn" aria-label="Mudar Modo" title="Mudar Modo (Mood)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            <button id="cyclePreset" class="tool-btn preset-btn" aria-label="Mudar modo" title="Mudar modo (1–4)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    aria-hidden="true">
+                    <path
+                        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                 </svg>
                 <span class="preset-name" id="presetName">Nebula</span>
             </button>
-            <div class="divider"></div>
-            <button id="droneToggle" class="tool-btn drone-toggle" aria-label="Fundo Ambiente" aria-pressed="false" title="Fundo Ambiente">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="divider" aria-hidden="true"></div>
+            <button id="playPause" class="tool-btn" aria-label="Pausar" title="Pausar (Espaço)" aria-pressed="true">
+                <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+                <svg class="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" hidden
+                    aria-hidden="true">
+                    <path d="M7 4l13 8-13 8V4z" />
+                </svg>
+            </button>
+            <button id="droneToggle" class="tool-btn" aria-label="Fundo ambiente" aria-pressed="false"
+                title="Fundo ambiente (D)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    aria-hidden="true">
                     <path d="M9 18V5l12-2v13" />
                     <circle cx="6" cy="18" r="3" />
                     <circle cx="18" cy="16" r="3" />
                 </svg>
             </button>
-            <button id="clear" class="tool-btn" aria-label="Limpar Orbes" title="Limpar Orbes">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="clear" class="tool-btn" aria-label="Limpar orbes" title="Limpar orbes (C)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    aria-hidden="true">
                     <path d="M3 6h18" />
                     <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 </svg>
             </button>
-        </div>
-
-        <div class="instructions">
-            <p>Toque na tela para criar orbes. Eles pulsam sozinhos e ativam vizinhos próximos.</p>
-            <p class="sub">Arraste para mover · toque duplo para apagar</p>
         </div>
 
         <footer data-lab-footer data-home-href="/"></footer>
