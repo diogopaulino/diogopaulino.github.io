@@ -63,12 +63,18 @@ export function buildPieceGeometries(BABYLON, scene, seg = 48) {
         [0, 0.88]
     ], seg, scene);
     const rookCollar = collar(BABYLON, 'rook_col', 0.22, 0.74, 0.03, seg, scene);
+    // Ameias: 8 blocos assentados exatamente na borda do copo do torno (raio
+    // e altura do próprio perfil), em vez de flutuar acima dele.
     const merlons = [];
-    const rookR = 0.20;
-    const rookY = 1.04;
-    for (let i = 0; i < 4; i++) {
-        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-        merlons.push(box(BABYLON, `rook_m_${i}`, 0.15, 0.15, 0.13, Math.cos(a) * rookR, rookY, Math.sin(a) * rookR, scene));
+    const rookR = 0.225;
+    const rookY = 0.955;
+    const merlonCount = 8;
+    for (let i = 0; i < merlonCount; i++) {
+        const a = (i / merlonCount) * Math.PI * 2;
+        const m = BABYLON.MeshBuilder.CreateBox(`rook_m_${i}`, { width: 0.075, height: 0.10, depth: 0.11 }, scene);
+        m.position.set(Math.cos(a) * rookR, rookY, Math.sin(a) * rookR);
+        m.rotation.y = -a;
+        merlons.push(m);
     }
     const rook = merge(BABYLON, 'geo_rook', [rookLathe, rookCollar, ...merlons], scene);
 
@@ -116,40 +122,73 @@ export function buildPieceGeometries(BABYLON, scene, seg = 48) {
     const crossH = box(BABYLON, 'cross_h', 0.17, 0.045, 0.045, 0, 1.70, 0, scene);
     const king = merge(BABYLON, 'geo_king', [kingLathe, kingCollar, crossV, crossH], scene);
 
-    // 6. CAVALO (Knight)
+    // 6. CAVALO (Knight) — todo o pescoço/cabeça compartilha um único ângulo de
+    // inclinação (A) para que as caixas fiquem alinhadas ao mesmo eixo, em vez
+    // de se cruzarem em ângulos diferentes (o que produzia um bloco quebrado).
     const knightBase = lathe(BABYLON, 'knight_base', [
-        [0, 0], [0.36, 0], [0.38, 0.045], [0.31, 0.10],
-        [0.28, 0.18], [0.22, 0.26], [0.20, 0.42],
-        [0.22, 0.50], [0.18, 0.54]
+        [0, 0], [0.34, 0], [0.36, 0.045], [0.30, 0.10],
+        [0.27, 0.18], [0.21, 0.26], [0.19, 0.40],
+        [0.20, 0.48], [0.17, 0.52]
     ], seg, scene);
-    const knightRing = collar(BABYLON, 'knight_ring', 0.20, 0.50, 0.03, seg, scene);
-    const neck = BABYLON.MeshBuilder.CreateCylinder('knight_neck', { height: 0.52, diameterTop: 0.24, diameterBottom: 0.32, tessellation: 16 }, scene);
-    neck.position.set(0.04, 0.70, 0);
-    neck.rotation.z = -0.22;
+    const knightRing = collar(BABYLON, 'knight_ring', 0.19, 0.485, 0.028, seg, scene);
 
-    const headMuzzle = box(BABYLON, 'knight_head', 0.38, 0.24, 0.22, 0.18, 0.95, 0, scene);
-    headMuzzle.rotation.z = -0.32;
-    const snout = box(BABYLON, 'knight_snout', 0.22, 0.18, 0.18, 0.34, 0.84, 0, scene);
-    snout.rotation.z = -0.15;
-    const earL = BABYLON.MeshBuilder.CreateCylinder('knight_ear_l', { height: 0.16, diameterTop: 0, diameterBottom: 0.09, tessellation: 8 }, scene);
-    earL.position.set(0.04, 1.15, 0.07);
-    earL.rotation.z = -0.35;
-    earL.rotation.x = 0.25;
-    const earR = BABYLON.MeshBuilder.CreateCylinder('knight_ear_r', { height: 0.16, diameterTop: 0, diameterBottom: 0.09, tessellation: 8 }, scene);
-    earR.position.set(0.04, 1.15, -0.07);
-    earR.rotation.z = -0.35;
-    earR.rotation.x = -0.25;
+    // Pescoço em cilindros afunilados (superfície lisa, sem quinas) e cabeça
+    // em elipsoides (esferas escaladas) — o mesmo bloco boxy de antes ficava
+    // com as arestas soltas, destoando do acabamento torneado do resto do jogo.
+    const A = -0.34;
+    const up = [-Math.sin(A), Math.cos(A)];
+    const fwd = [Math.cos(A), Math.sin(A)];
+    const P0 = [0.02, 0.49];
+    const at = (u, f = 0, z = 0) => [P0[0] + up[0] * u + fwd[0] * f, P0[1] + up[1] * u + fwd[1] * f, z];
 
-    const mane = box(BABYLON, 'knight_mane', 0.10, 0.45, 0.08, -0.08, 0.88, 0, scene);
-    mane.rotation.z = 0.25;
+    const neckCyl = (name, u, h, dBottom, dTop) => {
+        const [x, y, z] = at(u);
+        const c = BABYLON.MeshBuilder.CreateCylinder(name, { height: h, diameterBottom: dBottom, diameterTop: dTop, tessellation: Math.max(14, Math.round(seg / 2)) }, scene);
+        c.position.set(x, y, z);
+        c.rotation.z = A;
+        return c;
+    };
+    const headBlob = (name, diam, sx, sy, sz, u, f, z = 0) => {
+        const [x, y, zz] = at(u, f, z);
+        const s = BABYLON.MeshBuilder.CreateSphere(name, { diameter: diam, segments: 14 }, scene);
+        s.scaling.set(sx, sy, sz);
+        s.rotation.z = A;
+        s.position.set(x, y, zz);
+        return s;
+    };
 
-    const eyeL = BABYLON.MeshBuilder.CreateSphere('knight_eye_l', { diameter: 0.05, segments: 8 }, scene);
-    eyeL.position.set(0.20, 1.00, 0.10);
-    const eyeR = BABYLON.MeshBuilder.CreateSphere('knight_eye_r', { diameter: 0.05, segments: 8 }, scene);
-    eyeR.position.set(0.20, 1.00, -0.10);
+    const neckLower = neckCyl('knight_neck_lo', 0.16, 0.32, 0.34, 0.30);
+    const neckUpper = neckCyl('knight_neck_hi', 0.46, 0.28, 0.30, 0.26);
+    const poll = headBlob('knight_poll', 0.30, 1.0, 0.85, 0.92, 0.60, 0);
+    const muzzle = headBlob('knight_muzzle', 0.22, 1.3, 0.85, 0.85, 0.56, 0.20);
+    const jaw = headBlob('knight_jaw', 0.15, 1.1, 0.8, 0.85, 0.48, 0.24);
+
+    const mane = BABYLON.MeshBuilder.CreateCylinder('knight_mane', { height: 0.46, diameterBottom: 0.15, diameterTop: 0.10, tessellation: 10 }, scene);
+    {
+        const [x, y, z] = at(0.40, -0.15);
+        mane.position.set(x, y, z);
+        mane.rotation.z = A;
+        mane.scaling.z = 0.45;
+    }
+
+    const [earBx, earBy] = at(0.70, -0.02, 0);
+    const earL = BABYLON.MeshBuilder.CreateCylinder('knight_ear_l', { height: 0.15, diameterTop: 0, diameterBottom: 0.085, tessellation: 10 }, scene);
+    earL.position.set(earBx, earBy, 0.075);
+    earL.rotation.z = A;
+    earL.rotation.x = 0.28;
+    const earR = BABYLON.MeshBuilder.CreateCylinder('knight_ear_r', { height: 0.15, diameterTop: 0, diameterBottom: 0.085, tessellation: 10 }, scene);
+    earR.position.set(earBx, earBy, -0.075);
+    earR.rotation.z = A;
+    earR.rotation.x = -0.28;
+
+    const [eyeX, eyeY] = at(0.50, 0.15, 0);
+    const eyeL = BABYLON.MeshBuilder.CreateSphere('knight_eye_l', { diameter: 0.045, segments: 8 }, scene);
+    eyeL.position.set(eyeX, eyeY, 0.085);
+    const eyeR = BABYLON.MeshBuilder.CreateSphere('knight_eye_r', { diameter: 0.045, segments: 8 }, scene);
+    eyeR.position.set(eyeX, eyeY, -0.085);
 
     const knight = merge(BABYLON, 'geo_knight', [
-        knightBase, knightRing, neck, headMuzzle, snout, earL, earR, mane, eyeL, eyeR
+        knightBase, knightRing, neckLower, neckUpper, poll, jaw, muzzle, mane, earL, earR, eyeL, eyeR
     ], scene);
 
     return { p: pawn, r: rook, n: knight, b: bishop, q: queen, k: king };
@@ -177,11 +216,11 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
         ebony.albedoTexture = tex.ebony.map;
         ebony.bumpTexture = tex.ebony.normalMap;
     }
-    ebony.metallic = 0.08;
-    ebony.roughness = 0.22;
+    ebony.metallic = 0.05;
+    ebony.roughness = 0.32;
     ebony.clearCoat.isEnabled = true;
-    ebony.clearCoat.intensity = 0.9;
-    ebony.clearCoat.roughness = 0.12;
+    ebony.clearCoat.intensity = 0.75;
+    ebony.clearCoat.roughness = 0.22;
     ebony.sheen.isEnabled = true;
     ebony.sheen.intensity = 0.3;
     ebony.sheen.color = new BABYLON.Color3(0.25, 0.14, 0.09);
