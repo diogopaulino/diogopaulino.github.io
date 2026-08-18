@@ -7,7 +7,7 @@ import { savannaGrassTexture } from './textures.js';
 import { buildAcacia } from './models.js';
 import { buildGiraffe, buildElephant, buildZebra } from './animals.js';
 
-export function buildSavannaWorld(BABYLON, scene) {
+export async function buildSavannaWorld(BABYLON, scene) {
     const root = new BABYLON.TransformNode('savanna_world', scene);
 
     const grassTex = savannaGrassTexture(scene);
@@ -37,13 +37,16 @@ export function buildSavannaWorld(BABYLON, scene) {
     water.parent = root;
 
     // 3. BOSQUE DE ACÁCIAS
+    const acaciaPromises = [];
     for (let i = 0; i < 35; i++) {
         const a = (i / 35) * Math.PI * 2;
         const r = 80 + (i % 5) * 45;
-        const acacia = buildAcacia(BABYLON, scene);
-        acacia.position.set(Math.cos(a) * r + (Math.random() - 0.5) * 30, 0, Math.sin(a) * r + (Math.random() - 0.5) * 30);
-        acacia.parent = root;
+        acaciaPromises.push(buildAcacia(BABYLON, scene).then(acacia => {
+            acacia.position.set(Math.cos(a) * r + (Math.random() - 0.5) * 30, 0, Math.sin(a) * r + (Math.random() - 0.5) * 30);
+            acacia.parent = root;
+        }));
     }
+    await Promise.all(acaciaPromises);
 
     // 4. ANIMAIS DA SAVANA
     const animalInstances = [];
