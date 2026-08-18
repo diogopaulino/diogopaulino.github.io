@@ -3,89 +3,122 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino</title>
-  <meta name="description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Claude Bros — plataforma 2D com as IAs | Diogo Paulino</title>
+  <meta name="description"
+    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
   <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#1a1a1a">
-  
+  <meta name="theme-color" content="#5aa9e6">
+
   <link rel="canonical" href="https://diogopaulino.com.br/labs/claude-bros/">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/assets/img/diogo-avatar.png">
-  
+
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Diogo Paulino · Labs">
-  <meta property="og:title" content="Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino">
-  <meta property="og:description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta property="og:title" content="Claude Bros — plataforma 2D com as IAs | Diogo Paulino">
+  <meta property="og:description"
+    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/claude-bros/">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta property="og:image:alt" content="Diogo Paulino">
   <meta property="og:locale" content="pt_BR">
-  
+
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino">
-  <meta name="twitter:description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta name="twitter:title" content="Claude Bros — plataforma 2D com as IAs | Diogo Paulino">
+  <meta name="twitter:description"
+    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Claude Bros",
-    "url": "https://diogopaulino.com.br/labs/claude-bros/",
-    "description": "Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.",
-    "applicationCategory": "GameApplication",
-    "genre": "Platformer",
-    "browserRequirements": "Requires JavaScript and WebGL",
-    "author": {
-      "@type": "Person",
-      "name": "Diogo Paulino",
-      "url": "https://diogopaulino.com.br"
-    }
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Claude Bros",
+        "url": "https://diogopaulino.com.br/labs/claude-bros/",
+        "description": "Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.",
+        "applicationCategory": "GameApplication",
+        "genre": "Platformer",
+        "operatingSystem": "Any",
+        "inLanguage": "pt-BR",
+        "isAccessibleForFree": true,
+        "author": {
+          "@type": "Person",
+          "name": "Diogo Paulino",
+          "url": "https://diogopaulino.com.br/"
+        },
+        "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Diogo Paulino", "item": "https://diogopaulino.com.br/" },
+          { "@type": "ListItem", "position": 2, "name": "Labs", "item": "https://diogopaulino.com.br/labs/" },
+          { "@type": "ListItem", "position": 3, "name": "Claude Bros", "item": "https://diogopaulino.com.br/labs/claude-bros/" }
+        ]
+      }
+    ]
   }
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/labs/shared.css?v=10">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body>
-  <header class="lab-header">
-    <a href="/labs/" class="back-link">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Labs
-    </a>
-    <h1 class="lab-title">Claude Bros</h1>
-  </header>
-
-  <main class="game-container">
-    <div id="pixi-container"></div>
-    
-    <div class="hud">
-      <div class="hud-score">Score: <span id="score-display">0</span></div>
-      <div class="hud-controls" id="touch-controls">
-        <div class="dpad">
-          <button id="btn-left" class="control-btn">◀</button>
-          <button id="btn-right" class="control-btn">▶</button>
+  <main class="game-shell">
+    <header data-lab-header data-title="Claude Bros" data-back-label="Labs">
+      <template data-slot="logo">
+        <div class="app-logo">
+          <span class="brand-mark" aria-hidden="true">🍄</span>
+          <span>Claude Bros</span>
         </div>
-        <div class="action-buttons">
-          <button id="btn-jump" class="control-btn action-btn">A</button>
+      </template>
+      <template data-slot="actions">
+        <button type="button" id="btnPause" class="lab-icon-btn" aria-label="Pausar o jogo" title="Pausar (P)">⏸</button>
+      </template>
+    </header>
+
+    <div class="stage">
+      <canvas id="stage" role="img" aria-label="Fase de plataforma com o Claude, estrelas e rivais"></canvas>
+
+      <div class="hud" aria-hidden="true">
+        <div class="hud-chip"><span class="hud-key">PTS</span><strong id="scoreValue">0</strong></div>
+        <div class="hud-chip"><span class="hud-key">★</span><strong id="coinValue">0</strong></div>
+        <div class="hud-chip"><span class="hud-key">VIDAS</span><strong id="lifeValue">❤️❤️❤️</strong></div>
+        <div class="hud-chip"><span class="hud-key">TEMPO</span><strong id="timeValue">00:00</strong></div>
+      </div>
+
+      <div class="overlay" id="overlay">
+        <div class="overlay-card">
+          <h2 id="overlayTitle">Claude Bros</h2>
+          <p id="overlayText">Colete as estrelas, pule nos rivais e chegue à bandeira.</p>
+          <button type="button" class="primary-btn" id="overlayButton">Começar</button>
+          <p class="overlay-hint fine-only">Setas ou A/D para andar · Espaço para pular · P pausa</p>
+          <p class="overlay-hint touch-only">Use os botões na base da tela</p>
         </div>
       </div>
+
+      <div class="touch-controls" id="touchControls" hidden>
+        <div class="touch-move">
+          <button type="button" id="btnLeft" class="touch-btn" aria-label="Andar para a esquerda">◀</button>
+          <button type="button" id="btnRight" class="touch-btn" aria-label="Andar para a direita">▶</button>
+        </div>
+        <button type="button" id="btnJump" class="touch-btn touch-btn--jump" aria-label="Pular">▲</button>
+      </div>
     </div>
-    
-    <div id="game-over-screen" class="overlay hidden">
-      <h2 id="end-title">Game Over</h2>
-      <button id="btn-restart" class="btn">Tentar Novamente</button>
-    </div>
+
+    <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
+
+    <footer data-lab-footer data-home-href="/"></footer>
   </main>
 
-  <!-- PixiJS from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
-  <script type="module" src="main.js"></script>
+  <script src="/labs/shared.js?v=9" defer></script>
+  <script src="main.js?v=2" defer></script>
 </body>
+
 </html>
