@@ -166,6 +166,8 @@ export class KongGame {
     this.bananas = 0;
     this.particles = [];
     this.shake = 0;
+    this.hitFlash = 0;
+    this.hitStop = 0;
     this.camX = 0;
     this.camY = 0;
     this.announce = '';
@@ -234,7 +236,9 @@ export class KongGame {
       scarf: withScarf,
       swimming: false,
       dead: false,
-      winT: 0
+      winT: 0,
+      squash: 0,
+      rollDustT: 0
     };
   }
 
@@ -247,6 +251,13 @@ export class KongGame {
         life: 0.4 + Math.random() * 0.4, color, size: 1.5 + Math.random() * 2
       });
     }
+  }
+
+  landingImpact(vy) {
+    const p = this.player;
+    const n = clamp(Math.floor(vy / 90), 4, 10);
+    this.burst(p.x + p.w / 2, p.y + p.h, n, 'rgba(110,80,45,0.6)', 42);
+    p.squash = clamp(vy / PHYS.MAX_FALL, 0.35, 1);
   }
 
   addBananas(n) {
@@ -361,6 +372,7 @@ export class KongGame {
     }
 
     p.invuln = Math.max(0, p.invuln - dt);
+    p.squash = Math.max(0, p.squash - dt * 7);
     if (p.rollT > 0) p.rollT -= dt;
 
     if (this.input.consume('jump')) p.jumpBuf = PHYS.JUMP_BUF;
@@ -415,6 +427,11 @@ export class KongGame {
     if (rolling) {
       p.vx = p.facing * PHYS.ROLL_SPEED;
       p.state = 'roll';
+      p.rollDustT -= dt;
+      if (p.rollDustT <= 0 && p.onGround) {
+        p.rollDustT = 0.05;
+        this.burst(p.x + p.w / 2 - p.facing * 4, p.y + p.h - 2, 2, '#c07838', 30);
+      }
     } else {
       const wish = (inpt.left() ? -1 : 0) + (inpt.right() ? 1 : 0);
       if (wish) p.facing = wish;
@@ -457,7 +474,13 @@ export class KongGame {
       }
     }
 
+    const wasGrounded = p.onGround;
+    const fallSpeed = p.vy;
     this.moveActor(p, dt, { ignoreOneWay: inpt.downHeld() && p.vy >= 0 && this.overlapsTile(p, '-') });
+
+    if (!wasGrounded && p.onGround && fallSpeed > 260 && !rolling) {
+      this.landingImpact(fallSpeed);
+    }
 
     if (p.y > this.level.h * TILE + 8) {
       this.hurt(true);
@@ -579,6 +602,7 @@ export class KongGame {
   explode(x, y) {
     this.audio.play('boom');
     this.shake = 0.35;
+    this.hitStop = 0.05;
     this.burst(x, y, 22, '#f06b4f', 140);
     this.burst(x, y, 10, '#f6d03a', 80);
     this.breakCrates(x, y, 40);
@@ -648,12 +672,14 @@ export class KongGame {
       const stomp = p.vy > 40 && p.y + p.h - 6 < e.y + 8;
       if (p.rollT > 0) {
         this.killEnemy(e);
+        this.hitStop = 0.035;
         continue;
       }
       if (stomp && e.type !== 'quill') {
         this.killEnemy(e);
         p.vy = PHYS.STOMP_VEL;
         this.audio.play('stomp');
+        this.hitStop = 0.045;
         continue;
       }
       if (p.invuln <= 0) this.hurt(false);
@@ -680,6 +706,7 @@ export class KongGame {
       p.vy = PHYS.STOMP_VEL;
       this.audio.play('boss');
       this.shake = 0.25;
+      this.hitStop = 0.07;
       this.burst(b.x + b.w / 2, b.y + 8, 14, '#f6d03a', 90);
       if (b.hp <= 0) {
         b.alive = false;
@@ -688,6 +715,7 @@ export class KongGame {
         this.toastMsg('Rei Croco derrotado!');
         this.burst(b.x + b.w / 2, b.y, 28, '#e31b23', 120);
         this.player.winT = 1.8;
+        this.hitStop = 0.12;
       }
       return;
     }
@@ -707,6 +735,7 @@ export class KongGame {
       p.rollT = 0;
       this.audio.play('hurt');
       this.shake = 0.18;
+      this.hitFlash = 0.22;
       this.scarfDrop = {
         x: p.x + p.w / 2,
         y: p.y,
@@ -867,6 +896,7 @@ export class KongGame {
   update(dt) {
     this.t += dt;
     if (this.toastT > 0) this.toastT -= dt;
+    if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.audio.tick();
 
     if (this.input.consume('mute')) {
@@ -941,6 +971,12 @@ export class KongGame {
     if (this.input.consume('pause') || this.input.consume('start')) {
       this.mode = 'pause';
       this.setAnnounce('Pausa');
+      return;
+    }
+
+    if (this.hitStop > 0) {
+      this.hitStop = Math.max(0, this.hitStop - dt);
+      this.updateParticles(dt);
       return;
     }
 
@@ -1021,7 +1057,11 @@ export class KongGame {
     }
     for (const b of level.barrels) {
       if (b.used) continue;
-      drawBarrel(ctx, b.x, b.y, b.kind === 'cannon' ? 'cannon' : b.kind, this.t, b.angle || 0);
+      const chargeMax = b.kind === 'tnt' ? 1.05 : 0.85;
+      const charge = b.occupied && (b.kind === 'tnt' || b.kind === 'cannon')
+        ? clamp(1 - b.fuse / chargeMax, 0, 1)
+        : 0;
+      drawBarrel(ctx, b.x, b.y, b.kind === 'cannon' ? 'cannon' : b.kind, this.t, b.angle || 0, charge);
     }
     for (const e of level.enemies) {
       if (e.alive) drawEnemy(ctx, e, this.t);
@@ -1040,7 +1080,8 @@ export class KongGame {
         t: this.t,
         state: p.state,
         scarf: p.scarf,
-        flash: p.invuln > 0 && !p.dead
+        flash: p.invuln > 0 && !p.dead,
+        squash: p.squash
       });
     }
 
@@ -1053,6 +1094,11 @@ export class KongGame {
 
     ctx.restore();
     drawForeground(ctx, theme, this.camX, this.t);
+
+    if (this.hitFlash > 0) {
+      ctx.fillStyle = `rgba(227,27,35,${this.hitFlash * 0.85})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
 
     if (this.mode === 'play' || this.mode === 'pause' || this.mode === 'dying' || this.mode === 'clear') {
       drawHud(ctx, {
