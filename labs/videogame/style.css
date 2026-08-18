@@ -254,6 +254,7 @@ main {
 }
 
 .btn-group button {
+    min-height: var(--touch-target);
     padding: .5rem 1rem;
     background: 0 0;
     border: none;

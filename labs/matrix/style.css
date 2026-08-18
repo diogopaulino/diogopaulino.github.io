@@ -407,6 +407,8 @@ header .app-logo svg {
 }
 
 .depth-btn {
+    /* 44px: o seletor troca o modo do lab inteiro, errar o alvo é caro. */
+    min-height: var(--touch-target);
     padding: 9px 4px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid transparent;
@@ -470,12 +472,28 @@ input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 3px;
-    background: rgba(0, 255, 65, 0.15);
-    border-radius: 2px;
-    outline: none;
+    /* 44px de alvo tocável; o trilho visível de 3px vive nos
+       pseudo-elementos abaixo, então o desenho não muda. */
+    height: var(--touch-target);
     border: none;
+    background: transparent;
+    outline: none;
     cursor: pointer;
+    touch-action: pan-y;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(0, 255, 65, 0.15);
+    border: none;
+}
+
+input[type="range"]::-moz-range-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(0, 255, 65, 0.15);
+    border: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -487,6 +505,8 @@ input[type="range"]::-webkit-slider-thumb {
     cursor: pointer;
     box-shadow: 0 0 10px var(--mx-glow);
     transition: transform 0.15s ease;
+    /* (trilho 3px - thumb 13px) / 2 */
+    margin-top: -5px;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -940,8 +960,11 @@ body.cinema.pointer-idle .cinema-exit {
 
 .boot-skip {
     position: absolute;
-    bottom: 28px;
-    right: 28px;
+    /* Primeiro controle que o usuário encontra no lab (a abertura roda antes de
+       tudo), e ficava com 24px de altura — precisa caber o dedo. */
+    min-height: var(--touch-target);
+    bottom: max(28px, var(--safe-bottom));
+    right: max(28px, var(--safe-right));
     background: transparent;
     border: 1px solid var(--panel-border);
     border-radius: 6px;

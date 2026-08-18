@@ -167,14 +167,275 @@
         document.head.appendChild(icon);
     }
 
+    /* --- LabAudio ----------------------------------------------------------
+       Sintetizador mínimo compartilhado pelos labs: nenhum asset de áudio, só
+       osciladores criados na hora. Existe aqui (e não em cada lab) porque a
+       parte chata é sempre a mesma — política de autoplay, mudo persistido e o
+       botão do header.
+
+       O AudioContext só nasce no primeiro som pedido depois de um gesto do
+       usuário; antes disso os navegadores recusam ou criam um contexto suspenso
+       que nunca toca. */
+    const AudioAPI = (function () {
+        let ctx = null;
+        let master = null;
+        let storageKey = 'labs:muted';
+        let muted = false;
+        let volume = 0.5;
+        const listeners = new Set();
+
+        function readMuted() {
+            try {
+                return localStorage.getItem(storageKey) === '1';
+            } catch (err) {
+                return false;
+            }
+        }
+
+        function persist() {
+            try {
+                localStorage.setItem(storageKey, muted ? '1' : '0');
+            } catch (err) {
+                /* Storage can be unavailable in private browsing contexts. */
+            }
+        }
+
+        function ensureContext() {
+            if (muted) return null;
+            if (!ctx) {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return null;
+                ctx = new Ctx();
+                master = ctx.createGain();
+                master.gain.value = volume;
+                master.connect(ctx.destination);
+            }
+            if (ctx.state === 'suspended') ctx.resume();
+            return ctx;
+        }
+
+        /* Uma nota. `slideTo` faz o glissando usado em power-ups e quedas;
+           `delay` agenda sem setTimeout, então a sequência não desalinha se a
+           thread principal engasgar. */
+        function tone(options) {
+            const audio = ensureContext();
+            if (!audio) return;
+
+            const {
+                freq = 440,
+                duration = 0.12,
+                type = 'square',
+                gain = 0.18,
+                delay = 0,
+                slideTo = null,
+                attack = 0.006
+            } = options || {};
+
+            const start = audio.currentTime + delay;
+            const osc = audio.createOscillator();
+            const amp = audio.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, start);
+            if (slideTo && slideTo > 0) {
+                osc.frequency.exponentialRampToValueAtTime(slideTo, start + duration);
+            }
+
+            amp.gain.setValueAtTime(0.0001, start);
+            amp.gain.linearRampToValueAtTime(gain, start + attack);
+            amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+            osc.connect(amp).connect(master);
+            osc.start(start);
+            osc.stop(start + duration + 0.03);
+        }
+
+        /* Ruído branco filtrado: percussão, explosão, passo. */
+        function noise(options) {
+            const audio = ensureContext();
+            if (!audio) return;
+
+            const { duration = 0.18, gain = 0.12, delay = 0, filter = 1200, type = 'lowpass' } = options || {};
+            const start = audio.currentTime + delay;
+            const frames = Math.max(1, Math.floor(audio.sampleRate * duration));
+            const buffer = audio.createBuffer(1, frames, audio.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+
+            const src = audio.createBufferSource();
+            src.buffer = buffer;
+
+            const biquad = audio.createBiquadFilter();
+            biquad.type = type;
+            biquad.frequency.value = filter;
+
+            const amp = audio.createGain();
+            amp.gain.setValueAtTime(gain, start);
+            amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+            src.connect(biquad).connect(amp).connect(master);
+            src.start(start);
+            src.stop(start + duration + 0.02);
+        }
+
+        /* Arpejo: lista de frequências tocadas em passos regulares. */
+        function sequence(freqs, options) {
+            const { step = 0.07, duration = 0.1, type = 'square', gain = 0.16 } = options || {};
+            freqs.forEach((freq, i) => tone({ freq, duration, type, gain, delay: i * step }));
+        }
+
+        function setMuted(next) {
+            muted = Boolean(next);
+            persist();
+            if (master) master.gain.value = muted ? 0 : volume;
+            listeners.forEach(fn => fn(muted));
+        }
+
+        function configure(options) {
+            if (options && options.storageKey) {
+                storageKey = options.storageKey;
+                muted = readMuted();
+            }
+            if (options && typeof options.volume === 'number') {
+                volume = Math.max(0, Math.min(1, options.volume));
+                if (master && !muted) master.gain.value = volume;
+            }
+            return AudioAPI;
+        }
+
+        /* Botão de mudo do header. Devolve o elemento para o lab posicionar. */
+        function mountToggle(target) {
+            const host = typeof target === 'string' ? document.querySelector(target) : target;
+            if (!host) return null;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'lab-icon-btn';
+
+            const sync = () => {
+                btn.textContent = muted ? '🔇' : '🔊';
+                btn.setAttribute('aria-pressed', String(muted));
+                btn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
+                btn.title = muted ? 'Ativar som' : 'Desativar som';
+            };
+
+            btn.addEventListener('click', () => {
+                setMuted(!muted);
+                if (!muted) tone({ freq: 880, duration: 0.07, gain: 0.14 });
+            });
+
+            listeners.add(sync);
+            sync();
+            host.appendChild(btn);
+            return btn;
+        }
+
+        muted = readMuted();
+
+        return Object.freeze({
+            configure,
+            tone,
+            noise,
+            sequence,
+            mountToggle,
+            setMuted,
+            isMuted: () => muted,
+            onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); }
+        });
+    })();
+
+    /* --- Rede caiu, engine não veio ---------------------------------------
+       Metade dos labs carrega Babylon ou three.js de CDN. Quando o CDN falha
+       (rede ruim, bloqueio corporativo, offline) a página abre PRETA e sem uma
+       palavra: o canvas fica lá, vazio, e o erro só aparece no console.
+
+       Esta guarda transforma isso numa mensagem. Ela não tenta consertar nada
+       — só explica o que houve e oferece recarregar. */
+    const ENGINE_PROBES = [
+        { host: 'cdn.babylonjs.com', global: 'BABYLON', label: 'Babylon.js' },
+        { host: 'cdn.jsdelivr.net/npm/pixi.js', global: 'PIXI', label: 'PixiJS' }
+    ];
+
+    let engineNoticeShown = false;
+
+    function showEngineNotice(label) {
+        if (engineNoticeShown) return;
+        engineNoticeShown = true;
+
+        const notice = document.createElement('div');
+        notice.className = 'lab-engine-notice';
+        notice.setAttribute('role', 'alert');
+        notice.innerHTML = `
+            <div class="lab-engine-notice__card">
+                <p class="lab-engine-notice__title">Não deu para carregar o ${label}</p>
+                <p class="lab-engine-notice__text">
+                    Este lab desenha em 3D com uma biblioteca que vem de um CDN, e o
+                    navegador não conseguiu buscá-la. Costuma ser conexão instável ou
+                    uma rede que bloqueia o domínio.
+                </p>
+                <div class="lab-engine-notice__actions">
+                    <button type="button" class="lab-engine-notice__btn" data-engine-retry>Tentar de novo</button>
+                    <a class="lab-engine-notice__link" href="/labs/">Voltar aos labs</a>
+                </div>
+            </div>
+        `;
+        notice.querySelector('[data-engine-retry]').addEventListener('click', () => location.reload());
+        document.body.appendChild(notice);
+    }
+
+    /* Um lab só é cobrado pelo global se de fato pedir aquele script. */
+    function checkEngines() {
+        const html = Array.from(document.scripts).map(el => el.src || '').join(' ');
+        for (const probe of ENGINE_PROBES) {
+            if (html.includes(probe.host) && !window[probe.global]) {
+                showEngineNotice(probe.label);
+                return;
+            }
+        }
+    }
+
+    /* Scripts cuja falha realmente inviabiliza o lab. Um pacote de ícones que
+       não carrega deixa a página feia, não quebrada — avisar ali seria alarme
+       falso, então a lista é só de motores gráficos. */
+    const CRITICAL_SCRIPT = /babylonjs|pixi\.js|\bthree(\.module)?\.js|three@/;
+
+    function watchModuleFailures() {
+        /* three.js entra por importmap dentro de <script type="module">: não há
+           global para checar, e a falha de import não sobe como erro de janela.
+           O evento `error` no próprio elemento do script sobe — mas só na fase
+           de captura, porque não borbulha. */
+        window.addEventListener('error', (event) => {
+            const target = event.target;
+            if (!target || target === window || target.tagName !== 'SCRIPT') return;
+
+            const src = target.src || '';
+            // Módulo local que falhou por causa do import de CDN conta; módulo
+            // local com erro próprio, não — por isso o teste do importmap.
+            const isEngineModule = target.type === 'module' && document.querySelector('script[type="importmap"]');
+            if (isEngineModule || CRITICAL_SCRIPT.test(src)) {
+                showEngineNotice('motor 3D');
+            }
+        }, true);
+    }
+
     function init() {
         ensureFavicon();
         initChrome();
         ensureThemeCore();
+        // Depois do load: até lá o script do CDN teve sua chance de definir o global.
+        if (document.readyState === 'complete') setTimeout(checkEngines, 400);
+        else window.addEventListener('load', () => setTimeout(checkEngines, 400), { once: true });
     }
 
     applySavedTheme();
+    /* Registrado já na avaliação do script, não no init: o `error` do
+       <script type="module"> pode disparar antes do DOMContentLoaded, e um
+       listener criado depois disso perderia o evento (foi o que acontecia no
+       Mimo, que carrega este arquivo de forma síncrona). */
+    watchModuleFailures();
+
     window.LabShell = Object.freeze({ init, buildHeader, buildFooter });
+    window.LabAudio = AudioAPI;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });

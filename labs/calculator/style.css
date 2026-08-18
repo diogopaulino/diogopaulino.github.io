@@ -67,6 +67,9 @@ body {
     border: none;
     background: transparent;
     padding: 10px;
+    /* A aba é o controle principal do lab: precisa caber o dedo mesmo quando o
+       padding encolhe em telas baixas. */
+    min-height: var(--touch-target);
     border-radius: 12px;
     font-size: 0.9rem;
     font-weight: 500;
@@ -506,14 +509,33 @@ body {
         margin-bottom: 12px;
     }
 
+    /* Em paisagem o teclado encolhe para caber na altura, mas 44px é o piso:
+       é o controle que o usuário mais toca no lab. */
     .btn {
         padding: 8px 0;
-        min-height: 40px;
+        min-height: var(--touch-target);
         font-size: 1.05rem;
     }
 
     .scientific-grid .btn {
         padding: 8px 0;
-        min-height: 40px;
+        min-height: var(--touch-target);
     }
+}
+
+/* Ícones agora são SVG inline (antes vinham de um pacote de fontes num CDN:
+   quando ele não carregava, o botão de apagar virava um quadrado vazio sem
+   rótulo). O tamanho acompanha a tipografia do botão que os contém. */
+.icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex: 0 0 auto;
+    display: inline-block;
+    vertical-align: -0.18em;
+}
+
+.mode-btn .icon,
+.app-logo .icon {
+    width: 1.1em;
+    height: 1.1em;
 }

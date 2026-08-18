@@ -200,6 +200,9 @@ select:focus-visible {
 }
 
 .mode-btn {
+    /* 44px aqui, e não só no bloco de 480px: um celular deitado tem 667px de
+       largura e continua sendo dedo. */
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -211,6 +214,23 @@ select:focus-visible {
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.25s ease, color 0.25s ease;
+}
+
+.task-remove::after,
+.close-btn::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+    .icon-btn {
+        width: var(--touch-target);
+        height: var(--touch-target);
+    }
 }
 
 .mode-btn:hover {
@@ -467,6 +487,8 @@ kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border: none;
     border-radius: 10px;
     background: var(--mode-color);
@@ -571,6 +593,8 @@ kbd {
 
 .task-remove {
     flex-shrink: 0;
+    /* O X continua desenhado pequeno; o alvo real vem do ::after. */
+    position: relative;
     width: 26px;
     height: 26px;
     display: inline-flex;
@@ -749,6 +773,7 @@ kbd {
 }
 
 .close-btn {
+    position: relative;
     width: 34px;
     height: 34px;
     display: inline-flex;

@@ -22,8 +22,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Campo Minado 95 | Diogo Paulino">
     <meta name="twitter:description" content="Clássico jogo de Campo Minado estilo Windows 95.">
-    <link rel="stylesheet" href="/labs/shared.css?v=9">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=11">
+    <link rel="stylesheet" href="style.css?v=2">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -83,26 +83,38 @@
         <div class="window">
             <div class="title-bar">
                 <div class="title-bar-text">Campo Minado</div>
-                <div class="title-bar-controls">
-                    <button aria-label="Minimize"></button>
-                    <button aria-label="Maximize"></button>
-                    <button aria-label="Close"></button>
+                <!-- Enfeite da moldura Win95: não fazem nada, então não são
+                     botões — como <button> eles entravam na navegação por Tab e
+                     eram anunciados como controles acionáveis. -->
+                <div class="title-bar-controls" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
             </div>
             <div class="window-body">
                 <div class="menu-bar">
-                    <select id="difficulty-select">
+                    <select id="difficulty-select" aria-label="Dificuldade">
                         <option value="beginner">Iniciante (9x9)</option>
                         <option value="intermediate">Intermediário (16x16)</option>
                         <option value="expert">Especialista (30x16)</option>
                     </select>
+                    <span class="best-time" title="Melhor tempo nesta dificuldade">🏆 <span
+                            id="best-time">—</span></span>
                 </div>
                 <div class="status-bar">
                     <div class="counter" id="mine-count">010</div>
-                    <button class="face-btn" id="reset-btn">🙂</button>
+                    <div class="status-actions">
+                        <button class="face-btn" id="reset-btn" type="button"
+                            aria-label="Nova partida">🙂</button>
+                        <button class="face-btn flag-toggle" id="flag-toggle" type="button" aria-pressed="false"
+                            aria-label="Modo escavar — tocar revela a célula" title="Modo escavar">⛏️</button>
+                    </div>
                     <div class="counter" id="timer">000</div>
                 </div>
-                <div class="game-board" id="board"></div>
+                <div class="board-scroll">
+                    <div class="game-board" id="board"></div>
+                </div>
             </div>
         </div>
 
@@ -117,14 +129,24 @@
                     <span class="mouse-btn">Segurar / Botão Direito</span>
                     <span>Bandeira</span>
                 </div>
+                <div class="key-combo">
+                    <span class="mouse-btn">⛏️ / 🚩</span>
+                    <span>Alternar modo (tecla F)</span>
+                </div>
+                <div class="key-combo">
+                    <span class="mouse-btn">Duplo clique</span>
+                    <span>Abrir vizinhos de um número</span>
+                </div>
             </div>
         </div>
+
+        <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
-    <script src="/labs/shared.js?v=8" defer></script>
-    <script src="script.js" defer></script>
+    <script src="/labs/shared.js?v=11" defer></script>
+    <script src="script.js?v=2" defer></script>
 </body>
 
 </html>

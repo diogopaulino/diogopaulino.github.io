@@ -23,13 +23,11 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Calculator | Diogo Paulino">
     <meta name="twitter:description" content="Calculadora online com modos simples, científico e conversor de moedas em tempo real.">
-    <link rel="stylesheet" href="/labs/shared.css?v=9">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=11">
+    <link rel="stylesheet" href="style.css?v=6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2" defer></script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -83,7 +81,7 @@
         <header data-lab-header data-title="Calculator">
             <template data-slot="logo">
                 <div class="app-logo">
-                    <i class="ph ph-calculator"></i>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg>
                     Calculator
                 </div>
             </template>
@@ -91,13 +89,13 @@
         <div class="calculator-wrapper">
             <div class="mode-switch">
                 <button class="mode-btn active" data-mode="calculator">
-                    <i class="ph ph-calculator"></i> Simple
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg> Simple
                 </button>
                 <button class="mode-btn" data-mode="scientific">
-                    <i class="ph ph-flask"></i> Scientific
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg> Scientific
                 </button>
                 <button class="mode-btn" data-mode="currency">
-                    <i class="ph ph-coins"></i> Currency
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/></svg> Currency
                 </button>
             </div>
 
@@ -109,8 +107,7 @@
                 </div>
                 <div class="buttons">
                     <button class="btn function" data-action="clear">AC</button>
-                    <button class="btn function" data-action="delete" aria-label="Apagar último dígito"><i
-                            class="ph ph-backspace" aria-hidden="true"></i></button>
+                    <button class="btn function" data-action="delete" aria-label="Apagar último dígito"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5H9.5a2 2 0 0 0-1.5.7L3 12l5 6.3a2 2 0 0 0 1.5.7H20a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg></button>
                     <button class="btn operator" data-action="percent">%</button>
                     <button class="btn operator" data-action="divide">÷</button>
                     <button class="btn number">7</button>
@@ -140,8 +137,7 @@
                 <div class="buttons scientific-grid">
                     <!-- Row 1 -->
                     <button class="btn function" data-action="sci-clear">AC</button>
-                    <button class="btn function" data-action="sci-delete" aria-label="Apagar último dígito"><i
-                            class="ph ph-backspace" aria-hidden="true"></i></button>
+                    <button class="btn function" data-action="sci-delete" aria-label="Apagar último dígito"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5H9.5a2 2 0 0 0-1.5.7L3 12l5 6.3a2 2 0 0 0 1.5.7H20a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg></button>
                     <button class="btn sci-func" data-action="sin">sin</button>
                     <button class="btn sci-func" data-action="cos">cos</button>
                     <button class="btn sci-func" data-action="tan">tan</button>
@@ -196,7 +192,7 @@
                     <h3>Real-time Converter</h3>
                     <div class="last-updated">Loading rates...</div>
                     <button id="refresh-rates" class="btn-refresh" title="Refresh Rates" aria-label="Atualizar cotações">
-                        <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11A8 8 0 0 0 6.3 6.3L3 9.5"/><path d="M3 4.5v5h5"/><path d="M4 13a8 8 0 0 0 13.7 4.7L21 14.5"/><path d="M21 19.5v-5h-5"/></svg>
                     </button>
                 </div>
 
@@ -218,7 +214,7 @@
 
                 <div class="swap-container">
                     <button class="btn-swap" id="swap" aria-label="Inverter as moedas">
-                        <i class="ph ph-arrows-down-up" aria-hidden="true"></i>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v18"/><path d="M3.5 17.5 7 21l3.5-3.5"/><path d="M17 21V3"/><path d="M13.5 6.5 17 3l3.5 3.5"/></svg>
                     </button>
                     <div class="rate-info" id="rate">1 USD = ...</div>
                 </div>
@@ -243,7 +239,7 @@
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
-    <script src="/labs/shared.js?v=8" defer></script>
+    <script src="/labs/shared.js?v=11" defer></script>
     <script src="script.js" defer></script>
 </body>
 

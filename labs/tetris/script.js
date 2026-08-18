@@ -20,6 +20,46 @@ const colors = [
     '#9bbc0f', // Lightest (Highlight)
 ];
 
+/* --- Som -------------------------------------------------------------------
+   Timbre de chip: quadrada curta para os controles, arpejo para as linhas.
+   O motor vem do LabAudio (labs/shared.js), então o mudo é persistido e
+   compartilhado com os outros labs. */
+const audio = window.LabAudio;
+
+function sfx(name) {
+    if (!audio) return;
+    switch (name) {
+        case 'move':
+            audio.tone({ freq: 220, duration: 0.03, gain: 0.06 });
+            break;
+        case 'rotate':
+            audio.tone({ freq: 440, duration: 0.05, gain: 0.08 });
+            break;
+        case 'lock':
+            audio.noise({ duration: 0.07, gain: 0.09, filter: 900 });
+            break;
+        case 'drop':
+            audio.tone({ freq: 520, duration: 0.12, gain: 0.1, slideTo: 120, type: 'square' });
+            break;
+        case 'line':
+            audio.sequence([523, 659, 784], { step: 0.05, duration: 0.09, gain: 0.12 });
+            break;
+        case 'tetris':
+            // Quatro linhas de uma vez merecem a fanfarra completa.
+            audio.sequence([523, 659, 784, 1047, 1319], { step: 0.06, duration: 0.14, gain: 0.14 });
+            break;
+        case 'level':
+            audio.sequence([784, 988, 1175], { step: 0.05, duration: 0.1, gain: 0.11 });
+            break;
+        case 'over':
+            audio.tone({ freq: 330, duration: 0.9, gain: 0.14, slideTo: 60, type: 'sawtooth' });
+            break;
+        case 'start':
+            audio.sequence([392, 523, 659, 784], { step: 0.08, duration: 0.12, gain: 0.13 });
+            break;
+    }
+}
+
 // Tetromino definitions
 const pieces = 'ILJOTSZ';
 const piecesMap = {
@@ -90,10 +130,18 @@ function arenaSweep() {
     }
 
     if (cleared > 0) {
+        const previousLevel = player.level;
         player.lines += cleared;
         player.score += LINE_SCORE[cleared] * player.level;
         player.level = Math.floor(player.lines / 10) + 1;
+        // Flash das linhas: decai por frame em `draw`, fora da simulação.
+        clearFlash = 1;
+        clearFlashRows = cleared;
+        sfx(cleared === 4 ? 'tetris' : 'line');
+        if (player.level > previousLevel) sfx('level');
         updateScore();
+    } else {
+        sfx('lock');
     }
 }
 
@@ -139,6 +187,11 @@ function drawMatrix(matrix, offset, ctx = context) {
     });
 }
 
+/* Feedback visual de linha completa: um clarão que decai por frame. Vive fora
+   do estado do jogo, então nunca muda a simulação. */
+let clearFlash = 0;
+let clearFlashRows = 0;
+
 function draw() {
     // Clear screen with "screen bg" color
     context.fillStyle = colors[3];
@@ -148,6 +201,15 @@ function draw() {
     if (player.matrix) {
         drawGhost();
         drawMatrix(player.matrix, player.pos);
+    }
+
+    if (clearFlash > 0) {
+        // Quatro linhas piscam mais forte que uma: o clarão conta quanto valeu.
+        const intensity = clearFlash * (0.35 + clearFlashRows * 0.12);
+        context.globalAlpha = Math.min(0.85, intensity);
+        context.fillStyle = colors[4];
+        context.fillRect(0, 0, COLS, ROWS);
+        context.globalAlpha = 1;
     }
 }
 
@@ -247,6 +309,7 @@ function playerHardDrop() {
 
     if (distance > 0) {
         player.score += distance * 2;
+        sfx('drop');
     }
     lockPiece();
     dropCounter = 0;
@@ -265,6 +328,8 @@ function playerMove(offset) {
     player.pos.x += offset;
     if (collide(arena, player)) {
         player.pos.x -= offset;
+    } else {
+        sfx('move');
     }
 }
 
@@ -302,6 +367,7 @@ function playerRotate(dir) {
             return;
         }
     }
+    sfx('rotate');
 }
 
 let dropCounter = 0;
@@ -320,6 +386,8 @@ function update(time = 0) {
         }
         handleAutoRepeat(deltaTime);
     }
+
+    clearFlash = Math.max(0, clearFlash - deltaTime / 260);
 
     draw();
     requestAnimationFrame(update);
@@ -415,11 +483,14 @@ function resetGame() {
 
 function startGame() {
     resetGame();
+    clearFlash = 0;
+    sfx('start');
     setState('playing');
 }
 
 function gameOver() {
     player.matrix = null;
+    sfx('over');
     setState('over');
 }
 
@@ -557,6 +628,73 @@ bindHold('.d-pad .down', 'down');
 bindHold('.d-pad .up', 'rotate');
 bindHold('.btn-a', 'rotate');
 bindHold('.btn-b', 'hard-drop');
+
+/* --- Gestos na tela --------------------------------------------------------
+   No celular o d-pad desenhado tem ~34px e o polegar cobre metade do console.
+   Arrastar na própria tela vira o controle principal:
+     · horizontal  → move coluna a coluna, acompanhando o dedo
+     · para baixo  → soft drop contínuo
+     · para cima   → hard drop
+     · toque curto → gira
+   O d-pad continua funcionando para quem prefere (e para o mouse). */
+const screenEl = document.querySelector('.screen');
+const SWIPE_STEP = 22;   // px de arrasto que valem uma coluna
+const SWIPE_FLICK = 46;  // px verticais que disparam hard drop / soft drop
+let gesture = null;
+
+if (screenEl) {
+    screenEl.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        screenEl.setPointerCapture?.(event.pointerId);
+        gesture = { x: event.clientX, y: event.clientY, movedCols: 0, dropped: false, acted: false };
+    });
+
+    screenEl.addEventListener('pointermove', event => {
+        if (!gesture || state !== 'playing') return;
+
+        const deltaX = event.clientX - gesture.x;
+        const deltaY = event.clientY - gesture.y;
+
+        // Colunas ainda não consumidas deste arrasto.
+        const wantCols = Math.trunc(deltaX / SWIPE_STEP);
+        if (wantCols !== gesture.movedCols) {
+            const steps = wantCols - gesture.movedCols;
+            for (let i = 0; i < Math.abs(steps); i++) playerMove(Math.sign(steps));
+            gesture.movedCols = wantCols;
+            gesture.acted = true;
+        }
+
+        // O vertical só age quando é claramente o eixo dominante.
+        if (Math.abs(deltaY) > SWIPE_FLICK && Math.abs(deltaY) > Math.abs(deltaX) && !gesture.dropped) {
+            if (deltaY < 0) {
+                playerHardDrop();
+                gesture.dropped = true;
+            } else {
+                playerDrop(true);
+                // Reancora para o próximo passo do soft drop.
+                gesture.y = event.clientY;
+            }
+            gesture.acted = true;
+        }
+    });
+
+    const endGesture = () => {
+        if (gesture && !gesture.acted) {
+            // Toque curto: gira se estiver jogando, senão faz o papel do Start.
+            if (state === 'playing') playerRotate(1);
+            else toggleStartPause();
+        }
+        gesture = null;
+    };
+
+    screenEl.addEventListener('pointerup', endGesture);
+    screenEl.addEventListener('pointercancel', () => { gesture = null; });
+}
+
+if (window.LabAudio) {
+    window.LabAudio.configure({ storageKey: 'tetris90s:muted', volume: 0.45 });
+    window.LabAudio.mountToggle('[data-lab-header] .header-actions');
+}
 
 document.querySelector('.btn-start').addEventListener('click', toggleStartPause);
 document.querySelector('.btn-select').addEventListener('click', startGame);

@@ -277,7 +277,8 @@ header[data-lab-header] {
 }
 
 .step {
-    height: 2.4rem;
+    /* O sequenciador é tocado em ritmo: alvo curto = passo errado ligado. */
+    height: max(2.4rem, var(--touch-target));
     border-radius: 12px;
     font-size: 1.4rem;
     line-height: 1;

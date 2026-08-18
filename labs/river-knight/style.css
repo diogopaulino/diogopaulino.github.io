@@ -1015,10 +1015,28 @@ input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
+    /* 44px de alvo tocável; o trilho visível de 5px vive nos
+       pseudo-elementos abaixo, então o desenho não muda. */
+    height: var(--touch-target);
+    border: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    touch-action: pan-y;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
     height: 5px;
     border-radius: 99px;
     background: rgba(255, 255, 255, 0.12);
-    outline: none;
+    border: none;
+}
+
+input[type="range"]::-moz-range-track {
+    height: 5px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -1029,6 +1047,8 @@ input[type="range"]::-webkit-slider-thumb {
     background: var(--gold);
     box-shadow: 0 0 12px oklch(75% 0.15 80 / 0.7);
     cursor: pointer;
+    /* (trilho 5px - thumb 16px) / 2 */
+    margin-top: -5.5px;
 }
 
 input[type="range"]::-moz-range-thumb {

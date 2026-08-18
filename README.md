@@ -72,7 +72,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Jogo de plataforma com IAs (Claude, Gemini e ChatGPT) usando PixiJS |
+| 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Plataforma 2D em canvas puro: colete estrelas Gemini, pule nos rivais ChatGPT e chegue à bandeira |
 | 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |

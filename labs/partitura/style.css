@@ -222,6 +222,7 @@ body {
   color: #f8fafc;
   border: 1px solid var(--border-glow);
   border-radius: 8px;
+  min-height: var(--touch-target);
   padding: 0.35rem 0.65rem;
   font-size: 0.82rem;
   font-weight: 700;

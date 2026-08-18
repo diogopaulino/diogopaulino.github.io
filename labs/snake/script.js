@@ -6,6 +6,9 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const finalScoreSpan = document.getElementById('finalScore');
 const hudScore = document.getElementById('hudScore');
 const hudBest = document.getElementById('hudBest');
+const hudLevel = document.getElementById('hudLevel');
+const muteBtn = document.getElementById('btnMute');
+const screenPlay = document.querySelector('.screen-play');
 const statusLive = document.getElementById('gameStatus');
 const powerLed = document.querySelector('.power-led');
 
@@ -48,6 +51,81 @@ function syncColors() {
     COLORS.food = COLORS.snake;
 }
 
+/* --- Áudio 8-bit -----------------------------------------------------------
+   Ondas quadradas curtas sintetizadas na hora: nenhum asset, mesmo timbre do
+   console que o aparelho imita. O contexto só nasce no primeiro gesto do
+   usuário porque navegadores bloqueiam áudio antes disso. */
+const SOUND_KEY = 'snakeMuted';
+let audioCtx = null;
+let muted = readMuted();
+
+function readMuted() {
+    try {
+        return localStorage.getItem(SOUND_KEY) === '1';
+    } catch (err) {
+        return false;
+    }
+}
+
+function saveMuted(value) {
+    try {
+        localStorage.setItem(SOUND_KEY, value ? '1' : '0');
+    } catch (err) {
+        /* Storage can be unavailable in private browsing contexts. */
+    }
+}
+
+function ensureAudio() {
+    if (muted) return null;
+    if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audioCtx = new Ctx();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+function blip(freq, duration = 0.08, type = 'square', gain = 0.05) {
+    const ctxAudio = ensureAudio();
+    if (!ctxAudio) return;
+    const now = ctxAudio.currentTime;
+    const osc = ctxAudio.createOscillator();
+    const amp = ctxAudio.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    amp.gain.setValueAtTime(0, now);
+    amp.gain.linearRampToValueAtTime(gain, now + 0.008);
+    amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(amp).connect(ctxAudio.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+}
+
+function sfxEat() {
+    blip(660, 0.06);
+    setTimeout(() => blip(990, 0.07), 55);
+}
+
+function sfxTurn() {
+    blip(320, 0.03, 'square', 0.022);
+}
+
+function sfxStart() {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => blip(f, 0.09), i * 70));
+}
+
+function sfxDeath() {
+    [440, 349, 262, 175].forEach((f, i) => setTimeout(() => blip(f, 0.16, 'sawtooth', 0.045), i * 110));
+}
+
+function syncMuteButton() {
+    if (!muteBtn) return;
+    muteBtn.setAttribute('aria-pressed', String(muted));
+    muteBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+}
+
 function readHighScore() {
     try {
         return Number(localStorage.getItem(STORAGE_KEY)) || 0;
@@ -68,9 +146,17 @@ function pad(value) {
     return String(Math.min(999, value)).padStart(3, '0');
 }
 
+// O nível é derivado da velocidade: quanto menor o intervalo entre passos,
+// mais alto o nível. Assim o HUD conta a mesma história que o jogo sente.
+function currentLevel() {
+    const ramp = (BASE_SPEED - stepInterval) / (BASE_SPEED - MIN_SPEED);
+    return 1 + Math.round(ramp * 9);
+}
+
 function updateHud() {
     hudScore.textContent = pad(score);
     hudBest.textContent = pad(highScore);
+    if (hudLevel) hudLevel.textContent = String(currentLevel());
 }
 
 function announce(message) {
@@ -99,8 +185,11 @@ function initGame() {
     pauseScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     powerLed.classList.add('on');
+    eatPulse = 0;
+    deathFlash = 0;
     updateHud();
     announce('Partida iniciada.');
+    sfxStart();
 
     startLoop();
 }
@@ -139,6 +228,11 @@ function gameLoop(timestamp) {
     // Cap the delta so a backgrounded tab never replays a burst of steps.
     const delta = Math.min(timestamp - lastFrame, 250);
     lastFrame = timestamp;
+
+    // Efeitos decaem em tempo real (independente do passo fixo do jogo).
+    foodPhase += delta / 260;
+    eatPulse = Math.max(0, eatPulse - delta / 220);
+    deathFlash = Math.max(0, deathFlash - delta / 420);
 
     if (isGameRunning && !isPaused) {
         accumulator += delta;
@@ -188,70 +282,203 @@ function update() {
         // Each fruit shaves a little off the step interval for a difficulty ramp.
         stepInterval = Math.max(MIN_SPEED, BASE_SPEED - Math.floor(score / 10) * 3);
         placeFood();
+        eatPulse = 1;
+        sfxEat();
         updateHud();
     } else {
         snake.pop();
     }
 }
 
+/* --- Render ----------------------------------------------------------------
+   Efeitos de tela guardados fora do estado de jogo: decaem por frame, então
+   nunca alteram a simulação (que roda em passos fixos de `stepInterval`). */
+let eatPulse = 0;    // 1 → 0 logo depois de comer: brilho na fruta e na cabeça
+let deathFlash = 0;  // 1 → 0 na morte: inverte a tela por alguns frames
+let foodPhase = 0;   // fase da respiração da fruta
+
+// Um retângulo com cantos arredondados só onde a cobra NÃO continua. É isso que
+// transforma quadradinhos soltos em um corpo contínuo — sem sair do look 8-bit,
+// porque o raio é 1/4 da célula.
+function bodyCell(x, y, prev, next) {
+    const px = x * GRID_SIZE;
+    const py = y * GRID_SIZE;
+    const inset = 1;
+    const r = GRID_SIZE / 4;
+    const size = GRID_SIZE - inset * 2;
+
+    // Cantos: arredonda o canto quando nenhum vizinho ocupa os dois lados dele.
+    const up = (prev && prev.y === y - 1) || (next && next.y === y - 1);
+    const down = (prev && prev.y === y + 1) || (next && next.y === y + 1);
+    const left = (prev && prev.x === x - 1) || (next && next.x === x - 1);
+    const right = (prev && prev.x === x + 1) || (next && next.x === x + 1);
+
+    const tl = up || left ? 0 : r;
+    const tr = up || right ? 0 : r;
+    const br = down || right ? 0 : r;
+    const bl = down || left ? 0 : r;
+
+    ctx.beginPath();
+    ctx.moveTo(px + inset + tl, py + inset);
+    ctx.lineTo(px + inset + size - tr, py + inset);
+    ctx.quadraticCurveTo(px + inset + size, py + inset, px + inset + size, py + inset + tr);
+    ctx.lineTo(px + inset + size, py + inset + size - br);
+    ctx.quadraticCurveTo(px + inset + size, py + inset + size, px + inset + size - br, py + inset + size);
+    ctx.lineTo(px + inset + bl, py + inset + size);
+    ctx.quadraticCurveTo(px + inset, py + inset + size, px + inset, py + inset + size - bl);
+    ctx.lineTo(px + inset, py + inset + tl);
+    ctx.quadraticCurveTo(px + inset, py + inset, px + inset + tl, py + inset);
+    ctx.closePath();
+    ctx.fill();
+
+    // Preenche a junta com o vizinho: sem isso os cantos arredondados abrem
+    // fendas de 2px entre segmentos em linha reta.
+    if (right) ctx.fillRect(px + GRID_SIZE - inset - 1, py + inset, inset * 2 + 1, size);
+    if (down) ctx.fillRect(px + inset, py + GRID_SIZE - inset - 1, size, inset * 2 + 1);
+}
+
+function drawHeadEyes(segment) {
+    ctx.fillStyle = COLORS.bg;
+    const eye = 4;
+    const bx = segment.x * GRID_SIZE;
+    const by = segment.y * GRID_SIZE;
+    let e1, e2;
+
+    if (dx === 1) {
+        e1 = [bx + GRID_SIZE - 6, by + 4];
+        e2 = [bx + GRID_SIZE - 6, by + GRID_SIZE - 8];
+    } else if (dx === -1) {
+        e1 = [bx + 2, by + 4];
+        e2 = [bx + 2, by + GRID_SIZE - 8];
+    } else if (dy === -1) {
+        e1 = [bx + 4, by + 2];
+        e2 = [bx + GRID_SIZE - 8, by + 2];
+    } else {
+        e1 = [bx + 4, by + GRID_SIZE - 6];
+        e2 = [bx + GRID_SIZE - 8, by + GRID_SIZE - 6];
+    }
+
+    ctx.fillRect(e1[0], e1[1], eye, eye);
+    ctx.fillRect(e2[0], e2[1], eye, eye);
+}
+
+// Língua bifurcada saindo da cabeça — só quando a cobra está de fato andando.
+function drawTongue(head) {
+    if (!isGameRunning || isPaused) return;
+    const flick = Math.sin(foodPhase * 2.2) > 0.4;
+    if (!flick) return;
+
+    const cx = head.x * GRID_SIZE + GRID_SIZE / 2;
+    const cy = head.y * GRID_SIZE + GRID_SIZE / 2;
+    const reach = GRID_SIZE * 0.55;
+    const tipX = cx + dx * reach;
+    const tipY = cy + dy * reach;
+
+    ctx.strokeStyle = COLORS.snake;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * (GRID_SIZE / 2 - 1), cy + dy * (GRID_SIZE / 2 - 1));
+    ctx.lineTo(tipX, tipY);
+    // A forquilha abre perpendicular ao avanço.
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX + dy * 3 - dx * 0, tipY + dx * 3 - dy * 0);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX - dy * 3, tipY - dx * 3);
+    ctx.stroke();
+}
+
+// Maçã: corpo redondo com talo e folha, respirando devagar. O pulso ao comer
+// reaproveita a mesma escala para dar o "pop" de coleta.
+function drawFood() {
+    const cx = food.x * GRID_SIZE + GRID_SIZE / 2;
+    const cy = food.y * GRID_SIZE + GRID_SIZE / 2;
+    const breathe = 1 + Math.sin(foodPhase) * 0.06;
+    const scale = breathe * (1 + eatPulse * 0.5);
+    const r = (GRID_SIZE / 2 - 2) * scale;
+
+    ctx.fillStyle = COLORS.food;
+    ctx.beginPath();
+    ctx.arc(cx, cy + 1, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Talo e folha.
+    ctx.strokeStyle = COLORS.food;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx, cy - r - 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy - r - 3, 3, 1.6, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Brilho: um furinho na cor do fundo, do jeito que um sprite 8-bit faria.
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(cx - r * 0.55, cy - r * 0.5, 2, 2);
+}
+
 function draw() {
-    // Clear Screen
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Snake
+    // Grade fantasma: dá escala ao tabuleiro sem competir com a cobra.
+    ctx.globalAlpha = 0.07;
+    ctx.strokeStyle = COLORS.snake;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = GRID_SIZE; x < canvas.width; x += GRID_SIZE) {
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, canvas.height);
+    }
+    for (let y = GRID_SIZE; y < canvas.height; y += GRID_SIZE) {
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(canvas.width, y + 0.5);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    drawFood();
+
     ctx.fillStyle = COLORS.snake;
     snake.forEach((segment, index) => {
-        // Draw slightly smaller rect for segment effect
-        ctx.fillRect(
-            segment.x * GRID_SIZE + 1,
-            segment.y * GRID_SIZE + 1,
-            GRID_SIZE - 2,
-            GRID_SIZE - 2
-        );
-
-        // Draw eyes on head
-        if (index === 0) {
-            ctx.fillStyle = COLORS.bg;
-            const eyeSize = 4;
-            // Position eyes based on direction
-            let ex1, ey1, ex2, ey2;
-
-            if (dx === 1) { // Right
-                ex1 = (segment.x + 1) * GRID_SIZE - 6; ey1 = segment.y * GRID_SIZE + 4;
-                ex2 = (segment.x + 1) * GRID_SIZE - 6; ey2 = (segment.y + 1) * GRID_SIZE - 8;
-            } else if (dx === -1) { // Left
-                ex1 = segment.x * GRID_SIZE + 2; ey1 = segment.y * GRID_SIZE + 4;
-                ex2 = segment.x * GRID_SIZE + 2; ey2 = (segment.y + 1) * GRID_SIZE - 8;
-            } else if (dy === -1) { // Up
-                ex1 = segment.x * GRID_SIZE + 4; ey1 = segment.y * GRID_SIZE + 2;
-                ex2 = (segment.x + 1) * GRID_SIZE - 8; ey2 = segment.y * GRID_SIZE + 2;
-            } else { // Down
-                ex1 = segment.x * GRID_SIZE + 4; ey1 = (segment.y + 1) * GRID_SIZE - 6;
-                ex2 = (segment.x + 1) * GRID_SIZE - 8; ey2 = (segment.y + 1) * GRID_SIZE - 6;
-            }
-
-            ctx.fillRect(ex1, ey1, eyeSize, eyeSize);
-            ctx.fillRect(ex2, ey2, eyeSize, eyeSize);
-            ctx.fillStyle = COLORS.snake; // Reset color
+        const prev = snake[index - 1];
+        const next = snake[index + 1];
+        // A cauda afina: as três últimas células encolhem progressivamente.
+        const fromTail = snake.length - 1 - index;
+        if (fromTail < 3 && snake.length > 4) {
+            const shrink = (3 - fromTail) * 1.6;
+            ctx.fillRect(
+                segment.x * GRID_SIZE + 1 + shrink / 2,
+                segment.y * GRID_SIZE + 1 + shrink / 2,
+                GRID_SIZE - 2 - shrink,
+                GRID_SIZE - 2 - shrink
+            );
+        } else {
+            bodyCell(segment.x, segment.y, prev, next);
         }
     });
 
-    // Draw Food
-    ctx.fillStyle = COLORS.food;
-    // Draw pixelated apple/food
-    const fx = food.x * GRID_SIZE;
-    const fy = food.y * GRID_SIZE;
-    const p = GRID_SIZE / 4;
+    if (snake.length) {
+        drawTongue(snake[0]);
+        ctx.fillStyle = COLORS.snake;
+        drawHeadEyes(snake[0]);
+        ctx.fillStyle = COLORS.snake;
+    }
 
-    // Simple cross shape for food
-    ctx.fillRect(fx + p, fy, p * 2, GRID_SIZE);
-    ctx.fillRect(fx, fy + p, GRID_SIZE, p * 2);
+    // Flash de morte: inverte o LCD por instantes, como um console de verdade.
+    if (deathFlash > 0) {
+        ctx.globalAlpha = deathFlash * 0.65;
+        ctx.fillStyle = COLORS.snake;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+    }
 }
 
 function gameOver() {
     isGameRunning = false;
     isPaused = false;
+    deathFlash = 1;
+    sfxDeath();
     stopLoop();
     pauseScreen.classList.add('hidden');
     finalScoreSpan.textContent = score;
@@ -291,6 +518,7 @@ function queueDirection(nextDx, nextDy) {
     if (nextDx === -currentDx && nextDy === -currentDy) return;
     if (nextDx === currentDx && nextDy === currentDy) return;
     queuedDirection = { dx: nextDx, dy: nextDy };
+    sfxTurn();
 }
 
 // Input Handling
@@ -347,6 +575,53 @@ document.querySelectorAll('.d-pad [data-key]').forEach(btn => {
     });
     btn.addEventListener('click', (e) => e.preventDefault());
 });
+
+/* Deslizar na tela: no celular o d-pad desenhado tem 30px e o polegar cobre a
+   LCD inteira. O swipe é o controle primário no toque; o d-pad continua ali
+   para quem prefere (e para o mouse). Um toque simples inicia/pausa. */
+const SWIPE_MIN = 24; // px — abaixo disso é toque, não gesto
+let touchStart = null;
+
+if (screenPlay) {
+    screenPlay.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        touchStart = { x: e.clientX, y: e.clientY, moved: false };
+    });
+
+    screenPlay.addEventListener('pointermove', (e) => {
+        if (!touchStart || touchStart.moved) return;
+        const deltaX = e.clientX - touchStart.x;
+        const deltaY = e.clientY - touchStart.y;
+        if (Math.hypot(deltaX, deltaY) < SWIPE_MIN) return;
+
+        touchStart.moved = true;
+        // O eixo dominante decide: diagonais viram a direção mais forte em vez
+        // de serem descartadas.
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            handleInput(deltaX > 0 ? 'ArrowRight' : 'ArrowLeft');
+        } else {
+            handleInput(deltaY > 0 ? 'ArrowDown' : 'ArrowUp');
+        }
+    });
+
+    screenPlay.addEventListener('pointerup', () => {
+        if (touchStart && !touchStart.moved) handleInput('Start');
+        touchStart = null;
+    });
+
+    screenPlay.addEventListener('pointercancel', () => {
+        touchStart = null;
+    });
+}
+
+if (muteBtn) {
+    muteBtn.addEventListener('click', () => {
+        muted = !muted;
+        saveMuted(muted);
+        syncMuteButton();
+        if (!muted) blip(880, 0.06);
+    });
+}
 
 document.getElementById('btnStart').addEventListener('click', () => handleInput('Start'));
 document.getElementById('btnSelect').addEventListener('click', () => initGame());
@@ -405,6 +680,7 @@ window.visualViewport?.addEventListener('resize', fitDevice);
 
 // Initial Draw
 syncColors();
+syncMuteButton();
 updateHud();
 fitDevice();
 draw();

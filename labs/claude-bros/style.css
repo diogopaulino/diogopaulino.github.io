@@ -1,250 +1,297 @@
-:root {
-  --bg-color: #1a1a1a;
-  --text-color: #f1f1f1;
-  --primary-color: #d97757; /* Claude orange */
-  --header-bg: rgba(20, 20, 20, 0.8);
-  --btn-bg: rgba(255, 255, 255, 0.2);
-  --btn-active: rgba(255, 255, 255, 0.4);
+/* Claude Bros — layout do jogo.
+   O shell compartilhado (labs/shared.css) entrega header, footer, tema e os
+   tokens de safe-area; aqui só entra o que é do jogo. */
+
+body {
+    /* Fullscreen: o palco ocupa a altura livre e a página não rola.
+       O fundo continua sendo o token do tema — o azul é do céu da fase, dentro
+       do palco, não da página (senão o header claro fica ilegível). */
+    padding: 0;
+    overflow: hidden;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+.game-shell {
+    width: 100%;
+    max-width: 1200px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: max(0.75rem, var(--safe-top))
+        max(0.75rem, var(--safe-right))
+        max(0.5rem, var(--safe-bottom))
+        max(0.75rem, var(--safe-left));
+    margin: 0 auto;
 }
 
-html, body {
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  font-family: 'Outfit', sans-serif;
-  touch-action: none; /* Prevent zooming/panning on mobile */
+[data-lab-header] {
+    margin-bottom: 0;
+    padding: 0;
+    flex: 0 0 auto;
 }
 
-/* Header */
-.lab-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 44px;
-  padding: 0 16px;
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  background: var(--header-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 100;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+/* O palco toma a altura que sobra; `min-height: 0` é o que permite ao flex
+   encolhê-lo em telas baixas em vez de estourar a página. */
+.stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #5aa9e6;
+    box-shadow: 0 18px 48px rgba(4, 20, 34, 0.45);
+    /* Os gestos do jogo não podem virar scroll/zoom da página. */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-.back-link {
-  color: var(--text-color);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  font-weight: 700;
-  opacity: 0.8;
-  transition: opacity 0.2s;
+.stage canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
-.back-link:hover {
-  opacity: 1;
-}
+/* ------------------------------------------------------------------- HUD --- */
 
-.lab-title {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
-  opacity: 0.5;
-}
-
-/* Game Container */
-.game-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-#pixi-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-#pixi-container canvas {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-/* HUD */
 .hud {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 10;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    pointer-events: none;
 }
 
-.hud-score {
-  position: absolute;
-  top: 60px;
-  left: 16px;
-  font-size: 24px;
-  font-weight: 700;
-  text-shadow: 2px 2px 0 #000;
-  pointer-events: auto;
+.hud-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(8, 26, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-.hud-controls {
-  position: absolute;
-  bottom: 24px;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 24px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
+.hud-key {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.72;
 }
 
-/* Only show touch controls on coarse pointer devices */
-@media (pointer: coarse) {
-  .hud-controls {
-    opacity: 1;
-    pointer-events: auto;
-  }
+.hud-chip strong {
+    font-weight: 700;
 }
 
-.dpad {
-  display: flex;
-  gap: 16px;
-}
+/* --------------------------------------------------------------- overlay --- */
 
-.action-buttons {
-  display: flex;
-}
-
-.control-btn {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--btn-bg);
-  border: 2px solid rgba(255,255,255,0.3);
-  color: white;
-  font-size: 24px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  user-select: none;
-  -webkit-user-select: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  cursor: pointer;
-}
-
-.control-btn:active, .control-btn.active {
-  background: var(--btn-active);
-  transform: scale(0.95);
-}
-
-.action-btn {
-  width: 72px;
-  height: 72px;
-  font-weight: 700;
-  font-family: 'Outfit', sans-serif;
-}
-
-/* Overlay */
 .overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-  gap: 24px;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(6, 20, 34, 0.55);
+    /* Blur leve: o menu precisa se destacar sem apagar a fase atrás dele. */
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 20;
 }
 
-.overlay.hidden {
-  display: none;
+.overlay[hidden] {
+    display: none;
 }
 
-.overlay h2 {
-  font-size: 48px;
-  font-weight: 700;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  color: var(--primary-color);
-  text-align: center;
-  padding: 0 16px;
+.overlay-card {
+    /* Menu longo em tela baixa rola dentro do card, sem empurrar o jogo. */
+    max-width: min(30rem, 100%);
+    max-height: min(92dvh, 100%);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    text-align: center;
+    border-radius: 1.25rem;
+    background: rgba(12, 30, 48, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f2f7fb;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
-.btn {
-  padding: 16px 32px;
-  font-size: 18px;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 700;
-  color: #fff;
-  background: var(--primary-color);
-  border: none;
-  border-radius: 32px;
-  cursor: pointer;
-  transition: transform 0.2s, filter 0.2s;
+.overlay-card h2 {
+    font-size: clamp(1.5rem, 6vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #ffb894;
 }
 
-.btn:hover {
-  transform: scale(1.05);
-  filter: brightness(1.2);
+.overlay-card p {
+    font-size: clamp(0.9rem, 3.2vw, 1rem);
+    line-height: 1.5;
+    color: rgba(242, 247, 251, 0.82);
 }
 
-.btn:active {
-  transform: scale(0.95);
+.overlay-hint {
+    font-size: 0.8rem !important;
+    opacity: 0.65;
 }
 
-/* Responsive adjustments */
+.primary-btn {
+    min-height: var(--touch-target);
+    padding: 0.75rem 2rem;
+    border: 0;
+    border-radius: 999px;
+    background: #d97757;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.primary-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+}
+
+.primary-btn:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.primary-btn:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
+/* ------------------------------------------------------ controles de toque --- */
+
+.touch-controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    /* Os controles sobem acima do home indicator. */
+    padding: 0 max(0.9rem, var(--safe-left)) max(0.9rem, var(--safe-bottom))
+        max(0.9rem, var(--safe-right));
+    z-index: 15;
+}
+
+.touch-controls[hidden] {
+    display: none;
+}
+
+.touch-move {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.touch-btn {
+    /* 60px: acima do mínimo de 44px, porque aqui o dedo fica apoiado. */
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    background: rgba(10, 28, 45, 0.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 1.4rem;
+    font-family: inherit;
+    cursor: pointer;
+    touch-action: none;
+    transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.touch-btn.is-active,
+.touch-btn:active {
+    background: rgba(217, 119, 87, 0.75);
+    transform: scale(0.94);
+}
+
+.touch-btn--jump {
+    width: 74px;
+    height: 74px;
+    font-size: 1.6rem;
+    background: rgba(217, 119, 87, 0.42);
+}
+
+.touch-btn:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------- responsivo --- */
+
 @media (max-width: 768px) {
-  .overlay h2 {
-    font-size: 36px;
-  }
+    .game-shell {
+        gap: 0.5rem;
+    }
+
+    .hud {
+        padding: 0.45rem;
+        gap: 0.3rem;
+    }
+
+    .hud-chip {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.72rem;
+    }
 }
 
+/* Landscape curto: o header encolhe (shared.css já cuida) e os controles
+   ficam mais baixos e menores para não cobrir o chão da fase. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .hud-score {
-    top: 52px;
-  }
-  .control-btn {
-    width: 56px;
-    height: 56px;
-    font-size: 20px;
-  }
-  .action-btn {
-    width: 64px;
-    height: 64px;
-  }
-  .hud-controls {
-    bottom: 16px;
-  }
+    .game-shell {
+        gap: 0.4rem;
+        padding-bottom: max(0.25rem, var(--safe-bottom));
+    }
+
+    [data-lab-footer] {
+        display: none;
+    }
+
+    .touch-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 1.2rem;
+    }
+
+    .touch-btn--jump {
+        width: 62px;
+        height: 62px;
+        font-size: 1.35rem;
+    }
+
+    .hud {
+        padding: 0.35rem 0.5rem;
+    }
+}
+
+/* Com mouse/teclado os botões de toque só atrapalham a vista. */
+@media (pointer: fine) {
+    .touch-controls {
+        display: none;
+    }
 }

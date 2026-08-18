@@ -214,20 +214,50 @@ canvas.comparing {
     font-weight: 500;
 }
 
+/* O trilho continua com 6px de desenho, mas o input inteiro tem 44px de altura:
+   o alvo tocável é o controle todo, não a linha fininha. Por isso o fundo sai do
+   input (fica transparente) e vai para o pseudo-elemento do trilho. */
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
+    height: var(--touch-target);
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    touch-action: pan-y;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
     background: var(--bg-body);
     border-radius: 3px;
-    outline: none;
+}
+
+input[type="range"]::-moz-range-track {
+    height: 6px;
+    background: var(--bg-body);
+    border-radius: 3px;
+    border: 0;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+    /* (6px de trilho - 20px de thumb) / 2 = -7px: centraliza o polegar no trilho. */
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg-card);
+    box-shadow: 0 1px 3px var(--shadow-md);
+    transition: transform 0.1s;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
@@ -238,6 +268,20 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.1);
+}
+
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+input[type="range"]:focus-visible::-moz-range-thumb {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
 }
 
 /* Filters Filmstrip (Instagram-style: thumbnail preview + label) */

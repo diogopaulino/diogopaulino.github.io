@@ -97,7 +97,11 @@ body {
     align-items: center;
 }
 
+/* A tela é a superfície dos gestos (arrastar move/derruba, tocar gira), então
+   o navegador não pode roubar o gesto para rolar a página antes. */
 .screen {
+    touch-action: none;
+    cursor: pointer;
     background-color: var(--gb-screen-bg);
     width: 90%;
     height: 90%;

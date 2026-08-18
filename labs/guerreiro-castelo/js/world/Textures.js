@@ -88,6 +88,92 @@ export function darkWoodTexture(scene, uScale = 3, vScale = 3) {
     });
 }
 
+/* Casca de árvore: sulcos verticais irregulares sobre marrom acinzentado.
+   O `vScale` alto no uso (1x2) estica a fibra ao longo do tronco, que é como a
+   casca real se comporta. */
+export function barkTexture(scene, uScale = 1, vScale = 2) {
+    return cached('bark', scene, () => {
+        const size = 256;
+        const el = createCanvas(size);
+        const ctx = el.getContext('2d');
+        ctx.fillStyle = '#4a3524';
+        ctx.fillRect(0, 0, size, size);
+
+        // Sulcos: linhas verticais que serpenteiam, com largura e tom variados.
+        for (let i = 0; i < 44; i++) {
+            const x = hash2(i, 11) * size;
+            ctx.strokeStyle = hash2(i, 12) > 0.5 ? '#3a2818' : '#5d4530';
+            ctx.lineWidth = 2 + hash2(i, 13) * 5;
+            ctx.globalAlpha = 0.55;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.bezierCurveTo(
+                x + (hash2(i, 14) - 0.5) * 22, size * 0.33,
+                x + (hash2(i, 15) - 0.5) * 22, size * 0.66,
+                x + (hash2(i, 16) - 0.5) * 14, size
+            );
+            ctx.stroke();
+        }
+
+        // Nós da madeira.
+        for (let i = 0; i < 5; i++) {
+            const x = hash2(i, 21) * size;
+            const y = hash2(i, 22) * size;
+            const r = 6 + hash2(i, 23) * 10;
+            ctx.globalAlpha = 0.4;
+            ctx.strokeStyle = '#2d1e10';
+            ctx.lineWidth = 2;
+            for (let ring = 0; ring < 3; ring++) {
+                ctx.beginPath();
+                ctx.ellipse(x, y, r - ring * 2, (r - ring * 2) * 0.6, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        ctx.globalAlpha = 1;
+        grain(ctx, size, size, 30, 12);
+        return createBabylonDynamicTexture('tex_bark', el, scene, uScale, vScale);
+    });
+}
+
+/* Folhagem: aglomerado de manchas verdes em três tons. Aplicada nos cones da
+   copa, o que evita o verde chapado que denuncia primitiva sem textura. */
+export function leafTexture(scene, uScale = 2, vScale = 2) {
+    return cached('leaf', scene, () => {
+        const size = 256;
+        const el = createCanvas(size);
+        const ctx = el.getContext('2d');
+        ctx.fillStyle = '#2f5220';
+        ctx.fillRect(0, 0, size, size);
+
+        const tones = ['#3f6b28', '#264618', '#4f8033', '#1d3a12'];
+        for (let i = 0; i < 260; i++) {
+            const x = hash2(i, 31) * size;
+            const y = hash2(i, 32) * size;
+            const rx = 5 + hash2(i, 33) * 11;
+            const ry = rx * (0.45 + hash2(i, 34) * 0.4);
+            ctx.fillStyle = tones[Math.floor(hash2(i, 35) * tones.length) % tones.length];
+            ctx.globalAlpha = 0.5 + hash2(i, 36) * 0.4;
+            ctx.beginPath();
+            ctx.ellipse(x, y, rx, ry, hash2(i, 37) * Math.PI, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Alguns pontos de luz, como sol furando a copa.
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = '#8fc45c';
+        for (let i = 0; i < 30; i++) {
+            ctx.beginPath();
+            ctx.arc(hash2(i, 41) * size, hash2(i, 42) * size, 2 + hash2(i, 43) * 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        grain(ctx, size, size, 18, 15);
+        return createBabylonDynamicTexture('tex_leaf', el, scene, uScale, vScale);
+    });
+}
+
 export function stoneTexture(scene, uScale = 8, vScale = 8) {
     return cached('stone', scene, () => {
         const size = 256;

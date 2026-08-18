@@ -111,6 +111,10 @@
     min-height: 0;
     /* Lets the overlays scale their type with the LCD instead of the viewport. */
     container-type: inline-size;
+    /* O swipe de direção é lido aqui; sem isso o navegador rola a página antes
+       de o gesto chegar ao jogo. */
+    touch-action: none;
+    cursor: pointer;
 }
 
 canvas {
