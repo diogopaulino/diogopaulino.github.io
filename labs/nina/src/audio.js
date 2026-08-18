@@ -3,7 +3,7 @@
  * Hop / amora / amigo / festa são one-shots no Web Audio.
  */
 
-export class AmoraAudio {
+export class NinaAudio {
     constructor() {
         this.ctx = null;
         this.enabled = true;

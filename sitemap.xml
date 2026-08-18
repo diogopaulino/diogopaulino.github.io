@@ -19,7 +19,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/amora/</loc>
+    <loc>https://diogopaulino.com.br/labs/nina/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -127,7 +127,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/ilha-do-ambar/</loc>
+    <loc>https://diogopaulino.com.br/labs/jurassic/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -382,6 +382,11 @@
     <loc>https://diogopaulino.com.br/labs/ultimo-bastiao/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://diogopaulino.com.br/labs/claude-bros/</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 </urlset>

@@ -1,5 +1,5 @@
 /**
- * Amora corre e pula em terceira pessoa.
+ * Nina corre e pula em terceira pessoa.
  * Câmera orbita com inércia; o movimento é relativo ao yaw da câmera.
  */
 

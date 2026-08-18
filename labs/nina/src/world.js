@@ -74,7 +74,8 @@ export class Valley {
     }
 
     _terrain() {
-        const g = new THREE.CircleGeometry(WORLD_RADIUS, 96);
+        const size = WORLD_RADIUS * 2.4;
+        const g = new THREE.PlaneGeometry(size, size, 80, 80);
         g.rotateX(-Math.PI / 2);
         const pos = g.attributes.position;
         for (let i = 0; i < pos.count; i++) {

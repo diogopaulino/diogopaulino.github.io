@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-62_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-63_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,7 +32,7 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **62 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **63 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaixo e da URL `https://diogopaulino.com.br/labs/<slug>/`.
 
@@ -46,21 +46,21 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D no espírito Super Mario 64 — Nico, câmera Lakitu, pulo triplo e sete estrelas |
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D — Clara carrega a última chama, acende Vale-da-Bruma e traz o primeiro sol |
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
-| 🫐 **[Amora](https://diogopaulino.com.br/labs/amora/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
+| 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
-| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em Babylon.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
+| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
 | ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
 | 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
 | 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
-| 🦕 **[Ilha do Âmbar](https://diogopaulino.com.br/labs/ilha-do-ambar/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
+| 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
 | 🕸️ **[Silkline](https://diogopaulino.com.br/labs/silkline/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
 | 🥋 **[Vector Fighter](https://diogopaulino.com.br/labs/vector-fighter/)** | Luta 3D em polígonos no espírito Virtua Fighter — anel octogonal, ring out e K.O. |
 | ✨ **[Lúmina](https://diogopaulino.com.br/labs/lumina/)** | Reino flutuante estilo Disney — voe, colete desejos e acenda as lanternas do castelo |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
 | 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🌅 **[Aurelia Festival](https://diogopaulino.com.br/labs/aurelia/)** | Festival de velocidade estilo Forza — supercarros, Costa Aurélia ao pôr do sol e photo mode |
-| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Observatório de exoplanetas — gere sistemas, aproxime a órbita e forje oceanos, magma e anéis |
+| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |
 | ✨ **[Aetherion](https://diogopaulino.com.br/labs/aetherion/)** | Observatório estelar em shaders, com mundos vivos e um buraco negro |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
 | 🍞 **[Torradeira 64](https://diogopaulino.com.br/labs/toaster-64/)** | Kart 3D cômico — disquetes de ouro, Clippy, Pac-Man e o cachorro do Duck Hunt |
@@ -77,6 +77,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
+| 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Jogo de plataforma com IAs (Claude, Gemini e ChatGPT) usando PixiJS |
 | 🕹️ **[Cartucho 16](https://diogopaulino.com.br/labs/cartucho-16/)** | Platformer 16-bit estilo SNES — cinco mundos, locadora 94 e o Rei Glitch |
 | 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🌇 **[Santos Games](https://diogopaulino.com.br/labs/santos-games/)** | Praia de Santos para crianças — surfe, skate, bola, bike, raquete e barco |

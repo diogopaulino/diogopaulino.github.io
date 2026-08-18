@@ -17,7 +17,7 @@ import { hexToColor3 } from './utils.js';
 const matCache = new Map();
 
 function pbrMat(scene, key, colorHex, roughness = 0.8, metallic = 0.05, extra = {}) {
-    const fullKey = `${key}_${colorHex}_${roughness}_${metallic}_${JSON.stringify(extra)}`;
+    const fullKey = `${key}_${colorHex}_${roughness}_${metallic}`;
     if (matCache.has(fullKey)) return matCache.get(fullKey);
 
     const mat = new BABYLON.PBRMaterial(fullKey, scene);

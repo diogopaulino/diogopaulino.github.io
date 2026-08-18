@@ -142,6 +142,7 @@ class Game {
         if (sala) {
             this.hud.els.joinForm.hidden = false;
             this.hud.els.joinCode.value = sala.trim().toUpperCase();
+            this.startJoin(sala);
         }
     }
 
@@ -311,6 +312,7 @@ class Game {
         if (mode === 'online-host') this.hud.setNet(this.net.transport === 'broadcast' ? 'abas' : 'P2P host');
         else if (mode === 'online-guest') this.hud.setNet('P2P');
         else this.hud.setNet(mode === 'local' ? '2P local' : mode === 'cpu' ? 'CPU' : '');
+        this.input.localMultiplayer = mode === 'local';
         this.input.enabled = true;
     }
 

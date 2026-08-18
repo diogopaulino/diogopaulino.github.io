@@ -32,34 +32,34 @@ export const ARENA = {
 export const CRAFT = {
     radius: 1.12,
     hover: 0.62,
-    thrust: 38,
-    boostThrust: 28,
-    maxSpeed: 22,
-    boostMax: 30,
-    drag: 1.15,
-    grip: 7.2,
-    steer: 2.85,
+    thrust: 46,
+    boostThrust: 34,
+    maxSpeed: 26,
+    boostMax: 36,
+    drag: 1.25,
+    grip: 8.5,
+    steer: 3.1,
     reverseSteer: 0.72,
-    jump: 10.4,
-    gravity: 28,
-    mass: 2.4,
+    jump: 12.0,
+    gravity: 36,
+    mass: 3.5,
     boostMaxMeter: 1,
     boostDrain: 0.55,
     boostRegen: 0.28,
     padRegen: 1.35,
-    wallRest: 0.35
+    wallRest: 0.25
 };
 
 /** Bola de éter: mais leve, quica, pouco arrasto no ar. */
 export const BALL = {
     radius: 0.92,
-    mass: 0.85,
-    gravity: 22,
-    restitution: 0.74,
-    floorFriction: 0.82,
-    airDrag: 0.18,
-    maxSpeed: 34,
-    wallRest: 0.68
+    mass: 1.2,
+    gravity: 28,
+    restitution: 0.68,
+    floorFriction: 0.88,
+    airDrag: 0.12,
+    maxSpeed: 42,
+    wallRest: 0.60
 };
 
 /**

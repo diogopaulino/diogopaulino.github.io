@@ -141,7 +141,7 @@ export class Character {
                     : slot === 'body'
                         ? this.bodyAnchor
                         : this.accAnchor;
-                const y = slot === 'body' ? 1 : e;
+                const y = slot === 'body' ? 1 + breath : e;
                 anchor.scale.set(e, y, e);
             }
         }

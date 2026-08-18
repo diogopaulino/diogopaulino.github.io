@@ -85,7 +85,7 @@ class Game {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0xff9a72, 1);
-        this.renderer.toneMapping = THREE.NoToneMapping;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(55, 1, 0.12, 140);
@@ -163,11 +163,11 @@ class Game {
 
     applyQuality() {
         const q = this.qualityPreset();
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixel));
+        this.renderer.setPixelRatio(window.devicePixelRatio || 1);
         this.renderer.shadowMap.enabled = q.shadows;
         this.world.setShadows(q.shadows);
         setSnap(q.snap);
-        this.canvas.style.imageRendering = q.pixel < 0.9 ? 'pixelated' : 'auto';
+        this.canvas.style.imageRendering = 'auto';
     }
 
     resize() {
@@ -359,9 +359,9 @@ class Game {
         );
         const ground = this.world.heightAt(this._wanted.x, this._wanted.z);
         this._wanted.y = Math.max(this._wanted.y, ground + 1.6);
-        this.camera.position.x = damp(this.camera.position.x, this._wanted.x, 4.8, dt);
-        this.camera.position.y = damp(this.camera.position.y, this._wanted.y, 4.8, dt);
-        this.camera.position.z = damp(this.camera.position.z, this._wanted.z, 4.8, dt);
+        this.camera.position.x = damp(this.camera.position.x, this._wanted.x, 8.0, dt);
+        this.camera.position.y = damp(this.camera.position.y, this._wanted.y, 8.0, dt);
+        this.camera.position.z = damp(this.camera.position.z, this._wanted.z, 8.0, dt);
         this._look.set(
             this.player.position.x,
             this.player.position.y + cam.look + 0.85,

@@ -122,10 +122,10 @@ function addLegs(parent, hipY, spread, length, radius, mat, parts, zSpread = nul
     }
 }
 
-/** Raposinha Amora — jogadora, orelhas grandes e rabo fofo. */
+/** Raposinha Nina — jogadora, orelhas grandes e rabo fofo. */
 export function createFox() {
     const root = new THREE.Group();
-    root.name = 'amora';
+    root.name = 'nina';
     const parts = { legs: [], tail: null, head: null, body: null, ears: [] };
 
     const body = mesh(geo.sphereHi, MAT.fox, { scale: [0.42, 0.38, 0.55], pos: [0, 0.55, 0] });

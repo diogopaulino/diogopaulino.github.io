@@ -1,5 +1,5 @@
 /**
- * Ilha do Âmbar — laço principal, câmera cinematográfica e diário de campo.
+ * Jurassic — laço principal, câmera cinematográfica e diário de campo.
  */
 
 import * as THREE from 'three';
@@ -75,9 +75,9 @@ class Game {
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile() || detectSoftwareGL()) return QUALITY.medium;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.high : QUALITY.medium;
+        return big ? QUALITY.ultra : QUALITY.high;
     }
 
     async init() {

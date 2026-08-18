@@ -1,5 +1,5 @@
 /**
- * Amora — regras e fórmulas do vale.
+ * Nina — regras e fórmulas do vale.
  *
  * Objetivo: coletar amoras, oferecer uma a cada filhote perdido (Espaço)
  * e levá-los ao piquenique no ninho. Podem seguir em fila, estilo Pikmin.
