@@ -204,7 +204,12 @@
     }
 
     function seedStreams(layer) {
-        const count = Math.max(1, Math.round(layer.cols * (settings.density / 100) * 1.2));
+        /* As camadas de fundo usam células menores, então têm mais colunas — e
+           com a mesma densidade por coluna acabavam gerando 1,6x mais streams
+           que a camada da frente. Medido a 375px: a camada de trás (alpha 0,32)
+           respondia por 73% dos glifos do frame. O fator `scale` iguala a
+           contagem à da frente: a névoa de parallax continua lá, o custo não. */
+        const count = Math.max(1, Math.round(layer.cols * layer.scale * (settings.density / 100) * 1.2));
         layer.streams = new Array(count);
         for (let i = 0; i < count; i++) {
             layer.streams[i] = newStream(layer, true);

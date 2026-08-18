@@ -381,6 +381,9 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .btn {
     flex: 1;
     padding: 0.75rem;
+    /* Salvar/Copiar/Resetar ficavam com 36-40px de altura: o padding sozinho
+       não garante o alvo mínimo quando a fonte é pequena. */
+    min-height: var(--touch-target, 44px);
     border-radius: 0.5rem;
     font-weight: 600;
     font-size: 0.875rem;

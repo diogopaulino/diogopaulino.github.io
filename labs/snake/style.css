@@ -272,27 +272,40 @@ canvas {
 }
 
 /* Área de toque: as setas continuam com 30px de desenho (o d-pad precisa caber
-   no aparelho), mas o alvo real cresce para fora até ~44px. */
+   no aparelho), mas o alvo real cresce para fora até 44px.
+
+   O aparelho inteiro é escalado por `--device-scale` (0,79 num iPhone SE), e o
+   `transform` encolhe o alvo junto: 44px de CSS viravam ~35px de dedo. Dividir
+   pelo fator devolve os 44px físicos. Com scale 1 a conta dá exatamente os -7px
+   e -14px de antes. */
+.d-pad {
+    --hit: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 30px) / 2);
+}
+
 .d-pad > button::after {
     content: '';
     position: absolute;
-    inset: -7px;
+    inset: calc(var(--hit) * -1);
 }
 
 .d-pad-up::after {
-    inset: -14px -7px 0 -7px;
+    inset: calc(var(--hit) * -2) calc(var(--hit) * -1) 0 calc(var(--hit) * -1);
+    /* Cima e baixo vêm antes de esquerda/direita no DOM, então perdiam os
+       cantos da própria área ampliada. O z-index devolve a faixa inteira. */
+    z-index: 1;
 }
 
 .d-pad-down::after {
-    inset: 0 -7px -14px -7px;
+    inset: 0 calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1);
+    z-index: 1;
 }
 
 .d-pad-left::after {
-    inset: -7px 0 -7px -14px;
+    inset: calc(var(--hit) * -1) 0 calc(var(--hit) * -1) calc(var(--hit) * -2);
 }
 
 .d-pad-right::after {
-    inset: -7px -14px -7px 0;
+    inset: calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1) 0;
 }
 
 .d-pad-center {
@@ -356,6 +369,8 @@ canvas {
 .btn-b {
     width: 35px;
     height: 35px;
+    /* Ancora o ::after que amplia o alvo sem engordar o botão desenhado. */
+    position: relative;
     border-radius: 50%;
     background-color: var(--gb-btn-action);
     border: none;
@@ -365,6 +380,14 @@ canvas {
     cursor: pointer;
     touch-action: manipulation;
     transition: filter 0.15s ease;
+}
+
+.btn-a::after,
+.btn-b::after {
+    content: '';
+    position: absolute;
+    inset: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 35px) / -2);
+    border-radius: 50%;
 }
 
 .btn-a:hover,
@@ -406,6 +429,8 @@ canvas {
 .btn-start {
     width: 50px;
     height: 12px;
+    /* Ancora o ::after: a barrinha de 12px é fina demais para o dedo. */
+    position: relative;
     border-radius: 10px;
     background-color: var(--gb-btn-meta);
     border: none;
@@ -414,6 +439,13 @@ canvas {
     cursor: pointer;
     touch-action: manipulation;
     transition: filter 0.15s ease;
+}
+
+.btn-select::after,
+.btn-start::after {
+    content: '';
+    position: absolute;
+    inset: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 12px) / -2) 0;
 }
 
 .btn-select:hover,

@@ -13,6 +13,11 @@ let gameWidth = 0;
 let gameHeight = 0;
 let soundEnabled = true;
 let highScore = Number(localStorage.getItem('neonInvadersHighScore') || 0);
+// Tiro contínuo: segurar espaço ou o botão dispara em cadência fixa, em vez de
+// exigir um toque por tiro (no celular isso virava tapinha frenético).
+const FIRE_INTERVAL = 0.14; // segundos entre disparos com o gatilho preso
+let fireHeld = false;
+let fireCooldown = 0;
 
 // Entities
 const player = {
@@ -89,7 +94,8 @@ function resize() {
     gameWidth = parent.clientWidth;
     gameHeight = parent.clientHeight;
 
-    const dpr = window.devicePixelRatio || 1;
+    /* Cap em 2: acima disso o ganho visual some e o fill-rate no celular dobra. */
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     canvas.style.width = `${gameWidth}px`;
     canvas.style.height = `${gameHeight}px`;
@@ -165,17 +171,25 @@ window.addEventListener('keydown', e => {
         return;
     }
     if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = true;
-    if (e.key === ' ' && gameRunning) fireBullet();
+    if (e.key === ' ' && gameRunning && !e.repeat) {
+        fireHeld = true;
+        fireCooldown = 0;
+    }
 });
 
 window.addEventListener('keyup', e => {
     if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = false;
+    if (e.key === ' ') fireHeld = false;
 });
 
 // Touch/Mouse support for shooting
-canvas.addEventListener('mousedown', () => {
-    if (gameRunning) fireBullet();
+canvas.addEventListener('pointerdown', () => {
+    if (!gameRunning) return;
+    fireHeld = true;
+    fireCooldown = 0;
 });
+window.addEventListener('pointerup', () => { fireHeld = false; });
+window.addEventListener('pointercancel', () => { fireHeld = false; });
 
 canvas.addEventListener('pointermove', e => {
     if (!gameRunning || e.pointerType === 'mouse') return;
@@ -244,6 +258,13 @@ function fireBullet() {
 
 // Game Loop
 function update(dt) {
+    // Gatilho preso: dispara na cadência de FIRE_INTERVAL enquanto estiver ativo.
+    fireCooldown -= dt;
+    if (fireHeld && fireCooldown <= 0) {
+        fireBullet();
+        fireCooldown = FIRE_INTERVAL;
+    }
+
     // Player Movement
     if (keys.ArrowLeft || keys.a) player.dx = -player.speed;
     else if (keys.ArrowRight || keys.d) player.dx = player.speed;
@@ -434,7 +455,9 @@ function draw() {
 
 function loop(timestamp) {
     if (!gameRunning) return;
-    const dt = (timestamp - lastTime) / 1000;
+    // Teto de 1/30s: sem ele, um frame longo (troca de aba, GC) fazia os
+    // inimigos pularem várias linhas e os tiros atravessarem a nave.
+    const dt = Math.min((timestamp - lastTime) / 1000, 1 / 30);
     lastTime = timestamp;
 
     update(dt);
@@ -505,15 +528,37 @@ function bindHoldControl(element, keyName) {
 bindHoldControl(document.getElementById('moveLeft'), 'ArrowLeft');
 bindHoldControl(document.getElementById('moveRight'), 'ArrowRight');
 
-document.getElementById('shootBtn').addEventListener('pointerdown', e => {
+const shootBtn = document.getElementById('shootBtn');
+shootBtn.addEventListener('pointerdown', e => {
     e.preventDefault();
-    if (gameRunning) fireBullet();
+    if (!gameRunning) return;
+    fireHeld = true;
+    fireCooldown = 0;
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(evt => {
+    shootBtn.addEventListener(evt, e => {
+        e.preventDefault();
+        fireHeld = false;
+    });
 });
 
 document.getElementById('soundToggle').addEventListener('click', e => {
     soundEnabled = !soundEnabled;
     e.currentTarget.setAttribute('aria-pressed', String(soundEnabled));
     e.currentTarget.lastElementChild.textContent = soundEnabled ? 'Som ativado' : 'Som desativado';
+});
+
+// Aba escondida: congela o jogo em vez de deixar a horda avançar sozinha.
+document.addEventListener('visibilitychange', () => {
+    if (!gameRunning) return;
+    if (document.hidden) {
+        cancelAnimationFrame(animationId);
+        fireHeld = false;
+        keys.ArrowLeft = keys.ArrowRight = keys.a = keys.d = false;
+    } else {
+        lastTime = performance.now();
+        animationId = requestAnimationFrame(loop);
+    }
 });
 
 // Initial Resize

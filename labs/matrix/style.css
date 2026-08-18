@@ -664,6 +664,7 @@ input[type="range"]:focus-visible {
     gap: 8px;
     width: 100%;
     padding: 10px;
+    min-height: var(--touch-target, 44px);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
@@ -704,6 +705,7 @@ input[type="range"]:focus-visible {
     justify-content: center;
     gap: 6px;
     padding: 9px 10px;
+    min-height: var(--touch-target, 44px);
     border-radius: 8px;
     border: 1px solid;
     cursor: pointer;
@@ -1058,4 +1060,9 @@ body.cinema.pointer-idle .cinema-exit {
     }
     .icon-btn,
     .close-btn { min-width: 44px; min-height: 44px; }
+
+    /* Painel de controles: no toque cada botão precisa dos 44px, mesmo os
+       compactos desenhados para o mouse. */
+    .glyph-btn { min-height: var(--touch-target, 44px); }
+    .mini-btn { width: var(--touch-target, 44px); min-height: var(--touch-target, 44px); }
 }

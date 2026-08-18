@@ -85,8 +85,11 @@ body {
     padding: 1px 4px;
     cursor: pointer;
     /* A barra de menu imita o Windows 95, então o item continua raso; o alvo
-       tocável cresce por pseudo-elemento sem engordar a barra. */
+       tocável cresce por pseudo-elemento sem engordar a barra. O z-index é o
+       que faz esse alvo valer: sem ele o conteúdo que vem depois no DOM ficava
+       por cima da parte que transborda da barra e comia 10px do toque. */
     position: relative;
+    z-index: 3;
 }
 
 .menu-item::after {
@@ -322,6 +325,8 @@ canvas {
     pointer-events: auto;
     text-shadow: inherit;
     width: 100%;
+    /* A linha de texto dava 42px de altura: 2px abaixo do alvo mínimo. */
+    min-height: var(--touch-target, 44px);
 }
 
 .start-button:focus-visible {

@@ -532,11 +532,13 @@ kbd {
         max-width: 100%;
     }
 
+    /* Antes este bloco encolhia os botões para 40px — justamente no tamanho de
+       tela onde eles são tocados com o dedo. Mantém os 44px do padrão. */
     .header-tools button {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        min-height: 40px;
+        width: var(--touch-target, 44px);
+        height: var(--touch-target, 44px);
+        min-width: var(--touch-target, 44px);
+        min-height: var(--touch-target, 44px);
     }
 
     footer[data-lab-footer] {
@@ -639,9 +641,9 @@ kbd {
     /* Amostras de 24px são impossíveis de acertar com o dedo, e alargar o alvo
        por pseudo-elemento não resolve numa grade densa (as áreas se sobrepõem e
        o toque escolhe a cor vizinha). A grade passa a preencher a largura
-       disponível com células de no mínimo 40px. */
+       disponível com células de no mínimo 44px. */
     .side-bar.right .color-palette {
-        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(var(--touch-target, 44px), 1fr));
         justify-content: stretch;
         gap: 6px;
     }
@@ -649,8 +651,8 @@ kbd {
     .side-bar.right .color-palette .color-swatch {
         width: 100%;
         height: auto;
-        min-width: 40px;
-        min-height: 40px;
+        min-width: var(--touch-target, 44px);
+        min-height: var(--touch-target, 44px);
         aspect-ratio: 1;
     }
 

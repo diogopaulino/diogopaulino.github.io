@@ -163,7 +163,8 @@ class Game {
 
     applyQuality() {
         const q = this.qualityPreset();
-        this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+        /* Retina sem cap custa 4-9x de fill-rate no celular: o preset limita. */
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixel));
         this.renderer.shadowMap.enabled = q.shadows;
         this.world.setShadows(q.shadows);
         setSnap(q.snap);

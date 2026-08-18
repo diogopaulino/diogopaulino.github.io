@@ -271,7 +271,9 @@ header[data-lab-header] {
 
 .slot-row {
     display: grid;
-    grid-template-columns: 2.2rem 1fr 2.2rem;
+    /* As colunas das setas seguem o alvo de toque: 2.2rem deixava ‹ › com 35px
+       de largura, curto demais para o dedo. */
+    grid-template-columns: var(--touch-target) 1fr var(--touch-target);
     gap: 0.25rem;
     align-items: center;
 }
@@ -328,6 +330,8 @@ header[data-lab-header] {
 
 .btn {
     padding: 0.55rem 0.9rem;
+    /* O padding sozinho parava em 36px de altura. */
+    min-height: var(--touch-target, 44px);
     border-radius: 12px;
     background: linear-gradient(180deg, color-mix(in oklab, var(--gold) 78%, white), var(--gold));
     color: #2a1a10;

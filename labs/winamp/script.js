@@ -1085,8 +1085,13 @@ function applySkin(key) {
 function fitPlayer() {
     const stageWidth = isCompact ? 550 : 1100;
     const stageHeight = isCompact ? 783 : 464;
-    const iconRail = isCompact ? 84 : 132;
-    const horizontalRoom = Math.max(260, window.innerWidth - iconRail - 18);
+    /* Precisa bater com os insets de `.player-workspace` no CSS: a conta antiga
+       descontava a trilha de ícones e mais 18px de folga que o layout já não
+       reservava, e o player saía menor do que cabia. Com o player a 0,5x cada
+       botão do transporte tem 20px de dedo, então cada ponto de escala conta. */
+    const iconRail = isCompact ? 77 : 132;
+    const gutter = isCompact ? 7 : 18;
+    const horizontalRoom = Math.max(260, window.innerWidth - iconRail - gutter);
     const verticalRoom = Math.max(250, window.innerHeight - 58);
     const scale = Math.min(1, horizontalRoom / stageWidth, verticalRoom / stageHeight);
     document.documentElement.style.setProperty("--player-scale", String(Math.max(0.36, scale)));
