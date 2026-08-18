@@ -4,29 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Paint Lab | Diogo Paulino</title>
+    <title>Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino</title>
     <meta name="description"
         content="Editor de desenho no navegador: pincel, borracha, balde de tinta, conta-gotas, formas, opacidade, desfazer/refazer e exportação em PNG.">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#fafbfc">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/paint/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:image:alt" content="Diogo Paulino">
-    <meta name="twitter:title" content="Paint Lab | Diogo Paulino">
+    <meta name="twitter:title" content="Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino">
     <meta name="twitter:description" content="Editor de desenho vanilla em Canvas: pincel, formas, balde de tinta, conta-gotas e exportação em PNG.">
-    <meta name="twitter:image" content="https://diogopaulino.com.br/labs/paint/og-paint.jpg">
-    <meta property="og:title" content="Paint Lab | Diogo Paulino">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:title" content="Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino">
     <meta property="og:description"
         content="Editor de desenho vanilla em Canvas: pincel, formas, balde de tinta, conta-gotas e exportação em PNG.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/paint/">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="pt_BR">
-    <meta property="og:image" content="https://diogopaulino.com.br/labs/paint/og-paint.jpg">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
     <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=9">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=7">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -45,7 +48,7 @@
             "name": "Diogo Paulino",
             "url": "https://diogopaulino.com.br/"
           },
-          "image": "https://diogopaulino.com.br/labs/paint/og-paint.jpg"
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
         },
         {
           "@type": "BreadcrumbList",
@@ -152,42 +155,40 @@
                     Paint Lab
                 </div>
             </template>
+            <template data-slot="actions">
+                <div class="header-status">
+                    <span class="tool-readout">
+                        <span class="tool-readout-label">Ferramenta</span>
+                        <strong id="activeToolName">Pincel</strong>
+                    </span>
+                    <span class="canvas-readout" id="canvasReadout">800 × 600</span>
+                </div>
+                <div class="header-tools">
+                    <button id="undoBtn" type="button" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-undo"></use>
+                        </svg>
+                    </button>
+                    <button id="redoBtn" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer" disabled>
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-redo"></use>
+                        </svg>
+                    </button>
+                    <div class="separator" aria-hidden="true"></div>
+                    <button id="clearBtn" type="button" title="Limpar tela" aria-label="Limpar tela">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-trash"></use>
+                        </svg>
+                    </button>
+                    <button id="saveBtn" class="primary-btn" type="button" title="Baixar como PNG">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <use href="#i-download"></use>
+                        </svg>
+                        <span>Salvar</span>
+                    </button>
+                </div>
+            </template>
         </header>
-
-        <div class="toolbar top-bar">
-            <div class="left-section">
-                <span class="tool-readout">
-                    <span class="tool-readout-label">Ferramenta</span>
-                    <strong id="activeToolName">Pincel</strong>
-                </span>
-                <span class="canvas-readout" id="canvasReadout">800 × 600</span>
-            </div>
-
-            <div class="actions">
-                <button id="undoBtn" type="button" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#i-undo"></use>
-                    </svg>
-                </button>
-                <button id="redoBtn" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer" disabled>
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#i-redo"></use>
-                    </svg>
-                </button>
-                <div class="separator" aria-hidden="true"></div>
-                <button id="clearBtn" type="button" title="Limpar tela" aria-label="Limpar tela">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#i-trash"></use>
-                    </svg>
-                </button>
-                <button id="saveBtn" class="primary-btn" type="button" title="Baixar como PNG">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#i-download"></use>
-                    </svg>
-                    <span>Salvar</span>
-                </button>
-            </div>
-        </div>
 
         <main class="workspace">
             <aside class="toolbar side-bar left" aria-label="Ferramentas">
@@ -305,7 +306,7 @@
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
     <script src="/labs/shared.js?v=8" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>
