@@ -960,8 +960,11 @@ body.cinema.pointer-idle .cinema-exit {
 
 .boot-skip {
     position: absolute;
-    bottom: 28px;
-    right: 28px;
+    /* Primeiro controle que o usuário encontra no lab (a abertura roda antes de
+       tudo), e ficava com 24px de altura — precisa caber o dedo. */
+    min-height: var(--touch-target);
+    bottom: max(28px, var(--safe-bottom));
+    right: max(28px, var(--safe-right));
     background: transparent;
     border: 1px solid var(--panel-border);
     border-radius: 6px;

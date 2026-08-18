@@ -520,3 +520,20 @@ body {
         min-height: 40px;
     }
 }
+
+/* Ícones agora são SVG inline (antes vinham de um pacote de fontes num CDN:
+   quando ele não carregava, o botão de apagar virava um quadrado vazio sem
+   rótulo). O tamanho acompanha a tipografia do botão que os contém. */
+.icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex: 0 0 auto;
+    display: inline-block;
+    vertical-align: -0.18em;
+}
+
+.mode-btn .icon,
+.app-logo .icon {
+    width: 1.1em;
+    height: 1.1em;
+}
