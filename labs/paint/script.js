@@ -8,6 +8,7 @@ let currentTool = 'brush';
 let brushSize = 5;
 let currentColor = '#000000';
 let currentOpacity = 1;
+let fillShapes = false;
 let snapshot;
 let history = [];
 let historyIndex = -1;
@@ -20,6 +21,8 @@ const brushSizeInput = document.getElementById('brushSize');
 const brushSizeVal = document.getElementById('brushSizeVal');
 const opacityInput = document.getElementById('opacity');
 const opacityVal = document.getElementById('opacityVal');
+const fillShapesInput = document.getElementById('fillShapes');
+const activeToolName = document.getElementById('activeToolName');
 const swatches = document.querySelectorAll('.color-swatch');
 
 // Actions Elements
@@ -41,13 +44,23 @@ const initCanvas = () => {
 
     // Save initial state
     saveState();
-
-    // Center canvas in container
-    centerCanvas();
 };
 
-const centerCanvas = () => {
-    // CSS handles centering via flexbox, but we ensure it doesn't overflow weirdly
+const getCanvasPoint = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+    };
+};
+
+const paintShape = () => {
+    if (fillShapes && currentTool !== 'line') {
+        ctx.fill();
+    }
+    ctx.stroke();
 };
 
 // History Management
@@ -94,11 +107,8 @@ const restoreState = (dataUrl) => {
 };
 
 const updateUndoRedoButtons = () => {
-    undoBtn.style.opacity = historyIndex > 0 ? '1' : '0.5';
-    undoBtn.style.pointerEvents = historyIndex > 0 ? 'auto' : 'none';
-
-    redoBtn.style.opacity = historyIndex < history.length - 1 ? '1' : '0.5';
-    redoBtn.style.pointerEvents = historyIndex < history.length - 1 ? 'auto' : 'none';
+    undoBtn.disabled = historyIndex <= 0;
+    redoBtn.disabled = historyIndex >= history.length - 1;
 };
 
 // Drawing Logic
@@ -182,9 +192,9 @@ let startX, startY;
 
 const startDrawFixed = (e) => {
     isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
+    const { x, y } = getCanvasPoint(e);
+    startX = x;
+    startY = y;
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
@@ -203,9 +213,7 @@ const startDrawFixed = (e) => {
 const drawingFixed = (e) => {
     if (!isDrawing) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCanvasPoint(e);
 
     ctx.strokeStyle = currentColor;
     ctx.fillStyle = currentColor;
@@ -227,17 +235,12 @@ const drawingFixed = (e) => {
         ctx.beginPath();
 
         if (currentTool === 'rect') {
-            let w = x - startX;
-            let h = y - startY;
-            ctx.rect(startX, startY, w, h);
-            ctx.fill(); // Or stroke? Let's do fill for now or maybe stroke based on a toggle? 
-            // Standard paint usually has outline or fill. Let's do stroke for now as it's simpler for a "lab"
-            // Actually, let's do stroke to match the brush color/size
-            ctx.stroke();
+            ctx.rect(startX, startY, x - startX, y - startY);
+            paintShape();
         } else if (currentTool === 'circle') {
-            let radius = Math.sqrt(Math.pow((x - startX), 2) + Math.pow((y - startY), 2));
+            const radius = Math.hypot(x - startX, y - startY);
             ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
-            ctx.stroke();
+            paintShape();
         } else if (currentTool === 'line') {
             ctx.moveTo(startX, startY);
             ctx.lineTo(x, y);
@@ -345,16 +348,24 @@ canvas.addEventListener('touchend', (e) => {
 
 toolBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelector('.tool-btn.active').classList.remove('active');
-        btn.classList.add('active');
+        toolBtns.forEach((other) => {
+            const isActive = other === btn;
+            other.classList.toggle('active', isActive);
+            other.setAttribute('aria-pressed', String(isActive));
+        });
         currentTool = btn.dataset.tool;
+        if (activeToolName) {
+            activeToolName.textContent = btn.dataset.name || currentTool;
+        }
     });
 });
 
 const setColor = (color) => {
     currentColor = color;
     colorPicker.value = color;
-    colorPreview.style.backgroundColor = color;
+    if (colorPreview) {
+        colorPreview.style.backgroundColor = color;
+    }
     // Marca a amostra correspondente (se a cor veio da paleta) para que o anel de seleção
     // acompanhe a cor ativa em vez de ficar preso na primeira.
     swatches.forEach((sw) => {
@@ -378,6 +389,13 @@ opacityInput.addEventListener('input', (e) => {
     currentOpacity = e.target.value / 100;
     opacityVal.textContent = `${e.target.value}%`;
 });
+
+if (fillShapesInput) {
+    fillShapes = fillShapesInput.checked;
+    fillShapesInput.addEventListener('change', () => {
+        fillShapes = fillShapesInput.checked;
+    });
+}
 
 undoBtn.addEventListener('click', undo);
 redoBtn.addEventListener('click', redo);
