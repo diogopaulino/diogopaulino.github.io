@@ -328,7 +328,11 @@ header .app-logo .logo-mark {
     color: var(--bean);
     font-weight: 600;
     font-size: 0.85rem;
-    padding: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    /* Botão de texto continua sem moldura, mas com altura de alvo tocável. */
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
 }
 
 .text-btn:hover {

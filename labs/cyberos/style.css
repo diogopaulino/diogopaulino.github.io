@@ -427,6 +427,18 @@ body .container {
   cursor: pointer;
   opacity: 0.7;
   padding: 0 0.2rem;
+  /* O glifo continua pequeno (é uma barra de título retrô), mas a área tocável
+     cresce por pseudo-elemento até 44px. */
+  position: relative;
+}
+
+.win-close::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  transform: translate(-50%, -50%);
 }
 
 .win-close:hover {

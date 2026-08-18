@@ -404,12 +404,31 @@ h2 {
 }
 
 .slider input[type="range"] {
-    width: 100%;
+    -webkit-appearance: none;
     appearance: none;
+    width: 100%;
+    /* 44px de alvo tocável; o trilho visível de 4px vive nos
+       pseudo-elementos abaixo, então o desenho não muda. */
+    height: var(--touch-target);
+    border: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    touch-action: pan-y;
+}
+
+.slider input[type="range"]::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 99px;
     background: color-mix(in oklab, white 14%, transparent);
-    outline: none;
+    border: none;
+}
+
+.slider input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 99px;
+    background: color-mix(in oklab, white 14%, transparent);
+    border: none;
 }
 
 .slider input[type="range"]::-webkit-slider-thumb {
@@ -420,6 +439,8 @@ h2 {
     background: var(--gold);
     box-shadow: 0 0 10px #f0c67588;
     cursor: grab;
+    /* (trilho 4px - thumb 14px) / 2 */
+    margin-top: -5px;
 }
 
 .dock {

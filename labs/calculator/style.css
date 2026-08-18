@@ -67,6 +67,9 @@ body {
     border: none;
     background: transparent;
     padding: 10px;
+    /* A aba é o controle principal do lab: precisa caber o dedo mesmo quando o
+       padding encolhe em telas baixas. */
+    min-height: var(--touch-target);
     border-radius: 12px;
     font-size: 0.9rem;
     font-weight: 500;

@@ -167,6 +167,183 @@
         document.head.appendChild(icon);
     }
 
+    /* --- LabAudio ----------------------------------------------------------
+       Sintetizador mínimo compartilhado pelos labs: nenhum asset de áudio, só
+       osciladores criados na hora. Existe aqui (e não em cada lab) porque a
+       parte chata é sempre a mesma — política de autoplay, mudo persistido e o
+       botão do header.
+
+       O AudioContext só nasce no primeiro som pedido depois de um gesto do
+       usuário; antes disso os navegadores recusam ou criam um contexto suspenso
+       que nunca toca. */
+    const AudioAPI = (function () {
+        let ctx = null;
+        let master = null;
+        let storageKey = 'labs:muted';
+        let muted = false;
+        let volume = 0.5;
+        const listeners = new Set();
+
+        function readMuted() {
+            try {
+                return localStorage.getItem(storageKey) === '1';
+            } catch (err) {
+                return false;
+            }
+        }
+
+        function persist() {
+            try {
+                localStorage.setItem(storageKey, muted ? '1' : '0');
+            } catch (err) {
+                /* Storage can be unavailable in private browsing contexts. */
+            }
+        }
+
+        function ensureContext() {
+            if (muted) return null;
+            if (!ctx) {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return null;
+                ctx = new Ctx();
+                master = ctx.createGain();
+                master.gain.value = volume;
+                master.connect(ctx.destination);
+            }
+            if (ctx.state === 'suspended') ctx.resume();
+            return ctx;
+        }
+
+        /* Uma nota. `slideTo` faz o glissando usado em power-ups e quedas;
+           `delay` agenda sem setTimeout, então a sequência não desalinha se a
+           thread principal engasgar. */
+        function tone(options) {
+            const audio = ensureContext();
+            if (!audio) return;
+
+            const {
+                freq = 440,
+                duration = 0.12,
+                type = 'square',
+                gain = 0.18,
+                delay = 0,
+                slideTo = null,
+                attack = 0.006
+            } = options || {};
+
+            const start = audio.currentTime + delay;
+            const osc = audio.createOscillator();
+            const amp = audio.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, start);
+            if (slideTo && slideTo > 0) {
+                osc.frequency.exponentialRampToValueAtTime(slideTo, start + duration);
+            }
+
+            amp.gain.setValueAtTime(0.0001, start);
+            amp.gain.linearRampToValueAtTime(gain, start + attack);
+            amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+            osc.connect(amp).connect(master);
+            osc.start(start);
+            osc.stop(start + duration + 0.03);
+        }
+
+        /* Ruído branco filtrado: percussão, explosão, passo. */
+        function noise(options) {
+            const audio = ensureContext();
+            if (!audio) return;
+
+            const { duration = 0.18, gain = 0.12, delay = 0, filter = 1200, type = 'lowpass' } = options || {};
+            const start = audio.currentTime + delay;
+            const frames = Math.max(1, Math.floor(audio.sampleRate * duration));
+            const buffer = audio.createBuffer(1, frames, audio.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+
+            const src = audio.createBufferSource();
+            src.buffer = buffer;
+
+            const biquad = audio.createBiquadFilter();
+            biquad.type = type;
+            biquad.frequency.value = filter;
+
+            const amp = audio.createGain();
+            amp.gain.setValueAtTime(gain, start);
+            amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+            src.connect(biquad).connect(amp).connect(master);
+            src.start(start);
+            src.stop(start + duration + 0.02);
+        }
+
+        /* Arpejo: lista de frequências tocadas em passos regulares. */
+        function sequence(freqs, options) {
+            const { step = 0.07, duration = 0.1, type = 'square', gain = 0.16 } = options || {};
+            freqs.forEach((freq, i) => tone({ freq, duration, type, gain, delay: i * step }));
+        }
+
+        function setMuted(next) {
+            muted = Boolean(next);
+            persist();
+            if (master) master.gain.value = muted ? 0 : volume;
+            listeners.forEach(fn => fn(muted));
+        }
+
+        function configure(options) {
+            if (options && options.storageKey) {
+                storageKey = options.storageKey;
+                muted = readMuted();
+            }
+            if (options && typeof options.volume === 'number') {
+                volume = Math.max(0, Math.min(1, options.volume));
+                if (master && !muted) master.gain.value = volume;
+            }
+            return AudioAPI;
+        }
+
+        /* Botão de mudo do header. Devolve o elemento para o lab posicionar. */
+        function mountToggle(target) {
+            const host = typeof target === 'string' ? document.querySelector(target) : target;
+            if (!host) return null;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'lab-icon-btn';
+
+            const sync = () => {
+                btn.textContent = muted ? '🔇' : '🔊';
+                btn.setAttribute('aria-pressed', String(muted));
+                btn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
+                btn.title = muted ? 'Ativar som' : 'Desativar som';
+            };
+
+            btn.addEventListener('click', () => {
+                setMuted(!muted);
+                if (!muted) tone({ freq: 880, duration: 0.07, gain: 0.14 });
+            });
+
+            listeners.add(sync);
+            sync();
+            host.appendChild(btn);
+            return btn;
+        }
+
+        muted = readMuted();
+
+        return Object.freeze({
+            configure,
+            tone,
+            noise,
+            sequence,
+            mountToggle,
+            setMuted,
+            isMuted: () => muted,
+            onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); }
+        });
+    })();
+
     function init() {
         ensureFavicon();
         initChrome();
@@ -175,6 +352,7 @@
 
     applySavedTheme();
     window.LabShell = Object.freeze({ init, buildHeader, buildFooter });
+    window.LabAudio = AudioAPI;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });

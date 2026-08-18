@@ -182,3 +182,46 @@ export class GameAudio {
         }
     }
 }
+
+/**
+ * Fachada de combate usada pelo loop do jogo.
+ *
+ * `GameAudio` fala em termos de síntese (`unlock`, `shot`, `setMuted`); o jogo
+ * fala em termos de ação (`init`, `shoot`, `playerHurt`). Esta camada traduz
+ * uma na outra — é o contrato que `main.js` importa.
+ */
+export class CombatAudio extends GameAudio {
+    /** Destrava o contexto no primeiro gesto do usuário. */
+    init() {
+        return this.unlock();
+    }
+
+    /** Alterna o mudo e devolve o novo estado, para o botão do HUD refletir. */
+    toggleMute() {
+        this.setMuted(!this.muted);
+        return this.muted;
+    }
+
+    /** Disparo do jogador: o timbre muda com a arma equipada. */
+    shoot(kind = 'garand') {
+        this.shot(kind);
+    }
+
+    /** Inimigo atirando: mesmo disparo, mais abafado e distante. */
+    enemyShoot() {
+        this._noiseBurst(0.12, 0.14, 400, 0.6);
+        this._tone(110, 0.07, 0.06, 'square');
+    }
+
+    /** Gatilho sem munição: só o estalo metálico do ferrolho. */
+    empty() {
+        this._noiseBurst(0.05, 0.09, 2200, 2.2);
+    }
+
+    /** Jogador levando dano: impacto grave com zumbido curto no ouvido. */
+    playerHurt() {
+        this._noiseBurst(0.22, 0.26, 160, 0.5);
+        this._tone(90, 0.3, 0.16, 'sine');
+        this._tone(1800, 0.5, 0.05, 'sine');
+    }
+}
