@@ -5,14 +5,44 @@ const damp = (current, target, smoothing, dt) => B.Scalar.Lerp(current, target, 
 
 let knightContainer = null;
 let instanceId = 0;
+let textureCache = null;
 
-const CHARACTER_ROOT = 'https://models.babylonjs.com/';
+const CHARACTER_ROOT = 'https://raw.githubusercontent.com/mrdoob/three.js/master/manual/examples/resources/models/knight/';
+const CHARACTER_TEXTURES = {
+  armor: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_diff_1k.jpg',
+  armorNormal: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_nor_gl_1k.jpg',
+  armorRoughness: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_rough_1k.jpg',
+  leather: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_albedo_1k.jpg',
+  leatherNormal: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_nor_gl_1k.jpg',
+  leatherRoughness: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_rough_1k.jpg'
+};
+
+function characterTextures(scene) {
+  if (textureCache) return textureCache;
+  const load = (path, gammaSpace = true) => {
+    const image = new B.Texture(path, scene, true, false, B.Texture.TRILINEAR_SAMPLINGMODE);
+    image.wrapU = B.Texture.WRAP_ADDRESSMODE;
+    image.wrapV = B.Texture.WRAP_ADDRESSMODE;
+    image.uScale = image.vScale = 3.4;
+    image.gammaSpace = gammaSpace;
+    return image;
+  };
+  textureCache = {
+    armor: load(CHARACTER_TEXTURES.armor),
+    armorNormal: load(CHARACTER_TEXTURES.armorNormal, false),
+    armorRoughness: load(CHARACTER_TEXTURES.armorRoughness, false),
+    leather: load(CHARACTER_TEXTURES.leather),
+    leatherNormal: load(CHARACTER_TEXTURES.leatherNormal, false),
+    leatherRoughness: load(CHARACTER_TEXTURES.leatherRoughness, false)
+  };
+  return textureCache;
+}
 
 /** Carrega uma única malha humana esquelética; cada combatente recebe sua própria instância e animações. */
 export async function loadCharacterAssets(scene, onProgress) {
   knightContainer = await B.SceneLoader.LoadAssetContainerAsync(
     CHARACTER_ROOT,
-    'HVGirl.glb',
+    'KnightCharacter.gltf',
     scene,
     event => {
       if (!event.lengthComputable || !onProgress) return;
@@ -22,29 +52,53 @@ export async function loadCharacterAssets(scene, onProgress) {
   knightContainer.animationGroups.forEach(group => group.stop());
 }
 
-function tuneMaterial(material, enemy, boss, kind) {
+function tuneMaterial(material, enemy, boss, kind, textures) {
   if (!material) return;
   if (material.subMaterials) {
-    material.subMaterials.forEach(subMaterial => tuneMaterial(subMaterial, enemy, boss, kind));
+    material.subMaterials.forEach(subMaterial => tuneMaterial(subMaterial, enemy, boss, kind, textures));
     return;
   }
-  
-  // Apenas ajustamos cores simples para otimização extrema e identificação
-  if (material.albedoColor) {
-    if (boss) {
-      material.albedoColor = new B.Color3(0.8, 0.1, 0.1);
-      material.emissiveColor = new B.Color3(0.2, 0.0, 0.0);
-    } else if (enemy) {
-      material.albedoColor = new B.Color3(0.2, 0.2, 0.25);
-    } else {
-      material.albedoColor = new B.Color3(0.1, 0.3, 0.8);
+
+  const name = material.name.toLowerCase();
+  if (name.includes('armor')) {
+    material.albedoColor = boss
+      ? new B.Color3(.23, .13, .065)
+      : enemy ? new B.Color3(.055, .06, .065) : new B.Color3(.27, .30, .31);
+    material.metallic = boss ? .82 : .94;
+    material.roughness = boss ? .31 : enemy ? .42 : .27;
+    material.environmentIntensity = 1.05;
+    material.albedoTexture = textures.armor;
+    material.bumpTexture = textures.armorNormal;
+    material.bumpTexture.level = .22;
+    material.metallicTexture = textures.armorRoughness;
+    material.useRoughnessFromMetallicTextureAlpha = false;
+    material.useRoughnessFromMetallicTextureGreen = true;
+    material.useMetallnessFromMetallicTextureBlue = false;
+    if (material.clearCoat) {
+      material.clearCoat.isEnabled = true;
+      material.clearCoat.intensity = enemy ? .18 : .34;
+      material.clearCoat.roughness = enemy ? .52 : .35;
     }
+  } else if (name.includes('skin')) {
+    material.albedoColor = enemy ? new B.Color3(.34, .22, .16) : new B.Color3(.55, .34, .23);
+    material.metallic = 0;
+    material.roughness = .76;
+    if (material.subSurface) {
+      material.subSurface.isTranslucencyEnabled = true;
+      material.subSurface.translucencyIntensity = .12;
+    }
+  } else if (name.includes('boot')) {
+    material.albedoColor = kind === 'player' ? new B.Color3(.095, .047, .025) : new B.Color3(.045, .028, .019);
+    material.metallic = .02;
+    material.roughness = .9;
+    material.albedoTexture = textures.leather;
+    material.bumpTexture = textures.leatherNormal;
+    material.bumpTexture.level = .32;
+    material.metallicTexture = textures.leatherRoughness;
+    material.useRoughnessFromMetallicTextureAlpha = false;
+    material.useRoughnessFromMetallicTextureGreen = true;
+    material.useMetallnessFromMetallicTextureBlue = false;
   }
-  
-  // Simplificação do PBR
-  material.metallic = 0.1;
-  material.roughness = 0.8;
-  material.environmentIntensity = 0.5;
 }
 
 function findAnimation(groups, names) {
@@ -60,11 +114,11 @@ function buildAnimationSet(groups) {
     group.blendingSpeed = .08;
   });
   return {
-    idle: findAnimation(groups, ['Idle']),
-    run: findAnimation(groups, ['Walking']),
-    attack: findAnimation(groups, ['Samba']),
-    block: findAnimation(groups, ['Idle']),
-    dodge: findAnimation(groups, ['WalkingBack'])
+    idle: findAnimation(groups, ['Idle_swordLeft', 'Idle']),
+    run: findAnimation(groups, ['Run_swordRight', 'Run']),
+    attack: findAnimation(groups, ['Run_swordAttack', 'Attack']),
+    block: findAnimation(groups, ['Idle_swordLeft', 'Idle']),
+    dodge: findAnimation(groups, ['Roll_sword', 'Roll'])
   };
 }
 
@@ -75,14 +129,13 @@ function startAction(rig, action) {
   const group = rig.animations[action];
   if (!group) return;
   const loop = action === 'idle' || action === 'run' || action === 'block';
-  // Acelera a animação de Samba para parecer um golpe rápido e fluído
-  const speed = action === 'run' ? 1.5 : action === 'attack' ? 3.0 : action === 'dodge' ? 2.5 : 1.0;
+  const speed = action === 'run' ? 1.08 : action === 'attack' ? 1.25 : action === 'dodge' ? 1.16 : .88;
   group.start(loop, speed, group.from, group.to, false);
 }
 
-/** Cria um lutador esquelético completo. */
+/** Cria um cavaleiro esquelético completo, em vez de montar um corpo com formas geométricas. */
 export function createKnight(scene, world, options = {}) {
-  if (!knightContainer) throw new Error('O modelo realista não foi carregado.');
+  if (!knightContainer) throw new Error('O modelo realista do cavaleiro não foi carregado.');
 
   const enemy = Boolean(options.enemy);
   const kind = options.kind || (enemy ? 'raider' : 'player');
@@ -107,7 +160,8 @@ export function createKnight(scene, world, options = {}) {
     world.addShadow(mesh);
     if (mesh.material) materials.add(mesh.material);
   });
-  materials.forEach(material => tuneMaterial(material, enemy, boss, kind));
+  const textures = characterTextures(scene);
+  materials.forEach(material => tuneMaterial(material, enemy, boss, kind, textures));
 
   const rig = {
     root,
