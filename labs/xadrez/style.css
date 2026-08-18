@@ -614,12 +614,15 @@ button {
         margin-bottom: 0.8rem;
     }
     .coach {
+        /* O dock tem 8 botões e quebra para 2 linhas em quase toda largura
+           de celular (flex-wrap acima) — 5.6rem só cobria 1 linha e o dock
+           acabava cobrindo o rodapé do card do mestre. */
         top: auto;
-        bottom: calc(5.6rem + var(--safe-bottom));
+        bottom: calc(7.8rem + var(--safe-bottom));
         left: calc(0.6rem + var(--safe-left));
         right: calc(0.6rem + var(--safe-right));
         width: auto;
-        max-height: min(38dvh, 280px);
+        max-height: min(34dvh, 260px);
     }
 
     .tray {
@@ -664,11 +667,21 @@ button {
 
 @media (max-height: 520px) and (orientation: landscape) {
     .coach {
+        /* "top" + "bottom" juntos com height:auto esticam a caixa para
+           preencher o vão inteiro — mesmo recolhida (is-collapsed), ela
+           virava um painel enorme e vazio cobrindo o tabuleiro. Um celular
+           landscape também casa com a media query de max-width:768px acima
+           (que define "bottom"), então isso precisa ser anulado aqui com
+           "bottom: auto" — senão os dois "top"+"bottom" de regras
+           diferentes se combinam e o esticamento volta. Só "top" +
+           max-height deixa a caixa abraçar o conteúdo e ainda limita o
+           card expandido a não invadir o dock. */
         top: calc(3.6rem + var(--safe-top));
-        bottom: calc(4.6rem + var(--safe-bottom));
+        bottom: auto;
         left: calc(0.5rem + var(--safe-left));
+        right: auto;
         width: min(260px, 38vw);
-        max-height: none;
+        max-height: min(58dvh, 260px);
     }
 
     .tray {

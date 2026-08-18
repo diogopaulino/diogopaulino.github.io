@@ -9,7 +9,7 @@ import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './c
 import { createTextures } from './textures.js';
 import { PieceFactory } from './pieces.js';
 import {
-    buildWorld, setupLights, setupPostProcess, squareToWorld, worldToSquare, placeMark
+    buildWorld, setupLights, setupEnvironment, setupPostProcess, squareToWorld, worldToSquare, placeMark
 } from './world.js';
 import { SalonAudio } from './audio.js';
 
@@ -182,12 +182,15 @@ class Atelier {
 
         this.quality = pickQuality(this.settings.quality);
 
-        // Câmera orbital elegante
-        this.camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3.4, 13.5, new BABYLON.Vector3(0, 0.3, 0), this.scene);
-        this.camera.lowerRadiusLimit = 6;
-        this.camera.upperRadiusLimit = 20;
-        this.camera.lowerBetaLimit = 0.25;
-        this.camera.upperBetaLimit = Math.PI / 2.2;
+        // Câmera orbital elegante. Radius maior + FOV mais fechado do que o
+        // padrão do Babylon (0.8) achatam a perspectiva: sem isso, a casa mais
+        // próxima da câmera aparecia enorme e a última fileira, minúscula.
+        this.camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3.9, 16.5, new BABYLON.Vector3(0, 0.35, 0), this.scene);
+        this.camera.fov = 0.62;
+        this.camera.lowerRadiusLimit = 9;
+        this.camera.upperRadiusLimit = 24;
+        this.camera.lowerBetaLimit = 0.35;
+        this.camera.upperBetaLimit = Math.PI / 2.4;
         this.camera.wheelDeltaPercentage = 0.015;
         this.camera.pinchDeltaPercentage = 0.015;
         this.camera.inertia = 0.85;
@@ -197,11 +200,13 @@ class Atelier {
             this.camera.autoRotationBehavior.idleRotationWaitTime = 2000;
         }
         this.camera.attachControl(this.canvas, true);
+        this.fitCameraFov();
 
         this.setLoad(0.2, 'Talhando o marfim em Babylon.js…');
         const tex = createTextures(this.scene);
 
         this.setLoad(0.45, 'Montando o atelier…');
+        setupEnvironment(BABYLON, this.scene);
         this.world = buildWorld(BABYLON, this.scene, tex, this.quality);
         this.lights = setupLights(BABYLON, this.scene, this.quality);
         this.postProcess = setupPostProcess(BABYLON, this.scene, this.quality);
@@ -226,8 +231,25 @@ class Atelier {
             this.scene.render();
         });
 
-        window.addEventListener('resize', () => this.engine.resize());
-        window.visualViewport?.addEventListener('resize', () => this.engine.resize());
+        window.addEventListener('resize', () => {
+            this.engine.resize();
+            this.fitCameraFov();
+        });
+        window.visualViewport?.addEventListener('resize', () => {
+            this.engine.resize();
+            this.fitCameraFov();
+        });
+    }
+
+    // Em telas estreitas (retrato), FOV vertical fixo faz o campo de visão
+    // horizontal encolher com o aspect ratio e corta as laterais do tabuleiro.
+    // Travar o FOV horizontal garante a largura do tabuleiro em qualquer tela.
+    fitCameraFov() {
+        if (!this.camera || !this.engine) return;
+        const aspect = this.engine.getRenderWidth() / this.engine.getRenderHeight();
+        this.camera.fovMode = aspect < 1
+            ? window.BABYLON.Camera.FOVMODE_HORIZONTAL_FIXED
+            : window.BABYLON.Camera.FOVMODE_VERTICAL_FIXED;
     }
 
     start() {
@@ -251,6 +273,7 @@ class Atelier {
             this.camera.autoRotationBehavior.idleRotationSpeed = 0;
         }
         this.engine.resize();
+        this.fitCameraFov();
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
         this.setMode(mode);
     }
@@ -374,7 +397,7 @@ class Atelier {
             if (!p) continue;
             const mesh = this.factory.spawn(p.t, p.c);
             if (mesh) {
-                const pos = squareToWorld(i, this.flip);
+                const pos = squareToWorld(i);
                 mesh.position.set(pos.x, 0.07, pos.z);
                 mesh.metadata = { kind: p.t, color: p.c, index: i };
                 if (this.lights?.shadowGen) {
@@ -478,7 +501,7 @@ class Atelier {
         const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, 0));
         if (hit !== null && hit !== undefined) {
             const pt = ray.origin.add(ray.direction.scale(hit));
-            return worldToSquare(pt.x, pt.z, this.flip);
+            return worldToSquare(pt.x, pt.z);
         }
         return -1;
     }
@@ -597,8 +620,8 @@ class Atelier {
     }
 
     hop(mesh, from, to) {
-        const a = squareToWorld(from, this.flip);
-        const b = squareToWorld(to, this.flip);
+        const a = squareToWorld(from);
+        const b = squareToWorld(to);
         const dist = Math.hypot(b.x - a.x, b.z - a.z);
         const h = mesh.metadata?.kind === 'n' ? Math.max(0.6, dist * 0.2) : Math.min(1.2, Math.max(0.2, dist * 0.15));
         return this.tween(0.38, (t) => {
@@ -696,7 +719,7 @@ class Atelier {
         this.selected = mv.from;
         this.legal = this.game.legalMovesFrom(mv.from);
         this.refreshMarks();
-        placeMark(this.world.marks.hint, mv.to, this.flip);
+        placeMark(this.world.marks.hint, mv.to);
         const p = this.game.board[mv.from];
         this.coach('Dica', `Considere ${this.game.san(mv)}. ${p ? PIECE_HOW[p.t] : ''}`, 'Toque a peça destacada e a casa verde.');
     }
@@ -708,7 +731,7 @@ class Atelier {
         this.selected = from;
         this.legal = this.game.legalMovesFrom(from);
         this.refreshMarks();
-        placeMark(this.world.marks.hint, to, this.flip);
+        placeMark(this.world.marks.hint, to);
     }
 
     undo() {
@@ -726,10 +749,17 @@ class Atelier {
     }
 
     toggleFlip() {
+        // O tabuleiro e as peças ficam parados — só a câmera anda até o outro
+        // lado da mesa, como alguém dando a volta para ver da perspectiva das
+        // pretas. Gira sempre por um delta relativo (nunca um alvo absoluto),
+        // senão o sentido do giro depende de onde a órbita livre deixou a
+        // câmera e o resultado parece errático.
         this.flip = !this.flip;
-        this.rebuildPieces();
-        const targetAlpha = this.flip ? Math.PI / 2 : -Math.PI / 2;
-        window.BABYLON.Animation.CreateAndStartAnimation('flipCam', this.camera, 'alpha', 60, 30, this.camera.alpha, targetAlpha, window.BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        const targetAlpha = this.camera.alpha + Math.PI;
+        window.BABYLON.Animation.CreateAndStartAnimation(
+            'flipCam', this.camera, 'alpha', 60, 36,
+            this.camera.alpha, targetAlpha, window.BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+        );
     }
 
     fresh() {
@@ -769,24 +799,24 @@ class Atelier {
     refreshMarks() {
         this.clearMarks();
         const m = this.world.marks;
-        if (this.selected >= 0) placeMark(m.select, this.selected, this.flip);
+        if (this.selected >= 0) placeMark(m.select, this.selected);
         let di = 0;
         let ci = 0;
         for (const mv of this.legal) {
             if (mv.captured || mv.flag === 'e') {
-                if (ci < m.caps.length) placeMark(m.caps[ci++], mv.to, this.flip);
+                if (ci < m.caps.length) placeMark(m.caps[ci++], mv.to);
             } else if (di < m.dots.length) {
-                placeMark(m.dots[di++], mv.to, this.flip);
+                placeMark(m.dots[di++], mv.to);
             }
         }
         const last = this.game.stack[this.game.stack.length - 1];
         if (last) {
-            placeMark(m.lastFrom, last.from, this.flip);
-            placeMark(m.lastTo, last.to, this.flip);
+            placeMark(m.lastFrom, last.from);
+            placeMark(m.lastTo, last.to);
         }
         if (this.game.inCheck()) {
             const k = this.game.kingIndex(this.game.side);
-            if (k >= 0) placeMark(m.check, k, this.flip);
+            if (k >= 0) placeMark(m.check, k);
         }
     }
 

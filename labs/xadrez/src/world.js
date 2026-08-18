@@ -271,17 +271,18 @@ export function placeMark(mesh, index, flip = false) {
 }
 
 export function setupLights(BABYLON, scene, quality) {
-    // Luz ambiente suave
+    // Luz ambiente suave — intensidade mais alta e chão mais claro para que o
+    // ébano (muito escuro) não vire silhueta pura nas áreas de sombra.
     const hemi = new BABYLON.HemisphericLight('hemi_light', new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.diffuse = new BABYLON.Color3(0.7, 0.65, 0.58);
-    hemi.groundColor = new BABYLON.Color3(0.25, 0.20, 0.15);
-    hemi.intensity = 0.85;
+    hemi.diffuse = new BABYLON.Color3(0.78, 0.73, 0.66);
+    hemi.groundColor = new BABYLON.Color3(0.38, 0.32, 0.26);
+    hemi.intensity = 1.05;
 
     // Sol / Luz direcionada com sombras
     const sun = new BABYLON.DirectionalLight('sun_light', new BABYLON.Vector3(-4, -10, 6).normalize(), scene);
     sun.position = new BABYLON.Vector3(8, 18, -12);
     sun.diffuse = new BABYLON.Color3(1.0, 0.95, 0.88);
-    sun.intensity = 1.6;
+    sun.intensity = 1.5;
 
     let shadowGen = null;
     if (quality.shadows) {
@@ -289,15 +290,51 @@ export function setupLights(BABYLON, scene, quality) {
         shadowGen.usePoissonSampling = true;
         shadowGen.bias = 0.001;
         shadowGen.normalBias = 0.002;
+        shadowGen.darkness = 0.35;
     }
+
+    // Luz de preenchimento fria, do lado oposto ao sol — sem ela o lado
+    // sombreado das peças (sobretudo as de ébano) desaparecia em preto puro.
+    const fill = new BABYLON.DirectionalLight('fill_light', new BABYLON.Vector3(5, -6, -8).normalize(), scene);
+    fill.diffuse = new BABYLON.Color3(0.55, 0.60, 0.68);
+    fill.specular = new BABYLON.Color3(0.2, 0.2, 0.24);
+    fill.intensity = 0.55;
 
     // Ponto de luz quente sobre a mesa
     const warmLamp = new BABYLON.PointLight('warm_lamp', new BABYLON.Vector3(0, 5, 0), scene);
     warmLamp.diffuse = new BABYLON.Color3(1.0, 0.85, 0.65);
-    warmLamp.intensity = 0.6;
+    warmLamp.intensity = 0.7;
     warmLamp.range = 14;
 
-    return { hemi, sun, shadowGen, warmLamp };
+    return { hemi, sun, fill, shadowGen, warmLamp };
+}
+
+/**
+ * Ambiente de reflexo procedural (sem HDR externo): um "cubemap" simples,
+ * claro em cima e escuro embaixo, só para o PBR (clearcoat/sheen) ter algo
+ * para refletir. Sem isso, materiais escuros como o ébano ficam achatados.
+ */
+export function setupEnvironment(BABYLON, scene) {
+    const size = 64;
+    const face = (top, bottom) => {
+        const el = document.createElement('canvas');
+        el.width = size;
+        el.height = size;
+        const ctx = el.getContext('2d');
+        const g = ctx.createLinearGradient(0, 0, 0, size);
+        g.addColorStop(0, top);
+        g.addColorStop(1, bottom);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        return el.toDataURL('image/png');
+    };
+    const side = face('#8c7c68', '#171310');
+    const top = face('#e4d3ac', '#8c7c68');
+    const bottom = face('#171310', '#050403');
+    const env = BABYLON.CubeTexture.CreateFromImages([side, side, top, bottom, side, side], scene);
+    scene.environmentTexture = env;
+    scene.environmentIntensity = 0.65;
+    return env;
 }
 
 export function setupPostProcess(BABYLON, scene, quality) {
