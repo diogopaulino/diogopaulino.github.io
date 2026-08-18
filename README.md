@@ -112,7 +112,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🎼 **[Partitura: Maestro Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
 | 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Sintetizador de 4 oitavas no navegador |
 | 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Nostalgia pura: player estilo Winamp 2.x |
-| ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Instrumento musical generativo |
+| ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Constelação musical — orbes pulsam no BPM, altura é nota, posição é o tempo |
 
 ---
 
