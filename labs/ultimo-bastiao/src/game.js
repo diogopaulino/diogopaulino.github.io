@@ -457,7 +457,14 @@ class Game {
   }
 
   async init() {
-    if (!B || !B.Engine?.isSupported()) {
+    // Duas falhas diferentes davam a mesma mensagem ("WebGL indisponível"),
+    // e a mais comum das duas — o CDN do Babylon não responder — não tem nada
+    // a ver com o navegador do jogador.
+    if (!B) {
+      this.showError('O motor 3D (Babylon.js) não pôde ser baixado. Verifique a conexão e recarregue a página.');
+      return;
+    }
+    if (!B.Engine?.isSupported()) {
       this.showError('Este navegador não oferece o WebGL necessário para abrir o campo de batalha.');
       return;
     }

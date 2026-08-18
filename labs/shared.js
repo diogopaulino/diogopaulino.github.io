@@ -422,13 +422,18 @@
         ensureFavicon();
         initChrome();
         ensureThemeCore();
-        watchModuleFailures();
         // Depois do load: até lá o script do CDN teve sua chance de definir o global.
         if (document.readyState === 'complete') setTimeout(checkEngines, 400);
         else window.addEventListener('load', () => setTimeout(checkEngines, 400), { once: true });
     }
 
     applySavedTheme();
+    /* Registrado já na avaliação do script, não no init: o `error` do
+       <script type="module"> pode disparar antes do DOMContentLoaded, e um
+       listener criado depois disso perderia o evento (foi o que acontecia no
+       Mimo, que carrega este arquivo de forma síncrona). */
+    watchModuleFailures();
+
     window.LabShell = Object.freeze({ init, buildHeader, buildFooter });
     window.LabAudio = AudioAPI;
 

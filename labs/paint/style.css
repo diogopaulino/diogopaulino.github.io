@@ -359,8 +359,6 @@ input[type="color"] {
 }
 
 .color-palette .color-swatch {
-    /* A amostra continua com 32px de desenho (a paleta precisa caber na barra),
-       mas o alvo cresce por pseudo-elemento até 44px — ver ::after abaixo. */
     position: relative;
     width: 32px;
     height: 32px;
@@ -372,15 +370,6 @@ input[type="color"] {
     background: var(--swatch, transparent);
     border: 1px solid var(--border-subtle);
     transition: transform 0.1s ease, box-shadow 0.15s ease;
-}
-
-.color-palette .color-swatch::after {
-    content: "";
-    position: absolute;
-    inset: 50% auto auto 50%;
-    width: var(--touch-target);
-    height: var(--touch-target);
-    transform: translate(-50%, -50%);
 }
 
 .color-swatch:hover {
@@ -647,17 +636,22 @@ kbd {
         margin-bottom: 0;
     }
 
+    /* Amostras de 24px são impossíveis de acertar com o dedo, e alargar o alvo
+       por pseudo-elemento não resolve numa grade densa (as áreas se sobrepõem e
+       o toque escolhe a cor vizinha). A grade passa a preencher a largura
+       disponível com células de no mínimo 40px. */
     .side-bar.right .color-palette {
-        grid-template-columns: repeat(9, 24px);
-        justify-content: start;
-        gap: 4px;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        justify-content: stretch;
+        gap: 6px;
     }
 
     .side-bar.right .color-palette .color-swatch {
-        width: 24px;
-        height: 24px;
-        min-width: 24px;
-        min-height: 24px;
+        width: 100%;
+        height: auto;
+        min-width: 40px;
+        min-height: 40px;
+        aspect-ratio: 1;
     }
 
     .side-bar.right .separator,
@@ -759,15 +753,16 @@ kbd {
     }
 
     .side-bar.right .color-palette {
-        grid-template-columns: repeat(5, 28px);
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
         gap: 6px;
     }
 
     .side-bar.right .color-palette .color-swatch {
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-        min-height: 28px;
+        width: 100%;
+        height: auto;
+        min-width: 40px;
+        min-height: 40px;
+        aspect-ratio: 1;
     }
 
     .side-bar.right .shortcuts-hint {
