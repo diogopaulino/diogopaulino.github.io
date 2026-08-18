@@ -1,20 +1,19 @@
 /**
  * Constrói cada capítulo: terreno, vegetação, marcos e objetivos.
- * Tudo vive num Group para poder ser trocado com fade entre cenas.
+ * Árvores e pilares entram como InstancedMesh para cortar draw calls.
  */
 
 import * as THREE from 'three';
-import { fbm, hash2, seeded, smoothstep } from './utils.js';
+import { fbm, hash2, seeded, smoothstep } from './utils.js?v=3';
+import { grassTexture, mossTexture, stoneTexture, brickTexture, applyMaps } from './textures.js?v=3';
 import {
-    grassTexture, mossTexture, stoneTexture, waterTexture, brickTexture
-} from './textures.js';
-import {
-    buildHobbitHole, buildOak, buildPine, buildPartyTree, buildRing,
-    buildRock, buildPavilion, buildCouncilRing, buildPillar, buildBridge,
+    buildHobbitHole, buildPartyTree, buildRing,
+    buildRock, buildPavilion, buildCouncilRing, buildBridge,
     buildSeat, buildRuinArch, buildWizard, buildElf, buildNazgul, buildGoblin,
-    buildCompanion, grassBladeGeometry, applyGrassWind, std
-} from './models.js';
-import { Rider, GoblinAI } from './npcs.js';
+    buildCompanion, grassBladeGeometry, grassBladeMaterial, waterMaterial,
+    getOakAssets, getPineAssets, getPillarAssets, buildBalrog, std
+} from './models.js?v=3';
+import { Rider, GoblinAI } from './npcs.js?v=3';
 
 export class ChapterWorld {
     constructor() {
@@ -45,7 +44,16 @@ export class ChapterWorld {
     }
 }
 
-function terrainMesh(heightAt, size, segs, material, ox = 0, oz = 0) {
+function groundMat(maps, color) {
+    const m = new THREE.MeshStandardMaterial({
+        color, roughness: 0.94, metalness: 0.02, vertexColors: true
+    });
+    applyMaps(m, maps, { color, roughness: 0.94, metalness: 0.02, normalScale: 1.05 });
+    m.vertexColors = true;
+    return m;
+}
+
+function terrainMesh(heightAt, size, segs, material, ox = 0, oz = 0, colorFn = null) {
     const geo = new THREE.PlaneGeometry(size, size, segs, segs);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
@@ -54,6 +62,18 @@ function terrainMesh(heightAt, size, segs, material, ox = 0, oz = 0) {
         const z = pos.getZ(i);
         pos.setY(i, heightAt(x + ox, z + oz));
     }
+    if (colorFn) {
+        const colors = new Float32Array(pos.count * 3);
+        const c = new THREE.Color();
+        for (let i = 0; i < pos.count; i++) {
+            colorFn(pos.getX(i) + ox, pos.getZ(i) + oz, pos.getY(i), c);
+            colors[i * 3] = c.r;
+            colors[i * 3 + 1] = c.g;
+            colors[i * 3 + 2] = c.b;
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        material.vertexColors = true;
+    }
     geo.computeVertexNormals();
     const mesh = new THREE.Mesh(geo, material);
     mesh.position.set(ox, 0, oz);
@@ -61,62 +81,73 @@ function terrainMesh(heightAt, size, segs, material, ox = 0, oz = 0) {
     return mesh;
 }
 
-function scatterTrees(world, proto, count, rng, opts) {
-    const { minR = 8, maxR = 48, minScale = 0.8, maxScale = 1.5, avoid = [] } = opts;
-    for (let i = 0; i < count; i++) {
-        const a = rng() * Math.PI * 2;
-        const r = minR + rng() * (maxR - minR);
-        const x = Math.cos(a) * r + (opts.cx || 0);
-        const z = Math.sin(a) * r + (opts.cz || 0);
-        if (avoid.some((p) => Math.hypot(x - p.x, z - p.z) < p.r)) continue;
-        if (x < world.bounds.minX + 2 || x > world.bounds.maxX - 2) continue;
-        const tree = proto();
-        const s = minScale + rng() * (maxScale - minScale);
-        tree.scale.setScalar(s);
-        const y = world.heightAt(x, z);
-        tree.position.set(x, y, z);
-        tree.rotation.y = rng() * Math.PI * 2;
-        world.group.add(tree);
-        world.addCollider(x, z, 0.55 * s);
-    }
+const _dummy = new THREE.Object3D();
+
+function placeTree(world, rng, opts) {
+    const { minR = 8, maxR = 48, avoid = [] } = opts;
+    const a = rng() * Math.PI * 2;
+    const r = minR + rng() * (maxR - minR);
+    const x = Math.cos(a) * r + (opts.cx || 0);
+    const z = Math.sin(a) * r + (opts.cz || 0);
+    if (avoid.some((p) => Math.hypot(x - p.x, z - p.z) < p.r)) return null;
+    if (x < world.bounds.minX + 2 || x > world.bounds.maxX - 2) return null;
+    if (z < world.bounds.minZ + 2 || z > world.bounds.maxZ - 2) return null;
+    return { x, z, s: (opts.minScale || 0.8) + rng() * ((opts.maxScale || 1.5) - (opts.minScale || 0.8)), rot: rng() * Math.PI * 2 };
 }
 
-function scatterGrass(world, count, quality) {
+function scatterInstancedOaks(world, count, rng, opts, autumn = false) {
+    const { trunkGeo, canopyGeo, trunkMat, canopyMat } = getOakAssets(autumn);
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
+    const canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, count);
+    trunks.castShadow = canopies.castShadow = true;
+    trunks.receiveShadow = canopies.receiveShadow = true;
+    let n = 0;
+    for (let i = 0; i < count; i++) {
+        const p = placeTree(world, rng, opts);
+        if (!p) continue;
+        _dummy.position.set(p.x, world.heightAt(p.x, p.z), p.z);
+        _dummy.rotation.set(0, p.rot, 0);
+        _dummy.scale.setScalar(p.s);
+        _dummy.updateMatrix();
+        trunks.setMatrixAt(n, _dummy.matrix);
+        _dummy.position.y += 1.35 * p.s;
+        _dummy.updateMatrix();
+        canopies.setMatrixAt(n, _dummy.matrix);
+        world.addCollider(p.x, p.z, 0.55 * p.s);
+        n++;
+    }
+    trunks.count = n;
+    canopies.count = n;
+    world.group.add(trunks);
+    world.group.add(canopies);
+}
+
+function scatterGrass(world, count) {
     const geo = grassBladeGeometry();
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0x5a8a32,
-        side: THREE.DoubleSide,
-        roughness: 0.95
-    });
-    applyGrassWind(mat, 1);
+    const mat = grassBladeMaterial();
     const mesh = new THREE.InstancedMesh(geo, mat, count);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    const dummy = new THREE.Object3D();
     const b = world.bounds;
     for (let i = 0; i < count; i++) {
         const x = b.minX + hash2(i, 1) * (b.maxX - b.minX);
         const z = b.minZ + hash2(i, 2) * (b.maxZ - b.minZ);
-        dummy.position.set(x, world.heightAt(x, z), z);
-        dummy.rotation.y = hash2(i, 3) * Math.PI * 2;
-        dummy.scale.setScalar(0.7 + hash2(i, 4) * 0.8);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+        _dummy.position.set(x, world.heightAt(x, z), z);
+        _dummy.rotation.set((hash2(i, 5) - 0.5) * 0.25, hash2(i, 3) * Math.PI * 2, 0);
+        _dummy.scale.setScalar(0.75 + hash2(i, 4) * 0.95);
+        _dummy.updateMatrix();
+        mesh.setMatrixAt(i, _dummy.matrix);
     }
     mesh.receiveShadow = true;
     world.group.add(mesh);
-    world.updateFns.push((t) => {
-        if (mat.userData.uTime) mat.userData.uTime.value = t;
-    });
-    return mesh;
 }
 
 function makePage(world, x, z, id) {
     const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.35, 0.02, 0.5),
+        new THREE.BoxGeometry(0.32, 0.015, 0.46),
         new THREE.MeshStandardMaterial({
             color: 0xf2e4c0,
             emissive: 0xc8a050,
-            emissiveIntensity: 0.45
+            emissiveIntensity: 0.4,
+            roughness: 0.7
         })
     );
     const y = world.heightAt(x, z) + 0.7;
@@ -129,6 +160,18 @@ function makePage(world, x, z, id) {
         mesh.position.y = y + Math.sin(t * 2.2) * 0.12;
         mesh.rotation.y = t * 0.8;
     });
+}
+
+function addWater(world, w, h, color, x, y, z, segs = 24) {
+    const water = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h, segs, Math.max(8, (segs * h / w) | 0)),
+        waterMaterial(color)
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(x, y, z);
+    world.group.add(water);
+    world.waterMeshes.push(water);
+    return water;
 }
 
 /* ================================================================== */
@@ -152,9 +195,20 @@ export function buildShire(quality) {
         return hills * flat + mound;
     };
 
+    const dirt = new THREE.Color(0x8a6a38);
+    const lush = new THREE.Color(0x8fbc5a);
+    const deep = new THREE.Color(0x6a8a38);
     const ground = terrainMesh(
-        world.heightAt, 120, quality.id === 'low' ? 48 : 96,
-        new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 0.95, color: 0x8fbc5a })
+        world.heightAt, 120, quality.id === 'low' ? 56 : 110,
+        groundMat(grassTexture(), 0x8fbc5a),
+        0, 0,
+        (x, z, y, c) => {
+            const toBag = Math.abs((x + 20) * 0.55 + (z + 6) * 0.45);
+            const along = smoothstep(40, 8, Math.hypot(x + 1, z + 8));
+            const pathAmt = smoothstep(3.2, 1.1, toBag) * along;
+            const slope = Math.min(1, y * 0.08);
+            c.copy(lush).lerp(deep, slope * 0.35).lerp(dirt, pathAmt * 0.7);
+        }
     );
     world.group.add(ground);
 
@@ -181,13 +235,10 @@ export function buildShire(quality) {
     world.addInteract(ringIt);
     world.goal = 'ring';
     const beacon = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.45, 6.5, 8, 1, true),
+        new THREE.CylinderGeometry(0.12, 0.45, 6.5, 10, 1, true),
         new THREE.MeshBasicMaterial({
-            color: 0xffcc55,
-            transparent: true,
-            opacity: 0.18,
-            side: THREE.DoubleSide,
-            depthWrite: false
+            color: 0xffcc55, transparent: true, opacity: 0.16,
+            side: THREE.DoubleSide, depthWrite: false
         })
     );
     beacon.position.set(doorX, world.heightAt(doorX, doorZ) + 3.4, doorZ);
@@ -199,7 +250,7 @@ export function buildShire(quality) {
         }
         ring.rotation.y = t * 0.9;
         ring.position.y = world.heightAt(doorX, doorZ) + 1.15 + Math.sin(t * 2) * 0.08;
-        beacon.material.opacity = 0.12 + Math.sin(t * 2.4) * 0.06;
+        beacon.material.opacity = 0.1 + Math.sin(t * 2.4) * 0.05;
     });
 
     const colors = ['#2d6b38', '#6b3a2d', '#3a4a8a', '#8a5a2a', '#4a6b3a'];
@@ -231,16 +282,18 @@ export function buildShire(quality) {
     });
 
     const fireworks = [];
-    const fGeo = new THREE.SphereGeometry(0.08, 6, 5);
-    for (let i = 0; i < Math.floor(28 * quality.particles); i++) {
+    const fGeo = new THREE.SphereGeometry(0.07, 6, 5);
+    for (let i = 0; i < Math.floor(36 * quality.particles); i++) {
         const p = new THREE.Mesh(fGeo, new THREE.MeshBasicMaterial({
-            color: new THREE.Color().setHSL(hash2(i, 2), 0.75, 0.6)
+            color: new THREE.Color().setHSL(hash2(i, 2), 0.75, 0.62),
+            transparent: true
         }));
         world.group.add(p);
         fireworks.push({ mesh: p, t: rng() * 4, life: 2 + rng() * 2 });
     }
     world.updateFns.push((t) => {
         wiz.parts.crystal.rotation.y = t * 2;
+        wiz.parts.crystal.rotation.z = Math.sin(t * 1.4) * 0.2;
         for (const fw of fireworks) {
             const u = (t + fw.t) % fw.life;
             const k = u / fw.life;
@@ -252,14 +305,13 @@ export function buildShire(quality) {
             );
             fw.mesh.scale.setScalar(1 - k);
             fw.mesh.material.opacity = 1 - k;
-            fw.mesh.material.transparent = true;
         }
     });
 
-    scatterTrees(world, () => buildOak(), Math.floor(38 * quality.trees), rng, {
+    scatterInstancedOaks(world, Math.floor(42 * quality.trees), rng, {
         minR: 12, maxR: 48, avoid: [{ x: 0, z: 0, r: 8 }, { x: -20, z: -6, r: 8 }, { x: 18, z: 22, r: 6 }]
     });
-    scatterGrass(world, Math.floor(900 * quality.grass), quality);
+    scatterGrass(world, Math.floor(1100 * quality.grass));
     makePage(world, 4, 10, 'shire-page');
     return world;
 }
@@ -280,34 +332,77 @@ export function buildForest(quality) {
         return bumps * path;
     };
 
+    const mossDark = new THREE.Color(0x2a4224);
+    const mossPath = new THREE.Color(0x5a6a40);
+    const mossDeep = new THREE.Color(0x1a2a14);
     world.group.add(terrainMesh(
-        world.heightAt, 140, quality.id === 'low' ? 40 : 80,
-        new THREE.MeshStandardMaterial({ map: mossTexture(), color: 0x3a5a32, roughness: 0.96 }),
-        0, 62
+        world.heightAt, 140, quality.id === 'low' ? 48 : 88,
+        groundMat(mossTexture(), 0x3a5a32),
+        0, 62,
+        (x, z, y, c) => {
+            const path = smoothstep(6.5, 2.2, Math.abs(x));
+            c.copy(mossDark).lerp(mossPath, path).lerp(mossDeep, Math.min(1, Math.abs(x) * 0.04));
+            void y;
+            void z;
+        }
     ));
 
     const rng = seeded(99);
-    const protoPine = () => buildPine();
-    const protoOak = () => buildOak();
-    const treeCount = Math.floor(90 * quality.trees);
-    for (let i = 0; i < treeCount; i++) {
+    const pineCount = Math.floor(58 * quality.trees);
+    const oakCount = Math.floor(32 * quality.trees);
+
+    const pine = getPineAssets();
+    const pineMesh = new THREE.InstancedMesh(pine.geo, pine.mat, pineCount);
+    pineMesh.castShadow = true;
+    pineMesh.receiveShadow = true;
+    let pn = 0;
+    for (let i = 0; i < pineCount; i++) {
         const z = rng() * 120 + 4;
         const side = rng() < 0.5 ? -1 : 1;
         const x = side * (7 + rng() * 12);
-        const tree = rng() < 0.65 ? protoPine() : protoOak();
-        tree.scale.setScalar(0.9 + rng() * 1.1);
-        tree.position.set(x, world.heightAt(x, z), z);
-        tree.rotation.y = rng() * 6;
-        world.group.add(tree);
+        const s = 0.9 + rng() * 1.15;
+        _dummy.position.set(x, world.heightAt(x, z), z);
+        _dummy.rotation.set(0, rng() * 6, 0);
+        _dummy.scale.setScalar(s);
+        _dummy.updateMatrix();
+        pineMesh.setMatrixAt(pn++, _dummy.matrix);
         world.addCollider(x, z, 0.7);
     }
+    pineMesh.count = pn;
+    world.group.add(pineMesh);
 
-    for (let i = 0; i < 10; i++) {
+    const oak = getOakAssets(false);
+    const oakTrunk = new THREE.InstancedMesh(oak.trunkGeo, oak.trunkMat, oakCount);
+    const oakCan = new THREE.InstancedMesh(oak.canopyGeo, oak.canopyMat, oakCount);
+    oakTrunk.castShadow = oakCan.castShadow = true;
+    let on = 0;
+    for (let i = 0; i < oakCount; i++) {
+        const z = rng() * 120 + 4;
+        const side = rng() < 0.5 ? -1 : 1;
+        const x = side * (7.5 + rng() * 11);
+        const s = 0.85 + rng() * 1.05;
+        _dummy.position.set(x, world.heightAt(x, z), z);
+        _dummy.rotation.set(0, rng() * 6, 0);
+        _dummy.scale.setScalar(s);
+        _dummy.updateMatrix();
+        oakTrunk.setMatrixAt(on, _dummy.matrix);
+        _dummy.position.y += 1.35 * s;
+        _dummy.updateMatrix();
+        oakCan.setMatrixAt(on, _dummy.matrix);
+        world.addCollider(x, z, 0.7);
+        on++;
+    }
+    oakTrunk.count = oakCan.count = on;
+    world.group.add(oakTrunk);
+    world.group.add(oakCan);
+
+    for (let i = 0; i < 12; i++) {
         const rock = buildRock(i + 3);
         const x = (rng() - 0.5) * 16;
         const z = 10 + rng() * 100;
         rock.position.set(x, world.heightAt(x, z), z);
-        rock.scale.setScalar(0.5 + rng() * 0.9);
+        rock.scale.setScalar(0.5 + rng() * 0.95);
+        rock.rotation.set(rng(), rng() * 6, rng() * 0.4);
         world.group.add(rock);
         world.addCollider(x, z, 0.6);
     }
@@ -324,28 +419,13 @@ export function buildForest(quality) {
         world.riders.push(new Rider(n.group, s.x, s.z, s.wps));
     }
 
-    // Vau
-    const water = new THREE.Mesh(
-        new THREE.PlaneGeometry(48, 22),
-        new THREE.MeshStandardMaterial({
-            map: waterTexture(),
-            color: 0x4aa0c8,
-            transparent: true,
-            opacity: 0.78,
-            roughness: 0.2,
-            metalness: 0.3
-        })
-    );
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(0, -0.15, 122);
-    world.group.add(water);
-    world.waterMeshes.push(water);
+    addWater(world, 48, 22, 0x3a88b0, 0, -0.12, 122, 20);
 
     const fordMarker = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.2, 2.2, 8),
-        new THREE.MeshStandardMaterial({ color: 0xd8e8ff, emissive: 0x88aaff, emissiveIntensity: 1.2 })
+        new THREE.CylinderGeometry(0.16, 0.22, 1.8, 10),
+        new THREE.MeshStandardMaterial({ color: 0xd8e8ff, emissive: 0x88aaff, emissiveIntensity: 1.1, roughness: 0.35 })
     );
-    fordMarker.position.set(0, 1.4, 124);
+    fordMarker.position.set(0, 1.2, 124);
     world.group.add(fordMarker);
     world.addInteract({
         x: 0, z: 124, r: 3.2, id: 'ford', kind: 'goal',
@@ -357,7 +437,7 @@ export function buildForest(quality) {
     elf.group.position.set(3.5, world.heightAt(3.5, 126), 126);
     world.group.add(elf.group);
 
-    scatterGrass(world, Math.floor(400 * quality.grass), quality);
+    scatterGrass(world, Math.floor(480 * quality.grass));
     makePage(world, -8, 20, 'forest-page');
     return world;
 }
@@ -379,26 +459,21 @@ export function buildRivendell(quality) {
         return valley + rise + noise * 0.5;
     };
 
+    const valleyGreen = new THREE.Color(0x5a8a48);
+    const waterEdge = new THREE.Color(0x8ab868);
+    const highStone = new THREE.Color(0xc8d0c0);
     world.group.add(terrainMesh(
-        world.heightAt, 120, quality.id === 'low' ? 48 : 90,
-        new THREE.MeshStandardMaterial({ map: mossTexture(), color: 0x6a9a58, roughness: 0.9 })
+        world.heightAt, 120, quality.id === 'low' ? 56 : 96,
+        groundMat(mossTexture(), 0x6a9a58),
+        0, 0,
+        (x, z, y, c) => {
+            const nearWater = smoothstep(6, 1.2, Math.abs(x));
+            c.copy(valleyGreen).lerp(waterEdge, nearWater).lerp(highStone, Math.min(1, y * 0.06));
+            void z;
+        }
     ));
 
-    const stream = new THREE.Mesh(
-        new THREE.PlaneGeometry(8, 90),
-        new THREE.MeshStandardMaterial({
-            map: waterTexture(),
-            color: 0x6ad0e0,
-            transparent: true,
-            opacity: 0.8,
-            roughness: 0.15,
-            metalness: 0.25
-        })
-    );
-    stream.rotation.x = -Math.PI / 2;
-    stream.position.set(0, 0.05, 0);
-    world.group.add(stream);
-    world.waterMeshes.push(stream);
+    addWater(world, 8.5, 90, 0x6ad0e0, 0, 0.06, 0, 16);
 
     const pav = buildPavilion();
     pav.position.set(0, world.heightAt(0, 8), 8);
@@ -433,11 +508,22 @@ export function buildRivendell(quality) {
         world.group.add(elf.group);
     }
 
-    // Quedas — partículas.
-    const dropGeo = new THREE.SphereGeometry(0.07, 4, 4);
+    const fallTex = new THREE.MeshBasicMaterial({
+        color: 0xc8f0ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false
+    });
+    for (const sx of [-1, 1]) {
+        const sheet = new THREE.Mesh(new THREE.PlaneGeometry(7, 18, 1, 8), fallTex);
+        sheet.position.set(sx * 36, 8, -4);
+        world.group.add(sheet);
+        world.updateFns.push((t) => {
+            sheet.material.opacity = 0.28 + Math.sin(t * 4 + sx) * 0.08;
+        });
+    }
+
+    const dropGeo = new THREE.SphereGeometry(0.06, 4, 4);
     const dropMat = new THREE.MeshBasicMaterial({ color: 0xc8f0ff, transparent: true, opacity: 0.55 });
     const drops = [];
-    const nDrops = Math.floor(80 * quality.particles);
+    const nDrops = Math.floor(90 * quality.particles);
     for (let i = 0; i < nDrops; i++) {
         const m = new THREE.Mesh(dropGeo, dropMat);
         world.group.add(m);
@@ -446,27 +532,25 @@ export function buildRivendell(quality) {
     world.updateFns.push((t) => {
         for (const d of drops) {
             const u = (t * 0.35 + d.t) % 1;
-            const x = d.side * 36;
-            const y = 16 - u * 18;
-            const z = -4 + Math.sin((d.t + t) * 8) * 0.4;
-            d.mesh.position.set(x, y, z);
+            d.mesh.position.set(d.side * 36, 16 - u * 18, -4 + Math.sin((d.t + t) * 8) * 0.4);
         }
     });
 
     for (const sx of [-1, 1]) {
         const cliff = new THREE.Mesh(
             new THREE.BoxGeometry(8, 18, 28),
-            new THREE.MeshStandardMaterial({ map: stoneTexture('#8aa0a8'), color: 0xc8d8d0, roughness: 0.85 })
+            new THREE.MeshStandardMaterial({ color: 0xc8d8d0, roughness: 0.85 })
         );
+        applyMaps(cliff.material, stoneTexture('#8aa0a8'), { color: 0xc8d8d0, roughness: 0.85, normalScale: 1.2 });
         cliff.position.set(sx * 40, 6, 0);
         world.group.add(cliff);
     }
 
     const rng = seeded(21);
-    scatterTrees(world, () => buildOak({ autumn: true }), Math.floor(28 * quality.trees), rng, {
+    scatterInstancedOaks(world, Math.floor(30 * quality.trees), rng, {
         minR: 14, maxR: 42, cx: 0, cz: 0, avoid: [{ x: 0, z: 8, r: 10 }, { x: 0, z: 18, r: 8 }]
-    });
-    scatterGrass(world, Math.floor(500 * quality.grass), quality);
+    }, true);
+    scatterGrass(world, Math.floor(560 * quality.grass));
     makePage(world, -12, -16, 'rivendell-page');
     return world;
 }
@@ -486,11 +570,9 @@ export function buildMoria(quality) {
         return 0;
     };
 
-    const floorMat = new THREE.MeshStandardMaterial({
-        map: brickTexture(),
-        color: 0x5a4a3a,
-        roughness: 0.92
-    });
+    const floorMaps = brickTexture();
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.92 });
+    applyMaps(floorMat, floorMaps, { color: 0x5a4a3a, roughness: 0.92, normalScale: 1.1 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(36, 78), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0, 36);
@@ -503,12 +585,8 @@ export function buildMoria(quality) {
     exitFloor.receiveShadow = true;
     world.group.add(exitFloor);
 
-    // Paredes e teto
-    const wallMat = new THREE.MeshStandardMaterial({
-        map: stoneTexture('#3a3028'),
-        color: 0x3a3028,
-        roughness: 0.95
-    });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.95 });
+    applyMaps(wallMat, stoneTexture('#3a3028'), { color: 0x3a3028, roughness: 0.95, normalScale: 1.25 });
     for (const sx of [-1, 1]) {
         const wall = new THREE.Mesh(new THREE.BoxGeometry(2, 16, 110), wallMat);
         wall.position.set(sx * 18, 8, 50);
@@ -520,36 +598,49 @@ export function buildMoria(quality) {
     world.group.add(ceiling);
 
     const pillarN = quality.id === 'low' ? 8 : 12;
+    const pillar = getPillarAssets(13);
+    const pillars = new THREE.InstancedMesh(pillar.geo, pillar.mat, pillarN * 2);
+    pillars.castShadow = true;
+    pillars.receiveShadow = true;
+    let pi = 0;
     for (let i = 0; i < pillarN; i++) {
         const z = 8 + i * 5.5;
         for (const sx of [-1, 1]) {
-            const p = buildPillar(13);
-            p.position.set(sx * 8.5, 0, z);
-            world.group.add(p);
+            _dummy.position.set(sx * 8.5, 0, z);
+            _dummy.rotation.set(0, 0, 0);
+            _dummy.scale.set(1, 1, 1);
+            _dummy.updateMatrix();
+            pillars.setMatrixAt(pi++, _dummy.matrix);
             world.addCollider(sx * 8.5, z, 1.0);
         }
     }
+    pillars.count = pi;
+    world.group.add(pillars);
 
-    // Tochas
     const torchCount = quality.lights ? 10 : 4;
     for (let i = 0; i < torchCount; i++) {
         const z = 6 + i * 9;
         const sx = i % 2 ? 1 : -1;
         const flame = new THREE.Mesh(
-            new THREE.SphereGeometry(0.18, 8, 6),
+            new THREE.SphereGeometry(0.16, 8, 6),
             new THREE.MeshStandardMaterial({
-                color: 0xffaa44,
-                emissive: 0xff6622,
-                emissiveIntensity: 3
+                color: 0xffaa44, emissive: 0xff6622, emissiveIntensity: 3.2, roughness: 0.4
             })
         );
         flame.position.set(sx * 15.5, 3.4, z);
         world.group.add(flame);
+        const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.2, 8), std(0x3a2a18, 0.8));
+        bowl.position.set(sx * 15.5, 3.18, z);
+        world.group.add(bowl);
         if (quality.lights) {
-            const light = new THREE.PointLight(0xff7a30, 2.2, 16, 2);
+            const light = new THREE.PointLight(0xff7a30, 2.35, 17, 2);
             light.position.copy(flame.position);
             world.group.add(light);
         }
+        world.updateFns.push((t) => {
+            const k = 1 + Math.sin(t * 11 + i) * 0.12;
+            flame.scale.setScalar(k);
+        });
     }
 
     const goblinSpawns = [
@@ -562,10 +653,9 @@ export function buildMoria(quality) {
         world.goblins.push(new GoblinAI(g.group, s.x, s.z));
     }
 
-    // Abismo
     const glow = new THREE.Mesh(
         new THREE.PlaneGeometry(40, 20),
-        new THREE.MeshBasicMaterial({ color: 0xff4a12, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: 0xff4a12, transparent: true, opacity: 0.38, side: THREE.DoubleSide })
     );
     glow.rotation.x = -Math.PI / 2;
     glow.position.set(0, -8, 82);
@@ -578,9 +668,7 @@ export function buildMoria(quality) {
     const exit = new THREE.Mesh(
         new THREE.BoxGeometry(4, 5, 0.4),
         new THREE.MeshStandardMaterial({
-            color: 0xffe8a0,
-            emissive: 0xffaa44,
-            emissiveIntensity: 0.8
+            color: 0xffe8a0, emissive: 0xffaa44, emissiveIntensity: 0.85, roughness: 0.4
         })
     );
     exit.position.set(0, 2.5, 104);
@@ -591,33 +679,7 @@ export function buildMoria(quality) {
     });
     world.goal = 'exit';
 
-    // A Sombra — aparece quando o jogador pisa na ponte.
-    const shadow = new THREE.Group();
-    const body = new THREE.Mesh(
-        new THREE.ConeGeometry(2.4, 8, 6),
-        new THREE.MeshStandardMaterial({
-            color: 0x1a0804,
-            emissive: 0xff3300,
-            emissiveIntensity: 0.45,
-            roughness: 0.9
-        })
-    );
-    body.position.y = 4;
-    shadow.add(body);
-    const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 6), std(0x2a1008, 0.8));
-    hornL.position.set(-1.1, 8.2, 0);
-    hornL.rotation.z = 0.5;
-    shadow.add(hornL);
-    const hornR = hornL.clone();
-    hornR.position.x = 1.1;
-    hornR.rotation.z = -0.5;
-    shadow.add(hornR);
-    const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.35, 8, 6),
-        new THREE.MeshStandardMaterial({ color: 0xffee88, emissive: 0xffaa00, emissiveIntensity: 4 })
-    );
-    eye.position.set(0, 6.2, 1.4);
-    shadow.add(eye);
+    const shadow = buildBalrog();
     shadow.position.set(0, -12, 70);
     shadow.visible = false;
     world.group.add(shadow);
@@ -628,7 +690,10 @@ export function buildMoria(quality) {
         const k = 1 - Math.exp(-1.8 * dt);
         shadow.position.z += (78 - shadow.position.z) * k;
         shadow.position.y += (0 - shadow.position.y) * k;
-        eye.scale.setScalar(1 + Math.sin(t * 8) * 0.15);
+        const eye = shadow.userData.eye;
+        if (eye) eye.scale.setScalar(1 + Math.sin(t * 8) * 0.15);
+        const whip = shadow.userData.whip;
+        if (whip) whip.rotation.z = -0.9 + Math.sin(t * 3.5) * 0.25;
     });
 
     makePage(world, 5, 14, 'moria-page');
@@ -653,26 +718,21 @@ export function buildAmonHen(quality) {
         return Math.max(river, hill + noise * 0.4);
     };
 
+    const henLow = new THREE.Color(0x7a6a38);
+    const henHigh = new THREE.Color(0xb89868);
+    const henRock = new THREE.Color(0x8a8a80);
     world.group.add(terrainMesh(
-        world.heightAt, 130, quality.id === 'low' ? 48 : 90,
-        new THREE.MeshStandardMaterial({ map: grassTexture(), color: 0x8a7a48, roughness: 0.92 })
+        world.heightAt, 130, quality.id === 'low' ? 56 : 96,
+        groundMat(grassTexture(), 0x8a7a48),
+        0, 0,
+        (x, z, y, c) => {
+            const d = Math.hypot(x, z);
+            c.copy(henLow).lerp(henHigh, smoothstep(28, 4, d)).lerp(henRock, Math.min(1, y * 0.08));
+            void z;
+        }
     ));
 
-    const river = new THREE.Mesh(
-        new THREE.PlaneGeometry(40, 130),
-        new THREE.MeshStandardMaterial({
-            map: waterTexture(),
-            color: 0x3a7aaa,
-            transparent: true,
-            opacity: 0.85,
-            roughness: 0.18,
-            metalness: 0.3
-        })
-    );
-    river.rotation.x = -Math.PI / 2;
-    river.position.set(-42, -0.4, 0);
-    world.group.add(river);
-    world.waterMeshes.push(river);
+    addWater(world, 40, 130, 0x3a7aaa, -42, -0.35, 0, 18);
 
     const seat = buildSeat();
     seat.position.set(0, world.heightAt(0, 0), 0);
@@ -707,10 +767,10 @@ export function buildAmonHen(quality) {
     });
 
     const rng = seeded(5);
-    scatterTrees(world, () => buildOak({ autumn: true }), Math.floor(22 * quality.trees), rng, {
+    scatterInstancedOaks(world, Math.floor(24 * quality.trees), rng, {
         minR: 12, maxR: 36, avoid: [{ x: 0, z: 0, r: 8 }]
-    });
-    scatterGrass(world, Math.floor(600 * quality.grass), quality);
+    }, true);
+    scatterGrass(world, Math.floor(680 * quality.grass));
     makePage(world, -6, 16, 'hen-page');
     return world;
 }

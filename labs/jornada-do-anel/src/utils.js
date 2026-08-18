@@ -101,10 +101,12 @@ export function rendererIsSoftware(renderer) {
 
 export function disposeObject(obj) {
     obj.traverse((child) => {
-        if (child.geometry) child.geometry.dispose();
-        const mat = child.material;
-        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-        else if (mat) mat.dispose();
+        if (child.geometry && !child.geometry.userData?.shared) child.geometry.dispose();
+        const mats = child.material;
+        const list = Array.isArray(mats) ? mats : mats ? [mats] : [];
+        for (const m of list) {
+            if (!m.userData?.shared) m.dispose();
+        }
     });
     obj.parent?.remove(obj);
 }
