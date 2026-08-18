@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino</title>
+  <meta name="description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta name="author" content="Diogo Paulino">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#1a1a1a">
+  
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/claude-bros/">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/assets/img/diogo-avatar.png">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diogo Paulino · Labs">
+  <meta property="og:title" content="Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino">
+  <meta property="og:description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/claude-bros/">
+  <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:image:alt" content="Diogo Paulino">
+  <meta property="og:locale" content="pt_BR">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Claude Bros — Jogo de plataforma PixiJS com IAs | Diogo Paulino">
+  <meta name="twitter:description" content="Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.">
+  <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Claude Bros",
+    "url": "https://diogopaulino.com.br/labs/claude-bros/",
+    "description": "Um jogo de plataforma ao estilo Mario Bros com Claude, Gemini e ChatGPT, feito em PixiJS.",
+    "applicationCategory": "GameApplication",
+    "genre": "Platformer",
+    "browserRequirements": "Requires JavaScript and WebGL",
+    "author": {
+      "@type": "Person",
+      "name": "Diogo Paulino",
+      "url": "https://diogopaulino.com.br"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <header class="lab-header">
+    <a href="/labs/" class="back-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Labs
+    </a>
+    <h1 class="lab-title">Claude Bros</h1>
+  </header>
+
+  <main class="game-container">
+    <div id="pixi-container"></div>
+    
+    <div class="hud">
+      <div class="hud-score">Score: <span id="score-display">0</span></div>
+      <div class="hud-controls" id="touch-controls">
+        <div class="dpad">
+          <button id="btn-left" class="control-btn">◀</button>
+          <button id="btn-right" class="control-btn">▶</button>
+        </div>
+        <div class="action-buttons">
+          <button id="btn-jump" class="control-btn action-btn">A</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="game-over-screen" class="overlay hidden">
+      <h2 id="end-title">Game Over</h2>
+      <button id="btn-restart" class="btn">Tentar Novamente</button>
+    </div>
+  </main>
+
+  <!-- PixiJS from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
