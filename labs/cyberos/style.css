@@ -743,6 +743,7 @@ select {
 /* Status bar */
 .os-statusbar {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
@@ -939,4 +940,43 @@ select {
     .dock { bottom: max(2.4rem, env(safe-area-inset-bottom, 0px)); }
     .window { height: 52% !important; top: 10% !important; max-width: calc(100% - 1rem); }
     .phos-btn { min-width: 44px; min-height: 44px; padding: 0.35rem 0.5rem; }
+}
+
+/* Telas estreitas: "v2.7" ao lado de "CyberOS" não cabe e trunca no meio do
+   número (sem reticências, pois é um flex com múltiplos filhos). Esconder o
+   badge de versão evita o corte feio; o app-logo ainda tem overflow/ellipsis
+   como rede de segurança. */
+@media (max-width: 480px), (max-height: 520px) and (orientation: landscape) {
+    .brand-ver { display: none; }
+}
+
+/* Landscape curto (celular deitado): header + status bar já consomem boa
+   parte dos ~375px de altura, sobrando pouco para o .desktop. Como as
+   janelas usam min-height:180px com top+height em %, a % de altura acaba
+   maior que o espaço restante e a janela extrapola para CIMA do container
+   (que tem overflow:hidden) — escondendo a titlebar inteira, incluindo o
+   botão de fechar. Ancorar com top+bottom (height:auto) garante que a
+   titlebar fique sempre visível; o que sobra é o corpo, que já rola. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .crt-bezel { min-height: calc(100dvh - 3rem); padding: 8px; }
+    .crt-screen { min-height: calc(100dvh - 4rem); }
+
+    .crt-screen > header[data-lab-header] { padding: 0.3rem 0.6rem; }
+    .crt-screen .os-brand { font-size: 1.05rem; gap: 0.3rem; }
+
+    .os-statusbar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+    .os-statusbar .status-sep { display: inline; }
+
+    .dock { padding: 0.3rem; gap: 0.3rem; bottom: 0.4rem; }
+
+    .window {
+        top: 4% !important;
+        bottom: 4% !important;
+        height: auto !important;
+        min-height: 130px;
+    }
 }
