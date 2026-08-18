@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1c1410">
+    <title>Mimo — pet virtual 3D | Diogo Paulino</title>
+    <meta name="description"
+        content="Pet virtual 3D em three.js: escolha cão ou gato, dê nome e raça, alimente, dê banho, brinque e faça carinho num lar ao entardecer.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/mimo/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/mimo/">
+    <meta property="og:title" content="Mimo — pet virtual 3D | Diogo Paulino">
+    <meta property="og:description"
+        content="Um lar 3D para o seu cão ou gato: raça, pelagem, nome, comida, banho e brincadeira. three.js no navegador.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Mimo — pet virtual 3D | Diogo Paulino">
+    <meta name="twitter:description" content="Escolha cão ou gato, dê um nome e cuide dele em three.js.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=9">
+    <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Mimo",
+          "url": "https://diogopaulino.com.br/labs/mimo/",
+          "description": "Pet virtual 3D em three.js: escolha cão ou gato, dê nome e raça, alimente, dê banho, brinque e faça carinho num lar ao entardecer.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Mimo",
+              "item": "https://diogopaulino.com.br/labs/mimo/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Mimo" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">🐾</span>
+                    <span>Mimo</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Sala 3D com o pet virtual"></canvas>
+        <div class="vignette" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel identity-panel">
+                    <span class="hud-label" id="moodLine">Mimo está contente</span>
+                    <strong id="petName">Mel</strong>
+                    <span id="petMeta" class="hud-sub">Golden Retriever</span>
+                </div>
+                <div class="panel needs-panel" aria-label="Necessidades">
+                    <div class="need" data-need-row="hunger">
+                        <span>Fome</span>
+                        <i><b data-need="hunger"></b></i>
+                        <em data-need-val="hunger">72</em>
+                    </div>
+                    <div class="need" data-need-row="joy">
+                        <span>Alegria</span>
+                        <i><b data-need="joy"></b></i>
+                        <em data-need-val="joy">78</em>
+                    </div>
+                    <div class="need" data-need-row="hygiene">
+                        <span>Higiene</span>
+                        <i><b data-need="hygiene"></b></i>
+                        <em data-need-val="hygiene">88</em>
+                    </div>
+                    <div class="need" data-need-row="energy">
+                        <span>Energia</span>
+                        <i><b data-need="energy"></b></i>
+                        <em data-need-val="energy">80</em>
+                    </div>
+                    <div class="need" data-need-row="love">
+                        <span>Carinho</span>
+                        <i><b data-need="love"></b></i>
+                        <em data-need-val="love">70</em>
+                    </div>
+                </div>
+            </div>
+
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+
+            <div class="hud-actions">
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+            </div>
+
+            <nav id="actionDock" class="dock" aria-label="Cuidar do pet">
+                <button type="button" data-action="feed"><span>🍽️</span>Comer</button>
+                <button type="button" data-action="treat"><span>🦴</span>Petisco</button>
+                <button type="button" data-action="play"><span>🎾</span>Brincar</button>
+                <button type="button" data-action="bath"><span>🛁</span>Banho</button>
+                <button type="button" data-action="sleep"><span>🌙</span>Dormir</button>
+                <button type="button" data-action="pet"><span>🤍</span>Carinho</button>
+            </nav>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="star-loader" aria-hidden="true">🐾</span>
+                <h1>Mimo</h1>
+                <p id="loadingText">Preparando o almofadão…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="welcomeOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> de volta ao lar</p>
+                <h2><span id="welcomeName">Mel</span> está<br>te esperando.</h2>
+                <p class="lede">A luz da janela ainda está quente. Arraste para orbitar, toque no pet para fazer carinho.</p>
+                <div class="card-actions">
+                    <button id="continueButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="newPetButton" class="ghost-button" type="button">Adotar outro</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="createOverlay" class="overlay create-overlay" hidden>
+            <div class="overlay-card create-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> three.js · pet virtual</p>
+                    <h1>Mimo</h1>
+                    <p class="lede">Escolha cão ou gato, a raça, a pelagem e um nome. Depois é só cuidar: comida, banho, brincadeira e colo.</p>
+                </header>
+
+                <nav class="create-steps" aria-label="Etapas">
+                    <button type="button" data-create-step="species" aria-current="step">1 Espécie</button>
+                    <button type="button" data-create-step="breed">2 Raça</button>
+                    <button type="button" data-create-step="style">3 Casa</button>
+                </nav>
+
+                <section id="stepSpecies" class="create-step">
+                    <div class="species-grid">
+                        <button type="button" class="species-card is-on" data-species="dog">
+                            <span class="species-art" aria-hidden="true">🐶</span>
+                            <strong>Cão</strong>
+                            <em>rabo, latido e bolinha</em>
+                        </button>
+                        <button type="button" class="species-card" data-species="cat">
+                            <span class="species-art" aria-hidden="true">🐱</span>
+                            <strong>Gato</strong>
+                            <em>ronronar, novelo e colo</em>
+                        </button>
+                    </div>
+                </section>
+
+                <section id="stepBreed" class="create-step" hidden>
+                    <div id="breedGrid" class="breed-grid"></div>
+                </section>
+
+                <section id="stepStyle" class="create-step" hidden>
+                    <label class="field">
+                        <span>Nome</span>
+                        <input id="petNameInput" type="text" maxlength="16" placeholder="Luna, Thor, Mimo…"
+                            autocomplete="off" enterkeyhint="done">
+                    </label>
+                    <p class="field-label">Pelagem</p>
+                    <div id="coatGrid" class="coat-grid"></div>
+                    <p class="section-note">O pet no centro da sala já é o seu — gire a câmera.</p>
+                </section>
+
+                <footer class="menu-foot create-foot">
+                    <div class="settings-inline">
+                        <label class="field field-mini">
+                            <span>Qualidade</span>
+                            <select id="qualitySelect">
+                                <option value="auto">Automática</option>
+                                <option value="low">Leve</option>
+                                <option value="medium">Equilibrada</option>
+                                <option value="high">Cinemática</option>
+                            </select>
+                        </label>
+                        <label class="field field-mini">
+                            <span>Volume <b id="volumeValue">70</b></span>
+                            <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
+                        </label>
+                    </div>
+                    <button id="arriveButton" class="primary-button" type="button">
+                        <span>Chegar em casa</span>
+                        <i aria-hidden="true">🏠</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> o lar espera</p>
+                <h2>Uma pausa<br>no sofá.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Voltar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Tela inicial</button>
+                    <button id="resetPetButton" class="ghost-button danger" type="button">Adotar outro pet</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> webgl</p>
+                <h2>A sala não abriu.</h2>
+                <p id="errorText" class="lede">Este navegador não conseguiu iniciar o WebGL.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="/labs/shared.js?v=8"></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
