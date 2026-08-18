@@ -54,7 +54,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
 | 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
-| 🕸️ **[Silkline](https://diogopaulino.com.br/labs/silkline/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
+| 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
 | 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |

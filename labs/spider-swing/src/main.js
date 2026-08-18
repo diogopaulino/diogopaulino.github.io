@@ -1,5 +1,5 @@
 /**
- * Silkline — laço principal.
+ * Spider Swing — laço principal.
  * Manhattan à noite: o tecelão dispara teias, o pêndulo gera velocidade
  * e os pulsos dourados marcam o combo.
  */
@@ -580,5 +580,5 @@ class Game {
 const game = new Game();
 game.init().catch((err) => {
     console.error(err);
-    game.hud.showError(err?.message || 'Falha ao iniciar o Silkline.');
+    game.hud.showError(err?.message || 'Falha ao iniciar o Spider Swing.');
 });

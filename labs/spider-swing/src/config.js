@@ -1,9 +1,9 @@
 /**
- * Silkline — escala da ilha, física do pêndulo e presets de qualidade.
+ * Spider Swing — escala da ilha, física do pêndulo e presets de qualidade.
  * Unidades ≈ metros. Manhattan está comprimida para caber num lab jogável.
  */
 
-export const STORAGE_KEY = 'silkline-v1';
+export const STORAGE_KEY = 'spider-swing-v1';
 
 export const GRID = {
     cols: 11,
