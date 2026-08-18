@@ -1,11 +1,11 @@
 /**
- * Ilha do Âmbar — constantes do parque, espécies e qualidade.
+ * Jurassic — constantes do parque, espécies e qualidade.
  *
  * 1 unidade = 1 metro. O recinto é uma ilha tropical compacta para o
  * navegador: o jipe percorre o circuito em cerca de um minuto.
  */
 
-export const STORAGE_KEY = 'ilha-do-ambar-v1';
+export const STORAGE_KEY = 'jurassic-v1';
 
 export const WORLD = {
     islandRadius: 118,
@@ -75,6 +75,18 @@ export const QUALITY = {
         particles: 1,
         bloom: true,
         dinoSegs: 1
+    },
+    ultra: {
+        id: 'ultra',
+        pixelRatio: 2.0,
+        antialias: true,
+        shadows: true,
+        shadowSize: 4096,
+        trees: 1.4,
+        grass: 1.4,
+        particles: 1.5,
+        bloom: true,
+        dinoSegs: 1.6
     }
 };
 
