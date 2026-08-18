@@ -102,10 +102,10 @@ class SafariDourado {
         }
 
         // Cenário da Savana
-        this.world = buildSavannaWorld(BABYLON, this.scene);
+        this.world = await buildSavannaWorld(BABYLON, this.scene);
 
         // Jipe de Expedição
-        this.jeep = buildJeep(BABYLON, this.scene);
+        this.jeep = await buildJeep(BABYLON, this.scene);
 
         // Câmera de perseguição do jipe
         this.camera = new BABYLON.FreeCamera('chaseCam', new BABYLON.Vector3(0, 3, -108), this.scene);
@@ -220,13 +220,8 @@ class SafariDourado {
             this.jeep.root.position.set(this.pos.x, this.pos.y, this.pos.z);
             this.jeep.root.rotation.y = this.yaw;
 
-            // Esterçamento das rodas dianteiras
-            this.jeep.wheels.fl.pivot.rotation.y = steer * 0.45;
-            this.jeep.wheels.fr.pivot.rotation.y = steer * 0.45;
-
-            // Rotação dos pneus
-            const rotSpeed = (this.speed / 0.42) * dt;
-            Object.values(this.jeep.wheels).forEach(w => w.tire.rotation.x += rotSpeed);
+            // Esterçamento e Rotação removidos já que o modelo realista não os suporta diretamente
+            // sem mapear os sub-meshes
 
             // Câmera de perseguição do jipe
             const camDist = this.inPhotoMode ? 2.8 : 8.5;

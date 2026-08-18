@@ -302,22 +302,14 @@ body[data-state="intro"] .hint {
 }
 
 .dock-btn {
-    padding: 0.65rem 1.05rem;
+    padding: 0.55rem 0.85rem;
     border-radius: 999px;
     border: 1px solid var(--line-soft);
     color: var(--text-soft);
-    font-size: 0.82rem;
-    font-weight: 550;
-    min-height: 44px;
-    min-width: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s var(--ease), color 0.2s, border-color 0.2s, transform 0.15s;
-}
-
-.dock-btn:active {
-    transform: scale(0.96);
+    font-size: 0.78rem;
+    font-weight: 500;
+    min-height: 40px;
+    transition: background 0.2s var(--ease), color 0.2s, border-color 0.2s;
 }
 
 .dock-btn:hover,
@@ -507,42 +499,6 @@ body[data-state="intro"] .hint {
 
     .title-card h1 {
         letter-spacing: 0.1em;
-    }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .title-card {
-        bottom: calc(5.2rem + var(--safe-bottom));
-    }
-
-    .title-card h1 {
-        font-size: clamp(1.4rem, 4.5vw, 2.2rem);
-    }
-
-    .title-kicker {
-        font-size: 0.65rem;
-        margin-bottom: 0.2rem;
-    }
-
-    .dock {
-        bottom: calc(0.5rem + var(--safe-bottom));
-        padding: 0.35rem 0.6rem;
-    }
-
-    .dock-btn {
-        min-height: 38px;
-        padding: 0.4rem 0.85rem;
-        font-size: 0.75rem;
-    }
-
-    .hint {
-        bottom: calc(4.8rem + var(--safe-bottom));
-        font-size: 0.7rem;
-    }
-
-    .overlay-card {
-        padding: 1.2rem 1.4rem;
-        max-height: 94dvh;
     }
 }
 

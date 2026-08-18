@@ -5,7 +5,6 @@
 
 import { WORLD } from './config.js';
 import { sandTexture, concreteTexture } from './textures.js';
-import { buildCzechHedgehog, buildBunker } from './models.js';
 
 export function heightAt(x, z) {
     if (z < -80) return WORLD.waterY || 0;
@@ -29,7 +28,7 @@ export function heightAt(x, z) {
     return 12.5 + t * 14.0;
 }
 
-export function buildCombatWorld(BABYLON, scene) {
+export function buildCombatWorld(BABYLON, scene, assets) {
     const root = new BABYLON.TransformNode('world_root', scene);
 
     const sandTex = sandTexture(scene);
@@ -73,22 +72,23 @@ export function buildCombatWorld(BABYLON, scene) {
     ocean.material = oceanMat;
     ocean.parent = root;
 
-    // Obstáculos na Praia (Hedgehogs)
+    // Obstáculos na Praia (Barrels)
     const hedgehogZ = [-20, 0, 20];
     for (const hz of hedgehogZ) {
         for (let hx = -35; hx <= 35; hx += 14) {
-            const h = buildCzechHedgehog(BABYLON, scene);
-            h.position.set(hx + (Math.random() - 0.5) * 4, heightAt(hx, hz) + 0.8, hz);
+            const h = assets.barrel.clone("barrel_clone");
+            h.position.set(hx + (Math.random() - 0.5) * 4, heightAt(hx, hz), hz);
+            h.rotation.y = Math.random() * Math.PI;
             h.parent = root;
         }
     }
 
-    // Bunkers de Concreto na Muralha
-    const bunker1 = buildBunker(BABYLON, scene);
+    // Casas/Bunkers na Muralha
+    const bunker1 = assets.house.clone("house_clone1");
     bunker1.position.set(-18, heightAt(-18, 55), 55);
     bunker1.parent = root;
 
-    const bunker2 = buildBunker(BABYLON, scene);
+    const bunker2 = assets.house.clone("house_clone2");
     bunker2.position.set(18, heightAt(18, 55), 55);
     bunker2.parent = root;
 

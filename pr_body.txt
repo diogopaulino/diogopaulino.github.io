@@ -1,0 +1,28 @@
+## 🎯 Objetivo
+
+Transformar o lab Orbis para exibir exclusivamente o nosso Sistema Solar em 3D hiper-realista.
+
+## ✨ O que mudou
+
+- Alteração do catálogo procedural para um catálogo fixo com Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno
+- Shaders e parâmetros ajustados para cada planeta imitando suas características reais (nuvens, atmosfera, relevo, anéis)
+- Atualização do título, meta tags e JSON-LD no `index.html` do lab para refletir o tema
+- Ocultação dos controles de seed e geração de novo sistema procedural da interface
+- Textos atualizados no README e na galeria de Labs
+
+## 🧪 Como testar
+
+1. Na raiz do repo: `python3 -m http.server 8000`
+2. Acessar `/labs/orbis/`
+3. Verificar a presença de todos os 8 planetas em órbita do Sol, com visuais realistas
+4. Clicar em cada planeta para ver de perto
+5. Responsividade no celular não foi afetada
+
+## ✅ Checklist
+
+- [x] Links conferidos: pasta do lab ↔ card da galeria ↔ README ↔ sitemap (e corrigidos se quebravam)
+- [x] README atualizado (linha na tabela + URL + contagem no badge/texto) — obrigatório em lab novo, renomeado ou removido
+- [x] SEO consistente: title, description, canonical, author, robots, OG, Twitter, JSON-LD (e contagem nos metas da galeria)
+- [x] Testado via HTTP na raiz, não via `file://`
+- [x] Responsivo: 375px / 390px / landscape — overflow, HUD, toque, safe-area (`viewport-fit=cover`)
+- [x] Nada fora do escopo foi quebrado

@@ -167,8 +167,7 @@ function stepCraft(c, input, dt) {
 
     const spd = Math.hypot(c.vx, c.vz);
     const speedNorm = clamp(spd / CRAFT.maxSpeed, 0, 1);
-    const reverse = fwd < -0.4 ? -CRAFT.reverseSteer : 1;
-    c.yaw += steer * CRAFT.steer * (0.28 + 0.72 * speedNorm) * reverse * dt;
+    c.yaw += steer * CRAFT.steer * (0.28 + 0.72 * speedNorm) * dt;
     c.yaw = wrapPi(c.yaw);
 
     if (input.jump && !c.air && c.y <= CRAFT.hover + 0.08) {

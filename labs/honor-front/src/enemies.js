@@ -2,8 +2,6 @@
  * Patrulhas e defensores do Eixo para Honor Front em Babylon.js.
  */
 
-import { buildSoldier } from './models.js';
-
 const SPAWNS = [
     { x: -14, z: 98, yaw: Math.PI, mg: true },
     { x: 5, z: 99, yaw: Math.PI },
@@ -22,13 +20,15 @@ const SPAWNS = [
 ];
 
 export class Enemies {
-    constructor(BABYLON, scene, heightAt) {
+    constructor(BABYLON, scene, heightAt, assets) {
         this.BABYLON = BABYLON;
         this.scene = scene;
         this.list = [];
 
-        for (const s of SPAWNS) {
-            const root = buildSoldier(BABYLON, scene);
+        for (let i = 0; i < SPAWNS.length; i++) {
+            const s = SPAWNS[i];
+            const root = assets.soldier.clone(`soldier_${i}`);
+            root.setEnabled(true);
             const y = heightAt(s.x, s.z);
             root.position.set(s.x, y, s.z);
             root.rotation.y = s.yaw;
@@ -66,6 +66,7 @@ export class Enemies {
             e.root.rotation.set(0, e.yaw, 0);
         }
     }
+
 
     hitTest(origin, dir, maxDist = 160) {
         let best = null;

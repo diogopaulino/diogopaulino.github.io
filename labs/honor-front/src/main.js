@@ -11,6 +11,7 @@ import { CombatAudio } from './audio.js';
 import { heightAt, buildCombatWorld } from './world.js';
 import { setupAtmosphere } from './sky.js';
 import { clamp } from './utils.js';
+import { loadAssets } from './models.js';
 
 class HonorFront {
     constructor() {
@@ -161,11 +162,14 @@ class HonorFront {
             return;
         }
 
+        // Carregar assets hiper-realistas
+        this.assets = await loadAssets(BABYLON, this.scene);
+
         // Iluminação & Atmosfera
         this.lights = setupAtmosphere(BABYLON, this.scene);
 
         // Cenário da Praia e Bunkers
-        this.world = buildCombatWorld(BABYLON, this.scene);
+        this.world = buildCombatWorld(BABYLON, this.scene, this.assets);
 
         // Câmera do Jogador
         this.camera = new BABYLON.FreeCamera('fpsCam', new BABYLON.Vector3(0, 1.6, -70), this.scene);
@@ -173,13 +177,13 @@ class HonorFront {
         this.camera.maxZ = 800;
 
         // Armas
-        this.loadout = new Loadout(BABYLON, this.camera, this.scene);
+        this.loadout = new Loadout(BABYLON, this.camera, this.scene, this.assets);
 
         // Efeitos
         this.effects = new CombatEffects(BABYLON, this.scene);
 
         // Inimigos
-        this.enemies = new Enemies(BABYLON, this.scene, heightAt);
+        this.enemies = new Enemies(BABYLON, this.scene, heightAt, this.assets);
 
         // Pipeline PBR
         const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
