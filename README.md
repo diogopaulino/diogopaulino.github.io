@@ -55,7 +55,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
 | 🪼 **[Noctiluca](https://diogopaulino.com.br/labs/noctiluca/)** | Medusa de luz no abismo — pulse no ritmo, atravesse anéis de ruína e desça a cidade submersa |
 | 🦕 **[Ilha do Âmbar](https://diogopaulino.com.br/labs/ilha-do-ambar/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
-| 🕸️ **[Silkline](https://diogopaulino.com.br/labs/silkline/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
+| 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
 | 🥋 **[Vector Fighter](https://diogopaulino.com.br/labs/vector-fighter/)** | Luta 3D em polígonos no espírito Virtua Fighter — anel octogonal, ring out e K.O. |
 | ✨ **[Lúmina](https://diogopaulino.com.br/labs/lumina/)** | Reino flutuante estilo Disney — voe, colete desejos e acenda as lanternas do castelo |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
