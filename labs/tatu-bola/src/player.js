@@ -197,7 +197,7 @@ export class Player {
 
         this._animate(dt, spd, inWater);
         let turn = wrapPi(this.yaw - this.mesh.rotation.y);
-        this.mesh.rotation.y += turn * (1 - Math.exp(-10 * dt));
+        this.mesh.rotation.y += turn * (1 - Math.exp(-25 * dt));
 
         if (this.blob) {
             this.blob.position.y = 0.04 - this.position.y * 0.002;
