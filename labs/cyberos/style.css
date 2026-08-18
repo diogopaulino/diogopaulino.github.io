@@ -952,3 +952,50 @@ select {
     .window { height: 52% !important; top: 10% !important; max-width: calc(100% - 1rem); }
     .phos-btn { min-width: 44px; min-height: 44px; padding: 0.35rem 0.5rem; }
 }
+
+/* Paisagem curta: o dock virava faixa horizontal no rodapé (regra de ≤820px) e
+   caía DENTRO da janela — deitado sobra largura, não altura, então a janela
+   ocupava a faixa inteira e os ícones ficavam por baixo, inalcançáveis.
+
+   Aqui o dock volta a ser coluna à esquerda (que é o que a forma da tela pede)
+   e a janela recua para começar depois dele. */
+@media (max-height: 540px) and (orientation: landscape) {
+  .crt-bezel {
+    min-height: calc(100dvh - 2rem);
+    padding: 8px;
+  }
+
+  .crt-screen {
+    min-height: calc(100dvh - 3rem);
+  }
+
+  .dock {
+    top: 50%;
+    bottom: auto;
+    left: max(0.4rem, env(safe-area-inset-left, 0px));
+    transform: translateY(-50%);
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.3rem;
+  }
+
+  .dock-icon {
+    min-width: 3.1rem;
+    min-height: var(--touch-target);
+    padding: 0.25rem 0.3rem;
+    font-size: 0.54rem;
+  }
+
+  .window {
+    left: 4.4rem !important;
+    right: max(0.6rem, env(safe-area-inset-right, 0px));
+    width: auto !important;
+    top: 2% !important;
+    height: 94% !important;
+  }
+
+  .os-statusbar {
+    font-size: 0.52rem;
+    padding-block: 0.25rem;
+  }
+}

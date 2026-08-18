@@ -344,10 +344,88 @@
         });
     })();
 
+    /* --- Rede caiu, engine não veio ---------------------------------------
+       Metade dos labs carrega Babylon ou three.js de CDN. Quando o CDN falha
+       (rede ruim, bloqueio corporativo, offline) a página abre PRETA e sem uma
+       palavra: o canvas fica lá, vazio, e o erro só aparece no console.
+
+       Esta guarda transforma isso numa mensagem. Ela não tenta consertar nada
+       — só explica o que houve e oferece recarregar. */
+    const ENGINE_PROBES = [
+        { host: 'cdn.babylonjs.com', global: 'BABYLON', label: 'Babylon.js' },
+        { host: 'cdn.jsdelivr.net/npm/pixi.js', global: 'PIXI', label: 'PixiJS' }
+    ];
+
+    let engineNoticeShown = false;
+
+    function showEngineNotice(label) {
+        if (engineNoticeShown) return;
+        engineNoticeShown = true;
+
+        const notice = document.createElement('div');
+        notice.className = 'lab-engine-notice';
+        notice.setAttribute('role', 'alert');
+        notice.innerHTML = `
+            <div class="lab-engine-notice__card">
+                <p class="lab-engine-notice__title">Não deu para carregar o ${label}</p>
+                <p class="lab-engine-notice__text">
+                    Este lab desenha em 3D com uma biblioteca que vem de um CDN, e o
+                    navegador não conseguiu buscá-la. Costuma ser conexão instável ou
+                    uma rede que bloqueia o domínio.
+                </p>
+                <div class="lab-engine-notice__actions">
+                    <button type="button" class="lab-engine-notice__btn" data-engine-retry>Tentar de novo</button>
+                    <a class="lab-engine-notice__link" href="/labs/">Voltar aos labs</a>
+                </div>
+            </div>
+        `;
+        notice.querySelector('[data-engine-retry]').addEventListener('click', () => location.reload());
+        document.body.appendChild(notice);
+    }
+
+    /* Um lab só é cobrado pelo global se de fato pedir aquele script. */
+    function checkEngines() {
+        const html = Array.from(document.scripts).map(el => el.src || '').join(' ');
+        for (const probe of ENGINE_PROBES) {
+            if (html.includes(probe.host) && !window[probe.global]) {
+                showEngineNotice(probe.label);
+                return;
+            }
+        }
+    }
+
+    /* Scripts cuja falha realmente inviabiliza o lab. Um pacote de ícones que
+       não carrega deixa a página feia, não quebrada — avisar ali seria alarme
+       falso, então a lista é só de motores gráficos. */
+    const CRITICAL_SCRIPT = /babylonjs|pixi\.js|\bthree(\.module)?\.js|three@/;
+
+    function watchModuleFailures() {
+        /* three.js entra por importmap dentro de <script type="module">: não há
+           global para checar, e a falha de import não sobe como erro de janela.
+           O evento `error` no próprio elemento do script sobe — mas só na fase
+           de captura, porque não borbulha. */
+        window.addEventListener('error', (event) => {
+            const target = event.target;
+            if (!target || target === window || target.tagName !== 'SCRIPT') return;
+
+            const src = target.src || '';
+            // Módulo local que falhou por causa do import de CDN conta; módulo
+            // local com erro próprio, não — por isso o teste do importmap.
+            const isEngineModule = target.type === 'module' && document.querySelector('script[type="importmap"]');
+            if (isEngineModule || CRITICAL_SCRIPT.test(src)) {
+                showEngineNotice('motor 3D');
+            }
+        }, true);
+    }
+
     function init() {
         ensureFavicon();
         initChrome();
         ensureThemeCore();
+        watchModuleFailures();
+        // Depois do load: até lá o script do CDN teve sua chance de definir o global.
+        if (document.readyState === 'complete') setTimeout(checkEngines, 400);
+        else window.addEventListener('load', () => setTimeout(checkEngines, 400), { once: true });
     }
 
     applySavedTheme();

@@ -495,6 +495,87 @@ footer a:hover {
     }
 }
 
+/* Aviso de engine que não carregou (ver shared.js). Fica por cima de tudo
+   porque o que está embaixo é um canvas vazio. */
+.lab-engine-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right))
+        max(1rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+    background: rgba(8, 10, 14, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.lab-engine-notice__card {
+    max-width: min(28rem, 100%);
+    max-height: min(92dvh, 100%);
+    overflow-y: auto;
+    padding: clamp(1.25rem, 5vw, 2rem);
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: #14181f;
+    color: #eef2f7;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lab-engine-notice__title {
+    font-size: clamp(1.1rem, 4.5vw, 1.4rem);
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+}
+
+.lab-engine-notice__text {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: rgba(238, 242, 247, 0.78);
+}
+
+.lab-engine-notice__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.lab-engine-notice__btn,
+.lab-engine-notice__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-target);
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.lab-engine-notice__btn {
+    border: 0;
+    background: #4f8bf0;
+    color: #fff;
+}
+
+.lab-engine-notice__link {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #eef2f7;
+}
+
+.lab-engine-notice__btn:focus-visible,
+.lab-engine-notice__link:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     html {
         scroll-behavior: auto;

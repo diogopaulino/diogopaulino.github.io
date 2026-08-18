@@ -775,7 +775,7 @@ body.fullscreen:hover header {
     }
 
     .warp-btn {
-        min-width: 40px;
+        min-width: var(--touch-target);
         padding: 0 8px;
     }
 }
