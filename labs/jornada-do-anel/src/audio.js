@@ -2,7 +2,7 @@
  * Trilha e efeitos — Web Audio, temas originais (nada da trilha do filme).
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=3';
 
 const THEMES = {
     shire: { base: 196, mode: [0, 2, 4, 7, 9], tempo: 0.9, filter: 900, drone: 98 },

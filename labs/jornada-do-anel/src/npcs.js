@@ -2,7 +2,7 @@
  * IA dos Cavaleiros Negros (visão + perseguição) e dos goblins (aggro).
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=3';
 
 export class Rider {
     constructor(group, x, z, waypoints) {
@@ -20,6 +20,7 @@ export class Rider {
         this.alive = true;
         this.catchR = 1.35;
         this.alert = 0;
+        this.walkPhase = 0;
     }
 
     update(dt, player, heightAt) {
@@ -63,10 +64,18 @@ export class Rider {
         this.alert = Math.max(0, this.alert - dt * 0.35);
 
         const y = heightAt(this.x, this.z);
-        this.group.position.set(this.x, y, this.z);
+        this.walkPhase += dt * sp * 2.1;
+        this.group.position.set(this.x, y + Math.abs(Math.sin(this.walkPhase)) * 0.07, this.z);
         this.group.rotation.y = this.yaw;
-        const gait = Date.now() * 0.008;
-        this.group.position.y = y + Math.abs(Math.sin(gait)) * 0.06;
+        const legs = this.group.userData.parts?.horseLegs;
+        if (legs) {
+            const wave = Math.sin(this.walkPhase);
+            for (const leg of legs) {
+                const g = wave * 0.42 * (leg.userData.sign || 1);
+                leg.rotation.x = g;
+                if (leg.userData.lower) leg.userData.lower.rotation.x = Math.max(0, -g * 0.55);
+            }
+        }
 
         if (dist < this.catchR) return 'caught';
         if (this.state === 'chase') return 'chase';

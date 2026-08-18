@@ -3,15 +3,17 @@
  */
 
 import * as THREE from 'three';
-import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js';
-import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime } from './utils.js';
-import { Input } from './input.js';
-import { GameAudio } from './audio.js';
-import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js';
-import { createSky, applyChapterSky, createLights } from './sky.js';
-import { buildChapter } from './world.js';
-import { nearestInteractable } from './npcs.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js?v=3';
+import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, disposeObject } from './utils.js?v=3';
+import { Input } from './input.js?v=3';
+import { GameAudio } from './audio.js?v=3';
+import { Hud, statsBlock } from './hud.js?v=3';
+import { Player } from './player.js?v=3';
+import { createSky, applyChapterSky, createLights, tickSky } from './sky.js?v=3';
+import { buildChapter } from './world.js?v=3';
+import { nearestInteractable } from './npcs.js?v=3';
+import { tickMaterials } from './models.js?v=3';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
@@ -104,6 +106,10 @@ class Game {
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.12, 520);
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        this.scene.environmentIntensity = 0.42;
+        pmrem.dispose();
         this.sky = createSky();
         this.scene.add(this.sky.mesh);
 
@@ -277,13 +283,17 @@ class Game {
 
         const world = buildChapter(ch.id, this.quality);
         const lights = createLights(this.scene, ch, this.quality);
-        if (this.world) this.scene.remove(this.world.group);
+        if (this.world) {
+            this.scene.remove(this.world.group);
+            disposeObject(this.world.group);
+        }
         if (this.lights) this.scene.remove(this.lights.group);
         this.world = world;
         this.lights = lights;
         this.scene.add(this.world.group);
         applyChapterSky(this.sky, ch);
         this.scene.fog = new THREE.Fog(ch.fog.color, ch.fog.near, ch.fog.far);
+        this.scene.environmentIntensity = ch.id === 'moria' ? 0.12 : ch.id === 'forest' ? 0.2 : 0.42;
         this.renderer.setClearColor(ch.clear);
         this.renderer.toneMappingExposure = ch.exposure ?? 1.15;
         this.audio.setTheme(ch.music);
@@ -409,11 +419,12 @@ class Game {
     _update(dt) {
         this.hud.tick(dt);
         this.audio.update(dt);
+        tickMaterials(this.time);
+        tickSky(this.sky, this.time);
         this.world?.updateFns.forEach((fn) => fn(this.time, dt));
         for (const w of this.world?.waterMeshes || []) {
-            if (w.userData.baseY == null) w.userData.baseY = w.position.y;
-            if (w.material.map) w.material.map.offset.x = this.time * 0.02;
-            w.position.y = w.userData.baseY + Math.sin(this.time * 1.4) * 0.05;
+            if (w.material.map) w.material.map.offset.x = this.time * 0.03;
+            if (w.material.normalMap) w.material.normalMap.offset.set(this.time * 0.04, this.time * 0.02);
         }
 
         this.fade = clamp(this.fade + this.fadeDir * dt * 0.85, 0, 1);

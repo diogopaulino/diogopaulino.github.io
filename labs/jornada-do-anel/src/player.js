@@ -4,9 +4,9 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA } from './config.js';
-import { clamp, damp } from './utils.js';
-import { buildHobbit, buildSword } from './models.js';
+import { PLAYER, CAMERA } from './config.js?v=3';
+import { clamp, damp } from './utils.js?v=3';
+import { buildHobbit, buildSword } from './models.js?v=3';
 
 export class Player {
     constructor(scene) {
@@ -150,8 +150,16 @@ export class Player {
         const gait = len > 0.08 ? Math.sin(this.walkPhase) : 0;
         this.parts.legs[0].rotation.x = gait * 0.7;
         this.parts.legs[1].rotation.x = -gait * 0.7;
+        const shin0 = this.parts.legs[0].userData.shin;
+        const shin1 = this.parts.legs[1].userData.shin;
+        if (shin0) shin0.rotation.x = Math.max(0, -gait * 0.55);
+        if (shin1) shin1.rotation.x = Math.max(0, gait * 0.55);
         this.parts.arms[0].rotation.x = -gait * 0.5;
         this.parts.arms[1].rotation.x = gait * 0.5 - swing * 1.4;
+        const fore0 = this.parts.arms[0].userData.forearm;
+        const fore1 = this.parts.arms[1].userData.forearm;
+        if (fore0) fore0.rotation.x = Math.max(0, gait * 0.22);
+        if (fore1) fore1.rotation.x = Math.max(0, -gait * 0.22) - swing * 0.35;
         this.parts.torso.rotation.y = gait * 0.08;
         this.parts.head.rotation.y = gait * 0.06;
 

@@ -2,7 +2,7 @@
  * Teclado, mouse (pointer lock), toque e atalhos de HUD.
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=3';
 
 const MOVE = {
     KeyW: 'forward',

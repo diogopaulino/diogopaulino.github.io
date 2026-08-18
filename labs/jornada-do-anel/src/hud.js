@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS } from './config.js';
-import { formatTime } from './utils.js';
+import { CHAPTERS } from './config.js?v=3';
+import { formatTime } from './utils.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 
