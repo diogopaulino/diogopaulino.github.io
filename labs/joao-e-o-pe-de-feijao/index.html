@@ -301,17 +301,24 @@
                     return !!(c.getContext('webgl2') || c.getContext('webgl'));
                 } catch (e) { return false; }
             }
-            if (!hasGpu() || (typeof BABYLON !== 'undefined' && !BABYLON.Engine?.isSupported())) {
+            // Duas causas diferentes, mensagens diferentes: sem GPU o problema é
+            // o navegador; sem BABYLON o problema é a rede que não trouxe o CDN.
+            var noEngine = typeof BABYLON === 'undefined';
+            if (!hasGpu() || noEngine || !BABYLON.Engine?.isSupported()) {
                 document.addEventListener('DOMContentLoaded', function () {
                     var err = document.getElementById('errorOverlay');
                     var load = document.getElementById('loadingOverlay');
+                    var txt = document.getElementById('errorText');
                     if (load) load.hidden = true;
+                    if (txt && noEngine) {
+                        txt.textContent = 'O motor 3D (Babylon.js) não pôde ser baixado. Verifique a conexão e recarregue a página.';
+                    }
                     if (err) err.hidden = false;
                 });
             }
         })();
     </script>
-    <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/main.js?v=2"></script>
 </body>
 
 </html>

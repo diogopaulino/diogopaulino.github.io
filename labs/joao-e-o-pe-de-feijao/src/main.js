@@ -14,8 +14,12 @@ import { setModelQuality } from './models.js';
 import { nearestInteractable } from './npcs.js';
 
 const B = window.BABYLON;
-const LOOK = new B.Vector3();
-const CAM = new B.Vector3();
+/* Criados sob demanda, não na avaliação do módulo: sem Babylon carregado,
+   `new B.Vector3()` no topo do arquivo derrubava o módulo inteiro antes de
+   qualquer guarda rodar — nem a própria tela de erro do lab chegava a aparecer.
+   São scratch vectors reaproveitados a cada frame, então continuam únicos. */
+let LOOK = null;
+let CAM = null;
 
 class Game {
     constructor() {
@@ -489,6 +493,10 @@ class Game {
         const t = clamp(this.introT / 3.2, 0, 1);
         const e = t * t * (3 - 2 * t);
         const o = this.world.overview;
+        if (!CAM) {
+            CAM = new B.Vector3();
+            LOOK = new B.Vector3();
+        }
         this.player.cameraPosition(CAM);
         this.player.lookAt(LOOK);
         this.camera.position.set(
