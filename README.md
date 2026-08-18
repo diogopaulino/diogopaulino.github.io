@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-63_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-62_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,7 +32,7 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **63 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **62 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaixo e da URL `https://diogopaulino.com.br/labs/<slug>/`.
 
@@ -70,7 +70,6 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
-| 😈 **[Pandemônio](https://diogopaulino.com.br/labs/pandemonium/)** | Platformer no trilho — corra, pule abismos e alcance o portal |
 | 💻 **[Beige Box](https://diogopaulino.com.br/labs/beige-box/)** | Quarto retrô: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa |
 | 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador WebGPU com circuitos reais, física de pneus, DRS/ERS e IA |
 
