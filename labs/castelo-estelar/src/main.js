@@ -23,12 +23,12 @@ const QUALITY = {
         sparks: 400, burst: 40
     },
     medium: {
-        id: 'medium', pr: 1.35, antialias: true, bloom: true, shadows: true,
+        id: 'medium', pr: 1.5, antialias: true, bloom: true, shadows: true,
         shadowMap: 2048, waterSize: 256, stars: 4200, trees: 70, clouds: 8,
         sparks: 900, burst: 70
     },
     high: {
-        id: 'high', pr: 1.75, antialias: true, bloom: true, shadows: true,
+        id: 'high', pr: 2.0, antialias: true, bloom: true, shadows: true,
         shadowMap: 4096, waterSize: 512, stars: 7000, trees: 110, clouds: 12,
         sparks: 1400, burst: 110
     }
@@ -36,8 +36,8 @@ const QUALITY = {
 
 function pickQuality(mode, renderer) {
     if (QUALITY[mode]) return QUALITY[mode];
-    if (detectSoftwareGL(renderer) || detectMobile()) return QUALITY.low;
-    if (devicePixelRatio >= 2 && innerWidth >= 1400) return QUALITY.high;
+    if (detectSoftwareGL(renderer) || detectMobile()) return QUALITY.medium; // Use medium as default for mobile to preserve sharpness
+    if (devicePixelRatio >= 2) return QUALITY.high;
     return QUALITY.medium;
 }
 

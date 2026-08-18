@@ -100,24 +100,30 @@ function makeMats() {
     return { stoneMat, roofMat, goldMat, windowMat, darkMat, woodMat, leadMat };
 }
 
+const dummy = new THREE.Object3D();
+
 function merlons(parent, mat, { cx = 0, cz = 0, w, d, y, step = 0.72, h = 0.62, t = 0.38 }) {
     const hw = w / 2;
     const hd = d / 2;
-    const place = (x, z) => {
-        parent.add(mesh(GEO.box, mat, {
-            pos: [cx + x, y + h / 2, cz + z],
-            scale: [t, h, t],
-            cast: false
-        }));
-    };
+    const pts = [];
     for (let x = -hw; x <= hw + 0.01; x += step) {
-        place(x, -hd);
-        place(x, hd);
+        pts.push([x, -hd]);
+        pts.push([x, hd]);
     }
     for (let z = -hd + step; z < hd; z += step) {
-        place(-hw, z);
-        place(hw, z);
+        pts.push([-hw, z]);
+        pts.push([hw, z]);
     }
+    const inst = new THREE.InstancedMesh(GEO.box, mat, pts.length);
+    inst.castShadow = false;
+    inst.receiveShadow = true;
+    pts.forEach(([x, z], i) => {
+        dummy.position.set(cx + x, y + h / 2, cz + z);
+        dummy.scale.set(t, h, t);
+        dummy.updateMatrix();
+        inst.setMatrixAt(i, dummy.matrix);
+    });
+    parent.add(inst);
 }
 
 function gothicPane(parent, mats, { x, y, z, w = 0.55, h = 1.35, yaw = 0 }) {
