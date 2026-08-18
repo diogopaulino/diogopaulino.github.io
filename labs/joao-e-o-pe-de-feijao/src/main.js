@@ -9,7 +9,8 @@ import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
 import { Player } from './player.js';
 import { createSky, applyChapterSky, createLights } from './sky.js';
-import { buildChapter } from './world.js';
+import { buildChapter, bindShadows } from './world.js';
+import { setModelQuality } from './models.js';
 import { nearestInteractable } from './npcs.js';
 
 const B = window.BABYLON;
@@ -69,6 +70,7 @@ class Game {
         this.hud.setLoading(0.1, 'Abrindo o livro do conto…');
         this.quality = this.resolveQuality();
         this.mobile = detectMobile();
+        setModelQuality(this.quality.id);
 
         try {
             this.engine = new B.Engine(this.canvas, true, {
@@ -282,6 +284,7 @@ class Game {
         const lights = createLights(this.scene, ch, this.quality);
         this.world = world;
         this.lights = lights;
+        bindShadows(world, lights);
 
         applyChapterSky(this.sky, ch, this.scene);
         this.audio.setTheme(ch.music);

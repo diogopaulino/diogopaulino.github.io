@@ -90,13 +90,8 @@ export function detectSoftwareGL() {
 }
 
 export function disposeNode(node) {
-    if (!node) return;
-    if (node.getChildren) {
-        const children = [...node.getChildren()];
-        children.forEach(disposeNode);
-    }
-    if (typeof node.dispose === 'function') {
-        node.dispose(false, true);
+    if (node && typeof node.dispose === 'function') {
+        node.dispose(false, false);
     }
 }
 
