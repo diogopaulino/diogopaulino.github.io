@@ -89,10 +89,11 @@ export function drawKong(ctx, x, y, opt) {
     : 0;
   const roll = state === 'roll';
   const wind = facing * (state === 'run' || roll ? 2.2 : 0.4);
+  const squash = opt.squash || 0;
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(facing, 1);
+  ctx.scale(facing * (1 + squash * 0.16), 1 - squash * 0.22);
   if (roll) ctx.rotate(t * 18);
 
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
@@ -275,11 +276,16 @@ export function drawBalloon(ctx, x, y, t) {
   ctx.restore();
 }
 
-export function drawBarrel(ctx, x, y, kind, t, angle = 0) {
+export function drawBarrel(ctx, x, y, kind, t, angle = 0, charge = 0) {
   ctx.save();
   ctx.translate(x, y);
   if (kind === 'cannon' || kind === 'cannonUp' || kind === 'cannonDiag') {
     ctx.rotate(angle);
+    if (charge > 0) {
+      const pulse = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * (10 + charge * 26)));
+      ctx.fillStyle = `rgba(255,210,80,${pulse * charge})`;
+      ellipse(ctx, 16, 0, 5 + charge * 5, 7 + charge * 5);
+    }
     ctx.fillStyle = '#4a2a12';
     roundRect(ctx, -6, -8, 22, 16, 4);
     ctx.fill();
@@ -297,6 +303,11 @@ export function drawBarrel(ctx, x, y, kind, t, angle = 0) {
   }
   const body = kind === 'tnt' ? '#b43a28' : kind === 'bounce' ? '#3a8a48' : '#c07838';
   const band = kind === 'tnt' ? '#f0e0a0' : '#5a3418';
+  if (kind === 'tnt' && charge > 0) {
+    const pulse = 0.3 + 0.45 * (0.5 + 0.5 * Math.sin(t * (8 + charge * 30)));
+    ctx.fillStyle = `rgba(255,90,40,${pulse * charge})`;
+    ellipse(ctx, 0, 0, 13 + charge * 4, 14 + charge * 4);
+  }
   ctx.fillStyle = '#4a2a10';
   ellipse(ctx, 0, 1, 11, 12);
   ctx.fillStyle = body;
@@ -555,6 +566,26 @@ export function drawBackground(ctx, themeName, camX, camY, t) {
     ctx.beginPath();
     ctx.arc(360, 40, 50, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  const cloudColors = {
+    jungle: 'rgba(255,255,255,0.4)',
+    canopy: 'rgba(255,255,255,0.32)',
+    ruins: 'rgba(255,235,205,0.28)',
+    falls: 'rgba(255,255,255,0.45)',
+    throne: 'rgba(255,160,120,0.12)'
+  };
+  const cloudColor = cloudColors[themeName];
+  if (cloudColor) {
+    ctx.fillStyle = cloudColor;
+    const parC = camX * 0.08;
+    for (let i = -1; i < 6; i++) {
+      const cx = i * 160 - (parC % 160);
+      const cy = 26 + (i % 3) * 14;
+      ellipse(ctx, cx + 30, cy, 26, 9);
+      ellipse(ctx, cx + 55, cy + 4, 18, 7);
+      ellipse(ctx, cx + 10, cy + 5, 16, 6);
+    }
   }
 
   ctx.fillStyle = theme.far;
