@@ -46,7 +46,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D no espírito Super Mario 64 — Nico, câmera Lakitu, pulo triplo e sete estrelas |
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D — Clara carrega a última chama, acende Vale-da-Bruma e traz o primeiro sol |
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
-| 🫐 **[Amora](https://diogopaulino.com.br/labs/amora/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
+| 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
 | 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em Babylon.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
 | ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |

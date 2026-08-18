@@ -1,5 +1,5 @@
 /**
- * Amora — laço principal: renderer, pulo, amoras, fila de filhotes e a festa.
+ * Nina — laço principal: renderer, pulo, amoras, fila de filhotes e a festa.
  */
 
 import * as THREE from 'three';
@@ -8,13 +8,13 @@ import { Player } from './player.js';
 import { Effects } from './effects.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
-import { AmoraAudio } from './audio.js';
+import { NinaAudio } from './audio.js';
 import { updateFriend } from './animals.js';
 import {
     TOTAL_FRIENDS, BEFRIEND_R, HOME_R, BERRY_R, HOME
 } from './config.js';
 
-const STORAGE = 'amora-settings';
+const STORAGE = 'nina-settings';
 
 const QUALITY = {
     low: { pr: 1, antialias: false, bloom: false, shadows: false, clouds: 5, butterflies: 6, flowers: 28, sparks: 12, confetti: 18 },
@@ -42,11 +42,11 @@ function pickQuality(mode, renderer) {
     return QUALITY.medium;
 }
 
-class Amora {
+class Nina {
     constructor() {
         this.canvas = document.getElementById('scene');
         this.hud = new Hud();
-        this.audio = new AmoraAudio();
+        this.audio = new NinaAudio();
         this.input = new Input(this.canvas);
         this.state = 'boot';
         this.playTime = 0;
@@ -135,7 +135,7 @@ class Amora {
         this.hud.setLoading(0.38, 'Plantando o gramado…');
         this.valley = new Valley(this.scene, this.quality);
 
-        this.hud.setLoading(0.62, 'Chamando Amora…');
+        this.hud.setLoading(0.62, 'Chamando Nina…');
         this.player = new Player(this.scene, this.camera);
         this.effects = new Effects(this.scene, this.quality);
 
@@ -442,4 +442,4 @@ class Amora {
     }
 }
 
-new Amora();
+new Nina();
