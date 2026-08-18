@@ -150,7 +150,7 @@ function scaleNoise(x, y) {
 
 export function grassTexture() {
     return cached('grass', () => {
-        const size = 256;
+        const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#3d6a28';
@@ -173,7 +173,7 @@ export function grassTexture() {
 
 export function dirtTexture() {
     return cached('dirt', () => {
-        const size = 256;
+        const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#6b4a2c';
@@ -191,7 +191,7 @@ export function dirtTexture() {
 
 export function barkTexture() {
     return cached('bark', () => {
-        const size = 256;
+        const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#4a3424';
@@ -264,7 +264,7 @@ export function palmLeafTexture() {
 
 export function rockTexture() {
     return cached('rock', () => {
-        const size = 256;
+        const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
         ctx.fillStyle = '#6a665c';
@@ -292,7 +292,7 @@ export function metalTexture() {
 
 export function waterNormal() {
     return cached('waterN', () => {
-        const size = 256;
+        const size = 512;
         const el = canvas(size);
         const ctx = el.getContext('2d');
         const img = ctx.createImageData(size, size);

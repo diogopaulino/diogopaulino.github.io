@@ -29,15 +29,15 @@ function skinMat(key, colors, quality) {
     const maps = dinoSkin({
         key,
         ...colors,
-        size: quality.dinoSegs > 0.75 ? 512 : 256
+        size: quality.dinoSegs > 1.2 ? 1024 : (quality.dinoSegs > 0.75 ? 512 : 256)
     });
     const mat = new THREE.MeshStandardMaterial({
         map: maps.map,
         normalMap: maps.normalMap,
-        normalScale: new THREE.Vector2(0.62, 0.62),
+        normalScale: new THREE.Vector2(1.4, 1.4),
         roughnessMap: maps.roughnessMap,
-        roughness: 0.7,
-        metalness: 0.035
+        roughness: 0.6,
+        metalness: 0.12
     });
     patchSkin(mat, { belly: new THREE.Color(colors.ventral) });
     return mat;
