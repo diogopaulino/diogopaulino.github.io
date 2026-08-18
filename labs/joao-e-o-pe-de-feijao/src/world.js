@@ -3,12 +3,12 @@
  * Cada um devolve um ChapterWorld com colisores, plataformas, climbs e interações.
  */
 
-import { fbm, hash2, seeded, smoothstep, disposeNode } from './utils.js';
-import { grassTexture, dirtTexture, stoneTexture } from './textures.js';
+import { fbm, seeded, smoothstep, disposeNode } from './utils.js';
 import {
     buildCottage, buildFence, buildTree, buildStall, buildBeanstalk, buildCloudIsland,
     buildCastle, buildTable, buildGoldBag, buildHen, buildHarp, buildAxe, buildWell,
-    buildMother, buildMerchant, buildCow, buildGiant, makeBeacon, buildGateArch, std
+    buildMother, buildMerchant, buildCow, buildGiant, makeBeacon, buildGateArch,
+    buildRock, grassTuft, std, surf, setModelQuality
 } from './models.js';
 import { CowAI, GiantAI } from './npcs.js';
 
@@ -80,6 +80,43 @@ function terrainMesh(scene, heightAt, size, segs, material, ox = 0, oz = 0) {
     return ground;
 }
 
+function scatterRocks(scene, world, count, rng, avoid = []) {
+    for (let i = 0; i < count; i++) {
+        const a = rng() * Math.PI * 2;
+        const r = 6 + rng() * 28;
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+        if (avoid.some((p) => Math.hypot(x - p.x, z - p.z) < p.r)) continue;
+        const rock = buildRock(scene, rng);
+        rock.parent = world.root;
+        rock.position.set(x, world.heightAt(x, z), z);
+        world.addCollider(x, z, 0.4);
+    }
+}
+
+function scatterGrass(scene, world, count, rng) {
+    for (let i = 0; i < count; i++) {
+        const x = (rng() - 0.5) * 32;
+        const z = (rng() - 0.5) * 32;
+        if (Math.hypot(x + 4, z + 2) < 3) continue;
+        const tuft = grassTuft(scene);
+        tuft.parent = world.root;
+        tuft.position.set(x, world.heightAt(x, z) + 0.38, z);
+        tuft.scaling.setAll(0.7 + rng() * 0.7);
+    }
+}
+
+export function bindShadows(world, lights) {
+    if (!lights?.shadow || !world?.root) return;
+    world.root.getChildMeshes().forEach((mesh) => {
+        const n = mesh.name || '';
+        if (/beacon|flame|firefly|moon|glow|smoke|grassTuft|treeLeaf|harpString|coin_/i.test(n)) return;
+        const ground = /terrain|ground|floor|path|plaza|patchDirt|cloudTop/i.test(n);
+        if (!ground) lights.shadow.addShadowCaster(mesh);
+        mesh.receiveShadows = true;
+    });
+}
+
 function scatterTrees(scene, world, count, rng, opts) {
     const { minR = 10, maxR = 42, avoid = [] } = opts;
     for (let i = 0; i < count; i++) {
@@ -116,8 +153,7 @@ function addPath(scene, world, from, to, width = 2.4) {
     pathMesh.rotation.y = Math.atan2(dx, dz);
     pathMesh.position.set((from.x + to.x) / 2, 0.04, (from.z + to.z) / 2);
 
-    const dirtTex = dirtTexture(scene);
-    pathMesh.material = std(scene, 0xc4a06a, 0.95, 0.02, { map: dirtTex });
+    pathMesh.material = surf(scene, 'dirt');
     pathMesh.receiveShadows = true;
     return pathMesh;
 }
@@ -142,11 +178,7 @@ export function buildCottageChapter(scene, quality) {
     };
 
     const segs = quality.id === 'low' ? 36 : 64;
-    const grassTex = grassTexture(scene);
-    const ground = terrainMesh(
-        scene, world.heightAt, 100, segs,
-        std(scene, 0x8fbc5a, 0.95, 0.02, { map: grassTex })
-    );
+    const ground = terrainMesh(scene, world.heightAt, 100, segs, surf(scene, 'grass'));
     ground.parent = world.root;
 
     const cottage = buildCottage(scene);
@@ -211,6 +243,10 @@ export function buildCottageChapter(scene, quality) {
     scatterTrees(scene, world, Math.round(18 * quality.trees), rng, {
         minR: 16, maxR: 42, avoid: [{ x: -6, z: -4, r: 8 }, { x: 4.5, z: 3.2, r: 4 }, { x: 16, z: 9, r: 7 }]
     });
+    scatterRocks(scene, world, Math.round(10 * quality.trees), rng, [
+        { x: -6, z: -4, r: 6 }, { x: 16, z: 9, r: 5 }
+    ]);
+    if (quality.id !== 'low') scatterGrass(scene, world, Math.round(48 * quality.grass), rng);
     addPath(scene, world, { x: -2, z: 0 }, { x: 16, z: 9 });
 
     for (let i = 1; i <= 4; i++) {
@@ -265,19 +301,14 @@ export function buildFairChapter(scene, quality) {
 
     world.heightAt = (x, z) => fbm(x * 0.03, z * 0.03, 8) * 1.1 * (1 - smoothstep(6, 18, Math.hypot(x, z)) * 0.4);
 
-    const grassTex = grassTexture(scene);
-    const ground = terrainMesh(
-        scene, world.heightAt, 90, quality.id === 'low' ? 36 : 64,
-        std(scene, 0xc4b070, 0.92, 0.02, { map: grassTex })
-    );
+    const ground = terrainMesh(scene, world.heightAt, 90, quality.id === 'low' ? 36 : 64, surf(scene, 'dirt', 0xe8d2a0));
     ground.parent = world.root;
 
-    const dirtTex = dirtTexture(scene);
     const plaza = B.MeshBuilder.CreateDisc('plaza', { radius: 11, tessellation: 24 }, scene);
     plaza.parent = world.root;
     plaza.rotation.x = Math.PI / 2;
     plaza.position.y = 0.05;
-    plaza.material = std(scene, 0xd8b878, 0.9, 0.02, { map: dirtTex });
+    plaza.material = surf(scene, 'dirt');
     plaza.receiveShadows = true;
 
     const colors = [0xc43a2a, 0x2a6aaa, 0xd4a020, 0x2e7a3a, 0x7a3aaa];
@@ -296,7 +327,6 @@ export function buildFairChapter(scene, quality) {
         world.addCollider(s.x, s.z, 1.15);
     });
 
-    const stoneTex = stoneTexture(scene);
     const fountain = B.MeshBuilder.CreateCylinder('fountain', {
         height: 0.5,
         diameterTop: 2.8,
@@ -305,7 +335,7 @@ export function buildFairChapter(scene, quality) {
     }, scene);
     fountain.parent = world.root;
     fountain.position.y = 0.25;
-    fountain.material = std(scene, 0x8a9098, 0.7, 0.04, { map: stoneTex });
+    fountain.material = surf(scene, 'stone');
 
     const water = B.MeshBuilder.CreateDisc('fountainWater', { radius: 1.1, tessellation: 16 }, scene);
     water.parent = world.root;
@@ -371,11 +401,7 @@ export function buildNightChapter(scene, quality) {
         return hills * (1 - yard * 0.75);
     };
 
-    const grassTex = grassTexture(scene);
-    const ground = terrainMesh(
-        scene, world.heightAt, 80, quality.id === 'low' ? 36 : 64,
-        std(scene, 0x2a5a28, 0.95, 0.02, { map: grassTex })
-    );
+    const ground = terrainMesh(scene, world.heightAt, 80, quality.id === 'low' ? 36 : 64, surf(scene, 'grass', 0x6a8a58));
     ground.parent = world.root;
 
     const cottage = buildCottage(scene);
@@ -401,12 +427,11 @@ export function buildNightChapter(scene, quality) {
 
     const patchX = 2.2;
     const patchZ = 4.5;
-    const dirtTex = dirtTexture(scene);
     const dirt = B.MeshBuilder.CreateDisc('patchDirt', { radius: 1.6, tessellation: 16 }, scene);
     dirt.parent = world.root;
     dirt.rotation.x = Math.PI / 2;
     dirt.position.set(patchX, world.heightAt(patchX, patchZ) + 0.05, patchZ);
-    dirt.material = std(scene, 0x5a3a18, 0.95, 0.02, { map: dirtTex });
+    dirt.material = surf(scene, 'dirt', 0x6a4a28);
 
     const beans = [];
     for (let i = 0; i < 5; i++) {
@@ -540,12 +565,11 @@ export function buildCastleChapter(scene, quality) {
     const island = buildCloudIsland(scene, 30);
     island.parent = world.root;
 
-    const stoneTex = stoneTexture(scene);
     const floor = B.MeshBuilder.CreateDisc('castleFloor', { radius: 22, tessellation: 28 }, scene);
     floor.parent = world.root;
     floor.rotation.x = Math.PI / 2;
     floor.position.y = 1.15;
-    floor.material = std(scene, 0xd0d6dc, 0.88, 0.05, { map: stoneTex });
+    floor.material = surf(scene, 'stone', 0xd8dee4);
     floor.receiveShadows = true;
 
     const castle = buildCastle(scene);
@@ -559,7 +583,7 @@ export function buildCastleChapter(scene, quality) {
     hallFloor.parent = world.root;
     hallFloor.rotation.x = Math.PI / 2;
     hallFloor.position.set(0, 1.18, 8);
-    hallFloor.material = std(scene, 0xc8b090, 0.8, 0.04, { map: stoneTex });
+    hallFloor.material = surf(scene, 'wood', 0xc8b090);
     hallFloor.receiveShadows = true;
 
     const table = buildTable(scene);
@@ -661,11 +685,7 @@ export function buildEscapeChapter(scene, quality) {
         return hills * (1 - yard * 0.7);
     };
 
-    const grassTex = grassTexture(scene);
-    const ground = terrainMesh(
-        scene, world.heightAt, 80, quality.id === 'low' ? 36 : 64,
-        std(scene, 0x7aaa48, 0.95, 0.02, { map: grassTex })
-    );
+    const ground = terrainMesh(scene, world.heightAt, 80, quality.id === 'low' ? 36 : 64, surf(scene, 'grass', 0xc4a060));
     ground.parent = world.root;
 
     const cottage = buildCottage(scene);
@@ -734,6 +754,7 @@ export function buildEscapeChapter(scene, quality) {
 }
 
 export function buildChapter(id, scene, quality) {
+    setModelQuality(quality.id);
     switch (id) {
         case 'cottage': return buildCottageChapter(scene, quality);
         case 'fair': return buildFairChapter(scene, quality);
