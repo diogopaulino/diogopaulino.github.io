@@ -2,7 +2,7 @@
 
 ## Personagem
 
-- `HVGirl.glb`: Personagem carregada do repositório oficial de modelos do [Babylon.js](https://models.babylonjs.com/), substituindo os formatos geométricos anteriores para otimização e realismo.
+- `KnightCharacter.gltf` e `KnightCharacter.bin`: Knight Character carregado em tempo de execução do repositório [three.js](https://github.com/mrdoob/three.js/tree/master/manual/examples/resources/models/knight), distribuído com o projeto sob licença MIT.
 
 ## Poly Haven — CC0
 

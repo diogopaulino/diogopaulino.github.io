@@ -153,7 +153,7 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
   .portrait { width: 36px; height: 36px; font-size: 16px; }
   .bars { gap: 6px; }
   .bar-line { grid-template-columns: 42px 1fr 22px; gap: 5px; font-size: 7px; }
-  .battle-status { top: auto; bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px)); min-width: 155px; padding: 8px 13px; }
+  .battle-status { top: auto; bottom: max(190px, calc(env(safe-area-inset-bottom) + 180px)); min-width: 155px; padding: 8px 13px; }
   .battle-status strong { font-size: 10px; }
   .battle-status > span:last-child { font-size: 8px; }
   .combo { top: max(60px, calc(env(safe-area-inset-top) + 50px)); right: max(10px, env(safe-area-inset-right)); padding: 7px 9px; }
@@ -180,7 +180,7 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
   .vitals { top: max(46px, calc(env(safe-area-inset-top) + 40px)); left: max(10px, env(safe-area-inset-left)); width: 245px; padding-block: 6px; }
   .portrait { width: 32px; height: 32px; }
   .combo { top: max(46px, calc(env(safe-area-inset-top) + 40px)); }
-  .battle-status { bottom: max(5px, env(safe-area-inset-bottom)); padding: 5px 11px; }
+  .battle-status { top: max(46px, calc(env(safe-area-inset-top) + 40px)); bottom: auto; min-width: 150px; padding: 5px 14px; }
   .move-stick { width: 96px; height: 96px; bottom: max(8px, env(safe-area-inset-bottom)); }
   .move-stick i { width: 42px; height: 42px; }
   .combat-buttons { width: 176px; height: 124px; bottom: max(6px, env(safe-area-inset-bottom)); }
