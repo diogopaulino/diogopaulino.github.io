@@ -43,26 +43,72 @@ export function createManta() {
     const belly = std(0xc8e8e4, { roughness: 0.7 });
     const ink = std(0x081018);
 
-    const body = mesh(geo.sphereHi, skin, { scale: [1.55, 0.22, 0.95] });
-    g.add(body);
-    g.add(mesh(geo.sphere, belly, { pos: [0, -0.08, 0.05], scale: [1.25, 0.12, 0.72], cast: false }));
+    const bodyShape = new THREE.Shape();
+    bodyShape.moveTo(0, 1.2);
+    bodyShape.quadraticCurveTo(0.5, 0.8, 0.8, 0);
+    bodyShape.quadraticCurveTo(0.6, -1.0, 0, -1.5);
+    bodyShape.quadraticCurveTo(-0.6, -1.0, -0.8, 0);
+    bodyShape.quadraticCurveTo(-0.5, 0.8, 0, 1.2);
+    
+    const geoBody = new THREE.ExtrudeGeometry(bodyShape, { depth: 0.15, bevelEnabled: true, bevelSegments: 6, steps: 1, bevelSize: 0.1, bevelThickness: 0.15 });
+    geoBody.rotateX(Math.PI / 2);
+    geoBody.translate(0, 0.1, -0.15);
+    g.add(mesh(geoBody, skin, { scale: [1.2, 0.8, 1.1] }));
+    
+    const geoBelly = new THREE.ExtrudeGeometry(bodyShape, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.08, bevelThickness: 0.05 });
+    geoBelly.rotateX(Math.PI / 2);
+    geoBelly.translate(0, 0.0, -0.15);
+    g.add(mesh(geoBelly, belly, { scale: [1.1, 0.8, 1.0], pos: [0, -0.05, 0], cast: false }));
+
+    const wingShapeR = new THREE.Shape();
+    wingShapeR.moveTo(0, 0.6);
+    wingShapeR.quadraticCurveTo(1.5, 0.4, 2.8, -0.6);
+    wingShapeR.quadraticCurveTo(1.2, -0.8, 0, -1.2);
+    wingShapeR.lineTo(0, 0.6);
+    const geoWingR = new THREE.ExtrudeGeometry(wingShapeR, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 });
+    geoWingR.rotateX(Math.PI / 2);
+
+    const wingShapeL = new THREE.Shape();
+    wingShapeL.moveTo(0, 0.6);
+    wingShapeL.quadraticCurveTo(-1.5, 0.4, -2.8, -0.6);
+    wingShapeL.quadraticCurveTo(-1.2, -0.8, 0, -1.2);
+    wingShapeL.lineTo(0, 0.6);
+    const geoWingL = new THREE.ExtrudeGeometry(wingShapeL, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 });
+    geoWingL.rotateX(Math.PI / 2);
 
     const wingL = new THREE.Group();
-    wingL.add(mesh(geo.sphere, skin, { pos: [-1.15, 0, 0.05], scale: [1.35, 0.07, 0.72], rot: [0, 0.15, -0.08] }));
-    wingL.add(mesh(geo.sphere, glow, { pos: [-1.05, 0.02, 0.08], scale: [1.05, 0.03, 0.08], cast: false }));
+    wingL.add(mesh(geoWingL, skin, { pos: [-0.6, 0, 0.1] }));
+    wingL.add(mesh(geo.sphereLo, glow, { pos: [-3.2, 0.02, -0.5], scale: [0.8, 0.03, 0.08], cast: false }));
     const wingR = new THREE.Group();
-    wingR.add(mesh(geo.sphere, skin, { pos: [1.15, 0, 0.05], scale: [1.35, 0.07, 0.72], rot: [0, -0.15, 0.08] }));
-    wingR.add(mesh(geo.sphere, glow, { pos: [1.05, 0.02, 0.08], scale: [1.05, 0.03, 0.08], cast: false }));
+    wingR.add(mesh(geoWingR, skin, { pos: [0.6, 0, 0.1] }));
+    wingR.add(mesh(geo.sphereLo, glow, { pos: [3.2, 0.02, -0.5], scale: [0.8, 0.03, 0.08], cast: false }));
     g.add(wingL, wingR);
 
-    const cephalic = mesh(geo.cone, skin, { pos: [0, 0.02, 0.95], scale: [0.18, 0.55, 0.18], rot: [1.2, 0, 0] });
-    g.add(cephalic);
-    g.add(mesh(geo.sphere, ink, { pos: [-0.18, 0.12, 0.55], scale: [0.07, 0.07, 0.07], cast: false }));
-    g.add(mesh(geo.sphere, ink, { pos: [0.18, 0.12, 0.55], scale: [0.07, 0.07, 0.07], cast: false }));
+    class HornCurveR extends THREE.Curve {
+        constructor() { super(); }
+        getPoint(t, optionalTarget = new THREE.Vector3()) {
+            return optionalTarget.set(t * 0.4, -t * 0.2, t * 0.8 + 0.2 * Math.sin(t * Math.PI));
+        }
+    }
+    class HornCurveL extends THREE.Curve {
+        constructor() { super(); }
+        getPoint(t, optionalTarget = new THREE.Vector3()) {
+            return optionalTarget.set(-t * 0.4, -t * 0.2, t * 0.8 + 0.2 * Math.sin(t * Math.PI));
+        }
+    }
+    g.add(mesh(new THREE.TubeGeometry(new HornCurveR(), 8, 0.15, 6, false), skin, { pos: [0.3, 0.1, 1.0] }));
+    g.add(mesh(new THREE.TubeGeometry(new HornCurveL(), 8, 0.15, 6, false), skin, { pos: [-0.3, 0.1, 1.0] }));
+
+    g.add(mesh(geo.sphereLo, ink, { pos: [-0.4, 0.15, 0.9], scale: [0.07, 0.07, 0.07], cast: false }));
+    g.add(mesh(geo.sphereLo, ink, { pos: [0.4, 0.15, 0.9], scale: [0.07, 0.07, 0.07], cast: false }));
 
     const tail = new THREE.Group();
-    tail.add(mesh(geo.cone, skin, { pos: [0, 0, -1.35], scale: [0.08, 1.5, 0.08], rot: [1.57, 0, 0] }));
-    tail.add(mesh(geo.sphere, glow, { pos: [0, 0, -2.05], scale: [0.07, 0.07, 0.07], cast: false }));
+    const tailPts = [];
+    for (let i = 0; i <= 10; i++) tailPts.push(new THREE.Vector2(0.1 - (i/10)*0.08, -i*0.3));
+    const geoTail = new THREE.LatheGeometry(tailPts, 8);
+    geoTail.rotateX(Math.PI / 2);
+    tail.add(mesh(geoTail, skin, { pos: [0, 0, -1.35] }));
+    tail.add(mesh(geo.sphereLo, glow, { pos: [0, 0, -4.0], scale: [0.07, 0.07, 0.07], cast: false }));
     g.add(tail);
 
     const light = new THREE.PointLight(0x7af0ff, 2.1, 13, 1.5);
