@@ -12,7 +12,17 @@ let lastTime = 0;
 let gameWidth = 0;
 let gameHeight = 0;
 let soundEnabled = true;
-let highScore = Number(localStorage.getItem('neonInvadersHighScore') || 0);
+/* Modo privado do Safari estoura ao gravar; o recorde é bônus, não pode
+   interromper a tela de fim de jogo. */
+function readHighScore() {
+    try { return Number(localStorage.getItem('neonInvadersHighScore') || 0); } catch (err) { return 0; }
+}
+
+function saveHighScore(value) {
+    try { localStorage.setItem('neonInvadersHighScore', String(value)); } catch (err) { /* armazenamento indisponível */ }
+}
+
+let highScore = readHighScore();
 // Tiro contínuo: segurar espaço ou o botão dispara em cadência fixa, em vez de
 // exigir um toque por tiro (no celular isso virava tapinha frenético).
 const FIRE_INTERVAL = 0.14; // segundos entre disparos com o gatilho preso
@@ -487,7 +497,7 @@ function gameOver() {
     cancelAnimationFrame(animationId);
     if (score > highScore) {
         highScore = score;
-        localStorage.setItem('neonInvadersHighScore', String(highScore));
+        saveHighScore(highScore);
     }
     updateHud();
     document.getElementById('finalScore').innerText = formatScore(score);
