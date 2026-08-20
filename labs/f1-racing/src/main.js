@@ -9,6 +9,7 @@ import { buildF1Car, updateCarVisuals } from './carModel.js';
 import { Vehicle } from './vehicle.js';
 import { RaceEffects } from './effects.js';
 import { AudioEngine } from './audio.js';
+import { TEAMS } from './config.js';
 import { clamp, lerp } from './utils.js';
 
 class F1GrandPrix {
@@ -93,7 +94,11 @@ class F1GrandPrix {
 
         // Carro do Jogador
         this.playerCar = buildF1Car(BABYLON, this.scene, '#e10600');
-        this.vehicle = new Vehicle(this.circuit);
+        this.vehicle = new Vehicle({
+            circuit: this.circuit,
+            team: TEAMS[0],
+            isPlayer: true
+        });
 
         // Efeitos
         this.effects = new RaceEffects(BABYLON, this.scene);
@@ -119,10 +124,12 @@ class F1GrandPrix {
         if (menu) menu.classList.add('is-visible');
         document.body.dataset.state = 'menu';
 
-        this.engine.runRenderLoop(() => {
+        this._renderLoop = () => {
             this.frame();
             this.scene.render();
-        });
+        };
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
 
         window.addEventListener('resize', () => this.engine.resize());
     }

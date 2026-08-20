@@ -1387,6 +1387,7 @@
     }
 
     function animate(now) {
+        if (document.hidden) return;
         requestAnimationFrame(animate);
         now = now || performance.now();
         updateFps(now);
@@ -1656,4 +1657,5 @@
 
     resize();
     requestAnimationFrame(animate);
+    window.LabVisibility?.whenVisible(() => requestAnimationFrame(animate));
 })();

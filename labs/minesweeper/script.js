@@ -469,6 +469,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', updateCellSize);
     window.addEventListener('orientationchange', () => setTimeout(updateCellSize, 120));
 
+    let timerPausedByTab = false;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            timerPausedByTab = timerInterval !== null;
+            stopTimer();
+        } else if (timerPausedByTab && !gameOver && !firstClick) {
+            startTimer();
+            timerPausedByTab = false;
+        }
+    });
+
     flagToggle?.addEventListener('click', () => setFlagMode(!flagMode));
 
     /* F alterna o modo pelo teclado — o equivalente do botão direito para quem

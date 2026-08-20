@@ -166,7 +166,9 @@ class BeigeBox {
         }, 420);
 
         this._clock.start();
-        this.renderer.setAnimationLoop(() => this.frame());
+        this._renderLoop = () => this.frame();
+        if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
+        else this.renderer.setAnimationLoop(this._renderLoop);
         window.addEventListener('resize', () => this.resize());
     }
 

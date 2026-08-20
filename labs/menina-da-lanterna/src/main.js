@@ -137,6 +137,7 @@ class Game {
         this.state = 'menu';
         this.hud.setState('menu');
         this._loop();
+        window.LabVisibility?.whenVisible(() => this._loop(performance.now()));
     }
 
     _refreshChapterList() {
@@ -418,6 +419,7 @@ class Game {
     }
 
     _loop(timestamp) {
+        if (document.hidden) return;
         requestAnimationFrame((t) => this._loop(t));
         this.timer.update(timestamp);
         const dt = Math.min(0.05, this.timer.getDelta());

@@ -137,6 +137,7 @@ class Game {
         this.hud.hideLoading();
         this.enterAttract();
         this.loop();
+        window.LabVisibility?.whenVisible(() => this.loop());
 
         const sala = new URLSearchParams(window.location.search).get('sala');
         if (sala) {
@@ -526,6 +527,7 @@ class Game {
     }
 
     loop = () => {
+        if (document.hidden) return;
         requestAnimationFrame(this.loop);
         const now = performance.now();
         let dt = (now - this.last) / 1000;

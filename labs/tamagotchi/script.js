@@ -1615,6 +1615,7 @@
   }
 
   function render(timestamp) {
+    if (document.hidden) return;
     requestAnimationFrame(render);
     if (timestamp - lastFrameAt < 430) return;
     lastFrameAt = timestamp;
@@ -1698,5 +1699,10 @@
   catchUp();
   maybeAlert();
   requestAnimationFrame(render);
-  setInterval(() => { catchUp(); maybeAlert(); }, 30 * 1000);
+  window.LabVisibility?.whenVisible(() => requestAnimationFrame(render));
+  setInterval(() => {
+    if (document.hidden) return;
+    catchUp();
+    maybeAlert();
+  }, 30 * 1000);
 })();

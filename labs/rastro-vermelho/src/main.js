@@ -276,7 +276,9 @@ class RastroVermelho {
         this.updateChunks();
         this.setLoading(1, 'O oeste está pronto.');
         setTimeout(() => { $('#loadingOverlay').hidden = true; $('#menuOverlay').hidden = false; this.state = 'menu'; document.body.dataset.state = 'menu'; }, 450);
-        this.engine.runRenderLoop(() => this.frame());
+        this._renderLoop = () => this.frame();
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
         addEventListener('resize', () => this.engine.resize());
     }
 

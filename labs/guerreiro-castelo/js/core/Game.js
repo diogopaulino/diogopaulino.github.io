@@ -247,9 +247,11 @@ export class Game {
     }
 
     start() {
-        this.engine.runRenderLoop(() => {
+        this._renderLoop = () => {
             this.tick();
             this.scene.render();
-        });
+        };
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
     }
 }

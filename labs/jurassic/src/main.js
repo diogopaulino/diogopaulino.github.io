@@ -149,6 +149,7 @@ class Game {
         this._applyAtmosphere();
         this._heroCamera();
         this._loop();
+        window.LabVisibility?.whenVisible(() => this._loop());
     }
 
     async _bloom() {
@@ -527,6 +528,7 @@ class Game {
     }
 
     _loop = () => {
+        if (document.hidden) return;
         requestAnimationFrame(this._loop);
         const dt = Math.min(0.05, this.clock.getDelta());
         this.time += dt;

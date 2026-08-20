@@ -1000,6 +1000,7 @@ function startArcadeMode() {
 
   clearInterval(arcadeTimerInterval);
   arcadeTimerInterval = setInterval(() => {
+    if (document.hidden) return;
     arcadeTimeRemaining--;
     if (timerEl) timerEl.textContent = `${arcadeTimeRemaining}s`;
 

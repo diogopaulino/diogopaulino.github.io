@@ -128,6 +128,7 @@ class Game {
         this.hud.setState('menu');
         this._placeMenuCamera();
         this._loop();
+        window.LabVisibility?.whenVisible(() => this._loop());
     }
 
     _placeMenuCamera() {
@@ -405,6 +406,7 @@ class Game {
     }
 
     _loop = () => {
+        if (document.hidden) return;
         requestAnimationFrame(this._loop);
         this.timer.update();
         const dt = clamp(this.timer.getDelta(), 0, 0.05);

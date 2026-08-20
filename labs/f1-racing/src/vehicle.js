@@ -58,7 +58,7 @@ export class Vehicle {
     constructor({ circuit, team, driver, compound = 'soft', weather, isPlayer = false, skill = 1 }) {
         this.circuit = circuit;
         this.team = team;
-        this.driver = driver || team.name;
+        this.driver = driver || team?.name || 'Pilot';
         this.isPlayer = isPlayer;
         this.skill = skill;
         this.weather = weather;
