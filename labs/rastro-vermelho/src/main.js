@@ -165,10 +165,23 @@ async function loadHorse(scene, shadow) {
     return { root, animations: result.animationGroups };
 }
 
+const SETTINGS_KEY = 'rastro-vermelho:babylon';
+const SETTINGS_DEFAULT = { quality: 'auto', volume: 70, muted: false, best: 0 };
+
+/* Duas falhas reais aqui: o modo privado do Safari estoura na gravação, e um
+   valor corrompido derrubava o lab já no construtor, antes de qualquer tela. */
+function loadSettings() {
+    try {
+        return Object.assign({}, SETTINGS_DEFAULT, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
+    } catch (err) {
+        return Object.assign({}, SETTINGS_DEFAULT);
+    }
+}
+
 class RastroVermelho {
     constructor() {
         this.canvas = canvas;
-        this.settings = JSON.parse(localStorage.getItem('rastro-vermelho:babylon') || '{"quality":"auto","volume":70,"muted":false,"best":0}');
+        this.settings = loadSettings();
         this.profile = this.pickQuality();
         this.engine = new B.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true, adaptToDeviceRatio: false });
         this.engine.setHardwareScalingLevel(1 / this.profile.scale);
@@ -336,7 +349,7 @@ class RastroVermelho {
     }
 
     setLoading(progress, text) { $('#loadingFill').style.width = `${progress * 100}%`; $('#loadingText').textContent = text; }
-    persist() { localStorage.setItem('rastro-vermelho:babylon', JSON.stringify(this.settings)); }
+    persist() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings)); } catch (err) { /* armazenamento indisponível */ } }
     say(text, duration = 2.8) { const message = $('#message'); message.textContent = text; message.dataset.show = 'true'; clearTimeout(this.messageTimer); this.messageTimer = setTimeout(() => { message.dataset.show = 'false'; }, duration * 1000); }
 
     frame() {

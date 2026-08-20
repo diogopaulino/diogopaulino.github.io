@@ -13,7 +13,17 @@ let paused = false;
 let selected = null;
 let selectedCpu = null;
 let stageId = 'seattle';
-let difficulty = localStorage.getItem('rk-difficulty') || 'normal';
+/* Safari no modo privado deixa ler mas estoura ao gravar: sem esta proteção,
+   trocar a dificuldade derrubava o jogo com QuotaExceededError. */
+function readStored(key, fallback) {
+  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+}
+
+function writeStored(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* armazenamento indisponível */ }
+}
+
+let difficulty = readStored('rk-difficulty', 'normal') || 'normal';
 const images = new Map();
 let assetsReady = false;
 let frameNumber = 0;
@@ -407,7 +417,7 @@ $$('#difficulty-options button').forEach(button => {
   button.classList.toggle('is-active', button.dataset.difficulty === difficulty);
   button.addEventListener('click', () => {
     difficulty = button.dataset.difficulty;
-    localStorage.setItem('rk-difficulty', difficulty);
+    writeStored('rk-difficulty', difficulty);
     $$('#difficulty-options button').forEach(item => item.classList.toggle('is-active', item === button));
     audio.sfx('ui');
   });

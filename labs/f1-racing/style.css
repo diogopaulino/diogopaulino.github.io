@@ -804,6 +804,7 @@ kbd {
     justify-content: center;
     gap: 0.6rem;
     padding: 0.85rem 1.6rem;
+    min-height: var(--touch-target, 44px);
     border-radius: 999px;
     background: linear-gradient(120deg, var(--f1-red), oklch(60% 0.23 20));
     color: oklch(99% 0 0);

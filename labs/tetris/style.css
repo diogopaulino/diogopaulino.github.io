@@ -276,35 +276,57 @@ body {
 
 /* Área de toque: as setas mantêm os 30px de desenho (o d-pad precisa caber no
    console), mas o alvo real cresce para fora, longe do centro. */
+/* O console inteiro é escalado por `--device-scale` (0,8 num iPhone SE) e o
+   `transform` encolhe o alvo junto: 44px de CSS viravam ~35px de dedo. Dividir
+   pelo fator devolve os 44px físicos — com escala 1 a conta dá os mesmos -7px
+   e -14px de antes. */
+.d-pad {
+    --hit: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 30px) / 2);
+}
+
 .d-pad > button::after {
     content: '';
     position: absolute;
-    inset: -7px;
+    inset: calc(var(--hit) * -1);
 }
 
 .d-pad .up::after {
-    inset: -14px -7px 0 -7px;
+    inset: calc(var(--hit) * -2) calc(var(--hit) * -1) 0 calc(var(--hit) * -1);
+    /* Cima e baixo vêm antes de esquerda/direita no DOM, então perdiam os
+       cantos da própria área ampliada. O z-index devolve a faixa inteira. */
+    z-index: 1;
 }
 
 .d-pad .down::after {
-    inset: 0 -7px -14px -7px;
+    inset: 0 calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1);
+    z-index: 1;
 }
 
 .d-pad .left::after {
-    inset: -7px 0 -7px -14px;
+    inset: calc(var(--hit) * -1) 0 calc(var(--hit) * -1) calc(var(--hit) * -2);
 }
 
 .d-pad .right::after {
-    inset: -7px -14px -7px 0;
+    inset: calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1) 0;
 }
 
+/* A/B são redondos de 35px; Select/Start são barras de 14px de altura. Cada um
+   cresce até o alvo mínimo, também compensando a escala do console. */
 .btn-a::after,
-.btn-b::after,
+.btn-b::after {
+    content: '';
+    position: absolute;
+    inset: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 35px) / -2);
+    border-radius: inherit;
+}
+
 .btn-select::after,
 .btn-start::after {
     content: '';
     position: absolute;
-    inset: -6px;
+    /* Só na vertical: Select e Start ficam a 5px um do outro, então crescer na
+       horizontal fazia um roubar o toque do outro. */
+    inset: calc((var(--touch-target, 44px) / var(--device-scale, 1) - 14px) / -2) 0;
     border-radius: inherit;
 }
 

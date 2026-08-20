@@ -38,6 +38,9 @@
         interval: [2, 12]
     };
 
+    /* Título estático da página, preservado em toda atualização da aba. */
+    const BASE_TITLE = document.title;
+
     const MODES = {
         focus: { label: 'Foco', badge: 'Foco', title: 'Foco' },
         short: { label: 'Pausa curta', badge: 'Pausa curta', title: 'Pausa' },
@@ -1088,9 +1091,13 @@
 
         renderTitle(text) {
             const suffix = MODES[this.mode].title;
+            /* A contagem na aba é útil com o timer em outra janela, mas o nome
+               precisa continuar no título (é assim que o site é achado por
+               busca). BASE_TITLE vem do próprio <title>, então os dois nunca
+               divergem. */
             const title = this.running || this.remaining < this.durationFor(this.mode)
-                ? `${text} · ${suffix} — Pomodoro`
-                : 'Pomodoro - Labs';
+                ? `${text} · ${suffix} — ${BASE_TITLE}`
+                : BASE_TITLE;
 
             if (title !== this.lastTitle) {
                 this.lastTitle = title;

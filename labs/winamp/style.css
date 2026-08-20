@@ -188,6 +188,11 @@ a:focus-visible {
     left: 8px;
     z-index: 1000001;
     padding: 8px 12px;
+    /* Atalho de teclado, mas quem navega por leitor de tela no celular também
+       o aciona com o dedo: 34px de altura era curto. */
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target, 44px);
     border: 2px outset var(--win-light);
     background: var(--win-gray);
     color: #000;

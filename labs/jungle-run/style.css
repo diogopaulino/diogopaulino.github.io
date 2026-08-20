@@ -854,9 +854,14 @@ button:focus-visible {
         font-size: 0.48rem;
     }
 
-    .stat-box,
-    .icon-btn {
+    .stat-box {
         min-height: 39px;
+    }
+
+    /* O pause é apertado no meio da corrida: mantém o alvo cheio mesmo com o
+       HUD compacto (o resto do espaço vem de .distance-box/.sound-btn ocultos). */
+    .icon-btn {
+        min-height: var(--touch-target, 44px);
     }
 
     .stat-box {
@@ -885,7 +890,7 @@ button:focus-visible {
     }
 
     .icon-btn {
-        width: 39px;
+        width: var(--touch-target, 44px);
     }
 
     .sound-btn {

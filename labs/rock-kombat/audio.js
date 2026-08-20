@@ -1,6 +1,11 @@
 let context = null;
 let master = null;
-let muted = localStorage.getItem('rk-muted') === '1';
+/* Mesma proteção do main.js: mutar não pode derrubar o jogo. */
+function readStored(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+let muted = readStored('rk-muted') === '1';
 let musicTimer = null;
 let musicStep = 0;
 
@@ -101,7 +106,7 @@ function stopMusic() {
 
 function setMuted(value) {
   muted = value;
-  localStorage.setItem('rk-muted', value ? '1' : '0');
+  try { localStorage.setItem('rk-muted', value ? '1' : '0'); } catch { /* armazenamento indisponível */ }
   if (master) master.gain.setTargetAtTime(value ? 0 : .58, context.currentTime, .02);
 }
 

@@ -50,10 +50,10 @@ export const QUEST = {
 };
 
 export const QUALITY = {
-    auto: { pixel: 1.0, shadows: true, particles: 1.0 },
+    auto: { pixel: 1.5, shadows: true, particles: 1.0 },
     low: { pixel: 1.0, shadows: false, particles: 0.5 },
-    medium: { pixel: 1.0, shadows: true, particles: 0.8 },
-    high: { pixel: 1.0, shadows: true, particles: 1.2 }
+    medium: { pixel: 1.5, shadows: true, particles: 0.8 },
+    high: { pixel: 2.0, shadows: true, particles: 1.2 }
 };
 
 /** Cristais — (x, z). Y é amostrado do terreno + offset. */

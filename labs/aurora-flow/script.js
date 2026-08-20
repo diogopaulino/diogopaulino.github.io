@@ -1001,9 +1001,23 @@ function drawKp() {
     if (el) el.textContent = kp.toFixed(1);
 }
 
-function animate() {
+/* A cena avança por frame (partículas somam `vx` direto, `time` soma 0.016),
+   e isso amarra a velocidade ao refresh: num painel de 120Hz a aurora corria em
+   dobro. Em vez de reescrever toda a simulação para delta-time — o que mudaria
+   a calibragem visual — o laço mantém a cadência de 60fps e devolve os frames
+   extras ao aparelho (metade do trabalho num celular de 120Hz). */
+const FRAME_MS = 1000 / 60;
+let lastFrameAt = -Infinity;
+
+function animate(frameNow) {
     requestAnimationFrame(animate);
     if (paused) return;
+
+    const stamp = frameNow === undefined ? performance.now() : frameNow;
+    // Meio milissegundo de folga: a 60Hz o intervalo oscila em torno de 16,67ms
+    // e um teste rígido descartaria um frame sim, outro não.
+    if (stamp - lastFrameAt < FRAME_MS - 0.5) return;
+    lastFrameAt = stamp;
 
     time += 0.016 * flowSpeed;
     flash *= 0.9;
