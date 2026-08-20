@@ -755,6 +755,13 @@ select {
 /* Status bar */
 .os-statusbar {
   display: flex;
+  /* A barra é um <footer>, e o shared.css aplica `footer { flex-direction:
+     column; margin-top: 2rem }` em telas <= 768px — regra pensada para o
+     rodapé do site, não para a status bar. Sem declarar os dois aqui, o
+     relógio / mensagem / uplink empilham em 3 linhas e ainda ganham uma
+     faixa vazia de 32px em cima, comendo altura útil do desktop. */
+  flex-direction: row;
+  margin-top: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
@@ -997,5 +1004,15 @@ select {
   .os-statusbar {
     font-size: 0.52rem;
     padding-block: 0.25rem;
+  }
+}
+
+/* Telas estreitas: o badge "v2.7" ao lado de "CyberOS" não cabe e é cortado no
+   meio do número (sem reticências — o .os-brand é flex com múltiplos filhos,
+   então o text-overflow do container não se aplica), deixando um "v" solto no
+   header. Esconder o badge é mais limpo que exibir a versão pela metade. */
+@media (max-width: 480px) {
+  .brand-ver {
+    display: none;
   }
 }
