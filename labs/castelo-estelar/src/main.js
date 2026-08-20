@@ -147,7 +147,9 @@ class CasteloEstelar {
         this.show('#intro');
         document.body.dataset.state = 'menu';
         this.clock.start();
-        this.renderer.setAnimationLoop(() => this.frame());
+        this._renderLoop = () => this.frame();
+        if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
+        else this.renderer.setAnimationLoop(this._renderLoop);
     }
 
     fail(err) {

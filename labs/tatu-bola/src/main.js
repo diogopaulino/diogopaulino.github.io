@@ -110,6 +110,7 @@ class Game {
         this.hud.hideLoading();
         this.gotoMenu();
         this.loop();
+        window.LabVisibility?.whenVisible(() => this.loop());
     }
 
     bindUi() {
@@ -377,6 +378,7 @@ class Game {
     }
 
     loop = () => {
+        if (document.hidden) return;
         requestAnimationFrame(this.loop);
         const dt = Math.min(0.033, this.clock.getDelta());
         this.time += dt;

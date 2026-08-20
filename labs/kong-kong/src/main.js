@@ -60,6 +60,7 @@ let lastAnnounce = '';
 let last = performance.now();
 
 function frame(now) {
+  if (document.hidden) return;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   game.update(dt);
@@ -82,3 +83,4 @@ function frame(now) {
 
 syncMute();
 requestAnimationFrame(frame);
+window.LabVisibility?.whenVisible(() => requestAnimationFrame(frame));

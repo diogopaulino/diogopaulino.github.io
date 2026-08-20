@@ -1010,6 +1010,7 @@ const FRAME_MS = 1000 / 60;
 let lastFrameAt = -Infinity;
 
 function animate(frameNow) {
+    if (document.hidden) return;
     requestAnimationFrame(animate);
     if (paused) return;
 
@@ -1402,3 +1403,4 @@ buildSceneRail();
 resize();
 applyScene(currentKey, true);
 animate();
+window.LabVisibility?.whenVisible(() => animate());

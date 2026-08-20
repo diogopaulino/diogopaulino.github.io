@@ -103,7 +103,9 @@ class Orbis {
         this.hideLoading();
 
         window.addEventListener('resize', () => this.resize());
-        this.renderer.setAnimationLoop(() => this.frame());
+        this._renderLoop = () => this.frame();
+        if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
+        else this.renderer.setAnimationLoop(this._renderLoop);
     }
 
     async setupBloom() {

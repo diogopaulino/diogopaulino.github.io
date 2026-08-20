@@ -89,6 +89,20 @@ const App = {
                 this.renderGames(this.allGames.filter(g => g.title.toLowerCase().includes(term)));
             }, 300);
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!this.emulator) return;
+            try {
+                if (document.hidden && typeof this.emulator.pause === 'function') {
+                    this.emulator.pause();
+                } else if (!document.hidden && typeof this.emulator.resume === 'function') {
+                    this.emulator.resume();
+                }
+            } catch (err) {
+                console.warn('Emulador: pausa por visibilidade indisponível.', err);
+            }
+        });
+
         romInput?.addEventListener('change', e => {
             const file = e.target.files[0];
             if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''))

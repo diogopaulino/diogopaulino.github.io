@@ -418,6 +418,170 @@
         }, true);
     }
 
+    /* --- LabVisibility / LabRuntime ----------------------------------------
+       Pausa loops e timers quando a aba fica oculta — evita GPU/CPU em
+       background. Vários labs repetiam o mesmo visibilitychange; centralizar
+       aqui deixa a adoção de uma linha. */
+    const VisibilityAPI = (function () {
+        const listeners = new Set();
+
+        function notify() {
+            listeners.forEach((fn) => {
+                try {
+                    fn(document.hidden);
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+        }
+
+        document.addEventListener('visibilitychange', notify);
+
+        function onChange(fn) {
+            listeners.add(fn);
+            return () => listeners.delete(fn);
+        }
+
+        return Object.freeze({
+            isHidden: () => document.hidden,
+            onChange,
+            whenHidden: (fn) => onChange((hidden) => { if (hidden) fn(); }),
+            whenVisible: (fn) => onChange((hidden) => { if (!hidden) fn(); })
+        });
+    })();
+
+    const RuntimeAPI = (function () {
+        /* Loop rAF com auto-pausa: wantsRun mantém intenção entre hide/show. */
+        function createLoop(onFrame, options) {
+            const autoPause = !options || options.autoPause !== false;
+            let id = null;
+            let wantsRun = false;
+
+            function tick(now) {
+                if (!wantsRun || document.hidden) return;
+                onFrame(now);
+                id = requestAnimationFrame(tick);
+            }
+
+            function start() {
+                wantsRun = true;
+                if (document.hidden || id !== null) return;
+                id = requestAnimationFrame(tick);
+            }
+
+            function stop() {
+                wantsRun = false;
+                if (id !== null) {
+                    cancelAnimationFrame(id);
+                    id = null;
+                }
+            }
+
+            let unbind = null;
+            if (autoPause) {
+                unbind = VisibilityAPI.onChange((hidden) => {
+                    if (hidden) {
+                        if (id !== null) {
+                            cancelAnimationFrame(id);
+                            id = null;
+                        }
+                    } else if (wantsRun) {
+                        id = requestAnimationFrame(tick);
+                    }
+                });
+            }
+
+            return Object.freeze({
+                start,
+                stop,
+                isRunning: () => wantsRun,
+                destroy: () => {
+                    stop();
+                    if (unbind) unbind();
+                }
+            });
+        }
+
+        function bindBabylonLoop(engine, loopFn) {
+            if (!engine || typeof loopFn !== 'function') return () => {};
+            engine.runRenderLoop(loopFn);
+            return VisibilityAPI.onChange((hidden) => {
+                if (hidden) engine.stopRenderLoop();
+                else engine.runRenderLoop(loopFn);
+            });
+        }
+
+        function bindThreeLoop(renderer, loopFn) {
+            if (!renderer || typeof loopFn !== 'function') return () => {};
+            renderer.setAnimationLoop(loopFn);
+            return VisibilityAPI.onChange((hidden) => {
+                if (hidden) renderer.setAnimationLoop(null);
+                else renderer.setAnimationLoop(loopFn);
+            });
+        }
+
+        function debounceResize(fn, ms) {
+            const delay = typeof ms === 'number' ? ms : 150;
+            let timer = null;
+            const run = () => {
+                clearTimeout(timer);
+                timer = setTimeout(fn, delay);
+            };
+            window.addEventListener('resize', run);
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', run);
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('resize', run);
+                if (window.visualViewport) window.visualViewport.removeEventListener('resize', run);
+            };
+        }
+
+        /* Intervalo que congela o relógio enquanto a aba está oculta. */
+        function createInterval(fn, ms) {
+            let id = null;
+            let hiddenAt = 0;
+
+            function start() {
+                stop();
+                id = setInterval(fn, ms);
+            }
+
+            function stop() {
+                if (id !== null) {
+                    clearInterval(id);
+                    id = null;
+                }
+            }
+
+            const unbind = VisibilityAPI.onChange((hidden) => {
+                if (hidden) {
+                    hiddenAt = Date.now();
+                    stop();
+                } else if (hiddenAt) {
+                    hiddenAt = 0;
+                    start();
+                }
+            });
+
+            return Object.freeze({
+                start,
+                stop,
+                destroy: () => {
+                    stop();
+                    unbind();
+                }
+            });
+        }
+
+        return Object.freeze({
+            createLoop,
+            bindBabylonLoop,
+            bindThreeLoop,
+            debounceResize,
+            createInterval
+        });
+    })();
+
     function init() {
         ensureFavicon();
         initChrome();
@@ -436,6 +600,8 @@
 
     window.LabShell = Object.freeze({ init, buildHeader, buildFooter });
     window.LabAudio = AudioAPI;
+    window.LabVisibility = VisibilityAPI;
+    window.LabRuntime = RuntimeAPI;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });

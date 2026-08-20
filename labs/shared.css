@@ -298,8 +298,10 @@ header h1 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     padding: 0;
     font-size: 1.1rem;
     line-height: 1;
@@ -574,6 +576,78 @@ footer a:hover {
 .lab-engine-notice__link:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 3px;
+}
+
+/* Shell fullscreen para jogos/simulações: ocupa a viewport útil com safe-area. */
+.lab-game-shell {
+    position: relative;
+    width: min(100%, 100vw);
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+.lab-game-shell canvas,
+.lab-game-shell .game-stage {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    touch-action: none;
+}
+
+.lab-hud-dock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: max(0.5rem, var(--safe-top)) max(0.75rem, var(--safe-right))
+        max(0.5rem, var(--safe-bottom)) max(0.75rem, var(--safe-left));
+}
+
+.lab-touch-controls {
+    position: fixed;
+    inset: auto 0 max(0.75rem, var(--safe-bottom)) 0;
+    display: none;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0 max(0.75rem, var(--safe-right)) 0 max(0.75rem, var(--safe-left));
+    pointer-events: none;
+    z-index: 40;
+}
+
+.lab-touch-controls > * {
+    pointer-events: auto;
+}
+
+@media (pointer: coarse) {
+    .lab-touch-controls {
+        display: flex;
+    }
+}
+
+@media (max-width: 768px) {
+    .lab-hud-dock {
+        flex-direction: column;
+        align-items: stretch;
+        max-height: min(92dvh, 100%);
+        overflow-y: auto;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .lab-hud-dock {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        max-height: none;
+        overflow: visible;
+        gap: 0.35rem;
+    }
+
+    .lab-touch-controls {
+        padding-bottom: max(0.35rem, var(--safe-bottom));
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

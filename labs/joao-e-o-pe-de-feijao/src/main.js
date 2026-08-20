@@ -126,7 +126,9 @@ class Game {
         this.hud.setState('menu');
 
         this.lastTime = performance.now();
-        this.engine.runRenderLoop(() => this._loop());
+        this._renderLoop = () => this._loop();
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
     }
 
     _refreshChapterList() {

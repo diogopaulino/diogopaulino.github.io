@@ -56,6 +56,7 @@ class Quimera {
         this.applyMix(this.ids, { bounce: false, silent: true });
         $('#loading')?.classList.add('is-done');
         this.loop();
+        window.LabVisibility?.whenVisible(() => this.loop());
     }
 
     _restore() {
@@ -287,6 +288,7 @@ class Quimera {
     }
 
     loop() {
+        if (document.hidden) return;
         const now = performance.now();
         const dt = Math.min(0.05, (now - this.lastT) / 1000);
         this.lastT = now;

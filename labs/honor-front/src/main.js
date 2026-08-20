@@ -199,10 +199,12 @@ class HonorFront {
         document.getElementById('menuOverlay').hidden = false;
         document.body.dataset.state = 'intro';
 
-        this.engine.runRenderLoop(() => {
+        this._renderLoop = () => {
             this.frame();
             this.scene.render();
-        });
+        };
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
 
         window.addEventListener('resize', () => this.engine.resize());
     }
