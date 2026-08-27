@@ -1,7 +1,7 @@
 import { PLAYER, ATTACKS, DIFFICULTY, WAVES, ENEMY_TYPES, QUALITY, STORAGE_KEY } from './config.js';
 import { BattleAudio } from './audio.js';
 import { BattleInput } from './input.js';
-import { createWorld, loadWorldAssets } from './world.js';
+import { createWorld } from './world.js';
 import { createKnight, animateKnight, loadCharacterAssets } from './characters.js';
 
 const B = window.BABYLON;
@@ -36,18 +36,30 @@ class Hud {
     this.damageFlash = document.getElementById('damageFlash');
     this.messageTimeout = null;
     this.damageTimeout = null;
+    this.vitalsKey = '';
+    this.waveKey = '';
+    this.targetKey = '';
+    this.killsKey = '';
   }
 
   setVitals(player) {
-    const healthRatio = clamp(player.health / player.maxHealth, 0, 1);
-    const staminaRatio = clamp(player.stamina / PLAYER.maxStamina, 0, 1);
+    const health = Math.ceil(player.health);
+    const stamina = Math.ceil(player.stamina);
+    const key = `${health}:${stamina}:${player.maxHealth}`;
+    if (key === this.vitalsKey) return;
+    this.vitalsKey = key;
+    const healthRatio = clamp(health / player.maxHealth, 0, 1);
+    const staminaRatio = clamp(stamina / PLAYER.maxStamina, 0, 1);
     this.healthFill.style.transform = `scaleX(${healthRatio})`;
     this.staminaFill.style.transform = `scaleX(${staminaRatio})`;
-    this.healthValue.textContent = Math.ceil(player.health);
-    this.staminaValue.textContent = Math.ceil(player.stamina);
+    this.healthValue.textContent = health;
+    this.staminaValue.textContent = stamina;
   }
 
   setWave(index, title, alive) {
+    const key = `${index}:${alive}`;
+    if (key === this.waveKey) return;
+    this.waveKey = key;
     this.waveLabel.textContent = `ONDA ${roman(index)}`;
     this.objective.textContent = title;
     this.enemyCount.textContent = alive === 1 ? '1 invasor' : `${alive} invasores`;
@@ -55,16 +67,25 @@ class Hud {
 
   setTarget(target, distance) {
     if (!target || target.dead || distance > 13) {
-      this.targetPanel.hidden = true;
+      if (!this.targetPanel.hidden) this.targetPanel.hidden = true;
+      this.targetKey = '';
       return;
     }
+    const roundedDistance = Math.round(distance);
+    const health = Math.ceil(target.health);
+    const key = `${target.id}:${roundedDistance}:${health}`;
+    if (key === this.targetKey) return;
+    this.targetKey = key;
     this.targetPanel.hidden = false;
     this.targetName.textContent = target.data.name;
-    this.targetDistance.textContent = `${Math.round(distance)} m`;
-    this.targetFill.style.transform = `scaleX(${clamp(target.health / target.maxHealth, 0, 1)})`;
+    this.targetDistance.textContent = `${roundedDistance} m`;
+    this.targetFill.style.transform = `scaleX(${clamp(health / target.maxHealth, 0, 1)})`;
   }
 
   setKills(kills, unhurt) {
+    const key = `${kills}:${unhurt}`;
+    if (key === this.killsKey) return;
+    this.killsKey = key;
     this.killCount.textContent = String(kills);
     this.comboLabel.textContent = unhurt ? 'SEM FERIMENTOS' : 'A MURALHA RESISTE';
   }
@@ -436,6 +457,7 @@ class Game {
     this.cameraYaw = Math.PI;
     this.cameraPitch = .18;
     this.lastFrame = performance.now();
+    this.lastRender = 0;
   }
 
   loadSettings() {
@@ -452,7 +474,6 @@ class Game {
     if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
     if (mobile || (navigator.hardwareConcurrency || 4) <= 4) return QUALITY.performance;
-    if (innerWidth >= 1350 && (navigator.deviceMemory || 8) >= 8) return QUALITY.cinematic;
     return QUALITY.balanced;
   }
 
@@ -474,6 +495,11 @@ class Game {
       this.engine = new B.Engine(this.canvas, true, { preserveDrawingBuffer: false, stencil: true, powerPreference: 'high-performance' });
       this.engine.setHardwareScalingLevel(this.quality.hardwareScale);
       this.scene = new B.Scene(this.engine);
+      // A interação é tratada pelo input próprio; desativar picking implícito
+      // evita varrer todas as malhas a cada movimento/click do ponteiro.
+      this.scene.skipPointerMovePicking = true;
+      this.scene.skipPointerDownPicking = true;
+      this.scene.skipPointerUpPicking = true;
       this.camera = new B.UniversalCamera('third person camera', new B.Vector3(0, 5, 25), this.scene);
       this.camera.minZ = .08;
       this.camera.maxZ = 380;
@@ -482,18 +508,19 @@ class Game {
       this.setLoading(.32, 'Erguendo as muralhas…');
       this.world = createWorld(this.scene, this.quality);
       this.setLoading(.41, 'Vestindo as armaduras…');
-      await Promise.all([
-        loadCharacterAssets(this.scene, progress => this.setLoading(.41 + progress * .28, 'Vestindo as armaduras…')),
-        loadWorldAssets(this.scene, this.world)
-      ]);
-      this.setLoading(.74, 'Espalhando os destroços…');
+      await loadCharacterAssets(this.scene, progress => this.setLoading(.41 + progress * .36, 'Vestindo as armaduras…'));
+      this.setLoading(.80, 'Espalhando os destroços…');
       this.player = new PlayerController(this);
       this.setCameraImmediate();
       this.bindUi();
       await this.scene.whenReadyAsync();
       this.setLoading(1, 'O inimigo se aproxima…');
       this.engine.runRenderLoop(() => this.frame());
-      window.addEventListener('resize', () => this.engine.resize());
+      let resizeFrame = 0;
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = requestAnimationFrame(() => this.engine.resize());
+      }, { passive: true });
       document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'running') this.pause(); });
       setTimeout(() => this.showMenu(), 450);
     } catch (error) {
@@ -559,6 +586,7 @@ class Game {
   async start() {
     await this.audio.start();
     this.audio.setMuted(this.settings.muted);
+    this.input.resetTransient();
     this.clearEnemies();
     this.player.reset(this.settings.difficulty);
     this.waveIndex = 0;
@@ -585,8 +613,7 @@ class Game {
   showMenu() {
     this.state = 'menu';
     this.input.enabled = false;
-    this.input.blocking = false;
-    this.input.pointerBlocking = false;
+    this.input.resetTransient();
     this.clearEnemies();
     this.player.reset(this.settings.difficulty);
     this.player.rig.root.position.copyFromFloats(0, 0, 15);
@@ -603,8 +630,7 @@ class Game {
     if (this.state !== 'running') return;
     this.state = 'paused';
     this.input.enabled = false;
-    this.input.blocking = false;
-    this.input.pointerBlocking = false;
+    this.input.resetTransient();
     document.exitPointerLock?.();
     document.getElementById('pauseOverlay').hidden = false;
     document.getElementById('touchControls').hidden = true;
@@ -755,8 +781,7 @@ class Game {
     if (this.state !== 'running') return;
     this.state = victory ? 'victory' : 'defeat';
     this.input.enabled = false;
-    this.input.blocking = false;
-    this.input.pointerBlocking = false;
+    this.input.resetTransient();
     document.exitPointerLock?.();
     document.getElementById('touchControls').hidden = true;
     if (victory) {
@@ -820,6 +845,10 @@ class Game {
 
   frame() {
     const now = performance.now();
+    if (document.hidden) return;
+    const minimumFrameTime = this.state === 'paused' ? 100 : this.state === 'menu' ? 33 : 0;
+    if (minimumFrameTime && now - this.lastRender < minimumFrameTime) return;
+    this.lastRender = now;
     const dt = Math.min(.033, Math.max(.001, (now - this.lastFrame) / 1000));
     this.lastFrame = now;
     if (this.state !== 'paused' && this.state !== 'loading') this.update(dt);

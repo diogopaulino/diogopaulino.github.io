@@ -41,7 +41,7 @@ export const ENEMY_TYPES = {
 };
 
 export const QUALITY = {
-  performance: { hardwareScale: 1.45, shadows: 1024, particles: .55, bloom: .07, grain: false, aberration: false, ssao: false },
+  performance: { hardwareScale: 1.45, shadows: 1024, particles: .55, bloom: 0, grain: false, aberration: false, ssao: false },
   balanced: { hardwareScale: 1, shadows: 1536, particles: .8, bloom: .11, grain: true, aberration: false, ssao: false },
   cinematic: { hardwareScale: .75, shadows: 2048, particles: 1, bloom: .15, grain: true, aberration: true, ssao: true }
 };

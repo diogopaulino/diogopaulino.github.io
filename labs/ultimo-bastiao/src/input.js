@@ -33,7 +33,7 @@ export class BattleInput {
       if (event.code === 'KeyP' || event.code === 'Escape') this.pauseHandler?.();
     });
     window.addEventListener('keyup', event => this.keys.delete(event.code));
-    window.addEventListener('blur', () => { this.keys.clear(); this.blocking = false; this.pointerBlocking = false; });
+    window.addEventListener('blur', () => this.resetTransient());
 
     this.canvas.addEventListener('contextmenu', event => event.preventDefault());
     this.canvas.addEventListener('pointerdown', event => {
@@ -112,7 +112,7 @@ export class BattleInput {
       if (event && event.pointerId !== attackPointer) return;
       if (attackHoldTimer) clearTimeout(attackHoldTimer);
       attackHoldTimer = null;
-      if (this.enabled) {
+      if (this.enabled && event?.type !== 'pointercancel') {
         if (heavyAttack) this.heavyQueued = true;
         else this.attackQueued = true;
       }
@@ -187,5 +187,22 @@ export class BattleInput {
     const delta = { ...this.camera };
     this.camera.x = 0; this.camera.y = 0;
     return delta;
+  }
+
+  resetTransient() {
+    this.keys.clear();
+    this.move.x = 0; this.move.y = 0;
+    this.camera.x = 0; this.camera.y = 0;
+    this.attackQueued = false;
+    this.heavyQueued = false;
+    this.dodgeQueued = false;
+    this.blocking = false;
+    this.pointerBlocking = false;
+    this.running = false;
+    this.pointerDown = false;
+    this.lastPointer = null;
+    this.joystickPointer = null;
+    this.joystickOrigin = null;
+    document.getElementById('stickKnob').style.transform = 'translate(0, 0)';
   }
 }
