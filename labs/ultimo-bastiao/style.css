@@ -153,13 +153,14 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
   .portrait { width: 36px; height: 36px; font-size: 16px; }
   .bars { gap: 6px; }
   .bar-line { grid-template-columns: 42px 1fr 22px; gap: 5px; font-size: 7px; }
-  .battle-status { top: auto; bottom: max(190px, calc(env(safe-area-inset-bottom) + 180px)); min-width: 155px; padding: 8px 13px; }
+  .battle-status { top: max(120px, calc(env(safe-area-inset-top) + 110px)); bottom: auto; min-width: 155px; padding: 8px 13px; }
   .battle-status strong { font-size: 10px; }
   .battle-status > span:last-child { font-size: 8px; }
   .combo { top: max(60px, calc(env(safe-area-inset-top) + 50px)); right: max(10px, env(safe-area-inset-right)); padding: 7px 9px; }
   .combo strong { font-size: 18px; }
   .combo i { display: none; }
   .target-panel { top: 43%; width: 48vw; }
+  .battle-message { top: 32%; }
   .menu-card { min-height: 0; grid-template-columns: 1fr; gap: 25px; align-items: start; }
   .menu-copy h1 { margin: 13px 0 17px; font-size: clamp(47px, 14vw, 72px); }
   .menu-copy .lede { font-size: 12px; line-height: 1.55; }

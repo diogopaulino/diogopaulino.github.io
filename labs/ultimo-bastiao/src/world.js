@@ -3,9 +3,7 @@ const B = window.BABYLON;
 const color = hex => B.Color3.FromHexString(hex);
 const rand = (min, max) => min + Math.random() * (max - min);
 const POLY_TEXTURES = 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k';
-const POLY_MODELS = 'https://dl.polyhaven.org/file/ph-assets/Models';
 const CASTLE_HDR = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/monkstown_castle_1k.hdr';
-const POLY_MODEL_BIN_RESOLUTION = { CheeseBox_01: '4k', Lantern_01: '4k' };
 
 const surfaceUrl = (asset, map) => `${POLY_TEXTURES}/${asset}/${asset}_${map}_1k.jpg`;
 
@@ -95,39 +93,48 @@ export function createWorld(scene, quality) {
     gold: pbr(scene, 'old gold', '#a88446', .78, .38)
   };
   materials.stone.albedoTexture = photoTexture(scene, surfaceUrl('castle_brick_01', 'diff'), 3.8);
-  materials.stone.bumpTexture = photoTexture(scene, surfaceUrl('castle_brick_01', 'nor_gl'), 3.8, false);
-  materials.stone.bumpTexture.level = .58;
-  setRoughnessMap(materials.stone, photoTexture(scene, surfaceUrl('castle_brick_01', 'rough'), 3.8, false));
   materials.stoneDark.albedoTexture = materials.stone.albedoTexture;
-  materials.stoneDark.bumpTexture = materials.stone.bumpTexture;
-  materials.stoneDark.metallicTexture = materials.stone.metallicTexture;
-  materials.stoneDark.useRoughnessFromMetallicTextureAlpha = false;
-  materials.stoneDark.useRoughnessFromMetallicTextureGreen = true;
-  materials.stoneDark.useMetallnessFromMetallicTextureBlue = false;
   materials.earth.albedoTexture = photoTexture(scene, surfaceUrl('brown_mud_03', 'diff'), 8);
-  materials.earth.bumpTexture = photoTexture(scene, surfaceUrl('brown_mud_03', 'nor_gl'), 8, false);
-  materials.earth.bumpTexture.level = .72;
-  setRoughnessMap(materials.earth, photoTexture(scene, surfaceUrl('brown_mud_03', 'rough'), 8, false));
   materials.wood.albedoTexture = photoTexture(scene, surfaceUrl('rough_wood', 'diff'), 2.4);
-  materials.wood.bumpTexture = photoTexture(scene, surfaceUrl('rough_wood', 'nor_gl'), 2.4, false);
-  materials.wood.bumpTexture.level = .5;
-  setRoughnessMap(materials.wood, photoTexture(scene, surfaceUrl('rough_wood', 'rough'), 2.4, false));
   materials.iron.albedoTexture = photoTexture(scene, surfaceUrl('metal_plate', 'diff'), 3.2);
-  materials.iron.bumpTexture = photoTexture(scene, surfaceUrl('metal_plate', 'nor_gl'), 3.2, false);
-  materials.iron.bumpTexture.level = .24;
-  setRoughnessMap(materials.iron, photoTexture(scene, surfaceUrl('metal_plate', 'rough'), 3.2, false));
   materials.gold.albedoTexture = materials.iron.albedoTexture;
-  materials.gold.bumpTexture = materials.iron.bumpTexture;
-  materials.gold.metallicTexture = materials.iron.metallicTexture;
-  materials.gold.useRoughnessFromMetallicTextureAlpha = false;
-  materials.gold.useRoughnessFromMetallicTextureGreen = true;
-  materials.gold.useMetallnessFromMetallicTextureBlue = false;
   materials.leather.albedoTexture = photoTexture(scene, surfaceUrl('brown_leather', 'albedo'), 2.8);
-  materials.leather.bumpTexture = photoTexture(scene, surfaceUrl('brown_leather', 'nor_gl'), 2.8, false);
-  materials.leather.bumpTexture.level = .34;
-  setRoughnessMap(materials.leather, photoTexture(scene, surfaceUrl('brown_leather', 'rough'), 2.8, false));
   materials.grass.albedoTexture = materials.earth.albedoTexture;
-  materials.grass.bumpTexture = materials.earth.bumpTexture;
+
+  // Em automático/performance, cinco albedos mantêm a leitura dos materiais e
+  // poupam dez mapas auxiliares. Normais e roughness ficam no modo Cinemático.
+  if (quality.hardwareScale < 1) {
+    materials.stone.bumpTexture = photoTexture(scene, surfaceUrl('castle_brick_01', 'nor_gl'), 3.8, false);
+    materials.stone.bumpTexture.level = .58;
+    setRoughnessMap(materials.stone, photoTexture(scene, surfaceUrl('castle_brick_01', 'rough'), 3.8, false));
+    materials.stoneDark.bumpTexture = materials.stone.bumpTexture;
+    materials.stoneDark.metallicTexture = materials.stone.metallicTexture;
+    materials.stoneDark.useRoughnessFromMetallicTextureAlpha = false;
+    materials.stoneDark.useRoughnessFromMetallicTextureGreen = true;
+    materials.stoneDark.useMetallnessFromMetallicTextureBlue = false;
+
+    materials.earth.bumpTexture = photoTexture(scene, surfaceUrl('brown_mud_03', 'nor_gl'), 8, false);
+    materials.earth.bumpTexture.level = .72;
+    setRoughnessMap(materials.earth, photoTexture(scene, surfaceUrl('brown_mud_03', 'rough'), 8, false));
+    materials.grass.bumpTexture = materials.earth.bumpTexture;
+
+    materials.wood.bumpTexture = photoTexture(scene, surfaceUrl('rough_wood', 'nor_gl'), 2.4, false);
+    materials.wood.bumpTexture.level = .5;
+    setRoughnessMap(materials.wood, photoTexture(scene, surfaceUrl('rough_wood', 'rough'), 2.4, false));
+
+    materials.iron.bumpTexture = photoTexture(scene, surfaceUrl('metal_plate', 'nor_gl'), 3.2, false);
+    materials.iron.bumpTexture.level = .24;
+    setRoughnessMap(materials.iron, photoTexture(scene, surfaceUrl('metal_plate', 'rough'), 3.2, false));
+    materials.gold.bumpTexture = materials.iron.bumpTexture;
+    materials.gold.metallicTexture = materials.iron.metallicTexture;
+    materials.gold.useRoughnessFromMetallicTextureAlpha = false;
+    materials.gold.useRoughnessFromMetallicTextureGreen = true;
+    materials.gold.useMetallnessFromMetallicTextureBlue = false;
+
+    materials.leather.bumpTexture = photoTexture(scene, surfaceUrl('brown_leather', 'nor_gl'), 2.8, false);
+    materials.leather.bumpTexture.level = .34;
+    setRoughnessMap(materials.leather, photoTexture(scene, surfaceUrl('brown_leather', 'rough'), 2.8, false));
+  }
   const weave = clothTexture(scene);
   weave.uScale = 5; weave.vScale = 8;
   materials.clothRed.albedoTexture = weave;
@@ -160,6 +167,7 @@ export function createWorld(scene, quality) {
   ground.material = materials.earth;
   ground.receiveShadows = true;
   ground.isPickable = false;
+  ground.freezeWorldMatrix();
 
   const makeBox = (name, size, position, material = materials.stone, rotationY = 0) => {
     const mesh = B.MeshBuilder.CreateBox(name, size, scene);
@@ -169,6 +177,7 @@ export function createWorld(scene, quality) {
     mesh.metadata = { cameraCollider: material === materials.stone || material === materials.stoneDark || material === materials.wood };
     mesh.receiveShadows = true;
     addShadow(mesh);
+    mesh.freezeWorldMatrix();
     return mesh;
   };
 
@@ -202,6 +211,7 @@ export function createWorld(scene, quality) {
   towerPositions.forEach(([x, z], towerIndex) => {
     const tower = B.MeshBuilder.CreateCylinder(`round tower ${towerIndex}`, { height: 15, diameter: 12, tessellation: 18 }, scene);
     tower.position.copyFromFloats(x, 7.5, z); tower.material = materials.stone; tower.metadata = { cameraCollider: true }; addShadow(tower);
+    tower.freezeWorldMatrix();
     for (let i = 0; i < 10; i += 1) {
       const angle = i / 10 * Math.PI * 2;
       makeBox(`tower merlon ${towerIndex}-${i}`, { width: 2, height: 2.5, depth: 2.3 }, [x + Math.cos(angle) * 5, 16.1, z + Math.sin(angle) * 5], materials.stone, -angle);
@@ -218,17 +228,19 @@ export function createWorld(scene, quality) {
     mountain.rotation.y = rand(0, Math.PI);
     mountain.material = i % 3 === 0 ? materials.stoneDark : materials.grass;
     mountain.receiveShadows = true;
+    mountain.freezeWorldMatrix();
   }
 
   // O céu e os reflexos vêm de uma captura HDR real de ruínas de castelo.
   const sky = scene.createDefaultSkybox(environment, true, 430, .24);
-  if (sky) { sky.name = 'Monkstown castle HDR sky'; sky.isPickable = false; }
+  if (sky) { sky.name = 'Monkstown castle HDR sky'; sky.isPickable = false; sky.freezeWorldMatrix(); }
 
   for (let i = 0; i < 22; i += 1) {
     const angle = rand(0, Math.PI * 2); const radius = rand(14, 36);
     const rock = B.MeshBuilder.CreatePolyhedron(`courtyard stone ${i}`, { type: 2, size: rand(.25, .8) }, scene);
     rock.position.copyFromFloats(Math.cos(angle) * radius, rand(.08, .35), Math.sin(angle) * radius);
     rock.scaling.y = rand(.4, .8); rock.rotation.y = rand(0, Math.PI); rock.material = materials.stoneDark; addShadow(rock);
+    rock.freezeWorldMatrix();
   }
 
   // Estandartes no portão.
@@ -236,6 +248,7 @@ export function createWorld(scene, quality) {
   [-12.4, 12.4].forEach((x, index) => {
     const pole = B.MeshBuilder.CreateCylinder(`banner pole ${index}`, { height: 9, diameter: .16, tessellation: 8 }, scene);
     pole.position.copyFromFloats(x, 11.3, -37.5); pole.material = materials.iron; addShadow(pole);
+    pole.freezeWorldMatrix();
     const banner = B.MeshBuilder.CreatePlane(`torn Vardheim banner ${index}`, { width: 3, height: 5, sideOrientation: B.Mesh.DOUBLESIDE }, scene);
     banner.position.copyFromFloats(x + (index ? -.1 : .1), 11.1, -37.1); banner.material = materials.clothRed;
     banner.rotation.y = Math.PI;
@@ -272,7 +285,7 @@ export function createWorld(scene, quality) {
   const pipeline = new B.DefaultRenderingPipeline('cinematic pipeline', true, scene, [scene.activeCamera]);
   pipeline.samples = quality.hardwareScale < 1 ? 2 : 1;
   pipeline.fxaaEnabled = true;
-  pipeline.bloomEnabled = true;
+  pipeline.bloomEnabled = quality.bloom > 0;
   pipeline.bloomThreshold = .84;
   pipeline.bloomWeight = quality.bloom;
   pipeline.bloomKernel = 48;
@@ -316,93 +329,17 @@ export function createWorld(scene, quality) {
 
   function applyQuality(nextQuality) {
     pipeline.samples = nextQuality.hardwareScale < 1 ? 2 : 1;
+    pipeline.bloomEnabled = nextQuality.bloom > 0;
     pipeline.bloomWeight = nextQuality.bloom;
     pipeline.chromaticAberrationEnabled = nextQuality.aberration;
     pipeline.grainEnabled = nextQuality.grain;
     if ('ssaoEnabled' in pipeline) pipeline.ssaoEnabled = nextQuality.ssao;
+    if (shadow.mapSize !== nextQuality.shadows) shadow.mapSize = nextQuality.shadows;
     fires.forEach(fire => {
       fire.fire.emitRate = fire.fireRate * nextQuality.particles;
       fire.smoke.emitRate = fire.smokeRate * nextQuality.particles;
     });
   }
 
-  return { materials, shadow, addShadow, update, burst, applyQuality, gate, pipeline, environment, propRoots: [], propContainers: [] };
-}
-
-async function loadPolyHavenModel(scene, asset) {
-  const gltfUrl = `${POLY_MODELS}/gltf/1k/${asset}/${asset}_1k.gltf`;
-  const response = await fetch(gltfUrl);
-  if (!response.ok) throw new Error(`Falha ao carregar ${asset}: HTTP ${response.status}`);
-  const document = await response.json();
-  document.buffers?.forEach(buffer => {
-    if (buffer.uri && !buffer.uri.startsWith('data:')) {
-      const filename = buffer.uri.split('/').pop();
-      const resolution = POLY_MODEL_BIN_RESOLUTION[asset] || '8k';
-      buffer.uri = `${POLY_MODELS}/gltf/${resolution}/${asset}/${filename}`;
-    }
-  });
-  document.images?.forEach(image => {
-    if (image.uri && !image.uri.startsWith('data:')) {
-      const filename = image.uri.split('/').pop();
-      image.uri = `${POLY_MODELS}/jpg/1k/${asset}/${filename}`;
-    }
-  });
-  const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(document)], { type: 'model/gltf+json' }));
-  try {
-    return await B.SceneLoader.LoadAssetContainerAsync('', objectUrl, scene, undefined, '.gltf');
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function instantiateProp(scene, world, asset, placements) {
-  const container = await loadPolyHavenModel(scene, asset);
-  placements.forEach((placement, index) => {
-    const name = `${asset}-${index}`;
-    const root = new B.TransformNode(name, scene);
-    root.position.copyFromFloats(...placement.position);
-    root.rotation.copyFromFloats(...(placement.rotation || [0, 0, 0]));
-    const scale = placement.scale || 1;
-    root.scaling.copyFromFloats(scale, scale, scale);
-    const entries = container.instantiateModelsToScene(nodeName => `${name}-${nodeName}`, true, { doNotInstantiate: true });
-    entries.rootNodes.forEach(node => { node.parent = root; });
-    root.getChildMeshes(false).forEach(mesh => {
-      mesh.isPickable = false;
-      mesh.receiveShadows = true;
-      world.addShadow(mesh);
-    });
-    world.propRoots.push(root);
-  });
-  world.propContainers.push(container);
-}
-
-/** Acrescenta objetos fotogramétricos sem bloquear o início da cena base. */
-export async function loadWorldAssets(scene, world) {
-  const assets = [
-    instantiateProp(scene, world, 'wine_barrel_01', [
-      { position: [-21, 0, -17], rotation: [0, .32, 0], scale: 1.18 },
-      { position: [-20, .62, -15.5], rotation: [0, -.7, Math.PI / 2], scale: 1.18 },
-      { position: [25, .62, 19], rotation: [Math.PI / 2, .2, 0], scale: 1.12 }
-    ]),
-    instantiateProp(scene, world, 'wooden_bucket_01', [
-      { position: [-18.6, 0, -17.5], rotation: [0, 1.1, 0], scale: 1.25 },
-      { position: [27.2, 0, 18.3], rotation: [0, -1.3, 0], scale: 1.18 },
-      { position: [-31.2, 0, 23], rotation: [.12, .4, -.18], scale: 1.12 }
-    ]),
-    instantiateProp(scene, world, 'cannon_01', [
-      { position: [29, 0, -19], rotation: [0, -2.22, 0], scale: 1.08 }
-    ]),
-    instantiateProp(scene, world, 'CheeseBox_01', [
-      { position: [24.2, 0, 20.2], rotation: [0, -.3, 0], scale: 1.15 },
-      { position: [23.8, .64, 20], rotation: [.04, .52, -.03], scale: 1.05 },
-      { position: [-22.5, 0, -16.2], rotation: [0, 1.2, 0], scale: 1.08 }
-    ]),
-    instantiateProp(scene, world, 'Lantern_01', [
-      { position: [-18.8, 0, -15.8], rotation: [0, -.8, 0], scale: 1.15 },
-      { position: [27.4, 0, 17.1], rotation: [0, .35, 0], scale: 1.08 }
-    ])
-  ];
-  const results = await Promise.allSettled(assets);
-  const failures = results.filter(result => result.status === 'rejected');
-  if (failures.length) console.warn('Alguns objetos realistas não puderam ser carregados.', failures);
+  return { materials, shadow, addShadow, update, burst, applyQuality, gate, pipeline, environment };
 }

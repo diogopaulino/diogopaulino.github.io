@@ -5,6 +5,7 @@ export class BattleAudio {
     this.master = null;
     this.muted = false;
     this.ambience = [];
+    this.effectNoise = null;
   }
 
   async start() {
@@ -15,6 +16,7 @@ export class BattleAudio {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.muted ? 0 : .7;
       this.master.connect(this.ctx.destination);
+      this.effectNoise = this.createNoiseBuffer(1.2);
       this.createAmbience();
     }
     if (this.ctx.state === 'suspended') await this.ctx.resume();
@@ -88,7 +90,7 @@ export class BattleAudio {
     if (!this.ctx || !this.master || this.muted) return;
     const now = this.ctx.currentTime + delay;
     const source = this.ctx.createBufferSource();
-    source.buffer = this.createNoiseBuffer(duration + .04);
+    source.buffer = this.effectNoise;
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'highpass';
     filter.frequency.value = highpass;
@@ -96,7 +98,8 @@ export class BattleAudio {
     envelope.gain.setValueAtTime(gain, now);
     envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
     source.connect(filter).connect(envelope).connect(this.master);
-    source.start(now);
+    const availableOffset = Math.max(0, this.effectNoise.duration - duration - .04);
+    source.start(now, Math.random() * availableOffset, duration + .04);
   }
 
   swing(heavy = false) {

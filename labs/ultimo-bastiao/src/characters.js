@@ -5,44 +5,23 @@ const damp = (current, target, smoothing, dt) => B.Scalar.Lerp(current, target, 
 
 let knightContainer = null;
 let instanceId = 0;
-let textureCache = null;
 
-const CHARACTER_ROOT = 'https://raw.githubusercontent.com/mrdoob/three.js/master/manual/examples/resources/models/knight/';
-const CHARACTER_TEXTURES = {
-  armor: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_diff_1k.jpg',
-  armorNormal: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_nor_gl_1k.jpg',
-  armorRoughness: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_rough_1k.jpg',
-  leather: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_albedo_1k.jpg',
-  leatherNormal: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_nor_gl_1k.jpg',
-  leatherRoughness: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_rough_1k.jpg'
+const CHARACTER_ROOT = './assets/characters/';
+const CHARACTER_FILE = 'Knight.glb';
+const EQUIPMENT = ['1H_Sword_Offhand', 'Badge_Shield', 'Rectangle_Shield', 'Round_Shield', 'Spike_Shield', '1H_Sword', '2H_Sword'];
+const LOADOUTS = {
+  player: ['1H_Sword', 'Badge_Shield'],
+  raider: ['1H_Sword'],
+  guard: ['1H_Sword', 'Rectangle_Shield'],
+  brute: ['1H_Sword', 'Spike_Shield'],
+  warlord: ['2H_Sword']
 };
-
-function characterTextures(scene) {
-  if (textureCache) return textureCache;
-  const load = (path, gammaSpace = true) => {
-    const image = new B.Texture(path, scene, true, false, B.Texture.TRILINEAR_SAMPLINGMODE);
-    image.wrapU = B.Texture.WRAP_ADDRESSMODE;
-    image.wrapV = B.Texture.WRAP_ADDRESSMODE;
-    image.uScale = image.vScale = 3.4;
-    image.gammaSpace = gammaSpace;
-    return image;
-  };
-  textureCache = {
-    armor: load(CHARACTER_TEXTURES.armor),
-    armorNormal: load(CHARACTER_TEXTURES.armorNormal, false),
-    armorRoughness: load(CHARACTER_TEXTURES.armorRoughness, false),
-    leather: load(CHARACTER_TEXTURES.leather),
-    leatherNormal: load(CHARACTER_TEXTURES.leatherNormal, false),
-    leatherRoughness: load(CHARACTER_TEXTURES.leatherRoughness, false)
-  };
-  return textureCache;
-}
 
 /** Carrega uma única malha humana esquelética; cada combatente recebe sua própria instância e animações. */
 export async function loadCharacterAssets(scene, onProgress) {
   knightContainer = await B.SceneLoader.LoadAssetContainerAsync(
     CHARACTER_ROOT,
-    'KnightCharacter.gltf',
+    CHARACTER_FILE,
     scene,
     event => {
       if (!event.lengthComputable || !onProgress) return;
@@ -52,53 +31,35 @@ export async function loadCharacterAssets(scene, onProgress) {
   knightContainer.animationGroups.forEach(group => group.stop());
 }
 
-function tuneMaterial(material, enemy, boss, kind, textures) {
+function tuneMaterial(material, enemy, boss) {
   if (!material) return;
   if (material.subMaterials) {
-    material.subMaterials.forEach(subMaterial => tuneMaterial(subMaterial, enemy, boss, kind, textures));
+    material.subMaterials.forEach(subMaterial => tuneMaterial(subMaterial, enemy, boss));
     return;
   }
 
-  const name = material.name.toLowerCase();
-  if (name.includes('armor')) {
-    material.albedoColor = boss
-      ? new B.Color3(.23, .13, .065)
-      : enemy ? new B.Color3(.055, .06, .065) : new B.Color3(.27, .30, .31);
-    material.metallic = boss ? .82 : .94;
-    material.roughness = boss ? .31 : enemy ? .42 : .27;
-    material.environmentIntensity = 1.05;
-    material.albedoTexture = textures.armor;
-    material.bumpTexture = textures.armorNormal;
-    material.bumpTexture.level = .22;
-    material.metallicTexture = textures.armorRoughness;
-    material.useRoughnessFromMetallicTextureAlpha = false;
-    material.useRoughnessFromMetallicTextureGreen = true;
-    material.useMetallnessFromMetallicTextureBlue = false;
-    if (material.clearCoat) {
-      material.clearCoat.isEnabled = true;
-      material.clearCoat.intensity = enemy ? .18 : .34;
-      material.clearCoat.roughness = enemy ? .52 : .35;
+  // A textura atlas já separa aço, couro e tecido. A cor abaixo funciona como
+  // graduação por facção sem apagar os detalhes pintados pelo artista.
+  material.albedoColor = boss
+    ? new B.Color3(.72, .40, .25)
+    : enemy ? new B.Color3(.50, .54, .58) : new B.Color3(.93, .89, .78);
+  if ('metallic' in material) material.metallic = boss ? .20 : enemy ? .13 : .18;
+  if ('roughness' in material) material.roughness = boss ? .48 : enemy ? .62 : .50;
+  if ('environmentIntensity' in material) material.environmentIntensity = enemy ? .78 : 1;
+}
+
+function configureEquipment(modelRoot, kind) {
+  const loadout = LOADOUTS[kind] || LOADOUTS.raider;
+  modelRoot.getDescendants(false).forEach(node => {
+    const equipment = EQUIPMENT.find(name => node.name.endsWith(`-${name}`));
+    if (equipment) node.setEnabled(loadout.includes(equipment));
+    if (node.name.endsWith('-Knight_Cape') && kind !== 'player' && kind !== 'warlord') node.setEnabled(false);
+    // O pack é deliberadamente "chibi". Alongar o corpo e reduzir cabeça/elmo
+    // preserva o rig, mas aproxima a silhueta das proporções do cenário.
+    if (node.name.endsWith('-Knight_Head') || node.name.endsWith('-Knight_Helmet')) {
+      node.scaling.scaleInPlace(.82);
     }
-  } else if (name.includes('skin')) {
-    material.albedoColor = enemy ? new B.Color3(.34, .22, .16) : new B.Color3(.55, .34, .23);
-    material.metallic = 0;
-    material.roughness = .76;
-    if (material.subSurface) {
-      material.subSurface.isTranslucencyEnabled = true;
-      material.subSurface.translucencyIntensity = .12;
-    }
-  } else if (name.includes('boot')) {
-    material.albedoColor = kind === 'player' ? new B.Color3(.095, .047, .025) : new B.Color3(.045, .028, .019);
-    material.metallic = .02;
-    material.roughness = .9;
-    material.albedoTexture = textures.leather;
-    material.bumpTexture = textures.leatherNormal;
-    material.bumpTexture.level = .32;
-    material.metallicTexture = textures.leatherRoughness;
-    material.useRoughnessFromMetallicTextureAlpha = false;
-    material.useRoughnessFromMetallicTextureGreen = true;
-    material.useMetallnessFromMetallicTextureBlue = false;
-  }
+  });
 }
 
 function findAnimation(groups, names) {
@@ -107,18 +68,21 @@ function findAnimation(groups, names) {
     || null;
 }
 
-function buildAnimationSet(groups) {
+function buildAnimationSet(groups, kind) {
   groups.forEach(group => {
     group.stop();
     group.enableBlending = true;
     group.blendingSpeed = .08;
   });
   return {
-    idle: findAnimation(groups, ['Idle_swordLeft', 'Idle']),
-    run: findAnimation(groups, ['Run_swordRight', 'Run']),
-    attack: findAnimation(groups, ['Run_swordAttack', 'Attack']),
-    block: findAnimation(groups, ['Idle_swordLeft', 'Idle']),
-    dodge: findAnimation(groups, ['Roll_sword', 'Roll'])
+    idle: findAnimation(groups, ['Idle']),
+    run: findAnimation(groups, ['Running_A', 'Running_B']),
+    attackLight: findAnimation(groups, kind === 'warlord' ? ['2H_Melee_Attack_Chop'] : ['1H_Melee_Attack_Slice_Diagonal']),
+    attackHeavy: findAnimation(groups, kind === 'warlord' ? ['2H_Melee_Attack_Chop'] : ['1H_Melee_Attack_Slice_Diagonal']),
+    block: findAnimation(groups, ['Blocking', 'Block']),
+    dodge: findAnimation(groups, ['Dodge_Forward']),
+    hurt: findAnimation(groups, ['Hit_A', 'Hit_B']),
+    dead: findAnimation(groups, ['Death_A'])
   };
 }
 
@@ -129,7 +93,12 @@ function startAction(rig, action) {
   const group = rig.animations[action];
   if (!group) return;
   const loop = action === 'idle' || action === 'run' || action === 'block';
-  const speed = action === 'run' ? 1.08 : action === 'attack' ? 1.25 : action === 'dodge' ? 1.16 : .88;
+  const speed = action === 'run' ? 1.08
+    : action === 'attackLight' ? 1.42
+      : action === 'attackHeavy' ? .98
+        : action === 'dodge' ? 1.16
+          : action === 'hurt' ? 1.3
+            : action === 'dead' ? .9 : .88;
   group.start(loop, speed, group.from, group.to, false);
 }
 
@@ -147,7 +116,7 @@ export function createKnight(scene, world, options = {}) {
 
   const modelRoot = new B.TransformNode(`${prefix}-model`, scene);
   modelRoot.parent = root;
-  modelRoot.scaling.copyFromFloats(.67, .67, .67);
+  modelRoot.scaling.copyFromFloats(.96, 1.3, .96);
 
   const entries = knightContainer.instantiateModelsToScene(name => `${prefix}-${name}`, true, { doNotInstantiate: true });
   entries.rootNodes.forEach(node => { node.parent = modelRoot; });
@@ -156,12 +125,11 @@ export function createKnight(scene, world, options = {}) {
   meshes.forEach(mesh => {
     mesh.isPickable = false;
     mesh.receiveShadows = true;
-    mesh.alwaysSelectAsActiveMesh = true;
     world.addShadow(mesh);
     if (mesh.material) materials.add(mesh.material);
   });
-  const textures = characterTextures(scene);
-  materials.forEach(material => tuneMaterial(material, enemy, boss, kind, textures));
+  configureEquipment(modelRoot, kind);
+  materials.forEach(material => tuneMaterial(material, enemy, boss));
 
   const rig = {
     root,
@@ -174,7 +142,7 @@ export function createKnight(scene, world, options = {}) {
     time: 0,
     activeAction: '',
     animationGroups: entries.animationGroups,
-    animations: buildAnimationSet(entries.animationGroups),
+    animations: buildAnimationSet(entries.animationGroups, kind),
     pose: { moving: 0, attacking: null, attackProgress: 0, blocking: false, dodging: false, hurt: 0, dead: false },
     dispose() {
       entries.animationGroups.forEach(group => group.dispose());
@@ -195,17 +163,15 @@ export function animateKnight(rig, dt) {
 
   let action = 'idle';
   if (pose.dodging && !pose.dead) action = 'dodge';
-  else if (pose.attacking && !pose.dead) action = 'attack';
+  else if (pose.attacking && !pose.dead) action = pose.attacking === 'heavy' ? 'attackHeavy' : 'attackLight';
   else if (pose.blocking && !pose.dead) action = 'block';
+  else if (pose.hurt > .42 && !pose.dead) action = 'hurt';
   else if ((pose.moving || 0) > .08 && !pose.dead) action = 'run';
 
   if (pose.dead) {
-    if (rig.activeAction !== 'dead') {
-      rig.animationGroups.forEach(group => group.stop());
-      rig.activeAction = 'dead';
-    }
-    rig.root.rotation.z = damp(rig.root.rotation.z, rig.enemy ? -1.48 : 1.48, 3.1, dt);
-    rig.root.position.y = damp(rig.root.position.y, .1, 3.5, dt);
+    startAction(rig, 'dead');
+    rig.root.rotation.z = damp(rig.root.rotation.z, 0, 9, dt);
+    rig.root.position.y = damp(rig.root.position.y, 0, 9, dt);
   } else {
     startAction(rig, action);
     const hurtLean = pose.hurt > 0 ? Math.sin(pose.hurt * 27) * .16 * pose.hurt : 0;
