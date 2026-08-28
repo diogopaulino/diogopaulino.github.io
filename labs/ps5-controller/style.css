@@ -1,0 +1,61 @@
+@import url('styles/fonts.css');
+@import url('styles/tokens.css');
+@import url('styles/base.css');
+@import url('styles/layout.css');
+@import url('styles/components.css');
+@import url('styles/responsive.css');
+
+/* Lab shell overrides — não importar shared.css (conflita com o stage fixo) */
+html {
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100dvh;
+  padding: 0 !important;
+  display: block !important;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+.lab-foot {
+  position: relative;
+  z-index: calc(var(--z-ui) + 2);
+  text-align: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+.lab-foot a {
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-micro);
+  text-transform: uppercase;
+  pointer-events: auto;
+  min-height: var(--touch-target, 44px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lab-foot a:hover {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1023px) {
+  .lab-foot {
+    margin-top: clamp(48px, 10vh, 96px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .lab-foot {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(5, 4, 3, 0.92), transparent);
+  }
+}
