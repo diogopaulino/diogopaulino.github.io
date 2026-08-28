@@ -1045,12 +1045,26 @@ var init_ProductScene = __esm({
       bandOverride = null;
       /** Resolves once the renderer, environment and first model are ready. */
       async init(container, onProgress) {
-        this.renderer = new WebGPURenderer({
+        const rendererOptions = {
           antialias: true,
           alpha: false,
           powerPreference: "high-performance"
-        });
-        await this.renderer.init();
+        };
+        const backends = navigator.gpu ? [false, true] : [true];
+        let lastError = null;
+        for (const forceWebGL of backends) {
+          try {
+            this.renderer = new WebGPURenderer({ ...rendererOptions, forceWebGL });
+            await this.renderer.init();
+            lastError = null;
+            break;
+          } catch (error) {
+            lastError = error;
+            this.renderer?.dispose?.();
+            this.renderer = void 0;
+          }
+        }
+        if (!this.renderer) throw lastError ?? new Error("Renderer unavailable");
         const capabilities = this.renderer;
         this.maxAnisotropy = Math.min(16, capabilities.getMaxAnisotropy?.() ?? 16);
         this.renderer.toneMapping = NeutralToneMapping;
@@ -2761,7 +2775,7 @@ var App = class {
     const notice = el(
       "p",
       "webgl-notice",
-      "This showcase needs WebGL to render the DualSense in 3D. Enable hardware acceleration or try a different browser."
+      "Este lab precisa de WebGL para renderizar o DualSense em 3D. Ative a aceleração de hardware ou tente outro navegador."
     );
     qs(this.shell, ".hero").append(notice);
   }
