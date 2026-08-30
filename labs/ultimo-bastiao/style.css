@@ -113,6 +113,19 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
 .primary-button:hover { filter: brightness(1.15); }
 .primary-button i { font: normal 20px "Manrope", sans-serif; }
 
+.menu-overlay:not([hidden]) .menu-card {
+  animation: menuReveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes menuReveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.menu-overlay:not([hidden]) .menu-copy h1 em {
+  text-shadow: 0 0 40px rgba(201, 164, 91, 0.35);
+}
+
 .compact-overlay { background: rgba(5, 6, 7, .83); backdrop-filter: blur(10px); }
 .compact-card { width: min(440px, 100%); padding: clamp(28px, 6vw, 48px); border: 1px solid var(--line); background: rgba(13, 14, 15, .92); text-align: center; box-shadow: 0 24px 80px #000; }
 .compact-card h2 { margin: 12px 0 25px; font: 600 clamp(28px, 6vw, 45px)/1.05 "Cinzel", serif; }
