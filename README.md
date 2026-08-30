@@ -55,14 +55,14 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
 | 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
-| 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas |
+| 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU |
+| 🛡️ **[O Último Bastião](https://diogopaulino.com.br/labs/ultimo-bastiao/)** | Batalha medieval 3D — cavaleiro GLB, espada, escudo, ondas inimigas e chefe final em Babylon.js |
 | 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
 | 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
 | ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D — Dico e Teco atravessam o mar e resgatam Camila no castelo |
-| 🛡️ **[O Último Bastião](https://diogopaulino.com.br/labs/ultimo-bastiao/)** | Batalha medieval 3D — espada, escudo, ondas inimigas e chefe final em Babylon.js |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
