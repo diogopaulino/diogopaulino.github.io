@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#120c0a">
     <title>Xadrez — atelier 3D que ensina | Diogo Paulino</title>
     <meta name="description"
@@ -95,7 +95,7 @@
 
         <section class="stage" aria-label="Tabuleiro de xadrez em 3D">
             <canvas id="scene" aria-label="Atelier com tabuleiro Staunton de marfim e ébano"></canvas>
-            <div class="vignette" aria-hidden="true"></div>
+            <div class="camera-bar" role="toolbar" aria-label="Câmera"><button data-camera="play" aria-pressed="true">Jogar</button><button data-camera="top">Vista superior</button><button data-camera="detail">Detalhe</button><span id="qualityLabel">Automática</span></div><p class="camera-help">Arraste para girar · role ou pince para aproximar</p><div class="vignette" aria-hidden="true"></div>
         </section>
 
         <div id="hud" class="hud" hidden>
@@ -104,7 +104,7 @@
                     <span class="eyebrow"><i></i> Mestre</span>
                     <span id="coachTitle">As 64 casas</span>
                 </button>
-                <div id="coachBody" class="coach-body">
+                <div id="coachBody" class="coach-body" aria-live="polite">
                     <p id="coachText" class="coach-text"></p>
                     <p id="coachTip" class="coach-tip"></p>
                     <div id="lessonNav" class="lesson-nav" hidden>
@@ -117,26 +117,26 @@
             </aside>
 
             <aside class="tray" aria-label="Partida">
-                <p id="statusLine" class="status">Brancas jogam</p>
+                <p class="eyebrow">PARTIDA</p><p id="opponentName" class="opponent-name">Máquina · praticante</p><p id="statusLine" aria-live="polite" class="status">Brancas jogam</p>
                 <div id="captured" class="captured" aria-label="Peças capturadas"></div>
                 <ol id="moves" class="moves" aria-label="Histórico de lances"></ol>
             </aside>
 
             <div class="dock" role="toolbar" aria-label="Controles da partida">
                 <button id="modePlay" class="dock-btn" type="button">Jogar</button>
-                <button id="modeAcademy" class="dock-btn" type="button">Academia</button>
-                <button id="modePuzzles" class="dock-btn" type="button">Puzzles</button>
+                <button id="modeAcademy" class="dock-btn" type="button">Aprender</button>
+                <button id="modePuzzles" class="dock-btn" type="button">Desafios</button>
                 <button id="hintBtn" class="dock-btn accent" type="button" title="Dica">Dica</button>
                 <button id="undoBtn" class="dock-btn" type="button" title="Desfazer">Desfazer</button>
                 <button id="flipBtn" class="dock-btn" type="button" title="Virar tabuleiro">Virar</button>
-                <button id="newBtn" class="dock-btn" type="button">Nova</button>
+                <button id="settingsBtn" class="dock-btn" type="button">Ajustes</button><button id="newBtn" class="dock-btn" type="button">Nova</button>
                 <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">Som</button>
             </div>
         </div>
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> Babylon.js · PBR · Staunton</p>
+                <p class="eyebrow"><i></i> Xadrez</p>
                 <h2>Polindo<br>o ébano.</h2>
                 <p class="lede" id="loadingText">O atelier acende as lâmpadas.</p>
                 <div class="load-bar" aria-hidden="true"><i id="loadingFill"></i></div>
@@ -147,20 +147,14 @@
             <div class="overlay-card intro-card">
                 <p class="eyebrow"><i></i> Atelier 3D</p>
                 <h2>Xadrez</h2>
-                <p class="lede">Peças Staunton de marfim e ébano sobre mogno laqueado em Babylon.js. Um mestre comenta cada lance —
-                    da primeira casa até o xeque-mate.</p>
-                <ul class="feature-list">
-                    <li>Regras FIDE: roque, en passant, promoção, xeque e mate</li>
-                    <li>Academia com 14 lições e 8 puzzles táticos</li>
-                    <li>IA em três níveis · dois jogadores · tabuleiro livre</li>
-                </ul>
+                <p class="lede">Sua próxima jogada começa aqui.</p>
                 <div class="settings-row">
                     <label class="field">
                         <span>Modo</span>
                         <select id="modeSelect">
                             <option value="cpu">Contra a máquina</option>
-                            <option value="academy">Academia</option>
-                            <option value="puzzles">Puzzles</option>
+                            <option value="academy">Aprender passo a passo</option>
+                            <option value="puzzles">Desafios táticos</option>
                             <option value="local">Dois jogadores</option>
                             <option value="free">Tabuleiro livre</option>
                         </select>
@@ -192,9 +186,10 @@
                 </div>
                 <footer class="card-actions">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Entrar no atelier</span>
+                        <span>Jogar agora</span>
                         <i aria-hidden="true">→</i>
                     </button>
+                    <button id="learnButton" class="learn-button" type="button">Primeira vez? Aprenda a jogar ↗</button><a class="asset-credit" href="assets/CREDITS.md" target="_blank" rel="noopener">Créditos dos modelos e materiais</a>
                 </footer>
             </div>
         </div>
@@ -240,7 +235,7 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js"></script>
+    
     <script src="/labs/shared.js?v=13" defer></script>
     <script type="module" src="src/main.js"></script>
 </body>

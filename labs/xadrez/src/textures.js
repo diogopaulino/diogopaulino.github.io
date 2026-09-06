@@ -95,9 +95,9 @@ function grain(ctx, w, rand, colorA, colorB, bands = 28) {
     }
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, w);
-    for (let i = 0; i < w * 4; i++) {
+    for (let i = 0; i < w * 1.5; i++) {
         const x = rand() * w;
-        ctx.strokeStyle = `rgba(0,0,0,${0.03 + rand() * 0.05})`;
+        ctx.strokeStyle = `rgba(0,0,0,${0.008 + rand() * 0.016})`;
         ctx.lineWidth = 0.6 + rand();
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -108,15 +108,15 @@ function grain(ctx, w, rand, colorA, colorB, bands = 28) {
 
 export function createTextures(scene) {
     const maple = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(11), '#e2c9a0', '#c9a574', 22);
+        grain(ctx, w, rng(11), '#d8c9ac', '#c7b795', 22);
     }, { repeat: [1, 1], roughBase: 0.28, strength: 1.4 });
 
     const walnut = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(29), '#5a3418', '#3a1e0c', 18);
+        grain(ctx, w, rng(29), '#735744', '#604936', 18);
     }, { repeat: [1, 1], roughBase: 0.34, strength: 1.6 });
 
     const mahogany = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(71), '#6b2e18', '#3d140c', 16);
+        grain(ctx, w, rng(71), '#554033', '#48392e', 16);
     }, { repeat: [3, 3], roughBase: 0.22, strength: 1.2 });
 
     const ebony = pack(scene, (ctx, w) => {
@@ -186,5 +186,13 @@ export function createTextures(scene) {
         }
     }, { repeat: [2, 2], roughBase: 0.12, strength: 0.6 });
 
-    return { maple, walnut, mahogany, ebony, ivory, felt, marble };
+    const photographed = {
+        map: new window.BABYLON.Texture(new URL('../assets/wood.jpg', import.meta.url).href, scene),
+        normalMap: new window.BABYLON.Texture(new URL('../assets/wood-normal.jpg', import.meta.url).href, scene),
+        roughnessMap: new window.BABYLON.Texture(new URL('../assets/wood-roughness.jpg', import.meta.url).href, scene)
+    };
+    photographed.normalMap.gammaSpace = false;
+    photographed.normalMap.level = 0.25;
+    photographed.roughnessMap.gammaSpace = false;
+    return { maple, walnut, mahogany: photographed, ebony, ivory, felt, marble };
 }

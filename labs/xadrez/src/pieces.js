@@ -202,24 +202,24 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
         ivory.bumpTexture = tex.ivory.normalMap;
     }
     ivory.metallic = 0.02;
-    ivory.roughness = 0.32;
+    ivory.roughness = 0.38;
     ivory.clearCoat.isEnabled = true;
-    ivory.clearCoat.intensity = 0.75;
+    ivory.clearCoat.intensity = 0.32;
     ivory.clearCoat.roughness = 0.2;
     ivory.sheen.isEnabled = true;
     ivory.sheen.intensity = 0.35;
     ivory.sheen.color = new BABYLON.Color3(0.95, 0.88, 0.78);
 
     const ebony = new BABYLON.PBRMaterial('mat_ebony', scene);
-    ebony.albedoColor = new BABYLON.Color3(0.12, 0.08, 0.06);
+    ebony.albedoColor = new BABYLON.Color3(0.72, 0.68, 0.62);
     if (tex.ebony) {
         ebony.albedoTexture = tex.ebony.map;
         ebony.bumpTexture = tex.ebony.normalMap;
     }
     ebony.metallic = 0.05;
-    ebony.roughness = 0.32;
+    ebony.roughness = 0.3;
     ebony.clearCoat.isEnabled = true;
-    ebony.clearCoat.intensity = 0.75;
+    ebony.clearCoat.intensity = 0.42;
     ebony.clearCoat.roughness = 0.22;
     ebony.sheen.isEnabled = true;
     ebony.sheen.intensity = 0.3;
@@ -286,8 +286,30 @@ export class PieceFactory {
         }
     }
 
+    async loadSculpted() {
+        const [layoutResponse, binaryResponse] = await Promise.all([
+            fetch(new URL('../assets/staunton.json', import.meta.url)),
+            fetch(new URL('../assets/staunton.bin', import.meta.url))
+        ]);
+        if (!layoutResponse.ok || !binaryResponse.ok) return;
+        const layout = await layoutResponse.json(), binary = await binaryResponse.arrayBuffer();
+        for (const [kind, attributes] of Object.entries(layout)) {
+            const data = new this.BABYLON.VertexData();
+            for (const [name, [offset, length]] of Object.entries(attributes)) {
+                data[name] = name === 'indices' ? new Uint32Array(binary, offset, length) : new Float32Array(binary, offset, length);
+            }
+            for (let i = 0; i < data.indices.length; i += 3) [data.indices[i+1], data.indices[i+2]] = [data.indices[i+2], data.indices[i+1]];
+            const mesh = new this.BABYLON.Mesh(`sculpted_${kind}`, this.scene);
+            data.applyToMesh(mesh);
+            mesh.setEnabled(false); mesh.isVisible = false;
+            this.prototypes[kind].dispose(); this.prototypes[kind] = mesh;
+        }
+    }
+
     setTheme(theme) {
+        const previous = this.mats;
         this.mats = makeMaterials(this.BABYLON, this.scene, this.tex, theme);
+        new Set(Object.values(previous)).forEach(mat => { if (mat?.dispose) mat.dispose(false, false); });
     }
 
     spawn(type, color) {

@@ -39,6 +39,12 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
     if (texMap) {
         if (texMap.map) mat.albedoTexture = texMap.map;
         if (texMap.normalMap) mat.bumpTexture = texMap.normalMap;
+        if (texMap.roughnessMap) {
+            mat.metallicTexture = texMap.roughnessMap;
+            mat.useRoughnessFromMetallicTextureAlpha = false;
+            mat.useRoughnessFromMetallicTextureGreen = true;
+            mat.useMetallnessFromMetallicTextureBlue = false;
+        }
     }
     mat.roughness = extra.roughness !== undefined ? extra.roughness : 0.35;
     mat.metallic = extra.metallic !== undefined ? extra.metallic : 0.04;
@@ -54,12 +60,12 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
 export function buildWorld(BABYLON, scene, tex, quality) {
     const lightMat = makePhysMat(BABYLON, 'mat_sq_light', scene, tex.maple, {
         color: new BABYLON.Color3(0.96, 0.87, 0.73),
-        clearcoat: 0.8,
+        clearcoat: 0.35,
         roughness: 0.3
     });
     const darkMat = makePhysMat(BABYLON, 'mat_sq_dark', scene, tex.walnut, {
-        color: new BABYLON.Color3(0.32, 0.16, 0.08),
-        clearcoat: 0.8,
+        color: new BABYLON.Color3(0.85, 0.82, 0.78),
+        clearcoat: 0.35,
         roughness: 0.35
     });
 
@@ -83,8 +89,8 @@ export function buildWorld(BABYLON, scene, tex, quality) {
 
     // Moldura do tabuleiro (Mogno laqueado)
     const frameMat = makePhysMat(BABYLON, 'mat_frame', scene, tex.mahogany, {
-        color: new BABYLON.Color3(0.30, 0.14, 0.08),
-        clearcoat: 0.85,
+        color: new BABYLON.Color3(0.76, 0.73, 0.7),
+        clearcoat: 0.355,
         roughness: 0.25
     });
     const frame = BABYLON.MeshBuilder.CreateBox('board_frame', {
@@ -113,9 +119,9 @@ export function buildWorld(BABYLON, scene, tex, quality) {
 
     // Mesa de mogno
     const tableMat = makePhysMat(BABYLON, 'mat_table', scene, tex.mahogany, {
-        color: new BABYLON.Color3(0.24, 0.10, 0.06),
-        roughness: 0.16,
-        clearcoat: 0.95
+        color: new BABYLON.Color3(0.66, 0.65, 0.64),
+        roughness: 0.48,
+        clearcoat: 0.25
     });
     const table = BABYLON.MeshBuilder.CreateBox('table_top', {
         width: 16,
@@ -146,7 +152,7 @@ export function buildWorld(BABYLON, scene, tex, quality) {
 
     // Tapete de veludo bordô sob a mesa
     const rugMat = new BABYLON.PBRMaterial('mat_rug', scene);
-    rugMat.albedoColor = new BABYLON.Color3(0.42, 0.10, 0.10);
+    rugMat.albedoColor = new BABYLON.Color3(0.06, 0.10, 0.12);
     rugMat.roughness = 0.92;
     rugMat.metallic = 0.0;
     const rug = BABYLON.MeshBuilder.CreateDisc('rug', {
@@ -161,11 +167,12 @@ export function buildWorld(BABYLON, scene, tex, quality) {
 
     // Piso de mármore do salão
     const floorMat = makePhysMat(BABYLON, 'mat_floor', scene, tex.marble, {
-        color: new BABYLON.Color3(0.85, 0.82, 0.78),
-        roughness: 0.14,
+        color: new BABYLON.Color3(0.075, 0.10, 0.12),
+        roughness: 0.8,
         clearcoat: 0.9,
         metallic: 0.05
     });
+    floorMat.albedoTexture = null; floorMat.bumpTexture = null; floorMat.clearCoat.isEnabled = false;
     const floor = BABYLON.MeshBuilder.CreateDisc('floor', {
         radius: 18,
         tessellation: 64
@@ -175,6 +182,25 @@ export function buildWorld(BABYLON, scene, tex, quality) {
     floor.material = floorMat;
     floor.receiveShadows = true;
     floor.isPickable = false;
+
+    const brass = makePhysMat(BABYLON, 'brass_inlay', scene, null, {
+        color: new BABYLON.Color3(0.65, 0.48, 0.23), metallic: 0.8, roughness: 0.32
+    });
+    for (const axis of ['x', 'z']) for (const sign of [-1, 1]) {
+        const rail = BABYLON.MeshBuilder.CreateBox('inlay', {width: axis === 'z' ? 8.8 : 0.025, depth: axis === 'x' ? 8.8 : 0.025, height: 0.01}, scene);
+        rail.position[axis] = sign * 4.4; rail.position.y = 0.028; rail.material = brass; rail.isPickable = false;
+    }
+    for (let i = 0; i < 8; i++) for (const edge of ['file', 'rank']) {
+        const texture = new BABYLON.DynamicTexture(`coord_${edge}_${i}`, 128, scene, false);
+        texture.hasAlpha = true;
+        texture.drawText(edge === 'file' ? 'abcdefgh'[i] : String(i + 1), null, 88, '64px Georgia', '#d9c398', 'transparent', true);
+        const mat = new BABYLON.StandardMaterial(`label_${edge}_${i}`, scene);
+        mat.diffuseTexture = texture; mat.emissiveColor.set(0.4, 0.36, 0.28); mat.specularColor.set(0,0,0); mat.useAlphaFromDiffuseTexture = true;
+        const label = BABYLON.MeshBuilder.CreateGround(`label_${edge}_${i}`, {width:0.23,height:0.23}, scene);
+        label.position.set(edge === 'file' ? i - 3.5 : -4.19, 0.035, edge === 'file' ? 4.19 : 3.5 - i);
+        label.material = mat; label.isPickable = false;
+    }
+    for (const mesh of scene.meshes) if (!mesh.name.startsWith('label')) mesh.freezeWorldMatrix();
 
     const marks = buildMarks(BABYLON, scene);
 
@@ -276,18 +302,19 @@ export function setupLights(BABYLON, scene, quality) {
     const hemi = new BABYLON.HemisphericLight('hemi_light', new BABYLON.Vector3(0, 1, 0), scene);
     hemi.diffuse = new BABYLON.Color3(0.78, 0.73, 0.66);
     hemi.groundColor = new BABYLON.Color3(0.38, 0.32, 0.26);
-    hemi.intensity = 1.05;
+    hemi.intensity = 0.65;
 
     // Sol / Luz direcionada com sombras
     const sun = new BABYLON.DirectionalLight('sun_light', new BABYLON.Vector3(-4, -10, 6).normalize(), scene);
     sun.position = new BABYLON.Vector3(8, 18, -12);
     sun.diffuse = new BABYLON.Color3(1.0, 0.95, 0.88);
-    sun.intensity = 1.5;
+    sun.intensity = 2.1;
 
     let shadowGen = null;
     if (quality.shadows) {
         shadowGen = new BABYLON.ShadowGenerator(quality.shadowMap || 2048, sun);
-        shadowGen.usePoissonSampling = true;
+        shadowGen.usePercentageCloserFiltering = true;
+        shadowGen.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
         shadowGen.bias = 0.001;
         shadowGen.normalBias = 0.002;
         shadowGen.darkness = 0.35;
@@ -298,12 +325,12 @@ export function setupLights(BABYLON, scene, quality) {
     const fill = new BABYLON.DirectionalLight('fill_light', new BABYLON.Vector3(5, -6, -8).normalize(), scene);
     fill.diffuse = new BABYLON.Color3(0.55, 0.60, 0.68);
     fill.specular = new BABYLON.Color3(0.2, 0.2, 0.24);
-    fill.intensity = 0.55;
+    fill.intensity = 0.9;
 
     // Ponto de luz quente sobre a mesa
     const warmLamp = new BABYLON.PointLight('warm_lamp', new BABYLON.Vector3(0, 5, 0), scene);
     warmLamp.diffuse = new BABYLON.Color3(1.0, 0.85, 0.65);
-    warmLamp.intensity = 0.7;
+    warmLamp.intensity = 0.25;
     warmLamp.range = 14;
 
     return { hemi, sun, fill, shadowGen, warmLamp };
@@ -315,7 +342,7 @@ export function setupLights(BABYLON, scene, quality) {
  * para refletir. Sem isso, materiais escuros como o ébano ficam achatados.
  */
 export function setupEnvironment(BABYLON, scene) {
-    const size = 64;
+    const size = 256;
     const face = (top, bottom) => {
         const el = document.createElement('canvas');
         el.width = size;
@@ -326,6 +353,10 @@ export function setupEnvironment(BABYLON, scene) {
         g.addColorStop(1, bottom);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#d3ddeb';
+        ctx.fillRect(40, 24, 65, 108);
+        ctx.fillStyle = '#f5e5c8';
+        ctx.fillRect(116, 24, 65, 108);
         return el.toDataURL('image/png');
     };
     const side = face('#8c7c68', '#171310');
@@ -343,9 +374,9 @@ export function setupPostProcess(BABYLON, scene, quality) {
     pipe.fxaaEnabled = true;
 
     // Bloom elegante para destaques e reflexos
-    pipe.bloomEnabled = true;
+    pipe.bloomEnabled = quality.id === 'high';
     pipe.bloomThreshold = 0.78;
-    pipe.bloomWeight = 0.25;
+    pipe.bloomWeight = 0.08;
     pipe.bloomKernel = 64;
 
     // Tonemapping e contraste
@@ -356,7 +387,7 @@ export function setupPostProcess(BABYLON, scene, quality) {
 
     // Glow Layer para anéis e discos de lance legal
     const glow = new BABYLON.GlowLayer('glow', scene);
-    glow.intensity = 0.65;
+    glow.intensity = 0.15;
 
     return { pipe, glow };
 }
