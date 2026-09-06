@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#120c0a">
+    <meta name="theme-color" content="#141916">
     <title>Xadrez — atelier 3D que ensina | Diogo Paulino</title>
     <meta name="description"
-        content="Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas. Um lab de Diogo Paulino.">
+        content="Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, luz suave e materiais acetinados e um mestre que ensina regras, táticas e aberturas. Um lab de Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/xadrez/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -22,17 +22,16 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/xadrez/">
     <meta property="og:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
     <meta property="og:description"
-        content="Peças Staunton com reflexo, tabuleiro laqueado e um mestre que ensina a jogar — Babylon.js no navegador.">
+        content="Peças Staunton esculpidas, tabuleiro de madeira acetinada e um mestre que ensina a jogar — Babylon.js no navegador.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Xadrez — atelier 3D que ensina | Diogo Paulino">
     <meta name="twitter:description"
-        content="Peças Staunton com reflexo, tabuleiro laqueado e um mestre que ensina a jogar — Babylon.js no navegador.">
+        content="Peças Staunton esculpidas, tabuleiro de madeira acetinada e um mestre que ensina a jogar — Babylon.js no navegador.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
     <link rel="stylesheet" href="style.css">
     <script type="application/ld+json">
     {
@@ -42,7 +41,7 @@
           "@type": "WebApplication",
           "name": "Xadrez",
           "url": "https://diogopaulino.com.br/labs/xadrez/",
-          "description": "Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina regras, táticas e aberturas.",
+          "description": "Xadrez 3D em Babylon.js com peças Staunton de marfim e ébano, luz suave e materiais acetinados e um mestre que ensina regras, táticas e aberturas.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -84,24 +83,46 @@
 
 <body data-state="boot">
     <main class="game-shell">
-        <header data-lab-header data-title="Xadrez" data-back-href="/labs/" data-back-label="Labs">
-            <template data-slot="logo">
-                <div class="app-logo">
-                    <span class="brand-mark" aria-hidden="true">♛</span>
-                    <span>Xadrez</span>
-                </div>
-            </template>
+        <header class="game-header">
+            <a class="back-link" href="../">← <span>Labs</span></a>
+            <h1><span aria-hidden="true">♔</span> Xadrez <small>ATELIER</small></h1>
+            <button id="muteBtn" class="quiet-button" type="button" title="Som (M)" aria-pressed="false">Som</button>
         </header>
 
         <section class="stage" aria-label="Tabuleiro de xadrez em 3D">
-            <canvas id="scene" aria-label="Atelier com tabuleiro Staunton de marfim e ébano"></canvas>
-            <div class="camera-bar" role="toolbar" aria-label="Câmera"><button data-camera="play" aria-pressed="true">Jogar</button><button data-camera="top">Vista superior</button><button data-camera="detail">Detalhe</button><span id="qualityLabel">Automática</span></div><p class="camera-help">Arraste para girar · role ou pince para aproximar</p><div class="vignette" aria-hidden="true"></div>
+            <canvas id="scene" tabindex="0" aria-label="Tabuleiro 3D. Use as setas para escolher uma casa e Enter para selecionar ou mover." aria-describedby="boardHelp"></canvas>
+            <div class="scene-caption" aria-hidden="true"><span>SALA DE LEITURA</span><i></i> Madeira · Staunton</div>
+            <div class="camera-bar" role="toolbar" aria-label="Câmera">
+                <button data-camera="play" aria-pressed="true" title="Câmera de jogo (1)">Jogar</button>
+                <button data-camera="top" aria-pressed="false" title="Vista superior (2)">Superior</button>
+                <button data-camera="detail" aria-pressed="false" title="Câmera de detalhe (3)">Detalhe</button>
+                <span class="camera-divider" aria-hidden="true"></span>
+                <button id="flipBtn" type="button" title="Ver do outro lado (F)" aria-pressed="false">Virar ↻</button>
+            </div>
+            <p id="boardHelp" class="camera-help">Toque para mover · arraste o fundo para girar · role para aproximar</p>
+            <span id="boardAnnouncement" class="sr-only" aria-live="polite"></span>
+            <div class="vignette" aria-hidden="true"></div>
         </section>
 
         <div id="hud" class="hud" hidden>
-            <aside id="coach" class="coach" aria-label="Mestre">
-                <button id="coachToggle" class="coach-toggle" type="button" aria-expanded="true">
-                    <span class="eyebrow"><i></i> Mestre</span>
+            <nav class="mode-nav" aria-label="Atividade">
+                <button id="modePlay" type="button">Jogar</button>
+                <button id="modeAcademy" type="button">Aprender</button>
+                <button id="modePuzzles" type="button">Desafios</button>
+            </nav>
+            <aside class="tray" aria-label="Partida">
+                <div class="player-heading"><span class="player-avatar" aria-hidden="true">♚</span><div><p class="eyebrow">PARTIDA</p><p id="opponentName" class="opponent-name">Máquina · praticante</p></div></div>
+                <p id="statusLine" aria-live="polite" class="status">Brancas jogam</p>
+                <div id="captured" class="captured" aria-label="Peças capturadas"></div>
+                <details class="history-panel" open><summary>Lances <span aria-hidden="true">⌄</span></summary><ol id="moves" class="moves" aria-label="Histórico de lances"></ol></details>
+            </aside>
+            <div class="play-actions" role="toolbar" aria-label="Ajuda da partida">
+                <button id="hintBtn" class="accent" type="button" title="Dica (H)">Dica <kbd>H</kbd></button>
+                <button id="undoBtn" type="button" title="Desfazer (U)">Desfazer <kbd>U</kbd></button>
+            </div>
+            <aside id="coach" class="coach is-collapsed" aria-label="Mestre">
+                <button id="coachToggle" class="coach-toggle" type="button" aria-expanded="false">
+                    <span class="eyebrow">MESTRE <span aria-hidden="true">⌄</span></span>
                     <span id="coachTitle">As 64 casas</span>
                 </button>
                 <div id="coachBody" class="coach-body" aria-live="polite">
@@ -111,43 +132,30 @@
                         <button id="prevLesson" class="dock-btn" type="button">Anterior</button>
                         <button id="nextLesson" class="dock-btn accent" type="button">Próxima</button>
                     </div>
-                    <ul id="lessonList" class="lesson-list" hidden></ul>
-                    <ul id="puzzleList" class="lesson-list" hidden></ul>
+                    <div id="lessonList" class="lesson-list" hidden></div>
+                    <div id="puzzleList" class="lesson-list" hidden></div>
                 </div>
             </aside>
-
-            <aside class="tray" aria-label="Partida">
-                <p class="eyebrow">PARTIDA</p><p id="opponentName" class="opponent-name">Máquina · praticante</p><p id="statusLine" aria-live="polite" class="status">Brancas jogam</p>
-                <div id="captured" class="captured" aria-label="Peças capturadas"></div>
-                <ol id="moves" class="moves" aria-label="Histórico de lances"></ol>
-            </aside>
-
-            <div class="dock" role="toolbar" aria-label="Controles da partida">
-                <button id="modePlay" class="dock-btn" type="button">Jogar</button>
-                <button id="modeAcademy" class="dock-btn" type="button">Aprender</button>
-                <button id="modePuzzles" class="dock-btn" type="button">Desafios</button>
-                <button id="hintBtn" class="dock-btn accent" type="button" title="Dica">Dica</button>
-                <button id="undoBtn" class="dock-btn" type="button" title="Desfazer">Desfazer</button>
-                <button id="flipBtn" class="dock-btn" type="button" title="Virar tabuleiro">Virar</button>
-                <button id="settingsBtn" class="dock-btn" type="button">Ajustes</button><button id="newBtn" class="dock-btn" type="button">Nova</button>
-                <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">Som</button>
+            <div class="dock" role="toolbar" aria-label="Opções da partida">
+                <button id="newBtn" class="quiet-button" type="button">Nova partida</button>
+                <button id="settingsBtn" class="quiet-button" type="button">Ajustes</button>
             </div>
         </div>
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="overlay-card compact-card">
                 <p class="eyebrow"><i></i> Xadrez</p>
-                <h2>Polindo<br>o ébano.</h2>
-                <p class="lede" id="loadingText">O atelier acende as lâmpadas.</p>
+                <h2>Preparando<br>a mesa.</h2>
+                <p class="lede" id="loadingText">Carregando o tabuleiro e as peças.</p>
                 <div class="load-bar" aria-hidden="true"><i id="loadingFill"></i></div>
             </div>
         </div>
 
         <div id="intro" class="overlay" hidden>
             <div class="overlay-card intro-card">
-                <p class="eyebrow"><i></i> Atelier 3D</p>
-                <h2>Xadrez</h2>
-                <p class="lede">Sua próxima jogada começa aqui.</p>
+                <p class="eyebrow">SUA PARTIDA</p>
+                <h2>À mesa.</h2>
+                <p class="lede">Um bom lugar para pensar.</p>
                 <div class="settings-row">
                     <label class="field">
                         <span>Modo</span>
@@ -173,7 +181,7 @@
                             <option value="auto">Automática</option>
                             <option value="low">Leve</option>
                             <option value="medium">Equilibrada</option>
-                            <option value="high">Atelier</option>
+                            <option value="high">Alta</option>
                         </select>
                     </label>
                     <label class="field">
@@ -185,20 +193,21 @@
                     </label>
                 </div>
                 <footer class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button" hidden>Continuar partida <span aria-hidden="true">→</span></button>
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Jogar agora</span>
+                        <span id="startLabel">Jogar agora</span>
                         <i aria-hidden="true">→</i>
                     </button>
-                    <button id="learnButton" class="learn-button" type="button">Primeira vez? Aprenda a jogar ↗</button><a class="asset-credit" href="assets/CREDITS.md" target="_blank" rel="noopener">Créditos dos modelos e materiais</a>
+                    <button id="learnButton" class="learn-button" type="button">Aprender a jogar ↗</button><span id="qualityLabel" class="quality-note">Automática</span><a class="asset-credit" href="assets/CREDITS.md" target="_blank" rel="noopener">Créditos dos modelos e materiais</a>
                 </footer>
             </div>
         </div>
 
-        <div id="promoOverlay" class="overlay" hidden>
+        <div id="promoOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="promoTitle" hidden>
             <div class="overlay-card compact-card">
                 <p class="eyebrow"><i></i> Promoção</p>
-                <h2>O peão chegou.</h2>
-                <p class="lede">Escolha a peça. Quase sempre a dama.</p>
+                <h2 id="promoTitle">Promover peão</h2>
+                <p class="lede">Escolha a peça que entra no lugar do peão.</p>
                 <div class="promo-row">
                     <button class="promo-btn" data-promo="q" type="button">Dama</button>
                     <button class="promo-btn" data-promo="r" type="button">Torre</button>
@@ -208,7 +217,7 @@
             </div>
         </div>
 
-        <div id="resultOverlay" class="overlay" hidden>
+        <div id="resultOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
             <div class="overlay-card compact-card">
                 <p class="eyebrow" id="resultKicker"><i></i> Fim</p>
                 <h2 id="resultTitle">Xeque-mate</h2>
@@ -231,7 +240,7 @@
             </div>
         </div>
 
-        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+
     </main>
 
     <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>

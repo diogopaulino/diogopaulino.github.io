@@ -112,7 +112,7 @@ export const LESSONS = [
         kicker: 'Especiais',
         fen: 'rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
         text: 'O roque, único lance com duas peças, mete o rei na ala e a torre no centro. Condições: rei e torre imóvel, casas vazias no caminho, rei não em xeque e não atravessa casa atacada. Roque pequeno (O-O) vai à ala do rei; o grande (O-O-O), à da dama.',
-        tip: 'Roque pequeno: toque o rei e a casa g1 (ou a torre de h1, se preferir pensar no par).',
+        tip: 'Roque pequeno: toque o rei em e1 e depois a casa g1. A torre se move junto.',
         expect: { from: 'e1', to: 'g1' },
         success: 'O-O. O rei está em g1, a torre em f1. Segurança e desenvolvimento num só lance.'
     },
