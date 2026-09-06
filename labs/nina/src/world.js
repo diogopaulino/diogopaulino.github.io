@@ -12,36 +12,7 @@ import {
 import { createFriend } from './animals.js';
 import { createSky } from './sky.js';
 
-const waterVert = /* glsl */ `
-uniform float uTime;
-varying vec3 vWorld;
-varying vec3 vNormal;
-void main() {
-    vec3 p = position;
-    p.y += sin(p.x * 0.55 + uTime * 1.5) * 0.06 + cos(p.z * 0.5 + uTime * 1.2) * 0.05;
-    vec4 world = modelMatrix * vec4(p, 1.0);
-    vWorld = world.xyz;
-    vNormal = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * viewMatrix * world;
-}`;
 
-const waterFrag = /* glsl */ `
-uniform vec3 uDeep;
-uniform vec3 uShallow;
-uniform vec3 uSky;
-uniform float uTime;
-varying vec3 vWorld;
-varying vec3 vNormal;
-void main() {
-    vec3 n = normalize(vNormal);
-    float fres = pow(1.0 - max(dot(n, vec3(0.0, 1.0, 0.0)), 0.0), 2.2);
-    float bands = floor((vWorld.x * 0.14 + vWorld.z * 0.1 + sin(vWorld.x * 0.45 + uTime) * 0.08) * 5.0) / 5.0;
-    vec3 col = mix(uDeep, uShallow, bands * 0.5 + 0.4);
-    col = mix(col, uSky, fres * 0.42);
-    float spark = step(0.97, fract(sin(dot(vWorld.xz * 0.8, vec2(12.9898, 78.233)) + uTime) * 43758.5453));
-    col += vec3(1.0, 0.96, 0.85) * spark * 0.6;
-    gl_FragColor = vec4(col, 0.9);
-}`;
 
 function hash(i) {
     const n = Math.sin(i * 127.1 + 311.7) * 43758.5453;
@@ -97,17 +68,29 @@ export class Valley {
     _water() {
         const geometry = new THREE.CircleGeometry(4.6, 48);
         geometry.rotateX(-Math.PI / 2);
-        const material = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0 },
-                uDeep: { value: new THREE.Color('#1a8aaa') },
-                uShallow: { value: new THREE.Color('#7af0e0') },
-                uSky: { value: new THREE.Color('#ffe2b0') }
-            },
-            vertexShader: waterVert,
-            fragmentShader: waterFrag,
-            transparent: true
+        const material = new THREE.MeshPhysicalMaterial({
+            color: 0x1a8aaa,
+            emissive: 0x001122,
+            transmission: 0.9,
+            opacity: 1,
+            metalness: 0.1,
+            roughness: 0.1,
+            ior: 1.33,
+            thickness: 5,
+            transparent: true,
+            side: THREE.DoubleSide
         });
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.uTime = { value: 0 };
+            shader.vertexShader = `uniform float uTime;\n` + shader.vertexShader;
+            shader.vertexShader = shader.vertexShader.replace(
+                `#include <begin_vertex>`,
+                `vec3 p = position;
+                 p.y += sin(p.x * 0.55 + uTime * 1.5) * 0.06 + cos(p.z * 0.5 + uTime * 1.2) * 0.05;
+                 vec3 transformed = p;`
+            );
+            material.userData.shader = shader;
+        };
         const water = new THREE.Mesh(geometry, material);
         water.position.set(-15.2, heightAt(-15.2, 7.2) + 0.35, 7.2);
         water.receiveShadow = true;
@@ -279,8 +262,8 @@ export class Valley {
     update(dt, party, followers) {
         this.clock += dt;
         const t = this.clock;
-        if (this.water?.material.uniforms) {
-            this.water.material.uniforms.uTime.value = t;
+        if (this.water?.material.userData?.shader?.uniforms) {
+            this.water.material.userData.shader.uniforms.uTime.value = t;
         }
         for (const c of this.clouds) {
             c.position.x += dt * 0.35;

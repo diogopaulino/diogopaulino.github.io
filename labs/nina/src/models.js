@@ -28,15 +28,16 @@ export function toon(color, {
     opacity = 1,
     side = THREE.FrontSide
 } = {}) {
-    return new THREE.MeshToonMaterial({
+    return new THREE.MeshStandardMaterial({
         color,
         map,
-        gradientMap: toonRamp(),
         emissive,
         emissiveIntensity: em,
         transparent,
         opacity,
-        side
+        side,
+        roughness: 0.7,
+        metalness: 0.05
     });
 }
 

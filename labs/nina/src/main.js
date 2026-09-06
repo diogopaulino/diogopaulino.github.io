@@ -17,9 +17,9 @@ import {
 const STORAGE = 'nina-settings';
 
 const QUALITY = {
-    low: { pr: 1, antialias: false, bloom: false, shadows: false, clouds: 5, butterflies: 6, flowers: 28, sparks: 12, confetti: 18 },
-    medium: { pr: 1.35, antialias: true, bloom: true, shadows: true, clouds: 10, butterflies: 14, flowers: 70, sparks: 28, confetti: 40 },
-    high: { pr: 1.75, antialias: true, bloom: true, shadows: true, clouds: 16, butterflies: 22, flowers: 110, sparks: 36, confetti: 56 }
+    low: { pr: 1, antialias: false, bloom: false, ssao: false, shadows: false, clouds: 5, butterflies: 6, flowers: 28, sparks: 12, confetti: 18 },
+    medium: { pr: 1.35, antialias: true, bloom: true, ssao: false, shadows: true, clouds: 10, butterflies: 14, flowers: 70, sparks: 28, confetti: 40 },
+    high: { pr: 1.75, antialias: true, bloom: true, ssao: true, shadows: true, clouds: 16, butterflies: 22, flowers: 110, sparks: 36, confetti: 56 }
 };
 
 function detectSoftwareGL(renderer) {
@@ -202,24 +202,34 @@ class Nina {
     }
 
     async setupBloom() {
-        if (!this.quality.bloom) return;
+        if (!this.quality.bloom && !this.quality.ssao) return;
         try {
-            const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
+            const [{ EffectComposer }, { RenderPass }, { OutputPass }] = await Promise.all([
                 import('three/addons/postprocessing/EffectComposer.js'),
                 import('three/addons/postprocessing/RenderPass.js'),
-                import('three/addons/postprocessing/UnrealBloomPass.js'),
                 import('three/addons/postprocessing/OutputPass.js')
             ]);
             const composer = new EffectComposer(this.renderer);
             composer.setPixelRatio(this.renderer.getPixelRatio());
             composer.setSize(innerWidth, innerHeight);
+            
             composer.addPass(new RenderPass(this.scene, this.camera));
-            composer.addPass(new UnrealBloomPass(
-                new THREE.Vector2(innerWidth, innerHeight),
-                0.22,
-                0.5,
-                0.78
-            ));
+
+            if (this.quality.ssao) {
+                const { SSAOPass } = await import('three/addons/postprocessing/SSAOPass.js');
+                const ssaoPass = new SSAOPass(this.scene, this.camera, innerWidth, innerHeight);
+                ssaoPass.kernelRadius = 0.8;
+                ssaoPass.minDistance = 0.001;
+                ssaoPass.maxDistance = 0.05;
+                composer.addPass(ssaoPass);
+            }
+
+            if (this.quality.bloom) {
+                const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.5, 0.78);
+                composer.addPass(bloomPass);
+            }
+
             composer.addPass(new OutputPass());
             this.composer = composer;
         } catch {
