@@ -4,10 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#0c1a12">
+  <meta name="theme-color" content="#060a08">
   <title>Poker — Texas Hold'em vs IA que ensina | Diogo Paulino</title>
   <meta name="description"
-    content="Texas Hold'em heads-up hiper-realista: mesa de feltro, cartas, IA e academia que ensina ranking, blinds, pot odds e estratégia. Um lab de Diogo Paulino.">
+    content="Texas Hold'em heads-up hiper-realista: mesa 3D com feltro texturizado, cartas, fichas e IA que ensina ranking, blinds e pot odds. Um lab de Diogo Paulino.">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/poker/">
   <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
@@ -17,14 +17,14 @@
   <meta property="og:url" content="https://diogopaulino.com.br/labs/poker/">
   <meta property="og:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
   <meta property="og:description"
-    content="Mesa heads-up com feltro, cartas realistas, Dealer IA e lições de ranking, blinds e pot odds.">
+    content="Mesa heads-up 3D com feltro, cartas, fichas, Dealer IA e lições de ranking, blinds e pot odds.">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta property="og:image:alt" content="Diogo Paulino">
   <meta property="og:locale" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
   <meta name="twitter:description"
-    content="Mesa heads-up com feltro, cartas realistas, Dealer IA e lições de ranking, blinds e pot odds.">
+    content="Mesa heads-up 3D com feltro, cartas, fichas, Dealer IA e lições de ranking, blinds e pot odds.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,7 +39,7 @@
         "@type": "WebApplication",
         "name": "Poker",
         "url": "https://diogopaulino.com.br/labs/poker/",
-        "description": "Texas Hold'em heads-up hiper-realista com IA e academia que ensina ranking, blinds, pot odds e estratégia.",
+        "description": "Texas Hold'em heads-up hiper-realista com mesa 3D, fichas, IA e academia que ensina ranking, blinds, pot odds e estratégia.",
         "applicationCategory": "GameApplication",
         "operatingSystem": "Any",
         "inLanguage": "pt-BR",
@@ -91,48 +91,91 @@
     </header>
 
     <section class="table-stage" aria-label="Mesa de Texas Hold'em">
-      <div class="felt" aria-hidden="true">
-        <div class="felt-glow"></div>
-        <div class="felt-rail"></div>
+      <div class="room" aria-hidden="true">
+        <div class="room-vignette"></div>
+        <div class="room-spot room-spot--key"></div>
+        <div class="room-spot room-spot--fill"></div>
+        <div class="room-dust"></div>
       </div>
 
-      <div class="table-hud">
-        <p class="meta-line"><span id="handNumber">—</span> · <span id="diffLabel">IA · intermediária</span></p>
-        <p id="streetLabel" class="street-pill">—</p>
-      </div>
-
-      <article class="seat seat--ai" aria-label="Dealer IA">
-        <div class="seat-info">
-          <span id="aiDealer" class="dealer-btn" hidden title="Botão">D</span>
-          <span id="aiBlind" class="blind-tag"></span>
-          <h2 class="seat-name">Dealer IA</h2>
-          <p class="seat-stack"><span id="aiStack">1.000</span> <small>fichas</small></p>
+      <div class="table-scene">
+        <div class="table-cast" aria-hidden="true"></div>
+        <div class="table-body">
+          <div class="rail">
+            <div class="rail-grain"></div>
+            <div class="rail-edge"></div>
+            <div class="rail-shine"></div>
+          </div>
+          <div class="felt">
+            <div class="felt-nap"></div>
+            <div class="felt-weave"></div>
+            <div class="felt-rim"></div>
+            <div class="felt-glow"></div>
+            <div class="felt-crest" aria-hidden="true">♠</div>
+          </div>
         </div>
-        <div id="aiCards" class="hole-cards" aria-label="Cartas da IA"></div>
-        <p class="seat-bet">Aposta <strong id="aiBet">0</strong></p>
-      </article>
 
-      <div class="board-wrap">
-        <p class="pot-line">Pote <strong id="potValue">0</strong></p>
-        <div id="board" class="board" aria-label="Cartas comunitárias"></div>
-        <p id="resultBanner" class="result-banner" hidden></p>
+        <div class="deck-pile" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+
+        <div class="table-hud">
+          <p class="meta-line"><span id="handNumber">—</span> · <span id="diffLabel">IA · intermediária</span></p>
+          <p id="streetLabel" class="street-pill">—</p>
+        </div>
+
+        <article class="seat seat--ai" aria-label="Dealer IA">
+          <div class="avatar avatar--ai" aria-hidden="true">
+            <span class="avatar-ring"></span>
+            <span class="avatar-face">♠</span>
+          </div>
+          <div class="seat-info">
+            <span id="aiDealer" class="dealer-btn" hidden title="Botão">D</span>
+            <span id="aiBlind" class="blind-tag"></span>
+            <h2 class="seat-name">Dealer IA</h2>
+            <p class="seat-stack"><span id="aiStack">1.000</span> <small>fichas</small></p>
+          </div>
+          <div id="aiCards" class="hole-cards" aria-label="Cartas da IA"></div>
+          <div class="bet-zone">
+            <div id="aiChipStack" class="chip-stack" aria-hidden="true"></div>
+            <p class="seat-bet">Aposta <strong id="aiBet">0</strong></p>
+          </div>
+        </article>
+
+        <div class="board-wrap">
+          <div class="pot-cluster">
+            <div id="potChips" class="chip-stack chip-stack--pot" aria-hidden="true"></div>
+            <p class="pot-line">Pote <strong id="potValue">0</strong></p>
+          </div>
+          <div id="board" class="board" aria-label="Cartas comunitárias"></div>
+          <p id="resultBanner" class="result-banner" hidden></p>
+        </div>
+
+        <article class="seat seat--hero" aria-label="Você">
+          <div id="heroCards" class="hole-cards" aria-label="Suas cartas"></div>
+          <div class="bet-zone">
+            <div id="heroChipStack" class="chip-stack" aria-hidden="true"></div>
+            <p class="seat-bet">Aposta <strong id="heroBet">0</strong></p>
+          </div>
+          <div class="seat-info">
+            <span id="heroDealer" class="dealer-btn" hidden title="Botão">D</span>
+            <span id="heroBlind" class="blind-tag"></span>
+            <div class="avatar avatar--hero" aria-hidden="true">
+              <span class="avatar-ring"></span>
+              <span class="avatar-face">♥</span>
+            </div>
+            <h2 class="seat-name">Você</h2>
+            <p class="seat-stack"><span id="heroStack">1.000</span> <small>fichas</small></p>
+            <p id="heroHandName" class="hand-name">—</p>
+          </div>
+        </article>
       </div>
 
-      <article class="seat seat--hero" aria-label="Você">
-        <div id="heroCards" class="hole-cards" aria-label="Suas cartas"></div>
-        <div class="seat-info">
-          <span id="heroDealer" class="dealer-btn" hidden title="Botão">D</span>
-          <span id="heroBlind" class="blind-tag"></span>
-          <h2 class="seat-name">Você</h2>
-          <p class="seat-stack"><span id="heroStack">1.000</span> <small>fichas</small></p>
-          <p id="heroHandName" class="hand-name">—</p>
-        </div>
-        <p class="seat-bet">Aposta <strong id="heroBet">0</strong></p>
-      </article>
+      <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
     </section>
 
     <div class="hud">
-      <aside id="coach" class="coach" aria-label="Mestre de poker">
+      <aside id="coach" class="panel coach" aria-label="Mestre de poker">
         <button id="coachToggle" class="coach-toggle" type="button" aria-expanded="true">
           <span class="eyebrow"><i></i> Mestre</span>
           <span id="coachTitle">Mesa</span>
@@ -156,7 +199,7 @@
         </div>
       </aside>
 
-      <aside class="tray" aria-label="Partida">
+      <aside class="panel tray" aria-label="Partida">
         <p class="eyebrow">PARTIDA</p>
         <p id="statusLine" class="status" aria-live="polite">Pronto</p>
         <label class="diff-field">
@@ -171,7 +214,7 @@
       </aside>
 
       <div class="action-dock">
-        <div id="sizing" class="sizing" hidden>
+        <div id="sizing" class="sizing panel" hidden>
           <div class="sizing-head">
             <span id="betLabel">Aposta</span>
             <strong id="betValue">0</strong>
@@ -198,9 +241,14 @@
 
     <div id="intro" class="overlay">
       <div class="overlay-card">
+        <div class="intro-fan" aria-hidden="true">
+          <span class="fan-card fan-card--a"></span>
+          <span class="fan-card fan-card--b"></span>
+          <span class="fan-card fan-card--c"></span>
+        </div>
         <p class="eyebrow"><i></i> Texas Hold'em</p>
         <h1>Poker</h1>
-        <p class="lede">Mesa heads-up contra a Dealer IA — e um mestre que ensina ranking, blinds e pot odds enquanto você joga.</p>
+        <p class="lede">Mesa heads-up em 3D contra a Dealer IA — feltro, fichas e um mestre que ensina ranking, blinds e pot odds enquanto você joga.</p>
         <div class="intro-actions">
           <button id="btnStart" class="dock-btn accent" type="button">Sentar à mesa</button>
           <button id="btnAcademyIntro" class="dock-btn" type="button">Começar aprendendo</button>
