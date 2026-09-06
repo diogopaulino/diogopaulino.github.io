@@ -8,9 +8,9 @@ import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime }
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js';
+import { Player } from './player.js?v=3';
 import { createSky, createLights } from './sky.js';
-import { World } from './world.js';
+import { World } from './world.js?v=3';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();

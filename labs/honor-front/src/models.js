@@ -34,17 +34,17 @@ export async function loadAssets(BABYLON, scene) {
     assets.house.position.y = -100;
     
     // 4. Armas como Billboards na Câmera (estilo Doom hyper-realista)
-    const garandTex = new BABYLON.Texture("assets/garand.jpg", scene);
+    const garandTex = new BABYLON.Texture("assets/garand.webp", scene);
     garandTex.hasAlpha = true;
     
-    const thompsonTex = new BABYLON.Texture("assets/thompson.jpg", scene);
+    const thompsonTex = new BABYLON.Texture("assets/thompson.webp", scene);
     thompsonTex.hasAlpha = true;
     
     const garandMat = new BABYLON.StandardMaterial("garandMat", scene);
     garandMat.diffuseTexture = garandTex;
     garandMat.emissiveTexture = garandTex;
     garandMat.useAlphaFromDiffuseTexture = false;
-    // O Jpeg tem fundo branco. Usar multiply torna o branco transparente.
+    // A imagem tem fundo branco. Usar multiply torna o branco transparente.
     garandMat.alphaMode = BABYLON.Engine.ALPHA_MULTIPLY;
     garandMat.disableLighting = true;
     

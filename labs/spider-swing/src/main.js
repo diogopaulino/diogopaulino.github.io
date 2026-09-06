@@ -11,7 +11,7 @@ import {
 } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL, hexToArr } from './utils.js';
 import { City } from './city.js';
-import { Player } from './player.js';
+import { Player } from './player.js?v=2';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';
 import { Input } from './input.js';

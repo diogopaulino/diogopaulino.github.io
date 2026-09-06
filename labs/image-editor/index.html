@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Image Editor — recorte e filtros locais | Diogo Paulino</title>
+    <meta name="theme-color" content="#fafbfc">
+    <title>Image Editor — edição local no navegador | Diogo Paulino</title>
     <meta name="description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/image-editor/">
     <meta name="author" content="Diogo Paulino">
@@ -17,10 +18,10 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/image-editor/">
-    <meta property="og:title" content="Image Editor — recorte e filtros locais | Diogo Paulino">
+    <meta property="og:title" content="Image Editor — edição local no navegador | Diogo Paulino">
     <meta property="og:description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Image Editor — recorte e filtros locais | Diogo Paulino">
+    <meta name="twitter:title" content="Image Editor — edição local no navegador | Diogo Paulino">
     <meta name="twitter:description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,7 +96,7 @@
                         </svg>
                         <p>Clique ou arraste uma imagem</p>
                         <span class="upload-hint">ou cole com Ctrl+V</span>
-                        <input type="file" id="fileInput" accept="image/*" hidden>
+                        <input type="file" id="fileInput" accept="image/*" aria-label="Selecionar imagem" hidden>
 
                         <div class="sample-gallery">
                             <span class="sample-gallery-label">ou experimente um exemplo</span>
@@ -115,7 +116,9 @@
                             </div>
                         </div>
                     </div>
-                    <canvas id="canvas"></canvas>
+                    <canvas id="canvas" aria-label="Prévia da imagem em edição">
+                        Prévia da imagem carregada para edição.
+                    </canvas>
                     <span class="compare-hint" id="compareHint">Segure a imagem para comparar com o original</span>
                 </div>
 

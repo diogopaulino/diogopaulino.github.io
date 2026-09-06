@@ -16,7 +16,7 @@ import { soilTexture, dirtTexture } from './textures.js';
 import {
     lavenderGeometry, lavenderMaterial, wheatMaterial,
     buildCypress, buildOlive, buildFarmhouse, buildBench, buildWell, buildDistantHill
-} from './models.js';
+} from './models.js?v=3';
 
 export function pathOffset(z) {
     return Math.sin(z * 0.045) * 3.2 + Math.sin(z * 0.017) * 1.4;

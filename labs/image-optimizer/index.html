@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Image Optimizer — JPG, PNG e WEBP locais | Diogo Paulino</title>
-    <meta name="description" content="Otimize e converta suas imagens para JPG, PNG ou WEBP diretamente no navegador.">
+    <meta name="theme-color" content="#fafbfc">
+    <title>Image Optimizer — compressão local no navegador | Diogo Paulino</title>
+    <meta name="description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/image-optimizer/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -17,11 +18,11 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/image-optimizer/">
-    <meta property="og:title" content="Image Optimizer — JPG, PNG e WEBP locais | Diogo Paulino">
-    <meta property="og:description" content="Otimize e converta suas imagens para JPG, PNG ou WEBP diretamente no navegador.">
+    <meta property="og:title" content="Image Optimizer — compressão local no navegador | Diogo Paulino">
+    <meta property="og:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Image Optimizer — JPG, PNG e WEBP locais | Diogo Paulino">
-    <meta name="twitter:description" content="Otimize e converta suas imagens para JPG, PNG ou WEBP diretamente no navegador.">
+    <meta name="twitter:title" content="Image Optimizer — compressão local no navegador | Diogo Paulino">
+    <meta name="twitter:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=13">
@@ -35,7 +36,7 @@
           "@type": "WebApplication",
           "name": "Image Optimizer",
           "url": "https://diogopaulino.com.br/labs/image-optimizer/",
-          "description": "Otimize e converta suas imagens para JPG, PNG ou WEBP diretamente no navegador.",
+          "description": "Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.",
           "applicationCategory": "UtilitiesApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -85,7 +86,7 @@
 
         <main class="app-container">
             <div class="upload-zone" id="dropZone">
-                <input type="file" id="fileInput" multiple accept="image/*" hidden>
+                <input type="file" id="fileInput" multiple accept="image/*" aria-label="Selecionar imagens" hidden>
                 <div class="upload-content">
                     <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2">
@@ -111,12 +112,12 @@
                 </div>
 
                 <div class="settings-group">
-                    <label>Qualidade: <span id="qualityValue">80%</span></label>
+                    <label for="qualityRange">Qualidade: <span id="qualityValue">80%</span></label>
                     <input type="range" id="qualityRange" min="1" max="100" value="80">
                 </div>
 
                 <div class="settings-group">
-                    <label>Redimensionar (Max Width)</label>
+                    <label for="maxWidth">Redimensionar (largura máxima)</label>
                     <input type="number" id="maxWidth" placeholder="Auto" min="100">
                 </div>
 

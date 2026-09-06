@@ -124,7 +124,7 @@ export function buildTraveler() {
 
     
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/gladiator.jpg'),
+        map: loadGreenScreenTexture('assets/gladiator.webp'),
         transparent: true,
         alphaTest: 0.1,
         side: THREE.DoubleSide,
@@ -150,7 +150,7 @@ export function buildCypress(rng = Math.random) {
     const h = 9.5 + rng() * 4.2;
     const w = h * 0.4;
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/cypress.jpg'),
+        map: loadGreenScreenTexture('assets/cypress.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
@@ -174,7 +174,7 @@ export function buildOlive(rng = Math.random) {
     const h = 4.6 + rng() * 1.8;
     const w = h * 1.1;
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/olive.jpg'),
+        map: loadGreenScreenTexture('assets/olive.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
@@ -198,7 +198,7 @@ export function buildFarmhouse() {
     const w = 12;
     const h = 12;
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/farmhouse.jpg'),
+        map: loadGreenScreenTexture('assets/farmhouse.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
@@ -216,7 +216,7 @@ export function buildBench() {
     const w = 2.4;
     const h = 2.4;
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/bench.jpg'),
+        map: loadGreenScreenTexture('assets/bench.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
@@ -234,7 +234,7 @@ export function buildWell() {
     const w = 3.6;
     const h = 3.6;
     const mat = new THREE.MeshStandardMaterial({
-        map: loadGreenScreenTexture('assets/well.jpg'),
+        map: loadGreenScreenTexture('assets/well.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,

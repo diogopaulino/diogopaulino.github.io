@@ -11,11 +11,11 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (a, b, amount) => a + (b - a) * amount;
 const ASSETS = {
     horse: 'assets/horse.gltf',
-    ground: 'assets/ground-albedo.jpg',
-    groundNormal: 'assets/ground-normal.jpg',
-    groundRoughness: 'assets/ground-roughness.jpg',
-    rock: 'assets/rock-albedo.jpg',
-    rockNormal: 'assets/rock-normal.jpg'
+    ground: 'assets/ground-albedo.webp',
+    groundNormal: 'assets/ground-normal.webp',
+    groundRoughness: 'assets/ground-roughness.webp',
+    rock: 'assets/rock-albedo.webp',
+    rockNormal: 'assets/rock-normal.webp'
 };
 
 if (!B) throw new Error('Babylon.js não foi carregado.');

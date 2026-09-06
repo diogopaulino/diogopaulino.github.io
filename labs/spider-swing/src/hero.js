@@ -3,11 +3,11 @@ import { PALETTE } from './config.js';
 
 const matCache = new Map();
 const texLoader = new THREE.TextureLoader();
-const suitRedTex = texLoader.load('./assets/red_suit.jpg');
+const suitRedTex = texLoader.load('./assets/red_suit.webp');
 suitRedTex.wrapS = suitRedTex.wrapT = THREE.RepeatWrapping;
 suitRedTex.repeat.set(2, 2);
 
-const suitBlueTex = texLoader.load('./assets/blue_suit.jpg');
+const suitBlueTex = texLoader.load('./assets/blue_suit.webp');
 suitBlueTex.wrapS = suitBlueTex.wrapT = THREE.RepeatWrapping;
 suitBlueTex.repeat.set(4, 4);
 

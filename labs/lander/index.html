@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Lunar Lander — pouso com física | Diogo Paulino</title>
+    <meta name="theme-color" content="#fafbfc">
+    <title>Lunar Lander — pouso lunar com física realista | Diogo Paulino</title>
     <meta name="description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/lander/">
     <meta name="author" content="Diogo Paulino">
@@ -17,10 +18,10 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/lander/">
-    <meta property="og:title" content="Lunar Lander — pouso com física | Diogo Paulino">
+    <meta property="og:title" content="Lunar Lander — pouso lunar com física realista | Diogo Paulino">
     <meta property="og:description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Lunar Lander — pouso com física | Diogo Paulino">
+    <meta name="twitter:title" content="Lunar Lander — pouso lunar com física realista | Diogo Paulino">
     <meta name="twitter:description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -98,7 +99,9 @@
                     <span class="menu-help">R: restart</span>
                 </div>
                 <div class="game-viewport">
-                    <canvas id="gameCanvas" width="800" height="600"></canvas>
+                    <canvas id="gameCanvas" width="800" height="600" aria-label="Área de pouso lunar">
+                        Simulação de pouso lunar controlada pelo teclado ou por toque.
+                    </canvas>
 
                     <!-- HUD Overlay -->
                     <div class="hud-layer">

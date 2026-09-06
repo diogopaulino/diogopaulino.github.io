@@ -4,9 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#07030c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Partitura — Maestro Quest e leitura musical | Diogo Paulino</title>
+  <title>Partitura — aprenda música jogando | Diogo Paulino</title>
   <meta name="description" content="Aprenda a ler partituras, notas na Clave de Sol e Fá, e escalas musicais com interatividade, áudio sintético pro e gamificação.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/partitura/">
   <meta name="author" content="Diogo Paulino">
@@ -19,10 +20,10 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/partitura/">
-    <meta property="og:title" content="Partitura — Maestro Quest e leitura musical | Diogo Paulino">
+    <meta property="og:title" content="Partitura — aprenda música jogando | Diogo Paulino">
     <meta property="og:description" content="Aprenda a ler partituras, notas na Clave de Sol e Fá, e escalas musicais com interatividade, áudio sintético pro e gamificação.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Partitura — Maestro Quest e leitura musical | Diogo Paulino">
+    <meta name="twitter:title" content="Partitura — aprenda música jogando | Diogo Paulino">
     <meta name="twitter:description" content="Aprenda a ler partituras, notas na Clave de Sol e Fá, e escalas musicais com interatividade, áudio sintético pro e gamificação.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -122,13 +123,15 @@
       </nav>
 
       <div class="deck-controls">
-        <select id="clef-select" class="neon-select compact-sel clef-selector" title="Selecionar Clave">
+        <select id="clef-select" class="neon-select compact-sel clef-selector" title="Selecionar Clave"
+          aria-label="Clave">
           <option value="treble" selected>𝄞 Clave de Sol (Agudo / Mão Dir.)</option>
           <option value="bass">𝄢 Clave de Fá (Grave / Mão Esq.)</option>
           <option value="both">𝄡 Reveber Ambas!</option>
         </select>
 
-        <select id="instrument-select" class="neon-select compact-sel" title="Escolha do Instrumento">
+        <select id="instrument-select" class="neon-select compact-sel" title="Escolha do Instrumento"
+          aria-label="Instrumento">
           <option value="piano" selected>🎹 Piano (Reverb)</option>
           <option value="synth">⚡ Synth Néon</option>
           <option value="guitar">🎸 Guitarra & Pluck</option>
@@ -147,7 +150,7 @@
     <!-- 3. TOOLBARS CONDICIONAIS COM ALTURA REDUZIDA -->
     <div class="mode-toolbar compact-toolbar hidden" id="toolbar-scales">
       <div class="scale-selector-row">
-        <select id="scale-select" class="neon-select scale-picker">
+        <select id="scale-select" class="neon-select scale-picker" aria-label="Escala musical">
           <option value="C-major">Dó Maior (Clássicas Teclas Brancas)</option>
           <option value="G-major">Sol Maior (Com Fá Sustenido ♯)</option>
           <option value="F-major">Fá Maior (Clave de Fá com Si Bemol ♭)</option>

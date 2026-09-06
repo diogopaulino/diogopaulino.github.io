@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { PLAYER, CAMERA, SPAWN } from './config.js';
 import { clamp, damp } from './utils.js';
-import { buildTraveler } from './models.js';
+import { buildTraveler } from './models.js?v=3';
 
 export class Player {
     constructor(scene) {

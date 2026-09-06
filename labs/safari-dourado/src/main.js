@@ -3,8 +3,8 @@
  * Jipe 4x4, fauna da savana (girafas, elefantes, zebras), poço d'água e caderno de campo.
  */
 
-import { buildSavannaWorld } from './world.js';
-import { buildJeep } from './models.js';
+import { buildSavannaWorld } from './world.js?v=2';
+import { buildJeep } from './models.js?v=2';
 import { clamp, lerp } from './utils.js';
 
 class SafariDourado {
