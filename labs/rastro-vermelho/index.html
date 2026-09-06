@@ -6,9 +6,9 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1a0e08">
-    <title>Rastro Vermelho — galope sem fim pelo faroeste | Diogo Paulino</title>
+    <title>Rastro Vermelho — uma jornada pela fronteira | Diogo Paulino</title>
     <meta name="description"
-        content="Mundo aberto 3D cinematográfico em Babylon.js: galope sem parar por serras, cânions e pradarias de um faroeste vivo.">
+        content="Cavalgue pelo faroeste de Diogo Paulino: seis destinos, entregas, emboscadas e acampamentos em uma jornada 3D pela fronteira.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/rastro-vermelho/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -21,12 +21,12 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/rastro-vermelho/">
-    <meta property="og:title" content="Rastro Vermelho — galope sem fim pelo faroeste | Diogo Paulino">
+    <meta property="og:title" content="Rastro Vermelho — uma jornada pela fronteira | Diogo Paulino">
     <meta property="og:description"
-        content="Mundo aberto 3D cinematográfico em Babylon.js: galope sem parar por serras, cânions e pradarias de um faroeste vivo.">
+        content="Cavalgue pelo faroeste de Diogo Paulino: seis destinos, entregas, emboscadas e acampamentos em uma jornada 3D pela fronteira.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Rastro Vermelho — galope sem fim pelo faroeste | Diogo Paulino">
-    <meta name="twitter:description" content="Mundo aberto 3D cinematográfico em Babylon.js: galope sem parar por serras, cânions e pradarias de um faroeste vivo.">
+    <meta name="twitter:title" content="Rastro Vermelho — uma jornada pela fronteira | Diogo Paulino">
+    <meta name="twitter:description" content="Cavalgue pelo faroeste de Diogo Paulino: seis destinos, entregas, emboscadas e acampamentos em uma jornada 3D pela fronteira.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +34,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=3">
 
     <script type="application/ld+json">
     {
@@ -44,7 +44,7 @@
           "@type": "WebApplication",
           "name": "Rastro Vermelho",
           "url": "https://diogopaulino.com.br/labs/rastro-vermelho/",
-          "description": "Mundo aberto 3D cinematográfico em Babylon.js: galope sem parar por serras, cânions e pradarias de um faroeste vivo.",
+          "description": "Cavalgue pelo faroeste de Diogo Paulino: seis destinos, entregas, emboscadas e acampamentos em uma jornada 3D pela fronteira.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -95,192 +95,96 @@
             </template>
         </header>
 
-        <canvas id="scene" aria-label="Faroeste 3D em mundo aberto, a cavalo pelas montanhas"></canvas>
-        <div id="vignette" class="vignette" aria-hidden="true"></div>
+        <canvas id="scene" tabindex="0" aria-label="Faroeste 3D. Use W A S D para cavalgar, E para interagir e P para pausar."></canvas>
+        <div class="vignette" aria-hidden="true"></div>
+        <div id="damageVeil" class="damage-veil" aria-hidden="true"></div>
+        <div id="focusVeil" class="focus-veil" aria-hidden="true" hidden></div>
 
         <div id="hud" class="hud" hidden>
-            <div class="hud-top">
-                <div class="panel compass-panel">
-                    <div class="compass" aria-label="Bússola">
-                        <div id="compassRose" class="compass-rose">
-                            <span class="n">N</span>
-                            <span class="e">L</span>
-                            <span class="s">S</span>
-                            <span class="w">O</span>
-                        </div>
-                        <i class="compass-needle" aria-hidden="true"></i>
-                    </div>
-                    <div class="region-block">
-                        <span class="hud-label">Território</span>
-                        <strong id="regionName">Pradaria Dourada</strong>
-                        <span id="biomeLabel" class="meta">pradaria</span>
-                    </div>
-                </div>
-                <div class="panel gait-panel">
-                    <span class="hud-label">Marcha</span>
-                    <div class="speed-row">
-                        <strong id="gaitValue">galope</strong>
-                        <span class="mono"><b id="speedValue">40</b> km/h</span>
-                    </div>
-                    <span id="cruiseHint" class="meta">galope livre</span>
-                </div>
-                <div class="panel trail-panel">
-                    <span class="hud-label">Rastro</span>
-                    <div class="speed-row">
-                        <strong id="distanceValue" class="mono">0 m</strong>
-                        <span id="hourLabel">manhã</span>
-                    </div>
-                    <span id="clockValue" class="mono meta">4:00</span>
-                    · <span id="markCount" class="mono meta">0/6</span>
-                    <div id="markPips" class="mark-pips" aria-label="Marcos encontrados"></div>
-                </div>
-            </div>
-
-            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
-            <p id="prompt" class="prompt">W/↑ galope · A D/← → curva · Espaço espora · G livre</p>
-
+            <div class="location"><span class="eyebrow">TERRITÓRIO LIVRE</span><strong id="regionName">Pradaria Dourada</strong><span id="clockValue">16:00</span></div>
             <div class="hud-actions">
-                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
-                    title="Som (M)" aria-label="Alternar som">♪</button>
-                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
-                    aria-label="Pausar">II</button>
-                <span id="fpsCounter" class="fps mono">—</span>
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true" title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)" aria-label="Pausar">Ⅱ</button>
             </div>
-
-            <div id="touchControls" class="touch-controls" hidden>
-                <div id="moveStick" class="stick" aria-label="Galopar">
-                    <i id="moveKnob"></i>
-                    <span>rédea</span>
+            <div class="mission"><span id="chapterLabel" class="eyebrow">CAPÍTULO I · A CARTA</span><strong id="objectiveTitle">Acampamento Aurora</strong><span id="objectiveText">Aproxime-se da fogueira para aceitar a entrega.</span><div id="markPips" class="mark-pips" aria-label="Destinos concluídos"></div></div>
+            <div id="waypoint" class="waypoint" aria-hidden="true"><i>◇</i><span id="waypointDistance"></span></div>
+            <div id="reticle" class="reticle" aria-hidden="true"><i></i><b></b></div>
+            <div id="hitMarker" class="hit-marker" aria-hidden="true">×</div>
+            <div class="rider-hud">
+                <canvas id="minimap" width="240" height="240" role="img" aria-label="Mapa: trilha, destinos, inimigos e sua posição"></canvas>
+                <div class="vitals">
+                    <div class="vital"><span>Vigor</span><meter id="healthMeter" min="0" max="100" value="100" aria-label="Vigor do cavaleiro">100</meter></div>
+                    <div class="vital"><span>Cavalo</span><meter id="staminaMeter" min="0" max="100" value="100" aria-label="Resistência do cavalo">100</meter></div>
+                    <div class="vital"><span>Foco</span><meter id="focusMeter" min="0" max="100" value="100" aria-label="Concentração">100</meter></div>
+                    <span class="ride-info"><b id="speedValue">0</b> km/h <span id="gaitValue">parado</span></span>
                 </div>
-                <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
+            </div>
+            <div class="weapon-hud"><span class="eyebrow">REVÓLVER · .45</span><div><strong id="ammoValue">6</strong><span> / 6</span><b id="moneyValue">$ 0</b></div><span id="weaponHint">R · recarregar</span></div>
+            <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
+            <button id="interactButton" class="interaction" type="button" hidden><kbd>E</kbd><span id="interactionText">Aceitar a entrega</span></button>
+            <p id="prompt" class="prompt">WASD cavalgar · Shift disparada · E interagir · arraste para olhar · F atirar · Q foco</p>
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" role="group" aria-label="Rédeas: arraste para frente para cavalgar, para trás para frear e para os lados para virar"><i id="moveKnob"></i><span>rédeas</span></div>
+                <div id="lookZone" class="look-zone" aria-label="Arraste para olhar"></div>
                 <div class="touch-buttons">
-                    <button type="button" id="btnSpur" class="pad pad-spur">espora</button>
+                    <button type="button" id="btnFocus" class="pad" aria-pressed="false">Foco</button>
+                    <button type="button" id="btnReload" class="pad">Recarregar</button>
+                    <button type="button" id="btnSpur" class="pad">Galope</button>
+                    <button type="button" id="btnShoot" class="pad pad-fire">Atirar</button>
                 </div>
             </div>
         </div>
 
         <div id="loadingOverlay" class="overlay loading-overlay">
-            <div class="loading-card">
-                <span class="sun-loader" aria-hidden="true"></span>
-                <h1>Rastro Vermelho</h1>
-                <p id="loadingText">O oeste acorda…</p>
-                <div class="loading-bar"><i id="loadingFill"></i></div>
-            </div>
+            <div class="loading-card"><span class="sun-loader" aria-hidden="true"></span><p class="eyebrow">UM WESTERN INTERATIVO</p><h1>Rastro Vermelho</h1><p id="loadingText" role="status">Preparando a fronteira…</p><div class="loading-bar" role="progressbar" aria-label="Carregamento" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="loadingFill"></i></div></div>
         </div>
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
-            <div class="overlay-card menu-card">
-                <header class="menu-head">
-                    <p class="eyebrow"><i></i> babylon.js · mundo aberto · faroeste</p>
-                    <h1>Rastro <span>Vermelho</span></h1>
-                    <p class="lede">O cavalo já está em galope e não para. Serras, cânions, rios e povoados
-                        nascem na frente — um oeste procedural que não acaba. Espore, cruze a pradaria,
-                        ache a fogueira. O sol faz o dia inteiro.</p>
-                </header>
-
-                <div class="menu-grid">
-                    <section class="menu-section">
-                        <h2>O oeste</h2>
-                        <ul class="species-preview">
-                            <li>Pradaria dourada</li>
-                            <li>Serras e pinheiros</li>
-                            <li>Cânions de pedra</li>
-                            <li>Mesas e cactos</li>
-                            <li>Rios e cachoeiras</li>
-                            <li>Povoados de madeira</li>
-                        </ul>
-                    </section>
-
-                    <section class="menu-section">
-                        <h2>Comandos</h2>
-                        <div class="keys">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / Setas rédea e curva</span>
-                            <span><kbd>Espaço</kbd> espora · <kbd>Shift</kbd> disparada</span>
-                            <span><kbd>G</kbd> galope livre (não para)</span>
-                            <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
-                            <span>mouse olha · roda aproxima</span>
-                        </div>
-                    </section>
-
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
+            <div class="menu-card">
+                <header class="menu-head"><p class="eyebrow"><i></i> FRONTEIRA DO NORTE · 1899</p><h1>Rastro<br><span>Vermelho</span></h1><p class="menu-tagline">Toda estrada deixa uma história.</p><p class="lede">Uma carta atravessa a fronteira. Nas suas mãos, a promessa de entregá-la. Sele o cavalo, escolha seu ritmo e descubra o que o oeste guarda.</p></header>
+                <div class="journey-preview"><span><b>06</b> destinos</span><span><b>01</b> promessa</span><span>Um oeste para explorar</span></div>
+                <div class="menu-actions"><button id="startButton" class="primary-button" type="button"><span id="startLabel">Iniciar jornada</span><i aria-hidden="true">→</i></button><button id="newButton" class="ghost-button" type="button" hidden>Nova jornada</button></div>
+                <p id="saveNote" class="section-note">O progresso é salvo em cada destino.</p>
+                <details class="settings"><summary>Controles e preferências <span>+</span></summary>
+                    <div class="settings-content">
+                        <div class="keys"><span><kbd>WASD</kbd> / setas · cavalgar e frear</span><span><kbd>Shift</kbd> disparada · <kbd>G</kbd> marcha automática</span><span><kbd>E</kbd> interagir · <kbd>F</kbd> / clique · atirar</span><span><kbd>Q</kbd> concentração · <kbd>R</kbd> recarregar</span><span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span><span>Arraste para olhar · roda para aproximar</span><span>Controle: analógicos · RT tiro · A galope · X recarga · Y interação · LB foco · Start pausa</span></div>
                         <div class="settings-grid">
-                            <label class="field">
-                                <span>Qualidade</span>
-                                <select id="qualitySelect">
-                                    <option value="auto">Automática</option>
-                                    <option value="low">Performance</option>
-                                    <option value="medium">Equilibrada</option>
-                                    <option value="high">Cinemática</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Volume <b id="volumeValue">70</b></span>
-                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70">
-                            </label>
+                            <label class="field"><span>Qualidade</span><select id="qualitySelect"><option value="auto">Automática</option><option value="low">Desempenho</option><option value="medium">Equilibrada</option><option value="high">Cinemática</option></select></label>
+                            <label class="field"><span>Volume <b id="volumeValue">70%</b></span><input id="volumeSlider" type="range" min="0" max="100" value="70"></label>
+                            <label class="field"><span>Sensibilidade da câmera</span><input id="sensitivitySlider" type="range" min="0.4" max="2" step="0.1" value="1"></label>
+                            <label class="check-field"><input id="motionToggle" type="checkbox"> Câmera estável e menos efeitos</label>
                         </div>
-                        <p class="section-note">Maior rastro: <b id="bestScore" class="mono">—</b></p>
-                    </section>
-                </div>
-
-                <footer class="menu-foot">
-                    <button id="startButton" class="primary-button" type="button">
-                        <span>Montar e galopar</span>
-                        <i aria-hidden="true">→</i>
-                    </button>
-                </footer>
+                    </div>
+                </details>
+                <footer class="menu-foot"><span>Diogo Paulino · Labs</span><span>Maior rastro <b id="bestScore">0 m</b></span></footer>
             </div>
+            <p class="scene-caption" aria-hidden="true">PRADARIA DOURADA<span>O último sol antes da partida.</span></p>
         </div>
 
-        <div id="pauseOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> O cavalo espera</p>
-                <h2>A trilha<br>está pausada.</h2>
-                <div class="card-actions">
-                    <button id="resumeButton" class="primary-button" type="button">
-                        <span>Continuar</span><i aria-hidden="true">→</i>
-                    </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao acampamento</button>
-                </div>
-            </div>
+        <div id="pauseOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+            <div class="overlay-card compact-card"><p class="eyebrow">O CAVALO ESPERA</p><h2 id="pauseTitle">Um respiro<br>na estrada.</h2><p class="lede">Sua jornada está pausada.</p><div class="card-actions"><button id="resumeButton" class="primary-button" type="button">Continuar →</button><button id="pauseMenuButton" class="ghost-button" type="button">Controles e preferências</button></div></div>
         </div>
-
-        <div id="errorOverlay" class="overlay" hidden>
-            <div class="overlay-card compact-card">
-                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
-                <h2>O oeste não<br>pôde abrir.</h2>
-                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
-                    atualizado ou reative a aceleração de hardware.</p>
-            </div>
+        <div id="endOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="endTitle" hidden>
+            <div class="overlay-card compact-card"><p id="endEyebrow" class="eyebrow">A FRONTEIRA SE LEMBRA</p><h2 id="endTitle">Promessa<br>cumprida.</h2><p id="endText" class="lede"></p><div class="card-actions"><button id="retryButton" class="primary-button" type="button">Continuar explorando →</button><button id="endMenuButton" class="ghost-button" type="button">Voltar ao menu</button></div></div>
         </div>
+        <div id="errorOverlay" class="overlay" role="alert" hidden>
+            <div class="overlay-card compact-card"><p class="eyebrow">A TRILHA NÃO CARREGOU</p><h2>O oeste não<br>pôde abrir.</h2><p class="lede" id="errorText">Este laboratório precisa de WebGL e de acesso aos recursos 3D. Tente novamente ou reative a aceleração de hardware do navegador.</p><button class="primary-button" type="button" onclick="location.reload()">Tentar novamente</button><a class="ghost-button" href="/labs/">Voltar aos labs</a></div>
+        </div>
+        <noscript><div class="overlay"><p>Ative o JavaScript para iniciar a jornada. <a href="/labs/">Voltar aos labs</a></p></div></noscript>
 
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
     <script src="/labs/shared.js?v=13" defer></script>
     <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
+        window.rastroLoadError = function () {
+            document.getElementById('loadingOverlay').hidden = true;
+            document.getElementById('errorOverlay').hidden = false;
+        };
     </script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script type="module" src="src/main.js?v=2"></script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js" onerror="rastroLoadError()"></script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js" onerror="rastroLoadError()"></script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/materialsLibrary/babylonjs.materials.min.js" onerror="rastroLoadError()"></script>
+    <script type="module" src="src/main.js?v=3" onerror="rastroLoadError()"></script>
 </body>
-
 </html>
