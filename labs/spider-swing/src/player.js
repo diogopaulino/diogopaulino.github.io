@@ -194,7 +194,7 @@ export class Player {
         this.resolveHits(city);
         const splash = this.snapGround(city);
 
-        const spd = Math.hypot(this.vel.x, this.vel.y, this.vel.z);
+        const spd = this.vel.length();
         const cap = this.swinging ? PHYS.maxSwing : PHYS.maxAir;
         if (!this.grounded && spd > cap) {
             this.vel.multiplyScalar(cap / spd);
@@ -210,7 +210,7 @@ export class Player {
         if (WISH.lengthSq() > 0.05 && this.grounded) {
             this.facing = Math.atan2(WISH.x, WISH.z);
         } else if (!this.grounded) {
-            const h = Math.hypot(this.vel.x, this.vel.z);
+            const h = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
             if (h > 2) this.facing = Math.atan2(this.vel.x, this.vel.z);
         }
 
@@ -305,7 +305,7 @@ export class Player {
     }
 
     animate(look) {
-        const spd = Math.hypot(this.vel.x, this.vel.z);
+        const spd = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
         poseHero(this.parts, {
             grounded: this.grounded,
             swinging: this.swinging,
@@ -326,7 +326,7 @@ export class Player {
     }
 
     get speed() {
-        return Math.hypot(this.vel.x, this.vel.y, this.vel.z);
+        return this.vel.length();
     }
 
     get lockOn() {

@@ -31,6 +31,7 @@ export class City {
         this.pulses = [];
         this.traffic = [];
         this.time = 0;
+        this._emptyGot = [];
 
         const { cols, rows, avenue, street } = GRID;
         this.blockW = avenue - GRID.avenueW;
@@ -98,20 +99,26 @@ export class City {
         const x1 = Math.floor((px + radius) / CELL);
         const z0 = Math.floor((pz - radius) / CELL);
         const z1 = Math.floor((pz + radius) / CELL);
-        const seen = new Set();
-        const out = [];
+        
+        if (!this._querySeen) this._querySeen = new Set();
+        if (!this._queryOut) this._queryOut = [];
+        
+        this._querySeen.clear();
+        this._queryOut.length = 0;
+        
         for (let x = x0; x <= x1; x++) {
             for (let z = z0; z <= z1; z++) {
                 const list = this.cells.get(`${x},${z}`);
                 if (!list) continue;
-                for (const i of list) {
-                    if (seen.has(i)) continue;
-                    seen.add(i);
-                    out.push(this.colliders[i]);
+                for (let i = 0; i < list.length; i++) {
+                    const idx = list[i];
+                    if (this._querySeen.has(idx)) continue;
+                    this._querySeen.add(idx);
+                    this._queryOut.push(this.colliders[idx]);
                 }
             }
         }
-        return out;
+        return this._queryOut;
     }
 
     isPark(ix, iz) {
@@ -452,7 +459,7 @@ export class City {
     }
 
     collectPulses(px, py, pz, radius = 2.1) {
-        const got = [];
+        let got = null;
         for (let i = 0; i < this.pulses.length; i++) {
             const p = this.pulses[i];
             if (!p.live) continue;
@@ -461,13 +468,14 @@ export class City {
             const dz = p.z - pz;
             if (dx * dx + dy * dy + dz * dz < radius * radius) {
                 p.live = false;
+                if (!got) got = [];
                 got.push(p);
                 Object.assign(p, this.randomPulse());
                 p.live = true;
             }
         }
-        if (got.length) this.syncPulses();
-        return got;
+        if (got) this.syncPulses();
+        return got || this._emptyGot;
     }
 
     heightAt(x, z) {
@@ -501,7 +509,7 @@ export class City {
     }
 
     raycast(ox, oy, oz, dx, dy, dz, maxDist) {
-        const len = Math.hypot(dx, dy, dz) || 1;
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
         dx /= len; dy /= len; dz /= len;
         let bestT = maxDist;
         let best = null;
@@ -517,7 +525,7 @@ export class City {
     }
 
     pickAnchor(ox, oy, oz, dx, dy, dz, maxDist) {
-        const len = Math.hypot(dx, dy, dz) || 1;
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
         dx /= len; dy /= len; dz /= len;
         let bestT = maxDist;
         let best = null;
@@ -547,7 +555,7 @@ export class City {
             const vx = cx - ox;
             const vy = cy - oy;
             const vz = cz - oz;
-            const dist = Math.hypot(vx, vy, vz);
+            const dist = Math.sqrt(vx * vx + vy * vy + vz * vz);
             if (dist < 6 || dist > maxDist || cy < oy - 4) continue;
             const dot = (vx * dx + vy * dy + vz * dz) / dist;
             if (dot < 0.62) continue;

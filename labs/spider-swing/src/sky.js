@@ -164,6 +164,15 @@ export function createGroundShader(asphaltMap, fogColor, fogDensity) {
             uniform float uFogDensity;
             uniform float uWet;
             uniform float uTime;
+
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+            float noise(vec2 p) {
+                vec2 i = floor(p); vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+
             void main() {
                 vec3 col = texture2D(uMap, vUv * vec2(1.0, 1.6)).rgb;
                 float x = vWorld.x;
@@ -171,10 +180,18 @@ export function createGroundShader(asphaltMap, fogColor, fogDensity) {
                 float curb = smoothstep(8.2, 9.1, abs(mod(x + 22.0, 44.0) - 22.0));
                 col = mix(col, vec3(0.18, 0.17, 0.16), curb * 0.45);
 
+                float p = noise(vWorld.xz * 0.12) * noise(vWorld.xz * 0.05 + 1.2);
+                float puddle = smoothstep(0.35, 0.55, p);
+                col *= mix(1.0, 0.3, puddle * uWet);
+
                 vec3 V = normalize(vView);
-                float fres = pow(1.0 - max(V.y, 0.0), 3.4);
+                float fres = pow(1.0 - max(V.y, 0.0), 2.8);
                 vec3 spec = mix(vec3(0.55, 0.28, 0.12), vec3(0.35, 0.45, 0.7), 0.45);
-                col = mix(col, spec, fres * uWet * 0.55);
+                
+                vec3 neon = vec3(1.0, 0.2, 0.4) * noise(vWorld.xz * 0.01 + uTime * 0.05);
+                spec += neon * 0.5 * puddle;
+                
+                col = mix(col, spec, fres * mix(0.4, 0.85, puddle) * uWet);
 
                 float streak = fract(z * 0.08 + uTime * 0.15);
                 col += vec3(1.0, 0.85, 0.4) * step(0.97, streak) * 0.08 * uWet;
