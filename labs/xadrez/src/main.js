@@ -20,9 +20,9 @@ const GLYPH = {
 };
 
 const QUALITY = {
-    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 768 },
+    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024 },
     medium: { id: 'medium', pr: 1.25, seg: 40, shadows: true, shadowMap: 1536 },
-    high: { id: 'high', pr: 1.5, seg: 56, shadows: true, shadowMap: 2048 }
+    high: { id: 'high', pr: 1.75, seg: 64, shadows: true, shadowMap: 2048 }
 };
 
 function isMobile() {
@@ -31,7 +31,7 @@ function isMobile() {
 
 function pickQuality(mode) {
     if (QUALITY[mode]) return QUALITY[mode];
-    if (isMobile()) return QUALITY.low;
+    if (isMobile()) return navigator.hardwareConcurrency >= 6 ? QUALITY.medium : QUALITY.low;
     if ((window.devicePixelRatio || 1) >= 2 && window.innerWidth >= 1400) return QUALITY.high;
     return QUALITY.medium;
 }
@@ -64,11 +64,20 @@ class Atelier {
         this.pendingPromo = null;
         this.drag = { x: 0, y: 0, active: false };
         this.lastHoverAt = 0;
+        this.pointerIds = new Set();
+        this.view = 'play';
+        this.keyboardSquare = 12;
+        this.started = false;
+        this.renderDirty = true;
+        this.adaptiveFrames = 0;
+        this.adaptiveTime = 0;
+        this.renderScale = 1;
+        this.diagnostics = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).has('diagnostics');
         this.generation = 0;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         this.bindUi();
-        this.boot();
+        this.boot().catch(err => this.fail(err));
     }
 
     loadSettings() {
@@ -109,16 +118,18 @@ class Atelier {
             e.stopPropagation();
             this.start();
         });
-        document.getElementById('intro')?.addEventListener('pointerup', (e) => {
-            if (e.target.closest('#startButton')) {
-                e.preventDefault();
-                this.start();
-            }
-        });
         document.getElementById('learnButton')?.addEventListener('click', () => { document.getElementById('modeSelect').value = 'academy'; this.start(); });
         document.getElementById('settingsBtn')?.addEventListener('click', () => {
-            this.cancelWork(); document.getElementById('intro').hidden = false; document.body.dataset.state = 'intro';
+            this.cancelWork();
+            this.rebuildPieces();
+            document.getElementById('modeSelect').value = this.mode;
+            document.getElementById('resumeButton').hidden = false;
+            document.getElementById('startLabel').textContent = 'Nova partida';
+            document.getElementById('intro').hidden = false;
+            document.body.dataset.state = 'intro';
+            document.getElementById('resumeButton').focus();
         });
+        document.getElementById('resumeButton')?.addEventListener('click', () => this.start(true));
         document.querySelectorAll('[data-camera]').forEach(btn => btn.addEventListener('click', () => this.cameraView(btn.dataset.camera)));
         document.getElementById('modePlay')?.addEventListener('click', () => this.setMode('cpu'));
         document.getElementById('modeAcademy')?.addEventListener('click', () => this.setMode('academy'));
@@ -138,10 +149,21 @@ class Atelier {
         document.getElementById('resultAgain')?.addEventListener('click', () => {
             document.getElementById('resultOverlay').hidden = true;
             this.fresh();
+            this.canvas.focus({ preventScroll: true });
         });
         document.getElementById('resultClose')?.addEventListener('click', () => {
             document.getElementById('resultOverlay').hidden = true;
+            this.canvas.focus({ preventScroll: true });
         });
+        for (const id of ['promoOverlay', 'resultOverlay']) {
+            document.getElementById(id).addEventListener('keydown', e => {
+                if (e.key !== 'Tab') return;
+                const buttons = [...e.currentTarget.querySelectorAll('button:not([disabled])')];
+                const first = buttons[0], last = buttons.at(-1);
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            });
+        }
         document.querySelectorAll('.promo-btn').forEach((btn) => {
             btn.addEventListener('click', () => this.finishPromo(btn.dataset.promo));
         });
@@ -162,13 +184,17 @@ class Atelier {
             if (e.target.closest('select, input, textarea, button') || e.altKey) return;
             if (document.body.dataset.state === 'intro' && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) {
                 e.preventDefault();
-                this.start();
+                this.start(e.code === 'Escape' && this.started);
                 return;
             }
+            if (document.body.dataset.state !== 'play' || this.pendingPromo || !document.getElementById('resultOverlay').hidden) return;
             if (e.code === 'KeyM') this.toggleMute();
             if (e.code === 'KeyH') this.hint();
-            if (e.code === 'KeyU' || ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ')) this.undo();
+            if (e.code === 'KeyU' || ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ')) { e.preventDefault(); this.undo(); }
             if (e.code === 'KeyF') this.toggleFlip();
+            if (e.code === 'Digit1') this.cameraView('play');
+            if (e.code === 'Digit2') this.cameraView('top');
+            if (e.code === 'Digit3') this.cameraView('detail');
         });
     }
 
@@ -190,6 +216,11 @@ class Atelier {
             });
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.useRightHandedSystem = true;
+            // A seleção é feita abaixo, uma única vez por gesto. O picking
+            // automático repetia a interseção de todas as peças detalhadas.
+            this.scene.skipPointerMovePicking = true;
+            this.scene.skipPointerDownPicking = true;
+            this.scene.skipPointerUpPicking = true;
             this.scene.clearColor = new BABYLON.Color4(0.035, 0.05, 0.065, 1.0);
         } catch (err) {
             this.fail(err);
@@ -202,18 +233,18 @@ class Atelier {
         // Câmera orbital elegante. Radius maior + FOV mais fechado do que o
         // padrão do Babylon (0.8) achatam a perspectiva: sem isso, a casa mais
         // próxima da câmera aparecia enorme e a última fileira, minúscula.
-        this.camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, 0.63, 20, new BABYLON.Vector3(0, 0.35, 0), this.scene);
-        this.camera.fov = 0.60;
+        this.camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, 0.9, 21.5, new BABYLON.Vector3(0, 0.25, 0), this.scene);
+        this.camera.fov = 0.58;
         this.camera.lowerRadiusLimit = isMobile() ? 12.5 : 14;
-        this.camera.upperRadiusLimit = 28;
+        this.camera.upperRadiusLimit = 30;
         this.camera.lowerBetaLimit = 0.02;
-        this.camera.upperBetaLimit = Math.PI / 2.4;
+        this.camera.upperBetaLimit = 1.23;
         this.camera.wheelDeltaPercentage = 0.015;
         this.camera.pinchDeltaPercentage = 0.015;
         this.camera.inertia = 0.85;
         this.camera.panningSensibility = 0;
-        this.camera.angularSensibilityX = isMobile() ? 6500 : 4200;
-        this.camera.angularSensibilityY = isMobile() ? 6500 : 4200;
+        this.camera.angularSensibilityX = isMobile() ? 650 : 900;
+        this.camera.angularSensibilityY = isMobile() ? 650 : 900;
         this.camera.useNaturalPinchZoom = true;
         this.camera.allowUpsideDown = false;
         this.camera.useAutoRotationBehavior = false;
@@ -222,6 +253,7 @@ class Atelier {
             this.camera.autoRotationBehavior.idleRotationWaitTime = 2000;
         }
         this.camera.attachControl(this.canvas, true);
+        this.camera.inputs.attached.keyboard?.detachControl();
         this.fitCameraFov();
 
         this.setLoad(0.2, 'Preparando as peças…');
@@ -243,11 +275,15 @@ class Atelier {
         this.canvas.addEventListener('pointerdown', (e) => this.onDown(e));
         this.canvas.addEventListener('pointermove', (e) => this.onMove(e));
         this.canvas.addEventListener('pointerup', (e) => this.onUp(e));
-        this.canvas.addEventListener('pointercancel', () => this.cancelDrag());
-        this.canvas.addEventListener('lostpointercapture', () => this.cancelDrag());
+        this.canvas.addEventListener('pointercancel', e => { this.pointerIds.delete(e.pointerId); this.cancelDrag(); });
+        this.canvas.addEventListener('lostpointercapture', e => { this.pointerIds.delete(e.pointerId); if (this.drag.active) this.cancelDrag(); });
+        this.canvas.addEventListener('keydown', e => this.onBoardKey(e));
+        this.canvas.addEventListener('pointerleave', () => { this.hover = -1; this.refreshMarks(); });
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         new ResizeObserver(() => { this.engine.resize(); this.fitCameraFov(); }).observe(this.canvas);
 
+        this.applyQuality();
+        await this.scene.whenReadyAsync();
         this.fillLists();
         this.setLoad(1, 'O atelier está pronto.');
         document.getElementById('loadingOverlay').hidden = true;
@@ -256,8 +292,20 @@ class Atelier {
 
         this._renderLoop = () => {
             if (document.hidden) return;
-            this.frame();
+            const now = performance.now();
+            // Teto de 60 fps mesmo em monitores 120/144 Hz; cena parada em 24 fps.
+            const moving = this.anims.length || this.drag.active || this.cameraTransition ||
+                Math.abs(this.camera.inertialAlphaOffset) + Math.abs(this.camera.inertialBetaOffset) + Math.abs(this.camera.inertialRadiusOffset) > 0.001;
+            const interval = moving || this.renderDirty ? 1000 / 60 : 1000 / 24;
+            if (now - (this.lastRenderAt || 0) < interval - 1) return;
+            const elapsed = now - (this.lastRenderAt || now);
+            const dt = Math.min(0.05, elapsed / 1000);
+            this.lastRenderAt = now;
+            const start = performance.now();
+            this.frame(dt);
             this.scene.render();
+            this.renderDirty = false;
+            this.adaptQuality(performance.now() - start, moving, elapsed);
         };
         if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
         else this.engine.runRenderLoop(this._renderLoop);
@@ -281,10 +329,10 @@ class Atelier {
             : window.BABYLON.Camera.FOVMODE_VERTICAL_FIXED;
     }
 
-    start() {
+    start(resume = false) {
         if (document.body.dataset.state !== 'intro') return;
         this.applyQuality();
-        this.cameraView('play');
+        if (!resume) this.cameraView('play');
         this.audio.init();
         this.audio.setEnabled(!this.settings.muted);
         this.syncMute();
@@ -306,10 +354,14 @@ class Atelier {
         this.engine.resize();
         this.fitCameraFov();
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
-        this.setMode(mode);
+        if (!resume) this.setMode(mode);
+        else { this.renderHud(); if (this.mode === 'cpu' && !this.isHumanTurn() && !this.game.status().over) this.queueAi(); }
+        this.started = true;
+        this.canvas.focus({ preventScroll: true });
     }
 
     setMode(mode) {
+        if (!this.factory) return;
         this.mode = mode;
         document.getElementById('modePlay')?.setAttribute('aria-pressed', String(mode === 'cpu' || mode === 'local' || mode === 'free'));
         document.getElementById('modeAcademy')?.setAttribute('aria-pressed', String(mode === 'academy'));
@@ -328,6 +380,7 @@ class Atelier {
         else if (mode === 'puzzles') this.loadPuzzle(this.puzzleIndex);
         else this.loadGame(START_FEN);
         this.speakMode();
+        this.engine.resize(); this.fitCameraFov();
     }
 
     speakMode() {
@@ -366,6 +419,7 @@ class Atelier {
     loadGame(fen) {
         this.cancelWork();
         this.game.load(fen);
+        this.keyboardSquare = 12;
         this.history = [];
         this.selected = -1;
         this.hover = -1;
@@ -389,6 +443,7 @@ class Atelier {
         document.getElementById('lessonNav').hidden = false;
         document.getElementById('lessonList').hidden = false;
         document.getElementById('puzzleList').hidden = true;
+        this.renderHud();
     }
 
     loadPuzzle(i) {
@@ -402,6 +457,7 @@ class Atelier {
         document.getElementById('lessonNav').hidden = false;
         document.getElementById('lessonList').hidden = true;
         document.getElementById('puzzleList').hidden = false;
+        this.renderHud();
     }
 
     markList(id, index) {
@@ -421,26 +477,29 @@ class Atelier {
     }
 
     rebuildPieces() {
-        for (const [idx, mesh] of this.pieces) {
-            this.lights?.shadowGen?.removeShadowCaster(mesh);
-            mesh.dispose();
-        }
-        this.pieces.clear();
-
+        const old = new Set(this.pieces.values());
+        const next = new Map();
         for (let i = 0; i < 64; i++) {
             const p = this.game.board[i];
             if (!p) continue;
-            const mesh = this.factory.spawn(p.t, p.c);
-            if (mesh) {
-                const pos = squareToWorld(i);
-                mesh.position.set(pos.x, 0.07, pos.z);
-                mesh.metadata = { kind: p.t, color: p.c, index: i };
-                if (this.lights?.shadowGen) {
-                    this.lights.shadowGen.addShadowCaster(mesh, true);
-                }
-                this.pieces.set(i, mesh);
-            }
+            // Reutiliza as malhas da posição anterior, inclusive a peça movida.
+            let mesh = [...old].find(m => m.chessPiece === p && m.metadata.kind === p.t);
+            if (mesh) old.delete(mesh);
+            else mesh = this.factory.spawn(p.t, p.c);
+            if (!mesh) continue;
+            mesh.chessPiece = p;
+            mesh.material = this.factory.mats[p.c];
+            mesh.scaling.setAll(1); mesh.isVisible = true;
+            const pos = squareToWorld(i);
+            mesh.position.set(pos.x, 0.07, pos.z);
+            mesh.metadata = { kind: p.t, color: p.c, index: i };
+            this.lights.shadowGen.addShadowCaster(mesh);
+            next.set(i, mesh);
         }
+        for (const mesh of old) { this.lights.shadowGen.removeShadowCaster(mesh); mesh.dispose(); }
+        this.pieces = next;
+        this.lights.shadowGen.getShadowMap().resetRefreshCounter();
+        this.renderDirty = true;
         this.refreshMarks();
     }
 
@@ -448,83 +507,94 @@ class Atelier {
         return this.pieces.get(index) || null;
     }
 
+    pointerPosition(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.pointerX = e.clientX - rect.left;
+        this.pointerY = e.clientY - rect.top;
+    }
+
     onDown(e) {
-        if (document.body.dataset.state !== 'play' || this.busy || this.pendingPromo) return;
+        this.pointerIds.add(e.pointerId);
+        if (this.pointerIds.size > 1) { this.cancelDrag(); return; }
+        this.pointerPosition(e);
+        this.renderDirty = true;
+        this.cameraTransition = null;
+        if (e.button !== 0 || document.body.dataset.state !== 'play' || this.busy || this.pendingPromo || this.playIsOver()) return;
+        this.canvas.focus({ preventScroll: true });
         this.canvas.setPointerCapture(e.pointerId);
         this.drag = { x: e.clientX, y: e.clientY, active: true, mesh: null, origin: null, square: -1 };
-        
         const hit = this.hit();
-        if (hit >= 0) {
-            const piece = this.game.board[hit];
-            const side = this.game.side;
-            const canSelect = this.mode !== 'cpu' || side === this.player;
-            if (piece && piece.c === side && canSelect) {
-                this.drag.square = hit;
-                this.drag.mesh = this.pieceAt(hit);
-                if (this.drag.mesh) {
-                    this.drag.origin = this.drag.mesh.position.clone();
-                    if (this.camera) this.camera.detachControl();
-                    this.canvas.classList.add('is-dragging');
-                }
-                if (this.selected !== hit) {
-                    this.onSquare(hit);
-                }
-            }
+        const piece = this.game.board[hit];
+        if (piece && piece.c === this.game.side && this.isHumanTurn()) {
+            this.drag.square = hit;
+            this.drag.mesh = this.pieceAt(hit);
+            this.drag.origin = this.drag.mesh.position.clone();
+            this.camera.detachControl();
+            this.camera.inertialAlphaOffset = this.camera.inertialBetaOffset = 0;
+            this.onSquare(hit);
         }
     }
 
     onMove(e) {
-        if (!this.drag.active) {
-            this.updateHover();
-            return;
-        }
+        this.pointerPosition(e);
+        this.renderDirty = true;
+        if (!this.drag.active) { this.updateHover(); return; }
         if (!this.drag.mesh || Math.hypot(e.clientX - this.drag.x, e.clientY - this.drag.y) < 8) return;
-        const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
-        // Plane at y = 0.5 to lift the piece slightly
-        const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.6));
-        if (hit !== null && hit !== undefined) {
-            const pt = ray.origin.add(ray.direction.scale(hit));
-            this.drag.mesh.position.x = pt.x;
-            this.drag.mesh.position.z = pt.z;
-            this.drag.mesh.position.y = 0.6;
+        this.canvas.classList.add('is-dragging');
+        const ray = this.scene.createPickingRay(this.pointerX, this.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
+        const distance = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.3));
+        if (distance !== null && distance >= 0) {
+            const pt = ray.origin.add(ray.direction.scale(distance));
+            this.drag.mesh.position.set(Math.max(-4.2, Math.min(4.2, pt.x)), 0.3, Math.max(-4.2, Math.min(4.2, pt.z)));
+            this.lights.shadowGen.getShadowMap().resetRefreshCounter();
         }
     }
 
     onUp(e) {
+        this.pointerIds.delete(e.pointerId);
+        this.pointerPosition(e);
         if (!this.drag.active) return;
-        this.drag.active = false;
-        if (this.camera) this.camera.attachControl(this.canvas, true);
+        const drag = this.drag;
+        const moved = Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8;
+        const hit = this.hit(!!drag.mesh && moved);
+        this.drag = { active: false };
+        this.camera.attachControl(this.canvas, true);
+        this.camera.inputs.attached.keyboard?.detachControl();
         this.canvas.classList.remove('is-dragging');
-
-        const dx = e.clientX - this.drag.x;
-        const dy = e.clientY - this.drag.y;
-        const dropped = this.drag.mesh && Math.hypot(dx, dy) > 8;
-
-        if (dropped) {
-            const hit = this.hit();
-            if (hit >= 0 && hit !== this.drag.square) {
-                const move = this.game.findMove(this.drag.square, hit, this.expect?.promo || 'q');
-                if (move) {
-                    // Reset position for hop animation
-                    this.drag.mesh.position.copyFrom(this.drag.origin);
-                    this.tryMove(move);
-                    return;
-                }
+        if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
+        if (drag.mesh) drag.mesh.position.copyFrom(drag.origin);
+        if (moved) {
+            if (drag.mesh && hit >= 0 && hit !== drag.square) {
+                const move = this.game.findMove(drag.square, hit, this.expect?.promo || 'q');
+                if (move) this.tryMove(move);
+                else this.audio.illegal();
             }
-            // Invalid drop
-            this.hop(this.drag.mesh, this.drag.square, this.drag.square);
+            this.lights.shadowGen.getShadowMap().resetRefreshCounter();
             return;
         }
-
         if (this.busy || this.pendingPromo) return;
-        const hit = this.hit();
-        if (hit < 0) {
-            this.selected = -1;
-            this.refreshMarks();
-            return;
-        }
+        if (hit < 0) { this.selected = -1; this.legal = []; this.refreshMarks(); return; }
         this.onSquare(hit);
         this.updateHover();
+    }
+
+    onBoardKey(e) {
+        if (document.body.dataset.state !== 'play' || this.busy || this.pendingPromo) return;
+        const offset = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: 8, ArrowDown: -8 }[e.key];
+        if (offset) {
+            e.preventDefault(); e.stopPropagation();
+            const dir = this.flip ? -offset : offset;
+            const next = this.keyboardSquare + dir;
+            if (next >= 0 && next < 64 && (Math.abs(dir) === 8 || (next >> 3) === (this.keyboardSquare >> 3))) this.keyboardSquare = next;
+            placeMark(this.world.marks.hover, this.keyboardSquare);
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault(); e.stopPropagation(); this.onSquare(this.keyboardSquare);
+        } else if (e.key === 'Escape') {
+            this.selected = -1; this.legal = []; this.refreshMarks();
+        } else return;
+        const p = this.game.board[this.keyboardSquare];
+        document.getElementById('boardAnnouncement').textContent = `${alg(this.keyboardSquare)}, ${p ? `${PIECE_NAME[p.t]} ${p.c === 'w' ? 'branco' : 'preto'}` : 'vazia'}`;
+        this.renderDirty = true;
     }
 
     updateHover() {
@@ -546,8 +616,8 @@ class Atelier {
         }
     }
 
-    hit() {
-        const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
+    hit(boardOnly = false) {
+        const pick = !boardOnly && this.scene.pick(this.pointerX, this.pointerY, (mesh) => {
             if (this.drag && this.drag.mesh && mesh === this.drag.mesh) return false;
             return mesh.isPickable && (mesh.metadata?.index !== undefined || mesh.metadata?.kind === 'square');
         });
@@ -557,9 +627,9 @@ class Atelier {
                 return m.metadata.index;
             }
         }
-        const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
-        const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, 0));
-        if (hit !== null && hit !== undefined) {
+        const ray = this.scene.createPickingRay(this.pointerX, this.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
+        const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.07));
+        if (hit !== null && hit !== undefined && hit >= 0) {
             const pt = ray.origin.add(ray.direction.scale(hit));
             return worldToSquare(pt.x, pt.z);
         }
@@ -567,6 +637,7 @@ class Atelier {
     }
 
     onSquare(index) {
+        if (this.playIsOver() || this.busy) return;
         const piece = this.game.board[index];
         if (this.selected >= 0) {
             const move = this.game.findMove(this.selected, index, this.expect?.promo || 'q');
@@ -614,6 +685,7 @@ class Atelier {
         if (this.needsPromoChoice(move)) {
             this.pendingPromo = move;
             document.getElementById('promoOverlay').hidden = false;
+            document.querySelector('[data-promo="q"]').focus();
             return;
         }
         this.commit(move);
@@ -628,11 +700,18 @@ class Atelier {
         return true;
     }
 
+    playIsOver() {
+        // As lições de rei, bispo e cavalo usam material insuficiente de
+        // propósito. Continuam interativas mesmo sem possibilidade de mate.
+        return !['academy', 'free'].includes(this.mode) && this.game.status().over;
+    }
+
     finishPromo(promo) {
         document.getElementById('promoOverlay').hidden = true;
         if (!this.pendingPromo) return;
         const move = this.game.findMove(this.pendingPromo.from, this.pendingPromo.to, promo);
         this.pendingPromo = null;
+        this.canvas.focus({ preventScroll: true });
         if (move) this.commit(move);
     }
 
@@ -664,6 +743,8 @@ class Atelier {
         this.hover = -1;
         this.legal = [];
         this.busy = true;
+        this.refreshMarks();
+        this.renderHud();
 
         if (move.flag === 'k' || move.flag === 'q') this.audio.castle();
         else if (captured) this.audio.capture();
@@ -687,8 +768,8 @@ class Atelier {
         const a = squareToWorld(from);
         const b = squareToWorld(to);
         const dist = Math.hypot(b.x - a.x, b.z - a.z);
-        const h = mesh.metadata?.kind === 'n' ? Math.max(0.6, dist * 0.2) : Math.min(1.2, Math.max(0.2, dist * 0.15));
-        return this.tween(0.38, (t) => {
+        const h = mesh.metadata?.kind === 'n' ? Math.max(0.45, dist * 0.15) : Math.min(0.38, Math.max(0.1, dist * 0.08));
+        return this.tween(0.3, (t) => {
             const k = easeInOut(t);
             mesh.position.x = a.x + (b.x - a.x) * k;
             mesh.position.z = a.z + (b.z - a.z) * k;
@@ -765,6 +846,8 @@ class Atelier {
         this.drag = { active: false };
         this.canvas.classList.remove('is-dragging');
         this.camera?.attachControl(this.canvas, true);
+        this.camera?.inputs.attached.keyboard?.detachControl();
+        this.lights?.shadowGen?.getShadowMap().resetRefreshCounter();
     }
 
     cancelWork() {
@@ -790,7 +873,8 @@ class Atelier {
             const failed = () => {
                 this.worker?.terminate(); this.worker = null;
                 clearTimeout(this.aiTimeout); this.busy = false;
-                this.coach('Cálculo interrompido', 'Não foi possível calcular o lance. Tente novamente ou inicie outra partida.', '');
+                this.renderHud();
+                this.coach('Cálculo interrompido', 'Tente uma dica novamente ou desfaça o lance para continuar.', '');
             };
             this.worker.onerror = failed;
             this.aiTimeout = setTimeout(failed, 15000);
@@ -809,6 +893,7 @@ class Atelier {
     queueAi() {
         this.coach('A máquina pensa', 'Analisando a posição…', 'Você pode ajustar a câmera enquanto espera.');
         this.searchMove(this.level, move => this.commit(move));
+        this.renderHud();
     }
 
     hint() {
@@ -820,27 +905,83 @@ class Atelier {
             this.legal = this.game.legalMovesFrom(mv.from);
             this.refreshMarks();
             placeMark(this.world.marks.hint, mv.to);
+            document.getElementById('coach').classList.remove('is-collapsed');
+            document.getElementById('coachToggle').setAttribute('aria-expanded', 'true');
             this.coach('Dica', `Considere ${this.game.san(mv)}.`, `${alg(mv.from)} → ${alg(mv.to)}. Toque a peça e depois a casa destacada.`);
         });
     }
 
     applyQuality() {
+        const previous = this.quality;
         this.quality = pickQuality(this.settings.quality);
-        this.engine.setHardwareScalingLevel(1 / Math.min(devicePixelRatio || 1, this.quality.pr));
+        if (previous.id !== this.quality.id) {
+            this.postProcess.ao?.dispose();
+            this.postProcess.pipe.dispose();
+            this.postProcess = setupPostProcess(window.BABYLON, this.scene, this.quality);
+        }
+        this.renderScale = Math.min(devicePixelRatio || 1, this.quality.pr);
+        this.engine.setHardwareScalingLevel(1 / this.renderScale);
         this.scene.shadowsEnabled = this.quality.shadows;
-        this.postProcess.pipe.bloomEnabled = this.quality.id === 'high';
-        this.postProcess.pipe.samples = this.quality.id === 'high' ? 4 : 1;
-        document.getElementById('qualityLabel').textContent = {low:'Leve',medium:'Equilibrada',high:'Alta'}[this.quality.id];
+        this.lights.shadowGen.mapSize = this.quality.shadowMap;
+        this.lights.shadowGen.getShadowMap().resetRefreshCounter();
+        this.postProcess.pipe.bloomEnabled = false;
+        this.postProcess.pipe.samples = this.quality.id === 'high' ? Math.min(2, this.engine.getCaps().maxMSAASamples) : 1;
+        this.updateDepthOfField();
+        this.adaptiveFrames = this.adaptiveTime = 0;
+        document.getElementById('qualityLabel').textContent = this.settings.quality === 'auto' ? 'Automática' : { low: 'Leve', medium: 'Equilibrada', high: 'Alta' }[this.quality.id];
+        this.renderDirty = true;
+    }
+
+    adaptQuality(ms, moving, elapsed) {
+        // Intervalos reais durante interação incluem pressão da GPU. Em repouso
+        // o limite voluntário de 24 fps não deve rebaixar a qualidade.
+        this.adaptiveFrames++;
+        this.adaptiveTime += moving ? Math.max(ms, Math.min(elapsed, 100)) : ms;
+        if (this.adaptiveFrames < 120) return;
+        if (this.diagnostics) {
+            this.canvas.dataset.renderStats = JSON.stringify({
+                cpuSubmitMs: Math.round(ms * 100) / 100,
+                activeMeshes: this.scene.getActiveMeshes().length,
+                triangles: this.scene.getActiveIndices() / 3,
+                width: this.engine.getRenderWidth(), height: this.engine.getRenderHeight(),
+                scale: this.renderScale, shadows: this.scene.shadowsEnabled,
+                pieces: this.pieces.size, quality: this.quality.id
+            });
+        }
+        // Histerese: só reduz resolução após 120 quadros caros. A UI conserva
+        // sua resolução nativa; modelos e regras nunca perdem qualidade.
+        if (this.settings.quality === 'auto' && this.adaptiveTime / this.adaptiveFrames > 23 && this.renderScale > 0.8) {
+            this.renderScale = Math.max(0.8, this.renderScale - 0.15);
+            this.engine.setHardwareScalingLevel(1 / this.renderScale);
+            this.postProcess.pipe.depthOfFieldEnabled = false;
+            this.renderDirty = true;
+        }
+        this.adaptiveFrames = this.adaptiveTime = 0;
+    }
+
+    updateDepthOfField() {
+        const pipe = this.postProcess.pipe;
+        pipe.depthOfFieldEnabled = this.view === 'detail' && this.quality.id === 'high';
+        pipe.depthOfField.focusDistance = this.camera.radius * 1000;
     }
 
     cameraView(view) {
+        if (!this.camera) return;
+        this.view = view;
+        const alpha = (this.flip ? -Math.PI / 2 : Math.PI / 2) + (view === 'detail' ? -0.27 : 0);
+        const beta = view === 'top' ? 0.02 : view === 'detail' ? 1.23 : 0.9;
+        const radius = view === 'detail' ? 19.8 : 21.5;
+        this.moveCamera(alpha, beta, radius);
+        this.updateDepthOfField();
+        document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === view)));
+    }
+
+    moveCamera(alpha, beta, radius) {
         this.scene.stopAnimation(this.camera);
         this.camera.inertialAlphaOffset = this.camera.inertialBetaOffset = this.camera.inertialRadiusOffset = 0;
-        this.camera.alpha = this.flip ? -Math.PI / 2 : Math.PI / 2;
-        this.camera.beta = view === 'top' ? 0.02 : view === 'detail' ? 0.94 : 0.63;
-        this.camera.radius = view === 'detail' ? 18 : 20;
-        this.camera.setTarget(new window.BABYLON.Vector3(0, 0.35, 0));
-        document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === view)));
+        const delta = Math.atan2(Math.sin(alpha - this.camera.alpha), Math.cos(alpha - this.camera.alpha));
+        this.cameraTransition = { t: 0, from: [this.camera.alpha, this.camera.beta, this.camera.radius], to: [this.camera.alpha + delta, beta, radius] };
+        this.renderDirty = true;
     }
 
     flashHint() {
@@ -848,13 +989,15 @@ class Atelier {
         const from = parseAlg(this.expect.from);
         const to = parseAlg(this.expect.to);
         this.selected = from;
+        this.keyboardSquare = from;
         this.legal = this.game.legalMovesFrom(from);
         this.refreshMarks();
         placeMark(this.world.marks.hint, to);
     }
 
     undo() {
-        if (this.busy || this.game.stack.length === 0) return;
+        if (this.game.stack.length === 0 || this.pendingPromo) return;
+        this.cancelWork();
         this.game.undo();
         this.history.pop();
         if (this.mode === 'cpu' && this.game.side !== this.player && this.game.stack.length) {
@@ -870,17 +1013,10 @@ class Atelier {
     }
 
     toggleFlip() {
-        // O tabuleiro e as peças ficam parados — só a câmera anda até o outro
-        // lado da mesa, como alguém dando a volta para ver da perspectiva das
-        // pretas. Gira sempre por um delta relativo (nunca um alvo absoluto),
-        // senão o sentido do giro depende de onde a órbita livre deixou a
-        // câmera e o resultado parece errático.
+        if (!this.camera || this.drag.active) return;
         this.flip = !this.flip;
-        const targetAlpha = this.camera.alpha + Math.PI;
-        window.BABYLON.Animation.CreateAndStartAnimation(
-            'flipCam', this.camera, 'alpha', 60, 36,
-            this.camera.alpha, targetAlpha, window.BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-        );
+        this.moveCamera(this.camera.alpha + Math.PI, this.camera.beta, this.camera.radius);
+        document.getElementById('flipBtn').setAttribute('aria-pressed', String(this.flip));
     }
 
     fresh() {
@@ -919,6 +1055,7 @@ class Atelier {
     }
 
     refreshMarks() {
+        this.renderDirty = true;
         this.clearMarks();
         const m = this.world.marks;
         if (this.selected >= 0) placeMark(m.select, this.selected);
@@ -949,9 +1086,13 @@ class Atelier {
 
     renderHud() {
         const st = this.game.status();
-        document.getElementById('opponentName').textContent = this.mode === 'cpu' ? `Máquina · ${this.level}` : this.mode === 'academy' ? `Lição ${this.lessonIndex + 1} de ${LESSONS.length}` : this.mode === 'puzzles' ? `Desafio ${this.puzzleIndex + 1} de ${PUZZLES.length}` : 'Dois jogadores';
+        if (['academy', 'free'].includes(this.mode) && st.moves.length) st.over = false;
+        document.getElementById('opponentName').textContent = this.mode === 'cpu' ? `Máquina · ${this.level}` : this.mode === 'academy' ? `Lição ${this.lessonIndex + 1} de ${LESSONS.length}` : this.mode === 'puzzles' ? `Desafio ${this.puzzleIndex + 1} de ${PUZZLES.length}` : this.mode === 'free' ? 'Tabuleiro livre' : 'Dois jogadores';
         const line = document.getElementById('statusLine');
-        if (st.over) {
+        if (this.mode === 'academy' || this.mode === 'puzzles') {
+            line.textContent = this.expect ? 'Encontre o lance' : 'Concluído · próxima lição';
+            line.classList.remove('is-check');
+        } else if (st.over) {
             line.textContent = st.reason === 'xeque-mate'
                 ? `Xeque-mate · ${st.result}`
                 : `Empate · ${st.reason}`;
@@ -962,6 +1103,9 @@ class Atelier {
                 : `${this.game.side === 'w' ? 'Brancas' : 'Pretas'} jogam`;
             line.classList.toggle('is-check', st.check);
         }
+        if (this.worker && this.mode === 'cpu') line.textContent = 'A máquina pensa…';
+        document.getElementById('undoBtn').disabled = !this.game.stack.length || !!this.pendingPromo;
+        document.getElementById('hintBtn').disabled = this.busy || st.over || !!this.pendingPromo;
         this.renderCaptured();
         this.renderMoves();
     }
@@ -1011,10 +1155,20 @@ class Atelier {
         document.getElementById('resultKicker').innerHTML = '<i></i> Fim';
         document.getElementById('resultTitle').textContent = st.reason === 'xeque-mate' ? 'Xeque-mate' : 'Empate';
         document.getElementById('resultText').textContent = this.endLine(st);
+        document.getElementById('resultAgain').focus();
     }
 
-    frame() {
-        const dt = Math.min(0.05, this.engine.getDeltaTime() / 1000);
+    frame(dt) {
+        if (this.cameraTransition) {
+            const c = this.cameraTransition;
+            c.t += dt;
+            const t = this.reducedMotion ? 1 : Math.min(1, c.t / 0.55);
+            const k = easeInOut(t);
+            [this.camera.alpha, this.camera.beta, this.camera.radius] = c.from.map((v, i) => v + (c.to[i] - v) * k);
+            if (t === 1) this.cameraTransition = null;
+        }
+        if (this.postProcess.pipe.depthOfFieldEnabled) this.postProcess.pipe.depthOfField.focusDistance = this.camera.radius * 1000;
+        if (this.anims.length) this.lights.shadowGen.getShadowMap().resetRefreshCounter();
         for (let i = this.anims.length - 1; i >= 0; i--) {
             const a = this.anims[i];
             a.t += dt;
@@ -1028,7 +1182,7 @@ class Atelier {
         if (this.world?.marks?.select?.isVisible) {
             this.world.marks.select.rotation.y += dt * 0.8;
         }
-        if (this.world?.marks?.check?.isVisible) {
+        if (!this.reducedMotion && this.world?.marks?.check?.isVisible) {
             const mat = this.world.marks.check.material;
             if (mat) mat.alpha = 0.55 + Math.sin(Date.now() * 0.006) * 0.35;
         }
