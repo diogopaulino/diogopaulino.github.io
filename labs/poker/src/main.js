@@ -129,11 +129,11 @@ function bindUi() {
         stage.addEventListener('pointermove', (e) => {
             if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
             const r = stage.getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width - 0.5) * 4;
-            const y = ((e.clientY - r.top) / r.height - 0.5) * 3;
+            const x = ((e.clientX - r.left) / r.width - 0.5) * 6;
+            const y = ((e.clientY - r.top) / r.height - 0.5) * 4;
             const scene = $('.table-scene');
             if (scene) {
-                scene.style.transform = `rotateX(${8 - y}deg) rotateY(${x}deg) scale(0.985)`;
+                scene.style.transform = `rotateX(${14 - y}deg) rotateY(${x}deg) scale(0.97)`;
             }
         });
         stage.addEventListener('pointerleave', () => {
