@@ -90,7 +90,8 @@ body {
   padding: 0.5rem 0.35rem 0.75rem;
   border-radius: 1.35rem;
   overflow: hidden;
-  perspective: 1400px;
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
 }
 
 .room {
@@ -170,8 +171,8 @@ body {
   min-height: min(50dvh, 420px);
   padding: 0.85rem 0.9rem 1.1rem;
   transform-style: preserve-3d;
-  transform: rotateX(14deg) scale(0.97);
-  transform-origin: 50% 58%;
+  transform: rotateX(18deg) scale(0.96);
+  transform-origin: 50% 55%;
   transition: transform 0.35s var(--ease-out);
 }
 
@@ -630,17 +631,13 @@ body {
   border-radius: inherit;
   transform-style: preserve-3d;
   transition: transform 0.55s var(--ease-out);
-  transform: rotateY(0deg) rotateZ(var(--tilt));
+  transform: rotateZ(var(--tilt));
   box-shadow:
     0 10px 22px rgba(0, 0, 0, 0.5),
     0 3px 6px rgba(0, 0, 0, 0.3),
     1px 0 0 rgba(0, 0, 0, 0.15),
     2px 1px 0 rgba(40, 30, 20, 0.35),
     3px 2px 0 rgba(30, 22, 14, 0.25);
-}
-
-.card.is-back .card-inner {
-  transform: rotateY(180deg) rotateZ(var(--tilt));
 }
 
 .card.is-flipping .card-inner {
@@ -656,16 +653,12 @@ body {
 .hole-cards .card:nth-child(1) { --tilt: -4deg; }
 .hole-cards .card:nth-child(2) { --tilt: 4deg; }
 
-.seat--hero .hole-cards .card:hover .card-inner,
+.seat--hero .hole-cards .card:not(.is-back):hover .card-inner,
 .board .card:hover .card-inner {
-  transform: translateY(-6px) rotateY(0deg) rotateZ(var(--tilt)) scale(1.04);
+  transform: translateY(-6px) rotateZ(var(--tilt)) scale(1.04);
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.25);
-}
-
-.seat--hero .hole-cards .card.is-back:hover .card-inner {
-  transform: translateY(-6px) rotateY(180deg) rotateZ(var(--tilt)) scale(1.04);
 }
 
 .card-slot {
@@ -701,6 +694,22 @@ body {
   -webkit-backface-visibility: hidden;
 }
 
+/* Carta só com frente (sem flip): face em fluxo normal */
+.card:not(.has-flip) .card-front {
+  position: absolute;
+  transform: none;
+  backface-visibility: visible;
+}
+
+.card:not(.has-flip) .card-back {
+  position: absolute;
+  transform: none;
+}
+
+.card:not(.has-flip).is-back .card-inner {
+  transform: rotateZ(var(--tilt));
+}
+
 .card-front {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.55) 0%, transparent 42%),
@@ -710,7 +719,7 @@ body {
   grid-template-rows: auto 1fr auto;
   padding: 0.26em 0.3em;
   font-family: 'Cormorant Garamond', Georgia, serif;
-  transform: rotateY(0deg);
+  transform: rotateY(0deg) translateZ(1px);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -790,7 +799,15 @@ body {
     linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 38%),
     radial-gradient(circle at 50% 50%, #1a4568, #0c2438 70%);
   border: 2px solid rgba(212, 175, 55, 0.45);
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.card.has-flip.is-back .card-inner {
+  transform: rotateY(180deg) rotateZ(var(--tilt));
+}
+
+.card.has-flip:not(.is-back) .card-inner {
+  transform: rotateY(0deg) rotateZ(var(--tilt));
 }
 
 .card-back i {

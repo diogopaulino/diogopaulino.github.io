@@ -133,7 +133,7 @@ function bindUi() {
             const y = ((e.clientY - r.top) / r.height - 0.5) * 4;
             const scene = $('.table-scene');
             if (scene) {
-                scene.style.transform = `rotateX(${14 - y}deg) rotateY(${x}deg) scale(0.97)`;
+                scene.style.transform = `rotateX(${18 - y}deg) rotateY(${x}deg) scale(0.96)`;
             }
         });
         stage.addEventListener('pointerleave', () => {
