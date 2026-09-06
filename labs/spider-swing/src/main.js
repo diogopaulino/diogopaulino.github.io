@@ -535,7 +535,7 @@ class Game {
         const cdx = CAM.x - from.x;
         const cdy = CAM.y - from.y;
         const cdz = CAM.z - from.z;
-        const cdist = Math.hypot(cdx, cdy, cdz) || 1;
+        const cdist = Math.sqrt(cdx * cdx + cdy * cdy + cdz * cdz) || 1;
         const blocked = this.city?.raycast(from.x, from.y + 1.4, from.z, cdx, cdy, cdz, cdist);
         if (blocked && blocked.dist < cdist - 1.2 && blocked.dist > 2.8) {
             const t = Math.max(2.6, blocked.dist - 1.2) / cdist;
