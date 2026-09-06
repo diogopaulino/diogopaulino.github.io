@@ -49,9 +49,11 @@ class Game {
     }
 
     qualityPreset() {
+        // SoftGL/SwiftShader: sempre low, mesmo com preset salvo em "high".
+        if (detectSoftwareGL()) return QUALITY.low;
         let key = this.settings.quality;
         if (key === 'auto') {
-            key = (this.mobile || detectSoftwareGL()) ? 'low' : (innerWidth >= 1400 ? 'high' : 'medium');
+            key = this.mobile ? 'low' : (innerWidth >= 1400 ? 'high' : 'medium');
         }
         return QUALITY[key] || QUALITY.medium;
     }
@@ -79,6 +81,16 @@ class Game {
         h.qualitySelect.addEventListener('change', () => {
             this.settings.quality = h.qualitySelect.value;
             this.saveSettings();
+            this.quality = this.qualityPreset();
+            this.resize?.();
+            if (this.renderer) {
+                this.renderer.shadowMap.enabled = !!this.quality.shadows;
+                const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio || 1);
+                this.renderer.setPixelRatio(pr);
+            }
+            for (const m of n64Materials) {
+                if (m.userData.n64) m.userData.snap = this.quality.snap;
+            }
         });
         h.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(h.volumeSlider.value);
@@ -168,6 +180,7 @@ class Game {
     }
 
     start() {
+        if (this.state === 'boot' || !this.player || !this.world) return;
         this.audio.init();
         this.audio.setEnabled(!this.settings.muted);
         this.audio.setVolume(this.settings.volume / 100);
@@ -178,7 +191,8 @@ class Game {
         this.entities.reset();
         this.state = 'play';
         this.hud.showPlay();
-        this.hud.setTouchVisible(this.mobile);
+        const coarse = window.matchMedia('(pointer: coarse)').matches;
+        this.hud.setTouchVisible(coarse || this.mobile);
         this.hud.setStats({
             stars: 0,
             coins: 0,

@@ -35,8 +35,9 @@ const QUALITY = {
 };
 
 function pickQuality(mode, renderer) {
+    if (detectSoftwareGL(renderer)) return QUALITY.low;
     if (QUALITY[mode]) return QUALITY[mode];
-    if (detectSoftwareGL(renderer) || detectMobile()) return QUALITY.medium; // Use medium as default for mobile to preserve sharpness
+    if (detectMobile()) return QUALITY.low;
     if (devicePixelRatio >= 2) return QUALITY.high;
     return QUALITY.medium;
 }
@@ -101,9 +102,11 @@ class CasteloEstelar {
 
     boot() {
         try {
+            // Qualidade ainda não resolvida: assume low até o SoftGL probe no renderer.
+            const softProbe = detectSoftwareGL();
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: true,
+                antialias: !softProbe,
                 alpha: false,
                 powerPreference: 'high-performance'
             });

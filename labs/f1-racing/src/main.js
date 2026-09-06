@@ -74,71 +74,103 @@ class F1GrandPrix {
 
     async boot() {
         const BABYLON = window.BABYLON;
-        if (!BABYLON) return;
+        if (!BABYLON) {
+            this.failBoot('Babylon.js não carregou. Recarregue a página.');
+            return;
+        }
 
         try {
             this.engine = new BABYLON.Engine(this.canvas, true, {
                 preserveDrawingBuffer: false,
                 stencil: true,
-                adaptToDeviceRatio: true
+                adaptToDeviceRatio: false,
+                powerPreference: 'high-performance',
+                failIfMajorPerformanceCaveat: false
             });
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.clearColor = new BABYLON.Color4(0.05, 0.06, 0.08, 1.0);
+
+            // Cap de DPR: adaptToDeviceRatio sozinho derrete GPU em telas 2x/3x.
+            const pr = Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.1 : 1.5);
+            this.engine.setHardwareScalingLevel(1 / pr);
+
+            // Carregar Circuito
+            this.loadCircuit(this.selectedCircuitKey);
+
+            // Carro do Jogador
+            this.playerCar = buildF1Car(BABYLON, this.scene, '#e10600');
+            this.vehicle = new Vehicle({
+                circuit: this.circuit,
+                team: TEAMS[0],
+                isPlayer: true
+            });
+
+            // Efeitos
+            this.effects = new RaceEffects(BABYLON, this.scene);
+
+            // Câmera de perseguição F1
+            this.camera = new BABYLON.FreeCamera('f1_cam', new BABYLON.Vector3(0, 3, -6), this.scene);
+            this.camera.minZ = 0.1;
+            this.camera.maxZ = 1200;
+
+            // Pipeline PBR — mais leve no ponteiro grosso
+            const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
+            const lite = matchMedia('(pointer: coarse)').matches;
+            pipe.fxaaEnabled = !lite;
+            pipe.bloomEnabled = !lite;
+            pipe.bloomThreshold = 0.78;
+            pipe.bloomWeight = 0.28;
+            pipe.imageProcessing.toneMappingEnabled = true;
+            pipe.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+            pipe.imageProcessing.contrast = 1.16;
+
+            document.getElementById('loadingOverlay').classList.remove('is-visible');
+            document.getElementById('loadingOverlay').hidden = true;
+            const menu = document.getElementById('menuOverlay');
+            if (menu) menu.classList.add('is-visible');
+            // state interno precisa bater com o Enter do menu (dataset sozinho não basta).
+            this.state = 'menu';
+            document.body.dataset.state = 'menu';
+
+            this._renderLoop = () => {
+                this.frame();
+                this.scene.render();
+            };
+            if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+            else this.engine.runRenderLoop(this._renderLoop);
+
+            if (window.LabRuntime) LabRuntime.debounceResize(() => this.engine.resize());
+            else window.addEventListener('resize', () => this.engine.resize());
         } catch (err) {
             console.error(err);
-            return;
+            this.failBoot(err?.message || 'Não foi possível iniciar o WebGL neste navegador.');
         }
+    }
 
-        // Carregar Circuito
-        this.loadCircuit(this.selectedCircuitKey);
-
-        // Carro do Jogador
-        this.playerCar = buildF1Car(BABYLON, this.scene, '#e10600');
-        this.vehicle = new Vehicle({
-            circuit: this.circuit,
-            team: TEAMS[0],
-            isPlayer: true
-        });
-
-        // Efeitos
-        this.effects = new RaceEffects(BABYLON, this.scene);
-
-        // Câmera de perseguição F1
-        this.camera = new BABYLON.FreeCamera('f1_cam', new BABYLON.Vector3(0, 3, -6), this.scene);
-        this.camera.minZ = 0.1;
-        this.camera.maxZ = 1200;
-
-        // Pipeline PBR
-        const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
-        pipe.fxaaEnabled = true;
-        pipe.bloomEnabled = true;
-        pipe.bloomThreshold = 0.78;
-        pipe.bloomWeight = 0.28;
-        pipe.imageProcessing.toneMappingEnabled = true;
-        pipe.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-        pipe.imageProcessing.contrast = 1.16;
-
-        document.getElementById('loadingOverlay').classList.remove('is-visible');
-        document.getElementById('loadingOverlay').hidden = true;
+    failBoot(message) {
+        const loading = document.getElementById('loadingOverlay');
+        if (loading) {
+            loading.classList.remove('is-visible');
+            loading.hidden = true;
+        }
         const menu = document.getElementById('menuOverlay');
         if (menu) menu.classList.add('is-visible');
-        // state interno precisa bater com o Enter do menu (dataset sozinho não basta).
-        this.state = 'menu';
-        document.body.dataset.state = 'menu';
-
-        // Cap de DPR: adaptToDeviceRatio sozinho derrete GPU em telas 2x/3x.
-        const pr = Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.1 : 1.5);
-        this.engine.setHardwareScalingLevel(1 / pr);
-
-        this._renderLoop = () => {
-            this.frame();
-            this.scene.render();
-        };
-        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
-        else this.engine.runRenderLoop(this._renderLoop);
-
-        if (window.LabRuntime) LabRuntime.debounceResize(() => this.engine.resize());
-        else window.addEventListener('resize', () => this.engine.resize());
+        this.state = 'error';
+        document.body.dataset.state = 'error';
+        const card = menu?.querySelector('.overlay-card, .menu-card') || menu;
+        if (card && !card.querySelector('.boot-error')) {
+            const p = document.createElement('p');
+            p.className = 'boot-error';
+            p.style.cssText = 'color:#ff6b6b;margin:1rem 0 0;font-size:.9rem;max-width:36ch';
+            p.textContent = message;
+            card.appendChild(p);
+        }
+        const btn = document.getElementById('startButton');
+        if (btn) {
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            btn.title = message;
+        }
     }
 
     loadCircuit(key) {
@@ -155,7 +187,7 @@ class F1GrandPrix {
     }
 
     startRace() {
-        if (this.state === 'boot' || !this.vehicle) return;
+        if (!this.vehicle || !this.engine || this.state === 'error' || this.state === 'boot') return;
         this.state = 'racing';
         const menu = document.getElementById('menuOverlay');
         if (menu) menu.classList.remove('is-visible');

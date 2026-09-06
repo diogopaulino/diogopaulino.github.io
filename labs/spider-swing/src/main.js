@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import {
     QUALITY, DIFFICULTY, CAMERA, PALETTE, loadSettings, saveSettings
 } from './config.js';
-import { clamp, damp, detectMobile, detectSoftwareGL, hexToArr } from './utils.js';
+import { clamp, damp, detectMobile, detectTouch, detectSoftwareGL, hexToArr } from './utils.js';
 import { City } from './city.js';
 import { Player } from './player.js?v=2';
 import { Effects } from './effects.js';
@@ -43,9 +43,10 @@ class Game {
     }
 
     resolveQuality() {
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile()) return QUALITY.low;
         const cores = navigator.hardwareConcurrency || 8;
         if (cores <= 4) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
@@ -123,7 +124,7 @@ class Game {
             await this.setupPostProcessing();
 
             this.bindUi();
-            this.isTouch = detectMobile();
+            this.isTouch = detectTouch();
 
             this.enterAttract();
             this.renderer.compile(this.scene, this.camera);

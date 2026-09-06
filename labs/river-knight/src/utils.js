@@ -121,6 +121,13 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/** Pads de toque — qualquer ponteiro grosso (tablet landscape incluso). */
+export function detectTouch() {
+    if (typeof navigator === 'undefined') return false;
+    return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches)
+        || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 /** SwiftShader / llvmpipe / etc. — auto quality must not pick "Cinemática". */
 export function detectSoftwareGL() {
     try {

@@ -29,7 +29,7 @@ import { Input } from './input.js';
 import { GameAudio } from './audio.js?v=14';
 import { updateCloth } from './models.js?v=14';
 import { centerX, halfWidth } from './river.js';
-import { clamp, damp, detectMobile, detectSoftwareGL, formatTime, randRange } from './utils.js?v=15';
+import { clamp, damp, detectMobile, detectTouch, detectSoftwareGL, formatTime, randRange } from './utils.js?v=16';
 
 const WHITE = new THREE.Color(1, 1, 1);
 
@@ -208,7 +208,7 @@ class Game {
         this.input = new Input(this.canvas);
         this.bindUi();
 
-        this.isTouch = detectMobile();
+        this.isTouch = detectTouch();
         this.hud.setTouchVisible(false);
 
         await this.setupPostProcessing(quality);

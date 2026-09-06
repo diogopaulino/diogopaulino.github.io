@@ -520,8 +520,12 @@ function queueDirection(nextDx, nextDy) {
     // Compare against the direction that will actually be applied next step.
     const currentDx = queuedDirection ? queuedDirection.dx : dx;
     const currentDy = queuedDirection ? queuedDirection.dy : dy;
-    if (nextDx === -currentDx && nextDy === -currentDy) return;
-    if (nextDx === currentDx && nextDy === currentDy) return;
+    // Antes do primeiro passo, qualquer direção é válida (ainda não há "reverso"
+    // perigoso — a cobra está parada).
+    if (!awaitingFirstMove) {
+        if (nextDx === -currentDx && nextDy === -currentDy) return;
+        if (nextDx === currentDx && nextDy === currentDy) return;
+    }
     queuedDirection = { dx: nextDx, dy: nextDy };
     if (awaitingFirstMove) {
         // Aplica já e libera o passo fixo — o jogador pediu para andar.
