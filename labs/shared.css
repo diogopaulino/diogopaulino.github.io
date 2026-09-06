@@ -678,8 +678,11 @@ footer a:hover {
     }
 }
 
-/* Rodapé mínimo para shells fullscreen que escondem o credit durante o jogo. */
-.lab-foot {
+/* Rodapé mínimo para shells fullscreen que escondem o credit durante o jogo.
+   Separado de `footer` (galeria/labs com borda e margem): um `<footer class="lab-foot">`
+   herda as regras do elemento `footer` — aqui resetamos o que conflita. */
+.lab-foot,
+footer.lab-foot {
     width: 100%;
     max-width: 1200px;
     margin-top: 0;
@@ -691,9 +694,11 @@ footer a:hover {
     color: var(--text-secondary, rgba(255, 255, 255, 0.55));
     font-size: 0.8rem;
     text-align: center;
+    border-top: none;
 }
 
-.lab-foot a {
+.lab-foot a,
+footer.lab-foot a {
     color: inherit;
     text-decoration: none;
     font-weight: 500;
@@ -703,6 +708,7 @@ footer a:hover {
     padding-inline: 0.5rem;
 }
 
-.lab-foot a:hover {
+.lab-foot a:hover,
+footer.lab-foot a:hover {
     color: var(--accent, #4f8bf0);
 }
