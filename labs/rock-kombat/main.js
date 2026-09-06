@@ -328,15 +328,32 @@ function fixedUpdate() {
   if ((frameNumber & 1) === 0) hudSignature = updateHud(match, hudSignature);
 }
 
+let rafId = 0;
+
+function startLoop() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(loop);
+}
+
+function stopLoop() {
+  if (!rafId) return;
+  const id = rafId;
+  rafId = 0;
+  cancelAnimationFrame(id);
+}
+
 function togglePause(force) {
   if (!match || match.phase === 'complete') return;
   paused = typeof force === 'boolean' ? force : !paused;
   $('#pause-layer').hidden = !paused;
-  if (paused) audio.stopMusic();
-  else {
+  if (paused) {
+    audio.stopMusic();
+    stopLoop();
+  } else {
     lastTime = performance.now();
     accumulator = 0;
     audio.startMusic(stageId);
+    if (!document.hidden) startLoop();
   }
 }
 
@@ -349,7 +366,8 @@ function loop(now) {
     accumulator -= STEP;
   }
   render(ctx, match, frameNumber, images, renderState);
-  requestAnimationFrame(loop);
+  if (!paused && !document.hidden) rafId = requestAnimationFrame(loop);
+  else rafId = 0;
 }
 
 function goSelect() {
@@ -424,7 +442,13 @@ $$('#difficulty-options button').forEach(button => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && match && !paused) togglePause(true);
+  if (document.hidden) {
+    if (match && !paused) togglePause(true);
+    stopLoop();
+  } else if (!paused) {
+    lastTime = performance.now();
+    startLoop();
+  }
 });
 
 rosterApi = renderRoster(FIGHTERS, (p1, cpu) => {
@@ -488,4 +512,4 @@ loadAssets().catch(error => {
   console.error(error);
 });
 
-requestAnimationFrame(loop);
+startLoop();

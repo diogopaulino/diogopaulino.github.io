@@ -638,6 +638,8 @@ function draw() {
     lander.draw(ctx);
 }
 
+let rafId = 0;
+
 function gameLoop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const frameTime = Math.min((timestamp - lastTime) / 1000, PHYSICS.maxFrameTime);
@@ -661,7 +663,20 @@ function gameLoop(timestamp) {
     checkLowFuel();
     updateHUD();
     draw();
-    requestAnimationFrame(gameLoop);
+    rafId = requestAnimationFrame(gameLoop);
+}
+
+function startLoop() {
+    if (rafId) return;
+    lastTime = 0;
+    rafId = requestAnimationFrame(gameLoop);
+}
+
+function stopLoop() {
+    if (!rafId) return;
+    const id = rafId;
+    rafId = 0;
+    cancelAnimationFrame(id);
 }
 
 window.addEventListener('keydown', event => {
@@ -724,9 +739,14 @@ if (labAudio) {
     labAudio.onChange(() => setEngineLevel(lander.engineOn ? 1 : 0));
 }
 
-// Aba escondida: o motor não pode continuar roncando em segundo plano.
+// Aba escondida: corta o motor e cancela o rAF (LabAudio mute permanece).
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) setEngineLevel(0);
+    if (document.hidden) {
+        setEngineLevel(0);
+        stopLoop();
+    } else {
+        startLoop();
+    }
 });
 
 generateStars();
@@ -735,4 +755,4 @@ lander.reset();
 setGameState('START');
 setFlightStatus('READY');
 draw();
-requestAnimationFrame(gameLoop);
+startLoop();

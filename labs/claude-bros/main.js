@@ -845,9 +845,11 @@ function render() {
 
 let lastTime = 0;
 let accumulator = 0;
+let rafId = 0;
 
 function frame(now) {
-    requestAnimationFrame(frame);
+    if (!document.hidden) rafId = requestAnimationFrame(frame);
+    else rafId = 0;
 
     if (!lastTime) lastTime = now;
     // Trava a 250ms: uma aba que voltou do background não replica meio segundo
@@ -1000,9 +1002,19 @@ bindHold('btnJump', () => {
 
 document.getElementById('btnPause')?.addEventListener('click', togglePause);
 
-// Sair da aba pausa em vez de deixar o jogador morrer sozinho.
+// Sair da aba pausa em vez de deixar o jogador morrer sozinho; cancela o rAF.
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state === 'playing') togglePause();
+    if (document.hidden) {
+        if (state === 'playing') togglePause();
+        if (rafId) {
+            const id = rafId;
+            rafId = 0;
+            cancelAnimationFrame(id);
+        }
+    } else if (!rafId) {
+        lastTime = 0;
+        rafId = requestAnimationFrame(frame);
+    }
 });
 
 /* ---------------------------------------------------------------- layout --- */
@@ -1053,4 +1065,4 @@ if (touchLayer && !window.matchMedia('(pointer: fine)').matches) touchLayer.hidd
 resetGame();
 resize();
 showOverlay('Claude Bros', 'Colete as estrelas, pule nos rivais e chegue à bandeira.', 'Começar');
-requestAnimationFrame(frame);
+rafId = requestAnimationFrame(frame);
