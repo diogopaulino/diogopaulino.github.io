@@ -39,7 +39,7 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
     if (texMap) {
         if (texMap.map) mat.albedoTexture = texMap.map;
         if (texMap.normalMap) mat.bumpTexture = texMap.normalMap;
-        if (texMap.roughnessMap) {
+        if (texMap.roughnessMap && extra.useRoughnessMap !== false) {
             mat.metallicTexture = texMap.roughnessMap;
             mat.useRoughnessFromMetallicTextureAlpha = false;
             mat.useRoughnessFromMetallicTextureGreen = true;
@@ -48,6 +48,7 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
     }
     mat.roughness = extra.roughness !== undefined ? extra.roughness : 0.35;
     mat.metallic = extra.metallic !== undefined ? extra.metallic : 0.04;
+    if (extra.environmentIntensity !== undefined) mat.environmentIntensity = extra.environmentIntensity;
     mat.clearCoat.isEnabled = true;
     mat.clearCoat.intensity = extra.clearcoat !== undefined ? extra.clearcoat : 0.6;
     mat.clearCoat.roughness = 0.2;
@@ -59,14 +60,16 @@ function makePhysMat(BABYLON, name, scene, texMap, extra = {}) {
 
 export function buildWorld(BABYLON, scene, tex, quality) {
     const lightMat = makePhysMat(BABYLON, 'mat_sq_light', scene, tex.maple, {
-        color: new BABYLON.Color3(0.96, 0.87, 0.73),
-        clearcoat: 0.35,
-        roughness: 0.3
+        color: new BABYLON.Color3(1.0, 0.94, 0.84),
+        clearcoat: 0.18,
+        roughness: 0.44,
+        environmentIntensity: 0.62
     });
     const darkMat = makePhysMat(BABYLON, 'mat_sq_dark', scene, tex.walnut, {
-        color: new BABYLON.Color3(0.85, 0.82, 0.78),
-        clearcoat: 0.35,
-        roughness: 0.35
+        color: new BABYLON.Color3(0.92, 0.86, 0.78),
+        clearcoat: 0.16,
+        roughness: 0.5,
+        environmentIntensity: 0.62
     });
 
     const squares = [];
@@ -87,26 +90,66 @@ export function buildWorld(BABYLON, scene, tex, quality) {
         }
     }
 
-    // Moldura do tabuleiro (Mogno laqueado)
+    // As casas não precisam ser meshes individuais: a seleção usa o plano
+    // matemático do tabuleiro como fallback. Duas malhas estáticas reduzem
+    // drasticamente o custo de desenho sem perder precisão no toque.
+    const lightSquares = BABYLON.Mesh.MergeMeshes(
+        squares.filter((_, i) => {
+            const f = i % 8;
+            const r = Math.floor(i / 8);
+            return (f + r) % 2 !== 0;
+        }), true, true, undefined, false, false
+    );
+    const darkSquares = BABYLON.Mesh.MergeMeshes(
+        squares.filter((_, i) => {
+            const f = i % 8;
+            const r = Math.floor(i / 8);
+            return (f + r) % 2 === 0;
+        }), true, true, undefined, false, false
+    );
+    for (const batch of [lightSquares, darkSquares]) {
+        if (!batch) continue;
+        batch.isPickable = false;
+        batch.receiveShadows = true;
+        batch.metadata = { kind: 'board-surface' };
+    }
+
+    // Moldura do tabuleiro (mogno laqueado). A base rebaixada deixa uma
+    // sombra física entre a moldura, o feltro e o tampo — é ela que dá escala
+    // ao conjunto em vez de fazer as casas parecerem uma textura plana.
     const frameMat = makePhysMat(BABYLON, 'mat_frame', scene, tex.mahogany, {
-        color: new BABYLON.Color3(0.76, 0.73, 0.7),
-        clearcoat: 0.355,
-        roughness: 0.25
+        color: new BABYLON.Color3(0.92, 0.78, 0.62),
+        clearcoat: 0.52,
+        roughness: 0.22,
+        environmentIntensity: 0.45
     });
     const frame = BABYLON.MeshBuilder.CreateBox('board_frame', {
-        width: 9.25,
-        height: 0.16,
-        depth: 9.25
+        width: 9.35,
+        height: 0.2,
+        depth: 9.35
     }, scene);
-    frame.position.y = -0.06;
+    frame.position.y = -0.08;
     frame.material = frameMat;
     frame.receiveShadows = true;
     frame.isPickable = false;
 
+    const plinth = BABYLON.MeshBuilder.CreateBox('board_plinth', {
+        width: 10.15,
+        height: 0.16,
+        depth: 10.15
+    }, scene);
+    plinth.position.y = -0.22;
+    plinth.material = tableMatPlaceholder(BABYLON, scene, tex.mahogany);
+    plinth.receiveShadows = true;
+    plinth.isPickable = false;
+
     // Feltro sob as casas
     const feltMat = new BABYLON.PBRMaterial('mat_felt', scene);
-    feltMat.albedoColor = new BABYLON.Color3(0.08, 0.28, 0.16);
-    feltMat.roughness = 0.95;
+    feltMat.albedoColor = new BABYLON.Color3(0.42, 0.72, 0.52);
+    feltMat.albedoTexture = tex.felt?.map || null;
+    feltMat.bumpTexture = tex.felt?.normalMap || null;
+    feltMat.roughness = 0.94;
+    feltMat.useAlphaFromAlbedoTexture = false;
     feltMat.metallic = 0.0;
     const felt = BABYLON.MeshBuilder.CreateBox('board_felt', {
         width: 8.04,
@@ -117,21 +160,51 @@ export function buildWorld(BABYLON, scene, tex, quality) {
     felt.material = feltMat;
     felt.isPickable = false;
 
-    // Mesa de mogno
+    // Mesa de mogno: tampo, saia e travessas. O enquadramento costuma mostrar
+    // mais mesa do que tabuleiro; esses volumes evitam que o entorno pareça
+    // um plano infinito sem espessura.
     const tableMat = makePhysMat(BABYLON, 'mat_table', scene, tex.mahogany, {
-        color: new BABYLON.Color3(0.66, 0.65, 0.64),
-        roughness: 0.48,
-        clearcoat: 0.25
+        color: new BABYLON.Color3(0.78, 0.64, 0.49),
+        roughness: 0.54,
+        clearcoat: 0.14,
+        environmentIntensity: 0.28,
+        useRoughnessMap: false
     });
     const table = BABYLON.MeshBuilder.CreateBox('table_top', {
         width: 16,
-        height: 0.28,
+        height: 0.34,
         depth: 12
     }, scene);
-    table.position.y = -0.28;
+    table.position.y = -0.38;
     table.material = tableMat;
     table.receiveShadows = true;
     table.isPickable = false;
+
+    // A prancha elevada lê melhor a luz de recorte e separa o objeto jogável
+    // do tampo sem precisar de um contorno artificial.
+    const tableLip = BABYLON.MeshBuilder.CreateBox('table_lip', {
+        width: 15.7,
+        height: 0.18,
+        depth: 11.7
+    }, scene);
+    tableLip.position.y = -0.17;
+    tableLip.material = tableMat;
+    tableLip.receiveShadows = true;
+    tableLip.isPickable = false;
+
+    const apron = [
+        { name: 'apron_front', width: 15.6, height: 1.05, depth: 0.24, x: 0, z: 5.72 },
+        { name: 'apron_back', width: 15.6, height: 1.05, depth: 0.24, x: 0, z: -5.72 },
+        { name: 'apron_left', width: 0.24, height: 1.05, depth: 11.2, x: -7.72, z: 0 },
+        { name: 'apron_right', width: 0.24, height: 1.05, depth: 11.2, x: 7.72, z: 0 }
+    ];
+    apron.forEach(({ name, width, height, depth, x, z }) => {
+        const rail = BABYLON.MeshBuilder.CreateBox(name, { width, height, depth }, scene);
+        rail.position.set(x, -1.02, z);
+        rail.material = tableMat;
+        rail.receiveShadows = true;
+        rail.isPickable = false;
+    });
 
     // Pés da mesa
     const legMat = makePhysMat(BABYLON, 'mat_leg', scene, tex.mahogany, {
@@ -150,14 +223,17 @@ export function buildWorld(BABYLON, scene, tex, quality) {
         leg.isPickable = false;
     }
 
-    // Tapete de veludo bordô sob a mesa
+    // Tapete de veludo sob a mesa. A textura de feltro também evita o aspecto
+    // de círculo sólido quando a câmera desce para o detalhe.
     const rugMat = new BABYLON.PBRMaterial('mat_rug', scene);
-    rugMat.albedoColor = new BABYLON.Color3(0.06, 0.10, 0.12);
-    rugMat.roughness = 0.92;
+    rugMat.albedoColor = new BABYLON.Color3(0.46, 0.18, 0.12);
+    rugMat.albedoTexture = tex.felt?.map || null;
+    rugMat.bumpTexture = tex.felt?.normalMap || null;
+    rugMat.roughness = 0.9;
     rugMat.metallic = 0.0;
     const rug = BABYLON.MeshBuilder.CreateDisc('rug', {
-        radius: 7.5,
-        tessellation: 48
+        radius: 8.5,
+        tessellation: quality.id === 'low' ? 40 : 64
     }, scene);
     rug.rotation.x = Math.PI / 2;
     rug.position.y = -2.83;
@@ -165,19 +241,23 @@ export function buildWorld(BABYLON, scene, tex, quality) {
     rug.receiveShadows = true;
     rug.isPickable = false;
 
-    // Piso de mármore do salão
+    // Piso de mármore do salão. Antes o mapa gerado era imediatamente
+    // removido abaixo, deixando um disco cinza chapado no fundo.
     const floorMat = makePhysMat(BABYLON, 'mat_floor', scene, tex.marble, {
-        color: new BABYLON.Color3(0.075, 0.10, 0.12),
-        roughness: 0.8,
-        clearcoat: 0.9,
-        metallic: 0.05
+        color: new BABYLON.Color3(0.46, 0.49, 0.50),
+        roughness: 0.5,
+        clearcoat: 0.35,
+        metallic: 0.02
     });
-    floorMat.albedoTexture = null; floorMat.bumpTexture = null; floorMat.clearCoat.isEnabled = false;
-    const floor = BABYLON.MeshBuilder.CreateDisc('floor', {
-        radius: 18,
-        tessellation: 64
+    floorMat.albedoTexture.uScale = 3;
+    floorMat.albedoTexture.vScale = 3;
+    floorMat.bumpTexture.uScale = 3;
+    floorMat.bumpTexture.vScale = 3;
+    const floor = BABYLON.MeshBuilder.CreateBox('floor', {
+        width: 44,
+        height: 0.22,
+        depth: 36
     }, scene);
-    floor.rotation.x = Math.PI / 2;
     floor.position.y = -2.85;
     floor.material = floorMat;
     floor.receiveShadows = true;
@@ -187,8 +267,8 @@ export function buildWorld(BABYLON, scene, tex, quality) {
         color: new BABYLON.Color3(0.65, 0.48, 0.23), metallic: 0.8, roughness: 0.32
     });
     for (const axis of ['x', 'z']) for (const sign of [-1, 1]) {
-        const rail = BABYLON.MeshBuilder.CreateBox('inlay', {width: axis === 'z' ? 8.8 : 0.025, depth: axis === 'x' ? 8.8 : 0.025, height: 0.01}, scene);
-        rail.position[axis] = sign * 4.4; rail.position.y = 0.028; rail.material = brass; rail.isPickable = false;
+        const rail = BABYLON.MeshBuilder.CreateBox('inlay', {width: axis === 'z' ? 8.8 : 0.025, depth: axis === 'x' ? 8.8 : 0.025, height: 0.012}, scene);
+        rail.position[axis] = sign * 4.4; rail.position.y = 0.09; rail.material = brass; rail.isPickable = false;
     }
     for (let i = 0; i < 8; i++) for (const edge of ['file', 'rank']) {
         const texture = new BABYLON.DynamicTexture(`coord_${edge}_${i}`, 128, scene, false);
@@ -197,14 +277,24 @@ export function buildWorld(BABYLON, scene, tex, quality) {
         const mat = new BABYLON.StandardMaterial(`label_${edge}_${i}`, scene);
         mat.diffuseTexture = texture; mat.emissiveColor.set(0.4, 0.36, 0.28); mat.specularColor.set(0,0,0); mat.useAlphaFromDiffuseTexture = true;
         const label = BABYLON.MeshBuilder.CreateGround(`label_${edge}_${i}`, {width:0.23,height:0.23}, scene);
-        label.position.set(edge === 'file' ? i - 3.5 : -4.19, 0.035, edge === 'file' ? 4.19 : 3.5 - i);
+        label.position.set(edge === 'file' ? i - 3.5 : -4.19, 0.095, edge === 'file' ? 4.19 : 3.5 - i);
         label.material = mat; label.isPickable = false;
     }
     for (const mesh of scene.meshes) if (!mesh.name.startsWith('label')) mesh.freezeWorldMatrix();
 
     const marks = buildMarks(BABYLON, scene);
 
-    return { squares, frame, table, floor, marks };
+    return { squares: [lightSquares, darkSquares], frame, table, floor, marks };
+}
+
+function tableMatPlaceholder(BABYLON, scene, tex) {
+    return makePhysMat(BABYLON, 'mat_plinth', scene, tex.mahogany, {
+        color: new BABYLON.Color3(0.72, 0.54, 0.39),
+        roughness: 0.29,
+        clearcoat: 0.42,
+        environmentIntensity: 0.34,
+        useRoughnessMap: false
+    });
 }
 
 function buildMarks(BABYLON, scene) {
@@ -237,6 +327,11 @@ function buildMarks(BABYLON, scene) {
     hintMat.diffuseColor = new BABYLON.Color3(0.3, 0.85, 1.0);
     hintMat.emissiveColor = new BABYLON.Color3(0.2, 0.6, 0.9);
     hintMat.alpha = 0.9;
+
+    const hoverMat = new BABYLON.StandardMaterial('mat_mark_hover', scene);
+    hoverMat.diffuseColor = new BABYLON.Color3(0.75, 0.88, 0.98);
+    hoverMat.emissiveColor = new BABYLON.Color3(0.26, 0.56, 0.82);
+    hoverMat.alpha = 0.34;
 
     const dots = [];
     for (let i = 0; i < 28; i++) {
@@ -286,7 +381,12 @@ function buildMarks(BABYLON, scene) {
     hint.isVisible = false;
     hint.isPickable = false;
 
-    return { dots, caps, select, lastFrom, lastTo, check, hint };
+    const hover = BABYLON.MeshBuilder.CreateTorus('mark_hover', { diameter: 0.94, thickness: 0.035, tessellation: 32 }, scene);
+    hover.material = hoverMat;
+    hover.isVisible = false;
+    hover.isPickable = false;
+
+    return { dots, caps, select, lastFrom, lastTo, check, hint, hover };
 }
 
 export function placeMark(mesh, index, flip = false) {
@@ -300,21 +400,24 @@ export function setupLights(BABYLON, scene, quality) {
     // Luz ambiente suave — intensidade mais alta e chão mais claro para que o
     // ébano (muito escuro) não vire silhueta pura nas áreas de sombra.
     const hemi = new BABYLON.HemisphericLight('hemi_light', new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.diffuse = new BABYLON.Color3(0.78, 0.73, 0.66);
-    hemi.groundColor = new BABYLON.Color3(0.38, 0.32, 0.26);
-    hemi.intensity = 0.65;
+    hemi.diffuse = new BABYLON.Color3(0.82, 0.78, 0.70);
+    hemi.groundColor = new BABYLON.Color3(0.22, 0.15, 0.12);
+    hemi.intensity = 0.72;
 
     // Sol / Luz direcionada com sombras
     const sun = new BABYLON.DirectionalLight('sun_light', new BABYLON.Vector3(-4, -10, 6).normalize(), scene);
     sun.position = new BABYLON.Vector3(8, 18, -12);
     sun.diffuse = new BABYLON.Color3(1.0, 0.95, 0.88);
-    sun.intensity = 2.1;
+    sun.intensity = 1.05;
+    sun.specular = new BABYLON.Color3(0.48, 0.42, 0.34);
 
     let shadowGen = null;
     if (quality.shadows) {
         shadowGen = new BABYLON.ShadowGenerator(quality.shadowMap || 2048, sun);
         shadowGen.usePercentageCloserFiltering = true;
-        shadowGen.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
+        shadowGen.filteringQuality = quality.id === 'high'
+            ? BABYLON.ShadowGenerator.QUALITY_HIGH
+            : BABYLON.ShadowGenerator.QUALITY_MEDIUM;
         shadowGen.bias = 0.001;
         shadowGen.normalBias = 0.002;
         shadowGen.darkness = 0.35;
@@ -323,14 +426,15 @@ export function setupLights(BABYLON, scene, quality) {
     // Luz de preenchimento fria, do lado oposto ao sol — sem ela o lado
     // sombreado das peças (sobretudo as de ébano) desaparecia em preto puro.
     const fill = new BABYLON.DirectionalLight('fill_light', new BABYLON.Vector3(5, -6, -8).normalize(), scene);
-    fill.diffuse = new BABYLON.Color3(0.55, 0.60, 0.68);
+    fill.diffuse = new BABYLON.Color3(0.48, 0.56, 0.68);
     fill.specular = new BABYLON.Color3(0.2, 0.2, 0.24);
-    fill.intensity = 0.9;
+    fill.intensity = 0.72;
 
     // Ponto de luz quente sobre a mesa
     const warmLamp = new BABYLON.PointLight('warm_lamp', new BABYLON.Vector3(0, 5, 0), scene);
     warmLamp.diffuse = new BABYLON.Color3(1.0, 0.85, 0.65);
-    warmLamp.intensity = 0.25;
+    warmLamp.specular = new BABYLON.Color3(0.12, 0.08, 0.04);
+    warmLamp.intensity = 0.03;
     warmLamp.range = 14;
 
     return { hemi, sun, fill, shadowGen, warmLamp };
@@ -353,10 +457,12 @@ export function setupEnvironment(BABYLON, scene) {
         g.addColorStop(1, bottom);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
+        ctx.globalAlpha = 0.16;
         ctx.fillStyle = '#d3ddeb';
         ctx.fillRect(40, 24, 65, 108);
         ctx.fillStyle = '#f5e5c8';
         ctx.fillRect(116, 24, 65, 108);
+        ctx.globalAlpha = 1;
         return el.toDataURL('image/png');
     };
     const side = face('#8c7c68', '#171310');
@@ -364,7 +470,7 @@ export function setupEnvironment(BABYLON, scene) {
     const bottom = face('#171310', '#050403');
     const env = BABYLON.CubeTexture.CreateFromImages([side, side, top, bottom, side, side], scene);
     scene.environmentTexture = env;
-    scene.environmentIntensity = 0.65;
+    scene.environmentIntensity = 0.28;
     return env;
 }
 
