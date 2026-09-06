@@ -45,14 +45,17 @@ function merge(BABYLON, name, list, scene) {
 export function buildPieceGeometries(BABYLON, scene, seg = 48) {
     // 1. PEÃO (Pawn)
     const pawnLathe = lathe(BABYLON, 'pawn_base', [
-        [0, 0], [0.33, 0], [0.35, 0.035], [0.30, 0.08],
-        [0.27, 0.14], [0.16, 0.20], [0.135, 0.46],
-        [0.13, 0.54], [0.20, 0.58], [0.13, 0.62],
-        [0.12, 0.68], [0.185, 0.74], [0.20, 0.84],
-        [0.16, 0.91], [0.08, 0.94], [0, 0.95]
+        [0, 0], [0.265, 0], [0.293, 0.018], [0.302, 0.042], [0.298, 0.064],
+        [0.28, 0.088], [0.255, 0.1], [0.253, 0.135], [0.235, 0.158],
+        [0.216, 0.17], [0.19, 0.21], [0.168, 0.26], [0.147, 0.33],
+        [0.13, 0.41], [0.126, 0.48], [0.14, 0.52], [0.184, 0.545],
+        [0.195, 0.565], [0.193, 0.59], [0.18, 0.61], [0.123, 0.635], [0, 0.65]
     ], seg, scene);
-    const pawnCollar = collar(BABYLON, 'pawn_col', 0.175, 0.58, 0.028, seg, scene);
-    const pawn = merge(BABYLON, 'geo_pawn', [pawnLathe, pawnCollar], scene);
+    const pawnHead = BABYLON.MeshBuilder.CreateSphere('pawn_head', {
+        diameter: 0.37, segments: Math.max(24, seg)
+    }, scene);
+    pawnHead.position.y = 0.785;
+    const pawn = merge(BABYLON, 'geo_pawn', [pawnLathe, pawnHead], scene);
 
     // 2. TORRE (Rook)
     const rookLathe = lathe(BABYLON, 'rook_base', [
@@ -201,37 +204,43 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
         ivory.albedoTexture = tex.ivory.map;
         ivory.bumpTexture = tex.ivory.normalMap;
     }
-    ivory.metallic = 0.02;
-    ivory.roughness = 0.38;
+    ivory.metallic = 0;
+    ivory.roughness = 0.48;
     if (tex.ivory?.roughnessMap) {
         ivory.metallicTexture = tex.ivory.roughnessMap;
+        ivory.useRoughnessFromMetallicTextureAlpha = false;
         ivory.useRoughnessFromMetallicTextureGreen = true;
         ivory.useMetallnessFromMetallicTextureBlue = false;
     }
     ivory.clearCoat.isEnabled = true;
-    ivory.clearCoat.intensity = 0.32;
-    ivory.clearCoat.roughness = 0.2;
-    ivory.sheen.isEnabled = true;
+    ivory.clearCoat.intensity = 0.1;
+    ivory.clearCoat.roughness = 0.42;
+    ivory.sheen.isEnabled = false;
+    ivory.environmentIntensity = 0.48;
+    ivory.enableSpecularAntiAliasing = true;
     ivory.sheen.intensity = 0.35;
     ivory.sheen.color = new BABYLON.Color3(0.95, 0.88, 0.78);
 
     const ebony = new BABYLON.PBRMaterial('mat_ebony', scene);
-    ebony.albedoColor = new BABYLON.Color3(0.72, 0.68, 0.62);
+    ebony.albedoColor = new BABYLON.Color3(0.95, 0.93, 0.90);
     if (tex.ebony) {
         ebony.albedoTexture = tex.ebony.map;
         ebony.bumpTexture = tex.ebony.normalMap;
     }
-    ebony.metallic = 0.05;
-    ebony.roughness = 0.3;
+    ebony.metallic = 0;
+    ebony.roughness = 0.48;
     if (tex.ebony?.roughnessMap) {
         ebony.metallicTexture = tex.ebony.roughnessMap;
+        ebony.useRoughnessFromMetallicTextureAlpha = false;
         ebony.useRoughnessFromMetallicTextureGreen = true;
         ebony.useMetallnessFromMetallicTextureBlue = false;
     }
     ebony.clearCoat.isEnabled = true;
-    ebony.clearCoat.intensity = 0.42;
-    ebony.clearCoat.roughness = 0.22;
-    ebony.sheen.isEnabled = true;
+    ebony.clearCoat.intensity = 0.16;
+    ebony.clearCoat.roughness = 0.4;
+    ebony.sheen.isEnabled = false;
+    ebony.environmentIntensity = 0.68;
+    ebony.enableSpecularAntiAliasing = true;
     ebony.sheen.intensity = 0.3;
     ebony.sheen.color = new BABYLON.Color3(0.25, 0.14, 0.09);
 
@@ -299,18 +308,29 @@ export class PieceFactory {
     async loadSculpted() {
         const [layoutResponse, binaryResponse] = await Promise.all([
             fetch(new URL('../assets/staunton.json', import.meta.url)),
-            fetch(new URL('../assets/staunton.bin', import.meta.url))
+            fetch(new URL('../assets/staunton.bin.gz', import.meta.url))
         ]);
         if (!layoutResponse.ok || !binaryResponse.ok) return;
-        const layout = await layoutResponse.json(), binary = await binaryResponse.arrayBuffer();
-        for (const [kind, attributes] of Object.entries(layout)) {
+        const layout = await layoutResponse.json();
+        const binary = await new Response(binaryResponse.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+        for (const [kind, attributes] of Object.entries(layout.pieces)) {
             const data = new this.BABYLON.VertexData();
-            for (const [name, [offset, length]] of Object.entries(attributes)) {
-                data[name] = name === 'indices' ? new Uint32Array(binary, offset, length) : new Float32Array(binary, offset, length);
+            for (const name of ['positions', 'normals', 'uvs', 'indices']) {
+                const [offset, length] = attributes[name];
+                const packed = name === 'normals' ? new Int16Array(binary, offset, length) : new Uint16Array(binary, offset, length);
+                if (name === 'indices') { data.indices = packed; continue; }
+                data[name] = new Float32Array(length);
+                for (let i = 0; i < length; i++) {
+                    data[name][i] = name === 'normals' ? packed[i] / 32767
+                        : name === 'positions' ? attributes.min[i % 3] + packed[i] / 65535 * attributes.extent[i % 3]
+                        : attributes.uvMin[i % 2] + packed[i] / 65535 * attributes.uvExtent[i % 2];
+                }
             }
-            for (let i = 0; i < data.indices.length; i += 3) [data.indices[i+1], data.indices[i+2]] = [data.indices[i+2], data.indices[i+1]];
             const mesh = new this.BABYLON.Mesh(`sculpted_${kind}`, this.scene);
             data.applyToMesh(mesh);
+            // O asset é glTF destro, assim como a cena. Inverter os índices
+            // expunha o interior do modelo e descartava sua superfície externa.
+            mesh.overrideMaterialSideOrientation = this.BABYLON.Material.CounterClockWiseSideOrientation;
             mesh.setEnabled(false); mesh.isVisible = false;
             this.prototypes[kind].dispose(); this.prototypes[kind] = mesh;
         }
@@ -332,6 +352,7 @@ export class PieceFactory {
         mesh.material = color === 'w' ? this.mats.w : this.mats.b;
         mesh.metadata = { kind: type, color };
         mesh.isPickable = true;
+        mesh.receiveShadows = true;
 
         if (type === 'n' && color === 'b') {
             mesh.rotation.y = Math.PI;

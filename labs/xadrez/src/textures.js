@@ -1,6 +1,6 @@
 /**
  * Texturas PBR procedurais — madeira, marfim, ébano, feltro e mármore para Babylon.js.
- * Sem arquivos externos: cada mapa é gerado em canvas e instanciado como BABYLON.Texture.
+ * Mapas locais de madeira fotografada e microtexturas determinísticas em canvas.
  */
 
 function canvas(w, h = w) {
@@ -22,8 +22,10 @@ function rng(seed = 1) {
 function toBabylonTexture(el, scene, { uScale = 1, vScale = 1 } = {}) {
     const BABYLON = window.BABYLON;
     if (!BABYLON) return null;
-    const url = el.toDataURL('image/png');
-    const tex = new BABYLON.Texture(url, scene, false, false);
+    // Upload direto: evita codificar e decodificar dezenas de PNGs no boot.
+    const tex = new BABYLON.DynamicTexture('surface', el, scene, true,
+        BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    tex.update(false);
     tex.uScale = uScale;
     tex.vScale = vScale;
     tex.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
@@ -73,64 +75,62 @@ function roughnessFrom(srcCtx, w, h, base = 0.35, contrast = 0.25) {
     return out;
 }
 
-function pack(scene, draw, { w = 512, strength = 1.8, roughBase = 0.32, roughContrast = 0.22, repeat = [1, 1] } = {}) {
+function pack(scene, draw, { w = 512, strength = 1.8, roughBase = 0.32, roughContrast = 0.22, repeat = [1, 1], roughness = false } = {}) {
     const el = canvas(w);
     const ctx = ctx2d(el);
     draw(ctx, w);
     const n = heightToNormal(ctx, w, w, strength);
-    const r = roughnessFrom(ctx, w, w, roughBase, roughContrast);
-    return {
+    const r = roughness ? roughnessFrom(ctx, w, w, roughBase, roughContrast) : null;
+    const maps = {
         map: toBabylonTexture(el, scene, { uScale: repeat[0], vScale: repeat[1] }),
         normalMap: toBabylonTexture(n, scene, { uScale: repeat[0], vScale: repeat[1] }),
-        roughnessMap: toBabylonTexture(r, scene, { uScale: repeat[0], vScale: repeat[1] })
+        roughnessMap: r ? toBabylonTexture(r, scene, { uScale: repeat[0], vScale: repeat[1] }) : null
     };
+    maps.normalMap.gammaSpace = false;
+    maps.normalMap.level = 0.2;
+    if (maps.roughnessMap) maps.roughnessMap.gammaSpace = false;
+    return maps;
 }
 
 function grain(ctx, w, rand, colorA, colorB, bands = 28) {
-    const g = ctx.createLinearGradient(0, 0, w, 0);
-    for (let i = 0; i <= bands; i++) {
-        const t = i / bands;
-        const wobble = (rand() - 0.5) * 0.08;
-        g.addColorStop(Math.min(1, Math.max(0, t + wobble)), rand() > 0.5 ? colorA : colorB);
+    const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    const a = rgb(colorA), b = rgb(colorB);
+    const image = ctx.createImageData(w, w);
+    // Veios longos com poros finos, sem os degraus de um gradiente em faixas.
+    for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) {
+        const warp = x + 3 * Math.sin(y / w * Math.PI * 2) + Math.sin(y / w * Math.PI * 6);
+        const vein = Math.sin(warp / w * Math.PI * bands * 2);
+        const pore = Math.pow(Math.abs(Math.sin(warp * 1.31)), 24) * 3;
+        const mix = 0.5 + vein * 0.16 + Math.sin(warp * 0.17) * 0.1;
+        const noise = (rand() - 0.5) * 3 - pore;
+        const i = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) image.data[i + c] = a[c] * mix + b[c] * (1 - mix) + noise;
+        image.data[i + 3] = 255;
     }
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, w);
-    for (let i = 0; i < w * 1.5; i++) {
-        const x = rand() * w;
-        ctx.strokeStyle = `rgba(0,0,0,${0.008 + rand() * 0.016})`;
-        ctx.lineWidth = 0.6 + rand();
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.bezierCurveTo(x + (rand() - 0.5) * 18, w * 0.33, x + (rand() - 0.5) * 18, w * 0.66, x + (rand() - 0.5) * 10, w);
-        ctx.stroke();
-    }
+    ctx.putImageData(image, 0, 0);
 }
 
 export function createTextures(scene) {
     const maple = pack(scene, (ctx, w) => {
         grain(ctx, w, rng(11), '#d8c9ac', '#c7b795', 22);
-    }, { repeat: [1, 1], roughBase: 0.28, strength: 1.4 });
+    }, { repeat: [1, 1], roughBase: 0.76, strength: 0.4 });
 
     const walnut = pack(scene, (ctx, w) => {
         grain(ctx, w, rng(29), '#735744', '#604936', 18);
-    }, { repeat: [1, 1], roughBase: 0.34, strength: 1.6 });
-
-    const mahogany = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(71), '#554033', '#48392e', 16);
-    }, { repeat: [3, 3], roughBase: 0.22, strength: 1.2 });
+    }, { repeat: [1, 1], roughBase: 0.8, strength: 0.5 });
 
     const ebony = pack(scene, (ctx, w) => {
         const rand = rng(101);
         ctx.fillStyle = '#1a120f';
         ctx.fillRect(0, 0, w, w);
-        grain(ctx, w, rand, '#241610', '#0e0a08', 12);
+        grain(ctx, w, rand, '#38322c', '#24221f', 12);
         ctx.globalAlpha = 0.18;
         ctx.fillStyle = '#4a2818';
         for (let i = 0; i < 40; i++) {
             ctx.fillRect(rand() * w, 0, 1 + rand() * 2, w);
         }
         ctx.globalAlpha = 1;
-    }, { repeat: [2, 2], roughBase: 0.18, roughContrast: 0.15, strength: 1.1 });
+    }, { w: 256, roughness: true, repeat: [1, 1], roughBase: 0.72, roughContrast: 0.08, strength: 0.3 });
 
     const ivory = pack(scene, (ctx, w) => {
         const rand = rng(53);
@@ -149,11 +149,11 @@ export function createTextures(scene) {
             ctx.bezierCurveTo(w * 0.3, y + (rand() - 0.5) * 40, w * 0.7, y + (rand() - 0.5) * 40, w, y + (rand() - 0.5) * 20);
             ctx.stroke();
         }
-    }, { repeat: [2, 2], roughBase: 0.28, strength: 0.8 });
+    }, { w: 256, roughness: true, repeat: [1, 1], roughBase: 0.8, strength: 0.2 });
 
     const felt = pack(scene, (ctx, w) => {
         const rand = rng(7);
-        ctx.fillStyle = '#1e6840';
+        ctx.fillStyle = '#85817a';
         ctx.fillRect(0, 0, w, w);
         const img = ctx.getImageData(0, 0, w, w);
         const d = img.data;
@@ -164,37 +164,13 @@ export function createTextures(scene) {
             d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + noise));
         }
         ctx.putImageData(img, 0, 0);
-    }, { repeat: [4, 4], roughBase: 0.95, strength: 0.4 });
-
-    const marble = pack(scene, (ctx, w) => {
-        const rand = rng(88);
-        // Pedra grafite: o salão deve enquadrar a mesa sem competir com as
-        // casas claras. As veias continuam legíveis mesmo em qualidade baixa.
-        ctx.fillStyle = '#30363a';
-        ctx.fillRect(0, 0, w, w);
-        for (let v = 0; v < 14; v++) {
-            ctx.strokeStyle = `rgba(190,185,174,${0.08 + rand() * 0.10})`;
-            ctx.lineWidth = 1 + rand() * 3.5;
-            ctx.beginPath();
-            let x = rand() * w;
-            let y = rand() * w;
-            ctx.moveTo(x, y);
-            for (let step = 0; step < 5; step++) {
-                x += (rand() - 0.5) * 160;
-                y += (rand() - 0.5) * 160;
-                ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-        }
-    }, { repeat: [2, 2], roughBase: 0.12, strength: 0.6 });
+    }, { w: 256, repeat: [4, 4], roughBase: 0.95, strength: 0.4 });
 
     const photographed = {
         map: new window.BABYLON.Texture(new URL('../assets/wood.jpg', import.meta.url).href, scene),
-        normalMap: new window.BABYLON.Texture(new URL('../assets/wood-normal.jpg', import.meta.url).href, scene),
-        roughnessMap: new window.BABYLON.Texture(new URL('../assets/wood-roughness.jpg', import.meta.url).href, scene)
+        normalMap: new window.BABYLON.Texture(new URL('../assets/wood-normal.jpg', import.meta.url).href, scene)
     };
     photographed.normalMap.gammaSpace = false;
     photographed.normalMap.level = 0.25;
-    photographed.roughnessMap.gammaSpace = false;
-    return { maple, walnut, mahogany: photographed, ebony, ivory, felt, marble };
+    return { maple, walnut, mahogany: photographed, ebony, ivory, felt };
 }
