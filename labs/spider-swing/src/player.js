@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { PHYS, CAMERA } from './config.js';
 import { clamp, damp } from './utils.js';
-import { buildHero, poseHero } from './hero.js';
+import { buildHero, poseHero } from './hero.js?v=2';
 import { SilkWeb } from './web.js';
 
 const WISH = new THREE.Vector3();

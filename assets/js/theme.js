@@ -24,7 +24,18 @@
     if (!selector) return;
     const meta = typeof selector === 'string' ? document.querySelector(selector) : selector;
     if (meta) {
-      meta.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#fafbfc');
+      const original = meta.dataset.themeColor || meta.getAttribute('content') || '';
+      if (!meta.dataset.themeColor && original) meta.dataset.themeColor = original;
+
+      const explicit = theme === 'dark'
+        ? meta.dataset.themeColorDark
+        : meta.dataset.themeColorLight;
+      const color = explicit
+        || (original && original.toLowerCase() !== '#fafbfc'
+          ? original
+          : theme === 'dark' ? '#0a0a0a' : '#fafbfc');
+
+      meta.setAttribute('content', color);
     }
   }
 

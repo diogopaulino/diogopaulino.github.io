@@ -2,7 +2,7 @@
     'use strict';
 
     const html = document.documentElement;
-    const THEME_CORE_URL = '/assets/js/theme.js';
+    const THEME_CORE_URL = '/assets/js/theme.js?v=2';
     const SLOT_SELECTOR = '[data-slot]';
     const HEADER_SELECTOR = '[data-lab-header]';
     const FOOTER_SELECTOR = '[data-lab-footer]';
@@ -116,9 +116,9 @@
         if (!meta) {
             meta = document.createElement('meta');
             meta.name = 'theme-color';
+            meta.content = html.getAttribute('data-theme') === 'dark' ? '#0a0a0a' : '#fafbfc';
             document.head.appendChild(meta);
         }
-        meta.content = html.getAttribute('data-theme') === 'dark' ? '#0a0a0a' : '#fafbfc';
         return meta;
     }
 
@@ -332,6 +332,12 @@
 
         muted = readMuted();
 
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && ctx?.state === 'running') {
+                void ctx.suspend().catch(() => {});
+            }
+        });
+
         return Object.freeze({
             configure,
             tone,
@@ -458,9 +464,12 @@
             let wantsRun = false;
 
             function tick(now) {
-                if (!wantsRun || document.hidden) return;
+                if (!wantsRun || document.hidden) {
+                    id = null;
+                    return;
+                }
                 onFrame(now);
-                id = requestAnimationFrame(tick);
+                id = wantsRun && !document.hidden ? requestAnimationFrame(tick) : null;
             }
 
             function start() {
@@ -525,10 +534,14 @@
         function bindPixiTicker(app, options) {
             if (!app || !app.ticker) return () => {};
             const mode = options && options.onHidden === 'pause' ? 'pause' : 'stop';
+            let resumeWhenVisible = false;
             return VisibilityAPI.onChange((hidden) => {
                 if (hidden) {
+                    resumeWhenVisible = Boolean(app.ticker.started);
                     if (mode === 'pause' && typeof app.ticker.pause === 'function') app.ticker.pause();
                     else app.ticker.stop();
+                } else if (!resumeWhenVisible) {
+                    return;
                 } else if (mode === 'pause' && typeof app.ticker.resume === 'function') {
                     app.ticker.resume();
                 } else {

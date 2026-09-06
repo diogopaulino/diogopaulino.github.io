@@ -212,11 +212,11 @@ class JungleRun {
 
             // Load all textures (Realistic Assets + Dedicated Climbing Sprites & Tree Trunk)
             const textures = await Promise.all([
-                PIXI.Assets.load('./assets/explorer-run.png'),
-                PIXI.Assets.load('./assets/explorer-jump.png'),
-                PIXI.Assets.load('./assets/explorer-run-contact.png'),
+                PIXI.Assets.load('./assets/explorer-run.webp'),
+                PIXI.Assets.load('./assets/explorer-jump.webp'),
+                PIXI.Assets.load('./assets/explorer-run-contact.webp'),
                 PIXI.Assets.load('./assets/explorer-run-down.png'),
-                PIXI.Assets.load('./assets/explorer-run-passing.png'),
+                PIXI.Assets.load('./assets/explorer-run-passing.webp'),
                 PIXI.Assets.load('./assets/obstacle-crocodile.png'),
                 PIXI.Assets.load('./assets/obstacle-log.png'),
                 PIXI.Assets.load('./assets/obstacle-ruin.png'),
@@ -227,8 +227,8 @@ class JungleRun {
                 PIXI.Assets.load('./assets/background-layer1.png'),
                 PIXI.Assets.load('./assets/background-layer2.png'),
                 PIXI.Assets.load('./assets/background-layer3.png'),
-                PIXI.Assets.load('./assets/explorer-climb-1.png'),
-                PIXI.Assets.load('./assets/explorer-climb-2.png'),
+                PIXI.Assets.load('./assets/explorer-climb-1.webp'),
+                PIXI.Assets.load('./assets/explorer-climb-2.webp'),
                 PIXI.Assets.load('./assets/tree-trunk.png')
             ]);
 

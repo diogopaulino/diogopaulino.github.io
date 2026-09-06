@@ -11,7 +11,7 @@ import { CombatAudio } from './audio.js';
 import { heightAt, buildCombatWorld } from './world.js';
 import { setupAtmosphere } from './sky.js';
 import { clamp } from './utils.js';
-import { loadAssets } from './models.js';
+import { loadAssets } from './models.js?v=2';
 
 class HonorFront {
     constructor() {

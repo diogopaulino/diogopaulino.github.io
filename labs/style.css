@@ -256,6 +256,11 @@
   overflow: hidden;
 }
 
+.projects-grid .project-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
 .project-card[hidden] {
   display: none;
 }
