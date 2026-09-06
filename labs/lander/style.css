@@ -224,16 +224,24 @@ canvas {
     white-space: nowrap;
 }
 
-/* On-Screen Controls - Strictly matching image */
+/* On-Screen Controls — só em ponteiro grosso; no desktop o teclado basta. */
 .onscreen-controls {
     position: absolute;
-    top: 220px;
-    right: 74px;
-    display: flex;
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: 5px;
     pointer-events: auto;
+    z-index: 4;
+}
+
+@media (pointer: coarse) {
+    .onscreen-controls {
+        display: flex;
+    }
 }
 
 .onscreen-controls .row {
@@ -242,8 +250,10 @@ canvas {
 }
 
 .control-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     background-color: #c0c0c0;
     border-top: 2px solid #fff;
     border-left: 2px solid #fff;
@@ -366,6 +376,69 @@ canvas {
 
 .hidden {
     display: none;
+}
+
+@media (max-width: 768px) {
+    .game-area {
+        padding: 0;
+    }
+
+    .win31-window {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .hud-stats {
+        font-size: 14px;
+        min-width: 168px;
+        right: 8px;
+        top: 8px;
+    }
+
+    .stat-row.meta {
+        font-size: 13px;
+    }
+
+    .flight-status {
+        font-size: 11px;
+    }
+
+    .safe-readout {
+        display: none;
+    }
+
+    .onscreen-controls {
+        top: auto;
+        bottom: max(2px, env(safe-area-inset-bottom, 0px));
+        right: max(14px, env(safe-area-inset-right, 0px));
+    }
+
+    .control-btn {
+        height: 48px;
+        width: 48px;
+    }
+
+    .center-msg {
+        font-size: 20px;
+    }
+
+    .center-msg > strong {
+        font-size: 30px;
+    }
+
+    .center-msg small {
+        font-size: 13px;
+    }
+
+    .start-button {
+        font-size: 18px;
+    }
+
+    .game-viewport {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+    }
 }
 
 @media (max-width: 600px) {

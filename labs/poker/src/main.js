@@ -42,6 +42,11 @@ const state = {
 function init() {
     state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10 });
     bindUi();
+    const mute = $('#muteBtn');
+    if (mute) {
+        mute.setAttribute('aria-pressed', String(isMuted()));
+        mute.textContent = isMuted() ? 'Mudo' : 'Som';
+    }
     renderAll();
     showIntro(true);
 }

@@ -37,6 +37,9 @@ export class Menu {
                 const q = QUALITY[e.target.value];
                 if (q) {
                     game.quality = q;
+                    const pr = Math.min(window.devicePixelRatio || 1, q.pixelRatio || 1.5);
+                    game.engine?.setHardwareScalingLevel(1 / pr);
+                    if (game.camera) game.camera.maxZ = q.far || 500;
                     this._saveSettings();
                 }
             });

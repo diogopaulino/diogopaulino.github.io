@@ -1059,8 +1059,9 @@ function mountAudioToggle() {
 }
 mountAudioToggle();
 
-// Mostra os controles de toque só onde eles servem.
-if (touchLayer && !window.matchMedia('(pointer: fine)').matches) touchLayer.hidden = false;
+// Mostra os controles de toque só em ponteiro grosso (celular/tablet).
+// Em VMs/desktop sem `(pointer: fine)` o teste antigo `!fine` exibia pads à toa.
+if (touchLayer) touchLayer.hidden = !window.matchMedia('(pointer: coarse)').matches;
 
 resetGame();
 resize();

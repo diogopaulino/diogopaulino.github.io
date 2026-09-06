@@ -2,8 +2,26 @@
  * Sons leves via Web Audio API — sem arquivos externos.
  */
 
+const MUTE_KEY = 'poker:muted';
+
 let ctx = null;
-let muted = false;
+let muted = readMuted();
+
+function readMuted() {
+    try {
+        return localStorage.getItem(MUTE_KEY) === '1';
+    } catch (err) {
+        return false;
+    }
+}
+
+function persistMuted(value) {
+    try {
+        localStorage.setItem(MUTE_KEY, value ? '1' : '0');
+    } catch (err) {
+        /* Storage pode falhar em modo privado. */
+    }
+}
 
 function ac() {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -13,6 +31,7 @@ function ac() {
 
 export function setMuted(v) {
     muted = !!v;
+    persistMuted(muted);
 }
 
 export function isMuted() {

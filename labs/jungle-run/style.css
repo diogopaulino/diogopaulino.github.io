@@ -681,6 +681,16 @@ kbd {
     pointer-events: none;
 }
 
+.mobile-hint {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    .mobile-hint {
+        display: inline;
+    }
+}
+
 .control-left,
 .control-climb {
     display: flex;

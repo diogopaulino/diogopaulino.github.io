@@ -122,7 +122,13 @@ class F1GrandPrix {
         document.getElementById('loadingOverlay').hidden = true;
         const menu = document.getElementById('menuOverlay');
         if (menu) menu.classList.add('is-visible');
+        // state interno precisa bater com o Enter do menu (dataset sozinho não basta).
+        this.state = 'menu';
         document.body.dataset.state = 'menu';
+
+        // Cap de DPR: adaptToDeviceRatio sozinho derrete GPU em telas 2x/3x.
+        const pr = Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.1 : 1.5);
+        this.engine.setHardwareScalingLevel(1 / pr);
 
         this._renderLoop = () => {
             this.frame();
@@ -149,11 +155,13 @@ class F1GrandPrix {
     }
 
     startRace() {
+        if (this.state === 'boot' || !this.vehicle) return;
         this.state = 'racing';
         const menu = document.getElementById('menuOverlay');
         if (menu) menu.classList.remove('is-visible');
         document.getElementById('hud').hidden = false;
-        document.getElementById('touchControls').hidden = !('ontouchstart' in window);
+        const coarse = window.matchMedia('(pointer: coarse)').matches;
+        document.getElementById('touchControls').hidden = !coarse;
         document.body.dataset.state = 'racing';
 
         this.vehicle.reset();

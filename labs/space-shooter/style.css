@@ -681,3 +681,49 @@ footer a {
         right: max(14px, env(safe-area-inset-right, 0px));
     }
 }
+
+/* Pads só em toque real — em desktop estreito o teclado basta. */
+@media (pointer: fine) {
+    .touch-controls {
+        display: none !important;
+    }
+}
+
+@media (pointer: coarse) {
+    .touch-controls {
+        position: absolute;
+        z-index: 3;
+        left: max(14px, env(safe-area-inset-left, 0px));
+        right: max(14px, env(safe-area-inset-right, 0px));
+        bottom: max(14px, env(safe-area-inset-bottom, 0px));
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        pointer-events: none;
+    }
+
+    .touch-controls button {
+        pointer-events: auto;
+        touch-action: none;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px))
+            max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+        overflow-x: clip;
+    }
+
+    .game-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .mission-panel,
+    .quick-controls {
+        display: none;
+    }
+}

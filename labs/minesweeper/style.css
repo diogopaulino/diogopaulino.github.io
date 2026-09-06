@@ -32,7 +32,7 @@ body {
     box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
     min-width: 200px;
     max-width: min(100%, 100vw - 1.5rem);
-    overflow-x: auto;
+    overflow-x: clip;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -357,4 +357,24 @@ body {
 @media (max-width: 480px) {
     .window { max-width: 100%; overflow-x: auto; }
     .board { max-width: 100%; }
+}
+
+
+/* agent-responsive */
+@media (max-width: 768px) {
+    :root { --cell-size: clamp(14px, 5.2vw, 22px); }
+    .window {
+        width: min(100%, 100vw);
+        max-width: 100%;
+        overflow-x: clip;
+    }
+    .face-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .title-bar .title { font-size: 12px; }
+    .window { margin: 0 auto; }
 }

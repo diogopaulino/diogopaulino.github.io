@@ -292,6 +292,12 @@ body {
 /* Com mouse/teclado os botões de toque só atrapalham a vista. */
 @media (pointer: fine) {
     .touch-controls {
-        display: none;
+        display: none !important;
+    }
+}
+
+@media (pointer: coarse) {
+    .touch-controls:not([hidden]) {
+        display: flex;
     }
 }

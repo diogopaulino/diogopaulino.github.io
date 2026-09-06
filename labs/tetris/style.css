@@ -543,3 +543,28 @@ body {
         display: none;
     }
 }
+
+@media (max-width: 768px) {
+    body {
+        overflow-x: clip;
+        padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+        padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    }
+
+    .instructions {
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        padding-inline: 0.75rem;
+    }
+
+    .game-boy {
+        width: min(320px, 100%);
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .game-boy {
+        width: min(560px, 100%);
+        max-width: 100%;
+    }
+}

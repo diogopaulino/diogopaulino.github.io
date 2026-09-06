@@ -2,10 +2,12 @@
  * Céu costeiro de amanhecer nublado e iluminação para Honor Front em Babylon.js.
  */
 
-export function setupAtmosphere(BABYLON, scene) {
+export function setupAtmosphere(BABYLON, scene, quality = null) {
+    const q = quality || { shadows: true, shadowSize: 2048, fog: 0.0075 };
+
     // Neblina de praia e fumaça
     scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0075;
+    scene.fogDensity = q.fog ?? 0.0075;
     scene.fogColor = new BABYLON.Color3(0.55, 0.60, 0.65);
 
     // Domo do céu
@@ -29,8 +31,11 @@ export function setupAtmosphere(BABYLON, scene) {
     sun.diffuse = new BABYLON.Color3(1.0, 0.88, 0.72);
     sun.intensity = 1.4;
 
-    const shadowGen = new BABYLON.ShadowGenerator(2048, sun);
-    shadowGen.usePoissonSampling = true;
+    let shadowGen = null;
+    if (q.shadows !== false) {
+        shadowGen = new BABYLON.ShadowGenerator(q.shadowSize || 1024, sun);
+        shadowGen.usePoissonSampling = true;
+    }
 
     return { hemi, sun, shadowGen };
 }

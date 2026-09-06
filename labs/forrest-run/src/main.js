@@ -417,19 +417,24 @@ class Game {
     }
     updateCamera(dt, instant) {
         const rig = CAMERAS[this.cameraMode];
-        const targetPos = new BABYLON.Vector3(
+        if (!this._camTargetPos) {
+            this._camTargetPos = new BABYLON.Vector3();
+            this._camTargetLook = new BABYLON.Vector3();
+            this._camFinalLook = new BABYLON.Vector3();
+        }
+        this._camTargetPos.copyFromFloats(
             this.player.x + rig.offset.x,
             this.player.y + rig.offset.y,
             this.player.z + rig.offset.z
         );
-        const targetLook = new BABYLON.Vector3(
+        this._camTargetLook.copyFromFloats(
             this.player.x + rig.look.x,
             this.player.y + rig.look.y,
             this.player.z + rig.look.z
         );
         const k = instant ? 1.0 : 1.0 - Math.exp(-dt * (this.cameraMode === 2 ? 12 : 6.5));
-        this.camPos = BABYLON.Vector3.Lerp(this.camPos, targetPos, k);
-        this.camLook = BABYLON.Vector3.Lerp(this.camLook, targetLook, k);
+        this.camPos = BABYLON.Vector3.Lerp(this.camPos, this._camTargetPos, k);
+        this.camLook = BABYLON.Vector3.Lerp(this.camLook, this._camTargetLook, k);
 
         this.cameraShake = Math.max(0, this.cameraShake - dt * 2.5);
         const shakeX = (Math.random() - 0.5) * this.cameraShake * 0.5;
@@ -439,10 +444,10 @@ class Game {
         this.camera.position.x += shakeX;
         this.camera.position.y += shakeY;
 
-        const finalLook = this.camLook.clone();
-        finalLook.x += shakeX;
-        finalLook.y += shakeY;
-        this.camera.setTarget(finalLook);
+        this._camFinalLook.copyFrom(this.camLook);
+        this._camFinalLook.x += shakeX;
+        this._camFinalLook.y += shakeY;
+        this.camera.setTarget(this._camFinalLook);
 
         const targetFov = 0.88 + (this.player.speed / 30) * 0.12;
         this.camera.fov = damp(this.camera.fov, targetFov, 4.0, dt);

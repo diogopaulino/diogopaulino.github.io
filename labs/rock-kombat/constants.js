@@ -6,8 +6,10 @@
 export const W = 1280;
 export const H = 720;
 export const GROUND = 620;
-export const LEFT_WALL = 160;
-export const RIGHT_WALL = 1120;
+/* Sprites têm ~405px de largura visual: paredes internas evitam o corpo
+   sumir pela beirada quando a câmera acompanha o duelo. */
+export const LEFT_WALL = 210;
+export const RIGHT_WALL = 1070;
 
 export const STEP = 1000 / 60;
 export const INPUT_BUFFER = 10;
