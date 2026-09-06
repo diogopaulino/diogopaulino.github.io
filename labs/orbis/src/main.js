@@ -102,7 +102,8 @@ class Orbis {
         this.renderer.compile(this.scene, this.camera);
         this.hideLoading();
 
-        window.addEventListener('resize', () => this.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
+        else window.addEventListener('resize', () => this.resize());
         this._renderLoop = () => this.frame();
         if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
         else this.renderer.setAnimationLoop(this._renderLoop);

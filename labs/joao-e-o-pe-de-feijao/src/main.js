@@ -109,7 +109,8 @@ class Game {
         this.player.setVisible(false);
 
         this._bindUi();
-        window.addEventListener('resize', () => this._resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this._resize());
+        else window.addEventListener('resize', () => this._resize());
 
         await this._loadChapter(0, { menu: true });
         this.hud.setLoading(1, 'O conto espera.');

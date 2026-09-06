@@ -1004,10 +1004,16 @@
         else startLoop();
     });
 
-    const themeObs = new MutationObserver(function () {
-        applyThemeVars();
-    });
-    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    if (window.LabTheme) {
+        LabTheme.onChange(function () {
+            applyThemeVars();
+        });
+    } else {
+        const themeObs = new MutationObserver(function () {
+            applyThemeVars();
+        });
+        themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
 
     finePointer = window.matchMedia('(pointer: fine)').matches;
     applyThemeVars();

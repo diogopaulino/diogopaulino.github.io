@@ -96,9 +96,11 @@ export class Game {
         this.pauseMenu = new PauseMenu(this);
 
         // Redimensionamento
-        window.addEventListener('resize', () => {
+        const onResize = () => {
             this.engine.resize();
-        });
+        };
+        if (window.LabRuntime) LabRuntime.debounceResize(onResize);
+        else window.addEventListener('resize', onResize);
 
         await this.assets.preloadEssential((p) => {
             this.menu.setProgress(p);
