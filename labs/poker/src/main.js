@@ -1,5 +1,6 @@
 /**
  * Poker Lab — Texas Hold'em heads-up vs IA + academia.
+ * UI hiper-realista: mesa 3D, fichas, flip de cartas.
  */
 
 import {
@@ -18,7 +19,8 @@ import {
 } from './engine.js';
 import { aiThinkDelay, chooseAction } from './ai.js';
 import { HAND_RANK_CHART, LESSONS, liveTip } from './coach.js';
-import { renderCards } from './cards.js';
+import { cardElement, renderCards, revealCards } from './cards.js';
+import { flyChips, renderChipStack } from './chips.js';
 import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin } from './audio.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -31,7 +33,10 @@ const state = {
     busy: false,
     lessonIndex: 0,
     betAmount: 0,
-    showAiCards: false
+    showAiCards: false,
+    prevBets: [0, 0],
+    prevPot: 0,
+    aiRevealed: false
 };
 
 function init() {
@@ -78,6 +83,7 @@ function bindUi() {
 
     $('#difficulty')?.addEventListener('change', (e) => {
         state.difficulty = e.target.value;
+        renderBadges();
     });
 
     $('#coachToggle')?.addEventListener('click', () => {
@@ -116,6 +122,25 @@ function bindUi() {
         if (e.key === 'm' || e.key === 'M') $('#muteBtn')?.click();
         if (e.key === 'n' || e.key === 'N') $('#btnNewHand')?.click();
     });
+
+    // Micro parallax leve na mesa (desktop)
+    const stage = $('.table-stage');
+    if (stage && matchMedia('(pointer: fine)').matches) {
+        stage.addEventListener('pointermove', (e) => {
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const r = stage.getBoundingClientRect();
+            const x = ((e.clientX - r.left) / r.width - 0.5) * 4;
+            const y = ((e.clientY - r.top) / r.height - 0.5) * 3;
+            const scene = $('.table-scene');
+            if (scene) {
+                scene.style.transform = `rotateX(${8 - y}deg) rotateY(${x}deg) scale(0.985)`;
+            }
+        });
+        stage.addEventListener('pointerleave', () => {
+            const scene = $('.table-scene');
+            if (scene) scene.style.transform = '';
+        });
+    }
 }
 
 function showIntro(show) {
@@ -161,9 +186,12 @@ function dealNewHand() {
     }
     startHand(state.match);
     state.showAiCards = false;
+    state.aiRevealed = false;
     state.busy = false;
+    state.prevBets = [0, 0];
+    state.prevPot = state.match.hand?.pot || 0;
     sfxDeal();
-    renderAll();
+    renderAll({ animateChips: true });
     maybeAiTurn();
 }
 
@@ -188,8 +216,15 @@ async function onActionClick(e) {
     if (type === 'fold') sfxFold();
     else sfxChip();
 
+    const beforeBet = state.match.hand?.streetContrib[0] || 0;
     const result = applyAction(state.match, { type, amount });
     if (!result.ok) return;
+
+    const afterBet = state.match.hand?.streetContrib[0] || 0;
+    const delta = Math.max(0, afterBet - beforeBet);
+    if (delta > 0 && type !== 'fold') {
+        await animateBetFlight(0, delta);
+    }
 
     renderAll();
     if (result.handOver) {
@@ -204,16 +239,12 @@ async function maybeAiTurn() {
     const h = match.hand;
     if (!h || h.street === STREET.DONE) return;
     if (h.toAct === match.heroSeat) return;
-    if (h.folded[h.toAct] || (h.allIn[h.toAct] && h.streetContrib[h.toAct] >= h.currentBet)) {
-        // shouldn't happen often
-    }
 
     state.busy = true;
     renderActions();
     setStatus('Dealer IA pensa…');
     await sleep(aiThinkDelay(state.difficulty));
 
-    // Loop while AI to act (e.g. after street advance if somehow)
     while (
         match.hand &&
         match.hand.street !== STREET.DONE &&
@@ -224,7 +255,16 @@ async function maybeAiTurn() {
         if (!action) break;
         if (action.type === 'fold') sfxFold();
         else sfxChip();
+
+        const seat = match.hand.toAct;
+        const beforeBet = match.hand.streetContrib[seat] || 0;
         const result = applyAction(match, action);
+        const afterBet = match.hand?.streetContrib[seat] || 0;
+        const delta = Math.max(0, afterBet - beforeBet);
+        if (delta > 0 && action.type !== 'fold') {
+            await animateBetFlight(seat, delta);
+        }
+
         renderAll();
         if (result.handOver) {
             state.busy = false;
@@ -233,7 +273,6 @@ async function maybeAiTurn() {
         }
         if (match.hand.toAct === match.heroSeat) break;
         if (match.hand.allIn[0] || match.hand.allIn[1]) {
-            // runout handled inside engine
             if (match.hand.street === STREET.DONE) {
                 state.busy = false;
                 onHandOver();
@@ -247,11 +286,19 @@ async function maybeAiTurn() {
     renderAll();
 }
 
+async function animateBetFlight(seat, amount) {
+    const from = seat === 0 ? $('#heroChipStack') : $('#aiChipStack');
+    const to = $('#potChips');
+    // Garante stack visual na origem antes do voo
+    renderChipStack(from, Math.max(amount, 1));
+    await flyChips(from, to, amount, { count: Math.min(5, Math.max(2, Math.ceil(amount / 40))) });
+}
+
 function onHandOver() {
     state.showAiCards = true;
     const r = state.match.lastResult;
     if (r?.winners?.includes(0)) sfxWin();
-    renderAll();
+    renderAll({ revealAi: true });
 
     if (!canContinue(state.match)) {
         const heroWins = state.match.stacks[0] > 0;
@@ -301,11 +348,12 @@ function onHint() {
     sfxClick();
 }
 
-function renderAll() {
+function renderAll(opts = {}) {
     renderStacks();
     renderBoard();
-    renderHoles();
+    renderHoles(opts);
     renderPot();
+    renderChipPiles();
     renderActions();
     renderLog();
     renderBadges();
@@ -340,12 +388,21 @@ function renderStacks() {
     $('#aiBlind').textContent = aiBlind;
 }
 
+function renderChipPiles() {
+    const h = state.match.hand;
+    const heroBet = h?.streetContrib[0] || 0;
+    const aiBet = h?.streetContrib[1] || 0;
+    const pot = h?.pot || 0;
+    renderChipStack($('#heroChipStack'), heroBet);
+    renderChipStack($('#aiChipStack'), aiBet);
+    renderChipStack($('#potChips'), pot);
+}
+
 function renderBoard() {
     const board = $('#board');
     const h = state.match.hand;
     const cards = h?.board || [];
     renderCards(board, cards, { baseDelay: 40 });
-    // Placeholders até 5
     for (let i = cards.length; i < 5; i++) {
         const ph = document.createElement('div');
         ph.className = 'card card-slot';
@@ -366,7 +423,7 @@ function streetName(s) {
     }[s] || '—';
 }
 
-function renderHoles() {
+function renderHoles(opts = {}) {
     const h = state.match.hand;
     const hero = h?.holes[0] || [];
     const ai = h?.holes[1] || [];
@@ -374,19 +431,21 @@ function renderHoles() {
 
     const reveal = state.showAiCards || (h && h.showdown) || (h && h.street === STREET.DONE && h.winners);
     if (reveal && ai.length) {
-        renderCards($('#aiCards'), ai, { baseDelay: 80 });
+        if (opts.revealAi && !state.aiRevealed) {
+            state.aiRevealed = true;
+            revealCards($('#aiCards'), ai);
+        } else {
+            renderCards($('#aiCards'), ai, { baseDelay: 80 });
+        }
     } else if (ai.length) {
-        renderCards($('#aiCards'), ['?', '?'], { faceDown: true });
-        // faceDown with fake ids
         const box = $('#aiCards');
         box.innerHTML = '';
-        box.appendChild(cardBack(0));
-        box.appendChild(cardBack(70));
+        box.appendChild(cardElement('?', { faceDown: true, dealDelay: 0 }));
+        box.appendChild(cardElement('?', { faceDown: true, dealDelay: 70 }));
     } else {
         $('#aiCards').innerHTML = '';
     }
 
-    // Hand label
     if (h && hero.length === 2) {
         if (h.board.length >= 3) {
             $('#heroHandName').textContent = describeHand(evaluateHand([...hero, ...h.board]));
@@ -397,15 +456,6 @@ function renderHoles() {
     } else {
         $('#heroHandName').textContent = '—';
     }
-}
-
-function cardBack(delay) {
-    const el = document.createElement('div');
-    el.className = 'card is-back';
-    el.style.setProperty('--deal-delay', `${delay}ms`);
-    el.innerHTML = '<div class="card-face card-back" aria-hidden="true"><i></i></div>';
-    el.setAttribute('aria-label', 'Carta fechada');
-    return el;
 }
 
 function renderPot() {
@@ -442,7 +492,7 @@ function renderActions() {
     let betOrRaise = legal.find((a) => a.type === 'bet' || a.type === 'raise');
 
     legal.forEach((a) => {
-        if (a.type === 'bet' || a.type === 'raise') return; // handled via confirm
+        if (a.type === 'bet' || a.type === 'raise') return;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `act-btn act-btn--${a.type}`;
@@ -473,7 +523,6 @@ function renderActions() {
         confirm.textContent = betOrRaise.type === 'bet' ? 'Apostar' : 'Aumentar';
         box.appendChild(confirm);
 
-        // Quick sizes
         const pot = h.pot;
         $$('.size-chip').forEach((chip) => {
             const frac = Number(chip.dataset.frac);

@@ -73,7 +73,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
-| ♠ **[Poker](https://diogopaulino.com.br/labs/poker/)** | Texas Hold'em heads-up — feltro, cartas realistas, Dealer IA e academia (ranking, blinds, pot odds) |
+| ♠ **[Poker](https://diogopaulino.com.br/labs/poker/)** | Texas Hold'em heads-up 3D — feltro texturizado, fichas, cartas com flip, Dealer IA e academia |
 | 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Plataforma 2D em canvas puro: colete estrelas Gemini, pule nos rivais ChatGPT e chegue à bandeira |
 | 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
