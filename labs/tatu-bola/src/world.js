@@ -178,7 +178,7 @@ export class World {
 
     _terrain() {
         const size = ISLAND.radius * 2.4;
-        const segs = 56;
+        const segs = 256;
         const geo = new THREE.PlaneGeometry(size, size, segs, segs);
         geo.rotateX(-Math.PI / 2);
         const pos = geo.attributes.position;
@@ -202,7 +202,7 @@ export class World {
         }
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
-        const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+        const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: false, roughness: 0.8, metalness: 0.1 });
         const land = new THREE.Mesh(geo, mat);
         land.receiveShadow = true;
         this.group.add(land);
@@ -221,16 +221,22 @@ export class World {
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(18, 18);
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.minFilter = THREE.LinearFilter;
         tex.colorSpace = THREE.SRGBColorSpace;
-        const mat = new THREE.MeshLambertMaterial({
-            map: tex,
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: 0x1e7ab8,
+            metalness: 0.9,
+            roughness: 0.05,
+            transmission: 0.8,
             transparent: true,
-            opacity: 0.64,
+            opacity: 0.9,
+            ior: 1.33,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.0,
             depthWrite: false
         });
-        const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160, 1, 1), mat);
+        const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160, 32, 32), mat);
         water.rotation.x = -Math.PI / 2;
         water.position.y = ISLAND.water;
         this.water = water;
