@@ -27,8 +27,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=13">
+  <link rel="stylesheet" href="style.css?v=6">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -63,15 +64,17 @@
   <main class="game-shell">
     <canvas id="renderCanvas" aria-label="Batalha medieval no pátio do castelo de Vardheim"></canvas>
 
-    <header class="topbar">
-      <a class="back-link" href="/labs/" aria-label="Voltar aos Labs">
-        <span aria-hidden="true">←</span><span>Labs</span>
-      </a>
-      <div class="brand"><i aria-hidden="true"></i><span>O Último Bastião</span></div>
-      <div class="top-actions">
-        <button id="soundButton" class="icon-button" type="button" aria-label="Alternar som" aria-pressed="true">♪</button>
-        <button id="pauseButton" class="icon-button" type="button" aria-label="Pausar jogo">Ⅱ</button>
-      </div>
+    <header data-lab-header data-title="O Último Bastião" data-back-label="Labs">
+      <template data-slot="logo">
+        <div class="app-logo">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>O Último Bastião</span>
+        </div>
+      </template>
+      <template data-slot="actions">
+        <button id="soundButton" class="lab-icon-btn" type="button" aria-label="Alternar som" aria-pressed="true">♪</button>
+        <button id="pauseButton" class="lab-icon-btn" type="button" aria-label="Pausar jogo">Ⅱ</button>
+      </template>
     </header>
 
     <section id="hud" class="hud" hidden aria-label="Estado da batalha">
@@ -199,12 +202,13 @@
       </div>
     </section>
 
-    <footer class="credit"><a href="/">Diogo Paulino</a><span>·</span><span>Experimento em Babylon.js</span></footer>
+    <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
   </main>
 
+  <script src="/labs/shared.js?v=13"></script>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-  <script type="module" src="src/game.js?v=5"></script>
+  <script type="module" src="src/game.js?v=6"></script>
 </body>
 
 </html>

@@ -259,6 +259,7 @@ class JungleRun {
             this.renderLevelSelector();
 
             this.app.ticker.add(this.gameLoop, this);
+            if (window.LabRuntime) LabRuntime.bindPixiTicker(this.app);
             this.state = 'intro';
             this.syncHud(true);
             
@@ -517,6 +518,11 @@ class JungleRun {
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'playing') this.pauseGame();
+            // LabRuntime.bindPixiTicker reinicia o ticker ao voltar; se ainda
+            // estamos pausados, mantém parado até o resume explícito.
+            else if (!document.hidden && this.state === 'paused' && this.app?.ticker) {
+                this.app.ticker.stop();
+            }
         });
 
         document.getElementById('startBtn').addEventListener('click', () => this.startExpedition());
@@ -836,6 +842,7 @@ class JungleRun {
         if (this.state !== 'playing') return;
         this.state = 'paused';
         this.releaseInputs();
+        if (this.app?.ticker) this.app.ticker.stop();
         document.getElementById('pauseScreen').classList.remove('hidden');
         document.getElementById('pauseScreen').setAttribute('aria-hidden', 'false');
         document.getElementById('hud').classList.add('is-dimmed');
@@ -847,6 +854,7 @@ class JungleRun {
     resumeGame() {
         if (this.state !== 'paused') return;
         this.state = 'playing';
+        if (this.app?.ticker) this.app.ticker.start();
         document.getElementById('pauseScreen').classList.add('hidden');
         document.getElementById('pauseScreen').setAttribute('aria-hidden', 'true');
         document.getElementById('hud').classList.remove('is-dimmed');

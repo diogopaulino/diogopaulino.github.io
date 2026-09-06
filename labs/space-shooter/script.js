@@ -415,9 +415,8 @@ function draw() {
     });
     ctx.globalAlpha = 1;
 
-    // Draw Player
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = player.color;
+    // Draw Player — sem shadowBlur (caro em mobile); brilho via alpha no fill
+    ctx.shadowBlur = 0;
     ctx.fillStyle = player.color;
     // Simple ship shape
     ctx.beginPath();
@@ -429,7 +428,6 @@ function draw() {
     ctx.fill();
 
     // Draw Bullets
-    ctx.shadowColor = '#fff';
     ctx.fillStyle = '#fff';
     bullets.forEach(b => {
         ctx.fillRect(b.x, b.y, b.width, b.height);
@@ -437,7 +435,6 @@ function draw() {
 
     // Draw Enemies
     enemies.forEach(e => {
-        ctx.shadowColor = e.color;
         ctx.fillStyle = e.color;
         // Alien shape (simple invader)
         const w = e.width;
@@ -453,8 +450,6 @@ function draw() {
 
     // Draw Particles
     particles.forEach(p => {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = p.color;
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life;
         ctx.fillRect(p.x, p.y, 3, 3);

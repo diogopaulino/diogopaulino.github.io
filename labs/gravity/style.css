@@ -211,8 +211,8 @@ header .app-logo svg {
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--panel);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
 }
 
 .warp-btn {
@@ -275,8 +275,8 @@ header .app-logo svg {
     border-radius: 16px;
     border: 1px solid var(--border);
     background: var(--panel-solid);
-    backdrop-filter: blur(20px) saturate(170%);
-    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    backdrop-filter: blur(12px) saturate(170%);
+    -webkit-backdrop-filter: blur(12px) saturate(170%);
     box-shadow: 0 10px 36px rgba(0, 0, 0, 0.4);
 }
 
@@ -374,8 +374,8 @@ header .app-logo svg {
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--panel);
-    backdrop-filter: blur(18px) saturate(160%);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
     color: var(--muted);
     cursor: pointer;
     font-family: inherit;
@@ -416,8 +416,8 @@ header .app-logo svg {
     border-radius: var(--dock-radius);
     border: 1px solid var(--border);
     background: var(--panel);
-    backdrop-filter: blur(22px) saturate(170%);
-    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    backdrop-filter: blur(12px) saturate(170%);
+    -webkit-backdrop-filter: blur(12px) saturate(170%);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
 }
 
@@ -480,8 +480,8 @@ header .app-logo svg {
     border-radius: 18px;
     border: 1px solid var(--border);
     background: var(--panel-solid);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .tune-panel[hidden] {

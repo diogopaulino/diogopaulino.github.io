@@ -515,12 +515,17 @@ class Game {
       this.bindUi();
       await this.scene.whenReadyAsync();
       this.setLoading(1, 'O inimigo se aproxima…');
-      this.engine.runRenderLoop(() => this.frame());
-      let resizeFrame = 0;
-      window.addEventListener('resize', () => {
-        cancelAnimationFrame(resizeFrame);
-        resizeFrame = requestAnimationFrame(() => this.engine.resize());
-      }, { passive: true });
+      this._renderLoop = () => this.frame();
+      if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+      else this.engine.runRenderLoop(this._renderLoop);
+      if (window.LabRuntime) LabRuntime.debounceResize(() => this.engine.resize());
+      else {
+        let resizeFrame = 0;
+        window.addEventListener('resize', () => {
+          cancelAnimationFrame(resizeFrame);
+          resizeFrame = requestAnimationFrame(() => this.engine.resize());
+        }, { passive: true });
+      }
       document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'running') this.pause(); });
       setTimeout(() => this.showMenu(), 450);
     } catch (error) {

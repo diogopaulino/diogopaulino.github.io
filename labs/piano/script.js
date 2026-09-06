@@ -530,11 +530,6 @@ function init() {
       wrapper.scrollLeft = (piano.offsetWidth - wrapper.offsetWidth) / 2;
     }, 100);
   }
-
-  console.log('🎹 Piano Ultra Realista');
-  console.log('✨ 8 harmônicas por nota');
-  console.log('🎚️ Velocity-sensitive');
-  console.log('⬇️ Sustain como piano real');
 }
 
 if (document.readyState === 'loading') {

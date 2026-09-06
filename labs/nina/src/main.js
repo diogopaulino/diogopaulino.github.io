@@ -117,7 +117,8 @@ class Nina {
             run: document.getElementById('btnRun')
         });
 
-        window.addEventListener('resize', () => this.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
+        else window.addEventListener('resize', () => this.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'play') this.pause();
         });
@@ -149,7 +150,9 @@ class Nina {
             this.hud.hideLoading();
             this.enterMenu();
             this.last = performance.now();
-            this.renderer.setAnimationLoop((now) => this.frame(now));
+            const loop = (now) => this.frame(now);
+            if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, loop);
+            else this.renderer.setAnimationLoop(loop);
         }, 280);
     }
 

@@ -102,7 +102,8 @@ class Game {
             camR: document.getElementById('btnCamR')
         });
 
-        window.addEventListener('resize', () => this.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
+        else window.addEventListener('resize', () => this.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'play') this.pause();
         });
@@ -214,11 +215,22 @@ class Game {
     }
 
     loop = () => {
-        requestAnimationFrame(this.loop);
-        const dt = Math.min(0.033, this.clock.getDelta());
-        if (this.state === 'play') this.update(dt);
-        else if (this.world) this.world.update(dt * 0.35, this.clock.elapsedTime);
-        this.render();
+        const tick = () => {
+            const dt = Math.min(0.033, this.clock.getDelta());
+            if (this.state === 'play') this.update(dt);
+            else if (this.world) this.world.update(dt * 0.35, this.clock.elapsedTime);
+            this.render();
+        };
+        if (window.LabRuntime) {
+            this._raf = LabRuntime.createLoop(() => tick());
+            this._raf.start();
+        } else {
+            const run = () => {
+                requestAnimationFrame(run);
+                if (!document.hidden) tick();
+            };
+            requestAnimationFrame(run);
+        }
     };
 
     update(dt) {

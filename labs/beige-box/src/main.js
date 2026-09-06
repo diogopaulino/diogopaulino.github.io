@@ -169,7 +169,8 @@ class BeigeBox {
         this._renderLoop = () => this.frame();
         if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
         else this.renderer.setAnimationLoop(this._renderLoop);
-        window.addEventListener('resize', () => this.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
+        else window.addEventListener('resize', () => this.resize());
     }
 
     setupLights() {

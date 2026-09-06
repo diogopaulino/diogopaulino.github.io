@@ -233,14 +233,12 @@ class Atelier {
         if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
         else this.engine.runRenderLoop(this._renderLoop);
 
-        window.addEventListener('resize', () => {
+        const onResize = () => {
             this.engine.resize();
             this.fitCameraFov();
-        });
-        window.visualViewport?.addEventListener('resize', () => {
-            this.engine.resize();
-            this.fitCameraFov();
-        });
+        };
+        if (window.LabRuntime) LabRuntime.debounceResize(onResize);
+        else window.addEventListener('resize', onResize);
     }
 
     // Em telas estreitas (retrato), FOV vertical fixo faz o campo de visão

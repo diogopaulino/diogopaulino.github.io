@@ -734,8 +734,12 @@ function bind() {
         if (document.visibilityState === 'visible') render();
     });
 
-    const mo = new MutationObserver(() => drawChart(new Date()));
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    if (window.LabTheme) {
+        LabTheme.onChange(() => drawChart(new Date()));
+    } else {
+        const mo = new MutationObserver(() => drawChart(new Date()));
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
 }
 
 bind();

@@ -374,8 +374,9 @@ let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
 let state = 'ready'; // ready | playing | paused | over
+let rafId = 0;
 
-function update(time = 0) {
+function tick(time = 0) {
     const deltaTime = Math.min(time - lastTime, 250);
     lastTime = time;
 
@@ -390,7 +391,36 @@ function update(time = 0) {
     clearFlash = Math.max(0, clearFlash - deltaTime / 260);
 
     draw();
-    requestAnimationFrame(update);
+}
+
+const labLoop = window.LabRuntime
+    ? LabRuntime.createLoop(tick, { autoPause: false })
+    : null;
+
+function update(time = 0) {
+    tick(time);
+    rafId = requestAnimationFrame(update);
+}
+
+function startLoop() {
+    if (labLoop) {
+        labLoop.start();
+        return;
+    }
+    if (rafId) return;
+    lastTime = performance.now();
+    rafId = requestAnimationFrame(update);
+}
+
+function stopLoop() {
+    if (labLoop) {
+        labLoop.stop();
+        return;
+    }
+    if (!rafId) return;
+    const id = rafId;
+    rafId = 0;
+    cancelAnimationFrame(id);
 }
 
 function updateScore() {
@@ -707,9 +737,14 @@ document.querySelectorAll('.controls button').forEach(button => {
     });
 });
 
-/* Sair da aba durante a partida pausa em vez de deixar a peça cair sozinha. */
+/* Sair da aba: pausa a partida e cancela o rAF (não só o estado). */
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state === 'playing') setState('paused');
+    if (document.hidden) {
+        if (state === 'playing') setState('paused');
+        stopLoop();
+    } else {
+        startLoop();
+    }
 });
 
 /* ---------- Escala do console ---------- */
@@ -752,4 +787,4 @@ window.visualViewport?.addEventListener('resize', fitConsole);
 document.getElementById('highscore').innerText = highScore;
 resetGame();
 fitConsole();
-update();
+startLoop();

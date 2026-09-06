@@ -167,7 +167,7 @@ class Game {
 
         // Loop de Renderização
         this.lastFrame = performance.now();
-        this.engine.runRenderLoop(() => {
+        this._renderLoop = () => {
             const now = performance.now();
             const dt = clamp((now - this.lastFrame) / 1000, 0, 0.05);
             this.lastFrame = now;
@@ -185,9 +185,12 @@ class Game {
                 this.fpsAccum = 0;
                 this.fpsFrames = 0;
             }
-        });
+        };
+        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
+        else this.engine.runRenderLoop(this._renderLoop);
 
-        window.addEventListener('resize', () => this.engine.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.engine.resize());
+        else window.addEventListener('resize', () => this.engine.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'playing') this.pause();
         });

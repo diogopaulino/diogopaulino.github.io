@@ -22,8 +22,10 @@ let running = true;
 let rafId = 0;
 
 function loop(now) {
-  rafId = requestAnimationFrame(loop);
-  if (!running) return;
+  if (!running) {
+    rafId = 0;
+    return;
+  }
 
   const seconds = now / 1000;
   let delta = last ? seconds - last : STEP;
@@ -40,6 +42,12 @@ function loop(now) {
   if (guard === 8) accumulator = 0;
 
   draw(ctx);
+  rafId = requestAnimationFrame(loop);
+}
+
+function startLoop() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(loop);
 }
 
 /* --------------------------------------------------------------------------
@@ -128,12 +136,18 @@ async function boot() {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         running = false;
+        if (rafId) {
+          const id = rafId;
+          rafId = 0;
+          cancelAnimationFrame(id);
+        }
         Audio.suspend();
       } else {
         running = true;
         last = 0;          // descarta o intervalo em que a aba ficou oculta
         accumulator = 0;
         Audio.resume();
+        startLoop();
       }
     });
 
@@ -147,7 +161,7 @@ async function boot() {
     // escala do canvas ficaria congelada na medida da janela antiga.
     document.addEventListener('fullscreenchange', fit);
 
-    rafId = requestAnimationFrame(loop);
+    startLoop();
   } catch (err) {
     ctx.fillStyle = 'red';
     ctx.fillText('ERRO: ' + err.message, 20, 120);
@@ -156,7 +170,11 @@ async function boot() {
 }
 
 window.addEventListener('pagehide', () => {
-  cancelAnimationFrame(rafId);
+  if (rafId) {
+    const id = rafId;
+    rafId = 0;
+    cancelAnimationFrame(id);
+  }
   Audio.suspend();
 });
 
