@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0c1a12">
+  <title>Poker — Texas Hold'em vs IA que ensina | Diogo Paulino</title>
+  <meta name="description"
+    content="Texas Hold'em heads-up hiper-realista: mesa de feltro, cartas, IA e academia que ensina ranking, blinds, pot odds e estratégia. Um lab de Diogo Paulino.">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/poker/">
+  <meta name="author" content="Diogo Paulino">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diogo Paulino · Labs">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/poker/">
+  <meta property="og:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
+  <meta property="og:description"
+    content="Mesa heads-up com feltro, cartas realistas, Dealer IA e lições de ranking, blinds e pot odds.">
+  <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <meta property="og:image:alt" content="Diogo Paulino">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
+  <meta name="twitter:description"
+    content="Mesa heads-up com feltro, cartas realistas, Dealer IA e lições de ranking, blinds e pot odds.">
+  <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/labs/shared.css?v=13">
+  <link rel="stylesheet" href="style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Poker",
+        "url": "https://diogopaulino.com.br/labs/poker/",
+        "description": "Texas Hold'em heads-up hiper-realista com IA e academia que ensina ranking, blinds, pot odds e estratégia.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "pt-BR",
+        "isAccessibleForFree": true,
+        "author": {
+          "@type": "Person",
+          "name": "Diogo Paulino",
+          "url": "https://diogopaulino.com.br/"
+        },
+        "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Diogo Paulino",
+            "item": "https://diogopaulino.com.br/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Labs",
+            "item": "https://diogopaulino.com.br/labs/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Poker",
+            "item": "https://diogopaulino.com.br/labs/poker/"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+  <main class="poker-shell">
+    <header data-lab-header data-title="Poker" data-back-href="/labs/" data-back-label="Labs">
+      <template data-slot="logo">
+        <div class="app-logo">
+          <span class="brand-mark" aria-hidden="true">♠</span>
+          <span>Poker</span>
+        </div>
+      </template>
+    </header>
+
+    <section class="table-stage" aria-label="Mesa de Texas Hold'em">
+      <div class="felt" aria-hidden="true">
+        <div class="felt-glow"></div>
+        <div class="felt-rail"></div>
+      </div>
+
+      <div class="table-hud">
+        <p class="meta-line"><span id="handNumber">—</span> · <span id="diffLabel">IA · intermediária</span></p>
+        <p id="streetLabel" class="street-pill">—</p>
+      </div>
+
+      <article class="seat seat--ai" aria-label="Dealer IA">
+        <div class="seat-info">
+          <span id="aiDealer" class="dealer-btn" hidden title="Botão">D</span>
+          <span id="aiBlind" class="blind-tag"></span>
+          <h2 class="seat-name">Dealer IA</h2>
+          <p class="seat-stack"><span id="aiStack">1.000</span> <small>fichas</small></p>
+        </div>
+        <div id="aiCards" class="hole-cards" aria-label="Cartas da IA"></div>
+        <p class="seat-bet">Aposta <strong id="aiBet">0</strong></p>
+      </article>
+
+      <div class="board-wrap">
+        <p class="pot-line">Pote <strong id="potValue">0</strong></p>
+        <div id="board" class="board" aria-label="Cartas comunitárias"></div>
+        <p id="resultBanner" class="result-banner" hidden></p>
+      </div>
+
+      <article class="seat seat--hero" aria-label="Você">
+        <div id="heroCards" class="hole-cards" aria-label="Suas cartas"></div>
+        <div class="seat-info">
+          <span id="heroDealer" class="dealer-btn" hidden title="Botão">D</span>
+          <span id="heroBlind" class="blind-tag"></span>
+          <h2 class="seat-name">Você</h2>
+          <p class="seat-stack"><span id="heroStack">1.000</span> <small>fichas</small></p>
+          <p id="heroHandName" class="hand-name">—</p>
+        </div>
+        <p class="seat-bet">Aposta <strong id="heroBet">0</strong></p>
+      </article>
+    </section>
+
+    <div class="hud">
+      <aside id="coach" class="coach" aria-label="Mestre de poker">
+        <button id="coachToggle" class="coach-toggle" type="button" aria-expanded="true">
+          <span class="eyebrow"><i></i> Mestre</span>
+          <span id="coachTitle">Mesa</span>
+        </button>
+        <div id="coachBody" class="coach-body">
+          <div id="playCoach">
+            <p id="coachText" class="coach-text">Inicie uma mão. Eu explico blinds, pot odds e a força da sua mão.</p>
+          </div>
+          <div id="academyPanel" hidden>
+            <p id="lessonKicker" class="lesson-kicker"></p>
+            <h3 id="lessonTitle" class="lesson-title"></h3>
+            <p id="lessonText" class="coach-text"></p>
+            <p id="lessonTip" class="coach-tip"></p>
+            <div id="lessonQuiz" class="lesson-quiz"></div>
+            <div class="lesson-nav">
+              <button id="prevLesson" class="dock-btn" type="button">Anterior</button>
+              <span id="lessonProgress" class="lesson-progress">1 / 10</span>
+              <button id="nextLesson" class="dock-btn accent" type="button">Próxima</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="tray" aria-label="Partida">
+        <p class="eyebrow">PARTIDA</p>
+        <p id="statusLine" class="status" aria-live="polite">Pronto</p>
+        <label class="diff-field">
+          <span>Nível da IA</span>
+          <select id="difficulty" aria-label="Dificuldade da IA">
+            <option value="easy">Iniciante</option>
+            <option value="normal" selected>Intermediária</option>
+            <option value="hard">Agressiva</option>
+          </select>
+        </label>
+        <ol id="eventLog" class="event-log" aria-label="Histórico da mão"></ol>
+      </aside>
+
+      <div class="action-dock">
+        <div id="sizing" class="sizing" hidden>
+          <div class="sizing-head">
+            <span id="betLabel">Aposta</span>
+            <strong id="betValue">0</strong>
+          </div>
+          <input id="betSlider" type="range" min="10" max="1000" value="40" aria-label="Tamanho da aposta">
+          <div class="size-row" role="group" aria-label="Atalhos de tamanho">
+            <button type="button" class="size-chip" data-frac="0.33">⅓ pote</button>
+            <button type="button" class="size-chip" data-frac="0.5">½ pote</button>
+            <button type="button" class="size-chip" data-frac="0.75">¾ pote</button>
+            <button type="button" class="size-chip" data-frac="1">Pote</button>
+          </div>
+        </div>
+        <div id="actions" class="actions" role="toolbar" aria-label="Ações"></div>
+        <div class="dock" role="toolbar" aria-label="Modos">
+          <button id="modePlay" class="dock-btn is-active" data-mode="play" type="button">Jogar</button>
+          <button id="modeAcademy" class="dock-btn" data-mode="academy" type="button">Aprender</button>
+          <button id="modeRanks" class="dock-btn" type="button">Ranking</button>
+          <button id="btnHint" class="dock-btn accent" type="button">Dica</button>
+          <button id="btnNewHand" class="dock-btn" type="button">Nova mão</button>
+          <button id="muteBtn" class="dock-btn" type="button" aria-pressed="false" title="Som (M)">Som</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="intro" class="overlay">
+      <div class="overlay-card">
+        <p class="eyebrow"><i></i> Texas Hold'em</p>
+        <h1>Poker</h1>
+        <p class="lede">Mesa heads-up contra a Dealer IA — e um mestre que ensina ranking, blinds e pot odds enquanto você joga.</p>
+        <div class="intro-actions">
+          <button id="btnStart" class="dock-btn accent" type="button">Sentar à mesa</button>
+          <button id="btnAcademyIntro" class="dock-btn" type="button">Começar aprendendo</button>
+        </div>
+        <p class="intro-note">Sem fichas reais. Só prática, matemática e pressão no feltro.</p>
+      </div>
+    </div>
+
+    <div id="ranksOverlay" class="overlay" hidden>
+      <div class="overlay-card ranks-card">
+        <p class="eyebrow"><i></i> Ranking</p>
+        <h2>Mãos do mais forte ao mais fraco</h2>
+        <ol id="rankList" class="rank-list"></ol>
+        <button id="ranksClose" class="dock-btn accent" type="button">Fechar</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="lab-footer">
+    <a href="/">Diogo Paulino</a>
+    <span aria-hidden="true">·</span>
+    <a href="/labs/">Labs</a>
+  </footer>
+
+  <script src="/labs/shared.js?v=7" defer></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
