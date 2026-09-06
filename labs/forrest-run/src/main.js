@@ -1,11 +1,3 @@
-/**
- * Forrest Run — Laço Principal com Babylon.js.
- *
- * Gráficos Hyper Realistas com PBR, Iluminação Solar Direcional com Sombras PCF,
- * Pipeline de Pós-Processamento Cinemático (ACES Tone Mapping, Bloom, Vinheta, Aberração Cromática),
- * e transição contínua entre biomas da histórica travessia americana.
- */
-
 import {
     QUALITY, DIFFICULTY, BIOMES, FOLLOWERS_AT, BIOME_METERS,
     loadSettings, saveSettings, biomeAt, biomeBlend
@@ -20,13 +12,11 @@ import { GameAudio } from './audio.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
 import { createFeatherMesh } from './models.js';
-
 const CAMERAS = [
     { name: 'perseguição', offset: new BABYLON.Vector3(0, 2.5, 7.8), look: new BABYLON.Vector3(0, 1.1, -12) },
     { name: 'cinema', offset: new BABYLON.Vector3(4.5, 1.6, 4.0), look: new BABYLON.Vector3(-0.6, 1.0, -9) },
     { name: 'ombro', offset: new BABYLON.Vector3(-1.6, 1.9, 4.2), look: new BABYLON.Vector3(0.3, 1.15, -14) }
 ];
-
 class Game {
     constructor() {
         this.settings = loadSettings();
@@ -44,8 +34,8 @@ class Game {
         this.heroFeather = null;
         this.camPos = new BABYLON.Vector3(0, 2.5, 7.8);
         this.camLook = new BABYLON.Vector3(0, 1.1, -12);
+        this.cameraShake = 0;
     }
-
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
@@ -53,12 +43,10 @@ class Game {
         const big = Math.min(window.innerWidth, window.innerHeight) >= 880;
         return big ? QUALITY.high : QUALITY.medium;
     }
-
     async init() {
         this.hud.setLoading(0.08, 'Amarrando os tênis…');
         if (document.fonts?.ready) await document.fonts.ready;
         this.quality = this.resolveQuality();
-
         try {
             this.engine = new BABYLON.Engine(this.canvas, this.quality.antialias, {
                 preserveDrawingBuffer: false,
@@ -72,39 +60,30 @@ class Game {
             this.hud.showError('Não foi possível iniciar o WebGL/Babylon.js neste navegador.');
             return;
         }
-
         this.scene = new BABYLON.Scene(this.engine);
         const start = BIOMES[0];
-
-        // 1. Atmosfera e Névoa
         this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
         this.scene.fogDensity = this.quality.fogDensity;
         this.scene.fogColor = hexToColor3(start.fog);
         this.scene.clearColor = hexToColor4(start.zenith, 1.0);
-
-        // 2. Câmera
         this.camera = new BABYLON.UniversalCamera(
             'camera',
             new BABYLON.Vector3(0, 2.5, 7.8),
             this.scene
         );
-        this.camera.fov = 0.88; // ~50 graus
+        this.camera.fov = 0.88; 
         this.camera.minZ = 0.2;
         this.camera.maxZ = this.quality.drawDistance * 1.5;
         this.camera.setTarget(new BABYLON.Vector3(0, 1.1, -12));
-
-        // 3. Iluminação PBR Solar e Ambiente
         this.hud.setLoading(0.22, 'Abrindo o céu do Alabama…');
         this.hemi = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
         this.hemi.diffuse = hexToColor3(start.hemiSky);
         this.hemi.groundColor = hexToColor3(start.hemiGround);
         this.hemi.intensity = start.hemiIntensity;
-
         this.sun = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(0.4, -0.75, 0.45), this.scene);
         this.sun.position = new BABYLON.Vector3(-18, 28, 12);
         this.sun.diffuse = hexToColor3(start.sun);
         this.sun.intensity = start.sunIntensity;
-
         if (this.quality.shadows) {
             this.shadowGenerator = new BABYLON.ShadowGenerator(this.quality.shadowMapSize || 1024, this.sun);
             this.shadowGenerator.useBlurExponentialShadowMap = true;
@@ -113,36 +92,34 @@ class Game {
         } else {
             this.shadowGenerator = null;
         }
-
-        // 4. Pipeline de Pós-Processamento Cinemático
         if (this.quality.bloom) {
             this.pipeline = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
             this.pipeline.bloomEnabled = true;
             this.pipeline.bloomThreshold = 0.72;
             this.pipeline.bloomWeight = start.bloomWeight;
             this.pipeline.bloomKernel = 48;
-
             this.pipeline.chromaticAberrationEnabled = true;
             this.pipeline.chromaticAberration.aberrationAmount = 10;
-
             this.pipeline.grainEnabled = true;
             this.pipeline.grain.intensity = 5;
-
             this.pipeline.imageProcessing.toneMappingEnabled = true;
             this.pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
             this.pipeline.imageProcessing.vignetteEnabled = true;
             this.pipeline.imageProcessing.vignetteWeight = 1.1;
             this.pipeline.imageProcessing.exposure = 1.08;
+            this.ssao = new BABYLON.SSAO2RenderingPipeline("ssao", this.scene, 0.75, [this.camera]);
+            this.ssao.radius = 1.5;
+            this.ssao.totalStrength = 1.2;
+            this.ssao.base = 0.4;
+            this.motionBlur = new BABYLON.MotionBlurPostProcess("mb", this.scene, 1.0, this.camera);
+            this.motionBlur.motionStrength = 0.8;
+            this.motionBlur.motionBlurSamples = 16;
         }
-
-        // 5. Mundo, Céu e Estrada PBR
         this.hud.setLoading(0.38, 'Plantando as nogueiras de Greenbow…');
         this.sky = createSky(this.scene);
         this.clouds = createClouds(this.scene);
         this.road = createRoad(this.scene, this.shadowGenerator);
         this.land = new America(this.scene, this.shadowGenerator, this.quality);
-
-        // 6. Personagem, Pista, Seguidores e Áudio
         this.hud.setLoading(0.65, 'O Forrest está amarrando os tênis…');
         this.player = new Player(this.scene, this.shadowGenerator);
         this.track = new Track(this.scene, this.shadowGenerator, this.quality);
@@ -152,32 +129,24 @@ class Game {
         this.audio.enabled = !this.settings.muted;
         this.audio.volume = this.settings.volume / 100;
         this.input = new Input();
-
-        // Pena de destaque para o menu
         this.heroFeather = createFeatherMesh(this.scene);
         this.heroFeather.scaling.setAll(2.0);
-
         this.flushBiome(start, 0);
         this.bindUi();
         this.isTouch = detectMobile();
-
         this.enterAttract();
         this.hud.setLoading(1, 'Eu só senti vontade de correr.');
         setTimeout(() => this.hud.hideLoading(), 340);
-
-        // Loop de Renderização
         this.lastFrame = performance.now();
         this._renderLoop = () => {
             const now = performance.now();
             const dt = clamp((now - this.lastFrame) / 1000, 0, 0.05);
             this.lastFrame = now;
-
             if (this.state === 'playing' || this.state === 'menu') {
                 this.simulate(dt);
             }
             this.updateCamera(dt, false);
             this.scene.render();
-
             this.fpsAccum += dt;
             this.fpsFrames += 1;
             if (this.fpsAccum >= 0.4) {
@@ -188,51 +157,40 @@ class Game {
         };
         if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
         else this.engine.runRenderLoop(this._renderLoop);
-
         if (window.LabRuntime) LabRuntime.debounceResize(() => this.engine.resize());
         else window.addEventListener('resize', () => this.engine.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'playing') this.pause();
         });
     }
-
     flushBiome(biome, k) {
         const dist = this.player ? this.player.distance : 0;
         const next = biomeAt(dist + BIOME_METERS);
-
         const fogCol = mixHexColor3(biome.fog, next.fog, k);
         const zenithCol = mixHexColor3(biome.zenith, next.zenith, k);
         const groundCol = mixHexColor3(biome.ground, next.ground, k);
         const sunCol = mixHexColor3(biome.sun, next.sun, k);
         const hemiSkyCol = mixHexColor3(biome.hemiSky, next.hemiSky, k);
         const hemiGndCol = mixHexColor3(biome.hemiGround, next.hemiGround, k);
-
         this.scene.fogColor = fogCol;
         this.scene.clearColor = new BABYLON.Color4(zenithCol.r, zenithCol.g, zenithCol.b, 1.0);
         this.sky.material.emissiveColor = zenithCol;
         this.hemi.diffuse = hemiSkyCol;
         this.hemi.groundColor = hemiGndCol;
         this.sun.diffuse = sunCol;
-
         const sunInt = lerp(biome.sunIntensity, next.sunIntensity, k);
         this.sun.intensity = sunInt;
-
         if (this.pipeline && this.pipeline.bloomEnabled) {
             this.pipeline.bloomWeight = lerp(biome.bloomWeight, next.bloomWeight, k);
         }
-
-        // Estrada PBR (Rugosidade e Brilho de chuva)
         const isRain = biome.rain || (next.rain && k > 0.4);
         const wetR = lerp(biome.wetRoughness, next.wetRoughness, k);
         this.road.roadMat.roughness = wetR;
         this.road.grassMat.albedoColor = groundCol;
-
         this.effects.setRain(isRain);
         this.audio.setRain(isRain);
-
         document.documentElement.style.setProperty('--amber', '#' + biome.horizon.toString(16).padStart(6, '0'));
     }
-
     bindUi() {
         const hud = this.hud;
         hud.buildDifficulties(this.settings.difficulty, (id) => {
@@ -254,7 +212,6 @@ class Game {
         });
         hud.setBest(this.settings.best);
         hud.setMuted(this.settings.muted);
-
         document.getElementById('startButton').addEventListener('click', () => this.start());
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.enterAttract());
@@ -265,7 +222,6 @@ class Game {
             if (this.state === 'playing') this.pause();
             else if (this.state === 'paused') this.resume();
         });
-
         this.input.on('pause', () => {
             if (this.state === 'playing') this.pause();
             else if (this.state === 'paused') this.resume();
@@ -279,27 +235,22 @@ class Game {
             if (this.state === 'menu' || this.state === 'over') this.start();
             else if (this.state === 'paused') this.resume();
         });
-
         this.bindTouch();
     }
-
     bindTouch() {
         const left = document.getElementById('touchLeft');
         const right = document.getElementById('touchRight');
         const jump = document.getElementById('touchJump');
         if (!left) return;
-
         const tap = (el, fn) => {
             el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
             el.addEventListener('mousedown', (e) => { e.preventDefault(); fn(); });
         };
-
         tap(left, () => this.input.tapLane(-1));
         tap(right, () => this.input.tapLane(1));
         jump.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.tapJump(); }, { passive: false });
         jump.addEventListener('mousedown', (e) => { e.preventDefault(); this.input.tapJump(); });
     }
-
     toggleMute() {
         this.settings.muted = !this.settings.muted;
         this.audio.setEnabled(!this.settings.muted);
@@ -307,7 +258,6 @@ class Game {
         saveSettings(this.settings);
         if (!this.settings.muted) this.audio.resume();
     }
-
     enterAttract() {
         this.state = 'menu';
         this.hud.setState('menu');
@@ -318,7 +268,6 @@ class Game {
         this.resetRun(true);
         this.player.auto = true;
     }
-
     start() {
         this.audio.resume();
         this.resetRun(false);
@@ -332,7 +281,6 @@ class Game {
         this.hud.message('CORRE, FORREST', 1700);
         this.hud.quote(BIOMES[0].quote);
     }
-
     resetRun(attract) {
         const diff = DIFFICULTY[this.settings.difficulty];
         this.lives = attract ? 99 : diff.lives;
@@ -349,14 +297,12 @@ class Game {
         this.flushBiome(BIOMES[0], 0);
         this.updateCamera(1, true);
     }
-
     pause() {
         if (this.state !== 'playing') return;
         this.state = 'paused';
         this.hud.setState('paused');
         this.hud.showPause(true);
     }
-
     resume() {
         if (this.state !== 'paused') return;
         this.state = 'playing';
@@ -365,7 +311,6 @@ class Game {
         this.lastFrame = performance.now();
         this.audio.resume();
     }
-
     gameOver() {
         this.state = 'over';
         this.player.sitDown();
@@ -387,25 +332,19 @@ class Game {
         this.hud.setState('over');
         this.hud.quote('Estou bastante cansado. Acho que vou pra casa agora.');
     }
-
     simulate(dt) {
         const playing = this.state === 'playing';
         const input = this.input.sample();
         this.player.update(dt, input, playing);
-
         const { cur, k } = biomeBlend(this.player.distance);
         this.flushBiome(cur, k);
         this.land.recycle(this.player.z, cur.id);
         this.track.update(dt, this.player);
         this.pack.update(dt, this.player, this.player.distance);
-
-        // Reposicionar nós que seguem o corredor
         this.road.root.position.z = this.player.z - 90;
         this.sky.mesh.position.set(this.player.x * 0.05, 0, this.player.z);
         this.clouds.root.position.set(0, 0, this.player.z);
         this.sun.position.set(this.player.x - 18, 28, this.player.z + 12);
-
-        // Pena Flutuante do Menu / Hero
         if (this.heroFeather) {
             const t = (this.time || 0) + (this.player?.cycle || 0) * 0.1;
             this.heroFeather.position.set(
@@ -416,50 +355,44 @@ class Game {
             this.heroFeather.rotation.set(0.4, t * 1.2, 0.3);
             this.heroFeather.setEnabled(this.state === 'menu' || this.state === 'over');
         }
-
         if (playing) {
             this.time += dt;
             if (this.player._didJump) this.audio.jump();
-
             if (cur.id !== this.lastBiome) {
                 this.lastBiome = cur.id;
                 this.hud.message(cur.name, 1700);
                 this.hud.quote(cur.quote);
             }
-
             if (!this.packAnnounced && this.player.distance >= FOLLOWERS_AT) {
                 this.packAnnounced = true;
                 this.hud.message('O pessoal veio atrás', 1900);
                 this.hud.quote('De Alabama até o mar, e de volta. Aí começaram a me seguir.');
             }
-
-            // Coleta de penas
             const got = this.track.collect(this.player);
             if (got.length) {
                 this.feathers += got.length;
                 this.audio.collect();
                 for (const f of got) {
                     this.effects.spawn(f.mesh.position.x, 1.2, f.z, {
-                        count: 20,
+                        count: 40,
                         color: [1, 0.98, 0.85, 1],
-                        speed: 4.5,
-                        size: 0.45,
-                        life: 0.6
+                        speed: 6.5,
+                        size: 0.55,
+                        life: 0.8
                     });
                 }
             }
-
-            // Colisões com obstáculos
             const hit = this.track.collide(this.player);
             if (hit && this.player.hit()) {
                 this.lives -= 1;
                 this.audio.stumble();
+                this.cameraShake = 0.8;
                 this.effects.spawn(this.player.x, 0.7, this.player.z, {
-                    count: 24,
+                    count: 36,
                     color: [0.9, 0.65, 0.35, 1],
-                    speed: 6.0,
-                    size: 0.5,
-                    life: 0.5
+                    speed: 8.0,
+                    size: 0.6,
+                    life: 0.7
                 });
                 if (this.lives <= 0) {
                     this.gameOver();
@@ -467,12 +400,9 @@ class Game {
                     this.hud.message('Tropeço', 700);
                 }
             }
-
-            // Poeira de passos
             if (this.player.grounded && this.player.speed > 8 && Math.sin(this.player.cycle) > 0.92) {
                 this.effects.dust(this.player.x, 0.08, this.player.z + 0.4, cur.dirt);
             }
-
             this.hud.update({
                 speed: this.player.speed,
                 distance: this.player.distance,
@@ -482,40 +412,42 @@ class Game {
                 time: this.time
             });
         }
-
         this.effects.update(dt, this.player);
         this.audio.update(dt, this.player.speed, this.player.grounded && playing, cur.dirt);
     }
-
     updateCamera(dt, instant) {
         const rig = CAMERAS[this.cameraMode];
-
         const targetPos = new BABYLON.Vector3(
             this.player.x + rig.offset.x,
             this.player.y + rig.offset.y,
             this.player.z + rig.offset.z
         );
-
         const targetLook = new BABYLON.Vector3(
             this.player.x + rig.look.x,
             this.player.y + rig.look.y,
             this.player.z + rig.look.z
         );
-
         const k = instant ? 1.0 : 1.0 - Math.exp(-dt * (this.cameraMode === 2 ? 12 : 6.5));
-
         this.camPos = BABYLON.Vector3.Lerp(this.camPos, targetPos, k);
         this.camLook = BABYLON.Vector3.Lerp(this.camLook, targetLook, k);
 
-        this.camera.position.copyFrom(this.camPos);
-        this.camera.setTarget(this.camLook);
+        this.cameraShake = Math.max(0, this.cameraShake - dt * 2.5);
+        const shakeX = (Math.random() - 0.5) * this.cameraShake * 0.5;
+        const shakeY = (Math.random() - 0.5) * this.cameraShake * 0.5;
 
-        // Dilatação de FOV sutil com a velocidade para sensação de ritmo
-        const targetFov = 0.88 + (this.player.speed / 30) * 0.08;
+        this.camera.position.copyFrom(this.camPos);
+        this.camera.position.x += shakeX;
+        this.camera.position.y += shakeY;
+
+        const finalLook = this.camLook.clone();
+        finalLook.x += shakeX;
+        finalLook.y += shakeY;
+        this.camera.setTarget(finalLook);
+
+        const targetFov = 0.88 + (this.player.speed / 30) * 0.12;
         this.camera.fov = damp(this.camera.fov, targetFov, 4.0, dt);
     }
 }
-
 const game = new Game();
 game.init().catch((err) => {
     console.error(err);

@@ -1,12 +1,6 @@
-/**
- * HUD, menus e overlays. Sem lógica 3D aqui.
- */
-
 import { DIFFICULTY } from './config.js';
 import { formatMiles, formatTime, formatDays } from './utils.js';
-
 const $ = (id) => document.getElementById(id);
-
 export class Hud {
     constructor() {
         this.el = {
@@ -44,57 +38,45 @@ export class Hud {
         this.msgTimer = 0;
         this.buildDifficulties('cross');
     }
-
     setState(state) {
         document.body.dataset.state = state;
     }
-
     setLoading(p, text) {
         if (text) this.el.loadingText.textContent = text;
         this.el.loadingFill.style.width = `${Math.round(p * 100)}%`;
     }
-
     hideLoading() {
         this.el.loading.hidden = true;
     }
-
     showError(msg) {
         if (msg) this.el.errorText.textContent = msg;
         this.el.error.hidden = false;
         this.el.loading.hidden = true;
     }
-
     showMenu(on) {
         this.el.menu.hidden = !on;
         this.el.hud.hidden = on;
     }
-
     showPause(on) {
         this.el.pause.hidden = !on;
     }
-
     showGameOver(on) {
         this.el.gameOver.hidden = !on;
     }
-
     showHud(on) {
         this.el.hud.hidden = !on;
     }
-
     setTouchVisible(on) {
         this.el.touch.hidden = !on;
     }
-
     setMuted(on) {
         this.el.soundButton.setAttribute('aria-pressed', String(!on));
         this.el.soundButton.textContent = on ? '×♪' : '♪';
     }
-
     setFps(fps) {
         if (!this.el.fps) return;
         this.el.fps.textContent = `${fps | 0} fps`;
     }
-
     message(text, ms = 1800) {
         this.el.message.textContent = text;
         this.el.message.dataset.show = 'true';
@@ -103,7 +85,6 @@ export class Hud {
             this.el.message.dataset.show = 'false';
         }, ms);
     }
-
     quote(text) {
         this.el.quote.textContent = text;
         this.el.quote.dataset.show = 'true';
@@ -112,7 +93,6 @@ export class Hud {
             this.el.quote.dataset.show = 'false';
         }, 4200);
     }
-
     update({ speed, distance, feathers, lives, biome, time }) {
         const mph = speed * 2.23694;
         this.el.speed.textContent = String(Math.round(mph)).padStart(2, '0');
@@ -124,11 +104,9 @@ export class Hud {
         this.el.days.textContent = formatDays(distance);
         this._time = time;
     }
-
     setBest(score) {
         this.el.bestScore.textContent = score ? formatMiles(score) : '—';
     }
-
     setOverStats({ distance, feathers, time, score }) {
         this.el.overStats.innerHTML = `
             <div><span>Travessia</span><b>${formatMiles(distance)}</b></div>
@@ -137,7 +115,6 @@ export class Hud {
             <div><span>Score</span><b>${score.toLocaleString('pt-BR')}</b></div>
         `;
     }
-
     buildDifficulties(current, onPick) {
         const root = this.el.difficultyOptions;
         root.innerHTML = '';
@@ -158,7 +135,6 @@ export class Hud {
         });
         this.el.difficultyBlurb.textContent = DIFFICULTY[current].blurb;
     }
-
     bindSettings({ quality, volume, onQuality, onVolume }) {
         this.el.qualitySelect.value = quality;
         this.el.volumeSlider.value = String(volume);
