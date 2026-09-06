@@ -31,7 +31,9 @@ button { color: inherit; }
 
 /* Chrome compartilhado (shared.js) posicionado como topbar do jogo. */
 .game-shell > header {
-  position: fixed; z-index: 30; inset: 0 0 auto; min-height: 58px;
+  position: fixed; z-index: 80; inset: 0 0 auto; min-height: 58px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
   margin: 0; max-width: none; width: auto;
   padding: max(9px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
   background: linear-gradient(to bottom, rgba(5, 6, 7, .84), transparent);
@@ -179,9 +181,6 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
 .combat-button.attack { right: 0; bottom: 23px; width: 78px; height: 78px; border-color: rgba(193, 142, 75, .5); }
 .combat-button.dodge { right: 78px; bottom: 0; }
 .combat-button.block { right: 76px; bottom: 78px; }
-
-.credit { position: fixed; z-index: 15; right: max(18px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 7px; color: rgba(230,220,200,.43); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }
-.credit a { color: inherit; text-decoration: none; pointer-events: auto; }
 
 @media (pointer: coarse) {
   .lab-foot { display: none; }

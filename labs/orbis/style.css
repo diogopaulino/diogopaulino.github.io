@@ -113,6 +113,26 @@ header[data-lab-header] {
     box-shadow: none !important;
 }
 
+/* Fora do shell: fixed para não empurrar o viewport fullscreen. */
+.lab-foot {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(0.4rem + var(--safe-bottom));
+    z-index: 30;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0.4rem;
+    border: 0;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.lab-foot a { color: var(--text-soft); pointer-events: auto; }
+
 .app-logo {
     display: flex;
     align-items: center;
