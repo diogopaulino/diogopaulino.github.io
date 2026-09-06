@@ -90,7 +90,8 @@ body {
   padding: 0.5rem 0.35rem 0.75rem;
   border-radius: 1.35rem;
   overflow: hidden;
-  perspective: 1400px;
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
 }
 
 .room {
@@ -170,8 +171,9 @@ body {
   min-height: min(50dvh, 420px);
   padding: 0.85rem 0.9rem 1.1rem;
   transform-style: preserve-3d;
-  transform: rotateX(8deg) scale(0.985);
-  transform-origin: 50% 60%;
+  transform: rotateX(18deg) scale(0.96);
+  transform-origin: 50% 55%;
+  transition: transform 0.35s var(--ease-out);
 }
 
 .table-cast {
@@ -200,30 +202,33 @@ body {
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 40%, var(--rail-mid), var(--rail) 70%);
+    radial-gradient(ellipse 70% 55% at 50% 40%, var(--rail-mid), var(--rail) 70%),
+    linear-gradient(180deg, var(--rail-hi), var(--rail));
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(196, 154, 108, 0.25),
-    inset 0 -8px 20px rgba(0, 0, 0, 0.45);
+    0 22px 48px rgba(0, 0, 0, 0.6),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(220, 180, 130, 0.28),
+    inset 0 -10px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
 .rail-grain {
   position: absolute;
   inset: 0;
-  opacity: 0.4;
+  opacity: 0.55;
   background:
     repeating-linear-gradient(
       92deg,
       transparent 0 3px,
-      rgba(0, 0, 0, 0.08) 3px 4px,
+      rgba(0, 0, 0, 0.1) 3px 4px,
       transparent 4px 9px,
-      rgba(255, 220, 180, 0.04) 9px 10px
+      rgba(255, 220, 180, 0.06) 9px 10px
     ),
     repeating-linear-gradient(
       0deg,
       transparent 0 14px,
-      rgba(0, 0, 0, 0.06) 14px 15px
+      rgba(0, 0, 0, 0.08) 14px 15px
     );
   mix-blend-mode: multiply;
 }
@@ -268,9 +273,9 @@ body {
 .felt-nap {
   position: absolute;
   inset: 0;
-  opacity: 0.55;
+  opacity: 0.72;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.25 0 0 0 0 0.12 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  background-size: 140px 140px;
   mix-blend-mode: soft-light;
   pointer-events: none;
 }
@@ -278,10 +283,10 @@ body {
 .felt-weave {
   position: absolute;
   inset: 0;
-  opacity: 0.18;
+  opacity: 0.28;
   background:
-    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.15) 2px 3px),
-    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.04) 2px 3px);
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.18) 2px 3px),
+    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.05) 2px 3px);
   pointer-events: none;
 }
 
@@ -626,14 +631,13 @@ body {
   border-radius: inherit;
   transform-style: preserve-3d;
   transition: transform 0.55s var(--ease-out);
-  transform: rotateY(0deg) rotateZ(var(--tilt));
+  transform: rotateZ(var(--tilt));
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.45),
-    0 2px 4px rgba(0, 0, 0, 0.25);
-}
-
-.card.is-back .card-inner {
-  transform: rotateY(180deg) rotateZ(var(--tilt));
+    0 10px 22px rgba(0, 0, 0, 0.5),
+    0 3px 6px rgba(0, 0, 0, 0.3),
+    1px 0 0 rgba(0, 0, 0, 0.15),
+    2px 1px 0 rgba(40, 30, 20, 0.35),
+    3px 2px 0 rgba(30, 22, 14, 0.25);
 }
 
 .card.is-flipping .card-inner {
@@ -649,16 +653,12 @@ body {
 .hole-cards .card:nth-child(1) { --tilt: -4deg; }
 .hole-cards .card:nth-child(2) { --tilt: 4deg; }
 
-.seat--hero .hole-cards .card:hover .card-inner,
+.seat--hero .hole-cards .card:not(.is-back):hover .card-inner,
 .board .card:hover .card-inner {
-  transform: translateY(-6px) rotateY(0deg) rotateZ(var(--tilt)) scale(1.04);
+  transform: translateY(-6px) rotateZ(var(--tilt)) scale(1.04);
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.25);
-}
-
-.seat--hero .hole-cards .card.is-back:hover .card-inner {
-  transform: translateY(-6px) rotateY(180deg) rotateZ(var(--tilt)) scale(1.04);
 }
 
 .card-slot {
@@ -694,6 +694,22 @@ body {
   -webkit-backface-visibility: hidden;
 }
 
+/* Carta só com frente (sem flip): face em fluxo normal */
+.card:not(.has-flip) .card-front {
+  position: absolute;
+  transform: none;
+  backface-visibility: visible;
+}
+
+.card:not(.has-flip) .card-back {
+  position: absolute;
+  transform: none;
+}
+
+.card:not(.has-flip).is-back .card-inner {
+  transform: rotateZ(var(--tilt));
+}
+
 .card-front {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.55) 0%, transparent 42%),
@@ -703,7 +719,7 @@ body {
   grid-template-rows: auto 1fr auto;
   padding: 0.26em 0.3em;
   font-family: 'Cormorant Garamond', Georgia, serif;
-  transform: rotateY(0deg);
+  transform: rotateY(0deg) translateZ(1px);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -783,7 +799,15 @@ body {
     linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 38%),
     radial-gradient(circle at 50% 50%, #1a4568, #0c2438 70%);
   border: 2px solid rgba(212, 175, 55, 0.45);
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.card.has-flip.is-back .card-inner {
+  transform: rotateY(180deg) rotateZ(var(--tilt));
+}
+
+.card.has-flip:not(.is-back) .card-inner {
+  transform: rotateY(0deg) rotateZ(var(--tilt));
 }
 
 .card-back i {
@@ -832,22 +856,23 @@ body {
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
-  height: calc(var(--chip) * 0.55);
+  height: calc(var(--chip) * 0.85);
   min-width: var(--chip);
   position: relative;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
 }
 
 .chip-stack--pot {
-  height: calc(var(--chip) * 0.9);
-  margin-bottom: 0.1rem;
+  height: calc(var(--chip) * 1.25);
+  margin-bottom: 0.15rem;
 }
 
 .chip {
   width: var(--chip);
-  height: calc(var(--chip) * 0.28);
+  height: calc(var(--chip) * 0.32);
   border-radius: 50%;
   position: relative;
-  margin-top: calc(var(--chip) * -0.18);
+  margin-top: calc(var(--chip) * -0.16);
   box-shadow:
     0 2px 3px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
@@ -1451,7 +1476,7 @@ body {
   .table-scene {
     min-height: min(44dvh, 340px);
     padding: 0.65rem 0.55rem 0.9rem;
-    transform: rotateX(5deg) scale(0.99);
+    transform: rotateX(8deg) scale(0.98);
   }
 
   .felt,
@@ -1509,7 +1534,7 @@ body {
     grid-template-rows: auto;
     align-items: center;
     padding: 0.4rem 0.5rem;
-    transform: rotateX(3deg);
+    transform: rotateX(5deg);
   }
 
   .table-hud {
