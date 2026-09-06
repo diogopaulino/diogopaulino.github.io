@@ -188,7 +188,9 @@ kbd { display: inline-block; min-width: 26px; margin-right: 5px; padding: 4px 6p
 }
 
 @media (max-width: 768px) {
-  .game-shell > header .app-logo { font-size: 10px; }
+  /* Título longo + som + pausa + tema não cabem em 375px; o menu já carrega a marca. */
+  .game-shell > header .app-logo { display: none; }
+  .game-shell > header .header-actions { gap: 6px; }
   .vitals { top: max(60px, calc(env(safe-area-inset-top) + 50px)); width: min(270px, calc(100vw - 106px)); padding: 8px 12px 8px 8px; }
   .portrait { width: 36px; height: 36px; font-size: 16px; }
   .bars { gap: 6px; }

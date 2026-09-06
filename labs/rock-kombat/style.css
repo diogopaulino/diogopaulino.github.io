@@ -1375,10 +1375,16 @@ dialog h2 {
 
   header .back-link,
   header .header-actions button {
-    padding: 8px !important;
+    padding: 0 !important;
     font-size: 11px !important;
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 44px !important;
+    min-width: 44px !important;
+    width: 44px;
+    height: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
 
   header .back-link span {
@@ -1397,9 +1403,15 @@ dialog h2 {
   }
 
   #help-button {
-    font-size: 10px !important;
+    font-size: 0 !important;
     letter-spacing: 0 !important;
-    padding: 8px 7px !important;
+    padding: 0 !important;
+  }
+
+  #help-button::after {
+    content: "?";
+    font-size: 16px;
+    font-weight: 800;
   }
 
   /* Hero screen mobile */
