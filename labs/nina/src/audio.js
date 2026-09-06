@@ -52,7 +52,12 @@ export class NinaAudio {
     setEnabled(on) {
         this.enabled = on;
         if (this.master) this.master.gain.value = on ? this.volume : 0;
-        if (on) this.init();
+        if (on) {
+            this.init();
+            this._resumeTune();
+        } else {
+            this._pauseTune();
+        }
     }
 
     _osc(type, freq, dest, gain = 0.08) {
@@ -108,7 +113,7 @@ export class NinaAudio {
     _tuneLoop() {
         const scale = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
         const pattern = [0, 2, 4, 2, 5, 4, 2, 0, 4, 3, 2, 0];
-        const tick = () => {
+        this._tick = () => {
             if (!this.ctx || !this.enabled) return;
             const now = this.ctx.currentTime;
             const i = this._step % pattern.length;
@@ -116,8 +121,28 @@ export class NinaAudio {
             if (i % 4 === 0) this._pluck(scale[pattern[i]] * 0.5, now, 1.2, 0.04);
             this._step++;
         };
-        tick();
-        this._timer = setInterval(tick, 520);
+        this._tick();
+        this._resumeTune();
+        if (window.LabVisibility && !this._visBound) {
+            this._visBound = true;
+            window.LabVisibility.onChange((hidden) => {
+                if (hidden) this._pauseTune();
+                else if (this.enabled) this._resumeTune();
+            });
+        }
+    }
+
+    _pauseTune() {
+        if (this._timer != null) {
+            clearInterval(this._timer);
+            this._timer = null;
+        }
+    }
+
+    _resumeTune() {
+        if (!this._tick || !this.enabled || document.hidden) return;
+        if (this._timer != null) return;
+        this._timer = setInterval(this._tick, 520);
     }
 
     _blip(freq, dur, type = 'sine', gain = 0.12) {

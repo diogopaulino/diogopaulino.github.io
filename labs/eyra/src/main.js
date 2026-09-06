@@ -77,7 +77,8 @@ class Eyra {
             roll: document.getElementById('btnRoll')
         });
 
-        window.addEventListener('resize', () => this.resize());
+        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
+        else window.addEventListener('resize', () => this.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'play') this.pause();
         });
@@ -106,7 +107,9 @@ class Eyra {
                 this.last = performance.now();
                 this.fpsAcc = 0;
                 this.fpsFrames = 0;
-                this.renderer.setAnimationLoop((now) => this.frame(now));
+                const loop = (now) => this.frame(now);
+                if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, loop);
+                else this.renderer.setAnimationLoop(loop);
             }, 280);
         } catch (err) {
             console.error(err);
