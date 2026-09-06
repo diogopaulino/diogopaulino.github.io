@@ -1059,10 +1059,19 @@
     });
 
     // O contador de streams muda pouco; atualizar fora do loop evita layout a 60fps.
-    setInterval(function () {
-        const total = layers.reduce(function (sum, layer) { return sum + layer.streams.length; }, 0);
-        ui.streamCount.textContent = total;
-    }, 500);
+    const streamCounter = window.LabRuntime
+        ? LabRuntime.createInterval(function () {
+            const total = layers.reduce(function (sum, layer) { return sum + layer.streams.length; }, 0);
+            ui.streamCount.textContent = total;
+        }, 500)
+        : null;
+    if (streamCounter) streamCounter.start();
+    else {
+        setInterval(function () {
+            const total = layers.reduce(function (sum, layer) { return sum + layer.streams.length; }, 0);
+            ui.streamCount.textContent = total;
+        }, 500);
+    }
 
     syncUI();
     resize();

@@ -643,10 +643,17 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Keep the LCD palette in sync with the theme toggle.
-new MutationObserver(() => {
-    syncColors();
-    draw();
-}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+if (window.LabTheme) {
+    LabTheme.onChange(() => {
+        syncColors();
+        draw();
+    });
+} else {
+    new MutationObserver(() => {
+        syncColors();
+        draw();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+}
 
 // O aparelho é desenhado numa base fixa de 320x562px e escalado para caber na
 // tela — cresce no desktop, encolhe no celular e em paisagem curta.

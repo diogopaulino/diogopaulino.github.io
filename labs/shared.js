@@ -520,6 +520,23 @@
             });
         }
 
+        /* PixiJS: para o ticker na aba oculta (ou no pause do lab). Sem isto o
+           canvas continua apresentando frames e o updateAmbient segue vivo. */
+        function bindPixiTicker(app, options) {
+            if (!app || !app.ticker) return () => {};
+            const mode = options && options.onHidden === 'pause' ? 'pause' : 'stop';
+            return VisibilityAPI.onChange((hidden) => {
+                if (hidden) {
+                    if (mode === 'pause' && typeof app.ticker.pause === 'function') app.ticker.pause();
+                    else app.ticker.stop();
+                } else if (mode === 'pause' && typeof app.ticker.resume === 'function') {
+                    app.ticker.resume();
+                } else {
+                    app.ticker.start();
+                }
+            });
+        }
+
         function debounceResize(fn, ms) {
             const delay = typeof ms === 'number' ? ms : 150;
             let timer = null;
@@ -577,9 +594,44 @@
             createLoop,
             bindBabylonLoop,
             bindThreeLoop,
+            bindPixiTicker,
             debounceResize,
             createInterval
         });
+    })();
+
+    /* Observa mudanças de data-theme sem cada lab montar seu MutationObserver. */
+    const ThemeAPI = (function () {
+        const listeners = new Set();
+        let observing = false;
+
+        function current() {
+            return html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        }
+
+        function notify() {
+            const theme = current();
+            listeners.forEach((fn) => {
+                try { fn(theme); } catch (err) { console.error(err); }
+            });
+        }
+
+        function ensureObserver() {
+            if (observing) return;
+            observing = true;
+            new MutationObserver(notify).observe(html, {
+                attributes: true,
+                attributeFilter: ['data-theme']
+            });
+        }
+
+        function onChange(fn) {
+            ensureObserver();
+            listeners.add(fn);
+            return () => listeners.delete(fn);
+        }
+
+        return Object.freeze({ current, onChange });
     })();
 
     function init() {
@@ -602,6 +654,7 @@
     window.LabAudio = AudioAPI;
     window.LabVisibility = VisibilityAPI;
     window.LabRuntime = RuntimeAPI;
+    window.LabTheme = ThemeAPI;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });

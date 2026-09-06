@@ -172,7 +172,7 @@ export class StoryDirector {
                 g.showEnding();
                 break;
             default:
-                if (extra) console.log('[story]', event, extra);
+                break;
         }
     }
 

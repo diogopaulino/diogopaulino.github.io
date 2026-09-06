@@ -664,3 +664,45 @@ footer a:hover {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Transparência reduzida: blur em cima de canvas/WebGL é caro e desnecessário
+   quando o usuário pediu menos transparência no SO. */
+@media (prefers-reduced-transparency: reduce) {
+    .glass-panel,
+    .lab-hud-dock,
+    .back-link,
+    .theme-toggle,
+    .lab-icon-btn {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+/* Rodapé mínimo para shells fullscreen que escondem o credit durante o jogo. */
+.lab-foot {
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 0;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.lab-foot a {
+    color: inherit;
+    text-decoration: none;
+    font-weight: 500;
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 0.5rem;
+}
+
+.lab-foot a:hover {
+    color: var(--accent, #4f8bf0);
+}
