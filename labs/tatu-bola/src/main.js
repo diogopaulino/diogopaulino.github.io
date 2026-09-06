@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';
 
 import { STORAGE_KEY, QUEST, QUALITY, PLAYER, GET_QUOTES, HIT_QUOTES, ROLL_QUOTES } from './config.js';
 import { damp, pick, detectMobile, detectSoftwareGL } from './utils.js';
@@ -73,7 +74,7 @@ class Game {
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: false,
+                antialias: true,
                 powerPreference: 'high-performance'
             });
         } catch {
@@ -86,10 +87,33 @@ class Game {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0xff9a72, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.8;
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(55, 1, 0.12, 140);
         this.clock = new THREE.Clock();
+
+        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        const sky = new Sky();
+        sky.scale.setScalar(450000);
+        this.scene.add(sky);
+
+        const sun = new THREE.Vector3();
+        const elevation = 42;
+        const azimuth = 135;
+        const phi = THREE.MathUtils.degToRad(90 - elevation);
+        const theta = THREE.MathUtils.degToRad(azimuth);
+        sun.setFromSphericalCoords(1, phi, theta);
+
+        sky.material.uniforms['sunPosition'].value.copy(sun);
+        sky.material.uniforms['turbidity'].value = 2.0;
+        sky.material.uniforms['rayleigh'].value = 1.2;
+        sky.material.uniforms['mieCoefficient'].value = 0.005;
+        sky.material.uniforms['mieDirectionalG'].value = 0.8;
+
+        this.scene.environment = pmremGenerator.fromScene(sky).texture;
 
         this.hud.setLoading(0.4, 'Tesselando a ilha…');
         this.world = new World(this.scene);
