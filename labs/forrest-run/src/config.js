@@ -1,53 +1,31 @@
-/**
- * Forrest Run — constantes, biomas da travessia e presets de renderização Babylon.js.
- *
- * Distância em metros de cena. A HUD mostra milhas (1 mi = 1609.34 m).
- * Velocidade: Forrest nunca para — v = clamp(v0 + k·s, vMin, vMax).
- * Pulo: y'' = −g, y'(0) = JUMP_VY; aterrissa em y = 0.
- * 3 faixas: x = (lane − 1) · LANE_W, lane ∈ {0,1,2}.
- */
-
 export const STORAGE_KEY = 'forrest-run-babylon-v2';
-
 export const ROAD = {
     lanes: 3,
     laneW: 2.6,
     halfWidth: 4.6,
     shoulder: 7.2
 };
-
 export const CHUNK = {
     length: 46,
     count: 14
 };
-
-/** Física e cinemática do corredor. */
 export const RUNNER = {
-    v0: 12.0,
-    vMin: 8.5,
-    accelPerMeter: 0.0018,
-    gravity: 34,
-    jumpVy: 11.2,
-    coyote: 0.12,
-    jumpBuffer: 0.15,
-    laneLerp: 16,
-    invuln: 1.6,
-    stumbleSlow: 0.65,
-    recover: 2.5,
-    /** Ciclo de passada: ω = strideHz · 2π · (v / v0). */
-    strideHz: 1.4
+    v0: 14.0,
+    vMin: 10.0,
+    accelPerMeter: 0.0025,
+    gravity: 38,
+    jumpVy: 12.6,
+    coyote: 0.16,
+    jumpBuffer: 0.2,
+    laneLerp: 18,
+    invuln: 1.5,
+    stumbleSlow: 0.60,
+    recover: 3.2,
+    strideHz: 1.45
 };
-
 export const FOLLOWERS_AT = 1400;
-
-/** Troca de bioma a cada BIOME_METERS (com blend nos últimos 100 m). */
 export const BIOME_METERS = 960;
 export const BIOME_BLEND = 100;
-
-/**
- * Cinco trechos icônicos da corrida cinematográfica de Forrest.
- * Cores ricas PBR para céu, iluminação solar, névoa atmosférica e chão.
- */
 export const BIOMES = [
     {
         id: 'greenbow',
@@ -155,7 +133,6 @@ export const BIOMES = [
         wetRoughness: 0.2
     }
 ];
-
 export const DIFFICULTY = {
     sunday: {
         id: 'sunday',
@@ -185,7 +162,6 @@ export const DIFFICULTY = {
         vMax: 31
     }
 };
-
 export const QUALITY = {
     low: {
         antialias: false,
@@ -226,12 +202,10 @@ export const QUALITY = {
         rain: 800
     }
 };
-
 export function biomeAt(distance) {
     const i = Math.floor(Math.max(0, distance) / BIOME_METERS) % BIOMES.length;
     return BIOMES[i];
 }
-
 export function biomeBlend(distance) {
     const t = ((distance % BIOME_METERS) + BIOME_METERS) % BIOME_METERS;
     const next = biomeAt(distance + BIOME_METERS);
@@ -241,7 +215,6 @@ export function biomeBlend(distance) {
         : 0;
     return { cur, next, k };
 }
-
 export function loadSettings() {
     const fallback = {
         difficulty: 'cross',
@@ -258,7 +231,6 @@ export function loadSettings() {
         return fallback;
     }
 }
-
 export function saveSettings(settings) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -269,6 +241,5 @@ export function saveSettings(settings) {
             best: settings.best
         }));
     } catch (err) {
-        /* private mode */
     }
 }

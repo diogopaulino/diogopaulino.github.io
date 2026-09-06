@@ -1,22 +1,10 @@
-/**
- * Efeitos de partículas e atmosfera em Babylon.js:
- * - Poeira de passos na terra/asfalto
- * - Faíscas brilhantes ao coletar penas
- * - Impacto e poeira ao tropeçar
- * - Chuva torrencial volumétrica no bioma de tempestade
- */
-
 import { createParticleTexture } from './textures.js';
 import { hexToColor4 } from './utils.js';
-
 export class Effects {
     constructor(scene, quality) {
         this.scene = scene;
         this.quality = quality;
-
         const particleTex = createParticleTexture(scene);
-
-        // 1. Sistema de Partículas para Faíscas e Poeira
         const sparkSys = new BABYLON.ParticleSystem('sparkSys', quality.particles * 2, scene);
         sparkSys.particleTexture = particleTex;
         sparkSys.emitter = new BABYLON.Vector3(0, 0, 0);
@@ -30,8 +18,6 @@ export class Effects {
         sparkSys.gravity = new BABYLON.Vector3(0, -9.8, 0);
         sparkSys.start();
         this.sparkSys = sparkSys;
-
-        // 2. Sistema de Chuva
         const rainSys = new BABYLON.ParticleSystem('rainSys', quality.rain, scene);
         rainSys.particleTexture = particleTex;
         rainSys.emitter = new BABYLON.Vector3(0, 16, 0);
@@ -54,7 +40,6 @@ export class Effects {
         this.rainSys = rainSys;
         this.raining = false;
     }
-
     spawn(x, y, z, { count = 16, color = [1, 0.95, 0.8, 1], speed = 5, size = 0.4, life = 0.5 } = {}) {
         const sys = this.sparkSys;
         sys.emitter = new BABYLON.Vector3(x, y, z);
@@ -68,7 +53,6 @@ export class Effects {
         sys.maxEmitPower = speed * 1.2;
         sys.manualEmitCount = count;
     }
-
     dust(x, y, z, isDirt = true) {
         this.spawn(x, y, z, {
             count: 5,
@@ -78,7 +62,6 @@ export class Effects {
             life: 0.4
         });
     }
-
     setRain(on) {
         if (this.raining === on) return;
         this.raining = on;
@@ -88,7 +71,6 @@ export class Effects {
             this.rainSys.stop();
         }
     }
-
     update(dt, player) {
         if (this.raining) {
             this.rainSys.emitter.x = player.x;
