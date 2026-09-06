@@ -168,10 +168,12 @@ export function createTextures(scene) {
 
     const marble = pack(scene, (ctx, w) => {
         const rand = rng(88);
-        ctx.fillStyle = '#dcd4c8';
+        // Pedra grafite: o salão deve enquadrar a mesa sem competir com as
+        // casas claras. As veias continuam legíveis mesmo em qualidade baixa.
+        ctx.fillStyle = '#30363a';
         ctx.fillRect(0, 0, w, w);
         for (let v = 0; v < 14; v++) {
-            ctx.strokeStyle = `rgba(90,80,70,${0.08 + rand() * 0.12})`;
+            ctx.strokeStyle = `rgba(190,185,174,${0.08 + rand() * 0.10})`;
             ctx.lineWidth = 1 + rand() * 3.5;
             ctx.beginPath();
             let x = rand() * w;

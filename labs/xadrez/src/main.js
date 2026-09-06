@@ -20,9 +20,9 @@ const GLYPH = {
 };
 
 const QUALITY = {
-    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024 },
-    medium: { id: 'medium', pr: 1.35, seg: 40, shadows: true, shadowMap: 2048 },
-    high: { id: 'high', pr: 1.75, seg: 56, shadows: true, shadowMap: 2048 }
+    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 768 },
+    medium: { id: 'medium', pr: 1.25, seg: 40, shadows: true, shadowMap: 1536 },
+    high: { id: 'high', pr: 1.5, seg: 56, shadows: true, shadowMap: 2048 }
 };
 
 function isMobile() {
@@ -51,6 +51,7 @@ class Atelier {
         this.player = 'w';
         this.flip = false;
         this.selected = -1;
+        this.hover = -1;
         this.legal = [];
         this.history = [];
         this.busy = false;
@@ -62,6 +63,7 @@ class Atelier {
         this.expect = null;
         this.pendingPromo = null;
         this.drag = { x: 0, y: 0, active: false };
+        this.lastHoverAt = 0;
         this.generation = 0;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -180,8 +182,11 @@ class Atelier {
         try {
             this.engine = new BABYLON.Engine(this.canvas, true, {
                 preserveDrawingBuffer: false,
-                stencil: true,
-                adaptToDeviceRatio: true
+                stencil: false,
+                // The game controls its own render scale below. Keeping the
+                // browser's DPR out of this path prevents 3x mobile screens
+                // from silently rendering three times more pixels than needed.
+                adaptToDeviceRatio: false
             });
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.useRightHandedSystem = true;
@@ -198,8 +203,8 @@ class Atelier {
         // padrão do Babylon (0.8) achatam a perspectiva: sem isso, a casa mais
         // próxima da câmera aparecia enorme e a última fileira, minúscula.
         this.camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, 0.63, 20, new BABYLON.Vector3(0, 0.35, 0), this.scene);
-        this.camera.fov = 0.62;
-        this.camera.lowerRadiusLimit = 14;
+        this.camera.fov = 0.60;
+        this.camera.lowerRadiusLimit = isMobile() ? 12.5 : 14;
         this.camera.upperRadiusLimit = 28;
         this.camera.lowerBetaLimit = 0.02;
         this.camera.upperBetaLimit = Math.PI / 2.4;
@@ -207,6 +212,10 @@ class Atelier {
         this.camera.pinchDeltaPercentage = 0.015;
         this.camera.inertia = 0.85;
         this.camera.panningSensibility = 0;
+        this.camera.angularSensibilityX = isMobile() ? 6500 : 4200;
+        this.camera.angularSensibilityY = isMobile() ? 6500 : 4200;
+        this.camera.useNaturalPinchZoom = true;
+        this.camera.allowUpsideDown = false;
         this.camera.useAutoRotationBehavior = false;
         if (this.camera.autoRotationBehavior) {
             this.camera.autoRotationBehavior.idleRotationSpeed = 0.15;
@@ -221,7 +230,7 @@ class Atelier {
         this.setLoad(0.45, 'Montando o atelier…');
         setupEnvironment(BABYLON, this.scene);
         this.world = buildWorld(BABYLON, this.scene, tex, this.quality);
-        this.lights = setupLights(BABYLON, this.scene, { ...this.quality, shadows: true, shadowMap: 1024 });
+        this.lights = setupLights(BABYLON, this.scene, this.quality);
         this.postProcess = setupPostProcess(BABYLON, this.scene, this.quality);
 
         this.factory = new PieceFactory(this.scene, tex, this.quality);
@@ -236,6 +245,7 @@ class Atelier {
         this.canvas.addEventListener('pointerup', (e) => this.onUp(e));
         this.canvas.addEventListener('pointercancel', () => this.cancelDrag());
         this.canvas.addEventListener('lostpointercapture', () => this.cancelDrag());
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         new ResizeObserver(() => { this.engine.resize(); this.fitCameraFov(); }).observe(this.canvas);
 
         this.fillLists();
@@ -358,6 +368,7 @@ class Atelier {
         this.game.load(fen);
         this.history = [];
         this.selected = -1;
+        this.hover = -1;
         this.expect = null;
         this.busy = false;
         this.pendingPromo = null;
@@ -463,7 +474,11 @@ class Atelier {
     }
 
     onMove(e) {
-        if (!this.drag.active || !this.drag.mesh || Math.hypot(e.clientX - this.drag.x, e.clientY - this.drag.y) < 8) return;
+        if (!this.drag.active) {
+            this.updateHover();
+            return;
+        }
+        if (!this.drag.mesh || Math.hypot(e.clientX - this.drag.x, e.clientY - this.drag.y) < 8) return;
         const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
         // Plane at y = 0.5 to lift the piece slightly
         const hit = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.6));
@@ -509,6 +524,26 @@ class Atelier {
             return;
         }
         this.onSquare(hit);
+        this.updateHover();
+    }
+
+    updateHover() {
+        if (this.busy || this.pendingPromo || !this.scene) return;
+        const now = performance.now();
+        if (now - this.lastHoverAt < 32) return;
+        this.lastHoverAt = now;
+        const hit = this.hit();
+        if (hit === this.hover) return;
+        this.hover = hit;
+        const mark = this.world?.marks?.hover;
+        if (!mark) return;
+        mark.isVisible = false;
+        if (hit < 0) return;
+        const piece = this.game.board[hit];
+        const canSelect = piece && piece.c === this.game.side && (this.mode !== 'cpu' || this.game.side === this.player);
+        if (canSelect || this.selected >= 0 && this.game.findMove(this.selected, hit)) {
+            placeMark(mark, hit);
+        }
     }
 
     hit() {
@@ -550,6 +585,7 @@ class Atelier {
             return;
         }
         this.selected = -1;
+        this.hover = -1;
         this.legal = [];
         this.refreshMarks();
     }
@@ -625,6 +661,7 @@ class Atelier {
         this.history.push({ san, color: mover });
 
         this.selected = -1;
+        this.hover = -1;
         this.legal = [];
         this.busy = true;
 
@@ -825,6 +862,7 @@ class Atelier {
             this.history.pop();
         }
         this.selected = -1;
+        this.hover = -1;
         this.legal = [];
         this.rebuildPieces();
         this.renderHud();
@@ -877,12 +915,18 @@ class Atelier {
         m.lastTo.isVisible = false;
         m.check.isVisible = false;
         m.hint.isVisible = false;
+        if (m.hover) m.hover.isVisible = false;
     }
 
     refreshMarks() {
         this.clearMarks();
         const m = this.world.marks;
         if (this.selected >= 0) placeMark(m.select, this.selected);
+        if (this.hover >= 0) {
+            const hovered = this.game.board[this.hover];
+            const canSelect = hovered && hovered.c === this.game.side && (this.mode !== 'cpu' || this.game.side === this.player);
+            if (canSelect || this.selected >= 0 && this.game.findMove(this.selected, this.hover)) placeMark(m.hover, this.hover);
+        }
         let di = 0;
         let ci = 0;
         for (const mv of this.legal) {

@@ -203,6 +203,11 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
     }
     ivory.metallic = 0.02;
     ivory.roughness = 0.38;
+    if (tex.ivory?.roughnessMap) {
+        ivory.metallicTexture = tex.ivory.roughnessMap;
+        ivory.useRoughnessFromMetallicTextureGreen = true;
+        ivory.useMetallnessFromMetallicTextureBlue = false;
+    }
     ivory.clearCoat.isEnabled = true;
     ivory.clearCoat.intensity = 0.32;
     ivory.clearCoat.roughness = 0.2;
@@ -218,6 +223,11 @@ export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
     }
     ebony.metallic = 0.05;
     ebony.roughness = 0.3;
+    if (tex.ebony?.roughnessMap) {
+        ebony.metallicTexture = tex.ebony.roughnessMap;
+        ebony.useRoughnessFromMetallicTextureGreen = true;
+        ebony.useMetallnessFromMetallicTextureBlue = false;
+    }
     ebony.clearCoat.isEnabled = true;
     ebony.clearCoat.intensity = 0.42;
     ebony.clearCoat.roughness = 0.22;
