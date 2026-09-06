@@ -23,12 +23,12 @@
 
 export const WORLD_RADIUS = 40;
 
-export const WALK_SPEED = 7.2;
-export const RUN_SPEED = 11.6;
-export const ACCEL = 34;
-export const FRICTION = 6.4;
-export const JUMP_VY = 8.6;
-export const GRAVITY = 26;
+export const WALK_SPEED = 8.0;
+export const RUN_SPEED = 12.8;
+export const ACCEL = 40;
+export const FRICTION = 8.0;
+export const JUMP_VY = 9.2;
+export const GRAVITY = 24;
 export const COYOTE = 0.12;
 export const HOP_BOOST = 2.4;
 
