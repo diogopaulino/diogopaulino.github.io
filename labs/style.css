@@ -52,22 +52,34 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.85rem 1.25rem;
-  margin-top: 1.25rem;
+  gap: 0.75rem 1rem;
+  margin-top: 1.1rem;
 }
 
 .labs-search {
-  flex: 1 1 220px;
+  /* Não use flex-basis em px aqui: em coluna (mobile) o eixo principal é a
+     altura e 220px vira um oval gigante com border-radius: 999px. */
+  flex: 1 1 12rem;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  min-height: 48px;
-  padding: 0 1rem;
+  gap: 0.55rem;
+  width: min(100%, 28rem);
+  min-width: 0;
+  height: 2.75rem;
+  min-height: var(--touch-target, 44px);
+  max-height: 2.75rem;
+  padding: 0 0.95rem;
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
   background: var(--bg-body);
   color: var(--text-secondary);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.labs-search > svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 .labs-search:focus-within {
@@ -78,12 +90,27 @@
 .labs-search input {
   width: 100%;
   min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.95rem;
+  /* ≥16px evita zoom automático do iOS ao focar o campo. */
+  font-size: 1rem;
+  line-height: 1.2;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.labs-search input::-webkit-search-decoration,
+.labs-search input::-webkit-search-cancel-button,
+.labs-search input::-webkit-search-results-button,
+.labs-search input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .labs-search input::placeholder {
@@ -98,6 +125,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 /* Featured */
@@ -400,23 +428,78 @@
 }
 
 @media (max-width: 768px) {
-  .projects-grid,
-  .featured-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  .labs-hero {
+    margin-bottom: 1.35rem;
+    padding: 1rem 0.95rem;
+    border-radius: 1.15rem;
   }
 
-  .project-card {
-    padding: 1.5rem;
+  .labs-hero__eyebrow {
+    letter-spacing: 0.1em;
+    font-size: 0.7rem;
+  }
+
+  .labs-hero__lead {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    max-width: none;
   }
 
   .labs-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.55rem;
+    margin-top: 0.95rem;
+  }
+
+  .labs-search {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    height: var(--touch-target, 44px);
+    min-height: var(--touch-target, 44px);
+    max-height: var(--touch-target, 44px);
   }
 
   .labs-result-count {
-    text-align: center;
+    text-align: right;
+    font-size: 0.8rem;
+  }
+
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .section-heading p {
+    font-size: 0.85rem;
+  }
+
+  .projects-grid,
+  .featured-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .project-card {
+    padding: 1.25rem;
+    gap: 1rem;
+    border-radius: 1.15rem;
+  }
+
+  .project-content h2 {
+    font-size: clamp(1.15rem, 5vw, 1.35rem);
+  }
+
+  .project-content p {
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .project-card:hover {
+    transform: none;
   }
 
   .filters-container {
@@ -424,7 +507,8 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     justify-content: flex-start;
-    padding-bottom: 0.5rem;
+    padding: 0 0 0.5rem;
+    margin-bottom: 1.35rem;
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
     scrollbar-width: thin;
@@ -438,18 +522,21 @@
   .filter-btn {
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 0;
+    padding: 0.55rem 1rem;
   }
 }
 
 @media (max-width: 480px) {
   .project-card {
-    padding: 1.25rem;
-    gap: 1rem;
+    padding: 1.1rem;
+    gap: 0.85rem;
   }
 
   .project-icon {
     width: 48px;
     height: 48px;
+    border-radius: 1rem;
   }
 
   .project-icon svg {
@@ -457,19 +544,53 @@
     height: 24px;
   }
 
+  .project-tags {
+    gap: 0.4rem;
+  }
+
+  .tag {
+    padding: 0.28rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
   .card-badge {
-    top: 0.85rem;
-    right: 0.85rem;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.25rem 0.55rem;
   }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
   .labs-hero {
-    margin-bottom: 1.25rem;
-    padding: 0.85rem 1rem;
+    margin-bottom: 0.85rem;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .labs-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem 0.75rem;
+    margin-top: 0.7rem;
+  }
+
+  .labs-search {
+    flex: 1 1 12rem;
+    width: auto;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    max-height: 2.5rem;
+  }
+
+  .labs-result-count {
+    text-align: left;
   }
 
   .featured-section {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .filters-container {
+    margin-bottom: 1rem;
   }
 }
