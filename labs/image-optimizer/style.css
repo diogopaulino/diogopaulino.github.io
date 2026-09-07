@@ -36,19 +36,38 @@ body {
     padding: 4rem 2rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, transform 0.25s ease;
     background: var(--bg-card);
+    position: relative;
 }
 
 .upload-zone:hover,
 .upload-zone.dragover {
     border-color: var(--accent);
-    background: rgba(59, 130, 246, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.upload-zone.dragover {
+    transform: scale(1.01);
+    animation: optDropPulse 1s ease-in-out infinite;
+}
+
+@keyframes optDropPulse {
+    0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+    50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent); }
 }
 
 .upload-icon {
     color: var(--text-secondary);
     margin-bottom: 1rem;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.upload-zone:hover .upload-icon,
+.upload-zone.dragover .upload-icon {
+    color: var(--accent);
+    transform: translateY(-6px);
 }
 
 .upload-content h3 {
@@ -239,6 +258,48 @@ input[type="number"] {
     font-size: 0.875rem;
     color: var(--text-secondary);
     margin-bottom: 1rem;
+}
+
+.status.processing {
+    color: var(--accent);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.progress-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: statusPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
+.image-card.is-processing {
+    outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.image-card.is-processing .image-preview::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: barSweep 1.2s linear infinite;
+}
+
+@keyframes barSweep {
+    0% { transform: translateX(-100%); width: 35%; }
+    100% { transform: translateX(320%); width: 45%; }
 }
 
 .savings {

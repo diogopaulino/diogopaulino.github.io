@@ -819,11 +819,21 @@ function updateFeedback(msg, type = 'normal') {
   const text = document.getElementById('feedback-text');
   if (!banner) return;
 
-  banner.className = `feedback-banner ${type}`;
-  if (type === 'success') icon.textContent = '🌟';
-  else if (type === 'error') icon.textContent = '❌';
-  else icon.textContent = '💡';
+  banner.className = `feedback-bar-integrated ${type === 'normal' ? '' : type}`.trim();
+  if (type === 'success') {
+    icon.textContent = '🌟';
+    banner.classList.add('feedback-pop');
+  } else if (type === 'error') {
+    icon.textContent = '❌';
+    banner.classList.add('feedback-pop');
+  } else {
+    icon.textContent = '💡';
+  }
   text.innerHTML = msg;
+  if (type === 'success' || type === 'error') {
+    clearTimeout(updateFeedback._popTimer);
+    updateFeedback._popTimer = setTimeout(() => banner.classList.remove('feedback-pop'), 420);
+  }
 }
 
 function setTargetClefAndPitch() {
@@ -1196,6 +1206,10 @@ function setupControlBars() {
   noteBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       const note = btn.dataset.note;
+      btn.classList.remove('active-hit');
+      void btn.offsetWidth;
+      btn.classList.add('active-hit');
+      setTimeout(() => btn.classList.remove('active-hit'), 320);
       handleNoteInput(note, e);
     });
   });

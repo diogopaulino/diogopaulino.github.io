@@ -166,7 +166,9 @@ header .app-logo .logo-mark {
     position: relative;
     height: 220px;
     border-radius: 16px;
-    background: var(--ring-track);
+    background:
+        radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--crema, #d9a36a) 16%, transparent), transparent 60%),
+        var(--ring-track);
     overflow: hidden;
 }
 

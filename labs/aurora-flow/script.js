@@ -43,7 +43,7 @@ let turbulence = 0.0038;
 let interactionMode = 'attract';
 let interactionForce = 3.5;
 let particleSize = 1.35;
-let trailLength = 0.93;
+let trailLength = 0.965;
 let blendMode = 'lighter';
 let auroraIntensity = 80;
 let auroraAltitude = 0.7;
@@ -67,7 +67,7 @@ let ripples = [];
 let wakes = [];
 let iceSpark = [];
 
-const TRAIL = isMobile ? 4 : 8;
+const TRAIL = isMobile ? 6 : 12;
 
 const scenes = {
     boreal: {
@@ -462,7 +462,7 @@ class Particle {
         this.size = (Math.random() * 1.2 + 0.55) * particleSize;
         this.life = Math.random() * 240 + 80;
         this.maxLife = this.life;
-        this.glow = !isMobile && Math.random() < 0.08;
+        this.glow = !isMobile && Math.random() < 0.14;
         this.ti = 0;
         this.tn = 0;
         for (let i = 0; i < this.trail.length; i += 2) {
@@ -716,8 +716,8 @@ function drawAurora() {
     const hzn = horizonY();
     const skyH = Math.max(90, hzn);
     const short = height < 520;
-    const sheets = short || isMobile ? Math.min(current.sheets, 3) : current.sheets;
-    const step = short ? 6 : isMobile ? 4 : 2;
+    const sheets = short || isMobile ? Math.min(current.sheets, 4) : current.sheets;
+    const step = short ? 4 : isMobile ? 3 : 1.5;
 
     curtainT += 0.002 * flowSpeed;
     kpBreath = 0.82 + Math.sin(curtainT * 1.3) * 0.18;
@@ -732,19 +732,20 @@ function drawAurora() {
         const botC = current.colors[s % current.colors.length];
         const grad = skyCtx.createLinearGradient(0, 0, 0, hzn);
         grad.addColorStop(0, hexAlpha(topC, 0.92));
-        grad.addColorStop(0.35, hexAlpha(current.colors[1], 0.7));
-        grad.addColorStop(0.78, hexAlpha(botC, 0.38));
+        grad.addColorStop(0.28, hexAlpha(current.colors[1], 0.78));
+        grad.addColorStop(0.62, hexAlpha(botC, 0.42));
+        grad.addColorStop(0.88, hexAlpha(botC, 0.12));
         grad.addColorStop(1, hexAlpha(botC, 0));
         skyCtx.strokeStyle = grad;
-        skyCtx.lineWidth = (isMobile ? 2.2 : 3.1) + s * 0.35;
-        skyCtx.globalAlpha = intensity * (0.9 - s * 0.14) * kpBreath;
+        skyCtx.lineWidth = (isMobile ? 2.4 : 3.4) + s * 0.4;
+        skyCtx.globalAlpha = intensity * (0.92 - s * 0.12) * kpBreath;
         skyCtx.beginPath();
 
         for (let x = 0; x < width; x += step) {
             const env = fbm(x * 0.0016 + phase, curtainT * 0.5 + s, s * 0.4);
             const fold = Math.pow(clamp(Math.sin(x * 0.007 + curtainT + phase) * 0.5 + 0.5, 0, 1), 1.6);
             const envelope = Math.pow(clamp(env * 0.5 + 0.5, 0, 1), 1.25) * (0.28 + fold * 0.85);
-            if (envelope < 0.16) continue;
+            if (envelope < 0.14) continue;
             const flicker = 0.62 + noise3D(x * 0.02, curtainT * 1.6, s) * 0.38;
             const h = envelope * skyH * auroraAltitude * (0.55 + s * 0.1) * flicker;
             const wobble = noise3D(x * 0.028, curtainT * 0.8, s + 2) * 14;
@@ -802,16 +803,22 @@ function drawParticles() {
 
     for (const [color, group] of groups) {
         skyCtx.strokeStyle = color;
-        skyCtx.globalAlpha = 0.48;
+        skyCtx.globalAlpha = 0.22;
+        skyCtx.lineWidth = particleSize * 2.4;
+        skyCtx.beginPath();
+        for (const p of group) p.trace(skyCtx);
+        skyCtx.stroke();
+        skyCtx.globalAlpha = 0.58;
+        skyCtx.lineWidth = particleSize;
         skyCtx.beginPath();
         for (const p of group) p.trace(skyCtx);
         skyCtx.stroke();
     }
 
-    skyCtx.globalAlpha = 0.55;
+    skyCtx.globalAlpha = 0.62;
     for (const p of particles) {
         if (!p.glow) continue;
-        const r = p.size * 4.2;
+        const r = p.size * 5.2;
         const g = skyCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
         g.addColorStop(0, p.color);
         g.addColorStop(1, 'transparent');

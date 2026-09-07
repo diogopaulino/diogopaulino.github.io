@@ -432,17 +432,19 @@
         drawTrail() {
             if (!enableOrbits || this.trail.length < 4) return;
             const n = this.trail.length / 2;
-            ctx.beginPath();
-            let prev = null;
-            for (let i = 0; i < n; i++) {
-                const s = toScreen(this.trail[i * 2], this.trail[i * 2 + 1]);
-                if (!prev || Math.hypot(s.x - prev.x, s.y - prev.y) > 48) ctx.moveTo(s.x, s.y);
-                else ctx.lineTo(s.x, s.y);
-                prev = s;
+            for (let i = 1; i < n; i++) {
+                const s0 = toScreen(this.trail[(i - 1) * 2], this.trail[(i - 1) * 2 + 1]);
+                const s1 = toScreen(this.trail[i * 2], this.trail[i * 2 + 1]);
+                if (Math.hypot(s1.x - s0.x, s1.y - s0.y) > 48) continue;
+                const t = i / (n - 1);
+                ctx.beginPath();
+                ctx.moveTo(s0.x, s0.y);
+                ctx.lineTo(s1.x, s1.y);
+                ctx.strokeStyle = this.colorAlpha(0.08 + t * 0.42);
+                ctx.lineWidth = Math.max(0.7, (0.7 + t * 1.6) * cam.zoom);
+                ctx.lineCap = 'round';
+                ctx.stroke();
             }
-            ctx.strokeStyle = this.colorAlpha(0.28);
-            ctx.lineWidth = Math.max(0.8, 1.2 * cam.zoom);
-            ctx.stroke();
         }
 
         draw() {
@@ -482,13 +484,17 @@
 
     function drawGlow(s, r, color, mul) {
         if (!enableGlow) return;
-        const g = ctx.createRadialGradient(s.x, s.y, r * 0.2, s.x, s.y, r * mul);
+        const outer = r * mul * 1.2;
+        const g = ctx.createRadialGradient(s.x, s.y, r * 0.12, s.x, s.y, outer);
         g.addColorStop(0, color);
+        g.addColorStop(0.4, color);
         g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = 0.85;
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(s.x, s.y, r * mul, 0, TAU);
+        ctx.arc(s.x, s.y, outer, 0, TAU);
         ctx.fill();
+        ctx.globalAlpha = 1;
     }
 
     function drawSun(s, r, b) {
@@ -579,7 +585,7 @@
     }
 
     function drawPlanet(s, r, b) {
-        drawGlow(s, r, b.colorAlpha(0.55), 2.1 + b.pulse * 0.4);
+        drawGlow(s, r, b.colorAlpha(0.62), 2.45 + b.pulse * 0.5);
         const g = ctx.createRadialGradient(s.x - r * 0.3, s.y - r * 0.35, r * 0.1, s.x, s.y, r);
         g.addColorStop(0, 'rgba(255,255,255,0.55)');
         g.addColorStop(0.35, b.color);

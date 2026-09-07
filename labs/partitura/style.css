@@ -359,6 +359,12 @@ body {
 
 .feedback-bar-integrated.success { background: rgba(16, 185, 129, 0.18); color: #34d399; border-color: rgba(16,185,129,0.5); }
 .feedback-bar-integrated.error { background: rgba(244, 63, 94, 0.18); color: #fb7185; border-color: rgba(244,63,94,0.5); }
+.feedback-bar-integrated.feedback-pop { animation: feedbackPop 0.42s ease; }
+@keyframes feedbackPop {
+  0% { transform: scale(0.96); filter: brightness(1.2); }
+  55% { transform: scale(1.03); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
 
 /* Brilho estático na pauta — sem scale/translate (confunde leitura de linha/espaço) */
 .clef-mark { filter: drop-shadow(0 0 8px var(--neon-cyan)); }
@@ -368,10 +374,11 @@ body {
 .mode-bass-clef .note-glow { filter: drop-shadow(0 0 12px var(--neon-amethyst)); }
 
 /* Feedback de acerto: só intensifica o glow, sem mexer a posição da nota */
-.note-hit-anim { animation: noteHitFlash 0.45s ease; }
+.note-hit-anim { animation: noteHitFlash 0.55s ease; }
 @keyframes noteHitFlash {
-  0%, 100% { filter: drop-shadow(0 0 10px var(--neon-cyan)); }
-  50% { filter: drop-shadow(0 0 22px var(--neon-emerald)); }
+  0%, 100% { filter: drop-shadow(0 0 10px var(--neon-cyan)); opacity: 1; }
+  35% { filter: drop-shadow(0 0 28px var(--neon-emerald)) drop-shadow(0 0 12px #fff); opacity: 1; }
+  70% { filter: drop-shadow(0 0 18px var(--neon-emerald)); }
 }
 
 .staff-shake { animation: staffShake 0.4s ease; }
@@ -418,6 +425,14 @@ body {
   border-color: var(--neon-cyan);
   box-shadow: 0 0 16px var(--neon-cyan);
   background: rgba(34, 211, 238, 0.2);
+}
+
+.trigger-pad.active-hit {
+  animation: padHitFlash 0.35s ease;
+}
+@keyframes padHitFlash {
+  0% { transform: scale(0.94) translateY(0); filter: brightness(1.35); }
+  100% { transform: translateY(-2px); filter: brightness(1); }
 }
 
 .virtual-keyboard-deck {
