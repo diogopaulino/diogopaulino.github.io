@@ -421,27 +421,30 @@ function draw() {
 
     // Draw Player — sem shadowBlur (caro em mobile); brilho via alpha no fill
     ctx.shadowBlur = 0;
-    // Pluma do motor (feedback de movimento)
-    const thrusting = keys.Space; // tiro acende a pluma
-    if (thrusting || bullets.length) {
+    // Pluma do motor: sempre um sopro baixo; no tiro fica mais forte.
+    const fireOn = keys.Space;
+    {
         const cx = player.x + player.width / 2;
         const by = player.y + player.height;
-        const flick = 0.55 + 0.35 * (0.5 + 0.5 * Math.sin(starT * 28));
+        const flick = (fireOn ? 0.7 : 0.35) + 0.25 * (0.5 + 0.5 * Math.sin(starT * 28));
+        const reach = fireOn ? 10 : 5;
         ctx.globalAlpha = flick;
         ctx.fillStyle = '#ff9f1c';
         ctx.beginPath();
         ctx.moveTo(cx - 5, by - 4);
-        ctx.lineTo(cx, by + 10 + Math.sin(starT * 40) * 2);
+        ctx.lineTo(cx, by + reach + Math.sin(starT * 40) * 2);
         ctx.lineTo(cx + 5, by - 4);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = '#ff4fd8';
-        ctx.beginPath();
-        ctx.moveTo(cx - 3, by - 2);
-        ctx.lineTo(cx, by + 6);
-        ctx.lineTo(cx + 3, by - 2);
-        ctx.closePath();
-        ctx.fill();
+        if (fireOn) {
+            ctx.fillStyle = '#ff4fd8';
+            ctx.beginPath();
+            ctx.moveTo(cx - 3, by - 2);
+            ctx.lineTo(cx, by + 6);
+            ctx.lineTo(cx + 3, by - 2);
+            ctx.closePath();
+            ctx.fill();
+        }
         ctx.globalAlpha = 1;
     }
     ctx.fillStyle = player.color;
