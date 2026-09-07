@@ -129,21 +129,21 @@ export const QUALITY = {
         bloom: false,
         shadows: false,
         lamps: 0,
-        drawDistance: 180,
-        fogDensity: 0.014,
-        chunkProps: 0.4,
-        particles: 40
+        drawDistance: 140,
+        fogDensity: 0.018,
+        chunkProps: 0.28,
+        particles: 20
     },
     medium: {
-        antialias: true,
-        pixelRatio: 1.25,
+        antialias: false,
+        pixelRatio: 1.15,
         bloom: false,
         shadows: false,
-        lamps: 3,
-        drawDistance: 280,
-        fogDensity: 0.01,
-        chunkProps: 0.7,
-        particles: 120
+        lamps: 2,
+        drawDistance: 240,
+        fogDensity: 0.012,
+        chunkProps: 0.55,
+        particles: 80
     },
     high: {
         antialias: true,

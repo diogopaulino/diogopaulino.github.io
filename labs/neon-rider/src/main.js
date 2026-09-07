@@ -70,7 +70,7 @@ class Game {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
                 antialias: this.quality.antialias,
-                powerPreference: 'high-performance',
+                powerPreference: detectSoftwareGL() ? 'low-power' : 'high-performance',
                 stencil: false
             });
         } catch (err) {
