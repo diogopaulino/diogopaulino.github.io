@@ -47,9 +47,12 @@ class Game {
     }
 
     resolveQuality() {
+        // SoftGL/SwiftShader derrete com high — sempre capar, mesmo se o usuário
+        // salvou “high” numa sessão anterior com GPU real.
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -67,7 +70,7 @@ class Game {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
                 antialias: this.quality.antialias,
-                powerPreference: 'high-performance',
+                powerPreference: detectSoftwareGL() ? 'low-power' : 'high-performance',
                 stencil: false
             });
         } catch (err) {
@@ -524,7 +527,7 @@ class Game {
         if (!this._look) this._look = LOOK.clone();
         this._look.lerp(LOOK, k);
         this.camera.lookAt(this._look);
-        this.camera.fov = damp(this.camera.fov, 56 + this.player.speed * 0.18, 4, dt);
+        this.camera.fov = damp(this.camera.fov, 60 + this.player.speed * 0.32, 5.5, dt);
         this.camera.updateProjectionMatrix();
     }
 

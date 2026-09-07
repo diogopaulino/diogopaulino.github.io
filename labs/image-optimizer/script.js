@@ -112,7 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
         processBtn.textContent = 'Processando...';
 
         for (const file of currentFiles) {
+            const cardId = `card-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+            const card = document.getElementById(cardId);
+            if (card) {
+                const status = card.querySelector('.status');
+                if (status) {
+                    status.classList.add('processing');
+                    status.innerHTML = 'Processando<span class="progress-pulse"></span>';
+                }
+                card.classList.add('is-processing');
+            }
             await processSingleFile(file);
+            if (card) card.classList.remove('is-processing');
         }
 
         processBtn.disabled = false;

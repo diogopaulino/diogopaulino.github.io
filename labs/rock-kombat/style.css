@@ -1011,10 +1011,12 @@ legend {
 .pause-button {
   position: absolute;
   z-index: 6;
-  right: 10px;
+  right: max(10px, env(safe-area-inset-right, 0px));
   top: 86px;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid #ffffff33;
   background: #08090b99;
 }
@@ -1358,6 +1360,32 @@ dialog h2 {
   }
 }
 
+@media (max-width: 768px) {
+  .fighter-card {
+    min-height: min(380px, 70dvh);
+  }
+
+  .fighter-visual {
+    height: min(260px, 42dvh);
+  }
+
+  .roster {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .pause-button {
+    top: max(64px, calc(env(safe-area-inset-top, 0px) + 52px));
+    width: 44px;
+    height: 44px;
+  }
+
+  .arena {
+    padding-left: max(4px, env(safe-area-inset-left, 0px));
+    padding-right: max(4px, env(safe-area-inset-right, 0px));
+  }
+}
+
 
 /* ==========================================================================
    16. Responsive — Mobile (≤ 650px)
@@ -1519,8 +1547,8 @@ dialog h2 {
 
   .pause-button {
     top: 70px;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
   }
 
   .versus-duel {

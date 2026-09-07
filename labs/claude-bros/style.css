@@ -185,7 +185,8 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    display: flex;
+    /* Default oculto: só aparece com pointer:coarse (evita pads em VMs/desktop híbrido). */
+    display: none;
     align-items: flex-end;
     justify-content: space-between;
     gap: 1rem;
@@ -196,7 +197,7 @@ body {
 }
 
 .touch-controls[hidden] {
-    display: none;
+    display: none !important;
 }
 
 .touch-move {
@@ -292,6 +293,12 @@ body {
 /* Com mouse/teclado os botões de toque só atrapalham a vista. */
 @media (pointer: fine) {
     .touch-controls {
-        display: none;
+        display: none !important;
+    }
+}
+
+@media (pointer: coarse) {
+    .touch-controls:not([hidden]) {
+        display: flex;
     }
 }

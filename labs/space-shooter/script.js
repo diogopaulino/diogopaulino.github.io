@@ -128,7 +128,9 @@ function initStars() {
             x: Math.random() * gameWidth,
             y: Math.random() * gameHeight,
             size: Math.random() * 2,
-            speed: Math.random() * 0.5 + 0.1
+            speed: Math.random() * 0.5 + 0.1,
+            phase: Math.random() * Math.PI * 2,
+            twinkle: 0.8 + Math.random() * 1.4
         });
     }
 }
@@ -405,10 +407,12 @@ function draw() {
         ctx.stroke();
     }
 
-    // Draw Stars
+    // Draw Stars — twinkle estável (seno), não noise por frame
+    const starT = performance.now() / 1000;
     ctx.fillStyle = '#ffffff';
     stars.forEach(star => {
-        ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+        const tw = 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(starT * star.twinkle + star.phase));
+        ctx.globalAlpha = tw;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
         ctx.fill();
@@ -417,6 +421,32 @@ function draw() {
 
     // Draw Player — sem shadowBlur (caro em mobile); brilho via alpha no fill
     ctx.shadowBlur = 0;
+    // Pluma do motor: sempre um sopro baixo; no tiro fica mais forte.
+    const fireOn = keys.Space;
+    {
+        const cx = player.x + player.width / 2;
+        const by = player.y + player.height;
+        const flick = (fireOn ? 0.7 : 0.35) + 0.25 * (0.5 + 0.5 * Math.sin(starT * 28));
+        const reach = fireOn ? 10 : 5;
+        ctx.globalAlpha = flick;
+        ctx.fillStyle = '#ff9f1c';
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, by - 4);
+        ctx.lineTo(cx, by + reach + Math.sin(starT * 40) * 2);
+        ctx.lineTo(cx + 5, by - 4);
+        ctx.closePath();
+        ctx.fill();
+        if (fireOn) {
+            ctx.fillStyle = '#ff4fd8';
+            ctx.beginPath();
+            ctx.moveTo(cx - 3, by - 2);
+            ctx.lineTo(cx, by + 6);
+            ctx.lineTo(cx + 3, by - 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
     ctx.fillStyle = player.color;
     // Simple ship shape
     ctx.beginPath();

@@ -27,6 +27,12 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+export function detectTouch() {
+    if (typeof navigator === 'undefined') return false;
+    return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches)
+        || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 export function detectSoftwareGL() {
     try {
         const canvas = document.createElement('canvas');

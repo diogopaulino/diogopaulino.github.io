@@ -52,8 +52,11 @@ export class Game {
         this.engine = new BABYLON.Engine(this.canvas, antialias, {
             preserveDrawingBuffer: true,
             stencil: true,
-            adaptToDeviceRatio: true
+            adaptToDeviceRatio: false,
+            powerPreference: 'high-performance'
         });
+        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio || 1.5);
+        this.engine.setHardwareScalingLevel(1 / pr);
 
         this.scene = new BABYLON.Scene(this.engine);
         this.scene.clearColor = new BABYLON.Color4(0.02, 0.03, 0.05, 1);

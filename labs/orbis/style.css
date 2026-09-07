@@ -686,3 +686,8 @@ body[data-view="system"] #backSystem {
         height: min(42%, 38dvh);
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

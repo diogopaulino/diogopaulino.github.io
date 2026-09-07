@@ -20,16 +20,30 @@ const GLYPH = {
 };
 
 const QUALITY = {
-    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024 },
-    medium: { id: 'medium', pr: 1.25, seg: 40, shadows: true, shadowMap: 1536 },
-    high: { id: 'high', pr: 1.75, seg: 64, shadows: true, shadowMap: 2048 }
+    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024, antialias: false },
+    medium: { id: 'medium', pr: 1.25, seg: 40, shadows: true, shadowMap: 1536, antialias: true },
+    high: { id: 'high', pr: 1.75, seg: 64, shadows: true, shadowMap: 2048, antialias: true }
 };
 
 function isMobile() {
     return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
 }
 
+function detectSoftwareGL() {
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return true;
+        const info = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
+    } catch {
+        return true;
+    }
+}
+
 function pickQuality(mode) {
+    if (detectSoftwareGL()) return QUALITY.low;
     if (QUALITY[mode]) return QUALITY[mode];
     if (isMobile()) return navigator.hardwareConcurrency >= 6 ? QUALITY.medium : QUALITY.low;
     if ((window.devicePixelRatio || 1) >= 2 && window.innerWidth >= 1400) return QUALITY.high;
@@ -206,7 +220,7 @@ class Atelier {
         }
 
         try {
-            this.engine = new BABYLON.Engine(this.canvas, true, {
+            this.engine = new BABYLON.Engine(this.canvas, this.quality?.antialias ?? false, {
                 preserveDrawingBuffer: false,
                 stencil: false,
                 // The game controls its own render scale below. Keeping the

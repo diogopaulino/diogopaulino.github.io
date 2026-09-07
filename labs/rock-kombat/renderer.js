@@ -55,8 +55,8 @@ export function render(ctx, match, frameNumber, images, renderState) {
   ctx.save();
 
   const mid = (match.p1.x + match.p2.x) / 2;
-  const camX = clamp(mid - W / 2, -48, 48);
-  ctx.translate(-camX * 0.35, 0);
+  const camX = clamp(mid - W / 2, -28, 28);
+  ctx.translate(-camX * 0.28, 0);
 
   if (match.shake) {
     ctx.translate(random(-match.shake, match.shake), random(-match.shake * 0.45, match.shake * 0.45));

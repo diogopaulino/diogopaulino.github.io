@@ -31,7 +31,23 @@ class RastroVermelho {
         this.cameraPosition = new B.Vector3(); this.cameraTarget = new B.Vector3(); this.sunsetFog = B.Color3.FromHexString('#a68a75'); this.dayFog = B.Color3.FromHexString('#a4b6ba'); this.nightFog = B.Color3.FromHexString('#26313e');
         this.init().catch(error => { this.state = 'error'; this.audio.pause(); this.engine.stopRenderLoop(); showError(error); });
     }
-    pickQuality() { return PROFILES[this.settings.quality] || (matchMedia('(pointer: coarse)').matches ? PROFILES.low : PROFILES.medium); }
+    pickQuality() {
+        try {
+            const c = document.createElement('canvas');
+            const gl = c.getContext('webgl2') || c.getContext('webgl');
+            if (gl) {
+                const info = gl.getExtension('WEBGL_debug_renderer_info');
+                const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+                if (/swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name)) {
+                    return PROFILES.low;
+                }
+            } else {
+                return PROFILES.low;
+            }
+        } catch { /* ignore */ }
+        return PROFILES[this.settings.quality]
+            || (matchMedia('(pointer: coarse)').matches ? PROFILES.low : PROFILES.medium);
+    }
     async init() {
         const scene = this.scene;
         this.camera = new B.UniversalCamera('câmera', new B.Vector3(0, 14, -12), scene);

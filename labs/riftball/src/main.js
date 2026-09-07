@@ -11,7 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
     STORAGE_KEY, QUALITY, DT, MAX_STEPS, NET, TEAMS
 } from './config.js';
-import { clamp, lerp, wrapPi, detectMobile, detectSoftwareGL } from './utils.js';
+import { clamp, lerp, wrapPi, detectMobile, detectTouch, detectSoftwareGL } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
@@ -304,7 +304,7 @@ class Game {
         this.guestInput = blankInput();
         this.localSlot = mode === 'online-guest' ? 1 : 0;
         this.hud.showHud();
-        this.hud.setTouch(this.mobile && mode !== 'local');
+        this.hud.setTouch(detectTouch() && mode !== 'local');
         this.hud.setNames(TEAMS[0].name, TEAMS[1].name);
         this.hud.setScore(this.match.score, this.match.clock, false);
         this.hud.announce('Riftball', 1.1);

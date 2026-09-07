@@ -62,19 +62,22 @@ class Game {
     }
 
     qualityPreset() {
+        if (detectSoftwareGL()) return QUALITY.low;
         let key = this.settings.quality;
         if (key === 'auto') {
-            key = (this.mobile || detectSoftwareGL()) ? 'low' : 'high';
+            key = this.mobile ? 'low' : 'high';
         }
         return QUALITY[key] || QUALITY.medium;
     }
 
     async boot() {
         this.hud.setLoading(0.12, 'Inserindo o CD…');
+        const soft = detectSoftwareGL();
+        const preset = this.qualityPreset();
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: true,
+                antialias: !soft && preset.pixel > 1,
                 powerPreference: 'high-performance'
             });
         } catch {
@@ -83,7 +86,7 @@ class Game {
         }
 
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.enabled = !!preset.shadows && !soft;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0xff9a72, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;

@@ -268,6 +268,25 @@ const lander = {
 
         target.fillStyle = '#888';
         target.fillRect(-3, 3, 6, 3);
+
+        // Chama do motor — o lander “dispara” visualmente, não só com partículas.
+        if (this.engineOn) {
+            const h = 6 + Math.random() * 4;
+            target.fillStyle = '#ff0';
+            target.beginPath();
+            target.moveTo(-4, 6);
+            target.lineTo(0, 6 + h);
+            target.lineTo(4, 6);
+            target.closePath();
+            target.fill();
+            target.fillStyle = '#f30';
+            target.beginPath();
+            target.moveTo(-2, 6);
+            target.lineTo(0, 6 + h * 0.65);
+            target.lineTo(2, 6);
+            target.closePath();
+            target.fill();
+        }
         target.restore();
     }
 };
@@ -500,7 +519,7 @@ function checkLowFuel() {
 }
 
 function emitEngineParticles(dt) {
-    engineParticleBudget += 70 * dt;
+    engineParticleBudget += 110 * dt;
     const count = Math.floor(engineParticleBudget);
     engineParticleBudget -= count;
     if (count === 0) return;
@@ -513,9 +532,9 @@ function emitEngineParticles(dt) {
         particles.push({
             x: lander.x + exhaustX * 9 + (Math.random() - 0.5) * 4,
             y: lander.y + 5 + exhaustY * 8,
-            vx: exhaustX * speed + lander.vx * 0.15,
+            vx: exhaustX * speed + lander.vx * 0.15 + (Math.random() - 0.5) * 18,
             vy: exhaustY * speed + lander.vy * 0.15,
-            life: 0.2 + Math.random() * 0.18,
+            life: 0.28 + Math.random() * 0.25,
             color: Math.random() > 0.3 ? '#ff0' : '#f30',
             debris: false
         });

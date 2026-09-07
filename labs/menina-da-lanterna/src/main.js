@@ -67,9 +67,10 @@ class Game {
     }
 
     resolveQuality() {
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }

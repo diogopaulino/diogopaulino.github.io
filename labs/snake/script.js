@@ -36,6 +36,9 @@ let lastFrame = 0;
 let rafId = null;
 let isGameRunning = false;
 let isPaused = false;
+// A cobra só anda depois do primeiro comando — senão, no meio do tabuleiro
+// indo para a direita, morre na parede em ~1s sem o jogador ter jogado.
+let awaitingFirstMove = false;
 
 // Colors are pulled from the CSS custom properties so the LCD follows the theme.
 const COLORS = { bg: '#9bbc0f', snake: '#0f380f', food: '#0f380f' };
@@ -166,14 +169,16 @@ function announce(message) {
 // Initialize Game
 function initGame() {
     const startY = Math.floor(TILE_COUNT_Y / 2);
+    // Começa mais à esquerda para dar margem quando o primeiro comando for “direita”.
     snake = [
-        { x: 10, y: startY },
-        { x: 9, y: startY },
-        { x: 8, y: startY }
+        { x: 6, y: startY },
+        { x: 5, y: startY },
+        { x: 4, y: startY }
     ];
     dx = 1;
     dy = 0;
     queuedDirection = null;
+    awaitingFirstMove = true;
     score = 0;
     stepInterval = BASE_SPEED;
     accumulator = 0;
@@ -188,7 +193,7 @@ function initGame() {
     eatPulse = 0;
     deathFlash = 0;
     updateHud();
-    announce('Partida iniciada.');
+    announce('Partida iniciada. Escolha uma direção.');
     sfxStart();
 
     startLoop();
@@ -234,7 +239,7 @@ function gameLoop(timestamp) {
     eatPulse = Math.max(0, eatPulse - delta / 220);
     deathFlash = Math.max(0, deathFlash - delta / 420);
 
-    if (isGameRunning && !isPaused) {
+    if (isGameRunning && !isPaused && !awaitingFirstMove) {
         accumulator += delta;
         while (accumulator >= stepInterval) {
             accumulator -= stepInterval;
@@ -397,19 +402,21 @@ function drawFood() {
     const r = (GRID_SIZE / 2 - 2) * scale;
 
     ctx.fillStyle = COLORS.food;
+    // Duas lobos: silhueta de maçã, ainda 2-tone Game Boy.
     ctx.beginPath();
-    ctx.arc(cx, cy + 1, r, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
     ctx.fill();
 
     // Talo e folha.
     ctx.strokeStyle = COLORS.food;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(cx, cy - r);
+    ctx.moveTo(cx, cy - r * 0.85);
     ctx.lineTo(cx, cy - r - 3);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(cx + 3, cy - r - 3, 3, 1.6, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(cx + 4, cy - r - 3, 4, 2.2, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Brilho: um furinho na cor do fundo, do jeito que um sprite 8-bit faria.
@@ -515,9 +522,22 @@ function queueDirection(nextDx, nextDy) {
     // Compare against the direction that will actually be applied next step.
     const currentDx = queuedDirection ? queuedDirection.dx : dx;
     const currentDy = queuedDirection ? queuedDirection.dy : dy;
-    if (nextDx === -currentDx && nextDy === -currentDy) return;
-    if (nextDx === currentDx && nextDy === currentDy) return;
+    // Antes do primeiro passo, qualquer direção é válida (ainda não há "reverso"
+    // perigoso — a cobra está parada).
+    if (!awaitingFirstMove) {
+        if (nextDx === -currentDx && nextDy === -currentDy) return;
+        if (nextDx === currentDx && nextDy === currentDy) return;
+    }
     queuedDirection = { dx: nextDx, dy: nextDy };
+    if (awaitingFirstMove) {
+        // Aplica já e libera o passo fixo — o jogador pediu para andar.
+        dx = nextDx;
+        dy = nextDy;
+        queuedDirection = null;
+        awaitingFirstMove = false;
+        accumulator = 0;
+        announce('Partida em andamento.');
+    }
     sfxTurn();
 }
 

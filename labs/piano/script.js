@@ -242,6 +242,10 @@ function playNote(noteName, velocity = 0.7) {
   const keyElement = document.querySelector(`[data-note="${noteName}"]`);
   if (keyElement) {
     keyElement.classList.add('active');
+    keyElement.style.setProperty('--key-velocity', velocity.toFixed(3));
+    keyElement.classList.remove('key-strike');
+    void keyElement.offsetWidth;
+    keyElement.classList.add('key-strike');
   }
 }
 

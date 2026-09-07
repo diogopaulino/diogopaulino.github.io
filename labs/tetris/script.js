@@ -226,14 +226,28 @@ function drawGhost() {
 
     if (ghostY === startY) return;
 
+    // Ghost oco: contorno legível no LCD verde (os pontos 0.3 eram quase invisíveis).
+    context.save();
+    context.globalAlpha = 0.22;
     context.fillStyle = colors[2];
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                context.fillRect(x + player.pos.x + 0.35, y + ghostY + 0.35, 0.3, 0.3);
+                context.fillRect(x + player.pos.x + 0.08, y + ghostY + 0.08, 0.84, 0.84);
             }
         });
     });
+    context.globalAlpha = 1;
+    context.strokeStyle = colors[2];
+    context.lineWidth = 0.08;
+    player.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                context.strokeRect(x + player.pos.x + 0.12, y + ghostY + 0.12, 0.76, 0.76);
+            }
+        });
+    });
+    context.restore();
 }
 
 function drawNext() {

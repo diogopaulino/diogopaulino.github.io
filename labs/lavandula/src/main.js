@@ -51,9 +51,10 @@ class Game {
     }
 
     resolveQuality() {
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -278,7 +279,7 @@ class Game {
         this.hud.setTime(0);
         this.hud.setObjective('Ande pela estrada. Os campos não pedem nada.');
         this.hud.showHud(true);
-        this.hud.setTouchVisible(this.mobile);
+        this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || this.mobile);
         this.hud.say('O vento nas fileiras. Anda quando quiser.', 5);
         this.state = 'intro';
         this.hud.setState('intro');

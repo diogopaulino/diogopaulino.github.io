@@ -25,6 +25,50 @@ const fillShapesInput = document.getElementById('fillShapes');
 const activeToolName = document.getElementById('activeToolName');
 const swatches = document.querySelectorAll('.color-swatch');
 
+// Brush cursor preview (desktop)
+const brushCursor = document.createElement('div');
+brushCursor.className = 'brush-cursor';
+brushCursor.setAttribute('aria-hidden', 'true');
+container.appendChild(brushCursor);
+
+const syncBrushCursor = () => {
+    const rect = canvas.getBoundingClientRect();
+    const scale = rect.width / canvas.width || 1;
+    const size = Math.max(4, brushSize * scale);
+    brushCursor.style.width = `${size}px`;
+    brushCursor.style.height = `${size}px`;
+    brushCursor.classList.toggle('is-eraser', currentTool === 'eraser');
+    const showPreview = currentTool === 'brush' || currentTool === 'eraser';
+    if (!showPreview) brushCursor.classList.remove('is-visible');
+    if (showPreview) {
+        const alphaHex = Math.round(currentOpacity * 55).toString(16).padStart(2, '0');
+        brushCursor.style.backgroundColor = currentTool === 'eraser'
+            ? 'rgba(255,255,255,0.35)'
+            : `${currentColor}${alphaHex}`;
+    }
+};
+
+const moveBrushCursor = (clientX, clientY) => {
+    const showPreview = currentTool === 'brush' || currentTool === 'eraser';
+    if (!showPreview) {
+        brushCursor.classList.remove('is-visible');
+        return;
+    }
+    const crect = container.getBoundingClientRect();
+    brushCursor.style.left = `${clientX - crect.left + container.scrollLeft}px`;
+    brushCursor.style.top = `${clientY - crect.top + container.scrollTop}px`;
+    syncBrushCursor();
+    brushCursor.classList.add('is-visible');
+};
+
+canvas.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'mouse') moveBrushCursor(e.clientX, e.clientY);
+});
+canvas.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'mouse') moveBrushCursor(e.clientX, e.clientY);
+});
+canvas.addEventListener('pointerleave', () => brushCursor.classList.remove('is-visible'));
+
 // Actions Elements
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -357,6 +401,7 @@ toolBtns.forEach(btn => {
         if (activeToolName) {
             activeToolName.textContent = btn.dataset.name || currentTool;
         }
+        syncBrushCursor();
     });
 });
 
@@ -372,6 +417,7 @@ const setColor = (color) => {
         sw.classList.toggle('is-active', sw.dataset.color?.toLowerCase() === color.toLowerCase());
         sw.setAttribute('aria-pressed', String(sw.classList.contains('is-active')));
     });
+    syncBrushCursor();
 };
 
 colorPicker.addEventListener('input', (e) => setColor(e.target.value));
@@ -383,11 +429,13 @@ swatches.forEach(swatch => {
 brushSizeInput.addEventListener('input', (e) => {
     brushSize = e.target.value;
     brushSizeVal.textContent = `${brushSize}px`;
+    syncBrushCursor();
 });
 
 opacityInput.addEventListener('input', (e) => {
     currentOpacity = e.target.value / 100;
     opacityVal.textContent = `${e.target.value}%`;
+    syncBrushCursor();
 });
 
 if (fillShapesInput) {

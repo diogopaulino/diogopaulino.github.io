@@ -471,6 +471,16 @@ class Game {
   }
 
   resolveQuality(choice = this.settings.quality) {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (!gl) return QUALITY.performance;
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+      if (/swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name)) {
+        return QUALITY.performance;
+      }
+    } catch { /* ignore */ }
     if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
     if (mobile || (navigator.hardwareConcurrency || 4) <= 4) return QUALITY.performance;

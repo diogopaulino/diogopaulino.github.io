@@ -841,3 +841,11 @@ kbd {
         bottom: calc(0.8rem + var(--safe-bottom, 0px));
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}

@@ -828,3 +828,8 @@ header {
     display: none;
   }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

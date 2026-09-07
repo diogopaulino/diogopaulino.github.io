@@ -1104,6 +1104,7 @@ body {
     border: 2px solid var(--border-subtle);
     border-radius: 1rem;
     padding: 1rem 1.25rem;
+    min-height: 52px;
     cursor: pointer;
     font-size: 1.1rem;
     font-weight: 600;
@@ -1114,6 +1115,14 @@ body {
     color: var(--text-primary);
     position: relative;
     overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.option-card:focus-visible {
+    outline: 2px solid var(--talk-primary, var(--accent));
+    outline-offset: 3px;
+    border-color: var(--talk-primary, var(--accent));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--talk-primary, var(--accent)) 28%, transparent);
 }
 
 .option-card::before {
@@ -1288,6 +1297,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
+    min-height: 48px;
     border: none;
     border-radius: 2rem;
     font-weight: 700;
@@ -1295,6 +1305,17 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+}
+
+.btn-next:focus-visible,
+.btn-submit:focus-visible,
+.btn-restart:focus-visible,
+.btn-continue:focus-visible,
+.btn-speak:focus-visible,
+.btn-listen-large:focus-visible {
+    outline: 2px solid var(--talk-primary, var(--accent));
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--talk-primary, var(--accent)) 28%, transparent);
 }
 
 .feedback-area.correct .btn-next {
@@ -1529,6 +1550,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 1rem 1.5rem;
+    min-height: 48px;
     background: var(--avatar-bg);
     color: white;
     border: none;

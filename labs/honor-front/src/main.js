@@ -12,6 +12,16 @@ import { heightAt, buildCombatWorld } from './world.js';
 import { setupAtmosphere } from './sky.js';
 import { clamp } from './utils.js';
 import { loadAssets } from './models.js?v=2';
+import { QUALITY } from './config.js';
+
+function pickQuality() {
+    const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    const narrow = Math.min(window.innerWidth, window.innerHeight) < 760;
+    if (coarse || narrow) return QUALITY.low;
+    const dpr = window.devicePixelRatio || 1;
+    if (dpr >= 2 || Math.min(window.innerWidth, window.innerHeight) < 900) return QUALITY.medium;
+    return QUALITY.high;
+}
 
 class HonorFront {
     constructor() {
@@ -149,12 +159,17 @@ class HonorFront {
         const BABYLON = window.BABYLON;
         if (!BABYLON) return;
 
+        this.quality = pickQuality();
+
         try {
-            this.engine = new BABYLON.Engine(this.canvas, true, {
+            this.engine = new BABYLON.Engine(this.canvas, this.quality.antialias, {
                 preserveDrawingBuffer: false,
                 stencil: true,
-                adaptToDeviceRatio: true
+                adaptToDeviceRatio: false,
+                powerPreference: 'high-performance'
             });
+            const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
+            this.engine.setHardwareScalingLevel(1 / pr);
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.clearColor = new BABYLON.Color4(0.45, 0.52, 0.6, 1.0);
         } catch (err) {
@@ -166,7 +181,7 @@ class HonorFront {
         this.assets = await loadAssets(BABYLON, this.scene);
 
         // Iluminação & Atmosfera
-        this.lights = setupAtmosphere(BABYLON, this.scene);
+        this.lights = setupAtmosphere(BABYLON, this.scene, this.quality);
 
         // Cenário da Praia e Bunkers
         this.world = buildCombatWorld(BABYLON, this.scene, this.assets);
@@ -174,7 +189,7 @@ class HonorFront {
         // Câmera do Jogador
         this.camera = new BABYLON.FreeCamera('fpsCam', new BABYLON.Vector3(0, 1.6, -70), this.scene);
         this.camera.minZ = 0.05;
-        this.camera.maxZ = 800;
+        this.camera.maxZ = this.quality.far || 800;
 
         // Armas
         this.loadout = new Loadout(BABYLON, this.camera, this.scene, this.assets);
@@ -187,8 +202,8 @@ class HonorFront {
 
         // Pipeline PBR
         const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
-        pipe.fxaaEnabled = true;
-        pipe.bloomEnabled = true;
+        pipe.fxaaEnabled = this.quality.antialias;
+        pipe.bloomEnabled = this.quality.id !== 'low';
         pipe.bloomThreshold = 0.82;
         pipe.bloomWeight = 0.22;
         pipe.imageProcessing.toneMappingEnabled = true;
@@ -198,6 +213,7 @@ class HonorFront {
         document.getElementById('loadingOverlay').hidden = true;
         document.getElementById('menuOverlay').hidden = false;
         document.body.dataset.state = 'intro';
+        this.state = 'menu';
 
         this._renderLoop = () => {
             this.frame();
@@ -215,7 +231,8 @@ class HonorFront {
         document.getElementById('menuOverlay').hidden = true;
         document.getElementById('hud').hidden = false;
         document.getElementById('crosshair').hidden = false;
-        document.getElementById('touchControls').hidden = !('ontouchstart' in window);
+        const coarse = window.matchMedia('(pointer: coarse)').matches;
+        document.getElementById('touchControls').hidden = !coarse;
         document.body.dataset.state = 'play';
 
         this.player.spawn(0, -60, Math.PI, heightAt);
@@ -239,14 +256,15 @@ class HonorFront {
         const dt = Math.min(0.05, this.engine.getDeltaTime() / 1000);
 
         if (this.state === 'play') {
-            // Teclado
+            // Teclado — sempre limpa eixos no keyup (híbridos com ontouchstart
+            // não podem deixar WASD “preso”).
             if (this.keys['KeyW'] || this.keys['ArrowUp']) this.input.move.z = 1;
             else if (this.keys['KeyS'] || this.keys['ArrowDown']) this.input.move.z = -1;
-            else if (!('ontouchstart' in window)) this.input.move.z = 0;
+            else this.input.move.z = 0;
 
             if (this.keys['KeyA'] || this.keys['ArrowLeft']) this.input.move.x = -1;
             else if (this.keys['KeyD'] || this.keys['ArrowRight']) this.input.move.x = 1;
-            else if (!('ontouchstart' in window)) this.input.move.x = 0;
+            else this.input.move.x = 0;
 
             this.input.move.sprint = !!(this.keys['ShiftLeft'] || this.keys['ShiftRight']);
 

@@ -792,3 +792,8 @@ body[data-state="pause"] [data-lab-footer] {
         display: none;
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

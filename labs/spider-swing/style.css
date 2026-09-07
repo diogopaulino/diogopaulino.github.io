@@ -225,9 +225,15 @@ button {
     pointer-events: auto;
 }
 
-body[data-state="playing"] .lab-foot,
-body[data-state="playing"] .game-shell > header .app-logo {
+body[data-state="playing"] .lab-foot {
     opacity: 0;
+    transition: opacity 0.5s var(--ease);
+}
+
+/* Menu já traz o título — o logo do chrome colidia com o lede em 375px. */
+.game-shell > header .app-logo {
+    opacity: 0;
+    pointer-events: none;
     transition: opacity 0.5s var(--ease);
 }
 
@@ -771,15 +777,29 @@ kbd {
 }
 
 @media (max-width: 560px) {
+    .overlay {
+        place-items: start center;
+        padding-top: calc(3.8rem + var(--safe-top));
+        padding-left: max(0.75rem, var(--safe-left));
+        padding-right: max(0.75rem, var(--safe-right));
+    }
+
     .overlay,
     .overlay-card,
     .menu-card {
         max-height: min(92dvh, 900px);
     }
+
     .overlay-card,
     .menu-card {
+        max-height: min(calc(92dvh - 3.2rem), 900px);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+    }
+
+    .menu-head .lede {
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 }
 
@@ -797,4 +817,12 @@ kbd {
     .touch-controls {
         height: min(42%, 38dvh);
     }
+}
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
 }

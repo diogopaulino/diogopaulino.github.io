@@ -129,10 +129,13 @@ body.kong-lab {
 
 .rail-bottom p {
     margin: 0;
-    max-width: 70ch;
+    max-width: min(70ch, 100%);
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .rail-bottom strong {

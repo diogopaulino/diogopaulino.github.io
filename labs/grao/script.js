@@ -404,7 +404,7 @@ const chart = {
     points: [],
     width: 0,
     height: 0,
-    pad: { t: 22, r: 16, b: 28, l: 40 }
+    pad: { t: 24, r: 18, b: 32, l: 48 }
 };
 
 function cssVar(name, fallback) {
@@ -471,7 +471,7 @@ function drawChart(now) {
     ctx.strokeStyle = track;
     ctx.lineWidth = 1;
     const ticks = 4;
-    ctx.font = '11px Outfit, system-ui, sans-serif';
+    ctx.font = '600 11.5px Outfit, system-ui, sans-serif';
     ctx.fillStyle = text;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -482,16 +482,17 @@ function drawChart(now) {
         ctx.moveTo(pad.l, y);
         ctx.lineTo(width - pad.r, y);
         ctx.stroke();
-        ctx.fillText(`${Math.round(mg)}`, pad.l - 8, y);
+        ctx.fillText(i === ticks ? `${Math.round(mg)} mg` : `${Math.round(mg)}`, pad.l - 8, y);
     }
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
+    ctx.font = '500 11px Outfit, system-ui, sans-serif';
     for (let h = 0; h < 24; h += 4) {
         const t = chart.start + h * 36e5;
         const x = xOf(t);
         const labelDate = new Date(t);
-        ctx.fillText(formatTime(labelDate), x, height - pad.b + 8);
+        ctx.fillText(formatTime(labelDate), x, height - pad.b + 10);
     }
 
     const threshold = state.settings.sleepThresholdMg;
@@ -504,6 +505,13 @@ function drawChart(now) {
     ctx.moveTo(pad.l, ty);
     ctx.lineTo(width - pad.r, ty);
     ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.85;
+    ctx.font = '600 10px Outfit, system-ui, sans-serif';
+    ctx.fillStyle = bean;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('limite sono', pad.l + 4, ty - 3);
     ctx.restore();
 
     const bed = nextBedtime(now).getTime();
@@ -516,6 +524,12 @@ function drawChart(now) {
         ctx.moveTo(bx, pad.t);
         ctx.lineTo(bx, height - pad.b);
         ctx.stroke();
+        ctx.globalAlpha = 0.8;
+        ctx.font = '600 10px Outfit, system-ui, sans-serif';
+        ctx.fillStyle = text;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('cama', bx, pad.t + 2);
         ctx.restore();
     }
 
@@ -532,7 +546,7 @@ function drawChart(now) {
     const fill = ctx.createLinearGradient(0, pad.t, 0, height - pad.b);
     fill.addColorStop(0, crema);
     fill.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.38;
     ctx.fillStyle = fill;
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -545,13 +559,20 @@ function drawChart(now) {
         else ctx.lineTo(x, y);
     });
     ctx.strokeStyle = bean;
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2.8;
     ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.stroke();
 
     const nx = xOf(now.getTime());
     const ny = yOf(totalAt(now.getTime()));
     if (now.getTime() >= chart.start && now.getTime() <= chart.end) {
+        ctx.beginPath();
+        ctx.arc(nx, ny, 9, 0, Math.PI * 2);
+        ctx.fillStyle = cssVar('--crema', '#d9a36a');
+        ctx.globalAlpha = 0.28;
+        ctx.fill();
+        ctx.globalAlpha = 1;
         ctx.beginPath();
         ctx.arc(nx, ny, 5.5, 0, Math.PI * 2);
         ctx.fillStyle = bean;

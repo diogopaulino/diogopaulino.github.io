@@ -1311,3 +1311,11 @@ input[type="range"]::-moz-range-thumb {
         right: calc(0.7rem + var(--safe-right));
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}

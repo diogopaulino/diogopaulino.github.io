@@ -1059,8 +1059,15 @@ function mountAudioToggle() {
 }
 mountAudioToggle();
 
-// Mostra os controles de toque só onde eles servem.
-if (touchLayer && !window.matchMedia('(pointer: fine)').matches) touchLayer.hidden = false;
+// Mostra os controles de toque só em ponteiro grosso (celular/tablet).
+// Default CSS já esconde; isto sincroniza o atributo `hidden` e reage a mudanças.
+function syncTouchPads() {
+    if (!touchLayer) return;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    touchLayer.hidden = !coarse;
+}
+syncTouchPads();
+window.matchMedia('(pointer: coarse)').addEventListener?.('change', syncTouchPads);
 
 resetGame();
 resize();

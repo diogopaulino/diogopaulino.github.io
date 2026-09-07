@@ -129,32 +129,32 @@ export const QUALITY = {
         bloom: false,
         shadows: false,
         lamps: 0,
-        drawDistance: 220,
+        drawDistance: 140,
+        fogDensity: 0.018,
+        chunkProps: 0.28,
+        particles: 20
+    },
+    medium: {
+        antialias: false,
+        pixelRatio: 1.15,
+        bloom: false,
+        shadows: false,
+        lamps: 2,
+        drawDistance: 240,
         fogDensity: 0.012,
         chunkProps: 0.55,
         particles: 80
     },
-    medium: {
+    high: {
         antialias: true,
         pixelRatio: 1.5,
         bloom: true,
-        shadows: false,
-        lamps: 4,
-        drawDistance: 320,
-        fogDensity: 0.0085,
-        chunkProps: 0.85,
-        particles: 180
-    },
-    high: {
-        antialias: true,
-        pixelRatio: 2,
-        bloom: true,
         shadows: true,
-        lamps: 8,
-        drawDistance: 420,
-        fogDensity: 0.0064,
+        lamps: 6,
+        drawDistance: 380,
+        fogDensity: 0.0068,
         chunkProps: 1,
-        particles: 280
+        particles: 200
     }
 };
 

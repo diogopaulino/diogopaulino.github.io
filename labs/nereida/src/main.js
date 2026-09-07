@@ -29,9 +29,10 @@ function detectSoftwareGL(renderer) {
 }
 
 function pickQuality(mode, renderer) {
+    if (detectSoftwareGL(renderer)) return QUALITY.low;
     if (QUALITY[mode]) return QUALITY[mode];
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
-    if (detectSoftwareGL(renderer) || mobile) return QUALITY.low;
+    if (mobile) return QUALITY.low;
     if (devicePixelRatio >= 2 && innerWidth >= 1400) return QUALITY.high;
     return QUALITY.medium;
 }

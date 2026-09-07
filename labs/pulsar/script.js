@@ -608,9 +608,16 @@
             }
             ctx.beginPath();
             ctx.arc(rp.x, rp.y, r, 0, Math.PI * 2);
-            ctx.lineWidth = 2.2 - (r / rp.maxR) * 1.4;
-            ctx.strokeStyle = rgba(rp.color, alpha);
+            ctx.lineWidth = 2.8 - (r / rp.maxR) * 1.6;
+            ctx.strokeStyle = rgba(rp.color, alpha * 1.15);
             ctx.stroke();
+            if (alpha > 0.2) {
+                ctx.beginPath();
+                ctx.arc(rp.x, rp.y, r * 0.72, 0, Math.PI * 2);
+                ctx.lineWidth = 1.2;
+                ctx.strokeStyle = rgba(rp.color, alpha * 0.45);
+                ctx.stroke();
+            }
         }
         ctx.globalCompositeOperation = 'source-over';
     }
@@ -622,18 +629,28 @@
         const local = ((beats % o.period) + o.period) % o.period;
         const until = (o.phase - local + o.period) % o.period;
         const approach = until < 0.55 ? 1 - until / 0.55 : 0;
-        const burst = clamp(1 - (t - o.lastTrigger) / 0.42, 0, 1);
-        const r = o.r + approach * 2.2 + burst * 6;
-        const glowR = r + 14 + burst * 22;
+        const burst = clamp(1 - (t - o.lastTrigger) / 0.55, 0, 1);
+        const breath = 0.5 + 0.5 * Math.sin(beats * Math.PI * 2 / Math.max(1, o.period) + o.phase);
+        const r = o.r + approach * 2.6 + burst * 7.5 + breath * 0.8;
+        const glowR = r + 16 + burst * 34 + approach * 8;
         ctx.globalAlpha = ghosted ? 0.38 : 1;
 
-        const bloom = ctx.createRadialGradient(o.x, o.y, r * 0.2, o.x, o.y, glowR);
-        bloom.addColorStop(0, rgba(o.color, (dark ? 0.55 : 0.4) + burst * 0.3));
+        const bloom = ctx.createRadialGradient(o.x, o.y, r * 0.15, o.x, o.y, glowR);
+        bloom.addColorStop(0, rgba(o.color, (dark ? 0.7 : 0.5) + burst * 0.4));
+        bloom.addColorStop(0.45, rgba(o.color, (dark ? 0.28 : 0.18) + burst * 0.2));
         bloom.addColorStop(1, rgba(o.color, 0));
         ctx.fillStyle = bloom;
         ctx.beginPath();
         ctx.arc(o.x, o.y, glowR, 0, Math.PI * 2);
         ctx.fill();
+
+        if (burst > 0.05 && !ghosted) {
+            ctx.strokeStyle = rgba(o.color, burst * 0.55);
+            ctx.lineWidth = 2 + burst * 2;
+            ctx.beginPath();
+            ctx.arc(o.x, o.y, r + 10 + (1 - burst) * 28, 0, Math.PI * 2);
+            ctx.stroke();
+        }
 
         const body = ctx.createRadialGradient(o.x - r * 0.25, o.y - r * 0.3, r * 0.1, o.x, o.y, r);
         body.addColorStop(0, dark ? '#fff' : 'rgba(255,255,255,0.95)');
@@ -645,7 +662,7 @@
         ctx.fill();
 
         if (approach > 0.05 && !ghosted) {
-            ctx.strokeStyle = rgba(o.color, approach * 0.55);
+            ctx.strokeStyle = rgba(o.color, approach * 0.6);
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(o.x, o.y, r + 6 + (1 - approach) * 8, 0, Math.PI * 2);

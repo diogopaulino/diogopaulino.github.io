@@ -176,3 +176,8 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     .camera-help { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

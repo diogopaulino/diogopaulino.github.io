@@ -552,3 +552,27 @@ canvas {
         padding: 0.5rem 0;
     }
 }
+
+@media (max-width: 768px) {
+    body {
+        overflow-x: clip;
+        padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+        padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    }
+
+    .instructions {
+        font-size: 0.85rem;
+        padding-inline: 0.75rem;
+    }
+
+    .handheld-device {
+        width: min(320px, 100%);
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .handheld-device {
+        width: min(560px, 100%);
+        max-width: 100%;
+    }
+}

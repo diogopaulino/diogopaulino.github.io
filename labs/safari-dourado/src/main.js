@@ -6,6 +6,16 @@
 import { buildSavannaWorld } from './world.js?v=2';
 import { buildJeep } from './models.js?v=2';
 import { clamp, lerp } from './utils.js';
+import { QUALITY } from './config.js';
+
+function pickQuality() {
+    const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    const narrow = Math.min(window.innerWidth, window.innerHeight) < 760;
+    if (coarse || narrow) return QUALITY.low;
+    const dpr = window.devicePixelRatio || 1;
+    if (dpr >= 2 || Math.min(window.innerWidth, window.innerHeight) < 900) return QUALITY.medium;
+    return QUALITY.high;
+}
 
 class SafariDourado {
     constructor() {
@@ -88,12 +98,17 @@ class SafariDourado {
         const BABYLON = window.BABYLON;
         if (!BABYLON) return;
 
+        this.quality = pickQuality();
+
         try {
-            this.engine = new BABYLON.Engine(this.canvas, true, {
+            this.engine = new BABYLON.Engine(this.canvas, this.quality.antialias, {
                 preserveDrawingBuffer: false,
                 stencil: true,
-                adaptToDeviceRatio: true
+                adaptToDeviceRatio: false,
+                powerPreference: 'high-performance'
             });
+            const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
+            this.engine.setHardwareScalingLevel(1 / pr);
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.clearColor = new BABYLON.Color4(0.12, 0.08, 0.05, 1.0);
         } catch (err) {
@@ -114,8 +129,8 @@ class SafariDourado {
 
         // Pipeline PBR de cinema
         const pipe = new BABYLON.DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
-        pipe.fxaaEnabled = true;
-        pipe.bloomEnabled = true;
+        pipe.fxaaEnabled = this.quality.antialias;
+        pipe.bloomEnabled = this.quality.bloom !== false;
         pipe.bloomThreshold = 0.78;
         pipe.bloomWeight = 0.32;
         pipe.imageProcessing.toneMappingEnabled = true;
@@ -125,6 +140,7 @@ class SafariDourado {
         document.getElementById('loadingOverlay').hidden = true;
         document.getElementById('menuOverlay').hidden = false;
         document.body.dataset.state = 'menu';
+        this.state = 'menu';
 
         this._renderLoop = () => {
             this.frame();
@@ -141,7 +157,8 @@ class SafariDourado {
         this.state = 'drive';
         document.getElementById('menuOverlay').hidden = true;
         document.getElementById('hud').hidden = false;
-        document.getElementById('touchControls').hidden = !('ontouchstart' in window);
+        const coarse = window.matchMedia('(pointer: coarse)').matches;
+        document.getElementById('touchControls').hidden = !coarse;
         document.body.dataset.state = 'drive';
     }
 
