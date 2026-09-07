@@ -379,6 +379,10 @@ canvas {
 }
 
 @media (max-width: 768px) {
+    html, body {
+        overflow-x: clip;
+    }
+
     .game-area {
         padding: 0;
     }
