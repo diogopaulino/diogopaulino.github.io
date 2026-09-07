@@ -25,8 +25,9 @@ const HOME_TARGET = new THREE.Vector3(0, 0.42, 0.1);
 const TMP = new THREE.Vector3();
 
 function resolveQuality(choice) {
+    if (detectSoftwareGL()) return QUALITY.low;
     if (choice && choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-    if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+    if (detectMobile()) return QUALITY.low;
     const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
     return big ? QUALITY.high : QUALITY.medium;
 }
@@ -73,7 +74,7 @@ class Mimo {
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: this.quality.id !== 'low',
+                antialias: this.quality.antialias !== false && this.quality.id !== 'low',
                 powerPreference: 'high-performance',
                 alpha: false
             });

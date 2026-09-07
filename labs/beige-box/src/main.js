@@ -24,18 +24,22 @@ function detectQuality() {
     const mobile = isMobile();
     const soft = (() => {
         try {
-            const gl = document.createElement('canvas').getContext('webgl2');
+            const gl = document.createElement('canvas').getContext('webgl2')
+                || document.createElement('canvas').getContext('webgl');
             const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
             const r = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '';
-            return /SwiftShader|llvmpipe|Soft/i.test(r);
+            return /SwiftShader|llvmpipe|Soft|microsoft basic render|\bcpu\b/i.test(r);
         } catch {
             return false;
         }
     })();
-    if (mobile || soft) {
-        return { pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25), shadow: 1024, bloom: false, aniso: 4, dust: 70 };
+    if (soft) {
+        return { pixelRatio: 1, shadow: 0, bloom: false, aniso: 1, dust: 40, antialias: false, shadows: false };
     }
-    return { pixelRatio: Math.min(window.devicePixelRatio || 1, 2), shadow: 2048, bloom: true, aniso: 8, dust: 240 };
+    if (mobile) {
+        return { pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25), shadow: 512, bloom: false, aniso: 2, dust: 70, antialias: false, shadows: true };
+    }
+    return { pixelRatio: Math.min(window.devicePixelRatio || 1, 2), shadow: 2048, bloom: true, aniso: 8, dust: 240, antialias: true, shadows: true };
 }
 
 class BeigeBox {
@@ -91,8 +95,8 @@ class BeigeBox {
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: !isMobile(),
-                powerPreference: 'high-performance',
+                antialias: !!quality.antialias,
+                powerPreference: quality.antialias ? 'high-performance' : 'low-power',
                 stencil: false
             });
         } catch {
@@ -104,7 +108,7 @@ class BeigeBox {
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.05;
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.enabled = quality.shadows !== false && quality.shadow > 0;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 

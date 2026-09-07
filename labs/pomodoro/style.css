@@ -1065,3 +1065,8 @@ input[type="range"] {
     .task-check { width: 22px; height: 22px; }
     .task-form { grid-template-columns: minmax(0, 1fr) 72px 44px; }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

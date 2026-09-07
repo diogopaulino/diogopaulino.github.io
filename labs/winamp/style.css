@@ -1583,3 +1583,8 @@ noscript {
     .task-button { width: auto; flex: 1 1 0; min-width: 0; }
     .system-tray { flex-shrink: 0; }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

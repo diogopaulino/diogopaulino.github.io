@@ -635,3 +635,8 @@ kbd {
     .menu-head h1 { font-size: 1.7rem; }
     .hud-actions { bottom: calc(7.5rem + var(--safe-bottom)); }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

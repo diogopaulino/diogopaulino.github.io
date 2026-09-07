@@ -999,3 +999,8 @@ select {
     padding-block: 0.25rem;
   }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

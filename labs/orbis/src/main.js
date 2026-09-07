@@ -9,9 +9,9 @@ import { StarSystem } from './system.js';
 import { clamp, damp, hashString } from './rng.js';
 
 const QUALITY = {
-    high: { planetSeg: 96, starSeg: 64, stars: 7000, asteroids: 1400, bloom: true, pr: 2 },
-    medium: { planetSeg: 72, starSeg: 48, stars: 4200, asteroids: 800, bloom: true, pr: 1.5 },
-    low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1 }
+    high: { planetSeg: 96, starSeg: 64, stars: 7000, asteroids: 1400, bloom: true, pr: 2, antialias: true },
+    medium: { planetSeg: 72, starSeg: 48, stars: 4200, asteroids: 800, bloom: true, pr: 1.5, antialias: true },
+    low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1, antialias: false }
 };
 
 function detectSoftwareGL() {
@@ -65,7 +65,7 @@ class Orbis {
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            antialias: this.qualityId !== 'low',
+            antialias: !!this.quality.antialias,
             alpha: false,
             powerPreference: 'high-performance'
         });

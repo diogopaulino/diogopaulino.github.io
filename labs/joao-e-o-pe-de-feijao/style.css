@@ -793,3 +793,7 @@ kbd {
     .dialogue-text { font-size: 0.92rem; margin-bottom: 0.5rem; }
 }
 
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}

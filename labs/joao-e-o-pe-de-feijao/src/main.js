@@ -63,9 +63,10 @@ class Game {
     }
 
     resolveQuality() {
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
+        if (detectMobile()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.high : QUALITY.medium;
     }
@@ -77,7 +78,7 @@ class Game {
         setModelQuality(this.quality.id);
 
         try {
-            this.engine = new B.Engine(this.canvas, true, {
+            this.engine = new B.Engine(this.canvas, !!this.quality.antialias, {
                 preserveDrawingBuffer: false,
                 stencil: true,
                 powerPreference: 'high-performance',
@@ -354,7 +355,7 @@ class Game {
         this.introT = 0;
         this.player.setVisible(true);
         this.hud.showHud(true);
-        this.hud.setTouchVisible(this.mobile);
+        this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || this.mobile);
         this.hud.setChapter(this.chapter);
         this.hud.setHearts(this.player.health, this.player.maxHealth);
         this._syncRelics();

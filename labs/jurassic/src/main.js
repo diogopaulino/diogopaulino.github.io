@@ -73,9 +73,10 @@ class Game {
     }
 
     resolveQuality() {
+        if (detectSoftwareGL()) return QUALITY.low;
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.medium;
+        if (detectMobile()) return QUALITY.low;
         const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
         return big ? QUALITY.ultra : QUALITY.high;
     }
@@ -295,7 +296,7 @@ class Game {
         this.hud.showMenu(false);
         this.hud.showPause(false);
         this.hud.showHud(true);
-        this.hud.showTouch(this.mobile);
+        this.hud.showTouch(matchMedia('(pointer: coarse)').matches || this.mobile);
         this.hud.setRain(this.rain);
         this.hud.setTod(todLabel(this.tod));
         this.hud.randomRadio();

@@ -469,3 +469,8 @@ footer[data-lab-footer] a {
         grid-template-columns: 1fr;
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+}
