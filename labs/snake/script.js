@@ -402,19 +402,21 @@ function drawFood() {
     const r = (GRID_SIZE / 2 - 2) * scale;
 
     ctx.fillStyle = COLORS.food;
+    // Duas lobos: silhueta de maçã, ainda 2-tone Game Boy.
     ctx.beginPath();
-    ctx.arc(cx, cy + 1, r, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
     ctx.fill();
 
     // Talo e folha.
     ctx.strokeStyle = COLORS.food;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(cx, cy - r);
+    ctx.moveTo(cx, cy - r * 0.85);
     ctx.lineTo(cx, cy - r - 3);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(cx + 3, cy - r - 3, 3, 1.6, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(cx + 4, cy - r - 3, 4, 2.2, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Brilho: um furinho na cor do fundo, do jeito que um sprite 8-bit faria.

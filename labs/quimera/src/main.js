@@ -89,6 +89,7 @@ class Quimera {
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: this.quality !== 'low',
+            powerPreference: this.quality === 'low' ? 'low-power' : 'high-performance',
             powerPreference: 'high-performance'
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pr));

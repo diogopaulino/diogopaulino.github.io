@@ -798,3 +798,11 @@ kbd {
         height: min(42%, 38dvh);
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}

@@ -207,3 +207,11 @@ body[data-state="play"] .lab-foot { display: none; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}

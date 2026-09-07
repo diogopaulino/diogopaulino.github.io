@@ -527,7 +527,7 @@ class Game {
         if (!this._look) this._look = LOOK.clone();
         this._look.lerp(LOOK, k);
         this.camera.lookAt(this._look);
-        this.camera.fov = damp(this.camera.fov, 56 + this.player.speed * 0.18, 4, dt);
+        this.camera.fov = damp(this.camera.fov, 60 + this.player.speed * 0.32, 5.5, dt);
         this.camera.updateProjectionMatrix();
     }
 

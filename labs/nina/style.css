@@ -810,3 +810,11 @@ kbd {
         font-size: clamp(1.6rem, 4vw, 2.2rem);
     }
 }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}

@@ -226,3 +226,11 @@ header[data-lab-header] .subtitle {
 }
 /* --- lab-responsive-pass --- */
 #hud { z-index: 30; }
+
+/* agent-responsive-768 */
+@media (max-width: 768px) {
+  html, body { overflow-x: clip; }
+  .hud, .overlay, .menu-overlay, .overlay-card {
+    max-width: 100%;
+  }
+}
