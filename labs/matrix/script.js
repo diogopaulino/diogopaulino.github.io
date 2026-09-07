@@ -278,7 +278,7 @@
         const unit = Math.max(2, Math.round(2 * dpr));
         line.width = 1;
         line.height = unit * 2;
-        lineCtx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+        lineCtx.fillStyle = 'rgba(0, 0, 0, 0.26)';
         lineCtx.fillRect(0, 0, 1, unit);
         scanPattern = ctx.createPattern(line, 'repeat');
 

@@ -422,7 +422,7 @@ function draw() {
     // Draw Player — sem shadowBlur (caro em mobile); brilho via alpha no fill
     ctx.shadowBlur = 0;
     // Pluma do motor (feedback de movimento)
-    const thrusting = keys['ArrowUp'] || keys['KeyW'] || keys['Space'];
+    const thrusting = keys.Space; // tiro acende a pluma
     if (thrusting || bullets.length) {
         const cx = player.x + player.width / 2;
         const by = player.y + player.height;

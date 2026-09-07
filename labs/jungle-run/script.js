@@ -1223,7 +1223,7 @@ class JungleRun {
     updatePlayerTrails(speed, delta) {
         const show = !this.reducedMotion && (!this.player.onGround || speed > CONFIG.BASE_SCROLL_SPEED + 2.5);
         this.playerTrails.forEach((trail, idx) => {
-            const targetAlpha = show ? 0.08 - idx * 0.03 : 0;
+            const targetAlpha = show ? 0.22 - idx * 0.07 : 0;
             trail.alpha += (targetAlpha - trail.alpha) * 0.20 * delta;
             trail.texture = this.player.sprite.texture;
             trail.x = this.player.x - this.player.facing * (10 + idx * 10);
@@ -1456,7 +1456,7 @@ class JungleRun {
         const container = new PIXI.Container();
         for (let i = 0; i < amount; i++) {
             const p = new PIXI.Graphics();
-            p.circle(0, 0, 2 + Math.random() * 2.5).fill({ color: 0x486b45, alpha: 0.4 });
+            p.circle(0, 0, 3 + Math.random() * 3.5).fill({ color: Math.random() > 0.5 ? 0x6a8f52 : 0xc4b07a, alpha: 0.65 });
             p.x = x + (Math.random() - 0.5) * 20;
             p.y = y + Math.random() * 4;
             p.vx = -1.0 - Math.random() * 2.0;
