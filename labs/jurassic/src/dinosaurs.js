@@ -60,7 +60,7 @@ function shadows(root) {
  * Cada nó: { x, y, z, rx, ry } — rx lateral, ry dorso-ventral.
  * Frames por transporte paralelo (up × tangent) para evitar torção do Frenet.
  */
-export function sweepBody(knots, tubular = 28, radial = 12) {
+export function sweepBody(knots, tubular = 48, radial = 18) {
     const pts = knots.map((k) => new THREE.Vector3(k.x, k.y, k.z));
     const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.28);
     const positions = [];

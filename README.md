@@ -41,29 +41,29 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | Projeto | O que é? |
 | :--- | :--- |
 | ♟️ **[Xadrez](https://diogopaulino.com.br/labs/xadrez/)** | Atelier 3D — peças Staunton de marfim e ébano, reflexos e um mestre que ensina a jogar |
-| 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D em Babylon.js — galope sem parar por serras, cânions e pradarias; o cavalo não cansa |
+| 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D hiper-realista — humanoides PBR, galope por serras, cânions e pradarias |
 | 🟡 **[Tatu Bola](https://diogopaulino.com.br/labs/tatu-bola/)** | Platformer 3D hiper-realista — pule, role e colete cristais numa ilha paradisíaca |
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D cinematográfico — Nico, câmera orbital, pulo triplo e sete estrelas no vitral |
-| 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D — Clara carrega a última chama, acende Vale-da-Bruma e traz o primeiro sol |
-| 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
+| 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D hiper-realista — Clara, casas detalhadas e a última chama em Vale-da-Bruma |
+| 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D hiper-realista — Forrest PBR corre pelos EUA, pena branca e o pessoal atrás |
 | 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D hiper-realista — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🐾 **[Mimo](https://diogopaulino.com.br/labs/mimo/)** | Pet virtual 3D — escolha cão ou gato, dê nome e raça, alimente, dê banho e brinque |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
 | 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
 | ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo hiper-realista numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
 | 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D hiper-realista pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
-| 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
-| ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
-| 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |
+| 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino hiper-realista — pele PBR, medusas e baleia cinematográfica |
+| ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 hiper-realista — hovers PBR, bola de éter e gol online |
+| 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D hiper-realista — jipe, diário de campo e dinossauros com crânios orgânicos |
 | 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU |
 | 🛡️ **[O Último Bastião](https://diogopaulino.com.br/labs/ultimo-bastiao/)** | Batalha medieval 3D — cavaleiro GLB, espada, escudo, ondas inimigas e chefe final em Babylon.js |
-| 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D pelos arranha-céus de Manhattan — teias, chuva, néon e combos no skyline |
+| 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D hiper-realista em Manhattan — fachadas PBR, teias, chuva e combos |
 | 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
 | 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |
-| 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
-| ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D — Dico e Teco atravessam o mar e resgatam Camila no castelo |
-| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
+| 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida hiper-realista anos 80 — moto cromada PBR, néon e synthwave |
+| ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D hiper-realista — personagens PBR, Dico e Teco até o castelo |
+| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval hiper-realista — drakkar PBR, machados e o resgate no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
 | 💻 **[Beige Box](https://diogopaulino.com.br/labs/beige-box/)** | Quarto retrô: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa |

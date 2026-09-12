@@ -486,7 +486,6 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const glassMat = pbrMat(scene, 'truckGlass', 0x88c4e0, 0.2, 0.35);
     const tireMat = pbrMat(scene, 'truckTire', 0x1a1a1c, 0.85, 0.05);
     const cab = BABYLON.MeshBuilder.CreateBox('cab', { width: 2.2, height: 1.3, depth: 1.8 }, scene);
-    // cab kept as box for collision silhouette; rounded accents added below
     cab.position.set(0, 1.75, -0.7);
     cab.material = paintMat;
     cab.parent = root;

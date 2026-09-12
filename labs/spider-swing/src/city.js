@@ -330,10 +330,12 @@ export class City {
         const d = Math.abs(b.z - a.z) + this.blockD;
         const park = new THREE.Mesh(
             new THREE.PlaneGeometry(w, d),
-            new THREE.MeshStandardMaterial({
+            new THREE.MeshPhysicalMaterial({
                 map: this.grassMap,
                 color: 0x1a3320,
-                roughness: 0.95,
+                roughness: 0.92,
+                metalness: 0.02,
+                clearcoat: 0.05,
                 emissive: 0x041208,
                 emissiveIntensity: 0.2
             })

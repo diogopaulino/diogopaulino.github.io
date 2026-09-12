@@ -332,10 +332,9 @@ function buildDragonHead(color) {
     group.add(snout);
 
     const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 4, 10), dark);
-    jaw.rotation.x = Math.PI / 2;
     jaw.scale.set(1.4, 1, 0.55);
     jaw.position.set(0, 1.22, 0.95);
-    jaw.rotation.x = 0.18;
+    jaw.rotation.x = Math.PI / 2 + 0.18;
     group.add(jaw);
 
     for (let i = 0; i < 5; i++) {
@@ -391,8 +390,7 @@ export function buildLongship({
     const bilgeMat = new THREE.MeshPhysicalMaterial({
         color: 0x120d09,
         roughness: 1,
-        metalness: 0,
-        flatShading: false
+        metalness: 0
     });
     const bilgeRoot = new THREE.Group();
     bilgeRoot.raycast = () => {};
