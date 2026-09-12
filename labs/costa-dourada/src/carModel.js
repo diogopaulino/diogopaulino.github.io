@@ -1,134 +1,172 @@
 /**
- * GT procedural low-poly — corpo, cabine, rodas esterçáveis e luzes.
- * Sem assets externos: rápido de carregar e fácil de tintar.
+ * Ferrari 458 (three.js examples) — glTF + Draco + AO.
+ * Mesmo asset de referência do Apex Coast Run / demos oficiais.
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-const SHARED = {
-    wheel: null,
-    tire: null
-};
+const MODEL_URL = new URL('../assets/models/ferrari.glb', import.meta.url).href;
+const AO_URL = new URL('../assets/models/ferrari_ao.png', import.meta.url).href;
+const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/libs/draco/gltf/';
 
-function getWheelGeo() {
-    if (!SHARED.wheel) {
-        SHARED.tire = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 12, 1);
-        SHARED.tire.rotateZ(Math.PI / 2);
-        SHARED.wheel = new THREE.CylinderGeometry(0.2, 0.2, 0.18, 10, 1);
-        SHARED.wheel.rotateZ(Math.PI / 2);
-    }
-    return SHARED;
+let templatePromise = null;
+
+function makeMaterials(paintHex, envMap = null) {
+    const body = new THREE.MeshPhysicalMaterial({
+        color: paintHex,
+        metalness: 0.92,
+        roughness: 0.18,
+        clearcoat: 1,
+        clearcoatRoughness: 0.06,
+        envMapIntensity: 1.45,
+        envMap: envMap || null
+    });
+    const details = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 1,
+        roughness: 0.2,
+        envMapIntensity: 1.25,
+        envMap: envMap || null
+    });
+    const glass = new THREE.MeshPhysicalMaterial({
+        color: 0x88aacc,
+        metalness: 0.9,
+        roughness: 0.04,
+        transmission: 0.55,
+        transparent: true,
+        opacity: 0.85,
+        envMapIntensity: 1.5,
+        envMap: envMap || null
+    });
+    return { body, details, glass };
 }
 
-export function createCarMesh(paint = 0xc4281c, accent = 0x1a0a08) {
-    const root = new THREE.Group();
-    root.name = 'car';
+/** Carrega o template uma vez (Draco). */
+export function loadCarTemplate() {
+    if (templatePromise) return templatePromise;
 
-    const bodyMat = new THREE.MeshStandardMaterial({
-        color: paint, metalness: 0.72, roughness: 0.28, envMapIntensity: 0.9
-    });
-    const darkMat = new THREE.MeshStandardMaterial({
-        color: accent, metalness: 0.4, roughness: 0.65
-    });
-    const glassMat = new THREE.MeshStandardMaterial({
-        color: 0x88aacc, metalness: 0.9, roughness: 0.12, transparent: true, opacity: 0.55
-    });
-    const lightMat = new THREE.MeshStandardMaterial({
-        color: 0xfff2c8, emissive: 0xffcc66, emissiveIntensity: 0.85, roughness: 0.35
-    });
-    const tailMat = new THREE.MeshStandardMaterial({
-        color: 0xff2030, emissive: 0xff1020, emissiveIntensity: 0.4, roughness: 0.4
-    });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 });
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0xc8c8c8, metalness: 0.85, roughness: 0.3 });
+    templatePromise = (async () => {
+        const draco = new DRACOLoader();
+        draco.setDecoderPath(DRACO_PATH);
+        const loader = new GLTFLoader();
+        loader.setDRACOLoader(draco);
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.42, 4.2), bodyMat);
-    body.position.y = 0.48;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    root.add(body);
+        const [gltf, ao] = await Promise.all([
+            loader.loadAsync(MODEL_URL),
+            new THREE.TextureLoader().loadAsync(AO_URL)
+        ]);
+        ao.colorSpace = THREE.NoColorSpace;
 
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.28, 0.9), bodyMat);
-    nose.position.set(0, 0.42, 1.85);
-    nose.castShadow = true;
-    root.add(nose);
+        const root = gltf.scene.children[0] || gltf.scene;
+        root.updateMatrixWorld(true);
 
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.38, 1.6), darkMat);
-    cabin.position.set(0, 0.78, -0.15);
-    cabin.castShadow = true;
-    root.add(cabin);
+        const shadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.655 * 4, 1.3 * 4),
+            new THREE.MeshBasicMaterial({
+                map: ao,
+                blending: THREE.MultiplyBlending,
+                toneMapped: false,
+                transparent: true,
+                premultipliedAlpha: true,
+                depthWrite: false
+            })
+        );
+        shadow.rotation.x = -Math.PI / 2;
+        shadow.position.y = 0.01;
+        shadow.renderOrder = 2;
+        shadow.name = 'contactShadow';
+        root.add(shadow);
 
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.35), bodyMat);
-    roof.position.set(0, 1.0, -0.2);
-    root.add(roof);
+        root.traverse((o) => {
+            if (o.isMesh) {
+                o.castShadow = true;
+                o.receiveShadow = true;
+            }
+        });
+        return root;
+    })();
 
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.32, 0.08), glassMat);
-    windshield.position.set(0, 0.82, 0.62);
-    windshield.rotation.x = -0.45;
-    root.add(windshield);
+    return templatePromise;
+}
 
-    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.28, 0.08), glassMat);
-    rearGlass.position.set(0, 0.82, -0.95);
-    rearGlass.rotation.x = 0.4;
-    root.add(rearGlass);
+/**
+ * @param {number} paintHex
+ * @param {THREE.Texture|null} envMap
+ * @returns {Promise<THREE.Group>}
+ */
+export async function createCarMesh(paintHex = 0xc4281c, envMap = null) {
+    const template = await loadCarTemplate();
+    const car = template.clone(true);
+    const mats = makeMaterials(paintHex, envMap);
 
-    for (const x of [-0.72, 0.72]) {
-        const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.22), darkMat);
-        mirror.position.set(x, 0.7, 0.55);
-        root.add(mirror);
+    const body = car.getObjectByName('body');
+    if (body) body.material = mats.body;
+
+    for (const name of ['rim_fl', 'rim_fr', 'rim_rr', 'rim_rl', 'trim']) {
+        const o = car.getObjectByName(name);
+        if (o) o.material = mats.details;
     }
+    const glass = car.getObjectByName('glass');
+    if (glass) glass.material = mats.glass;
 
-    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.35), bodyMat);
-    spoiler.position.set(0, 0.95, -1.85);
-    root.add(spoiler);
-
-    for (const x of [-0.55, 0.55]) {
-        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.08), lightMat);
-        hl.position.set(x, 0.42, 2.28);
-        root.add(hl);
-        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.08), tailMat);
-        tl.position.set(x, 0.48, -2.12);
-        root.add(tl);
-    }
-
-    const geos = getWheelGeo();
-    const wheels = [];
-    const positions = [
-        [-0.82, 0.33, 1.35],
-        [0.82, 0.33, 1.35],
-        [-0.82, 0.33, -1.35],
-        [0.82, 0.33, -1.35]
-    ];
-    for (let i = 0; i < 4; i++) {
+    const wheelNames = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'];
+    const wheelRoots = [];
+    const steerRoots = [];
+    for (const name of wheelNames) {
+        const w = car.getObjectByName(name);
+        if (!w || !w.parent) continue;
         const pivot = new THREE.Group();
-        pivot.position.set(...positions[i]);
-        const tire = new THREE.Mesh(geos.tire, tireMat);
-        tire.castShadow = true;
-        const rim = new THREE.Mesh(geos.wheel, rimMat);
-        pivot.add(tire, rim);
-        root.add(pivot);
-        wheels.push(pivot);
+        pivot.name = `${name}_pivot`;
+        w.parent.add(pivot);
+        pivot.position.copy(w.position);
+        pivot.quaternion.copy(w.quaternion);
+        pivot.scale.copy(w.scale);
+        w.position.set(0, 0, 0);
+        w.quaternion.identity();
+        w.scale.set(1, 1, 1);
+        pivot.add(w);
+        wheelRoots.push(pivot);
+        if (name === 'wheel_fl' || name === 'wheel_fr') steerRoots.push(pivot);
     }
 
-    root.userData = { wheels, bodyMat, tailMat, lightMat };
-    return root;
+    const wrap = new THREE.Group();
+    wrap.name = 'ferrariWrap';
+    wrap.add(car);
+    wrap.userData = {
+        wheels: wheelRoots,
+        steerWheels: steerRoots,
+        bodyMat: mats.body,
+        detailsMat: mats.details,
+        glassMat: mats.glass
+    };
+    return wrap;
 }
 
+export function applyCarEnvMap(mesh, envMap) {
+    const { bodyMat, detailsMat, glassMat } = mesh.userData;
+    if (bodyMat) { bodyMat.envMap = envMap; bodyMat.needsUpdate = true; }
+    if (detailsMat) { detailsMat.envMap = envMap; detailsMat.needsUpdate = true; }
+    if (glassMat) { glassMat.envMap = envMap; glassMat.needsUpdate = true; }
+}
+
+/**
+ * @param {THREE.Object3D} mesh
+ * @param {import('./vehicle.js').Vehicle} vehicle
+ */
 export function syncCarMesh(mesh, vehicle) {
     mesh.position.set(vehicle.x, vehicle.y, vehicle.z);
     mesh.rotation.order = 'YXZ';
     mesh.rotation.y = vehicle.yaw;
-    mesh.rotation.x = vehicle.pitch;
-    mesh.rotation.z = vehicle.roll;
+    mesh.rotation.x = (vehicle.pitch || 0) * 0.85;
+    mesh.rotation.z = (vehicle.roll || 0) * 0.85;
 
-    const wheels = mesh.userData.wheels;
+    const { wheels, steerWheels } = mesh.userData;
     if (!wheels) return;
-    for (let i = 0; i < 4; i++) {
-        const w = wheels[i];
-        w.rotation.x = vehicle.wheelAngle;
-        if (i < 2) w.rotation.y = vehicle.steerAngle * 0.85;
-        else w.rotation.y = 0;
-    }
-    const brakeGlow = 0.35 + vehicle.brake * 1.4;
-    if (mesh.userData.tailMat) mesh.userData.tailMat.emissiveIntensity = brakeGlow;
+
+    const spin = vehicle.wheelAngle ?? 0;
+    const steer = vehicle.steerAngle ?? 0;
+    for (const w of wheels) w.rotation.x = spin;
+    for (const w of steerWheels || []) w.rotation.y = steer;
 }

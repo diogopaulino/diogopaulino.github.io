@@ -62,7 +62,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida infinita anos 80 — moto, néon, rádio synthwave e fitas VHS |
-| 🏎️ **[Costa Dourada](https://diogopaulino.com.br/labs/costa-dourada/)** | Corrida GT ao golden hour — pista costeira, bicycle physics e IA em three.js |
+| 🏎️ **[Costa Dourada](https://diogopaulino.com.br/labs/costa-dourada/)** | Ferrari 458 glTF, pista costeira PBR e golden hour em three.js |
 | ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D — Dico e Teco atravessam o mar e resgatam Camila no castelo |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar, machados e o resgate da princesa no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |

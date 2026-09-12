@@ -8,7 +8,7 @@ import { RACE, QUALITY, PAINTS, loadSettings, saveSettings } from './config.js';
 import { detectMobile, detectSoftwareGL, formatTime } from './utils.js';
 import { Track } from './track.js';
 import { Vehicle, resolveCarContact } from './vehicle.js';
-import { createCarMesh, syncCarMesh } from './carModel.js';
+import { createCarMesh, syncCarMesh, applyCarEnvMap, loadCarTemplate } from './carModel.js';
 import { World } from './world.js';
 import { Input } from './input.js';
 import { AiDriver } from './ai.js';
@@ -100,7 +100,7 @@ class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.15;
+        this.renderer.toneMappingExposure = 1.05;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -112,14 +112,22 @@ class Game {
             this.quality.drawDistance * 1.8
         );
 
-        this.setLoading(0.35, 'Golden hour…');
+        this.setLoading(0.22, 'Texturas PBR e oceano…');
         this.world = new World(this.scene, this.track, this.quality);
+        await this.world.ready;
 
-        this.setLoading(0.6, 'Preparando o grid…');
+        this.setLoading(0.48, 'Reflexos do céu…');
+        this.world.bakeEnvMap(this.renderer);
+
+        this.setLoading(0.58, 'Ferrari 458…');
+        await loadCarTemplate();
+
+        this.setLoading(0.72, 'Preparando o grid…');
         this.cars = [];
         this.meshes = [];
         this.drivers = [];
 
+        const envMap = this.world.envMap;
         const playerPaint = PAINTS[0];
         this.player = new Vehicle({
             name: 'Você',
@@ -128,7 +136,8 @@ class Game {
             color: playerPaint.body
         });
         this.cars.push(this.player);
-        const pMesh = createCarMesh(playerPaint.body, playerPaint.accent);
+        const pMesh = await createCarMesh(playerPaint.body, envMap);
+        applyCarEnvMap(pMesh, envMap);
         this.scene.add(pMesh);
         this.meshes.push(pMesh);
 
@@ -141,7 +150,8 @@ class Game {
             });
             this.cars.push(ai);
             this.drivers.push(new AiDriver(ai, ai.skill));
-            const mesh = createCarMesh(paint.body, paint.accent);
+            const mesh = await createCarMesh(paint.body, envMap);
+            applyCarEnvMap(mesh, envMap);
             this.scene.add(mesh);
             this.meshes.push(mesh);
         }
@@ -419,10 +429,8 @@ class Game {
             p.y + 1.1,
             p.z + Math.cos(yaw) * m.look
         );
-        if (this.world?.sun) {
-            this.world.sun.target.position.set(p.x, p.y, p.z);
-            this.world.sun.position.set(p.x - 80, p.y + 55, p.z + 30);
-            this.world.sun.target.updateMatrixWorld();
+        if (typeof this.world?.followSun === 'function') {
+            this.world.followSun(p.x, p.y, p.z);
         }
     }
 
