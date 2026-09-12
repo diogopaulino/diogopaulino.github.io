@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1418">
+    <title>Costa Dourada — corrida golden hour na costa | Diogo Paulino</title>
+    <meta name="description"
+        content="Dirija um GT V8 por um circuito costeiro ao pôr do sol: física bicycle-model, IA, oceano e falésias. Corrida 3D em three.js puro.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/costa-dourada/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/costa-dourada/">
+    <meta property="og:title" content="Costa Dourada — corrida golden hour na costa | Diogo Paulino">
+    <meta property="og:description"
+        content="GT V8, pista costeira, golden hour e física realista no browser. Three.js vanilla, sem install.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Costa Dourada — corrida golden hour na costa | Diogo Paulino">
+    <meta name="twitter:description"
+        content="GT V8, pista costeira, golden hour e física realista no browser. Three.js vanilla, sem install.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="style.css?v=1">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Costa Dourada",
+          "url": "https://diogopaulino.com.br/labs/costa-dourada/",
+          "description": "Dirija um GT V8 por um circuito costeiro ao pôr do sol: física bicycle-model, IA, oceano e falésias. Corrida 3D em three.js puro.",
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Costa Dourada",
+              "item": "https://diogopaulino.com.br/labs/costa-dourada/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Costa Dourada" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◎</span>
+                    <span>Costa Dourada</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Circuito costeiro 3D ao pôr do sol"></canvas>
+
+        <div id="vignette" class="vignette" aria-hidden="true"></div>
+
+        <div id="hud" class="hud hidden" hidden>
+            <div class="hud-top">
+                <div class="stat">
+                    <span class="label">Posição</span>
+                    <strong id="hudPos">1º</strong>
+                </div>
+                <div class="stat">
+                    <span class="label">Volta</span>
+                    <strong id="hudLap">1 / 3</strong>
+                </div>
+                <div class="stat">
+                    <span class="label">Tempo</span>
+                    <strong id="hudTime" class="mono">00:00.000</strong>
+                </div>
+                <div class="stat">
+                    <span class="label">Melhor</span>
+                    <strong id="hudBest" class="mono">--:--.---</strong>
+                </div>
+            </div>
+
+            <div class="hud-speed">
+                <div class="gear">Marcha <b id="hudGear">1</b></div>
+                <div class="speed-row">
+                    <strong id="hudSpeed" class="mono">000</strong>
+                    <small>km/h</small>
+                </div>
+                <div id="hudRpm" class="rpm" style="--rpm: 0%"></div>
+                <span class="car-tag">GT V8 · RWD</span>
+            </div>
+
+            <canvas id="minimap" class="minimap" width="160" height="120" aria-label="Mapa do circuito"></canvas>
+
+            <p id="hudMessage" class="hud-message" data-show="false" role="status" aria-live="polite"></p>
+
+            <div class="hud-actions">
+                <button id="btnSound" class="icon-btn" type="button" aria-pressed="true" title="Som (M)">♪</button>
+            </div>
+
+            <div id="touch" class="touch" aria-label="Controles touch">
+                <div id="touchSteer" class="touch-steer" role="slider" aria-label="Direção"></div>
+                <div class="touch-pedals">
+                    <button type="button" id="touchBrake" class="pad">FREIO</button>
+                    <button type="button" id="touchHb" class="pad pad-hb">MÃO</button>
+                    <button type="button" id="touchGas" class="pad pad-gas">ACEL</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="countdown" class="countdown" hidden aria-live="assertive">3</div>
+
+        <div id="loading" class="overlay loading">
+            <div class="card">
+                <p class="eyebrow">Open Road Series</p>
+                <h1>Costa <em>Dourada</em></h1>
+                <p id="loadingText">Aquecendo o asfalto…</p>
+                <div class="bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menu" class="overlay menu hidden">
+            <div class="card menu-card">
+                <p class="eyebrow">Chase the light · 01</p>
+                <h1>Costa <em>Dourada</em></h1>
+                <p class="lede">Três voltas na baía ao golden hour. Um GT V8, falésias, palmeiras e o mar à direita.
+                    Física bicycle-model, câmbio automático e rivais na pista.</p>
+
+                <div class="menu-row">
+                    <label class="field">
+                        <span>Qualidade</span>
+                        <select id="qualitySelect">
+                            <option value="auto">Auto</option>
+                            <option value="low">Baixa</option>
+                            <option value="medium">Média</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </label>
+                    <label class="check">
+                        <input type="checkbox" id="assistsToggle" checked>
+                        <span>Assistências</span>
+                    </label>
+                </div>
+
+                <p id="bestTime" class="best mono"></p>
+
+                <button id="btnStart" class="cta" type="button">Correr <span>↗</span></button>
+
+                <div class="keys">
+                    <span><kbd>W A S D</kbd> dirigir</span>
+                    <span><kbd>Espaço</kbd> freio de mão</span>
+                    <span><kbd>C</kbd> câmera · <kbd>R</kbd> reset · <kbd>P</kbd> pausa</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="pause" class="overlay pause hidden">
+            <div class="card">
+                <h2>Pausa</h2>
+                <button id="btnResume" class="cta" type="button">Continuar</button>
+                <button id="btnRestart" class="ghost" type="button">Reiniciar</button>
+                <button id="btnMenu" class="ghost" type="button">Menu</button>
+            </div>
+        </div>
+
+        <div id="finish" class="overlay finish hidden">
+            <div class="card">
+                <p class="eyebrow">Chegada</p>
+                <h2 id="finishTitle">Vitória dourada</h2>
+                <p id="finishBlurb" class="lede"></p>
+                <button id="btnAgain" class="cta" type="button">Correr de novo ↗</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="/labs/shared.js?v=13" defer></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
