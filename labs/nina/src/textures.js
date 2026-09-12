@@ -1,6 +1,6 @@
 /**
  * Texturas procedurais — o lab não usa PNG externos.
- * Rampa toon de 4 degraus (nearest) = look de livro infantil / Pixar.
+ * Albedo com detalhe fino para PBR (grama, madeira, celeiro, piquenique).
  */
 
 import * as THREE from 'three';
@@ -33,7 +33,7 @@ function cached(key, factory) {
     return cache.get(key);
 }
 
-/** Sombra musgo, meio pêssego, luz creme, highlight branco. */
+/** Rampa de 4 degraus — legado; preferir PBR sem gradientMap. */
 export function toonRamp() {
     return cached('toon', () => {
         const el = canvas(4, 1);

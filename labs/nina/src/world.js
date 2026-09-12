@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { WORLD_RADIUS, FRIENDS, TOTAL_BERRIES, heightAt, HOME } from './config.js';
 import {
-    MAT, geo, mesh, toon,
+    MAT, geo, mesh, pbr,
     createTree, createBarn, createPicnic, createFlower, createMushroom,
     createCloud, createRainbow, createFence, createBerry, createButterfly
 } from './models.js';
@@ -46,7 +46,7 @@ export class Valley {
 
     _terrain() {
         const size = WORLD_RADIUS * 2.4;
-        const g = new THREE.PlaneGeometry(size, size, 80, 80);
+        const g = new THREE.PlaneGeometry(size, size, 128, 128);
         g.rotateX(-Math.PI / 2);
         const pos = g.attributes.position;
         for (let i = 0; i < pos.count; i++) {
@@ -66,7 +66,7 @@ export class Valley {
     }
 
     _water() {
-        const geometry = new THREE.CircleGeometry(4.6, 48);
+        const geometry = new THREE.CircleGeometry(4.6, 72);
         geometry.rotateX(-Math.PI / 2);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0x1a8aaa,
@@ -230,11 +230,13 @@ export class Valley {
     }
 
     _homeRing() {
-        const ring = mesh(geo.torus, toon(0xffe066, {
+        const ring = mesh(geo.torus, pbr(0xffe066, {
             emissive: 0xffb347,
             em: 0.65,
             transparent: true,
-            opacity: 0.0
+            opacity: 0.0,
+            roughness: 0.3,
+            clearcoat: 0.5
         }), {
             scale: [2.8, 0.8, 2.8],
             pos: [HOME.x, 0.2, HOME.z],

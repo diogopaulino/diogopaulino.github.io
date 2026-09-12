@@ -10,17 +10,17 @@ import {
 import { applyRockMoss, applyLeafSway, waterfallMaterial } from './shaders.js';
 
 const geo = {
-    sphere: new THREE.SphereGeometry(1, 22, 16),
-    sphereLo: new THREE.SphereGeometry(1, 12, 10),
-    sphereHi: new THREE.SphereGeometry(1, 28, 20),
+    sphere: new THREE.SphereGeometry(1, 36, 28),
+    sphereLo: new THREE.SphereGeometry(1, 20, 16),
+    sphereHi: new THREE.SphereGeometry(1, 48, 36),
     box: new THREE.BoxGeometry(1, 1, 1),
-    cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
-    cylLo: new THREE.CylinderGeometry(1, 1, 1, 8),
-    cone: new THREE.ConeGeometry(1, 1, 12),
-    coneLo: new THREE.ConeGeometry(1, 1, 8),
-    torus: new THREE.TorusGeometry(1, 0.18, 10, 28),
+    cyl: new THREE.CylinderGeometry(1, 1, 1, 24),
+    cylLo: new THREE.CylinderGeometry(1, 1, 1, 14),
+    cone: new THREE.ConeGeometry(1, 1, 24),
+    coneLo: new THREE.ConeGeometry(1, 1, 14),
+    torus: new THREE.TorusGeometry(1, 0.18, 16, 48),
     plane: new THREE.PlaneGeometry(1, 1, 1, 1),
-    icosa: new THREE.IcosahedronGeometry(1, 1)
+    icosa: new THREE.IcosahedronGeometry(1, 3)
 };
 
 export function std(color, {
@@ -32,9 +32,16 @@ export function std(color, {
     transparent = false,
     opacity = 1,
     side = THREE.FrontSide,
-    flat = false
+    sheen = 0,
+    sheenColor = 0xffffff,
+    sheenRoughness = 0.45,
+    clearcoat = 0,
+    clearcoatRoughness = 0.35,
+    transmission = 0,
+    thickness = 0,
+    ior = 1.5
 } = {}) {
-    return new THREE.MeshStandardMaterial({
+    return new THREE.MeshPhysicalMaterial({
         color,
         map,
         roughness,
@@ -44,7 +51,15 @@ export function std(color, {
         transparent,
         opacity,
         side,
-        flatShading: flat
+        sheen,
+        sheenColor,
+        sheenRoughness,
+        clearcoat,
+        clearcoatRoughness,
+        transmission,
+        thickness,
+        ior,
+        envMapIntensity: 0.75
     });
 }
 
@@ -62,33 +77,122 @@ let MAT = null;
 
 export function materials() {
     if (MAT) return MAT;
-    const rock = applyRockMoss(std(0x7a8a7e, { map: rockTexture(), roughness: 0.88, flat: true }));
-    const moss = std(0x2a8a48, { map: mossTexture(), roughness: 0.92 });
-    const bark = std(0x5a3a28, { map: barkTexture(), roughness: 0.9 });
-    const leaf = applyLeafSway(std(0x1f9a4a, { map: leafTexture(), roughness: 0.7, side: THREE.DoubleSide }));
-    const leafDark = applyLeafSway(std(0x0e6a38, { map: leafTexture(), roughness: 0.75, side: THREE.DoubleSide }));
+    const rock = applyRockMoss(std(0x7a8a7e, {
+        map: rockTexture(),
+        roughness: 0.9,
+        clearcoat: 0.06,
+        clearcoatRoughness: 0.7
+    }));
+    const moss = std(0x2a8a48, {
+        map: mossTexture(),
+        roughness: 0.88,
+        sheen: 0.35,
+        sheenColor: 0x6ab860
+    });
+    const bark = std(0x5a3a28, { map: barkTexture(), roughness: 0.92 });
+    const leaf = applyLeafSway(std(0x1f9a4a, {
+        map: leafTexture(),
+        roughness: 0.58,
+        side: THREE.DoubleSide,
+        sheen: 0.4,
+        sheenColor: 0x70d070,
+        clearcoat: 0.08
+    }));
+    const leafDark = applyLeafSway(std(0x0e6a38, {
+        map: leafTexture(),
+        roughness: 0.62,
+        side: THREE.DoubleSide,
+        sheen: 0.3,
+        sheenColor: 0x3a8a48
+    }));
     const wing = std(0x1a4a58, {
         map: wingTexture(),
-        roughness: 0.45,
-        metalness: 0.08,
+        roughness: 0.28,
+        metalness: 0.06,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.92
+        opacity: 0.9,
+        transmission: 0.22,
+        thickness: 0.35,
+        ior: 1.25,
+        sheen: 0.55,
+        sheenColor: 0x5ef0d8,
+        sheenRoughness: 0.3,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.18
     });
     MAT = {
         rock, moss, bark, leaf, leafDark, wing,
-        skin: std(0x1c3a48, { roughness: 0.42, metalness: 0.12 }),
-        belly: std(0x2a6a68, { roughness: 0.5, emissive: 0x0a3a38, em: 0.15 }),
-        stripe: std(0x5ef0d8, { roughness: 0.3, emissive: 0x2ad4c0, em: 0.85 }),
-        eye: std(0xffe08a, { roughness: 0.15, emissive: 0xffc040, em: 1.4 }),
-        rider: std(0x3a8a9a, { roughness: 0.55 }),
-        cloth: std(0x6a3a28, { roughness: 0.8 }),
-        gold: std(0xe8c060, { roughness: 0.35, metalness: 0.4, emissive: 0xa08030, em: 0.2 }),
-        seed: std(0x7af0d8, { roughness: 0.2, emissive: 0x3ae0c0, em: 1.2 }),
-        magenta: std(0xd46ad0, { roughness: 0.4, emissive: 0xa040a0, em: 0.7 }),
-        water: std(0x1a8aaa, { roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.78 }),
-        cloud: std(0xf4f0e8, { roughness: 1, transparent: true, opacity: 0.55 }),
-        vine: std(0x1a6a38, { roughness: 0.85 })
+        skin: std(0x1c3a48, {
+            roughness: 0.38,
+            metalness: 0.1,
+            clearcoat: 0.35,
+            clearcoatRoughness: 0.28,
+            sheen: 0.25,
+            sheenColor: 0x3a6a78
+        }),
+        belly: std(0x2a6a68, {
+            roughness: 0.42,
+            emissive: 0x0a3a38,
+            em: 0.15,
+            clearcoat: 0.28,
+            sheen: 0.2
+        }),
+        stripe: std(0x5ef0d8, {
+            roughness: 0.22,
+            emissive: 0x2ad4c0,
+            em: 0.85,
+            clearcoat: 0.7,
+            clearcoatRoughness: 0.12,
+            metalness: 0.15
+        }),
+        eye: std(0xffe08a, {
+            roughness: 0.08,
+            emissive: 0xffc040,
+            em: 1.4,
+            clearcoat: 1,
+            clearcoatRoughness: 0.05
+        }),
+        rider: std(0x3a8a9a, { roughness: 0.48, clearcoat: 0.15 }),
+        cloth: std(0x6a3a28, { roughness: 0.78, sheen: 0.35, sheenColor: 0xa06040 }),
+        gold: std(0xe8c060, {
+            roughness: 0.28,
+            metalness: 0.45,
+            emissive: 0xa08030,
+            em: 0.2,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.15
+        }),
+        seed: std(0x7af0d8, {
+            roughness: 0.12,
+            emissive: 0x3ae0c0,
+            em: 1.2,
+            transmission: 0.35,
+            thickness: 0.8,
+            ior: 1.4,
+            clearcoat: 0.85,
+            clearcoatRoughness: 0.08
+        }),
+        magenta: std(0xd46ad0, {
+            roughness: 0.32,
+            emissive: 0xa040a0,
+            em: 0.7,
+            clearcoat: 0.4,
+            sheen: 0.3
+        }),
+        water: std(0x1a8aaa, {
+            roughness: 0.06,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.72,
+            transmission: 0.65,
+            thickness: 2.2,
+            ior: 1.33,
+            clearcoat: 1,
+            clearcoatRoughness: 0.05
+        }),
+        cloud: std(0xf4f0e8, { roughness: 1, transparent: true, opacity: 0.55, sheen: 0.15 }),
+        vine: std(0x1a6a38, { roughness: 0.82, sheen: 0.2 })
     };
     return MAT;
 }
@@ -148,7 +252,7 @@ export function createIra() {
             rot: [0, 0, side * -1.05]
         });
         const membrane = mesh(
-            new THREE.PlaneGeometry(4.4, 2.6, 6, 4),
+            new THREE.PlaneGeometry(4.4, 2.6, 14, 10),
             m.wing,
             {
                 pos: [side * 2.5, -0.15, -0.15],
@@ -258,7 +362,7 @@ export function createSpiralPlant(rng = Math.random) {
         pts.push(new THREE.Vector3(Math.cos(a) * t * 0.55, t * h, Math.sin(a) * t * 0.55));
     }
     const curve = new THREE.CatmullRomCurve3(pts);
-    const tube = new THREE.TubeGeometry(curve, 40, 0.045, 5, false);
+    const tube = new THREE.TubeGeometry(curve, 64, 0.045, 8, false);
     const stem = new THREE.Mesh(tube, m.magenta);
     stem.castShadow = true;
     g.add(stem);
@@ -324,11 +428,20 @@ export function createMountain(rng, size = 1) {
 export function createWaterfall(height = 22, width = 2.4) {
     const m = materials();
     const mat = waterfallMaterial();
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height, 1, 12), mat);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height, 1, 24), mat);
     plane.position.y = -height * 0.35;
     plane.castShadow = false;
     plane.receiveShadow = false;
-    const splash = mesh(geo.sphereLo, std(0xd8f8fc, { transparent: true, opacity: 0.35, roughness: 0.2 }), {
+    const splash = mesh(geo.sphereLo, std(0xd8f8fc, {
+        transparent: true,
+        opacity: 0.35,
+        roughness: 0.12,
+        transmission: 0.4,
+        thickness: 0.6,
+        ior: 1.33,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1
+    }), {
         scale: [width * 0.7, 0.4, width * 0.7],
         pos: [0, -height * 0.7, 0],
         cast: false
@@ -360,11 +473,15 @@ export function createRing() {
     const m = materials();
     const ring = mesh(geo.torus, m.stripe, { scale: [2.6, 2.6, 2.6], rot: [Math.PI / 2, 0, 0], cast: false });
     ring.material = std(0x7af0d8, {
-        roughness: 0.25,
+        roughness: 0.18,
         emissive: 0x3ae0c8,
         em: 0.95,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.85,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.12,
+        transmission: 0.2,
+        thickness: 0.4
     });
     const g = new THREE.Group();
     g.add(ring);

@@ -59,20 +59,30 @@ export class World {
     _floor() {
         const m = materials();
         const ground = mesh(
-            new THREE.CircleGeometry(WORLD.radius * 1.35, 64),
-            std(0x145828, { map: mossTexture(), roughness: 0.95 }),
+            new THREE.CircleGeometry(WORLD.radius * 1.35, 96),
+            std(0x145828, {
+                map: mossTexture(),
+                roughness: 0.92,
+                sheen: 0.25,
+                sheenColor: 0x4a9a58
+            }),
             { rot: [-Math.PI / 2, 0, 0], pos: [0, 0, 0], cast: false }
         );
         this.root.add(ground);
 
         const lakeMat = applyWater(std(0x1a7a8a, {
             map: waterTexture(),
-            roughness: 0.12,
-            metalness: 0.28,
+            roughness: 0.06,
+            metalness: 0.18,
             transparent: true,
-            opacity: 0.82
+            opacity: 0.78,
+            transmission: 0.55,
+            thickness: 2.5,
+            ior: 1.33,
+            clearcoat: 1,
+            clearcoatRoughness: 0.04
         }));
-        this.lake = mesh(new THREE.CircleGeometry(38, 48), lakeMat, {
+        this.lake = mesh(new THREE.CircleGeometry(38, 72), lakeMat, {
             rot: [-Math.PI / 2, 0, 0],
             pos: [18, 0.4, 24],
             cast: false

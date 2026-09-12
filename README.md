@@ -46,12 +46,12 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D no espírito Super Mario 64 — Nico, câmera Lakitu, pulo triplo e sete estrelas |
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D — Clara carrega a última chama, acende Vale-da-Bruma e traz o primeiro sol |
 | 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D — Forrest corre sem parar pelos EUA, pena branca e o pessoal atrás |
-| 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D toon — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
+| 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D hiper-realista — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🐾 **[Mimo](https://diogopaulino.com.br/labs/mimo/)** | Pet virtual 3D — escolha cão ou gato, dê nome e raça, alimente, dê banho e brinque |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
 | 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
-| ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
-| 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
+| ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo hiper-realista numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
+| 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D hiper-realista pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
 | 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino bioluminescente — nade, colete luzes-maré e acorde a baleia |
 | ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 no rift — hovers, bola de éter e gol online com código de sala |
 | 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D na ilha dos dinossauros — jipe, diário de campo e gigantes entre a névoa |

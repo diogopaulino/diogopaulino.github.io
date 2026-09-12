@@ -18,7 +18,18 @@ function mat(key, factory) {
 
 export function std(color, roughness = 0.82, metalness = 0.04, extra = {}) {
     return mat(`std:${color}:${roughness}:${metalness}:${JSON.stringify(extra)}`, () =>
-        new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra }));
+        new THREE.MeshPhysicalMaterial({
+            color,
+            roughness,
+            metalness,
+            clearcoat: extra.clearcoat ?? 0.04,
+            clearcoatRoughness: extra.clearcoatRoughness ?? 0.55,
+            sheen: extra.sheen ?? 0,
+            sheenColor: extra.sheenColor ?? 0xffffff,
+            sheenRoughness: extra.sheenRoughness ?? 0.5,
+            envMapIntensity: extra.envMapIntensity ?? 0.65,
+            ...extra
+        }));
 }
 
 function enableShadows(root) {
@@ -84,30 +95,41 @@ export function lavenderGeometry() {
 }
 
 export function lavenderMaterial(wind = true) {
-    const m = new THREE.MeshStandardMaterial({
+    const m = new THREE.MeshPhysicalMaterial({
         map: lavenderTexture(),
         color: 0xffffff,
-        roughness: 0.78,
+        roughness: 0.62,
         metalness: 0,
+        sheen: 0.55,
+        sheenColor: 0xc8a0e8,
+        sheenRoughness: 0.4,
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.55,
         side: THREE.DoubleSide,
         transparent: true,
         alphaTest: 0.22,
-        depthWrite: false
+        depthWrite: false,
+        envMapIntensity: 0.7
     });
     if (wind) applyWind(m, 0.18);
     return m;
 }
 
 export function wheatMaterial(wind = true) {
-    const m = new THREE.MeshStandardMaterial({
+    const m = new THREE.MeshPhysicalMaterial({
         map: wheatTexture(),
         color: 0xffffff,
-        roughness: 0.86,
+        roughness: 0.72,
         metalness: 0,
+        sheen: 0.35,
+        sheenColor: 0xf0d080,
+        sheenRoughness: 0.48,
+        clearcoat: 0.04,
         side: THREE.DoubleSide,
         transparent: true,
         alphaTest: 0.22,
-        depthWrite: false
+        depthWrite: false,
+        envMapIntensity: 0.6
     });
     if (wind) applyWind(m, 0.28);
     return m;
@@ -123,12 +145,16 @@ export function buildTraveler() {
     const parts = { legs: [dummy, dummy], arms: [dummy, dummy], feet: [dummy, dummy], torso: dummy, head: dummy, hips: dummy, cloak: dummy };
 
     
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/gladiator.webp'),
         transparent: true,
         alphaTest: 0.1,
         side: THREE.DoubleSide,
-        roughness: 0.8
+        roughness: 0.72,
+        sheen: 0.4,
+        sheenColor: 0xf0e0c8,
+        sheenRoughness: 0.45,
+        clearcoat: 0.06
     });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.7), mat);
     mesh.position.y = 1.35;
@@ -149,12 +175,15 @@ export function buildCypress(rng = Math.random) {
     const group = new THREE.Group();
     const h = 9.5 + rng() * 4.2;
     const w = h * 0.4;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/cypress.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.78,
+        sheen: 0.25,
+        sheenColor: 0x4a6a40,
+        clearcoat: 0.04
     });
     const geo = new THREE.PlaneGeometry(w, h);
     const m1 = new THREE.Mesh(geo, mat);
@@ -173,12 +202,16 @@ export function buildOlive(rng = Math.random) {
     const group = new THREE.Group();
     const h = 4.6 + rng() * 1.8;
     const w = h * 1.1;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/olive.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.74,
+        sheen: 0.4,
+        sheenColor: 0xc8d8a8,
+        sheenRoughness: 0.42,
+        clearcoat: 0.05
     });
     const geo = new THREE.PlaneGeometry(w, h);
     const m1 = new THREE.Mesh(geo, mat);
@@ -197,12 +230,14 @@ export function buildFarmhouse() {
     const group = new THREE.Group();
     const w = 12;
     const h = 12;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/farmhouse.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.88,
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.6
     });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     m.position.y = h / 2;
@@ -215,12 +250,13 @@ export function buildBench() {
     const group = new THREE.Group();
     const w = 2.4;
     const h = 2.4;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/bench.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.86,
+        clearcoat: 0.06
     });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     m.position.y = h / 2;
@@ -233,12 +269,13 @@ export function buildWell() {
     const group = new THREE.Group();
     const w = 3.6;
     const h = 3.6;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: loadGreenScreenTexture('assets/well.webp'),
         transparent: true,
         alphaTest: 0.3,
         side: THREE.DoubleSide,
-        roughness: 0.9
+        roughness: 0.9,
+        clearcoat: 0.05
     });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     m.position.y = h / 2;
@@ -247,14 +284,17 @@ export function buildWell() {
     return group;
 }
 
-/** Colina distante — silhueta no horizonte. */
+/** Colina distante — silhueta suave no horizonte. */
 export function buildDistantHill() {
-    const geo = new THREE.SphereGeometry(18, 10, 7);
+    const geo = new THREE.SphereGeometry(18, 32, 22);
     geo.scale(2.4, 0.55, 1.6);
-    const matHill = new THREE.MeshStandardMaterial({
+    const matHill = new THREE.MeshPhysicalMaterial({
         color: 0x6a4868,
-        roughness: 0.95,
-        flatShading: true
+        roughness: 0.92,
+        metalness: 0.02,
+        sheen: 0.12,
+        sheenColor: 0xa07090,
+        clearcoat: 0.03
     });
     const mesh = new THREE.Mesh(geo, matHill);
     mesh.receiveShadow = true;
