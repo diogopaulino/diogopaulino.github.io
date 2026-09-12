@@ -45,7 +45,7 @@ export function createSky() {
             }
         `
     });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(480, 24, 16), mat);
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(480, 48, 32), mat);
     mesh.frustumCulled = false;
     return { mesh, uniforms };
 }

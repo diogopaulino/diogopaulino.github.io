@@ -8,10 +8,10 @@ import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './
 import { pick } from './utils.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
-const CYL = new THREE.CylinderGeometry(1, 1, 1, 32);
-const SPH = new THREE.SphereGeometry(1, 32, 24);
-const CONE = new THREE.ConeGeometry(1, 1, 20);
-const CAP = new THREE.CapsuleGeometry(0.5, 1, 8, 24);
+const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);
+const SPH = new THREE.SphereGeometry(1, 36, 28);
+const CONE = new THREE.ConeGeometry(1, 1, 24);
+const CAP = new THREE.CapsuleGeometry(0.5, 1, 10, 28);
 
 function mesh(geo, mat, sx, sy, sz, x, y, z) {
     const m = new THREE.Mesh(geo, mat);
@@ -43,10 +43,12 @@ export function createSharedMaterials(station) {
     const scratch = chromeScratchMap(THREE);
     return {
         windows: windows.map,
-        body: new THREE.MeshStandardMaterial({
+        body: new THREE.MeshPhysicalMaterial({
             color: 0x0c0b14,
-            roughness: 0.72,
-            metalness: 0.28,
+            roughness: 0.68,
+            metalness: 0.35,
+            clearcoat: 0.35,
+            clearcoatRoughness: 0.4,
             map: windows.map,
             normalMap: windows.normalMap,
             emissiveMap: windows.emissiveMap,
@@ -57,8 +59,9 @@ export function createSharedMaterials(station) {
         dark: new THREE.MeshPhysicalMaterial({
             color: 0x0a0912,
             roughness: 0.88,
-            metalness: 0.15,
-            clearcoat: 0.08
+            metalness: 0.2,
+            clearcoat: 0.15,
+            clearcoatRoughness: 0.55
         }),
         chrome: chromePhysical(scratch),
         rubber: new THREE.MeshPhysicalMaterial({
@@ -104,10 +107,12 @@ export function createSharedMaterials(station) {
             color: station.lamp,
             toneMapped: false
         }),
-        tapeBody: new THREE.MeshStandardMaterial({
+        tapeBody: new THREE.MeshPhysicalMaterial({
             color: 0x1a1520,
-            roughness: 0.4,
-            metalness: 0.25
+            roughness: 0.35,
+            metalness: 0.35,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.2
         }),
         tapeWindow: new THREE.MeshPhysicalMaterial({
             color: 0x8aa0c8,
@@ -170,9 +175,12 @@ export function createBike(mats) {
     const tank = mesh(SPH, paint, 0.38, 0.22, 0.55, 0, 0.98, 0.15);
     lean.add(tank);
 
-    const seat = mesh(CAP, new THREE.MeshStandardMaterial({
+    const seat = mesh(CAP, new THREE.MeshPhysicalMaterial({
         color: 0x1a0c14,
-        roughness: 0.65
+        roughness: 0.55,
+        metalness: 0.08,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.4
     }), 0.38, 0.08, 0.42, 0, 0.86, -0.42);
     lean.add(seat);
 
@@ -247,10 +255,24 @@ export function createCar(mats, kind = 0) {
     });
 
     if (kind % 3 === 0) {
-        // Sedã — cápsulas + cockpit esférico
-        g.add(mesh(CAP, body, 1.55, 0.42, 1.9, 0, 0.55, 0));
+        // Sedã — perfil lathe (comprimento ~4.2)
+        const sedanPts = [
+            new THREE.Vector2(0.35, -2.05),
+            new THREE.Vector2(0.72, -1.7),
+            new THREE.Vector2(0.82, -0.4),
+            new THREE.Vector2(0.78, 0.9),
+            new THREE.Vector2(0.55, 1.7),
+            new THREE.Vector2(0.22, 2.05)
+        ];
+        const sedanGeo = new THREE.LatheGeometry(sedanPts, 32);
+        sedanGeo.rotateZ(-Math.PI / 2);
+        sedanGeo.scale(1, 0.58, 0.95);
+        const sedan = new THREE.Mesh(sedanGeo, body);
+        sedan.position.y = 0.55;
+        sedan.castShadow = true;
+        g.add(sedan);
         g.add(mesh(SPH, mats.glass, 1.35, 0.38, 0.95, 0, 1.0, -0.15));
-        g.add(mesh(CAP, body, 1.5, 0.18, 0.7, 0, 0.92, -1.15));
+        g.add(mesh(CAP, body, 1.4, 0.16, 0.55, 0, 0.92, -1.2));
     } else if (kind % 3 === 1) {
         // Van / wagon
         const vanPts = [
@@ -270,9 +292,22 @@ export function createCar(mats, kind = 0) {
         g.add(mesh(BOX, mats.glass, 1.55, 0.42, 1.5, 0, 1.25, 0.35));
     } else {
         // Coupé baixo
-        g.add(mesh(CAP, body, 1.45, 0.35, 1.65, 0, 0.48, 0));
+        const coupePts = [
+            new THREE.Vector2(0.28, -1.75),
+            new THREE.Vector2(0.68, -1.35),
+            new THREE.Vector2(0.75, -0.2),
+            new THREE.Vector2(0.7, 0.9),
+            new THREE.Vector2(0.4, 1.45),
+            new THREE.Vector2(0.15, 1.75)
+        ];
+        const coupeGeo = new THREE.LatheGeometry(coupePts, 28);
+        coupeGeo.rotateZ(-Math.PI / 2);
+        coupeGeo.scale(1, 0.48, 0.92);
+        const coupe = new THREE.Mesh(coupeGeo, body);
+        coupe.position.y = 0.48;
+        coupe.castShadow = true;
+        g.add(coupe);
         g.add(mesh(SPH, mats.glass, 1.2, 0.28, 0.75, 0, 0.82, 0.1));
-        g.add(mesh(CAP, body, 1.4, 0.14, 0.55, 0, 0.7, -1.05));
     }
 
     g.add(mesh(BOX, mats.neonB, 0.35, 0.12, 0.08, 0.45, 0.55, 2.12));
