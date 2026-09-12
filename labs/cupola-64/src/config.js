@@ -1,7 +1,7 @@
 /**
  * Cúpola 64 — constantes, fórmulas de salto e o mapa da Ilha da Cúpola.
  *
- * Física no espírito Super Mario 64 (documentada, não copiada de ROM):
+ * Física de platformer 3D (documentada):
  *   v'  = v + a·dt                         (aceleração no chão)
  *   v  *= exp(-friction·dt)                (atrito quando o stick solta)
  *   vy -= g·dt                             (gravidade; g maior na descida)

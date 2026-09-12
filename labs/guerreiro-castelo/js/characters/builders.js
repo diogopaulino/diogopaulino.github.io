@@ -1,9 +1,24 @@
 /**
- * Humanoides e animais procedurais estilizados em Babylon.js com hierarquia de nós e animador procedural.
+ * Humanoides e animais procedurais hiper-realistas (PBR) em Babylon.js
+ * com hierarquia de nós e animador procedural.
  */
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
+
+/** PBRMaterial com albedo, roughness e metallic sensatos. */
+function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
+    const mat = new BABYLON.PBRMaterial(name, scene);
+    mat.albedoColor = color.clone ? color.clone() : color;
+    mat.roughness = roughness;
+    mat.metallic = metallic;
+    if (extra.emissiveColor) mat.emissiveColor = extra.emissiveColor;
+    if (extra.emissiveIntensity !== undefined) mat.emissiveIntensity = extra.emissiveIntensity;
+    if (extra.albedoTexture) mat.albedoTexture = extra.albedoTexture;
+    if (extra.bumpTexture) mat.bumpTexture = extra.bumpTexture;
+    if (extra.alpha !== undefined) mat.alpha = extra.alpha;
+    return mat;
+}
 
 export class CharacterAnimator {
     constructor(root, clips) {
@@ -139,21 +154,11 @@ export function buildHumanoid({
     const scale = height / 1.8;
     const root = new BABYLON.TransformNode('humanoidRoot', scene);
 
-    const skinMat = new BABYLON.StandardMaterial('skinMat', scene);
-    skinMat.diffuseColor = skinColor;
-    skinMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-
-    const hairMat = new BABYLON.StandardMaterial('hairMat', scene);
-    hairMat.diffuseColor = hairColor;
-
-    const shirtMat = new BABYLON.StandardMaterial('shirtMat', scene);
-    shirtMat.diffuseColor = shirtColor;
-
-    const pantsMat = new BABYLON.StandardMaterial('pantsMat', scene);
-    pantsMat.diffuseColor = pantsColor;
-
-    const bootMat = new BABYLON.StandardMaterial('bootMat', scene);
-    bootMat.diffuseColor = bootColor;
+    const skinMat = pbr('skinMat', scene, skinColor, 0.62, 0.02);
+    const hairMat = pbr('hairMat', scene, hairColor, 0.88, 0.03);
+    const shirtMat = pbr('shirtMat', scene, shirtColor, 0.82, 0.04);
+    const pantsMat = pbr('pantsMat', scene, pantsColor, 0.86, 0.04);
+    const bootMat = pbr('bootMat', scene, bootColor, 0.55, 0.12);
 
     // Hips
     const hips = new BABYLON.TransformNode('hips', scene);
@@ -168,32 +173,35 @@ export function buildHumanoid({
     legR.parent = hips;
 
     for (const leg of [legL, legR]) {
-        const thigh = BABYLON.MeshBuilder.CreateCylinder('thigh', {
-            diameterTop: 0.14 * thin * scale,
-            diameterBottom: 0.12 * thin * scale,
+        const thigh = BABYLON.MeshBuilder.CreateCapsule('thigh', {
+            radius: 0.065 * thin * scale,
             height: 0.46 * scale,
-            tessellation: 8
+            tessellation: 16,
+            subdivisions: 4
         }, scene);
         thigh.position.y = -0.23 * scale;
         thigh.material = pantsMat;
         thigh.parent = leg;
 
-        const shin = BABYLON.MeshBuilder.CreateCylinder('shin', {
-            diameterTop: 0.11 * thin * scale,
-            diameterBottom: 0.1 * thin * scale,
+        const shin = BABYLON.MeshBuilder.CreateCapsule('shin', {
+            radius: 0.052 * thin * scale,
             height: 0.42 * scale,
-            tessellation: 8
+            tessellation: 16,
+            subdivisions: 4
         }, scene);
         shin.position.y = -0.66 * scale;
         shin.material = pantsMat;
         shin.parent = leg;
 
-        const foot = BABYLON.MeshBuilder.CreateBox('foot', {
-            width: 0.1 * scale,
-            height: 0.08 * scale,
-            depth: 0.22 * scale
+        const foot = BABYLON.MeshBuilder.CreateCapsule('foot', {
+            radius: 0.045 * scale,
+            height: 0.2 * scale,
+            tessellation: 12,
+            subdivisions: 2
         }, scene);
-        foot.position.set(0, -0.9 * scale, 0.04 * scale);
+        foot.rotation.z = Math.PI / 2;
+        foot.position.set(0, -0.9 * scale, 0.05 * scale);
+        foot.scaling.set(1, 0.72, 1.15);
         foot.material = bootMat;
         foot.parent = leg;
     }
@@ -209,7 +217,8 @@ export function buildHumanoid({
     const torso = BABYLON.MeshBuilder.CreateCapsule('torso', {
         radius: 0.16 * thin * scale,
         height: 0.58 * scale,
-        tessellation: 8
+        tessellation: 16,
+        subdivisions: 6
     }, scene);
     torso.position.y = 0.28 * scale;
     torso.material = shirtMat;
@@ -224,21 +233,21 @@ export function buildHumanoid({
     armR.parent = chest;
 
     for (const arm of [armL, armR]) {
-        const upper = BABYLON.MeshBuilder.CreateCylinder('armUpper', {
-            diameterTop: 0.1 * scale,
-            diameterBottom: 0.09 * scale,
+        const upper = BABYLON.MeshBuilder.CreateCapsule('armUpper', {
+            radius: 0.048 * scale,
             height: 0.32 * scale,
-            tessellation: 8
+            tessellation: 14,
+            subdivisions: 4
         }, scene);
         upper.position.y = -0.16 * scale;
         upper.material = shirtMat;
         upper.parent = arm;
 
-        const fore = BABYLON.MeshBuilder.CreateCylinder('armFore', {
-            diameterTop: 0.084 * scale,
-            diameterBottom: 0.076 * scale,
+        const fore = BABYLON.MeshBuilder.CreateCapsule('armFore', {
+            radius: 0.04 * scale,
             height: 0.3 * scale,
-            tessellation: 8
+            tessellation: 14,
+            subdivisions: 4
         }, scene);
         fore.position.y = -0.46 * scale;
         fore.material = skinMat;
@@ -246,7 +255,7 @@ export function buildHumanoid({
 
         const hand = BABYLON.MeshBuilder.CreateSphere('hand', {
             diameter: 0.09 * scale,
-            segments: 6
+            segments: 12
         }, scene);
         hand.position.y = -0.64 * scale;
         hand.material = skinMat;
@@ -261,18 +270,17 @@ export function buildHumanoid({
 
     const skull = BABYLON.MeshBuilder.CreateSphere('skull', {
         diameter: 0.25 * scale,
-        segments: 10
+        segments: 20
     }, scene);
     skull.scaling.set(0.92, 1.05, 0.95);
     skull.material = skinMat;
     skull.parent = head;
 
     // Olhos
+    const eyeMat = pbr('eyeMat', scene, new BABYLON.Color3(0.08, 0.08, 0.08), 0.22, 0.15);
     for (const s of [-1, 1]) {
-        const eye = BABYLON.MeshBuilder.CreateSphere('eye', { diameter: 0.04 * scale, segments: 6 }, scene);
+        const eye = BABYLON.MeshBuilder.CreateSphere('eye', { diameter: 0.04 * scale, segments: 10 }, scene);
         eye.position.set(s * 0.045 * scale, 0.04 * scale, 0.11 * scale);
-        const eyeMat = new BABYLON.StandardMaterial('eyeMat', scene);
-        eyeMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
         eye.material = eyeMat;
         eye.parent = head;
     }
@@ -301,20 +309,21 @@ export function buildDico(scene) {
     // Cabelo crespo e barba
     const hairCluster = new BABYLON.TransformNode('dicoHair', scene);
     hairCluster.parent = parts.head;
-    for (let i = 0; i < 16; i++) {
-        const curl = BABYLON.MeshBuilder.CreateSphere(`curl_${i}`, { diameter: 0.09, segments: 6 }, scene);
-        const a = (i / 16) * Math.PI * 2;
+    for (let i = 0; i < 20; i++) {
+        const curl = BABYLON.MeshBuilder.CreateSphere(`curl_${i}`, { diameter: 0.085, segments: 10 }, scene);
+        const a = (i / 20) * Math.PI * 2;
         curl.position.set(Math.cos(a) * 0.12, 0.1 + (i % 3) * 0.03, Math.sin(a) * 0.11);
         curl.material = parts.hairMat;
         curl.parent = hairCluster;
     }
 
-    const mustache = BABYLON.MeshBuilder.CreateBox('mustache', { width: 0.09, height: 0.015, depth: 0.03 }, scene);
+    const mustache = BABYLON.MeshBuilder.CreateCapsule('mustache', { radius: 0.012, height: 0.1, tessellation: 10 }, scene);
+    mustache.rotation.z = Math.PI / 2;
     mustache.position.set(0, -0.02, 0.12);
     mustache.material = parts.hairMat;
     mustache.parent = parts.head;
 
-    const goatee = BABYLON.MeshBuilder.CreateSphere('goatee', { diameter: 0.06, segments: 6 }, scene);
+    const goatee = BABYLON.MeshBuilder.CreateSphere('goatee', { diameter: 0.06, segments: 10 }, scene);
     goatee.position.set(0, -0.08, 0.1);
     goatee.material = parts.hairMat;
     goatee.parent = parts.head;
@@ -324,11 +333,10 @@ export function buildDico(scene) {
         diameterTop: 0.4,
         diameterBottom: 0.44,
         height: 0.36,
-        tessellation: 10
+        tessellation: 18
     }, scene);
     vest.position.y = 0.26;
-    const vestMat = new BABYLON.StandardMaterial('vestMat', scene);
-    vestMat.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.13);
+    const vestMat = pbr('vestMat', scene, new BABYLON.Color3(0.35, 0.22, 0.13), 0.68, 0.08);
     vest.material = vestMat;
     vest.parent = parts.chest;
 
@@ -338,24 +346,26 @@ export function buildDico(scene) {
     sword.position.set(0.02, -0.2, 0.02);
     sword.rotation.z = 0.15;
 
-    const blade = BABYLON.MeshBuilder.CreateBox('swordBlade', { width: 0.04, height: 0.72, depth: 0.012 }, scene);
+    const blade = BABYLON.MeshBuilder.CreateCapsule('swordBlade', {
+        radius: 0.014, height: 0.72, tessellation: 10, subdivisions: 2
+    }, scene);
+    blade.scaling.set(1.4, 1, 0.45);
     blade.position.y = 0.36;
-    const bladeMat = new BABYLON.StandardMaterial('bladeMat', scene);
-    bladeMat.diffuseColor = new BABYLON.Color3(0.78, 0.82, 0.86);
-    bladeMat.specularColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+    const bladeMat = pbr('bladeMat', scene, new BABYLON.Color3(0.78, 0.82, 0.86), 0.22, 0.92);
     blade.material = bladeMat;
     blade.parent = sword;
 
-    const guard = BABYLON.MeshBuilder.CreateBox('swordGuard', { width: 0.16, height: 0.03, depth: 0.03 }, scene);
-    const goldMat = new BABYLON.StandardMaterial('goldMat', scene);
-    goldMat.diffuseColor = new BABYLON.Color3(0.7, 0.55, 0.2);
+    const guard = BABYLON.MeshBuilder.CreateCapsule('swordGuard', {
+        radius: 0.016, height: 0.16, tessellation: 10
+    }, scene);
+    guard.rotation.z = Math.PI / 2;
+    const goldMat = pbr('goldMat', scene, new BABYLON.Color3(0.7, 0.55, 0.2), 0.35, 0.85);
     guard.material = goldMat;
     guard.parent = sword;
 
-    const hilt = BABYLON.MeshBuilder.CreateCylinder('swordHilt', { diameter: 0.04, height: 0.14 }, scene);
+    const hilt = BABYLON.MeshBuilder.CreateCylinder('swordHilt', { diameter: 0.04, height: 0.14, tessellation: 12 }, scene);
     hilt.position.y = -0.08;
-    const hiltMat = new BABYLON.StandardMaterial('hiltMat', scene);
-    hiltMat.diffuseColor = new BABYLON.Color3(0.2, 0.12, 0.08);
+    const hiltMat = pbr('hiltMat', scene, new BABYLON.Color3(0.2, 0.12, 0.08), 0.7, 0.05);
     hilt.material = hiltMat;
     hilt.parent = sword;
 
@@ -363,12 +373,11 @@ export function buildDico(scene) {
     const shield = BABYLON.MeshBuilder.CreateCylinder('shield', {
         diameter: 0.38,
         height: 0.04,
-        tessellation: 10
+        tessellation: 20
     }, scene);
     shield.rotation.z = Math.PI / 2;
     shield.position.set(-0.08, -0.15, 0.06);
-    const shieldMat = new BABYLON.StandardMaterial('shieldMat', scene);
-    shieldMat.diffuseColor = new BABYLON.Color3(0.45, 0.12, 0.12);
+    const shieldMat = pbr('shieldMat', scene, new BABYLON.Color3(0.45, 0.12, 0.12), 0.45, 0.55);
     shield.material = shieldMat;
     shield.parent = parts.armL;
 
@@ -381,11 +390,12 @@ export function buildDico(scene) {
     stick.material = hiltMat;
     stick.parent = torch;
 
-    const flame = BABYLON.MeshBuilder.CreateSphere('flameDico', { diameter: 0.12, segments: 6 }, scene);
+    const flame = BABYLON.MeshBuilder.CreateSphere('flameDico', { diameter: 0.12, segments: 12 }, scene);
     flame.position.y = 0.2;
-    const flameMat = new BABYLON.StandardMaterial('flameMatDico', scene);
-    flameMat.diffuseColor = new BABYLON.Color3(1.0, 0.6, 0.2);
-    flameMat.emissiveColor = new BABYLON.Color3(1.0, 0.5, 0.1);
+    const flameMat = pbr('flameMatDico', scene, new BABYLON.Color3(1.0, 0.6, 0.2), 0.9, 0.0, {
+        emissiveColor: new BABYLON.Color3(1.0, 0.45, 0.08),
+        emissiveIntensity: 2.2
+    });
     flame.material = flameMat;
     flame.parent = torch;
     torch.setEnabled(false);
@@ -410,10 +420,13 @@ export function buildRavi(scene) {
         bootColor: new BABYLON.Color3(0.35, 0.22, 0.14)
     });
 
-    const blanket = BABYLON.MeshBuilder.CreateBox('raviBlanket', { width: 0.55, height: 0.08, depth: 0.7 }, scene);
+    const blanket = BABYLON.MeshBuilder.CreateCapsule('raviBlanket', {
+        radius: 0.12, height: 0.7, tessellation: 12, subdivisions: 4
+    }, scene);
+    blanket.rotation.z = Math.PI / 2;
+    blanket.scaling.set(1.1, 0.45, 1.35);
     blanket.position.set(0, 0.4, 0.05);
-    const bMat = new BABYLON.StandardMaterial('blanketMat', scene);
-    bMat.diffuseColor = new BABYLON.Color3(0.42, 0.16, 0.16);
+    const bMat = pbr('blanketMat', scene, new BABYLON.Color3(0.42, 0.16, 0.16), 0.9, 0.02);
     blanket.material = bMat;
     blanket.parent = built.root;
 
@@ -436,7 +449,9 @@ export function buildCamila(scene) {
     const parts = built.parts;
 
     // Cabelo longo da princesa
-    const hair = BABYLON.MeshBuilder.CreateCapsule('camilaHair', { radius: 0.12, height: 0.45 }, scene);
+    const hair = BABYLON.MeshBuilder.CreateCapsule('camilaHair', {
+        radius: 0.12, height: 0.45, tessellation: 14, subdivisions: 4
+    }, scene);
     hair.position.set(0, 0.02, -0.04);
     hair.material = parts.hairMat;
     hair.parent = parts.head;
@@ -446,11 +461,10 @@ export function buildCamila(scene) {
         diameterTop: 0.35,
         diameterBottom: 0.65,
         height: 0.7,
-        tessellation: 10
+        tessellation: 20
     }, scene);
     dress.position.y = 0.55;
-    const dressMat = new BABYLON.StandardMaterial('dressMat', scene);
-    dressMat.diffuseColor = new BABYLON.Color3(0.8, 0.72, 0.84);
+    const dressMat = pbr('dressMat', scene, new BABYLON.Color3(0.8, 0.72, 0.84), 0.78, 0.04);
     dress.material = dressMat;
     dress.parent = parts.hips;
 
@@ -458,8 +472,7 @@ export function buildCamila(scene) {
     const shackles = new BABYLON.TransformNode('camilaShackles', scene);
     shackles.parent = parts.hips;
 
-    const shackleMat = new BABYLON.StandardMaterial('shackleMat', scene);
-    shackleMat.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+    const shackleMat = pbr('shackleMat', scene, new BABYLON.Color3(0.5, 0.5, 0.5), 0.35, 0.88);
 
     const leftRing = BABYLON.MeshBuilder.CreateTorus('leftRing', { diameter: 0.1, thickness: 0.024 }, scene);
     leftRing.position.set(-0.12, 0.9, 0.12);
@@ -496,19 +509,16 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
     const parts = built.parts;
 
     // Elmo de ferro
-    const helm = BABYLON.MeshBuilder.CreateSphere('guardHelm', { diameter: 0.3, segments: 8 }, scene);
+    const helm = BABYLON.MeshBuilder.CreateSphere('guardHelm', { diameter: 0.3, segments: 16 }, scene);
     helm.position.y = 0.04;
-    const ironMat = new BABYLON.StandardMaterial('ironMat', scene);
-    ironMat.diffuseColor = new BABYLON.Color3(0.55, 0.55, 0.52);
-    ironMat.specularColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    const ironMat = pbr('ironMat', scene, new BABYLON.Color3(0.55, 0.55, 0.52), 0.32, 0.9);
     helm.material = ironMat;
     helm.parent = parts.head;
 
     if (fat) {
-        const belly = BABYLON.MeshBuilder.CreateSphere('guardBelly', { diameter: 0.56, segments: 8 }, scene);
+        const belly = BABYLON.MeshBuilder.CreateSphere('guardBelly', { diameter: 0.56, segments: 16 }, scene);
         belly.position.y = 0.12;
-        const tunicMat = new BABYLON.StandardMaterial('tunicMat', scene);
-        tunicMat.diffuseColor = new BABYLON.Color3(0.35, 0.12, 0.12);
+        const tunicMat = pbr('tunicMat', scene, new BABYLON.Color3(0.35, 0.12, 0.12), 0.85, 0.04);
         belly.material = tunicMat;
         belly.parent = parts.chest;
     }
@@ -519,8 +529,7 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
     spear.position.set(0.05, -0.2, 0.1);
 
     const shaft = BABYLON.MeshBuilder.CreateCylinder('spearShaft', { diameter: 0.036, height: 1.6 }, scene);
-    const woodM = new BABYLON.StandardMaterial('spearWood', scene);
-    woodM.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.1);
+    const woodM = pbr('spearWood', scene, new BABYLON.Color3(0.35, 0.22, 0.1), 0.88, 0.03);
     shaft.material = woodM;
     shaft.parent = spear;
 
@@ -534,7 +543,7 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
         const bow = BABYLON.MeshBuilder.CreateTorus('guardBow', {
             diameter: 0.56,
             thickness: 0.036,
-            tessellation: 12
+            tessellation: 24
         }, scene);
         bow.rotation.y = Math.PI / 2;
         bow.material = woodM;
@@ -544,11 +553,12 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
     // Molho de chaves na cintura
     const keys = new BABYLON.TransformNode('guardKeys', scene);
     keys.parent = parts.hips;
-    const goldKeyMat = new BABYLON.StandardMaterial('goldKeyMat', scene);
-    goldKeyMat.diffuseColor = new BABYLON.Color3(0.8, 0.65, 0.15);
+    const goldKeyMat = pbr('goldKeyMat', scene, new BABYLON.Color3(0.8, 0.65, 0.15), 0.35, 0.85);
 
     for (let i = 0; i < 3; i++) {
-        const k = BABYLON.MeshBuilder.CreateBox(`guardKey_${i}`, { width: 0.04, height: 0.12, depth: 0.02 }, scene);
+        const k = BABYLON.MeshBuilder.CreateCapsule(`guardKey_${i}`, {
+            radius: 0.012, height: 0.12, tessellation: 8
+        }, scene);
         k.position.set(0.08, 0.7 + i * 0.02, 0.14);
         k.rotation.z = 0.3 * i;
         k.material = goldKeyMat;
@@ -577,10 +587,12 @@ export function buildFriend(scene, variant = 0) {
         hairColor: p.hair
     });
 
-    const pack = BABYLON.MeshBuilder.CreateBox('friendPack', { width: 0.28, height: 0.32, depth: 0.16 }, scene);
+    const pack = BABYLON.MeshBuilder.CreateCapsule('friendPack', {
+        radius: 0.1, height: 0.34, tessellation: 12, subdivisions: 4
+    }, scene);
+    pack.scaling.set(1.35, 1, 0.75);
     pack.position.set(0, 0.28, -0.22);
-    const packMat = new BABYLON.StandardMaterial('packMat', scene);
-    packMat.diffuseColor = new BABYLON.Color3(0.28, 0.2, 0.1);
+    const packMat = pbr('packMat', scene, new BABYLON.Color3(0.28, 0.2, 0.1), 0.8, 0.05);
     pack.material = packMat;
     pack.parent = built.parts.chest;
 
@@ -590,20 +602,15 @@ export function buildFriend(scene, variant = 0) {
 export function buildTeco(scene) {
     const root = new BABYLON.TransformNode('tecoRoot', scene);
 
-    const furMat = new BABYLON.StandardMaterial('tecoFurMat', scene);
-    furMat.diffuseColor = new BABYLON.Color3(0.42, 0.28, 0.16);
-
-    const darkMat = new BABYLON.StandardMaterial('tecoDarkMat', scene);
-    darkMat.diffuseColor = new BABYLON.Color3(0.22, 0.16, 0.1);
-
-    const faceMat = new BABYLON.StandardMaterial('tecoFaceMat', scene);
-    faceMat.diffuseColor = new BABYLON.Color3(0.88, 0.7, 0.56);
+    const furMat = pbr('tecoFurMat', scene, new BABYLON.Color3(0.42, 0.28, 0.16), 0.9, 0.02);
+    const darkMat = pbr('tecoDarkMat', scene, new BABYLON.Color3(0.22, 0.16, 0.1), 0.85, 0.04);
+    const faceMat = pbr('tecoFaceMat', scene, new BABYLON.Color3(0.88, 0.7, 0.56), 0.65, 0.02);
 
     // Hips
     const hips = new BABYLON.TransformNode('hips', scene);
     hips.parent = root;
 
-    const body = BABYLON.MeshBuilder.CreateSphere('tecoBody', { diameter: 0.24, segments: 8 }, scene);
+    const body = BABYLON.MeshBuilder.CreateSphere('tecoBody', { diameter: 0.24, segments: 16 }, scene);
     body.scaling.set(0.9, 1.15, 0.8);
     body.position.y = 0.22;
     body.material = furMat;
@@ -617,23 +624,23 @@ export function buildTeco(scene) {
     head.position.y = 0.16;
     head.parent = chest;
 
-    const skull = BABYLON.MeshBuilder.CreateSphere('tecoSkull', { diameter: 0.18, segments: 8 }, scene);
+    const skull = BABYLON.MeshBuilder.CreateSphere('tecoSkull', { diameter: 0.18, segments: 16 }, scene);
     skull.material = furMat;
     skull.parent = head;
 
-    const muzzle = BABYLON.MeshBuilder.CreateSphere('tecoMuzzle', { diameter: 0.1, segments: 6 }, scene);
+    const muzzle = BABYLON.MeshBuilder.CreateSphere('tecoMuzzle', { diameter: 0.1, segments: 12 }, scene);
     muzzle.scaling.set(1, 0.8, 1.2);
     muzzle.position.set(0, -0.02, 0.07);
     muzzle.material = faceMat;
     muzzle.parent = head;
 
     for (const s of [-1, 1]) {
-        const ear = BABYLON.MeshBuilder.CreateSphere('tecoEar', { diameter: 0.07, segments: 6 }, scene);
+        const ear = BABYLON.MeshBuilder.CreateSphere('tecoEar', { diameter: 0.07, segments: 10 }, scene);
         ear.position.set(s * 0.08, 0.06, 0);
         ear.material = furMat;
         ear.parent = head;
 
-        const eye = BABYLON.MeshBuilder.CreateSphere('tecoEye', { diameter: 0.025, segments: 6 }, scene);
+        const eye = BABYLON.MeshBuilder.CreateSphere('tecoEye', { diameter: 0.025, segments: 10 }, scene);
         eye.position.set(s * 0.03, 0.02, 0.09);
         eye.material = darkMat;
         eye.parent = head;
@@ -648,12 +655,12 @@ export function buildTeco(scene) {
     armR.parent = chest;
 
     for (const arm of [armL, armR]) {
-        const limb = BABYLON.MeshBuilder.CreateCylinder('tecoArmMesh', { diameter: 0.045, height: 0.22 }, scene);
+        const limb = BABYLON.MeshBuilder.CreateCapsule('tecoArmMesh', { radius: 0.022, height: 0.22, tessellation: 12 }, scene);
         limb.position.y = -0.1;
         limb.material = furMat;
         limb.parent = arm;
 
-        const hand = BABYLON.MeshBuilder.CreateSphere('tecoHand', { diameter: 0.06, segments: 6 }, scene);
+        const hand = BABYLON.MeshBuilder.CreateSphere('tecoHand', { diameter: 0.06, segments: 10 }, scene);
         hand.position.y = -0.22;
         hand.material = darkMat;
         hand.parent = arm;
@@ -668,12 +675,12 @@ export function buildTeco(scene) {
     legR.parent = hips;
 
     for (const leg of [legL, legR]) {
-        const limb = BABYLON.MeshBuilder.CreateCylinder('tecoLegMesh', { diameter: 0.05, height: 0.18 }, scene);
+        const limb = BABYLON.MeshBuilder.CreateCapsule('tecoLegMesh', { radius: 0.025, height: 0.18, tessellation: 12 }, scene);
         limb.position.y = -0.08;
         limb.material = furMat;
         limb.parent = leg;
 
-        const foot = BABYLON.MeshBuilder.CreateSphere('tecoFoot', { diameter: 0.06, segments: 6 }, scene);
+        const foot = BABYLON.MeshBuilder.CreateSphere('tecoFoot', { diameter: 0.06, segments: 10 }, scene);
         foot.scaling.set(1, 0.6, 1.4);
         foot.position.set(0, -0.18, 0.02);
         foot.material = darkMat;
@@ -740,22 +747,21 @@ export function buildTeco(scene) {
 export function buildTiger(scene) {
     const root = new BABYLON.TransformNode('tigerRoot', scene);
 
-    const orangeMat = new BABYLON.StandardMaterial('tigerOrangeMat', scene);
-    orangeMat.diffuseColor = new BABYLON.Color3(0.85, 0.4, 0.1);
+    const orangeMat = pbr('tigerOrangeMat', scene, new BABYLON.Color3(0.85, 0.4, 0.1), 0.78, 0.03);
+    const whiteMat = pbr('tigerWhiteMat', scene, new BABYLON.Color3(0.95, 0.92, 0.85), 0.82, 0.02);
+    const blackMat = pbr('tigerBlackMat', scene, new BABYLON.Color3(0.1, 0.08, 0.06), 0.75, 0.04);
 
-    const whiteMat = new BABYLON.StandardMaterial('tigerWhiteMat', scene);
-    whiteMat.diffuseColor = new BABYLON.Color3(0.95, 0.92, 0.85);
-
-    const blackMat = new BABYLON.StandardMaterial('tigerBlackMat', scene);
-    blackMat.diffuseColor = new BABYLON.Color3(0.1, 0.08, 0.06);
-
-    const body = BABYLON.MeshBuilder.CreateCapsule('tigerBody', { radius: 0.38, height: 1.5 }, scene);
+    const body = BABYLON.MeshBuilder.CreateCapsule('tigerBody', {
+        radius: 0.38, height: 1.5, tessellation: 18, subdivisions: 6
+    }, scene);
     body.rotation.z = Math.PI / 2;
     body.position.set(0, 0.55, 0);
     body.material = orangeMat;
     body.parent = root;
 
-    const belly = BABYLON.MeshBuilder.CreateCapsule('tigerBelly', { radius: 0.22, height: 1.1 }, scene);
+    const belly = BABYLON.MeshBuilder.CreateCapsule('tigerBelly', {
+        radius: 0.22, height: 1.1, tessellation: 14, subdivisions: 4
+    }, scene);
     belly.rotation.z = Math.PI / 2;
     belly.position.set(0, 0.38, 0.05);
     belly.material = whiteMat;
@@ -765,17 +771,17 @@ export function buildTiger(scene) {
     head.position.set(0.85, 0.62, 0);
     head.parent = root;
 
-    const skull = BABYLON.MeshBuilder.CreateSphere('tigerSkull', { diameter: 0.56, segments: 8 }, scene);
+    const skull = BABYLON.MeshBuilder.CreateSphere('tigerSkull', { diameter: 0.56, segments: 18 }, scene);
     skull.scaling.set(1.15, 0.9, 0.85);
     skull.material = orangeMat;
     skull.parent = head;
 
-    const muzzle = BABYLON.MeshBuilder.CreateSphere('tigerMuzzle', { diameter: 0.28, segments: 6 }, scene);
+    const muzzle = BABYLON.MeshBuilder.CreateSphere('tigerMuzzle', { diameter: 0.28, segments: 14 }, scene);
     muzzle.position.set(0.18, -0.04, 0);
     muzzle.material = whiteMat;
     muzzle.parent = head;
 
-    const nose = BABYLON.MeshBuilder.CreateSphere('tigerNose', { diameter: 0.1, segments: 6 }, scene);
+    const nose = BABYLON.MeshBuilder.CreateSphere('tigerNose', { diameter: 0.1, segments: 10 }, scene);
     nose.position.set(0.3, 0.02, 0);
     nose.material = blackMat;
     nose.parent = head;
@@ -786,22 +792,24 @@ export function buildTiger(scene) {
         ear.material = orangeMat;
         ear.parent = head;
 
-        const eye = BABYLON.MeshBuilder.CreateSphere('tigerEye', { diameter: 0.07, segments: 6 }, scene);
+        const eye = BABYLON.MeshBuilder.CreateSphere('tigerEye', { diameter: 0.07, segments: 10 }, scene);
         eye.position.set(0.16, 0.08, s * 0.12);
-        const tigerEyeMat = new BABYLON.StandardMaterial('tigerEyeMat', scene);
-        tigerEyeMat.diffuseColor = new BABYLON.Color3(0.2, 0.6, 0.1);
+        const tigerEyeMat = pbr('tigerEyeMat', scene, new BABYLON.Color3(0.2, 0.6, 0.1), 0.25, 0.1, {
+            emissiveColor: new BABYLON.Color3(0.05, 0.15, 0.02),
+            emissiveIntensity: 0.4
+        });
         eye.material = tigerEyeMat;
         eye.parent = head;
     }
 
     // 4 Patas
     for (const [x, z] of [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]]) {
-        const leg = BABYLON.MeshBuilder.CreateCylinder('tigerLeg', { diameter: 0.16, height: 0.45 }, scene);
+        const leg = BABYLON.MeshBuilder.CreateCapsule('tigerLeg', { radius: 0.08, height: 0.45, tessellation: 12 }, scene);
         leg.position.set(x, 0.22, z);
         leg.material = orangeMat;
         leg.parent = root;
 
-        const paw = BABYLON.MeshBuilder.CreateSphere('tigerPaw', { diameter: 0.2, segments: 6 }, scene);
+        const paw = BABYLON.MeshBuilder.CreateSphere('tigerPaw', { diameter: 0.2, segments: 12 }, scene);
         paw.scaling.set(1, 0.5, 1.2);
         paw.position.set(x, 0.04, z);
         paw.material = blackMat;
@@ -821,9 +829,12 @@ export function buildTiger(scene) {
 
     // Listras pretas
     for (let i = 0; i < 10; i++) {
-        const stripe = BABYLON.MeshBuilder.CreateBox(`stripe_${i}`, { width: 0.06, height: 0.42, depth: 0.55 }, scene);
+        const stripe = BABYLON.MeshBuilder.CreateCapsule(`stripe_${i}`, {
+            radius: 0.035, height: 0.5, tessellation: 8
+        }, scene);
+        stripe.rotation.x = Math.PI / 2;
         stripe.position.set(-0.4 + i * 0.12, 0.62, 0);
-        stripe.rotation.y = 0.15;
+        stripe.scaling.set(1, 0.55, 1.1);
         stripe.material = blackMat;
         stripe.parent = root;
     }

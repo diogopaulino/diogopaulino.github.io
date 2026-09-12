@@ -5,18 +5,9 @@
 
 import * as THREE from 'three';
 import { TIDES, SURFACE, FOG0, FOG1, lerp } from './config.js';
-import { sandTexture, kelpTexture } from './textures.js';
+import { sandPBR, kelpTexture } from './textures.js';
 import { patchFloor, patchKelp, WATER_VERT, WATER_FRAG } from './shaders.js';
 import { createCoral, createRock, createAnemone, createTideLight } from './models.js';
-
-function texFromCanvas(c, repeat = 8) {
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(repeat, repeat);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 4;
-    return t;
-}
 
 export class Sanctuary {
     constructor(scene, quality) {
@@ -47,7 +38,7 @@ export class Sanctuary {
     }
 
     _floor() {
-        const geo = new THREE.CircleGeometry(58, 72);
+        const geo = new THREE.CircleGeometry(58, 96);
         const pos = geo.attributes.position;
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
@@ -58,13 +49,17 @@ export class Sanctuary {
             pos.setZ(i, dune - r * r * 0.0008);
         }
         geo.computeVertexNormals();
+        const sand = sandPBR();
         const mat = new THREE.MeshStandardMaterial({
-            map: texFromCanvas(sandTexture(), 10),
+            map: sand.map,
+            normalMap: sand.normalMap,
+            roughnessMap: sand.roughnessMap,
             color: 0x6aa090,
-            roughness: 0.95,
+            roughness: 0.92,
             metalness: 0.02,
             emissive: 0x102830,
-            emissiveIntensity: 0.2
+            emissiveIntensity: 0.2,
+            normalScale: new THREE.Vector2(0.85, 0.85)
         });
         mat.onBeforeCompile = (shader) => patchFloor(shader, this.uniforms);
         mat.customProgramCacheKey = () => 'nereida-floor';
@@ -95,13 +90,13 @@ export class Sanctuary {
         this.water = water;
 
         const moon = new THREE.Mesh(
-            new THREE.SphereGeometry(3.4, 24, 16),
+            new THREE.SphereGeometry(3.4, 48, 32),
             new THREE.MeshBasicMaterial({ color: 0xf4f0d8 })
         );
         moon.position.set(10, SURFACE + 14, -8);
         this.scene.add(moon);
         const halo = new THREE.Mesh(
-            new THREE.SphereGeometry(6.2, 16, 12),
+            new THREE.SphereGeometry(6.2, 32, 24),
             new THREE.MeshBasicMaterial({
                 color: 0xc8e8ff,
                 transparent: true,
@@ -212,15 +207,16 @@ export class Sanctuary {
     _arch() {
         const mat = new THREE.MeshStandardMaterial({
             color: 0x2a4554,
-            roughness: 0.9,
+            roughness: 0.86,
+            metalness: 0.08,
             emissive: 0x102028,
             emissiveIntensity: 0.2
         });
-        const left = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.4, 8.5, 10), mat);
+        const left = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.4, 8.5, 32), mat);
         left.position.set(20.2, 4.2, 8.4);
         const right = left.clone();
         right.position.set(23.4, 4.2, 11.2);
-        const top = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.85, 8, 18, Math.PI), mat);
+        const top = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.85, 20, 48, Math.PI), mat);
         top.position.set(21.8, 8.1, 9.8);
         top.rotation.set(0, -0.7, 0);
         top.rotation.z = Math.PI;
@@ -229,20 +225,23 @@ export class Sanctuary {
     }
 
     _centerRing() {
-        const mat = new THREE.MeshStandardMaterial({
+        const mat = new THREE.MeshPhysicalMaterial({
             color: 0x3a6a78,
             emissive: 0x1a8090,
             emissiveIntensity: 0.35,
-            roughness: 0.5
+            roughness: 0.35,
+            metalness: 0.15,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.25
         });
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.22, 8, 40), mat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.22, 20, 64), mat);
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.35;
         this.scene.add(ring);
         this.centerRing = ring;
         for (let i = 0; i < 7; i++) {
             const a = (i / 7) * Math.PI * 2;
-            const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.6, 8), mat);
+            const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.6, 20), mat);
             pylon.position.set(Math.cos(a) * 4.2, 0.8, Math.sin(a) * 4.2);
             this.scene.add(pylon);
         }

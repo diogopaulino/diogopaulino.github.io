@@ -80,16 +80,25 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     const hips = new BABYLON.TransformNode('hips', scene);
     hips.parent = root;
     hips.position.y = 0.95;
-    const hipsMesh = BABYLON.MeshBuilder.CreateBox('hipsMesh', { width: 0.38, height: 0.22, depth: 0.24 }, scene);
+    const hipsMesh = BABYLON.MeshBuilder.CreateCapsule('hipsMesh', {
+        radius: 0.14, height: 0.28, tessellation: 14, subdivisions: 4
+    }, scene);
+    hipsMesh.scaling.set(1.35, 0.85, 0.9);
     hipsMesh.material = khakiMat;
     hipsMesh.parent = hips;
     registerShadows(hipsMesh, shadowGenerator);
-    const beltMesh = BABYLON.MeshBuilder.CreateBox('beltMesh', { width: 0.39, height: 0.05, depth: 0.25 }, scene);
+    const beltMesh = BABYLON.MeshBuilder.CreateTorus('beltMesh', {
+        diameter: 0.36, thickness: 0.035, tessellation: 24
+    }, scene);
+    beltMesh.rotation.x = Math.PI / 2;
     beltMesh.position.y = 0.09;
     beltMesh.material = beltMat;
     beltMesh.parent = hips;
-    const buckle = BABYLON.MeshBuilder.CreateBox('buckle', { width: 0.08, height: 0.06, depth: 0.26 }, scene);
-    buckle.position.set(0, 0.09, -0.01);
+    const buckle = BABYLON.MeshBuilder.CreateCapsule('buckle', {
+        radius: 0.028, height: 0.08, tessellation: 10
+    }, scene);
+    buckle.rotation.z = Math.PI / 2;
+    buckle.position.set(0, 0.09, -0.12);
     buckle.material = buckleMat;
     buckle.parent = hips;
     const legs = [];
@@ -101,7 +110,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
             height: 0.44,
             diameterTop: 0.15,
             diameterBottom: 0.13,
-            tessellation: 12
+            tessellation: 18
         }, scene);
         thigh.position.y = -0.22;
         thigh.material = khakiMat;
@@ -114,7 +123,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
             height: 0.42,
             diameterTop: 0.13,
             diameterBottom: 0.11,
-            tessellation: 12
+            tessellation: 18
         }, scene);
         calf.position.y = -0.21;
         calf.material = khakiMat;
@@ -123,12 +132,12 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const foot = new BABYLON.TransformNode('foot', scene);
         foot.parent = shin;
         foot.position.set(0, -0.42, 0.05);
-        const shoe = BABYLON.MeshBuilder.CreateBox('shoe', {
-            width: 0.14,
-            height: 0.11,
-            depth: 0.32
+        const shoe = BABYLON.MeshBuilder.CreateCapsule('shoe', {
+            radius: 0.055, height: 0.28, tessellation: 12, subdivisions: 3
         }, scene);
-        shoe.position.set(0, 0.02, 0.04);
+        shoe.rotation.z = Math.PI / 2;
+        shoe.scaling.set(1, 0.75, 1.15);
+        shoe.position.set(0, 0.02, 0.06);
         shoe.material = shoeMat;
         shoe.parent = foot;
         registerShadows(shoe, shadowGenerator);
@@ -137,20 +146,18 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     const torso = new BABYLON.TransformNode('torso', scene);
     torso.parent = hips;
     torso.position.y = 0.12;
-    const chest = BABYLON.MeshBuilder.CreateBox('chest', {
-        width: 0.46,
-        height: 0.54,
-        depth: 0.26
+    const chest = BABYLON.MeshBuilder.CreateCapsule('chest', {
+        radius: 0.18, height: 0.54, tessellation: 16, subdivisions: 6
     }, scene);
+    chest.scaling.set(1.25, 1, 0.78);
     chest.position.y = 0.27;
     chest.material = shirtMat;
     chest.parent = torso;
     registerShadows(chest, shadowGenerator);
-    const collar = BABYLON.MeshBuilder.CreateBox('collar', {
-        width: 0.22,
-        height: 0.08,
-        depth: 0.2
+    const collar = BABYLON.MeshBuilder.CreateTorus('collar', {
+        diameter: 0.2, thickness: 0.035, tessellation: 16
     }, scene);
+    collar.rotation.x = Math.PI / 2;
     collar.position.set(0, 0.54, 0);
     collar.material = shirtMat;
     collar.parent = torso;
@@ -169,7 +176,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         diameterX: 0.22,
         diameterY: 0.26,
         diameterZ: 0.24,
-        segments: 14
+        segments: 20
     }, scene);
     face.position.set(0, 0.14, 0);
     face.material = skinMat;
@@ -179,17 +186,17 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         diameterX: 0.23,
         diameterY: 0.14,
         diameterZ: 0.24,
-        segments: 12
+        segments: 16
     }, scene);
     hair.position.set(0, 0.24, -0.01);
     hair.material = hairMat;
     hair.parent = head;
     for (const sx of [-1, 1]) {
-        const eyeWhite = BABYLON.MeshBuilder.CreateSphere('eyeWhite', { diameter: 0.04, segments: 8 }, scene);
+        const eyeWhite = BABYLON.MeshBuilder.CreateSphere('eyeWhite', { diameter: 0.04, segments: 12 }, scene);
         eyeWhite.position.set(sx * 0.055, 0.16, -0.11);
         eyeWhite.material = pbrMat(scene, 'eyeWhite', 0xf8f8f8, 0.3, 0.05);
         eyeWhite.parent = head;
-        const eyePupil = BABYLON.MeshBuilder.CreateSphere('eyePupil', { diameter: 0.022, segments: 8 }, scene);
+        const eyePupil = BABYLON.MeshBuilder.CreateSphere('eyePupil', { diameter: 0.022, segments: 10 }, scene);
         eyePupil.position.set(sx * 0.055, 0.16, -0.125);
         eyePupil.material = pbrMat(scene, 'eyePupil', 0x221810, 0.2, 0.1);
         eyePupil.parent = head;
@@ -204,11 +211,11 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         capCrown.position.set(0, 0.25, -0.01);
         capCrown.material = capMat;
         capCrown.parent = head;
-        const capVisor = BABYLON.MeshBuilder.CreateBox('capVisor', {
-            width: 0.22,
-            height: 0.03,
-            depth: 0.16
+        const capVisor = BABYLON.MeshBuilder.CreateCapsule('capVisor', {
+            radius: 0.02, height: 0.2, tessellation: 10
         }, scene);
+        capVisor.rotation.z = Math.PI / 2;
+        capVisor.scaling.set(1, 0.6, 2.2);
         capVisor.position.set(0, 0.22, -0.16);
         capVisor.rotation.x = 0.15;
         capVisor.material = pbrMat(scene, 'capVisor', 0xb81e1e, 0.7, 0.05);
@@ -224,7 +231,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
             height: 0.34,
             diameterTop: 0.13,
             diameterBottom: 0.11,
-            tessellation: 12
+            tessellation: 16
         }, scene);
         upperArm.position.y = -0.14;
         upperArm.material = shirtMat;
@@ -237,7 +244,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
             height: 0.32,
             diameterTop: 0.11,
             diameterBottom: 0.09,
-            tessellation: 12
+            tessellation: 16
         }, scene);
         armSkin.position.y = -0.14;
         armSkin.material = skinMat;
@@ -247,7 +254,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
             diameterX: 0.09,
             diameterY: 0.11,
             diameterZ: 0.09,
-            segments: 8
+            segments: 12
         }, scene);
         hand.position.set(0, -0.32, 0);
         hand.material = skinMat;
@@ -272,7 +279,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
             height: 4.8,
             diameterTop: 0.22,
             diameterBottom: 0.44,
-            tessellation: 10
+            tessellation: 16
         }, scene);
         trunk.position.y = 2.4;
         trunk.material = barkMat;
@@ -288,7 +295,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
                 height: t.h,
                 diameterTop: 0.05,
                 diameterBottom: t.d,
-                tessellation: 10
+                tessellation: 14
             }, scene);
             cone.position.y = t.y;
             cone.material = needleMat;
@@ -301,7 +308,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
             height: 4.2,
             diameterTop: 0.44,
             diameterBottom: 0.48,
-            tessellation: 12
+            tessellation: 18
         }, scene);
         mainStem.position.y = 2.1;
         mainStem.material = cactusMat;
@@ -333,7 +340,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
             height: 3.4,
             diameterTop: 0.42,
             diameterBottom: 0.68,
-            tessellation: 12
+            tessellation: 16
         }, scene);
         trunk.position.y = 1.7;
         trunk.material = barkMat;
@@ -350,7 +357,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
                 diameterX: c.dx,
                 diameterY: c.dy,
                 diameterZ: c.dz,
-                segments: 10
+                segments: 16
             }, scene);
             canopy.position.set(c.x, c.y, c.z);
             canopy.material = leafMat;
@@ -543,23 +550,30 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const root = new BABYLON.TransformNode('cow', scene);
     const hideMat = pbrMat(scene, 'cowHide', 0xf2eee6, 0.85, 0.02);
     const spotMat = pbrMat(scene, 'cowSpot', 0x222224, 0.85, 0.02);
-    const body = BABYLON.MeshBuilder.CreateBox('cowBody', { width: 0.9, height: 0.85, depth: 1.8 }, scene);
+    const body = BABYLON.MeshBuilder.CreateCapsule('cowBody', {
+        radius: 0.42, height: 1.7, tessellation: 16, subdivisions: 6
+    }, scene);
+    body.rotation.z = Math.PI / 2;
     body.position.y = 0.95;
     body.material = hideMat;
     body.parent = root;
     registerShadows(body, shadowGenerator);
-    const spot = BABYLON.MeshBuilder.CreateBox('cowSpotMesh', { width: 0.92, height: 0.5, depth: 0.6 }, scene);
+    const spot = BABYLON.MeshBuilder.CreateSphere('cowSpotMesh', {
+        diameterX: 0.7, diameterY: 0.5, diameterZ: 0.55, segments: 12
+    }, scene);
     spot.position.set(0, 1.05, 0.2);
     spot.material = spotMat;
     spot.parent = root;
-    const head = BABYLON.MeshBuilder.CreateBox('cowHead', { width: 0.44, height: 0.48, depth: 0.65 }, scene);
+    const head = BABYLON.MeshBuilder.CreateSphere('cowHead', {
+        diameterX: 0.44, diameterY: 0.48, diameterZ: 0.65, segments: 14
+    }, scene);
     head.position.set(0, 1.25, -1.05);
     head.material = hideMat;
     head.parent = root;
     registerShadows(head, shadowGenerator);
     for (const z of [-0.6, 0.6]) {
         for (const x of [-0.34, 0.34]) {
-            const leg = BABYLON.MeshBuilder.CreateCylinder('cowLeg', { height: 0.65, diameter: 0.12 }, scene);
+            const leg = BABYLON.MeshBuilder.CreateCapsule('cowLeg', { height: 0.65, radius: 0.06, tessellation: 12 }, scene);
             leg.position.set(x, 0.32, z);
             leg.material = hideMat;
             leg.parent = root;
@@ -608,7 +622,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         diameterX: 1.4,
         diameterY: 0.75,
         diameterZ: 1.1,
-        segments: 8
+        segments: 14
     }, scene);
     rock.position.y = 0.35;
     rock.material = rockMat;

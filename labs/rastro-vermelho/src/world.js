@@ -8,9 +8,9 @@ export const PROFILES = {
     medium: { id: 'medium', scale: 1, radius: 2, segments: 36, grass: 380, shadowSize: 1024, bloom: false },
     high: { id: 'high', scale: 1.25, radius: 3, segments: 40, grass: 650, shadowSize: 2048, bloom: true }
 };
-export function material(scene, name, color, roughness = 0.9) {
+export function material(scene, name, color, roughness = 0.9, metallic = 0) {
     const m = new B.PBRMaterial(name, scene);
-    m.albedoColor = B.Color3.FromHexString(color); m.roughness = roughness; m.metallic = 0;
+    m.albedoColor = B.Color3.FromHexString(color); m.roughness = roughness; m.metallic = metallic;
     return m;
 }
 function box(scene, parent, name, size, pos, mat) {
@@ -23,25 +23,54 @@ function sphere(scene, parent, name, size, pos, mat) {
     m.parent = parent; m.scaling.set(...size); m.position.set(...pos); m.material = mat; m.isPickable = false;
     return m;
 }
+function capsule(scene, parent, name, height, radius, pos, mat, rot = null, scale = null) {
+    const m = B.MeshBuilder.CreateCapsule(name, {
+        height, radius, tessellation: 14, subdivisions: 4
+    }, scene);
+    m.parent = parent; m.position.set(...pos); m.material = mat; m.isPickable = false; m.receiveShadows = true;
+    if (rot) m.rotation.set(...rot);
+    if (scale) m.scaling.set(...scale);
+    return m;
+}
 export function createPerson(scene, palette, mounted = false) {
     const root = new B.TransformNode(mounted ? 'cavaleiro' : 'fora-da-lei', scene);
-    const torso = sphere(scene, root, 'casaco', [.63, .79, .38], [0, 1.13, 0], palette.coat);
-    sphere(scene, root, 'rosto', [.29, .37, .28], [0, 1.77, .02], palette.skin);
-    const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 24 }, scene);
+    // Torso em cápsula (casaco western) + cabeça esférica
+    const torso = capsule(scene, root, 'casaco', 0.72, 0.28, [0, 1.2, 0], palette.coat, null, [1.05, 1, 0.85]);
+    const head = B.MeshBuilder.CreateSphere('rosto', { diameter: 0.32, segments: 16 }, scene);
+    head.parent = root; head.position.set(0, 1.78, 0.02); head.scaling.set(0.95, 1.1, 0.95);
+    head.material = palette.skin; head.isPickable = false;
+    const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 28 }, scene);
     brim.parent = root; brim.position.y = 1.97; brim.material = palette.hat;
-    const hat = B.MeshBuilder.CreateCylinder('chapéu', { height: .21, diameterTop: .32, diameterBottom: .39, tessellation: 18 }, scene);
-    hat.parent = root; hat.position.y = 2.07; hat.material = palette.hat;
-    sphere(scene, root, 'lenço', [.33, .13, .33], [0, 1.55, .04], palette.scarf);
-    box(scene, root, 'cinturão', [.57, .09, .4], [0, .84, 0], palette.hat);
+    const hat = B.MeshBuilder.CreateCylinder('chapéu', { height: .22, diameterTop: .3, diameterBottom: .38, tessellation: 22 }, scene);
+    hat.parent = root; hat.position.y = 2.08; hat.material = palette.hat;
+    // Lenço carmim
+    const scarf = B.MeshBuilder.CreateTorus('lenço', { diameter: 0.34, thickness: 0.045, tessellation: 20 }, scene);
+    scarf.parent = root; scarf.rotation.x = Math.PI / 2; scarf.position.set(0, 1.55, 0.02); scarf.material = palette.scarf;
+    // Cinturão
+    const belt = B.MeshBuilder.CreateTorus('cinturão', { diameter: 0.48, thickness: 0.04, tessellation: 22 }, scene);
+    belt.parent = root; belt.rotation.x = Math.PI / 2; belt.position.y = 0.88; belt.material = palette.hat;
     for (const side of [-1, 1]) {
-        const leg = sphere(scene, root, 'calça', [.23, mounted ? .6 : .75, .26], [side * (mounted ? .41 : .18), mounted ? .45 : .48, mounted ? -.14 : 0], palette.pants);
-        leg.rotation.z = side * (mounted ? .14 : -.05);
-        sphere(scene, root, 'bota', [.25, .34, .39], [side * (mounted ? .43 : .18), .12, .09], palette.hat);
-        const arm = sphere(scene, root, 'manga', [.22, .63, .24], [side * .38, 1.17, mounted ? .16 : 0], palette.coat);
-        arm.rotation.x = mounted ? -.8 : 0; arm.rotation.z = side * .14;
-        sphere(scene, root, 'mão', [.17, .2, .17], [side * .35, mounted ? 1.02 : .86, mounted ? .4 : .01], palette.skin);
+        const thighH = mounted ? 0.55 : 0.7;
+        const leg = capsule(scene, root, 'calça', thighH, 0.1,
+            [side * (mounted ? .2 : .14), mounted ? .48 : .5, mounted ? -.08 : 0],
+            palette.pants, mounted ? [0.35, 0, side * 0.12] : [0, 0, side * -0.04]);
+        const boot = capsule(scene, root, 'bota', 0.28, 0.09,
+            [side * (mounted ? .22 : .14), 0.12, 0.06],
+            palette.hat, [Math.PI / 2, 0, 0], [1, 0.85, 1.25]);
+        const arm = capsule(scene, root, 'manga', 0.55, 0.09,
+            [side * .36, 1.2, mounted ? .12 : 0],
+            palette.coat, mounted ? [-0.85, 0, side * 0.12] : [0.15, 0, side * 0.18]);
+        const hand = B.MeshBuilder.CreateSphere('mão', { diameter: 0.14, segments: 12 }, scene);
+        hand.parent = root;
+        hand.position.set(side * .34, mounted ? 1.0 : .88, mounted ? .38 : .02);
+        hand.material = palette.skin; hand.isPickable = false;
     }
-    const gun = box(scene, root, 'revólver', [.085, .12, .4], [.36, mounted ? 1.03 : .85, .26], palette.metal);
+    // Revólver — cilindro + cano
+    const gun = new B.TransformNode('revólver', scene);
+    gun.parent = root;
+    gun.position.set(.36, mounted ? 1.03 : .85, .26);
+    const grip = capsule(scene, gun, 'empunhadura', 0.14, 0.035, [0, -0.02, 0], palette.hat);
+    const barrel = capsule(scene, gun, 'cano', 0.28, 0.025, [0, 0.02, 0.12], palette.metal, [Math.PI / 2, 0, 0]);
     root.getChildMeshes().forEach(m => { m.isPickable = false; m.receiveShadows = true; });
     return { root, torso, gun };
 }
@@ -50,14 +79,16 @@ export class World {
         this.scene = scene; this.shadow = shadow; this.profile = profile; this.chunks = new Map(); this.queue = []; this.center = ''; this.staticColliders = []; this.fires = [];
         this.mats = {
             wood: material(scene, 'madeira-envelhecida', '#65513d'), darkWood: material(scene, 'madeira-escura', '#33281f'),
-            canvas: material(scene, 'lona', '#b4a488'), metal: material(scene, 'ferro', '#343a3a', .42),
+            canvas: material(scene, 'lona', '#b4a488', .82), metal: material(scene, 'ferro', '#343a3a', .28, .85),
             leaves: material(scene, 'folhas', '#455338'), bark: material(scene, 'casca', '#483c2d'),
-            grass: material(scene, 'capim-seco', '#9d9159'), coat: material(scene, 'casaco', '#514d3d'),
-            pants: material(scene, 'calça', '#333c41'), skin: material(scene, 'pele', '#b38a67'),
-            hat: material(scene, 'couro', '#30261e'), scarf: material(scene, 'lenço-carmim', '#8e3027'),
+            grass: material(scene, 'capim-seco', '#9d9159'), coat: material(scene, 'casaco', '#514d3d', .78),
+            pants: material(scene, 'calça', '#333c41', .8), skin: material(scene, 'pele', '#b38a67', .62),
+            hat: material(scene, 'couro', '#30261e', .75), scarf: material(scene, 'lenço-carmim', '#8e3027', .7),
             fire: material(scene, 'brasas', '#d76a22'), window: material(scene, 'janela-âmbar', '#bb883e')
         };
         this.mats.fire.emissiveColor.set(1, .24, .025); this.mats.window.emissiveColor.set(.26, .12, .025);
+        this.mats.metal.clearCoat.isEnabled = true; this.mats.metal.clearCoat.intensity = 0.45;
+        this.mats.skin.clearCoat.isEnabled = true; this.mats.skin.clearCoat.intensity = 0.12;
         const terrain = material(scene, 'terra-pbr', '#ded3b9');
         terrain.albedoTexture = new B.Texture('assets/ground-albedo.webp', scene);
         terrain.bumpTexture = new B.Texture('assets/ground-normal.webp', scene); terrain.bumpTexture.level = .32;
@@ -72,7 +103,7 @@ export class World {
     }
     createTemplates() {
         const scene = this.scene;
-        this.rock = B.MeshBuilder.CreateIcoSphere('rocha-modelo', { radius: 1, subdivisions: 2, flat: false }, scene);
+        this.rock = B.MeshBuilder.CreateIcoSphere('rocha-modelo', { radius: 1, subdivisions: 3, flat: false }, scene);
         this.rock.material = this.rockMaterial; this.rock.isVisible = false;
         const positions = this.rock.getVerticesData(B.VertexBuffer.PositionKind);
         for (let i = 0; i < positions.length; i += 3) {
@@ -81,10 +112,10 @@ export class World {
         }
         this.rock.setVerticesData(B.VertexBuffer.PositionKind, positions); this.rock.createNormals(false);
         const parts = [];
-        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 8 }, scene);
+        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 12 }, scene);
         trunk.position.y = 2.5; trunk.material = this.mats.bark; parts.push(trunk);
         for (let i = 0; i < 5; i++) {
-            const crown = B.MeshBuilder.CreateCylinder('ramagem', { height: 2.6 - i * .22, diameterTop: 0, diameterBottom: 3.1 - i * .48, tessellation: 9 }, scene);
+            const crown = B.MeshBuilder.CreateCylinder('ramagem', { height: 2.6 - i * .22, diameterTop: 0, diameterBottom: 3.1 - i * .48, tessellation: 12 }, scene);
             crown.position.y = 2.1 + i * .8; crown.rotation.y = i * .8; crown.material = this.mats.leaves; parts.push(crown);
         }
         this.tree = B.Mesh.MergeMeshes(parts, true, true, undefined, false, true); this.tree.name = 'pinheiro-modelo'; this.tree.isVisible = false;

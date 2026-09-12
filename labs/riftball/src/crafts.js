@@ -1,26 +1,42 @@
 /**
- * Hovers low-poly com glow e a bola de éter (icosaedro interno + casca).
+ * Hovers hiper-realistas com glow e a bola de éter (casca física + núcleo).
+ * Capsule / Lathe / cilindros densos — sem pilhas de caixas.
  */
 
 import * as THREE from 'three';
 import { BALL, TEAMS } from './config.js';
 
 function bodyMat(color, emissive, extra = {}) {
-    return new THREE.MeshStandardMaterial({
+    return new THREE.MeshPhysicalMaterial({
         color,
-        metalness: 0.55,
-        roughness: 0.32,
+        metalness: 0.72,
+        roughness: 0.22,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.18,
         emissive,
         emissiveIntensity: 0.35,
         ...extra
     });
 }
 
+function hullProfile() {
+    // Perfil longitudinal do casco (raio × comprimento) — Lathe em torno de Y, depois rotaciona.
+    return [
+        new THREE.Vector2(0.02, -1.05),
+        new THREE.Vector2(0.28, -0.85),
+        new THREE.Vector2(0.48, -0.35),
+        new THREE.Vector2(0.52, 0.15),
+        new THREE.Vector2(0.42, 0.65),
+        new THREE.Vector2(0.22, 0.95),
+        new THREE.Vector2(0.06, 1.12)
+    ];
+}
+
 export function createCraft(team) {
     const def = TEAMS[team];
     const root = new THREE.Group();
-    const dark = bodyMat(0x12161f, 0x000000);
-    const paint = bodyMat(def.accent, def.color, { emissiveIntensity: 0.22 });
+    const dark = bodyMat(0x12161f, 0x000000, { metalness: 0.85, roughness: 0.28, clearcoat: 0.4 });
+    const paint = bodyMat(def.accent, def.color, { emissiveIntensity: 0.22, metalness: 0.55, roughness: 0.28 });
     const glow = new THREE.MeshBasicMaterial({
         color: def.color,
         transparent: true,
@@ -29,45 +45,71 @@ export function createCraft(team) {
         depthWrite: false
     });
 
-    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.38, 1.15), paint);
+    const hullGeo = new THREE.LatheGeometry(hullProfile(), 48);
+    hullGeo.rotateZ(-Math.PI / 2);
+    hullGeo.scale(1, 0.55, 0.72);
+    const hull = new THREE.Mesh(hullGeo, paint);
     hull.position.y = 0.18;
     hull.castShadow = true;
     root.add(hull);
 
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.28, 0.72), paint);
-    nose.position.set(0.95, 0.16, 0);
+    const nose = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.28, 0.55, 8, 24),
+        paint
+    );
+    nose.rotation.z = Math.PI / 2;
+    nose.position.set(1.05, 0.18, 0);
+    nose.scale.set(1, 0.85, 1.15);
     nose.castShadow = true;
     root.add(nose);
 
     const cabin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, 0.32, 0.7),
-        new THREE.MeshStandardMaterial({
+        new THREE.SphereGeometry(0.42, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        new THREE.MeshPhysicalMaterial({
             color: 0x071018,
-            metalness: 0.2,
-            roughness: 0.15,
+            metalness: 0.15,
+            roughness: 0.06,
+            transmission: 0.55,
+            thickness: 0.25,
+            clearcoat: 1,
+            clearcoatRoughness: 0.05,
             emissive: def.color,
-            emissiveIntensity: 0.55,
+            emissiveIntensity: 0.45,
             transparent: true,
-            opacity: 0.85
+            opacity: 0.82
         })
     );
-    cabin.position.set(0.15, 0.42, 0);
+    cabin.position.set(0.12, 0.38, 0);
+    cabin.rotation.z = -0.15;
     root.add(cabin);
 
-    const wingGeo = new THREE.BoxGeometry(0.9, 0.08, 1.55);
+    const wingPts = [
+        new THREE.Vector2(0.02, -0.75),
+        new THREE.Vector2(0.08, -0.4),
+        new THREE.Vector2(0.06, 0.2),
+        new THREE.Vector2(0.03, 0.7)
+    ];
+    const wingGeo = new THREE.LatheGeometry(wingPts, 24);
+    wingGeo.scale(1, 0.12, 1);
     const wingL = new THREE.Mesh(wingGeo, dark);
     const wingR = wingL.clone();
-    wingL.position.set(-0.15, 0.12, 0.72);
-    wingR.position.set(-0.15, 0.12, -0.72);
-    wingL.rotation.z = 0.12;
-    wingR.rotation.z = 0.12;
+    wingL.position.set(-0.1, 0.12, 0.78);
+    wingR.position.set(-0.1, 0.12, -0.78);
+    wingL.rotation.z = 0.1;
+    wingR.rotation.z = 0.1;
+    wingL.scale.set(0.9, 1, 1.55);
+    wingR.scale.set(0.9, 1, 1.55);
     root.add(wingL, wingR);
 
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 0.18), glow);
-    stripe.position.set(0.05, 0.38, 0);
+    const stripe = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.05, 1.85, 4, 12),
+        glow
+    );
+    stripe.rotation.z = Math.PI / 2;
+    stripe.position.set(0.05, 0.4, 0);
     root.add(stripe);
 
-    const engineGeo = new THREE.CylinderGeometry(0.16, 0.22, 0.35, 10);
+    const engineGeo = new THREE.CylinderGeometry(0.14, 0.2, 0.38, 24);
     const engL = new THREE.Mesh(engineGeo, dark);
     const engR = engL.clone();
     engL.rotation.z = Math.PI / 2;
@@ -76,7 +118,19 @@ export function createCraft(team) {
     engR.position.set(-1.15, 0.16, -0.28);
     root.add(engL, engR);
 
-    const flameGeo = new THREE.ConeGeometry(0.16, 0.7, 8);
+    const intake = new THREE.Mesh(
+        new THREE.TorusGeometry(0.15, 0.035, 12, 28),
+        bodyMat(0x1a2030, def.color, { emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.15 })
+    );
+    const inL = intake.clone();
+    const inR = intake.clone();
+    inL.rotation.y = Math.PI / 2;
+    inR.rotation.y = Math.PI / 2;
+    inL.position.set(-1.32, 0.16, 0.28);
+    inR.position.set(-1.32, 0.16, -0.28);
+    root.add(inL, inR);
+
+    const flameGeo = new THREE.ConeGeometry(0.16, 0.7, 20);
     const flameMat = new THREE.MeshBasicMaterial({
         color: 0xffe08a,
         transparent: true,
@@ -97,7 +151,7 @@ export function createCraft(team) {
     root.add(under);
 
     const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(0.62, 20),
+        new THREE.CircleGeometry(0.62, 48),
         new THREE.MeshBasicMaterial({
             color: def.color,
             transparent: true,
@@ -119,34 +173,42 @@ export function createCraft(team) {
 export function createBall() {
     const root = new THREE.Group();
     const shell = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(BALL.radius, 1),
-        new THREE.MeshStandardMaterial({
+        new THREE.IcosahedronGeometry(BALL.radius, 4),
+        new THREE.MeshPhysicalMaterial({
             color: 0xf4f0ff,
-            metalness: 0.15,
-            roughness: 0.18,
+            metalness: 0.08,
+            roughness: 0.08,
+            transmission: 0.62,
+            thickness: 0.45,
+            ior: 1.4,
+            clearcoat: 1,
+            clearcoatRoughness: 0.05,
             emissive: 0xfff4c8,
-            emissiveIntensity: 0.85,
+            emissiveIntensity: 0.55,
             transparent: true,
-            opacity: 0.92
+            opacity: 0.88
         })
     );
     shell.castShadow = true;
     root.add(shell);
 
     const core = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(BALL.radius * 0.45, 0),
-        new THREE.MeshBasicMaterial({
+        new THREE.IcosahedronGeometry(BALL.radius * 0.45, 3),
+        new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
+            emissive: 0xffe8a8,
+            emissiveIntensity: 1.4,
+            roughness: 0.15,
+            metalness: 0.1,
+            clearcoat: 0.8,
             transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+            opacity: 0.92
         })
     );
     root.add(core);
 
     const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(BALL.radius * 1.18, 16, 12),
+        new THREE.SphereGeometry(BALL.radius * 1.18, 48, 32),
         new THREE.MeshBasicMaterial({
             color: 0xffe08a,
             transparent: true,

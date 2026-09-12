@@ -1,34 +1,49 @@
 /**
- * Modelos toon só com geometria nativa.
- * Formas arredondadas, olhos grandes e paleta de suco de fruta —
- * o vocabulário visual de um livro infantil 3D.
+ * Modelos PBR com geometria nativa.
+ * Pelagem com sheen, clearcoat seletivo e subdivisões altas —
+ * vale hiper-realista sem mudar a jogabilidade.
  */
 
 import * as THREE from 'three';
-import { toonRamp, grassTexture, woodTexture, picnicTexture, barnTexture } from './textures.js';
+import { grassTexture, woodTexture, picnicTexture, barnTexture } from './textures.js';
 
 export const geo = {
-    sphere: new THREE.SphereGeometry(1, 18, 14),
-    sphereLo: new THREE.SphereGeometry(1, 12, 10),
-    sphereHi: new THREE.SphereGeometry(1, 22, 16),
+    sphere: new THREE.SphereGeometry(1, 32, 24),
+    sphereLo: new THREE.SphereGeometry(1, 20, 16),
+    sphereHi: new THREE.SphereGeometry(1, 40, 28),
     box: new THREE.BoxGeometry(1, 1, 1),
-    cyl: new THREE.CylinderGeometry(1, 1, 1, 14),
-    cylLo: new THREE.CylinderGeometry(1, 1, 1, 8),
-    cone: new THREE.ConeGeometry(1, 1, 12),
-    coneLo: new THREE.ConeGeometry(1, 1, 8),
-    torus: new THREE.TorusGeometry(1, 0.18, 8, 20),
+    cyl: new THREE.CylinderGeometry(1, 1, 1, 24),
+    cylLo: new THREE.CylinderGeometry(1, 1, 1, 14),
+    cone: new THREE.ConeGeometry(1, 1, 20),
+    coneLo: new THREE.ConeGeometry(1, 1, 12),
+    torus: new THREE.TorusGeometry(1, 0.18, 14, 36),
     plane: new THREE.PlaneGeometry(1, 1)
 };
 
-export function toon(color, {
+/**
+ * MeshPhysical com variação de roughness tipo pelagem.
+ * `fur` ativa sheen + micro-variação procedural no fragment.
+ */
+export function pbr(color, {
     emissive = 0x000000,
     em = 0,
     map = null,
     transparent = false,
     opacity = 1,
-    side = THREE.FrontSide
+    side = THREE.FrontSide,
+    roughness = 0.62,
+    metalness = 0.04,
+    fur = false,
+    sheen = 0,
+    sheenColor = null,
+    sheenRoughness = 0.42,
+    clearcoat = 0,
+    clearcoatRoughness = 0.35,
+    transmission = 0,
+    thickness = 0,
+    ior = 1.5
 } = {}) {
-    return new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         color,
         map,
         emissive,
@@ -36,10 +51,39 @@ export function toon(color, {
         transparent,
         opacity,
         side,
-        roughness: 0.7,
-        metalness: 0.05
+        roughness,
+        metalness,
+        sheen: fur ? Math.max(sheen, 0.85) : sheen,
+        sheenColor: sheenColor
+            ?? (fur
+                ? new THREE.Color(color).lerp(new THREE.Color(0xfff4e8), 0.42)
+                : new THREE.Color(0xffffff)),
+        sheenRoughness: fur ? sheenRoughness : sheenRoughness,
+        clearcoat,
+        clearcoatRoughness,
+        transmission,
+        thickness,
+        ior,
+        envMapIntensity: fur ? 0.55 : 0.7
     });
+
+    if (fur) {
+        // Micro-variação de roughness — fiapos sem textura externa.
+        mat.onBeforeCompile = (shader) => {
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <roughnessmap_fragment>',
+                /* glsl */ `#include <roughnessmap_fragment>
+                float furN = fract(sin(dot(vViewPosition.xy * 37.1, vec2(12.9898, 78.233))) * 43758.5453);
+                roughnessFactor = clamp(roughnessFactor + (furN - 0.5) * 0.22, 0.08, 1.0);`
+            );
+        };
+        mat.customProgramCacheKey = () => 'nina-fur-v1';
+    }
+    return mat;
 }
+
+/** @deprecated use pbr — mantido para imports legados */
+export const toon = pbr;
 
 export function mesh(geometry, material, { pos, scale, rot, cast = true, receive = true } = {}) {
     const m = new THREE.Mesh(geometry, material);
@@ -52,49 +96,59 @@ export function mesh(geometry, material, { pos, scale, rot, cast = true, receive
 }
 
 export const MAT = {
-    cream: toon(0xfff6e8),
-    peach: toon(0xffb07a),
-    berry: toon(0xe85a9b, { emissive: 0xc2185b, em: 0.18 }),
-    berryGlow: toon(0xff6eb4, { emissive: 0xff4d9a, em: 0.85 }),
-    fox: toon(0xff8a3c),
-    foxDeep: toon(0xe06a28),
-    white: toon(0xfffaf4),
-    ink: toon(0x2a1840),
-    pink: toon(0xff9bb8),
-    nose: toon(0x3a2048),
-    grass: toon(0x6fd15a, { map: grassTexture() }),
-    dirt: toon(0xe0a070),
-    wood: toon(0xc47a48, { map: woodTexture() }),
-    leaf: toon(0x4ecf6a),
-    leafMint: toon(0x7ae08a),
-    leafDark: toon(0x2db86a),
-    apple: toon(0xff5b6a, { emissive: 0xff3b4a, em: 0.12 }),
-    gold: toon(0xffd166, { emissive: 0xff9f43, em: 0.22 }),
-    barn: toon(0xe85a5a, { map: barnTexture() }),
-    roof: toon(0x7a3a2a),
-    picnic: toon(0xffffff, { map: picnicTexture() }),
-    water: toon(0x4ecdc4, { transparent: true, opacity: 0.86 }),
-    cloud: toon(0xfff7f0),
-    mushroom: toon(0xff6b7a),
-    stem: toon(0xfff3d0),
-    chick: toon(0xffe066),
-    duck: toon(0xffc04a),
-    orange: toon(0xff9f43),
-    bunny: toon(0xf2d4e8),
-    lamb: toon(0xf7f1e6),
-    kitten: toon(0xf4c478),
-    hedge: toon(0xc4a070),
-    turtle: toon(0x6fd18a),
-    shell: toon(0x3eaa72),
-    flowerP: toon(0xff7ab0),
-    flowerY: toon(0xffe066),
-    flowerL: toon(0xc9a0ff),
-    flowerO: toon(0xff9f43)
+    cream: pbr(0xfff6e8, { roughness: 0.78, sheen: 0.25 }),
+    peach: pbr(0xffb07a, { roughness: 0.55, clearcoat: 0.12 }),
+    berry: pbr(0xe85a9b, { emissive: 0xc2185b, em: 0.18, roughness: 0.35, clearcoat: 0.55, clearcoatRoughness: 0.2 }),
+    berryGlow: pbr(0xff6eb4, { emissive: 0xff4d9a, em: 0.85, roughness: 0.28, clearcoat: 0.7, clearcoatRoughness: 0.12 }),
+    fox: pbr(0xff8a3c, { fur: true, roughness: 0.72, sheenRoughness: 0.38 }),
+    foxDeep: pbr(0xe06a28, { fur: true, roughness: 0.78, sheenRoughness: 0.45 }),
+    white: pbr(0xfffaf4, { fur: true, roughness: 0.68, sheenRoughness: 0.32 }),
+    ink: pbr(0x2a1840, { roughness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.25 }),
+    pink: pbr(0xff9bb8, { roughness: 0.55, sheen: 0.35 }),
+    nose: pbr(0x3a2048, { roughness: 0.28, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
+    grass: pbr(0x6fd15a, { map: grassTexture(), roughness: 0.88, sheen: 0.2, sheenColor: 0xb8f070 }),
+    dirt: pbr(0xe0a070, { roughness: 0.94 }),
+    wood: pbr(0xc47a48, { map: woodTexture(), roughness: 0.82 }),
+    leaf: pbr(0x4ecf6a, { roughness: 0.58, sheen: 0.35, sheenColor: 0xa8f080, clearcoat: 0.08 }),
+    leafMint: pbr(0x7ae08a, { roughness: 0.55, sheen: 0.4, sheenColor: 0xc8f0a0 }),
+    leafDark: pbr(0x2db86a, { roughness: 0.62, sheen: 0.3 }),
+    apple: pbr(0xff5b6a, { emissive: 0xff3b4a, em: 0.12, roughness: 0.38, clearcoat: 0.75, clearcoatRoughness: 0.15 }),
+    gold: pbr(0xffd166, { emissive: 0xff9f43, em: 0.22, roughness: 0.32, metalness: 0.35, clearcoat: 0.4 }),
+    barn: pbr(0xe85a5a, { map: barnTexture(), roughness: 0.86 }),
+    roof: pbr(0x7a3a2a, { roughness: 0.9 }),
+    picnic: pbr(0xffffff, { map: picnicTexture(), roughness: 0.8, sheen: 0.3 }),
+    water: pbr(0x4ecdc4, {
+        transparent: true,
+        opacity: 0.72,
+        roughness: 0.08,
+        metalness: 0.12,
+        transmission: 0.55,
+        thickness: 1.4,
+        ior: 1.33,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.08
+    }),
+    cloud: pbr(0xfff7f0, { roughness: 1, sheen: 0.15, transparent: true, opacity: 0.92 }),
+    mushroom: pbr(0xff6b7a, { roughness: 0.48, clearcoat: 0.25 }),
+    stem: pbr(0xfff3d0, { roughness: 0.7 }),
+    chick: pbr(0xffe066, { fur: true, roughness: 0.7, sheenRoughness: 0.4 }),
+    duck: pbr(0xffc04a, { roughness: 0.42, clearcoat: 0.2, sheen: 0.25 }),
+    orange: pbr(0xff9f43, { roughness: 0.45, clearcoat: 0.15 }),
+    bunny: pbr(0xf2d4e8, { fur: true, roughness: 0.7, sheenRoughness: 0.36 }),
+    lamb: pbr(0xf7f1e6, { fur: true, roughness: 0.88, sheen: 1, sheenRoughness: 0.55 }),
+    kitten: pbr(0xf4c478, { fur: true, roughness: 0.68, sheenRoughness: 0.34 }),
+    hedge: pbr(0xc4a070, { roughness: 0.9 }),
+    turtle: pbr(0x6fd18a, { roughness: 0.48, clearcoat: 0.22 }),
+    shell: pbr(0x3eaa72, { roughness: 0.4, clearcoat: 0.35, clearcoatRoughness: 0.28 }),
+    flowerP: pbr(0xff7ab0, { roughness: 0.5, sheen: 0.45 }),
+    flowerY: pbr(0xffe066, { roughness: 0.48, sheen: 0.4 }),
+    flowerL: pbr(0xc9a0ff, { roughness: 0.5, sheen: 0.45 }),
+    flowerO: pbr(0xff9f43, { roughness: 0.5, sheen: 0.4 })
 };
 
 function eyes(root, { y = 0.28, z = 0.42, spread = 0.16, s = 1 } = {}) {
-    const eyeW = MAT.white;
-    const spark = toon(0xffffff, { emissive: 0xffffff, em: 0.55 });
+    const eyeW = pbr(0xfffaf4, { roughness: 0.12, clearcoat: 0.95, clearcoatRoughness: 0.06 });
+    const spark = pbr(0xffffff, { emissive: 0xffffff, em: 0.55, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.04 });
     root.add(mesh(geo.sphere, eyeW, { scale: [0.14 * s, 0.18 * s, 0.08 * s], pos: [spread, y, z], cast: false }));
     root.add(mesh(geo.sphere, eyeW, { scale: [0.14 * s, 0.18 * s, 0.08 * s], pos: [-spread, y, z], cast: false }));
     root.add(mesh(geo.sphere, MAT.ink, { scale: [0.07 * s, 0.09 * s, 0.05 * s], pos: [spread, y - 0.02, z + 0.07], cast: false }));
@@ -110,7 +164,7 @@ function cheeks(root, y, z, spread) {
 
 function addLegs(parent, hipY, spread, length, radius, mat, parts, zSpread = null) {
     const zs = zSpread ?? spread * 0.9;
-    const g = new THREE.CylinderGeometry(radius * 0.85, radius, length, 7);
+    const g = new THREE.CylinderGeometry(radius * 0.85, radius, length, 12);
     for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
         const leg = new THREE.Group();
         leg.position.set(sx * spread, hipY, sz * zs);
@@ -186,7 +240,7 @@ export function createChick() {
     head.add(mesh(geo.cone, MAT.orange, { scale: [0.06, 0.12, 0.06], pos: [0, -0.02, 0.2], rot: [1.2, 0, 0], cast: false }));
     head.add(mesh(geo.coneLo, MAT.orange, { scale: [0.05, 0.1, 0.05], pos: [0, 0.2, 0], cast: false }));
     eyes(head, { y: 0.02, z: 0.16, spread: 0.08, s: 0.7 });
-    const footGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.16, 6);
+    const footGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.16, 10);
     for (const sx of [-1, 1]) {
         const leg = new THREE.Group();
         leg.position.set(sx * 0.08, 0.16, 0.02);
@@ -363,7 +417,7 @@ export function createBerry({ light = false } = {}) {
 export function createTree({ h = 2.4, r = 1.15, fruit = true, tint = 0x4ecf6a } = {}) {
     const g = new THREE.Group();
     g.add(mesh(geo.cylLo, MAT.wood, { scale: [0.16, h, 0.16], pos: [0, h / 2, 0] }));
-    g.add(mesh(geo.sphereHi, toon(tint), { scale: [r, r * 0.9, r], pos: [0, h + r * 0.35, 0] }));
+    g.add(mesh(geo.sphereHi, pbr(tint, { roughness: 0.58, sheen: 0.35, sheenColor: 0xa8f080 }), { scale: [r, r * 0.9, r], pos: [0, h + r * 0.35, 0] }));
     g.add(mesh(geo.sphereLo, MAT.leafMint, { scale: [r * 0.7, r * 0.55, r * 0.7], pos: [r * 0.35, h + r * 0.15, r * 0.2], cast: false }));
     if (fruit) {
         for (let i = 0; i < 4; i++) {
@@ -380,7 +434,7 @@ export function createTree({ h = 2.4, r = 1.15, fruit = true, tint = 0x4ecf6a } 
 export function createMushroom({ s = 1, cap = 0xff6b7a } = {}) {
     const g = new THREE.Group();
     g.add(mesh(geo.cylLo, MAT.stem, { scale: [0.12 * s, 0.32 * s, 0.12 * s], pos: [0, 0.16 * s, 0] }));
-    g.add(mesh(geo.sphere, toon(cap), { scale: [0.32 * s, 0.16 * s, 0.32 * s], pos: [0, 0.36 * s, 0] }));
+    g.add(mesh(geo.sphere, pbr(cap, { roughness: 0.48, clearcoat: 0.25 }), { scale: [0.32 * s, 0.16 * s, 0.32 * s], pos: [0, 0.36 * s, 0] }));
     g.add(mesh(geo.sphereLo, MAT.white, { scale: [0.06 * s, 0.04 * s, 0.06 * s], pos: [0.12 * s, 0.42 * s, 0.08 * s], cast: false }));
     return g;
 }
@@ -415,7 +469,7 @@ export function createBarn() {
     g.add(mesh(geo.box, MAT.ink, { scale: [1.4, 2.1, 0.12], pos: [0, 1.05, 2.12], cast: false }));
     g.add(mesh(geo.box, MAT.gold, { scale: [0.7, 0.7, 0.08], pos: [1.4, 2.4, 2.12], cast: false }));
     g.add(mesh(geo.cylLo, MAT.wood, { scale: [0.12, 2.4, 0.12], pos: [3.1, 1.2, 2.4] }));
-    g.add(mesh(geo.box, toon(0xfff0e0, { map: picnicTexture() }), {
+    g.add(mesh(geo.box, pbr(0xfff0e0, { map: picnicTexture(), roughness: 0.78 }), {
         scale: [1.1, 0.7, 0.04],
         pos: [3.55, 2.0, 2.4],
         cast: false
@@ -447,7 +501,7 @@ export function createRainbow() {
     const colors = [0xff5b7a, 0xff9f43, 0xffe066, 0x6fd15a, 0x5b7cfa, 0xc9a0ff];
     const group = new THREE.Group();
     colors.forEach((c, i) => {
-        const ring = new THREE.Mesh(g, toon(c, { emissive: c, em: 0.2, transparent: true, opacity: 0.78 }));
+        const ring = new THREE.Mesh(g, pbr(c, { emissive: c, em: 0.2, transparent: true, opacity: 0.78, roughness: 0.35 }));
         ring.scale.set(1 + i * 0.032, 1 + i * 0.032, 1);
         ring.castShadow = false;
         ring.receiveShadow = false;
@@ -472,7 +526,17 @@ export function createFence(len = 6) {
 export function createButterfly(color = 0xff7ab0) {
     const g = new THREE.Group();
     g.add(mesh(geo.cylLo, MAT.ink, { scale: [0.02, 0.16, 0.02], pos: [0, 0, 0], rot: [Math.PI / 2, 0, 0], cast: false }));
-    const wingMat = toon(color, { emissive: color, em: 0.15, side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
+    const wingMat = pbr(color, {
+        emissive: color,
+        em: 0.15,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.92,
+        roughness: 0.35,
+        sheen: 0.55,
+        transmission: 0.15,
+        thickness: 0.2
+    });
     const l = mesh(geo.sphereLo, wingMat, { scale: [0.18, 0.02, 0.12], pos: [0.12, 0, 0], cast: false });
     const r = mesh(geo.sphereLo, wingMat, { scale: [0.18, 0.02, 0.12], pos: [-0.12, 0, 0], cast: false });
     g.add(l, r);
@@ -482,7 +546,7 @@ export function createButterfly(color = 0xff7ab0) {
 
 export function createHeart() {
     const g = new THREE.Group();
-    const mat = toon(0xff6b9a, { emissive: 0xff4d80, em: 0.7, transparent: true, opacity: 0.95 });
+    const mat = pbr(0xff6b9a, { emissive: 0xff4d80, em: 0.7, transparent: true, opacity: 0.95, roughness: 0.3, clearcoat: 0.4 });
     g.add(mesh(geo.sphereLo, mat, { scale: [0.12, 0.12, 0.1], pos: [0.07, 0.04, 0], cast: false }));
     g.add(mesh(geo.sphereLo, mat, { scale: [0.12, 0.12, 0.1], pos: [-0.07, 0.04, 0], cast: false }));
     g.add(mesh(geo.cone, mat, { scale: [0.16, 0.2, 0.1], pos: [0, -0.08, 0], rot: [Math.PI, 0, 0], cast: false }));

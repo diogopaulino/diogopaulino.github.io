@@ -11,7 +11,12 @@ const matCache = new Map();
 export function std(color, roughness = 0.78, metalness = 0.04, extra = {}) {
     const key = `std:${color}:${roughness}:${metalness}:${JSON.stringify(extra)}`;
     if (!matCache.has(key)) {
-        matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra }));
+        matCache.set(key, new THREE.MeshPhysicalMaterial({
+            color, roughness, metalness,
+            clearcoat: extra.clearcoat ?? 0.08,
+            clearcoatRoughness: extra.clearcoatRoughness ?? 0.65,
+            ...extra
+        }));
     }
     return matCache.get(key);
 }
@@ -45,10 +50,10 @@ export function buildGirl() {
         const leg = new THREE.Group();
         leg.position.set(sx * 0.1, 0.42, 0);
         hips.add(leg);
-        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.32, 8), dress);
+        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.32, 12), dress);
         thigh.position.y = -0.16;
         leg.add(thigh);
-        const bootM = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), boot);
+        const bootM = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), boot);
         bootM.scale.set(1.05, 0.55, 1.45);
         bootM.position.set(0, -0.34, 0.04);
         leg.add(bootM);
@@ -60,20 +65,20 @@ export function buildGirl() {
     torso.position.y = 0.42;
     hips.add(torso);
 
-    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.38, 10), dress);
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.38, 16), dress);
     skirt.position.y = 0.12;
     torso.add(skirt);
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.32, 10), coat);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.32, 14), coat);
     body.position.y = 0.38;
     torso.add(body);
 
-    const cape = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 8, 1, true), std(0xa84838, 0.9));
+    const cape = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 14, 1, true), std(0xa84838, 0.9));
     cape.position.set(0, 0.28, -0.08);
     cape.rotation.x = 0.18;
     torso.add(cape);
 
-    const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.035, 6, 12), std(0xe8c44a, 0.7));
+    const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.035, 8, 18), std(0xe8c44a, 0.7));
     scarf.rotation.x = Math.PI / 2;
     scarf.position.y = 0.54;
     torso.add(scarf);
@@ -81,17 +86,17 @@ export function buildGirl() {
     const head = new THREE.Group();
     head.position.y = 0.72;
     torso.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 14, 12), skin);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 20, 16), skin);
     head.add(skull);
 
     for (const sx of [-1, 1]) {
-        const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), std(0xf7f2ea, 0.35));
+        const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 10), std(0xf7f2ea, 0.35));
         eyeW.position.set(sx * 0.055, 0.02, 0.155);
         head.add(eyeW);
-        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), std(0x3a5a28, 0.4));
+        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), std(0x3a5a28, 0.4));
         iris.position.set(sx * 0.055, 0.018, 0.178);
         head.add(iris);
-        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.012), hair);
+        const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.04, 4, 8), hair);
         brow.position.set(sx * 0.055, 0.055, 0.16);
         brow.rotation.z = sx * -0.12;
         head.add(brow);
@@ -106,7 +111,7 @@ export function buildGirl() {
     nose.position.set(0, -0.01, 0.17);
     head.add(nose);
 
-    const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 12, 10), hair);
+    const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 16, 14), hair);
     hairCap.scale.set(1.05, 0.85, 1.05);
     hairCap.position.y = 0.06;
     head.add(hairCap);
@@ -136,10 +141,10 @@ export function buildGirl() {
         const arm = new THREE.Group();
         arm.position.set(sx * 0.22, 0.5, 0);
         torso.add(arm);
-        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.038, 0.3, 8), coat);
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.038, 0.3, 12), coat);
         mesh.position.y = -0.14;
         arm.add(mesh);
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), skin);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), skin);
         hand.position.y = -0.3;
         arm.add(hand);
         parts.arms.push(arm);
@@ -159,23 +164,24 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
     const group = new THREE.Group();
     group.scale.setScalar(scale);
 
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 6, 12, Math.PI), std(0x8a5a28, 0.4, 0.5));
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 10, 20, Math.PI), std(0x8a5a28, 0.4, 0.5));
     handle.rotation.x = Math.PI;
     handle.position.y = 0.16;
     group.add(handle);
 
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.04, 8), std(0x6a3a18, 0.45, 0.4));
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.04, 14), std(0x6a3a18, 0.45, 0.4));
     cap.position.y = 0.1;
     group.add(cap);
 
     const glass = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.085, 0.09, 0.16, 8),
-        new THREE.MeshStandardMaterial({
+        new THREE.CylinderGeometry(0.085, 0.09, 0.16, 16),
+        new THREE.MeshPhysicalMaterial({
             color,
             emissive: color,
             emissiveIntensity: 0.85,
-            roughness: 0.35,
-            metalness: 0.1,
+            roughness: 0.28,
+            metalness: 0.12,
+            clearcoat: 0.55,
             transparent: true,
             opacity: 0.92
         })
@@ -184,18 +190,19 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
     group.add(glass);
 
     const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 8, 6),
-        new THREE.MeshStandardMaterial({
+        new THREE.SphereGeometry(0.04, 14, 12),
+        new THREE.MeshPhysicalMaterial({
             color: 0xffeeaa,
             emissive: 0xffaa33,
             emissiveIntensity: 2.4,
-            roughness: 0.4
+            roughness: 0.35,
+            clearcoat: 0.2
         })
     );
     flame.position.y = 0;
     group.add(flame);
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.04, 8), std(0x5a3014, 0.5, 0.35));
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.04, 14), std(0x5a3014, 0.5, 0.35));
     base.position.y = -0.1;
     group.add(base);
 
@@ -219,13 +226,13 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
 export function buildVillager({ coat = 0x3a5a48, hat = 0x2a2418 } = {}) {
     const group = new THREE.Group();
     const skin = std(0xe0b080, 0.7);
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.9, 10), std(coat, 0.88));
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.9, 14), std(coat, 0.88));
     body.position.y = 0.55;
     group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), skin);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), skin);
     head.position.y = 1.12;
     group.add(head);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 10), std(hat, 0.85));
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 14), std(hat, 0.85));
     brim.position.y = 1.22;
     group.add(brim);
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 8), std(hat, 0.85));
@@ -252,7 +259,7 @@ export function buildGrandmother() {
     const body = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.5, 10), robe);
     body.position.y = 0.75;
     group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), robe);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), robe);
     head.position.y = 1.58;
     group.add(head);
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), std(0xe8e0d0, 0.9));
@@ -361,34 +368,82 @@ export function buildNight() {
 
 export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.1, 2.6), std(wall, 0.9));
-    body.position.y = 1.05;
+    const plaster = std(wall, 0.88, 0.03, { clearcoat: 0.05 });
+    const timber = std(0x4a2a14, 0.82, 0.05);
+    // Corpo principal + base de pedra (cantos arredondados — menos caixa pura)
+    const plinth = new THREE.Mesh(new RoundedBoxGeometry(3.35, 0.28, 2.75, 4, 0.06), std(0x6a6050, 0.92));
+    plinth.position.y = 0.14;
+    group.add(plinth);
+    const body = new THREE.Mesh(new RoundedBoxGeometry(3.2, 2.0, 2.6, 5, 0.1), plaster);
+    body.position.y = 1.15;
     group.add(body);
-    const roofM = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.5, 4), new THREE.MeshStandardMaterial({
-        map: thatchTexture(), color: roof, roughness: 0.92
-    }));
-    roofM.position.y = 2.7;
-    roofM.rotation.y = Math.PI / 4;
-    group.add(roofM);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.2, 0.08), std(0x4a2a14, 0.8));
-    door.position.set(0, 0.6, 1.32);
+    // Vigas de madeira (enxaimel)
+    for (const x of [-1.55, 0, 1.55]) {
+        const post = new THREE.Mesh(new RoundedBoxGeometry(0.12, 2.0, 0.12, 3, 0.02), timber);
+        post.position.set(x, 1.15, 1.32);
+        group.add(post);
+    }
+    for (const y of [0.55, 1.15, 1.75]) {
+        const beam = new THREE.Mesh(new RoundedBoxGeometry(3.15, 0.1, 0.1, 3, 0.02), timber);
+        beam.position.set(0, y, 1.32);
+        group.add(beam);
+    }
+    // Telhado de duas águas (dois planos) em vez de cone pyramidal
+    const thatchMat = new THREE.MeshPhysicalMaterial({
+        map: thatchTexture(), color: roof, roughness: 0.9, metalness: 0.02, clearcoat: 0.04
+    });
+    for (const sx of [-1, 1]) {
+        const slope = new THREE.Mesh(new RoundedBoxGeometry(3.6, 0.14, 1.9, 3, 0.04), thatchMat);
+        slope.position.set(0, 2.55, sx * 0.55);
+        slope.rotation.x = sx * -0.48;
+        group.add(slope);
+    }
+    const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.5, 16), timber);
+    ridge.rotation.z = Math.PI / 2;
+    ridge.position.y = 2.95;
+    group.add(ridge);
+    // Porta com batente
+    const doorFrame = new THREE.Mesh(new RoundedBoxGeometry(0.85, 1.35, 0.1, 3, 0.03), timber);
+    doorFrame.position.set(0, 0.72, 1.33);
+    group.add(doorFrame);
+    const door = new THREE.Mesh(new RoundedBoxGeometry(0.7, 1.2, 0.08, 3, 0.025), std(0x3a2010, 0.75, 0.08));
+    door.position.set(0, 0.7, 1.38);
     group.add(door);
-    const window = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.5, 0.06),
-        new THREE.MeshStandardMaterial({ color: 0xffc878, emissive: 0xffaa44, emissiveIntensity: 0.6 })
-    );
-    window.position.set(0.9, 1.2, 1.32);
-    group.add(window);
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), std(0x6a5040, 0.9));
-    chimney.position.set(0.9, 3.1, -0.4);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 14, 12), std(0xc9a050, 0.35, 0.85, { clearcoat: 0.8 }));
+    knob.position.set(0.25, 0.7, 1.44);
+    group.add(knob);
+    // Janelas com caixilho
+    for (const x of [-0.95, 0.95]) {
+        const frame = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.62, 0.08, 3, 0.025), timber);
+        frame.position.set(x, 1.35, 1.33);
+        group.add(frame);
+        const glass = new THREE.Mesh(
+            new RoundedBoxGeometry(0.48, 0.48, 0.05, 2, 0.02),
+            new THREE.MeshPhysicalMaterial({
+                color: 0xffc878, emissive: 0xffaa44, emissiveIntensity: 0.65,
+                roughness: 0.2, metalness: 0.15, clearcoat: 0.5, transmission: 0.15, transparent: true, opacity: 0.92
+            })
+        );
+        glass.position.set(x, 1.35, 1.38);
+        group.add(glass);
+        const mullion = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.48, 0.06, 2, 0.01), timber);
+        mullion.position.set(x, 1.35, 1.4);
+        group.add(mullion);
+    }
+    // Chaminé cilíndrica
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 1.1, 18), std(0x6a5040, 0.9));
+    chimney.position.set(0.95, 3.35, -0.45);
     group.add(chimney);
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.22, 0.12, 18), std(0x3a3028, 0.7, 0.2));
+    pot.position.set(0.95, 3.95, -0.45);
+    group.add(pot);
     enableShadows(group);
     return group;
 }
 
 export function buildLampPost() {
     const group = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.4, 8), std(0x2a2418, 0.6, 0.3));
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.4, 14), std(0x2a2418, 0.6, 0.3));
     pole.position.y = 1.2;
     group.add(pole);
     const lantern = buildLantern({ light: true, scale: 1.15 });
@@ -420,14 +475,14 @@ export function buildHangingLantern(color = 0xffb347) {
 export function buildPine() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.28, 2.4, 8),
-        new THREE.MeshStandardMaterial({ map: barkTexture(), roughness: 0.95 })
+        new THREE.CylinderGeometry(0.18, 0.28, 2.4, 16),
+        new THREE.MeshPhysicalMaterial({ map: barkTexture(), roughness: 0.95, clearcoat: 0.04 })
     );
     trunk.position.y = 1.2;
     group.add(trunk);
     const greens = [0x1a3a22, 0x16341c, 0x204828];
     for (let i = 0; i < 4; i++) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.35 - i * 0.22, 1.5, 8), std(greens[i % 3], 0.92));
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.35 - i * 0.22, 1.5, 16), std(greens[i % 3], 0.92));
         cone.position.y = 2.1 + i * 0.7;
         group.add(cone);
     }
@@ -438,12 +493,12 @@ export function buildPine() {
 export function buildOak() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.28, 0.4, 2.2, 8),
-        new THREE.MeshStandardMaterial({ map: barkTexture(), roughness: 0.95 })
+        new THREE.CylinderGeometry(0.28, 0.4, 2.2, 16),
+        new THREE.MeshPhysicalMaterial({ map: barkTexture(), roughness: 0.95, clearcoat: 0.04 })
     );
     trunk.position.y = 1.1;
     group.add(trunk);
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), std(0x2a5a28, 0.9));
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 18), std(0x2a5a28, 0.9));
     crown.position.y = 2.8;
     crown.scale.set(1.2, 0.85, 1.15);
     group.add(crown);
@@ -455,7 +510,7 @@ export function buildHollowTree() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
         new THREE.CylinderGeometry(2.2, 2.8, 8, 12),
-        new THREE.MeshStandardMaterial({ map: barkTexture(), color: 0x4a3020, roughness: 0.95 })
+        new THREE.MeshPhysicalMaterial({ map: barkTexture(), color: 0x4a3020, roughness: 0.95, clearcoat: 0.04 })
     );
     trunk.position.y = 4;
     group.add(trunk);

@@ -98,18 +98,21 @@ export class World {
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
 
-        const mat = new THREE.MeshStandardMaterial({
+        const mat = new THREE.MeshPhysicalMaterial({
             map: soilTexture(),
             vertexColors: true,
-            roughness: 0.95,
-            metalness: 0
+            roughness: 0.94,
+            metalness: 0,
+            sheen: 0.08,
+            sheenColor: 0xc8a070,
+            clearcoat: 0.02
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
         this.group.add(mesh);
         this.terrain = mesh;
 
-        const pathGeo = new THREE.PlaneGeometry(WORLD.pathHalf * 2.05, WORLD.radius * 1.7, 8, 48);
+        const pathGeo = new THREE.PlaneGeometry(WORLD.pathHalf * 2.05, WORLD.radius * 1.7, 16, 80);
         pathGeo.rotateX(-Math.PI / 2);
         const pp = pathGeo.attributes.position;
         for (let i = 0; i < pp.count; i++) {
@@ -120,10 +123,11 @@ export class World {
             pp.setY(i, this.heightAt(x, z) + 0.04);
         }
         pathGeo.computeVertexNormals();
-        const pathMat = new THREE.MeshStandardMaterial({
+        const pathMat = new THREE.MeshPhysicalMaterial({
             map: dirtTexture(),
             color: 0xe0b878,
-            roughness: 0.9
+            roughness: 0.9,
+            clearcoat: 0.02
         });
         const path = new THREE.Mesh(pathGeo, pathMat);
         path.receiveShadow = true;
@@ -282,11 +286,13 @@ export class World {
 
     addBirds() {
         const n = this.quality.birds;
-        const geo = new THREE.ConeGeometry(0.1, 0.48, 4);
-        const mat = new THREE.MeshStandardMaterial({
+        const geo = new THREE.ConeGeometry(0.1, 0.48, 10);
+        const mat = new THREE.MeshPhysicalMaterial({
             color: 0x2a2218,
-            roughness: 0.7,
-            flatShading: true
+            roughness: 0.65,
+            sheen: 0.35,
+            sheenColor: 0x4a3830,
+            clearcoat: 0.08
         });
         for (let i = 0; i < n; i++) {
             const m = new THREE.Mesh(geo, mat);

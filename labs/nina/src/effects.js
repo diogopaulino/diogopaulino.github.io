@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { toon, createHeart } from './models.js';
+import { pbr, createHeart } from './models.js';
 
 export class Effects {
     constructor(scene, quality) {
@@ -18,13 +18,15 @@ export class Effects {
     }
 
     _pool(n) {
-        const g = new THREE.SphereGeometry(0.07, 8, 6);
+        const g = new THREE.SphereGeometry(0.07, 12, 10);
         for (let i = 0; i < n; i++) {
-            const m = new THREE.Mesh(g, toon(0xffe9a0, {
+            const m = new THREE.Mesh(g, pbr(0xffe9a0, {
                 emissive: 0xff6eb4,
                 em: 0.9,
                 transparent: true,
-                opacity: 0.9
+                opacity: 0.9,
+                roughness: 0.25,
+                clearcoat: 0.4
             }));
             m.visible = false;
             m.castShadow = false;
@@ -48,7 +50,12 @@ export class Effects {
         const colors = [0xff6eb4, 0xffe066, 0x7ad0ff, 0x6fd15a, 0xff9f43, 0xc9a0ff];
         const g = new THREE.BoxGeometry(0.12, 0.04, 0.08);
         for (let i = 0; i < n; i++) {
-            const m = new THREE.Mesh(g, toon(colors[i % colors.length], { emissive: colors[i % colors.length], em: 0.25 }));
+            const m = new THREE.Mesh(g, pbr(colors[i % colors.length], {
+                emissive: colors[i % colors.length],
+                em: 0.25,
+                roughness: 0.4,
+                clearcoat: 0.3
+            }));
             m.visible = false;
             m.castShadow = false;
             this.scene.add(m);

@@ -2,7 +2,7 @@
  * Nina — regras e fórmulas do vale.
  *
  * Objetivo: coletar amoras, oferecer uma a cada filhote perdido (Espaço)
- * e levá-los ao piquenique no ninho. Podem seguir em fila, estilo Pikmin.
+ * e levá-los ao piquenique no ninho. Podem seguir em fila.
  *
  * Movimento (terceira pessoa, relativo à câmera):
  *   a = eixo * ACCEL

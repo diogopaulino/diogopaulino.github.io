@@ -1,9 +1,42 @@
-/** Números, detecção de GPU e helpers de ângulo. */
+/** Números, detecção de GPU, ruído PBR e helpers de ângulo. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const damp = (current, target, lambda, dt) =>
     lerp(current, target, 1 - Math.exp(-lambda * dt));
+
+export function hash2(x, y, seed = 0) {
+    const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+}
+
+export function valueNoise(x, y, seed = 0) {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const fx = x - x0;
+    const fy = y - y0;
+    const sx = fx * fx * (3 - 2 * fx);
+    const sy = fy * fy * (3 - 2 * fy);
+    const a = hash2(x0, y0, seed);
+    const b = hash2(x0 + 1, y0, seed);
+    const c = hash2(x0, y0 + 1, seed);
+    const d = hash2(x0 + 1, y0 + 1, seed);
+    return lerp(lerp(a, b, sx), lerp(c, d, sx), sy);
+}
+
+export function fbm(x, y, seed = 0, octaves = 5) {
+    let sum = 0;
+    let amp = 0.5;
+    let freq = 1;
+    let norm = 0;
+    for (let i = 0; i < octaves; i++) {
+        sum += valueNoise(x * freq, y * freq, seed + i * 19) * amp;
+        norm += amp;
+        amp *= 0.5;
+        freq *= 2;
+    }
+    return sum / norm;
+}
 
 export const wrapPi = (a) => {
     while (a > Math.PI) a -= Math.PI * 2;

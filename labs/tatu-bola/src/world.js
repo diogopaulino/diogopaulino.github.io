@@ -1,7 +1,7 @@
 /**
- * Ilha Faceta — terreno procedural, água, palmeiras, templo e sólidos.
+ * Ilha Faceta — terreno procedural PBR, água, palmeiras, templo e sólidos.
  *
- * Altura do terreno (unidades de cartucho):
+ * Altura do terreno (unidades ≈ metros):
  *   r = hypot(x, z)
  *   shore = 1 - smoothstep(radius*0.72, radius, r)   // 1 no interior, 0 no oceano
  *   h = shore * (0.35 + 5.8·G_templo + 4.2·G_leste + 2.4·G_dunas
@@ -13,8 +13,9 @@
 
 import * as THREE from 'three';
 import { ISLAND } from './config.js';
-import { smoothstep, gauss, checkerTexture } from './utils.js';
-import { retroMat, createPalm, createIdol, createCloud, createBoat } from './models.js';
+import { smoothstep, gauss } from './utils.js';
+import { pbrMat, createPalm, createIdol, createCloud, createBoat } from './models.js';
+import { sandGrain, templeStone, waterNormals } from './textures.js';
 
 const HILLS = [
     { x: 2, z: -20, s: 8.5, h: 6.4 },
@@ -41,6 +42,7 @@ export class World {
         this._lights();
         this._terrain();
         this._water();
+        this._stone = templeStone({ repeat: [2, 2] });
         this._temple();
         this._docks();
         this._platforms();
@@ -156,14 +158,15 @@ export class World {
         const sun = new THREE.DirectionalLight(0xfff0d0, 1.28);
         sun.position.set(22, 34, 16);
         sun.castShadow = true;
-        sun.shadow.mapSize.set(1024, 1024);
+        sun.shadow.mapSize.set(2048, 2048);
         sun.shadow.camera.near = 4;
         sun.shadow.camera.far = 90;
         sun.shadow.camera.left = -42;
         sun.shadow.camera.right = 42;
         sun.shadow.camera.top = 42;
         sun.shadow.camera.bottom = -42;
-        sun.shadow.bias = -0.0009;
+        sun.shadow.bias = -0.0006;
+        sun.shadow.normalBias = 0.035;
         this.sun = sun;
         this.scene.add(sun);
 
@@ -202,14 +205,21 @@ export class World {
         }
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
-        const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: false, roughness: 0.8, metalness: 0.1 });
+        const grain = sandGrain();
+        const mat = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.78,
+            metalness: 0.04,
+            normalMap: grain.normalMap,
+            normalScale: new THREE.Vector2(0.55, 0.55)
+        });
         const land = new THREE.Mesh(geo, mat);
         land.receiveShadow = true;
         this.group.add(land);
 
         const ring = new THREE.Mesh(
-            new THREE.RingGeometry(ISLAND.radius - 0.6, ISLAND.radius + 0.2, 48),
-            retroMat(0xffe07a, { transparent: true, opacity: 0.35 })
+            new THREE.RingGeometry(ISLAND.radius - 0.6, ISLAND.radius + 0.2, 96),
+            pbrMat(0xffe07a, { transparent: true, opacity: 0.35, roughness: 0.45, metalness: 0.15 })
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.12;
@@ -217,26 +227,22 @@ export class World {
     }
 
     _water() {
-        const canvas = checkerTexture('#1e7ab8', '#2a98d0', 16, 128);
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(18, 18);
-        tex.magFilter = THREE.LinearFilter;
-        tex.minFilter = THREE.LinearFilter;
-        tex.colorSpace = THREE.SRGBColorSpace;
+        const normals = waterNormals();
         const mat = new THREE.MeshPhysicalMaterial({
             color: 0x1e7ab8,
-            metalness: 0.9,
-            roughness: 0.05,
-            transmission: 0.8,
+            metalness: 0.05,
+            roughness: 0.12,
+            transmission: 0.65,
             transparent: true,
-            opacity: 0.9,
+            opacity: 0.82,
             ior: 1.33,
             clearcoat: 1.0,
-            clearcoatRoughness: 0.0,
+            clearcoatRoughness: 0.08,
+            normalMap: normals,
+            normalScale: new THREE.Vector2(0.85, 0.85),
             depthWrite: false
         });
-        const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160, 32, 32), mat);
+        const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160, 64, 64), mat);
         water.rotation.x = -Math.PI / 2;
         water.position.y = ISLAND.water;
         this.water = water;
@@ -244,7 +250,17 @@ export class World {
     }
 
     _box(x, y, z, w, h, d, color, opts) {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), retroMat(color));
+        const stone = this._stone;
+        const m = new THREE.Mesh(
+            new THREE.BoxGeometry(w, h, d, 2, 2, 2),
+            pbrMat(color, {
+                map: stone.map,
+                normalMap: stone.normalMap,
+                roughnessMap: stone.roughnessMap,
+                roughness: 0.62,
+                metalness: 0.06
+            })
+        );
         m.position.set(x, y, z);
         m.castShadow = true;
         m.receiveShadow = true;

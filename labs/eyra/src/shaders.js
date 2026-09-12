@@ -1,6 +1,6 @@
 /**
  * Shaders do mundo: água, queda, musgo no rochedo e o céu de Eyra.
- * Injetados em MeshStandardMaterial via onBeforeCompile quando preciso.
+ * Injetados em MeshPhysicalMaterial via onBeforeCompile quando preciso.
  */
 
 import * as THREE from 'three';

@@ -51,7 +51,7 @@ export const QUALITY = {
         trees: 0.45,
         particles: 40,
         birds: 3,
-        terrainSegments: 64,
+        terrainSegments: 96,
         drawDistance: 200,
         rowSkip: 2,
         plantSkip: 2.1
@@ -67,7 +67,7 @@ export const QUALITY = {
         trees: 0.75,
         particles: 120,
         birds: 6,
-        terrainSegments: 96,
+        terrainSegments: 128,
         drawDistance: 280,
         rowSkip: 1.35,
         plantSkip: 1.25
@@ -83,7 +83,7 @@ export const QUALITY = {
         trees: 1,
         particles: 200,
         birds: 8,
-        terrainSegments: 128,
+        terrainSegments: 160,
         drawDistance: 360,
         rowSkip: 1,
         plantSkip: 1

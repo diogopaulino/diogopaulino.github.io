@@ -1,21 +1,38 @@
 /**
- * Modelos low-poly do santuário: arraia, baleia, medusa, coral e pedra.
- * Tudo em geometria nativa — sem glTF.
+ * Modelos hiper-realistas do santuário: arraia, baleia, medusa, coral e pedra.
+ * PBR físico (MeshPhysical / Standard) + geometria densa — sem glTF.
  */
 
 import * as THREE from 'three';
+import { rockPBR, skinPBR, coralPBR } from './textures.js';
 
 const geo = {
-    sphere: new THREE.SphereGeometry(1, 20, 14),
-    sphereLo: new THREE.SphereGeometry(1, 12, 10),
-    sphereHi: new THREE.SphereGeometry(1, 28, 20),
-    cone: new THREE.ConeGeometry(1, 1, 12),
-    cyl: new THREE.CylinderGeometry(1, 1, 1, 10),
-    cylTaper: new THREE.CylinderGeometry(0.35, 1, 1, 10),
+    sphere: new THREE.SphereGeometry(1, 48, 32),
+    sphereLo: new THREE.SphereGeometry(1, 32, 24),
+    sphereHi: new THREE.SphereGeometry(1, 64, 48),
+    cone: new THREE.ConeGeometry(1, 1, 24),
+    cyl: new THREE.CylinderGeometry(1, 1, 1, 24),
+    cylTaper: new THREE.CylinderGeometry(0.35, 1, 1, 24),
     plane: new THREE.PlaneGeometry(1, 1),
-    icosa: new THREE.IcosahedronGeometry(1, 1),
-    torus: new THREE.TorusGeometry(1, 0.22, 8, 18)
+    icosa: new THREE.IcosahedronGeometry(1, 3),
+    icosaHi: new THREE.IcosahedronGeometry(1, 4),
+    torus: new THREE.TorusGeometry(1, 0.22, 20, 48)
 };
+
+const skinMaps = skinPBR();
+const rockMaps = rockPBR();
+const coralMaps = coralPBR();
+
+function phys(color, extra = {}) {
+    return new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: 0.55,
+        metalness: 0.04,
+        clearcoat: 0.18,
+        clearcoatRoughness: 0.42,
+        ...extra
+    });
+}
 
 function std(color, extra = {}) {
     return new THREE.MeshStandardMaterial({
@@ -38,10 +55,31 @@ function mesh(geometry, material, { pos, scale, rot, cast = true, receive = true
 
 export function createManta() {
     const g = new THREE.Group();
-    const skin = std(0x1b4d62, { emissive: 0x0a2a38, emissiveIntensity: 0.35, roughness: 0.48 });
-    const glow = std(0x5ee7ff, { emissive: 0x5ee7ff, emissiveIntensity: 1.35, roughness: 0.25 });
-    const belly = std(0xc8e8e4, { roughness: 0.7 });
-    const ink = std(0x081018);
+    const skin = phys(0x1b4d62, {
+        emissive: 0x0a2a38,
+        emissiveIntensity: 0.35,
+        roughness: 0.42,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.28,
+        normalMap: skinMaps.normalMap,
+        roughnessMap: skinMaps.roughnessMap,
+        normalScale: new THREE.Vector2(0.45, 0.45)
+    });
+    const glow = phys(0x5ee7ff, {
+        emissive: 0x5ee7ff,
+        emissiveIntensity: 1.35,
+        roughness: 0.18,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.15,
+        metalness: 0.1
+    });
+    const belly = phys(0xc8e8e4, {
+        roughness: 0.55,
+        clearcoat: 0.25,
+        normalMap: skinMaps.normalMap,
+        normalScale: new THREE.Vector2(0.25, 0.25)
+    });
+    const ink = phys(0x081018, { roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.1 });
 
     const bodyShape = new THREE.Shape();
     bodyShape.moveTo(0, 1.2);
@@ -49,13 +87,17 @@ export function createManta() {
     bodyShape.quadraticCurveTo(0.6, -1.0, 0, -1.5);
     bodyShape.quadraticCurveTo(-0.6, -1.0, -0.8, 0);
     bodyShape.quadraticCurveTo(-0.5, 0.8, 0, 1.2);
-    
-    const geoBody = new THREE.ExtrudeGeometry(bodyShape, { depth: 0.15, bevelEnabled: true, bevelSegments: 6, steps: 1, bevelSize: 0.1, bevelThickness: 0.15 });
+
+    const geoBody = new THREE.ExtrudeGeometry(bodyShape, {
+        depth: 0.15, bevelEnabled: true, bevelSegments: 10, steps: 2, bevelSize: 0.12, bevelThickness: 0.18
+    });
     geoBody.rotateX(Math.PI / 2);
     geoBody.translate(0, 0.1, -0.15);
     g.add(mesh(geoBody, skin, { scale: [1.2, 0.8, 1.1] }));
-    
-    const geoBelly = new THREE.ExtrudeGeometry(bodyShape, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.08, bevelThickness: 0.05 });
+
+    const geoBelly = new THREE.ExtrudeGeometry(bodyShape, {
+        depth: 0.05, bevelEnabled: true, bevelSegments: 8, steps: 1, bevelSize: 0.08, bevelThickness: 0.05
+    });
     geoBelly.rotateX(Math.PI / 2);
     geoBelly.translate(0, 0.0, -0.15);
     g.add(mesh(geoBelly, belly, { scale: [1.1, 0.8, 1.0], pos: [0, -0.05, 0], cast: false }));
@@ -65,7 +107,9 @@ export function createManta() {
     wingShapeR.quadraticCurveTo(1.5, 0.4, 2.8, -0.6);
     wingShapeR.quadraticCurveTo(1.2, -0.8, 0, -1.2);
     wingShapeR.lineTo(0, 0.6);
-    const geoWingR = new THREE.ExtrudeGeometry(wingShapeR, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 });
+    const geoWingR = new THREE.ExtrudeGeometry(wingShapeR, {
+        depth: 0.05, bevelEnabled: true, bevelSegments: 8, steps: 1, bevelSize: 0.05, bevelThickness: 0.05
+    });
     geoWingR.rotateX(Math.PI / 2);
 
     const wingShapeL = new THREE.Shape();
@@ -73,7 +117,9 @@ export function createManta() {
     wingShapeL.quadraticCurveTo(-1.5, 0.4, -2.8, -0.6);
     wingShapeL.quadraticCurveTo(-1.2, -0.8, 0, -1.2);
     wingShapeL.lineTo(0, 0.6);
-    const geoWingL = new THREE.ExtrudeGeometry(wingShapeL, { depth: 0.05, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 });
+    const geoWingL = new THREE.ExtrudeGeometry(wingShapeL, {
+        depth: 0.05, bevelEnabled: true, bevelSegments: 8, steps: 1, bevelSize: 0.05, bevelThickness: 0.05
+    });
     geoWingL.rotateX(Math.PI / 2);
 
     const wingL = new THREE.Group();
@@ -96,16 +142,16 @@ export function createManta() {
             return optionalTarget.set(-t * 0.4, -t * 0.2, t * 0.8 + 0.2 * Math.sin(t * Math.PI));
         }
     }
-    g.add(mesh(new THREE.TubeGeometry(new HornCurveR(), 8, 0.15, 6, false), skin, { pos: [0.3, 0.1, 1.0] }));
-    g.add(mesh(new THREE.TubeGeometry(new HornCurveL(), 8, 0.15, 6, false), skin, { pos: [-0.3, 0.1, 1.0] }));
+    g.add(mesh(new THREE.TubeGeometry(new HornCurveR(), 16, 0.15, 12, false), skin, { pos: [0.3, 0.1, 1.0] }));
+    g.add(mesh(new THREE.TubeGeometry(new HornCurveL(), 16, 0.15, 12, false), skin, { pos: [-0.3, 0.1, 1.0] }));
 
     g.add(mesh(geo.sphereLo, ink, { pos: [-0.4, 0.15, 0.9], scale: [0.07, 0.07, 0.07], cast: false }));
     g.add(mesh(geo.sphereLo, ink, { pos: [0.4, 0.15, 0.9], scale: [0.07, 0.07, 0.07], cast: false }));
 
     const tail = new THREE.Group();
     const tailPts = [];
-    for (let i = 0; i <= 10; i++) tailPts.push(new THREE.Vector2(0.1 - (i/10)*0.08, -i*0.3));
-    const geoTail = new THREE.LatheGeometry(tailPts, 8);
+    for (let i = 0; i <= 16; i++) tailPts.push(new THREE.Vector2(0.1 - (i / 16) * 0.08, -i * 0.1875));
+    const geoTail = new THREE.LatheGeometry(tailPts, 24);
     geoTail.rotateX(Math.PI / 2);
     tail.add(mesh(geoTail, skin, { pos: [0, 0, -1.35] }));
     tail.add(mesh(geo.sphereLo, glow, { pos: [0, 0, -4.0], scale: [0.07, 0.07, 0.07], cast: false }));
@@ -125,10 +171,30 @@ export function createManta() {
 
 export function createWhale() {
     const g = new THREE.Group();
-    const skin = std(0x163044, { roughness: 0.55, emissive: 0x0a2030, emissiveIntensity: 0.4 });
-    const belly = std(0x8fb8c4, { roughness: 0.7 });
-    const glow = std(0x66f0ff, { emissive: 0x66f0ff, emissiveIntensity: 1.1, roughness: 0.3 });
-    const eye = std(0x081018);
+    const skin = phys(0x163044, {
+        roughness: 0.48,
+        emissive: 0x0a2030,
+        emissiveIntensity: 0.4,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.3,
+        normalMap: skinMaps.normalMap,
+        roughnessMap: skinMaps.roughnessMap,
+        normalScale: new THREE.Vector2(0.55, 0.55)
+    });
+    const belly = phys(0x8fb8c4, {
+        roughness: 0.6,
+        clearcoat: 0.2,
+        normalMap: skinMaps.normalMap,
+        normalScale: new THREE.Vector2(0.3, 0.3)
+    });
+    const glow = phys(0x66f0ff, {
+        emissive: 0x66f0ff,
+        emissiveIntensity: 1.1,
+        roughness: 0.22,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.12
+    });
+    const eye = phys(0x081018, { roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 });
 
     g.add(mesh(geo.sphereHi, skin, { scale: [7.4, 2.15, 2.45] }));
     g.add(mesh(geo.sphere, belly, { pos: [0.4, -0.85, 0], scale: [5.6, 1.15, 1.7], cast: false }));
@@ -148,7 +214,15 @@ export function createWhale() {
 
     const tail = new THREE.Group();
     tail.position.set(-7.2, 0.15, 0);
-    tail.add(mesh(geo.cylTaper, skin, { scale: [0.9, 4.2, 0.7], rot: [0, 0, 1.57], pos: [-1.6, 0, 0] }));
+    const tailPts = [
+        new THREE.Vector2(0.9, 0),
+        new THREE.Vector2(0.75, -1.2),
+        new THREE.Vector2(0.45, -2.6),
+        new THREE.Vector2(0.22, -4.0)
+    ];
+    const geoTail = new THREE.LatheGeometry(tailPts, 28);
+    geoTail.rotateZ(Math.PI / 2);
+    tail.add(mesh(geoTail, skin, { pos: [-1.6, 0, 0], scale: [1, 0.7, 0.7] }));
     const flukeL = mesh(geo.sphere, skin, { pos: [-4.3, 0.05, 1.55], scale: [2.4, 0.14, 1.55], rot: [0, 0.55, 0] });
     const flukeR = mesh(geo.sphere, skin, { pos: [-4.3, 0.05, -1.55], scale: [2.4, 0.14, 1.55], rot: [0, -0.55, 0] });
     tail.add(flukeL, flukeR);
@@ -164,30 +238,43 @@ export function createWhale() {
 
 export function createJelly(tint = 0x88f0ff) {
     const g = new THREE.Group();
-    const bellMat = std(tint, {
+    const bellMat = new THREE.MeshPhysicalMaterial({
+        color: tint,
         emissive: tint,
-        emissiveIntensity: 0.85,
+        emissiveIntensity: 0.55,
+        roughness: 0.08,
+        metalness: 0.0,
+        transmission: 0.72,
+        thickness: 0.55,
+        ior: 1.33,
         transparent: true,
         opacity: 0.55,
-        roughness: 0.22,
-        depthWrite: false
+        clearcoat: 1,
+        clearcoatRoughness: 0.06,
+        depthWrite: false,
+        side: THREE.DoubleSide
     });
-    const tentMat = std(tint, {
+    const tentMat = new THREE.MeshPhysicalMaterial({
+        color: tint,
         emissive: tint,
-        emissiveIntensity: 0.7,
+        emissiveIntensity: 0.5,
+        roughness: 0.25,
+        transmission: 0.45,
+        thickness: 0.2,
         transparent: true,
-        opacity: 0.45,
-        roughness: 0.4,
+        opacity: 0.42,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.2,
         depthWrite: false
     });
-    const bell = mesh(geo.sphere, bellMat, { scale: [1, 0.58, 1], cast: false, receive: false });
+    const bell = mesh(geo.sphereHi, bellMat, { scale: [1, 0.58, 1], cast: false, receive: false });
     g.add(bell);
     const tentacles = [];
-    for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * Math.PI * 2;
+    for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2;
         const t = mesh(geo.cyl, tentMat, {
             pos: [Math.cos(a) * 0.42, -1.15, Math.sin(a) * 0.42],
-            scale: [0.035, 2.1, 0.035],
+            scale: [0.032, 2.1, 0.032],
             cast: false,
             receive: false
         });
@@ -202,7 +289,16 @@ export function createJelly(tint = 0x88f0ff) {
 
 export function createCoral(kind, color) {
     const g = new THREE.Group();
-    const mat = std(color, { emissive: color, emissiveIntensity: 0.22, roughness: 0.7 });
+    const mat = phys(color, {
+        emissive: color,
+        emissiveIntensity: 0.22,
+        roughness: 0.62,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.4,
+        normalMap: coralMaps.normalMap,
+        roughnessMap: coralMaps.roughnessMap,
+        normalScale: new THREE.Vector2(0.7, 0.7)
+    });
     if (kind === 'fan') {
         const fan = mesh(geo.sphere, mat, { scale: [1.6, 1.5, 0.12] });
         fan.rotation.y = Math.random() * Math.PI;
@@ -210,15 +306,28 @@ export function createCoral(kind, color) {
         g.add(mesh(geo.cyl, mat, { pos: [0, -1.1, 0], scale: [0.12, 1.1, 0.12] }));
     } else if (kind === 'brain') {
         g.add(mesh(geo.torus, mat, { scale: [1.1, 1.1, 1.1], rot: [1.1, 0, 0] }));
-        g.add(mesh(geo.icosa, mat, { scale: [0.85, 0.7, 0.85] }));
+        g.add(mesh(geo.icosaHi, mat, { scale: [0.85, 0.7, 0.85] }));
+        for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2;
+            g.add(mesh(geo.icosa, mat, {
+                pos: [Math.cos(a) * 0.55, 0.15, Math.sin(a) * 0.55],
+                scale: [0.28, 0.22, 0.28]
+            }));
+        }
     } else {
-        const n = 4 + Math.floor(Math.random() * 4);
+        const n = 5 + Math.floor(Math.random() * 4);
         for (let i = 0; i < n; i++) {
             const a = (i / n) * Math.PI * 2;
             const h = 1.2 + Math.random() * 1.6;
-            g.add(mesh(geo.cylTaper, mat, {
-                pos: [Math.cos(a) * 0.35, h * 0.45, Math.sin(a) * 0.35],
-                scale: [0.22 + Math.random() * 0.12, h, 0.22],
+            const tipPts = [
+                new THREE.Vector2(0.22 + Math.random() * 0.1, 0),
+                new THREE.Vector2(0.18, h * 0.35),
+                new THREE.Vector2(0.1, h * 0.7),
+                new THREE.Vector2(0.04, h)
+            ];
+            const tube = new THREE.LatheGeometry(tipPts, 20);
+            g.add(mesh(tube, mat, {
+                pos: [Math.cos(a) * 0.35, 0, Math.sin(a) * 0.35],
                 rot: [Math.random() * 0.25, 0, Math.random() * 0.25]
             }));
         }
@@ -228,13 +337,28 @@ export function createCoral(kind, color) {
 }
 
 export function createRock(size = 1) {
-    const mat = std(0x243844, { roughness: 0.92, emissive: 0x0c1c24, emissiveIntensity: 0.12 });
+    const mat = std(0x243844, {
+        roughness: 0.88,
+        metalness: 0.06,
+        emissive: 0x0c1c24,
+        emissiveIntensity: 0.12,
+        map: rockMaps.map,
+        normalMap: rockMaps.normalMap,
+        roughnessMap: rockMaps.roughnessMap,
+        normalScale: new THREE.Vector2(1.1, 1.1)
+    });
     const g = new THREE.Group();
-    g.add(mesh(geo.icosa, mat, { scale: [size, size * (0.55 + Math.random() * 0.4), size * 0.9] }));
-    if (Math.random() > 0.4) {
-        g.add(mesh(geo.sphereLo, mat, {
+    g.add(mesh(geo.icosaHi, mat, { scale: [size, size * (0.55 + Math.random() * 0.4), size * 0.9] }));
+    if (Math.random() > 0.35) {
+        g.add(mesh(geo.icosa, mat, {
             pos: [(Math.random() - 0.5) * size, -size * 0.15, (Math.random() - 0.5) * size],
             scale: [size * 0.55, size * 0.35, size * 0.5]
+        }));
+    }
+    if (Math.random() > 0.55) {
+        g.add(mesh(geo.sphereLo, mat, {
+            pos: [(Math.random() - 0.5) * size * 0.6, size * 0.1, (Math.random() - 0.5) * size * 0.6],
+            scale: [size * 0.35, size * 0.28, size * 0.4]
         }));
     }
     return g;
@@ -242,13 +366,23 @@ export function createRock(size = 1) {
 
 export function createAnemone(color) {
     const g = new THREE.Group();
-    const stem = std(color, { emissive: color, emissiveIntensity: 0.3, roughness: 0.55 });
-    g.add(mesh(geo.sphereLo, stem, { scale: [0.45, 0.28, 0.45] }));
-    for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * Math.PI * 2;
+    const stem = phys(color, {
+        emissive: color,
+        emissiveIntensity: 0.3,
+        roughness: 0.4,
+        transmission: 0.28,
+        thickness: 0.25,
+        clearcoat: 0.55,
+        clearcoatRoughness: 0.2,
+        transparent: true,
+        opacity: 0.88
+    });
+    g.add(mesh(geo.sphere, stem, { scale: [0.45, 0.28, 0.45] }));
+    for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
         const arm = mesh(geo.cyl, stem, {
             pos: [Math.cos(a) * 0.15, 0.55, Math.sin(a) * 0.15],
-            scale: [0.04, 0.9, 0.04],
+            scale: [0.035, 0.9, 0.035],
             rot: [0.45, a, 0],
             cast: false
         });
@@ -266,7 +400,7 @@ export function createTideLight(color = 0x9ef7ff) {
     );
     core.scale.setScalar(0.55);
     const halo = new THREE.Mesh(
-        geo.sphere,
+        geo.sphereHi,
         new THREE.MeshBasicMaterial({
             color,
             transparent: true,
@@ -277,7 +411,7 @@ export function createTideLight(color = 0x9ef7ff) {
     );
     halo.scale.setScalar(1.8);
     const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.42, 9, 10, 1, true),
+        new THREE.CylinderGeometry(0.08, 0.42, 9, 24, 1, true),
         new THREE.MeshBasicMaterial({
             color,
             transparent: true,

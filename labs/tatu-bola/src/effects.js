@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { retroMat } from './models.js';
+import { pbrMat } from './models.js';
 
 export class Effects {
     constructor(scene) {
@@ -13,12 +13,12 @@ export class Effects {
         this._offset = new THREE.Vector3();
         this.geo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
         this.mats = [
-            retroMat(0xd4a04a),
-            retroMat(0x7af0ff),
-            retroMat(0xff7a32),
-            retroMat(0xffe07a),
-            retroMat(0xff3d8a),
-            retroMat(0xf4e8d0)
+            pbrMat(0xd4a04a, { roughness: 0.55 }),
+            pbrMat(0x7af0ff, { roughness: 0.25, clearcoat: 0.6 }),
+            pbrMat(0xff7a32, { roughness: 0.5 }),
+            pbrMat(0xffe07a, { roughness: 0.35, metalness: 0.4 }),
+            pbrMat(0xff3d8a, { roughness: 0.4 }),
+            pbrMat(0xf4e8d0, { roughness: 0.6 })
         ];
     }
 
