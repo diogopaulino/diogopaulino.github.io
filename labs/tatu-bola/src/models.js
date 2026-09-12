@@ -35,6 +35,8 @@ export function pbrMat(color, {
     normalScale = 1,
     transmission = 0,
     ior = 1.5,
+    snap: _snap,
+    flatShading: _flat,
     ...props
 } = {}) {
     const usePhysical = clearcoat > 0 || transmission > 0;

@@ -1,7 +1,7 @@
 /**
  * Tatu Bola — constantes, spawns e o mapa da ilha.
  *
- * Fórmulas (unidades de cartucho ≈ metros):
+ * Fórmulas (unidades ≈ metros):
  *   gravidade  g = 38
  *   pulo       vy = JUMP; segundo pulo = JUMP * 0.82
  *   roll       duração ROLL.time; velocidade ROLL.speed

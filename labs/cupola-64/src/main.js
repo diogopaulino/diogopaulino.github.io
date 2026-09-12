@@ -84,7 +84,7 @@ class Game {
             this.resize?.();
             if (this.renderer) {
                 this.renderer.shadowMap.enabled = !!this.quality.shadows;
-                const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio || 1);
+                const pr = Math.min(window.devicePixelRatio || 1, this.quality.pr || 1);
                 this.renderer.setPixelRatio(pr);
             }
         });
@@ -144,7 +144,17 @@ class Game {
         this.camera = new THREE.PerspectiveCamera(56, 1, 0.12, 160);
         this.clock = new THREE.Clock();
 
-        this.hud.setLoading(0.32, 'Erguendo a ilha…');
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        const envScene = new THREE.Scene();
+        envScene.add(new THREE.HemisphereLight(0xb8d8ff, 0x3a6048, 1));
+        const sunLite = new THREE.DirectionalLight(0xfff4dc, 1.2);
+        sunLite.position.set(4, 8, 2);
+        envScene.add(sunLite);
+        this.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+        pmrem.dispose();
+        envScene.clear();
+
+        this.hud.setLoading(0.32, 'Modelando a ilha…');
         this.world = new World(this.scene, this.quality);
 
         this.hud.setLoading(0.55, 'Chamando Nico…');

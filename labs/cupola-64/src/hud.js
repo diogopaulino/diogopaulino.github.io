@@ -1,5 +1,5 @@
 /**
- * HUD estilo cartucho — estrelas, moedas, vidas e a fanfarra da estrela.
+ * HUD do platformer — estrelas, moedas, vidas e a fanfarra da estrela.
  */
 
 import { formatTime } from './utils.js';

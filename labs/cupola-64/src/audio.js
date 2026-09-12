@@ -1,6 +1,6 @@
 /**
  * Chiptune original da Ilha da Cúpola — onda quadrada alegre em dó maior,
- * no espírito dos campos N64 (melodia nova, não é tema de jogo existente).
+ * melodia original de campo (não é tema de jogo existente).
  */
 
 function midi(n) {

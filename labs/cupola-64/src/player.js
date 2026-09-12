@@ -1,5 +1,5 @@
 /**
- * Nico em terceira pessoa — movimento relativo à câmera Lakitu e o kit
+ * Nico em terceira pessoa — movimento relativo à câmera orbital e o kit
  * de pulos da Cúpola 64 (simples, duplo, triplo, long jump, pound, dive).
  */
 
