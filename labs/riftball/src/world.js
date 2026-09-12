@@ -121,10 +121,12 @@ function makeGoal(team) {
     const g = new THREE.Group();
     const x = team === 0 ? -ARENA.halfX : ARENA.halfX;
     g.position.x = x;
-    const frameMat = new THREE.MeshStandardMaterial({
+    const frameMat = new THREE.MeshPhysicalMaterial({
         color: 0x10141c,
-        metalness: 0.7,
-        roughness: 0.28,
+        metalness: 0.88,
+        roughness: 0.18,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.15,
         emissive: def.color,
         emissiveIntensity: 0.35
     });
@@ -156,7 +158,7 @@ function makeGoal(team) {
     g.add(veil);
 
     const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(2.2, 0.08, 10, 48),
+        new THREE.TorusGeometry(2.2, 0.08, 16, 64),
         new THREE.MeshBasicMaterial({
             color: def.color,
             transparent: true,

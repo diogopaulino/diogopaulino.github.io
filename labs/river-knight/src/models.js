@@ -22,25 +22,29 @@ function cachedMaterial(key, factory) {
 }
 
 export function woodMaterial(dark = false, color = COLORS.hull) {
-    return cachedMaterial(`wood:${dark}:${color}`, () => new THREE.MeshStandardMaterial({
+    return cachedMaterial(`wood:${dark}:${color}`, () => new THREE.MeshPhysicalMaterial({
         map: woodTexture(dark),
         color,
-        roughness: 0.82,
-        metalness: 0.04
+        roughness: 0.78,
+        metalness: 0.04,
+        clearcoat: 0.1,
+        clearcoatRoughness: 0.7
     }));
 }
 
 export function metalMaterial(color = 0xa9adb4, roughness = 0.34) {
-    return cachedMaterial(`metal:${color}:${roughness}`, () => new THREE.MeshStandardMaterial({
+    return cachedMaterial(`metal:${color}:${roughness}`, () => new THREE.MeshPhysicalMaterial({
         color,
         roughness,
-        metalness: 0.88
+        metalness: 0.88,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.25
     }));
 }
 
 export function plainMaterial(color, roughness = 0.7, metalness = 0.05, emissive = 0x000000, emissiveIntensity = 1) {
     return cachedMaterial(`plain:${color}:${roughness}:${metalness}:${emissive}:${emissiveIntensity}`, () =>
-        new THREE.MeshStandardMaterial({
+        new THREE.MeshPhysicalMaterial({
             color,
             roughness,
             metalness,
@@ -50,10 +54,12 @@ export function plainMaterial(color, roughness = 0.7, metalness = 0.05, emissive
 }
 
 export function stoneMaterial(tint = '#8f8d87') {
-    return cachedMaterial(`stone:${tint}`, () => new THREE.MeshStandardMaterial({
+    return cachedMaterial(`stone:${tint}`, () => new THREE.MeshPhysicalMaterial({
         map: stoneTexture(tint),
-        roughness: 0.95,
-        metalness: 0.02
+        roughness: 0.92,
+        metalness: 0.03,
+        clearcoat: 0.04,
+        clearcoatRoughness: 0.85
     }));
 }
 
@@ -63,7 +69,7 @@ export function stoneMaterial(tint = '#8f8d87') {
  * `uv.x` define o quanto cada ponto está livre para tremular.
  */
 export function clothMaterial({ map = null, color = 0xffffff, side = THREE.DoubleSide, wind = 1 } = {}) {
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshPhysicalMaterial({
         map,
         color,
         side,
@@ -325,7 +331,9 @@ function buildDragonHead(color) {
     snout.position.set(0, 1.38, 1.12);
     group.add(snout);
 
-    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.42), dark);
+    const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 4, 10), dark);
+    jaw.rotation.x = Math.PI / 2;
+    jaw.scale.set(1.4, 1, 0.55);
     jaw.position.set(0, 1.22, 0.95);
     jaw.rotation.x = 0.18;
     group.add(jaw);
@@ -380,7 +388,7 @@ export function buildLongship({
     parts.hull = hull;
 
     // Porão sólido que segue o afilamento do casco — a água nunca “entra”.
-    const bilgeMat = new THREE.MeshStandardMaterial({
+    const bilgeMat = new THREE.MeshPhysicalMaterial({
         color: 0x120d09,
         roughness: 1,
         metalness: 0,
@@ -674,9 +682,9 @@ export function buildLongship({
     if (shields) {
         const shieldGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.1, 16);
         const shieldMats = [
-            new THREE.MeshStandardMaterial({ map: shieldTexture('#b23a3a', '#e5d6ae'), roughness: 0.7 }),
-            new THREE.MeshStandardMaterial({ map: shieldTexture('#2f5d7c', '#e5d6ae'), roughness: 0.7 }),
-            new THREE.MeshStandardMaterial({ map: shieldTexture('#2f6b45', '#efe3bf'), roughness: 0.7 })
+            new THREE.MeshPhysicalMaterial({ map: shieldTexture('#b23a3a', '#e5d6ae'), roughness: 0.7 }),
+            new THREE.MeshPhysicalMaterial({ map: shieldTexture('#2f5d7c', '#e5d6ae'), roughness: 0.7 }),
+            new THREE.MeshPhysicalMaterial({ map: shieldTexture('#2f6b45', '#efe3bf'), roughness: 0.7 })
         ];
         const count = 5;
         for (const side of [-1, 1]) {
@@ -844,7 +852,9 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
         leg.position.set(sx * 0.16, 0.41, 0.02);
         leg.castShadow = true;
         group.add(leg);
-        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.38), plainMaterial(0x2e2116, 0.9, 0));
+        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 4, 10), plainMaterial(0x2e2116, 0.9, 0));
+        boot.rotation.z = Math.PI / 2;
+        boot.scale.set(1, 0.7, 1.15);
         boot.position.set(sx * 0.16, 0.07, 0.06);
         group.add(boot);
     }
@@ -949,7 +959,7 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
 
     const shield = new THREE.Mesh(
         new THREE.CylinderGeometry(0.36, 0.36, 0.09, 16),
-        new THREE.MeshStandardMaterial({ map: shieldTexture('#2f5d7c', '#e8dcb8'), roughness: 0.68 })
+        new THREE.MeshPhysicalMaterial({ map: shieldTexture('#2f5d7c', '#e8dcb8'), roughness: 0.68 })
     );
     shield.rotation.z = Math.PI / 2;
     shield.rotation.y = 0.2;
@@ -984,7 +994,7 @@ export function buildAxeMesh(scale = 1) {
     );
     group.add(handle);
 
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.26, 0.1), metalMaterial(0xc9ced6, 0.28));
+    const head = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 4, 10), metalMaterial(0xc9ced6, 0.28));
     head.position.set(0, 0.3, 0.06);
     group.add(head);
 
@@ -1278,7 +1288,7 @@ export function buildPickup(kind) {
     } else if (kind === 'shield') {
         const shield = new THREE.Mesh(
             new THREE.CylinderGeometry(0.46, 0.46, 0.1, 18),
-            new THREE.MeshStandardMaterial({
+            new THREE.MeshPhysicalMaterial({
                 map: shieldTexture('#2f5d7c', '#eee3c0'),
                 roughness: 0.5,
                 emissive: new THREE.Color(0x1a4a6b),

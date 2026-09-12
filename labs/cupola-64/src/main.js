@@ -1,11 +1,10 @@
 /**
- * Cúpola 64 — laço principal: renderer N64, câmera Lakitu, estrelas e o vitral.
+ * Cúpola 64 — laço principal: renderer PBR, câmera orbital, estrelas e o vitral.
  */
 
 import * as THREE from 'three';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
 import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
-import { n64Materials } from './models.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
@@ -88,9 +87,6 @@ class Game {
                 const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio || 1);
                 this.renderer.setPixelRatio(pr);
             }
-            for (const m of n64Materials) {
-                if (m.userData.n64) m.userData.snap = this.quality.snap;
-            }
         });
         h.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(h.volumeSlider.value);
@@ -122,30 +118,27 @@ class Game {
     }
 
     async boot() {
-        this.hud.setLoading(0.08, 'Inserindo o cartucho…');
+        this.hud.setLoading(0.08, 'Preparando a ilha…');
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: false,
+                antialias: true,
                 powerPreference: 'high-performance',
                 alpha: false
             });
         } catch (err) {
-            this.hud.fail(err?.message || 'WebGL recusou o cartucho.');
+            this.hud.fail(err?.message || 'WebGL indisponível neste navegador.');
             return;
         }
 
         this.quality = this.qualityPreset();
-        for (const m of n64Materials) {
-            if (m.userData.n64) m.userData.snap = this.quality.snap;
-        }
 
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0x7ec8ff, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.08;
+        this.renderer.toneMappingExposure = 1.12;
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(56, 1, 0.12, 160);

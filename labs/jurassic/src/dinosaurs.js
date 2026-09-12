@@ -12,17 +12,18 @@ import { patchSkin } from './shaders.js';
 import { clamp, damp, wrapPi, hash2 } from './utils.js';
 import { SPECIES } from './config.js';
 
-const ivory = () => new THREE.MeshStandardMaterial({
-    color: 0xe8d8b8, roughness: 0.35, metalness: 0.08
+const ivory = () => new THREE.MeshPhysicalMaterial({
+    color: 0xe8d8b8, roughness: 0.28, metalness: 0.1, clearcoat: 0.45, clearcoatRoughness: 0.3
 });
-const keratin = () => new THREE.MeshStandardMaterial({
-    color: 0xc4a070, roughness: 0.55, metalness: 0.04
+const keratin = () => new THREE.MeshPhysicalMaterial({
+    color: 0xc4a070, roughness: 0.48, metalness: 0.06, clearcoat: 0.2, clearcoatRoughness: 0.55
 });
-const eyeWhite = () => new THREE.MeshStandardMaterial({
-    color: 0xe8dcc0, roughness: 0.25, metalness: 0.1, emissive: 0x221800, emissiveIntensity: 0.12
+const eyeWhite = () => new THREE.MeshPhysicalMaterial({
+    color: 0xe8dcc0, roughness: 0.18, metalness: 0.12, clearcoat: 0.6,
+    emissive: 0x221800, emissiveIntensity: 0.12
 });
-const pupilMat = () => new THREE.MeshStandardMaterial({
-    color: 0x0a0806, roughness: 0.2, metalness: 0.15
+const pupilMat = () => new THREE.MeshPhysicalMaterial({
+    color: 0x0a0806, roughness: 0.15, metalness: 0.2, clearcoat: 0.4
 });
 
 function skinMat(key, colors, quality) {
@@ -31,13 +32,15 @@ function skinMat(key, colors, quality) {
         ...colors,
         size: quality.dinoSegs > 1.2 ? 1024 : (quality.dinoSegs > 0.75 ? 512 : 256)
     });
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
         map: maps.map,
         normalMap: maps.normalMap,
         normalScale: new THREE.Vector2(1.4, 1.4),
         roughnessMap: maps.roughnessMap,
-        roughness: 0.6,
-        metalness: 0.12
+        roughness: 0.55,
+        metalness: 0.1,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.7
     });
     patchSkin(mat, { belly: new THREE.Color(colors.ventral) });
     return mat;
@@ -121,11 +124,53 @@ function segs(quality, n) {
     return Math.max(8, Math.round(n * (quality.dinoSegs ?? 1)));
 }
 
+
+/** Crânio orgânico: esfera alongada + focinho em cápsula (sem BoxGeometry). */
+function organicSkull(parent, skin, {
+    cranium = [0.72, 0.58, 0.95],
+    snout = [0.48, 0.38, 1.15],
+    snoutZ = 0.95,
+    brow = null,
+    segs = 14
+} = {}) {
+    const [cw, ch, cd] = cranium;
+    const skull = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, segs, Math.max(10, segs - 2)),
+        skin
+    );
+    skull.scale.set(cw, ch, cd);
+    skull.position.set(0, 0.04, 0.08);
+    parent.add(skull);
+    if (snout) {
+        const [sw, sh, sd] = snout;
+        const muzzle = new THREE.Mesh(
+            new THREE.CapsuleGeometry(Math.min(sw, sh) * 0.45, Math.max(0.05, sd - Math.min(sw, sh) * 0.9), 6, segs),
+            skin
+        );
+        muzzle.rotation.x = Math.PI / 2;
+        muzzle.scale.set(sw / Math.min(sw, sh), 1, sh / Math.min(sw, sh));
+        muzzle.position.set(0, -0.02, snoutZ * 0.55);
+        parent.add(muzzle);
+    }
+    if (brow) {
+        const [bw, bh, bd] = brow;
+        const ridge = new THREE.Mesh(
+            new THREE.CapsuleGeometry(bh * 0.45, bw * 0.85, 4, 10),
+            skin
+        );
+        ridge.rotation.z = Math.PI / 2;
+        ridge.position.set(0, bh * 1.4, 0.05);
+        ridge.scale.set(1, bd / Math.max(0.1, bh), 1);
+        parent.add(ridge);
+    }
+    return skull;
+}
+
 function addEyes(parent, { x, y, z, s = 0.12, spread = 0.28 }) {
     for (const sx of [-1, 1]) {
         const g = new THREE.Group();
         g.position.set(sx * spread, y, z);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(s, 10, 8), eyeWhite());
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(s, 14, 12), eyeWhite());
         g.add(ball);
         const pupil = new THREE.Mesh(new THREE.SphereGeometry(s * 0.48, 8, 6), pupilMat());
         pupil.position.z = s * 0.62;
@@ -154,7 +199,7 @@ function addTeeth(jaw, { count, z0, z1, y, side = 0.16, up = false, len = 0.12 }
 function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = false }) {
     const hip = new THREE.Group();
     const thigh = new THREE.Mesh(
-        new THREE.CylinderGeometry(thighR * 0.72, thighR, thighLen, 10),
+        new THREE.CylinderGeometry(thighR * 0.72, thighR, thighLen, 14),
         skin
     );
     thigh.position.y = -thighLen * 0.5;
@@ -165,7 +210,7 @@ function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = fals
     hip.add(knee);
 
     const shin = new THREE.Mesh(
-        new THREE.CylinderGeometry(shinR, shinR * 0.7, shinLen, 8),
+        new THREE.CylinderGeometry(shinR, shinR * 0.7, shinLen, 12),
         skin
     );
     shin.position.y = -shinLen * 0.5;
@@ -175,7 +220,7 @@ function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = fals
     ankle.position.y = -shinLen + 0.02;
     knee.add(ankle);
 
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(shinR * 1.15, 8, 6), skin);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(shinR * 1.15, 12, 10), skin);
     foot.scale.set(1.1, 0.55, 1.6);
     foot.position.set(0, -0.08, 0.12);
     ankle.add(foot);
@@ -207,7 +252,7 @@ function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = fals
 
 function makeArm(skin, { len = 0.45, r = 0.08, fingers = 2 }) {
     const sh = new THREE.Group();
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.8, len, 6), skin);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.8, len, 10), skin);
     upper.position.y = -len * 0.5;
     sh.add(upper);
     const hand = new THREE.Group();
@@ -254,21 +299,24 @@ export function buildTRex(quality) {
     head.position.set(0, 0.15, 0.55);
     neck.add(head);
 
-    const cranium = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.58, 0.95), skin);
-    cranium.position.set(0, 0.08, 0.15);
-    head.add(cranium);
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.38, 1.15), skin);
-    snout.position.set(0, -0.02, 0.95);
-    head.add(snout);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.16, 0.35), skin);
-    brow.position.set(0, 0.32, 0.05);
-    head.add(brow);
+    organicSkull(head, skin, {
+        cranium: [0.72, 0.58, 0.95],
+        snout: [0.48, 0.38, 1.15],
+        snoutZ: 0.95,
+        brow: [0.78, 0.16, 0.35],
+        segs: segs(quality, 16)
+    });
     addEyes(head, { x: 0, y: 0.16, z: 0.22, s: 0.09, spread: 0.3 });
 
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.18, 0.35);
     head.add(jaw);
-    const jawMesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 1.2), skin);
+    const jawMesh = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.14, 0.95, 6, 12),
+        skin
+    );
+    jawMesh.rotation.x = Math.PI / 2;
+    jawMesh.scale.set(1.5, 1, 0.75);
     jawMesh.position.set(0, -0.06, 0.55);
     jaw.add(jawMesh);
     addTeeth(head, { count: 8, z0: 0.45, z1: 1.42, y: -0.18, side: 0.16, up: false, len: 0.14 });
@@ -327,11 +375,12 @@ export function buildBrachiosaurus(quality) {
     const head = new THREE.Group();
     head.position.set(0, 2.7, 0.7);
     neck.add(head);
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.7), skin);
-    head.add(skull);
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.2, 0.55), skin);
-    snout.position.z = 0.48;
-    head.add(snout);
+    organicSkull(head, skin, {
+        cranium: [0.42, 0.32, 0.7],
+        snout: [0.28, 0.2, 0.55],
+        snoutZ: 0.48,
+        segs: segs(quality, 14)
+    });
     addEyes(head, { y: 0.08, z: 0.05, s: 0.055, spread: 0.18 });
 
     const fl = makeLeg(skin, { thighLen: 2.15, shinLen: 1.7, thighR: 0.48, shinR: 0.28, toes: 4 });
@@ -380,16 +429,22 @@ export function buildRaptor(quality) {
     const head = new THREE.Group();
     head.position.set(0, 0.12, 0.28);
     neck.add(head);
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 0.32), skin);
-    head.add(skull);
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.28), skin);
-    snout.position.z = 0.26;
-    head.add(snout);
+    organicSkull(head, skin, {
+        cranium: [0.2, 0.16, 0.32],
+        snout: [0.12, 0.1, 0.28],
+        snoutZ: 0.26,
+        segs: segs(quality, 12)
+    });
     addEyes(head, { y: 0.04, z: 0.02, s: 0.035, spread: 0.09 });
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.05, 0.08);
     head.add(jaw);
-    const jm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.28), skin);
+    const jm = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.04, 0.22, 4, 10),
+        skin
+    );
+    jm.rotation.x = Math.PI / 2;
+    jm.scale.set(1.2, 1, 0.75);
     jm.position.z = 0.14;
     jaw.add(jm);
 
@@ -444,8 +499,11 @@ export function buildTriceratops(quality) {
     head.position.set(0, 0.15, 0.45);
     neck.add(head);
 
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.85), skin);
-    head.add(skull);
+    organicSkull(head, skin, {
+        cranium: [0.7, 0.5, 0.85],
+        snout: null,
+        segs: segs(quality, 14)
+    });
     const beak = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 6), skin);
     beak.rotation.x = Math.PI / 2;
     beak.position.set(0, -0.05, 0.7);
@@ -536,8 +594,12 @@ export function buildStegosaurus(quality) {
     const head = new THREE.Group();
     head.position.set(0, -0.05, 0.35);
     neck.add(head);
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.45), skin);
-    head.add(skull);
+    organicSkull(head, skin, {
+        cranium: [0.28, 0.22, 0.45],
+        snout: [0.16, 0.12, 0.28],
+        snoutZ: 0.28,
+        segs: segs(quality, 12)
+    });
     addEyes(head, { y: 0.04, z: 0.05, s: 0.035, spread: 0.12 });
 
     const fl = makeLeg(skin, { thighLen: 0.85, shinLen: 0.65, thighR: 0.22, shinR: 0.14, toes: 3 });
@@ -588,8 +650,11 @@ export function buildPteranodon(quality) {
     const head = new THREE.Group();
     head.position.set(0, 0.05, 0.35);
     neck.add(head);
-    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.4), skin);
-    head.add(skull);
+    organicSkull(head, skin, {
+        cranium: [0.16, 0.14, 0.4],
+        snout: null,
+        segs: segs(quality, 12)
+    });
     const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.7, 5), keratin());
     beak.rotation.x = Math.PI / 2;
     beak.position.z = 0.5;

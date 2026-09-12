@@ -1,6 +1,6 @@
 /**
- * Primitivas e materiais do boneco vinil.
- * Tudo é MeshStandardMaterial — look de figura colecionável.
+ * Primitivas e materiais do ateliê — PBR físico (clearcoat de resina,
+ * pele e tecido com roughness distinto).
  */
 
 import * as THREE from 'three';
@@ -8,10 +8,12 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { LAYOUT } from './config.js';
 
 export function vinyl(color, extra = {}) {
-    return new THREE.MeshStandardMaterial({
+    return new THREE.MeshPhysicalMaterial({
         color,
-        roughness: extra.roughness ?? 0.42,
-        metalness: extra.metalness ?? 0.08,
+        roughness: extra.roughness ?? 0.38,
+        metalness: extra.metalness ?? 0.06,
+        clearcoat: extra.clearcoat ?? 0.55,
+        clearcoatRoughness: extra.clearcoatRoughness ?? 0.22,
         emissive: extra.emissive ?? 0x000000,
         emissiveIntensity: extra.emissiveIntensity ?? 0,
         transparent: extra.transparent ?? false,
@@ -38,19 +40,20 @@ export function glass(color = 0x88c8e8) {
 export function makePalette(kit) {
     const c = kit.colors;
     return {
-        skin: vinyl(kit.skin, { roughness: 0.55 }),
+        skin: vinyl(kit.skin, { roughness: 0.62, clearcoat: 0.15, clearcoatRoughness: 0.45 }),
         primary: vinyl(c.primary),
         secondary: vinyl(c.secondary),
-        accent: vinyl(c.accent, { metalness: 0.55, roughness: 0.28 }),
-        cloth: vinyl(c.cloth, { roughness: 0.62 }),
-        trim: vinyl(c.trim),
-        iris: vinyl(kit.iris, { roughness: 0.3 }),
-        white: vinyl(0xf6f3ee, { roughness: 0.35 }),
-        dark: vinyl(0x1a1a22, { roughness: 0.4 }),
-        gum: vinyl(0xd47878, { roughness: 0.5 }),
+        accent: vinyl(c.accent, { metalness: 0.72, roughness: 0.18, clearcoat: 0.85, clearcoatRoughness: 0.08 }),
+        cloth: vinyl(c.cloth, { roughness: 0.78, clearcoat: 0.05, clearcoatRoughness: 0.6 }),
+        trim: vinyl(c.trim, { clearcoat: 0.7 }),
+        iris: vinyl(kit.iris, { roughness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.05 }),
+        white: vinyl(0xf6f3ee, { roughness: 0.32 }),
+        dark: vinyl(0x1a1a22, { roughness: 0.38 }),
+        gum: vinyl(0xd47878, { roughness: 0.55, clearcoat: 0.2 }),
         glow: vinyl(c.accent, {
-            roughness: 0.25,
-            metalness: 0.2,
+            roughness: 0.22,
+            metalness: 0.25,
+            clearcoat: 0.8,
             emissive: c.accent,
             emissiveIntensity: 0.55
         })

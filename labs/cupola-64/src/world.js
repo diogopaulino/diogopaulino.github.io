@@ -1,5 +1,5 @@
 /**
- * Ilha da Cúpola — terreno vertex-colorido, castelo pêssego, montanha,
+ * Ilha da Cúpola — terreno PBR com vertex colors, castelo pêssego, montanha,
  * plataformas flutuantes, canhão, água com ondas e colisão cilíndrica.
  */
 
@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { ISLAND } from './config.js';
 import { heightAt, inCave, caveFloor, terrainColor } from './utils.js';
 import {
-    n64Mat,
+    pbrMat,
     createCastle,
     createTree,
     createCloud,
@@ -16,6 +16,7 @@ import {
     createPlatform,
     createBush
 } from './models.js';
+import { grassDetail, waterNormals } from './textures.js';
 
 export class World {
     constructor(scene, quality) {
@@ -62,7 +63,8 @@ export class World {
             sun.shadow.camera.right = 52;
             sun.shadow.camera.top = 52;
             sun.shadow.camera.bottom = -52;
-            sun.shadow.bias = -0.0007;
+            sun.shadow.bias = -0.0005;
+            sun.shadow.normalBias = 0.04;
         }
         this.sun = sun;
         this.scene.add(sun);
@@ -88,7 +90,7 @@ export class World {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.magFilter = THREE.LinearFilter;
         const sky = new THREE.Mesh(
-            new THREE.SphereGeometry(90, 16, 12),
+            new THREE.SphereGeometry(90, 48, 32),
             new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false })
         );
         this.scene.add(sky);
@@ -96,7 +98,7 @@ export class World {
     }
 
     _terrain() {
-        const segs = this.quality.grass > 0.7 ? 72 : 48;
+        const segs = this.quality.grass > 0.7 ? 128 : 96;
         const size = 108;
         const geo = new THREE.PlaneGeometry(size, size, segs, segs);
         geo.rotateX(-Math.PI / 2);
@@ -113,16 +115,21 @@ export class World {
         }
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
-        const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-        mat.onBeforeCompile = n64Mat(0xffffff).onBeforeCompile;
-        mat.customProgramCacheKey = () => 'cupola64-terrain';
+        const grain = grassDetail();
+        const mat = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.82,
+            metalness: 0.04,
+            normalMap: grain.normalMap,
+            normalScale: new THREE.Vector2(0.6, 0.6)
+        });
         const ground = new THREE.Mesh(geo, mat);
         ground.receiveShadow = true;
         this.group.add(ground);
 
         const ring = new THREE.Mesh(
-            new THREE.RingGeometry(ISLAND.radius - 0.6, ISLAND.radius + 0.35, 48),
-            n64Mat(0xffe14a)
+            new THREE.RingGeometry(ISLAND.radius - 0.6, ISLAND.radius + 0.35, 96),
+            pbrMat(0xffe14a, { metalness: 0.35, roughness: 0.35, clearcoat: 0.45 })
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.08;
@@ -130,13 +137,22 @@ export class World {
     }
 
     _water() {
-        const geo = new THREE.PlaneGeometry(160, 160, 24, 24);
+        const geo = new THREE.PlaneGeometry(160, 160, 48, 48);
         geo.rotateX(-Math.PI / 2);
-        const mat = new THREE.MeshLambertMaterial({
+        const normals = waterNormals();
+        const mat = new THREE.MeshPhysicalMaterial({
             color: 0x3a9fe8,
             transparent: true,
-            opacity: 0.72,
-            flatShading: true
+            opacity: 0.78,
+            roughness: 0.14,
+            metalness: 0.05,
+            transmission: 0.45,
+            ior: 1.33,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1,
+            normalMap: normals,
+            normalScale: new THREE.Vector2(0.8, 0.8),
+            depthWrite: false
         });
         this.water = new THREE.Mesh(geo, mat);
         this.water.position.y = ISLAND.waterY;
@@ -206,7 +222,10 @@ export class World {
 
         const skyHouse = createPlatform(2.2, 2.4, 2.2, 0xf3c4b4);
         skyHouse.position.set(28, 17.4, 2);
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.4, 4), n64Mat(0xc45c6a));
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.4, 32), pbrMat(0xc45c6a, {
+            roughness: 0.42,
+            clearcoat: 0.15
+        }));
         roof.position.set(28, 19.3, 2);
         roof.rotation.y = Math.PI / 4;
         this.group.add(skyHouse, roof);

@@ -1,5 +1,5 @@
 /**
- * Tatu-bola — movimento estilo N64 (eixo relativo à câmera), pulo duplo e rolamento.
+ * Tatu-bola — movimento relativo à câmera, pulo duplo e rolamento.
  *
  * vx' = vx + wishX * accel * dt
  * |v|  ≤ maxSpeed  (ou ROLL.speed se rolando)

@@ -1,5 +1,5 @@
 /**
- * Tatu Bola — laço principal, câmera N64 e a ilha dos cristais.
+ * Tatu Bola — laço principal, câmera orbital e a ilha dos cristais.
  */
 
 import * as THREE from 'three';
@@ -71,7 +71,7 @@ class Game {
     }
 
     async boot() {
-        this.hud.setLoading(0.12, 'Inserindo o CD…');
+        this.hud.setLoading(0.12, 'Preparando a ilha…');
         const soft = detectSoftwareGL();
         const preset = this.qualityPreset();
         try {
@@ -81,7 +81,7 @@ class Game {
                 powerPreference: 'high-performance'
             });
         } catch {
-            this.hud.showError('WebGL recusou o cartucho. Tente outro navegador.');
+            this.hud.showError('WebGL indisponível. Tente outro navegador.');
             return;
         }
 
@@ -90,7 +90,7 @@ class Game {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.setClearColor(0xff9a72, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.8;
+        this.renderer.toneMappingExposure = 0.92;
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(55, 1, 0.12, 140);
@@ -126,7 +126,7 @@ class Game {
         this.audio = new GameAudio();
         this.input = new Input();
 
-        this.hud.setLoading(0.78, 'Ligando o 32-bit…');
+        this.hud.setLoading(0.78, 'Acendendo o sol…');
         this.bindUi();
         this.applyQuality();
         this.resize();
@@ -472,5 +472,5 @@ class Game {
 const game = new Game();
 game.boot().catch((err) => {
     console.error(err);
-    game.hud.showError(err?.message || 'Falha ao carregar o CD.');
+    game.hud.showError(err?.message || 'Falha ao carregar a ilha.');
 });

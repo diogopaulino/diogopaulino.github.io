@@ -1,9 +1,9 @@
 /**
- * Faíscas de moeda, poeira do pound e tremer a câmera Lakitu.
+ * Faíscas de moeda, poeira do pound e tremer a câmera orbital.
  */
 
 import * as THREE from 'three';
-import { n64Mat } from './models.js';
+import { pbrMat } from './models.js';
 
 export class Effects {
     constructor(scene, camera) {
@@ -11,13 +11,13 @@ export class Effects {
         this.camera = camera;
         this.particles = [];
         this.shake = 0;
-        this.geo = new THREE.OctahedronGeometry(0.12, 0);
+        this.geo = new THREE.OctahedronGeometry(0.12, 1);
         this.mats = [
-            n64Mat(0xffe14a, { emissive: 0x442200 }),
-            n64Mat(0xffffff),
-            n64Mat(0xff6b4a),
-            n64Mat(0x7ec8ff),
-            n64Mat(0x3ecf4a)
+            pbrMat(0xffe14a, { emissive: 0x442200, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.6 }),
+            pbrMat(0xffffff, { roughness: 0.35 }),
+            pbrMat(0xff6b4a, { roughness: 0.45 }),
+            pbrMat(0x7ec8ff, { roughness: 0.25, clearcoat: 0.5 }),
+            pbrMat(0x3ecf4a, { roughness: 0.5 })
         ];
         this._offset = new THREE.Vector3();
     }
