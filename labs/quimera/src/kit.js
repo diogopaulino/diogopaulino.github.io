@@ -82,23 +82,23 @@ export function makeAdd(parent) {
             parent.add(m);
             return m;
         },
-        sphere(r, mat, pos, rot, scale, seg = 24) {
+        sphere(r, mat, pos, rot, scale, seg = 32) {
             return add.mesh(new THREE.SphereGeometry(r, seg, seg), mat, pos, rot, scale);
         },
         box(w, h, d, mat, pos, rot, scale, r = 0.04) {
-            return add.mesh(new RoundedBoxGeometry(w, h, d, 3, r), mat, pos, rot, scale);
+            return add.mesh(new RoundedBoxGeometry(w, h, d, 4, r), mat, pos, rot, scale);
         },
-        cyl(rt, rb, h, mat, pos, rot, scale, seg = 20) {
+        cyl(rt, rb, h, mat, pos, rot, scale, seg = 28) {
             const geo = new THREE.CylinderGeometry(rt, rb, h, seg);
             return add.mesh(geo, mat, pos, rot, scale);
         },
         cap(r, len, mat, pos, rot, scale) {
-            return add.mesh(new THREE.CapsuleGeometry(r, len, 6, 12), mat, pos, rot, scale);
+            return add.mesh(new THREE.CapsuleGeometry(r, len, 8, 20), mat, pos, rot, scale);
         },
-        torus(r, t, mat, pos, rot, scale, radial = 12, tubular = 20) {
+        torus(r, t, mat, pos, rot, scale, radial = 16, tubular = 28) {
             return add.mesh(new THREE.TorusGeometry(r, t, radial, tubular), mat, pos, rot, scale);
         },
-        cone(r, h, mat, pos, rot, scale, seg = 16) {
+        cone(r, h, mat, pos, rot, scale, seg = 24) {
             return add.mesh(new THREE.ConeGeometry(r, h, seg), mat, pos, rot, scale);
         },
         group(pos) {

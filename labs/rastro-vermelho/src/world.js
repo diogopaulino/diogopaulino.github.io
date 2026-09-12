@@ -8,9 +8,9 @@ export const PROFILES = {
     medium: { id: 'medium', scale: 1, radius: 2, segments: 36, grass: 380, shadowSize: 1024, bloom: false },
     high: { id: 'high', scale: 1.25, radius: 3, segments: 40, grass: 650, shadowSize: 2048, bloom: true }
 };
-export function material(scene, name, color, roughness = 0.9) {
+export function material(scene, name, color, roughness = 0.9, metallic = 0) {
     const m = new B.PBRMaterial(name, scene);
-    m.albedoColor = B.Color3.FromHexString(color); m.roughness = roughness; m.metallic = 0;
+    m.albedoColor = B.Color3.FromHexString(color); m.roughness = roughness; m.metallic = metallic;
     return m;
 }
 function box(scene, parent, name, size, pos, mat) {
@@ -79,14 +79,16 @@ export class World {
         this.scene = scene; this.shadow = shadow; this.profile = profile; this.chunks = new Map(); this.queue = []; this.center = ''; this.staticColliders = []; this.fires = [];
         this.mats = {
             wood: material(scene, 'madeira-envelhecida', '#65513d'), darkWood: material(scene, 'madeira-escura', '#33281f'),
-            canvas: material(scene, 'lona', '#b4a488'), metal: material(scene, 'ferro', '#343a3a', .42),
+            canvas: material(scene, 'lona', '#b4a488', .82), metal: material(scene, 'ferro', '#343a3a', .28, .85),
             leaves: material(scene, 'folhas', '#455338'), bark: material(scene, 'casca', '#483c2d'),
-            grass: material(scene, 'capim-seco', '#9d9159'), coat: material(scene, 'casaco', '#514d3d'),
-            pants: material(scene, 'calça', '#333c41'), skin: material(scene, 'pele', '#b38a67'),
-            hat: material(scene, 'couro', '#30261e'), scarf: material(scene, 'lenço-carmim', '#8e3027'),
+            grass: material(scene, 'capim-seco', '#9d9159'), coat: material(scene, 'casaco', '#514d3d', .78),
+            pants: material(scene, 'calça', '#333c41', .8), skin: material(scene, 'pele', '#b38a67', .62),
+            hat: material(scene, 'couro', '#30261e', .75), scarf: material(scene, 'lenço-carmim', '#8e3027', .7),
             fire: material(scene, 'brasas', '#d76a22'), window: material(scene, 'janela-âmbar', '#bb883e')
         };
         this.mats.fire.emissiveColor.set(1, .24, .025); this.mats.window.emissiveColor.set(.26, .12, .025);
+        this.mats.metal.clearCoat.isEnabled = true; this.mats.metal.clearCoat.intensity = 0.45;
+        this.mats.skin.clearCoat.isEnabled = true; this.mats.skin.clearCoat.intensity = 0.12;
         const terrain = material(scene, 'terra-pbr', '#ded3b9');
         terrain.albedoTexture = new B.Texture('assets/ground-albedo.webp', scene);
         terrain.bumpTexture = new B.Texture('assets/ground-normal.webp', scene); terrain.bumpTexture.level = .32;

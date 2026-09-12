@@ -316,29 +316,29 @@ function buildDragonHead(color) {
     const mat = woodMaterial(true, color);
     const dark = woodMaterial(true, 0x2a1810);
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.65, 8), mat);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.65, 20), mat);
     neck.rotation.x = -0.42;
     neck.position.set(0, 0.72, 0.15);
     group.add(neck);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), mat);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 22, 18), mat);
     skull.scale.set(0.85, 0.78, 1.15);
     skull.position.set(0, 1.48, 0.55);
     group.add(skull);
 
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 8), mat);
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 18), mat);
     snout.rotation.x = Math.PI / 2;
     snout.position.set(0, 1.38, 1.12);
     group.add(snout);
 
-    const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 4, 10), dark);
+    const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 6, 14), dark);
     jaw.scale.set(1.4, 1, 0.55);
     jaw.position.set(0, 1.22, 0.95);
     jaw.rotation.x = Math.PI / 2 + 0.18;
     group.add(jaw);
 
     for (let i = 0; i < 5; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.32, 5), dark);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.32, 12), dark);
         spike.position.set(0, 1.72 - i * 0.07, 0.22 - i * 0.22);
         spike.rotation.x = -0.55;
         group.add(spike);
@@ -346,10 +346,10 @@ function buildDragonHead(color) {
 
     const eyeMat = plainMaterial(0xffb347, 0.3, 0, 0xff7a1a, 2.4);
     for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 12), eyeMat);
         eye.position.set(sx * 0.16, 1.54, 0.78);
         group.add(eye);
-        const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), dark);
+        const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), dark);
         nostril.position.set(sx * 0.07, 1.34, 1.38);
         group.add(nostril);
     }
@@ -846,11 +846,11 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const iris = plainMaterial(0x2a1c12, 0.5, 0);
 
     for (const sx of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.105, 0.82, 8), leather);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.105, 0.82, 14), leather);
         leg.position.set(sx * 0.16, 0.41, 0.02);
         leg.castShadow = true;
         group.add(leg);
-        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 4, 10), plainMaterial(0x2e2116, 0.9, 0));
+        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 6, 14), plainMaterial(0x2e2116, 0.9, 0));
         boot.rotation.z = Math.PI / 2;
         boot.scale.set(1, 0.7, 1.15);
         boot.position.set(sx * 0.16, 0.07, 0.06);
@@ -861,12 +861,12 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     torso.position.y = 0.82;
     group.add(torso);
 
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.25, 0.66, 10), cloth);
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.25, 0.66, 16), cloth);
     chest.position.y = 0.32;
     chest.castShadow = true;
     torso.add(chest);
 
-    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.27, 0.38, 10), steel);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.27, 0.38, 16), steel);
     plate.position.y = 0.46;
     plate.castShadow = true;
     torso.add(plate);
@@ -987,12 +987,12 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
 export function buildAxeMesh(scale = 1) {
     const group = new THREE.Group();
     const handle = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.035, 0.045, 0.8, 7),
+        new THREE.CylinderGeometry(0.035, 0.045, 0.8, 14),
         woodMaterial(true, 0x6b4a2a)
     );
     group.add(handle);
 
-    const head = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 4, 10), metalMaterial(0xc9ced6, 0.28));
+    const head = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 14), metalMaterial(0xc9ced6, 0.28));
     head.position.set(0, 0.3, 0.06);
     group.add(head);
 
@@ -1067,14 +1067,14 @@ export function buildArrowMesh() {
 /** Pinheiro em camadas — geometria única para uso em InstancedMesh. */
 export function buildPineGeometry() {
     const parts = [];
-    const trunk = new THREE.CylinderGeometry(0.2, 0.36, 3.6, 7);
+    const trunk = new THREE.CylinderGeometry(0.2, 0.36, 3.6, 14);
     trunk.translate(0, 1.8, 0);
     parts.push({ geo: trunk, color: new THREE.Color(0x4a3423) });
 
     for (let i = 0; i < 5; i++) {
         const r = 2.45 - i * 0.38;
         const h = 2.2 - i * 0.18;
-        const cone = new THREE.ConeGeometry(r, h, 7);
+        const cone = new THREE.ConeGeometry(r, h, 14);
         cone.translate((i % 2) * 0.12, 2.7 + i * 1.18, (i % 3 - 1) * 0.08);
         parts.push({ geo: cone, color: new THREE.Color().setHSL(0.30, 0.46, 0.15 + i * 0.032) });
     }
@@ -1084,7 +1084,7 @@ export function buildPineGeometry() {
 /** Árvore folhosa (copa em aglomerado de esferas achatadas). */
 export function buildOakGeometry() {
     const parts = [];
-    const trunk = new THREE.CylinderGeometry(0.28, 0.42, 2.8, 7);
+    const trunk = new THREE.CylinderGeometry(0.28, 0.42, 2.8, 14);
     trunk.translate(0, 1.4, 0);
     parts.push({ geo: trunk, color: new THREE.Color(0x53381f) });
 

@@ -5,7 +5,7 @@
 
 import { savannaGrassTexture } from './textures.js';
 import { buildAcacia } from './models.js?v=2';
-import { buildGiraffe, buildElephant, buildZebra } from './animals.js?v=2';
+import { buildGiraffe, buildElephant, buildZebra } from './animals.js?v=3';
 
 export async function buildSavannaWorld(BABYLON, scene) {
     const root = new BABYLON.TransformNode('savanna_world', scene);
