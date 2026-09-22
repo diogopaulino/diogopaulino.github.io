@@ -48,6 +48,37 @@ const VIKING_BANNER = (() => {
     return g;
 })();
 
+/**
+ * Painel do astronauta: a prancheta sobe num clipe no meio, cerca de 10 cm.
+ */
+const ASTRO_PAD = (() => {
+    const p = [
+        [-0.09, -0.06],
+        [0.09, -0.06],
+        [0.09, 0.04],
+        [0.035, 0.04],
+        [0.02, 0.09],
+        [0, 0.14],
+        [-0.02, 0.09],
+        [-0.035, 0.04],
+        [-0.09, 0.04]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.008);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -67,7 +98,8 @@ const ACCESSORIES = {
 
     astronaut: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.box(0.04, 0.42, 0.04, mats.secondary, [0, 0.2, 0], [0.2, 0, 0.3]);
-        add.box(0.18, 0.12, 0.02, mats.primary, [0.02, 0.38, 0.04], [0.2, 0.4, 0.1]);
+        const pad = add.mesh(ASTRO_PAD, mats.primary, [0.02, 0.38, 0.04], [0.2, 0.4, 0.1]);
+        pad.name = 'astroPad';
         add.box(0.08, 0.08, 0.01, mats.accent, [0.02, 0.38, 0.055]);
         add.sphere(0.03, mats.glow, [0.02, 0.38, 0.07]);
     }),
