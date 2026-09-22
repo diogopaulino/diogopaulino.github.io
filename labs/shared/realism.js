@@ -353,7 +353,7 @@ export function attachHumanHead(parent, {
         eye.position.set(sx * eyeX, eyeY, eyeZ);
         parent.add(eye);
         const lid = makeLid(eyeR, skinMat);
-        lid.position.set(sx * eyeX, eyeY + eyeR * 0.45, eyeZ - eyeR * 0.05);
+        lid.position.set(sx * eyeX, eyeY + eyeR * 0.85, eyeZ - eyeR * 0.02);
         parent.add(lid);
     }
 
