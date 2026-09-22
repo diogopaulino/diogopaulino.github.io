@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { PLAYER, CAMERA } from './config.js';
 import { clamp, damp } from './utils.js';
-import { buildGirl } from './models.js?v=13';
+import { buildGirl } from './models.js?v=14';
 
 export class Player {
     constructor(scene) {
