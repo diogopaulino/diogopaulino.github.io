@@ -822,6 +822,37 @@ const SAILOR_STRIPE = (() => {
     return g;
 })();
 
+/** Suspensório do chef: a tira é estreita e a lingueta de baixo abre. */
+const CHEF_SUSPENDER = (() => {
+    const p = [
+        [-0.022, 0.18],
+        [0.022, 0.18],
+        [0.02, 0.02],
+        [0.04, -0.06],
+        [0.038, -0.14],
+        [0.02, -0.18],
+        [0, -0.19],
+        [-0.02, -0.18],
+        [-0.038, -0.14],
+        [-0.04, -0.06],
+        [-0.02, 0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.01);
+    return g;
+})();
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -925,8 +956,10 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.28, 0.08], [0.26, 0.28], [0.16, 0.48], [0.1, 0.56]], mats.white, [0, 0.56, 0.02]);
-            add.box(0.08, 0.36, 0.02, mats.dark, [-0.1, 0.86, 0.19]);
-            add.box(0.08, 0.36, 0.02, mats.dark, [0.1, 0.86, 0.19]);
+            for (const x of [-0.1, 0.1]) {
+                const strap = add.mesh(CHEF_SUSPENDER, mats.dark, [x, 0.86, 0.19]);
+                strap.name = 'chefSuspender';
+            }
             const belt = add.mesh(CHEF_BELT, mats.white, [0, 0.49, 0]);
             belt.name = 'chefBelt';
             const apron = add.mesh(CHEF_APRON, mats.secondary, [0, 0.32, 0.1]);
