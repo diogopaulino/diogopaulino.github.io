@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { limbGeometry, headGeometry } from '../../shared/realism.js';
+import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry } from '../../shared/realism.js';
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,
@@ -472,17 +472,16 @@ export function buildGoblin() {
     const dark = mapped(clothTexture('#2a2218'), 0x2a2218, 0.92);
 
     const body = new THREE.Mesh(
-        geo('gob-body', () => warp(new THREE.SphereGeometry(0.26, 10, 8), 17, 0.14, 0.4)),
+        geo('gob-body', () => torsoGeometry({ height: 0.46, girth: 0.2, style: 'child', seg: 14 })),
         dark
     );
-    body.position.y = 0.52;
-    body.scale.set(1.05, 1.25, 0.82);
+    body.position.y = 0.28;
     group.add(body);
 
     const head = new THREE.Group();
     head.position.y = 0.92;
     group.add(head);
-    const skull = new THREE.Mesh(geo('gob-skull', () => warp(new THREE.SphereGeometry(0.19, 10, 8), 18, 0.12)), skin);
+    const skull = new THREE.Mesh(geo('gob-skull', () => headGeometry(0.19, 'child')), skin);
     skull.scale.set(1.05, 0.9, 1.1);
     head.add(skull);
     for (const sx of [-1, 1]) {
@@ -498,8 +497,10 @@ export function buildGoblin() {
         );
         eye.position.set(sx * 0.06, 0.04, 0.16);
         head.add(eye);
-        const arm = new THREE.Mesh(geo('gob-arm', () => new THREE.CapsuleGeometry(0.045, 0.32, 4, 8)), skin);
-        arm.position.set(sx * 0.28, 0.55, 0.04);
+        const arm = new THREE.Mesh(geo('gob-arm', () => limbGeometry({
+            length: 0.34, r0: 0.05, r1: 0.03, bulge: 0.01, seg: 10, rings: 6
+        })), skin);
+        arm.position.set(sx * 0.24, 0.72, 0.04);
         arm.rotation.z = sx * 0.45;
         arm.rotation.x = -0.35;
         group.add(arm);
@@ -537,26 +538,21 @@ export function buildNazgul() {
     group.add(horse);
 
     const body = new THREE.Mesh(
-        geo('naz-body', () => warp(new THREE.SphereGeometry(0.52, 14, 10), 21, 0.1, 0.5)),
+        geo('naz-body', () => canineTorsoGeometry({ length: 1.45, girth: 0.38, chest: 0.1 })),
         hide
     );
-    body.scale.set(0.72, 0.82, 1.7);
-    body.position.set(0, 0.88, 0);
+    body.position.set(0, 0.82, 0.05);
     horse.add(body);
 
-    const chest = new THREE.Mesh(geo('naz-chest', () => warp(new THREE.SphereGeometry(0.32, 10, 8), 22, 0.1)), hide);
-    chest.scale.set(0.85, 0.95, 1.1);
-    chest.position.set(0, 0.92, 0.55);
-    horse.add(chest);
-
-    const neck = new THREE.Mesh(geo('naz-neck', () => new THREE.CapsuleGeometry(0.13, 0.55, 5, 8)), hide);
-    neck.position.set(0, 1.22, 0.72);
-    neck.rotation.x = 0.7;
+    const neck = new THREE.Mesh(geo('naz-neck', () => limbGeometry({
+        length: 0.48, r0: 0.14, r1: 0.08, bulge: 0.02, seg: 10, rings: 6
+    })), hide);
+    neck.position.set(0, 1.35, 0.62);
+    neck.rotation.x = 0.85;
     horse.add(neck);
 
-    const head = new THREE.Mesh(geo('naz-head', () => warp(new THREE.SphereGeometry(0.16, 10, 8), 23, 0.12)), hide);
-    head.scale.set(0.7, 0.72, 1.55);
-    head.position.set(0, 1.52, 1.08);
+    const head = new THREE.Mesh(geo('naz-head', () => canineHeadGeometry({ radius: 0.18, style: 'dog' })), hide);
+    head.position.set(0, 1.5, 1.02);
     horse.add(head);
     for (const sx of [-1, 1]) {
         const ear = new THREE.Mesh(geo('naz-ear', () => new THREE.ConeGeometry(0.04, 0.14, 5)), hide);
@@ -564,12 +560,7 @@ export function buildNazgul() {
         ear.rotation.x = -0.4;
         horse.add(ear);
     }
-    const snout = new THREE.Mesh(geo('naz-snout', () => new THREE.CylinderGeometry(0.05, 0.09, 0.22, 8)), hide);
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 1.46, 1.28);
-    horse.add(snout);
-
-    const tail = new THREE.Mesh(geo('naz-tail', () => new THREE.ConeGeometry(0.07, 0.7, 6)), black);
+    const tail = new THREE.Mesh(geo('naz-tail', () => tailGeometry({ length: 0.7, r0: 0.07, r1: 0.02, fluff: 0.04 })), black);
     tail.position.set(0, 0.85, -0.95);
     tail.rotation.x = 2.4;
     horse.add(tail);
@@ -582,14 +573,18 @@ export function buildNazgul() {
             const leg = new THREE.Group();
             leg.position.set(sx * 0.22, 0.72, z);
             horse.add(leg);
-            const upper = new THREE.Mesh(geo('naz-legu', () => new THREE.CapsuleGeometry(0.055, 0.32, 4, 6)), hide);
-            upper.position.y = -0.18;
+            const upper = new THREE.Mesh(geo('naz-legu', () => limbGeometry({
+                length: 0.34, r0: 0.07, r1: 0.045, bulge: 0.012, seg: 8, rings: 5
+            })), hide);
+            upper.position.y = 0;
             leg.add(upper);
             const lower = new THREE.Group();
             lower.position.y = -0.36;
             leg.add(lower);
-            const lowM = new THREE.Mesh(geo('naz-legl', () => new THREE.CapsuleGeometry(0.042, 0.28, 3, 6)), hide);
-            lowM.position.y = -0.14;
+            const lowM = new THREE.Mesh(geo('naz-legl', () => limbGeometry({
+                length: 0.28, r0: 0.048, r1: 0.032, bulge: 0.006, seg: 8, rings: 5
+            })), hide);
+            lowM.position.y = 0;
             lower.add(lowM);
             const hoof = new THREE.Mesh(geo('naz-hoof', () => new THREE.SphereGeometry(0.055, 6, 5)), std(0x080808, 0.5, 0.15));
             hoof.scale.set(1.1, 0.55, 1.2);

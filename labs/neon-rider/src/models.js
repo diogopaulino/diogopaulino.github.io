@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './textures.js';
 import { pick } from './utils.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);
@@ -169,19 +170,64 @@ export function createBike(mats) {
     fairing.castShadow = true;
     lean.add(fairing);
 
-    lean.add(mesh(CAP, paint, 0.55, 0.22, 0.55, 0, 0.95, 0.35));
-    lean.add(mesh(CAP, mats.chrome, 0.38, 0.14, 0.55, 0, 0.88, -0.55));
+    const nosePts = [
+        new THREE.Vector2(0.04, 0),
+        new THREE.Vector2(0.16, 0.12),
+        new THREE.Vector2(0.2, 0.28),
+        new THREE.Vector2(0.1, 0.42)
+    ];
+    const noseGeo = new THREE.LatheGeometry(nosePts, 20);
+    noseGeo.rotateX(Math.PI / 2);
+    const nose = new THREE.Mesh(noseGeo, paint);
+    nose.position.set(0, 0.9, 0.55);
+    nose.castShadow = true;
+    lean.add(nose);
 
-    const tank = mesh(SPH, paint, 0.38, 0.22, 0.55, 0, 0.98, 0.15);
+    const tailCowl = new THREE.LatheGeometry([
+        new THREE.Vector2(0.05, 0),
+        new THREE.Vector2(0.16, 0.18),
+        new THREE.Vector2(0.12, 0.42),
+        new THREE.Vector2(0.04, 0.55)
+    ], 16);
+    tailCowl.rotateX(-Math.PI / 2);
+    const cowl = new THREE.Mesh(tailCowl, mats.chrome);
+    cowl.position.set(0, 0.84, -0.72);
+    cowl.castShadow = true;
+    lean.add(cowl);
+
+    const tankPts = [
+        new THREE.Vector2(0.02, -0.22),
+        new THREE.Vector2(0.16, -0.08),
+        new THREE.Vector2(0.2, 0.08),
+        new THREE.Vector2(0.12, 0.2),
+        new THREE.Vector2(0.03, 0.26)
+    ];
+    const tankGeo = new THREE.LatheGeometry(tankPts, 22);
+    tankGeo.rotateZ(-Math.PI / 2);
+    tankGeo.scale(1.15, 0.72, 0.85);
+    const tank = new THREE.Mesh(tankGeo, paint);
+    tank.position.set(0, 0.98, 0.12);
+    tank.castShadow = true;
     lean.add(tank);
 
-    const seat = mesh(CAP, new THREE.MeshPhysicalMaterial({
+    const seatMat = new THREE.MeshPhysicalMaterial({
         color: 0x1a0c14,
         roughness: 0.55,
         metalness: 0.08,
         clearcoat: 0.25,
         clearcoatRoughness: 0.4
-    }), 0.38, 0.08, 0.42, 0, 0.86, -0.42);
+    });
+    const seatGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.28),
+        new THREE.Vector2(0.14, -0.08),
+        new THREE.Vector2(0.13, 0.12),
+        new THREE.Vector2(0.05, 0.28)
+    ], 16);
+    seatGeo.rotateZ(-Math.PI / 2);
+    seatGeo.scale(1, 0.55, 0.7);
+    const seat = new THREE.Mesh(seatGeo, seatMat);
+    seat.position.set(0, 0.9, -0.38);
+    seat.castShadow = true;
     lean.add(seat);
 
     const fork = mesh(CYL, mats.chrome, 0.035, 0.55, 0.035, 0.16, 0.7, 0.72);
@@ -230,12 +276,40 @@ export function createBike(mats) {
     }
 
     const rider = new THREE.Group();
-    rider.add(mesh(CAP, paint, 0.32, 0.28, 0.28, 0, 1.22, -0.18));
-    const helmet = mesh(SPH, mats.chrome, 0.18, 0.16, 0.18, 0, 1.52, -0.02);
+    const suit = new THREE.MeshPhysicalMaterial({
+        color: 0x140818,
+        roughness: 0.45,
+        metalness: 0.15,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.3
+    });
+    const chest = new THREE.Mesh(torsoGeometry({ height: 0.38, girth: 0.15, style: 'human', seg: 14 }), suit);
+    chest.position.set(0, 1.05, -0.16);
+    chest.rotation.x = 0.72;
+    chest.castShadow = true;
+    rider.add(chest);
+    const helmet = new THREE.Mesh(headGeometry(0.15, 'human'), mats.chrome);
+    helmet.position.set(0, 1.48, 0.02);
+    helmet.rotation.x = 0.35;
+    helmet.castShadow = true;
     rider.add(helmet);
-    rider.add(mesh(BOX, mats.glass, 0.16, 0.08, 0.04, 0, 1.52, 0.14));
-    rider.add(mesh(CAP, paint, 0.1, 0.1, 0.38, 0.22, 1.18, 0.22));
-    rider.add(mesh(CAP, paint, 0.1, 0.1, 0.38, -0.22, 1.18, 0.22));
+    const visor = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
+        mats.glass
+    );
+    visor.position.set(0, 1.5, 0.06);
+    visor.rotation.x = 1.15;
+    rider.add(visor);
+    const armGeo = limbGeometry({ length: 0.36, r0: 0.045, r1: 0.032, bulge: 0.01, seg: 10, rings: 8 });
+    const armL = new THREE.Mesh(armGeo, suit);
+    armL.position.set(0.16, 1.32, 0.02);
+    armL.rotation.x = 1.15;
+    armL.rotation.z = -0.35;
+    const armR = armL.clone();
+    armR.position.x = -0.16;
+    armR.rotation.z = 0.35;
+    armL.castShadow = armR.castShadow = true;
+    rider.add(armL, armR);
     lean.add(rider);
 
     root.userData = { lean, wheels, glow, paint, head, tail };
@@ -345,12 +419,28 @@ export function createCassette(mats) {
 
 export function createPalm(mats) {
     const g = new THREE.Group();
-    const trunk = mesh(CYL, mats.trunk, 0.16, 4.4, 0.16, 0, 2.2, 0);
+    const trunkPts = [];
+    for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        trunkPts.push(new THREE.Vector2(0.2 - t * 0.08 + Math.sin(t * 9) * 0.015, t * 4.2));
+    }
+    const trunk = new THREE.Mesh(new THREE.LatheGeometry(trunkPts, 10), mats.trunk);
+    trunk.castShadow = true;
     g.add(trunk);
-    for (let i = 0; i < 9; i++) {
-        const leaf = mesh(CONE, mats.palm, 1.1, 2.2, 0.18, 0, 4.3, 0);
-        leaf.rotation.z = 0.85;
-        leaf.rotation.y = (i / 9) * Math.PI * 2;
+    const frond = new THREE.Shape();
+    frond.moveTo(0, 0);
+    frond.quadraticCurveTo(0.35, 0.7, 0.08, 1.9);
+    frond.quadraticCurveTo(-0.05, 1.1, -0.22, 0.15);
+    frond.quadraticCurveTo(-0.08, 0.02, 0, 0);
+    const frondGeo = new THREE.ExtrudeGeometry(frond, {
+        depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1, curveSegments: 6
+    });
+    for (let i = 0; i < 8; i++) {
+        const leaf = new THREE.Mesh(frondGeo, mats.palm);
+        leaf.position.y = 4.15;
+        leaf.rotation.z = 0.95;
+        leaf.rotation.y = (i / 8) * Math.PI * 2;
+        leaf.castShadow = true;
         g.add(leaf);
     }
     return g;

@@ -4,10 +4,11 @@
  */
 
 import { makeCtx, addFace, tagSlot, glass } from './kit.js';
+import { headGeometry } from '../../shared/realism.js';
 
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
-    if (skull) ctx.add.sphere(ctx.L.HEAD_R, ctx.mats.skin);
+    if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
     fn(ctx);
     return tagSlot(ctx.group, 'head');
 }

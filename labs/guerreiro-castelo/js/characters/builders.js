@@ -5,7 +5,7 @@
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
-import { createMuscle, createSkull, createHand } from '../../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createHand, createTorso } from '../../../shared/realism-bjs.js';
 
 /** PBRMaterial com albedo, roughness e metallic sensatos. */
 function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
@@ -615,9 +615,9 @@ export function buildTeco(scene) {
     const hips = new BABYLON.TransformNode('hips', scene);
     hips.parent = root;
 
-    const body = BABYLON.MeshBuilder.CreateSphere('tecoBody', { diameter: 0.24, segments: 16 }, scene);
-    body.scaling.set(0.9, 1.15, 0.8);
-    body.position.y = 0.22;
+    const body = createTorso(scene, 'tecoBody', { height: 0.26, girth: 0.1, style: 'child' });
+    body.scaling.set(0.95, 1, 0.85);
+    body.position.y = 0.08;
     body.material = furMat;
     body.parent = hips;
 
@@ -629,7 +629,7 @@ export function buildTeco(scene) {
     head.position.y = 0.16;
     head.parent = chest;
 
-    const skull = BABYLON.MeshBuilder.CreateSphere('tecoSkull', { diameter: 0.18, segments: 16 }, scene);
+    const skull = createSkull(scene, 'tecoSkull', { diameter: 0.18, style: 'child', segments: 14 });
     skull.material = furMat;
     skull.parent = head;
 
@@ -660,7 +660,9 @@ export function buildTeco(scene) {
     armR.parent = chest;
 
     for (const arm of [armL, armR]) {
-        const limb = BABYLON.MeshBuilder.CreateCapsule('tecoArmMesh', { radius: 0.022, height: 0.22, tessellation: 12 }, scene);
+        const limb = createMuscle(scene, 'tecoArmMesh', {
+            length: 0.18, r0: 0.028, r1: 0.018, bulge: 0.006, pinch: 0.2, tessellation: 8, rings: 5
+        });
         limb.position.y = -0.1;
         limb.material = furMat;
         limb.parent = arm;
@@ -680,7 +682,9 @@ export function buildTeco(scene) {
     legR.parent = hips;
 
     for (const leg of [legL, legR]) {
-        const limb = BABYLON.MeshBuilder.CreateCapsule('tecoLegMesh', { radius: 0.025, height: 0.18, tessellation: 12 }, scene);
+        const limb = createMuscle(scene, 'tecoLegMesh', {
+            length: 0.16, r0: 0.03, r1: 0.02, bulge: 0.006, pinch: 0.25, tessellation: 8, rings: 5
+        });
         limb.position.y = -0.08;
         limb.material = furMat;
         limb.parent = leg;
@@ -756,17 +760,17 @@ export function buildTiger(scene) {
     const whiteMat = pbr('tigerWhiteMat', scene, new BABYLON.Color3(0.95, 0.92, 0.85), 0.82, 0.02);
     const blackMat = pbr('tigerBlackMat', scene, new BABYLON.Color3(0.1, 0.08, 0.06), 0.75, 0.04);
 
-    const body = BABYLON.MeshBuilder.CreateCapsule('tigerBody', {
-        radius: 0.38, height: 1.5, tessellation: 18, subdivisions: 6
-    }, scene);
+    const body = createMuscle(scene, 'tigerBody', {
+        length: 1.25, r0: 0.42, r1: 0.32, bulge: 0.1, bulgeAt: 0.4, pinch: 0.12, tessellation: 14, rings: 8
+    });
     body.rotation.z = Math.PI / 2;
     body.position.set(0, 0.55, 0);
     body.material = orangeMat;
     body.parent = root;
 
-    const belly = BABYLON.MeshBuilder.CreateCapsule('tigerBelly', {
-        radius: 0.22, height: 1.1, tessellation: 14, subdivisions: 4
-    }, scene);
+    const belly = createMuscle(scene, 'tigerBelly', {
+        length: 0.9, r0: 0.24, r1: 0.18, bulge: 0.04, pinch: 0.05, tessellation: 12, rings: 6
+    });
     belly.rotation.z = Math.PI / 2;
     belly.position.set(0, 0.38, 0.05);
     belly.material = whiteMat;
@@ -776,8 +780,9 @@ export function buildTiger(scene) {
     head.position.set(0.85, 0.62, 0);
     head.parent = root;
 
-    const skull = BABYLON.MeshBuilder.CreateSphere('tigerSkull', { diameter: 0.56, segments: 18 }, scene);
-    skull.scaling.set(1.15, 0.9, 0.85);
+    const skull = createSkull(scene, 'tigerSkull', { diameter: 0.5, style: 'cat', segments: 16 });
+    skull.rotation.y = -Math.PI / 2;
+    skull.scaling.set(1.05, 0.95, 1.15);
     skull.material = orangeMat;
     skull.parent = head;
 
@@ -809,7 +814,9 @@ export function buildTiger(scene) {
 
     // 4 Patas
     for (const [x, z] of [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]]) {
-        const leg = BABYLON.MeshBuilder.CreateCapsule('tigerLeg', { radius: 0.08, height: 0.45, tessellation: 12 }, scene);
+        const leg = createMuscle(scene, 'tigerLeg', {
+            length: 0.36, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0.2, tessellation: 10, rings: 6
+        });
         leg.position.set(x, 0.22, z);
         leg.material = orangeMat;
         leg.parent = root;

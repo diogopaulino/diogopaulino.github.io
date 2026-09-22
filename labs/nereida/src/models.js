@@ -43,6 +43,58 @@ function std(color, extra = {}) {
     });
 }
 
+/** Nadadeira peitoral no plano XY, comprimento em +X. */
+function pectoralGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0.22);
+    s.quadraticCurveTo(0.9, 0.62, 2.15, 0.08);
+    s.quadraticCurveTo(1.35, -0.42, 0.25, -0.72);
+    s.quadraticCurveTo(-0.05, -0.1, 0, 0.22);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.14,
+        bevelEnabled: true,
+        bevelThickness: 0.04,
+        bevelSize: 0.05,
+        bevelSegments: 2,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.07);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Lobo caudal, plano XY, ponta em +X. */
+function flukeGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0.12);
+    s.quadraticCurveTo(0.85, 0.72, 2.05, 0.95);
+    s.quadraticCurveTo(2.45, 0.35, 1.9, -0.05);
+    s.quadraticCurveTo(0.9, -0.28, 0, -0.16);
+    s.lineTo(0, 0.12);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.1,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.04,
+        bevelSegments: 2,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.05);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tentáculo pendurado em −Y, mais grosso na base. */
+function tentacleGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const wave = Math.sin(t * Math.PI * 2.4) * 0.008 * (1 - t);
+        pts.push(new THREE.Vector2(0.05 * (1 - t * 0.82) + wave, -t * 2.15));
+    }
+    return new THREE.LatheGeometry(pts, 8);
+}
+
 function mesh(geometry, material, { pos, scale, rot, cast = true, receive = true } = {}) {
     const m = new THREE.Mesh(geometry, material);
     if (pos) m.position.set(...pos);
@@ -195,38 +247,65 @@ export function createWhale() {
         clearcoatRoughness: 0.12
     });
     const eye = phys(0x081018, { roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 });
+    const finMat = skin.clone();
+    finMat.side = THREE.DoubleSide;
 
-    g.add(mesh(geo.sphereHi, skin, { scale: [7.4, 2.15, 2.45] }));
-    g.add(mesh(geo.sphere, belly, { pos: [0.4, -0.85, 0], scale: [5.6, 1.15, 1.7], cast: false }));
-    g.add(mesh(geo.sphereHi, skin, { pos: [6.1, 0.15, 0], scale: [3.4, 1.85, 2.05] }));
-    g.add(mesh(geo.sphere, eye, { pos: [7.6, 0.55, 1.15], scale: [0.18, 0.18, 0.18], cast: false }));
-    g.add(mesh(geo.sphere, eye, { pos: [7.6, 0.55, -1.15], scale: [0.18, 0.18, 0.18], cast: false }));
+    // Casco de baleia: lathe do rostro (y=0) ao pedúnculo, deitado no +X.
+    // Raio(t) cresce na cabeça, engrossa no dorso e afina antes da cauda.
+    const hullPts = [
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.55, 0.45),
+        new THREE.Vector2(1.15, 1.15),
+        new THREE.Vector2(1.7, 2.2),
+        new THREE.Vector2(2.15, 4.2),
+        new THREE.Vector2(2.35, 7.0),
+        new THREE.Vector2(2.05, 9.8),
+        new THREE.Vector2(1.25, 12.2),
+        new THREE.Vector2(0.55, 14.0),
+        new THREE.Vector2(0.16, 15.3)
+    ];
+    const hullGeo = new THREE.LatheGeometry(hullPts, 40);
+    hullGeo.rotateZ(-Math.PI / 2);
+    hullGeo.scale(-1, 0.9, 1.06);
+    hullGeo.translate(7.65, 0.15, 0);
+    hullGeo.computeVertexNormals();
+    g.add(mesh(hullGeo, skin));
+    const bellyGeo = hullGeo.clone();
+    g.add(mesh(bellyGeo, belly, { pos: [0.15, -0.72, 0], scale: [0.78, 0.38, 0.62], cast: false }));
+
+    g.add(mesh(geo.sphere, eye, { pos: [6.55, 0.72, 0.95], scale: [0.16, 0.16, 0.16], cast: false }));
+    g.add(mesh(geo.sphere, eye, { pos: [6.55, 0.72, -0.95], scale: [0.16, 0.16, 0.16], cast: false }));
 
     for (let i = 0; i < 6; i++) {
-        const x = -2.4 + i * 1.55;
-        g.add(mesh(geo.sphere, glow, { pos: [x, 0.35, 2.15], scale: [1.15, 0.07, 0.07], cast: false }));
-        g.add(mesh(geo.sphere, glow, { pos: [x, 0.35, -2.15], scale: [1.15, 0.07, 0.07], cast: false }));
+        const x = -2.2 + i * 1.45;
+        g.add(mesh(geo.sphere, glow, { pos: [x, 0.55, 2.05], scale: [0.85, 0.05, 0.05], cast: false }));
+        g.add(mesh(geo.sphere, glow, { pos: [x, 0.55, -2.05], scale: [0.85, 0.05, 0.05], cast: false }));
     }
 
-    const pecL = mesh(geo.sphere, skin, { pos: [1.6, -0.4, 2.5], scale: [2.1, 0.16, 1.15], rot: [0.15, 0.45, 0.2] });
-    const pecR = mesh(geo.sphere, skin, { pos: [1.6, -0.4, -2.5], scale: [2.1, 0.16, 1.15], rot: [-0.15, -0.45, -0.2] });
+    const pecGeo = pectoralGeometry();
+    const pecL = new THREE.Group();
+    pecL.position.set(1.5, -0.45, 1.15);
+    pecL.add(mesh(pecGeo, finMat, { rot: [0, Math.PI / 2, 0] }));
+    const pecR = new THREE.Group();
+    pecR.position.set(1.5, -0.45, -1.15);
+    pecR.add(mesh(pecGeo, finMat, { rot: [0, -Math.PI / 2, 0], scale: [1, 1, -1] }));
     g.add(pecL, pecR);
 
     const tail = new THREE.Group();
-    tail.position.set(-7.2, 0.15, 0);
+    tail.position.set(-7.15, 0.1, 0);
     const tailPts = [
-        new THREE.Vector2(0.9, 0),
-        new THREE.Vector2(0.75, -1.2),
-        new THREE.Vector2(0.45, -2.6),
-        new THREE.Vector2(0.22, -4.0)
+        new THREE.Vector2(0.55, 0),
+        new THREE.Vector2(0.42, -1.1),
+        new THREE.Vector2(0.28, -2.3),
+        new THREE.Vector2(0.12, -3.4)
     ];
-    const geoTail = new THREE.LatheGeometry(tailPts, 28);
+    const geoTail = new THREE.LatheGeometry(tailPts, 24);
     geoTail.rotateZ(Math.PI / 2);
-    tail.add(mesh(geoTail, skin, { pos: [-1.6, 0, 0], scale: [1, 0.7, 0.7] }));
-    const flukeL = mesh(geo.sphere, skin, { pos: [-4.3, 0.05, 1.55], scale: [2.4, 0.14, 1.55], rot: [0, 0.55, 0] });
-    const flukeR = mesh(geo.sphere, skin, { pos: [-4.3, 0.05, -1.55], scale: [2.4, 0.14, 1.55], rot: [0, -0.55, 0] });
-    tail.add(flukeL, flukeR);
-    tail.add(mesh(geo.sphere, glow, { pos: [-4.1, 0.12, 0], scale: [0.9, 0.06, 0.06], cast: false }));
+    tail.add(mesh(geoTail, skin, { pos: [-0.4, 0, 0] }));
+    const fluke = flukeGeometry();
+    tail.add(mesh(fluke, finMat, { pos: [-3.5, 0.02, 0.15], rot: [0, 0.15, 0] }));
+    tail.add(mesh(fluke, finMat, { pos: [-3.5, 0.02, -0.15], rot: [0, -0.15, Math.PI], scale: [1, 1, -1] }));
+    tail.add(mesh(geo.sphere, glow, { pos: [-3.3, 0.1, 0], scale: [0.55, 0.05, 0.05], cast: false }));
     g.add(tail);
 
     g.userData.tail = tail;
@@ -267,14 +346,22 @@ export function createJelly(tint = 0x88f0ff) {
         clearcoatRoughness: 0.2,
         depthWrite: false
     });
-    const bell = mesh(geo.sphereHi, bellMat, { scale: [1, 0.58, 1], cast: false, receive: false });
+    const bellPts = [];
+    for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const a = t * Math.PI * 0.55;
+        bellPts.push(new THREE.Vector2(Math.sin(a) * 0.98, Math.cos(a) * 0.72));
+    }
+    bellPts.push(new THREE.Vector2(1.08, 0.08));
+    bellPts.push(new THREE.Vector2(0.9, -0.08));
+    const bell = mesh(new THREE.LatheGeometry(bellPts, 28), bellMat, { cast: false, receive: false });
     g.add(bell);
+    const tentGeo = tentacleGeometry();
     const tentacles = [];
     for (let i = 0; i < 9; i++) {
         const a = (i / 9) * Math.PI * 2;
-        const t = mesh(geo.cyl, tentMat, {
-            pos: [Math.cos(a) * 0.42, -1.15, Math.sin(a) * 0.42],
-            scale: [0.032, 2.1, 0.032],
+        const t = mesh(tentGeo, tentMat, {
+            pos: [Math.cos(a) * 0.38, -0.05, Math.sin(a) * 0.38],
             cast: false,
             receive: false
         });
@@ -300,10 +387,24 @@ export function createCoral(kind, color) {
         normalScale: new THREE.Vector2(0.7, 0.7)
     });
     if (kind === 'fan') {
-        const fan = mesh(geo.sphere, mat, { scale: [1.6, 1.5, 0.12] });
+        const fanShape = new THREE.Shape();
+        fanShape.moveTo(0, 0);
+        fanShape.quadraticCurveTo(0.35, 0.9, 0, 1.7);
+        fanShape.quadraticCurveTo(-0.9, 1.15, -1.35, 0.35);
+        fanShape.quadraticCurveTo(-0.7, -0.15, 0, 0);
+        const fanGeo = new THREE.ExtrudeGeometry(fanShape, {
+            depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.04, bevelSegments: 2, curveSegments: 8
+        });
+        fanGeo.translate(0.4, -0.7, -0.04);
+        const fan = mesh(fanGeo, mat);
         fan.rotation.y = Math.random() * Math.PI;
         g.add(fan);
-        g.add(mesh(geo.cyl, mat, { pos: [0, -1.1, 0], scale: [0.12, 1.1, 0.12] }));
+        const stemPts = [
+            new THREE.Vector2(0.14, 0),
+            new THREE.Vector2(0.1, 0.45),
+            new THREE.Vector2(0.06, 0.9)
+        ];
+        g.add(mesh(new THREE.LatheGeometry(stemPts, 10), mat, { pos: [0, -1.05, 0] }));
     } else if (kind === 'brain') {
         g.add(mesh(geo.torus, mat, { scale: [1.1, 1.1, 1.1], rot: [1.1, 0, 0] }));
         g.add(mesh(geo.icosaHi, mat, { scale: [0.85, 0.7, 0.85] }));
@@ -377,13 +478,20 @@ export function createAnemone(color) {
         transparent: true,
         opacity: 0.88
     });
-    g.add(mesh(geo.sphere, stem, { scale: [0.45, 0.28, 0.45] }));
+    const basePts = [
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.42, 0.08),
+        new THREE.Vector2(0.38, 0.22),
+        new THREE.Vector2(0.18, 0.32)
+    ];
+    g.add(mesh(new THREE.LatheGeometry(basePts, 16), stem));
+    const armGeo = tentacleGeometry();
     for (let i = 0; i < 14; i++) {
         const a = (i / 14) * Math.PI * 2;
-        const arm = mesh(geo.cyl, stem, {
-            pos: [Math.cos(a) * 0.15, 0.55, Math.sin(a) * 0.15],
-            scale: [0.035, 0.9, 0.035],
-            rot: [0.45, a, 0],
+        const arm = mesh(armGeo, stem, {
+            pos: [Math.cos(a) * 0.16, 0.22, Math.sin(a) * 0.16],
+            scale: [0.7, 0.42, 0.7],
+            rot: [0.7, a, 0],
             cast: false
         });
         g.add(arm);

@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { LAYOUT } from './config.js';
+import { handGroup, limbGeometry, shoeMesh, torsoGeometry } from '../../shared/realism.js';
 
 export function vinyl(color, extra = {}) {
     return new THREE.MeshPhysicalMaterial({
@@ -161,21 +162,31 @@ export function clothedBody(ctx, opts = {}) {
     const bootC = opts.boot ?? mats.dark;
     const neckC = opts.neck ?? mats.skin;
 
-    add.cyl(0.08, 0.09, 0.12, neckC, [0, L.NECK_Y - 0.02, 0]);
-    add.box(0.52, 0.58, 0.36, torsoC, [0, L.CHEST_Y, 0], null, null, 0.08);
-    add.box(0.46, 0.22, 0.34, pelvisC, [0, L.HIP_Y, 0], null, null, 0.06);
+    add.cyl(0.07, 0.09, 0.1, neckC, [0, L.NECK_Y - 0.04, 0]);
+    add.mesh(torsoGeometry({ height: 0.72, girth: 0.24, style: 'human', seg: 16 }), torsoC, [0, 0.42, 0]);
+    add.mesh(torsoGeometry({ height: 0.22, girth: 0.2, style: 'human', seg: 12 }), pelvisC, [0, 0.36, 0], null, [1.05, 1, 0.9]);
 
-    // pernas
-    add.cap(0.09, 0.28, legC, [-0.12, 0.28, 0]);
-    add.cap(0.09, 0.28, legC, [0.12, 0.28, 0]);
-    add.box(0.16, 0.12, 0.24, bootC, [-0.12, 0.06, 0.02], null, null, 0.04);
-    add.box(0.16, 0.12, 0.24, bootC, [0.12, 0.06, 0.02], null, null, 0.04);
+    const legGeo = limbGeometry({ length: 0.44, r0: 0.1, r1: 0.062, bulge: 0.02, seg: 12, rings: 8 });
+    add.mesh(legGeo, legC, [-0.12, 0.5, 0]);
+    add.mesh(legGeo, legC, [0.12, 0.5, 0]);
+    for (const sx of [-1, 1]) {
+        const boot = shoeMesh(bootC, { length: 0.22, width: 0.1, height: 0.07 });
+        boot.position.set(sx * 0.12, 0.02, 0.04);
+        boot.rotation.y = -Math.PI / 2;
+        group.add(boot);
+    }
 
-    // braços
-    const armL = add.cap(0.075, 0.36, armC, [-L.SHOULDER_X, 0.82, 0.02], [0, 0, 0.28]);
-    const armR = add.cap(0.075, 0.36, armC, [L.SHOULDER_X, 0.82, 0.02], [0, 0, -0.28]);
-    add.sphere(0.09, opts.hand ?? mats.skin, [-0.46, 0.58, 0.06]);
-    add.sphere(0.09, opts.hand ?? mats.skin, [0.46, 0.58, 0.06]);
+    const armGeo = limbGeometry({ length: 0.4, r0: 0.072, r1: 0.048, bulge: 0.016, seg: 12, rings: 8 });
+    const armL = add.mesh(armGeo, armC, [-L.SHOULDER_X, 1.02, 0.02], [0.15, 0, 0.42]);
+    const armR = add.mesh(armGeo, armC, [L.SHOULDER_X, 1.02, 0.02], [0.15, 0, -0.42]);
+    const handMat = (opts.hand ?? mats.skin).clone();
+    handMat.side = THREE.DoubleSide;
+    const handL = handGroup(handMat, { scale: 1.15 });
+    handL.position.set(-0.5, 0.62, 0.08);
+    const handR = handGroup(handMat, { scale: 1.15 });
+    handR.position.set(0.5, 0.62, 0.08);
+    handR.scale.x = -1;
+    group.add(handL, handR);
 
     group.userData.arms = [armL, armR];
     group.userData.wings = opts.wings || null;

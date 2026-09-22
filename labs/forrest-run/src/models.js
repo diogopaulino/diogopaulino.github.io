@@ -539,9 +539,9 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const root = new BABYLON.TransformNode('cow', scene);
     const hideMat = pbrMat(scene, 'cowHide', 0xf2eee6, 0.85, 0.02);
     const spotMat = pbrMat(scene, 'cowSpot', 0x222224, 0.85, 0.02);
-    const body = BABYLON.MeshBuilder.CreateCapsule('cowBody', {
-        radius: 0.42, height: 1.7, tessellation: 16, subdivisions: 6
-    }, scene);
+    const body = createMuscle(scene, 'cowBody', {
+        length: 1.35, r0: 0.5, r1: 0.36, bulge: 0.14, bulgeAt: 0.42, pinch: 0.12, tessellation: 14, rings: 8
+    });
     body.rotation.z = Math.PI / 2;
     body.position.y = 0.95;
     body.material = hideMat;
@@ -550,20 +550,21 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const spot = BABYLON.MeshBuilder.CreateSphere('cowSpotMesh', {
         diameterX: 0.7, diameterY: 0.5, diameterZ: 0.55, segments: 12
     }, scene);
-    spot.position.set(0, 1.05, 0.2);
+    spot.position.set(0, 1.15, 0.15);
     spot.material = spotMat;
     spot.parent = root;
-    const head = BABYLON.MeshBuilder.CreateSphere('cowHead', {
-        diameterX: 0.44, diameterY: 0.48, diameterZ: 0.65, segments: 14
-    }, scene);
-    head.position.set(0, 1.25, -1.05);
+    const head = createSkull(scene, 'cowHead', { diameter: 0.48, style: 'dog', segments: 16, front: -1 });
+    head.scaling.set(0.92, 0.95, 1.2);
+    head.position.set(0, 1.22, -1.05);
     head.material = hideMat;
     head.parent = root;
     registerShadows(head, shadowGenerator);
-    for (const z of [-0.6, 0.6]) {
-        for (const x of [-0.34, 0.34]) {
-            const leg = BABYLON.MeshBuilder.CreateCapsule('cowLeg', { height: 0.65, radius: 0.06, tessellation: 12 }, scene);
-            leg.position.set(x, 0.32, z);
+    for (const z of [-0.55, 0.55]) {
+        for (const x of [-0.28, 0.28]) {
+            const leg = createMuscle(scene, 'cowLeg', {
+                length: 0.52, r0: 0.09, r1: 0.055, bulge: 0.02, pinch: 0.25, tessellation: 10, rings: 6
+            });
+            leg.position.set(x, 0.36, z);
             leg.material = hideMat;
             leg.parent = root;
             registerShadows(leg, shadowGenerator);

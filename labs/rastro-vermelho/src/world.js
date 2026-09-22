@@ -1,6 +1,7 @@
 /** Streamed scenery shares geometry/materials. Terrain, collision and hooves sample
  * the same height function; vegetation is deterministic when revisiting a chunk. */
 import { hash, terrainHeight, roadDistance, roadX, LANDMARKS, clamp, lerp } from './simulation.js';
+import { createMuscle, createSkull, createTorso } from '../../shared/realism-bjs.js';
 const B = window.BABYLON;
 export const CHUNK_SIZE = 96;
 export const PROFILES = {
@@ -34,10 +35,15 @@ function capsule(scene, parent, name, height, radius, pos, mat, rot = null, scal
 }
 export function createPerson(scene, palette, mounted = false) {
     const root = new B.TransformNode(mounted ? 'cavaleiro' : 'fora-da-lei', scene);
-    // Torso em cápsula (casaco western) + cabeça esférica
-    const torso = capsule(scene, root, 'casaco', 0.72, 0.28, [0, 1.2, 0], palette.coat, null, [1.05, 1, 0.85]);
-    const head = B.MeshBuilder.CreateSphere('rosto', { diameter: 0.32, segments: 16 }, scene);
-    head.parent = root; head.position.set(0, 1.78, 0.02); head.scaling.set(0.95, 1.1, 0.95);
+    const torso = createTorso(scene, 'casaco', { height: 0.7, girth: 0.26, style: 'human' });
+    torso.parent = root;
+    torso.position.set(0, 0.86, 0);
+    torso.scaling.set(1.05, 1, 0.85);
+    torso.material = palette.coat;
+    torso.isPickable = false;
+    torso.receiveShadows = true;
+    const head = createSkull(scene, 'rosto', { diameter: 0.32, style: 'human', segments: 16 });
+    head.parent = root; head.position.set(0, 1.72, 0.02); head.scaling.set(0.95, 1.08, 0.95);
     head.material = palette.skin; head.isPickable = false;
     const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 28 }, scene);
     brim.parent = root; brim.position.y = 1.97; brim.material = palette.hat;
@@ -50,16 +56,32 @@ export function createPerson(scene, palette, mounted = false) {
     const belt = B.MeshBuilder.CreateTorus('cinturão', { diameter: 0.48, thickness: 0.04, tessellation: 22 }, scene);
     belt.parent = root; belt.rotation.x = Math.PI / 2; belt.position.y = 0.88; belt.material = palette.hat;
     for (const side of [-1, 1]) {
-        const thighH = mounted ? 0.55 : 0.7;
-        const leg = capsule(scene, root, 'calça', thighH, 0.1,
-            [side * (mounted ? .2 : .14), mounted ? .48 : .5, mounted ? -.08 : 0],
-            palette.pants, mounted ? [0.35, 0, side * 0.12] : [0, 0, side * -0.04]);
-        const boot = capsule(scene, root, 'bota', 0.28, 0.09,
-            [side * (mounted ? .22 : .14), 0.12, 0.06],
-            palette.hat, [Math.PI / 2, 0, 0], [1, 0.85, 1.25]);
-        const arm = capsule(scene, root, 'manga', 0.55, 0.09,
-            [side * .36, 1.2, mounted ? .12 : 0],
-            palette.coat, mounted ? [-0.85, 0, side * 0.12] : [0.15, 0, side * 0.18]);
+        const thighH = mounted ? 0.42 : 0.55;
+        const leg = createMuscle(scene, 'calça', {
+            length: thighH, r0: 0.12, r1: 0.07, bulge: 0.03, pinch: 0.3, tessellation: 10, rings: 6
+        });
+        leg.parent = root;
+        leg.position.set(side * (mounted ? .2 : .14), mounted ? .48 : .5, mounted ? -.08 : 0);
+        leg.material = palette.pants;
+        leg.isPickable = false;
+        if (mounted) leg.rotation.set(0.35, 0, side * 0.12);
+        else leg.rotation.set(0, 0, side * -0.04);
+        const boot = createMuscle(scene, 'bota', {
+            length: 0.22, r0: 0.08, r1: 0.1, bulge: 0.02, pinch: 0, tessellation: 8, rings: 5
+        });
+        boot.parent = root;
+        boot.position.set(side * (mounted ? .22 : .14), 0.14, 0.08);
+        boot.rotation.x = Math.PI / 2;
+        boot.material = palette.hat;
+        boot.isPickable = false;
+        const arm = createMuscle(scene, 'manga', {
+            length: 0.46, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0.25, tessellation: 10, rings: 6
+        });
+        arm.parent = root;
+        arm.position.set(side * .36, 1.28, mounted ? .12 : 0);
+        arm.material = palette.coat;
+        arm.isPickable = false;
+        arm.rotation.set(mounted ? -0.85 : 0.15, 0, side * (mounted ? 0.12 : 0.18));
         const hand = B.MeshBuilder.CreateSphere('mão', { diameter: 0.14, segments: 12 }, scene);
         hand.parent = root;
         hand.position.set(side * .34, mounted ? 1.0 : .88, mounted ? .38 : .02);
