@@ -41,6 +41,77 @@ function towerRoofGeometry(radius) {
 }
 
 /**
+ * Fuste centrado, como o cilindro antigo: topo no raio pedido, base 12% mais larga.
+ * Fiadas e pilastras nas diagonais, para não engolir janela nem estandarte.
+ */
+const towerShafts = new Map();
+function towerShaftGeometry(radius, height) {
+    const key = `${radius.toFixed(2)}x${height.toFixed(1)}`;
+    if (towerShafts.has(key)) return towerShafts.get(key);
+    const steps = 24;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = -height / 2 + t * height;
+        const batter = radius * (1.12 - t * 0.12);
+        const course = Math.sin(t * Math.PI * 10) > 0.7 ? radius * 0.035 : 0;
+        pts.push(new THREE.Vector2(batter + course, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ang = Math.atan2(z, x);
+        const r = Math.hypot(x, z) || 1;
+        const t = (y + height / 2) / height;
+        const q = -Math.cos(ang * 4);
+        const butt = q > 0.45 ? radius * 0.07 * (1.2 - t * 0.35) : 0;
+        const nr = r + butt;
+        pos.setXYZ(i, (x / r) * nr, y, (z / r) * nr);
+    }
+    g.computeVertexNormals();
+    towerShafts.set(key, g);
+    return g;
+}
+
+/** Cornija moldada, centrada, no lugar do anel cilíndrico de altura 0.9. */
+const towerLedges = new Map();
+function towerLedgeGeometry(radius) {
+    const key = radius.toFixed(2);
+    if (towerLedges.has(key)) return towerLedges.get(key);
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(radius * 1.02, -0.45),
+        new THREE.Vector2(radius * 1.16, -0.22),
+        new THREE.Vector2(radius * 1.32, 0.02),
+        new THREE.Vector2(radius * 1.18, 0.22),
+        new THREE.Vector2(radius * 1.06, 0.45)
+    ], 18);
+    g.computeVertexNormals();
+    towerLedges.set(key, g);
+    return g;
+}
+
+/** Ameia unitária centrada. A base alarga e o topo ganha um capitel. */
+const MERLON = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1, 2, 4, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = y + 0.5;
+        x *= 1 + (1 - t) * 0.14;
+        z *= 1 + (1 - t) * 0.08;
+        if (y > 0.15) y += (0.5 - Math.abs(x)) * 0.28;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Cais 12×3×26, centrado como a caixa antiga. Talude na base, fiadas,
  * pilastras na face longa e uma copeira na borda de cima.
  */
@@ -231,13 +302,13 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     const group = new THREE.Group();
     const stone = stoneMaterial(tint);
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.12, height, 14), stone);
+    const body = new THREE.Mesh(towerShaftGeometry(radius, height), stone);
     body.position.y = height / 2;
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
 
-    const ledge = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.2, radius * 1.1, 0.9, 14), stone);
+    const ledge = new THREE.Mesh(towerLedgeGeometry(radius), stone);
     ledge.position.y = height + 0.3;
     ledge.castShadow = true;
     group.add(ledge);
@@ -245,7 +316,8 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     const merlonCount = Math.max(8, Math.round(radius * 5));
     for (let i = 0; i < merlonCount; i++) {
         const a = (i / merlonCount) * Math.PI * 2;
-        const merlon = new THREE.Mesh(new THREE.BoxGeometry(radius * 0.42, 1.1, radius * 0.34), stone);
+        const merlon = new THREE.Mesh(MERLON, stone);
+        merlon.scale.set(radius * 0.42, 1.1, radius * 0.34);
         merlon.position.set(Math.cos(a) * radius * 1.06, height + 1.2, Math.sin(a) * radius * 1.06);
         merlon.rotation.y = -a;
         merlon.castShadow = true;
@@ -427,7 +499,8 @@ export function createCastle(scene) {
     // Ameias no topo da muralha.
     const merlons = Math.round(wallWidth / 3.2);
     for (let i = 0; i < merlons; i++) {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.8, 6.6), stone);
+        const m = new THREE.Mesh(MERLON, stone);
+        m.scale.set(1.7, 1.8, 6.6);
         m.position.set(-wallWidth / 2 + 1.6 + i * 3.2, 23, 0);
         m.castShadow = true;
         group.add(m);
