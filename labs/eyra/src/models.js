@@ -24,6 +24,39 @@ const geo = {
     icosa: new THREE.IcosahedronGeometry(1, 3)
 };
 
+/** Picos com costelas. Não reutiliza geo.cone — a crista da ira usa esse cone. */
+function ridgedPeak(seed) {
+    const g = new THREE.ConeGeometry(1, 1, 9, 6);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const ang = Math.atan2(z, x);
+        const down = 0.5 - y;
+        const ridge = 1
+            + Math.abs(Math.sin(ang * 3 + seed * 1.7)) * 0.28 * down
+            + Math.abs(Math.sin(ang * 7 + seed)) * 0.06 * down;
+        p.setXYZ(i, x * ridge, y + Math.sin(ang * 2 + seed) * 0.015 * down, z * ridge);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+const PEAKS = [0, 1.4, 2.6].map(ridgedPeak);
+
+const MOSS_CAP = geo.sphereLo.clone();
+{
+    const p = MOSS_CAP.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const n = 1 + Math.abs(Math.sin(x * 3.2 + z * 2.4)) * 0.12;
+        p.setXYZ(i, x * n, y < 0 ? y * 0.35 : y * n, z * n);
+    }
+    MOSS_CAP.computeVertexNormals();
+}
+
 export function std(color, {
     map = null,
     roughness = 0.72,
@@ -437,9 +470,10 @@ export function createMountain(rng, size = 1) {
     const g = new THREE.Group();
     const h = 18 * size;
     const r = 8 * size;
-    const rock = mesh(geo.cone, m.rock, { scale: [r, h, r * 0.92], pos: [0, h * 0.15, 0], rot: [0, rng() * 6, 0.08] });
-    const cap = mesh(geo.sphere, m.moss, { scale: [r * 0.92, r * 0.38, r * 0.92], pos: [0, h * 0.52, 0] });
-    const hang = mesh(geo.cone, m.rock, {
+    const peak = PEAKS[Math.floor(rng() * PEAKS.length)];
+    const rock = mesh(peak, m.rock, { scale: [r, h, r * 0.92], pos: [0, h * 0.15, 0], rot: [0, rng() * 6, 0.08] });
+    const cap = mesh(MOSS_CAP, m.moss, { scale: [r * 0.92, r * 0.38, r * 0.92], pos: [0, h * 0.52, 0] });
+    const hang = mesh(PEAKS[(Math.floor(rng() * PEAKS.length) + 1) % PEAKS.length], m.rock, {
         scale: [r * 0.72, h * 0.85, r * 0.68],
         pos: [0, -h * 0.28, 0],
         rot: [Math.PI, rng() * 2, 0.12]

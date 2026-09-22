@@ -525,9 +525,46 @@ export function createCloud() {
     return g;
 }
 
+/**
+ * Casco em perfil: proa em +X, quilha mais estreita, popa aberta.
+ * O pinch em Z acontece depois da extrusão para o barco não ficar uma caixa.
+ */
+function boatHullGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.82, 0.12);
+    s.quadraticCurveTo(-0.95, 0.02, -0.78, -0.08);
+    s.quadraticCurveTo(-0.2, -0.2, 0.35, -0.16);
+    s.quadraticCurveTo(0.78, -0.08, 0.92, 0.06);
+    s.quadraticCurveTo(0.78, 0.16, 0.4, 0.14);
+    s.lineTo(-0.7, 0.16);
+    s.quadraticCurveTo(-0.86, 0.16, -0.82, 0.12);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.62,
+        bevelEnabled: true,
+        bevelThickness: 0.025,
+        bevelSize: 0.03,
+        bevelSegments: 2,
+        curveSegments: 10
+    });
+    g.translate(0, 0, -0.31);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const bow = Math.max(0, (x - 0.25) / 0.67);
+        const stern = Math.max(0, (-0.45 - x) / 0.45);
+        const keel = Math.max(0, (-0.02 - y) / 0.2);
+        const k = Math.max(0.14, 1 - bow * bow * 0.82 - stern * 0.4 - keel * 0.35);
+        p.setZ(i, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function createBoat() {
     const g = new THREE.Group();
-    const hull = mesh(geo('boat', () => new THREE.BoxGeometry(1.8, 0.35, 0.7, 2, 2, 2)), 0x8a4a22, {
+    const hull = mesh(geo('boat', boatHullGeometry), 0x8a4a22, {
         roughness: 0.75
     });
     hull.position.y = 0.2;
@@ -537,7 +574,18 @@ export function createBoat() {
     });
     mast.position.y = 1;
     g.add(mast);
-    const sail = mesh(geo('sail', () => new THREE.PlaneGeometry(0.7, 0.9, 12, 12)), 0xf4e8c8, {
+    const sail = mesh(geo('sail', () => {
+        const sailGeo = new THREE.PlaneGeometry(0.7, 0.9, 12, 12);
+        const sp = sailGeo.attributes.position;
+        for (let i = 0; i < sp.count; i++) {
+            const x = sp.getX(i);
+            const y = sp.getY(i);
+            const belly = (0.35 - Math.abs(x)) * (0.22 + (0.4 - y) * 0.15);
+            sp.setZ(i, belly);
+        }
+        sailGeo.computeVertexNormals();
+        return sailGeo;
+    }), 0xf4e8c8, {
         roughness: 0.9,
         side: THREE.DoubleSide
     });

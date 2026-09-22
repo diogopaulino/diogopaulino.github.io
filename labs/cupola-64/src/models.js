@@ -647,8 +647,22 @@ export function createFlag() {
         metalness: 0.35
     });
     pole.position.y = 1.6;
-    const cloth = mesh(geo('fl-c', () => new THREE.BoxGeometry(1.15, 0.7, 0.06, 4, 4, 1)), 0xff6b4a, {
-        roughness: 0.72
+    const cloth = mesh(geo('fl-c', () => {
+        const clothGeo = new THREE.PlaneGeometry(1.15, 0.7, 12, 6);
+        const cp = clothGeo.attributes.position;
+        for (let i = 0; i < cp.count; i++) {
+            const x = cp.getX(i);
+            const y = cp.getY(i);
+            const along = (x + 0.575) / 1.15;
+            const wave = Math.sin(along * Math.PI * 2.4) * 0.07 * along;
+            const droop = along * along * 0.06;
+            cp.setXYZ(i, x, y - droop, wave);
+        }
+        clothGeo.computeVertexNormals();
+        return clothGeo;
+    }), 0xff6b4a, {
+        roughness: 0.72,
+        side: THREE.DoubleSide
     });
     cloth.position.set(0.55, 2.7, 0);
     cloth.name = 'cloth';
