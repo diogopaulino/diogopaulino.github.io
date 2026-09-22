@@ -210,6 +210,15 @@ const PACK_TANK = new THREE.LatheGeometry([
  * Ombreira do samurai: sobe no pescoço e desce nas pontas.
  * O arco do alto tem cerca de 13 cm.
  */
+/** Faixa do chef: as bordas saem e o meio aperta. Y do torno cresce. */
+const CHEF_BELT = new THREE.LatheGeometry([
+    new THREE.Vector2(0.20, 0),
+    new THREE.Vector2(0.27, 0.025),
+    new THREE.Vector2(0.21, 0.07),
+    new THREE.Vector2(0.27, 0.115),
+    new THREE.Vector2(0.20, 0.14)
+], 18);
+
 const SAMURAI_YOKE = (() => {
     const p = [
         [-0.35, -0.12],
@@ -337,7 +346,8 @@ const BODIES = {
             add.lathe([[0.16, 0], [0.28, 0.08], [0.26, 0.28], [0.16, 0.48], [0.1, 0.56]], mats.white, [0, 0.56, 0.02]);
             add.box(0.08, 0.36, 0.02, mats.dark, [-0.1, 0.86, 0.19]);
             add.box(0.08, 0.36, 0.02, mats.dark, [0.1, 0.86, 0.19]);
-            add.box(0.5, 0.14, 0.38, mats.white, [0, 0.56, 0], null, null, 0.04);
+            const belt = add.mesh(CHEF_BELT, mats.white, [0, 0.49, 0]);
+            belt.name = 'chefBelt';
             const apron = add.mesh(CHEF_APRON, mats.secondary, [0, 0.32, 0.1]);
             apron.name = 'chefApron';
             const pleat = add.mesh(CHEF_PLEAT, mats.white, [0, 0.32, 0.1]);
