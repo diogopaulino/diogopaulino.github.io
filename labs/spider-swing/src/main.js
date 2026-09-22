@@ -10,7 +10,7 @@ import {
     QUALITY, DIFFICULTY, CAMERA, PALETTE, loadSettings, saveSettings
 } from './config.js';
 import { clamp, damp, detectMobile, detectTouch, detectSoftwareGL, hexToArr } from './utils.js';
-import { City } from './city.js';
+import { City } from './city.js?v=5';
 import { Player } from './player.js?v=3';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';

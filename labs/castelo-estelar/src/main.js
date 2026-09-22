@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { Kingdom } from './world.js';
+import { Kingdom } from './world.js?v=3';
 import { Magic } from './effects.js';
 import { CineCamera, INTRO_DURATION } from './camera.js';
 import { FanfareAudio } from './audio.js';

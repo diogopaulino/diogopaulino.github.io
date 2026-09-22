@@ -339,8 +339,14 @@ export function createWaterTower() {
         hoop.position.y = y;
         g.add(hoop);
     }
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.55, 0.8, 12), wood);
-    cap.position.y = 4.1;
+    const cap = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.06, 0),
+        new THREE.Vector2(1.2, 0.08),
+        new THREE.Vector2(1.52, 0.28),
+        new THREE.Vector2(0.72, 0.55),
+        new THREE.Vector2(0.08, 0.78)
+    ], 14), wood);
+    cap.position.y = 3.7;
     g.add(cap);
     for (const sx of [-1.1, 1.1]) {
         for (const sz of [-1.1, 1.1]) {

@@ -115,6 +115,19 @@ export class Pet {
         this.parts.mats.push(furMat, bellyMat);
         this.furMat = furMat;
 
+        const puff = geo('puff', () => {
+            const s = new THREE.SphereGeometry(1, 16, 12);
+            const pos = s.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const n = 0.78 + Math.abs(Math.sin(x * 3.2 + y * 2.1) * Math.cos(z * 2.8)) * 0.34;
+                pos.setXYZ(i, x * n, y * n * 0.9, z * n);
+            }
+            s.computeVertexNormals();
+            return s;
+        });
         const sph = geo(`sph${segs}`, () => new THREE.SphereGeometry(1, segs, segs - 2));
         const sphLo = geo('sphLo', () => new THREE.SphereGeometry(1, 12, 10));
         const cyl = geo('cyl', () => new THREE.CylinderGeometry(1, 1, 1, 12));
@@ -141,14 +154,14 @@ export class Pet {
         }));
 
         if (breed.fur > 0.7) {
-            body.add(mesh(sphLo, furMat, {
+            body.add(mesh(puff, furMat, {
                 scale: [breed.bodyW * 1.05, breed.bodyH * 0.7, breed.bodyLen * 0.22],
                 pos: [0, breed.bodyH * 0.08, -breed.bodyLen * 0.38]
             }));
         }
 
         if (breed.pattern === 'poodle') {
-            body.add(mesh(sph, furMat, {
+            body.add(mesh(puff, furMat, {
                 scale: [breed.bodyW * 0.7, breed.bodyH * 0.7, breed.bodyW * 0.7],
                 pos: [0, breed.bodyH * 0.22, breed.bodyLen * 0.22]
             }));

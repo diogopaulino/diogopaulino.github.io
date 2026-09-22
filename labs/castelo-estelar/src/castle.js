@@ -16,7 +16,17 @@ const GEO = {
     cyl: new THREE.CylinderGeometry(1, 1, 1, 40, 1),
     cylHi: new THREE.CylinderGeometry(1, 1, 1, 48, 1),
     cone: new THREE.ConeGeometry(1, 1, 40, 1),
-    coneHi: new THREE.ConeGeometry(1, 1, 48, 4),
+    coneHi: (() => {
+        const g = new THREE.LatheGeometry([
+            new THREE.Vector2(0.02, 0.5),
+            new THREE.Vector2(0.22, 0.28),
+            new THREE.Vector2(0.62, -0.05),
+            new THREE.Vector2(0.95, -0.38),
+            new THREE.Vector2(1.08, -0.5)
+        ], 20);
+        g.computeVertexNormals();
+        return g;
+    })(),
     sphere: new THREE.SphereGeometry(1, 32, 20),
     sphereLo: new THREE.SphereGeometry(1, 12, 8),
     plane: new THREE.PlaneGeometry(1, 1, 12, 6),
