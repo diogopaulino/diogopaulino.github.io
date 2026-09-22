@@ -113,6 +113,18 @@ function jeepLampGeometry() {
 
 const JEEP_LAMP = jeepLampGeometry();
 
+/** Tubos do bagageiro. O longo corre em X; o curto, em Z. */
+const JEEP_RACK_LONG = (() => {
+    const g = new THREE.CylinderGeometry(0.02, 0.02, 1.35, 8);
+    g.rotateZ(Math.PI / 2);
+    return g;
+})();
+const JEEP_RACK_SHORT = (() => {
+    const g = new THREE.CylinderGeometry(0.02, 0.02, 1.26, 8);
+    g.rotateX(Math.PI / 2);
+    return g;
+})();
+
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
@@ -142,8 +154,19 @@ export function buildJeep() {
     windshield.rotation.x = -0.28;
     root.add(windshield);
 
-    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.05, 1.35), chrome);
+    const rack = new THREE.Group();
+    rack.name = 'jeepRack';
     rack.position.set(0, 1.92, -0.15);
+    for (const z of [-0.63, -0.21, 0.21, 0.63]) {
+        const bar = new THREE.Mesh(JEEP_RACK_LONG, chrome);
+        bar.position.z = z;
+        rack.add(bar);
+    }
+    for (const x of [-0.64, 0.64]) {
+        const bar = new THREE.Mesh(JEEP_RACK_SHORT, chrome);
+        bar.position.x = x;
+        rack.add(bar);
+    }
     root.add(rack);
 
     const bumperF = new THREE.Mesh(JEEP_BUMPER, chrome);

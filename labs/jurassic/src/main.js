@@ -9,7 +9,7 @@ import { Input } from './input.js';
 import { ParkAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { World } from './world.js?v=8';
-import { Jeep } from './jeep.js?v=6';
+import { Jeep } from './jeep.js?v=7';
 import { spawnDinosaurs } from './dinosaurs.js?v=3';
 import { createSky, createLights, sampleDay, applySky, applyLights } from './sky.js';
 
