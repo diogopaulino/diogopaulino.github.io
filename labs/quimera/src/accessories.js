@@ -265,6 +265,48 @@ const ASTRO_HANDLE = (() => {
     return g;
 })();
 
+/**
+ * Tsuba do ninja: oval mais largo que alto, com a fenda do
+ * nakago no meio (cerca de 9 cm de vão).
+ */
+const NINJA_TSUBA = (() => {
+    const s = new THREE.Shape();
+    const ring = [
+        [0.09, 0],
+        [0.078, 0.035],
+        [0.045, 0.061],
+        [0, 0.07],
+        [-0.045, 0.061],
+        [-0.078, 0.035],
+        [-0.09, 0],
+        [-0.078, -0.035],
+        [-0.045, -0.061],
+        [0, -0.07],
+        [0.045, -0.061],
+        [0.078, -0.035]
+    ];
+    s.moveTo(ring[0][0], ring[0][1]);
+    for (let i = 1; i < ring.length; i++) s.lineTo(ring[i][0], ring[i][1]);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.045, -0.016);
+    hole.lineTo(-0.045, 0.016);
+    hole.lineTo(0.045, 0.016);
+    hole.lineTo(0.045, -0.016);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -311,7 +353,8 @@ const ACCESSORIES = {
         const saya = add.mesh(NINJA_SAYA, mats.accent, [0.12, 0.08, 0], [0, 0.5, 0.15]);
         saya.name = 'ninjaSaya';
         add.cyl(0.025, 0.03, 0.16, mats.primary, [0.12, -0.18, 0.04], [0, 0.5, 0.15]);
-        add.box(0.08, 0.04, 0.08, mats.trim, [0.12, -0.1, 0.02]);
+        const tsuba = add.mesh(NINJA_TSUBA, mats.trim, [0.12, -0.1, 0.02]);
+        tsuba.name = 'ninjaTsuba';
     }),
 
     chef: (kit) => build(kit, 'grip', ({ add, mats }) => {
