@@ -43,8 +43,21 @@ export function buildF1Car(BABYLON, scene, liveryColor = '#e10600') {
     nose.material = paintMat;
     nose.parent = root;
 
-    const cockpit = BABYLON.MeshBuilder.CreateBox('f1_cockpit', { width: 0.72, height: 0.48, depth: 1.6 }, scene);
-    cockpit.position.set(0, 0.38, -0.4);
+    const cockpit = BABYLON.MeshBuilder.CreateLathe('f1_cockpit', {
+        shape: [
+            new BABYLON.Vector3(0.06, 0, 0),
+            new BABYLON.Vector3(0.22, 0.12, 0),
+            new BABYLON.Vector3(0.34, 0.45, 0),
+            new BABYLON.Vector3(0.3, 0.9, 0),
+            new BABYLON.Vector3(0.18, 1.3, 0),
+            new BABYLON.Vector3(0.06, 1.55, 0)
+        ],
+        tessellation: 22,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    cockpit.rotation.x = Math.PI / 2;
+    cockpit.scaling.set(0.82, 1, 0.7);
+    cockpit.position.set(0, 0.22, 0.45);
     cockpit.material = paintMat;
     cockpit.parent = root;
 
@@ -71,8 +84,18 @@ export function buildF1Car(BABYLON, scene, liveryColor = '#e10600') {
     haloLoop.parent = root;
 
     // 3. CAPACETE DO PILOTO
-    const helmet = BABYLON.MeshBuilder.CreateSphere('f1_helmet', { diameter: 0.26, segments: 12 }, scene);
-    helmet.position.set(0, 0.55, -0.3);
+    const helmet = BABYLON.MeshBuilder.CreateLathe('f1_helmet', {
+        shape: [
+            new BABYLON.Vector3(0.02, 0, 0),
+            new BABYLON.Vector3(0.09, 0.03, 0),
+            new BABYLON.Vector3(0.13, 0.1, 0),
+            new BABYLON.Vector3(0.11, 0.18, 0),
+            new BABYLON.Vector3(0.04, 0.24, 0)
+        ],
+        tessellation: 16,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    helmet.position.set(0, 0.4, -0.32);
     const helmetMat = new BABYLON.PBRMaterial('mat_f1_helmet', scene);
     helmetMat.albedoColor = new BABYLON.Color3(1.0, 0.85, 0.1);
     helmetMat.clearCoat.isEnabled = true;

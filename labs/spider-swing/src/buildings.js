@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -301,17 +302,21 @@ export function createLiberty(mats, x, z) {
     g.add(mesh(CYL, mats.stone, 9, 6, 9, x, 3, z));
     // Pedestal em camadas
     g.add(mesh(CYL, mats.stone, 7.2, 4, 7.2, x, 8, z));
-    g.add(mesh(CYL, mats.light, 3.2, 18, 3.2, x, 15, z));
-    // Torso mais orgânico (cápsula)
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.5, 6, 12), mats.light);
-    torso.position.set(x, 26, z);
+    g.add(mesh(CYL, mats.light, 2.4, 14, 2.4, x, 14, z));
+    const torso = new THREE.Mesh(torsoGeometry({ height: 6.4, girth: 1.55, style: 'human', seg: 16 }), mats.light);
+    torso.position.set(x, 20.8, z);
     torso.castShadow = true;
     g.add(torso);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(1.15, 14, 12), mats.light);
-    head.position.set(x, 31.2, z);
+    const head = new THREE.Mesh(headGeometry(1.05, 'human'), mats.light);
+    head.position.set(x, 27.6, z);
+    head.castShadow = true;
     g.add(head);
-    const arm = mesh(CYL, mats.light, 0.7, 10, 0.7, x + 4.5, 30, z);
-    arm.rotation.z = -0.9;
+    const arm = new THREE.Mesh(limbGeometry({
+        length: 4.4, r0: 0.55, r1: 0.32, bulge: 0.14, seg: 12, rings: 8
+    }), mats.light);
+    arm.position.set(x + 1.15, 26.4, z);
+    arm.rotation.z = -1.05;
+    arm.castShadow = true;
     g.add(arm);
     g.add(mesh(CYL, mats.gold, 1.1, 2.4, 1.1, x + 8.2, 34.5, z));
     const colliders = [boxCollider(x, 10, z, 10, 20, 10)];

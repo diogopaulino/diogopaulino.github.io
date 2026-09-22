@@ -214,11 +214,10 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     hips.add(torso);
 
     const belly = new THREE.Mesh(
-        geo('hob-belly', () => warp(new THREE.SphereGeometry(0.27, 14, 12), 2, 0.08, 0.45)),
+        geo('hob-belly', () => torsoGeometry({ height: 0.5, girth: 0.26, style: 'child', seg: 16 })),
         clothV
     );
-    belly.scale.set(1.08, 0.88, 0.92);
-    belly.position.y = 0.22;
+    belly.position.y = 0.02;
     torso.add(belly);
 
     const shirt = new THREE.Mesh(
@@ -294,9 +293,10 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
             length: 0.16, r0: 0.045, r1: 0.034, bulge: 0.008, bulgeAt: 0.4, pinch: 0.15, seg: 8
         }), skin);
         forearm.add(foreM);
-        const hand = new THREE.Mesh(geo('hob-hand', () => new THREE.SphereGeometry(0.045, 8, 6)), skin);
-        hand.scale.set(1.05, 0.7, 1.15);
-        hand.position.y = -0.18;
+        const hand = new THREE.Mesh(geo('hob-hand', () => limbGeometry({
+            length: 0.07, r0: 0.028, r1: 0.02, bulge: 0.006, pinch: 0, seg: 8, rings: 4
+        })), skin);
+        hand.position.y = -0.16;
         forearm.add(hand);
         arm.userData.forearm = forearm;
         parts.arms.push(arm);
@@ -354,7 +354,7 @@ export function buildWizard() {
     const head = new THREE.Group();
     head.position.y = 1.72;
     group.add(head);
-    const skull = new THREE.Mesh(geo('wiz-skull', () => warp(new THREE.SphereGeometry(0.15, 12, 10), 11, 0.05)), skin);
+    const skull = new THREE.Mesh(geo('wiz-skull', () => headGeometry(0.15, 'human')), skin);
     head.add(skull);
     const nose = new THREE.Mesh(geo('wiz-nose', () => new THREE.SphereGeometry(0.03, 6, 5)), skin);
     nose.scale.set(0.7, 0.9, 1.4);
@@ -429,7 +429,7 @@ export function buildElf({ robe = 0xc8d8c0 } = {}) {
     const head = new THREE.Group();
     head.position.y = 1.5;
     group.add(head);
-    const skull = new THREE.Mesh(geo('elf-skull', () => new THREE.SphereGeometry(0.125, 12, 10)), skin);
+    const skull = new THREE.Mesh(geo('elf-skull', () => headGeometry(0.125, 'human')), skin);
     skull.scale.set(0.92, 1.08, 0.95);
     head.add(skull);
     for (const sx of [-1, 1]) {

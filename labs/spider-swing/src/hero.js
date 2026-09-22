@@ -40,9 +40,11 @@ export function buildHero() {
     const parts = { legs: [], arms: [], feet: [], hands: [] };
 
     // Pelvis (muscular)
-    const pelvis = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.08, capSeg, radSeg), navy);
+    const pelvis = new THREE.Mesh(limbGeometry({
+        length: 0.32, r0: 0.12, r1: 0.09, bulge: 0.02, pinch: 0, seg: 12, rings: 6
+    }), navy);
     pelvis.rotation.z = Math.PI / 2;
-    pelvis.scale.set(1, 0.8, 1);
+    pelvis.position.set(0.16, 0.9, 0);
     hips.add(pelvis);
 
     for (const sx of [-1, 1]) {
@@ -98,9 +100,11 @@ export function buildHero() {
     torso.add(chest);
 
     // Back / Lats
-    const lats = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, capSeg, radSeg), navy);
-    lats.position.set(0, 0.32, -0.05);
+    const lats = new THREE.Mesh(limbGeometry({
+        length: 0.36, r0: 0.13, r1: 0.1, bulge: 0.03, pinch: 0, seg: 12, rings: 6
+    }), navy);
     lats.rotation.z = Math.PI / 2;
+    lats.position.set(0.18, 0.34, -0.06);
     torso.add(lats);
 
     // Spider Emblem (Front & Back)

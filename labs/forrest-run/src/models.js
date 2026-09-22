@@ -3,7 +3,7 @@ import {
     createBarkTexture, createSignTexture, createFeatherTexture
 } from './textures.js';
 import { hexToColor3 } from './utils.js';
-import { createMuscle, createSkull, createShoe, createTorso } from '../../shared/realism-bjs.js';
+import { createHand, createMuscle, createSkull, createShoe, createTorso } from '../../shared/realism-bjs.js';
 
 const prefabCache = new Map();
 
@@ -58,6 +58,7 @@ function registerShadows(mesh, shadowGenerator) {
 export function createForrest(scene, shadowGenerator = null, { follower = false } = {}) {
     const root = new BABYLON.TransformNode(follower ? 'followerRoot' : 'forrestRoot', scene);
     const skinMat = pbrMat(scene, 'skin', follower ? 0xdca07c : 0xf2cbb0, 0.68, 0.02);
+    skinMat.backFaceCulling = false;
     const hairMat = pbrMat(scene, 'hair', follower ? 0x3d2818 : 0xdfbe72, 0.88, 0.04);
     const khakiMat = pbrMat(scene, 'khaki', follower ? 0x3d4e68 : 0xcab57e, 0.82, 0.02);
     const beltMat = pbrMat(scene, 'belt', 0x3a2414, 0.6, 0.1);
@@ -81,10 +82,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     const hips = new BABYLON.TransformNode('hips', scene);
     hips.parent = root;
     hips.position.y = 0.95;
-    const hipsMesh = BABYLON.MeshBuilder.CreateCapsule('hipsMesh', {
-        radius: 0.14, height: 0.28, tessellation: 14, subdivisions: 4
-    }, scene);
-    hipsMesh.scaling.set(1.35, 0.85, 0.9);
+    const hipsMesh = createTorso(scene, 'hipsMesh', { height: 0.24, girth: 0.16, style: 'human' });
+    hipsMesh.position.y = -0.08;
+    hipsMesh.scaling.set(1.28, 0.95, 0.92);
     hipsMesh.material = khakiMat;
     hipsMesh.parent = hips;
     registerShadows(hipsMesh, shadowGenerator);
@@ -239,14 +239,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         armSkin.material = skinMat;
         armSkin.parent = forearm;
         registerShadows(armSkin, shadowGenerator);
-        const hand = BABYLON.MeshBuilder.CreateSphere('hand', {
-            diameterX: 0.09,
-            diameterY: 0.11,
-            diameterZ: 0.09,
-            segments: 12
-        }, scene);
-        hand.position.set(0, -0.32, 0);
-        hand.material = skinMat;
+        const hand = createHand(scene, 'hand', skinMat, { scale: 0.8 });
+        hand.position.set(0, -0.34, 0);
+        if (sx > 0) hand.scaling.x = -1;
         hand.parent = forearm;
         arms.push({ arm, forearm, hand });
     }

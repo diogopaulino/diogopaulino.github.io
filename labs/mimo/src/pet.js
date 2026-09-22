@@ -135,14 +135,6 @@ export class Pet {
         body.add(torso);
         this.parts.torso = torso;
 
-        body.add(mesh(sph, furMat, {
-            scale: [breed.bodyW * 0.92, breed.bodyH * 0.9, breed.bodyW * 0.85],
-            pos: [0, breed.bodyH * 0.12, breed.bodyLen * 0.28]
-        }));
-        body.add(mesh(sph, furMat, {
-            scale: [breed.bodyW * 0.88, breed.bodyH * 0.85, breed.bodyW * 0.8],
-            pos: [0, breed.bodyH * 0.08, -breed.bodyLen * 0.28]
-        }));
         body.add(mesh(sphLo, bellyMat, {
             scale: [breed.bodyW * 0.62, breed.bodyH * 0.42, breed.bodyLen * 0.38],
             pos: [0, -breed.bodyH * 0.18, 0.04],

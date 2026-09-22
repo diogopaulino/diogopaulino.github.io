@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { headGeometry } from '../../shared/realism.js';
+import { headGeometry, limbGeometry } from '../../shared/realism.js';
 import { dinoSkin } from './textures.js';
 import { patchSkin } from './shaders.js';
 import { clamp, damp, wrapPi, hash2 } from './utils.js';
@@ -310,13 +310,11 @@ export function buildTRex(quality) {
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.18, 0.35);
     head.add(jaw);
-    const jawMesh = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.14, 0.95, 6, 12),
-        skin
-    );
-    jawMesh.rotation.x = Math.PI / 2;
-    jawMesh.scale.set(1.5, 1, 0.75);
-    jawMesh.position.set(0, -0.06, 0.55);
+    const jawMesh = new THREE.Mesh(limbGeometry({
+        length: 1.05, r0: 0.18, r1: 0.07, bulge: 0.04, bulgeAt: 0.3, seg: 10, rings: 8
+    }), skin);
+    jawMesh.rotation.x = -Math.PI / 2;
+    jawMesh.position.set(0, -0.02, 0.12);
     jaw.add(jawMesh);
     addTeeth(head, { count: 8, z0: 0.45, z1: 1.42, y: -0.18, side: 0.16, up: false, len: 0.14 });
     addTeeth(jaw, { count: 8, z0: 0.2, z1: 1.05, y: 0.08, side: 0.14, up: true, len: 0.12 });
@@ -438,13 +436,11 @@ export function buildRaptor(quality) {
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.05, 0.08);
     head.add(jaw);
-    const jm = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.04, 0.22, 4, 10),
-        skin
-    );
-    jm.rotation.x = Math.PI / 2;
-    jm.scale.set(1.2, 1, 0.75);
-    jm.position.z = 0.14;
+    const jm = new THREE.Mesh(limbGeometry({
+        length: 0.26, r0: 0.05, r1: 0.02, bulge: 0.008, seg: 8, rings: 5
+    }), skin);
+    jm.rotation.x = -Math.PI / 2;
+    jm.position.set(0, 0, 0.02);
     jaw.add(jm);
 
     const lLeg = makeLeg(skin, { thighLen: 0.48, shinLen: 0.42, thighR: 0.12, shinR: 0.07, toes: 3, claw: true });
