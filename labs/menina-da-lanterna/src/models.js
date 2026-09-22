@@ -657,19 +657,107 @@ export function buildBridge() {
     return group;
 }
 
+/**
+ * Torre do moinho, centrada como o cilindro de altura 4.2.
+ * Talude, fiadas, embasamento e um vão de porta na face +Z.
+ */
+function millTowerGeometry() {
+    const H = 4.2;
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = (t - 0.5) * H;
+        let r = 1.62 - t * 0.34;
+        if (t < 0.07) r += 0.1;
+        if (Math.sin(t * Math.PI * 7) > 0.55) r += 0.05;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 16);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (z > 0.95 && Math.abs(x) < 0.42 && y > -1.85 && y < -0.5) z -= 0.2;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Capelo de colmo, centrado como o cone de altura 1.2. Beiral e nervuras. */
+function millCapGeometry() {
+    const pts = [
+        [1.82, -0.6],
+        [1.58, -0.4],
+        [1.22, -0.12],
+        [0.86, 0.12],
+        [0.48, 0.34],
+        [0.18, 0.5],
+        [0.05, 0.6]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 0.1 || y < -0.42) continue;
+        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 7)) ** 2 * 0.055;
+        const k = 1 + rib / rad;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/**
+ * Vela no plano da face (X = corda, Y = envergadura). A caixa antiga era
+ * uma ripa vista de frente; a vela abre para o lado de fora do eixo.
+ */
+function millSailGeometry() {
+    const y0 = -1.7;
+    const y1 = 1.7;
+    const s = new THREE.Shape();
+    s.moveTo(-0.07, y0);
+    s.lineTo(-0.08, y1);
+    s.lineTo(0.16, y1 - 0.12);
+    const steps = 12;
+    for (let i = steps; i >= 0; i--) {
+        const t = i / steps;
+        const y = y0 + t * (y1 - y0);
+        const belly = Math.sin(t * Math.PI);
+        const outer = t > 0.3 ? (t - 0.3) / 0.7 : 0;
+        s.lineTo(0.06 + belly * 0.1 + outer * 0.62, y);
+    }
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.07, bevelEnabled: false, curveSegments: 2 });
+    g.translate(0, 0, -0.035);
+    g.computeVertexNormals();
+    return g;
+}
+
+const MILL_TOWER = millTowerGeometry();
+const MILL_CAP = millCapGeometry();
+const MILL_SAIL = millSailGeometry();
+
 export function buildMill() {
     const group = new THREE.Group();
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.6, 4.2, 10), std(0xc8b090, 0.9));
+    const tower = new THREE.Mesh(MILL_TOWER, std(0xc8b090, 0.9));
+    tower.name = 'millTower';
     tower.position.y = 2.1;
     group.add(tower);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.2, 8), std(0x5a3018, 0.85));
+    const cap = new THREE.Mesh(MILL_CAP, std(0x5a3018, 0.85));
+    cap.name = 'millCap';
     cap.position.y = 4.7;
     group.add(cap);
     const hub = new THREE.Group();
     hub.position.set(0, 3.2, 1.5);
     group.add(hub);
     for (let i = 0; i < 4; i++) {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 0.5), std(0xe8d8b0, 0.8));
+        const blade = new THREE.Mesh(MILL_SAIL, std(0xe8d8b0, 0.8));
+        blade.name = 'millSail';
         blade.position.y = 1.5;
         const arm = new THREE.Group();
         arm.rotation.z = (i / 4) * Math.PI * 2;
