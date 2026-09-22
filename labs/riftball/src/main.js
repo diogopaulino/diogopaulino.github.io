@@ -577,4 +577,5 @@ class Game {
 }
 
 const game = new Game();
+window.__riftball = game;
 game.boot();
