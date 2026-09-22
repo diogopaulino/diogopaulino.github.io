@@ -9,11 +9,11 @@ import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, 
 import { Input } from './input.js?v=3';
 import { GameAudio } from './audio.js?v=3';
 import { Hud, statsBlock } from './hud.js?v=3';
-import { Player } from './player.js?v=18';
+import { Player } from './player.js?v=19';
 import { createSky, applyChapterSky, createLights, tickSky } from './sky.js?v=3';
-import { buildChapter } from './world.js?v=20';
+import { buildChapter } from './world.js?v=21';
 import { nearestInteractable } from './npcs.js?v=3';
-import { tickMaterials } from './models.js?v=18';
+import { tickMaterials } from './models.js?v=19';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();

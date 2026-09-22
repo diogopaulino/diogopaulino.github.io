@@ -163,6 +163,47 @@ function vegWind(material, amount = 0.11) {
 /* Personagens                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Fivela do hobbit: armação arredondada com um vão no meio.
+ */
+function hobBuckleGeometry() {
+    const s = new THREE.Shape();
+    const ring = [
+        [-0.032, -0.034],
+        [0.032, -0.034],
+        [0.040, -0.028],
+        [0.044, -0.020],
+        [0.044, 0.020],
+        [0.040, 0.028],
+        [0.032, 0.034],
+        [-0.032, 0.034],
+        [-0.040, 0.028],
+        [-0.044, 0.020],
+        [-0.044, -0.020],
+        [-0.040, -0.028]
+    ];
+    s.moveTo(ring[0][0], ring[0][1]);
+    for (let i = 1; i < ring.length; i++) s.lineTo(ring[i][0], ring[i][1]);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.022, -0.014);
+    hole.lineTo(-0.022, 0.014);
+    hole.lineTo(0.022, 0.014);
+    hole.lineTo(0.022, -0.014);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.0015,
+        bevelSize: 0.0015,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.01);
+    return g;
+}
+
 export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     const group = new THREE.Group();
     const skinMaps = skinTexture();
@@ -244,7 +285,8 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     belt.rotation.x = Math.PI / 2;
     belt.position.y = 0.12;
     torso.add(belt);
-    const buckle = new THREE.Mesh(geo('hob-buckle', () => new THREE.BoxGeometry(0.08, 0.06, 0.03)), mapped(goldTexture(), 0xffe08a, 0.28, 0.9, 0.4));
+    const buckle = new THREE.Mesh(geo('hob-buckle', hobBuckleGeometry), mapped(goldTexture(), 0xffe08a, 0.28, 0.9, 0.4));
+    buckle.name = 'hobBuckle';
     buckle.position.set(0, 0.12, 0.22);
     torso.add(buckle);
 
