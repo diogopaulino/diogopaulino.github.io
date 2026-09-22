@@ -421,13 +421,14 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.22, 2.05)
         ];
         const sedanGeo = new THREE.LatheGeometry(sedanPts, 32);
-        sedanGeo.rotateZ(-Math.PI / 2);
-        sedanGeo.scale(1, 0.58, 0.95);
+        sedanGeo.rotateX(Math.PI / 2);
+        sedanGeo.scale(0.95, 0.58, 1);
         const sedan = new THREE.Mesh(sedanGeo, body);
+        sedan.name = 'carBody';
         sedan.position.y = 0.55;
         sedan.castShadow = true;
         g.add(sedan);
-        g.add(mesh(SPH, mats.glass, 1.35, 0.38, 0.95, 0, 1.0, -0.15));
+        g.add(mesh(SPH, mats.glass, 0.95, 0.38, 1.35, 0, 1.0, -0.15));
         const fender = new THREE.Mesh(SEDAN_FENDER, body);
         fender.position.set(0, 0.92, -1.2);
         fender.scale.set(1.15, 0.55, 0.7);
@@ -443,9 +444,10 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.5, 2.1)
         ];
         const vanGeo = new THREE.LatheGeometry(vanPts, 28);
-        vanGeo.rotateZ(-Math.PI / 2);
-        vanGeo.scale(1, 0.75, 0.95);
+        vanGeo.rotateX(Math.PI / 2);
+        vanGeo.scale(0.95, 0.75, 1);
         const van = new THREE.Mesh(vanGeo, body);
+        van.name = 'carBody';
         van.position.y = 0.75;
         van.castShadow = true;
         g.add(van);
@@ -465,19 +467,36 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.15, 1.75)
         ];
         const coupeGeo = new THREE.LatheGeometry(coupePts, 28);
-        coupeGeo.rotateZ(-Math.PI / 2);
-        coupeGeo.scale(1, 0.48, 0.92);
+        coupeGeo.rotateX(Math.PI / 2);
+        coupeGeo.scale(0.92, 0.48, 1);
         const coupe = new THREE.Mesh(coupeGeo, body);
+        coupe.name = 'carBody';
         coupe.position.y = 0.48;
         coupe.castShadow = true;
         g.add(coupe);
-        g.add(mesh(SPH, mats.glass, 1.2, 0.28, 0.75, 0, 0.82, 0.1));
+        g.add(mesh(SPH, mats.glass, 0.75, 0.28, 1.2, 0, 0.82, 0.1));
     }
 
-    g.add(mesh(BOX, mats.neonB, 0.35, 0.12, 0.08, 0.45, 0.55, 2.12));
-    g.add(mesh(BOX, mats.neonB, 0.35, 0.12, 0.08, -0.45, 0.55, 2.12));
-    g.add(mesh(BOX, mats.neonA, 0.4, 0.1, 0.08, 0.5, 0.5, -2.15));
-    g.add(mesh(BOX, mats.neonA, 0.4, 0.1, 0.08, -0.5, 0.5, -2.15));
+    const lampGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.015, 0),
+        new THREE.Vector2(0.055, 0.015),
+        new THREE.Vector2(0.07, 0.04),
+        new THREE.Vector2(0.055, 0.07),
+        new THREE.Vector2(0.02, 0.09)
+    ], 14);
+    lampGeo.rotateX(Math.PI / 2);
+    const addLamp = (mat, x, y, z, rear) => {
+        const m = new THREE.Mesh(lampGeo, mat);
+        m.name = 'carLamp';
+        m.position.set(x, y, z);
+        m.scale.set(2.2, 0.9, 1);
+        if (rear) m.rotation.y = Math.PI;
+        g.add(m);
+    };
+    addLamp(mats.neonB, 0.32, 0.52, 1.82, false);
+    addLamp(mats.neonB, -0.32, 0.52, 1.82, false);
+    addLamp(mats.neonA, 0.36, 0.5, -1.78, true);
+    addLamp(mats.neonA, -0.36, 0.5, -1.78, true);
 
     for (const [x, z] of [[0.7, 1.35], [-0.7, 1.35], [0.7, -1.4], [-0.7, -1.4]]) {
         const tire = mesh(CYL, mats.rubber, 0.28, 0.18, 0.28, x, 0.28, z);

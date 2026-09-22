@@ -8,7 +8,7 @@ import { CHUNK, ROAD } from './config.js';
 import { hash, mulberry32 } from './utils.js';
 import {
     createBuilding, createLamp, createPalm, createBillboard, tintMaterials
-} from './models.js?v=12';
+} from './models.js?v=13';
 
 export function createSky() {
     const uniforms = {
