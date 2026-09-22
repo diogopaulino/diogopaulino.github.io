@@ -59,6 +59,50 @@ function keepBodyMesh(scene) {
     }, scene);
 }
 
+/**
+ * Torre de canto. Planta com quatro pilastras; o caminho sobe 26,
+ * a base fica em y = 0 (o cilindro antigo era centrado em y = 13).
+ * O telhado continua em y = 28.
+ */
+function towerShaftMesh(scene, name) {
+    const r = 3.35;
+    const jut = 0.4;
+    const sides = 16;
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * Math.PI * 2;
+        if (i % 4 === 0) {
+            const left = a - 0.24;
+            const right = a + 0.24;
+            pts.push([Math.cos(left) * r, Math.sin(left) * r]);
+            pts.push([Math.cos(left) * (r + jut), Math.sin(left) * (r + jut)]);
+            pts.push([Math.cos(right) * (r + jut), Math.sin(right) * (r + jut)]);
+            pts.push([Math.cos(right) * r, Math.sin(right) * r]);
+        } else {
+            pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+        }
+    }
+    const shape = pts.map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const height = 26;
+    const steps = 18;
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom(name, {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.08 - t * 0.12;
+            const course = Math.sin(distance * 1.55) > 0.62 ? 1.045 : 0.985;
+            return batter * course;
+        }
+    }, scene);
+}
+
 /** Folha de portão com arco de meio ponto. Origem na base; a espessura corre em Z. */
 function gateDoorMesh(scene) {
     const half = 3.5;
@@ -206,13 +250,8 @@ export function buildCastle(scene) {
     ];
 
     towerPositions.forEach(([x, z], i) => {
-        const tower = BABYLON.MeshBuilder.CreateCylinder(`tower_${i}`, {
-            diameterTop: 6.4,
-            diameterBottom: 7.2,
-            height: 26,
-            tessellation: 12
-        }, scene);
-        tower.position.set(x, 13, z);
+        const tower = towerShaftMesh(scene, `tower_${i}`);
+        tower.position.set(x, 0, z);
         tower.material = stoneMat;
         tower.parent = root;
         tower.receiveShadows = true;
