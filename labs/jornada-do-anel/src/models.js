@@ -547,6 +547,31 @@ export function buildGoblin() {
     return { group };
 }
 
+/** Lâmina 0.04×0.85×0.08, centrada. Ponta em +Y, fio nas bordas. */
+function nazgulBladeGeometry() {
+    const H = 0.85;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.04, H, 0.08, 2, 18, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        let k = 1;
+        if (t < 0.1) k = 0.8;
+        else if (t > 0.48) k = Math.max(0.05, 1 - (t - 0.48) / 0.52);
+        z *= k;
+        const edge = Math.min(1, Math.abs(z) / Math.max(0.008, 0.04 * k));
+        x *= (1 - edge * 0.7) * (0.7 + 0.3 * (1 - t));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const NAZGUL_BLADE = nazgulBladeGeometry();
+
 export function buildNazgul() {
     const group = new THREE.Group();
     const black = mapped(clothTexture('#0a0a0c'), 0x0c0c10, 0.94, 0.06, 0.4);
@@ -645,7 +670,8 @@ export function buildNazgul() {
         rider.add(eye);
     }
 
-    const blade = new THREE.Mesh(geo('naz-blade', () => new THREE.BoxGeometry(0.04, 0.85, 0.08)), std(0xc8d0d8, 0.22, 0.92));
+    const blade = new THREE.Mesh(NAZGUL_BLADE, std(0xc8d0d8, 0.22, 0.92));
+    blade.name = 'nazgulBlade';
     blade.position.set(0.32, 0.7, 0.15);
     blade.rotation.z = -0.35;
     rider.add(blade);
