@@ -785,10 +785,19 @@ kbd {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    .hud {
+        padding: calc(2.75rem + var(--safe-top, env(safe-area-inset-top, 0px)))
+            calc(0.6rem + var(--safe-right, env(safe-area-inset-right, 0px)))
+            calc(0.35rem + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))
+            calc(0.6rem + var(--safe-left, env(safe-area-inset-left, 0px)));
+        gap: 0.3rem;
+    }
+    .panel { padding: 0.35rem 0.55rem; }
     .hud-actions {
-        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
+        position: static;
+        top: auto;
         bottom: auto;
-        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
+        right: auto;
     }
     .icon-button,
     .icon-btn {
