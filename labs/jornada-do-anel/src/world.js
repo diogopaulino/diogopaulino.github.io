@@ -12,7 +12,7 @@ import {
     buildSeat, buildRuinArch, buildWizard, buildElf, buildNazgul, buildGoblin,
     buildCompanion, grassBladeGeometry, grassBladeMaterial, waterMaterial,
     getOakAssets, getPineAssets, getPillarAssets, buildBalrog, std
-} from './models.js?v=6';
+} from './models.js?v=7';
 import { Rider, GoblinAI } from './npcs.js?v=3';
 
 export class ChapterWorld {

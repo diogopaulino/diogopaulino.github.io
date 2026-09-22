@@ -929,24 +929,54 @@ export function buildRock(seed = 1) {
     return mesh;
 }
 
+/**
+ * Coluna dórica do salão. y=0 no chão.
+ * Base em degraus (raio 1.04 → 0.72), fuste com ênfase no terço inferior
+ * e 12 caneluras (cos(θ·12) empurra o sulco para dentro), capitel com
+ * equino e ábaco até y = height + 0.4.
+ */
+function pillarColumn(height) {
+    const H = height;
+    const pts = [
+        [1.04, 0],
+        [1.04, 0.14],
+        [0.9, 0.16],
+        [0.9, 0.32],
+        [0.76, 0.34],
+        [0.72, 0.5],
+        [0.76, 0.62],
+        [0.74, H * 0.18],
+        [0.68, H * 0.45],
+        [0.62, H * 0.78],
+        [0.58, H - 0.55],
+        [0.64, H - 0.32],
+        [0.82, H - 0.12],
+        [0.98, H],
+        [0.98, H + 0.14],
+        [0.62, H + 0.16],
+        [0.36, H + 0.3],
+        [0.08, H + 0.4]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 40);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y < 0.62 || y > H - 0.55) continue;
+        const r = Math.hypot(x, z);
+        if (r < 0.2) continue;
+        const flute = Math.max(0, Math.cos(Math.atan2(z, x) * 12));
+        const k = 1 - 0.055 * flute * flute;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function getPillarAssets(height = 14) {
     const stone = mapped(stoneTexture('#6a5a48'), 0x7a6a58, 0.9, 0.03, 1.1);
-    const g = geo(`pillar:${height}`, () => {
-        const col = new THREE.CylinderGeometry(0.62, 0.78, height, 12);
-        col.translate(0, height / 2, 0);
-        const base = new THREE.BoxGeometry(2.05, 0.48, 2.05);
-        base.translate(0, 0.24, 0);
-        const cap = new THREE.BoxGeometry(1.85, 0.38, 1.85);
-        cap.translate(0, height, 0);
-        const ring = new THREE.TorusGeometry(0.72, 0.08, 6, 16);
-        ring.rotateX(Math.PI / 2);
-        ring.translate(0, height - 0.35, 0);
-        [col, base, cap, ring].forEach((g) => g.clearGroups());
-        const merged = mergeGeometries([col, base, cap, ring], false);
-        [col, base, cap, ring].forEach((g) => g.dispose());
-        if (!merged) return new THREE.CylinderGeometry(0.62, 0.78, height, 12);
-        return merged;
-    });
+    const g = geo(`pillar:${height}`, () => pillarColumn(height));
     return { geo: g, mat: stone };
 }
 
