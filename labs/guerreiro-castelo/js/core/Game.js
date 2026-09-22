@@ -19,7 +19,7 @@ import { QuestManager } from '../game/QuestManager.js';
 import { CombatSystem } from '../game/CombatSystem.js';
 import { CheckpointManager } from '../game/CheckpointManager.js';
 import { StoryDirector } from '../game/StoryDirector.js';
-import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=19';
+import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=20';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js';
 import { Player } from '../player/Player.js?v=4';
 import { Teco } from '../characters/Teco.js?v=4';

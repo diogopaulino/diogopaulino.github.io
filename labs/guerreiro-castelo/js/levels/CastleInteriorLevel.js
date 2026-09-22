@@ -65,11 +65,68 @@ export class CastleInteriorLevel extends Level {
         room('roomSideLeft', 6, 3.2, 6, -10, 3.2, -18, ['+x']);
         room('roomSideRight', 6, 3.2, 6, 12, 3.2, -18, ['-x']);
 
-        // Porta da cela e barras de ferro
-        this.cellDoor = BABYLON.MeshBuilder.CreateBox('cellDoor', { width: 1.6, height: 2.4, depth: 0.12 }, scene);
-        this.cellDoor.position.set(0, 4.4, -37.1);
-        this.cellDoor.material = woodMat;
-        this.cellDoor.parent = this.group;
+        // Porta da cela: tábuas, grade e cintas. O pivô continua no centro,
+        // porque rotation.y = 1.5 abre a folha inteira.
+        const cellDoor = new BABYLON.TransformNode('cellDoor', scene);
+        cellDoor.position.set(0, 4.4, -37.1);
+        cellDoor.parent = this.group;
+        this.cellDoor = cellDoor;
+        const cellIron = new BABYLON.StandardMaterial('cellIronMat', scene);
+        cellIron.diffuseColor = new BABYLON.Color3(0.34, 0.36, 0.38);
+        cellIron.specularColor = new BABYLON.Color3(0.45, 0.45, 0.48);
+        const carveDoor = (name, shape, path, mat) => {
+            const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+                shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+                path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+                cap: BABYLON.Mesh.CAP_ALL,
+                closeShape: true,
+                sideOrientation: BABYLON.Mesh.DOUBLESIDE
+            }, scene);
+            mesh.material = mat;
+            mesh.parent = cellDoor;
+            return mesh;
+        };
+        const board = [
+            [0.02, -0.07], [-0.055, -0.065], [-0.07, -0.04],
+            [-0.07, 0.04], [-0.055, 0.065], [0.02, 0.07]
+        ];
+        const rail = [
+            [0.02, -0.08], [-0.075, -0.06], [-0.085, 0.05], [0.02, 0.08]
+        ];
+        for (const x of [-0.7, 0.7]) {
+            carveDoor('cellStile', board, [[x, -1.16, 0], [x, 1.16, 0]], woodMat);
+        }
+        carveDoor('cellRail', rail, [[-0.78, -1.12, 0], [0.78, -1.12, 0]], woodMat);
+        carveDoor('cellRail', rail, [[-0.78, 0.36, 0], [0.78, 0.36, 0]], woodMat);
+        carveDoor('cellRail', rail, [[-0.78, 1.12, 0], [0.78, 1.12, 0]], woodMat);
+        for (let i = 0; i < 6; i++) {
+            const x = -0.48 + i * 0.192;
+            carveDoor('cellPlank', board, [[x, -1.02, 0], [x, 0.26, 0]], woodMat);
+        }
+        const strap = [
+            [0.01, -0.04], [-0.06, -0.03], [-0.065, 0.03], [0.01, 0.04]
+        ];
+        for (const y of [-0.62, -0.05]) {
+            carveDoor('cellStrap', strap, [[-0.74, y, 0.02], [0.74, y, 0.02]], cellIron);
+        }
+        for (let i = 0; i < 5; i++) {
+            const bar = BABYLON.MeshBuilder.CreateCylinder('cellWindowBar', {
+                diameter: 0.035,
+                height: 0.62
+            }, scene);
+            bar.position.set(-0.36 + i * 0.18, 0.72, 0.05);
+            bar.material = cellIron;
+            bar.parent = cellDoor;
+        }
+        const ring = BABYLON.MeshBuilder.CreateTorus('cellRing', {
+            diameter: 0.18,
+            thickness: 0.028,
+            tessellation: 12
+        }, scene);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(0.7, 0.02, 0.12);
+        ring.material = cellIron;
+        ring.parent = cellDoor;
 
         const ironMat = new BABYLON.StandardMaterial('ironBarsMat', scene);
         ironMat.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.35);
