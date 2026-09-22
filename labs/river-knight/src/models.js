@@ -544,7 +544,7 @@ function sternTransomGeometry(beam) {
         }
         if (z < -0.04) {
             const row = Math.floor((y + hh) / 0.13);
-            if (row % 2 === 1) z += 0.055;
+            if (row % 2 === 1) z += 0.09;
         }
         pos.setXYZ(i, x, y, z);
     }

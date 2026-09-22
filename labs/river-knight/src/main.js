@@ -20,14 +20,14 @@ import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from 
 import { createWater, waterHeight } from './water.js?v=15';
 import { createTerrain } from './terrain.js?v=14';
 import { Effects } from './effects.js?v=15';
-import { Entities } from './entities.js?v=26';
-import { World } from './world.js?v=25';
-import { Player } from './player.js?v=25';
-import { createCastle, BossBarge } from './castle.js?v=35';
+import { Entities } from './entities.js?v=27';
+import { World } from './world.js?v=26';
+import { Player } from './player.js?v=26';
+import { createCastle, BossBarge } from './castle.js?v=36';
 import { Hud } from './hud.js?v=14';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js?v=14';
-import { updateCloth } from './models.js?v=25';
+import { updateCloth } from './models.js?v=26';
 import { centerX, halfWidth } from './river.js';
 import { clamp, damp, detectMobile, detectTouch, detectSoftwareGL, formatTime, randRange } from './utils.js?v=16';
 
