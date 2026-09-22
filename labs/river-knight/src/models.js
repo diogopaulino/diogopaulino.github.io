@@ -1389,12 +1389,101 @@ export function buildWatchtower({ lit = true } = {}) {
     return group;
 }
 
+/**
+ * Tronco de 7.5, eixo em Y (a malha gira Z em π/2 e deita no X).
+ * Topos com anéis de corte e casca rachada ao longo.
+ */
+function barricadeLogGeometry() {
+    const H = 7.5;
+    const half = H / 2;
+    const pts = [];
+    const cutFace = (ySign, inward) => {
+        const rings = 7;
+        const bark = ySign < 0 ? 0.44 : 0.4;
+        for (let step = 0; step <= rings; step++) {
+            const i = inward ? rings - step : step;
+            const u = i / rings;
+            const r = Math.max(0.004, u * bark);
+            const groove = i % 2 === 0 ? 0 : 0.08;
+            pts.push(new THREE.Vector2(r, ySign * (half + 0.03) - ySign * groove));
+        }
+    };
+    cutFace(-1, false);
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = -half + t * H;
+        let r = 0.46 - t * 0.04;
+        if (Math.sin(t * Math.PI * 9) > 0.45) r += 0.09;
+        if (Math.abs(t - 0.36) < 0.035) r += 0.07;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    cutFace(1, true);
+    const g = new THREE.LatheGeometry(pts, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const radial = Math.hypot(x, z);
+        if (radial > 0.3) {
+            const ang = Math.atan2(z, x);
+            const crack = 0.78 + 0.22 * Math.max(0, Math.cos(ang * 6 + y * 0.85)) ** 2;
+            x *= crack;
+            z *= crack;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Estaca lavrada, 1.6, centrada, ponta em +Y. */
+function barricadeSpikeGeometry() {
+    const H = 1.6;
+    const half = H / 2;
+    const pts = [];
+    for (let i = 0; i <= 5; i++) {
+        const u = i / 5;
+        const groove = i % 2 === 0 ? 0 : 0.06;
+        pts.push(new THREE.Vector2(Math.max(0.004, u * 0.24), -half - 0.02 + groove));
+    }
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = -half + t * H;
+        let r = 0.26 * (1 - t * 0.92);
+        if (t > 0.48 && t < 0.68) r *= 0.62;
+        pts.push(new THREE.Vector2(Math.max(0.02, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t < 0.62) {
+            const ang = Math.atan2(z, x);
+            const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.2);
+            const k = 0.34 + 0.66 / corner;
+            x *= k;
+            z *= k;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const BARRICADE_LOG = barricadeLogGeometry();
+const BARRICADE_SPIKE = barricadeSpikeGeometry();
+
 /** Barricada flutuante de troncos acorrentados. */
 export function buildBarricade() {
     const group = new THREE.Group();
     const wood = woodMaterial(true, 0x53381f);
     for (let i = 0; i < 3; i++) {
-        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 7.5, 8), wood);
+        const log = new THREE.Mesh(BARRICADE_LOG, wood);
+        log.name = 'barricadeLog';
         log.rotation.z = Math.PI / 2;
         log.position.set(0, 0.2 + i * 0.1, -0.9 + i * 0.9);
         log.rotation.y = (i - 1) * 0.08;
@@ -1402,7 +1491,8 @@ export function buildBarricade() {
         group.add(log);
     }
     for (const sx of [-1, 1]) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.6, 7), wood);
+        const spike = new THREE.Mesh(BARRICADE_SPIKE, wood);
+        spike.name = 'barricadeSpike';
         spike.position.set(sx * 2.6, 1.0, 0);
         spike.rotation.z = sx * -0.5;
         group.add(spike);
