@@ -9,6 +9,7 @@
  */
 
 import { makeCtx, tagSlot, glass } from './kit.js?v=4';
+import * as THREE from 'three';
 
 function build(kit, attach, fn) {
     const ctx = makeCtx(kit);
@@ -16,6 +17,36 @@ function build(kit, attach, fn) {
     ctx.group.userData.attach = attach;
     return tagSlot(ctx.group, 'accessory');
 }
+
+/**
+ * Estandarte do viking: a ponta da direita abre em duas caudas.
+ * O vão entre elas recua cerca de 12 cm.
+ */
+const VIKING_BANNER = (() => {
+    const p = [
+        [-0.11, 0.11],
+        [0.03, 0.11],
+        [0.13, 0.05],
+        [0.01, 0.00],
+        [0.13, -0.05],
+        [0.03, -0.11],
+        [-0.11, -0.11]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
 
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
@@ -91,7 +122,8 @@ const ACCESSORIES = {
 
     viking: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.cyl(0.025, 0.03, 0.5, mats.cloth, [0, 0.22, 0], [0.2, 0, 0.35]);
-        add.box(0.22, 0.22, 0.04, mats.accent, [0.04, 0.48, 0.1], [0.2, 0.3, 0.2], null, 0.02);
+        const banner = add.mesh(VIKING_BANNER, mats.accent, [0.04, 0.48, 0.1], [0.2, 0.3, 0.2]);
+        banner.name = 'vikingBanner';
         add.box(0.04, 0.08, 0.04, mats.secondary, [0, 0.02, 0]);
     }),
 
