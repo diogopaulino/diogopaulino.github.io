@@ -366,6 +366,43 @@ const NINJA_BAND = (() => {
 /**
  * Lenço do cowboy: a ponta desce no meio, cerca de 11 cm abaixo da faixa.
  */
+/**
+ * Concho da fita do chapéu: as pontas da fita ficam baixas e o
+ * medalhão no meio sobe e desce cerca de 11 cm.
+ */
+const COWBOY_CONCHO = (() => {
+    const p = [
+        [-0.09, -0.012],
+        [-0.045, -0.016],
+        [-0.028, -0.038],
+        [0, -0.055],
+        [0.028, -0.038],
+        [0.045, -0.016],
+        [0.09, -0.012],
+        [0.09, 0.012],
+        [0.045, 0.016],
+        [0.028, 0.038],
+        [0, 0.055],
+        [-0.028, 0.038],
+        [-0.045, 0.016],
+        [-0.09, 0.012]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 const COWBOY_BANDANA = (() => {
     const p = [
         [-0.09, 0.02],
@@ -585,7 +622,8 @@ const HEADS = {
         addFace(ctx);
         add.cyl(0.22, 0.24, 0.14, mats.secondary, [0, 0.28, 0]);
         add.cyl(0.42, 0.40, 0.04, mats.secondary, [0, 0.20, 0], [0.12, 0, 0]);
-        add.box(0.18, 0.03, 0.03, mats.accent, [0, 0.22, 0.22]);
+        const concho = add.mesh(COWBOY_CONCHO, mats.accent, [0, 0.22, 0.22]);
+        concho.name = 'cowboyConcho';
         const bandana = add.mesh(COWBOY_BANDANA, mats.dark, [0, -0.08, 0.26]);
         bandana.name = 'cowboyBandana';
     }),
