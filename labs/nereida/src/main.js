@@ -3,9 +3,9 @@
  */
 
 import * as THREE from 'three';
-import { Sanctuary } from './world.js';
-import { Life } from './creatures.js';
-import { Player } from './player.js';
+import { Sanctuary } from './world.js?v=3';
+import { Life } from './creatures.js?v=3';
+import { Player } from './player.js?v=3';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
 import { NereidaAudio } from './audio.js';

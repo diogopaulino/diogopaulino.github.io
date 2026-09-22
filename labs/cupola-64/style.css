@@ -880,7 +880,19 @@ kbd {
         right: calc(0.75rem + var(--safe-right));
     }
     .touch-controls {
-        height: min(42%, 38dvh);
+        height: auto;
+        inset: auto calc(0.4rem + var(--safe-right)) calc(0.3rem + var(--safe-bottom)) calc(0.4rem + var(--safe-left));
+    }
+
+    .stick {
+        width: 4.4rem;
+        height: 4.4rem;
+    }
+
+    .stick i {
+        width: 1.7rem;
+        height: 1.7rem;
+        margin: -0.85rem 0 0 -0.85rem;
     }
     .hud-top {
         top: calc(3.4rem + var(--safe-top));

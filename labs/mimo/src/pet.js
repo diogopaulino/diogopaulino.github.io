@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { canineTorsoGeometry, canineHeadGeometry, limbGeometry, earBladeGeometry, tailGeometry } from '../../shared/realism.js';
 import { breedById, coatById } from './config.js';
 import { furMaps } from './textures.js';
 import { damp, clamp } from './utils.js';
@@ -114,9 +115,21 @@ export class Pet {
         this.parts.mats.push(furMat, bellyMat);
         this.furMat = furMat;
 
+        const puff = geo('puff', () => {
+            const s = new THREE.SphereGeometry(1, 16, 12);
+            const pos = s.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const n = 0.78 + Math.abs(Math.sin(x * 3.2 + y * 2.1) * Math.cos(z * 2.8)) * 0.34;
+                pos.setXYZ(i, x * n, y * n * 0.9, z * n);
+            }
+            s.computeVertexNormals();
+            return s;
+        });
         const sph = geo(`sph${segs}`, () => new THREE.SphereGeometry(1, segs, segs - 2));
         const sphLo = geo('sphLo', () => new THREE.SphereGeometry(1, 12, 10));
-        const cap = geo(`cap${segs}`, () => new THREE.CapsuleGeometry(1, 1, 6, segs));
         const cyl = geo('cyl', () => new THREE.CylinderGeometry(1, 1, 1, 12));
 
         const hipY = breed.legLen + 0.02;
@@ -127,21 +140,13 @@ export class Pet {
         this.root.add(body);
         this.parts.body = body;
 
-        const torso = mesh(sph, furMat, {
-            scale: [breed.bodyW, breed.bodyH, breed.bodyLen * 0.5],
-            pos: [0, breed.bodyH * 0.15, 0]
+        const torso = mesh(canineTorsoGeometry({ length: 1, girth: 0.48, chest: 0.1 }), furMat, {
+            scale: [breed.bodyW * 1.6, breed.bodyH * 1.5, breed.bodyLen],
+            pos: [0, breed.bodyH * 0.2, 0]
         });
         body.add(torso);
         this.parts.torso = torso;
 
-        body.add(mesh(sph, furMat, {
-            scale: [breed.bodyW * 0.92, breed.bodyH * 0.9, breed.bodyW * 0.85],
-            pos: [0, breed.bodyH * 0.12, breed.bodyLen * 0.28]
-        }));
-        body.add(mesh(sph, furMat, {
-            scale: [breed.bodyW * 0.88, breed.bodyH * 0.85, breed.bodyW * 0.8],
-            pos: [0, breed.bodyH * 0.08, -breed.bodyLen * 0.28]
-        }));
         body.add(mesh(sphLo, bellyMat, {
             scale: [breed.bodyW * 0.62, breed.bodyH * 0.42, breed.bodyLen * 0.38],
             pos: [0, -breed.bodyH * 0.18, 0.04],
@@ -149,14 +154,14 @@ export class Pet {
         }));
 
         if (breed.fur > 0.7) {
-            body.add(mesh(sphLo, furMat, {
+            body.add(mesh(puff, furMat, {
                 scale: [breed.bodyW * 1.05, breed.bodyH * 0.7, breed.bodyLen * 0.22],
                 pos: [0, breed.bodyH * 0.08, -breed.bodyLen * 0.38]
             }));
         }
 
         if (breed.pattern === 'poodle') {
-            body.add(mesh(sph, furMat, {
+            body.add(mesh(puff, furMat, {
                 scale: [breed.bodyW * 0.7, breed.bodyH * 0.7, breed.bodyW * 0.7],
                 pos: [0, breed.bodyH * 0.22, breed.bodyLen * 0.22]
             }));
@@ -174,13 +179,9 @@ export class Pet {
         this.parts.head = head;
 
         const hs = breed.head;
-        head.add(mesh(sph, furMat, { scale: [hs * 0.95, hs * (cat ? 0.88 : 0.92), hs] }));
-        if (breed.snout > 0.1) {
-            head.add(mesh(sph, bellyMat, {
-                scale: [hs * 0.42 * (0.6 + breed.snout), hs * 0.32, hs * breed.snout * 1.15],
-                pos: [0, -hs * 0.18, hs * (0.55 + breed.snout * 0.4)]
-            }));
-        }
+        head.add(mesh(canineHeadGeometry({ radius: 1, style: cat ? 'cat' : 'dog' }), furMat, {
+            scale: [hs * 0.92, hs * (cat ? 0.84 : 0.9), hs * (0.9 + breed.snout * 0.35)]
+        }));
         head.add(mesh(sphLo, noseMat, {
             scale: [0.045 + breed.snout * 0.04, 0.035, 0.04],
             pos: [0, -hs * 0.16, hs * (0.72 + breed.snout * 0.55)]
@@ -225,7 +226,7 @@ export class Pet {
             scale: [0.06, 0.04, 0.04], pos: [-hs * 0.42, -hs * 0.12, hs * 0.5], cast: false
         }));
 
-        this._ears(head, breed, furMat, innerEar, sph, segs);
+        this._ears(head, breed, furMat, innerEar);
 
         if (cat) {
             const whisker = new THREE.MeshPhysicalMaterial({
@@ -254,7 +255,7 @@ export class Pet {
             color: 0xe8c878, roughness: 0.25, metalness: 0.7
         }), { scale: [0.04, 0.05, 0.012], pos: [0, -hs * 0.52, hs * 0.28] }));
 
-        this._legs(breed, furMat, padMat, cap, sphLo);
+        this._legs(breed, furMat, padMat, sphLo);
         this._tail(breed, furMat, sph, sphLo);
 
         const shadow = new THREE.Mesh(
@@ -267,55 +268,37 @@ export class Pet {
         this.parts.shadow = shadow;
     }
 
-    _ears(head, breed, furMat, innerEar, sph, segs) {
+    _ears(head, breed, furMat, innerEar) {
         const type = breed.ear;
         const s = breed.earSize * breed.head;
-        const cone = geo(`cone${segs}`, () => new THREE.ConeGeometry(1, 1.4, 10));
+        const floppy = type === 'floppy' || type === 'fold';
+        const blade = geo(`earB:${type}:${s.toFixed(3)}`, () => earBladeGeometry({
+            height: Math.max(0.06, s * (floppy ? 0.95 : 0.8)),
+            width: s * (floppy ? 0.46 : 0.3),
+            thickness: s * 0.14
+        }));
+        const inner = geo(`earI:${type}:${s.toFixed(3)}`, () => earBladeGeometry({
+            height: Math.max(0.04, s * 0.55),
+            width: s * 0.18,
+            thickness: s * 0.05
+        }));
         for (const sx of [-1, 1]) {
             const ear = new THREE.Group();
             ear.position.set(sx * breed.head * 0.52, breed.head * 0.55, -breed.head * 0.08);
             head.add(ear);
             this.parts.ears.push(ear);
-
-            if (type === 'floppy') {
-                ear.rotation.set(0.15, sx * 0.15, sx * 0.9);
-                ear.add(mesh(sph, furMat, { scale: [s * 0.22, s * 0.55, s * 0.16], pos: [0, -s * 0.2, 0] }));
-                ear.add(mesh(sph, innerEar, {
-                    scale: [s * 0.14, s * 0.4, s * 0.08], pos: [sx * -0.02, -s * 0.18, s * 0.08], cast: false
-                }));
-            } else if (type === 'fold') {
-                ear.rotation.set(0.4, sx * 0.2, sx * 0.6);
-                ear.add(mesh(sph, furMat, { scale: [s * 0.2, s * 0.28, s * 0.12] }));
-            } else if (type === 'small') {
-                ear.rotation.set(0, 0, sx * 0.35);
-                ear.add(mesh(sph, furMat, { scale: [s * 0.18, s * 0.28, s * 0.12], pos: [0, s * 0.1, 0] }));
-                ear.add(mesh(sph, innerEar, {
-                    scale: [s * 0.1, s * 0.18, s * 0.06], pos: [0, s * 0.1, s * 0.06], cast: false
-                }));
-            } else if (type === 'tuft') {
-                ear.rotation.set(-0.15, sx * 0.1, sx * 0.25);
-                ear.add(mesh(cone, furMat, { scale: [s * 0.22, s * 0.55, s * 0.18], pos: [0, s * 0.28, 0] }));
-                ear.add(mesh(cone, innerEar, {
-                    scale: [s * 0.12, s * 0.38, s * 0.08], pos: [0, s * 0.22, s * 0.06], cast: false
-                }));
-                ear.add(mesh(sph, furMat, { scale: [0.03, s * 0.18, 0.03], pos: [0, s * 0.72, 0] }));
-            } else if (type === 'semi') {
-                ear.rotation.set(-0.2, sx * 0.15, sx * 0.4);
-                ear.add(mesh(sph, furMat, { scale: [s * 0.18, s * 0.42, s * 0.12], pos: [0, s * 0.12, 0] }));
-                ear.add(mesh(sph, innerEar, {
-                    scale: [s * 0.1, s * 0.28, s * 0.06], pos: [0, s * 0.1, s * 0.06], cast: false
-                }));
-            } else {
-                ear.rotation.set(-0.25, sx * 0.12, sx * 0.22);
-                ear.add(mesh(cone, furMat, { scale: [s * 0.22, s * 0.55, s * 0.16], pos: [0, s * 0.28, 0] }));
-                ear.add(mesh(cone, innerEar, {
-                    scale: [s * 0.12, s * 0.4, s * 0.07], pos: [0, s * 0.22, s * 0.05], cast: false
-                }));
-            }
+            if (type === 'floppy') ear.rotation.set(0.2, sx * 0.15, sx * 1.15);
+            else if (type === 'fold') ear.rotation.set(0.55, sx * 0.2, sx * 0.85);
+            else if (type === 'small') ear.rotation.set(-0.05, 0, sx * 0.35);
+            else if (type === 'tuft') ear.rotation.set(-0.2, sx * 0.1, sx * 0.2);
+            else if (type === 'semi') ear.rotation.set(-0.15, sx * 0.12, sx * 0.35);
+            else ear.rotation.set(-0.25, sx * 0.1, sx * 0.18);
+            ear.add(mesh(blade, furMat));
+            ear.add(mesh(inner, innerEar, { pos: [0, s * 0.08, s * 0.05], cast: false }));
         }
     }
 
-    _legs(breed, furMat, padMat, cap, sphLo) {
+    _legs(breed, furMat, padMat, sphLo) {
         const len = breed.legLen;
         const r = breed.legR;
         const zf = breed.bodyLen * 0.28;
@@ -327,7 +310,9 @@ export class Pet {
             const leg = new THREE.Group();
             leg.position.set(px, this.restHip, pz);
             this.root.add(leg);
-            leg.add(mesh(cap, furMat, { scale: [r, len * 0.55, r], pos: [0, -len * 0.35, 0] }));
+            leg.add(mesh(limbGeometry({
+                length: 1, r0: 1, r1: 0.68, bulge: 0.28, bulgeAt: 0.32, seg: 10, rings: 6
+            }), furMat, { scale: [r, len * 0.9, r] }));
             leg.add(mesh(sphLo, padMat, {
                 scale: [r * 1.35, r * 0.55, r * 1.5], pos: [0, -len * 0.92, r * 0.3]
             }));
@@ -349,10 +334,16 @@ export class Pet {
             const s = thick * (1 - i * 0.12);
             const len = breed.tail === 'short' ? 0.08 : 0.14;
             const puff = breed.tail === 'bushy' || breed.tail === 'plume' || breed.tail === 'pompon';
-            const sc = puff ? [s * 1.6, s * 1.6, len] : [s, s, len];
-            seg.add(mesh(puff ? sph : sphLo, furMat, { scale: sc, pos: [0, 0, -len * 0.5] }));
+            const segGeo = geo(`tail:${puff ? 'p' : 's'}:${len}:${s.toFixed(3)}`, () => tailGeometry({
+                length: len,
+                r0: s * (puff ? 1.8 : 1.05),
+                r1: s * (puff ? 1.15 : 0.55),
+                fluff: puff ? s * 0.45 : s * 0.12
+            }));
+            seg.add(mesh(segGeo, furMat, { pos: [0, 0, -len * 0.5] }));
             if (breed.tail === 'pompon' && i === n - 1) {
-                seg.add(mesh(sph, furMat, { scale: [0.12, 0.12, 0.12], pos: [0, 0, -len] }));
+                const pom = geo('tailPom', () => tailGeometry({ length: 0.1, r0: 0.07, r1: 0.05, fluff: 0.04 }));
+                seg.add(mesh(pom, furMat, { pos: [0, 0, -len] }));
             }
             seg.rotation.x = breed.tail === 'curl' ? -0.55 : breed.tail === 'short' ? 0.4 : -0.25;
             this.parts.tail.push(seg);

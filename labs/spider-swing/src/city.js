@@ -15,10 +15,25 @@ import {
     createMaterials, boxCollider,
     createEmpire, createChrysler, createWTC, createFlatiron,
     createBridge, createLiberty, createWaterTower
-} from './buildings.js';
+} from './buildings.js?v=5';
 
 const CELL = 70;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
+
+function parkCanopy() {
+    const pts = [];
+    const height = 7;
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = (t - 0.5) * height;
+        const tier = 0.72 + 0.28 * Math.abs(Math.sin(t * Math.PI * 3.5));
+        const r = Math.max(0.05, 2.15 * (1 - t) * tier);
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 9);
+    g.computeVertexNormals();
+    return g;
+}
 
 export class City {
     constructor(scene, quality) {
@@ -346,7 +361,7 @@ export class City {
         this.root.add(park);
 
         const treeCount = Math.floor(48 * this.quality.props);
-        const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(2.2, 7, 6), this.mats.tree, treeCount);
+        const trees = new THREE.InstancedMesh(parkCanopy(), this.mats.tree, treeCount);
         trees.frustumCulled = false;
         const rng = mulberry32(99);
         for (let i = 0; i < treeCount; i++) {

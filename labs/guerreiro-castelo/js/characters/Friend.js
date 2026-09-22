@@ -1,4 +1,4 @@
-import { buildFriend, CharacterAnimator, applyLocomotion } from './builders.js';
+import { buildFriend, CharacterAnimator, applyLocomotion } from './builders.js?v=4';
 
 export class Friend {
     constructor(parent, variant = 0) {

@@ -3,11 +3,12 @@
  * character.js posiciona em LAYOUT.HEAD_Y.
  */
 
-import { makeCtx, addFace, tagSlot, glass } from './kit.js';
+import { makeCtx, addFace, tagSlot, glass } from './kit.js?v=4';
+import { headGeometry } from '../../shared/realism.js';
 
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
-    if (skull) ctx.add.sphere(ctx.L.HEAD_R, ctx.mats.skin);
+    if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
     fn(ctx);
     return tagSlot(ctx.group, 'head');
 }
@@ -16,12 +17,12 @@ const HEADS = {
     pirate: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx);
-        add.sphere(0.31, mats.primary, [0, 0.08, 0], null, [1.02, 0.52, 1.02]);
+        add.lathe([[0.05, 0.02], [0.3, 0.06], [0.28, 0.16], [0.08, 0.22]], mats.primary, [0, 0.02, 0]);
         add.sphere(0.07, mats.primary, [-0.24, 0.14, -0.16]);
         add.sphere(0.055, mats.primary, [-0.30, 0.08, -0.12]);
         add.box(0.16, 0.08, 0.04, mats.dark, [0.12, 0.05, 0.26], [0.2, 0.4, 0]);
         add.cyl(0.01, 0.01, 0.58, mats.dark, [0, 0.12, 0.08], [0, 0, 1.05]);
-        add.sphere(0.16, mats.dark, [0, -0.22, 0.1], null, [1.15, 0.65, 0.85]);
+        add.lathe([[0.04, 0], [0.14, 0.02], [0.1, 0.1], [0.03, 0.16]], mats.dark, [0, -0.28, 0.12]);
         add.torus(0.04, 0.008, mats.accent, [0.28, -0.05, 0.1], [1.2, 0, 0.2]);
     }),
 
@@ -31,7 +32,7 @@ const HEADS = {
         add.cyl(0.24, 0.26, 0.12, mats.white, [0, 0.26, 0]);
         add.cyl(0.32, 0.32, 0.035, mats.white, [0, 0.20, 0]);
         add.box(0.08, 0.12, 0.02, mats.primary, [0, 0.22, 0.26]);
-        add.sphere(0.12, mats.dark, [0, 0.02, -0.22], null, [1.4, 0.5, 0.7]);
+        add.lathe([[0.02, 0], [0.08, 0.04], [0.05, 0.14], [0.015, 0.22]], mats.dark, [0, -0.02, -0.2], [0.4, 0, 0]);
     }),
 
     astronaut: (kit) => build(kit, (ctx) => {
@@ -48,7 +49,7 @@ const HEADS = {
     warrior: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx, { smile: false });
-        add.sphere(0.32, mats.accent, [0, 0.06, 0], null, [1.05, 0.85, 1.05]);
+        add.lathe([[0.1, -0.16], [0.3, -0.02], [0.32, 0.12], [0.18, 0.26], [0.06, 0.34]], mats.accent, [0, -0.02, 0]);
         add.box(0.06, 0.28, 0.22, mats.primary, [0, 0.28, 0], null, null, 0.02);
         add.box(0.34, 0.08, 0.08, mats.secondary, [0, 0.02, 0.22], null, null, 0.02);
         add.box(0.12, 0.1, 0.18, mats.secondary, [0, -0.08, 0.22]);
@@ -58,16 +59,16 @@ const HEADS = {
     wizard: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx);
-        add.cone(0.22, 0.72, mats.primary, [0, 0.52, -0.04], [-0.18, 0, 0]);
+        add.lathe([[0.24, 0], [0.28, 0.06], [0.14, 0.28], [0.06, 0.52], [0.015, 0.74]], mats.primary, [0, 0.16, -0.04], [-0.18, 0, 0]);
         add.cyl(0.30, 0.30, 0.05, mats.accent, [0, 0.22, 0]);
         add.sphere(0.04, mats.glow, [0, 0.86, -0.14]);
-        add.sphere(0.18, mats.white, [0, -0.22, 0.1], null, [1.15, 0.85, 0.9]);
+        add.lathe([[0.03, 0], [0.16, 0.04], [0.12, 0.16], [0.04, 0.26]], mats.white, [0, -0.34, 0.08]);
         add.sphere(0.05, mats.white, [0, -0.08, 0.28]);
     }),
 
     ninja: (kit) => build(kit, (ctx) => {
         const { add, mats, group } = ctx;
-        add.sphere(0.305, mats.primary);
+        add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), mats.primary);
         add.box(0.42, 0.1, 0.28, mats.white, [0, 0.05, 0.08], null, [1, 1, 0.7], 0.04);
         add.sphere(0.026, mats.iris, [-0.08, 0.05, 0.26]);
         add.sphere(0.026, mats.iris, [0.08, 0.05, 0.26]);
@@ -82,7 +83,7 @@ const HEADS = {
         addFace(ctx);
         add.cyl(0.16, 0.18, 0.12, mats.white, [0, 0.28, 0]);
         add.cyl(0.22, 0.20, 0.28, mats.white, [0, 0.50, 0]);
-        add.sphere(0.22, mats.white, [0, 0.64, 0], null, [1, 0.55, 1]);
+        add.lathe([[0.04, 0], [0.2, 0.03], [0.22, 0.1], [0.08, 0.16]], mats.white, [0, 0.58, 0]);
         add.box(0.16, 0.04, 0.04, mats.dark, [0, -0.06, 0.27]);
         add.sphere(0.03, mats.dark, [-0.07, -0.06, 0.27]);
         add.sphere(0.03, mats.dark, [0.07, -0.06, 0.27]);
@@ -90,7 +91,7 @@ const HEADS = {
 
     robot: (kit) => build(kit, (ctx) => {
         const { add, mats, group } = ctx;
-        add.box(0.52, 0.44, 0.44, mats.primary, [0, 0.02, 0], null, null, 0.06);
+        add.lathe([[0.14, -0.18], [0.26, -0.04], [0.26, 0.12], [0.16, 0.24], [0.06, 0.3]], mats.primary, [0, -0.02, 0]);
         add.box(0.40, 0.14, 0.08, mats.dark, [0, 0.06, 0.20], null, null, 0.03);
         add.sphere(0.045, mats.glow, [-0.1, 0.06, 0.24]);
         add.sphere(0.045, mats.glow, [0.1, 0.06, 0.24]);
@@ -123,7 +124,7 @@ const HEADS = {
     viking: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx, { smile: false });
-        add.sphere(0.32, mats.accent, [0, 0.08, 0], null, [1.05, 0.8, 1.05]);
+        add.lathe([[0.12, -0.12], [0.3, 0.02], [0.28, 0.16], [0.14, 0.28], [0.04, 0.34]], mats.accent, [0, 0.02, 0]);
         add.cone(0.05, 0.22, mats.trim, [-0.32, 0.38, -0.02], [0, 0, 0.45]);
         add.cone(0.05, 0.22, mats.trim, [0.32, 0.38, -0.02], [0, 0, -0.45]);
         add.sphere(0.07, mats.trim, [-0.30, 0.22, -0.02], null, [0.7, 1.1, 0.5]);
@@ -148,7 +149,7 @@ const HEADS = {
     samurai: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx, { smile: false });
-        add.sphere(0.33, mats.secondary, [0, 0.08, 0], null, [1.08, 0.78, 1.08]);
+        add.lathe([[0.14, -0.1], [0.32, 0.02], [0.3, 0.16], [0.12, 0.26], [0.04, 0.32]], mats.secondary, [0, 0.02, 0]);
         add.box(0.5, 0.08, 0.18, mats.primary, [0, 0.12, 0.1], [0.15, 0, 0]);
         add.torus(0.1, 0.02, mats.accent, [0, 0.32, 0.04], [Math.PI / 2, 0, 0]);
         add.box(0.08, 0.16, 0.04, mats.accent, [0, 0.40, 0.04]);
@@ -158,9 +159,9 @@ const HEADS = {
     scientist: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx);
-        add.sphere(0.22, mats.white, [0, 0.16, -0.04], null, [1.35, 0.85, 1.1]);
-        add.sphere(0.08, mats.white, [-0.22, 0.22, 0.04]);
-        add.sphere(0.07, mats.white, [0.2, 0.26, 0]);
+        add.lathe([[0.04, 0], [0.18, 0.04], [0.2, 0.12], [0.06, 0.2]], mats.white, [0, 0.08, -0.1]);
+        add.lathe([[0.02, 0], [0.07, 0.03], [0.04, 0.1]], mats.white, [-0.2, 0.16, 0.02]);
+        add.lathe([[0.02, 0], [0.06, 0.03], [0.035, 0.09]], mats.white, [0.18, 0.2, 0]);
         add.torus(0.08, 0.014, mats.secondary, [-0.1, 0.08, 0.26], [0.1, 0, 0]);
         add.torus(0.08, 0.014, mats.secondary, [0.1, 0.08, 0.26], [0.1, 0, 0]);
         add.cyl(0.01, 0.01, 0.08, mats.secondary, [0, 0.08, 0.26], [0, 0, Math.PI / 2]);

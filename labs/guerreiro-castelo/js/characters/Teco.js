@@ -2,7 +2,7 @@
  * Companheiro Teco (Macaco) para Babylon.js.
  */
 
-import { buildTeco, CharacterAnimator } from './builders.js';
+import { buildTeco, CharacterAnimator } from './builders.js?v=4';
 import { MonkeyAI } from '../ai/MonkeyAI.js';
 import { angleDamp } from '../utils/math.js';
 

@@ -12,10 +12,62 @@ function std(color, roughness = 0.55, metalness = 0.12) {
     return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
+/**
+ * Casco visto de lado. +x é a frente (vira +z).
+ * Os arcos de roda sobem na borda de baixo, centrados em x = ±1.25.
+ */
+function jeepHullGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(1.72, 0.52);
+    s.lineTo(1.72, 0.78);
+    s.quadraticCurveTo(1.35, 1.05, 0.72, 1.1);
+    s.lineTo(-0.15, 1.08);
+    s.quadraticCurveTo(-0.7, 1.02, -1.15, 0.96);
+    s.quadraticCurveTo(-1.6, 0.86, -1.82, 0.7);
+    s.lineTo(-1.82, 0.52);
+    s.lineTo(-1.72, 0.52);
+    s.quadraticCurveTo(-1.25, 1.02, -0.78, 0.52);
+    s.lineTo(0.78, 0.52);
+    s.quadraticCurveTo(1.25, 1.02, 1.72, 0.52);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 1.82,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.04,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.91);
+    g.rotateY(-Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Cabine: para-brisa inclinado e teto, mais estreita que o casco. */
+function jeepCabinGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0.58, 1.02);
+    s.quadraticCurveTo(0.42, 1.45, 0.12, 1.68);
+    s.lineTo(-0.82, 1.7);
+    s.quadraticCurveTo(-1.02, 1.55, -1.02, 1.12);
+    s.lineTo(0.58, 1.02);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 1.58,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.035,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.79);
+    g.rotateY(-Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
-    const paintTan = std(0xb89a6a, 0.55, 0.08);
     const dark = std(0x121416, 0.7, 0.2);
     const chrome = new THREE.MeshStandardMaterial({
         map: metalTexture(), color: 0xccd2d8, roughness: 0.28, metalness: 0.85
@@ -29,28 +81,20 @@ export function buildJeep() {
         color: 0xfff2c8, emissive: 0xffe8a0, emissiveIntensity: 0.85, roughness: 0.3
     });
 
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.42, 3.6), paint);
-    chassis.position.y = 0.72;
+    const chassis = new THREE.Mesh(jeepHullGeometry(), paint);
+    chassis.name = 'jeepHull';
     root.add(chassis);
 
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.12, 3.62), paintTan);
-    stripe.position.y = 0.9;
-    root.add(stripe);
-
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.85, 1.7), paint);
-    cabin.position.set(0, 1.32, -0.15);
+    const cabin = new THREE.Mesh(jeepCabinGeometry(), paint);
+    cabin.name = 'jeepCabin';
     root.add(cabin);
 
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.62, 0.08), glass);
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.58, 0.06), glass);
     windshield.position.set(0, 1.42, 0.72);
     windshield.rotation.x = -0.28;
     root.add(windshield);
 
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 1.85), dark);
-    roof.position.set(0, 1.78, -0.2);
-    root.add(roof);
-
-    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.06, 1.5), chrome);
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.05, 1.35), chrome);
     rack.position.set(0, 1.92, -0.15);
     root.add(rack);
 

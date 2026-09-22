@@ -4,6 +4,37 @@
 
 import { barkTexture, leafTexture, stoneTexture, woodTexture } from './Textures.js';
 
+/** Empurra XZ para a copa/arbusto não ficar um sólido perfeito. */
+function raggedXZ(mesh, amp = 0.22) {
+    const verts = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    if (!verts) return mesh;
+    for (let i = 0; i < verts.length; i += 3) {
+        const n = 0.84 + Math.abs(Math.sin(verts[i] * 3.1 + verts[i + 1]) * Math.cos(verts[i + 2] * 2.6)) * amp;
+        verts[i] *= n;
+        verts[i + 2] *= n;
+    }
+    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
+    mesh.createNormals(false);
+    return mesh;
+}
+
+function raggedRock(mesh) {
+    const verts = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    if (!verts) return mesh;
+    for (let i = 0; i < verts.length; i += 3) {
+        const x = verts[i];
+        const y = verts[i + 1];
+        const z = verts[i + 2];
+        const n = 0.76 + Math.abs(Math.sin(x * 1.8 + z * 2.2) * Math.cos(y * 2.4 + x)) * 0.4;
+        verts[i] = x * n;
+        verts[i + 1] = y * (0.68 + n * 0.28);
+        verts[i + 2] = z * n;
+    }
+    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
+    mesh.createNormals(false);
+    return mesh;
+}
+
 export function makeTree(rng = Math.random, scene) {
     const root = new BABYLON.TransformNode('treeRoot', scene);
 
@@ -38,6 +69,7 @@ export function makeTree(rng = Math.random, scene) {
             height: 2.2,
             tessellation: 7
         }, scene);
+        raggedXZ(cone, 0.26);
         cone.position.y = i * 1.3;
         cone.material = leafMat;
         cone.parent = foliage;
@@ -51,6 +83,7 @@ export function makeRock(scale = 1, scene) {
         diameter: scale * 2,
         segments: 6
     }, scene);
+    raggedRock(mesh);
     mesh.scaling = new BABYLON.Vector3(1 + Math.random() * 0.3, 0.7 + Math.random() * 0.4, 1 + Math.random() * 0.3);
     mesh.rotation.y = Math.random() * Math.PI * 2;
     mesh.rotation.x = (Math.random() - 0.5) * 0.4;
@@ -73,6 +106,7 @@ export function makeBush(scene) {
             diameter: 0.9 + Math.random() * 0.5,
             segments: 6
         }, scene);
+        raggedXZ(b, 0.34);
         b.position.set((Math.random() - 0.5) * 0.6, 0.35 + Math.random() * 0.3, (Math.random() - 0.5) * 0.6);
         b.material = leafMat;
         b.parent = root;

@@ -3,7 +3,196 @@
  */
 
 import { castleStoneTexture, mossTexture, flagTexture, woodTexture } from './Textures.js';
-import { makeTorch } from './Environment.js';
+import { makeTorch } from './Environment.js?v=5';
+
+/** Telhado de torre: beiral aberto, altura 4.5 centrada como o cone antigo (diâmetro de base ~7.6). */
+function towerRoofMesh(scene, name) {
+    const h = 4.5;
+    return BABYLON.MeshBuilder.CreateLathe(name, {
+        shape: [
+            new BABYLON.Vector3(0.12, h * 0.5, 0),
+            new BABYLON.Vector3(0.7, h * 0.3, 0),
+            new BABYLON.Vector3(1.7, h * 0.04, 0),
+            new BABYLON.Vector3(2.9, -h * 0.22, 0),
+            new BABYLON.Vector3(4.2, -h * 0.46, 0),
+            new BABYLON.Vector3(3.55, -h * 0.5, 0)
+        ],
+        tessellation: 16,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+}
+
+/**
+ * Corpo da menagem. A planta (x, z) vai na Shape; o caminho sobe em Y.
+ * firstNormal evita o colapso do quadro quando o caminho é vertical.
+ * A base fica em y = 0 e o topo em y = 22, onde o telhado apoia.
+ */
+function keepBodyMesh(scene) {
+    const plan = [
+        [-6, -6], [-2.2, -6], [-2.2, -6.7], [-1.05, -6.7], [-1.05, -6],
+        [1.05, -6], [1.05, -6.7], [2.2, -6.7], [2.2, -6], [6, -6],
+        [6, -2.3], [6.7, -2.3], [6.7, -1.05], [6, -1.05],
+        [6, 1.05], [6.7, 1.05], [6.7, 2.3], [6, 2.3], [6, 6],
+        [2.3, 6], [2.3, 6.7], [1.05, 6.7], [1.05, 6],
+        [-1.05, 6], [-1.05, 6.7], [-2.3, 6.7], [-2.3, 6], [-6, 6],
+        [-6, 2.3], [-6.7, 2.3], [-6.7, 1.05], [-6, 1.05],
+        [-6, -1.05], [-6.7, -1.05], [-6.7, -2.3], [-6, -2.3]
+    ];
+    const shape = plan.map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const steps = 16;
+    const height = 22;
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom('castleKeep', {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.05 - t * 0.08;
+            const course = 1 + Math.sin(distance * 2.35) * 0.012;
+            return batter * course;
+        }
+    }, scene);
+}
+
+/**
+ * Torre de canto. Planta com quatro pilastras; o caminho sobe 26,
+ * a base fica em y = 0 (o cilindro antigo era centrado em y = 13).
+ * O telhado continua em y = 28.
+ */
+function towerShaftMesh(scene, name) {
+    const r = 3.35;
+    const jut = 0.4;
+    const sides = 16;
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * Math.PI * 2;
+        if (i % 4 === 0) {
+            const left = a - 0.24;
+            const right = a + 0.24;
+            pts.push([Math.cos(left) * r, Math.sin(left) * r]);
+            pts.push([Math.cos(left) * (r + jut), Math.sin(left) * (r + jut)]);
+            pts.push([Math.cos(right) * (r + jut), Math.sin(right) * (r + jut)]);
+            pts.push([Math.cos(right) * r, Math.sin(right) * r]);
+        } else {
+            pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+        }
+    }
+    const shape = pts.map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const height = 26;
+    const steps = 18;
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom(name, {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.08 - t * 0.12;
+            const course = Math.sin(distance * 1.55) > 0.62 ? 1.045 : 0.985;
+            return batter * course;
+        }
+    }, scene);
+}
+
+/** Folha de portão com arco de meio ponto. Origem na base; a espessura corre em Z. */
+function gateDoorMesh(scene) {
+    const half = 3.5;
+    const spring = 6.5;
+    const shape = [
+        new BABYLON.Vector3(-half, 0, 0),
+        new BABYLON.Vector3(half, 0, 0),
+        new BABYLON.Vector3(half, spring, 0)
+    ];
+    const seg = 14;
+    for (let i = 1; i <= seg; i++) {
+        const a = (Math.PI * i) / seg;
+        shape.push(new BABYLON.Vector3(Math.cos(a) * half, spring + Math.sin(a) * half, 0));
+    }
+    return BABYLON.MeshBuilder.ExtrudeShape('mainGate', {
+        shape,
+        path: [
+            new BABYLON.Vector3(0, 0, -0.6),
+            new BABYLON.Vector3(0, 0, 0.6)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+}
+
+/** Duas águas sobre a menagem 12×12. y = 0 encosta no topo da parede. */
+function keepRoofMesh(scene) {
+    const shape = [
+        new BABYLON.Vector3(-7.2, 0, 0),
+        new BABYLON.Vector3(0, 4.2, 0),
+        new BABYLON.Vector3(7.2, 0, 0),
+        new BABYLON.Vector3(6.6, -0.45, 0),
+        new BABYLON.Vector3(-6.6, -0.45, 0)
+    ];
+    return BABYLON.MeshBuilder.ExtrudeShape('keepRoof', {
+        shape,
+        path: [
+            new BABYLON.Vector3(-7.2, 0, 0),
+            new BABYLON.Vector3(7.2, 0, 0)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+}
+
+/** Planta da muralha, comprida em X. Pilastras nas duas faces; o portão abre um vão na face +Z. */
+function wallPlan(length, thick, gateOnPositiveZ) {
+    const hl = length / 2;
+    const ht = thick / 2;
+    const jut = 0.48;
+    const pilW = 0.85;
+    const pitch = 3.15;
+    const spots = [];
+    for (let x = -hl + 1.8; x + pilW < hl - 0.8; x += pitch) spots.push(x);
+    const blocksGate = (x) => gateOnPositiveZ && x < 4.3 && x + pilW > -4.3;
+    const pts = [[-hl, -ht]];
+    for (const x of spots) {
+        pts.push([x, -ht], [x, -ht - jut], [x + pilW, -ht - jut], [x + pilW, -ht]);
+    }
+    pts.push([hl, -ht], [hl, ht]);
+    for (let i = spots.length - 1; i >= 0; i--) {
+        const x = spots[i];
+        if (blocksGate(x)) continue;
+        pts.push([x + pilW, ht], [x + pilW, ht + jut], [x, ht + jut], [x, ht]);
+    }
+    pts.push([-hl, ht]);
+    return pts;
+}
+
+function extrudeWall(scene, name, length, thick, height, gateOnPositiveZ, steps, scaleMul) {
+    const shape = wallPlan(length, thick, gateOnPositiveZ).map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom(name, {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.04 - t * 0.05;
+            const course = 1 + Math.sin(distance * 2.5) * 0.016;
+            return batter * course * scaleMul;
+        }
+    }, scene);
+}
 
 export function buildCastle(scene) {
     const root = new BABYLON.TransformNode('castleRoot', scene);
@@ -23,16 +212,23 @@ export function buildCastle(scene) {
     const court = 28;
 
     const mkWall = (name, w, d, x, z) => {
-        const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: wallH, depth: d }, scene);
-        m.position.set(x, wallH / 2, z);
+        const alongX = w >= d;
+        const length = alongX ? w : d;
+        const thick = alongX ? d : w;
+        const gate = alongX && z > 0;
+        const m = extrudeWall(scene, name, length, thick, wallH, gate, 12, 1);
+        const moss = extrudeWall(scene, `${name}_moss`, length, thick, 2.35, gate, 2, 1.06);
+        if (!alongX) {
+            m.rotation.y = Math.PI / 2;
+            moss.rotation.y = Math.PI / 2;
+        }
+        m.position.set(x, 0, z);
+        moss.position.set(x, 0, z);
         m.material = stoneMat;
+        moss.material = mossMat;
         m.parent = root;
+        moss.parent = root;
         m.receiveShadows = true;
-
-        const mossBand = BABYLON.MeshBuilder.CreateBox(`${name}_moss`, { width: w * 0.98, height: 2.2, depth: d * 1.02 }, scene);
-        mossBand.position.set(x, 1.1, z);
-        mossBand.material = mossMat;
-        mossBand.parent = root;
 
         addCrenels(root, stoneMat, x, z, w, d, wallH, scene);
     };
@@ -54,23 +250,13 @@ export function buildCastle(scene) {
     ];
 
     towerPositions.forEach(([x, z], i) => {
-        const tower = BABYLON.MeshBuilder.CreateCylinder(`tower_${i}`, {
-            diameterTop: 6.4,
-            diameterBottom: 7.2,
-            height: 26,
-            tessellation: 12
-        }, scene);
-        tower.position.set(x, 13, z);
+        const tower = towerShaftMesh(scene, `tower_${i}`);
+        tower.position.set(x, 0, z);
         tower.material = stoneMat;
         tower.parent = root;
         tower.receiveShadows = true;
 
-        const roof = BABYLON.MeshBuilder.CreateCylinder(`towerRoof_${i}`, {
-            diameterTop: 0,
-            diameterBottom: 7.6,
-            height: 4.5,
-            tessellation: 12
-        }, scene);
+        const roof = towerRoofMesh(scene, `towerRoof_${i}`);
         roof.position.set(x, 28, z);
         roof.material = roofMat;
         roof.parent = root;
@@ -81,20 +267,20 @@ export function buildCastle(scene) {
     });
 
     // Torre de menagem central (Keep)
-    const keep = BABYLON.MeshBuilder.CreateBox('castleKeep', { width: 12, height: 22, depth: 12 }, scene);
-    keep.position.set(0, 11, -2);
+    const keep = keepBodyMesh(scene);
+    keep.position.set(0, 0, -2);
     keep.material = stoneMat;
     keep.parent = root;
     keep.receiveShadows = true;
 
-    const keepRoof = BABYLON.MeshBuilder.CreateBox('keepRoof', { width: 13, height: 1.2, depth: 13 }, scene);
-    keepRoof.position.set(0, 22.4, -2);
+    const keepRoof = keepRoofMesh(scene);
+    keepRoof.position.set(0, 22, -2);
     keepRoof.material = roofMat;
     keepRoof.parent = root;
 
     // Portão principal
-    const gate = BABYLON.MeshBuilder.CreateBox('mainGate', { width: 7, height: 10, depth: 1.2 }, scene);
-    gate.position.set(0, 5, court / 2 + 0.4);
+    const gate = gateDoorMesh(scene);
+    gate.position.set(0, 0, court / 2 + 0.4);
     gate.material = woodMat;
     gate.parent = root;
 

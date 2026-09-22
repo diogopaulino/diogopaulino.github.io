@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { limbGeometry, torsoGeometry, headGeometry } from '../../shared/realism.js';
 import { COLORS } from './config.js?v=14';
 import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
 
@@ -316,25 +317,27 @@ function buildDragonHead(color) {
     const mat = woodMaterial(true, color);
     const dark = woodMaterial(true, 0x2a1810);
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.65, 20), mat);
+    const neck = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.22, -0.82),
+        new THREE.Vector2(0.28, -0.35),
+        new THREE.Vector2(0.16, 0.2),
+        new THREE.Vector2(0.11, 0.62),
+        new THREE.Vector2(0.14, 0.82)
+    ], 16), mat);
     neck.rotation.x = -0.42;
     neck.position.set(0, 0.72, 0.15);
     group.add(neck);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 22, 18), mat);
-    skull.scale.set(0.85, 0.78, 1.15);
-    skull.position.set(0, 1.48, 0.55);
+    const skull = new THREE.Mesh(headGeometry(0.32, 'dog'), mat);
+    skull.rotation.x = -0.2;
+    skull.position.set(0, 1.4, 0.62);
     group.add(skull);
 
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 18), mat);
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 1.38, 1.12);
-    group.add(snout);
-
-    const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 6, 14), dark);
-    jaw.scale.set(1.4, 1, 0.55);
-    jaw.position.set(0, 1.22, 0.95);
-    jaw.rotation.x = Math.PI / 2 + 0.18;
+    const jaw = new THREE.Mesh(limbGeometry({
+        length: 0.46, r0: 0.1, r1: 0.035, bulge: 0.02, pinch: 0, seg: 10, rings: 6
+    }), dark);
+    jaw.rotation.x = -Math.PI / 2 + 0.35;
+    jaw.position.set(0, 1.18, 0.78);
     group.add(jaw);
 
     for (let i = 0; i < 5; i++) {
@@ -360,6 +363,59 @@ function buildDragonHead(color) {
 /**
  * Drakkar completo. Retorna o grupo e as partes animáveis.
  */
+
+/** Haste de 3.6 ao longo de Z, depois do rotateX. Cabo mais grosso, ponta fina. */
+function oarShaftGeometry() {
+    const L = 3.6;
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = (t - 0.5) * L;
+        let r = 0.048 - t * 0.016;
+        r += 0.02 * Math.exp(-((t - 0.14) ** 2) / 0.006);
+        pts.push(new THREE.Vector2(Math.max(0.022, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.rotateX(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Pá em folha, comprimento em +Z, fina em Y. A ponta é a extremidade de fora. */
+function oarBladeGeometry() {
+    const L = 0.9;
+    const W = 0.28;
+    const s = new THREE.Shape();
+    s.moveTo(0, -L * 0.5);
+    s.quadraticCurveTo(W * 0.85, -L * 0.05, W * 0.7, L * 0.18);
+    s.quadraticCurveTo(W * 0.28, L * 0.42, 0, L * 0.5);
+    s.quadraticCurveTo(-W * 0.28, L * 0.42, -W * 0.7, L * 0.18);
+    s.quadraticCurveTo(-W * 0.85, -L * 0.05, 0, -L * 0.5);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.012,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.022);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (z > 0 && Math.abs(x) < 0.04) z += 0.012 * (1 - Math.abs(y) / (L * 0.5));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.rotateX(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const OAR_SHAFT = oarShaftGeometry();
+const OAR_BLADE = oarBladeGeometry();
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -702,8 +758,6 @@ export function buildLongship({
     }
 
     if (oars) {
-        const oarGeo = new THREE.BoxGeometry(0.09, 0.09, 3.6);
-        const bladeGeo = new THREE.BoxGeometry(0.22, 0.05, 0.9);
         const oarMat = woodMaterial(true, hullColor);
         const perSide = 3;
         for (const side of [-1, 1]) {
@@ -714,13 +768,15 @@ export function buildLongship({
                 const hw = Math.max(0.09, (beam / 2) * taper);
                 pivot.position.set(side * hw, 0.35, (t * length) / 2);
 
-                const shaft = new THREE.Mesh(oarGeo, oarMat);
+                const shaft = new THREE.Mesh(OAR_SHAFT, oarMat);
+                shaft.name = 'oarShaft';
                 shaft.position.set(side * 1.5, -0.2, 0);
                 shaft.rotation.y = side * Math.PI * 0.5;
                 shaft.castShadow = true;
                 pivot.add(shaft);
 
-                const blade = new THREE.Mesh(bladeGeo, oarMat);
+                const blade = new THREE.Mesh(OAR_BLADE, oarMat);
+                blade.name = 'oarBlade';
                 blade.position.set(side * 3.1, -0.5, 0);
                 blade.rotation.y = side * Math.PI * 0.5;
                 pivot.add(blade);
@@ -846,12 +902,16 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const iris = plainMaterial(0x2a1c12, 0.5, 0);
 
     for (const sx of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.105, 0.82, 14), leather);
-        leg.position.set(sx * 0.16, 0.41, 0.02);
+        const leg = new THREE.Mesh(limbGeometry({
+            length: 0.78, r0: 0.13, r1: 0.09, bulge: 0.03, bulgeAt: 0.32
+        }), leather);
+        leg.position.set(sx * 0.16, 0.8, 0.02);
         leg.castShadow = true;
         group.add(leg);
-        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 6, 14), plainMaterial(0x2e2116, 0.9, 0));
-        boot.rotation.z = Math.PI / 2;
+        const boot = new THREE.Mesh(limbGeometry({
+            length: 0.26, r0: 0.08, r1: 0.06, bulge: 0.015, bulgeAt: 0.45, pinch: 0
+        }), plainMaterial(0x2e2116, 0.9, 0));
+        boot.rotation.x = Math.PI / 2;
         boot.scale.set(1, 0.7, 1.15);
         boot.position.set(sx * 0.16, 0.07, 0.06);
         group.add(boot);
@@ -861,8 +921,8 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     torso.position.y = 0.82;
     group.add(torso);
 
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.25, 0.66, 16), cloth);
-    chest.position.y = 0.32;
+    const chest = new THREE.Mesh(torsoGeometry({ height: 0.62, girth: 0.3, style: 'human' }), cloth);
+    chest.position.y = 0.02;
     chest.castShadow = true;
     torso.add(chest);
 
@@ -885,10 +945,16 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     buckle.position.set(0, 0.04, 0.27);
     torso.add(buckle);
 
+    const pauldronGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 0.13),
+        new THREE.Vector2(0.09, 0.11),
+        new THREE.Vector2(0.155, 0.04),
+        new THREE.Vector2(0.12, -0.03)
+    ], 14);
     for (const sx of [-1, 1]) {
-        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), steel);
-        pauldron.position.set(sx * 0.32, 0.6, 0);
-        pauldron.rotation.z = sx * 0.35;
+        const pauldron = new THREE.Mesh(pauldronGeo, steel);
+        pauldron.position.set(sx * 0.3, 0.56, 0);
+        pauldron.rotation.z = sx * 0.45;
         pauldron.castShadow = true;
         torso.add(pauldron);
     }
@@ -897,7 +963,7 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     head.position.y = 0.78;
     torso.add(head);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
+    const skull = new THREE.Mesh(headGeometry(0.175, 'human'), skin);
     head.add(skull);
 
     for (const sx of [-1, 1]) {
@@ -909,7 +975,12 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
         head.add(pupil);
     }
 
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.205, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), steel);
+    const helm = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.012, 0.22),
+        new THREE.Vector2(0.08, 0.2),
+        new THREE.Vector2(0.15, 0.14),
+        new THREE.Vector2(0.19, 0.08)
+    ], 18), steel);
     helm.position.y = 0.02;
     helm.castShadow = true;
     head.add(helm);
@@ -930,17 +1001,20 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
         head.add(horn);
     }
 
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 8), plainMaterial(0x6a4220, 0.9, 0));
-    beard.position.set(0, -0.15, 0.07);
-    beard.rotation.x = Math.PI;
+    const beard = new THREE.Mesh(limbGeometry({
+        length: 0.24, r0: 0.1, r1: 0.02, bulge: 0.025, bulgeAt: 0.28, pinch: 0, seg: 10, rings: 6
+    }), plainMaterial(0x6a4220, 0.9, 0));
+    beard.position.set(0, -0.02, 0.08);
     head.add(beard);
 
-    const armGeo = new THREE.CylinderGeometry(0.09, 0.078, 0.58, 8);
+    const armGeo = limbGeometry({
+        length: 0.56, r0: 0.09, r1: 0.068, bulge: 0.02, bulgeAt: 0.32, seg: 10, rings: 6
+    });
     const armR = new THREE.Group();
     armR.position.set(0.32, 0.54, 0);
     torso.add(armR);
     const armRMesh = new THREE.Mesh(armGeo, cloth);
-    armRMesh.position.y = -0.28;
+    armRMesh.position.y = 0;
     armRMesh.castShadow = true;
     armR.add(armRMesh);
     const bracerR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.092, 0.18, 8), darkSteel);
@@ -951,7 +1025,7 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     armL.position.set(-0.32, 0.54, 0);
     torso.add(armL);
     const armLMesh = new THREE.Mesh(armGeo, cloth);
-    armLMesh.position.y = -0.28;
+    armLMesh.position.y = 0;
     armLMesh.castShadow = true;
     armL.add(armLMesh);
 
@@ -992,8 +1066,8 @@ export function buildAxeMesh(scale = 1) {
     );
     group.add(handle);
 
-    const head = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 14), metalMaterial(0xc9ced6, 0.28));
-    head.position.set(0, 0.3, 0.06);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.22, 10), metalMaterial(0xc9ced6, 0.28));
+    head.position.set(0, 0.32, 0.05);
     group.add(head);
 
     const bladeShape = new THREE.Shape();
@@ -1075,6 +1149,15 @@ export function buildPineGeometry() {
         const r = 2.45 - i * 0.38;
         const h = 2.2 - i * 0.18;
         const cone = new THREE.ConeGeometry(r, h, 14);
+        const pos = cone.attributes.position;
+        for (let v = 0; v < pos.count; v++) {
+            const x = pos.getX(v);
+            const y = pos.getY(v);
+            const z = pos.getZ(v);
+            const n = 0.86 + Math.abs(Math.sin(x * 3.2 + i) * Math.cos(z * 2.6 + y)) * 0.22;
+            pos.setXYZ(v, x * n, y, z * n);
+        }
+        cone.computeVertexNormals();
         cone.translate((i % 2) * 0.12, 2.7 + i * 1.18, (i % 3 - 1) * 0.08);
         parts.push({ geo: cone, color: new THREE.Color().setHSL(0.30, 0.46, 0.15 + i * 0.032) });
     }
@@ -1095,10 +1178,19 @@ export function buildOakGeometry() {
         [0.2, 4.6, -1.1, 1.15]
     ];
     for (const [x, y, z, r] of blobs) {
-        const s = new THREE.SphereGeometry(r, 9, 7);
-        s.scale(1, 0.82, 1);
+        const s = new THREE.SphereGeometry(r, 12, 10);
+        const pos = s.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const px = pos.getX(i);
+            const py = pos.getY(i);
+            const pz = pos.getZ(i);
+            const len = Math.hypot(px, py, pz) || 1;
+            const n = 0.78 + Math.abs(Math.sin(px * 1.8 + x) * Math.cos(pz * 1.4 + z)) * 0.34;
+            pos.setXYZ(i, (px / len) * r * n, (py / len) * r * n * 0.82, (pz / len) * r * n);
+        }
+        s.computeVertexNormals();
         s.translate(x, y, z);
-        parts.push({ geo: s, color: new THREE.Color().setHSL(0.26, 0.38, 0.19 + Math.random() * 0.06) });
+        parts.push({ geo: s, color: new THREE.Color().setHSL(0.26, 0.38, 0.18 + Math.abs(Math.sin(x + z)) * 0.06) });
     }
     return mergeWithColors(parts);
 }
@@ -1187,26 +1279,89 @@ export function mergeWithColors(parts) {
     return merged;
 }
 
+/** Fuste de 9, centrado. Talude, fiadas e nervuras. */
+function watchShaftGeometry() {
+    const H = 9;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 2.55 - t * 0.5;
+        if (t < 0.08) r += 0.22 * (1 - t / 0.08);
+        if (Math.sin(t * Math.PI * 9) > 0.55) r += 0.07;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rib = 1 + 0.04 * Math.cos(Math.atan2(z, x) * 8) ** 2;
+        pos.setXYZ(i, x * rib, y, z * rib);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Coroamento de 1.2, centrado, com beiral. */
+function watchCrownGeometry() {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(2.15, -0.6),
+        new THREE.Vector2(2.28, -0.28),
+        new THREE.Vector2(2.4, 0.02),
+        new THREE.Vector2(2.75, 0.18),
+        new THREE.Vector2(2.42, 0.42),
+        new THREE.Vector2(2.15, 0.6)
+    ], 18);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Ameia 0.7×0.9×0.6, centrada. Base mais larga e topo em cunha. */
+function watchMerlonGeometry() {
+    const g = new THREE.BoxGeometry(0.7, 0.9, 0.6, 3, 6, 3);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + 0.45) / 0.9;
+        x *= 1 + (1 - t) * 0.22;
+        z *= 1 + (1 - t) * 0.14;
+        if (y > 0.08) y += (0.35 - Math.abs(x)) * 0.42;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const WATCH_SHAFT = watchShaftGeometry();
+const WATCH_CROWN = watchCrownGeometry();
+const WATCH_MERLON = watchMerlonGeometry();
+
 /** Torre de vigia inimiga fincada na margem. */
 export function buildWatchtower({ lit = true } = {}) {
     const group = new THREE.Group();
     const stone = stoneMaterial('#7d7a72');
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.6, 9, 10), stone);
+    const base = new THREE.Mesh(WATCH_SHAFT, stone);
+    base.name = 'watchShaft';
     base.position.y = 4.5;
     base.castShadow = true;
     base.receiveShadow = true;
     group.add(base);
 
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.2, 1.2, 10), stone);
+    const crown = new THREE.Mesh(WATCH_CROWN, stone);
+    crown.name = 'watchCrown';
     crown.position.y = 9.4;
     crown.castShadow = true;
     group.add(crown);
 
-    // Ameias.
     for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.6), stone);
+        const merlon = new THREE.Mesh(WATCH_MERLON, stone);
+        merlon.name = 'watchMerlon';
         merlon.position.set(Math.cos(a) * 2.2, 10.4, Math.sin(a) * 2.2);
         merlon.rotation.y = -a;
         merlon.castShadow = true;
@@ -1234,12 +1389,102 @@ export function buildWatchtower({ lit = true } = {}) {
     return group;
 }
 
+/**
+ * Tronco de 7.5, eixo em Y (a malha gira Z em π/2 e deita no X).
+ * Topos com anéis de corte e casca rachada ao longo.
+ */
+function barricadeLogGeometry() {
+    const H = 7.5;
+    const half = H / 2;
+    const pts = [];
+    const cutFace = (ySign, inward) => {
+        const rings = 7;
+        const bark = ySign < 0 ? 0.44 : 0.4;
+        for (let step = 0; step <= rings; step++) {
+            const i = inward ? rings - step : step;
+            const u = i / rings;
+            const r = Math.max(0.004, u * bark);
+            const groove = i % 2 === 0 ? 0 : 0.08;
+            pts.push(new THREE.Vector2(r, ySign * (half + 0.03) - ySign * groove));
+        }
+    };
+    cutFace(-1, false);
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = -half + t * H;
+        let r = 0.46 - t * 0.04;
+        if (Math.sin(t * Math.PI * 9) > 0.45) r += 0.09;
+        if (Math.abs(t - 0.36) < 0.035) r += 0.07;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    cutFace(1, true);
+    const g = new THREE.LatheGeometry(pts, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const radial = Math.hypot(x, z);
+        if (radial > 0.3) {
+            const ang = Math.atan2(z, x);
+            const crack = 0.78 + 0.22 * Math.max(0, Math.cos(ang * 6 + y * 0.85)) ** 2;
+            x *= crack;
+            z *= crack;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Estaca lavrada, 1.6, centrada, ponta em +Y. */
+function barricadeSpikeGeometry() {
+    const H = 1.6;
+    const half = H / 2;
+    const pts = [];
+    for (let i = 0; i <= 5; i++) {
+        const u = i / 5;
+        const groove = i % 2 === 0 ? 0 : 0.06;
+        pts.push(new THREE.Vector2(Math.max(0.004, u * 0.24), -half - 0.02 + groove));
+    }
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = -half + t * H;
+        let r = 0.26 * (1 - t * 0.92);
+        if (t > 0.36 && t < 0.58) r *= 0.42;
+        if (t > 0.7 && t < 0.84) r *= 0.5;
+        pts.push(new THREE.Vector2(Math.max(0.02, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t < 0.9) {
+            const ang = Math.atan2(z, x);
+            const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.15);
+            const k = 1 / corner;
+            x *= k;
+            z *= k;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const BARRICADE_LOG = barricadeLogGeometry();
+const BARRICADE_SPIKE = barricadeSpikeGeometry();
+
 /** Barricada flutuante de troncos acorrentados. */
 export function buildBarricade() {
     const group = new THREE.Group();
     const wood = woodMaterial(true, 0x53381f);
     for (let i = 0; i < 3; i++) {
-        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 7.5, 8), wood);
+        const log = new THREE.Mesh(BARRICADE_LOG, wood);
+        log.name = 'barricadeLog';
         log.rotation.z = Math.PI / 2;
         log.position.set(0, 0.2 + i * 0.1, -0.9 + i * 0.9);
         log.rotation.y = (i - 1) * 0.08;
@@ -1247,7 +1492,8 @@ export function buildBarricade() {
         group.add(log);
     }
     for (const sx of [-1, 1]) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.6, 7), wood);
+        const spike = new THREE.Mesh(BARRICADE_SPIKE, wood);
+        spike.name = 'barricadeSpike';
         spike.position.set(sx * 2.6, 1.0, 0);
         spike.rotation.z = sx * -0.5;
         group.add(spike);

@@ -19,11 +19,11 @@ import { QuestManager } from '../game/QuestManager.js';
 import { CombatSystem } from '../game/CombatSystem.js';
 import { CheckpointManager } from '../game/CheckpointManager.js';
 import { StoryDirector } from '../game/StoryDirector.js';
-import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js';
+import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=14';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js';
-import { Player } from '../player/Player.js';
-import { Teco } from '../characters/Teco.js';
-import { Camila } from '../characters/Camila.js';
+import { Player } from '../player/Player.js?v=4';
+import { Teco } from '../characters/Teco.js?v=4';
+import { Camila } from '../characters/Camila.js?v=4';
 import { HUD } from '../ui/HUD.js';
 import { Menu } from '../ui/Menu.js';
 import { PauseMenu } from '../ui/PauseMenu.js';
@@ -154,7 +154,7 @@ export class Game {
     }
 
     fadeTo(duration, onMid, outDuration) {
-        const overlay = document.getElementById('fadeOverlay');
+        const overlay = document.getElementById('fade');
         if (!overlay) {
             onMid?.();
             return;

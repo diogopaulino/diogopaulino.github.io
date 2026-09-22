@@ -7,10 +7,10 @@ import { clamp, lerp, detectMobile, detectSoftwareGL, formatTime } from './utils
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js';
+import { Player } from './player.js?v=4';
 import { createSky, applyChapterSky, createLights } from './sky.js';
-import { buildChapter, bindShadows } from './world.js';
-import { setModelQuality } from './models.js';
+import { buildChapter, bindShadows } from './world.js?v=4';
+import { setModelQuality } from './models.js?v=4';
 import { nearestInteractable } from './npcs.js';
 
 const B = window.BABYLON;

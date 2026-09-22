@@ -447,14 +447,23 @@ function draw() {
         }
         ctx.globalAlpha = 1;
     }
+    const px = player.x;
+    const py = player.y;
+    const pw = player.width;
+    const ph = player.height;
     ctx.fillStyle = player.color;
-    // Simple ship shape
     ctx.beginPath();
-    ctx.moveTo(player.x + player.width / 2, player.y);
-    ctx.lineTo(player.x + player.width, player.y + player.height);
-    ctx.lineTo(player.x + player.width / 2, player.y + player.height - 10);
-    ctx.lineTo(player.x, player.y + player.height);
-    ctx.closePath();
+    ctx.moveTo(px + pw * 0.5, py);
+    ctx.quadraticCurveTo(px + pw * 0.78, py + ph * 0.28, px + pw, py + ph * 0.62);
+    ctx.lineTo(px + pw * 0.68, py + ph * 0.52);
+    ctx.quadraticCurveTo(px + pw * 0.58, py + ph * 0.82, px + pw * 0.5, py + ph);
+    ctx.quadraticCurveTo(px + pw * 0.42, py + ph * 0.82, px + pw * 0.32, py + ph * 0.52);
+    ctx.lineTo(px, py + ph * 0.62);
+    ctx.quadraticCurveTo(px + pw * 0.22, py + ph * 0.28, px + pw * 0.5, py);
+    ctx.fill();
+    ctx.fillStyle = '#d8f4ff';
+    ctx.beginPath();
+    ctx.ellipse(px + pw * 0.5, py + ph * 0.36, pw * 0.1, ph * 0.14, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw Bullets
@@ -465,17 +474,34 @@ function draw() {
 
     // Draw Enemies
     enemies.forEach(e => {
-        ctx.fillStyle = e.color;
-        // Alien shape (simple invader)
         const w = e.width;
         const h = e.height;
         const x = e.x;
         const y = e.y;
-
-        ctx.fillRect(x + w * 0.2, y, w * 0.6, h * 0.2);
-        ctx.fillRect(x, y + h * 0.2, w, h * 0.4);
-        ctx.fillRect(x + w * 0.1, y + h * 0.6, w * 0.15, h * 0.3);
-        ctx.fillRect(x + w * 0.75, y + h * 0.6, w * 0.15, h * 0.3);
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.5, y + h * 0.34, w * 0.32, h * 0.24, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f4fff8';
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.38, y + h * 0.3, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + w * 0.62, y + h * 0.3, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#102018';
+        ctx.beginPath();
+        ctx.arc(x + w * 0.39, y + h * 0.31, w * 0.03, 0, Math.PI * 2);
+        ctx.arc(x + w * 0.63, y + h * 0.31, w * 0.03, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.32, y + h * 0.5);
+        ctx.quadraticCurveTo(x + w * 0.16, y + h * 0.78, x + w * 0.26, y + h);
+        ctx.lineTo(x + w * 0.4, y + h);
+        ctx.quadraticCurveTo(x + w * 0.44, y + h * 0.72, x + w * 0.5, y + h * 0.52);
+        ctx.quadraticCurveTo(x + w * 0.56, y + h * 0.72, x + w * 0.6, y + h);
+        ctx.lineTo(x + w * 0.74, y + h);
+        ctx.quadraticCurveTo(x + w * 0.84, y + h * 0.78, x + w * 0.68, y + h * 0.5);
+        ctx.fill();
     });
 
     // Draw Particles

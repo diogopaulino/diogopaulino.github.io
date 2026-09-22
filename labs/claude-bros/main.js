@@ -723,8 +723,8 @@ function drawEnemies() {
     }
 }
 
-/* Claude: quadrado arredondado laranja, com antenas, olhos que olham para onde
-   anda e pernas que alternam com a fase da caminhada. */
+/* Claude: personagem com cabeça, cabelo, tronco, braços e sapatos.
+   A silhueta cabe no mesmo retângulo de colisão. */
 function drawPlayer() {
     const blink = player.invuln > 0 && Math.floor(player.invuln * 14) % 2 === 0;
     if (blink) return;
@@ -735,52 +735,92 @@ function drawPlayer() {
     const cx = player.x + player.w / 2 - camera.x;
     const bottom = player.y + player.h - camera.y;
     const top = bottom - h;
+    const stride = player.grounded ? Math.sin(player.walkPhase) : 0;
+    const look = player.facing * 1.6;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.ellipse(cx, bottom + 3, w * 0.45, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, bottom + 2, w * 0.42, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Pernas: no chão alternam; no ar ficam recolhidas.
-    ctx.fillStyle = '#9c4a30';
-    const stride = player.grounded ? Math.sin(player.walkPhase) * 5 : -3;
-    ctx.fillRect(cx - 8, bottom - 4, 6, 6 + stride);
-    ctx.fillRect(cx + 2, bottom - 4, 6, 6 - stride);
+    const legH = h * 0.28;
+    ctx.fillStyle = '#3a4a78';
+    roundRect(cx - 7, bottom - legH, 5, legH + stride * 4, 2);
+    ctx.fill();
+    roundRect(cx + 2, bottom - legH, 5, legH - stride * 4, 2);
+    ctx.fill();
+    ctx.fillStyle = '#f4efe6';
+    roundRect(cx - 8, bottom - 5 + stride * 3, 7, 4, 1.5);
+    ctx.fill();
+    roundRect(cx + 1, bottom - 5 - stride * 3, 7, 4, 1.5);
+    ctx.fill();
 
-    // Antenas
-    ctx.strokeStyle = '#9c4a30';
-    ctx.lineWidth = 2.5;
+    const armSwing = stride * 5;
+    ctx.strokeStyle = '#e8b090';
+    ctx.lineWidth = 3.2;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx - 6, top + 3);
-    ctx.lineTo(cx - 10, top - 6);
-    ctx.moveTo(cx + 6, top + 3);
-    ctx.lineTo(cx + 10, top - 6);
+    ctx.moveTo(cx - w * 0.32, top + h * 0.42);
+    ctx.quadraticCurveTo(cx - w * 0.48, top + h * 0.55, cx - w * 0.28, top + h * 0.62 + armSwing);
+    ctx.moveTo(cx + w * 0.32, top + h * 0.42);
+    ctx.quadraticCurveTo(cx + w * 0.48, top + h * 0.55, cx + w * 0.28, top + h * 0.62 - armSwing);
     ctx.stroke();
 
-    ctx.fillStyle = '#d97757';
-    roundRect(cx - w / 2, top, w, h, 7);
+    const torsoTop = top + h * 0.34;
+    const torsoH = h * 0.4;
+    const shirt = ctx.createLinearGradient(cx, torsoTop, cx, torsoTop + torsoH);
+    shirt.addColorStop(0, '#f0a070');
+    shirt.addColorStop(1, '#d97757');
+    ctx.fillStyle = shirt;
+    roundRect(cx - w * 0.38, torsoTop, w * 0.76, torsoH, 6);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.16)';
-    roundRect(cx - w / 2 + 3, top + 3, w - 6, h * 0.35, 5);
-    ctx.fill();
-
-    // Olhos com pupila deslocada na direção do movimento.
-    const look = player.facing * 1.6;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx - 5.5, top + h * 0.38, 4.2, 0, Math.PI * 2);
-    ctx.arc(cx + 5.5, top + h * 0.38, 4.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#3a1a10';
-    ctx.beginPath();
-    ctx.arc(cx - 5.5 + look, top + h * 0.38, 2.1, 0, Math.PI * 2);
-    ctx.arc(cx + 5.5 + look, top + h * 0.38, 2.1, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    roundRect(cx - w * 0.22, torsoTop + 3, w * 0.2, torsoH * 0.55, 3);
     ctx.fill();
 
-    // Boca
-    ctx.fillStyle = '#ffffff';
-    roundRect(cx - 5, top + h * 0.66, 10, 3.4, 1.7);
+    const headR = Math.min(w, h) * 0.28;
+    const hy = top + headR * 0.95;
+    ctx.fillStyle = '#6a3a22';
+    ctx.beginPath();
+    ctx.arc(cx, hy - 1, headR * 1.05, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#f0c4a4';
+    ctx.beginPath();
+    ctx.arc(cx, hy, headR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6a3a22';
+    ctx.beginPath();
+    ctx.ellipse(cx, hy - headR * 0.35, headR * 0.95, headR * 0.55, 0, Math.PI, 0);
+    ctx.fill();
+
+    ctx.strokeStyle = '#5a3018';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, hy - 2);
+    ctx.quadraticCurveTo(cx - 3, hy - 4, cx - 1, hy - 1.5);
+    ctx.moveTo(cx + 1, hy - 1.5);
+    ctx.quadraticCurveTo(cx + 3, hy - 4, cx + 6, hy - 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fffaf4';
+    ctx.beginPath();
+    ctx.ellipse(cx - 4.2, hy + 1, 3.1, 3.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 4.2, hy + 1, 3.1, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a6a34';
+    ctx.beginPath();
+    ctx.arc(cx - 4.2 + look, hy + 1.2, 1.7, 0, Math.PI * 2);
+    ctx.arc(cx + 4.2 + look, hy + 1.2, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a100c';
+    ctx.beginPath();
+    ctx.arc(cx - 4.2 + look, hy + 1.2, 0.8, 0, Math.PI * 2);
+    ctx.arc(cx + 4.2 + look, hy + 1.2, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#e09888';
+    ctx.beginPath();
+    ctx.ellipse(cx, hy + headR * 0.45, 3.2, 1.6, 0, 0, Math.PI);
     ctx.fill();
 }
 

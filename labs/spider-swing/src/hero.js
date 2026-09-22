@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const matCache = new Map();
 const texLoader = new THREE.TextureLoader();
@@ -21,6 +22,24 @@ function std(color, roughness = 0.6, metalness = 0.1, extra = {}, tex = null) {
     return matCache.get(key);
 }
 
+/** Lente amendoada do visor — extrusão rasa, não uma cápsula. */
+function lensPlate(halfW, halfH, depth) {
+    const s = new THREE.Shape();
+    s.moveTo(0, halfH);
+    s.quadraticCurveTo(halfW, halfH * 0.15, 0, -halfH);
+    s.quadraticCurveTo(-halfW, halfH * 0.15, 0, halfH);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth,
+        bevelEnabled: true,
+        bevelThickness: depth * 0.35,
+        bevelSize: halfW * 0.08,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -depth * 0.5);
+    return g;
+}
+
 export function buildHero() {
     const group = new THREE.Group();
     // High-res materials
@@ -30,18 +49,17 @@ export function buildHero() {
     const visor = std(0xffffff, 0.1, 0.6, { emissive: 0xffffff, emissiveIntensity: 0.2 });
     const gold = std(0xffcc00, 0.3, 0.8, { emissive: 0x664400, emissiveIntensity: 0.5 });
     
-    // High segment counts for smooth, non-geometric look
-    const capSeg = 12, radSeg = 16;
-    
     const hips = new THREE.Group();
     group.add(hips);
 
     const parts = { legs: [], arms: [], feet: [], hands: [] };
 
     // Pelvis (muscular)
-    const pelvis = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.08, capSeg, radSeg), navy);
+    const pelvis = new THREE.Mesh(limbGeometry({
+        length: 0.32, r0: 0.12, r1: 0.09, bulge: 0.02, pinch: 0, seg: 12, rings: 6
+    }), navy);
     pelvis.rotation.z = Math.PI / 2;
-    pelvis.scale.set(1, 0.8, 1);
+    pelvis.position.set(0.16, 0.9, 0);
     hips.add(pelvis);
 
     for (const sx of [-1, 1]) {
@@ -50,15 +68,15 @@ export function buildHero() {
         hips.add(leg);
         
         // Thigh
-        const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.25, capSeg, radSeg), navy);
-        thigh.position.y = -0.18;
-        // make it thicker at top, using scale doesn't taper capsules easily, but we can scale non-uniform
-        thigh.scale.set(1.1, 1, 1.2);
+        const thigh = new THREE.Mesh(limbGeometry({
+            length: 0.38, r0: 0.09, r1: 0.065, bulge: 0.025, bulgeAt: 0.28
+        }), navy);
         leg.add(thigh);
         
-        // Knee
-        const knee = new THREE.Mesh(new THREE.SphereGeometry(0.065, radSeg, capSeg), navy);
-        knee.position.y = -0.4;
+        const knee = new THREE.Mesh(limbGeometry({
+            length: 0.09, r0: 0.062, r1: 0.055, bulge: 0.012, pinch: 0, seg: 8, rings: 4
+        }), navy);
+        knee.position.y = -0.36;
         leg.add(knee);
 
         // Calf (Shin)
@@ -66,16 +84,16 @@ export function buildHero() {
         shin.position.y = -0.4;
         leg.add(shin);
         
-        const calfMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.24, capSeg, radSeg), red);
-        calfMesh.position.y = -0.18;
-        calfMesh.scale.set(1, 1, 1.1);
+        const calfMesh = new THREE.Mesh(limbGeometry({
+            length: 0.32, r0: 0.07, r1: 0.05, bulge: 0.02, bulgeAt: 0.35, pinch: 0.2
+        }), red);
         shin.add(calfMesh);
 
-        // Boot/Foot
-        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.12, capSeg, radSeg), red);
+        const boot = new THREE.Mesh(limbGeometry({
+            length: 0.16, r0: 0.055, r1: 0.04, bulge: 0.01, bulgeAt: 0.4, pinch: 0
+        }), red);
         boot.rotation.x = Math.PI / 2;
-        boot.position.set(0, -0.42, 0.06);
-        boot.scale.set(1, 1, 0.7);
+        boot.position.set(0, -0.32, 0.02);
         shin.add(boot);
         
         parts.legs.push(leg);
@@ -87,22 +105,22 @@ export function buildHero() {
     hips.add(torso);
 
     // Torso Core
-    const core = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.2, capSeg, radSeg), navy);
-    core.position.y = 0.15;
-    core.scale.set(1.2, 1, 0.9);
+    const core = new THREE.Mesh(torsoGeometry({ height: 0.48, girth: 0.2, style: 'human' }), navy);
     torso.add(core);
 
-    // Chest (Pecs)
-    const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.15, capSeg, radSeg), red);
-    chest.position.y = 0.35;
-    chest.rotation.z = Math.PI / 2;
-    chest.scale.set(1, 1.4, 0.9);
+    const chest = new THREE.Mesh(limbGeometry({
+        length: 0.22, r0: 0.16, r1: 0.14, bulge: 0.03, bulgeAt: 0.4, pinch: 0
+    }), red);
+    chest.position.y = 0.42;
+    chest.scale.set(1.15, 1, 0.85);
     torso.add(chest);
 
     // Back / Lats
-    const lats = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, capSeg, radSeg), navy);
-    lats.position.set(0, 0.32, -0.05);
+    const lats = new THREE.Mesh(limbGeometry({
+        length: 0.36, r0: 0.13, r1: 0.1, bulge: 0.03, pinch: 0, seg: 12, rings: 6
+    }), navy);
     lats.rotation.z = Math.PI / 2;
+    lats.position.set(0.18, 0.34, -0.06);
     torso.add(lats);
 
     // Spider Emblem (Front & Back)
@@ -132,9 +150,9 @@ export function buildHero() {
     head.position.set(0, 0.56, 0.02);
     torso.add(head);
     
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.13, 24, 24), red);
+    const skull = new THREE.Mesh(headGeometry(0.13, 'human'), red);
     skull.position.y = 0.12;
-    skull.scale.set(0.9, 1.15, 1.05);
+    skull.scale.set(0.95, 1.08, 1.05);
     head.add(skull);
 
     // Realistic Lenses
@@ -145,15 +163,11 @@ export function buildHero() {
         lensBase.rotation.z = sx * -0.15;
         head.add(lensBase);
 
-        const rim = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.06, 8, 16), dark);
-        rim.rotation.z = Math.PI / 2;
-        rim.scale.set(1, 1, 0.4);
+        const rim = new THREE.Mesh(lensPlate(0.048, 0.058, 0.014), dark);
         lensBase.add(rim);
 
-        const glass = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.05, 8, 16), visor);
-        glass.rotation.z = Math.PI / 2;
-        glass.position.z = 0.01;
-        glass.scale.set(1, 1, 0.5);
+        const glass = new THREE.Mesh(lensPlate(0.034, 0.042, 0.008), visor);
+        glass.position.z = 0.008;
         lensBase.add(glass);
     }
 
@@ -162,18 +176,23 @@ export function buildHero() {
         arm.position.set(sx * 0.26, 0.42, 0);
         torso.add(arm);
         
-        // Shoulder
-        const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.09, radSeg, capSeg), red);
+        const deltoid = new THREE.Mesh(limbGeometry({
+            length: 0.14, r0: 0.085, r1: 0.05, bulge: 0.018, pinch: 0, seg: 10, rings: 5
+        }), red);
+        deltoid.rotation.z = sx * -1.15;
+        deltoid.position.set(sx * 0.03, 0.02, 0);
         arm.add(deltoid);
 
         // Bicep
-        const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.18, capSeg, radSeg), navy);
-        upper.position.y = -0.14;
+        const upper = new THREE.Mesh(limbGeometry({
+            length: 0.28, r0: 0.07, r1: 0.055, bulge: 0.02, bulgeAt: 0.3
+        }), navy);
         arm.add(upper);
         
-        // Elbow
-        const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.055, radSeg, capSeg), red);
-        elbow.position.y = -0.28;
+        const elbow = new THREE.Mesh(limbGeometry({
+            length: 0.08, r0: 0.05, r1: 0.044, bulge: 0.01, pinch: 0, seg: 8, rings: 4
+        }), red);
+        elbow.position.y = -0.24;
         arm.add(elbow);
 
         const forearm = new THREE.Group();
@@ -181,9 +200,9 @@ export function buildHero() {
         arm.add(forearm);
         
         // Lower arm
-        const lower = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, capSeg, radSeg), red);
-        lower.position.y = -0.12;
-        lower.scale.set(1, 1, 1);
+        const lower = new THREE.Mesh(limbGeometry({
+            length: 0.24, r0: 0.055, r1: 0.042, bulge: 0.012, bulgeAt: 0.4, pinch: 0.15
+        }), red);
         forearm.add(lower);
         
         // Web Shooter
@@ -197,9 +216,10 @@ export function buildHero() {
         forearm.add(nozzle);
         
         // Hand (Fist/Claws)
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, radSeg, capSeg), red);
-        hand.position.set(0, -0.28, 0.01);
-        hand.scale.set(1, 1.2, 0.8);
+        const hand = new THREE.Mesh(limbGeometry({
+            length: 0.08, r0: 0.04, r1: 0.045, bulge: 0.008, bulgeAt: 0.5, pinch: 0, seg: 10, rings: 5
+        }), red);
+        hand.position.set(0, -0.24, 0.01);
         forearm.add(hand);
         
         arm.userData.forearm = forearm;

@@ -9,7 +9,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
 import { createTextures } from './textures.js?v=3';
-import { buildWorld } from './models.js?v=3';
+import { buildWorld } from './models.js?v=4';
 import { CrtOs } from './crt.js?v=2';
 import { DeskAudio } from './audio.js?v=2';
 

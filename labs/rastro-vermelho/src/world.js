@@ -1,6 +1,7 @@
 /** Streamed scenery shares geometry/materials. Terrain, collision and hooves sample
  * the same height function; vegetation is deterministic when revisiting a chunk. */
 import { hash, terrainHeight, roadDistance, roadX, LANDMARKS, clamp, lerp } from './simulation.js';
+import { createMuscle, createSkull, createTorso, createHand } from '../../shared/realism-bjs.js';
 const B = window.BABYLON;
 export const CHUNK_SIZE = 96;
 export const PROFILES = {
@@ -23,21 +24,17 @@ function sphere(scene, parent, name, size, pos, mat) {
     m.parent = parent; m.scaling.set(...size); m.position.set(...pos); m.material = mat; m.isPickable = false;
     return m;
 }
-function capsule(scene, parent, name, height, radius, pos, mat, rot = null, scale = null) {
-    const m = B.MeshBuilder.CreateCapsule(name, {
-        height, radius, tessellation: 14, subdivisions: 4
-    }, scene);
-    m.parent = parent; m.position.set(...pos); m.material = mat; m.isPickable = false; m.receiveShadows = true;
-    if (rot) m.rotation.set(...rot);
-    if (scale) m.scaling.set(...scale);
-    return m;
-}
 export function createPerson(scene, palette, mounted = false) {
     const root = new B.TransformNode(mounted ? 'cavaleiro' : 'fora-da-lei', scene);
-    // Torso em cápsula (casaco western) + cabeça esférica
-    const torso = capsule(scene, root, 'casaco', 0.72, 0.28, [0, 1.2, 0], palette.coat, null, [1.05, 1, 0.85]);
-    const head = B.MeshBuilder.CreateSphere('rosto', { diameter: 0.32, segments: 16 }, scene);
-    head.parent = root; head.position.set(0, 1.78, 0.02); head.scaling.set(0.95, 1.1, 0.95);
+    const torso = createTorso(scene, 'casaco', { height: 0.7, girth: 0.26, style: 'human' });
+    torso.parent = root;
+    torso.position.set(0, 0.86, 0);
+    torso.scaling.set(1.05, 1, 0.85);
+    torso.material = palette.coat;
+    torso.isPickable = false;
+    torso.receiveShadows = true;
+    const head = createSkull(scene, 'rosto', { diameter: 0.32, style: 'human', segments: 16 });
+    head.parent = root; head.position.set(0, 1.72, 0.02); head.scaling.set(0.95, 1.08, 0.95);
     head.material = palette.skin; head.isPickable = false;
     const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 28 }, scene);
     brim.parent = root; brim.position.y = 1.97; brim.material = palette.hat;
@@ -50,27 +47,64 @@ export function createPerson(scene, palette, mounted = false) {
     const belt = B.MeshBuilder.CreateTorus('cinturão', { diameter: 0.48, thickness: 0.04, tessellation: 22 }, scene);
     belt.parent = root; belt.rotation.x = Math.PI / 2; belt.position.y = 0.88; belt.material = palette.hat;
     for (const side of [-1, 1]) {
-        const thighH = mounted ? 0.55 : 0.7;
-        const leg = capsule(scene, root, 'calça', thighH, 0.1,
-            [side * (mounted ? .2 : .14), mounted ? .48 : .5, mounted ? -.08 : 0],
-            palette.pants, mounted ? [0.35, 0, side * 0.12] : [0, 0, side * -0.04]);
-        const boot = capsule(scene, root, 'bota', 0.28, 0.09,
-            [side * (mounted ? .22 : .14), 0.12, 0.06],
-            palette.hat, [Math.PI / 2, 0, 0], [1, 0.85, 1.25]);
-        const arm = capsule(scene, root, 'manga', 0.55, 0.09,
-            [side * .36, 1.2, mounted ? .12 : 0],
-            palette.coat, mounted ? [-0.85, 0, side * 0.12] : [0.15, 0, side * 0.18]);
-        const hand = B.MeshBuilder.CreateSphere('mão', { diameter: 0.14, segments: 12 }, scene);
+        const thighH = mounted ? 0.42 : 0.55;
+        const leg = createMuscle(scene, 'calça', {
+            length: thighH, r0: 0.12, r1: 0.07, bulge: 0.03, pinch: 0.3, tessellation: 10, rings: 6
+        });
+        leg.parent = root;
+        leg.position.set(side * (mounted ? .2 : .14), mounted ? .48 : .5, mounted ? -.08 : 0);
+        leg.material = palette.pants;
+        leg.isPickable = false;
+        if (mounted) leg.rotation.set(0.35, 0, side * 0.12);
+        else leg.rotation.set(0, 0, side * -0.04);
+        const boot = createMuscle(scene, 'bota', {
+            length: 0.22, r0: 0.08, r1: 0.1, bulge: 0.02, pinch: 0, tessellation: 8, rings: 5
+        });
+        boot.parent = root;
+        boot.position.set(side * (mounted ? .22 : .14), 0.14, 0.08);
+        boot.rotation.x = Math.PI / 2;
+        boot.material = palette.hat;
+        boot.isPickable = false;
+        const arm = createMuscle(scene, 'manga', {
+            length: 0.46, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0.25, tessellation: 10, rings: 6
+        });
+        arm.parent = root;
+        arm.position.set(side * .36, 1.28, mounted ? .12 : 0);
+        arm.material = palette.coat;
+        arm.isPickable = false;
+        arm.rotation.set(mounted ? -0.85 : 0.15, 0, side * (mounted ? 0.12 : 0.18));
+        const handMat = side < 0 ? palette.skin.clone('pele-mao') : palette.skin;
+        if (side < 0) handMat.backFaceCulling = false;
+        const hand = createHand(scene, 'mão', handMat, { scale: 0.9 });
         hand.parent = root;
-        hand.position.set(side * .34, mounted ? 1.0 : .88, mounted ? .38 : .02);
-        hand.material = palette.skin; hand.isPickable = false;
+        hand.position.set(side * .34, mounted ? 1.02 : .9, mounted ? .38 : .02);
+        if (side < 0) hand.scaling.x = -1;
     }
     // Revólver — cilindro + cano
     const gun = new B.TransformNode('revólver', scene);
     gun.parent = root;
     gun.position.set(.36, mounted ? 1.03 : .85, .26);
-    const grip = capsule(scene, gun, 'empunhadura', 0.14, 0.035, [0, -0.02, 0], palette.hat);
-    const barrel = capsule(scene, gun, 'cano', 0.28, 0.025, [0, 0.02, 0.12], palette.metal, [Math.PI / 2, 0, 0]);
+    const grip = B.MeshBuilder.CreateLathe('empunhadura', {
+        shape: [
+            new B.Vector3(0.02, 0, 0),
+            new B.Vector3(0.038, 0.02, 0),
+            new B.Vector3(0.032, 0.1, 0),
+            new B.Vector3(0.02, 0.14, 0)
+        ],
+        tessellation: 8
+    }, scene);
+    grip.parent = gun;
+    grip.position.set(0, -0.08, 0);
+    grip.material = palette.hat;
+    grip.isPickable = false;
+    const barrel = B.MeshBuilder.CreateCylinder('cano', {
+        height: 0.26, diameterTop: 0.028, diameterBottom: 0.04, tessellation: 10
+    }, scene);
+    barrel.parent = gun;
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.02, 0.14);
+    barrel.material = palette.metal;
+    barrel.isPickable = false;
     root.getChildMeshes().forEach(m => { m.isPickable = false; m.receiveShadows = true; });
     return { root, torso, gun };
 }
@@ -112,10 +146,32 @@ export class World {
         }
         this.rock.setVerticesData(B.VertexBuffer.PositionKind, positions); this.rock.createNormals(false);
         const parts = [];
-        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 12 }, scene);
+        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 12, subdivisions: 4 }, scene);
+        const trunkVerts = trunk.getVerticesData(B.VertexBuffer.PositionKind);
+        for (let v = 0; v < trunkVerts.length; v += 3) {
+            const ang = Math.atan2(trunkVerts[v + 2], trunkVerts[v]);
+            const rib = 1 + Math.abs(Math.sin(ang * 5)) * 0.07 + Math.sin(trunkVerts[v + 1] * 2.4) * 0.025;
+            trunkVerts[v] *= rib;
+            trunkVerts[v + 2] *= rib;
+        }
+        trunk.setVerticesData(B.VertexBuffer.PositionKind, trunkVerts);
+        trunk.createNormals(false);
         trunk.position.y = 2.5; trunk.material = this.mats.bark; parts.push(trunk);
         for (let i = 0; i < 5; i++) {
-            const crown = B.MeshBuilder.CreateCylinder('ramagem', { height: 2.6 - i * .22, diameterTop: 0, diameterBottom: 3.1 - i * .48, tessellation: 12 }, scene);
+            const height = 2.6 - i * .22;
+            const crown = B.MeshBuilder.CreateCylinder('ramagem', {
+                height, diameterTop: 0.05, diameterBottom: 3.1 - i * .48, tessellation: 14, subdivisions: 3
+            }, scene);
+            const verts = crown.getVerticesData(B.VertexBuffer.PositionKind);
+            for (let v = 0; v < verts.length; v += 3) {
+                const ang = Math.atan2(verts[v + 2], verts[v]);
+                const ny = (verts[v + 1] + height / 2) / height;
+                const lobe = 1 + Math.abs(Math.sin(ang * 5 + i * 1.3)) * 0.28 * (1 - ny);
+                verts[v] *= lobe;
+                verts[v + 2] *= lobe;
+            }
+            crown.setVerticesData(B.VertexBuffer.PositionKind, verts);
+            crown.createNormals(false);
             crown.position.y = 2.1 + i * .8; crown.rotation.y = i * .8; crown.material = this.mats.leaves; parts.push(crown);
         }
         this.tree = B.Mesh.MergeMeshes(parts, true, true, undefined, false, true); this.tree.name = 'pinheiro-modelo'; this.tree.isVisible = false;
@@ -223,8 +279,24 @@ export class World {
         for (const offset of [-.32, .32]) box(this.scene, parent, 'cinta', [.09, .84, .89], [x + offset, .42, z], this.mats.darkWood);
     }
     tent(parent, x, z) {
-        const tent = B.MeshBuilder.CreateCylinder('barraca', { diameter: 4, height: 4.2, tessellation: 3 }, this.scene);
-        tent.parent = parent; tent.rotation.z = Math.PI / 2; tent.rotation.y = Math.PI / 2; tent.position.set(x, 1, z); tent.material = this.mats.canvas;
+        const shape = [
+            new B.Vector3(-1.7, 0, 0),
+            new B.Vector3(0, 2.15, 0),
+            new B.Vector3(1.7, 0, 0),
+            new B.Vector3(1.45, -0.08, 0),
+            new B.Vector3(-1.45, -0.08, 0)
+        ];
+        const tent = B.MeshBuilder.ExtrudeShape('barraca', {
+            shape,
+            path: [new B.Vector3(0, 0, -2.05), new B.Vector3(0, 0, 2.05)],
+            cap: B.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: B.Mesh.DOUBLESIDE
+        }, this.scene);
+        tent.parent = parent;
+        tent.position.set(x, 0.02, z);
+        tent.material = this.mats.canvas;
+        tent.isPickable = false;
         box(this.scene, parent, 'esteio', [.1, 2.4, .1], [x, 1.2, z - 2.1], this.mats.wood);
         this.staticColliders.push({ x: parent.position.x + x, z: parent.position.z + z, radius: 2 });
     }
@@ -281,8 +353,22 @@ export async function loadHorse(scene, shadow, palette) {
     const animations = new Map(result.animationGroups.map(g => [g.name.toLowerCase(), g]));
     const rider = createPerson(scene, palette, true); rider.root.parent = mount; rider.root.position.set(0, 3.02, -.18); rider.root.scaling.setAll(.88);
     const saddle = box(scene, mount, 'sela', [.72, .16, .92], [0, 3.02, -.16], palette.hat);
-    sphere(scene, mount, 'alforje', [.35, .5, .6], [.46, 2.84, -.65], palette.wood);
-    sphere(scene, mount, 'alforje', [.35, .5, .6], [-.46, 2.84, -.65], palette.wood);
+    for (const side of [-1, 1]) {
+        const bag = B.MeshBuilder.CreateLathe('alforje', {
+            shape: [
+                new B.Vector3(0.06, 0, 0),
+                new B.Vector3(0.16, 0.05, 0),
+                new B.Vector3(0.18, 0.2, 0),
+                new B.Vector3(0.1, 0.36, 0),
+                new B.Vector3(0.03, 0.4, 0)
+            ],
+            tessellation: 10
+        }, scene);
+        bag.parent = mount;
+        bag.position.set(side * 0.46, 2.64, -0.65);
+        bag.material = palette.wood;
+        bag.isPickable = false;
+    }
     const reins = B.MeshBuilder.CreateLines('rédeas', { points: [new B.Vector3(-.27, 3.13, .24), new B.Vector3(-.24, 2.97, .8), new B.Vector3(0, 3.12, 1.25), new B.Vector3(.24, 2.97, .8), new B.Vector3(.27, 3.13, .24)] }, scene);
     reins.parent = mount; reins.color = B.Color3.FromHexString('#37251b'); reins.isPickable = false;
     mount.getChildMeshes().forEach(m => { m.isPickable = false; m.receiveShadows = true; shadow.addShadowCaster(m); });

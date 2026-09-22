@@ -6,12 +6,94 @@
 import * as THREE from 'three';
 import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './textures.js';
 import { pick } from './utils.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);
 const SPH = new THREE.SphereGeometry(1, 36, 28);
 const CONE = new THREE.ConeGeometry(1, 1, 24);
-const CAP = new THREE.CapsuleGeometry(0.5, 1, 10, 28);
+
+/**
+ * Massa unitária (centrada, lado 1) compartilhada por todos os prédios.
+ * Cornija para fora, vão de janela para dentro, cunhal só na quina.
+ * O relevo máximo para fora é ~0.014 — as fitas de néon saem além disso.
+ */
+const BUILDING_MASS = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1, 10, 28, 10);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x);
+        const az = Math.abs(z);
+        const onX = ax > 0.499;
+        const onZ = az > 0.499;
+        if (!onX && !onZ) continue;
+        const t = y + 0.5;
+        const floorWave = Math.sin(t * Math.PI * 12);
+        const cornice = floorWave > 0.78 ? 0.012 : 0;
+        const corner = ax > 0.46 && az > 0.46;
+        const quoin = corner ? 0.02 : 0;
+        const bay = !corner && floorWave < -0.05 && t > 0.06 && t < 0.94 ? 0.018 : 0;
+        if (onX) x = Math.sign(x) * (0.5 + cornice + quoin - (onZ ? 0 : bay));
+        if (onZ) z = Math.sign(z) * (0.5 + cornice + quoin - (onX ? 0 : bay));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Braço e cabeça de poste: lathe ao longo de X, no lugar da caixa 1.4×0.08. */
+const LAMP_ARM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.7),
+        new THREE.Vector2(0.055, -0.15),
+        new THREE.Vector2(0.048, 0.4),
+        new THREE.Vector2(0.07, 0.68)
+    ], 10);
+    g.rotateZ(-Math.PI / 2);
+    return g;
+})();
+const LAMP_HEAD = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, -0.2),
+        new THREE.Vector2(0.1, -0.08),
+        new THREE.Vector2(0.13, 0.04),
+        new THREE.Vector2(0.08, 0.12),
+        new THREE.Vector2(0.03, 0.16)
+    ], 12);
+    g.rotateZ(-Math.PI / 2);
+    return g;
+})();
+const SEDAN_FENDER = new THREE.LatheGeometry([
+    new THREE.Vector2(0.05, -0.55),
+    new THREE.Vector2(0.18, -0.15),
+    new THREE.Vector2(0.22, 0.2),
+    new THREE.Vector2(0.1, 0.48),
+    new THREE.Vector2(0.03, 0.62)
+], 16);
+SEDAN_FENDER.rotateZ(-Math.PI / 2);
+
+/** Capota de vidro da van: arco baixo, no lugar da caixa 1.55×0.42×1.5. */
+const VAN_GLASS = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(-0.72, 0);
+    s.quadraticCurveTo(0, 0.18, 0.72, 0);
+    s.lineTo(0.6, -0.06);
+    s.quadraticCurveTo(0, 0.08, -0.6, -0.06);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 1.4,
+        bevelEnabled: true,
+        bevelThickness: 0.015,
+        bevelSize: 0.02,
+        bevelSegments: 1,
+        curveSegments: 6
+    });
+    g.translate(0, 0, -0.7);
+    return g;
+})();
 
 function mesh(geo, mat, sx, sy, sz, x, y, z) {
     const m = new THREE.Mesh(geo, mat);
@@ -88,6 +170,7 @@ export function createSharedMaterials(station) {
             clearcoatRoughness: 0.04,
             transparent: true,
             opacity: 0.7,
+            side: THREE.DoubleSide,
             emissive: 0x112244,
             emissiveIntensity: 0.35
         }),
@@ -169,19 +252,64 @@ export function createBike(mats) {
     fairing.castShadow = true;
     lean.add(fairing);
 
-    lean.add(mesh(CAP, paint, 0.55, 0.22, 0.55, 0, 0.95, 0.35));
-    lean.add(mesh(CAP, mats.chrome, 0.38, 0.14, 0.55, 0, 0.88, -0.55));
+    const nosePts = [
+        new THREE.Vector2(0.04, 0),
+        new THREE.Vector2(0.16, 0.12),
+        new THREE.Vector2(0.2, 0.28),
+        new THREE.Vector2(0.1, 0.42)
+    ];
+    const noseGeo = new THREE.LatheGeometry(nosePts, 20);
+    noseGeo.rotateX(Math.PI / 2);
+    const nose = new THREE.Mesh(noseGeo, paint);
+    nose.position.set(0, 0.9, 0.55);
+    nose.castShadow = true;
+    lean.add(nose);
 
-    const tank = mesh(SPH, paint, 0.38, 0.22, 0.55, 0, 0.98, 0.15);
+    const tailCowl = new THREE.LatheGeometry([
+        new THREE.Vector2(0.05, 0),
+        new THREE.Vector2(0.16, 0.18),
+        new THREE.Vector2(0.12, 0.42),
+        new THREE.Vector2(0.04, 0.55)
+    ], 16);
+    tailCowl.rotateX(-Math.PI / 2);
+    const cowl = new THREE.Mesh(tailCowl, mats.chrome);
+    cowl.position.set(0, 0.84, -0.72);
+    cowl.castShadow = true;
+    lean.add(cowl);
+
+    const tankPts = [
+        new THREE.Vector2(0.02, -0.22),
+        new THREE.Vector2(0.16, -0.08),
+        new THREE.Vector2(0.2, 0.08),
+        new THREE.Vector2(0.12, 0.2),
+        new THREE.Vector2(0.03, 0.26)
+    ];
+    const tankGeo = new THREE.LatheGeometry(tankPts, 22);
+    tankGeo.rotateZ(-Math.PI / 2);
+    tankGeo.scale(1.15, 0.72, 0.85);
+    const tank = new THREE.Mesh(tankGeo, paint);
+    tank.position.set(0, 0.98, 0.12);
+    tank.castShadow = true;
     lean.add(tank);
 
-    const seat = mesh(CAP, new THREE.MeshPhysicalMaterial({
+    const seatMat = new THREE.MeshPhysicalMaterial({
         color: 0x1a0c14,
         roughness: 0.55,
         metalness: 0.08,
         clearcoat: 0.25,
         clearcoatRoughness: 0.4
-    }), 0.38, 0.08, 0.42, 0, 0.86, -0.42);
+    });
+    const seatGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.28),
+        new THREE.Vector2(0.14, -0.08),
+        new THREE.Vector2(0.13, 0.12),
+        new THREE.Vector2(0.05, 0.28)
+    ], 16);
+    seatGeo.rotateZ(-Math.PI / 2);
+    seatGeo.scale(1, 0.55, 0.7);
+    const seat = new THREE.Mesh(seatGeo, seatMat);
+    seat.position.set(0, 0.9, -0.38);
+    seat.castShadow = true;
     lean.add(seat);
 
     const fork = mesh(CYL, mats.chrome, 0.035, 0.55, 0.035, 0.16, 0.7, 0.72);
@@ -230,12 +358,40 @@ export function createBike(mats) {
     }
 
     const rider = new THREE.Group();
-    rider.add(mesh(CAP, paint, 0.32, 0.28, 0.28, 0, 1.22, -0.18));
-    const helmet = mesh(SPH, mats.chrome, 0.18, 0.16, 0.18, 0, 1.52, -0.02);
+    const suit = new THREE.MeshPhysicalMaterial({
+        color: 0x140818,
+        roughness: 0.45,
+        metalness: 0.15,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.3
+    });
+    const chest = new THREE.Mesh(torsoGeometry({ height: 0.38, girth: 0.15, style: 'human', seg: 14 }), suit);
+    chest.position.set(0, 1.05, -0.16);
+    chest.rotation.x = 0.72;
+    chest.castShadow = true;
+    rider.add(chest);
+    const helmet = new THREE.Mesh(headGeometry(0.15, 'human'), mats.chrome);
+    helmet.position.set(0, 1.48, 0.02);
+    helmet.rotation.x = 0.35;
+    helmet.castShadow = true;
     rider.add(helmet);
-    rider.add(mesh(BOX, mats.glass, 0.16, 0.08, 0.04, 0, 1.52, 0.14));
-    rider.add(mesh(CAP, paint, 0.1, 0.1, 0.38, 0.22, 1.18, 0.22));
-    rider.add(mesh(CAP, paint, 0.1, 0.1, 0.38, -0.22, 1.18, 0.22));
+    const visor = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
+        mats.glass
+    );
+    visor.position.set(0, 1.5, 0.06);
+    visor.rotation.x = 1.15;
+    rider.add(visor);
+    const armGeo = limbGeometry({ length: 0.36, r0: 0.045, r1: 0.032, bulge: 0.01, seg: 10, rings: 8 });
+    const armL = new THREE.Mesh(armGeo, suit);
+    armL.position.set(0.16, 1.32, 0.02);
+    armL.rotation.x = 1.15;
+    armL.rotation.z = -0.35;
+    const armR = armL.clone();
+    armR.position.x = -0.16;
+    armR.rotation.z = 0.35;
+    armL.castShadow = armR.castShadow = true;
+    rider.add(armL, armR);
     lean.add(rider);
 
     root.userData = { lean, wheels, glow, paint, head, tail };
@@ -272,7 +428,11 @@ export function createCar(mats, kind = 0) {
         sedan.castShadow = true;
         g.add(sedan);
         g.add(mesh(SPH, mats.glass, 1.35, 0.38, 0.95, 0, 1.0, -0.15));
-        g.add(mesh(CAP, body, 1.4, 0.16, 0.55, 0, 0.92, -1.2));
+        const fender = new THREE.Mesh(SEDAN_FENDER, body);
+        fender.position.set(0, 0.92, -1.2);
+        fender.scale.set(1.15, 0.55, 0.7);
+        fender.castShadow = true;
+        g.add(fender);
     } else if (kind % 3 === 1) {
         // Van / wagon
         const vanPts = [
@@ -289,7 +449,11 @@ export function createCar(mats, kind = 0) {
         van.position.y = 0.75;
         van.castShadow = true;
         g.add(van);
-        g.add(mesh(BOX, mats.glass, 1.55, 0.42, 1.5, 0, 1.25, 0.35));
+        const cabin = new THREE.Mesh(VAN_GLASS, mats.glass);
+        cabin.position.set(0, 1.2, 0.35);
+        cabin.castShadow = false;
+        cabin.receiveShadow = true;
+        g.add(cabin);
     } else {
         // Coupé baixo
         const coupePts = [
@@ -345,12 +509,28 @@ export function createCassette(mats) {
 
 export function createPalm(mats) {
     const g = new THREE.Group();
-    const trunk = mesh(CYL, mats.trunk, 0.16, 4.4, 0.16, 0, 2.2, 0);
+    const trunkPts = [];
+    for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        trunkPts.push(new THREE.Vector2(0.2 - t * 0.08 + Math.sin(t * 9) * 0.015, t * 4.2));
+    }
+    const trunk = new THREE.Mesh(new THREE.LatheGeometry(trunkPts, 10), mats.trunk);
+    trunk.castShadow = true;
     g.add(trunk);
-    for (let i = 0; i < 9; i++) {
-        const leaf = mesh(CONE, mats.palm, 1.1, 2.2, 0.18, 0, 4.3, 0);
-        leaf.rotation.z = 0.85;
-        leaf.rotation.y = (i / 9) * Math.PI * 2;
+    const frond = new THREE.Shape();
+    frond.moveTo(0, 0);
+    frond.quadraticCurveTo(0.35, 0.7, 0.08, 1.9);
+    frond.quadraticCurveTo(-0.05, 1.1, -0.22, 0.15);
+    frond.quadraticCurveTo(-0.08, 0.02, 0, 0);
+    const frondGeo = new THREE.ExtrudeGeometry(frond, {
+        depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1, curveSegments: 6
+    });
+    for (let i = 0; i < 8; i++) {
+        const leaf = new THREE.Mesh(frondGeo, mats.palm);
+        leaf.position.y = 4.15;
+        leaf.rotation.z = 0.95;
+        leaf.rotation.y = (i / 8) * Math.PI * 2;
+        leaf.castShadow = true;
         g.add(leaf);
     }
     return g;
@@ -360,8 +540,16 @@ export function createLamp(mats) {
     const g = new THREE.Group();
     g.add(mesh(CYL, mats.dark, 0.08, 5.2, 0.08, 0, 2.6, 0));
     g.add(mesh(CYL, mats.chrome, 0.06, 0.12, 0.06, 0, 5.15, 0));
-    g.add(mesh(BOX, mats.dark, 1.4, 0.08, 0.12, 0.5, 5.15, 0));
-    const bulb = mesh(BOX, mats.lamp, 0.45, 0.12, 0.25, 1.05, 5.0, 0);
+    const arm = new THREE.Mesh(LAMP_ARM, mats.dark);
+    arm.position.set(0.5, 5.15, 0);
+    arm.castShadow = true;
+    g.add(arm);
+    const head = new THREE.Mesh(LAMP_HEAD, mats.dark);
+    head.position.set(1.15, 5.14, 0);
+    head.castShadow = true;
+    g.add(head);
+    const bulb = mesh(CYL, mats.lamp, 0.07, 0.16, 0.07, 1.16, 5.04, 0);
+    bulb.rotation.z = Math.PI / 2;
     g.add(bulb);
     g.userData.bulb = bulb;
     return g;
@@ -373,7 +561,7 @@ export function createBuilding(mats, rng, density, side = 1) {
     const d = 7 + rng() * 11;
     const h = 8 + rng() ** 1.4 * (28 + density * 18);
 
-    const body = mesh(BOX, mats.body, w, h, d, 0, h / 2, 0);
+    const body = mesh(BUILDING_MASS, mats.body, w, h, d, 0, h / 2, 0);
     g.add(body);
 
     // Cornija / setbacks para densificar a fachada
@@ -391,12 +579,12 @@ export function createBuilding(mats, rng, density, side = 1) {
         const y = h * (0.2 + (i / bands) * 0.65);
         const stripH = mesh(BOX, rng() > 0.5 ? mats.neonA : mats.neonB,
             w * 0.92, 0.08, 0.12,
-            0, y, -side * (d / 2 + 0.06));
+            0, y, -side * (d / 2 + 0.06 + d * 0.016));
         g.add(stripH);
     }
 
     const strip = mesh(BOX, rng() > 0.5 ? mats.neonA : mats.neonB, 0.16, h * 0.92, 0.16,
-        -side * (w / 2 + 0.08), h / 2, (rng() - 0.5) * d * 0.6);
+        -side * (w / 2 + 0.08 + w * 0.016), h / 2, (rng() - 0.5) * d * 0.6);
     g.add(strip);
 
     if (rng() > 0.35) {
@@ -410,7 +598,7 @@ export function createBuilding(mats, rng, density, side = 1) {
             side: THREE.DoubleSide
         });
         const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.9, 6.5), 1.15), signMat);
-        sign.position.set(-side * (w / 2 + 0.12), 3.2 + rng() * (h * 0.4), 0);
+        sign.position.set(-side * (w / 2 + 0.12 + w * 0.016), 3.2 + rng() * (h * 0.4), 0);
         sign.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(sign);
         g.userData.signMat = signMat;

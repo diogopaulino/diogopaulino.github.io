@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { headGeometry, limbGeometry } from '../../shared/realism.js';
 import { dinoSkin } from './textures.js';
 import { patchSkin } from './shaders.js';
 import { clamp, damp, wrapPi, hash2 } from './utils.js';
@@ -125,7 +126,7 @@ function segs(quality, n) {
 }
 
 
-/** Crânio orgânico: esfera alongada + focinho em cápsula (sem BoxGeometry). */
+/** Crânio de réptil: esfera deslocada (focinho e órbitas), sem cápsula de focinho. */
 function organicSkull(parent, skin, {
     cranium = [0.72, 0.58, 0.95],
     snout = [0.48, 0.38, 1.15],
@@ -134,36 +135,34 @@ function organicSkull(parent, skin, {
     segs = 14
 } = {}) {
     const [cw, ch, cd] = cranium;
-    const skull = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, segs, Math.max(10, segs - 2)),
-        skin
-    );
-    skull.scale.set(cw, ch, cd);
-    skull.position.set(0, 0.04, 0.08);
+    const radius = Math.max(cw, ch, cd) * 0.5;
+    const skull = new THREE.Mesh(headGeometry(radius, 'dog'), skin);
+    const snoutLen = snout ? snout[2] : 1;
+    skull.scale.set(cw / radius, ch / radius, (cd / radius) * (0.85 + snoutLen * 0.15));
+    skull.position.set(0, 0.02, 0.12 + (snoutZ || 0) * 0.08);
     parent.add(skull);
-    if (snout) {
-        const [sw, sh, sd] = snout;
-        const muzzle = new THREE.Mesh(
-            new THREE.CapsuleGeometry(Math.min(sw, sh) * 0.45, Math.max(0.05, sd - Math.min(sw, sh) * 0.9), 6, segs),
-            skin
-        );
-        muzzle.rotation.x = Math.PI / 2;
-        muzzle.scale.set(sw / Math.min(sw, sh), 1, sh / Math.min(sw, sh));
-        muzzle.position.set(0, -0.02, snoutZ * 0.55);
-        parent.add(muzzle);
-    }
     if (brow) {
         const [bw, bh, bd] = brow;
         const ridge = new THREE.Mesh(
-            new THREE.CapsuleGeometry(bh * 0.45, bw * 0.85, 4, 10),
+            limbGeometryBrow(bw, bh),
             skin
         );
         ridge.rotation.z = Math.PI / 2;
-        ridge.position.set(0, bh * 1.4, 0.05);
-        ridge.scale.set(1, bd / Math.max(0.1, bh), 1);
+        ridge.position.set(-bw * 0.45, bh * 1.1, 0.08);
+        ridge.scale.set(1, bd / Math.max(0.08, bh), 1);
         parent.add(ridge);
     }
     return skull;
+}
+
+function limbGeometryBrow(width, height) {
+    const pts = [
+        new THREE.Vector2(height * 0.35, 0),
+        new THREE.Vector2(height * 0.55, width * 0.25),
+        new THREE.Vector2(height * 0.4, width * 0.7),
+        new THREE.Vector2(height * 0.15, width)
+    ];
+    return new THREE.LatheGeometry(pts, 10);
 }
 
 function addEyes(parent, { x, y, z, s = 0.12, spread = 0.28 }) {
@@ -198,31 +197,29 @@ function addTeeth(jaw, { count, z0, z1, y, side = 0.16, up = false, len = 0.12 }
 
 function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = false }) {
     const hip = new THREE.Group();
-    const thigh = new THREE.Mesh(
-        new THREE.CylinderGeometry(thighR * 0.72, thighR, thighLen, 14),
-        skin
-    );
-    thigh.position.y = -thighLen * 0.5;
+    const thigh = new THREE.Mesh(limbGeometry({
+        length: thighLen, r0: thighR * 1.05, r1: thighR * 0.7, bulge: thighR * 0.32, bulgeAt: 0.32, seg: 10, rings: 6
+    }), skin);
     hip.add(thigh);
 
     const knee = new THREE.Group();
     knee.position.y = -thighLen + 0.04;
     hip.add(knee);
 
-    const shin = new THREE.Mesh(
-        new THREE.CylinderGeometry(shinR, shinR * 0.7, shinLen, 12),
-        skin
-    );
-    shin.position.y = -shinLen * 0.5;
+    const shin = new THREE.Mesh(limbGeometry({
+        length: shinLen, r0: shinR * 1.05, r1: shinR * 0.68, bulge: shinR * 0.2, bulgeAt: 0.35, pinch: 0.15, seg: 10, rings: 6
+    }), skin);
     knee.add(shin);
 
     const ankle = new THREE.Group();
     ankle.position.y = -shinLen + 0.02;
     knee.add(ankle);
 
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(shinR * 1.15, 12, 10), skin);
-    foot.scale.set(1.1, 0.55, 1.6);
-    foot.position.set(0, -0.08, 0.12);
+    const foot = new THREE.Mesh(limbGeometry({
+        length: shinR * 2.6, r0: shinR * 1.2, r1: shinR * 0.4, bulge: shinR * 0.35, pinch: 0, seg: 8, rings: 5
+    }), skin);
+    foot.rotation.x = -Math.PI / 2;
+    foot.position.set(0, -0.02, 0.04);
     ankle.add(foot);
 
     for (let i = 0; i < toes; i++) {
@@ -311,13 +308,11 @@ export function buildTRex(quality) {
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.18, 0.35);
     head.add(jaw);
-    const jawMesh = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.14, 0.95, 6, 12),
-        skin
-    );
-    jawMesh.rotation.x = Math.PI / 2;
-    jawMesh.scale.set(1.5, 1, 0.75);
-    jawMesh.position.set(0, -0.06, 0.55);
+    const jawMesh = new THREE.Mesh(limbGeometry({
+        length: 1.05, r0: 0.18, r1: 0.07, bulge: 0.04, bulgeAt: 0.3, seg: 10, rings: 8
+    }), skin);
+    jawMesh.rotation.x = -Math.PI / 2;
+    jawMesh.position.set(0, -0.02, 0.12);
     jaw.add(jawMesh);
     addTeeth(head, { count: 8, z0: 0.45, z1: 1.42, y: -0.18, side: 0.16, up: false, len: 0.14 });
     addTeeth(jaw, { count: 8, z0: 0.2, z1: 1.05, y: 0.08, side: 0.14, up: true, len: 0.12 });
@@ -439,13 +434,11 @@ export function buildRaptor(quality) {
     const jaw = new THREE.Group();
     jaw.position.set(0, -0.05, 0.08);
     head.add(jaw);
-    const jm = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.04, 0.22, 4, 10),
-        skin
-    );
-    jm.rotation.x = Math.PI / 2;
-    jm.scale.set(1.2, 1, 0.75);
-    jm.position.z = 0.14;
+    const jm = new THREE.Mesh(limbGeometry({
+        length: 0.26, r0: 0.05, r1: 0.02, bulge: 0.008, seg: 8, rings: 5
+    }), skin);
+    jm.rotation.x = -Math.PI / 2;
+    jm.position.set(0, 0, 0.02);
     jaw.add(jm);
 
     const lLeg = makeLeg(skin, { thighLen: 0.48, shinLen: 0.42, thighR: 0.12, shinR: 0.07, toes: 3, claw: true });

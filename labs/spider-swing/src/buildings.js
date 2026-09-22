@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -301,17 +302,21 @@ export function createLiberty(mats, x, z) {
     g.add(mesh(CYL, mats.stone, 9, 6, 9, x, 3, z));
     // Pedestal em camadas
     g.add(mesh(CYL, mats.stone, 7.2, 4, 7.2, x, 8, z));
-    g.add(mesh(CYL, mats.light, 3.2, 18, 3.2, x, 15, z));
-    // Torso mais orgânico (cápsula)
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.5, 6, 12), mats.light);
-    torso.position.set(x, 26, z);
+    g.add(mesh(CYL, mats.light, 2.4, 14, 2.4, x, 14, z));
+    const torso = new THREE.Mesh(torsoGeometry({ height: 6.4, girth: 1.55, style: 'human', seg: 16 }), mats.light);
+    torso.position.set(x, 20.8, z);
     torso.castShadow = true;
     g.add(torso);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(1.15, 14, 12), mats.light);
-    head.position.set(x, 31.2, z);
+    const head = new THREE.Mesh(headGeometry(1.05, 'human'), mats.light);
+    head.position.set(x, 27.6, z);
+    head.castShadow = true;
     g.add(head);
-    const arm = mesh(CYL, mats.light, 0.7, 10, 0.7, x + 4.5, 30, z);
-    arm.rotation.z = -0.9;
+    const arm = new THREE.Mesh(limbGeometry({
+        length: 4.4, r0: 0.55, r1: 0.32, bulge: 0.14, seg: 12, rings: 8
+    }), mats.light);
+    arm.position.set(x + 1.15, 26.4, z);
+    arm.rotation.z = -1.05;
+    arm.castShadow = true;
     g.add(arm);
     g.add(mesh(CYL, mats.gold, 1.1, 2.4, 1.1, x + 8.2, 34.5, z));
     const colliders = [boxCollider(x, 10, z, 10, 20, 10)];
@@ -334,8 +339,14 @@ export function createWaterTower() {
         hoop.position.y = y;
         g.add(hoop);
     }
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.55, 0.8, 12), wood);
-    cap.position.y = 4.1;
+    const cap = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.06, 0),
+        new THREE.Vector2(1.2, 0.08),
+        new THREE.Vector2(1.52, 0.28),
+        new THREE.Vector2(0.72, 0.55),
+        new THREE.Vector2(0.08, 0.78)
+    ], 14), wood);
+    cap.position.y = 3.7;
     g.add(cap);
     for (const sx of [-1.1, 1.1]) {
         for (const sz of [-1.1, 1.1]) {
@@ -354,17 +365,39 @@ export function createTaxi() {
         clearcoat: 0.55, clearcoatRoughness: 0.2,
         emissive: 0x3a2a00, emissiveIntensity: 0.3
     });
-    const body = new THREE.Mesh(BOX, bodyMat);
-    body.scale.set(2.2, 0.85, 4.4);
-    body.position.y = 0.55;
+    const taxiPts = [
+        new THREE.Vector2(0.12, -2.05),
+        new THREE.Vector2(0.72, -1.65),
+        new THREE.Vector2(0.88, -0.3),
+        new THREE.Vector2(0.82, 1.15),
+        new THREE.Vector2(0.4, 1.85),
+        new THREE.Vector2(0.1, 2.1)
+    ];
+    const taxiGeo = new THREE.LatheGeometry(taxiPts, 22);
+    taxiGeo.rotateZ(-Math.PI / 2);
+    taxiGeo.scale(1, 0.48, 0.9);
+    const body = new THREE.Mesh(taxiGeo, bodyMat);
+    body.position.y = 0.48;
+    body.castShadow = true;
     g.add(body);
-    const cabin = new THREE.Mesh(BOX, new THREE.MeshPhysicalMaterial({
+    const cabinMat = new THREE.MeshPhysicalMaterial({
         color: 0x1a2430, roughness: 0.18, metalness: 0.45,
         clearcoat: 0.7, clearcoatRoughness: 0.15,
-        emissive: 0x223344, emissiveIntensity: 0.2
-    }));
-    cabin.scale.set(1.9, 0.7, 2.2);
-    cabin.position.set(0, 1.2, -0.2);
+        emissive: 0x223344, emissiveIntensity: 0.2,
+        transparent: true, opacity: 0.82
+    });
+    const cabinPts = [
+        new THREE.Vector2(0.05, -0.7),
+        new THREE.Vector2(0.42, -0.35),
+        new THREE.Vector2(0.48, 0.2),
+        new THREE.Vector2(0.22, 0.55),
+        new THREE.Vector2(0.04, 0.7)
+    ];
+    const cabinGeo = new THREE.LatheGeometry(cabinPts, 16);
+    cabinGeo.rotateZ(-Math.PI / 2);
+    cabinGeo.scale(1, 0.7, 0.85);
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.set(0, 0.95, -0.15);
     g.add(cabin);
     const light = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({ color: 0xf4c15d, toneMapped: false }));
     light.scale.set(0.6, 0.18, 0.8);

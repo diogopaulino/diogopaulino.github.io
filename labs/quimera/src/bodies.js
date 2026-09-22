@@ -2,7 +2,9 @@
  * Corpos dos 14 kits. Pés em y = 0; pescoço em LAYOUT.NECK_Y.
  */
 
-import { makeCtx, clothedBody, tagSlot, glass } from './kit.js';
+import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
+import { wingMembrane } from '../../shared/realism.js';
+import * as THREE from 'three';
 
 function build(kit, extras) {
     const ctx = makeCtx(kit);
@@ -15,7 +17,7 @@ const BODIES = {
     pirate: (kit) => build(kit, {
         options: { torso: null, pelvis: null, leg: null },
         detail: ({ add, mats }) => {
-            add.box(0.62, 0.7, 0.4, mats.primary, [0, 0.82, -0.04], null, null, 0.08);
+            add.lathe([[0.2, 0], [0.32, 0.1], [0.3, 0.34], [0.2, 0.56], [0.14, 0.68]], mats.primary, [0, 0.48, -0.02]);
             add.box(0.56, 0.08, 0.38, mats.accent, [0, 0.58, 0.02], null, null, 0.03);
             add.box(0.18, 0.22, 0.04, mats.trim, [0.14, 0.92, 0.18]);
             add.sphere(0.05, mats.accent, [0.14, 0.92, 0.22]);
@@ -37,7 +39,7 @@ const BODIES = {
     astronaut: (kit) => build(kit, {
         options: { torso: null, hand: null, boot: null },
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.64, 0.42, mats.primary, [0, 0.86, 0], null, null, 0.1);
+            add.lathe([[0.18, 0], [0.3, 0.1], [0.28, 0.34], [0.18, 0.52], [0.12, 0.62]], mats.primary, [0, 0.54, 0]);
             add.box(0.28, 0.22, 0.08, mats.secondary, [0, 0.92, 0.22], null, null, 0.04);
             add.box(0.36, 0.42, 0.18, mats.secondary, [0, 0.90, -0.28], null, null, 0.06);
             add.cyl(0.05, 0.05, 0.16, mats.accent, [-0.12, 1.12, -0.28]);
@@ -51,7 +53,7 @@ const BODIES = {
     warrior: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.56, 0.5, 0.38, mats.secondary, [0, 0.90, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.28, 0.06], [0.26, 0.28], [0.16, 0.46], [0.1, 0.5]], mats.secondary, [0, 0.66, 0.02]);
             add.box(0.18, 0.28, 0.06, mats.accent, [0, 0.92, 0.20]);
             add.box(0.5, 0.7, 0.08, mats.primary, [0, 0.78, -0.22], [0.15, 0, 0], null, 0.04);
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [-0.36, 1.06, 0]);
@@ -64,7 +66,7 @@ const BODIES = {
     wizard: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.cone(0.55, 1.15, mats.primary, [0, 0.62, 0]);
+            add.lathe([[0.22, 0], [0.52, 0.12], [0.4, 0.48], [0.26, 0.9], [0.16, 1.15]], mats.primary, [0, 0.05, 0]);
             add.box(0.2, 0.08, 0.08, mats.accent, [0, 1.0, 0.16]);
             add.sphere(0.04, mats.glow, [-0.16, 0.7, 0.22]);
             add.sphere(0.035, mats.glow, [0.18, 0.55, 0.2]);
@@ -85,7 +87,7 @@ const BODIES = {
     chef: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.54, 0.58, 0.36, mats.white, [0, 0.86, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.28, 0.08], [0.26, 0.28], [0.16, 0.48], [0.1, 0.56]], mats.white, [0, 0.56, 0.02]);
             add.box(0.08, 0.36, 0.02, mats.dark, [-0.1, 0.86, 0.19]);
             add.box(0.08, 0.36, 0.02, mats.dark, [0.1, 0.86, 0.19]);
             add.box(0.5, 0.14, 0.38, mats.white, [0, 0.56, 0], null, null, 0.04);
@@ -100,7 +102,7 @@ const BODIES = {
         options: { skipBase: true },
         detail: ({ add, mats }) => {
             add.cyl(0.08, 0.09, 0.12, mats.secondary, [0, 1.18, 0]);
-            add.box(0.5, 0.52, 0.38, mats.primary, [0, 0.88, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.26, 0.08], [0.24, 0.28], [0.16, 0.46], [0.1, 0.52]], mats.primary, [0, 0.62, 0]);
             add.box(0.22, 0.16, 0.06, mats.glow, [0, 0.92, 0.20], null, null, 0.02);
             add.box(0.36, 0.16, 0.3, mats.secondary, [0, 0.54, 0], null, null, 0.04);
             add.box(0.16, 0.32, 0.16, mats.primary, [-0.12, 0.28, 0], null, null, 0.03);
@@ -126,7 +128,7 @@ const BODIES = {
     cowboy: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.5, 0.36, 0.34, mats.primary, [0, 0.96, 0], null, null, 0.05);
+            add.lathe([[0.16, 0], [0.26, 0.06], [0.24, 0.2], [0.14, 0.34]], mats.primary, [0, 0.78, 0.02]);
             add.box(0.18, 0.22, 0.04, mats.secondary, [0.12, 0.92, 0.16]);
             add.box(0.22, 0.42, 0.22, mats.secondary, [-0.16, 0.32, 0.04], null, null, 0.04);
             add.box(0.22, 0.42, 0.22, mats.secondary, [0.16, 0.32, 0.04], null, null, 0.04);
@@ -138,7 +140,7 @@ const BODIES = {
     viking: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.5, 0.4, mats.cloth, [0, 0.86, 0], null, null, 0.08);
+            add.lathe([[0.18, 0], [0.3, 0.08], [0.26, 0.28], [0.18, 0.46]], mats.cloth, [0, 0.62, 0]);
             add.box(0.52, 0.12, 0.12, mats.trim, [0, 0.70, 0.16], null, null, 0.03);
             add.box(0.48, 0.55, 0.12, mats.primary, [0, 0.78, -0.22], [0.2, 0, 0], null, 0.05);
             add.sphere(0.12, mats.trim, [-0.28, 0.55, 0.12]);
@@ -149,15 +151,16 @@ const BODIES = {
     fairy: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats, group }) => {
-            add.cone(0.42, 0.7, mats.primary, [0, 0.55, 0]);
+            add.lathe([[0.16, 0], [0.4, 0.08], [0.32, 0.32], [0.18, 0.62]], mats.primary, [0, 0.2, 0]);
             add.torus(0.22, 0.03, mats.trim, [0, 0.88, 0], [Math.PI / 2, 0, 0]);
             const wingMat = glass(0xd8f0ff);
+            wingMat.side = THREE.DoubleSide;
             const petal = (x, rotY) => {
-                const m = add.box(
-                    0.18, 0.42, 0.04, wingMat,
+                const m = add.mesh(
+                    wingMembrane({ span: 0.46, chord: 0.32 }),
+                    wingMat,
                     [x, 0.95, -0.18],
-                    [0.3, rotY, 0.4 * Math.sign(x) || 0.4],
-                    null, 0.08
+                    [0.3, rotY + (x < 0 ? Math.PI : 0), 0]
                 );
                 m.castShadow = false;
                 return m;
@@ -174,9 +177,9 @@ const BODIES = {
     samurai: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.62, 0.28, 0.42, mats.primary, [0, 1.02, 0], null, null, 0.05);
-            add.box(0.48, 0.4, 0.34, mats.secondary, [0, 0.78, 0], null, null, 0.05);
-            add.box(0.54, 0.28, 0.34, mats.cloth, [0, 0.42, 0], null, null, 0.06);
+            add.lathe([[0.2, 0], [0.32, 0.04], [0.3, 0.14], [0.16, 0.26]], mats.primary, [0, 0.9, 0]);
+            add.lathe([[0.14, 0], [0.24, 0.06], [0.22, 0.22], [0.14, 0.38]], mats.secondary, [0, 0.58, 0]);
+            add.lathe([[0.16, 0], [0.28, 0.04], [0.24, 0.16], [0.14, 0.26]], mats.cloth, [0, 0.28, 0]);
             add.box(0.08, 0.22, 0.04, mats.accent, [0, 0.86, 0.18]);
             add.box(0.7, 0.08, 0.18, mats.primary, [0, 1.08, 0], null, null, 0.03);
         }
@@ -185,7 +188,7 @@ const BODIES = {
     scientist: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.72, 0.4, mats.white, [0, 0.78, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.3, 0.08], [0.28, 0.4], [0.18, 0.68]], mats.white, [0, 0.42, 0]);
             add.box(0.16, 0.08, 0.04, mats.secondary, [0, 1.02, 0.20]);
             add.box(0.1, 0.1, 0.08, mats.accent, [0.22, 0.70, 0.16], null, null, 0.02);
             add.box(0.48, 0.28, 0.34, mats.secondary, [0, 0.32, 0], null, null, 0.04);

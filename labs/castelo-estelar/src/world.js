@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
-import { createCastle } from './castle.js';
+import { createCastle } from './castle.js?v=3';
 import { makeSkyMaterial } from './shaders.js';
 import {
     waterNormals, moonTexture, barkTexture, grassNight
@@ -59,7 +59,16 @@ function makePines(quality) {
     const rng = seeded(20260814);
     const count = quality.trees;
     const trunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 2.2, 6);
-    const leafGeo = new THREE.ConeGeometry(1, 2.4, 8);
+    const leafGeo = new THREE.ConeGeometry(1, 2.4, 10);
+    const leafPos = leafGeo.attributes.position;
+    for (let i = 0; i < leafPos.count; i++) {
+        const x = leafPos.getX(i);
+        const y = leafPos.getY(i);
+        const z = leafPos.getZ(i);
+        const n = 0.84 + Math.abs(Math.sin(x * 3.4 + y) * Math.cos(z * 2.8)) * 0.24;
+        leafPos.setXYZ(i, x * n, y, z * n);
+    }
+    leafGeo.computeVertexNormals();
     const trunkMat = new THREE.MeshStandardMaterial({
         color: 0x2a1a10,
         map: barkTexture(),

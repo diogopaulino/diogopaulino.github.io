@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { profileTube, canineHeadGeometry, tailGeometry, wingMembrane, headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 import {
     rockTexture, mossTexture, barkTexture, leafTexture, wingTexture, glowSprite
 } from './textures.js';
@@ -22,6 +23,39 @@ const geo = {
     plane: new THREE.PlaneGeometry(1, 1, 1, 1),
     icosa: new THREE.IcosahedronGeometry(1, 3)
 };
+
+/** Picos com costelas. Não reutiliza geo.cone — a crista da ira usa esse cone. */
+function ridgedPeak(seed) {
+    const g = new THREE.ConeGeometry(1, 1, 9, 6);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const ang = Math.atan2(z, x);
+        const down = 0.5 - y;
+        const ridge = 1
+            + Math.abs(Math.sin(ang * 3 + seed * 1.7)) * 0.28 * down
+            + Math.abs(Math.sin(ang * 7 + seed)) * 0.06 * down;
+        p.setXYZ(i, x * ridge, y + Math.sin(ang * 2 + seed) * 0.015 * down, z * ridge);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+const PEAKS = [0, 1.4, 2.6].map(ridgedPeak);
+
+const MOSS_CAP = geo.sphereLo.clone();
+{
+    const p = MOSS_CAP.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const n = 1 + Math.abs(Math.sin(x * 3.2 + z * 2.4)) * 0.12;
+        p.setXYZ(i, x * n, y < 0 ? y * 0.35 : y * n, z * n);
+    }
+    MOSS_CAP.computeVertexNormals();
+}
 
 export function std(color, {
     map = null,
@@ -202,8 +236,14 @@ export function createIra() {
     const g = new THREE.Group();
     g.name = 'ira';
 
-    const body = mesh(geo.sphereHi, m.skin, { scale: [1.15, 0.85, 2.4] });
-    const belly = mesh(geo.sphere, m.belly, { scale: [0.85, 0.55, 1.9], pos: [0, -0.28, 0.1] });
+    const body = mesh(profileTube({
+        axis: 'z', length: 3.4, rings: 16, seg: 18, squashY: 0.72,
+        radius: (t) => 0.42 + Math.sin(t * Math.PI) * 0.38 + (t > 0.8 ? (t - 0.8) * 0.2 : 0)
+    }), m.skin);
+    const belly = mesh(profileTube({
+        axis: 'z', length: 2.2, rings: 10, seg: 12, squashY: 0.55,
+        radius: (t) => 0.28 + Math.sin(t * Math.PI) * 0.16
+    }), m.belly, { pos: [0, -0.28, 0.1], cast: false });
     g.add(body, belly);
 
     for (let i = 0; i < 5; i++) {
@@ -217,19 +257,15 @@ export function createIra() {
 
     const neck = new THREE.Group();
     neck.position.set(0, 0.15, 1.9);
-    for (let i = 0; i < 5; i++) {
-        const s = 0.38 - i * 0.04;
-        neck.add(mesh(geo.sphere, m.skin, {
-            scale: [s, s * 0.85, s * 1.15],
-            pos: [0, i * 0.12, i * 0.38]
-        }));
-    }
+    neck.add(mesh(profileTube({
+        axis: 'z', length: 1.5, rings: 8, seg: 12, squashY: 0.8,
+        radius: (t) => 0.34 - t * 0.12
+    }), m.skin, { pos: [0, 0.2, 0.7] }));
     g.add(neck);
 
     const head = new THREE.Group();
     head.position.set(0, 0.62, 3.85);
-    head.add(mesh(geo.sphereHi, m.skin, { scale: [0.42, 0.32, 0.72] }));
-    head.add(mesh(geo.cone, m.skin, { scale: [0.18, 0.7, 0.22], pos: [0, -0.05, 0.72], rot: [Math.PI / 2, 0, 0] }));
+    head.add(mesh(canineHeadGeometry({ radius: 0.46, style: 'fox' }), m.skin, { scale: [0.85, 0.7, 1.15] }));
     head.add(mesh(geo.sphere, m.eye, { scale: [0.09, 0.09, 0.09], pos: [0.22, 0.08, 0.28], cast: false }));
     head.add(mesh(geo.sphere, m.eye, { scale: [0.09, 0.09, 0.09], pos: [-0.22, 0.08, 0.28], cast: false }));
     const crest = mesh(geo.cone, m.stripe, { scale: [0.08, 0.55, 0.18], pos: [0, 0.38, -0.1], rot: [0.4, 0, 0] });
@@ -252,7 +288,7 @@ export function createIra() {
             rot: [0, 0, side * -1.05]
         });
         const membrane = mesh(
-            new THREE.PlaneGeometry(4.4, 2.6, 14, 10),
+            wingMembrane({ span: 4.2, chord: 2.2 }),
             m.wing,
             {
                 pos: [side * 2.5, -0.15, -0.15],
@@ -276,13 +312,7 @@ export function createIra() {
 
     const tail = new THREE.Group();
     tail.position.set(0, 0.1, -2.2);
-    for (let i = 0; i < 7; i++) {
-        const s = 0.32 - i * 0.035;
-        tail.add(mesh(geo.sphereLo, m.skin, {
-            scale: [s * 0.7, s * 0.55, s * 1.3],
-            pos: [0, -i * 0.04, -i * 0.48]
-        }));
-    }
+    tail.add(mesh(tailGeometry({ length: 2.4, r0: 0.28, r1: 0.06, fluff: 0.02 }), m.skin, { pos: [0, 0, -1.1] }));
     const fin = mesh(new THREE.PlaneGeometry(1.6, 0.9), m.wing, {
         pos: [0, 0.05, -3.4],
         rot: [0.2, 0, 0],
@@ -308,40 +338,77 @@ export function createIra() {
 function createRider() {
     const m = materials();
     const g = new THREE.Group();
-    g.add(mesh(geo.sphere, m.rider, { scale: [0.16, 0.22, 0.14], pos: [0, 0.28, 0] }));
-    g.add(mesh(geo.sphere, m.rider, { scale: [0.12, 0.12, 0.12], pos: [0, 0.52, 0.02] }));
-    g.add(mesh(geo.cylLo, m.cloth, { scale: [0.13, 0.28, 0.13], pos: [0, 0.12, 0] }));
-    g.add(mesh(geo.cylLo, m.rider, { scale: [0.04, 0.22, 0.04], pos: [0.12, 0.22, 0.05], rot: [0.6, 0, -0.4] }));
-    g.add(mesh(geo.cylLo, m.rider, { scale: [0.04, 0.22, 0.04], pos: [-0.12, 0.22, 0.05], rot: [0.6, 0, 0.4] }));
-    const braid = mesh(geo.cylLo, m.gold, {
-        scale: [0.018, 0.55, 0.018],
-        pos: [0, 0.28, -0.18],
-        rot: [0.9, 0, 0]
-    });
-    g.add(braid);
+    g.add(mesh(torsoGeometry({ height: 0.42, girth: 0.13, style: 'human' }), m.cloth, { pos: [0, 0.02, 0] }));
+    g.add(mesh(headGeometry(0.11, 'human'), m.rider, { pos: [0, 0.5, 0.02] }));
+    for (const sx of [-1, 1]) {
+        g.add(mesh(limbGeometry({
+            length: 0.28, r0: 0.04, r1: 0.028, bulge: 0.008, bulgeAt: 0.35, seg: 8, rings: 5
+        }), m.rider, {
+            pos: [sx * 0.14, 0.38, 0.04],
+            rot: [0.75, 0, sx * -0.4]
+        }));
+    }
+    g.add(mesh(limbGeometry({
+        length: 0.42, r0: 0.02, r1: 0.008, bulge: 0.004, pinch: 0, seg: 6, rings: 4
+    }), m.gold, { pos: [0, 0.46, -0.04], rot: [0.7, 0, 0] }));
     return g;
 }
+
+/** Copa irregular. Seis variantes reutilizadas — não clona uma esfera por árvore. */
+function foliageBlob(seed) {
+    const g = new THREE.SphereGeometry(1, 22, 16);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const len = Math.hypot(x, y, z) || 1;
+        const n = 0.78 + Math.abs(Math.sin(x * 2.2 + seed) * Math.cos(z * 1.7 + seed * 0.3)) * 0.34;
+        pos.setXYZ(i, (x / len) * n, (y / len) * n * 0.82, (z / len) * n);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const FOLIAGE = [0, 1.7, 3.1, 4.4, 5.9, 7.2].map((seed) => foliageBlob(seed));
+const SPIRAL_CUP = new THREE.LatheGeometry([
+    new THREE.Vector2(0.05, 0),
+    new THREE.Vector2(0.22, 0.04),
+    new THREE.Vector2(0.4, 0.12),
+    new THREE.Vector2(0.18, 0.22),
+    new THREE.Vector2(0.04, 0.28)
+], 14);
 
 export function createYva() {
     const m = materials();
     const g = new THREE.Group();
     g.name = 'yva';
-    g.add(mesh(geo.cyl, m.bark, { scale: [2.8, 22, 2.8], pos: [0, 11, 0] }));
-    g.add(mesh(geo.sphereHi, m.bark, { scale: [3.4, 4.2, 3.4], pos: [0, 2.2, 0] }));
+    const trunk = new THREE.LatheGeometry([
+        new THREE.Vector2(3.8, 0),
+        new THREE.Vector2(2.4, 2.2),
+        new THREE.Vector2(1.55, 8),
+        new THREE.Vector2(1.25, 16),
+        new THREE.Vector2(0.85, 21),
+        new THREE.Vector2(0.35, 22.6)
+    ], 16);
+    g.add(mesh(trunk, m.bark, { pos: [0, 0, 0] }));
+    const branch = profileTube({
+        axis: 'y', length: 8, rings: 8, seg: 8,
+        radius: (t) => 0.48 * (1.15 - t * 0.55)
+    });
     for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        g.add(mesh(geo.cylLo, m.bark, {
-            scale: [0.55, 8, 0.55],
+        g.add(mesh(branch, m.bark, {
             pos: [Math.cos(a) * 4.5, 18, Math.sin(a) * 4.5],
             rot: [0.7, a, 0]
         }));
-        g.add(mesh(geo.sphere, m.leaf, {
+        g.add(mesh(FOLIAGE[i % FOLIAGE.length], m.leaf, {
             scale: [4.2, 2.4, 4.2],
             pos: [Math.cos(a) * 7.5, 22, Math.sin(a) * 7.5]
         }));
     }
-    g.add(mesh(geo.sphereHi, m.leafDark, { scale: [10, 5.5, 10], pos: [0, 24, 0] }));
-    g.add(mesh(geo.sphere, m.leaf, { scale: [7.5, 4, 7.5], pos: [0, 27, 0] }));
+    g.add(mesh(FOLIAGE[1], m.leafDark, { scale: [10, 5.5, 10], pos: [0, 24, 0] }));
+    g.add(mesh(FOLIAGE[3], m.leaf, { scale: [7.5, 4, 7.5], pos: [0, 27, 0] }));
     const heart = mesh(geo.icosa, m.seed, { scale: [1.4, 1.8, 1.4], pos: [0, 14, 0], cast: false });
     const light = new THREE.PointLight(0x7af0d8, 3.2, 48, 1.6);
     light.position.set(0, 14, 0);
@@ -366,7 +433,7 @@ export function createSpiralPlant(rng = Math.random) {
     const stem = new THREE.Mesh(tube, m.magenta);
     stem.castShadow = true;
     g.add(stem);
-    const cup = mesh(geo.sphere, m.magenta, { scale: [0.42, 0.22, 0.42], pos: [pts[28].x, pts[28].y, pts[28].z] });
+    const cup = mesh(SPIRAL_CUP, m.magenta, { pos: [pts[28].x, pts[28].y, pts[28].z] });
     g.add(cup);
     return g;
 }
@@ -380,7 +447,7 @@ export function createCanopyTree(rng = Math.random) {
     const layers = 2 + Math.floor(rng() * 2);
     for (let i = 0; i < layers; i++) {
         const s = 3.2 - i * 0.55 + rng() * 0.6;
-        g.add(mesh(geo.sphereLo, i % 2 ? m.leaf : m.leafDark, {
+        g.add(mesh(FOLIAGE[Math.floor(rng() * FOLIAGE.length)], i % 2 ? m.leaf : m.leafDark, {
             scale: [s, s * 0.55, s],
             pos: [(rng() - 0.5) * 0.8, h - 0.4 - i * 1.5, (rng() - 0.5) * 0.8]
         }));
@@ -393,8 +460,8 @@ export function createPeakTree(rng = Math.random) {
     const g = new THREE.Group();
     const h = 2.4 + rng() * 2.2;
     g.add(mesh(geo.cylLo, m.bark, { scale: [0.12, h, 0.12], pos: [0, h * 0.5, 0] }));
-    g.add(mesh(geo.coneLo, m.leaf, { scale: [1.1, 2.2, 1.1], pos: [0, h + 0.4, 0] }));
-    g.add(mesh(geo.coneLo, m.leafDark, { scale: [0.75, 1.4, 0.75], pos: [0, h + 1.1, 0] }));
+    g.add(mesh(FOLIAGE[0], m.leaf, { scale: [1.15, 1.15, 1.15], pos: [0, h + 0.35, 0] }));
+    g.add(mesh(FOLIAGE[2], m.leafDark, { scale: [0.78, 0.85, 0.78], pos: [0, h + 1.15, 0] }));
     return g;
 }
 
@@ -403,9 +470,10 @@ export function createMountain(rng, size = 1) {
     const g = new THREE.Group();
     const h = 18 * size;
     const r = 8 * size;
-    const rock = mesh(geo.cone, m.rock, { scale: [r, h, r * 0.92], pos: [0, h * 0.15, 0], rot: [0, rng() * 6, 0.08] });
-    const cap = mesh(geo.sphere, m.moss, { scale: [r * 0.92, r * 0.38, r * 0.92], pos: [0, h * 0.52, 0] });
-    const hang = mesh(geo.cone, m.rock, {
+    const peak = PEAKS[Math.floor(rng() * PEAKS.length)];
+    const rock = mesh(peak, m.rock, { scale: [r, h, r * 0.92], pos: [0, h * 0.15, 0], rot: [0, rng() * 6, 0.08] });
+    const cap = mesh(MOSS_CAP, m.moss, { scale: [r * 0.92, r * 0.38, r * 0.92], pos: [0, h * 0.52, 0] });
+    const hang = mesh(PEAKS[(Math.floor(rng() * PEAKS.length) + 1) % PEAKS.length], m.rock, {
         scale: [r * 0.72, h * 0.85, r * 0.68],
         pos: [0, -h * 0.28, 0],
         rot: [Math.PI, rng() * 2, 0.12]

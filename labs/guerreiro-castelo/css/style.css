@@ -56,10 +56,14 @@ body {
     position: absolute;
     inset: 0;
     background: #05060a;
-    opacity: 1;
+    opacity: 0;
     pointer-events: none;
-    transition: none;
+    transition: opacity 0.45s ease;
     z-index: 20;
+}
+
+.fade.is-active {
+    opacity: 1;
 }
 
 .vignette {

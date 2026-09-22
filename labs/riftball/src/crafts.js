@@ -27,8 +27,10 @@ function hullProfile() {
         new THREE.Vector2(0.48, -0.35),
         new THREE.Vector2(0.52, 0.15),
         new THREE.Vector2(0.42, 0.65),
-        new THREE.Vector2(0.22, 0.95),
-        new THREE.Vector2(0.06, 1.12)
+        new THREE.Vector2(0.28, 0.95),
+        new THREE.Vector2(0.16, 1.22),
+        new THREE.Vector2(0.07, 1.48),
+        new THREE.Vector2(0.02, 1.62)
     ];
 }
 
@@ -52,16 +54,6 @@ export function createCraft(team) {
     hull.position.y = 0.18;
     hull.castShadow = true;
     root.add(hull);
-
-    const nose = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.28, 0.55, 8, 24),
-        paint
-    );
-    nose.rotation.z = Math.PI / 2;
-    nose.position.set(1.05, 0.18, 0);
-    nose.scale.set(1, 0.85, 1.15);
-    nose.castShadow = true;
-    root.add(nose);
 
     const cabin = new THREE.Mesh(
         new THREE.SphereGeometry(0.42, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55),

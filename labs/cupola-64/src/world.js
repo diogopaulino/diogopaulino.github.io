@@ -15,7 +15,7 @@ import {
     createFlag,
     createPlatform,
     createBush
-} from './models.js';
+} from './models.js?v=10';
 import { grassDetail, waterNormals } from './textures.js';
 
 export class World {
@@ -222,7 +222,12 @@ export class World {
 
         const skyHouse = createPlatform(2.2, 2.4, 2.2, 0xf3c4b4);
         skyHouse.position.set(28, 17.4, 2);
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.4, 32), pbrMat(0xc45c6a, {
+        const roof = new THREE.Mesh(new THREE.LatheGeometry([
+            new THREE.Vector2(0.04, 0.7),
+            new THREE.Vector2(0.35, 0.35),
+            new THREE.Vector2(1.05, -0.15),
+            new THREE.Vector2(1.75, -0.65)
+        ], 14), pbrMat(0xc45c6a, {
             roughness: 0.42,
             clearcoat: 0.15
         }));

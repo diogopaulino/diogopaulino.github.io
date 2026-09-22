@@ -3,9 +3,9 @@
  */
 
 import { Level } from './Level.js';
-import { makeTree, makeGrassInstanced } from '../world/Environment.js';
+import { makeTree, makeGrassInstanced } from '../world/Environment.js?v=5';
 import { grassTexture, sandTexture } from '../world/Textures.js';
-import { buildGuard, CharacterAnimator } from '../characters/builders.js';
+import { buildGuard, CharacterAnimator } from '../characters/builders.js?v=4';
 import { seeded } from '../utils/math.js';
 
 export class EscapeLevel extends Level {

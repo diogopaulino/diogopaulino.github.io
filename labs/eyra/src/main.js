@@ -3,8 +3,8 @@
  */
 
 import * as THREE from 'three';
-import { World } from './world.js';
-import { Player } from './player.js';
+import { World } from './world.js?v=6';
+import { Player } from './player.js?v=6';
 import { Effects } from './effects.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';

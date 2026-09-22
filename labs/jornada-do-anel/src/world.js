@@ -12,7 +12,7 @@ import {
     buildSeat, buildRuinArch, buildWizard, buildElf, buildNazgul, buildGoblin,
     buildCompanion, grassBladeGeometry, grassBladeMaterial, waterMaterial,
     getOakAssets, getPineAssets, getPillarAssets, buildBalrog, std
-} from './models.js?v=3';
+} from './models.js?v=14';
 import { Rider, GoblinAI } from './npcs.js?v=3';
 
 export class ChapterWorld {
@@ -352,9 +352,12 @@ export function buildForest(quality) {
     const oakCount = Math.floor(32 * quality.trees);
 
     const pine = getPineAssets();
-    const pineMesh = new THREE.InstancedMesh(pine.geo, pine.mat, pineCount);
-    pineMesh.castShadow = true;
-    pineMesh.receiveShadow = true;
+    const pineTrunk = new THREE.InstancedMesh(pine.trunkGeo, pine.trunkMat, pineCount);
+    const pineCrown = new THREE.InstancedMesh(pine.foliageGeo, pine.foliageMat, pineCount);
+    pineTrunk.name = 'pineTrunk';
+    pineCrown.name = 'pineCrown';
+    pineTrunk.castShadow = pineCrown.castShadow = true;
+    pineTrunk.receiveShadow = pineCrown.receiveShadow = true;
     let pn = 0;
     for (let i = 0; i < pineCount; i++) {
         const z = rng() * 120 + 4;
@@ -365,11 +368,13 @@ export function buildForest(quality) {
         _dummy.rotation.set(0, rng() * 6, 0);
         _dummy.scale.setScalar(s);
         _dummy.updateMatrix();
-        pineMesh.setMatrixAt(pn++, _dummy.matrix);
+        pineTrunk.setMatrixAt(pn, _dummy.matrix);
+        pineCrown.setMatrixAt(pn, _dummy.matrix);
+        pn += 1;
         world.addCollider(x, z, 0.7);
     }
-    pineMesh.count = pn;
-    world.group.add(pineMesh);
+    pineTrunk.count = pineCrown.count = pn;
+    world.group.add(pineTrunk, pineCrown);
 
     const oak = getOakAssets(false);
     const oakTrunk = new THREE.InstancedMesh(oak.trunkGeo, oak.trunkMat, oakCount);
@@ -538,10 +543,11 @@ export function buildRivendell(quality) {
 
     for (const sx of [-1, 1]) {
         const cliff = new THREE.Mesh(
-            new THREE.BoxGeometry(8, 18, 28),
+            RIVENDELL_CLIFF,
             new THREE.MeshStandardMaterial({ color: 0xc8d8d0, roughness: 0.85 })
         );
         applyMaps(cliff.material, stoneTexture('#8aa0a8'), { color: 0xc8d8d0, roughness: 0.85, normalScale: 1.2 });
+        cliff.name = 'rivendellCliff';
         cliff.position.set(sx * 40, 6, 0);
         world.group.add(cliff);
     }
@@ -553,6 +559,103 @@ export function buildRivendell(quality) {
     scatterGrass(world, Math.floor(560 * quality.grass));
     makePage(world, -12, -16, 'rivendell-page');
     return world;
+}
+
+/**
+ * Paredão de Valfenda, centrado como a caixa 8×18×28.
+ * A queda d'água encosta em |x|=4, |z|<8: ali a face só recua.
+ * Nas pontas a rocha avança; o topo deixa de ser uma laje.
+ */
+const RIVENDELL_CLIFF = (() => {
+    const g = new THREE.BoxGeometry(8, 18, 28, 8, 16, 14);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const faceX = Math.abs(x) > 3.7;
+        const crown = y > 8.4;
+        if (!faceX && !crown) continue;
+        const strata = Math.sin((y + 9) * 1.4) > 0.4 ? 0.22 : 0;
+        const crack = Math.max(0, Math.cos(z * 0.85)) ** 2;
+        if (faceX) {
+            const end = Math.abs(z) > 8;
+            const jut = end ? 0.42 + crack * 0.38 : 0;
+            const recess = end ? 0 : strata + crack * 0.28;
+            x = Math.sign(x) * (4 + jut - recess);
+        }
+        if (crown) y += 0.25 + Math.sin(z * 0.48) * 0.85 + Math.cos(x * 0.7) * 0.22;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
+ * Muro do salão, centrado como a caixa 2×16×110.
+ * Fiadas e pilastras alinhadas aos pilares (a cada 5.5 m).
+ */
+const MORIA_WALL = (() => {
+    const g = new THREE.BoxGeometry(2, 16, 110, 3, 14, 48);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (Math.abs(x) < 0.9) continue;
+        const t = (y + 8) / 16;
+        const course = Math.sin((y + 8) * 1.6) > 0.55 ? 0.11 : 0;
+        const phase = ((z + 42) / 5.5) * Math.PI * 2;
+        const rib = Math.max(0, Math.cos(phase)) ** 2 * 0.42;
+        x = Math.sign(x) * (1 + (1 - t) * 0.1 + course + rib);
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Abóbada de berço ao longo do salão. y=0 é o nascimento, sobre o topo do muro. */
+function moriaVaultGeometry() {
+    const half = 19;
+    const rise = 3.6;
+    const thick = 0.85;
+    const steps = 18;
+    const s = new THREE.Shape();
+    s.moveTo(-half, 0);
+    for (let i = 0; i <= steps; i++) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, rise * (1 - u * u) + thick);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, Math.max(0, rise * (1 - u * u)));
+    }
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 110,
+        steps: 36,
+        bevelEnabled: false,
+        curveSegments: 1
+    });
+    g.translate(0, 0, -55);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const phase = ((z + 42) / 5.5) * Math.PI * 2;
+        const rib = Math.max(0, Math.cos(phase)) ** 2;
+        const ox = x;
+        const oy = y - rise * 0.45;
+        const len = Math.hypot(ox, oy) || 1;
+        x += (ox / len) * rib * 0.38;
+        y += (oy / len) * rib * 0.22;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
 }
 
 /* ================================================================== */
@@ -588,13 +691,19 @@ export function buildMoria(quality) {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.95 });
     applyMaps(wallMat, stoneTexture('#3a3028'), { color: 0x3a3028, roughness: 0.95, normalScale: 1.25 });
     for (const sx of [-1, 1]) {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(2, 16, 110), wallMat);
+        const wall = new THREE.Mesh(MORIA_WALL, wallMat);
+        wall.name = 'moriaWall';
         wall.position.set(sx * 18, 8, 50);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
         world.group.add(wall);
         world.addCollider(sx * 17, 50, 3);
     }
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(38, 1.2, 110), wallMat);
-    ceiling.position.set(0, 15.2, 50);
+    const ceiling = new THREE.Mesh(moriaVaultGeometry(), wallMat);
+    ceiling.name = 'moriaVault';
+    ceiling.position.set(0, 16, 50);
+    ceiling.castShadow = true;
+    ceiling.receiveShadow = true;
     world.group.add(ceiling);
 
     const pillarN = quality.id === 'low' ? 8 : 12;

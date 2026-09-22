@@ -61,7 +61,7 @@ export class Vehicle {
         this.driver = driver || team?.name || 'Pilot';
         this.isPlayer = isPlayer;
         this.skill = skill;
-        this.weather = weather;
+        this.weather = weather || { id: 'dry', grip: 1 };
         this.compound = COMPOUNDS[compound] || COMPOUNDS.medium;
 
         this.position = { x: 0, y: 0, z: 0 };
@@ -111,6 +111,15 @@ export class Vehicle {
         this.shiftCooldown = 0;
         this.lastAccel = 0;
         this.verticalSpeed = 0;
+    }
+
+    reset() {
+        this.placeOnGrid(this.gridSlot || 0);
+        this.finished = false;
+        this.ers = SPEC.ersCapacity;
+        this.tyreWear = 0;
+        this.tyreTemp = 55;
+        this.drsOpen = false;
     }
 
     placeOnGrid(slot) {

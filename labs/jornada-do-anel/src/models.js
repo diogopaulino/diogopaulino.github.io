@@ -6,10 +6,11 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry } from '../../shared/realism.js';
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,
-    clothTexture, leatherTexture, grassBladeTexture, faceTexture, applyMaps
+    clothTexture, leatherTexture, grassBladeTexture, faceTexture, waterTexture, applyMaps
 } from './textures.js?v=3';
 import { hash2 } from './utils.js?v=3';
 
@@ -180,25 +181,32 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
         const leg = new THREE.Group();
         leg.position.set(sx * 0.11, 0.4, 0);
         hips.add(leg);
-        const thigh = new THREE.Mesh(geo('hob-thigh', () => new THREE.CapsuleGeometry(0.075, 0.2, 5, 10)), clothP);
-        thigh.position.y = -0.14;
+        const thigh = new THREE.Mesh(limbGeometry({
+            length: 0.28, r0: 0.08, r1: 0.06, bulge: 0.018, bulgeAt: 0.32, seg: 12
+        }), clothP);
         leg.add(thigh);
         const shin = new THREE.Group();
         shin.position.y = -0.28;
         leg.add(shin);
-        const shinM = new THREE.Mesh(geo('hob-shin', () => new THREE.CapsuleGeometry(0.065, 0.16, 4, 8)), clothP);
-        shinM.position.y = -0.1;
+        const shinM = new THREE.Mesh(limbGeometry({
+            length: 0.2, r0: 0.065, r1: 0.045, bulge: 0.012, bulgeAt: 0.4, pinch: 0.2, seg: 10
+        }), clothP);
         shin.add(shinM);
         const footG = new THREE.Group();
         footG.position.set(0, -0.22, 0.04);
         shin.add(footG);
-        const footM = new THREE.Mesh(geo('hob-foot', () => warp(new THREE.SphereGeometry(0.09, 10, 8), 4, 0.12, 0.4)), foot);
-        footM.scale.set(1.2, 0.52, 1.7);
+        const footM = new THREE.Mesh(limbGeometry({
+            length: 0.16, r0: 0.07, r1: 0.04, bulge: 0.02, pinch: 0, seg: 8, rings: 5
+        }), foot);
+        footM.rotation.x = -Math.PI / 2;
+        footM.position.set(0, -0.02, 0.02);
         footG.add(footM);
-        for (let i = 0; i < 5; i++) {
-            const tuft = new THREE.Mesh(geo('hob-tuft', () => new THREE.SphereGeometry(0.028, 6, 5)), hair);
-            tuft.position.set((i - 2) * 0.022, 0.03, 0.08 + (i % 2) * 0.02);
-            tuft.scale.set(1.1, 0.55, 0.9);
+        for (let i = 0; i < 4; i++) {
+            const tuft = new THREE.Mesh(limbGeometry({
+                length: 0.045, r0: 0.012, r1: 0.004, bulge: 0.004, pinch: 0, seg: 5, rings: 3
+            }), hair);
+            tuft.position.set((i - 1.5) * 0.02, 0.02, 0.1);
+            tuft.rotation.x = -0.6;
             footG.add(tuft);
         }
         leg.userData.shin = shin;
@@ -211,11 +219,10 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     hips.add(torso);
 
     const belly = new THREE.Mesh(
-        geo('hob-belly', () => warp(new THREE.SphereGeometry(0.27, 14, 12), 2, 0.08, 0.45)),
+        geo('hob-belly', () => torsoGeometry({ height: 0.5, girth: 0.26, style: 'child', seg: 16 })),
         clothV
     );
-    belly.scale.set(1.08, 0.88, 0.92);
-    belly.position.y = 0.22;
+    belly.position.y = 0.02;
     torso.add(belly);
 
     const shirt = new THREE.Mesh(
@@ -244,7 +251,7 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     const head = new THREE.Group();
     head.position.y = 0.6;
     torso.add(head);
-    const skull = new THREE.Mesh(geo('hob-skull', () => warp(new THREE.SphereGeometry(0.155, 14, 12), 7, 0.06, 0.5)), skin);
+    const skull = new THREE.Mesh(headGeometry(0.155, 'child'), skin);
     head.add(skull);
     const face = new THREE.Mesh(
         geo('hob-face', () => new THREE.SphereGeometry(0.152, 14, 12, 0, Math.PI * 2, 0.35, 1.4)),
@@ -258,40 +265,49 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     head.add(nose);
 
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('hob-ear', () => warp(new THREE.SphereGeometry(0.05, 8, 6), 9, 0.15)), skin);
-        ear.scale.set(0.65, 1.15, 0.45);
-        ear.position.set(sx * 0.155, 0.02, -0.01);
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.09, width: 0.045, thickness: 0.02 }), skin);
+        ear.position.set(sx * 0.14, -0.01, 0);
+        ear.rotation.y = sx > 0 ? 0.4 : -0.4;
         head.add(ear);
     }
 
-    for (let i = 0; i < 22; i++) {
-        const curl = new THREE.Mesh(geo('hob-curl', () => new THREE.SphereGeometry(0.05, 8, 6)), hair);
-        const a = (i / 22) * Math.PI * 2;
-        curl.position.set(Math.cos(a) * 0.135, 0.09 + Math.sin(i * 1.7) * 0.045, Math.sin(a) * 0.12);
-        curl.scale.setScalar(0.85 + (i % 3) * 0.12);
-        head.add(curl);
+    const mop = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.02),
+        new THREE.Vector2(0.15, 0.02),
+        new THREE.Vector2(0.16, 0.1),
+        new THREE.Vector2(0.05, 0.17)
+    ], 14), hair);
+    mop.position.y = 0.02;
+    head.add(mop);
+    for (let i = 0; i < 7; i++) {
+        const lock = new THREE.Mesh(limbGeometry({
+            length: 0.1, r0: 0.028, r1: 0.01, bulge: 0.008, pinch: 0, seg: 6, rings: 4
+        }), hair);
+        const a = (i / 7) * Math.PI * 2;
+        lock.position.set(Math.cos(a) * 0.12, 0.05, Math.sin(a) * 0.1);
+        lock.rotation.z = Math.cos(a) * 0.7;
+        head.add(lock);
     }
-    const bang = new THREE.Mesh(geo('hob-bang', () => new THREE.SphereGeometry(0.075, 8, 6)), hair);
-    bang.position.set(0, 0.1, 0.1);
-    bang.scale.set(1.15, 0.7, 0.9);
-    head.add(bang);
 
     for (const sx of [-1, 1]) {
         const arm = new THREE.Group();
         arm.position.set(sx * 0.26, 0.44, 0);
         torso.add(arm);
-        const upper = new THREE.Mesh(geo('hob-upper', () => new THREE.CapsuleGeometry(0.05, 0.14, 4, 8)), skin);
-        upper.position.y = -0.1;
+        const upper = new THREE.Mesh(limbGeometry({
+            length: 0.2, r0: 0.055, r1: 0.04, bulge: 0.012, bulgeAt: 0.3, seg: 10
+        }), skin);
         arm.add(upper);
         const forearm = new THREE.Group();
         forearm.position.y = -0.2;
         arm.add(forearm);
-        const foreM = new THREE.Mesh(geo('hob-fore', () => new THREE.CapsuleGeometry(0.045, 0.13, 4, 8)), skin);
-        foreM.position.y = -0.08;
+        const foreM = new THREE.Mesh(limbGeometry({
+            length: 0.16, r0: 0.045, r1: 0.034, bulge: 0.008, bulgeAt: 0.4, pinch: 0.15, seg: 8
+        }), skin);
         forearm.add(foreM);
-        const hand = new THREE.Mesh(geo('hob-hand', () => new THREE.SphereGeometry(0.045, 8, 6)), skin);
-        hand.scale.set(1.05, 0.7, 1.15);
-        hand.position.y = -0.18;
+        const hand = new THREE.Mesh(geo('hob-hand', () => limbGeometry({
+            length: 0.07, r0: 0.028, r1: 0.02, bulge: 0.006, pinch: 0, seg: 8, rings: 4
+        })), skin);
+        hand.position.y = -0.16;
         forearm.add(hand);
         arm.userData.forearm = forearm;
         parts.arms.push(arm);
@@ -349,7 +365,7 @@ export function buildWizard() {
     const head = new THREE.Group();
     head.position.y = 1.72;
     group.add(head);
-    const skull = new THREE.Mesh(geo('wiz-skull', () => warp(new THREE.SphereGeometry(0.15, 12, 10), 11, 0.05)), skin);
+    const skull = new THREE.Mesh(geo('wiz-skull', () => headGeometry(0.15, 'human')), skin);
     head.add(skull);
     const nose = new THREE.Mesh(geo('wiz-nose', () => new THREE.SphereGeometry(0.03, 6, 5)), skin);
     nose.scale.set(0.7, 0.9, 1.4);
@@ -424,25 +440,32 @@ export function buildElf({ robe = 0xc8d8c0 } = {}) {
     const head = new THREE.Group();
     head.position.y = 1.5;
     group.add(head);
-    const skull = new THREE.Mesh(geo('elf-skull', () => new THREE.SphereGeometry(0.125, 12, 10)), skin);
+    const skull = new THREE.Mesh(geo('elf-skull', () => headGeometry(0.125, 'human')), skin);
     skull.scale.set(0.92, 1.08, 0.95);
     head.add(skull);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('elf-ear', () => new THREE.ConeGeometry(0.028, 0.16, 6)), skin);
-        ear.position.set(sx * 0.12, 0.04, -0.02);
-        ear.rotation.z = sx * -0.95;
-        ear.rotation.x = -0.25;
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.16, width: 0.04, thickness: 0.015 }), skin);
+        ear.position.set(sx * 0.11, 0.0, -0.02);
+        ear.rotation.z = sx * -0.7;
+        ear.rotation.x = -0.2;
         head.add(ear);
         const eye = new THREE.Mesh(geo('elf-eye', () => new THREE.SphereGeometry(0.018, 6, 5)), std(0x88a0c8, 0.25, 0.2));
         eye.position.set(sx * 0.04, 0.01, 0.11);
         head.add(eye);
     }
-    const hairM = new THREE.Mesh(geo('elf-hair', () => warp(new THREE.SphereGeometry(0.14, 10, 8), 15, 0.08)), hair);
-    hairM.position.y = 0.06;
-    hairM.scale.set(1.05, 0.85, 1.2);
+    const hairM = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 0),
+        new THREE.Vector2(0.13, 0.02),
+        new THREE.Vector2(0.135, 0.1),
+        new THREE.Vector2(0.04, 0.16)
+    ], 12), hair);
+    hairM.position.y = 0.02;
     head.add(hairM);
-    const fall = new THREE.Mesh(geo('elf-fall', () => new THREE.CylinderGeometry(0.04, 0.03, 0.55, 6)), hair);
-    fall.position.set(0.08, -0.18, -0.06);
+    const fall = new THREE.Mesh(limbGeometry({
+        length: 0.55, r0: 0.04, r1: 0.012, bulge: 0.008, pinch: 0, seg: 8, rings: 5
+    }), hair);
+    fall.position.set(0.06, 0.02, -0.05);
+    fall.rotation.z = -0.12;
     head.add(fall);
 
     const circlet = new THREE.Mesh(
@@ -467,23 +490,22 @@ export function buildGoblin() {
     const dark = mapped(clothTexture('#2a2218'), 0x2a2218, 0.92);
 
     const body = new THREE.Mesh(
-        geo('gob-body', () => warp(new THREE.SphereGeometry(0.26, 10, 8), 17, 0.14, 0.4)),
+        geo('gob-body', () => torsoGeometry({ height: 0.46, girth: 0.2, style: 'child', seg: 14 })),
         dark
     );
-    body.position.y = 0.52;
-    body.scale.set(1.05, 1.25, 0.82);
+    body.position.y = 0.28;
     group.add(body);
 
     const head = new THREE.Group();
     head.position.y = 0.92;
     group.add(head);
-    const skull = new THREE.Mesh(geo('gob-skull', () => warp(new THREE.SphereGeometry(0.19, 10, 8), 18, 0.12)), skin);
+    const skull = new THREE.Mesh(geo('gob-skull', () => headGeometry(0.19, 'child')), skin);
     skull.scale.set(1.05, 0.9, 1.1);
     head.add(skull);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('gob-ear', () => warp(new THREE.ConeGeometry(0.055, 0.2, 6), 19, 0.2)), skin);
-        ear.position.set(sx * 0.17, 0.12, -0.02);
-        ear.rotation.z = sx * -0.75;
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.2, width: 0.07, thickness: 0.025 }), skin);
+        ear.position.set(sx * 0.15, 0.04, -0.02);
+        ear.rotation.z = sx * -0.55;
         head.add(ear);
         const eye = new THREE.Mesh(
             geo('gob-eye', () => new THREE.SphereGeometry(0.038, 8, 6)),
@@ -493,15 +515,19 @@ export function buildGoblin() {
         );
         eye.position.set(sx * 0.06, 0.04, 0.16);
         head.add(eye);
-        const arm = new THREE.Mesh(geo('gob-arm', () => new THREE.CapsuleGeometry(0.045, 0.32, 4, 8)), skin);
-        arm.position.set(sx * 0.28, 0.55, 0.04);
+        const arm = new THREE.Mesh(geo('gob-arm', () => limbGeometry({
+            length: 0.34, r0: 0.05, r1: 0.03, bulge: 0.01, seg: 10, rings: 6
+        })), skin);
+        arm.position.set(sx * 0.24, 0.72, 0.04);
         arm.rotation.z = sx * 0.45;
         arm.rotation.x = -0.35;
         group.add(arm);
     }
-    const jaw = new THREE.Mesh(geo('gob-jaw', () => new THREE.SphereGeometry(0.1, 8, 6)), skin);
-    jaw.scale.set(1, 0.45, 0.9);
-    jaw.position.set(0, -0.08, 0.08);
+    const jaw = new THREE.Mesh(limbGeometry({
+        length: 0.14, r0: 0.08, r1: 0.035, bulge: 0.015, pinch: 0, seg: 8, rings: 4
+    }), skin);
+    jaw.rotation.x = -Math.PI / 2 + 0.45;
+    jaw.position.set(0, -0.04, 0.06);
     head.add(jaw);
 
     const blade = new THREE.Mesh(
@@ -532,39 +558,29 @@ export function buildNazgul() {
     group.add(horse);
 
     const body = new THREE.Mesh(
-        geo('naz-body', () => warp(new THREE.SphereGeometry(0.52, 14, 10), 21, 0.1, 0.5)),
+        geo('naz-body', () => canineTorsoGeometry({ length: 1.45, girth: 0.38, chest: 0.1 })),
         hide
     );
-    body.scale.set(0.72, 0.82, 1.7);
-    body.position.set(0, 0.88, 0);
+    body.position.set(0, 0.82, 0.05);
     horse.add(body);
 
-    const chest = new THREE.Mesh(geo('naz-chest', () => warp(new THREE.SphereGeometry(0.32, 10, 8), 22, 0.1)), hide);
-    chest.scale.set(0.85, 0.95, 1.1);
-    chest.position.set(0, 0.92, 0.55);
-    horse.add(chest);
-
-    const neck = new THREE.Mesh(geo('naz-neck', () => new THREE.CapsuleGeometry(0.13, 0.55, 5, 8)), hide);
-    neck.position.set(0, 1.22, 0.72);
-    neck.rotation.x = 0.7;
+    const neck = new THREE.Mesh(geo('naz-neck', () => limbGeometry({
+        length: 0.48, r0: 0.14, r1: 0.08, bulge: 0.02, seg: 10, rings: 6
+    })), hide);
+    neck.position.set(0, 1.35, 0.62);
+    neck.rotation.x = 0.85;
     horse.add(neck);
 
-    const head = new THREE.Mesh(geo('naz-head', () => warp(new THREE.SphereGeometry(0.16, 10, 8), 23, 0.12)), hide);
-    head.scale.set(0.7, 0.72, 1.55);
-    head.position.set(0, 1.52, 1.08);
+    const head = new THREE.Mesh(geo('naz-head', () => canineHeadGeometry({ radius: 0.18, style: 'dog' })), hide);
+    head.position.set(0, 1.5, 1.02);
     horse.add(head);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('naz-ear', () => new THREE.ConeGeometry(0.04, 0.14, 5)), hide);
-        ear.position.set(sx * 0.07, 1.68, 1.0);
-        ear.rotation.x = -0.4;
+        const ear = new THREE.Mesh(geo('naz-ear', () => earBladeGeometry({ height: 0.14, width: 0.05, thickness: 0.016 })), hide);
+        ear.position.set(sx * 0.07, 1.62, 0.98);
+        ear.rotation.z = sx * 0.25;
         horse.add(ear);
     }
-    const snout = new THREE.Mesh(geo('naz-snout', () => new THREE.CylinderGeometry(0.05, 0.09, 0.22, 8)), hide);
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 1.46, 1.28);
-    horse.add(snout);
-
-    const tail = new THREE.Mesh(geo('naz-tail', () => new THREE.ConeGeometry(0.07, 0.7, 6)), black);
+    const tail = new THREE.Mesh(geo('naz-tail', () => tailGeometry({ length: 0.7, r0: 0.07, r1: 0.02, fluff: 0.04 })), black);
     tail.position.set(0, 0.85, -0.95);
     tail.rotation.x = 2.4;
     horse.add(tail);
@@ -577,18 +593,23 @@ export function buildNazgul() {
             const leg = new THREE.Group();
             leg.position.set(sx * 0.22, 0.72, z);
             horse.add(leg);
-            const upper = new THREE.Mesh(geo('naz-legu', () => new THREE.CapsuleGeometry(0.055, 0.32, 4, 6)), hide);
-            upper.position.y = -0.18;
+            const upper = new THREE.Mesh(geo('naz-legu', () => limbGeometry({
+                length: 0.34, r0: 0.07, r1: 0.045, bulge: 0.012, seg: 8, rings: 5
+            })), hide);
+            upper.position.y = 0;
             leg.add(upper);
             const lower = new THREE.Group();
             lower.position.y = -0.36;
             leg.add(lower);
-            const lowM = new THREE.Mesh(geo('naz-legl', () => new THREE.CapsuleGeometry(0.042, 0.28, 3, 6)), hide);
-            lowM.position.y = -0.14;
+            const lowM = new THREE.Mesh(geo('naz-legl', () => limbGeometry({
+                length: 0.28, r0: 0.048, r1: 0.032, bulge: 0.006, seg: 8, rings: 5
+            })), hide);
+            lowM.position.y = 0;
             lower.add(lowM);
-            const hoof = new THREE.Mesh(geo('naz-hoof', () => new THREE.SphereGeometry(0.055, 6, 5)), std(0x080808, 0.5, 0.15));
-            hoof.scale.set(1.1, 0.55, 1.2);
-            hoof.position.y = -0.32;
+            const hoof = new THREE.Mesh(geo('naz-hoof', () => limbGeometry({
+                length: 0.09, r0: 0.05, r1: 0.034, bulge: 0.008, pinch: 0.05, seg: 8, rings: 5
+            })), std(0x080808, 0.5, 0.15));
+            hoof.position.y = -0.28;
             lower.add(hoof);
             leg.userData.lower = lower;
             leg.userData.sign = gaitSign[li++];
@@ -727,25 +748,52 @@ export function buildHobbitHole({ doorColor = '#2d6b38', scale = 1 } = {}) {
     return { group, parts: group.userData.parts };
 }
 
+/**
+ * Copa em sino. t=0 é a saia (pescoço), a barriga fica larga e o topo
+ * fecha em calota — sqrt(1 - u²), não um fuso. Cada lobo:
+ * raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
+ */
+function crownGeometry({ radius, height, y0, lobes, seed, seg = 28, steps = 14 }) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = y0 + t * height;
+        let profile;
+        if (t < 0.22) {
+            profile = 0.38 + (t / 0.22) * 0.62;
+        } else {
+            const u = (t - 0.22) / 0.78;
+            profile = Math.sqrt(Math.max(0, 1 - (u * 0.9) ** 2));
+        }
+        pts.push(new THREE.Vector2(Math.max(0.06, radius * profile), y));
+    }
+    const g = new THREE.LatheGeometry(pts, seg);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4) continue;
+        const lobe = 0.82 + 0.22 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 function oakCanopyGeo(autumn) {
     return geo(`oak-canopy:${autumn}`, () => {
-        const blobs = [];
-        const specs = [
-            [0, 1.55, 0, 1.45, 1.05, 1.35],
-            [0.7, 1.15, 0.35, 1.05, 0.9, 1.0],
-            [-0.55, 1.25, -0.25, 0.95, 0.85, 0.95],
-            [0.15, 1.85, -0.5, 0.85, 0.75, 0.9]
+        const parts = [
+            crownGeometry({ radius: 1.35, height: 1.85, y0: 0.45, lobes: 5, seed: 0.4 }),
+            crownGeometry({ radius: 0.95, height: 1.35, y0: 0.7, lobes: 4, seed: 1.7 }),
+            crownGeometry({ radius: 0.72, height: 1.15, y0: 1.45, lobes: 5, seed: 2.4 })
         ];
-        for (let i = 0; i < specs.length; i++) {
-            const [x, y, z, sx, sy, sz] = specs[i];
-            const g = warp(new THREE.IcosahedronGeometry(1, 1), 40 + i, 0.18, 0.45);
-            g.scale(sx, sy, sz);
-            g.translate(x, y, z);
-            blobs.push(g);
-        }
-        const merged = mergeGeometries(blobs, false);
-        blobs.forEach((g) => g.dispose());
-        if (!merged) return new THREE.IcosahedronGeometry(1.4, 1);
+        parts[1].translate(0.72, 0.05, 0.28);
+        parts[2].translate(-0.15, 0.15, -0.35);
+        const merged = mergeGeometries(parts, false);
+        parts.forEach((g) => g.dispose());
+        if (!merged) return crownGeometry({ radius: 1.35, height: 1.85, y0: 0.45, lobes: 5, seed: 0.4 });
         merged.computeVertexNormals();
         return merged;
     });
@@ -794,61 +842,196 @@ export function buildOak({ autumn = false } = {}) {
     return group;
 }
 
-function pineGeo() {
-    return geo('pine-full', () => {
-        const parts = [];
-        const trunk = warp(new THREE.CylinderGeometry(0.14, 0.22, 2.15, 8), 50, 0.12);
-        trunk.translate(0, 1.07, 0);
-        parts.push(trunk);
-        for (let i = 0; i < 5; i++) {
-            const cone = warp(new THREE.ConeGeometry(1.2 - i * 0.18, 1.2, 10), 51 + i, 0.12, 0.4);
-            cone.translate(0, 1.55 + i * 0.62, 0);
-            parts.push(cone);
+/**
+ * Saia de pinheiro. A ponta fica no tronco e a bainha cai.
+ * Sete lobos: raio *= 0.84 + 0.2 * max(0, cos(θ·7 + seed))²,
+ * e a bainha desce nos vãos.
+ */
+function spruceSkirt(radius, hemY, rise, seed) {
+    const apex = hemY + rise;
+    const pts = [
+        [0.05, apex],
+        [radius * 0.28, apex - rise * 0.05],
+        [radius * 0.62, hemY + rise * 0.24],
+        [radius * 0.88, hemY + 0.1],
+        [radius, hemY],
+        [radius * 0.7, hemY + 0.12],
+        [0.06, apex - rise * 0.16]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 24);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < radius * 0.4) continue;
+        const lobe = 0.84 + 0.2 * Math.max(0, Math.cos(Math.atan2(z, x) * 7 + seed)) ** 2;
+        const outer = Math.min(1, (rad - radius * 0.4) / (radius * 0.6));
+        y -= (1 - lobe) * 0.28 * outer;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+function pineTrunkGeo() {
+    return geo('pine-trunk', () => {
+        const H = 1.45;
+        const pts = [];
+        for (let i = 0; i <= 10; i++) {
+            const t = i / 10;
+            const flare = Math.exp(-t * 6) * 0.16;
+            pts.push(new THREE.Vector2(0.2 - t * 0.1 + flare, t * H));
         }
+        const g = new THREE.LatheGeometry(pts, 12);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const rad = Math.hypot(x, z);
+            if (rad < 1e-4 || y < 0.12) continue;
+            const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 5)) ** 2 * 0.02;
+            const k = 1 + rib / rad;
+            pos.setXYZ(i, x * k, y, z * k);
+        }
+        g.computeVertexNormals();
+        return g;
+    });
+}
+
+function pineFoliageGeo() {
+    return geo('pine-foliage', () => {
+        const tiers = [
+            [1.12, 1.02, 1.12, 0.4],
+            [0.92, 1.7, 1.02, 1.2],
+            [0.72, 2.36, 0.95, 2.1],
+            [0.52, 2.98, 0.86, 0.8],
+            [0.34, 3.55, 0.74, 1.7]
+        ];
+        const parts = tiers.map(([radius, hemY, rise, seed]) => spruceSkirt(radius, hemY, rise, seed));
+        const leader = new THREE.LatheGeometry([
+            new THREE.Vector2(0.06, 4.05),
+            new THREE.Vector2(0.035, 4.4),
+            new THREE.Vector2(0.012, 4.72)
+        ], 8);
+        parts.push(leader);
         const merged = mergeGeometries(parts, false);
         parts.forEach((g) => g.dispose());
-        if (!merged) return new THREE.ConeGeometry(1.0, 4.2, 8);
+        if (!merged) return spruceSkirt(1.12, 1.02, 1.12, 0.4);
         merged.computeVertexNormals();
         return merged;
     });
 }
 
 export function getPineAssets() {
+    const leaf = mapped(leafTexture('#1e4a28'), 0x2a5a30, 0.84, 0.02, 0.8);
+    vegWind(leaf, 0.05);
     return {
-        geo: pineGeo(),
-        mat: mapped(leafTexture('#1e4a28'), 0x2a5a30, 0.84, 0.02, 0.8)
+        trunkGeo: pineTrunkGeo(),
+        foliageGeo: pineFoliageGeo(),
+        trunkMat: mapped(barkTexture(), 0x6a4a30, 0.92, 0.02, 1.1),
+        foliageMat: leaf
     };
 }
 
 export function buildPine() {
     const group = new THREE.Group();
+    group.name = 'pineTree';
     const a = getPineAssets();
-    const mesh = new THREE.Mesh(a.geo, a.mat);
-    group.add(mesh);
+    const trunk = new THREE.Mesh(a.trunkGeo, a.trunkMat);
+    const crown = new THREE.Mesh(a.foliageGeo, a.foliageMat);
+    crown.name = 'pineCrown';
+    group.add(trunk, crown);
     enableShadows(group);
     return group;
 }
 
 export function buildPartyTree() {
     const group = new THREE.Group();
+    group.name = 'partyTree';
     const trunk = new THREE.Mesh(
-        geo('party-trunk', () => warp(new THREE.CylinderGeometry(0.5, 0.82, 4.3, 14), 60, 0.12)),
+        geo('party-trunk', () => {
+            const H = 4.35;
+            const pts = [];
+            for (let i = 0; i <= 16; i++) {
+                const t = i / 16;
+                const flare = Math.exp(-t * 5.5) * 0.55;
+                const collar = t > 0.86 ? (t - 0.86) * 0.9 : 0;
+                pts.push(new THREE.Vector2(0.42 - t * 0.1 + flare + collar, t * H));
+            }
+            const g = new THREE.LatheGeometry(pts, 16);
+            const pos = g.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const rad = Math.hypot(x, z);
+                if (rad < 1e-4 || y < 0.25 || y > H - 0.15) continue;
+                const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 7)) ** 2 * 0.045;
+                const k = 1 + rib / rad;
+                pos.setXYZ(i, x * k, y, z * k);
+            }
+            g.computeVertexNormals();
+            return g;
+        }),
         mapped(barkTexture(), 0x8a6a48, 0.9, 0.02, 1.15)
     );
-    trunk.position.y = 2.15;
     group.add(trunk);
 
     const leaf = mapped(leafTexture('#2f6a24'), 0x4a8a32, 0.8);
     vegWind(leaf, 0.07);
-    for (let i = 0; i < 6; i++) {
+    const clumps = [
+        [0, 4.55, 0, 1.7, 2.15, 5, 0.2, 1],
+        [1.25, 4.35, 0.55, 1.35, 1.7, 4, 1.1, 0.92],
+        [-1.05, 4.4, 0.7, 1.28, 1.65, 5, 2.2, 0.9],
+        [0.35, 4.5, -1.3, 1.32, 1.7, 4, 0.6, 0.94],
+        [-0.4, 5.55, 0.15, 1.15, 1.45, 5, 1.8, 0.82]
+    ];
+    clumps.forEach(([x, y, z, radius, height, lobes, seed, scale], i) => {
         const blob = new THREE.Mesh(
-            geo(`party-blob:${i}`, () => warp(new THREE.IcosahedronGeometry(1.75, 1), 61 + i, 0.16)),
+            geo(`party-crown:${i}`, () => crownGeometry({
+                radius, height, y0: -height * 0.42, lobes, seed
+            })),
             leaf
         );
-        const a = (i / 6) * Math.PI * 2;
-        blob.position.set(Math.cos(a) * 1.35, 4.35 + (i % 2) * 0.55, Math.sin(a) * 1.35);
-        blob.scale.setScalar(0.88 + (i % 3) * 0.1);
+        blob.position.set(x, y, z);
+        blob.scale.setScalar(scale);
+        if (i === 0) blob.name = 'partyCrown';
         group.add(blob);
+    });
+
+    const card = mat('party-leaf-card', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.fillStyle = '#3f7a2c';
+        ctx.beginPath();
+        ctx.ellipse(32, 36, 13, 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#214816';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(32, 12);
+        ctx.lineTo(32, 60);
+        ctx.stroke();
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.MeshStandardMaterial({
+            map: tex, color: 0x4a8a32, alphaTest: 0.45, roughness: 0.72, side: THREE.DoubleSide
+        });
+        vegWind(m, 0.16);
+        return m;
+    });
+    const cardGeo = geo('party-leaf-card', () => new THREE.PlaneGeometry(0.72, 1.05));
+    for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        const leafCard = new THREE.Mesh(cardGeo, card);
+        leafCard.position.set(Math.cos(a) * 2.25, 4.15 + (i % 4) * 0.48, Math.sin(a) * 2.25);
+        leafCard.rotation.set(0.15, a, i % 2 ? 0.4 : -0.4);
+        group.add(leafCard);
     }
 
     const lanterns = [];
@@ -908,24 +1091,54 @@ export function buildRock(seed = 1) {
     return mesh;
 }
 
+/**
+ * Coluna dórica do salão. y=0 no chão.
+ * Base em degraus (raio 1.04 → 0.72), fuste com ênfase no terço inferior
+ * e 12 caneluras (cos(θ·12) empurra o sulco para dentro), capitel com
+ * equino e ábaco até y = height + 0.4.
+ */
+function pillarColumn(height) {
+    const H = height;
+    const pts = [
+        [1.04, 0],
+        [1.04, 0.14],
+        [0.9, 0.16],
+        [0.9, 0.32],
+        [0.76, 0.34],
+        [0.72, 0.5],
+        [0.76, 0.62],
+        [0.74, H * 0.18],
+        [0.68, H * 0.45],
+        [0.62, H * 0.78],
+        [0.58, H - 0.55],
+        [0.64, H - 0.32],
+        [0.82, H - 0.12],
+        [0.98, H],
+        [0.98, H + 0.14],
+        [0.62, H + 0.16],
+        [0.36, H + 0.3],
+        [0.08, H + 0.4]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 40);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y < 0.62 || y > H - 0.55) continue;
+        const r = Math.hypot(x, z);
+        if (r < 0.2) continue;
+        const flute = Math.max(0, Math.cos(Math.atan2(z, x) * 12));
+        const k = 1 - 0.055 * flute * flute;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function getPillarAssets(height = 14) {
     const stone = mapped(stoneTexture('#6a5a48'), 0x7a6a58, 0.9, 0.03, 1.1);
-    const g = geo(`pillar:${height}`, () => {
-        const col = new THREE.CylinderGeometry(0.62, 0.78, height, 12);
-        col.translate(0, height / 2, 0);
-        const base = new THREE.BoxGeometry(2.05, 0.48, 2.05);
-        base.translate(0, 0.24, 0);
-        const cap = new THREE.BoxGeometry(1.85, 0.38, 1.85);
-        cap.translate(0, height, 0);
-        const ring = new THREE.TorusGeometry(0.72, 0.08, 6, 16);
-        ring.rotateX(Math.PI / 2);
-        ring.translate(0, height - 0.35, 0);
-        [col, base, cap, ring].forEach((g) => g.clearGroups());
-        const merged = mergeGeometries([col, base, cap, ring], false);
-        [col, base, cap, ring].forEach((g) => g.dispose());
-        if (!merged) return new THREE.CylinderGeometry(0.62, 0.78, height, 12);
-        return merged;
-    });
+    const g = geo(`pillar:${height}`, () => pillarColumn(height));
     return { geo: g, mat: stone };
 }
 
@@ -960,8 +1173,14 @@ export function buildPavilion() {
         );
         col.position.set(Math.cos(a) * 5.2, 0, Math.sin(a) * 5.2);
         group.add(col);
-        const cap = new THREE.Mesh(geo('pav-cap', () => new THREE.SphereGeometry(0.22, 10, 8)), gold);
-        cap.position.set(Math.cos(a) * 5.2, 4.28, Math.sin(a) * 5.2);
+        const cap = new THREE.Mesh(geo('pav-cap', () => new THREE.LatheGeometry([
+            new THREE.Vector2(0.04, 0),
+            new THREE.Vector2(0.2, 0.03),
+            new THREE.Vector2(0.16, 0.12),
+            new THREE.Vector2(0.06, 0.24),
+            new THREE.Vector2(0.015, 0.32)
+        ], 12)), gold);
+        cap.position.set(Math.cos(a) * 5.2, 4.12, Math.sin(a) * 5.2);
         group.add(cap);
     }
 
@@ -1005,27 +1224,177 @@ export function buildCouncilRing() {
     return group;
 }
 
+/** Laje 2.35×0.26×1.55, centrada. Chanfro, prato gasto no topo e cinta na face. */
+function bridgeSlabGeometry() {
+    const g = new THREE.BoxGeometry(2.35, 0.26, 1.55, 10, 3, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const edgeX = Math.abs(x) > 0.95;
+        const edgeZ = Math.abs(z) > 0.58;
+        if (y > 0.06 && (edgeX || edgeZ)) {
+            y -= 0.045;
+            if (edgeX) x *= 0.94;
+            if (edgeZ) z *= 0.93;
+        }
+        if (y > 0.04) {
+            const dish = Math.max(0, 1 - (x / 1.15) ** 2) * Math.max(0, 1 - (z / 0.75) ** 2);
+            y += dish * 0.035;
+        }
+        if (Math.abs(y) < 0.05 && (Math.abs(x) > 1.05 || Math.abs(z) > 0.68)) {
+            if (Math.abs(x) > 1.05) x = Math.sign(x) * (Math.abs(x) + 0.04);
+            if (Math.abs(z) > 0.68) z = Math.sign(z) * (Math.abs(z) + 0.035);
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Pilar de 1.15, centrado. Base, fuste e capitel. */
+function bridgePostGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const y = (t - 0.5) * 1.15;
+        let r = 0.05;
+        r += 0.045 * Math.exp(-((t - 0.08) ** 2) / 0.003);
+        r += 0.02 * Math.exp(-((t - 0.48) ** 2) / 0.012);
+        r += 0.04 * Math.exp(-((t - 0.88) ** 2) / 0.004);
+        if (t < 0.05 || t > 0.95) r = 0.095;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Travessa de 2.4 ao longo de X, seção redonda com ponteiras. */
+function bridgeRailGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const y = (t - 0.5) * 2.4;
+        const r = t < 0.07 || t > 0.93 ? 0.075 : 0.042;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.rotateZ(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BRIDGE_SLAB = bridgeSlabGeometry();
+const BRIDGE_POST = bridgePostGeometry();
+const BRIDGE_RAIL = bridgeRailGeometry();
+
 export function buildBridge() {
     const group = new THREE.Group();
     const stone = mapped(stoneTexture('#5a5048'), 0x6a6058, 0.88, 0.04, 1.05);
     for (let i = 0; i < 10; i++) {
-        const slab = new THREE.Mesh(geo('br-slab', () => new THREE.BoxGeometry(2.35, 0.26, 1.55)), stone);
+        const slab = new THREE.Mesh(BRIDGE_SLAB, stone);
+        slab.name = 'bridgeSlab';
         slab.position.set((i % 2) * 0.06, 0.13, -7.2 + i * 1.6);
         group.add(slab);
     }
     for (const z of [-7.2, 7.2]) {
         for (const x of [-1.12, 1.12]) {
-            const post = new THREE.Mesh(geo('br-post', () => new THREE.BoxGeometry(0.16, 1.15, 0.16)), stone);
+            const post = new THREE.Mesh(BRIDGE_POST, stone);
+            post.name = 'bridgePost';
             post.position.set(x, 0.7, z);
             group.add(post);
         }
-        const rail = new THREE.Mesh(geo('br-rail', () => new THREE.BoxGeometry(2.4, 0.08, 0.1)), stone);
+        const rail = new THREE.Mesh(BRIDGE_RAIL, stone);
+        rail.name = 'bridgeRail';
         rail.position.set(0, 1.15, z);
         group.add(rail);
     }
     enableShadows(group);
     return group;
 }
+
+/** Encosto centrado. Crista no meio e um painel recuado na face +Z. */
+function throneBackGeometry() {
+    const hw = 0.72;
+    const hh = 1.125;
+    const s = new THREE.Shape();
+    s.moveTo(-hw, -hh);
+    s.lineTo(-hw, 0.2);
+    s.quadraticCurveTo(-0.15, hh + 0.22, 0, hh + 0.48);
+    s.quadraticCurveTo(0.15, hh + 0.22, hw, 0.2);
+    s.lineTo(hw, -hh);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.34,
+        bevelEnabled: true,
+        bevelThickness: 0.028,
+        bevelSize: 0.03,
+        bevelSegments: 1,
+        curveSegments: 10
+    });
+    g.translate(0, 0, -0.17);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (z > 0.04 && Math.abs(x) < 0.36 && y > -0.62 && y < 0.48) z -= 0.07;
+        if (z > 0.02) z -= Math.max(0, 1 - (x / 0.85) ** 2) * 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Assento 1.35×0.22×1.05, centrado. Prato no meio e lábio na frente (+Z). */
+function throneSeatGeometry() {
+    const g = new THREE.BoxGeometry(1.35, 0.22, 1.05, 8, 2, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y > 0.04) {
+            const dish = Math.max(0, 1 - (x / 0.72) ** 2) * Math.max(0, 1 - (z / 0.55) ** 2);
+            y -= dish * 0.055;
+            if (z > 0.38) y += 0.028;
+        }
+        if (y > 0.05 && (Math.abs(x) > 0.52 || Math.abs(z) > 0.4)) y -= 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Braço ao longo de Z, com a voluta na frente. Largura extrudada vira X. */
+function throneArmGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.45, -0.2);
+    s.lineTo(-0.45, 0.06);
+    s.lineTo(0.05, 0.16);
+    s.quadraticCurveTo(0.42, 0.2, 0.5, 0.02);
+    s.quadraticCurveTo(0.46, -0.12, 0.28, -0.16);
+    s.lineTo(0.05, -0.2);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.18,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.016,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.09);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const THRONE_BACK = throneBackGeometry();
+const THRONE_SEAT = throneSeatGeometry();
+const THRONE_ARM = throneArmGeometry();
 
 export function buildSeat() {
     const group = new THREE.Group();
@@ -1035,18 +1404,18 @@ export function buildSeat() {
         stone
     );
     group.add(base);
-    const back = new THREE.Mesh(
-        geo('seat-back', () => warp(new THREE.BoxGeometry(1.45, 2.25, 0.32), 70, 0.08, 0.5)),
-        stone
-    );
+    const back = new THREE.Mesh(THRONE_BACK, stone);
+    back.name = 'throneBack';
     back.position.set(0, 1.45, -0.52);
     group.add(back);
-    const sit = new THREE.Mesh(geo('seat-sit', () => new THREE.BoxGeometry(1.35, 0.22, 1.05)), stone);
+    const sit = new THREE.Mesh(THRONE_SEAT, stone);
+    sit.name = 'throneSeat';
     sit.position.set(0, 0.62, 0.12);
     group.add(sit);
     const arms = mapped(stoneTexture('#9a8a78'), 0xb0a090);
     for (const sx of [-1, 1]) {
-        const arm = new THREE.Mesh(geo('seat-arm', () => new THREE.BoxGeometry(0.18, 0.55, 0.9)), arms);
+        const arm = new THREE.Mesh(THRONE_ARM, arms);
+        arm.name = 'throneArm';
         arm.position.set(sx * 0.72, 0.85, 0.05);
         group.add(arm);
     }
@@ -1054,21 +1423,85 @@ export function buildSeat() {
     return group;
 }
 
+/** Coluna de 3.45, centrada. Base, caneluras e um capitel lascado. */
+function ruinPillarGeometry() {
+    const H = 3.45;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 0.24 - t * 0.05;
+        if (t < 0.1) r += 0.12 * (1 - t / 0.1);
+        if (t > 0.88) r += 0.07 * ((t - 0.88) / 0.12);
+        pts.push(new THREE.Vector2(Math.max(0.08, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 21);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ang = Math.atan2(z, x);
+        const flute = 0.74 + 0.26 * Math.max(0, Math.cos(ang * 7)) ** 2;
+        const chip = y > 1.35 && Math.cos(ang * 2 + 0.6) > 0.35 ? 0.72 : 1;
+        pos.setXYZ(i, x * flute * chip, y, z * flute * chip);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Arquitrave de 3.45 ao longo de X. Cornija e uma ponta caída. */
+function ruinLintelGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.31, -0.24);
+    s.lineTo(-0.31, 0.02);
+    s.lineTo(-0.24, 0.1);
+    s.lineTo(-0.16, 0.22);
+    s.lineTo(0.16, 0.22);
+    s.lineTo(0.24, 0.1);
+    s.lineTo(0.31, 0.02);
+    s.lineTo(0.31, -0.24);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 3.45,
+        steps: 14,
+        bevelEnabled: true,
+        bevelThickness: 0.018,
+        bevelSize: 0.02,
+        bevelSegments: 1
+    });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (z > 3.05) {
+            const u = Math.min(1, (z - 3.05) / 0.45);
+            y -= u * u * 0.22;
+            x *= 1 - u * 0.25;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.translate(0, 0, -1.725);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const RUIN_PILLAR = ruinPillarGeometry();
+const RUIN_LINTEL = ruinLintelGeometry();
+
 export function buildRuinArch() {
     const group = new THREE.Group();
     const stone = mapped(stoneTexture('#8a7a68'), 0x9a8a78, 0.9, 0.04, 1.15);
     for (const sx of [-1, 1]) {
-        const p = new THREE.Mesh(
-            geo('ruin-p', () => warp(new THREE.BoxGeometry(0.58, 3.45, 0.58), 71, 0.1)),
-            stone
-        );
+        const p = new THREE.Mesh(RUIN_PILLAR, stone);
+        p.name = 'ruinPillar';
         p.position.set(sx * 1.4, 1.72, 0);
         group.add(p);
     }
-    const lintel = new THREE.Mesh(
-        geo('ruin-lintel', () => warp(new THREE.BoxGeometry(3.45, 0.48, 0.62), 72, 0.08)),
-        stone
-    );
+    const lintel = new THREE.Mesh(RUIN_LINTEL, stone);
+    lintel.name = 'ruinLintel';
     lintel.position.y = 3.52;
     lintel.rotation.z = 0.04;
     group.add(lintel);

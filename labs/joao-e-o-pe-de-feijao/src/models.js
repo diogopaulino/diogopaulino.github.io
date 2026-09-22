@@ -3,6 +3,7 @@
  * Nenhum GLB externo. Cache de material nunca serializa Texture (ciclo no engine).
  */
 
+import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js';
 import { hexToColor3 } from './sky.js';
 import {
     surface, thatchTexture, goldTexture, cloudTexture, clothTexture,
@@ -93,12 +94,142 @@ export function surf(scene, kind, tint = 0xffffff, extra = {}) {
     });
 }
 
+function centeredLathe(scene, name, shape, tessellation = 14) {
+    return B.MeshBuilder.CreateLathe(name, { shape, tessellation, cap: B.Mesh.CAP_ALL }, scene);
+}
+
 function limb(scene, name, type, options, material, parent, y = 0) {
     let mesh;
-    if (type === 'cylinder') mesh = B.MeshBuilder.CreateCylinder(name, options, scene);
+    const dx = options.diameterX || options.diameter || options.diameterY || 0.2;
+    const dy = options.diameterY || options.diameter || 0.2;
+    const dz = options.diameterZ || options.diameter || 0.2;
+    if (type === 'cylinder' && /hat/i.test(name) && !/brim/i.test(name)) {
+        const h = options.height || 0.1;
+        const top = (options.diameterTop || options.diameter || 0.28) * 0.5;
+        const bot = (options.diameterBottom || options.diameter || top * 2) * 0.5;
+        mesh = centeredLathe(scene, name, [
+            new B.Vector3(bot * 0.35, -h * 0.5, 0),
+            new B.Vector3(bot, -h * 0.35, 0),
+            new B.Vector3(top, h * 0.15, 0),
+            new B.Vector3(top * 0.35, h * 0.5, 0)
+        ]);
+    } else if (type === 'cylinder' && /brim/i.test(name)) {
+        const h = options.height || 0.025;
+        const r = (options.diameter || 0.4) * 0.5;
+        mesh = centeredLathe(scene, name, [
+            new B.Vector3(0.02, -h * 0.5, 0),
+            new B.Vector3(r, -h * 0.2, 0),
+            new B.Vector3(r * 0.92, h * 0.5, 0)
+        ], 18);
+    } else if (type === 'cylinder' && /beard/i.test(name)) {
+        const h = options.height || 0.4;
+        const top = (options.diameterTop || 0.3) * 0.5;
+        const bot = (options.diameterBottom || 0.08) * 0.5;
+        mesh = centeredLathe(scene, name, [
+            new B.Vector3(top, -h * 0.5, 0),
+            new B.Vector3(top * 0.85, -h * 0.1, 0),
+            new B.Vector3((top + bot) * 0.45, h * 0.25, 0),
+            new B.Vector3(bot, h * 0.5, 0)
+        ], 12);
+    } else if (type === 'cylinder') mesh = B.MeshBuilder.CreateCylinder(name, options, scene);
     else if (type === 'box') mesh = B.MeshBuilder.CreateBox(name, options, scene);
-    else if (type === 'sphere') mesh = B.MeshBuilder.CreateSphere(name, options, scene);
-    else if (type === 'capsule') mesh = B.MeshBuilder.CreateCapsule(name, options, scene);
+    else if (type === 'sphere' && /skull|cowHead|henHead/i.test(name)) {
+        mesh = createSkull(scene, name, {
+            diameter: options.diameter || dy,
+            style: /cow|hen/i.test(name) ? 'dog' : 'child',
+            segments: options.segments || 16
+        });
+    } else if (type === 'sphere' && /foot|boot/i.test(name)) {
+        mesh = createShoe(scene, name, { length: dz, width: dx, height: dy });
+        mesh.rotation.y = -Math.PI / 2;
+    } else if (type === 'sphere' && /hand|fist/i.test(name)) {
+        mesh = createHand(scene, name, material, { scale: (options.diameter || 0.09) / 0.09 });
+    } else if (type === 'sphere' && /ear_/i.test(name)) {
+        const h = dy;
+        const w = dx;
+        mesh = B.MeshBuilder.ExtrudeShape(name, {
+            shape: [
+                new B.Vector3(0, 0, 0),
+                new B.Vector3(w * 0.85, h * 0.28, 0),
+                new B.Vector3(w * 0.12, h, 0),
+                new B.Vector3(-w * 0.5, h * 0.4, 0)
+            ],
+            path: [
+                new B.Vector3(0, 0, -Math.max(0.008, dz * 0.35)),
+                new B.Vector3(0, 0, Math.max(0.008, dz * 0.35))
+            ],
+            cap: B.Mesh.CAP_ALL,
+            closeShape: true
+        }, scene);
+    } else if (type === 'sphere' && /hair|bun/i.test(name)) {
+        mesh = centeredLathe(scene, name, [
+            new B.Vector3(dx * 0.2, -dy * 0.45, 0),
+            new B.Vector3(dx * 0.48, -dy * 0.05, 0),
+            new B.Vector3(dx * 0.36, dy * 0.35, 0),
+            new B.Vector3(dx * 0.08, dy * 0.5, 0)
+        ]);
+    } else if (type === 'sphere' && /Body$/i.test(name)) {
+        const alongX = dx >= dz;
+        mesh = createMuscle(scene, name, {
+            length: Math.max(dx, dz) * 0.92,
+            r0: dy * 0.46,
+            r1: dy * 0.34,
+            bulge: dy * 0.1,
+            bulgeAt: 0.42,
+            pinch: 0.08,
+            tessellation: 12,
+            rings: 8
+        });
+        mesh.rotation[alongX ? 'z' : 'x'] = Math.PI / 2;
+    } else if (type === 'sphere' && /belly/i.test(name)) {
+        mesh = centeredLathe(scene, name, [
+            new B.Vector3(dx * 0.22, -dy * 0.48, 0),
+            new B.Vector3(dx * 0.48, -dy * 0.1, 0),
+            new B.Vector3(dx * 0.42, dy * 0.22, 0),
+            new B.Vector3(dx * 0.18, dy * 0.48, 0)
+        ], 16);
+    } else if (type === 'sphere' && /wing/i.test(name)) {
+        mesh = B.MeshBuilder.ExtrudeShape(name, {
+            shape: [
+                new B.Vector3(0, 0, 0),
+                new B.Vector3(dx * 0.7, dy * 0.15, 0),
+                new B.Vector3(dx, -dy * 0.05, 0),
+                new B.Vector3(dx * 0.35, -dy * 0.7, 0)
+            ],
+            path: [
+                new B.Vector3(0, 0, -0.012),
+                new B.Vector3(0, 0, 0.012)
+            ],
+            cap: B.Mesh.CAP_ALL,
+            closeShape: true
+        }, scene);
+    } else if (type === 'sphere' && /comb/i.test(name)) {
+        mesh = B.MeshBuilder.ExtrudeShape(name, {
+            shape: [
+                new B.Vector3(0, 0, 0),
+                new B.Vector3(dx * 0.35, dy * 0.4, 0),
+                new B.Vector3(0, dy, 0),
+                new B.Vector3(-dx * 0.2, dy * 0.35, 0)
+            ],
+            path: [
+                new B.Vector3(0, 0, -0.012),
+                new B.Vector3(0, 0, 0.012)
+            ],
+            cap: B.Mesh.CAP_ALL,
+            closeShape: true
+        }, scene);
+    } else if (type === 'sphere') mesh = B.MeshBuilder.CreateSphere(name, options, scene);
+    else if (type === 'capsule') {
+        const r = options.radius ?? 0.05;
+        mesh = createMuscle(scene, name, {
+            length: options.height ?? r * 2,
+            r0: r * 1.2,
+            r1: r * 0.8,
+            bulge: r * 0.28,
+            bulgeAt: 0.38,
+            tessellation: Math.min(12, options.tessellation || 10)
+        });
+    }
     else if (type === 'torus') mesh = B.MeshBuilder.CreateTorus(name, options, scene);
     else if (type === 'disc') {
         mesh = B.MeshBuilder.CreateDisc(name, options, scene);

@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { headGeometry, limbGeometry } from '../../shared/realism.js';
 import {
     buildLongship,
     buildBanner,
@@ -11,13 +12,287 @@ import {
     metalMaterial,
     plainMaterial,
     woodMaterial
-} from './models.js?v=14';
+} from './models.js?v=21';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { waterHeight, waterSlope } from './water.js?v=15';
 import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
 import { clamp, damp, randRange } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
+
+/** Telhado de torre: beiral aberto e ponta mais íngreme que um cone liso. Altura e raio batem com o cone antigo. */
+const towerRoofs = new Map();
+function towerRoofGeometry(radius) {
+    const key = radius.toFixed(2);
+    if (towerRoofs.has(key)) return towerRoofs.get(key);
+    const h = radius * 2.1;
+    const base = radius * 1.3;
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(base * 0.06, h * 0.5),
+        new THREE.Vector2(base * 0.2, h * 0.34),
+        new THREE.Vector2(base * 0.48, h * 0.08),
+        new THREE.Vector2(base * 0.78, -h * 0.18),
+        new THREE.Vector2(base * 1.12, -h * 0.46),
+        new THREE.Vector2(base * 0.9, -h * 0.5)
+    ], 16);
+    g.computeVertexNormals();
+    towerRoofs.set(key, g);
+    return g;
+}
+
+/**
+ * Fuste centrado, como o cilindro antigo: topo no raio pedido, base 12% mais larga.
+ * Fiadas e pilastras nas diagonais, para não engolir janela nem estandarte.
+ */
+const towerShafts = new Map();
+function towerShaftGeometry(radius, height) {
+    const key = `${radius.toFixed(2)}x${height.toFixed(1)}`;
+    if (towerShafts.has(key)) return towerShafts.get(key);
+    const steps = 24;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = -height / 2 + t * height;
+        const batter = radius * (1.12 - t * 0.12);
+        const course = Math.sin(t * Math.PI * 10) > 0.7 ? radius * 0.035 : 0;
+        pts.push(new THREE.Vector2(batter + course, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ang = Math.atan2(z, x);
+        const r = Math.hypot(x, z) || 1;
+        const t = (y + height / 2) / height;
+        const q = -Math.cos(ang * 4);
+        const butt = q > 0.45 ? radius * 0.07 * (1.2 - t * 0.35) : 0;
+        const nr = r + butt;
+        pos.setXYZ(i, (x / r) * nr, y, (z / r) * nr);
+    }
+    g.computeVertexNormals();
+    towerShafts.set(key, g);
+    return g;
+}
+
+/** Cornija moldada, centrada, no lugar do anel cilíndrico de altura 0.9. */
+const towerLedges = new Map();
+function towerLedgeGeometry(radius) {
+    const key = radius.toFixed(2);
+    if (towerLedges.has(key)) return towerLedges.get(key);
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(radius * 1.02, -0.45),
+        new THREE.Vector2(radius * 1.16, -0.22),
+        new THREE.Vector2(radius * 1.32, 0.02),
+        new THREE.Vector2(radius * 1.18, 0.22),
+        new THREE.Vector2(radius * 1.06, 0.45)
+    ], 18);
+    g.computeVertexNormals();
+    towerLedges.set(key, g);
+    return g;
+}
+
+/** Ameia unitária centrada. A base alarga e o topo ganha um capitel. */
+const MERLON = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1, 2, 4, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = y + 0.5;
+        x *= 1 + (1 - t) * 0.14;
+        z *= 1 + (1 - t) * 0.08;
+        if (y > 0.15) y += (0.5 - Math.abs(x)) * 0.28;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
+ * Cais 12×3×26, centrado como a caixa antiga. Talude na base, fiadas,
+ * pilastras na face longa e uma copeira na borda de cima.
+ */
+const DOCK_GEO = (() => {
+    const g = new THREE.BoxGeometry(12, 3, 26, 8, 8, 14);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x);
+        const az = Math.abs(z);
+        const t = (y + 1.5) / 3;
+        if (ax > 5.9) x = Math.sign(x) * (6 * (1 + (1 - t) * 0.045));
+        if (az > 12.9) z = Math.sign(z) * (13 * (1 + (1 - t) * 0.02));
+        if (y < 1.35 && ax > 5.9) {
+            const rib = Math.max(0, Math.sin(z * 1.15)) ** 4;
+            x += Math.sign(x) * rib * 0.32;
+        }
+        if (y < 1.35 && (ax > 5.9 || az > 12.9)) {
+            const course = Math.sin((y + 1.5) * Math.PI * 4);
+            const lip = course > 0.7 ? 0.11 : 0;
+            if (ax > 5.9) x += Math.sign(x) * lip;
+            if (az > 12.9) z += Math.sign(z) * lip;
+        }
+        if (y > 1.4 && (ax > 5.15 || az > 11.6)) {
+            y += 0.1;
+            if (ax > 5.9) x += Math.sign(x) * 0.08;
+            if (az > 12.9) z += Math.sign(z) * 0.08;
+        } else if (y > 1.4 && ax < 5.2 && az < 11.6) {
+            y -= 0.05;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+const BOLLARD_GEO = new THREE.LatheGeometry([
+    new THREE.Vector2(0.16, -0.32),
+    new THREE.Vector2(0.22, -0.08),
+    new THREE.Vector2(0.18, 0.12),
+    new THREE.Vector2(0.3, 0.26),
+    new THREE.Vector2(0.2, 0.36)
+], 10);
+
+/** Duas águas sobre o salão 26×18. Perfil em X, extrusão no Z, rotateY deita a cumeeira no comprimento. */
+/**
+ * Pilar da muralha, centrado. Comprimento em X, espessura em Z, altura 22.
+ * As pilastras saem na face do rio e na face de dentro; o vão do portão
+ * permanece na largura original.
+ */
+function curtainPierGeometry(length) {
+    const hl = length / 2;
+    const hd = 3.6;
+    const jut = 0.62;
+    const pilW = 1.55;
+    const pitch = 3.5;
+    const spots = [];
+    for (let x = -hl + 2.4; x + pilW < hl - 1.6; x += pitch) spots.push(x);
+    const pts = [[-hl, -hd]];
+    for (const x of spots) {
+        pts.push([x, -hd], [x, -hd - jut], [x + pilW, -hd - jut], [x + pilW, -hd]);
+    }
+    pts.push([hl, -hd], [hl, hd]);
+    for (let i = spots.length - 1; i >= 0; i--) {
+        const x = spots[i];
+        pts.push([x + pilW, hd], [x + pilW, hd + jut], [x, hd + jut], [x, hd]);
+    }
+    pts.push([-hl, hd]);
+    const shape = new THREE.Shape();
+    shape.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 22, bevelEnabled: false, curveSegments: 1 });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const batter = 1.035 - (z / 22) * 0.05;
+        const course = Math.sin(z * 1.7) * 0.055;
+        const len = Math.hypot(x, y) || 1;
+        pos.setXY(i, x + (x / len) * course * 0.35, y * batter + (y / len) * course);
+    }
+    g.computeVertexNormals();
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, -11, 0);
+    return g;
+}
+
+/** Lintél com arco de volta perfeita. Y da Shape já é a altura no mundo. */
+function curtainArchGeometry(span) {
+    const half = span / 2;
+    const springX = (span - 3) / 2;
+    const springY = 14;
+    const crownY = 18.4;
+    const top = 22;
+    const shape = new THREE.Shape();
+    shape.moveTo(-half, top);
+    shape.lineTo(half, top);
+    shape.lineTo(half, springY);
+    shape.lineTo(springX, springY);
+    const seg = 18;
+    for (let i = 1; i <= seg; i++) {
+        const a = (Math.PI * i) / seg;
+        shape.lineTo(Math.cos(a) * springX, springY + Math.sin(a) * (crownY - springY));
+    }
+    shape.lineTo(-half, springY);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 7.6, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 1 });
+    g.translate(0, 0, -3.8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/**
+ * Salão 26×16×18. A planta entra na Shape com y = −z; depois de
+ * rotateX(−π/2) a extrusão vira a altura e a malha fica centrada em Y.
+ * Contrafortes e fiadas cabem debaixo do beiral (vão de 30×22).
+ */
+function hallBodyGeometry() {
+    const world = [
+        [-13, -9], [-8.2, -9], [-8.2, -9.75], [-6.7, -9.75], [-6.7, -9],
+        [-2.2, -9], [-2.2, -9.75], [-0.7, -9.75], [-0.7, -9],
+        [2.4, -9], [2.4, -9.75], [3.9, -9.75], [3.9, -9],
+        [7.6, -9], [7.6, -9.75], [9.1, -9.75], [9.1, -9], [13, -9],
+        [13, -4.2], [13.75, -4.2], [13.75, -2.5], [13, -2.5],
+        [13, 1.6], [13.75, 1.6], [13.75, 3.3], [13, 3.3], [13, 9],
+        [9.1, 9], [9.1, 9.75], [7.6, 9.75], [7.6, 9],
+        [3.9, 9], [3.9, 9.75], [2.4, 9.75], [2.4, 9],
+        [-0.7, 9], [-0.7, 9.75], [-2.2, 9.75], [-2.2, 9],
+        [-6.7, 9], [-6.7, 9.75], [-8.2, 9.75], [-8.2, 9], [-13, 9],
+        [-13, 3.3], [-13.75, 3.3], [-13.75, 1.6], [-13, 1.6],
+        [-13, -2.5], [-13.75, -2.5], [-13.75, -4.2], [-13, -4.2]
+    ];
+    const shape = new THREE.Shape();
+    const last = world.length - 1;
+    shape.moveTo(world[last][0], -world[last][1]);
+    for (let i = last - 1; i >= 0; i--) shape.lineTo(world[i][0], -world[i][1]);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 16, bevelEnabled: false, curveSegments: 1 });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const t = z / 16;
+        const batter = 1.045 - t * 0.07;
+        const course = Math.sin(z * 2.2) * 0.07;
+        const block = Math.sin(x * 1.4 + y * 0.8) * 0.03;
+        const len = Math.hypot(x, y) || 1;
+        pos.setXY(i, x * batter + (x / len) * (course + block), y * batter + (y / len) * (course + block));
+    }
+    g.computeVertexNormals();
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, -8, 0);
+    return g;
+}
+
+function hallRoofGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-11.2, 0);
+    s.lineTo(0, 7.4);
+    s.lineTo(11.2, 0);
+    s.lineTo(10.4, -0.55);
+    s.lineTo(-10.4, -0.55);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 30,
+        bevelEnabled: true,
+        bevelThickness: 0.12,
+        bevelSize: 0.16,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -15);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
 
 /* ================================================================== */
 /* Castelo                                                             */
@@ -27,13 +302,14 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     const group = new THREE.Group();
     const stone = stoneMaterial(tint);
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.12, height, 14), stone);
+    const body = new THREE.Mesh(towerShaftGeometry(radius, height), stone);
+    body.name = 'towerShaft';
     body.position.y = height / 2;
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
 
-    const ledge = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.2, radius * 1.1, 0.9, 14), stone);
+    const ledge = new THREE.Mesh(towerLedgeGeometry(radius), stone);
     ledge.position.y = height + 0.3;
     ledge.castShadow = true;
     group.add(ledge);
@@ -41,7 +317,8 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     const merlonCount = Math.max(8, Math.round(radius * 5));
     for (let i = 0; i < merlonCount; i++) {
         const a = (i / merlonCount) * Math.PI * 2;
-        const merlon = new THREE.Mesh(new THREE.BoxGeometry(radius * 0.42, 1.1, radius * 0.34), stone);
+        const merlon = new THREE.Mesh(MERLON, stone);
+        merlon.scale.set(radius * 0.42, 1.1, radius * 0.34);
         merlon.position.set(Math.cos(a) * radius * 1.06, height + 1.2, Math.sin(a) * radius * 1.06);
         merlon.rotation.y = -a;
         merlon.castShadow = true;
@@ -50,7 +327,7 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
 
     if (roof) {
         const cone = new THREE.Mesh(
-            new THREE.ConeGeometry(radius * 1.3, radius * 2.1, 14),
+            towerRoofGeometry(radius),
             plainMaterial(COLORS.roof, 0.75, 0.05)
         );
         cone.position.y = height + radius * 1.05 + 1.6;
@@ -98,8 +375,13 @@ function buildPrincess() {
     const hairMat = plainMaterial(0x6b3b1c, 0.8, 0);
     const gold = metalMaterial(0xf0cf7a, 0.3);
 
-    const dress = new THREE.Mesh(new THREE.ConeGeometry(0.46, 1.18, 12), plainMaterial(COLORS.princess, 0.7, 0.03));
-    dress.position.y = 0.55;
+    const dress = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.46, 0.08),
+        new THREE.Vector2(0.38, 0.55),
+        new THREE.Vector2(0.2, 1.02)
+    ], 16), plainMaterial(COLORS.princess, 0.7, 0.03));
+    dress.position.y = 0.02;
     group.add(dress);
 
     const hem = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 14), metalMaterial(0xf3c96b, 0.45));
@@ -107,11 +389,16 @@ function buildPrincess() {
     hem.position.y = 0.08;
     group.add(hem);
 
-    const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.25, 0.44, 10), plainMaterial(0xb85a8a, 0.7, 0.03));
-    bodice.position.y = 1.2;
+    const bodice = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.16, 0),
+        new THREE.Vector2(0.2, 0.08),
+        new THREE.Vector2(0.18, 0.28),
+        new THREE.Vector2(0.14, 0.4)
+    ], 14), plainMaterial(0xb85a8a, 0.7, 0.03));
+    bodice.position.y = 1.02;
     group.add(bodice);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
+    const head = new THREE.Mesh(headGeometry(0.16, 'human'), skin);
     head.position.y = 1.58;
     group.add(head);
 
@@ -121,12 +408,20 @@ function buildPrincess() {
         group.add(eye);
     }
 
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.7), hairMat);
-    hair.position.y = 1.62;
+    const hair = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.03, 0),
+        new THREE.Vector2(0.17, 0.03),
+        new THREE.Vector2(0.18, 0.12),
+        new THREE.Vector2(0.06, 0.2)
+    ], 14), hairMat);
+    hair.position.set(0, 1.5, -0.02);
     group.add(hair);
 
-    const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.9, 6), hairMat);
-    braid.position.set(0, 1.22, -0.2);
+    const braid = new THREE.Mesh(limbGeometry({
+        length: 0.85, r0: 0.055, r1: 0.02, bulge: 0.012, bulgeAt: 0.2, pinch: 0, seg: 8, rings: 6
+    }), hairMat);
+    braid.position.set(0.04, 1.55, -0.08);
+    braid.rotation.x = 0.15;
     group.add(braid);
 
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), gold);
@@ -141,8 +436,10 @@ function buildPrincess() {
 
     const arm = new THREE.Group();
     arm.position.set(0.24, 1.38, 0.06);
-    const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.52, 8), skin);
-    armMesh.position.y = -0.22;
+    const armMesh = new THREE.Mesh(limbGeometry({
+        length: 0.48, r0: 0.055, r1: 0.04, bulge: 0.01, bulgeAt: 0.35, pinch: 0.1, seg: 8, rings: 5
+    }), skin);
+    armMesh.position.y = 0;
     arm.add(armMesh);
     group.add(arm);
 
@@ -169,6 +466,84 @@ function buildPrincess() {
  * Monta o castelo sobre o rio: duas alas nas margens, muralha com portão
  * levadiço sobre a água e a torre da princesa.
  */
+/** Laje 6.4×0.7×3.4, centrada. Bico na face +Z, que aponta para o rio. */
+function balconySlabGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(1.7, 0.35);
+    s.lineTo(-1.5, 0.35);
+    s.lineTo(-1.88, 0.2);
+    s.lineTo(-1.72, 0.02);
+    s.lineTo(-1.48, -0.12);
+    s.lineTo(-1.48, -0.35);
+    s.lineTo(1.55, -0.35);
+    s.lineTo(1.7, 0.02);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 6.4,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.04,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -3.2);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Balaústre de 1.5, centrado. Base, barriga e capitel. */
+function balusterGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = (t - 0.5) * 1.5;
+        let r = 0.1;
+        r += 0.11 * Math.exp(-((t - 0.12) ** 2) / 0.006);
+        r += 0.07 * Math.exp(-((t - 0.48) ** 2) / 0.014);
+        r += 0.1 * Math.exp(-((t - 0.86) ** 2) / 0.005);
+        if (t < 0.05 || t > 0.95) r = 0.2;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 10);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Corrimão ao longo de X, seção abaulada. */
+function balconyRailGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.16, -0.08);
+    s.lineTo(-0.1, 0.06);
+    s.quadraticCurveTo(0, 0.14, 0.1, 0.06);
+    s.lineTo(0.16, -0.08);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 6.5, bevelEnabled: false });
+    g.translate(0, 0, -3.25);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Mísula sob o bico. +X local vira +Z depois de rotateY(−π/2). */
+function corbelGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0);
+    s.lineTo(0.62, 0);
+    s.quadraticCurveTo(0.48, -0.16, 0.12, -0.46);
+    s.lineTo(0, -0.46);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.38, bevelEnabled: false });
+    g.translate(0, 0, -0.19);
+    g.rotateY(-Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BALCONY_SLAB = balconySlabGeometry();
+const BALUSTER = balusterGeometry();
+const BALCONY_RAIL = balconyRailGeometry();
+const CORBEL = corbelGeometry();
+
 export function createCastle(scene) {
     const group = new THREE.Group();
     const z = CASTLE_Z;
@@ -184,34 +559,27 @@ export function createCastle(scene) {
     // portão de água por onde o drakkar passa.
     const wallWidth = hw * 2 + 44;
     const gateWidth = hw * 1.5;
-    const gapLeft = new THREE.Mesh(new THREE.BoxGeometry((wallWidth - gateWidth) / 2, 22, 7.2), stone);
-    gapLeft.position.set(-(gateWidth + (wallWidth - gateWidth) / 2) / 2, 11, 0);
+    const pierLength = (wallWidth - gateWidth) / 2;
+    const gapLeft = new THREE.Mesh(curtainPierGeometry(pierLength), stone);
+    gapLeft.name = 'curtainPier';
+    gapLeft.position.set(-(gateWidth + pierLength) / 2, 11, 0);
     gapLeft.castShadow = true;
     group.add(gapLeft);
     const gapRight = gapLeft.clone();
     gapRight.position.x *= -1;
     group.add(gapRight);
 
-    const arch = new THREE.Mesh(new THREE.BoxGeometry(gateWidth + 3, 6, 7.4), stone);
-    arch.position.set(0, 19, 0);
+    const arch = new THREE.Mesh(curtainArchGeometry(gateWidth + 3), stone);
+    arch.name = 'curtainArch';
+    arch.position.set(0, 0, 0);
     arch.castShadow = true;
     group.add(arch);
-
-    // Aduelas: dão a curva do arco sobre o vão do portão.
-    const voussoirs = 13;
-    for (let i = 0; i < voussoirs; i++) {
-        const a = Math.PI * (i / (voussoirs - 1));
-        const block = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6, 7.6), stone);
-        block.position.set(Math.cos(a) * gateWidth * 0.5, 15.4 + Math.sin(a) * 3.6, 0);
-        block.rotation.z = a - Math.PI / 2;
-        block.castShadow = true;
-        group.add(block);
-    }
 
     // Ameias no topo da muralha.
     const merlons = Math.round(wallWidth / 3.2);
     for (let i = 0; i < merlons; i++) {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.8, 6.6), stone);
+        const m = new THREE.Mesh(MERLON, stone);
+        m.scale.set(1.7, 1.8, 6.6);
         m.position.set(-wallWidth / 2 + 1.6 + i * 3.2, 23, 0);
         m.castShadow = true;
         group.add(m);
@@ -221,13 +589,17 @@ export function createCastle(scene) {
     const gate = new THREE.Group();
     const gateMat = woodMaterial(true, 0x4a3016);
     for (let i = 0; i < 9; i++) {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.42, 16, 0.42), gateMat);
+        const bar = new THREE.Mesh(GATE_BAR, gateMat);
+        bar.name = 'gateBar';
         bar.position.set(-gateWidth / 2 + 1 + i * (gateWidth - 2) / 8, 8, 0);
         bar.castShadow = true;
         gate.add(bar);
     }
     for (let i = 0; i < 4; i++) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(gateWidth - 1, 0.5, 0.5), metalMaterial(0x50483d, 0.55));
+        const rail = new THREE.Mesh(GATE_RAIL, metalMaterial(0x50483d, 0.55));
+        rail.name = 'gateRail';
+        rail.rotation.z = Math.PI / 2;
+        rail.scale.y = gateWidth - 1;
         rail.position.set(0, 1.6 + i * 4.6, 0);
         gate.add(rail);
     }
@@ -268,15 +640,27 @@ export function createCastle(scene) {
 
     // Sacada voltada para o rio, onde a princesa aparece.
     const balconyZ = keepZ + keepRadius + 1.1;
-    const balcony = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 3.4), stone);
+    const balcony = new THREE.Mesh(BALCONY_SLAB, stone);
+    balcony.name = 'balconySlab';
     balcony.position.set(keepX, 32.9, balconyZ);
     balcony.castShadow = true;
     group.add(balcony);
 
     for (let i = -2; i <= 2; i++) {
-        const baluster = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), stone);
+        const baluster = new THREE.Mesh(BALUSTER, stone);
+        baluster.name = 'balconyBaluster';
         baluster.position.set(keepX + i * 1.5, 34, balconyZ + 1.4);
         group.add(baluster);
+    }
+    const rail = new THREE.Mesh(BALCONY_RAIL, stone);
+    rail.name = 'balconyRail';
+    rail.position.set(keepX, 34.82, balconyZ + 1.4);
+    group.add(rail);
+    for (const dx of [-1.8, 0, 1.8]) {
+        const corbel = new THREE.Mesh(CORBEL, stone);
+        corbel.name = 'balconyCorbel';
+        corbel.position.set(keepX + dx, 32.55, balconyZ + 1.15);
+        group.add(corbel);
     }
 
     const window_ = new THREE.Mesh(
@@ -301,19 +685,17 @@ export function createCastle(scene) {
     group.add(princess);
 
     // ---- Corpo do castelo (blocos atrás da muralha) ----
-    const hallGeo = new THREE.BoxGeometry(26, 16, 18);
-    const hall = new THREE.Mesh(hallGeo, stone);
+    const hall = new THREE.Mesh(hallBodyGeometry(), stone);
     hall.position.set(-sideOffset - 6, 8, -26);
     hall.castShadow = true;
     hall.receiveShadow = true;
     group.add(hall);
 
     const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(17, 9, 4),
+        hallRoofGeometry(),
         plainMaterial(COLORS.roof, 0.78, 0.04)
     );
-    roof.position.set(-sideOffset - 6, 20.4, -26);
-    roof.rotation.y = Math.PI / 4;
+    roof.position.set(-sideOffset - 6, 16, -26);
     roof.castShadow = true;
     group.add(roof);
 
@@ -335,11 +717,20 @@ export function createCastle(scene) {
     // ---- Docas de pedra junto às margens ----
     for (const side of [-1, 1]) {
         const dockX = side * (hw + 6);
-        const dock = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 26), stone);
+        const dock = new THREE.Group();
+        dock.name = 'dock';
+        const body = new THREE.Mesh(DOCK_GEO, stone);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        dock.add(body);
+        for (const dz of [-8, -2.5, 3.5, 9]) {
+            const post = new THREE.Mesh(BOLLARD_GEO, stone);
+            post.position.set(-side * 4.7, 1.82, dz);
+            post.castShadow = true;
+            dock.add(post);
+        }
         const groundY = terrainHeight(cx + dockX, z + 16);
         dock.position.set(dockX, Math.max(0.5, groundY * 0.4), 16);
-        dock.castShadow = true;
-        dock.receiveShadow = true;
         group.add(dock);
     }
 
@@ -393,6 +784,128 @@ export function createCastle(scene) {
 /* Barcaça Negra (chefe)                                               */
 /* ================================================================== */
 
+/**
+ * Rostro de bronze, centrado como o cone de altura 5. A ponta fica em +Y.
+ * Flange de fixação, dois anéis e um bico rombo — não um cone liso.
+ * Seis caneluras no haste.
+ */
+function bossRamGeometry() {
+    const pts = [
+        [1.35, -2.5],
+        [1.72, -2.22],
+        [0.92, -1.82],
+        [0.58, -1.15],
+        [0.78, -0.72],
+        [0.48, 0.05],
+        [0.74, 0.55],
+        [0.44, 1.25],
+        [0.66, 1.78],
+        [0.82, 2.12],
+        [0.36, 2.36],
+        [0.18, 2.5]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 0.22 || y < -2.05 || y > 2.05) continue;
+        const flute = Math.cos(Math.atan2(z, x) * 6);
+        const depth = flute > 0 ? 0.09 * flute * flute : -0.045 * flute * flute;
+        const k = 1 + depth / rad;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tambor da balista, centrado como o cilindro de altura 3.4. Barril com aros. */
+function ballistaDrumGeometry() {
+    const H = 3.4;
+    const pts = [];
+    const steps = 24;
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = (t - 0.5) * H;
+        const belly = Math.sin(t * Math.PI);
+        let r = 1.32 + belly * 0.48;
+        if (t < 0.07 || t > 0.93) r += 0.16;
+        if (Math.abs(Math.sin(t * Math.PI * 5)) > 0.86) r += 0.16;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 18);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Arco da balista: prod curvo no lugar da viga reta. Corda no plano y=0. */
+function ballistaBowGeometry() {
+    const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-2.15, 0, 0),
+        new THREE.Vector3(0, 0.55, 0.42),
+        new THREE.Vector3(2.15, 0, 0)
+    );
+    return new THREE.TubeGeometry(curve, 18, 0.15, 8, false);
+}
+
+const BOSS_RAM = bossRamGeometry();
+const BALLISTA_DRUM = ballistaDrumGeometry();
+const BALLISTA_BOW = ballistaBowGeometry();
+
+/**
+ * Trave da grade, centrada como a caixa 0.42×16×0.42.
+ * Seção quadrada com chanfro; a base afina para o espigão.
+ */
+function gateBarGeometry() {
+    const H = 16;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 0.18;
+        if (t < 0.08) r = 0.07 + (t / 0.08) * 0.11;
+        const band = Math.cos((t - 0.22) * Math.PI * 6);
+        if (band > 0.72) r += 0.045;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4) continue;
+        const ang = Math.atan2(z, x);
+        const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
+        const k = 0.28 + 0.72 / corner;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Cinta de ferro de comprimento 1, ao longo de Y. O portão escala Y e gira para X. */
+function gateRailGeometry() {
+    const pts = [
+        [0.16, -0.5],
+        [0.28, -0.38],
+        [0.2, -0.22],
+        [0.24, 0],
+        [0.2, 0.22],
+        [0.28, 0.38],
+        [0.16, 0.5]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 10);
+    g.computeVertexNormals();
+    return g;
+}
+
+const GATE_BAR = gateBarGeometry();
+const GATE_RAIL = gateRailGeometry();
+
 export class BossBarge {
     constructor(scene) {
         const group = new THREE.Group();
@@ -416,10 +929,11 @@ export class BossBarge {
         this.hullGroup = hull;
         this.parts = parts;
 
-        // Aríete de ferro na proa.
-        const ram = new THREE.Mesh(new THREE.ConeGeometry(1.2, 5, 8), metalMaterial(0x4a4740, 0.5));
+        // Rostro na proa (+Z), bico para a frente do rio.
+        const ram = new THREE.Mesh(BOSS_RAM, metalMaterial(0x6a5a42, 0.42));
+        ram.name = 'bossRam';
         ram.rotation.x = -Math.PI / 2;
-        ram.position.set(0, -0.4, -17.5);
+        ram.position.set(0, 0.05, 16.6);
         ram.castShadow = true;
         group.add(ram);
 
@@ -427,13 +941,15 @@ export class BossBarge {
         this.ballistae = [];
         for (const side of [-1, 1]) {
             const tower = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 3.4, 8), woodMaterial(true, 0x2b2018));
+            const base = new THREE.Mesh(BALLISTA_DRUM, woodMaterial(true, 0x2b2018));
+            base.name = 'ballistaDrum';
             base.position.y = 1.7;
             base.castShadow = true;
             tower.add(base);
 
-            const bow = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.35, 0.35), woodMaterial(true, 0x3b2a1c));
-            bow.position.y = 3.6;
+            const bow = new THREE.Mesh(BALLISTA_BOW, woodMaterial(true, 0x3b2a1c));
+            bow.name = 'ballistaBow';
+            bow.position.y = 3.55;
             tower.add(bow);
 
             const brazier = new THREE.Mesh(

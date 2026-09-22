@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { WHALE_R0, WHALE_R1, lerp } from './config.js';
-import { createWhale, createJelly } from './models.js';
+import { createWhale, createJelly, schoolFishGeometry } from './models.js?v=3';
 
 export class Life {
     constructor(scene, quality) {
@@ -51,13 +51,13 @@ export class Life {
     }
 
     _schools(count) {
-        const geo = new THREE.ConeGeometry(0.12, 0.42, 5);
-        geo.rotateZ(-Math.PI / 2);
+        const geo = schoolFishGeometry();
         const mat = new THREE.MeshStandardMaterial({
             color: 0x8ee7ff,
             emissive: 0x3cb4d4,
             emissiveIntensity: 0.55,
-            roughness: 0.35
+            roughness: 0.35,
+            side: THREE.DoubleSide
         });
         this.school = new THREE.InstancedMesh(geo, mat, count);
         this.school.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
