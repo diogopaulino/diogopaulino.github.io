@@ -394,6 +394,40 @@ const PIRATE_SASH = (() => {
 })();
 
 /**
+ * Bota do astronauta, vista de lado: a sola passa da gáspea
+ * cerca de 7 cm na frente e 6 cm no calcanhar.
+ * Extrusão em +Z (largura); rotation.y = -PI/2 aponta a biqueira para +Z.
+ */
+const ASTRO_BOOT = (() => {
+    const p = [
+        [-0.11, 0.00],
+        [0.17, 0.00],
+        [0.17, 0.04],
+        [0.10, 0.055],
+        [0.06, 0.10],
+        [0.00, 0.14],
+        [-0.045, 0.16],
+        [-0.055, 0.09],
+        [-0.05, 0.05],
+        [-0.11, 0.04]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.16,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 4
+    });
+    g.translate(0, 0, -0.08);
+    return g;
+})();
+
+/**
  * Obi do ninja: as bordas saem e o meio aperta cerca de 8 cm no raio.
  * Y do torno cresce.
  */
@@ -495,8 +529,10 @@ const BODIES = {
             add.cyl(0.05, 0.05, 0.16, mats.accent, [-0.12, 1.12, -0.28]);
             add.cyl(0.05, 0.05, 0.16, mats.accent, [0.12, 1.12, -0.28]);
             add.torus(0.12, 0.025, mats.accent, [0, 1.16, 0.02], [Math.PI / 2, 0, 0]);
-            add.box(0.18, 0.14, 0.22, mats.secondary, [-0.12, 0.08, 0.04], null, null, 0.04);
-            add.box(0.18, 0.14, 0.22, mats.secondary, [0.12, 0.08, 0.04], null, null, 0.04);
+            for (const sx of [-1, 1]) {
+                const boot = add.mesh(ASTRO_BOOT, mats.secondary, [sx * 0.12, 0, 0.02], [0, -Math.PI / 2, 0]);
+                boot.name = 'astroBoot';
+            }
         }
     }),
 
