@@ -186,11 +186,60 @@ export function buildShip(scene) {
         }
     }
 
-    // Caixa de mantimentos
-    const crate = BABYLON.MeshBuilder.CreateBox('shipCrate', { width: 0.8, height: 0.6, depth: 0.8 }, scene);
+    // Baú de mantimentos: tábuas e tampa abaulada no lugar do cubo.
+    // O centro continua em (1.8, 1.72, 5.2), com o mesmo vão de 0,8 × 0,6 × 0,8.
+    const crate = new BABYLON.TransformNode('shipCrate', scene);
     crate.position.set(1.8, 1.72, 5.2);
-    crate.material = woodMat;
     crate.parent = root;
+    const crateBoard = (name, w, h, d, x, y, z) => {
+        const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, scene);
+        m.position.set(x, y, z);
+        m.material = woodMat;
+        m.parent = crate;
+        return m;
+    };
+    for (const x of [-0.345, 0.345]) {
+        for (const z of [-0.345, 0.345]) {
+            crateBoard('cratePost', 0.07, 0.42, 0.07, x, -0.09, z);
+        }
+    }
+    for (const y of [-0.22, -0.08, 0.06]) {
+        crateBoard('crateSlat', 0.62, 0.12, 0.05, 0, y, 0.365);
+        crateBoard('crateSlat', 0.62, 0.12, 0.05, 0, y, -0.365);
+        crateBoard('crateSlat', 0.05, 0.12, 0.62, 0.365, y, 0);
+        crateBoard('crateSlat', 0.05, 0.12, 0.62, -0.365, y, 0);
+    }
+    const lidShape = [
+        [-0.4, 0], [-0.36, 0.06], [-0.18, 0.12], [0, 0.14],
+        [0.18, 0.12], [0.36, 0.06], [0.4, 0], [0.36, -0.04], [-0.36, -0.04]
+    ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    const lid = BABYLON.MeshBuilder.ExtrudeShape('crateLid', {
+        shape: lidShape,
+        path: [new BABYLON.Vector3(0, 0, -0.38), new BABYLON.Vector3(0, 0, 0.38)],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+    lid.position.y = 0.16;
+    lid.material = darkWoodMat;
+    lid.parent = crate;
+    const ironMat = new BABYLON.StandardMaterial('crateIronMat', scene);
+    ironMat.diffuseColor = new BABYLON.Color3(0.28, 0.3, 0.33);
+    ironMat.specularColor = new BABYLON.Color3(0.45, 0.45, 0.48);
+    const strapShape = [
+        [0.01, -0.018], [-0.045, -0.014], [-0.05, 0.014], [0.01, 0.018]
+    ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    for (const y of [-0.16, 0.02]) {
+        const strap = BABYLON.MeshBuilder.ExtrudeShape('crateStrap', {
+            shape: strapShape,
+            path: [new BABYLON.Vector3(-0.32, y, 0.36), new BABYLON.Vector3(0.32, y, 0.36)],
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        strap.material = ironMat;
+        strap.parent = crate;
+    }
 
     // Corda de tempestade que Teco precisa desatar
     const ropePoints = [
