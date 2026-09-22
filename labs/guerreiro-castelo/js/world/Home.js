@@ -6,7 +6,7 @@ import {
     woodTexture, darkWoodTexture, plasterTexture, rugTexture, clothTexture
 } from './Textures.js';
 import { makeFire } from './Environment.js?v=5';
-import { createMuscle } from '../../shared/realism-bjs.js';
+import { createMuscle } from '../../../shared/realism-bjs.js';
 
 export function buildHomeInterior(scene) {
     const root = new BABYLON.TransformNode('homeRoot', scene);
