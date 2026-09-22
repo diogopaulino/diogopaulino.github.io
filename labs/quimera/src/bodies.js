@@ -461,6 +461,42 @@ const ASTRO_BOOT = (() => {
 })();
 
 /**
+ * Bota de cowboy: salto alto, arco levantado e biqueira em ponta.
+ * A ponta fica cerca de 7 cm à frente da gáspea.
+ * Extrusão em +Z; rotation.y = -PI/2 aponta a biqueira para +Z.
+ */
+const COWBOY_BOOT = (() => {
+    const p = [
+        [-0.09, 0.00],
+        [-0.02, 0.00],
+        [-0.02, 0.06],
+        [0.06, 0.065],
+        [0.13, 0.04],
+        [0.21, 0.015],
+        [0.14, 0.055],
+        [0.06, 0.08],
+        [0.00, 0.12],
+        [-0.055, 0.14],
+        [-0.08, 0.08],
+        [-0.09, 0.045]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.14,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 4
+    });
+    g.translate(0, 0, -0.07);
+    return g;
+})();
+
+/**
  * Obi do ninja: as bordas saem e o meio aperta cerca de 8 cm no raio.
  * Y do torno cresce.
  */
@@ -677,8 +713,10 @@ const BODIES = {
             chapL.name = 'cowboyChap';
             const chapR = add.mesh(CHAP_R, mats.secondary, [0.16, 0.32, 0.06]);
             chapR.name = 'cowboyChap';
-            add.box(0.16, 0.08, 0.26, mats.accent, [-0.12, 0.08, 0.06], null, null, 0.03);
-            add.box(0.16, 0.08, 0.26, mats.accent, [0.12, 0.08, 0.06], null, null, 0.03);
+            for (const sx of [-1, 1]) {
+                const boot = add.mesh(COWBOY_BOOT, mats.accent, [sx * 0.12, 0, 0.04], [0, -Math.PI / 2, 0]);
+                boot.name = 'cowboyBoot';
+            }
         }
     }),
 
