@@ -631,6 +631,7 @@ export function createBuilding(mats, rng, density, side = 1) {
 
 export function createBillboard(mats, title = 'NEON RIDER') {
     const g = new THREE.Group();
+    g.name = 'billboard';
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, -1.6, 3.1, 0));
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, 1.6, 3.1, 0));
     const tex = neonSignTexture(THREE, title, '#00f0ff');
@@ -641,9 +642,40 @@ export function createBillboard(mats, title = 'NEON RIDER') {
         side: THREE.DoubleSide
     });
     const board = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.4), mat);
+    board.name = 'boardFace';
     board.position.set(0, 6.4, 0);
     g.add(board);
-    g.add(mesh(BOX, mats.dark, 5.6, 1.6, 0.12, 0, 6.4, -0.08));
-    g.add(mesh(BOX, mats.chrome, 5.7, 0.08, 0.14, 0, 7.15, -0.08));
+    // Moldura: ogee em volta do letreiro. shape.x negativo, depois de rotateY(π/2), é a frente (+Z).
+    const railExtrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 3 });
+        geo.translate(0, 0, -depth / 2);
+        return geo;
+    };
+    const topProfile = [
+        [0.02, 7.02], [-0.05, 7.06], [-0.12, 7.14], [-0.06, 7.22],
+        [-0.14, 7.30], [-0.04, 7.38], [0.05, 7.36], [0.05, 7.02]
+    ];
+    const addRail = (pts, depth, rot, material, y) => {
+        const geo = railExtrude(pts, depth);
+        if (rot === 'x') geo.rotateY(Math.PI / 2);
+        else geo.rotateX(Math.PI / 2);
+        geo.computeVertexNormals();
+        const m = new THREE.Mesh(geo, material);
+        m.name = 'boardRail';
+        if (y) m.position.y = y;
+        m.castShadow = true;
+        g.add(m);
+    };
+    addRail(topProfile, 5.9, 'x', mats.chrome, 0);
+    addRail(topProfile.map(([x, y]) => [x, 12.8 - y]), 5.9, 'x', mats.dark, 0);
+    const sideProfile = [
+        [2.72, -0.02], [2.76, 0.06], [2.84, 0.12], [2.90, 0.05],
+        [2.98, 0.14], [3.02, 0.02], [3.00, -0.04], [2.72, -0.04]
+    ];
+    addRail(sideProfile, 1.56, 'y', mats.dark, 6.4);
+    addRail(sideProfile.map(([x, y]) => [-x, y]), 1.56, 'y', mats.dark, 6.4);
     return g;
 }
