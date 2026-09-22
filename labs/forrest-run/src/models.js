@@ -637,7 +637,31 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     windshield.position.set(0, 1.85, -1.61);
     windshield.material = glassMat;
     windshield.parent = root;
-    const bumper = BABYLON.MeshBuilder.CreateBox('bumper', { width: 2.3, height: 0.28, depth: 0.2 }, scene);
+    // Para-choque: sulco no meio, centro mais à frente e pontas que voltam.
+    const bumperShape = [
+        [-0.02, -0.14],
+        [-0.14, -0.08],
+        [-0.16, -0.02],
+        [-0.05, 0.03],
+        [-0.18, 0.08],
+        [-0.12, 0.14],
+        [0.06, 0.14],
+        [0.04, -0.14]
+    ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    const bumperPath = [];
+    for (let i = 0; i <= 14; i++) {
+        const u = i / 14;
+        const x = -1.15 + u * 2.3;
+        const end = Math.abs(u - 0.5) * 2;
+        bumperPath.push(new BABYLON.Vector3(x, end * end * 0.05, -0.08 + end * end * 0.22));
+    }
+    const bumper = BABYLON.MeshBuilder.ExtrudeShape('bumper', {
+        shape: bumperShape,
+        path: bumperPath,
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
     bumper.position.set(0, 0.65, -1.7);
     bumper.material = chromeMat;
     bumper.parent = root;
