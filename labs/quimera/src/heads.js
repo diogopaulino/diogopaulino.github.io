@@ -267,6 +267,38 @@ const NINJA_MASK = (() => {
     return g;
 })();
 
+/**
+ * Tapa-olho do pirata: o alto sobe no meio e a base desce numa ponta, cerca de 10 cm.
+ */
+const PIRATE_PATCH = (() => {
+    const p = [
+        [-0.09, 0.03],
+        [-0.04, 0.06],
+        [0, 0.08],
+        [0.04, 0.06],
+        [0.09, 0.03],
+        [0.08, -0.01],
+        [0.02, -0.07],
+        [0, -0.11],
+        [-0.02, -0.07],
+        [-0.08, -0.01]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -281,7 +313,8 @@ const HEADS = {
         add.lathe([[0.05, 0.02], [0.3, 0.06], [0.28, 0.16], [0.08, 0.22]], mats.primary, [0, 0.02, 0]);
         add.sphere(0.07, mats.primary, [-0.24, 0.14, -0.16]);
         add.sphere(0.055, mats.primary, [-0.30, 0.08, -0.12]);
-        add.box(0.16, 0.08, 0.04, mats.dark, [0.12, 0.05, 0.26], [0.2, 0.4, 0]);
+        const patch = add.mesh(PIRATE_PATCH, mats.dark, [0.12, 0.05, 0.26], [0.2, 0.4, 0]);
+        patch.name = 'piratePatch';
         add.cyl(0.01, 0.01, 0.58, mats.dark, [0, 0.12, 0.08], [0, 0, 1.05]);
         add.lathe([[0.04, 0], [0.14, 0.02], [0.1, 0.1], [0.03, 0.16]], mats.dark, [0, -0.28, 0.12]);
         add.torus(0.04, 0.008, mats.accent, [0.28, -0.05, 0.1], [1.2, 0, 0.2]);
