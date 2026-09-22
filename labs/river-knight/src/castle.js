@@ -511,13 +511,17 @@ export function createCastle(scene) {
     const gate = new THREE.Group();
     const gateMat = woodMaterial(true, 0x4a3016);
     for (let i = 0; i < 9; i++) {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.42, 16, 0.42), gateMat);
+        const bar = new THREE.Mesh(GATE_BAR, gateMat);
+        bar.name = 'gateBar';
         bar.position.set(-gateWidth / 2 + 1 + i * (gateWidth - 2) / 8, 8, 0);
         bar.castShadow = true;
         gate.add(bar);
     }
     for (let i = 0; i < 4; i++) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(gateWidth - 1, 0.5, 0.5), metalMaterial(0x50483d, 0.55));
+        const rail = new THREE.Mesh(GATE_RAIL, metalMaterial(0x50483d, 0.55));
+        rail.name = 'gateRail';
+        rail.rotation.z = Math.PI / 2;
+        rail.scale.y = gateWidth - 1;
         rail.position.set(0, 1.6 + i * 4.6, 0);
         gate.add(rail);
     }
@@ -759,6 +763,57 @@ function ballistaBowGeometry() {
 const BOSS_RAM = bossRamGeometry();
 const BALLISTA_DRUM = ballistaDrumGeometry();
 const BALLISTA_BOW = ballistaBowGeometry();
+
+/**
+ * Trave da grade, centrada como a caixa 0.42×16×0.42.
+ * Seção quadrada com chanfro; a base afina para o espigão.
+ */
+function gateBarGeometry() {
+    const H = 16;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 0.2;
+        if (t < 0.06) r = 0.1 + (t / 0.06) * 0.1;
+        r += Math.sin(t * Math.PI) * 0.025;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4) continue;
+        const ang = Math.atan2(z, x);
+        const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
+        const k = 0.78 + 0.22 / corner;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Cinta de ferro de comprimento 1, ao longo de Y. O portão escala Y e gira para X. */
+function gateRailGeometry() {
+    const pts = [
+        [0.16, -0.5],
+        [0.28, -0.38],
+        [0.2, -0.22],
+        [0.24, 0],
+        [0.2, 0.22],
+        [0.28, 0.38],
+        [0.16, 0.5]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 10);
+    g.computeVertexNormals();
+    return g;
+}
+
+const GATE_BAR = gateBarGeometry();
+const GATE_RAIL = gateRailGeometry();
 
 export class BossBarge {
     constructor(scene) {

@@ -23,7 +23,7 @@ import { Effects } from './effects.js?v=15';
 import { Entities } from './entities.js?v=18';
 import { World } from './world.js?v=17';
 import { Player } from './player.js?v=17';
-import { createCastle, BossBarge } from './castle.js?v=24';
+import { createCastle, BossBarge } from './castle.js?v=25';
 import { Hud } from './hud.js?v=14';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js?v=14';
