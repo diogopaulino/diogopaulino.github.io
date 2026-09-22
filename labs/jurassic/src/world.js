@@ -127,6 +127,27 @@ const GATE_POST = (() => {
     return g;
 })();
 
+/** Placa 1.8×0.7, centrada. Cume no meio, moldura e faixa no terço de baixo. */
+const WARN_SIGN = (() => {
+    const g = new THREE.BoxGeometry(1.8, 0.7, 0.1, 18, 10, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / 0.9;
+        const ny = (y + 0.35) / 0.7;
+        if (ny > 0.82) y += ((ny - 0.82) / 0.18) * (1 - nx) * 0.32;
+        const frame = nx > 0.84 || ny < 0.14 || ny > 0.78;
+        const stripe = ny > 0.36 && ny < 0.54 && nx < 0.84;
+        if (frame || stripe) z = Math.sign(z) * 0.062;
+        else if (Math.abs(z) > 0.02) z = Math.sign(z) * 0.012;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
 /**
  * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
  * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
@@ -421,7 +442,8 @@ export class World {
             this.sparks.push(spark);
         }
 
-        const sign = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 0.08), warn);
+        const sign = new THREE.Mesh(WARN_SIGN, warn);
+        sign.name = 'warnSign';
         sign.position.set(28, this.heightAt(28, 28) + 2.1, 28);
         this.group.add(sign);
         this._post(27.2, 28, 2.2, steel);
