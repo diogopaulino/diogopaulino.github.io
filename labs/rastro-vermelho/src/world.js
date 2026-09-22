@@ -146,10 +146,32 @@ export class World {
         }
         this.rock.setVerticesData(B.VertexBuffer.PositionKind, positions); this.rock.createNormals(false);
         const parts = [];
-        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 12 }, scene);
+        const trunk = B.MeshBuilder.CreateCylinder('tronco', { height: 5, diameterTop: .17, diameterBottom: .55, tessellation: 12, subdivisions: 4 }, scene);
+        const trunkVerts = trunk.getVerticesData(B.VertexBuffer.PositionKind);
+        for (let v = 0; v < trunkVerts.length; v += 3) {
+            const ang = Math.atan2(trunkVerts[v + 2], trunkVerts[v]);
+            const rib = 1 + Math.abs(Math.sin(ang * 5)) * 0.07 + Math.sin(trunkVerts[v + 1] * 2.4) * 0.025;
+            trunkVerts[v] *= rib;
+            trunkVerts[v + 2] *= rib;
+        }
+        trunk.setVerticesData(B.VertexBuffer.PositionKind, trunkVerts);
+        trunk.createNormals(false);
         trunk.position.y = 2.5; trunk.material = this.mats.bark; parts.push(trunk);
         for (let i = 0; i < 5; i++) {
-            const crown = B.MeshBuilder.CreateCylinder('ramagem', { height: 2.6 - i * .22, diameterTop: 0, diameterBottom: 3.1 - i * .48, tessellation: 12 }, scene);
+            const height = 2.6 - i * .22;
+            const crown = B.MeshBuilder.CreateCylinder('ramagem', {
+                height, diameterTop: 0.05, diameterBottom: 3.1 - i * .48, tessellation: 14, subdivisions: 3
+            }, scene);
+            const verts = crown.getVerticesData(B.VertexBuffer.PositionKind);
+            for (let v = 0; v < verts.length; v += 3) {
+                const ang = Math.atan2(verts[v + 2], verts[v]);
+                const ny = (verts[v + 1] + height / 2) / height;
+                const lobe = 1 + Math.abs(Math.sin(ang * 5 + i * 1.3)) * 0.28 * (1 - ny);
+                verts[v] *= lobe;
+                verts[v + 2] *= lobe;
+            }
+            crown.setVerticesData(B.VertexBuffer.PositionKind, verts);
+            crown.createNormals(false);
             crown.position.y = 2.1 + i * .8; crown.rotation.y = i * .8; crown.material = this.mats.leaves; parts.push(crown);
         }
         this.tree = B.Mesh.MergeMeshes(parts, true, true, undefined, false, true); this.tree.name = 'pinheiro-modelo'; this.tree.isVisible = false;

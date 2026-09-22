@@ -4,7 +4,7 @@
  * the terrain mesh, and the streamed scenery so the world remains continuous.
  */
 import { clamp, damp, lerp, angleDelta, terrainHeight, roadX, biomeAt, LANDMARKS, freshPlayer, stepRiding, worldClock, loadSettings, saveSettings, loadJourney, saveJourney } from './simulation.js';
-import { World, PROFILES, loadHorse, createPerson, material } from './world.js?v=6';
+import { World, PROFILES, loadHorse, createPerson, material } from './world.js?v=7';
 import { Soundscape } from './audio.js';
 const B = window.BABYLON, $ = s => document.querySelector(s), canvas = $('#scene');
 const CHAPTERS = ['I · A carta', 'II · Santa Luz', 'III · A passagem', 'IV · Provisões', 'V · Sol poente', 'VI · A promessa'];
