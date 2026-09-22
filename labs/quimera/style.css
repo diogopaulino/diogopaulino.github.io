@@ -545,8 +545,9 @@ footer[data-lab-footer] a {
   }
 
   .dock {
-    max-height: min(42dvh, 300px);
+    max-height: min(50dvh, 340px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding-bottom: 0.35rem;
   }
 }
