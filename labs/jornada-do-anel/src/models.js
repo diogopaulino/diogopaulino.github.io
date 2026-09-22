@@ -1423,21 +1423,85 @@ export function buildSeat() {
     return group;
 }
 
+/** Coluna de 3.45, centrada. Base, caneluras e um capitel lascado. */
+function ruinPillarGeometry() {
+    const H = 3.45;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 0.24 - t * 0.05;
+        if (t < 0.1) r += 0.12 * (1 - t / 0.1);
+        if (t > 0.88) r += 0.07 * ((t - 0.88) / 0.12);
+        pts.push(new THREE.Vector2(Math.max(0.08, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 21);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ang = Math.atan2(z, x);
+        const flute = 0.74 + 0.26 * Math.max(0, Math.cos(ang * 7)) ** 2;
+        const chip = y > 1.35 && Math.cos(ang * 2 + 0.6) > 0.35 ? 0.72 : 1;
+        pos.setXYZ(i, x * flute * chip, y, z * flute * chip);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Arquitrave de 3.45 ao longo de X. Cornija e uma ponta caída. */
+function ruinLintelGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.31, -0.24);
+    s.lineTo(-0.31, 0.02);
+    s.lineTo(-0.24, 0.1);
+    s.lineTo(-0.16, 0.22);
+    s.lineTo(0.16, 0.22);
+    s.lineTo(0.24, 0.1);
+    s.lineTo(0.31, 0.02);
+    s.lineTo(0.31, -0.24);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 3.45,
+        steps: 14,
+        bevelEnabled: true,
+        bevelThickness: 0.018,
+        bevelSize: 0.02,
+        bevelSegments: 1
+    });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (z > 3.05) {
+            const u = Math.min(1, (z - 3.05) / 0.45);
+            y -= u * u * 0.22;
+            x *= 1 - u * 0.25;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.translate(0, 0, -1.725);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const RUIN_PILLAR = ruinPillarGeometry();
+const RUIN_LINTEL = ruinLintelGeometry();
+
 export function buildRuinArch() {
     const group = new THREE.Group();
     const stone = mapped(stoneTexture('#8a7a68'), 0x9a8a78, 0.9, 0.04, 1.15);
     for (const sx of [-1, 1]) {
-        const p = new THREE.Mesh(
-            geo('ruin-p', () => warp(new THREE.BoxGeometry(0.58, 3.45, 0.58), 71, 0.1)),
-            stone
-        );
+        const p = new THREE.Mesh(RUIN_PILLAR, stone);
+        p.name = 'ruinPillar';
         p.position.set(sx * 1.4, 1.72, 0);
         group.add(p);
     }
-    const lintel = new THREE.Mesh(
-        geo('ruin-lintel', () => warp(new THREE.BoxGeometry(3.45, 0.48, 0.62), 72, 0.08)),
-        stone
-    );
+    const lintel = new THREE.Mesh(RUIN_LINTEL, stone);
+    lintel.name = 'ruinLintel';
     lintel.position.y = 3.52;
     lintel.rotation.z = 0.04;
     group.add(lintel);

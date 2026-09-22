@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { PLAYER, CAMERA } from './config.js?v=3';
 import { clamp, damp } from './utils.js?v=3';
-import { buildHobbit, buildSword } from './models.js?v=13';
+import { buildHobbit, buildSword } from './models.js?v=14';
 
 export class Player {
     constructor(scene) {
