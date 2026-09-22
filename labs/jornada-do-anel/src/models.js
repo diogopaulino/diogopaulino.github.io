@@ -1581,19 +1581,51 @@ export function buildSword() {
     const group = new THREE.Group();
     const blade = new THREE.Mesh(
         geo('sw-blade', () => {
-            const g = new THREE.BoxGeometry(0.045, 0.72, 0.11);
+            const H = 0.72;
+            const half = H / 2;
+            const g = new THREE.BoxGeometry(0.03, H, 0.1, 4, 18, 8);
             const pos = g.attributes.position;
             for (let i = 0; i < pos.count; i++) {
-                if (pos.getY(i) > 0.25) pos.setX(i, pos.getX(i) * 0.45);
+                let x = pos.getX(i);
+                const y = pos.getY(i);
+                let z = pos.getZ(i);
+                const t = (y + half) / H;
+                const widthK = t < 0.1 ? 1 : Math.max(0.04, 1 - (t - 0.1) / 0.9);
+                z *= widthK;
+                const edge = Math.min(1, Math.abs(z) / Math.max(0.004, 0.05 * widthK));
+                x *= 0.34 + 0.66 * (1 - edge * edge);
+                if (t > 0.12 && t < 0.88) {
+                    const lim = 0.012 * widthK + 0.003;
+                    if (Math.abs(z) < lim) x *= 1 - (1 - Math.abs(z) / lim) * 0.55;
+                }
+                pos.setXYZ(i, x, y, z);
             }
             g.computeVertexNormals();
             return g;
         }),
         std(0xd8dee8, 0.22, 0.92)
     );
+    blade.name = 'playerBlade';
     blade.position.y = 0.4;
     group.add(blade);
-    const guard = new THREE.Mesh(geo('sw-guard', () => new THREE.BoxGeometry(0.3, 0.045, 0.07)), mapped(goldTexture(), 0xc9a227, 0.32, 0.82, 0.3));
+    const guard = new THREE.Mesh(geo('sw-guard', () => {
+        const g = new THREE.BoxGeometry(0.32, 0.05, 0.08, 14, 2, 2);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            let y = pos.getY(i);
+            let z = pos.getZ(i);
+            const nx = Math.min(1, Math.abs(x) / 0.16);
+            if (nx > 0.28) {
+                const u = (nx - 0.28) / 0.72;
+                y -= u * u * 0.07;
+                z *= 1 - u * 0.42;
+            }
+            pos.setXYZ(i, x, y, z);
+        }
+        g.computeVertexNormals();
+        return g;
+    }), mapped(goldTexture(), 0xc9a227, 0.32, 0.82, 0.3));
     group.add(guard);
     const hilt = new THREE.Mesh(geo('sw-hilt', () => new THREE.CylinderGeometry(0.028, 0.034, 0.22, 10)), mapped(leatherTexture(), 0x4a3020, 0.8));
     hilt.position.y = -0.12;
