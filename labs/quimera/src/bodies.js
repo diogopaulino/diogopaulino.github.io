@@ -524,6 +524,37 @@ const ASTRO_BOOT = (() => {
 })();
 
 /**
+ * Colete do cowboy: cava mais baixa que o ombro e ponta na barra.
+ * A cava desce cerca de 6 cm; a ponta fica cerca de 10 cm abaixo dos cantos.
+ */
+const COWBOY_VEST = (() => {
+    const p = [
+        [-0.09, 0.11],
+        [0.05, 0.11],
+        [0.10, 0.05],
+        [0.09, -0.04],
+        [0.03, -0.11],
+        [0.00, -0.15],
+        [-0.05, -0.05],
+        [-0.09, 0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.012);
+    return g;
+})();
+
+/**
  * Bota de cowboy: salto alto, arco levantado e biqueira em ponta.
  * A ponta fica cerca de 7 cm à frente da gáspea.
  * Extrusão em +Z; rotation.y = -PI/2 aponta a biqueira para +Z.
@@ -773,7 +804,8 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.26, 0.06], [0.24, 0.2], [0.14, 0.34]], mats.primary, [0, 0.78, 0.02]);
-            add.box(0.18, 0.22, 0.04, mats.secondary, [0.12, 0.92, 0.16]);
+            const vest = add.mesh(COWBOY_VEST, mats.secondary, [0.12, 0.92, 0.16]);
+            vest.name = 'cowboyVest';
             const chapL = add.mesh(CHAP_L, mats.secondary, [-0.16, 0.32, 0.06]);
             chapL.name = 'cowboyChap';
             const chapR = add.mesh(CHAP_R, mats.secondary, [0.16, 0.32, 0.06]);
