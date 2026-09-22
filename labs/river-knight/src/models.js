@@ -886,10 +886,16 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     buckle.position.set(0, 0.04, 0.27);
     torso.add(buckle);
 
+    const pauldronGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 0.13),
+        new THREE.Vector2(0.09, 0.11),
+        new THREE.Vector2(0.155, 0.04),
+        new THREE.Vector2(0.12, -0.03)
+    ], 14);
     for (const sx of [-1, 1]) {
-        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), steel);
-        pauldron.position.set(sx * 0.32, 0.6, 0);
-        pauldron.rotation.z = sx * 0.35;
+        const pauldron = new THREE.Mesh(pauldronGeo, steel);
+        pauldron.position.set(sx * 0.3, 0.56, 0);
+        pauldron.rotation.z = sx * 0.45;
         pauldron.castShadow = true;
         torso.add(pauldron);
     }
@@ -910,7 +916,12 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
         head.add(pupil);
     }
 
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.205, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), steel);
+    const helm = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.012, 0.22),
+        new THREE.Vector2(0.08, 0.2),
+        new THREE.Vector2(0.15, 0.14),
+        new THREE.Vector2(0.19, 0.08)
+    ], 18), steel);
     helm.position.y = 0.02;
     helm.castShadow = true;
     head.add(helm);
@@ -931,17 +942,20 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
         head.add(horn);
     }
 
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 8), plainMaterial(0x6a4220, 0.9, 0));
-    beard.position.set(0, -0.15, 0.07);
-    beard.rotation.x = Math.PI;
+    const beard = new THREE.Mesh(limbGeometry({
+        length: 0.24, r0: 0.1, r1: 0.02, bulge: 0.025, bulgeAt: 0.28, pinch: 0, seg: 10, rings: 6
+    }), plainMaterial(0x6a4220, 0.9, 0));
+    beard.position.set(0, -0.02, 0.08);
     head.add(beard);
 
-    const armGeo = new THREE.CylinderGeometry(0.09, 0.078, 0.58, 8);
+    const armGeo = limbGeometry({
+        length: 0.56, r0: 0.09, r1: 0.068, bulge: 0.02, bulgeAt: 0.32, seg: 10, rings: 6
+    });
     const armR = new THREE.Group();
     armR.position.set(0.32, 0.54, 0);
     torso.add(armR);
     const armRMesh = new THREE.Mesh(armGeo, cloth);
-    armRMesh.position.y = -0.28;
+    armRMesh.position.y = 0;
     armRMesh.castShadow = true;
     armR.add(armRMesh);
     const bracerR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.092, 0.18, 8), darkSteel);
@@ -952,7 +966,7 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     armL.position.set(-0.32, 0.54, 0);
     torso.add(armL);
     const armLMesh = new THREE.Mesh(armGeo, cloth);
-    armLMesh.position.y = -0.28;
+    armLMesh.position.y = 0;
     armLMesh.castShadow = true;
     armL.add(armLMesh);
 

@@ -22,6 +22,24 @@ function std(color, roughness = 0.6, metalness = 0.1, extra = {}, tex = null) {
     return matCache.get(key);
 }
 
+/** Lente amendoada do visor — extrusão rasa, não uma cápsula. */
+function lensPlate(halfW, halfH, depth) {
+    const s = new THREE.Shape();
+    s.moveTo(0, halfH);
+    s.quadraticCurveTo(halfW, halfH * 0.15, 0, -halfH);
+    s.quadraticCurveTo(-halfW, halfH * 0.15, 0, halfH);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth,
+        bevelEnabled: true,
+        bevelThickness: depth * 0.35,
+        bevelSize: halfW * 0.08,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -depth * 0.5);
+    return g;
+}
+
 export function buildHero() {
     const group = new THREE.Group();
     // High-res materials
@@ -30,9 +48,6 @@ export function buildHero() {
     const dark = std(0x080a0f, 0.5, 0.3);
     const visor = std(0xffffff, 0.1, 0.6, { emissive: 0xffffff, emissiveIntensity: 0.2 });
     const gold = std(0xffcc00, 0.3, 0.8, { emissive: 0x664400, emissiveIntensity: 0.5 });
-    
-    // High segment counts for smooth, non-geometric look
-    const capSeg = 12, radSeg = 16;
     
     const hips = new THREE.Group();
     group.add(hips);
@@ -58,9 +73,10 @@ export function buildHero() {
         }), navy);
         leg.add(thigh);
         
-        // Knee
-        const knee = new THREE.Mesh(new THREE.SphereGeometry(0.065, radSeg, capSeg), navy);
-        knee.position.y = -0.4;
+        const knee = new THREE.Mesh(limbGeometry({
+            length: 0.09, r0: 0.062, r1: 0.055, bulge: 0.012, pinch: 0, seg: 8, rings: 4
+        }), navy);
+        knee.position.y = -0.36;
         leg.add(knee);
 
         // Calf (Shin)
@@ -147,15 +163,11 @@ export function buildHero() {
         lensBase.rotation.z = sx * -0.15;
         head.add(lensBase);
 
-        const rim = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.06, 8, 16), dark);
-        rim.rotation.z = Math.PI / 2;
-        rim.scale.set(1, 1, 0.4);
+        const rim = new THREE.Mesh(lensPlate(0.048, 0.058, 0.014), dark);
         lensBase.add(rim);
 
-        const glass = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.05, 8, 16), visor);
-        glass.rotation.z = Math.PI / 2;
-        glass.position.z = 0.01;
-        glass.scale.set(1, 1, 0.5);
+        const glass = new THREE.Mesh(lensPlate(0.034, 0.042, 0.008), visor);
+        glass.position.z = 0.008;
         lensBase.add(glass);
     }
 
@@ -164,8 +176,11 @@ export function buildHero() {
         arm.position.set(sx * 0.26, 0.42, 0);
         torso.add(arm);
         
-        // Shoulder
-        const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.09, radSeg, capSeg), red);
+        const deltoid = new THREE.Mesh(limbGeometry({
+            length: 0.14, r0: 0.085, r1: 0.05, bulge: 0.018, pinch: 0, seg: 10, rings: 5
+        }), red);
+        deltoid.rotation.z = sx * -1.15;
+        deltoid.position.set(sx * 0.03, 0.02, 0);
         arm.add(deltoid);
 
         // Bicep
@@ -174,9 +189,10 @@ export function buildHero() {
         }), navy);
         arm.add(upper);
         
-        // Elbow
-        const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.055, radSeg, capSeg), red);
-        elbow.position.y = -0.28;
+        const elbow = new THREE.Mesh(limbGeometry({
+            length: 0.08, r0: 0.05, r1: 0.044, bulge: 0.01, pinch: 0, seg: 8, rings: 4
+        }), red);
+        elbow.position.y = -0.24;
         arm.add(elbow);
 
         const forearm = new THREE.Group();

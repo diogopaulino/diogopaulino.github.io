@@ -95,11 +95,10 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     beltMesh.position.y = 0.09;
     beltMesh.material = beltMat;
     beltMesh.parent = hips;
-    const buckle = BABYLON.MeshBuilder.CreateCapsule('buckle', {
-        radius: 0.028, height: 0.08, tessellation: 10
+    const buckle = BABYLON.MeshBuilder.CreateBox('buckle', {
+        width: 0.07, height: 0.05, depth: 0.018
     }, scene);
-    buckle.rotation.z = Math.PI / 2;
-    buckle.position.set(0, 0.09, -0.12);
+    buckle.position.set(0, 0.09, -0.17);
     buckle.material = buckleMat;
     buckle.parent = hips;
     const legs = [];
@@ -154,11 +153,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     const head = new BABYLON.TransformNode('head', scene);
     head.parent = torso;
     head.position.y = 0.62;
-    const neck = BABYLON.MeshBuilder.CreateCylinder('neck', {
-        height: 0.14,
-        diameter: 0.14,
-        tessellation: 12
-    }, scene);
+    const neck = createMuscle(scene, 'neck', {
+        length: 0.14, r0: 0.07, r1: 0.055, bulge: 0.012, bulgeAt: 0.4, pinch: 0.15, tessellation: 10, rings: 5
+    });
     neck.position.y = -0.04;
     neck.material = skinMat;
     neck.parent = head;
@@ -168,13 +165,19 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     face.material = skinMat;
     face.parent = head;
     registerShadows(face, shadowGenerator);
-    const hair = BABYLON.MeshBuilder.CreateSphere('hair', {
-        diameterX: 0.23,
-        diameterY: 0.14,
-        diameterZ: 0.24,
-        segments: 16
+    const hair = BABYLON.MeshBuilder.CreateLathe('hair', {
+        shape: [
+            new BABYLON.Vector3(0.02, 0, 0),
+            new BABYLON.Vector3(0.1, 0.015, 0),
+            new BABYLON.Vector3(0.125, 0.06, 0),
+            new BABYLON.Vector3(0.1, 0.11, 0),
+            new BABYLON.Vector3(0.04, 0.145, 0)
+        ],
+        tessellation: 16,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
     }, scene);
-    hair.position.set(0, 0.24, -0.01);
+    hair.position.set(0, 0.16, -0.02);
+    hair.scaling.set(1, 1, 0.9);
     hair.material = hairMat;
     hair.parent = head;
     for (const sx of [-1, 1]) {
@@ -197,22 +200,36 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         eyePupil.parent = head;
     }
     if (!follower) {
-        const capCrown = BABYLON.MeshBuilder.CreateSphere('capCrown', {
-            diameterX: 0.24,
-            diameterY: 0.18,
-            diameterZ: 0.25,
-            segments: 14
+        const capCrown = BABYLON.MeshBuilder.CreateLathe('capCrown', {
+            shape: [
+                new BABYLON.Vector3(0.02, 0, 0),
+                new BABYLON.Vector3(0.125, 0.012, 0),
+                new BABYLON.Vector3(0.132, 0.07, 0),
+                new BABYLON.Vector3(0.08, 0.125, 0),
+                new BABYLON.Vector3(0.015, 0.15, 0)
+            ],
+            tessellation: 18
         }, scene);
-        capCrown.position.set(0, 0.25, -0.01);
+        capCrown.position.set(0, 0.17, -0.02);
         capCrown.material = capMat;
         capCrown.parent = head;
-        const capVisor = BABYLON.MeshBuilder.CreateCapsule('capVisor', {
-            radius: 0.02, height: 0.2, tessellation: 10
+        const capVisor = BABYLON.MeshBuilder.ExtrudeShape('capVisor', {
+            shape: [
+                new BABYLON.Vector3(-0.11, 0, 0),
+                new BABYLON.Vector3(-0.09, 0.02, 0),
+                new BABYLON.Vector3(-0.04, 0.085, 0),
+                new BABYLON.Vector3(0.04, 0.085, 0),
+                new BABYLON.Vector3(0.09, 0.02, 0),
+                new BABYLON.Vector3(0.11, 0, 0)
+            ],
+            path: [
+                new BABYLON.Vector3(0, 0, -0.006),
+                new BABYLON.Vector3(0, 0, 0.006)
+            ],
+            cap: BABYLON.Mesh.CAP_ALL
         }, scene);
-        capVisor.rotation.z = Math.PI / 2;
-        capVisor.scaling.set(1, 0.6, 2.2);
-        capVisor.position.set(0, 0.22, -0.16);
-        capVisor.rotation.x = 0.15;
+        capVisor.rotation.x = -Math.PI / 2 + 0.22;
+        capVisor.position.set(0, 0.19, -0.1);
         capVisor.material = pbrMat(scene, 'capVisor', 0xb81e1e, 0.7, 0.05);
         capVisor.parent = head;
         registerShadows(capVisor, shadowGenerator);

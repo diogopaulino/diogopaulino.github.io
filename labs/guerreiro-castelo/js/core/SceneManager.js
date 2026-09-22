@@ -1,14 +1,14 @@
-import { HomeLevel } from '../levels/HomeLevel.js';
-import { ShipLevel } from '../levels/ShipLevel.js';
-import { BeachLevel } from '../levels/BeachLevel.js';
-import { ForestLevel } from '../levels/ForestLevel.js';
-import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js';
-import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js';
-import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js';
-import { TigerRoomLevel } from '../levels/TigerRoomLevel.js';
-import { EscapeLevel } from '../levels/EscapeLevel.js';
-import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js';
-import { EndingLevel } from '../levels/EndingLevel.js';
+import { HomeLevel } from '../levels/HomeLevel.js?v=3';
+import { ShipLevel } from '../levels/ShipLevel.js?v=3';
+import { BeachLevel } from '../levels/BeachLevel.js?v=3';
+import { ForestLevel } from '../levels/ForestLevel.js?v=3';
+import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=3';
+import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=3';
+import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=3';
+import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=3';
+import { EscapeLevel } from '../levels/EscapeLevel.js?v=3';
+import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=3';
+import { EndingLevel } from '../levels/EndingLevel.js?v=3';
 
 const FACTORIES = {
     home: HomeLevel,

@@ -2,7 +2,7 @@
  * Princesa Camila para Babylon.js.
  */
 
-import { buildCamila, CharacterAnimator } from './builders.js';
+import { buildCamila, CharacterAnimator } from './builders.js?v=3';
 import { PrincessAI } from '../ai/PrincessAI.js';
 import { angleDamp } from '../utils/math.js';
 

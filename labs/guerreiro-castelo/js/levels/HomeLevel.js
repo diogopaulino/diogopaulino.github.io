@@ -4,7 +4,7 @@
 
 import { Level } from './Level.js';
 import { buildHomeInterior, addHomeColliders } from '../world/Home.js';
-import { buildRavi, CharacterAnimator } from '../characters/builders.js';
+import { buildRavi, CharacterAnimator } from '../characters/builders.js?v=3';
 import { EnvironmentFX } from '../world/Environment.js';
 
 export class HomeLevel extends Level {
