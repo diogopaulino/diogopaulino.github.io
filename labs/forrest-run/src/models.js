@@ -837,21 +837,61 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     return getPrefab(scene, shadowGenerator, 'createFence', () => {
     const root = new BABYLON.TransformNode('fence', scene);
     const woodMat = pbrMat(scene, 'fenceWood', 0x7d6244, 0.9, 0.02);
+    let postSrc = null;
     for (let i = -2; i <= 2; i++) {
-        const post = BABYLON.MeshBuilder.CreateBox('post', { width: 0.12, height: 1.3, depth: 0.12 }, scene);
-        post.position.set(i * 0.9, 0.65, 0);
+        const post = postSrc
+            ? postSrc.clone('post')
+            : (postSrc = BABYLON.MeshBuilder.CreateLathe('post', {
+                shape: [
+                    new BABYLON.Vector3(0.11, 0, 0),
+                    new BABYLON.Vector3(0.1, 0.06, 0),
+                    new BABYLON.Vector3(0.055, 0.16, 0),
+                    new BABYLON.Vector3(0.048, 1.02, 0),
+                    new BABYLON.Vector3(0.072, 1.14, 0),
+                    new BABYLON.Vector3(0.08, 1.26, 0),
+                    new BABYLON.Vector3(0.03, 1.32, 0)
+                ],
+                tessellation: 4,
+                cap: BABYLON.Mesh.CAP_ALL
+            }, scene));
+        post.rotation.y = Math.PI / 4;
+        post.position.set(i * 0.9, 0, 0);
         post.material = woodMat;
         post.parent = root;
         registerShadows(post, shadowGenerator);
     }
-    const rail1 = BABYLON.MeshBuilder.CreateBox('rail1', { width: 4.2, height: 0.1, depth: 0.08 }, scene);
-    rail1.position.set(0, 0.48, 0);
-    rail1.material = woodMat;
-    rail1.parent = root;
-    const rail2 = BABYLON.MeshBuilder.CreateBox('rail2', { width: 4.2, height: 0.1, depth: 0.08 }, scene);
-    rail2.position.set(0, 0.95, 0);
-    rail2.material = woodMat;
-    rail2.parent = root;
+    const railShape = [
+        [-0.04, -0.05],
+        [-0.05, -0.02],
+        [-0.05, 0.03],
+        [-0.02, 0.055],
+        [0.02, 0.055],
+        [0.05, 0.03],
+        [0.05, -0.02],
+        [0.04, -0.05]
+    ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    const fenceRail = (name, y) => {
+        const path = [];
+        for (let i = 0; i <= 12; i++) {
+            const u = i / 12;
+            const x = -2.1 + u * 4.2;
+            const sag = Math.sin(u * Math.PI) * 0.09;
+            path.push(new BABYLON.Vector3(x, -sag, 0));
+        }
+        const rail = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: railShape,
+            path,
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        rail.position.y = y;
+        rail.material = woodMat;
+        rail.parent = root;
+        return rail;
+    };
+    fenceRail('rail1', 0.48);
+    fenceRail('rail2', 0.95);
     return root;
     });
 }export function createFeatherMesh(scene) {
