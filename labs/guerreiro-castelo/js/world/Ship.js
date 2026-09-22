@@ -244,17 +244,47 @@ export function buildShip(scene) {
     post.material = darkWoodMat;
     post.parent = root;
 
-    // Barris no convés
+    // Barris: aduelas com bojo e arcos. O centro continua em y=1.72, altura 0,7.
+    const hoopMat = new BABYLON.StandardMaterial('barrelHoopMat', scene);
+    hoopMat.diffuseColor = new BABYLON.Color3(0.32, 0.33, 0.36);
+    hoopMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.52);
+    let barrelSrc = null;
+    const hoopSrc = {};
     for (const x of [-2.2, 2.2]) {
         for (const z of [-4, -1, 2]) {
-            const barrel = BABYLON.MeshBuilder.CreateCylinder(`barrel_${x}_${z}`, {
-                diameter: 0.76,
-                height: 0.7,
-                tessellation: 10
-            }, scene);
+            const barrel = new BABYLON.TransformNode(`barrel_${x}_${z}`, scene);
             barrel.position.set(x, 1.72, z);
-            barrel.material = woodMat;
             barrel.parent = root;
+            const stave = barrelSrc
+                ? barrelSrc.clone('barrelStave')
+                : (barrelSrc = BABYLON.MeshBuilder.CreateLathe('barrelStave', {
+                    shape: [
+                        new BABYLON.Vector3(0.28, -0.35, 0),
+                        new BABYLON.Vector3(0.32, -0.3, 0),
+                        new BABYLON.Vector3(0.36, -0.16, 0),
+                        new BABYLON.Vector3(0.39, 0, 0),
+                        new BABYLON.Vector3(0.36, 0.16, 0),
+                        new BABYLON.Vector3(0.32, 0.3, 0),
+                        new BABYLON.Vector3(0.28, 0.35, 0)
+                    ],
+                    tessellation: 10,
+                    cap: BABYLON.Mesh.CAP_ALL
+                }, scene));
+            stave.material = woodMat;
+            stave.parent = barrel;
+            for (const [hy, dia] of [[-0.26, 0.66], [-0.1, 0.76], [0.1, 0.76], [0.26, 0.66]]) {
+                const key = `${hy}`;
+                const hoop = hoopSrc[key]
+                    ? hoopSrc[key].clone('barrelHoop')
+                    : (hoopSrc[key] = BABYLON.MeshBuilder.CreateTorus('barrelHoop', {
+                        diameter: dia,
+                        thickness: 0.028,
+                        tessellation: 10
+                    }, scene));
+                hoop.position.y = hy;
+                hoop.material = hoopMat;
+                hoop.parent = barrel;
+            }
         }
     }
 
