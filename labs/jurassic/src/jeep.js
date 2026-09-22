@@ -68,6 +68,7 @@ function jeepCabinGeometry() {
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
+    const dark = std(0x121416, 0.7, 0.2);
     const chrome = new THREE.MeshStandardMaterial({
         map: metalTexture(), color: 0xccd2d8, roughness: 0.28, metalness: 0.85
     });
