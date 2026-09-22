@@ -1173,6 +1173,47 @@ const KNIGHT_VISOR = (() => {
     return g;
 })();
 
+/**
+ * Fivela: armação arredondada com um vão no meio de cerca de 7 cm.
+ */
+const KNIGHT_BUCKLE = (() => {
+    const s = new THREE.Shape();
+    const ring = [
+        [-0.052, -0.055],
+        [0.052, -0.055],
+        [0.064, -0.048],
+        [0.07, -0.036],
+        [0.07, 0.036],
+        [0.064, 0.048],
+        [0.052, 0.055],
+        [-0.052, 0.055],
+        [-0.064, 0.048],
+        [-0.07, 0.036],
+        [-0.07, -0.036],
+        [-0.064, -0.048]
+    ];
+    s.moveTo(ring[0][0], ring[0][1]);
+    for (let i = 1; i < ring.length; i++) s.lineTo(ring[i][0], ring[i][1]);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.038, -0.026);
+    hole.lineTo(-0.038, 0.026);
+    hole.lineTo(0.038, 0.026);
+    hole.lineTo(0.038, -0.026);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const group = new THREE.Group();
     const steel = metalMaterial(0xb6bcc4, 0.3);
@@ -1223,7 +1264,8 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.1, 10), leather);
     belt.position.y = 0.04;
     torso.add(belt);
-    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.04), metalMaterial(0xd4b45a, 0.4));
+    const buckle = new THREE.Mesh(KNIGHT_BUCKLE, metalMaterial(0xd4b45a, 0.4));
+    buckle.name = 'knightBuckle';
     buckle.position.set(0, 0.04, 0.27);
     torso.add(buckle);
 
