@@ -40,6 +40,37 @@ const SAMURAI_BRIM = (() => {
 })();
 
 /**
+ * Testeira do guerreiro: a barra desce numa ponta no meio, cerca de 10 cm.
+ */
+const WARRIOR_BROW = (() => {
+    const p = [
+        [-0.18, 0.045],
+        [0.18, 0.045],
+        [0.18, -0.02],
+        [0.07, -0.02],
+        [0.02, -0.08],
+        [0, -0.12],
+        [-0.02, -0.08],
+        [-0.07, -0.02],
+        [-0.18, -0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.018);
+    return g;
+})();
+
+/**
  * Crista do elmo: vista de lado, o pico sobe cerca de 16 cm acima da base.
  * Extrusão em +Z (espessura); rotation.y = PI/2 põe o perfil no plano lateral.
  */
@@ -181,7 +212,8 @@ const HEADS = {
         add.lathe([[0.1, -0.16], [0.3, -0.02], [0.32, 0.12], [0.18, 0.26], [0.06, 0.34]], mats.accent, [0, -0.02, 0]);
         const crest = add.mesh(WARRIOR_CREST, mats.primary, [0, 0.24, 0], [0, Math.PI / 2, 0]);
         crest.name = 'warriorCrest';
-        add.box(0.34, 0.08, 0.08, mats.secondary, [0, 0.02, 0.22], null, null, 0.02);
+        const brow = add.mesh(WARRIOR_BROW, mats.secondary, [0, 0.02, 0.22]);
+        brow.name = 'warriorBrow';
         add.box(0.12, 0.1, 0.18, mats.secondary, [0, -0.08, 0.22]);
         add.sphere(0.1, mats.dark, [0, -0.18, 0.12], null, [1.3, 0.45, 0.7]);
     }),
