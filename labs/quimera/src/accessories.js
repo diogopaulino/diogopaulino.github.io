@@ -229,6 +229,24 @@ const ROBOT_GRIP = (() => {
     return g;
 })();
 
+/**
+ * Pomo do machado: a barriga é cerca de 11 cm mais larga que o pescoço.
+ * O torno fica centrado onde estava o cubo.
+ */
+const WARRIOR_POMMEL = (() => {
+    const pts = [
+        new THREE.Vector2(0.016, 0),
+        new THREE.Vector2(0.04, 0.012),
+        new THREE.Vector2(0.07, 0.035),
+        new THREE.Vector2(0.072, 0.05),
+        new THREE.Vector2(0.04, 0.066),
+        new THREE.Vector2(0.016, 0.08)
+    ];
+    const g = new THREE.LatheGeometry(pts, 14);
+    g.translate(0, -0.04, 0);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -258,7 +276,8 @@ const ACCESSORIES = {
         add.cyl(0.025, 0.025, 0.42, mats.accent, [0, 0.18, 0], [0.15, 0, 0.4]);
         const axe = add.mesh(WARRIOR_AXE, mats.secondary, [0.02, 0.40, 0.08], [0.15, 0, 0.4]);
         axe.name = 'warriorAxe';
-        add.box(0.08, 0.08, 0.08, mats.primary, [0, 0.02, 0], null, null, 0.02);
+        const pommel = add.mesh(WARRIOR_POMMEL, mats.primary, [0, 0.02, 0]);
+        pommel.name = 'warriorPommel';
         add.cyl(0.14, 0.14, 0.04, mats.secondary, [-0.22, 0.12, 0.04], [1.2, 0.4, 0]);
         add.cyl(0.04, 0.04, 0.08, mats.accent, [-0.22, 0.12, 0.04], [1.2, 0.4, 0]);
     }),

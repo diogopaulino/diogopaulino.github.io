@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { LAYOUT, KIT_BY_ID } from './config.js';
 import { buildHead } from './heads.js?v=19';
 import { buildBody } from './bodies.js?v=35';
-import { buildAccessory } from './accessories.js?v=11';
+import { buildAccessory } from './accessories.js?v=12';
 
 const ATTACH = {
     grip: LAYOUT.GRIP,
