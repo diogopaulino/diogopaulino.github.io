@@ -521,6 +521,37 @@ function rudderGeometry() {
 
 const RUDDER = rudderGeometry();
 
+/**
+ * Painel de popa. Largura acompanha a boca. O topo sobe no meio e cai
+ * nos ombros; as fiadas recuam para dentro do casco, longe do leme.
+ */
+function sternTransomGeometry(beam) {
+    const w = beam * 0.9;
+    const h = 1.05;
+    const hw = w / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(w, h, 0.16, 8, 14, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const top = (y + hh) / h;
+        if (top > 0.78) {
+            const u = (top - 0.78) / 0.22;
+            const nx = Math.abs(x) / hw;
+            y -= u * (0.08 + nx * nx * 0.46);
+        }
+        if (z < -0.04) {
+            const row = Math.floor((y + hh) / 0.13);
+            if (row % 2 === 1) z += 0.055;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -675,9 +706,10 @@ export function buildLongship({
         }
 
         const transom = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.9, 1.05, 0.16),
+            sternTransomGeometry(beam),
             woodMaterial(true, 0x2e1c12)
         );
+        transom.name = 'transomBoard';
         transom.position.set(0, -0.28, -length * 0.495);
         transom.castShadow = true;
         group.add(transom);
