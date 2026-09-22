@@ -423,12 +423,12 @@ const OAR_BLADE = oarBladeGeometry();
 function cannonCarriageGeometry() {
     const shape = new THREE.Shape();
     shape.moveTo(-0.31, -0.16);
-    shape.lineTo(-0.31, 0.24);
-    shape.lineTo(-0.17, 0.24);
+    shape.lineTo(-0.31, 0.3);
+    shape.lineTo(-0.17, 0.3);
     shape.lineTo(-0.17, -0.02);
     shape.lineTo(0.17, -0.02);
-    shape.lineTo(0.17, 0.24);
-    shape.lineTo(0.31, 0.24);
+    shape.lineTo(0.17, 0.3);
+    shape.lineTo(0.31, 0.3);
     shape.lineTo(0.31, -0.16);
     shape.closePath();
     const g = new THREE.ExtrudeGeometry(shape, { depth: 0.48, steps: 14, bevelEnabled: false });
@@ -440,8 +440,8 @@ function cannonCarriageGeometry() {
         const z = pos.getZ(i);
         if (y > 0.04 && Math.abs(x) > 0.15) {
             const along = (z + 0.24) / 0.48;
-            const notch = Math.abs(z - 0.04) < 0.07 ? 0.1 : 0;
-            y -= along * 0.18 + notch;
+            const notch = Math.abs(z - 0.04) < 0.08 ? 0.14 : 0;
+            y -= along * 0.24 + notch;
         }
         if (y < -0.1) x *= 1 + (0.12 * (1 - (y + 0.16) / 0.06));
         pos.setXYZ(i, x, y, z);
@@ -454,20 +454,23 @@ function cannonCarriageGeometry() {
 function cannonBarrelGeometry() {
     const half = 0.85;
     const raw = [
-        [0.02, -half - 0.06],
-        [0.07, -half - 0.02],
-        [0.035, -half + 0.02],
-        [0.15, -half + 0.08],
-        [0.155, -0.52],
-        [0.118, -0.4],
-        [0.112, -0.05],
-        [0.15, 0.04],
-        [0.11, 0.12],
-        [0.105, 0.48],
-        [0.142, 0.56],
-        [0.098, 0.66],
-        [0.096, half - 0.07],
-        [0.128, half - 0.03],
+        [0.02, -half - 0.08],
+        [0.08, -half - 0.03],
+        [0.03, -half + 0.02],
+        [0.16, -half + 0.1],
+        [0.2, -0.58],
+        [0.2, -0.5],
+        [0.115, -0.42],
+        [0.11, -0.08],
+        [0.2, -0.01],
+        [0.2, 0.07],
+        [0.108, 0.14],
+        [0.102, 0.4],
+        [0.19, 0.48],
+        [0.19, 0.56],
+        [0.098, 0.64],
+        [0.094, half - 0.08],
+        [0.14, half - 0.03],
         [0.09, half]
     ];
     const g = new THREE.LatheGeometry(raw.map(([r, y]) => new THREE.Vector2(r, y)), 16);
