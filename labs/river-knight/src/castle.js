@@ -41,6 +41,50 @@ function towerRoofGeometry(radius) {
 }
 
 /** Duas águas sobre o salão 26×18. Perfil em X, extrusão no Z, rotateY deita a cumeeira no comprimento. */
+/**
+ * Salão 26×16×18. A planta entra na Shape com y = −z; depois de
+ * rotateX(−π/2) a extrusão vira a altura e a malha fica centrada em Y.
+ * Contrafortes e fiadas cabem debaixo do beiral (vão de 30×22).
+ */
+function hallBodyGeometry() {
+    const world = [
+        [-13, -9], [-8.2, -9], [-8.2, -9.75], [-6.7, -9.75], [-6.7, -9],
+        [-2.2, -9], [-2.2, -9.75], [-0.7, -9.75], [-0.7, -9],
+        [2.4, -9], [2.4, -9.75], [3.9, -9.75], [3.9, -9],
+        [7.6, -9], [7.6, -9.75], [9.1, -9.75], [9.1, -9], [13, -9],
+        [13, -4.2], [13.75, -4.2], [13.75, -2.5], [13, -2.5],
+        [13, 1.6], [13.75, 1.6], [13.75, 3.3], [13, 3.3], [13, 9],
+        [9.1, 9], [9.1, 9.75], [7.6, 9.75], [7.6, 9],
+        [3.9, 9], [3.9, 9.75], [2.4, 9.75], [2.4, 9],
+        [-0.7, 9], [-0.7, 9.75], [-2.2, 9.75], [-2.2, 9],
+        [-6.7, 9], [-6.7, 9.75], [-8.2, 9.75], [-8.2, 9], [-13, 9],
+        [-13, 3.3], [-13.75, 3.3], [-13.75, 1.6], [-13, 1.6],
+        [-13, -2.5], [-13.75, -2.5], [-13.75, -4.2], [-13, -4.2]
+    ];
+    const shape = new THREE.Shape();
+    const last = world.length - 1;
+    shape.moveTo(world[last][0], -world[last][1]);
+    for (let i = last - 1; i >= 0; i--) shape.lineTo(world[i][0], -world[i][1]);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 16, bevelEnabled: false, curveSegments: 1 });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const t = z / 16;
+        const batter = 1.045 - t * 0.07;
+        const course = Math.sin(z * 2.2) * 0.07;
+        const block = Math.sin(x * 1.4 + y * 0.8) * 0.03;
+        const len = Math.hypot(x, y) || 1;
+        pos.setXY(i, x * batter + (x / len) * (course + block), y * batter + (y / len) * (course + block));
+    }
+    g.computeVertexNormals();
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, -8, 0);
+    return g;
+}
+
 function hallRoofGeometry() {
     const s = new THREE.Shape();
     s.moveTo(-11.2, 0);
@@ -365,8 +409,7 @@ export function createCastle(scene) {
     group.add(princess);
 
     // ---- Corpo do castelo (blocos atrás da muralha) ----
-    const hallGeo = new THREE.BoxGeometry(26, 16, 18);
-    const hall = new THREE.Mesh(hallGeo, stone);
+    const hall = new THREE.Mesh(hallBodyGeometry(), stone);
     hall.position.set(-sideOffset - 6, 8, -26);
     hall.castShadow = true;
     hall.receiveShadow = true;
