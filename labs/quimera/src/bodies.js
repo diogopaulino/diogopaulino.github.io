@@ -661,6 +661,35 @@ const NINJA_OBI = new THREE.LatheGeometry([
     new THREE.Vector2(0.16, 0.12)
 ], 18);
 
+/**
+ * Aba do ninja: a barra desce numa ponta, cerca de 10 cm.
+ */
+const NINJA_TAB = (() => {
+    const p = [
+        [-0.06, 0.09],
+        [0.06, 0.09],
+        [0.06, -0.01],
+        [0.02, -0.07],
+        [0, -0.11],
+        [-0.02, -0.07],
+        [-0.06, -0.01]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.016);
+    return g;
+})();
+
 /** Faixa do chef: as bordas saem e o meio aperta. Y do torno cresce. */
 const CHEF_BELT = new THREE.LatheGeometry([
     new THREE.Vector2(0.20, 0),
@@ -826,7 +855,8 @@ const BODIES = {
         detail: ({ add, mats }) => {
             const obi = add.mesh(NINJA_OBI, mats.accent, [0, 0.52, 0]);
             obi.name = 'ninjaObi';
-            add.box(0.1, 0.18, 0.04, mats.trim, [0.16, 0.58, 0.14]);
+            const tab = add.mesh(NINJA_TAB, mats.trim, [0.16, 0.58, 0.14]);
+            tab.name = 'ninjaTab';
             add.cap(0.06, 0.18, mats.primary, [-0.12, 0.18, 0]);
             add.cap(0.06, 0.18, mats.primary, [0.12, 0.18, 0]);
         }
