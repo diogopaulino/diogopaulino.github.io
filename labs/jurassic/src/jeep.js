@@ -65,6 +65,34 @@ function jeepCabinGeometry() {
     return g;
 }
 
+/**
+ * Para-choque 1.95×0.22×0.28, centrado e simétrico em Z
+ * (a traseira é um clone). As pontas descem.
+ */
+function jeepBumperGeometry() {
+    const w = 1.95;
+    const hw = w / 2;
+    const g = new THREE.BoxGeometry(w, 0.22, 0.28, 16, 4, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / hw;
+        if (nx > 0.62) {
+            const u = (nx - 0.62) / 0.38;
+            y -= u * u * 0.14;
+        }
+        if (y > 0 && nx < 0.55) y += (1 - nx) * 0.03;
+        if (nx > 0.88) z *= 1 - (nx - 0.88) * 1.1;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const JEEP_BUMPER = jeepBumperGeometry();
+
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
@@ -98,7 +126,8 @@ export function buildJeep() {
     rack.position.set(0, 1.92, -0.15);
     root.add(rack);
 
-    const bumperF = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.22, 0.28), chrome);
+    const bumperF = new THREE.Mesh(JEEP_BUMPER, chrome);
+    bumperF.name = 'jeepBumper';
     bumperF.position.set(0, 0.55, 1.95);
     root.add(bumperF);
     const bumperR = bumperF.clone();
