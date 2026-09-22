@@ -313,32 +313,48 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         }
     } else if (kind === 'cactus') {
         const cactusMat = pbrMat(scene, 'cactusMat', 0x487e44, 0.72, 0.04);
-        const mainStem = BABYLON.MeshBuilder.CreateCylinder('cactusStem', {
+        const rib = (mesh) => {
+            const verts = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            if (!verts) return mesh;
+            for (let i = 0; i < verts.length; i += 3) {
+                const x = verts[i];
+                const y = verts[i + 1];
+                const z = verts[i + 2];
+                const ang = Math.atan2(z, x);
+                const n = 1 + Math.abs(Math.sin(ang * 5)) * 0.1 + Math.abs(Math.sin(y * 7)) * 0.025;
+                verts[i] = x * n;
+                verts[i + 2] = z * n;
+            }
+            mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
+            mesh.createNormals(false);
+            return mesh;
+        };
+        const mainStem = rib(BABYLON.MeshBuilder.CreateCylinder('cactusStem', {
             height: 4.2,
             diameterTop: 0.44,
             diameterBottom: 0.48,
             tessellation: 18
-        }, scene);
+        }, scene));
         mainStem.position.y = 2.1;
         mainStem.material = cactusMat;
         mainStem.parent = root;
         registerShadows(mainStem, shadowGenerator);
-        const armL1 = BABYLON.MeshBuilder.CreateCylinder('cactusArmL1', { height: 0.8, diameter: 0.28, tessellation: 10 }, scene);
+        const armL1 = rib(BABYLON.MeshBuilder.CreateCylinder('cactusArmL1', { height: 0.8, diameter: 0.28, tessellation: 12 }, scene));
         armL1.rotation.z = Math.PI / 2;
         armL1.position.set(-0.55, 2.2, 0);
         armL1.material = cactusMat;
         armL1.parent = root;
-        const armL2 = BABYLON.MeshBuilder.CreateCylinder('cactusArmL2', { height: 1.4, diameter: 0.28, tessellation: 10 }, scene);
+        const armL2 = rib(BABYLON.MeshBuilder.CreateCylinder('cactusArmL2', { height: 1.4, diameter: 0.28, tessellation: 12 }, scene));
         armL2.position.set(-0.95, 2.8, 0);
         armL2.material = cactusMat;
         armL2.parent = root;
         registerShadows(armL2, shadowGenerator);
-        const armR1 = BABYLON.MeshBuilder.CreateCylinder('cactusArmR1', { height: 0.8, diameter: 0.28, tessellation: 10 }, scene);
+        const armR1 = rib(BABYLON.MeshBuilder.CreateCylinder('cactusArmR1', { height: 0.8, diameter: 0.28, tessellation: 12 }, scene));
         armR1.rotation.z = Math.PI / 2;
         armR1.position.set(0.55, 2.7, 0);
         armR1.material = cactusMat;
         armR1.parent = root;
-        const armR2 = BABYLON.MeshBuilder.CreateCylinder('cactusArmR2', { height: 1.1, diameter: 0.28, tessellation: 10 }, scene);
+        const armR2 = rib(BABYLON.MeshBuilder.CreateCylinder('cactusArmR2', { height: 1.1, diameter: 0.28, tessellation: 12 }, scene));
         armR2.position.set(0.95, 3.1, 0);
         armR2.material = cactusMat;
         armR2.parent = root;
@@ -668,6 +684,18 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         diameterZ: 1.1,
         segments: 14
     }, scene);
+    const rockVerts = rock.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    for (let i = 0; i < rockVerts.length; i += 3) {
+        const x = rockVerts[i];
+        const y = rockVerts[i + 1];
+        const z = rockVerts[i + 2];
+        const n = 0.74 + Math.abs(Math.sin(x * 2.1 + z * 1.6) * Math.cos(y * 2.8 + x)) * 0.42;
+        rockVerts[i] = x * n;
+        rockVerts[i + 1] = y * (0.7 + n * 0.22);
+        rockVerts[i + 2] = z * n;
+    }
+    rock.setVerticesData(BABYLON.VertexBuffer.PositionKind, rockVerts);
+    rock.createNormals(false);
     rock.position.y = 0.35;
     rock.material = rockMat;
     rock.parent = root;

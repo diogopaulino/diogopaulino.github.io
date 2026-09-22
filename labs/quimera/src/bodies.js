@@ -3,6 +3,8 @@
  */
 
 import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
+import { wingMembrane } from '../../shared/realism.js';
+import * as THREE from 'three';
 
 function build(kit, extras) {
     const ctx = makeCtx(kit);
@@ -64,7 +66,7 @@ const BODIES = {
     wizard: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.cone(0.55, 1.15, mats.primary, [0, 0.62, 0]);
+            add.lathe([[0.22, 0], [0.52, 0.12], [0.4, 0.48], [0.26, 0.9], [0.16, 1.15]], mats.primary, [0, 0.05, 0]);
             add.box(0.2, 0.08, 0.08, mats.accent, [0, 1.0, 0.16]);
             add.sphere(0.04, mats.glow, [-0.16, 0.7, 0.22]);
             add.sphere(0.035, mats.glow, [0.18, 0.55, 0.2]);
@@ -100,7 +102,7 @@ const BODIES = {
         options: { skipBase: true },
         detail: ({ add, mats }) => {
             add.cyl(0.08, 0.09, 0.12, mats.secondary, [0, 1.18, 0]);
-            add.box(0.5, 0.52, 0.38, mats.primary, [0, 0.88, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.26, 0.08], [0.24, 0.28], [0.16, 0.46], [0.1, 0.52]], mats.primary, [0, 0.62, 0]);
             add.box(0.22, 0.16, 0.06, mats.glow, [0, 0.92, 0.20], null, null, 0.02);
             add.box(0.36, 0.16, 0.3, mats.secondary, [0, 0.54, 0], null, null, 0.04);
             add.box(0.16, 0.32, 0.16, mats.primary, [-0.12, 0.28, 0], null, null, 0.03);
@@ -149,15 +151,16 @@ const BODIES = {
     fairy: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats, group }) => {
-            add.cone(0.42, 0.7, mats.primary, [0, 0.55, 0]);
+            add.lathe([[0.16, 0], [0.4, 0.08], [0.32, 0.32], [0.18, 0.62]], mats.primary, [0, 0.2, 0]);
             add.torus(0.22, 0.03, mats.trim, [0, 0.88, 0], [Math.PI / 2, 0, 0]);
             const wingMat = glass(0xd8f0ff);
+            wingMat.side = THREE.DoubleSide;
             const petal = (x, rotY) => {
-                const m = add.box(
-                    0.18, 0.42, 0.04, wingMat,
+                const m = add.mesh(
+                    wingMembrane({ span: 0.46, chord: 0.32 }),
+                    wingMat,
                     [x, 0.95, -0.18],
-                    [0.3, rotY, 0.4 * Math.sign(x) || 0.4],
-                    null, 0.08
+                    [0.3, rotY + (x < 0 ? Math.PI : 0), 0]
                 );
                 m.castShadow = false;
                 return m;
