@@ -527,6 +527,21 @@ const EXPLORER_CROWN = (() => {
 })();
 
 /**
+ * Aba do explorador: junto da copa fica alta e a borda desce cerca de 7 cm.
+ */
+const EXPLORER_BRIM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.42, 0),
+        new THREE.Vector2(0.39, 0.02),
+        new THREE.Vector2(0.35, 0.04),
+        new THREE.Vector2(0.32, 0.055),
+        new THREE.Vector2(0.30, 0.07)
+    ], 16);
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Âncora do marinheiro: as duas unhas descem cerca de 11 cm abaixo da coroa.
  * A trave sai dos dois lados do cepo.
  */
@@ -718,7 +733,10 @@ const HEADS = {
         addFace(ctx);
         const crown = add.mesh(EXPLORER_CROWN, mats.primary, [0, 0.17, 0]);
         crown.name = 'explorerCrown';
-        add.cyl(0.38, 0.38, 0.03, mats.primary, [0, 0.18, 0.02]);
+        const brim = add.mesh(EXPLORER_BRIM, mats.primary, [0, 0.10, 0.02]);
+        brim.material = mats.primary.clone();
+        brim.material.side = THREE.DoubleSide;
+        brim.name = 'explorerBrim';
         add.torus(0.07, 0.012, mats.dark, [-0.09, 0.04, 0.26], [0, 0, 0.1]);
         add.torus(0.07, 0.012, mats.dark, [0.09, 0.04, 0.26], [0, 0, -0.1]);
         add.cyl(0.008, 0.008, 0.06, mats.dark, [0, 0.04, 0.26], [0, 0, Math.PI / 2]);
