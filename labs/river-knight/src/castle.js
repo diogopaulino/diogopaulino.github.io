@@ -42,6 +42,75 @@ function towerRoofGeometry(radius) {
 
 /** Duas águas sobre o salão 26×18. Perfil em X, extrusão no Z, rotateY deita a cumeeira no comprimento. */
 /**
+ * Pilar da muralha, centrado. Comprimento em X, espessura em Z, altura 22.
+ * As pilastras saem na face do rio e na face de dentro; o vão do portão
+ * permanece na largura original.
+ */
+function curtainPierGeometry(length) {
+    const hl = length / 2;
+    const hd = 3.6;
+    const jut = 0.62;
+    const pilW = 1.55;
+    const pitch = 3.5;
+    const spots = [];
+    for (let x = -hl + 2.4; x + pilW < hl - 1.6; x += pitch) spots.push(x);
+    const pts = [[-hl, -hd]];
+    for (const x of spots) {
+        pts.push([x, -hd], [x, -hd - jut], [x + pilW, -hd - jut], [x + pilW, -hd]);
+    }
+    pts.push([hl, -hd], [hl, hd]);
+    for (let i = spots.length - 1; i >= 0; i--) {
+        const x = spots[i];
+        pts.push([x + pilW, hd], [x + pilW, hd + jut], [x, hd + jut], [x, hd]);
+    }
+    pts.push([-hl, hd]);
+    const shape = new THREE.Shape();
+    shape.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 22, bevelEnabled: false, curveSegments: 1 });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const batter = 1.035 - (z / 22) * 0.05;
+        const course = Math.sin(z * 1.7) * 0.055;
+        const len = Math.hypot(x, y) || 1;
+        pos.setXY(i, x + (x / len) * course * 0.35, y * batter + (y / len) * course);
+    }
+    g.computeVertexNormals();
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, -11, 0);
+    return g;
+}
+
+/** Lintél com arco de volta perfeita. Y da Shape já é a altura no mundo. */
+function curtainArchGeometry(span) {
+    const half = span / 2;
+    const springX = (span - 3) / 2;
+    const springY = 14;
+    const crownY = 18.4;
+    const top = 22;
+    const shape = new THREE.Shape();
+    shape.moveTo(-half, top);
+    shape.lineTo(half, top);
+    shape.lineTo(half, springY);
+    shape.lineTo(springX, springY);
+    const seg = 18;
+    for (let i = 1; i <= seg; i++) {
+        const a = (Math.PI * i) / seg;
+        shape.lineTo(Math.cos(a) * springX, springY + Math.sin(a) * (crownY - springY));
+    }
+    shape.lineTo(-half, springY);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 7.6, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 1 });
+    g.translate(0, 0, -3.8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/**
  * Salão 26×16×18. A planta entra na Shape com y = −z; depois de
  * rotateX(−π/2) a extrusão vira a altura e a malha fica centrada em Y.
  * Contrafortes e fiadas cabem debaixo do beiral (vão de 30×22).
@@ -292,29 +361,21 @@ export function createCastle(scene) {
     // portão de água por onde o drakkar passa.
     const wallWidth = hw * 2 + 44;
     const gateWidth = hw * 1.5;
-    const gapLeft = new THREE.Mesh(new THREE.BoxGeometry((wallWidth - gateWidth) / 2, 22, 7.2), stone);
-    gapLeft.position.set(-(gateWidth + (wallWidth - gateWidth) / 2) / 2, 11, 0);
+    const pierLength = (wallWidth - gateWidth) / 2;
+    const gapLeft = new THREE.Mesh(curtainPierGeometry(pierLength), stone);
+    gapLeft.name = 'curtainPier';
+    gapLeft.position.set(-(gateWidth + pierLength) / 2, 11, 0);
     gapLeft.castShadow = true;
     group.add(gapLeft);
     const gapRight = gapLeft.clone();
     gapRight.position.x *= -1;
     group.add(gapRight);
 
-    const arch = new THREE.Mesh(new THREE.BoxGeometry(gateWidth + 3, 6, 7.4), stone);
-    arch.position.set(0, 19, 0);
+    const arch = new THREE.Mesh(curtainArchGeometry(gateWidth + 3), stone);
+    arch.name = 'curtainArch';
+    arch.position.set(0, 0, 0);
     arch.castShadow = true;
     group.add(arch);
-
-    // Aduelas: dão a curva do arco sobre o vão do portão.
-    const voussoirs = 13;
-    for (let i = 0; i < voussoirs; i++) {
-        const a = Math.PI * (i / (voussoirs - 1));
-        const block = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6, 7.6), stone);
-        block.position.set(Math.cos(a) * gateWidth * 0.5, 15.4 + Math.sin(a) * 3.6, 0);
-        block.rotation.z = a - Math.PI / 2;
-        block.castShadow = true;
-        group.add(block);
-    }
 
     // Ameias no topo da muralha.
     const merlons = Math.round(wallWidth / 3.2);
