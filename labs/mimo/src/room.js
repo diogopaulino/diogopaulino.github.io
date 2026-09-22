@@ -277,10 +277,28 @@ export function buildRoom(quality) {
     root.add(bed);
     refs.bed = bed;
 
+    // Tigelas com pé e borda. A ração continua nas mesmas alturas.
     const bowls = new THREE.Group();
+    bowls.name = 'bowls';
     bowls.position.set(-2.15, 0, 0.55);
-    bowls.add(mesh(cyl, ceramic, { scale: [0.12, 0.05, 0.12], pos: [0, 0.04, 0] }));
-    bowls.add(mesh(cyl, ceramicBlue, { scale: [0.12, 0.05, 0.12], pos: [0.32, 0.04, 0] }));
+    const bowlGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.045, 0),
+        new THREE.Vector2(0.06, 0.01),
+        new THREE.Vector2(0.095, 0.032),
+        new THREE.Vector2(0.115, 0.05),
+        new THREE.Vector2(0.13, 0.064),
+        new THREE.Vector2(0.108, 0.074)
+    ], 16);
+    const food = new THREE.Mesh(bowlGeo, ceramic);
+    food.name = 'bowlFood';
+    food.castShadow = true;
+    food.receiveShadow = true;
+    const water = new THREE.Mesh(bowlGeo, ceramicBlue);
+    water.name = 'bowlWater';
+    water.position.x = 0.32;
+    water.castShadow = true;
+    water.receiveShadow = true;
+    bowls.add(food, water);
     const kibble = new THREE.MeshPhysicalMaterial({ color: 0xc48a40, roughness: 0.7 });
     for (let i = 0; i < 8; i++) {
         bowls.add(mesh(sph, kibble, {
@@ -310,8 +328,21 @@ export function buildRoom(quality) {
     root.add(frame);
 
     const tub = new THREE.Group();
+    tub.name = 'bath';
     tub.position.set(2.15, 0, 1.55);
-    tub.add(mesh(cyl, ceramic, { scale: [0.42, 0.22, 0.32], pos: [0, 0.14, 0] }));
+    const bath = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.22, 0),
+        new THREE.Vector2(0.28, 0.03),
+        new THREE.Vector2(0.36, 0.1),
+        new THREE.Vector2(0.42, 0.18),
+        new THREE.Vector2(0.37, 0.23)
+    ], 18), ceramic);
+    bath.name = 'bathTub';
+    bath.scale.z = 0.32 / 0.42;
+    bath.position.y = 0.02;
+    bath.castShadow = true;
+    bath.receiveShadow = true;
+    tub.add(bath);
     tub.add(mesh(cyl, waterMat, { scale: [0.36, 0.04, 0.26], pos: [0, 0.2, 0], cast: false }));
     tub.visible = false;
     root.add(tub);
