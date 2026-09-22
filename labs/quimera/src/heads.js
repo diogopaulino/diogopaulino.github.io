@@ -40,6 +40,38 @@ const SAMURAI_BRIM = (() => {
 })();
 
 /**
+ * Crista do elmo: vista de lado, o pico sobe cerca de 16 cm acima da base.
+ * Extrusão em +Z (espessura); rotation.y = PI/2 põe o perfil no plano lateral.
+ */
+const WARRIOR_CREST = (() => {
+    const p = [
+        [-0.13, 0.00],
+        [-0.07, 0.05],
+        [0.00, 0.16],
+        [0.06, 0.08],
+        [0.13, 0.02],
+        [0.14, 0.00],
+        [0.08, -0.035],
+        [0.00, -0.035],
+        [-0.11, -0.035]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.022);
+    return g;
+})();
+
+/**
  * Visor do robô: as pontas ficam baixas e o centro sobe cerca de 10 cm.
  */
 const ROBOT_VISOR = (() => {
@@ -147,7 +179,8 @@ const HEADS = {
         const { add, mats } = ctx;
         addFace(ctx, { smile: false });
         add.lathe([[0.1, -0.16], [0.3, -0.02], [0.32, 0.12], [0.18, 0.26], [0.06, 0.34]], mats.accent, [0, -0.02, 0]);
-        add.box(0.06, 0.28, 0.22, mats.primary, [0, 0.28, 0], null, null, 0.02);
+        const crest = add.mesh(WARRIOR_CREST, mats.primary, [0, 0.24, 0], [0, Math.PI / 2, 0]);
+        crest.name = 'warriorCrest';
         add.box(0.34, 0.08, 0.08, mats.secondary, [0, 0.02, 0.22], null, null, 0.02);
         add.box(0.12, 0.1, 0.18, mats.secondary, [0, -0.08, 0.22]);
         add.sphere(0.1, mats.dark, [0, -0.18, 0.12], null, [1.3, 0.45, 0.7]);
