@@ -40,6 +40,43 @@ const SAMURAI_BRIM = (() => {
 })();
 
 /**
+ * Máscara do samurai (menpo): o nariz sobe cerca de 9 cm e o queixo
+ * desce cerca de 10 cm abaixo das laterais.
+ */
+const SAMURAI_PLATE = (() => {
+    const p = [
+        [-0.18, 0.02],
+        [-0.06, 0.035],
+        [-0.025, 0.07],
+        [0, 0.11],
+        [0.025, 0.07],
+        [0.06, 0.035],
+        [0.18, 0.02],
+        [0.18, -0.03],
+        [0.07, -0.03],
+        [0.02, -0.08],
+        [0, -0.13],
+        [-0.02, -0.08],
+        [-0.07, -0.03],
+        [-0.18, -0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.055,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.022);
+    return g;
+})();
+
+/**
  * Testeira do guerreiro: a barra desce numa ponta no meio, cerca de 10 cm.
  */
 const WARRIOR_BROW = (() => {
@@ -318,7 +355,8 @@ const HEADS = {
         brim.name = 'samuraiBrim';
         add.torus(0.1, 0.02, mats.accent, [0, 0.32, 0.04], [Math.PI / 2, 0, 0]);
         add.box(0.08, 0.16, 0.04, mats.accent, [0, 0.40, 0.04]);
-        add.box(0.36, 0.1, 0.08, mats.secondary, [0, -0.02, 0.22]);
+        const plate = add.mesh(SAMURAI_PLATE, mats.secondary, [0, -0.02, 0.22]);
+        plate.name = 'samuraiPlate';
     }),
 
     scientist: (kit) => build(kit, (ctx) => {
