@@ -422,6 +422,48 @@ const ROBOT_MOUTH = (() => {
     return g;
 })();
 
+/**
+ * Âncora do marinheiro: as duas unhas descem cerca de 11 cm abaixo da coroa.
+ * A trave sai dos dois lados do cepo.
+ */
+const SAILOR_ANCHOR = (() => {
+    const p = [
+        [-0.014, 0.07],
+        [0.014, 0.07],
+        [0.014, 0.04],
+        [0.058, 0.04],
+        [0.058, 0.02],
+        [0.014, 0.02],
+        [0.016, -0.02],
+        [0.05, -0.055],
+        [0.032, -0.12],
+        [0.01, -0.04],
+        [0, -0.012],
+        [-0.01, -0.04],
+        [-0.032, -0.12],
+        [-0.05, -0.055],
+        [-0.016, -0.02],
+        [-0.014, 0.02],
+        [-0.058, 0.02],
+        [-0.058, 0.04],
+        [-0.014, 0.04]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.008);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -448,7 +490,8 @@ const HEADS = {
         addFace(ctx);
         add.cyl(0.24, 0.26, 0.12, mats.white, [0, 0.26, 0]);
         add.cyl(0.32, 0.32, 0.035, mats.white, [0, 0.20, 0]);
-        add.box(0.08, 0.12, 0.02, mats.primary, [0, 0.22, 0.26]);
+        const anchor = add.mesh(SAILOR_ANCHOR, mats.primary, [0, 0.22, 0.26]);
+        anchor.name = 'sailorAnchor';
         add.lathe([[0.02, 0], [0.08, 0.04], [0.05, 0.14], [0.015, 0.22]], mats.dark, [0, -0.02, -0.2], [0.4, 0, 0]);
     }),
 
