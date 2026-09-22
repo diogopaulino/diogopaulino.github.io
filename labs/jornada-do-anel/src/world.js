@@ -538,10 +538,11 @@ export function buildRivendell(quality) {
 
     for (const sx of [-1, 1]) {
         const cliff = new THREE.Mesh(
-            new THREE.BoxGeometry(8, 18, 28),
+            RIVENDELL_CLIFF,
             new THREE.MeshStandardMaterial({ color: 0xc8d8d0, roughness: 0.85 })
         );
         applyMaps(cliff.material, stoneTexture('#8aa0a8'), { color: 0xc8d8d0, roughness: 0.85, normalScale: 1.2 });
+        cliff.name = 'rivendellCliff';
         cliff.position.set(sx * 40, 6, 0);
         world.group.add(cliff);
     }
@@ -554,6 +555,36 @@ export function buildRivendell(quality) {
     makePage(world, -12, -16, 'rivendell-page');
     return world;
 }
+
+/**
+ * Paredão de Valfenda, centrado como a caixa 8×18×28.
+ * A queda d'água encosta em |x|=4, |z|<8: ali a face só recua.
+ * Nas pontas a rocha avança; o topo deixa de ser uma laje.
+ */
+const RIVENDELL_CLIFF = (() => {
+    const g = new THREE.BoxGeometry(8, 18, 28, 8, 16, 14);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const faceX = Math.abs(x) > 3.7;
+        const crown = y > 8.4;
+        if (!faceX && !crown) continue;
+        const strata = Math.sin((y + 9) * 1.4) > 0.4 ? 0.22 : 0;
+        const crack = Math.max(0, Math.cos(z * 0.85)) ** 2;
+        if (faceX) {
+            const end = Math.abs(z) > 8;
+            const jut = end ? 0.42 + crack * 0.38 : 0;
+            const recess = end ? 0 : strata + crack * 0.28;
+            x = Math.sign(x) * (4 + jut - recess);
+        }
+        if (crown) y += 0.25 + Math.sin(z * 0.48) * 0.85 + Math.cos(x * 0.7) * 0.22;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
 
 /**
  * Muro do salão, centrado como a caixa 2×16×110.
