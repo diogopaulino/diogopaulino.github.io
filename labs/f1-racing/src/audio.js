@@ -158,6 +158,11 @@ export class AudioEngine {
         if (this.master) this.master.gain.value = value;
     }
 
+    toggleMute() {
+        this.setEnabled(!this.enabled);
+        return !this.enabled;
+    }
+
     setEnabled(enabled) {
         this.enabled = enabled;
         if (this.master) this.master.gain.value = enabled ? this.volume : 0;

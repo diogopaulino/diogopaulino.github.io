@@ -6,9 +6,9 @@
 import { buildCircuit, CIRCUITS } from './circuits.js';
 import { buildCircuitWorld } from './world.js';
 import { buildF1Car, updateCarVisuals } from './carModel.js';
-import { Vehicle } from './vehicle.js';
+import { Vehicle } from './vehicle.js?v=4';
 import { RaceEffects } from './effects.js';
-import { AudioEngine } from './audio.js';
+import { AudioEngine } from './audio.js?v=4';
 import { TEAMS } from './config.js';
 import { clamp, lerp } from './utils.js';
 
@@ -197,7 +197,6 @@ class F1GrandPrix {
         document.body.dataset.state = 'racing';
 
         this.vehicle.reset();
-        this.audio.init();
         this.audio.start();
     }
 
@@ -265,7 +264,16 @@ class F1GrandPrix {
             this.camera.setTarget(lookTarget);
 
             // Áudio do motor
-            this.audio.update(this.vehicle.rpm || 4000, speedKmh, throttle, brake, this.vehicle.gear || 1);
+            this.audio.update({
+                rpm: this.vehicle.rpm || 4000,
+                throttle,
+                load: throttle,
+                speed: speedKmh,
+                slip: this.vehicle.slip || 0,
+                wet: false,
+                gearChange: false,
+                offTrack: !!this.vehicle.offTrack
+            }, dt);
 
             // Telemetria & HUD
             this.updateHud(speedKmh);
