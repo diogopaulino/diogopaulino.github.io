@@ -12,6 +12,60 @@ const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);
 const SPH = new THREE.SphereGeometry(1, 36, 28);
 const CONE = new THREE.ConeGeometry(1, 1, 24);
+
+/**
+ * Massa unitária (centrada, lado 1) compartilhada por todos os prédios.
+ * Cornija para fora, vão de janela para dentro, cunhal só na quina.
+ * O relevo máximo para fora é ~0.014 — as fitas de néon saem além disso.
+ */
+const BUILDING_MASS = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1, 10, 28, 10);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x);
+        const az = Math.abs(z);
+        const onX = ax > 0.499;
+        const onZ = az > 0.499;
+        if (!onX && !onZ) continue;
+        const t = y + 0.5;
+        const floorWave = Math.sin(t * Math.PI * 12);
+        const cornice = floorWave > 0.78 ? 0.012 : 0;
+        const corner = ax > 0.46 && az > 0.46;
+        const quoin = corner ? 0.02 : 0;
+        const bay = !corner && floorWave < -0.05 && t > 0.06 && t < 0.94 ? 0.018 : 0;
+        if (onX) x = Math.sign(x) * (0.5 + cornice + quoin - (onZ ? 0 : bay));
+        if (onZ) z = Math.sign(z) * (0.5 + cornice + quoin - (onX ? 0 : bay));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Braço e cabeça de poste: lathe ao longo de X, no lugar da caixa 1.4×0.08. */
+const LAMP_ARM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.7),
+        new THREE.Vector2(0.055, -0.15),
+        new THREE.Vector2(0.048, 0.4),
+        new THREE.Vector2(0.07, 0.68)
+    ], 10);
+    g.rotateZ(-Math.PI / 2);
+    return g;
+})();
+const LAMP_HEAD = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, -0.2),
+        new THREE.Vector2(0.1, -0.08),
+        new THREE.Vector2(0.13, 0.04),
+        new THREE.Vector2(0.08, 0.12),
+        new THREE.Vector2(0.03, 0.16)
+    ], 12);
+    g.rotateZ(-Math.PI / 2);
+    return g;
+})();
 const SEDAN_FENDER = new THREE.LatheGeometry([
     new THREE.Vector2(0.05, -0.55),
     new THREE.Vector2(0.18, -0.15),
@@ -486,8 +540,16 @@ export function createLamp(mats) {
     const g = new THREE.Group();
     g.add(mesh(CYL, mats.dark, 0.08, 5.2, 0.08, 0, 2.6, 0));
     g.add(mesh(CYL, mats.chrome, 0.06, 0.12, 0.06, 0, 5.15, 0));
-    g.add(mesh(BOX, mats.dark, 1.4, 0.08, 0.12, 0.5, 5.15, 0));
-    const bulb = mesh(BOX, mats.lamp, 0.45, 0.12, 0.25, 1.05, 5.0, 0);
+    const arm = new THREE.Mesh(LAMP_ARM, mats.dark);
+    arm.position.set(0.5, 5.15, 0);
+    arm.castShadow = true;
+    g.add(arm);
+    const head = new THREE.Mesh(LAMP_HEAD, mats.dark);
+    head.position.set(1.15, 5.14, 0);
+    head.castShadow = true;
+    g.add(head);
+    const bulb = mesh(CYL, mats.lamp, 0.07, 0.16, 0.07, 1.16, 5.04, 0);
+    bulb.rotation.z = Math.PI / 2;
     g.add(bulb);
     g.userData.bulb = bulb;
     return g;
@@ -499,7 +561,7 @@ export function createBuilding(mats, rng, density, side = 1) {
     const d = 7 + rng() * 11;
     const h = 8 + rng() ** 1.4 * (28 + density * 18);
 
-    const body = mesh(BOX, mats.body, w, h, d, 0, h / 2, 0);
+    const body = mesh(BUILDING_MASS, mats.body, w, h, d, 0, h / 2, 0);
     g.add(body);
 
     // Cornija / setbacks para densificar a fachada
@@ -517,12 +579,12 @@ export function createBuilding(mats, rng, density, side = 1) {
         const y = h * (0.2 + (i / bands) * 0.65);
         const stripH = mesh(BOX, rng() > 0.5 ? mats.neonA : mats.neonB,
             w * 0.92, 0.08, 0.12,
-            0, y, -side * (d / 2 + 0.06));
+            0, y, -side * (d / 2 + 0.06 + d * 0.016));
         g.add(stripH);
     }
 
     const strip = mesh(BOX, rng() > 0.5 ? mats.neonA : mats.neonB, 0.16, h * 0.92, 0.16,
-        -side * (w / 2 + 0.08), h / 2, (rng() - 0.5) * d * 0.6);
+        -side * (w / 2 + 0.08 + w * 0.016), h / 2, (rng() - 0.5) * d * 0.6);
     g.add(strip);
 
     if (rng() > 0.35) {
@@ -536,7 +598,7 @@ export function createBuilding(mats, rng, density, side = 1) {
             side: THREE.DoubleSide
         });
         const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.9, 6.5), 1.15), signMat);
-        sign.position.set(-side * (w / 2 + 0.12), 3.2 + rng() * (h * 0.4), 0);
+        sign.position.set(-side * (w / 2 + 0.12 + w * 0.016), 3.2 + rng() * (h * 0.4), 0);
         sign.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(sign);
         g.userData.signMat = signMat;

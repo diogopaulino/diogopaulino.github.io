@@ -5,7 +5,7 @@
 
 import { BIKE, ROAD } from './config.js';
 import { clamp, damp } from './utils.js';
-import { createBike } from './models.js?v=9';
+import { createBike } from './models.js?v=10';
 
 export class Player {
     constructor(scene, mats) {
