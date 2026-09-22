@@ -15,7 +15,7 @@ import { clamp, lerp, wrapPi, detectMobile, detectTouch, detectSoftwareGL } from
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
-import { World } from './world.js?v=1';
+import { World } from './world.js?v=2';
 import { createCraft, createBall, syncCraft, syncBall } from './crafts.js';
 import { Effects } from './effects.js';
 import { createMatch, step, snapshot, applySnapshot, blankInput } from './physics.js';
