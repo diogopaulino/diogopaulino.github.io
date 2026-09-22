@@ -555,6 +555,73 @@ export function buildRivendell(quality) {
     return world;
 }
 
+/**
+ * Muro do salão, centrado como a caixa 2×16×110.
+ * Fiadas e pilastras alinhadas aos pilares (a cada 5.5 m).
+ */
+const MORIA_WALL = (() => {
+    const g = new THREE.BoxGeometry(2, 16, 110, 3, 14, 48);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (Math.abs(x) < 0.9) continue;
+        const t = (y + 8) / 16;
+        const course = Math.sin((y + 8) * 1.6) > 0.55 ? 0.11 : 0;
+        const phase = ((z + 42) / 5.5) * Math.PI * 2;
+        const rib = Math.max(0, Math.cos(phase)) ** 2 * 0.42;
+        x = Math.sign(x) * (1 + (1 - t) * 0.1 + course + rib);
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Abóbada de berço ao longo do salão. y=0 é o nascimento, sobre o topo do muro. */
+function moriaVaultGeometry() {
+    const half = 19;
+    const rise = 3.6;
+    const thick = 0.85;
+    const steps = 18;
+    const s = new THREE.Shape();
+    s.moveTo(-half, 0);
+    for (let i = 0; i <= steps; i++) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, rise * (1 - u * u) + thick);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, Math.max(0, rise * (1 - u * u)));
+    }
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 110,
+        steps: 36,
+        bevelEnabled: false,
+        curveSegments: 1
+    });
+    g.translate(0, 0, -55);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const phase = ((z + 42) / 5.5) * Math.PI * 2;
+        const rib = Math.max(0, Math.cos(phase)) ** 2;
+        const ox = x;
+        const oy = y - rise * 0.45;
+        const len = Math.hypot(ox, oy) || 1;
+        x += (ox / len) * rib * 0.38;
+        y += (oy / len) * rib * 0.22;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 /* ================================================================== */
 /* IV — As Minas                                                       */
 /* ================================================================== */
@@ -588,13 +655,19 @@ export function buildMoria(quality) {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.95 });
     applyMaps(wallMat, stoneTexture('#3a3028'), { color: 0x3a3028, roughness: 0.95, normalScale: 1.25 });
     for (const sx of [-1, 1]) {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(2, 16, 110), wallMat);
+        const wall = new THREE.Mesh(MORIA_WALL, wallMat);
+        wall.name = 'moriaWall';
         wall.position.set(sx * 18, 8, 50);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
         world.group.add(wall);
         world.addCollider(sx * 17, 50, 3);
     }
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(38, 1.2, 110), wallMat);
-    ceiling.position.set(0, 15.2, 50);
+    const ceiling = new THREE.Mesh(moriaVaultGeometry(), wallMat);
+    ceiling.name = 'moriaVault';
+    ceiling.position.set(0, 16, 50);
+    ceiling.castShadow = true;
+    ceiling.receiveShadow = true;
     world.group.add(ceiling);
 
     const pillarN = quality.id === 'low' ? 8 : 12;
