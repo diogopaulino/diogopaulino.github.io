@@ -12,7 +12,14 @@ const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);
 const SPH = new THREE.SphereGeometry(1, 36, 28);
 const CONE = new THREE.ConeGeometry(1, 1, 24);
-const CAP = new THREE.CapsuleGeometry(0.5, 1, 10, 28);
+const SEDAN_FENDER = new THREE.LatheGeometry([
+    new THREE.Vector2(0.05, -0.55),
+    new THREE.Vector2(0.18, -0.15),
+    new THREE.Vector2(0.22, 0.2),
+    new THREE.Vector2(0.1, 0.48),
+    new THREE.Vector2(0.03, 0.62)
+], 16);
+SEDAN_FENDER.rotateZ(-Math.PI / 2);
 
 function mesh(geo, mat, sx, sy, sz, x, y, z) {
     const m = new THREE.Mesh(geo, mat);
@@ -346,7 +353,11 @@ export function createCar(mats, kind = 0) {
         sedan.castShadow = true;
         g.add(sedan);
         g.add(mesh(SPH, mats.glass, 1.35, 0.38, 0.95, 0, 1.0, -0.15));
-        g.add(mesh(CAP, body, 1.4, 0.16, 0.55, 0, 0.92, -1.2));
+        const fender = new THREE.Mesh(SEDAN_FENDER, body);
+        fender.position.set(0, 0.92, -1.2);
+        fender.scale.set(1.15, 0.55, 0.7);
+        fender.castShadow = true;
+        g.add(fender);
     } else if (kind % 3 === 1) {
         // Van / wagon
         const vanPts = [

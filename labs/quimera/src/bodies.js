@@ -53,7 +53,7 @@ const BODIES = {
     warrior: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.56, 0.5, 0.38, mats.secondary, [0, 0.90, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.28, 0.06], [0.26, 0.28], [0.16, 0.46], [0.1, 0.5]], mats.secondary, [0, 0.66, 0.02]);
             add.box(0.18, 0.28, 0.06, mats.accent, [0, 0.92, 0.20]);
             add.box(0.5, 0.7, 0.08, mats.primary, [0, 0.78, -0.22], [0.15, 0, 0], null, 0.04);
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [-0.36, 1.06, 0]);
@@ -140,7 +140,7 @@ const BODIES = {
     viking: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.5, 0.4, mats.cloth, [0, 0.86, 0], null, null, 0.08);
+            add.lathe([[0.18, 0], [0.3, 0.08], [0.26, 0.28], [0.18, 0.46]], mats.cloth, [0, 0.62, 0]);
             add.box(0.52, 0.12, 0.12, mats.trim, [0, 0.70, 0.16], null, null, 0.03);
             add.box(0.48, 0.55, 0.12, mats.primary, [0, 0.78, -0.22], [0.2, 0, 0], null, 0.05);
             add.sphere(0.12, mats.trim, [-0.28, 0.55, 0.12]);
@@ -177,9 +177,9 @@ const BODIES = {
     samurai: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.62, 0.28, 0.42, mats.primary, [0, 1.02, 0], null, null, 0.05);
-            add.box(0.48, 0.4, 0.34, mats.secondary, [0, 0.78, 0], null, null, 0.05);
-            add.box(0.54, 0.28, 0.34, mats.cloth, [0, 0.42, 0], null, null, 0.06);
+            add.lathe([[0.2, 0], [0.32, 0.04], [0.3, 0.14], [0.16, 0.26]], mats.primary, [0, 0.9, 0]);
+            add.lathe([[0.14, 0], [0.24, 0.06], [0.22, 0.22], [0.14, 0.38]], mats.secondary, [0, 0.58, 0]);
+            add.lathe([[0.16, 0], [0.28, 0.04], [0.24, 0.16], [0.14, 0.26]], mats.cloth, [0, 0.28, 0]);
             add.box(0.08, 0.22, 0.04, mats.accent, [0, 0.86, 0.18]);
             add.box(0.7, 0.08, 0.18, mats.primary, [0, 1.08, 0], null, null, 0.03);
         }
@@ -188,7 +188,7 @@ const BODIES = {
     scientist: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.72, 0.4, mats.white, [0, 0.78, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.3, 0.08], [0.28, 0.4], [0.18, 0.68]], mats.white, [0, 0.42, 0]);
             add.box(0.16, 0.08, 0.04, mats.secondary, [0, 1.02, 0.20]);
             add.box(0.1, 0.1, 0.08, mats.accent, [0.22, 0.70, 0.16], null, null, 0.02);
             add.box(0.48, 0.28, 0.34, mats.secondary, [0, 0.32, 0], null, null, 0.04);

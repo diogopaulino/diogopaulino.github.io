@@ -981,8 +981,14 @@ export function buildPavilion() {
         );
         col.position.set(Math.cos(a) * 5.2, 0, Math.sin(a) * 5.2);
         group.add(col);
-        const cap = new THREE.Mesh(geo('pav-cap', () => new THREE.SphereGeometry(0.22, 10, 8)), gold);
-        cap.position.set(Math.cos(a) * 5.2, 4.28, Math.sin(a) * 5.2);
+        const cap = new THREE.Mesh(geo('pav-cap', () => new THREE.LatheGeometry([
+            new THREE.Vector2(0.04, 0),
+            new THREE.Vector2(0.2, 0.03),
+            new THREE.Vector2(0.16, 0.12),
+            new THREE.Vector2(0.06, 0.24),
+            new THREE.Vector2(0.015, 0.32)
+        ], 12)), gold);
+        cap.position.set(Math.cos(a) * 5.2, 4.12, Math.sin(a) * 5.2);
         group.add(cap);
     }
 
