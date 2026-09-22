@@ -395,6 +395,25 @@ const EXPLORER_BRIDGE = (() => {
     return g;
 })();
 
+/**
+ * Ponteira da haste do viking: a boca que entra no cabo é estreita,
+ * a gola abre no meio e a ponta de baixo fecha.
+ */
+const VIKING_FERRULE = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.002, 0),
+        new THREE.Vector2(0.008, 0.014),
+        new THREE.Vector2(0.014, 0.03),
+        new THREE.Vector2(0.02, 0.044),
+        new THREE.Vector2(0.032, 0.056),
+        new THREE.Vector2(0.024, 0.066),
+        new THREE.Vector2(0.016, 0.08)
+    ], 12);
+    g.translate(0, -0.04, 0);
+    g.computeVertexNormals();
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -483,7 +502,8 @@ const ACCESSORIES = {
         add.cyl(0.025, 0.03, 0.5, mats.cloth, [0, 0.22, 0], [0.2, 0, 0.35]);
         const banner = add.mesh(VIKING_BANNER, mats.accent, [0.04, 0.48, 0.1], [0.2, 0.3, 0.2]);
         banner.name = 'vikingBanner';
-        add.box(0.04, 0.08, 0.04, mats.secondary, [0, 0.02, 0]);
+        const ferrule = add.mesh(VIKING_FERRULE, mats.secondary, [0, 0.02, 0]);
+        ferrule.name = 'vikingFerrule';
     }),
 
     fairy: (kit) => build(kit, 'grip', ({ add, mats }) => {
