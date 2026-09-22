@@ -853,6 +853,37 @@ const CHEF_SUSPENDER = (() => {
     return g;
 })();
 
+/** Fita do avental: estreita em cima e abre em duas pontas. */
+const CHEF_TIE = (() => {
+    const p = [
+        [-0.018, 0.16],
+        [0.018, 0.16],
+        [0.028, 0.02],
+        [0.034, -0.06],
+        [0.03, -0.16],
+        [0.01, -0.07],
+        [0, -0.02],
+        [-0.01, -0.07],
+        [-0.03, -0.16],
+        [-0.034, -0.06],
+        [-0.028, 0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.01);
+    return g;
+})();
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -966,8 +997,10 @@ const BODIES = {
             apron.name = 'chefApron';
             const pleat = add.mesh(CHEF_PLEAT, mats.white, [0, 0.32, 0.1]);
             pleat.name = 'chefPleat';
-            add.box(0.06, 0.32, 0.02, mats.white, [-0.1, 0.32, 0.15]);
-            add.box(0.06, 0.32, 0.02, mats.white, [0.1, 0.32, 0.15]);
+            for (const x of [-0.1, 0.1]) {
+                const tie = add.mesh(CHEF_TIE, mats.white, [x, 0.32, 0.15]);
+                tie.name = 'chefTie';
+            }
         }
     }),
 
