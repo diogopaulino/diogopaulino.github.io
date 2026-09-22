@@ -3,15 +3,15 @@ import {
     loadSettings, saveSettings, biomeAt, biomeBlend
 } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL, hexToColor3, hexToColor4, mixHexColor3, lerp } from './utils.js';
-import { createSky, createClouds, createRoad, America } from './world.js?v=10';
-import { Player } from './player.js?v=10';
-import { Track } from './obstacles.js?v=10';
-import { Pack } from './followers.js?v=10';
+import { createSky, createClouds, createRoad, America } from './world.js?v=11';
+import { Player } from './player.js?v=11';
+import { Track } from './obstacles.js?v=11';
+import { Pack } from './followers.js?v=11';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
-import { createFeatherMesh } from './models.js?v=10';
+import { createFeatherMesh } from './models.js?v=11';
 const CAMERAS = [
     { name: 'perseguição', offset: new BABYLON.Vector3(0, 2.5, 7.8), look: new BABYLON.Vector3(0, 1.1, -12) },
     { name: 'cinema', offset: new BABYLON.Vector3(4.5, 1.6, 4.0), look: new BABYLON.Vector3(-0.6, 1.0, -9) },

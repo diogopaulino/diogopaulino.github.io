@@ -1,5 +1,5 @@
 import { FOLLOWERS_AT, ROAD } from './config.js';
-import { createForrest } from './models.js?v=10';
+import { createForrest } from './models.js?v=11';
 export class Pack {
     constructor(scene, shadowGenerator, max = 12) {
         this.scene = scene;

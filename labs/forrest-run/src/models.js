@@ -513,15 +513,113 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         post.parent = root;
         registerShadows(post, shadowGenerator);
     }
-    const door = BABYLON.MeshBuilder.CreateBox('door', { width: 0.85, height: 1.8, depth: 0.1 }, scene);
+    // Porta de seis painéis e janela de doze vidros. O perfil usa x como
+    // profundidade (x negativo sai em +Z, para a varanda) e y como a outra
+    // medida da secção. O vão continua no mesmo sítio da caixa antiga.
+    const carve = (parent, name, shape, path) => {
+        const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+            path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        mesh.material = woodMat;
+        mesh.parent = parent;
+        registerShadows(mesh, shadowGenerator);
+        return mesh;
+    };
+    const door = new BABYLON.TransformNode('door', scene);
     door.position.set(0, 1.0, 2.15);
-    door.material = woodMat;
     door.parent = root;
+    const stileShape = [
+        [0.03, -0.046], [0.03, 0.046], [-0.015, 0.044],
+        [-0.055, 0.018], [-0.062, -0.018], [-0.015, -0.044]
+    ];
+    const centerStile = [
+        [0.03, -0.032], [0.03, 0.032], [-0.015, 0.03],
+        [-0.055, 0.012], [-0.062, -0.012], [-0.015, -0.03]
+    ];
+    carve(door, 'doorStile', stileShape, [[-0.378, -0.9, 0], [-0.378, 0.9, 0]]);
+    carve(door, 'doorStile', stileShape, [[0.378, -0.9, 0], [0.378, 0.9, 0]]);
+    carve(door, 'doorMuntin', centerStile, [[0, -0.74, 0], [0, 0.78, 0]]);
+    const railShape = (halfH) => {
+        const lip = Math.min(0.018, halfH * 0.35);
+        return [
+            [0.03, -halfH], [-0.01, -halfH], [-0.05, -halfH + lip],
+            [-0.058, halfH - lip], [-0.01, halfH], [0.03, halfH]
+        ];
+    };
+    const rail = (name, y, halfH) => carve(door, name, railShape(halfH), [[-0.36, y, 0], [0.36, y, 0]]);
+    rail('doorRailBottom', -0.82, 0.08);
+    rail('doorRailLock', -0.02, 0.06);
+    rail('doorRailFrieze', 0.46, 0.045);
+    rail('doorRailTop', 0.84, 0.06);
+    const panelShape = (halfH) => {
+        const bevel = Math.min(0.04, halfH * 0.28);
+        const inner = halfH - bevel - 0.01;
+        return [
+            [0.02, -halfH], [-0.004, -halfH], [-0.07, -halfH + bevel], [-0.092, -inner],
+            [-0.092, inner], [-0.07, halfH - bevel], [-0.004, halfH], [0.02, halfH]
+        ];
+    };
+    for (const [x0, x1] of [[-0.31, -0.06], [0.06, 0.31]]) {
+        for (const [y, halfH] of [[-0.40, 0.30], [0.22, 0.16], [0.64, 0.11]]) {
+            carve(door, 'doorPanel', panelShape(halfH), [[x0, y, 0], [x1, y, 0]]);
+        }
+    }
+    const knobMat = pbrMat(scene, 'doorBrass', 0xc6a15a, 0.35, 0.85);
+    const knob = BABYLON.MeshBuilder.CreateLathe('doorKnob', {
+        shape: [
+            new BABYLON.Vector3(0.012, 0, 0),
+            new BABYLON.Vector3(0.034, 0.012, 0),
+            new BABYLON.Vector3(0.038, 0.02, 0),
+            new BABYLON.Vector3(0.014, 0.028, 0),
+            new BABYLON.Vector3(0.02, 0.04, 0),
+            new BABYLON.Vector3(0.036, 0.055, 0),
+            new BABYLON.Vector3(0.038, 0.078, 0),
+            new BABYLON.Vector3(0.012, 0.092, 0)
+        ],
+        tessellation: 12,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(0.36, 0.02, 0.05);
+    knob.material = knobMat;
+    knob.parent = door;
+    registerShadows(knob, shadowGenerator);
+    const mould = [
+        [0.02, -0.05], [-0.01, -0.05], [-0.07, -0.02],
+        [-0.085, 0.015], [-0.04, 0.05], [0.02, 0.045]
+    ];
+    const sillShape = [
+        [0.02, -0.035], [-0.18, -0.02], [-0.16, 0.025], [-0.03, 0.05], [0.02, 0.04]
+    ];
+    const meetShape = [
+        [0.01, -0.035], [-0.06, -0.03], [-0.065, 0.03], [0.01, 0.035]
+    ];
+    const bar = [
+        [0, -0.016], [-0.05, -0.012], [-0.055, 0.012], [0, 0.016]
+    ];
     for (const x of [-1.6, 1.6]) {
-        const win = BABYLON.MeshBuilder.CreateBox('window', { width: 0.9, height: 0.9, depth: 0.1 }, scene);
+        const win = new BABYLON.TransformNode('window', scene);
         win.position.set(x, 1.8, 2.15);
-        win.material = windowMat;
         win.parent = root;
+        carve(win, 'windowSill', sillShape, [[-0.58, -0.5, 0], [0.58, -0.5, 0]]);
+        carve(win, 'windowHead', mould, [[-0.52, 0.46, 0], [0.52, 0.46, 0]]);
+        carve(win, 'windowJamb', mould, [[-0.46, -0.48, 0], [-0.46, 0.5, 0]]);
+        carve(win, 'windowJamb', mould, [[0.46, -0.48, 0], [0.46, 0.5, 0]]);
+        carve(win, 'windowMeeting', meetShape, [[-0.38, 0, 0], [0.38, 0, 0]]);
+        for (const mx of [-0.12, 0.12]) {
+            carve(win, 'windowMuntin', bar, [[mx, -0.4, 0], [mx, -0.05, 0]]);
+            carve(win, 'windowMuntin', bar, [[mx, 0.05, 0], [mx, 0.4, 0]]);
+        }
+        carve(win, 'windowMuntin', bar, [[-0.36, -0.22, 0], [0.36, -0.22, 0]]);
+        carve(win, 'windowMuntin', bar, [[-0.36, 0.22, 0], [0.36, 0.22, 0]]);
+        const glass = BABYLON.MeshBuilder.CreateBox('windowGlass', { width: 0.74, height: 0.78, depth: 0.015 }, scene);
+        glass.position.set(0, 0, -0.02);
+        glass.material = windowMat;
+        glass.parent = win;
     }
     return root;
     });

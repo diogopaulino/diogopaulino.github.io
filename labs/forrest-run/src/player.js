@@ -1,6 +1,6 @@
 import { ROAD, RUNNER } from './config.js';
 import { clamp, damp, lerp } from './utils.js';
-import { createForrest } from './models.js?v=10';
+import { createForrest } from './models.js?v=11';
 export class Player {
     constructor(scene, shadowGenerator) {
         this.scene = scene;
