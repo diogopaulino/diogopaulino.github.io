@@ -9,7 +9,7 @@ import { detectMobile, detectSoftwareGL, formatTime } from './utils.js';
 import { Track } from './track.js';
 import { Vehicle, resolveCarContact } from './vehicle.js';
 import { createCarMesh, syncCarMesh, applyCarEnvMap, loadCarTemplate } from './carModel.js';
-import { World } from './world.js?v=1';
+import { World } from './world.js?v=2';
 import { Input } from './input.js';
 import { AiDriver } from './ai.js';
 import { GameAudio } from './audio.js';
