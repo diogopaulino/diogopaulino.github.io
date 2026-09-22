@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { PLAYER, CAMERA, ISLAND } from './config.js';
 import { clamp, damp, wrapPi, lerpAngle } from './utils.js';
-import { createNico } from './models.js?v=10';
+import { createNico } from './models.js?v=11';
 
 export class Player {
     constructor(scene) {
