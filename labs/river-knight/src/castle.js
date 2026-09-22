@@ -466,6 +466,84 @@ function buildPrincess() {
  * Monta o castelo sobre o rio: duas alas nas margens, muralha com portão
  * levadiço sobre a água e a torre da princesa.
  */
+/** Laje 6.4×0.7×3.4, centrada. Bico na face +Z, que aponta para o rio. */
+function balconySlabGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(1.7, 0.35);
+    s.lineTo(-1.5, 0.35);
+    s.lineTo(-1.88, 0.2);
+    s.lineTo(-1.72, 0.02);
+    s.lineTo(-1.48, -0.12);
+    s.lineTo(-1.48, -0.35);
+    s.lineTo(1.55, -0.35);
+    s.lineTo(1.7, 0.02);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 6.4,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.04,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -3.2);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Balaústre de 1.5, centrado. Base, barriga e capitel. */
+function balusterGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = (t - 0.5) * 1.5;
+        let r = 0.1;
+        r += 0.11 * Math.exp(-((t - 0.12) ** 2) / 0.006);
+        r += 0.07 * Math.exp(-((t - 0.48) ** 2) / 0.014);
+        r += 0.1 * Math.exp(-((t - 0.86) ** 2) / 0.005);
+        if (t < 0.05 || t > 0.95) r = 0.2;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 10);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Corrimão ao longo de X, seção abaulada. */
+function balconyRailGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.16, -0.08);
+    s.lineTo(-0.1, 0.06);
+    s.quadraticCurveTo(0, 0.14, 0.1, 0.06);
+    s.lineTo(0.16, -0.08);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 6.5, bevelEnabled: false });
+    g.translate(0, 0, -3.25);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Mísula sob o bico. +X local vira +Z depois de rotateY(−π/2). */
+function corbelGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0);
+    s.lineTo(0.62, 0);
+    s.quadraticCurveTo(0.48, -0.16, 0.12, -0.46);
+    s.lineTo(0, -0.46);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.38, bevelEnabled: false });
+    g.translate(0, 0, -0.19);
+    g.rotateY(-Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BALCONY_SLAB = balconySlabGeometry();
+const BALUSTER = balusterGeometry();
+const BALCONY_RAIL = balconyRailGeometry();
+const CORBEL = corbelGeometry();
+
 export function createCastle(scene) {
     const group = new THREE.Group();
     const z = CASTLE_Z;
@@ -562,15 +640,27 @@ export function createCastle(scene) {
 
     // Sacada voltada para o rio, onde a princesa aparece.
     const balconyZ = keepZ + keepRadius + 1.1;
-    const balcony = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 3.4), stone);
+    const balcony = new THREE.Mesh(BALCONY_SLAB, stone);
+    balcony.name = 'balconySlab';
     balcony.position.set(keepX, 32.9, balconyZ);
     balcony.castShadow = true;
     group.add(balcony);
 
     for (let i = -2; i <= 2; i++) {
-        const baluster = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), stone);
+        const baluster = new THREE.Mesh(BALUSTER, stone);
+        baluster.name = 'balconyBaluster';
         baluster.position.set(keepX + i * 1.5, 34, balconyZ + 1.4);
         group.add(baluster);
+    }
+    const rail = new THREE.Mesh(BALCONY_RAIL, stone);
+    rail.name = 'balconyRail';
+    rail.position.set(keepX, 34.82, balconyZ + 1.4);
+    group.add(rail);
+    for (const dx of [-1.8, 0, 1.8]) {
+        const corbel = new THREE.Mesh(CORBEL, stone);
+        corbel.name = 'balconyCorbel';
+        corbel.position.set(keepX + dx, 32.55, balconyZ + 1.15);
+        group.add(corbel);
     }
 
     const window_ = new THREE.Mesh(
