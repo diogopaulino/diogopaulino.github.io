@@ -302,7 +302,7 @@ export function buildRoom(quality) {
     const bed = new THREE.Group();
     bed.name = 'petBed';
     bed.position.set(-1.35, 0, 1.15);
-    const cushion = new THREE.Mesh(new THREE.LatheGeometry([
+    const bedCushion = new THREE.Mesh(new THREE.LatheGeometry([
         new THREE.Vector2(0.08, 0.02),
         new THREE.Vector2(0.32, 0.035),
         new THREE.Vector2(0.42, 0.07),
@@ -310,15 +310,15 @@ export function buildRoom(quality) {
         new THREE.Vector2(0.14, 0.145),
         new THREE.Vector2(0.02, 0.16)
     ], 20), cushionMat);
-    cushion.name = 'bedCushion';
-    cushion.castShadow = true;
-    cushion.receiveShadow = true;
+    bedCushion.name = 'bedCushion';
+    bedCushion.castShadow = true;
+    bedCushion.receiveShadow = true;
     const bolster = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 10, 24), cushionMat);
     bolster.name = 'bedBolster';
     bolster.position.y = 0.12;
     bolster.rotation.x = Math.PI / 2;
     bolster.castShadow = true;
-    bed.add(cushion, bolster);
+    bed.add(bedCushion, bolster);
     root.add(bed);
     refs.bed = bed;
 
