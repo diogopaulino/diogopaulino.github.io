@@ -5,6 +5,39 @@
 
 import { makeCtx, addFace, tagSlot, glass } from './kit.js?v=4';
 import { headGeometry } from '../../shared/realism.js';
+import * as THREE from 'three';
+
+/**
+ * Aba do elmo samurai: as pontas sobem e o meio desce cerca de 10 cm.
+ */
+const SAMURAI_BRIM = (() => {
+    const p = [
+        [-0.25, 0.06],
+        [-0.16, 0.00],
+        [0, -0.04],
+        [0.16, 0.00],
+        [0.25, 0.06],
+        [0.25, 0.11],
+        [0.16, 0.05],
+        [0, 0.01],
+        [-0.16, 0.05],
+        [-0.25, 0.11]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.03);
+    return g;
+})();
 
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
@@ -150,7 +183,8 @@ const HEADS = {
         const { add, mats } = ctx;
         addFace(ctx, { smile: false });
         add.lathe([[0.14, -0.1], [0.32, 0.02], [0.3, 0.16], [0.12, 0.26], [0.04, 0.32]], mats.secondary, [0, 0.02, 0]);
-        add.box(0.5, 0.08, 0.18, mats.primary, [0, 0.12, 0.1], [0.15, 0, 0]);
+        const brim = add.mesh(SAMURAI_BRIM, mats.primary, [0, 0.12, 0.1], [0.15, 0, 0]);
+        brim.name = 'samuraiBrim';
         add.torus(0.1, 0.02, mats.accent, [0, 0.32, 0.04], [Math.PI / 2, 0, 0]);
         add.box(0.08, 0.16, 0.04, mats.accent, [0, 0.40, 0.04]);
         add.box(0.36, 0.1, 0.08, mats.secondary, [0, -0.02, 0.22]);
