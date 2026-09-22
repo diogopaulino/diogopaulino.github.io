@@ -246,10 +246,40 @@ export function buildRoom(quality) {
     }
     root.add(plant);
 
+    // Prateleira com laterais e borda na frente. Os livros continuam na tábua de baixo.
     const shelf = new THREE.Group();
+    shelf.name = 'shelf';
     shelf.position.set(-2.85, 1.15, 0.6);
-    shelf.add(mesh(box, woodMat, { scale: [0.28, 0.04, 1.4], pos: [0, 0, 0] }));
-    shelf.add(mesh(box, woodMat, { scale: [0.28, 0.04, 1.4], pos: [0, 0.42, 0] }));
+    const shelfExtrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+        geo.translate(0, 0, -depth / 2);
+        geo.computeVertexNormals();
+        return geo;
+    };
+    const boardGeo = shelfExtrude([
+        [-0.14, -0.02], [0.12, -0.018], [0.16, 0], [0.12, 0.022], [-0.14, 0.018]
+    ], 1.28);
+    for (const y of [0, 0.42]) {
+        const board = new THREE.Mesh(boardGeo, woodMat);
+        board.name = 'shelfBoard';
+        board.position.y = y;
+        board.castShadow = true;
+        board.receiveShadow = true;
+        shelf.add(board);
+    }
+    const sideGeo = shelfExtrude([
+        [-0.15, -0.06], [0.15, -0.06], [0.16, 0.48], [0.12, 0.52], [-0.14, 0.5], [-0.15, 0]
+    ], 0.045);
+    for (const z of [-0.68, 0.68]) {
+        const side = new THREE.Mesh(sideGeo, woodMat);
+        side.name = 'shelfSide';
+        side.position.z = z;
+        side.castShadow = true;
+        shelf.add(side);
+    }
     const bookColors = [0x8a3030, 0x3a5080, 0xc4a050, 0x4a6a48, 0x6a3a58];
     for (let i = 0; i < 5; i++) {
         shelf.add(mesh(box, new THREE.MeshStandardMaterial({ color: bookColors[i], roughness: 0.7 }), {
