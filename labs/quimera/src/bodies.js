@@ -297,6 +297,39 @@ const VIKING_BELT = (() => {
 })();
 
 /**
+ * Joelheira do guerreiro: estreita no alto e embaixo, larga no meio.
+ * A largura no centro passa de 16 cm; as pontas fecham.
+ */
+const WARRIOR_KNEE = (() => {
+    const p = [
+        [0, 0.09],
+        [-0.045, 0.07],
+        [-0.085, 0.01],
+        [-0.07, -0.05],
+        [-0.035, -0.08],
+        [0, -0.095],
+        [0.035, -0.08],
+        [0.07, -0.05],
+        [0.085, 0.01],
+        [0.045, 0.07]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+/**
  * Couraça do guerreiro: ombros estreitos, peito largo e ponta na barriga.
  * A ponta fica cerca de 8 cm abaixo dos cantos laterais.
  */
@@ -548,8 +581,10 @@ const BODIES = {
             pleat.name = 'warriorPleat';
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [-0.36, 1.06, 0]);
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [0.36, 1.06, 0]);
-            add.box(0.14, 0.16, 0.16, mats.secondary, [-0.12, 0.22, 0.04]);
-            add.box(0.14, 0.16, 0.16, mats.secondary, [0.12, 0.22, 0.04]);
+            for (const sx of [-1, 1]) {
+                const knee = add.mesh(WARRIOR_KNEE, mats.secondary, [sx * 0.12, 0.22, 0.08]);
+                knee.name = 'warriorKnee';
+            }
         }
     }),
 
