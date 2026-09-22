@@ -138,6 +138,57 @@ function registerShadows(mesh, shadowGenerator) {
         shadowGenerator.addShadowCaster(mesh, true);
     }
 }
+/** Armação da fivela no plano XY, extrudada em Z. O vão fica no centro. */
+function beltBuckle(scene) {
+    const ring = (hw, hh, rad, seg) => {
+        const corners = [
+            { cx: hw - rad, cy: -(hh - rad), a0: -Math.PI / 2, a1: 0 },
+            { cx: hw - rad, cy: hh - rad, a0: 0, a1: Math.PI / 2 },
+            { cx: -(hw - rad), cy: hh - rad, a0: Math.PI / 2, a1: Math.PI },
+            { cx: -(hw - rad), cy: -(hh - rad), a0: Math.PI, a1: Math.PI * 1.5 }
+        ];
+        const pts = [];
+        for (const k of corners) {
+            for (let i = 0; i < seg; i++) {
+                const a = k.a0 + (k.a1 - k.a0) * (i / seg);
+                pts.push([k.cx + Math.cos(a) * rad, k.cy + Math.sin(a) * rad]);
+            }
+        }
+        return pts;
+    };
+    const outer = ring(0.035, 0.025, 0.009, 5);
+    const inner = ring(0.02, 0.012, 0.005, 5);
+    const n = outer.length;
+    const depth = 0.009;
+    const positions = [];
+    const indices = [];
+    const push = (x, y, z) => positions.push(x, y, z);
+    for (const [x, y] of outer) push(x, y, depth);
+    for (const [x, y] of inner) push(x, y, depth);
+    for (const [x, y] of outer) push(x, y, -depth);
+    for (const [x, y] of inner) push(x, y, -depth);
+    const frontOuter = 0;
+    const frontInner = n;
+    const backOuter = 2 * n;
+    const backInner = 3 * n;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        indices.push(frontOuter + i, frontInner + i, frontOuter + j, frontOuter + j, frontInner + i, frontInner + j);
+        indices.push(backOuter + i, backOuter + j, backInner + i, backOuter + j, backInner + j, backInner + i);
+        indices.push(frontOuter + i, frontOuter + j, backOuter + i, frontOuter + j, backOuter + j, backOuter + i);
+        indices.push(frontInner + i, backInner + i, frontInner + j, frontInner + j, backInner + i, backInner + j);
+    }
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    const data = new BABYLON.VertexData();
+    data.positions = positions;
+    data.indices = indices;
+    data.normals = normals;
+    const mesh = new BABYLON.Mesh('forrestBuckle', scene);
+    data.applyToMesh(mesh);
+    return mesh;
+}
+
 export function createForrest(scene, shadowGenerator = null, { follower = false } = {}) {
     const root = new BABYLON.TransformNode(follower ? 'followerRoot' : 'forrestRoot', scene);
     const skinMat = pbrMat(scene, 'skin', follower ? 0xdca07c : 0xf2cbb0, 0.68, 0.02);
@@ -178,9 +229,8 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     beltMesh.position.y = 0.09;
     beltMesh.material = beltMat;
     beltMesh.parent = hips;
-    const buckle = BABYLON.MeshBuilder.CreateBox('buckle', {
-        width: 0.07, height: 0.05, depth: 0.018
-    }, scene);
+    // Fivela: armação arredondada, cerca de 7×5 cm, com vão no meio.
+    const buckle = beltBuckle(scene);
     buckle.position.set(0, 0.09, -0.17);
     buckle.material = buckleMat;
     buckle.parent = hips;

@@ -3,7 +3,7 @@ import { mulberry32 } from './utils.js';
 import {
     createTruck, createHay, createCrate, createCow, createCone,
     createFeatherMesh, disposeTransformNode
-} from './models.js?v=11';
+} from './models.js?v=12';
 const KINDS = [
     { make: createTruck, kind: 'block', w: 1.2, clearance: 3.5, chance: 0.22 },
     { make: createHay, kind: 'low', w: 0.8, clearance: 1.15, chance: 0.22 },
