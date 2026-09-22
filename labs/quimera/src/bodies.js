@@ -884,6 +884,40 @@ const CHEF_TIE = (() => {
     return g;
 })();
 
+/** Alça do explorador: as pontas ficam finas e o meio sobe num passador. */
+const EXPLORER_STRAP = (() => {
+    const p = [
+        [-0.08, -0.012],
+        [-0.04, -0.014],
+        [-0.02, -0.028],
+        [0, -0.036],
+        [0.02, -0.028],
+        [0.04, -0.014],
+        [0.08, -0.012],
+        [0.08, 0.012],
+        [0.04, 0.014],
+        [0.02, 0.022],
+        [0, 0.028],
+        [-0.02, 0.022],
+        [-0.04, 0.014],
+        [-0.08, 0.012]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -1041,7 +1075,8 @@ const BODIES = {
             bag.name = 'explorerBag';
             const flap = add.mesh(EXPLORER_FLAP, mats.secondary, [-0.28, 0.72, 0.04], [0, 0.4, 0.15]);
             flap.name = 'explorerFlap';
-            add.box(0.16, 0.04, 0.12, mats.primary, [0, 0.98, 0.18]);
+            const strap = add.mesh(EXPLORER_STRAP, mats.primary, [0, 0.98, 0.18]);
+            strap.name = 'explorerStrap';
             const pouch = add.mesh(EXPLORER_POUCH, mats.secondary, [0.16, 0.58, 0.16]);
             pouch.name = 'explorerPouch';
         }
