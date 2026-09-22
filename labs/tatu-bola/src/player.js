@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { PLAYER } from './config.js';
 import { clamp, damp, wrapPi } from './utils.js';
-import { createTatu } from './models.js';
+import { createTatu } from './models.js?v=3';
 
 export class Player {
     constructor(scene) {

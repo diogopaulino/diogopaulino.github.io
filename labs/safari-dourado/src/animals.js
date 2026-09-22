@@ -43,6 +43,31 @@ function addSkull(BABYLON, scene, parent, name, diameter, pos, mat, scale = null
     return mesh;
 }
 
+function addEar(BABYLON, scene, parent, name, pos, mat, { height = 0.8, width = 0.45, thick = 0.04, rotY = 0 } = {}) {
+    const shape = [
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(width * 0.75, height * 0.28, 0),
+        new BABYLON.Vector3(width * 0.12, height, 0),
+        new BABYLON.Vector3(-width * 0.55, height * 0.5, 0),
+        new BABYLON.Vector3(-width * 0.15, height * 0.08, 0)
+    ];
+    const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+        shape,
+        path: [
+            new BABYLON.Vector3(0, 0, -thick * 0.5),
+            new BABYLON.Vector3(0, 0, thick * 0.5)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true
+    }, scene);
+    mesh.parent = parent;
+    mesh.position.set(pos[0], pos[1], pos[2]);
+    mesh.rotation.y = rotY;
+    mesh.material = mat;
+    mesh.isPickable = false;
+    return mesh;
+}
+
 function addSphere(BABYLON, scene, parent, name, diameter, pos, mat, scale = null) {
     const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter, segments: 18 }, scene);
     mesh.parent = parent;
@@ -107,7 +132,9 @@ export function buildElephant(BABYLON, scene) {
     addLegs(BABYLON, scene, root, dark, [-0.55, 0.55], 0.7, -0.75, 0.7, 1.35, 0.28);
     addSkull(BABYLON, scene, root, 'cabeça', 1.35, [0, 2.15, 1.55], hide, [1.05, 0.95, 1.05], 'dog');
     for (const sx of [-1, 1]) {
-        addSphere(BABYLON, scene, root, 'orelha', 1.1, [sx * 0.95, 2.25, 1.35], hide, [0.18, 1.0, 0.75]);
+        addEar(BABYLON, scene, root, 'orelha', [sx * 0.9, 1.7, 1.3], hide, {
+            height: 1.15, width: 0.72, thick: 0.06, rotY: sx * 0.6
+        });
         addCyl(BABYLON, scene, root, 'presa', { height: 0.95, diameterTop: 0.06, diameterBottom: 0.12 },
             [sx * 0.28, 1.55, 2.15], ivory, [1.1, 0, sx * 0.15]);
         addSphere(BABYLON, scene, root, 'olho', 0.1, [sx * 0.35, 2.25, 2.05], dark);
@@ -149,7 +176,9 @@ export function buildZebra(BABYLON, scene) {
     addCapsule(BABYLON, scene, root, 'focinho', 0.35, 0.1, [0, 1.85, 1.25], hide, [Math.PI / 2, 0, 0]);
     for (const sx of [-1, 1]) {
         addSphere(BABYLON, scene, root, 'olho', 0.06, [sx * 0.14, 2.0, 1.05], stripe);
-        addSphere(BABYLON, scene, root, 'orelha', 0.12, [sx * 0.12, 2.2, 0.85], hide, [0.55, 1.1, 0.45]);
+        addEar(BABYLON, scene, root, 'orelha', [sx * 0.12, 2.08, 0.82], hide, {
+            height: 0.22, width: 0.08, thick: 0.012, rotY: sx * 0.35
+        });
     }
     addCyl(BABYLON, scene, root, 'crina', { height: 0.55, diameterTop: 0.04, diameterBottom: 0.08 }, [0, 1.85, 0.4], stripe, [0.55, 0, 0]);
     addCapsule(BABYLON, scene, root, 'cauda', 0.7, 0.05, [0, 1.15, -0.95], stripe, [0.85, 0, 0]);

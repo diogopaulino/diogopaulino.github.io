@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { profileTube, canineHeadGeometry, tailGeometry, wingMembrane } from '../../shared/realism.js';
+import { profileTube, canineHeadGeometry, tailGeometry, wingMembrane, headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
 import {
     rockTexture, mossTexture, barkTexture, leafTexture, wingTexture, glowSprite
 } from './textures.js';
@@ -305,17 +305,19 @@ export function createIra() {
 function createRider() {
     const m = materials();
     const g = new THREE.Group();
-    g.add(mesh(geo.sphere, m.rider, { scale: [0.16, 0.22, 0.14], pos: [0, 0.28, 0] }));
-    g.add(mesh(geo.sphere, m.rider, { scale: [0.12, 0.12, 0.12], pos: [0, 0.52, 0.02] }));
-    g.add(mesh(geo.cylLo, m.cloth, { scale: [0.13, 0.28, 0.13], pos: [0, 0.12, 0] }));
-    g.add(mesh(geo.cylLo, m.rider, { scale: [0.04, 0.22, 0.04], pos: [0.12, 0.22, 0.05], rot: [0.6, 0, -0.4] }));
-    g.add(mesh(geo.cylLo, m.rider, { scale: [0.04, 0.22, 0.04], pos: [-0.12, 0.22, 0.05], rot: [0.6, 0, 0.4] }));
-    const braid = mesh(geo.cylLo, m.gold, {
-        scale: [0.018, 0.55, 0.018],
-        pos: [0, 0.28, -0.18],
-        rot: [0.9, 0, 0]
-    });
-    g.add(braid);
+    g.add(mesh(torsoGeometry({ height: 0.42, girth: 0.13, style: 'human' }), m.cloth, { pos: [0, 0.02, 0] }));
+    g.add(mesh(headGeometry(0.11, 'human'), m.rider, { pos: [0, 0.5, 0.02] }));
+    for (const sx of [-1, 1]) {
+        g.add(mesh(limbGeometry({
+            length: 0.28, r0: 0.04, r1: 0.028, bulge: 0.008, bulgeAt: 0.35, seg: 8, rings: 5
+        }), m.rider, {
+            pos: [sx * 0.14, 0.38, 0.04],
+            rot: [0.75, 0, sx * -0.4]
+        }));
+    }
+    g.add(mesh(limbGeometry({
+        length: 0.42, r0: 0.02, r1: 0.008, bulge: 0.004, pinch: 0, seg: 6, rings: 4
+    }), m.gold, { pos: [0, 0.46, -0.04], rot: [0.7, 0, 0] }));
     return g;
 }
 

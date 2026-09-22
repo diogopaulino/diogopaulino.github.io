@@ -10,7 +10,7 @@ import {
 import {
     createCrystal, createCaju, createCrate, createCrab,
     createBat, createPlant, createPopupSprite
-} from './models.js';
+} from './models.js?v=3';
 
 export class Entities {
     constructor(scene, world, effects) {

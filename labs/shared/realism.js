@@ -541,7 +541,7 @@ export function shoeMesh(material, { length = 0.24, width = 0.1, height = 0.08 }
     return mesh;
 }
 
-function profileTube({ axis = 'z', length = 1, rings = 14, seg = 16, radius, squashY = 1, squashX = 1 }) {
+export function profileTube({ axis = 'z', length = 1, rings = 14, seg = 16, radius, squashY = 1, squashX = 1 }) {
     const positions = [];
     const uvs = [];
     const indices = [];

@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { shellArmor, barkTexture, leafTexture, templeStone } from './textures.js';
-import { limbGeometry, canineHeadGeometry, tailGeometry, shoeMesh, leatherMaterial } from '../../shared/realism.js';
+import { limbGeometry, canineHeadGeometry, tailGeometry, shoeMesh, leatherMaterial, earBladeGeometry, wingMembrane } from '../../shared/realism.js';
 
 const geoCache = new Map();
 function geo(key, factory) {
@@ -96,7 +96,17 @@ export function createTatu() {
 
     const body = new THREE.Group();
     body.name = 'body';
-    const shellMesh = mesh(geo('tatu-shell', () => new THREE.SphereGeometry(0.55, 48, 36)), 0xf0b44a, {
+    const shellMesh = mesh(geo('tatu-shell', () => {
+        const g = new THREE.LatheGeometry([
+            new THREE.Vector2(0.14, -0.52),
+            new THREE.Vector2(0.42, -0.28),
+            new THREE.Vector2(0.58, 0.02),
+            new THREE.Vector2(0.36, 0.32),
+            new THREE.Vector2(0.1, 0.46)
+        ], 28);
+        g.rotateX(Math.PI / 2);
+        return g;
+    }), 0xf0b44a, {
         map: shell.map,
         normalMap: shell.normalMap,
         roughnessMap: shell.roughnessMap,
@@ -105,7 +115,7 @@ export function createTatu() {
         clearcoat: 0.55,
         clearcoatRoughness: 0.22
     });
-    shellMesh.scale.set(1.15, 0.85, 1.35);
+    shellMesh.scale.set(1.05, 0.78, 1.15);
     body.add(shellMesh);
 
     const bandGeo = geo('tatu-band', () => new THREE.TorusGeometry(0.52, 0.07, 20, 48));
@@ -142,7 +152,7 @@ export function createTatu() {
     nose.position.z = 0.44;
     head.add(nose);
 
-    const earGeo = geo('tatu-ear', () => new THREE.ConeGeometry(0.08, 0.18, 24));
+    const earGeo = earBladeGeometry({ height: 0.16, width: 0.07, thickness: 0.03 });
     const earL = new THREE.Mesh(earGeo, pbrMat(0xc48a48, { roughness: 0.6 }));
     const earR = earL.clone();
     earL.position.set(-0.16, 0.22, -0.04);
@@ -300,13 +310,19 @@ export function createCrate() {
 
 export function createCrab() {
     const g = new THREE.Group();
-    const body = mesh(geo('crab', () => new THREE.SphereGeometry(0.38, 40, 32)), 0xe24a3a, {
+    const body = mesh(geo('crab', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.06, 0),
+        new THREE.Vector2(0.42, 0.04),
+        new THREE.Vector2(0.5, 0.14),
+        new THREE.Vector2(0.28, 0.26),
+        new THREE.Vector2(0.06, 0.3)
+    ], 20)), 0xe24a3a, {
         roughness: 0.4,
         clearcoat: 0.45,
         clearcoatRoughness: 0.25
     });
-    body.scale.set(1.3, 0.55, 1);
-    body.position.y = 0.28;
+    body.scale.set(1.25, 0.72, 1);
+    body.position.y = 0.1;
     g.add(body);
     const eyeGeo = geo('crab-eye', () => new THREE.SphereGeometry(0.07, 20, 16));
     for (const x of [-0.16, 0.16]) {
@@ -319,7 +335,16 @@ export function createCrab() {
         stalk.add(eye);
         g.add(stalk);
     }
-    const claw = geo('crab-claw', () => new THREE.BoxGeometry(0.22, 0.1, 0.28, 2, 2, 2));
+    const claw = geo('crab-claw', () => {
+        const s = new THREE.Shape();
+        s.moveTo(0, 0);
+        s.quadraticCurveTo(0.16, 0.02, 0.24, 0.1);
+        s.quadraticCurveTo(0.1, 0.16, 0.02, 0.1);
+        s.quadraticCurveTo(-0.02, 0.04, 0, 0);
+        return new THREE.ExtrudeGeometry(s, {
+            depth: 0.08, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 1, curveSegments: 6
+        });
+    });
     const cL = new THREE.Mesh(claw, pbrMat(0xc83a2a, { roughness: 0.42, clearcoat: 0.35 }));
     const cR = cL.clone();
     cL.position.set(-0.42, 0.28, 0.18);
@@ -330,11 +355,12 @@ export function createCrab() {
 
 export function createBat() {
     const g = new THREE.Group();
-    const body = mesh(geo('bat', () => new THREE.SphereGeometry(0.22, 32, 28)), 0x3a2458, {
+    const body = mesh(canineHeadGeometry({ radius: 0.2, style: 'fox' }), 0x3a2458, {
         roughness: 0.65
     });
+    body.scale.set(0.9, 0.72, 1.05);
     g.add(body);
-    const wingGeo = geo('bat-wing', () => new THREE.ConeGeometry(0.42, 0.08, 24));
+    const wingGeo = wingMembrane({ span: 0.72, chord: 0.36 });
     const wL = new THREE.Mesh(wingGeo, pbrMat(0x5a3878, { roughness: 0.55, side: THREE.DoubleSide }));
     const wR = wL.clone();
     wL.name = 'wingL';
@@ -364,7 +390,12 @@ export function createPlant() {
     head.name = 'jaw';
     head.position.y = 0.78;
     const jaw = mesh(
-        geo('plant-jaw', () => new THREE.SphereGeometry(0.32, 40, 32, 0, Math.PI * 2, 0, Math.PI * 0.6)),
+        geo('plant-jaw', () => new THREE.LatheGeometry([
+            new THREE.Vector2(0.02, 0),
+            new THREE.Vector2(0.28, 0.05),
+            new THREE.Vector2(0.18, 0.16),
+            new THREE.Vector2(0.03, 0.22)
+        ], 16)),
         0xc83a5a,
         { roughness: 0.48, clearcoat: 0.25 }
     );
@@ -388,7 +419,16 @@ export function createPalm() {
     });
     trunk.position.y = 1.7;
     g.add(trunk);
-    const leafGeo = geo('palm-leaf', () => new THREE.ConeGeometry(0.55, 1.6, 24));
+    const leafGeo = geo('palm-leaf', () => {
+        const s = new THREE.Shape();
+        s.moveTo(0, 0);
+        s.quadraticCurveTo(0.42, 0.55, 0.06, 1.55);
+        s.quadraticCurveTo(0, 0.7, -0.28, 0.12);
+        s.quadraticCurveTo(-0.08, 0.02, 0, 0);
+        const g = new THREE.ShapeGeometry(s, 10);
+        g.computeVertexNormals();
+        return g;
+    });
     for (let i = 0; i < 5; i++) {
         const frond = new THREE.Mesh(leafGeo, pbrMat(0x2e9a48, {
             map: leaf.map,
