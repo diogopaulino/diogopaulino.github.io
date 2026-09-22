@@ -161,6 +161,40 @@ function capePleat(height) {
     return g;
 }
 
+/**
+ * Gola de marinheiro: a barra desce nas pontas dos ombros e sobe no pescoço.
+ * Queda de cerca de 19 cm entre o alto e a ponta.
+ */
+const SAILOR_COLLAR = (() => {
+    const p = [
+        [-0.27, 0.07],
+        [-0.27, 0.00],
+        [-0.18, -0.12],
+        [-0.08, 0.01],
+        [0.00, 0.05],
+        [0.08, 0.01],
+        [0.18, -0.12],
+        [0.27, 0.00],
+        [0.27, 0.07]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+const SAILOR_FLAP = capeGeometry({ height: 0.36, neck: 0.11, hem: 0.24 });
+
 /** Tanque da mochila: fundo e topo arredondados, barriga no meio. Y cresce. */
 const PACK_TANK = new THREE.LatheGeometry([
     new THREE.Vector2(0.05, 0),
@@ -198,7 +232,10 @@ const BODIES = {
     sailor: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.54, 0.12, 0.38, mats.white, [0, 1.08, 0.02], null, null, 0.04);
+            const collar = add.mesh(SAILOR_COLLAR, mats.white, [0, 1.06, 0.12]);
+            collar.name = 'sailorCollar';
+            const flap = add.mesh(SAILOR_FLAP, mats.white, [0, 0.98, -0.16], [0.35, 0, 0]);
+            flap.name = 'sailorFlap';
             add.box(0.22, 0.18, 0.04, mats.white, [0, 1.02, 0.18]);
             add.box(0.08, 0.42, 0.02, mats.white, [-0.12, 0.86, 0.18]);
             add.box(0.08, 0.42, 0.02, mats.white, [0.12, 0.86, 0.18]);
