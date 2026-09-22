@@ -105,6 +105,67 @@ function chapGeometry(side) {
 const CHAP_R = chapGeometry(1);
 const CHAP_L = chapGeometry(-1);
 
+/**
+ * Capa: estreita no pescoço, larga na barra, com o centro da bainha mais baixo.
+ * A prega sai para −Z, o lado de fora das costas.
+ */
+function capeGeometry({ height = 0.7, neck = 0.12, hem = 0.36 } = {}) {
+    const top = height / 2;
+    const bot = -height / 2;
+    const p = [
+        [-neck, top],
+        [-neck * 1.7, top * 0.45],
+        [-hem * 0.82, 0],
+        [-hem, bot + height * 0.12],
+        [-hem * 0.5, bot + height * 0.04],
+        [0, bot - height * 0.06],
+        [hem * 0.5, bot + height * 0.04],
+        [hem, bot + height * 0.12],
+        [hem * 0.82, 0],
+        [neck * 1.7, top * 0.45],
+        [neck, top]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.022);
+    return g;
+}
+
+function capePleat(height) {
+    const top = height / 2 - 0.03;
+    const bot = -height / 2 + 0.02;
+    const p = [
+        [-0.045, top],
+        [-0.08, 0],
+        [-0.04, bot],
+        [0.04, bot],
+        [0.08, 0],
+        [0.045, top]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.04, bevelEnabled: false });
+    g.translate(0, 0, -0.09);
+    return g;
+}
+
+const WARRIOR_CAPE = capeGeometry({ height: 0.7, neck: 0.12, hem: 0.36 });
+const WARRIOR_PLEAT = capePleat(0.7);
+const VIKING_CAPE = capeGeometry({ height: 0.55, neck: 0.11, hem: 0.30 });
+const VIKING_PLEAT = capePleat(0.55);
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -154,7 +215,10 @@ const BODIES = {
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.28, 0.06], [0.26, 0.28], [0.16, 0.46], [0.1, 0.5]], mats.secondary, [0, 0.66, 0.02]);
             add.box(0.18, 0.28, 0.06, mats.accent, [0, 0.92, 0.20]);
-            add.box(0.5, 0.7, 0.08, mats.primary, [0, 0.78, -0.22], [0.15, 0, 0], null, 0.04);
+            const cape = add.mesh(WARRIOR_CAPE, mats.primary, [0, 0.78, -0.22], [0.15, 0, 0]);
+            cape.name = 'warriorCape';
+            const pleat = add.mesh(WARRIOR_PLEAT, mats.accent, [0, 0.78, -0.22], [0.15, 0, 0]);
+            pleat.name = 'warriorPleat';
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [-0.36, 1.06, 0]);
             add.cyl(0.1, 0.1, 0.08, mats.secondary, [0.36, 1.06, 0]);
             add.box(0.14, 0.16, 0.16, mats.secondary, [-0.12, 0.22, 0.04]);
@@ -256,7 +320,10 @@ const BODIES = {
         detail: ({ add, mats }) => {
             add.lathe([[0.18, 0], [0.3, 0.08], [0.26, 0.28], [0.18, 0.46]], mats.cloth, [0, 0.62, 0]);
             add.box(0.52, 0.12, 0.12, mats.trim, [0, 0.70, 0.16], null, null, 0.03);
-            add.box(0.48, 0.55, 0.12, mats.primary, [0, 0.78, -0.22], [0.2, 0, 0], null, 0.05);
+            const cape = add.mesh(VIKING_CAPE, mats.primary, [0, 0.78, -0.22], [0.2, 0, 0]);
+            cape.name = 'vikingCape';
+            const pleat = add.mesh(VIKING_PLEAT, mats.accent, [0, 0.78, -0.22], [0.2, 0, 0]);
+            pleat.name = 'vikingPleat';
             add.sphere(0.12, mats.trim, [-0.28, 0.55, 0.12]);
             add.sphere(0.12, mats.trim, [0.28, 0.55, 0.12]);
         }
