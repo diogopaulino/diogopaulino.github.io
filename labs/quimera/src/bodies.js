@@ -59,14 +59,14 @@ const CHEF_PLEAT = (() => {
     return g;
 })();
 
-/** Jaleco: sai estreito da cintura e abre na bainha. Y do torno cresce. */
+/** Jaleco: bainha larga embaixo, cintura estreita em cima. Y do torno cresce. */
 const LAB_COAT = new THREE.LatheGeometry([
-    new THREE.Vector2(0.15, 0),
-    new THREE.Vector2(0.17, 0.05),
-    new THREE.Vector2(0.20, 0.12),
-    new THREE.Vector2(0.24, 0.20),
-    new THREE.Vector2(0.27, 0.25),
-    new THREE.Vector2(0.23, 0.29)
+    new THREE.Vector2(0.22, 0),
+    new THREE.Vector2(0.27, 0.03),
+    new THREE.Vector2(0.25, 0.08),
+    new THREE.Vector2(0.21, 0.16),
+    new THREE.Vector2(0.17, 0.23),
+    new THREE.Vector2(0.15, 0.29)
 ], 16);
 
 function build(kit, extras) {
