@@ -311,12 +311,52 @@ export function buildCastle(scene) {
     secretRoot.position.set(-court / 2 - 1.3, 1.15, -6);
     secretRoot.parent = root;
 
-    const door = BABYLON.MeshBuilder.CreateBox('secretDoorMesh', { width: 1.3, height: 2.2, depth: 0.18 }, scene);
-    door.material = woodMat;
+    // Porta secreta: tábuas e cintas no volume da caixa. O alvo continua secretRoot.
+    const door = new BABYLON.TransformNode('secretDoorMesh', scene);
     door.parent = secretRoot;
+    const secretIron = new BABYLON.StandardMaterial('secretIronMat', scene);
+    secretIron.diffuseColor = new BABYLON.Color3(0.32, 0.3, 0.28);
+    const carveSecret = (name, shape, path, mat) => {
+        const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+            path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        mesh.material = mat;
+        mesh.parent = door;
+        return mesh;
+    };
+    const secretBoard = [
+        [0.02, -0.055], [-0.05, -0.05], [-0.065, -0.03],
+        [-0.065, 0.03], [-0.05, 0.05], [0.02, 0.055]
+    ];
+    const secretStrap = [
+        [0.01, -0.03], [-0.05, -0.024], [-0.055, 0.024], [0.01, 0.03]
+    ];
+    for (let i = 0; i < 5; i++) {
+        const x = -0.4 + i * 0.2;
+        carveSecret('castleSecretPlank', secretBoard, [[x, -1.05, 0], [x, 1.05, 0]], woodMat);
+    }
+    for (const y of [-0.5, 0.35]) {
+        carveSecret('castleSecretStrap', secretStrap, [[-0.55, y, 0.02], [0.55, y, 0.02]], secretIron);
+    }
 
-    const lock = BABYLON.MeshBuilder.CreateBox('secretLock', { width: 0.18, height: 0.22, depth: 0.1 }, scene);
-    lock.position.set(0.4, 0, 0.12);
+    const lock = BABYLON.MeshBuilder.CreateLathe('secretLock', {
+        shape: [
+            new BABYLON.Vector3(0.02, 0, 0),
+            new BABYLON.Vector3(0.08, 0.012, 0),
+            new BABYLON.Vector3(0.09, 0.035, 0),
+            new BABYLON.Vector3(0.04, 0.05, 0),
+            new BABYLON.Vector3(0.028, 0.09, 0),
+            new BABYLON.Vector3(0.01, 0.11, 0)
+        ],
+        tessellation: 10,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    lock.rotation.x = Math.PI / 2;
+    lock.position.set(0.4, 0, 0.14);
     const rustMat = new BABYLON.StandardMaterial('lockRustMat', scene);
     rustMat.diffuseColor = new BABYLON.Color3(0.5, 0.3, 0.1);
     lock.material = rustMat;
