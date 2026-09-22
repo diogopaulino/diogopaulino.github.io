@@ -15,7 +15,7 @@ import {
     createFlag,
     createPlatform,
     createBush
-} from './models.js';
+} from './models.js?v=4';
 import { grassDetail, waterNormals } from './textures.js';
 
 export class World {

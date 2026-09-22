@@ -6,7 +6,11 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { barkTexture, woodTexture, thatchTexture, cobbleTexture } from './textures.js';
-import { attachHumanHead, limbGeometry, shoeMesh, handGroup } from '../../shared/realism.js';
+import {
+    attachHumanHead, limbGeometry, shoeMesh, handGroup,
+    torsoGeometry, headGeometry, canineTorsoGeometry, canineHeadGeometry,
+    tailGeometry, earBladeGeometry
+} from '../../shared/realism.js';
 
 const matCache = new Map();
 
@@ -212,23 +216,46 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
 
 export function buildVillager({ coat = 0x3a5a48, hat = 0x2a2418 } = {}) {
     const group = new THREE.Group();
-    const skin = std(0xe0b080, 0.7);
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.9, 14), std(coat, 0.88));
-    body.position.y = 0.55;
-    group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), skin);
-    head.position.y = 1.12;
+    const cloth = std(coat, 0.88);
+    const hatMat = std(hat, 0.85);
+    const torso = new THREE.Mesh(torsoGeometry({ height: 0.82, girth: 0.32, style: 'human' }), cloth);
+    torso.position.y = 0.08;
+    group.add(torso);
+    const head = new THREE.Group();
+    head.position.y = 1.02;
     group.add(head);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 14), std(hat, 0.85));
-    brim.position.y = 1.22;
-    group.add(brim);
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 8), std(hat, 0.85));
-    crown.position.y = 1.32;
-    group.add(crown);
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 8), std(0xc8c0b0, 0.9));
-    beard.position.set(0, 0.95, 0.08);
-    beard.rotation.x = Math.PI;
-    group.add(beard);
+    attachHumanHead(head, {
+        radius: 0.16, style: 'human', skin: 0xe0b080, hair: 0x3a2414, hairStyle: 'none', iris: 0x3a2418
+    });
+    const brim = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, 0),
+        new THREE.Vector2(0.22, 0.012),
+        new THREE.Vector2(0.22, 0.028),
+        new THREE.Vector2(0.04, 0.04)
+    ], 18), hatMat);
+    brim.position.y = 0.12;
+    head.add(brim);
+    const crown = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 0),
+        new THREE.Vector2(0.13, 0.02),
+        new THREE.Vector2(0.11, 0.12),
+        new THREE.Vector2(0.03, 0.17)
+    ], 14), hatMat);
+    crown.position.y = 0.14;
+    head.add(crown);
+    const beard = new THREE.Mesh(
+        limbGeometry({ length: 0.22, r0: 0.08, r1: 0.018, bulge: 0.02, pinch: 0.08, seg: 8 }),
+        std(0xc8c0b0, 0.9)
+    );
+    beard.position.set(0, -0.02, 0.1);
+    head.add(beard);
+    const armGeo = limbGeometry({ length: 0.46, r0: 0.07, r1: 0.042, bulge: 0.016, seg: 10 });
+    for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(armGeo, cloth);
+        arm.position.set(sx * 0.26, 0.78, 0);
+        arm.rotation.z = sx * 0.18;
+        group.add(arm);
+    }
     enableShadows(group);
     return group;
 }
@@ -241,18 +268,29 @@ export function buildGrandmother() {
         emissiveIntensity: 0.55,
         roughness: 0.5,
         transparent: true,
-        opacity: 0.82
+        opacity: 0.82,
+        side: THREE.DoubleSide
     });
-    const body = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.5, 10), robe);
-    body.position.y = 0.75;
+    const body = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.06, 0),
+        new THREE.Vector2(0.42, 0.1),
+        new THREE.Vector2(0.34, 0.62),
+        new THREE.Vector2(0.2, 1.12),
+        new THREE.Vector2(0.1, 1.38)
+    ], 18), robe);
     group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), robe);
-    head.position.y = 1.58;
+    const head = new THREE.Group();
+    head.position.y = 1.48;
     group.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), std(0xe8e0d0, 0.9));
-    hair.position.y = 1.68;
-    hair.scale.set(1, 0.7, 1);
-    group.add(hair);
+    attachHumanHead(head, {
+        radius: 0.15,
+        style: 'human',
+        skin: 0xf0d2b4,
+        hair: 0xe8e0d0,
+        hairStyle: 'bob',
+        iris: 0x6a5030,
+        lips: 0xc48a78
+    });
     enableShadows(group);
     return group;
 }
@@ -261,35 +299,41 @@ export function buildFox() {
     const group = new THREE.Group();
     const fur = std(0xd46828, 0.75);
     const white = std(0xf2e8d8, 0.8);
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), fur);
-    body.scale.set(1.4, 0.75, 0.85);
+    const body = new THREE.Mesh(canineTorsoGeometry({ length: 0.55, girth: 0.16, chest: 0.045 }), fur);
     body.position.y = 0.28;
     group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), fur);
-    head.position.set(0, 0.38, 0.28);
+    const head = new THREE.Group();
+    head.position.set(0, 0.42, 0.26);
     group.add(head);
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.14, 6), white);
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 0.34, 0.4);
-    group.add(snout);
+    head.add(new THREE.Mesh(canineHeadGeometry({ radius: 0.14, style: 'fox' }), fur));
+    const muzzle = new THREE.Mesh(limbGeometry({ length: 0.12, r0: 0.045, r1: 0.02, bulge: 0.008, pinch: 0.05, seg: 8 }), white);
+    muzzle.rotation.x = -Math.PI / 2;
+    muzzle.position.set(0, -0.02, 0.1);
+    head.add(muzzle);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 6), fur);
-        ear.position.set(sx * 0.08, 0.52, 0.24);
-        group.add(ear);
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.22, 6), fur);
-        leg.position.set(sx * 0.12, 0.12, 0.08);
-        group.add(leg);
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), std(0x1a1008, 0.4));
-        eye.position.set(sx * 0.05, 0.4, 0.38);
-        group.add(eye);
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.14, width: 0.055, thickness: 0.018 }), fur);
+        ear.position.set(sx * 0.07, 0.1, -0.02);
+        head.add(ear);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), std(0x1a1008, 0.4));
+        eye.position.set(sx * 0.05, 0.03, 0.12);
+        head.add(eye);
     }
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 6), fur);
-    tail.rotation.x = -1.1;
-    tail.position.set(0, 0.32, -0.32);
+    const legGeo = limbGeometry({ length: 0.2, r0: 0.04, r1: 0.022, bulge: 0.01, seg: 8 });
+    for (const [sx, sz] of [[-1, 0.12], [1, 0.12], [-1, -0.1], [1, -0.1]]) {
+        const leg = new THREE.Mesh(legGeo, fur);
+        leg.position.set(sx * 0.1, 0.2, sz);
+        group.add(leg);
+    }
+    const tail = new THREE.Group();
+    tail.position.set(0, 0.32, -0.18);
+    tail.rotation.x = -0.7;
+    const furTail = new THREE.Mesh(tailGeometry({ length: 0.36, r0: 0.055, r1: 0.02, fluff: 0.035 }), fur);
+    furTail.position.z = -0.18;
+    tail.add(furTail);
+    const tip = new THREE.Mesh(tailGeometry({ length: 0.1, r0: 0.035, r1: 0.018, fluff: 0.02 }), white);
+    tip.position.z = -0.38;
+    tail.add(tip);
     group.add(tail);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), white);
-    tip.position.set(0, 0.48, -0.5);
-    group.add(tip);
     enableShadows(group);
     group.userData.tail = tail;
     return group;
@@ -303,21 +347,28 @@ export function buildShadow() {
         emissiveIntensity: 0.4,
         roughness: 0.95,
         transparent: true,
-        opacity: 0.88
+        opacity: 0.88,
+        side: THREE.DoubleSide
     });
-    const body = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.7, 8), mat);
-    body.position.y = 0.85;
+    const body = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.05, 0),
+        new THREE.Vector2(0.46, 0.12),
+        new THREE.Vector2(0.28, 0.7),
+        new THREE.Vector2(0.2, 1.2),
+        new THREE.Vector2(0.08, 1.48)
+    ], 16), mat);
     group.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mat);
-    head.position.y = 1.55;
+    const head = new THREE.Group();
+    head.position.y = 1.52;
     group.add(head);
+    head.add(new THREE.Mesh(headGeometry(0.2, 'human'), mat));
     for (const sx of [-1, 1]) {
         const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.04, 6, 5),
+            new THREE.SphereGeometry(0.04, 8, 6),
             new THREE.MeshStandardMaterial({ color: 0x88ddff, emissive: 0x44aaff, emissiveIntensity: 2 })
         );
-        eye.position.set(sx * 0.08, 1.58, 0.16);
-        group.add(eye);
+        eye.position.set(sx * 0.07, 0.04, 0.16);
+        head.add(eye);
     }
     group.userData.body = body;
     return group;
@@ -331,18 +382,28 @@ export function buildNight() {
         emissiveIntensity: 0.55,
         roughness: 0.9,
         transparent: true,
-        opacity: 0.78
+        opacity: 0.78,
+        side: THREE.DoubleSide
     });
-    const body = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), mat);
-    body.scale.set(1, 1.4, 1);
-    body.position.y = 1.6;
+    const body = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.18, 0),
+        new THREE.Vector2(1.15, 0.35),
+        new THREE.Vector2(0.9, 1.15),
+        new THREE.Vector2(0.62, 2.05),
+        new THREE.Vector2(0.32, 2.75),
+        new THREE.Vector2(0.1, 3.1)
+    ], 18), mat);
+    body.position.y = 0.08;
     group.add(body);
+    const skull = new THREE.Mesh(headGeometry(0.42, 'human'), mat);
+    skull.position.set(0, 2.85, 0.15);
+    group.add(skull);
     for (const sx of [-1, 1]) {
         const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 8, 6),
+            new THREE.SphereGeometry(0.1, 10, 8),
             new THREE.MeshStandardMaterial({ color: 0xff6688, emissive: 0xff2244, emissiveIntensity: 2.2 })
         );
-        eye.position.set(sx * 0.28, 1.85, 0.85);
+        eye.position.set(sx * 0.16, 2.9, 0.48);
         group.add(eye);
     }
     enableShadows(group);

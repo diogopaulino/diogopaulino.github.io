@@ -105,19 +105,23 @@ export function createNico() {
     torso.receiveShadow = true;
     hips.add(torso);
 
-    const shirt = mesh(geo('n-shirt', () => new THREE.SphereGeometry(0.28, 32, 24)), 0xffe6c8, {
-        roughness: 0.62
-    });
-    shirt.scale.set(1.05, 0.7, 0.9);
-    shirt.position.y = 0.62;
+    const shirt = mesh(geo('n-shirt', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.26, 0.05),
+        new THREE.Vector2(0.3, 0.16),
+        new THREE.Vector2(0.2, 0.28),
+        new THREE.Vector2(0.08, 0.34)
+    ], 22)), 0xffe6c8, { roughness: 0.62 });
+    shirt.position.y = 0.42;
     hips.add(shirt);
 
-    const strapL = mesh(geo('n-strap', () => new THREE.BoxGeometry(0.1, 0.42, 0.08, 2, 2, 2)), 0x1f7a70, {
-        roughness: 0.58
-    });
-    strapL.position.set(-0.16, 0.58, 0.22);
+    const strapGeo = limbGeometry({ length: 0.42, r0: 0.045, r1: 0.038, bulge: 0.008, pinch: 0.1, seg: 8 });
+    const strapL = mesh(geo('n-strap', () => strapGeo), 0x1f7a70, { roughness: 0.58 });
+    strapL.position.set(-0.16, 0.78, 0.2);
+    strapL.rotation.z = 0.18;
     const strapR = strapL.clone();
     strapR.position.x = 0.16;
+    strapR.rotation.z = -0.18;
     hips.add(strapL, strapR);
 
     const gold = goldMetal();
@@ -149,18 +153,38 @@ export function createNico() {
     });
 
     const cap = mesh(
-        geo('n-cap', () => new THREE.SphereGeometry(0.36, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.55)),
+        geo('n-cap', () => new THREE.LatheGeometry([
+            new THREE.Vector2(0.02, 0.2),
+            new THREE.Vector2(0.18, 0.18),
+            new THREE.Vector2(0.3, 0.08),
+            new THREE.Vector2(0.34, 0.0),
+            new THREE.Vector2(0.12, -0.02)
+        ], 28)),
         0xff6b4a,
         { roughness: 0.48, clearcoat: 0.2 }
     );
-    cap.position.y = 0.08;
-    cap.rotation.x = -0.12;
+    cap.position.y = 0.06;
     head.add(cap);
 
-    const visor = mesh(geo('n-visor', () => new THREE.BoxGeometry(0.42, 0.06, 0.28, 2, 2, 2)), 0xff6b4a, {
-        roughness: 0.45
-    });
-    visor.position.set(0, 0.2, 0.32);
+    const visor = mesh(geo('n-visor', () => {
+        const s = new THREE.Shape();
+        s.moveTo(-0.2, 0);
+        s.quadraticCurveTo(-0.16, 0.07, 0, 0.09);
+        s.quadraticCurveTo(0.16, 0.07, 0.2, 0);
+        s.quadraticCurveTo(0, -0.015, -0.2, 0);
+        const g = new THREE.ExtrudeGeometry(s, {
+            depth: 0.2,
+            bevelEnabled: true,
+            bevelThickness: 0.012,
+            bevelSize: 0.01,
+            bevelSegments: 1,
+            curveSegments: 8
+        });
+        g.translate(0, -0.02, 0);
+        return g;
+    }), 0xff6b4a, { roughness: 0.45 });
+    visor.position.set(0, 0.12, 0.22);
+    visor.rotation.x = -0.35;
     head.add(visor);
 
     const emblem = mesh(geo('n-star', () => new THREE.OctahedronGeometry(0.09, 1)), 0xffe14a, {
@@ -456,34 +480,39 @@ export function createCoin(red = false) {
 export function createFungus() {
     const g = new THREE.Group();
     g.name = 'fungus';
-    const body = mesh(geo('f-b', () => new THREE.SphereGeometry(0.38, 32, 24)), 0x5a3a22, {
-        roughness: 0.7
-    });
-    body.scale.set(1, 0.85, 1);
-    body.position.y = 0.34;
-    const cap = mesh(
-        geo('f-c', () => new THREE.SphereGeometry(0.48, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.55)),
-        0xc45c2a,
-        { roughness: 0.48, clearcoat: 0.2 }
-    );
-    cap.position.y = 0.62;
-    const spot = mesh(geo('f-s', () => new THREE.SphereGeometry(0.1, 16, 12)), 0xf4efe2, {
+    const body = mesh(geo('f-b', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.28, 0.08),
+        new THREE.Vector2(0.38, 0.26),
+        new THREE.Vector2(0.26, 0.46),
+        new THREE.Vector2(0.12, 0.56)
+    ], 22)), 0x5a3a22, { roughness: 0.7 });
+    body.position.y = 0.04;
+    const cap = mesh(geo('f-c', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.05, 0),
+        new THREE.Vector2(0.42, 0.04),
+        new THREE.Vector2(0.5, 0.16),
+        new THREE.Vector2(0.26, 0.3),
+        new THREE.Vector2(0.05, 0.36)
+    ], 22)), 0xc45c2a, { roughness: 0.48, clearcoat: 0.2 });
+    cap.position.y = 0.5;
+    const spot = mesh(geo('f-s', () => new THREE.SphereGeometry(0.08, 12, 10)), 0xf4efe2, {
         roughness: 0.55
     });
-    spot.position.set(0.18, 0.78, 0.28);
+    spot.position.set(0.16, 0.74, 0.28);
     const spot2 = spot.clone();
-    spot2.position.set(-0.2, 0.72, 0.22);
+    spot2.position.set(-0.18, 0.7, 0.22);
     const eye = mesh(geo('f-e', () => new THREE.SphereGeometry(0.07, 16, 12)), 0x1a1420, {
         roughness: 0.3,
         clearcoat: 0.6
     });
-    eye.position.set(-0.12, 0.38, 0.3);
+    eye.position.set(-0.12, 0.36, 0.3);
     const eyeR = eye.clone();
     eyeR.position.x = 0.12;
-    const foot = mesh(geo('f-f', () => new THREE.SphereGeometry(0.14, 20, 14)), 0x4a2e18, {
-        roughness: 0.75
-    });
-    foot.position.set(-0.16, 0.1, 0.08);
+    const footGeo = limbGeometry({ length: 0.12, r0: 0.07, r1: 0.04, bulge: 0.015, pinch: 0.1, seg: 8 });
+    const foot = mesh(geo('f-f', () => footGeo), 0x4a2e18, { roughness: 0.75 });
+    foot.position.set(-0.16, 0.12, 0.06);
+    foot.rotation.x = 0.4;
     const footR = foot.clone();
     footR.position.x = 0.16;
     g.add(body, cap, spot, spot2, eye, eyeR, foot, footR);

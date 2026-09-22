@@ -3,13 +3,13 @@
  */
 
 import * as THREE from 'three';
-import { Valley } from './world.js';
-import { Player } from './player.js';
-import { Effects } from './effects.js';
+import { Valley } from './world.js?v=4';
+import { Player } from './player.js?v=4';
+import { Effects } from './effects.js?v=4';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
 import { NinaAudio } from './audio.js';
-import { updateFriend } from './animals.js';
+import { updateFriend } from './animals.js?v=4';
 import {
     TOTAL_FRIENDS, BEFRIEND_R, HOME_R, BERRY_R, HOME
 } from './config.js';

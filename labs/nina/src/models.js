@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import { grassTexture, woodTexture, picnicTexture, barnTexture } from './textures.js';
 import {
-    canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry, limbGeometry, createOrganicTree
+    canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry, limbGeometry,
+    headGeometry, profileTube, wingMembrane, createOrganicTree
 } from '../../shared/realism.js';
 
 export const geo = {
@@ -165,6 +166,40 @@ function cheeks(root, y, z, spread) {
     root.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.08, 0.055, 0.05], pos: [-spread, y, z], cast: false }));
 }
 
+const onceGeo = new Map();
+function once(key, factory) {
+    if (!onceGeo.has(key)) onceGeo.set(key, factory());
+    return onceGeo.get(key);
+}
+
+/** Cauda com a base no grupo — o balanço gira o grupo, não a malha. */
+function fluffyTail(mat, { length = 0.28, r0 = 0.06, r1 = 0.02, fluff = 0.04, pos } = {}) {
+    const g = new THREE.Group();
+    if (pos) g.position.set(pos[0], pos[1], pos[2]);
+    const fur = mesh(tailGeometry({ length, r0, r1, fluff }), mat);
+    fur.position.z = -length * 0.5;
+    g.add(fur);
+    return g;
+}
+
+function earPair(parent, parts, mat, { y, spread, height, width, inner = null } = {}) {
+    parts.ears = parts.ears || [];
+    for (const sx of [-1, 1]) {
+        const ear = new THREE.Group();
+        ear.position.set(sx * spread, y, -0.02);
+        ear.add(mesh(earBladeGeometry({ height, width, thickness: width * 0.28 }), mat, { pos: [0, height * 0.12, 0] }));
+        if (inner) {
+            ear.add(mesh(
+                earBladeGeometry({ height: height * 0.7, width: width * 0.5, thickness: width * 0.14 }),
+                inner,
+                { pos: [0, height * 0.16, 0.012], cast: false }
+            ));
+        }
+        parent.add(ear);
+        parts.ears.push(ear);
+    }
+}
+
 function addLegs(parent, hipY, spread, length, radius, mat, parts, zSpread = null) {
     const zs = zSpread ?? spread * 0.9;
     const g = limbGeometry({
@@ -232,166 +267,198 @@ function babyRoot() {
 
 export function createChick() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.chick, { scale: [0.28, 0.26, 0.3], pos: [0, 0.32, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.34, girth: 0.13, chest: 0.04 }), MAT.chick, { pos: [0, 0.3, 0] });
     root.add(body);
-    root.userData.parts.body = body;
+    parts.body = body;
     const head = new THREE.Group();
-    head.position.set(0, 0.52, 0.12);
+    head.position.set(0, 0.46, 0.16);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.chick, { scale: [0.2, 0.2, 0.2] }));
-    head.add(mesh(geo.cone, MAT.orange, { scale: [0.06, 0.12, 0.06], pos: [0, -0.02, 0.2], rot: [1.2, 0, 0], cast: false }));
-    head.add(mesh(geo.coneLo, MAT.orange, { scale: [0.05, 0.1, 0.05], pos: [0, 0.2, 0], cast: false }));
-    eyes(head, { y: 0.02, z: 0.16, spread: 0.08, s: 0.7 });
-    const footGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.16, 10);
+    parts.head = head;
+    head.add(mesh(headGeometry(0.15, 'chibi'), MAT.chick));
+    const beak = mesh(limbGeometry({ length: 0.1, r0: 0.038, r1: 0.012, bulge: 0.006, pinch: 0.05, seg: 8 }), MAT.orange, { cast: false });
+    beak.rotation.x = -Math.PI / 2;
+    beak.position.set(0, -0.02, 0.12);
+    head.add(beak);
+    head.add(mesh(earBladeGeometry({ height: 0.1, width: 0.045, thickness: 0.018 }), MAT.orange, { pos: [0, 0.12, 0.02], cast: false }));
+    eyes(head, { y: 0.02, z: 0.12, spread: 0.07, s: 0.5 });
+    const footGeo = limbGeometry({ length: 0.14, r0: 0.028, r1: 0.014, bulge: 0.006, pinch: 0.12, seg: 8 });
+    const toeGeo = limbGeometry({ length: 0.07, r0: 0.016, r1: 0.005, bulge: 0, pinch: 0, seg: 6 });
     for (const sx of [-1, 1]) {
         const leg = new THREE.Group();
-        leg.position.set(sx * 0.08, 0.16, 0.02);
+        leg.position.set(sx * 0.07, 0.18, 0.02);
         const m = new THREE.Mesh(footGeo, MAT.orange);
-        m.position.y = -0.08;
         m.castShadow = true;
         leg.add(m);
+        const toe = new THREE.Mesh(toeGeo, MAT.orange);
+        toe.rotation.x = -Math.PI / 2;
+        toe.position.set(0, -0.14, 0.01);
+        toe.castShadow = false;
+        leg.add(toe);
         root.add(leg);
-        root.userData.parts.legs.push(leg);
+        parts.legs.push(leg);
     }
     return root;
 }
 
 export function createDuck() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.duck, { scale: [0.32, 0.24, 0.4], pos: [0, 0.32, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.5, girth: 0.15, chest: 0.05 }), MAT.duck, { pos: [0, 0.32, 0] });
     root.add(body);
-    root.userData.parts.body = body;
+    parts.body = body;
     const head = new THREE.Group();
-    head.position.set(0, 0.5, 0.28);
+    head.position.set(0, 0.48, 0.26);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.duck, { scale: [0.2, 0.2, 0.2] }));
-    head.add(mesh(geo.box, MAT.orange, { scale: [0.16, 0.05, 0.18], pos: [0, -0.04, 0.2], cast: false }));
-    eyes(head, { y: 0.04, z: 0.16, spread: 0.09, s: 0.72 });
-    addLegs(root, 0.18, 0.1, 0.16, 0.04, MAT.orange, root.userData.parts, 0.1);
-    const wingL = mesh(geo.sphereLo, MAT.orange, { scale: [0.06, 0.1, 0.16], pos: [0.28, 0.32, 0] });
-    const wingR = mesh(geo.sphereLo, MAT.orange, { scale: [0.06, 0.1, 0.16], pos: [-0.28, 0.32, 0] });
+    parts.head = head;
+    head.add(mesh(headGeometry(0.16, 'chibi'), MAT.duck));
+    head.add(mesh(once('bill', () => profileTube({
+        axis: 'z', length: 0.18, rings: 8, seg: 10, squashY: 0.38,
+        radius: (t) => 0.055 * (1 - t * 0.28)
+    })), MAT.orange, { pos: [0, -0.02, 0.2], cast: false }));
+    eyes(head, { y: 0.03, z: 0.13, spread: 0.08, s: 0.5 });
+    addLegs(root, 0.18, 0.1, 0.14, 0.035, MAT.orange, parts, 0.1);
+    const wingMat = MAT.orange.clone();
+    wingMat.side = THREE.DoubleSide;
+    const wingGeo = wingMembrane({ span: 0.26, chord: 0.16 });
+    const wingL = mesh(wingGeo, wingMat, { pos: [0.14, 0.36, 0], rot: [-Math.PI / 2, 0, 0], cast: false });
+    const wingR = mesh(wingGeo, wingMat, { pos: [-0.14, 0.36, 0], rot: [-Math.PI / 2, 0, 0], cast: false });
+    wingR.scale.x = -1;
     root.add(wingL, wingR);
-    root.userData.parts.wings = [wingL, wingR];
+    parts.wings = [wingL, wingR];
     return root;
 }
 
 export function createBunny() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.bunny, { scale: [0.3, 0.28, 0.34], pos: [0, 0.34, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.46, girth: 0.16, chest: 0.05 }), MAT.bunny, { pos: [0, 0.36, 0] });
     root.add(body);
-    root.userData.parts.body = body;
+    parts.body = body;
     const head = new THREE.Group();
-    head.position.set(0, 0.62, 0.12);
+    head.position.set(0, 0.58, 0.18);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.bunny, { scale: [0.24, 0.22, 0.22] }));
-    eyes(head, { y: 0.02, z: 0.18, spread: 0.1, s: 0.78 });
-    cheeks(head, -0.06, 0.16, 0.16);
-    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.04, 0.03, 0.03], pos: [0, -0.04, 0.22], cast: false }));
-    for (const sx of [-1, 1]) {
-        const ear = mesh(geo.sphere, MAT.bunny, { scale: [0.07, 0.28, 0.06], pos: [sx * 0.1, 0.32, -0.04] });
-        ear.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.5, 0.7, 0.4], pos: [0, 0.05, 0.4], cast: false }));
-        head.add(ear);
-        root.userData.parts.ears = root.userData.parts.ears || [];
-        root.userData.parts.ears.push(ear);
-    }
-    addLegs(root, 0.22, 0.12, 0.2, 0.05, MAT.bunny, root.userData.parts, 0.12);
-    const tail = mesh(geo.sphereLo, MAT.white, { scale: [0.1, 0.1, 0.1], pos: [0, 0.28, -0.32] });
+    parts.head = head;
+    head.add(mesh(canineHeadGeometry({ radius: 0.2, style: 'fox' }), MAT.bunny));
+    eyes(head, { y: 0.03, z: 0.16, spread: 0.09, s: 0.55 });
+    cheeks(head, -0.04, 0.14, 0.12);
+    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.035, 0.028, 0.03], pos: [0, -0.02, 0.2], cast: false }));
+    earPair(head, parts, MAT.bunny, { y: 0.14, spread: 0.08, height: 0.32, width: 0.07, inner: MAT.pink });
+    addLegs(root, 0.22, 0.12, 0.2, 0.045, MAT.bunny, parts, 0.12);
+    const tail = fluffyTail(MAT.white, { length: 0.16, r0: 0.07, r1: 0.04, fluff: 0.05, pos: [0, 0.32, -0.2] });
     root.add(tail);
-    root.userData.parts.tail = tail;
+    parts.tail = tail;
     return root;
 }
 
 export function createLamb() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.lamb, { scale: [0.38, 0.34, 0.48], pos: [0, 0.48, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.52, girth: 0.18, chest: 0.05 }), MAT.lamb, { pos: [0, 0.46, 0] });
     root.add(body);
-    root.userData.parts.body = body;
-    root.add(mesh(geo.sphereLo, MAT.white, { scale: [0.42, 0.36, 0.5], pos: [0, 0.5, 0], cast: false }));
+    parts.body = body;
+    root.add(mesh(canineTorsoGeometry({ length: 0.58, girth: 0.24, chest: 0.04 }), MAT.white, { pos: [0, 0.48, 0], cast: false }));
     const head = new THREE.Group();
-    head.position.set(0, 0.62, 0.4);
+    head.position.set(0, 0.58, 0.32);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.peach, { scale: [0.18, 0.18, 0.2] }));
-    eyes(head, { y: 0.02, z: 0.16, spread: 0.09, s: 0.7 });
-    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.04, 0.03, 0.04], pos: [0, -0.04, 0.2], cast: false }));
-    for (const sx of [-1, 1]) {
-        head.add(mesh(geo.cylLo, MAT.peach, { scale: [0.03, 0.08, 0.03], pos: [sx * 0.12, 0.16, -0.02], cast: false }));
-    }
-    addLegs(root, 0.32, 0.16, 0.32, 0.055, MAT.peach, root.userData.parts, 0.18);
+    parts.head = head;
+    head.add(mesh(headGeometry(0.16, 'child'), MAT.peach));
+    eyes(head, { y: 0.02, z: 0.13, spread: 0.07, s: 0.48 });
+    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.03, 0.024, 0.028], pos: [0, -0.03, 0.15], cast: false }));
+    earPair(head, parts, MAT.peach, { y: 0.08, spread: 0.12, height: 0.12, width: 0.05 });
+    addLegs(root, 0.28, 0.14, 0.28, 0.05, MAT.peach, parts, 0.16);
     return root;
 }
 
 export function createKitten() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.kitten, { scale: [0.28, 0.24, 0.4], pos: [0, 0.32, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.46, girth: 0.13, chest: 0.04 }), MAT.kitten, { pos: [0, 0.32, 0] });
     root.add(body);
-    root.userData.parts.body = body;
+    parts.body = body;
     const head = new THREE.Group();
-    head.position.set(0, 0.52, 0.22);
+    head.position.set(0, 0.48, 0.22);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.kitten, { scale: [0.22, 0.2, 0.2] }));
-    eyes(head, { y: 0.02, z: 0.16, spread: 0.09, s: 0.72 });
-    cheeks(head, -0.05, 0.14, 0.14);
-    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.035, 0.03, 0.03], pos: [0, -0.04, 0.2], cast: false }));
-    for (const sx of [-1, 1]) {
-        const ear = mesh(geo.cone, MAT.kitten, { scale: [0.08, 0.16, 0.06], pos: [sx * 0.14, 0.18, -0.02], rot: [0, 0, sx * -0.25] });
-        head.add(ear);
-    }
-    const tail = new THREE.Group();
-    tail.position.set(0, 0.34, -0.38);
-    tail.add(mesh(geo.cylLo, MAT.kitten, { scale: [0.04, 0.36, 0.04], pos: [0, 0.1, -0.08], rot: [0.8, 0, 0] }));
+    parts.head = head;
+    head.add(mesh(canineHeadGeometry({ radius: 0.17, style: 'cat' }), MAT.kitten));
+    eyes(head, { y: 0.03, z: 0.13, spread: 0.07, s: 0.5 });
+    cheeks(head, -0.03, 0.12, 0.1);
+    head.add(mesh(geo.sphereLo, MAT.pink, { scale: [0.028, 0.022, 0.024], pos: [0, -0.02, 0.16], cast: false }));
+    earPair(head, parts, MAT.kitten, { y: 0.12, spread: 0.1, height: 0.14, width: 0.07, inner: MAT.pink });
+    const tail = fluffyTail(MAT.kitten, { length: 0.32, r0: 0.035, r1: 0.016, fluff: 0.02, pos: [0, 0.34, -0.22] });
     root.add(tail);
-    root.userData.parts.tail = tail;
-    addLegs(root, 0.22, 0.12, 0.2, 0.04, MAT.kitten, root.userData.parts, 0.16);
+    parts.tail = tail;
+    addLegs(root, 0.2, 0.11, 0.18, 0.035, MAT.kitten, parts, 0.14);
     return root;
 }
 
 export function createHedgehog() {
     const root = babyRoot();
-    const body = mesh(geo.sphere, MAT.hedge, { scale: [0.34, 0.26, 0.38], pos: [0, 0.28, 0] });
+    const parts = root.userData.parts;
+    const body = mesh(canineTorsoGeometry({ length: 0.42, girth: 0.16, chest: 0.04 }), MAT.hedge, { pos: [0, 0.28, 0] });
     root.add(body);
-    root.userData.parts.body = body;
-    for (let i = 0; i < 18; i++) {
-        const a = (i / 18) * Math.PI * 2;
-        const spike = mesh(geo.coneLo, MAT.foxDeep, {
-            scale: [0.05, 0.16, 0.05],
-            pos: [Math.cos(a) * 0.22, 0.4, Math.sin(a) * 0.22],
-            rot: [0.4, a, 0],
-            cast: false
-        });
+    parts.body = body;
+    const spikeGeo = limbGeometry({ length: 0.13, r0: 0.028, r1: 0.006, bulge: 0.004, pinch: 0, seg: 6, rings: 6 });
+    const down = new THREE.Vector3(0, -1, 0);
+    for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        const spike = new THREE.Mesh(spikeGeo, MAT.foxDeep);
+        spike.castShadow = false;
+        const dir = new THREE.Vector3(Math.cos(a) * 0.85, 0.7, Math.sin(a) * 0.75).normalize();
+        spike.position.copy(dir).multiplyScalar(0.2).add(new THREE.Vector3(0, 0.32, 0));
+        spike.quaternion.setFromUnitVectors(down, dir);
         root.add(spike);
     }
     const head = new THREE.Group();
-    head.position.set(0, 0.28, 0.28);
+    head.position.set(0, 0.3, 0.24);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.peach, { scale: [0.16, 0.14, 0.2] }));
-    eyes(head, { y: 0.02, z: 0.14, spread: 0.07, s: 0.6 });
-    head.add(mesh(geo.sphereLo, MAT.nose, { scale: [0.04, 0.035, 0.04], pos: [0, -0.02, 0.2], cast: false }));
-    addLegs(root, 0.16, 0.12, 0.14, 0.035, MAT.peach, root.userData.parts, 0.12);
+    parts.head = head;
+    head.add(mesh(canineHeadGeometry({ radius: 0.13, style: 'fox' }), MAT.peach));
+    eyes(head, { y: 0.02, z: 0.1, spread: 0.055, s: 0.42 });
+    head.add(mesh(geo.sphereLo, MAT.nose, { scale: [0.03, 0.024, 0.028], pos: [0, -0.01, 0.12], cast: false }));
+    addLegs(root, 0.16, 0.11, 0.12, 0.03, MAT.peach, parts, 0.1);
     return root;
 }
 
 export function createTurtle() {
     const root = babyRoot();
-    const shell = mesh(geo.sphere, MAT.shell, { scale: [0.36, 0.18, 0.4], pos: [0, 0.28, 0] });
+    const parts = root.userData.parts;
+    const shellGeo = once('turtle-shell', () => {
+        const g = new THREE.LatheGeometry([
+            new THREE.Vector2(0.04, -0.02),
+            new THREE.Vector2(0.2, 0.02),
+            new THREE.Vector2(0.3, 0.1),
+            new THREE.Vector2(0.16, 0.2),
+            new THREE.Vector2(0.03, 0.24)
+        ], 20);
+        g.rotateX(Math.PI / 2);
+        return g;
+    });
+    const shell = mesh(shellGeo, MAT.shell, { pos: [0, 0.24, 0] });
+    shell.scale.set(1.05, 0.72, 1.15);
     root.add(shell);
-    root.userData.parts.body = shell;
-    root.add(mesh(geo.sphereLo, MAT.turtle, { scale: [0.22, 0.08, 0.26], pos: [0, 0.18, 0], receive: true }));
+    parts.body = shell;
+    const belly = once('turtle-belly', () => {
+        const g = new THREE.LatheGeometry([
+            new THREE.Vector2(0.02, 0),
+            new THREE.Vector2(0.16, 0.02),
+            new THREE.Vector2(0.12, 0.08),
+            new THREE.Vector2(0.02, 0.1)
+        ], 14);
+        g.rotateX(Math.PI / 2);
+        return g;
+    });
+    root.add(mesh(belly, MAT.turtle, { pos: [0, 0.16, 0], receive: true }));
     const head = new THREE.Group();
-    head.position.set(0, 0.28, 0.38);
+    head.position.set(0, 0.24, 0.32);
     root.add(head);
-    root.userData.parts.head = head;
-    head.add(mesh(geo.sphere, MAT.turtle, { scale: [0.12, 0.1, 0.16] }));
-    eyes(head, { y: 0.02, z: 0.12, spread: 0.07, s: 0.55 });
-    addLegs(root, 0.14, 0.18, 0.08, 0.05, MAT.turtle, root.userData.parts, 0.16);
-    const tail = mesh(geo.coneLo, MAT.turtle, { scale: [0.05, 0.12, 0.05], pos: [0, 0.16, -0.38], rot: [1.2, 0, 0], cast: false });
+    parts.head = head;
+    head.add(mesh(headGeometry(0.1, 'child'), MAT.turtle));
+    eyes(head, { y: 0.02, z: 0.08, spread: 0.045, s: 0.4 });
+    addLegs(root, 0.14, 0.16, 0.08, 0.04, MAT.turtle, parts, 0.14);
+    const tail = fluffyTail(MAT.turtle, { length: 0.12, r0: 0.03, r1: 0.012, fluff: 0.008, pos: [0, 0.16, -0.28] });
     root.add(tail);
-    root.userData.parts.tail = tail;
+    parts.tail = tail;
     return root;
 }
 
@@ -434,8 +501,17 @@ export function createTree({ h = 2.4, r = 1.15, fruit = true, tint = 0x4ecf6a } 
 
 export function createMushroom({ s = 1, cap = 0xff6b7a } = {}) {
     const g = new THREE.Group();
-    g.add(mesh(geo.cylLo, MAT.stem, { scale: [0.12 * s, 0.32 * s, 0.12 * s], pos: [0, 0.16 * s, 0] }));
-    g.add(mesh(geo.sphere, pbr(cap, { roughness: 0.48, clearcoat: 0.25 }), { scale: [0.32 * s, 0.16 * s, 0.32 * s], pos: [0, 0.36 * s, 0] }));
+    g.add(mesh(limbGeometry({ length: 0.32 * s, r0: 0.1 * s, r1: 0.07 * s, bulge: 0.02 * s, pinch: 0.15, seg: 10 }), MAT.stem, { pos: [0, 0.32 * s, 0] }));
+    const capGeo = once('mush-cap', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, 0),
+        new THREE.Vector2(0.28, 0.03),
+        new THREE.Vector2(0.34, 0.12),
+        new THREE.Vector2(0.16, 0.2),
+        new THREE.Vector2(0.03, 0.24)
+    ], 16));
+    const capMesh = mesh(capGeo, pbr(cap, { roughness: 0.48, clearcoat: 0.25 }), { pos: [0, 0.3 * s, 0] });
+    capMesh.scale.setScalar(s);
+    g.add(capMesh);
     g.add(mesh(geo.sphereLo, MAT.white, { scale: [0.06 * s, 0.04 * s, 0.06 * s], pos: [0.12 * s, 0.42 * s, 0.08 * s], cast: false }));
     return g;
 }
@@ -538,8 +614,11 @@ export function createButterfly(color = 0xff7ab0) {
         transmission: 0.15,
         thickness: 0.2
     });
-    const l = mesh(geo.sphereLo, wingMat, { scale: [0.18, 0.02, 0.12], pos: [0.12, 0, 0], cast: false });
-    const r = mesh(geo.sphereLo, wingMat, { scale: [0.18, 0.02, 0.12], pos: [-0.12, 0, 0], cast: false });
+    const wingGeo = wingMembrane({ span: 0.22, chord: 0.14 });
+    const l = mesh(wingGeo, wingMat, { pos: [0.02, 0.02, 0], cast: false });
+    l.scale.y = -1;
+    const r = mesh(wingGeo, wingMat, { pos: [-0.02, 0.02, 0], cast: false });
+    r.scale.set(-1, -1, 1);
     g.add(l, r);
     g.userData.wings = [l, r];
     return g;
