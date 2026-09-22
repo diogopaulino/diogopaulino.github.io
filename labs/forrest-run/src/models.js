@@ -56,6 +56,47 @@ function gableRoof(scene, name, { length, span, rise }) {
     }, scene);
 }
 
+/**
+ * Parede de tábuas, base em y = 0. O comprimento corre em X e a frente em +Z.
+ * frontSpots, quando existe, é a lista [x, largura] das pilastras da fachada
+ * para não cobrir porta e janelas.
+ */
+function clapboardWall(scene, name, length, depth, height, frontSpots) {
+    const hx = length / 2;
+    const hz = depth / 2;
+    const jut = 0.18;
+    const pw = 0.42;
+    const auto = [];
+    for (let x = -hx + 0.28; x + pw < hx - 0.16; x += 1.05) auto.push([x, pw]);
+    const front = frontSpots || auto;
+    const pts = [[-hx, -hz]];
+    for (const [x, w] of auto) {
+        pts.push([x, -hz], [x, -hz - jut], [x + w, -hz - jut], [x + w, -hz]);
+    }
+    pts.push([hx, -hz], [hx, hz]);
+    for (let i = front.length - 1; i >= 0; i--) {
+        const [x, w] = front[i];
+        pts.push([x + w, hz], [x + w, hz + jut], [x, hz + jut], [x, hz]);
+    }
+    pts.push([-hx, hz]);
+    const shape = pts.map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const steps = 8;
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom(name, {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            return (1.012 - t * 0.018) * (1 + Math.sin(distance * 7.2) * 0.011);
+        }
+    }, scene);
+}
+
 /** Costelas no cilindro, sem mudar a altura. */
 function erodeColumn(mesh, ribs, amp) {
     const pos = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
@@ -450,8 +491,9 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const roofMat = pbrMat(scene, 'houseRoof', 0x7e2a26, 0.75, 0.05);
     const woodMat = pbrMat(scene, 'houseWood', 0x5a3e26, 0.85, 0.02);
     const windowMat = pbrMat(scene, 'houseGlass', 0x88c4e0, 0.25, 0.3);
-    const walls = BABYLON.MeshBuilder.CreateBox('walls', { width: 5.4, height: 3.2, depth: 4.2 }, scene);
-    walls.position.y = 1.6;
+    const walls = clapboardWall(scene, 'walls', 5.4, 4.2, 3.2, [
+        [-2.66, 0.46], [-1.08, 0.4], [0.64, 0.4], [2.2, 0.46]
+    ]);
     walls.material = wallMat;
     walls.parent = root;
     registerShadows(walls, shadowGenerator);
@@ -488,8 +530,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const root = new BABYLON.TransformNode('barn', scene);
     const redMat = pbrMat(scene, 'barnRed', 0x9a2620, 0.88, 0.02);
     const roofMat = pbrMat(scene, 'barnRoof', 0x48464a, 0.7, 0.05);
-    const body = BABYLON.MeshBuilder.CreateBox('barnBody', { width: 6.4, height: 4.2, depth: 5.2 }, scene);
-    body.position.y = 2.1;
+    const body = clapboardWall(scene, 'barnBody', 6.4, 5.2, 4.2);
     body.material = redMat;
     body.parent = root;
     registerShadows(body, shadowGenerator);
