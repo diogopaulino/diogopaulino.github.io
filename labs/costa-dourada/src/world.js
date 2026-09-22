@@ -44,6 +44,95 @@ function loadMap(url, { colorSpace = THREE.SRGBColorSpace, wrap = true, repeat =
     });
 }
 
+/** Poste 0.09×0.85, centrado. Pé e chapéu mais largos. */
+function guardPostGeometry() {
+    const H = 0.85;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.09, H, 0.09, 4, 10, 4);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t < 0.14) {
+            const u = 1 - t / 0.14;
+            x *= 1 + u * 0.85;
+            z *= 1 + u * 0.85;
+        } else if (t > 0.88) {
+            const u = (t - 0.88) / 0.12;
+            x *= 1 + u * 0.55;
+            z *= 1 + u * 0.55;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Trilho 0.05×0.09×2.6. O perfil em W corre na altura; o comprimento fica em Z. */
+function guardRailGeometry() {
+    const g = new THREE.BoxGeometry(0.05, 0.09, 2.6, 2, 8, 10);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ny = y / 0.045;
+        x += Math.cos(ny * Math.PI * 2) * 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const GUARD_POST = guardPostGeometry();
+const GUARD_RAIL = guardRailGeometry();
+
+/** Viga do pórtico ao longo de X. Alma estreita, mesas largas, ligeira cambagem. */
+function finishBeamGeometry(width) {
+    const g = new THREE.BoxGeometry(width, 0.35, 0.35, 12, 6, 4);
+    const pos = g.attributes.position;
+    const hw = width / 2;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ny = Math.abs(y) / 0.175;
+        z *= ny < 0.62 ? 0.26 : 1.08;
+        const u = x / hw;
+        y += (1 - u * u) * 0.18;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Faixa 0.9 de altura. O meio desce e a borda de baixo faz ondas. */
+function finishBannerGeometry(width) {
+    const H = 0.9;
+    const g = new THREE.BoxGeometry(width, H, 0.08, 32, 8, 2);
+    const pos = g.attributes.position;
+    const hw = width / 2;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const u = x / hw;
+        const ny = (y + H / 2) / H;
+        const sag = (1 - u * u) * 0.42;
+        y -= sag * (0.2 + 0.8 * (1 - ny));
+        if (ny < 0.2) {
+            const wave = Math.max(0, Math.sin((u + 1) * Math.PI * 5));
+            y -= (1 - ny / 0.2) * wave * 0.12;
+        }
+        if (ny < 0.12 || Math.abs(u) > 0.96) z = Math.sign(z || 1) * 0.055;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export class World {
     /**
      * @param {THREE.Scene} scene
@@ -499,8 +588,10 @@ export class World {
             color: 0xd0d4d8, metalness: 0.92, roughness: 0.2
         });
         const n = Math.floor(this.track.count / 2);
-        const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.85, 0.09), postMat, n);
-        const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.09, 2.6), railMat, n);
+        const posts = new THREE.InstancedMesh(GUARD_POST, postMat, n);
+        posts.name = 'guardPost';
+        const rails = new THREE.InstancedMesh(GUARD_RAIL, railMat, n);
+        rails.name = 'guardRail';
         const dummy = new THREE.Object3D();
         let pi = 0;
         for (let i = 0; i < this.track.count; i += 2) {
@@ -533,10 +624,12 @@ export class World {
             pole.castShadow = true;
             g.add(pole);
         }
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(half * 2 + 0.5, 0.35, 0.35), mat);
+        const beam = new THREE.Mesh(finishBeamGeometry(half * 2 + 0.5), mat);
+        beam.name = 'finishBeam';
         beam.position.y = 5.1;
         g.add(beam);
-        const banner = new THREE.Mesh(new THREE.BoxGeometry(half * 2, 0.9, 0.08), stripe);
+        const banner = new THREE.Mesh(finishBannerGeometry(half * 2), stripe);
+        banner.name = 'finishBanner';
         banner.position.y = 4.55;
         g.add(banner);
         g.position.set(pose.x, pose.y, pose.z);

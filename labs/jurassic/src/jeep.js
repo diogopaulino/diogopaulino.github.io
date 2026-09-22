@@ -65,6 +65,66 @@ function jeepCabinGeometry() {
     return g;
 }
 
+/**
+ * Para-choque 1.95×0.22×0.28, centrado e simétrico em Z
+ * (a traseira é um clone). As pontas descem.
+ */
+function jeepBumperGeometry() {
+    const w = 1.95;
+    const hw = w / 2;
+    const g = new THREE.BoxGeometry(w, 0.22, 0.28, 16, 4, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / hw;
+        if (nx > 0.62) {
+            const u = (nx - 0.62) / 0.38;
+            y -= u * u * 0.14;
+        }
+        if (y > 0 && nx < 0.55) y += (1 - nx) * 0.03;
+        if (nx > 0.88) z *= 1 - (nx - 0.88) * 1.1;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const JEEP_BUMPER = jeepBumperGeometry();
+
+/** Barras da grade. O vão entre elas fica aberto. */
+const JEEP_GRILLE_BAR = new THREE.BoxGeometry(0.038, 0.24, 0.05);
+const JEEP_GRILLE_RAIL = new THREE.BoxGeometry(0.86, 0.042, 0.062);
+const JEEP_GRILLE_POST = new THREE.BoxGeometry(0.046, 0.32, 0.07);
+
+/** Farol ao longo de Y: lente em +Y, aro mais largo. */
+function jeepLampGeometry() {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, -0.04),
+        new THREE.Vector2(0.1, -0.032),
+        new THREE.Vector2(0.128, 0.0),
+        new THREE.Vector2(0.09, 0.02),
+        new THREE.Vector2(0.04, 0.04)
+    ], 18);
+    g.computeVertexNormals();
+    return g;
+}
+
+const JEEP_LAMP = jeepLampGeometry();
+
+/** Tubos do bagageiro. O longo corre em X; o curto, em Z. */
+const JEEP_RACK_LONG = (() => {
+    const g = new THREE.CylinderGeometry(0.02, 0.02, 1.35, 8);
+    g.rotateZ(Math.PI / 2);
+    return g;
+})();
+const JEEP_RACK_SHORT = (() => {
+    const g = new THREE.CylinderGeometry(0.02, 0.02, 1.26, 8);
+    g.rotateX(Math.PI / 2);
+    return g;
+})();
+
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
@@ -94,25 +154,54 @@ export function buildJeep() {
     windshield.rotation.x = -0.28;
     root.add(windshield);
 
-    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.05, 1.35), chrome);
+    const rack = new THREE.Group();
+    rack.name = 'jeepRack';
     rack.position.set(0, 1.92, -0.15);
+    for (const z of [-0.63, -0.21, 0.21, 0.63]) {
+        const bar = new THREE.Mesh(JEEP_RACK_LONG, chrome);
+        bar.position.z = z;
+        rack.add(bar);
+    }
+    for (const x of [-0.64, 0.64]) {
+        const bar = new THREE.Mesh(JEEP_RACK_SHORT, chrome);
+        bar.position.x = x;
+        rack.add(bar);
+    }
     root.add(rack);
 
-    const bumperF = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.22, 0.28), chrome);
+    const bumperF = new THREE.Mesh(JEEP_BUMPER, chrome);
+    bumperF.name = 'jeepBumper';
     bumperF.position.set(0, 0.55, 1.95);
     root.add(bumperF);
     const bumperR = bumperF.clone();
     bumperR.position.z = -1.95;
     root.add(bumperR);
 
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.08), dark);
+    const grille = new THREE.Group();
+    grille.name = 'jeepGrille';
     grille.position.set(0, 0.78, 1.84);
+    for (let i = 0; i < 7; i++) {
+        const bar = new THREE.Mesh(JEEP_GRILLE_BAR, dark);
+        bar.position.x = -0.33 + i * 0.11;
+        grille.add(bar);
+    }
+    const railTop = new THREE.Mesh(JEEP_GRILLE_RAIL, dark);
+    railTop.position.y = 0.145;
+    const railBot = new THREE.Mesh(JEEP_GRILLE_RAIL, dark);
+    railBot.position.y = -0.145;
+    const postL = new THREE.Mesh(JEEP_GRILLE_POST, dark);
+    postL.position.x = -0.4;
+    const postR = new THREE.Mesh(JEEP_GRILLE_POST, dark);
+    postR.position.x = 0.4;
+    grille.add(railTop, railBot, postL, postR);
     root.add(grille);
 
     const headlights = [];
     for (const sx of [-1, 1]) {
-        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.08), lightMat);
+        const lamp = new THREE.Mesh(JEEP_LAMP, lightMat);
+        lamp.name = 'jeepLamp';
         lamp.position.set(sx * 0.62, 0.82, 1.84);
+        lamp.rotation.x = Math.PI / 2;
         root.add(lamp);
         headlights.push(lamp);
         const light = new THREE.SpotLight(0xfff0c8, 0, 38, 0.42, 0.45, 1.1);

@@ -163,6 +163,47 @@ function vegWind(material, amount = 0.11) {
 /* Personagens                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Fivela do hobbit: armação arredondada com um vão no meio.
+ */
+function hobBuckleGeometry() {
+    const s = new THREE.Shape();
+    const ring = [
+        [-0.032, -0.034],
+        [0.032, -0.034],
+        [0.040, -0.028],
+        [0.044, -0.020],
+        [0.044, 0.020],
+        [0.040, 0.028],
+        [0.032, 0.034],
+        [-0.032, 0.034],
+        [-0.040, 0.028],
+        [-0.044, 0.020],
+        [-0.044, -0.020],
+        [-0.040, -0.028]
+    ];
+    s.moveTo(ring[0][0], ring[0][1]);
+    for (let i = 1; i < ring.length; i++) s.lineTo(ring[i][0], ring[i][1]);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.022, -0.014);
+    hole.lineTo(-0.022, 0.014);
+    hole.lineTo(0.022, 0.014);
+    hole.lineTo(0.022, -0.014);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.0015,
+        bevelSize: 0.0015,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.01);
+    return g;
+}
+
 export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     const group = new THREE.Group();
     const skinMaps = skinTexture();
@@ -244,7 +285,8 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     belt.rotation.x = Math.PI / 2;
     belt.position.y = 0.12;
     torso.add(belt);
-    const buckle = new THREE.Mesh(geo('hob-buckle', () => new THREE.BoxGeometry(0.08, 0.06, 0.03)), mapped(goldTexture(), 0xffe08a, 0.28, 0.9, 0.4));
+    const buckle = new THREE.Mesh(geo('hob-buckle', hobBuckleGeometry), mapped(goldTexture(), 0xffe08a, 0.28, 0.9, 0.4));
+    buckle.name = 'hobBuckle';
     buckle.position.set(0, 0.12, 0.22);
     torso.add(buckle);
 
@@ -547,6 +589,42 @@ export function buildGoblin() {
     return { group };
 }
 
+/** Lâmina 0.85 centrada em Y. Ponta em +Y; guarda na base; fio em ±Z. */
+function nazgulBladeGeometry() {
+    const H = 0.85;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.028, H, 0.09, 4, 22, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        const widthK = t < 0.12 ? 1 : Math.max(0.035, 1 - (t - 0.12) / 0.88);
+        z *= widthK;
+        if (t < 0.1) {
+            const u = 1 - t / 0.1;
+            z *= 1 + u * 1.45;
+            x *= 1 + u * 0.9;
+        } else {
+            const edge = Math.min(1, Math.abs(z) / Math.max(0.004, 0.045 * widthK));
+            x *= 0.32 + 0.68 * (1 - edge * edge);
+            if (t < 0.9) {
+                const lim = 0.011 * widthK + 0.003;
+                if (Math.abs(z) < lim) {
+                    const groove = 1 - Math.abs(z) / lim;
+                    x *= 1 - groove * 0.62;
+                }
+            }
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const NAZGUL_BLADE = nazgulBladeGeometry();
+
 export function buildNazgul() {
     const group = new THREE.Group();
     const black = mapped(clothTexture('#0a0a0c'), 0x0c0c10, 0.94, 0.06, 0.4);
@@ -645,7 +723,8 @@ export function buildNazgul() {
         rider.add(eye);
     }
 
-    const blade = new THREE.Mesh(geo('naz-blade', () => new THREE.BoxGeometry(0.04, 0.85, 0.08)), std(0xc8d0d8, 0.22, 0.92));
+    const blade = new THREE.Mesh(NAZGUL_BLADE, std(0xc8d0d8, 0.22, 0.92));
+    blade.name = 'nazgulBlade';
     blade.position.set(0.32, 0.7, 0.15);
     blade.rotation.z = -0.35;
     rider.add(blade);
@@ -1200,6 +1279,29 @@ export function buildPavilion() {
     return group;
 }
 
+/** Encosto 0.55×0.7×0.12, centrado. Crista no meio e painel recuado na face interna (−Z). */
+function councilBackGeometry() {
+    const g = new THREE.BoxGeometry(0.55, 0.7, 0.12, 8, 10, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (y > 0.06) {
+            const u = Math.min(1, (y - 0.06) / 0.29);
+            const crest = Math.max(0, 0.32 - Math.abs(x) * 1.2);
+            y += u * crest;
+            x *= 1 - u * 0.18 * Math.min(1, Math.abs(x) / 0.27);
+        }
+        if (z < -0.03 && Math.abs(x) < 0.15 && y > -0.2 && y < 0.18) z += 0.055;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const COUNCIL_BACK = councilBackGeometry();
+
 export function buildCouncilRing() {
     const group = new THREE.Group();
     const stone = mapped(marbleTexture(), 0xe8e0d0, 0.55, 0.06, 0.5);
@@ -1215,7 +1317,8 @@ export function buildCouncilRing() {
         );
         seat.position.set(Math.cos(a) * 3.4, 0.02, Math.sin(a) * 3.4);
         group.add(seat);
-        const back = new THREE.Mesh(geo('council-back', () => new THREE.BoxGeometry(0.55, 0.7, 0.12)), stone);
+        const back = new THREE.Mesh(COUNCIL_BACK, stone);
+        back.name = 'councilBack';
         back.position.set(Math.cos(a) * 3.72, 0.5, Math.sin(a) * 3.72);
         back.lookAt(0, 0.5, 0);
         group.add(back);
@@ -1520,19 +1623,51 @@ export function buildSword() {
     const group = new THREE.Group();
     const blade = new THREE.Mesh(
         geo('sw-blade', () => {
-            const g = new THREE.BoxGeometry(0.045, 0.72, 0.11);
+            const H = 0.72;
+            const half = H / 2;
+            const g = new THREE.BoxGeometry(0.03, H, 0.1, 4, 18, 8);
             const pos = g.attributes.position;
             for (let i = 0; i < pos.count; i++) {
-                if (pos.getY(i) > 0.25) pos.setX(i, pos.getX(i) * 0.45);
+                let x = pos.getX(i);
+                const y = pos.getY(i);
+                let z = pos.getZ(i);
+                const t = (y + half) / H;
+                const widthK = t < 0.1 ? 1 : Math.max(0.04, 1 - (t - 0.1) / 0.9);
+                z *= widthK;
+                const edge = Math.min(1, Math.abs(z) / Math.max(0.004, 0.05 * widthK));
+                x *= 0.34 + 0.66 * (1 - edge * edge);
+                if (t > 0.12 && t < 0.88) {
+                    const lim = 0.012 * widthK + 0.003;
+                    if (Math.abs(z) < lim) x *= 1 - (1 - Math.abs(z) / lim) * 0.55;
+                }
+                pos.setXYZ(i, x, y, z);
             }
             g.computeVertexNormals();
             return g;
         }),
         std(0xd8dee8, 0.22, 0.92)
     );
+    blade.name = 'playerBlade';
     blade.position.y = 0.4;
     group.add(blade);
-    const guard = new THREE.Mesh(geo('sw-guard', () => new THREE.BoxGeometry(0.3, 0.045, 0.07)), mapped(goldTexture(), 0xc9a227, 0.32, 0.82, 0.3));
+    const guard = new THREE.Mesh(geo('sw-guard', () => {
+        const g = new THREE.BoxGeometry(0.32, 0.05, 0.08, 14, 2, 2);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            let y = pos.getY(i);
+            let z = pos.getZ(i);
+            const nx = Math.min(1, Math.abs(x) / 0.16);
+            if (nx > 0.28) {
+                const u = (nx - 0.28) / 0.72;
+                y -= u * u * 0.07;
+                z *= 1 - u * 0.42;
+            }
+            pos.setXYZ(i, x, y, z);
+        }
+        g.computeVertexNormals();
+        return g;
+    }), mapped(goldTexture(), 0xc9a227, 0.32, 0.82, 0.3));
     group.add(guard);
     const hilt = new THREE.Mesh(geo('sw-hilt', () => new THREE.CylinderGeometry(0.028, 0.034, 0.22, 10)), mapped(leatherTexture(), 0x4a3020, 0.8));
     hilt.position.y = -0.12;

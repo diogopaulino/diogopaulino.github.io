@@ -11,11 +11,11 @@ import {
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js?v=13';
+import { Player } from './player.js?v=14';
 import { createSky, applyChapterSky, createLights } from './sky.js';
 import {
     buildChapter, lightWorldLamp, revealBridge, lightCrystal, resetCrystals
-} from './world.js?v=13';
+} from './world.js?v=14';
 import { nearestInteractable } from './npcs.js';
 
 const LOOK = new THREE.Vector3();
@@ -853,6 +853,7 @@ function wait(ms) {
 
 function boot() {
     const game = new Game();
+    window.__menina = game;
     game.init().catch((err) => {
         console.error(err);
         game.hud.showError(err?.message || 'Falha ao acender a lanterna.');

@@ -94,6 +94,86 @@ function gateArchGeometry() {
     return g;
 }
 
+/** Jamba do portão, 0.25×3.4, centrada. Pé largo, canal nas faces e capitel. */
+const GATE_POST = (() => {
+    const H = 3.4;
+    const hh = H / 2;
+    const g = new THREE.BoxGeometry(0.25, H, 0.25, 6, 18, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + hh) / H;
+        const taper = 1.1 - t * 0.2;
+        x *= taper;
+        z *= taper;
+        if (t < 0.08) {
+            const u = 1 - t / 0.08;
+            x *= 1 + u * 0.85;
+            z *= 1 + u * 0.85;
+        } else if (t > 0.92) {
+            const u = (t - 0.92) / 0.08;
+            x *= 1 + u * 0.45;
+            z *= 1 + u * 0.45;
+        } else {
+            const half = 0.125 * taper;
+            if (Math.abs(x) > half * 0.82 && Math.abs(z) < half * 0.4) x *= 0.42;
+            if (Math.abs(z) > half * 0.82 && Math.abs(x) < half * 0.4) z *= 0.42;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Placa 1.8×0.7, centrada. Cume no meio, moldura e faixa no terço de baixo. */
+const WARN_SIGN = (() => {
+    const g = new THREE.BoxGeometry(1.8, 0.7, 0.1, 18, 10, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / 0.9;
+        const ny = (y + 0.35) / 0.7;
+        if (ny > 0.82) y += ((ny - 0.82) / 0.18) * (1 - nx) * 0.32;
+        const frame = nx > 0.84 || ny < 0.14 || ny > 0.78;
+        const stripe = ny > 0.36 && ny < 0.54 && nx < 0.84;
+        if (frame || stripe) z = Math.sign(z) * 0.062;
+        else if (Math.abs(z) > 0.02) z = Math.sign(z) * 0.012;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Trilho caído, 2.4 centrado em Y. Dobra e estrangula no meio. */
+const BROKEN_RAIL = (() => {
+    const H = 2.4;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.16, H, 0.07, 4, 18, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t > 0.58) {
+            const u = (t - 0.58) / 0.42;
+            x += u * u * 0.62;
+        }
+        if (Math.abs(t - 0.58) < 0.07) {
+            const u = 1 - Math.abs(t - 0.58) / 0.07;
+            z *= 1 - u * 0.55;
+            x *= 1 - u * 0.28;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
 /**
  * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
  * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
@@ -370,7 +450,8 @@ export class World {
             this._post(x, z, 3.2, steel);
             this.addCollider(x, z, 0.25);
         }
-        const broken = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.12), steel);
+        const broken = new THREE.Mesh(BROKEN_RAIL, steel);
+        broken.name = 'brokenRail';
         broken.position.set(paddock.cx - paddock.rx + 1, this.heightAt(paddock.cx - paddock.rx, paddock.cz) + 1.4, paddock.cz);
         broken.rotation.z = 1.1;
         this.group.add(broken);
@@ -388,7 +469,8 @@ export class World {
             this.sparks.push(spark);
         }
 
-        const sign = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 0.08), warn);
+        const sign = new THREE.Mesh(WARN_SIGN, warn);
+        sign.name = 'warnSign';
         sign.position.set(28, this.heightAt(28, 28) + 2.1, 28);
         this.group.add(sign);
         this._post(27.2, 28, 2.2, steel);
@@ -413,8 +495,10 @@ export class World {
         roof.position.set(x, y + 4.2, z);
         roof.castShadow = true;
         this.group.add(roof);
-        const gateL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.4, 0.25), rust);
+        const gateL = new THREE.Mesh(GATE_POST, rust);
+        gateL.name = 'gatePost';
         gateL.position.set(-4, this.heightAt(-4, 94) + 1.7, 94);
+        gateL.castShadow = true;
         this.group.add(gateL);
         const gateR = gateL.clone();
         gateR.position.set(12, this.heightAt(12, 94) + 1.7, 94);

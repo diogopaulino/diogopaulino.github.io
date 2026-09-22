@@ -136,7 +136,7 @@ export function makeGrassInstanced(count, radius, quality = 1, scene) {
         const theta = Math.random() * Math.PI * 2;
         inst.position.set(Math.cos(theta) * r, 0.35, Math.sin(theta) * r);
         inst.rotation.y = Math.random() * Math.PI * 2;
-        inst.scaling.setScalar(0.7 + Math.random() * 0.6);
+        inst.scaling.setAll(0.7 + Math.random() * 0.6);
         inst.parent = root;
     }
 

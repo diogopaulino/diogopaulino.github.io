@@ -3,7 +3,7 @@
  * Colisão é AABB no plano XZ — suficiente para um arcade.
  */
 
-import { createCar, createCassette } from './models.js?v=10';
+import { createCar, createCassette } from './models.js?v=13';
 import { hash, randRange } from './utils.js';
 
 const LANES = [-5.4, -1.8, 1.8, 5.4];

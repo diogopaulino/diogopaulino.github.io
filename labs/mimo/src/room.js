@@ -130,41 +130,156 @@ export function buildRoom(quality) {
         scale: [1.55, 1.55, 1], pos: [0, 0.015, 0.15], rot: [-Math.PI / 2, 0, 0], cast: false
     }));
 
+    // Sofá: assento enrolado, encosto curvo, braços e pés. O grupo continua em (1.85, 0, 0.15).
+    // A extrusão corre em Z; rotateY(π/2) deita o comprimento em X. shape.x negativo vira a frente (+Z).
     const sofa = new THREE.Group();
+    sofa.name = 'sofa';
     sofa.position.set(1.85, 0, 0.15);
     sofa.rotation.y = -Math.PI / 2.4;
-    sofa.add(mesh(box, fabricMat, { scale: [1.7, 0.38, 0.78], pos: [0, 0.28, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [1.7, 0.7, 0.16], pos: [0, 0.7, -0.32] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.14, 0.5, 0.78], pos: [-0.8, 0.52, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.14, 0.5, 0.78], pos: [0.8, 0.52, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.5, 0.28, 0.18], pos: [-0.4, 0.72, -0.18], rot: [-0.25, 0, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.5, 0.28, 0.18], pos: [0.4, 0.72, -0.18], rot: [-0.25, 0, 0] }));
-    for (const [x, z] of [[-0.72, 0.32], [0.72, 0.32], [-0.72, -0.32], [0.72, -0.32]]) {
-        sofa.add(mesh(box, woodMat, { scale: [0.08, 0.22, 0.08], pos: [x, 0.08, z] }));
+    const extrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 6 });
+        geo.translate(0, 0, -depth / 2);
+        geo.computeVertexNormals();
+        return geo;
+    };
+    const alongX = (pts, depth) => {
+        const geo = extrude(pts, depth);
+        geo.rotateY(Math.PI / 2);
+        return geo;
+    };
+    const seat = new THREE.Mesh(alongX([
+        [0.34, 0.12], [0.36, 0.28], [0.22, 0.44], [-0.08, 0.48],
+        [-0.28, 0.4], [-0.42, 0.26], [-0.34, 0.14], [0.3, 0.1]
+    ], 1.7), fabricMat);
+    seat.name = 'sofaSeat';
+    seat.castShadow = true;
+    seat.receiveShadow = true;
+    const back = new THREE.Mesh(alongX([
+        [0.24, 0.38], [0.4, 0.42], [0.42, 0.92], [0.3, 1.06], [0.22, 0.9], [0.22, 0.48]
+    ], 1.7), fabricMat);
+    back.name = 'sofaBack';
+    back.castShadow = true;
+    back.receiveShadow = true;
+    const armGeo = extrude([
+        [-0.07, 0.28], [0.07, 0.28], [0.09, 0.46], [0.05, 0.68],
+        [0, 0.76], [-0.05, 0.68], [-0.09, 0.46]
+    ], 0.78);
+    for (const x of [-0.8, 0.8]) {
+        const arm = new THREE.Mesh(armGeo, fabricMat);
+        arm.name = 'sofaArm';
+        arm.position.x = x;
+        arm.castShadow = true;
+        arm.receiveShadow = true;
+        sofa.add(arm);
     }
+    const cushionGeo = alongX([
+        [0.08, -0.1], [0.1, 0], [0.05, 0.12], [-0.05, 0.13], [-0.1, 0.02], [-0.08, -0.1]
+    ], 0.5);
+    for (const x of [-0.4, 0.4]) {
+        const cushion = new THREE.Mesh(cushionGeo, fabricMat);
+        cushion.name = 'sofaCushion';
+        cushion.position.set(x, 0.72, -0.18);
+        cushion.rotation.x = -0.25;
+        cushion.castShadow = true;
+        sofa.add(cushion);
+    }
+    const legGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.045, 0),
+        new THREE.Vector2(0.05, 0.02),
+        new THREE.Vector2(0.028, 0.06),
+        new THREE.Vector2(0.022, 0.16),
+        new THREE.Vector2(0.038, 0.2),
+        new THREE.Vector2(0.042, 0.22)
+    ], 8);
+    for (const [x, z] of [[-0.72, 0.32], [0.72, 0.32], [-0.72, -0.32], [0.72, -0.32]]) {
+        const leg = new THREE.Mesh(legGeo, woodMat);
+        leg.name = 'sofaLeg';
+        leg.position.set(x, 0, z);
+        leg.castShadow = true;
+        sofa.add(leg);
+    }
+    sofa.add(seat, back);
     root.add(sofa);
 
+    // Vaso com pé, bojo e borda. Folhas em lâmina, no lugar das esferas.
     const plant = new THREE.Group();
+    plant.name = 'plant';
     plant.position.set(-2.35, 0, -1.7);
-    plant.add(mesh(cyl, ceramic, { scale: [0.18, 0.28, 0.18], pos: [0, 0.14, 0] }));
-    plant.add(mesh(cyl, soil, { scale: [0.16, 0.04, 0.16], pos: [0, 0.28, 0], cast: false }));
-    plant.add(mesh(cyl, new THREE.MeshStandardMaterial({ color: 0x3a5a28 }), {
+    const pot = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.1, 0),
+        new THREE.Vector2(0.12, 0.02),
+        new THREE.Vector2(0.14, 0.06),
+        new THREE.Vector2(0.175, 0.14),
+        new THREE.Vector2(0.15, 0.22),
+        new THREE.Vector2(0.16, 0.25),
+        new THREE.Vector2(0.195, 0.28),
+        new THREE.Vector2(0.17, 0.3)
+    ], 16), ceramic);
+    pot.name = 'plantPot';
+    pot.castShadow = true;
+    pot.receiveShadow = true;
+    plant.add(pot);
+    plant.add(mesh(cyl, soil, { scale: [0.15, 0.04, 0.15], pos: [0, 0.26, 0], cast: false }));
+    const stem = mesh(cyl, new THREE.MeshStandardMaterial({ color: 0x3a5a28 }), {
         scale: [0.025, 0.7, 0.025], pos: [0, 0.62, 0]
-    }));
+    });
+    stem.name = 'plantStem';
+    plant.add(stem);
+    const leafPts = [[0, 0], [0.07, 0.08], [0.1, 0.2], [0.05, 0.34], [0, 0.46], [-0.05, 0.34], [-0.1, 0.2], [-0.07, 0.08]];
+    const leafShape = new THREE.Shape();
+    leafShape.moveTo(leafPts[0][0], leafPts[0][1]);
+    for (let i = 1; i < leafPts.length; i++) leafShape.lineTo(leafPts[i][0], leafPts[i][1]);
+    const leafGeo = new THREE.ExtrudeGeometry(leafShape, { depth: 0.018, bevelEnabled: false });
+    leafGeo.translate(0, 0, -0.009);
+    leafGeo.computeVertexNormals();
     for (let i = 0; i < 7; i++) {
         const a = (i / 7) * Math.PI * 2;
-        plant.add(mesh(sph, leafMat, {
-            scale: [0.18, 0.28, 0.06],
-            pos: [Math.cos(a) * 0.22, 0.7 + (i % 3) * 0.18, Math.sin(a) * 0.18],
-            rot: [0.6, a, 0.3]
-        }));
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.name = 'plantLeaf';
+        leaf.position.set(Math.cos(a) * 0.16, 0.55 + (i % 3) * 0.16, Math.sin(a) * 0.14);
+        leaf.rotation.set(0.5, a, 0.15);
+        leaf.castShadow = true;
+        plant.add(leaf);
     }
     root.add(plant);
 
+    // Prateleira com laterais e borda na frente. Os livros continuam na tábua de baixo.
     const shelf = new THREE.Group();
+    shelf.name = 'shelf';
     shelf.position.set(-2.85, 1.15, 0.6);
-    shelf.add(mesh(box, woodMat, { scale: [0.28, 0.04, 1.4], pos: [0, 0, 0] }));
-    shelf.add(mesh(box, woodMat, { scale: [0.28, 0.04, 1.4], pos: [0, 0.42, 0] }));
+    const shelfExtrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+        geo.translate(0, 0, -depth / 2);
+        geo.computeVertexNormals();
+        return geo;
+    };
+    const boardGeo = shelfExtrude([
+        [-0.14, -0.02], [0.12, -0.018], [0.16, 0], [0.12, 0.022], [-0.14, 0.018]
+    ], 1.28);
+    for (const y of [0, 0.42]) {
+        const board = new THREE.Mesh(boardGeo, woodMat);
+        board.name = 'shelfBoard';
+        board.position.y = y;
+        board.castShadow = true;
+        board.receiveShadow = true;
+        shelf.add(board);
+    }
+    const sideGeo = shelfExtrude([
+        [-0.15, -0.06], [0.15, -0.06], [0.16, 0.48], [0.12, 0.52], [-0.14, 0.5], [-0.15, 0]
+    ], 0.045);
+    for (const z of [-0.68, 0.68]) {
+        const side = new THREE.Mesh(sideGeo, woodMat);
+        side.name = 'shelfSide';
+        side.position.z = z;
+        side.castShadow = true;
+        shelf.add(side);
+    }
     const bookColors = [0x8a3030, 0x3a5080, 0xc4a050, 0x4a6a48, 0x6a3a58];
     for (let i = 0; i < 5; i++) {
         shelf.add(mesh(box, new THREE.MeshStandardMaterial({ color: bookColors[i], roughness: 0.7 }), {
@@ -183,19 +298,52 @@ export function buildRoom(quality) {
     root.add(lamp);
     refs.lamp = lamp;
 
+    // Cama: almofada abaulada no meio e rolo em volta. O grupo continua em (-1.35, 0, 1.15).
     const bed = new THREE.Group();
+    bed.name = 'petBed';
     bed.position.set(-1.35, 0, 1.15);
-    bed.add(mesh(cyl, cushionMat, { scale: [0.42, 0.1, 0.42], pos: [0, 0.08, 0] }));
-    bed.add(mesh(new THREE.TorusGeometry(0.38, 0.08, 10, 24), cushionMat, {
-        pos: [0, 0.12, 0], rot: [Math.PI / 2, 0, 0]
-    }));
+    const bedCushion = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0.02),
+        new THREE.Vector2(0.32, 0.035),
+        new THREE.Vector2(0.42, 0.07),
+        new THREE.Vector2(0.34, 0.11),
+        new THREE.Vector2(0.14, 0.145),
+        new THREE.Vector2(0.02, 0.16)
+    ], 20), cushionMat);
+    bedCushion.name = 'bedCushion';
+    bedCushion.castShadow = true;
+    bedCushion.receiveShadow = true;
+    const bolster = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 10, 24), cushionMat);
+    bolster.name = 'bedBolster';
+    bolster.position.y = 0.12;
+    bolster.rotation.x = Math.PI / 2;
+    bolster.castShadow = true;
+    bed.add(bedCushion, bolster);
     root.add(bed);
     refs.bed = bed;
 
+    // Tigelas com pé e borda. A ração continua nas mesmas alturas.
     const bowls = new THREE.Group();
+    bowls.name = 'bowls';
     bowls.position.set(-2.15, 0, 0.55);
-    bowls.add(mesh(cyl, ceramic, { scale: [0.12, 0.05, 0.12], pos: [0, 0.04, 0] }));
-    bowls.add(mesh(cyl, ceramicBlue, { scale: [0.12, 0.05, 0.12], pos: [0.32, 0.04, 0] }));
+    const bowlGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.045, 0),
+        new THREE.Vector2(0.06, 0.01),
+        new THREE.Vector2(0.095, 0.032),
+        new THREE.Vector2(0.115, 0.05),
+        new THREE.Vector2(0.13, 0.064),
+        new THREE.Vector2(0.108, 0.074)
+    ], 16);
+    const food = new THREE.Mesh(bowlGeo, ceramic);
+    food.name = 'bowlFood';
+    food.castShadow = true;
+    food.receiveShadow = true;
+    const water = new THREE.Mesh(bowlGeo, ceramicBlue);
+    water.name = 'bowlWater';
+    water.position.x = 0.32;
+    water.castShadow = true;
+    water.receiveShadow = true;
+    bowls.add(food, water);
     const kibble = new THREE.MeshPhysicalMaterial({ color: 0xc48a40, roughness: 0.7 });
     for (let i = 0; i < 8; i++) {
         bowls.add(mesh(sph, kibble, {
@@ -218,15 +366,59 @@ export function buildRoom(quality) {
     root.add(yarn);
     refs.yarn = yarn;
 
-    const frame = mesh(box, woodMat, { scale: [0.42, 0.32, 0.03], pos: [2.55, 1.7, -1.1] });
-    frame.add(mesh(plane, new THREE.MeshBasicMaterial({ color: 0xd8b090 }), {
-        scale: [0.85, 0.78, 1], pos: [0, 0, 0.55], cast: false, receive: false
-    }));
+    // Quadro: quatro peças de moldura com ogee. O grupo fica em (2.55, 1.7, -1.1) e a tela olha para +Z.
+    const frame = new THREE.Group();
+    frame.name = 'pictureFrame';
+    frame.position.set(2.55, 1.7, -1.1);
+    const rail = (pts, depth, name, rot) => {
+        const geo = shelfExtrude(pts, depth);
+        if (rot === 'x') geo.rotateY(Math.PI / 2);
+        else geo.rotateX(Math.PI / 2);
+        const m = new THREE.Mesh(geo, woodMat);
+        m.name = name;
+        m.castShadow = true;
+        m.receiveShadow = true;
+        frame.add(m);
+    };
+    const topProfile = [
+        [0.010, 0.105], [-0.012, 0.108], [-0.040, 0.114], [-0.026, 0.128],
+        [-0.048, 0.140], [-0.028, 0.152], [-0.006, 0.160], [0.012, 0.158], [0.012, 0.105]
+    ];
+    rail(topProfile, 0.42, 'frameRailTop', 'x');
+    rail(topProfile.map(([x, y]) => [x, -y]), 0.42, 'frameRailBottom', 'x');
+    const sideProfile = [
+        [0.145, -0.010], [0.150, 0.012], [0.158, 0.040], [0.172, 0.026],
+        [0.186, 0.048], [0.200, 0.028], [0.210, 0.006], [0.208, -0.012], [0.145, -0.012]
+    ];
+    rail(sideProfile, 0.24, 'frameRailRight', 'y');
+    rail(sideProfile.map(([x, y]) => [-x, y]), 0.24, 'frameRailLeft', 'y');
+    const picture = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.27, 0.19),
+        new THREE.MeshBasicMaterial({ color: 0xd8b090 })
+    );
+    picture.name = 'framePicture';
+    picture.position.z = 0.004;
+    picture.castShadow = false;
+    picture.receiveShadow = false;
+    frame.add(picture);
     root.add(frame);
 
     const tub = new THREE.Group();
+    tub.name = 'bath';
     tub.position.set(2.15, 0, 1.55);
-    tub.add(mesh(cyl, ceramic, { scale: [0.42, 0.22, 0.32], pos: [0, 0.14, 0] }));
+    const bath = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.22, 0),
+        new THREE.Vector2(0.28, 0.03),
+        new THREE.Vector2(0.36, 0.1),
+        new THREE.Vector2(0.42, 0.18),
+        new THREE.Vector2(0.37, 0.23)
+    ], 18), ceramic);
+    bath.name = 'bathTub';
+    bath.scale.z = 0.32 / 0.42;
+    bath.position.y = 0.02;
+    bath.castShadow = true;
+    bath.receiveShadow = true;
+    tub.add(bath);
     tub.add(mesh(cyl, waterMat, { scale: [0.36, 0.04, 0.26], pos: [0, 0.2, 0], cast: false }));
     tub.visible = false;
     root.add(tub);

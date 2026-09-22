@@ -289,23 +289,55 @@ export function createCaju() {
 }
 
 export function createCrate() {
+    const g = new THREE.Group();
+    g.name = 'crate';
     const wood = templeStone({ repeat: [1, 1] });
-    const box = mesh(geo('crate', () => new THREE.BoxGeometry(0.95, 0.95, 0.95, 4, 4, 4)), 0xc48a3a, {
+    const plank = {
         map: wood.map,
         normalMap: wood.normalMap,
         roughnessMap: wood.roughnessMap,
         roughness: 0.72,
         metalness: 0.04
-    });
-    const mark = mesh(geo('crate-x', () => new THREE.BoxGeometry(0.7, 0.08, 0.08)), 0x5a3010, {
+    };
+    const post = geo('crate-post', () => new THREE.BoxGeometry(0.09, 0.95, 0.09));
+    const slatH = geo('crate-slat-h', () => new THREE.BoxGeometry(0.8, 0.12, 0.05));
+    const slatD = geo('crate-slat-d', () => new THREE.BoxGeometry(0.05, 0.12, 0.8));
+    const lid = geo('crate-lid', () => new THREE.BoxGeometry(0.8, 0.05, 0.24));
+    for (const x of [-1, 1]) {
+        for (const z of [-1, 1]) {
+            const p = mesh(post, 0xc48a3a, plank);
+            p.position.set(x * 0.42, 0, z * 0.42);
+            g.add(p);
+        }
+    }
+    for (const y of [-0.28, 0, 0.28]) {
+        for (const z of [-1, 1]) {
+            const s = mesh(slatH, 0xc48a3a, plank);
+            s.position.set(0, y, z * 0.44);
+            g.add(s);
+        }
+        for (const x of [-1, 1]) {
+            const s = mesh(slatD, 0xc48a3a, plank);
+            s.position.set(x * 0.44, y, 0);
+            g.add(s);
+        }
+    }
+    for (const z of [-0.2, 0.2]) {
+        const top = mesh(lid, 0xc48a3a, plank);
+        top.position.set(0, 0.45, z);
+        const bot = mesh(lid, 0xc48a3a, plank);
+        bot.position.set(0, -0.45, z);
+        g.add(top, bot);
+    }
+    const mark = mesh(geo('crate-x', () => new THREE.BoxGeometry(0.62, 0.07, 0.04)), 0x5a3010, {
         roughness: 0.65
     });
     const mark2 = mark.clone();
-    mark.position.z = 0.48;
-    mark2.position.z = 0.48;
+    mark.position.set(0, 0, 0.49);
+    mark2.position.set(0, 0, 0.49);
     mark2.rotation.z = Math.PI / 2;
-    box.add(mark, mark2);
-    return box;
+    g.add(mark, mark2);
+    return g;
 }
 
 export function createCrab() {

@@ -647,6 +647,38 @@ export function createCloud() {
     return g;
 }
 
+/**
+ * Sorriso da estrela: os cantos sobem cerca de 11 cm acima do meio.
+ */
+function starSmileGeometry() {
+    const p = [
+        [-0.09, 0.035],
+        [-0.04, -0.015],
+        [0, -0.055],
+        [0.04, -0.015],
+        [0.09, 0.035],
+        [0.09, 0.09],
+        [0.04, 0.018],
+        [0, -0.022],
+        [-0.04, 0.018],
+        [-0.09, 0.09]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+}
+
 export function createStar(color = 0xffe14a) {
     const g = new THREE.Group();
     g.name = 'star';
@@ -669,9 +701,10 @@ export function createStar(color = 0xffe14a) {
     eye.position.set(-0.1, 0.08, 0.2);
     const eyeR = eye.clone();
     eyeR.position.x = 0.1;
-    const smile = mesh(geo('st-s', () => new THREE.BoxGeometry(0.16, 0.04, 0.04)), 0x1a1420, {
+    const smile = mesh(geo('st-s', starSmileGeometry), 0x1a1420, {
         roughness: 0.4
     });
+    smile.name = 'starSmile';
     smile.position.set(0, -0.06, 0.22);
     g.add(body, arm, eye, eyeR, smile);
     return g;

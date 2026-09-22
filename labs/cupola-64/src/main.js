@@ -8,10 +8,10 @@ import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
-import { World } from './world.js?v=10';
-import { Player } from './player.js?v=10';
-import { Entities } from './entities.js?v=10';
-import { Effects } from './effects.js?v=10';
+import { World } from './world.js?v=11';
+import { Player } from './player.js?v=11';
+import { Entities } from './entities.js?v=11';
+import { Effects } from './effects.js?v=11';
 
 class Game {
     constructor() {
@@ -161,6 +161,7 @@ class Game {
         this.player = new Player(this.scene);
         this.effects = new Effects(this.scene, this.camera);
         this.entities = new Entities(this.scene, this.world);
+        window.__cupola = this;
 
         this.hud.setLoading(0.84, 'Afinando o vitral…');
         this.resize();

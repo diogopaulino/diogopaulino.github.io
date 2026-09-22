@@ -10,11 +10,11 @@ import { damp, pick, detectMobile, detectSoftwareGL } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
-import { World } from './world.js?v=5';
-import { Player } from './player.js?v=5';
-import { Entities } from './entities.js?v=5';
-import { Effects } from './effects.js?v=5';
-import { setSnap, setSnapAspect } from './models.js?v=5';
+import { World } from './world.js?v=6';
+import { Player } from './player.js?v=6';
+import { Entities } from './entities.js?v=6';
+import { Effects } from './effects.js?v=6';
+import { setSnap, setSnapAspect } from './models.js?v=6';
 
 const CAMERAS = [
     { name: 'atrás', dist: 7.4, height: 3.6, look: 0.55 },
@@ -470,6 +470,7 @@ class Game {
 }
 
 const game = new Game();
+window.__tatu = game;
 game.boot().catch((err) => {
     console.error(err);
     game.hud.showError(err?.message || 'Falha ao carregar a ilha.');

@@ -4,7 +4,7 @@
 
 import { CapsuleCollider } from './CapsuleCollider.js';
 import { PlayerController } from './PlayerController.js';
-import { buildDico, CharacterAnimator, applyLocomotion } from '../characters/builders.js?v=4';
+import { buildDico, CharacterAnimator, applyLocomotion } from '../characters/builders.js?v=6';
 import { angleDamp } from '../utils/math.js';
 
 export class Player {

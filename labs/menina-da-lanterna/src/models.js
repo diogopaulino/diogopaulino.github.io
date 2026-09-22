@@ -1153,15 +1153,84 @@ export function buildDawnStone() {
     return group;
 }
 
+/**
+ * Poste 0.1×0.85, centrado. Seção quadrada, pé mais largo e topo em cunha.
+ */
+function fencePostGeometry() {
+    const H = 0.85;
+    const half = H / 2;
+    const pts = [];
+    for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        const y = -half + t * H;
+        let r = 0.05;
+        if (t < 0.1) r = 0.05 + (1 - t / 0.1) * 0.028;
+        else if (t > 0.82) r = 0.05 * (1 - (t - 0.82) / 0.18) * 0.85 + 0.008;
+        pts.push(new THREE.Vector2(Math.max(0.008, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t < 0.88) {
+            const ang = Math.atan2(z, x);
+            const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.15);
+            const k = 1 / corner;
+            x *= k;
+            z *= k;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Trilho de comprimento 1 no X. Seção quadrada, pontas mais finas. */
+function fenceRailGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const y = t - 0.5;
+        const end = t < 0.08 || t > 0.92 ? 0.7 : 1;
+        const belly = 0.92 + 0.08 * Math.sin(t * Math.PI);
+        pts.push(new THREE.Vector2(0.038 * end * belly, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ang = Math.atan2(z, x);
+        const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.15);
+        const k = 1 / corner;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.rotateZ(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const FENCE_POST = fencePostGeometry();
+const FENCE_RAIL = fenceRailGeometry();
+
 export function buildFence(length = 4) {
     const group = new THREE.Group();
     const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.9 });
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(length, 0.08, 0.08), wood);
-    rail.position.y = 0.55;
-    group.add(rail);
+    for (const y of [0.28, 0.58]) {
+        const rail = new THREE.Mesh(FENCE_RAIL, wood);
+        rail.name = 'fenceRail';
+        rail.scale.x = length;
+        rail.position.y = y;
+        group.add(rail);
+    }
     const n = Math.max(2, Math.round(length / 1.1));
     for (let i = 0; i < n; i++) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.85, 0.1), wood);
+        const post = new THREE.Mesh(FENCE_POST, wood);
+        post.name = 'fencePost';
         post.position.set(-length / 2 + (i / (n - 1)) * length, 0.42, 0);
         group.add(post);
     }

@@ -416,6 +416,227 @@ function oarBladeGeometry() {
 const OAR_SHAFT = oarShaftGeometry();
 const OAR_BLADE = oarBladeGeometry();
 
+/**
+ * Carreta 0.62×0.32×0.48, centrada. Duas faces altas e um berço no meio.
+ * A boca (+Z) desce; a culatra (−Z) fica mais alta, com um entalhe de munhão.
+ */
+function cannonCarriageGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.31, -0.16);
+    shape.lineTo(-0.31, 0.3);
+    shape.lineTo(-0.17, 0.3);
+    shape.lineTo(-0.17, -0.02);
+    shape.lineTo(0.17, -0.02);
+    shape.lineTo(0.17, 0.3);
+    shape.lineTo(0.31, 0.3);
+    shape.lineTo(0.31, -0.16);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 0.48, steps: 14, bevelEnabled: false });
+    g.translate(0, 0, -0.24);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y > 0.04 && Math.abs(x) > 0.15) {
+            const along = (z + 0.24) / 0.48;
+            const notch = Math.abs(z - 0.04) < 0.08 ? 0.14 : 0;
+            y -= along * 0.24 + notch;
+        }
+        if (y < -0.1) x *= 1 + (0.12 * (1 - (y + 0.16) / 0.06));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tubo de 1.7, centrado em Y. Boca estreita em +Y, anéis e cascabel na culatra. */
+function cannonBarrelGeometry() {
+    const half = 0.85;
+    const raw = [
+        [0.02, -half - 0.08],
+        [0.08, -half - 0.03],
+        [0.03, -half + 0.02],
+        [0.16, -half + 0.1],
+        [0.2, -0.58],
+        [0.2, -0.5],
+        [0.115, -0.42],
+        [0.11, -0.08],
+        [0.2, -0.01],
+        [0.2, 0.07],
+        [0.108, 0.14],
+        [0.102, 0.4],
+        [0.19, 0.48],
+        [0.19, 0.56],
+        [0.098, 0.64],
+        [0.094, half - 0.08],
+        [0.14, half - 0.03],
+        [0.09, half]
+    ];
+    const g = new THREE.LatheGeometry(raw.map(([r, y]) => new THREE.Vector2(r, y)), 16);
+    g.computeVertexNormals();
+    return g;
+}
+
+const CANNON_CARRIAGE = cannonCarriageGeometry();
+const CANNON_BARREL = cannonBarrelGeometry();
+
+/**
+ * Leme em pá, 1.15 de alto. Estoque estreito em cima, folha larga na água.
+ * Espessura no X, para o giro em Y do casco continuar no mesmo eixo.
+ */
+function rudderGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.045, 0.58);
+    shape.lineTo(0.05, 0.58);
+    shape.lineTo(0.07, 0.28);
+    shape.lineTo(0.1, 0.02);
+    shape.lineTo(0.24, -0.18);
+    shape.lineTo(0.2, -0.58);
+    shape.lineTo(-0.14, -0.5);
+    shape.lineTo(-0.18, -0.16);
+    shape.lineTo(-0.06, 0.22);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.07,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.01,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -0.035);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const spine = Math.exp(-(x * x) / 0.0035);
+        z += Math.sign(z || 1) * 0.016 * spine * (0.45 + (0.58 - y) / 1.16);
+        pos.setXYZ(i, x, y, z);
+    }
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const RUDDER = rudderGeometry();
+
+/**
+ * Painel de popa. Largura acompanha a boca. O topo sobe no meio e cai
+ * nos ombros; as fiadas recuam para dentro do casco, longe do leme.
+ */
+function sternTransomGeometry(beam) {
+    const w = beam * 0.9;
+    const h = 1.05;
+    const hw = w / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(w, h, 0.16, 8, 14, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const top = (y + hh) / h;
+        if (top > 0.78) {
+            const u = (top - 0.78) / 0.22;
+            const nx = Math.abs(x) / hw;
+            y -= u * (0.08 + nx * nx * 0.46);
+        }
+        if (z < -0.04) {
+            const row = Math.floor((y + hh) / 0.13);
+            if (row % 2 === 1) z += 0.09;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Amurada transversal da popa. O meio sobe, as pontas caem, fiadas na face de ré. */
+function sternRailGeometry(beam) {
+    const w = beam * 0.88;
+    const h = 0.32;
+    const hw = w / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(w, h, 0.12, 16, 6, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / hw;
+        const top = (y + hh) / h;
+        if (top > 0.5) {
+            const u = (top - 0.5) / 0.5;
+            y += u * (0.14 * (1 - nx * nx) - nx * nx * 0.12);
+        }
+        if (top > 0.7) z *= 1 - ((top - 0.7) / 0.3) * 0.4;
+        if (z < -0.02) {
+            const col = Math.floor((x + hw) / (w / 6));
+            if (col % 2 === 1) z += 0.05;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Bochecha da popa ao longo de Z. A ré sobe; as fiadas recuam dos dois lados. */
+function sternCheekGeometry(length) {
+    const L = length * 0.3;
+    const h = 0.48;
+    const hl = L / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(0.12, h, L, 2, 8, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const nz = (z + hl) / L;
+        const top = (y + hh) / h;
+        if (top > 0.4) {
+            const u = (top - 0.4) / 0.6;
+            y += u * (0.2 * (1 - nz) - nz * nz * 0.08);
+        }
+        if (top > 0.7) x *= 1 - ((top - 0.7) / 0.3) * 0.42;
+        if (Math.abs(x) > 0.03 && top < 0.82) {
+            const band = Math.floor((z + hl) / (L / 5));
+            if (band % 2 === 1) x *= 0.48;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tampão da proa. O topo cai nas laterais e a face de vante tem cume e fiadas. */
+function bowPanelGeometry(width, height) {
+    const hw = width / 2;
+    const hh = height / 2;
+    const g = new THREE.BoxGeometry(width, height, 0.2, 10, 12, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / Math.max(hw, 0.01);
+        const top = (y + hh) / height;
+        if (top > 0.6) {
+            const u = (top - 0.6) / 0.4;
+            y -= u * (0.05 + nx * nx * 0.48);
+        }
+        if (z > 0.04) {
+            z += Math.exp(-(x * x) / Math.max(0.012, hw * hw * 0.15)) * 0.07;
+            const row = Math.floor((y + hh) / 0.18);
+            if (row % 2 === 1 && nx > 0.22) z -= 0.055;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -520,10 +741,9 @@ export function buildLongship({
         const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
         const bilge = sheer - dep;
         const h = Math.max(1.15, sheer - bilge + 0.6);
-        const panel = new THREE.Mesh(
-            new THREE.BoxGeometry(Math.max(0.65, hw * 2.15), h, 0.2),
-            bulkMat
-        );
+        const panelW = Math.max(0.65, hw * 2.15);
+        const panel = new THREE.Mesh(bowPanelGeometry(panelW, h), bulkMat);
+        panel.name = 'bowPanel';
         panel.position.set(0, bilge + h * 0.52, z);
         panel.castShadow = true;
         group.add(panel);
@@ -554,34 +774,34 @@ export function buildLongship({
         parts.sternPlatform = platform;
 
         const rail = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.88, 0.32, 0.12),
+            sternRailGeometry(beam),
             woodMaterial(true, 0x3a2618)
         );
+        rail.name = 'sternRail';
         rail.position.set(0, -deckDrop + 0.28, -length * 0.48);
         group.add(rail);
 
+        const cheekGeo = sternCheekGeometry(length);
         for (const side of [-1, 1]) {
-            const cheek = new THREE.Mesh(
-                new THREE.BoxGeometry(0.12, 0.48, length * 0.3),
-                woodMaterial(true, 0x3a2618)
-            );
+            const cheek = new THREE.Mesh(cheekGeo, woodMaterial(true, 0x3a2618));
+            cheek.name = 'sternCheek';
             cheek.position.set(side * beam * 0.42, -deckDrop + 0.08, -length * 0.2);
             group.add(cheek);
         }
 
         const transom = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.9, 1.05, 0.16),
+            sternTransomGeometry(beam),
             woodMaterial(true, 0x2e1c12)
         );
+        transom.name = 'transomBoard';
         transom.position.set(0, -0.28, -length * 0.495);
         transom.castShadow = true;
         group.add(transom);
 
-        const rudder = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 1.15, 0.55),
-            woodMaterial(true, 0x3a2618)
-        );
+        const rudder = new THREE.Mesh(RUDDER, woodMaterial(true, 0x3a2618));
+        rudder.name = 'rudderBlade';
         rudder.position.set(0, -0.55, -length * 0.52);
+        rudder.castShadow = true;
         group.add(rudder);
         parts.rudder = rudder;
     }
@@ -799,8 +1019,10 @@ export function buildLongship({
 
         const makeGun = (side, aim = 'broadside') => {
             const gun = new THREE.Group();
-            const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.32, 0.48), wood);
+            const carriage = new THREE.Mesh(CANNON_CARRIAGE, wood);
+            carriage.name = 'cannonCarriage';
             carriage.position.y = -0.02;
+            carriage.castShadow = true;
             gun.add(carriage);
 
             const wheelGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.08, 10);
@@ -811,7 +1033,8 @@ export function buildLongship({
                 gun.add(wheel);
             }
 
-            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.145, 1.7, 12), bronze);
+            const barrel = new THREE.Mesh(CANNON_BARREL, bronze);
+            barrel.name = 'cannonBarrel';
             barrel.castShadow = true;
             if (aim === 'bow') {
                 barrel.rotation.x = Math.PI / 2;
@@ -891,6 +1114,106 @@ export function buildLongship({
 /* Guerreiro                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Protetor nasal: a barra da testa desce e fecha numa ponta
+ * cerca de 14 cm abaixo.
+ */
+const NASAL_GUARD = (() => {
+    const p = [
+        [-0.036, 0.09],
+        [0.036, 0.09],
+        [0.036, 0.03],
+        [0.01, -0.02],
+        [0, -0.11],
+        [-0.01, -0.02],
+        [-0.036, 0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+/**
+ * Viseira: a barra dos olhos sobe no meio cerca de 11 cm.
+ */
+const KNIGHT_VISOR = (() => {
+    const p = [
+        [-0.11, 0],
+        [0.11, 0],
+        [0.11, 0.028],
+        [0.055, 0.06],
+        [0, 0.138],
+        [-0.055, 0.06],
+        [-0.11, 0.028]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.036,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, -0.02, -0.018);
+    return g;
+})();
+
+/**
+ * Fivela: armação arredondada com um vão no meio de cerca de 7 cm.
+ */
+const KNIGHT_BUCKLE = (() => {
+    const s = new THREE.Shape();
+    const ring = [
+        [-0.052, -0.055],
+        [0.052, -0.055],
+        [0.064, -0.048],
+        [0.07, -0.036],
+        [0.07, 0.036],
+        [0.064, 0.048],
+        [0.052, 0.055],
+        [-0.052, 0.055],
+        [-0.064, 0.048],
+        [-0.07, 0.036],
+        [-0.07, -0.036],
+        [-0.064, -0.048]
+    ];
+    s.moveTo(ring[0][0], ring[0][1]);
+    for (let i = 1; i < ring.length; i++) s.lineTo(ring[i][0], ring[i][1]);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.038, -0.026);
+    hole.lineTo(-0.038, 0.026);
+    hole.lineTo(0.038, 0.026);
+    hole.lineTo(0.038, -0.026);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const group = new THREE.Group();
     const steel = metalMaterial(0xb6bcc4, 0.3);
@@ -941,7 +1264,8 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.1, 10), leather);
     belt.position.y = 0.04;
     torso.add(belt);
-    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.04), metalMaterial(0xd4b45a, 0.4));
+    const buckle = new THREE.Mesh(KNIGHT_BUCKLE, metalMaterial(0xd4b45a, 0.4));
+    buckle.name = 'knightBuckle';
     buckle.position.set(0, 0.04, 0.27);
     torso.add(buckle);
 
@@ -985,11 +1309,13 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     helm.castShadow = true;
     head.add(helm);
 
-    const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.05), steel);
+    const nasal = new THREE.Mesh(NASAL_GUARD, steel);
+    nasal.name = 'knightNasal';
     nasal.position.set(0, -0.03, 0.175);
     head.add(nasal);
 
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.04), darkSteel);
+    const visor = new THREE.Mesh(KNIGHT_VISOR, darkSteel);
+    visor.name = 'knightVisor';
     visor.position.set(0, 0.04, 0.175);
     head.add(visor);
 
@@ -1101,6 +1427,36 @@ export function buildCannonballMesh(scale = 1) {
     return ball;
 }
 
+/**
+ * Empenagem: a pena fecha numa ponta na frente e abre a barriga
+ * cerca de 11 cm acima do cabo.
+ */
+const ARROW_FLETCH = (() => {
+    const p = [
+        [-0.16, 0],
+        [0.15, 0.006],
+        [0.15, 0.048],
+        [0.04, 0.125],
+        [-0.06, 0.09],
+        [-0.16, 0.014]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.014,
+        bevelEnabled: true,
+        bevelThickness: 0.0015,
+        bevelSize: 0.0015,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.007);
+    g.rotateY(Math.PI / 2);
+    return g;
+})();
+
 /** Flecha incendiária dos inimigos. */
 export function buildArrowMesh() {
     const group = new THREE.Group();
@@ -1126,7 +1482,8 @@ export function buildArrowMesh() {
     group.userData.flame = flame;
 
     for (let i = 0; i < 3; i++) {
-        const fletch = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.26), plainMaterial(0x8a2b2b, 0.9, 0));
+        const fletch = new THREE.Mesh(ARROW_FLETCH, plainMaterial(0x8a2b2b, 0.9, 0));
+        fletch.name = 'arrowFletch';
         fletch.position.z = -0.6;
         fletch.rotation.z = (i * Math.PI * 2) / 3;
         group.add(fletch);

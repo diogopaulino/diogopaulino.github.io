@@ -12,7 +12,7 @@ import {
     metalMaterial,
     plainMaterial,
     woodMaterial
-} from './models.js?v=21';
+} from './models.js?v=33';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { waterHeight, waterSlope } from './water.js?v=15';
 import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
@@ -544,6 +544,112 @@ const BALUSTER = balusterGeometry();
 const BALCONY_RAIL = balconyRailGeometry();
 const CORBEL = corbelGeometry();
 
+/** Ogiva da janela da princesa. t=0 na lateral, t=1 no cume. */
+function lancetY(u, spring, crown) {
+    const t = 1 - Math.abs(u);
+    return spring + (crown - spring) * Math.pow(Math.max(t, 0), 0.62);
+}
+
+function lancetOutline(shape, halfW, bottom, spring, crown, steps, clockwise) {
+    const sign = clockwise ? 1 : -1;
+    shape.moveTo(sign * halfW, bottom);
+    shape.lineTo(sign * halfW, spring);
+    for (let i = 1; i <= steps; i++) {
+        const u = sign * (1 - (i / steps) * 2);
+        shape.lineTo(u * halfW, lancetY(u, spring, crown));
+    }
+    shape.lineTo(-sign * halfW, bottom);
+    shape.closePath();
+}
+
+/** Moldura 2.6×3.8, centrada como a caixa antiga, com vão ogival. */
+function princessFrameGeometry() {
+    const shape = new THREE.Shape();
+    lancetOutline(shape, 1.3, -1.9, 0.22, 1.9, 18, false);
+    const hole = new THREE.Path();
+    lancetOutline(hole, 1.02, -1.52, 0.22, 1.46, 16, true);
+    shape.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.42,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.03,
+        bevelSegments: 1,
+        curveSegments: 1
+    });
+    g.translate(0, 0, -0.21);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Vidro do vão, um pouco atrás da face externa. */
+function princessGlassGeometry() {
+    const shape = new THREE.Shape();
+    lancetOutline(shape, 0.98, -1.48, 0.26, 1.4, 16, false);
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, -0.08);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Mainel do vão de baixo, centrado em Y. Base e capitel mais largos. */
+function princessMullionGeometry() {
+    const H = 1.7;
+    const pts = [];
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = (t - 0.5) * H;
+        let r = 0.055;
+        if (t < 0.1) r += (1 - t / 0.1) * 0.04;
+        if (t > 0.86) r += ((t - 0.86) / 0.14) * 0.035;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Travessa na linha de imposta, com nervura na face externa. */
+function princessTransomGeometry() {
+    const g = new THREE.BoxGeometry(2.0, 0.16, 0.36, 10, 2, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / 1.0;
+        if (z > 0.04) z += 0.04 * (1 - nx * 0.35);
+        if (Math.abs(y) > 0.04) z *= 0.72;
+        y -= nx * nx * 0.02;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Peitoril que avança na face externa e cai nas pontas. */
+function princessSillGeometry() {
+    const g = new THREE.BoxGeometry(2.95, 0.18, 0.78, 12, 2, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / 1.475;
+        if (y > 0 && z > 0) z += 0.08 * (1 - nx * 0.4);
+        if (y > 0) y -= nx * nx * 0.05;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const PRINCESS_FRAME = princessFrameGeometry();
+const PRINCESS_GLASS = princessGlassGeometry();
+const PRINCESS_MULLION = princessMullionGeometry();
+const PRINCESS_TRANSOM = princessTransomGeometry();
+const PRINCESS_SILL = princessSillGeometry();
+
 export function createCastle(scene) {
     const group = new THREE.Group();
     const z = CASTLE_Z;
@@ -663,10 +769,25 @@ export function createCastle(scene) {
         group.add(corbel);
     }
 
-    const window_ = new THREE.Mesh(
-        new THREE.BoxGeometry(2.6, 3.8, 0.4),
-        plainMaterial(0xffdca8, 0.5, 0, 0xffb45c, 1.8)
+    const window_ = new THREE.Group();
+    window_.name = 'princessWindow';
+    const frame = new THREE.Mesh(PRINCESS_FRAME, stone);
+    frame.name = 'princessFrame';
+    const glass = new THREE.Mesh(
+        PRINCESS_GLASS,
+        plainMaterial(0xffdca8, 0.45, 0, 0xffb45c, 1.8)
     );
+    glass.name = 'princessGlass';
+    const mullion = new THREE.Mesh(PRINCESS_MULLION, stone);
+    mullion.name = 'princessMullion';
+    mullion.position.y = -0.66;
+    const transom = new THREE.Mesh(PRINCESS_TRANSOM, stone);
+    transom.name = 'princessTransom';
+    transom.position.set(0, 0.22, 0.04);
+    const sill = new THREE.Mesh(PRINCESS_SILL, stone);
+    sill.name = 'princessSill';
+    sill.position.set(0, -1.86, 0.12);
+    window_.add(frame, glass, mullion, transom, sill);
     window_.position.set(keepX, 35.6, keepZ + keepRadius - 0.2);
     group.add(window_);
 

@@ -9,11 +9,11 @@ import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, 
 import { Input } from './input.js?v=3';
 import { GameAudio } from './audio.js?v=3';
 import { Hud, statsBlock } from './hud.js?v=3';
-import { Player } from './player.js?v=14';
+import { Player } from './player.js?v=19';
 import { createSky, applyChapterSky, createLights, tickSky } from './sky.js?v=3';
-import { buildChapter } from './world.js?v=16';
+import { buildChapter } from './world.js?v=21';
 import { nearestInteractable } from './npcs.js?v=3';
-import { tickMaterials } from './models.js?v=14';
+import { tickMaterials } from './models.js?v=19';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
@@ -723,6 +723,7 @@ function wait(ms) {
 
 function boot() {
     const game = new Game();
+    window.__jornada = game;
     game.init().catch((err) => {
         console.error(err);
         game.hud.showError(err?.message || 'Falha ao iniciar a jornada.');

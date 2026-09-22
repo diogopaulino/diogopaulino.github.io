@@ -421,13 +421,14 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.22, 2.05)
         ];
         const sedanGeo = new THREE.LatheGeometry(sedanPts, 32);
-        sedanGeo.rotateZ(-Math.PI / 2);
-        sedanGeo.scale(1, 0.58, 0.95);
+        sedanGeo.rotateX(Math.PI / 2);
+        sedanGeo.scale(0.95, 0.58, 1);
         const sedan = new THREE.Mesh(sedanGeo, body);
+        sedan.name = 'carBody';
         sedan.position.y = 0.55;
         sedan.castShadow = true;
         g.add(sedan);
-        g.add(mesh(SPH, mats.glass, 1.35, 0.38, 0.95, 0, 1.0, -0.15));
+        g.add(mesh(SPH, mats.glass, 0.95, 0.38, 1.35, 0, 1.0, -0.15));
         const fender = new THREE.Mesh(SEDAN_FENDER, body);
         fender.position.set(0, 0.92, -1.2);
         fender.scale.set(1.15, 0.55, 0.7);
@@ -443,9 +444,10 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.5, 2.1)
         ];
         const vanGeo = new THREE.LatheGeometry(vanPts, 28);
-        vanGeo.rotateZ(-Math.PI / 2);
-        vanGeo.scale(1, 0.75, 0.95);
+        vanGeo.rotateX(Math.PI / 2);
+        vanGeo.scale(0.95, 0.75, 1);
         const van = new THREE.Mesh(vanGeo, body);
+        van.name = 'carBody';
         van.position.y = 0.75;
         van.castShadow = true;
         g.add(van);
@@ -465,19 +467,36 @@ export function createCar(mats, kind = 0) {
             new THREE.Vector2(0.15, 1.75)
         ];
         const coupeGeo = new THREE.LatheGeometry(coupePts, 28);
-        coupeGeo.rotateZ(-Math.PI / 2);
-        coupeGeo.scale(1, 0.48, 0.92);
+        coupeGeo.rotateX(Math.PI / 2);
+        coupeGeo.scale(0.92, 0.48, 1);
         const coupe = new THREE.Mesh(coupeGeo, body);
+        coupe.name = 'carBody';
         coupe.position.y = 0.48;
         coupe.castShadow = true;
         g.add(coupe);
-        g.add(mesh(SPH, mats.glass, 1.2, 0.28, 0.75, 0, 0.82, 0.1));
+        g.add(mesh(SPH, mats.glass, 0.75, 0.28, 1.2, 0, 0.82, 0.1));
     }
 
-    g.add(mesh(BOX, mats.neonB, 0.35, 0.12, 0.08, 0.45, 0.55, 2.12));
-    g.add(mesh(BOX, mats.neonB, 0.35, 0.12, 0.08, -0.45, 0.55, 2.12));
-    g.add(mesh(BOX, mats.neonA, 0.4, 0.1, 0.08, 0.5, 0.5, -2.15));
-    g.add(mesh(BOX, mats.neonA, 0.4, 0.1, 0.08, -0.5, 0.5, -2.15));
+    const lampGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.015, 0),
+        new THREE.Vector2(0.055, 0.015),
+        new THREE.Vector2(0.07, 0.04),
+        new THREE.Vector2(0.055, 0.07),
+        new THREE.Vector2(0.02, 0.09)
+    ], 14);
+    lampGeo.rotateX(Math.PI / 2);
+    const addLamp = (mat, x, y, z, rear) => {
+        const m = new THREE.Mesh(lampGeo, mat);
+        m.name = 'carLamp';
+        m.position.set(x, y, z);
+        m.scale.set(2.2, 0.9, 1);
+        if (rear) m.rotation.y = Math.PI;
+        g.add(m);
+    };
+    addLamp(mats.neonB, 0.32, 0.52, 1.82, false);
+    addLamp(mats.neonB, -0.32, 0.52, 1.82, false);
+    addLamp(mats.neonA, 0.36, 0.5, -1.78, true);
+    addLamp(mats.neonA, -0.36, 0.5, -1.78, true);
 
     for (const [x, z] of [[0.7, 1.35], [-0.7, 1.35], [0.7, -1.4], [-0.7, -1.4]]) {
         const tire = mesh(CYL, mats.rubber, 0.28, 0.18, 0.28, x, 0.28, z);
@@ -494,7 +513,22 @@ export function createCar(mats, kind = 0) {
 
 export function createCassette(mats) {
     const g = new THREE.Group();
-    g.add(mesh(BOX, mats.tapeBody, 0.9, 0.55, 0.18, 0, 0, 0));
+    // Carcaça com cantos arredondados e saia embaixo. O centro continua na origem.
+    const shellShape = new THREE.Shape();
+    const shellPts = [
+        [0.22, 0.275], [0.38, 0.24], [0.43, 0.12], [0.44, -0.08], [0.48, -0.18], [0.45, -0.275],
+        [-0.45, -0.275], [-0.48, -0.18], [-0.44, -0.08], [-0.43, 0.12], [-0.38, 0.24], [-0.22, 0.275]
+    ];
+    shellShape.moveTo(shellPts[0][0], shellPts[0][1]);
+    for (let i = 1; i < shellPts.length; i++) shellShape.lineTo(shellPts[i][0], shellPts[i][1]);
+    const shellGeo = new THREE.ExtrudeGeometry(shellShape, { depth: 0.16, bevelEnabled: false, curveSegments: 4 });
+    shellGeo.translate(0, 0, -0.08);
+    shellGeo.computeVertexNormals();
+    const shell = new THREE.Mesh(shellGeo, mats.tapeBody);
+    shell.name = 'tapeShell';
+    shell.castShadow = true;
+    shell.receiveShadow = true;
+    g.add(shell);
     g.add(mesh(BOX, mats.tapeWindow, 0.55, 0.28, 0.06, 0, 0.02, 0.08));
     const reel = mesh(CYL, mats.chrome, 0.12, 0.08, 0.12, -0.16, 0.02, 0.1);
     reel.rotation.x = Math.PI / 2;
@@ -616,6 +650,7 @@ export function createBuilding(mats, rng, density, side = 1) {
 
 export function createBillboard(mats, title = 'NEON RIDER') {
     const g = new THREE.Group();
+    g.name = 'billboard';
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, -1.6, 3.1, 0));
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, 1.6, 3.1, 0));
     const tex = neonSignTexture(THREE, title, '#00f0ff');
@@ -626,9 +661,40 @@ export function createBillboard(mats, title = 'NEON RIDER') {
         side: THREE.DoubleSide
     });
     const board = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.4), mat);
+    board.name = 'boardFace';
     board.position.set(0, 6.4, 0);
     g.add(board);
-    g.add(mesh(BOX, mats.dark, 5.6, 1.6, 0.12, 0, 6.4, -0.08));
-    g.add(mesh(BOX, mats.chrome, 5.7, 0.08, 0.14, 0, 7.15, -0.08));
+    // Moldura: ogee em volta do letreiro. shape.x negativo, depois de rotateY(π/2), é a frente (+Z).
+    const railExtrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 3 });
+        geo.translate(0, 0, -depth / 2);
+        return geo;
+    };
+    const topProfile = [
+        [0.02, 7.02], [-0.05, 7.06], [-0.12, 7.14], [-0.06, 7.22],
+        [-0.14, 7.30], [-0.04, 7.38], [0.05, 7.36], [0.05, 7.02]
+    ];
+    const addRail = (pts, depth, rot, material, y) => {
+        const geo = railExtrude(pts, depth);
+        if (rot === 'x') geo.rotateY(Math.PI / 2);
+        else geo.rotateX(Math.PI / 2);
+        geo.computeVertexNormals();
+        const m = new THREE.Mesh(geo, material);
+        m.name = 'boardRail';
+        if (y) m.position.y = y;
+        m.castShadow = true;
+        g.add(m);
+    };
+    addRail(topProfile, 5.9, 'x', mats.chrome, 0);
+    addRail(topProfile.map(([x, y]) => [x, 12.8 - y]), 5.9, 'x', mats.dark, 0);
+    const sideProfile = [
+        [2.72, -0.02], [2.76, 0.06], [2.84, 0.12], [2.90, 0.05],
+        [2.98, 0.14], [3.02, 0.02], [3.00, -0.04], [2.72, -0.04]
+    ];
+    addRail(sideProfile, 1.56, 'y', mats.dark, 6.4);
+    addRail(sideProfile.map(([x, y]) => [-x, y]), 1.56, 'y', mats.dark, 6.4);
     return g;
 }
