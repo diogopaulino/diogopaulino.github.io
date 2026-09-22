@@ -148,6 +148,32 @@ const WARN_SIGN = (() => {
     return g;
 })();
 
+/** Trilho caído, 2.4 centrado em Y. Dobra e estrangula no meio. */
+const BROKEN_RAIL = (() => {
+    const H = 2.4;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.16, H, 0.07, 4, 18, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t > 0.58) {
+            const u = (t - 0.58) / 0.42;
+            x += u * u * 0.62;
+        }
+        if (Math.abs(t - 0.58) < 0.07) {
+            const u = 1 - Math.abs(t - 0.58) / 0.07;
+            z *= 1 - u * 0.55;
+            x *= 1 - u * 0.28;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
 /**
  * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
  * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
@@ -424,7 +450,8 @@ export class World {
             this._post(x, z, 3.2, steel);
             this.addCollider(x, z, 0.25);
         }
-        const broken = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.12), steel);
+        const broken = new THREE.Mesh(BROKEN_RAIL, steel);
+        broken.name = 'brokenRail';
         broken.position.set(paddock.cx - paddock.rx + 1, this.heightAt(paddock.cx - paddock.rx, paddock.cz) + 1.4, paddock.cz);
         broken.rotation.z = 1.1;
         this.group.add(broken);
