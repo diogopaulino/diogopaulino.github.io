@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { profileTube, canineHeadGeometry, tailGeometry, wingMembrane } from '../../shared/realism.js';
 import {
     rockTexture, mossTexture, barkTexture, leafTexture, wingTexture, glowSprite
 } from './textures.js';
@@ -202,8 +203,14 @@ export function createIra() {
     const g = new THREE.Group();
     g.name = 'ira';
 
-    const body = mesh(geo.sphereHi, m.skin, { scale: [1.15, 0.85, 2.4] });
-    const belly = mesh(geo.sphere, m.belly, { scale: [0.85, 0.55, 1.9], pos: [0, -0.28, 0.1] });
+    const body = mesh(profileTube({
+        axis: 'z', length: 3.4, rings: 16, seg: 18, squashY: 0.72,
+        radius: (t) => 0.42 + Math.sin(t * Math.PI) * 0.38 + (t > 0.8 ? (t - 0.8) * 0.2 : 0)
+    }), m.skin);
+    const belly = mesh(profileTube({
+        axis: 'z', length: 2.2, rings: 10, seg: 12, squashY: 0.55,
+        radius: (t) => 0.28 + Math.sin(t * Math.PI) * 0.16
+    }), m.belly, { pos: [0, -0.28, 0.1], cast: false });
     g.add(body, belly);
 
     for (let i = 0; i < 5; i++) {
@@ -217,19 +224,15 @@ export function createIra() {
 
     const neck = new THREE.Group();
     neck.position.set(0, 0.15, 1.9);
-    for (let i = 0; i < 5; i++) {
-        const s = 0.38 - i * 0.04;
-        neck.add(mesh(geo.sphere, m.skin, {
-            scale: [s, s * 0.85, s * 1.15],
-            pos: [0, i * 0.12, i * 0.38]
-        }));
-    }
+    neck.add(mesh(profileTube({
+        axis: 'z', length: 1.5, rings: 8, seg: 12, squashY: 0.8,
+        radius: (t) => 0.34 - t * 0.12
+    }), m.skin, { pos: [0, 0.2, 0.7] }));
     g.add(neck);
 
     const head = new THREE.Group();
     head.position.set(0, 0.62, 3.85);
-    head.add(mesh(geo.sphereHi, m.skin, { scale: [0.42, 0.32, 0.72] }));
-    head.add(mesh(geo.cone, m.skin, { scale: [0.18, 0.7, 0.22], pos: [0, -0.05, 0.72], rot: [Math.PI / 2, 0, 0] }));
+    head.add(mesh(canineHeadGeometry({ radius: 0.46, style: 'fox' }), m.skin, { scale: [0.85, 0.7, 1.15] }));
     head.add(mesh(geo.sphere, m.eye, { scale: [0.09, 0.09, 0.09], pos: [0.22, 0.08, 0.28], cast: false }));
     head.add(mesh(geo.sphere, m.eye, { scale: [0.09, 0.09, 0.09], pos: [-0.22, 0.08, 0.28], cast: false }));
     const crest = mesh(geo.cone, m.stripe, { scale: [0.08, 0.55, 0.18], pos: [0, 0.38, -0.1], rot: [0.4, 0, 0] });
@@ -252,7 +255,7 @@ export function createIra() {
             rot: [0, 0, side * -1.05]
         });
         const membrane = mesh(
-            new THREE.PlaneGeometry(4.4, 2.6, 14, 10),
+            wingMembrane({ span: 4.2, chord: 2.2 }),
             m.wing,
             {
                 pos: [side * 2.5, -0.15, -0.15],
@@ -276,13 +279,7 @@ export function createIra() {
 
     const tail = new THREE.Group();
     tail.position.set(0, 0.1, -2.2);
-    for (let i = 0; i < 7; i++) {
-        const s = 0.32 - i * 0.035;
-        tail.add(mesh(geo.sphereLo, m.skin, {
-            scale: [s * 0.7, s * 0.55, s * 1.3],
-            pos: [0, -i * 0.04, -i * 0.48]
-        }));
-    }
+    tail.add(mesh(tailGeometry({ length: 2.4, r0: 0.28, r1: 0.06, fluff: 0.02 }), m.skin, { pos: [0, 0, -1.1] }));
     const fin = mesh(new THREE.PlaneGeometry(1.6, 0.9), m.wing, {
         pos: [0, 0.05, -3.4],
         rot: [0.2, 0, 0],

@@ -39,7 +39,7 @@ export const QUALITY = {
     },
     ultra: {
         id: 'ultra',
-        pixelRatio: 2,
+        pixelRatio: 1.5,
         shadows: 4096,
         bloom: true,
         particles: 1.25,

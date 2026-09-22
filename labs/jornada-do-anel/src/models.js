@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { limbGeometry, headGeometry } from '../../shared/realism.js';
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,
@@ -180,14 +181,16 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
         const leg = new THREE.Group();
         leg.position.set(sx * 0.11, 0.4, 0);
         hips.add(leg);
-        const thigh = new THREE.Mesh(geo('hob-thigh', () => new THREE.CapsuleGeometry(0.075, 0.2, 5, 10)), clothP);
-        thigh.position.y = -0.14;
+        const thigh = new THREE.Mesh(limbGeometry({
+            length: 0.28, r0: 0.08, r1: 0.06, bulge: 0.018, bulgeAt: 0.32, seg: 12
+        }), clothP);
         leg.add(thigh);
         const shin = new THREE.Group();
         shin.position.y = -0.28;
         leg.add(shin);
-        const shinM = new THREE.Mesh(geo('hob-shin', () => new THREE.CapsuleGeometry(0.065, 0.16, 4, 8)), clothP);
-        shinM.position.y = -0.1;
+        const shinM = new THREE.Mesh(limbGeometry({
+            length: 0.2, r0: 0.065, r1: 0.045, bulge: 0.012, bulgeAt: 0.4, pinch: 0.2, seg: 10
+        }), clothP);
         shin.add(shinM);
         const footG = new THREE.Group();
         footG.position.set(0, -0.22, 0.04);
@@ -244,7 +247,7 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     const head = new THREE.Group();
     head.position.y = 0.6;
     torso.add(head);
-    const skull = new THREE.Mesh(geo('hob-skull', () => warp(new THREE.SphereGeometry(0.155, 14, 12), 7, 0.06, 0.5)), skin);
+    const skull = new THREE.Mesh(headGeometry(0.155, 'child'), skin);
     head.add(skull);
     const face = new THREE.Mesh(
         geo('hob-face', () => new THREE.SphereGeometry(0.152, 14, 12, 0, Math.PI * 2, 0.35, 1.4)),
@@ -280,14 +283,16 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
         const arm = new THREE.Group();
         arm.position.set(sx * 0.26, 0.44, 0);
         torso.add(arm);
-        const upper = new THREE.Mesh(geo('hob-upper', () => new THREE.CapsuleGeometry(0.05, 0.14, 4, 8)), skin);
-        upper.position.y = -0.1;
+        const upper = new THREE.Mesh(limbGeometry({
+            length: 0.2, r0: 0.055, r1: 0.04, bulge: 0.012, bulgeAt: 0.3, seg: 10
+        }), skin);
         arm.add(upper);
         const forearm = new THREE.Group();
         forearm.position.y = -0.2;
         arm.add(forearm);
-        const foreM = new THREE.Mesh(geo('hob-fore', () => new THREE.CapsuleGeometry(0.045, 0.13, 4, 8)), skin);
-        foreM.position.y = -0.08;
+        const foreM = new THREE.Mesh(limbGeometry({
+            length: 0.16, r0: 0.045, r1: 0.034, bulge: 0.008, bulgeAt: 0.4, pinch: 0.15, seg: 8
+        }), skin);
         forearm.add(foreM);
         const hand = new THREE.Mesh(geo('hob-hand', () => new THREE.SphereGeometry(0.045, 8, 6)), skin);
         hand.scale.set(1.05, 0.7, 1.15);

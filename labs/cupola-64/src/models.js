@@ -5,7 +5,10 @@
  */
 
 import * as THREE from 'three';
-import { peachStone, barkTexture, leafCanopy, fabricTeal, goldMetal } from './textures.js';
+import { peachStone, leafCanopy, fabricTeal, goldMetal } from './textures.js';
+import {
+    attachHumanHead, limbGeometry, torsoGeometry, shoeMesh, handGroup, leatherMaterial, createOrganicTree
+} from '../../shared/realism.js';
 
 const geoCache = new Map();
 function geo(key, factory) {
@@ -94,13 +97,12 @@ export function createNico() {
     hips.position.y = 0.38;
     root.add(hips);
 
-    const torso = mesh(geo('n-torso', () => new THREE.SphereGeometry(0.38, 32, 24)), 0x2a9a8c, {
-        map: fabric.map,
-        roughness: 0.55,
-        metalness: 0.04
-    });
-    torso.scale.set(0.92, 1.05, 0.78);
-    torso.position.y = 0.42;
+    const torso = new THREE.Mesh(
+        torsoGeometry({ height: 0.78, girth: 0.36, style: 'chibi' }),
+        pbrMat(0x2a9a8c, { map: fabric.map, roughness: 0.55, metalness: 0.04 })
+    );
+    torso.castShadow = true;
+    torso.receiveShadow = true;
     hips.add(torso);
 
     const shirt = mesh(geo('n-shirt', () => new THREE.SphereGeometry(0.28, 32, 24)), 0xffe6c8, {
@@ -136,10 +138,15 @@ export function createNico() {
     head.position.y = 0.95;
     hips.add(head);
 
-    const skull = mesh(geo('n-head', () => new THREE.SphereGeometry(0.34, 40, 32)), 0xffd4a8, {
-        roughness: 0.55
+    attachHumanHead(head, {
+        radius: 0.32,
+        style: 'chibi',
+        skin: 0xffd4a8,
+        hair: 0x6a3a1c,
+        hairStyle: 'short',
+        iris: 0x2a4a28,
+        lips: 0xd47868
     });
-    head.add(skull);
 
     const cap = mesh(
         geo('n-cap', () => new THREE.SphereGeometry(0.36, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.55)),
@@ -168,46 +175,26 @@ export function createNico() {
     emblem.rotation.z = Math.PI / 4;
     head.add(emblem);
 
-    const eyeGeo = geo('n-eye', () => new THREE.SphereGeometry(0.07, 20, 16));
-    const eyeL = new THREE.Mesh(eyeGeo, pbrMat(0x1a1420, { roughness: 0.25, clearcoat: 0.8 }));
-    const eyeR = eyeL.clone();
-    eyeL.position.set(-0.11, 0.02, 0.28);
-    eyeR.position.set(0.11, 0.02, 0.28);
-    const shineL = mesh(geo('n-shine', () => new THREE.SphereGeometry(0.025, 12, 10)), 0xffffff, {
-        roughness: 0.1,
-        metalness: 0.05
-    });
-    shineL.position.set(-0.09, 0.05, 0.33);
-    const shineR = shineL.clone();
-    shineR.position.x = 0.13;
-    head.add(eyeL, eyeR, shineL, shineR);
-
-    const nose = mesh(geo('n-nose', () => new THREE.SphereGeometry(0.08, 20, 16)), 0xf0b090, {
-        roughness: 0.58
-    });
-    nose.scale.set(0.8, 0.7, 1.15);
-    nose.position.set(0, -0.04, 0.32);
-    head.add(nose);
-
     const armL = new THREE.Group();
     armL.name = 'armL';
     armL.position.set(-0.4, 0.55, 0);
     const armR = new THREE.Group();
     armR.name = 'armR';
     armR.position.set(0.4, 0.55, 0);
-    const limb = geo('n-arm', () => new THREE.CapsuleGeometry(0.09, 0.28, 8, 16));
-    const aL = new THREE.Mesh(limb, pbrMat(0xffe6c8, { roughness: 0.6 }));
-    aL.rotation.z = 0.35;
-    aL.position.y = -0.18;
+    const armGeo = limbGeometry({ length: 0.38, r0: 0.09, r1: 0.065, bulge: 0.02, bulgeAt: 0.32, pinch: 0.2 });
+    const skinArm = pbrMat(0xffe6c8, { roughness: 0.5 });
+    const aL = new THREE.Mesh(armGeo, skinArm);
+    aL.rotation.z = 0.22;
     aL.castShadow = true;
-    const aR = aL.clone();
-    aR.rotation.z = -0.35;
-    const glove = mesh(geo('n-glove', () => new THREE.SphereGeometry(0.12, 20, 16)), 0xf4efe2, {
-        roughness: 0.65
-    });
-    glove.position.set(-0.12, -0.38, 0.02);
-    const gloveR = glove.clone();
-    gloveR.position.x = 0.12;
+    const aR = new THREE.Mesh(armGeo, skinArm);
+    aR.rotation.z = -0.22;
+    aR.castShadow = true;
+    const gloveMat = pbrMat(0xf4efe2, { roughness: 0.55, side: THREE.DoubleSide });
+    const glove = handGroup(gloveMat, { scale: 1.35 });
+    glove.position.set(-0.08, -0.38, 0.02);
+    const gloveR = handGroup(gloveMat, { scale: 1.35 });
+    gloveR.position.set(0.08, -0.38, 0.02);
+    gloveR.scale.x = -1;
     armL.add(aL, glove);
     armR.add(aR, gloveR);
     hips.add(armL, armR);
@@ -218,18 +205,17 @@ export function createNico() {
     const legR = new THREE.Group();
     legR.name = 'legR';
     legR.position.set(0.14, 0.08, 0);
-    const thigh = new THREE.Mesh(
-        geo('n-leg', () => new THREE.CapsuleGeometry(0.11, 0.22, 8, 16)),
-        pbrMat(0x2a9a8c, { map: fabric.map, roughness: 0.55 })
-    );
-    thigh.position.y = -0.18;
+    const legGeo = limbGeometry({ length: 0.36, r0: 0.12, r1: 0.085, bulge: 0.028, bulgeAt: 0.3 });
+    const legMat = pbrMat(0x2a9a8c, { map: fabric.map, roughness: 0.55 });
+    const thigh = new THREE.Mesh(legGeo, legMat);
     thigh.castShadow = true;
-    const thighR = thigh.clone();
-    const shoe = mesh(geo('n-shoe', () => new THREE.BoxGeometry(0.22, 0.12, 0.34, 2, 2, 2)), 0x3a2418, {
-        roughness: 0.75
-    });
-    shoe.position.set(0, -0.38, 0.06);
-    const shoeR = shoe.clone();
+    const thighR = new THREE.Mesh(legGeo, legMat);
+    thighR.castShadow = true;
+    const shoeMat = leatherMaterial(0x3a2418);
+    const shoe = shoeMesh(shoeMat, { length: 0.3, width: 0.13, height: 0.1 });
+    shoe.position.set(0, -0.36, 0.04);
+    const shoeR = shoeMesh(shoeMat, { length: 0.3, width: 0.13, height: 0.1 });
+    shoeR.position.set(0, -0.36, 0.04);
     legL.add(thigh, shoe);
     legR.add(thighR, shoeR);
     hips.add(legL, legR);
@@ -385,28 +371,7 @@ export function createCastle() {
 }
 
 export function createTree(scale = 1) {
-    const g = new THREE.Group();
-    const bark = barkTexture();
-    const leaf = leafCanopy();
-    const trunk = mesh(geo('t-tr', () => new THREE.CylinderGeometry(0.22, 0.32, 1.6, 24)), 0x7a4a28, {
-        map: bark.map,
-        normalMap: bark.normalMap,
-        roughness: 0.9
-    });
-    trunk.position.y = 0.8;
-    const canopy = mesh(geo('t-lf', () => new THREE.SphereGeometry(1.05, 32, 24)), 0x2faf3d, {
-        map: leaf.map,
-        normalMap: leaf.normalMap,
-        roughness: 0.62
-    });
-    canopy.position.y = 2.15;
-    canopy.scale.set(1, 0.85, 1);
-    const leaf2 = canopy.clone();
-    leaf2.scale.setScalar(0.7);
-    leaf2.position.set(0.55, 1.7, 0.2);
-    g.add(trunk, canopy, leaf2);
-    g.scale.setScalar(scale);
-    return g;
+    return createOrganicTree({ tint: 0x2faf3d, scale });
 }
 
 export function createCloud() {

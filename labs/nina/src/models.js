@@ -6,6 +6,9 @@
 
 import * as THREE from 'three';
 import { grassTexture, woodTexture, picnicTexture, barnTexture } from './textures.js';
+import {
+    canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry, limbGeometry, createOrganicTree
+} from '../../shared/realism.js';
 
 export const geo = {
     sphere: new THREE.SphereGeometry(1, 32, 24),
@@ -164,13 +167,14 @@ function cheeks(root, y, z, spread) {
 
 function addLegs(parent, hipY, spread, length, radius, mat, parts, zSpread = null) {
     const zs = zSpread ?? spread * 0.9;
-    const g = new THREE.CylinderGeometry(radius * 0.85, radius, length, 12);
+    const g = limbGeometry({
+        length, r0: radius * 1.25, r1: radius * 0.72, bulge: radius * 0.45, bulgeAt: 0.28, pinch: 0.2, seg: 10
+    });
     for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
         const leg = new THREE.Group();
         leg.position.set(sx * spread, hipY, sz * zs);
         parent.add(leg);
         const m = new THREE.Mesh(g, mat);
-        m.position.y = -length * 0.5;
         m.castShadow = true;
         leg.add(m);
         parts.legs.push(leg);
@@ -183,10 +187,10 @@ export function createFox() {
     root.name = 'nina';
     const parts = { legs: [], tail: null, head: null, body: null, ears: [] };
 
-    const body = mesh(geo.sphereHi, MAT.fox, { scale: [0.42, 0.38, 0.55], pos: [0, 0.55, 0] });
+    const body = mesh(canineTorsoGeometry({ length: 0.85, girth: 0.22, chest: 0.08 }), MAT.fox, { pos: [0, 0.58, 0] });
     root.add(body);
     parts.body = body;
-    root.add(mesh(geo.sphereLo, MAT.white, { scale: [0.28, 0.22, 0.32], pos: [0, 0.42, 0.12], cast: false }));
+    root.add(mesh(canineTorsoGeometry({ length: 0.42, girth: 0.1, chest: 0.02 }), MAT.white, { pos: [0, 0.42, 0.12], cast: false }));
 
     addLegs(root, 0.42, 0.2, 0.42, 0.08, MAT.foxDeep, parts, 0.22);
 
@@ -194,9 +198,8 @@ export function createFox() {
     head.position.set(0, 0.95, 0.22);
     root.add(head);
     parts.head = head;
-    head.add(mesh(geo.sphereHi, MAT.fox, { scale: [0.38, 0.36, 0.36], pos: [0, 0, 0] }));
-    head.add(mesh(geo.sphere, MAT.white, { scale: [0.22, 0.16, 0.28], pos: [0, -0.08, 0.18], cast: false }));
-    head.add(mesh(geo.sphereLo, MAT.nose, { scale: [0.06, 0.05, 0.05], pos: [0, -0.06, 0.42], cast: false }));
+    head.add(mesh(canineHeadGeometry({ radius: 0.34, style: 'fox' }), MAT.fox));
+    head.add(mesh(geo.sphereLo, MAT.nose, { scale: [0.05, 0.04, 0.05], pos: [0, -0.04, 0.48], cast: false }));
     eyes(head, { y: 0.08, z: 0.28, spread: 0.14, s: 0.95 });
     cheeks(head, -0.04, 0.3, 0.22);
 
@@ -204,8 +207,8 @@ export function createFox() {
         const ear = new THREE.Group();
         ear.position.set(sx * 0.22, 0.28, -0.04);
         ear.rotation.z = sx * -0.35;
-        ear.add(mesh(geo.cone, MAT.fox, { scale: [0.14, 0.32, 0.1], pos: [0, 0.12, 0] }));
-        ear.add(mesh(geo.cone, MAT.pink, { scale: [0.08, 0.2, 0.04], pos: [0, 0.08, 0.04], cast: false }));
+        ear.add(mesh(earBladeGeometry({ height: 0.32, width: 0.14, thickness: 0.035 }), MAT.fox, { pos: [0, 0.12, 0] }));
+        ear.add(mesh(earBladeGeometry({ height: 0.2, width: 0.08, thickness: 0.02 }), MAT.pink, { pos: [0, 0.1, 0.02], cast: false }));
         head.add(ear);
         parts.ears.push(ear);
     }
@@ -214,8 +217,8 @@ export function createFox() {
     tail.position.set(0, 0.55, -0.42);
     root.add(tail);
     parts.tail = tail;
-    tail.add(mesh(geo.sphere, MAT.foxDeep, { scale: [0.16, 0.16, 0.38], pos: [0, 0.08, -0.22] }));
-    tail.add(mesh(geo.sphereLo, MAT.white, { scale: [0.12, 0.12, 0.16], pos: [0, 0.1, -0.52], cast: false }));
+    tail.add(mesh(tailGeometry({ length: 0.62, r0: 0.1, r1: 0.035, fluff: 0.07 }), MAT.foxDeep, { pos: [0, 0.08, -0.28] }));
+    tail.add(mesh(geo.sphereLo, MAT.white, { scale: [0.1, 0.1, 0.12], pos: [0, 0.1, -0.58], cast: false }));
 
     root.userData.parts = parts;
     return root;
@@ -415,10 +418,8 @@ export function createBerry({ light = false } = {}) {
 }
 
 export function createTree({ h = 2.4, r = 1.15, fruit = true, tint = 0x4ecf6a } = {}) {
-    const g = new THREE.Group();
-    g.add(mesh(geo.cylLo, MAT.wood, { scale: [0.16, h, 0.16], pos: [0, h / 2, 0] }));
-    g.add(mesh(geo.sphereHi, pbr(tint, { roughness: 0.58, sheen: 0.35, sheenColor: 0xa8f080 }), { scale: [r, r * 0.9, r], pos: [0, h + r * 0.35, 0] }));
-    g.add(mesh(geo.sphereLo, MAT.leafMint, { scale: [r * 0.7, r * 0.55, r * 0.7], pos: [r * 0.35, h + r * 0.15, r * 0.2], cast: false }));
+    const g = createOrganicTree({ tint, scale: Math.max(0.7, h / 2.4) });
+    g.scale.multiplyScalar(r / 1.15);
     if (fruit) {
         for (let i = 0; i < 4; i++) {
             const a = i * 1.7;

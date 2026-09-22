@@ -5,6 +5,7 @@
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
+import { createMuscle, createSkull, createHand } from '../../../shared/realism-bjs.js';
 
 /** PBRMaterial com albedo, roughness e metallic sensatos. */
 function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
@@ -173,33 +174,38 @@ export function buildHumanoid({
     legR.parent = hips;
 
     for (const leg of [legL, legR]) {
-        const thigh = BABYLON.MeshBuilder.CreateCapsule('thigh', {
-            radius: 0.065 * thin * scale,
-            height: 0.46 * scale,
-            tessellation: 16,
-            subdivisions: 4
-        }, scene);
+        const thigh = createMuscle(scene, 'thigh', {
+            length: 0.46 * scale,
+            r0: 0.085 * thin * scale,
+            r1: 0.06 * thin * scale,
+            bulge: 0.02 * scale,
+            bulgeAt: 0.32
+        });
         thigh.position.y = -0.23 * scale;
         thigh.material = pantsMat;
         thigh.parent = leg;
 
-        const shin = BABYLON.MeshBuilder.CreateCapsule('shin', {
-            radius: 0.052 * thin * scale,
-            height: 0.42 * scale,
-            tessellation: 16,
-            subdivisions: 4
-        }, scene);
+        const shin = createMuscle(scene, 'shin', {
+            length: 0.42 * scale,
+            r0: 0.062 * thin * scale,
+            r1: 0.045 * thin * scale,
+            bulge: 0.016 * scale,
+            bulgeAt: 0.38,
+            pinch: 0.25
+        });
         shin.position.y = -0.66 * scale;
         shin.material = pantsMat;
         shin.parent = leg;
 
-        const foot = BABYLON.MeshBuilder.CreateCapsule('foot', {
-            radius: 0.045 * scale,
-            height: 0.2 * scale,
-            tessellation: 12,
-            subdivisions: 2
-        }, scene);
-        foot.rotation.z = Math.PI / 2;
+        const foot = createMuscle(scene, 'foot', {
+            length: 0.22 * scale,
+            r0: 0.055 * scale,
+            r1: 0.04 * scale,
+            bulge: 0.012 * scale,
+            bulgeAt: 0.45,
+            pinch: 0
+        });
+        foot.rotation.x = Math.PI / 2;
         foot.position.set(0, -0.9 * scale, 0.05 * scale);
         foot.scaling.set(1, 0.72, 1.15);
         foot.material = bootMat;
@@ -214,12 +220,14 @@ export function buildHumanoid({
     const chest = new BABYLON.TransformNode('chest', scene);
     chest.parent = spine;
 
-    const torso = BABYLON.MeshBuilder.CreateCapsule('torso', {
-        radius: 0.16 * thin * scale,
-        height: 0.58 * scale,
-        tessellation: 16,
-        subdivisions: 6
-    }, scene);
+    const torso = createMuscle(scene, 'torso', {
+        length: 0.58 * scale,
+        r0: 0.2 * thin * scale,
+        r1: 0.15 * thin * scale,
+        bulge: 0.04 * scale,
+        bulgeAt: 0.62,
+        pinch: 0.15
+    });
     torso.position.y = 0.28 * scale;
     torso.material = shirtMat;
     torso.parent = chest;
@@ -233,30 +241,30 @@ export function buildHumanoid({
     armR.parent = chest;
 
     for (const arm of [armL, armR]) {
-        const upper = BABYLON.MeshBuilder.CreateCapsule('armUpper', {
-            radius: 0.048 * scale,
-            height: 0.32 * scale,
-            tessellation: 14,
-            subdivisions: 4
-        }, scene);
+        const upper = createMuscle(scene, 'armUpper', {
+            length: 0.32 * scale,
+            r0: 0.06 * scale,
+            r1: 0.045 * scale,
+            bulge: 0.016 * scale,
+            bulgeAt: 0.3
+        });
         upper.position.y = -0.16 * scale;
         upper.material = shirtMat;
         upper.parent = arm;
 
-        const fore = BABYLON.MeshBuilder.CreateCapsule('armFore', {
-            radius: 0.04 * scale,
-            height: 0.3 * scale,
-            tessellation: 14,
-            subdivisions: 4
-        }, scene);
+        const fore = createMuscle(scene, 'armFore', {
+            length: 0.3 * scale,
+            r0: 0.048 * scale,
+            r1: 0.036 * scale,
+            bulge: 0.01 * scale,
+            bulgeAt: 0.4,
+            pinch: 0.15
+        });
         fore.position.y = -0.46 * scale;
         fore.material = skinMat;
         fore.parent = arm;
 
-        const hand = BABYLON.MeshBuilder.CreateSphere('hand', {
-            diameter: 0.09 * scale,
-            segments: 12
-        }, scene);
+        const hand = createHand(scene, 'hand', skinMat, { scale: scale * 0.85 });
         hand.position.y = -0.64 * scale;
         hand.material = skinMat;
         hand.parent = arm;
@@ -268,10 +276,7 @@ export function buildHumanoid({
     head.position.y = 0.62 * scale;
     head.parent = chest;
 
-    const skull = BABYLON.MeshBuilder.CreateSphere('skull', {
-        diameter: 0.25 * scale,
-        segments: 20
-    }, scene);
+    const skull = createSkull(scene, 'skull', { diameter: 0.25 * scale, style: 'human', segments: 18 });
     skull.scaling.set(0.92, 1.05, 0.95);
     skull.material = skinMat;
     skull.parent = head;

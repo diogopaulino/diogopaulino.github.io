@@ -3,6 +3,7 @@ import {
     createBarkTexture, createSignTexture, createFeatherTexture
 } from './textures.js';
 import { hexToColor3 } from './utils.js';
+import { createMuscle, createSkull, createShoe, createTorso } from '../../shared/realism-bjs.js';
 
 const prefabCache = new Map();
 
@@ -106,12 +107,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const leg = new BABYLON.TransformNode(sx < 0 ? 'leftLeg' : 'rightLeg', scene);
         leg.parent = hips;
         leg.position.set(sx * 0.11, -0.08, 0);
-        const thigh = BABYLON.MeshBuilder.CreateCylinder('thigh', {
-            height: 0.44,
-            diameterTop: 0.15,
-            diameterBottom: 0.13,
-            tessellation: 18
-        }, scene);
+        const thigh = createMuscle(scene, 'thigh', {
+            length: 0.44, r0: 0.09, r1: 0.065, bulge: 0.028, bulgeAt: 0.3
+        });
         thigh.position.y = -0.22;
         thigh.material = khakiMat;
         thigh.parent = leg;
@@ -119,12 +117,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const shin = new BABYLON.TransformNode('shin', scene);
         shin.parent = leg;
         shin.position.y = -0.44;
-        const calf = BABYLON.MeshBuilder.CreateCylinder('calf', {
-            height: 0.42,
-            diameterTop: 0.13,
-            diameterBottom: 0.11,
-            tessellation: 18
-        }, scene);
+        const calf = createMuscle(scene, 'calf', {
+            length: 0.42, r0: 0.07, r1: 0.05, bulge: 0.02, bulgeAt: 0.35, pinch: 0.25
+        });
         calf.position.y = -0.21;
         calf.material = khakiMat;
         calf.parent = shin;
@@ -132,11 +127,8 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const foot = new BABYLON.TransformNode('foot', scene);
         foot.parent = shin;
         foot.position.set(0, -0.42, 0.05);
-        const shoe = BABYLON.MeshBuilder.CreateCapsule('shoe', {
-            radius: 0.055, height: 0.28, tessellation: 12, subdivisions: 3
-        }, scene);
-        shoe.rotation.z = Math.PI / 2;
-        shoe.scaling.set(1, 0.75, 1.15);
+        const shoe = createShoe(scene, 'shoe', { length: 0.26, width: 0.1, height: 0.08 });
+        shoe.rotation.y = -Math.PI / 2;
         shoe.position.set(0, 0.02, 0.06);
         shoe.material = shoeMat;
         shoe.parent = foot;
@@ -146,11 +138,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     const torso = new BABYLON.TransformNode('torso', scene);
     torso.parent = hips;
     torso.position.y = 0.12;
-    const chest = BABYLON.MeshBuilder.CreateCapsule('chest', {
-        radius: 0.18, height: 0.54, tessellation: 16, subdivisions: 6
-    }, scene);
-    chest.scaling.set(1.25, 1, 0.78);
-    chest.position.y = 0.27;
+    const chest = createTorso(scene, 'chest', { height: 0.58, girth: 0.22, style: 'human' });
+    chest.scaling.set(1.15, 1, 0.9);
+    chest.position.y = 0;
     chest.material = shirtMat;
     chest.parent = torso;
     registerShadows(chest, shadowGenerator);
@@ -172,12 +162,8 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     neck.position.y = -0.04;
     neck.material = skinMat;
     neck.parent = head;
-    const face = BABYLON.MeshBuilder.CreateSphere('face', {
-        diameterX: 0.22,
-        diameterY: 0.26,
-        diameterZ: 0.24,
-        segments: 20
-    }, scene);
+    const face = createSkull(scene, 'face', { diameter: 0.24, style: 'human', front: -1, segments: 20 });
+    face.scaling.set(0.92, 1.08, 1);
     face.position.set(0, 0.14, 0);
     face.material = skinMat;
     face.parent = head;
@@ -227,12 +213,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const arm = new BABYLON.TransformNode(sx < 0 ? 'leftArm' : 'rightArm', scene);
         arm.parent = torso;
         arm.position.set(sx * 0.28, 0.48, 0);
-        const upperArm = BABYLON.MeshBuilder.CreateCylinder('upperArm', {
-            height: 0.34,
-            diameterTop: 0.13,
-            diameterBottom: 0.11,
-            tessellation: 16
-        }, scene);
+        const upperArm = createMuscle(scene, 'upperArm', {
+            length: 0.34, r0: 0.07, r1: 0.055, bulge: 0.02, bulgeAt: 0.3
+        });
         upperArm.position.y = -0.14;
         upperArm.material = shirtMat;
         upperArm.parent = arm;
@@ -240,12 +223,9 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         const forearm = new BABYLON.TransformNode('forearm', scene);
         forearm.parent = arm;
         forearm.position.y = -0.32;
-        const armSkin = BABYLON.MeshBuilder.CreateCylinder('armSkin', {
-            height: 0.32,
-            diameterTop: 0.11,
-            diameterBottom: 0.09,
-            tessellation: 16
-        }, scene);
+        const armSkin = createMuscle(scene, 'armSkin', {
+            length: 0.32, r0: 0.055, r1: 0.042, bulge: 0.012, bulgeAt: 0.4, pinch: 0.15
+        });
         armSkin.position.y = -0.14;
         armSkin.material = skinMat;
         armSkin.parent = forearm;

@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { limbGeometry, torsoGeometry, headGeometry } from '../../shared/realism.js';
 import { COLORS } from './config.js?v=14';
 import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
 
@@ -846,12 +847,16 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const iris = plainMaterial(0x2a1c12, 0.5, 0);
 
     for (const sx of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.105, 0.82, 14), leather);
-        leg.position.set(sx * 0.16, 0.41, 0.02);
+        const leg = new THREE.Mesh(limbGeometry({
+            length: 0.78, r0: 0.13, r1: 0.09, bulge: 0.03, bulgeAt: 0.32
+        }), leather);
+        leg.position.set(sx * 0.16, 0.8, 0.02);
         leg.castShadow = true;
         group.add(leg);
-        const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 6, 14), plainMaterial(0x2e2116, 0.9, 0));
-        boot.rotation.z = Math.PI / 2;
+        const boot = new THREE.Mesh(limbGeometry({
+            length: 0.26, r0: 0.08, r1: 0.06, bulge: 0.015, bulgeAt: 0.45, pinch: 0
+        }), plainMaterial(0x2e2116, 0.9, 0));
+        boot.rotation.x = Math.PI / 2;
         boot.scale.set(1, 0.7, 1.15);
         boot.position.set(sx * 0.16, 0.07, 0.06);
         group.add(boot);
@@ -861,8 +866,8 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     torso.position.y = 0.82;
     group.add(torso);
 
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.25, 0.66, 16), cloth);
-    chest.position.y = 0.32;
+    const chest = new THREE.Mesh(torsoGeometry({ height: 0.62, girth: 0.3, style: 'human' }), cloth);
+    chest.position.y = 0.02;
     chest.castShadow = true;
     torso.add(chest);
 
@@ -897,7 +902,7 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     head.position.y = 0.78;
     torso.add(head);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
+    const skull = new THREE.Mesh(headGeometry(0.175, 'human'), skin);
     head.add(skull);
 
     for (const sx of [-1, 1]) {

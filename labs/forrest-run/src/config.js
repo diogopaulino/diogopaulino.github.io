@@ -190,7 +190,7 @@ export const QUALITY = {
     },
     high: {
         antialias: true,
-        pixelRatio: 2,
+        pixelRatio: 1.5,
         shadows: true,
         shadowMapSize: 2048,
         bloom: true,

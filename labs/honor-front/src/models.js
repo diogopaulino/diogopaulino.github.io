@@ -43,16 +43,20 @@ export async function loadAssets(BABYLON, scene) {
     const garandMat = new BABYLON.StandardMaterial("garandMat", scene);
     garandMat.diffuseTexture = garandTex;
     garandMat.emissiveTexture = garandTex;
-    garandMat.useAlphaFromDiffuseTexture = false;
-    // A imagem tem fundo branco. Usar multiply torna o branco transparente.
-    garandMat.alphaMode = BABYLON.Engine.ALPHA_MULTIPLY;
+    garandMat.useAlphaFromDiffuseTexture = true;
+    garandMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+    garandMat.alphaMode = BABYLON.Engine.ALPHA_COMBINE;
     garandMat.disableLighting = true;
-    
+    garandMat.backFaceCulling = false;
+
     const thompsonMat = new BABYLON.StandardMaterial("thompsonMat", scene);
     thompsonMat.diffuseTexture = thompsonTex;
     thompsonMat.emissiveTexture = thompsonTex;
-    thompsonMat.alphaMode = BABYLON.Engine.ALPHA_MULTIPLY;
+    thompsonMat.useAlphaFromDiffuseTexture = true;
+    thompsonMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+    thompsonMat.alphaMode = BABYLON.Engine.ALPHA_COMBINE;
     thompsonMat.disableLighting = true;
+    thompsonMat.backFaceCulling = false;
 
     const garandPlane = BABYLON.MeshBuilder.CreatePlane("garand_view", {width: 0.6, height: 0.6}, scene);
     garandPlane.material = garandMat;

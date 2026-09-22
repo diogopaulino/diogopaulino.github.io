@@ -3,6 +3,7 @@
  * Nenhum GLB externo. Cache de material nunca serializa Texture (ciclo no engine).
  */
 
+import { createMuscle, createSkull } from '../../shared/realism-bjs.js';
 import { hexToColor3 } from './sky.js';
 import {
     surface, thatchTexture, goldTexture, cloudTexture, clothTexture,
@@ -97,8 +98,24 @@ function limb(scene, name, type, options, material, parent, y = 0) {
     let mesh;
     if (type === 'cylinder') mesh = B.MeshBuilder.CreateCylinder(name, options, scene);
     else if (type === 'box') mesh = B.MeshBuilder.CreateBox(name, options, scene);
-    else if (type === 'sphere') mesh = B.MeshBuilder.CreateSphere(name, options, scene);
-    else if (type === 'capsule') mesh = B.MeshBuilder.CreateCapsule(name, options, scene);
+    else if (type === 'sphere' && /skull/i.test(name)) {
+        mesh = createSkull(scene, name, {
+            diameter: options.diameter || options.diameterY || 0.3,
+            style: 'child',
+            segments: options.segments || 16
+        });
+    } else if (type === 'sphere') mesh = B.MeshBuilder.CreateSphere(name, options, scene);
+    else if (type === 'capsule') {
+        const r = options.radius ?? 0.05;
+        mesh = createMuscle(scene, name, {
+            length: options.height ?? r * 2,
+            r0: r * 1.2,
+            r1: r * 0.8,
+            bulge: r * 0.28,
+            bulgeAt: 0.38,
+            tessellation: Math.min(12, options.tessellation || 10)
+        });
+    }
     else if (type === 'torus') mesh = B.MeshBuilder.CreateTorus(name, options, scene);
     else if (type === 'disc') {
         mesh = B.MeshBuilder.CreateDisc(name, options, scene);

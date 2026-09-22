@@ -28,7 +28,7 @@ const QUALITY = {
         sparks: 900, burst: 70
     },
     high: {
-        id: 'high', pr: 2.0, antialias: true, bloom: true, shadows: true,
+        id: 'high', pr: 1.5, antialias: true, bloom: true, shadows: true,
         shadowMap: 4096, waterSize: 512, stars: 7000, trees: 110, clouds: 12,
         sparks: 1400, burst: 110
     }

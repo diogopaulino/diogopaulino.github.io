@@ -4,7 +4,9 @@
  */
 
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { barkTexture, woodTexture, thatchTexture, cobbleTexture } from './textures.js';
+import { attachHumanHead, limbGeometry, shoeMesh, handGroup } from '../../shared/realism.js';
 
 const matCache = new Map();
 
@@ -37,6 +39,7 @@ function enableShadows(root) {
 export function buildGirl() {
     const group = new THREE.Group();
     const skin = std(0xf0c4a0, 0.68);
+    skin.side = THREE.DoubleSide;
     const hair = std(0x2a1810, 0.92);
     const coat = std(0xc45a42, 0.82);
     const dress = std(0xf2e2c4, 0.88);
@@ -50,12 +53,12 @@ export function buildGirl() {
         const leg = new THREE.Group();
         leg.position.set(sx * 0.1, 0.42, 0);
         hips.add(leg);
-        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.32, 12), dress);
-        thigh.position.y = -0.16;
+        const thigh = new THREE.Mesh(limbGeometry({
+            length: 0.32, r0: 0.07, r1: 0.048, bulge: 0.016, bulgeAt: 0.34, pinch: 0.25
+        }), dress);
         leg.add(thigh);
-        const bootM = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), boot);
-        bootM.scale.set(1.05, 0.55, 1.45);
-        bootM.position.set(0, -0.34, 0.04);
+        const bootM = shoeMesh(boot, { length: 0.16, width: 0.075, height: 0.055 });
+        bootM.position.set(0, -0.32, 0.03);
         leg.add(bootM);
         parts.legs.push(leg);
         parts.feet.push(bootM);
@@ -65,12 +68,19 @@ export function buildGirl() {
     torso.position.y = 0.42;
     hips.add(torso);
 
-    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.38, 16), dress);
-    skirt.position.y = 0.12;
+    const skirtPts = [
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.16, 0.08),
+        new THREE.Vector2(0.24, 0.2),
+        new THREE.Vector2(0.3, 0.36)
+    ];
+    const skirt = new THREE.Mesh(new THREE.LatheGeometry(skirtPts, 18), dress);
     torso.add(skirt);
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.32, 14), coat);
-    body.position.y = 0.38;
+    const body = new THREE.Mesh(limbGeometry({
+        length: 0.34, r0: 0.15, r1: 0.13, bulge: 0.03, bulgeAt: 0.45, pinch: 0.05
+    }), coat);
+    body.position.y = 0.52;
     torso.add(body);
 
     const cape = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 14, 1, true), std(0xa84838, 0.9));
@@ -86,53 +96,28 @@ export function buildGirl() {
     const head = new THREE.Group();
     head.position.y = 0.72;
     torso.add(head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 20, 16), skin);
-    head.add(skull);
-
-    for (const sx of [-1, 1]) {
-        const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 10), std(0xf7f2ea, 0.35));
-        eyeW.position.set(sx * 0.055, 0.02, 0.155);
-        head.add(eyeW);
-        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), std(0x3a5a28, 0.4));
-        iris.position.set(sx * 0.055, 0.018, 0.178);
-        head.add(iris);
-        const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.04, 4, 8), hair);
-        brow.position.set(sx * 0.055, 0.055, 0.16);
-        brow.rotation.z = sx * -0.12;
-        head.add(brow);
-        const cheek = new THREE.Mesh(
-            new THREE.SphereGeometry(0.028, 6, 6),
-            new THREE.MeshStandardMaterial({ color: 0xf08a7a, roughness: 0.7, transparent: true, opacity: 0.45 })
-        );
-        cheek.position.set(sx * 0.1, -0.03, 0.12);
-        head.add(cheek);
-    }
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), skin);
-    nose.position.set(0, -0.01, 0.17);
-    head.add(nose);
-
-    const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 16, 14), hair);
-    hairCap.scale.set(1.05, 0.85, 1.05);
-    hairCap.position.y = 0.06;
-    head.add(hairCap);
-
-    const bangs = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), hair);
-    bangs.scale.set(1.4, 0.45, 0.7);
-    bangs.position.set(0, 0.08, 0.12);
-    head.add(bangs);
+    attachHumanHead(head, {
+        radius: 0.175,
+        style: 'child',
+        skin: 0xf0c4a0,
+        hair: 0x2a1810,
+        hairStyle: 'bangs',
+        iris: 0x3a5a28,
+        lips: 0xc46a62
+    });
 
     const braids = [];
     for (const sx of [-1, 1]) {
         const braid = new THREE.Group();
-        braid.position.set(sx * 0.16, -0.02, -0.02);
+        braid.position.set(sx * 0.15, 0.02, -0.02);
         head.add(braid);
-        for (let i = 0; i < 5; i++) {
-            const bead = new THREE.Mesh(new THREE.SphereGeometry(0.038 - i * 0.003, 8, 6), hair);
-            bead.position.set(sx * 0.02, -0.08 - i * 0.07, -0.02);
-            braid.add(bead);
-        }
-        const ribbon = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), std(0xe8c44a, 0.6));
-        ribbon.position.set(sx * 0.02, -0.44, -0.02);
+        const lock = new THREE.Mesh(limbGeometry({
+            length: 0.42, r0: 0.032, r1: 0.014, bulge: 0.008, bulgeAt: 0.25, pinch: 0.05, seg: 8, rings: 8
+        }), hair);
+        braid.add(lock);
+        const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.008, 6, 10), std(0xe8c44a, 0.45, 0.2));
+        ribbon.position.y = -0.4;
+        ribbon.rotation.x = Math.PI / 2;
         braid.add(ribbon);
         braids.push(braid);
     }
@@ -141,11 +126,13 @@ export function buildGirl() {
         const arm = new THREE.Group();
         arm.position.set(sx * 0.22, 0.5, 0);
         torso.add(arm);
-        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.038, 0.3, 12), coat);
-        mesh.position.y = -0.14;
+        const mesh = new THREE.Mesh(limbGeometry({
+            length: 0.3, r0: 0.05, r1: 0.036, bulge: 0.012, bulgeAt: 0.32, pinch: 0.2
+        }), coat);
         arm.add(mesh);
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), skin);
+        const hand = handGroup(skin, { scale: 0.72 });
         hand.position.y = -0.3;
+        if (sx > 0) hand.scale.x = -1;
         arm.add(hand);
         parts.arms.push(arm);
     }

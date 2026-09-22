@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { shellArmor, barkTexture, leafTexture, templeStone } from './textures.js';
+import { limbGeometry, canineHeadGeometry, tailGeometry, shoeMesh, leatherMaterial } from '../../shared/realism.js';
 
 const geoCache = new Map();
 function geo(key, factory) {
@@ -130,17 +131,11 @@ export function createTatu() {
     const head = new THREE.Group();
     head.name = 'head';
     head.position.set(0, 0.58, 0.58);
-    const skull = mesh(geo('tatu-head', () => new THREE.SphereGeometry(0.28, 40, 32)), 0xe8c888, {
+    const skull = mesh(canineHeadGeometry({ radius: 0.3, style: 'dog' }), 0xe8c888, {
         roughness: 0.55
     });
-    skull.scale.set(0.9, 0.85, 1.15);
+    skull.scale.set(0.95, 0.82, 1.05);
     head.add(skull);
-    const snout = mesh(geo('tatu-snout', () => new THREE.ConeGeometry(0.14, 0.32, 32)), 0xdcb070, {
-        roughness: 0.58
-    });
-    snout.rotation.x = Math.PI / 2;
-    snout.position.z = 0.28;
-    head.add(snout);
     const nose = mesh(geo('tatu-nose', () => new THREE.SphereGeometry(0.07, 24, 20)), 0x2a1810, {
         roughness: 0.7
     });
@@ -180,8 +175,8 @@ export function createTatu() {
 
     const legs = new THREE.Group();
     legs.name = 'legs';
-    const legGeo = geo('tatu-leg', () => new THREE.CylinderGeometry(0.08, 0.1, 0.28, 24));
-    const footGeo = geo('tatu-foot', () => new THREE.BoxGeometry(0.16, 0.07, 0.2, 2, 2, 2));
+    const legGeo = limbGeometry({ length: 0.24, r0: 0.07, r1: 0.09, bulge: 0.015, bulgeAt: 0.55, pinch: 0.1, seg: 12 });
+    const footMat = leatherMaterial(0x3a2418);
     const spots = [
         [-0.28, 0.16, 0.28],
         [0.28, 0.16, 0.28],
@@ -193,7 +188,8 @@ export function createTatu() {
         g.name = `leg${i}`;
         g.position.set(x, y, z);
         const limb = new THREE.Mesh(legGeo, pbrMat(0xc48a40, { roughness: 0.58 }));
-        const foot = new THREE.Mesh(footGeo, pbrMat(0x3a2418, { roughness: 0.72 }));
+        limb.position.y = 0.08;
+        const foot = shoeMesh(footMat, { length: 0.18, width: 0.1, height: 0.06 });
         foot.position.y = -0.16;
         limb.castShadow = true;
         foot.castShadow = true;
@@ -202,7 +198,7 @@ export function createTatu() {
     });
     root.add(legs);
 
-    const tail = mesh(geo('tatu-tail', () => new THREE.ConeGeometry(0.08, 0.42, 24)), 0xb07838, {
+    const tail = mesh(tailGeometry({ length: 0.4, r0: 0.07, r1: 0.02, fluff: 0.01 }), 0xb07838, {
         roughness: 0.55
     });
     tail.position.set(0, 0.42, -0.72);

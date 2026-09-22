@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { canineTorsoGeometry, canineHeadGeometry, limbGeometry } from '../../shared/realism.js';
 import { breedById, coatById } from './config.js';
 import { furMaps } from './textures.js';
 import { damp, clamp } from './utils.js';
@@ -127,9 +128,9 @@ export class Pet {
         this.root.add(body);
         this.parts.body = body;
 
-        const torso = mesh(sph, furMat, {
-            scale: [breed.bodyW, breed.bodyH, breed.bodyLen * 0.5],
-            pos: [0, breed.bodyH * 0.15, 0]
+        const torso = mesh(canineTorsoGeometry({ length: 1, girth: 0.48, chest: 0.1 }), furMat, {
+            scale: [breed.bodyW * 1.6, breed.bodyH * 1.5, breed.bodyLen],
+            pos: [0, breed.bodyH * 0.2, 0]
         });
         body.add(torso);
         this.parts.torso = torso;
@@ -174,13 +175,9 @@ export class Pet {
         this.parts.head = head;
 
         const hs = breed.head;
-        head.add(mesh(sph, furMat, { scale: [hs * 0.95, hs * (cat ? 0.88 : 0.92), hs] }));
-        if (breed.snout > 0.1) {
-            head.add(mesh(sph, bellyMat, {
-                scale: [hs * 0.42 * (0.6 + breed.snout), hs * 0.32, hs * breed.snout * 1.15],
-                pos: [0, -hs * 0.18, hs * (0.55 + breed.snout * 0.4)]
-            }));
-        }
+        head.add(mesh(canineHeadGeometry({ radius: 1, style: cat ? 'cat' : 'dog' }), furMat, {
+            scale: [hs * 0.92, hs * (cat ? 0.84 : 0.9), hs * (0.9 + breed.snout * 0.35)]
+        }));
         head.add(mesh(sphLo, noseMat, {
             scale: [0.045 + breed.snout * 0.04, 0.035, 0.04],
             pos: [0, -hs * 0.16, hs * (0.72 + breed.snout * 0.55)]
@@ -327,7 +324,9 @@ export class Pet {
             const leg = new THREE.Group();
             leg.position.set(px, this.restHip, pz);
             this.root.add(leg);
-            leg.add(mesh(cap, furMat, { scale: [r, len * 0.55, r], pos: [0, -len * 0.35, 0] }));
+            leg.add(mesh(limbGeometry({
+                length: 1, r0: 1, r1: 0.68, bulge: 0.28, bulgeAt: 0.32, seg: 10, rings: 6
+            }), furMat, { scale: [r, len * 0.9, r] }));
             leg.add(mesh(sphLo, padMat, {
                 scale: [r * 1.35, r * 0.55, r * 1.5], pos: [0, -len * 0.92, r * 0.3]
             }));

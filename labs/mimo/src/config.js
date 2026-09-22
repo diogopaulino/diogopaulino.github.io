@@ -212,7 +212,7 @@ export function coatById(id) {
 export const QUALITY = {
     low: { id: 'low', pixelRatio: 1, shadows: false, shadowSize: 512, bloom: false, dust: 40, aniso: 2, segs: 12 },
     medium: { id: 'medium', pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: true, dust: 90, aniso: 4, segs: 18 },
-    high: { id: 'high', pixelRatio: 2, shadows: true, shadowSize: 2048, bloom: true, dust: 180, aniso: 8, segs: 28 }
+    high: { id: 'high', pixelRatio: 1.5, shadows: true, shadowSize: 1536, bloom: true, dust: 120, aniso: 8, segs: 24 }
 };
 
 export const LIGHT = {
