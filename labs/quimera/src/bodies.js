@@ -393,6 +393,18 @@ const PIRATE_SASH = (() => {
     return g;
 })();
 
+/**
+ * Obi do ninja: as bordas saem e o meio aperta cerca de 8 cm no raio.
+ * Y do torno cresce.
+ */
+const NINJA_OBI = new THREE.LatheGeometry([
+    new THREE.Vector2(0.16, 0),
+    new THREE.Vector2(0.26, 0.02),
+    new THREE.Vector2(0.18, 0.06),
+    new THREE.Vector2(0.26, 0.10),
+    new THREE.Vector2(0.16, 0.12)
+], 18);
+
 /** Faixa do chef: as bordas saem e o meio aperta. Y do torno cresce. */
 const CHEF_BELT = new THREE.LatheGeometry([
     new THREE.Vector2(0.20, 0),
@@ -519,7 +531,8 @@ const BODIES = {
     ninja: (kit) => build(kit, {
         options: { hand: null },
         detail: ({ add, mats }) => {
-            add.box(0.22, 0.08, 0.36, mats.accent, [0, 0.58, 0], null, null, 0.03);
+            const obi = add.mesh(NINJA_OBI, mats.accent, [0, 0.52, 0]);
+            obi.name = 'ninjaObi';
             add.box(0.1, 0.18, 0.04, mats.trim, [0.16, 0.58, 0.14]);
             add.cap(0.06, 0.18, mats.primary, [-0.12, 0.18, 0]);
             add.cap(0.06, 0.18, mats.primary, [0.12, 0.18, 0]);
