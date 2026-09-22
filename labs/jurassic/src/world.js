@@ -94,6 +94,85 @@ function gateArchGeometry() {
     return g;
 }
 
+/**
+ * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
+ * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
+ */
+function broadleafCrown(radius, height, lobes, seed) {
+    const y0 = -height * 0.38;
+    const steps = 12;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = y0 + t * height;
+        const profile = t < 0.22
+            ? 0.38 + (t / 0.22) * 0.62
+            : Math.sqrt(Math.max(0, 1 - (((t - 0.22) / 0.78) * 0.9) ** 2));
+        pts.push(new THREE.Vector2(Math.max(0.06, radius * profile), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 22);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4) continue;
+        const lobe = 0.82 + 0.22 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const BROADLEAF_CROWNS = [
+    broadleafCrown(1.85, 2.35, 5, 0.3),
+    broadleafCrown(1.25, 1.65, 4, 1.1),
+    broadleafCrown(1.15, 1.5, 5, 2.2)
+];
+
+/** Tronco de y=0 a 6.5, com alargamento e costelas. */
+const BROADLEAF_TRUNK = (() => {
+    const H = 6.5;
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const flare = Math.exp(-t * 5) * 0.2;
+        const collar = t > 0.88 ? (t - 0.88) * 0.45 : 0;
+        pts.push(new THREE.Vector2(0.3 - t * 0.12 + flare + collar, t * H));
+    }
+    const g = new THREE.LatheGeometry(pts, 12);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4 || y < 0.2) continue;
+        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 6)) ** 2 * 0.025;
+        const k = 1 + rib / rad;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Estipe de palmeira, centrado em Y como o cilindro de 5.4. Anéis de folha. */
+const PALM_TRUNK = (() => {
+    const H = 5.4;
+    const pts = [];
+    for (let i = 0; i <= 20; i++) {
+        const t = i / 20;
+        const y = (t - 0.5) * H;
+        const flare = Math.exp(-t * 4.5) * 0.1;
+        const scar = Math.sin(t * Math.PI * 16) > 0.45 ? 0.016 : 0;
+        pts.push(new THREE.Vector2(0.2 - t * 0.08 + flare + scar, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 12);
+    g.computeVertexNormals();
+    return g;
+})();
+
 export class World {
     constructor(scene, quality) {
         this.scene = scene;
@@ -356,11 +435,12 @@ export class World {
     _makePalm() {
         const g = new THREE.Group();
         const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.12, 0.22, 5.4, 7),
+            PALM_TRUNK,
             new THREE.MeshStandardMaterial({ map: barkTexture(), color: 0xc4a070, roughness: 0.9 })
         );
         trunk.position.y = 2.7;
         trunk.rotation.z = 0.08;
+        trunk.name = 'palmTrunk';
         g.add(trunk);
         const leafTex = palmLeafTexture();
         const leafMat = new THREE.MeshStandardMaterial({
@@ -379,21 +459,27 @@ export class World {
 
     _makeCanopy() {
         const g = new THREE.Group();
+        g.name = 'broadleaf';
         const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.22, 0.38, 6.5, 7),
+            BROADLEAF_TRUNK,
             new THREE.MeshStandardMaterial({ map: barkTexture(), roughness: 0.92 })
         );
-        trunk.position.y = 3.25;
+        trunk.name = 'broadleafTrunk';
         g.add(trunk);
         const foliage = new THREE.MeshStandardMaterial({
             map: leafTexture(), color: 0x3a7a28, roughness: 0.88, transparent: true, alphaTest: 0.35
         });
-        for (let i = 0; i < 4; i++) {
-            const s = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 + i * 0.15, 1), foliage);
-            s.position.set((i - 1.5) * 0.45, 6.2 + (i % 2) * 0.4, ((i % 3) - 1) * 0.4);
-            s.scale.set(1.1, 0.75, 1.1);
+        const spots = [
+            [0, 6.55, 0, 0],
+            [0.85, 6.15, 0.4, 1],
+            [-0.7, 6.25, -0.35, 2]
+        ];
+        spots.forEach(([x, y, z, i]) => {
+            const s = new THREE.Mesh(BROADLEAF_CROWNS[i], foliage);
+            s.position.set(x, y, z);
+            if (i === 0) s.name = 'broadleafCrown';
             g.add(s);
-        }
+        });
         g.traverse((c) => { if (c.isMesh) c.castShadow = true; });
         return g;
     }
