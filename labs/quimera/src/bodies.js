@@ -429,6 +429,36 @@ const ASTRO_PLATE = (() => {
 })();
 
 /**
+ * Lapela do pirata: larga no ombro e em ponta na barra.
+ * A ponta fica cerca de 7 cm abaixo dos cantos de baixo.
+ */
+const PIRATE_LAPEL = (() => {
+    const p = [
+        [-0.09, 0.11],
+        [0.09, 0.11],
+        [0.10, 0.02],
+        [0.05, -0.06],
+        [0.00, -0.13],
+        [-0.05, -0.04],
+        [-0.09, 0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.012);
+    return g;
+})();
+
+/**
  * Faixa do pirata: pano que desce na frente e termina em duas pontas.
  * O meio da barra fica cerca de 8 cm acima das pontas.
  */
@@ -600,7 +630,8 @@ const BODIES = {
             add.lathe([[0.2, 0], [0.32, 0.1], [0.3, 0.34], [0.2, 0.56], [0.14, 0.68]], mats.primary, [0, 0.48, -0.02]);
             const sash = add.mesh(PIRATE_SASH, mats.accent, [-0.02, 0.46, 0.34]);
             sash.name = 'pirateSash';
-            add.box(0.18, 0.22, 0.04, mats.trim, [0.14, 0.92, 0.18]);
+            const lapel = add.mesh(PIRATE_LAPEL, mats.trim, [0.14, 0.92, 0.18]);
+            lapel.name = 'pirateLapel';
             add.sphere(0.05, mats.accent, [0.14, 0.92, 0.22]);
         }
     }),
