@@ -297,6 +297,39 @@ const VIKING_BELT = (() => {
 })();
 
 /**
+ * Placa do peito do astronauta: estreita no alto, larga no meio
+ * e com o fundo mais baixo no centro.
+ */
+const ASTRO_PLATE = (() => {
+    const p = [
+        [0, 0.12],
+        [-0.07, 0.08],
+        [-0.13, 0.00],
+        [-0.14, -0.06],
+        [-0.08, -0.11],
+        [0, -0.17],
+        [0.08, -0.11],
+        [0.14, -0.06],
+        [0.13, 0.00],
+        [0.07, 0.08]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.012);
+    return g;
+})();
+
+/**
  * Faixa do pirata: pano que desce na frente e termina em duas pontas.
  * O meio da barra fica cerca de 8 cm acima das pontas.
  */
@@ -410,7 +443,8 @@ const BODIES = {
         options: { torso: null, hand: null, boot: null },
         detail: ({ add, mats }) => {
             add.lathe([[0.18, 0], [0.3, 0.1], [0.28, 0.34], [0.18, 0.52], [0.12, 0.62]], mats.primary, [0, 0.54, 0]);
-            add.box(0.28, 0.22, 0.08, mats.secondary, [0, 0.92, 0.22], null, null, 0.04);
+            const plate = add.mesh(ASTRO_PLATE, mats.secondary, [0, 0.92, 0.24]);
+            plate.name = 'astroPlate';
             const pack = add.mesh(PACK_TANK, mats.secondary, [0, 0.69, -0.36]);
             pack.name = 'astroPack';
             add.cyl(0.05, 0.05, 0.16, mats.accent, [-0.12, 1.12, -0.28]);
