@@ -339,6 +339,25 @@ const NINJA_TSUBA = (() => {
     return g;
 })();
 
+/**
+ * Gema da fada: a culet fecha numa ponta, a cintura é a parte mais
+ * larga e a mesa de cima fica mais estreita. Altura cerca de 5 cm.
+ */
+const FAIRY_GEM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.002, 0),
+        new THREE.Vector2(0.012, 0.008),
+        new THREE.Vector2(0.022, 0.016),
+        new THREE.Vector2(0.026, 0.022),
+        new THREE.Vector2(0.018, 0.032),
+        new THREE.Vector2(0.012, 0.042),
+        new THREE.Vector2(0.012, 0.048)
+    ], 12);
+    g.translate(0, -0.024, 0);
+    g.computeVertexNormals();
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -432,7 +451,8 @@ const ACCESSORIES = {
     fairy: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.cyl(0.012, 0.016, 0.42, mats.trim, [0, 0.2, 0], [0.3, 0, 0.2]);
         add.sphere(0.06, mats.glow, [0.04, 0.42, 0.08]);
-        add.box(0.04, 0.04, 0.04, mats.accent, [0.04, 0.42, 0.08], [0.7, 0.4, 0.2]);
+        const gem = add.mesh(FAIRY_GEM, mats.accent, [0.04, 0.50, 0.11]);
+        gem.name = 'fairyGem';
     }),
 
     samurai: (kit) => build(kit, 'back', ({ add, mats }) => {
