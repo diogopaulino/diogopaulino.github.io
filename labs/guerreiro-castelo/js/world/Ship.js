@@ -107,10 +107,42 @@ export function buildShip(scene) {
     qdeck.parent = root;
     qdeck.receiveShadows = true;
 
-    const qwall = BABYLON.MeshBuilder.CreateBox('shipQWall', { width: 6.4, height: 0.9, depth: 0.2 }, scene);
+    // Frente do tombadilho: tábuas em shipla e cimalha. O colisor continua a parede sólida.
+    // O nó fica em (0, 1.8, 4.1). +Z é a popa; a face vista do convés é −Z (shape.x positivo).
+    const qwall = new BABYLON.TransformNode('shipQWall', scene);
     qwall.position.set(0, 1.8, 4.1);
-    qwall.material = woodMat;
     qwall.parent = root;
+    const qCarve = (name, shape, path) => {
+        const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+            path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        mesh.material = woodMat;
+        mesh.parent = qwall;
+        return mesh;
+    };
+    const plank = [
+        [-0.06, -0.3], [0, -0.3], [0, -0.22], [0.1, -0.18],
+        [0.1, 0.22], [0, 0.26], [0, 0.3], [-0.06, 0.3]
+    ];
+    const plankN = 12;
+    const plankSpan = 5.8;
+    for (let i = 0; i < plankN; i++) {
+        const x = -2.9 + (i * plankSpan) / (plankN - 1);
+        qCarve('qPlank', plank, [[x, -0.36, 0], [x, 0.32, 0]]);
+    }
+    qCarve('qCap', [
+        [-0.04, -0.06], [0.14, -0.04], [0.18, 0.01], [0.1, 0.07], [-0.02, 0.05]
+    ], [[-3.2, 0.38, 0], [3.2, 0.38, 0]]);
+    qCarve('qWale', [
+        [0.06, -0.04], [0.18, -0.025], [0.2, 0.03], [0.06, 0.04]
+    ], [[-3.05, -0.04, 0], [3.05, -0.04, 0]]);
+    qCarve('qSill', [
+        [-0.04, -0.05], [0.14, -0.03], [0.16, 0.04], [-0.02, 0.05]
+    ], [[-3.2, -0.4, 0], [3.2, -0.4, 0]]);
 
     // Mastro principal
     const mast = BABYLON.MeshBuilder.CreateCylinder('shipMast', {
