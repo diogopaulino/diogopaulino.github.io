@@ -13,6 +13,87 @@ import { makeWaterMaterial } from './shaders.js';
 
 const dummy = new THREE.Object3D();
 
+/** Muro do posto, centrado como a caixa 10×4.2×6.5. Talude, fiadas e vãos. */
+const STATION_WALL = (() => {
+    const g = new THREE.BoxGeometry(10, 4.2, 6.5, 6, 10, 4);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x);
+        const az = Math.abs(z);
+        const onX = ax > 4.9;
+        const onZ = az > 3.15;
+        const t = (y + 2.1) / 4.2;
+        if (onX) x = Math.sign(x) * (5 * (1 + (1 - t) * 0.035));
+        if (onZ) z = Math.sign(z) * (3.25 * (1 + (1 - t) * 0.035));
+        if ((onX || onZ) && y < 1.85) {
+            const course = Math.sin((y + 2.1) * Math.PI * 3.2);
+            const lip = course > 0.75 ? 0.09 : 0;
+            const bay = !onX || !onZ ? (course < -0.15 && t > 0.18 && t < 0.78 ? 0.12 : 0) : 0;
+            const quoin = onX && onZ ? 0.14 : 0;
+            if (onX) x += Math.sign(x) * (lip + quoin - (onZ ? 0 : bay));
+            if (onZ) z += Math.sign(z) * (lip + quoin - (onX ? 0 : bay));
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+/** Duas águas: cumeeira no comprimento (X), beiral na profundidade. y=0 é a parede. */
+function stationRoofGeometry() {
+    const span = 7.6;
+    const hx = span / 2;
+    const rise = 1.55;
+    const lip = 0.38;
+    const s = new THREE.Shape();
+    s.moveTo(-hx - lip, 0);
+    s.lineTo(0, rise);
+    s.lineTo(hx + lip, 0);
+    s.lineTo(hx + lip - 0.16, -0.28);
+    s.lineTo(-(hx + lip - 0.16), -0.28);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 11.4,
+        bevelEnabled: true,
+        bevelThickness: 0.04,
+        bevelSize: 0.05,
+        bevelSegments: 1,
+        curveSegments: 1
+    });
+    g.translate(0, 0, -5.7);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Arco abatido do portão, pés em y=0, vão de 16 m. */
+function gateArchGeometry() {
+    const half = 8.05;
+    const rise = 1.65;
+    const band = 0.4;
+    const steps = 14;
+    const s = new THREE.Shape();
+    s.moveTo(-half, 0);
+    for (let i = 0; i <= steps; i++) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, rise * (1 - u * u) + band);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const x = -half + (i / steps) * half * 2;
+        const u = x / half;
+        s.lineTo(x, rise * (1 - u * u));
+    }
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.55, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, -0.275);
+    g.computeVertexNormals();
+    return g;
+}
+
 export class World {
     constructor(scene, quality) {
         this.scene = scene;
@@ -241,14 +322,17 @@ export class World {
         const x = 4;
         const z = 108;
         const y = this.heightAt(x, z);
-        const hall = new THREE.Mesh(new THREE.BoxGeometry(10, 4.2, 6.5), concrete);
+        const hall = new THREE.Mesh(STATION_WALL, concrete);
+        hall.name = 'stationHall';
         hall.position.set(x, y + 2.1, z);
         hall.castShadow = true;
         hall.receiveShadow = true;
         this.group.add(hall);
         this.addCollider(x, z, 4.2);
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.25, 7.4), rust);
-        roof.position.set(x, y + 4.3, z);
+        const roof = new THREE.Mesh(stationRoofGeometry(), rust);
+        roof.name = 'stationRoof';
+        roof.position.set(x, y + 4.2, z);
+        roof.castShadow = true;
         this.group.add(roof);
         const gateL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.4, 0.25), rust);
         gateL.position.set(-4, this.heightAt(-4, 94) + 1.7, 94);
@@ -256,13 +340,15 @@ export class World {
         const gateR = gateL.clone();
         gateR.position.set(12, this.heightAt(12, 94) + 1.7, 94);
         this.group.add(gateR);
-        const arch = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.3, 0.3), rust);
-        arch.position.set(4, this.heightAt(4, 94) + 3.5, 94);
+        const arch = new THREE.Mesh(gateArchGeometry(), rust);
+        arch.name = 'stationArch';
+        arch.position.set(4, this.heightAt(4, 94) + 3.4, 94);
+        arch.castShadow = true;
         this.group.add(arch);
         const amber = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), new THREE.MeshStandardMaterial({
             color: 0xe09020, emissive: 0xc46a10, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.1
         }));
-        amber.position.set(4, y + 5.1, z);
+        amber.position.set(4, y + 6.35, z);
         this.group.add(amber);
         this.amber = amber;
     }
