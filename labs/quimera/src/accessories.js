@@ -144,6 +144,41 @@ const ROBOT_JAW = (() => {
     return g;
 })();
 
+/**
+ * Bainha do ninja: a boca é mais alta que o corpo e a ponta fecha no outro lado.
+ * O perfil nasce no plano XY (comprimento em X) e gira para o comprimento ficar em Z.
+ */
+const NINJA_SAYA = (() => {
+    const p = [
+        [-0.31, 0.055],
+        [-0.28, 0.04],
+        [-0.24, 0.032],
+        [0.20, 0.03],
+        [0.27, 0.038],
+        [0.32, 0],
+        [0.27, -0.038],
+        [0.20, -0.03],
+        [-0.24, -0.032],
+        [-0.28, -0.04],
+        [-0.31, -0.055]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.025);
+    g.rotateY(-Math.PI / 2);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -185,7 +220,8 @@ const ACCESSORIES = {
     }),
 
     ninja: (kit) => build(kit, 'back', ({ add, mats }) => {
-        add.box(0.05, 0.08, 0.62, mats.accent, [0.12, 0.08, 0], [0, 0.5, 0.15], null, 0.01);
+        const saya = add.mesh(NINJA_SAYA, mats.accent, [0.12, 0.08, 0], [0, 0.5, 0.15]);
+        saya.name = 'ninjaSaya';
         add.cyl(0.025, 0.03, 0.16, mats.primary, [0.12, -0.18, 0.04], [0, 0.5, 0.15]);
         add.box(0.08, 0.04, 0.08, mats.trim, [0.12, -0.1, 0.02]);
     }),
