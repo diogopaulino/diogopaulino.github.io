@@ -39,6 +39,38 @@ const SAMURAI_BRIM = (() => {
     return g;
 })();
 
+/**
+ * Máscara do ninja: o nariz desce cerca de 7 cm e o queixo termina em ponta.
+ */
+const NINJA_MASK = (() => {
+    const p = [
+        [-0.20, 0.06],
+        [-0.08, 0.07],
+        [0, 0.00],
+        [0.08, 0.07],
+        [0.20, 0.06],
+        [0.18, -0.01],
+        [0.07, -0.06],
+        [0, -0.13],
+        [-0.07, -0.06],
+        [-0.18, -0.01]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.015);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -102,7 +134,8 @@ const HEADS = {
     ninja: (kit) => build(kit, (ctx) => {
         const { add, mats, group } = ctx;
         add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), mats.primary);
-        add.box(0.42, 0.1, 0.28, mats.white, [0, 0.05, 0.08], null, [1, 1, 0.7], 0.04);
+        const mask = add.mesh(NINJA_MASK, mats.white, [0, 0.06, 0.20]);
+        mask.name = 'ninjaMask';
         add.sphere(0.026, mats.iris, [-0.08, 0.05, 0.26]);
         add.sphere(0.026, mats.iris, [0.08, 0.05, 0.26]);
         add.sphere(0.01, mats.dark, [-0.074, 0.054, 0.284]);
