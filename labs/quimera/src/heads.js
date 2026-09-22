@@ -494,6 +494,22 @@ const ROBOT_MOUTH = (() => {
 })();
 
 /**
+ * Aba do quepe: o meio é fino e a bainha da borda sobe cerca de 4 cm.
+ */
+const SAILOR_BRIM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.24, 0),
+        new THREE.Vector2(0.28, 0.004),
+        new THREE.Vector2(0.31, 0.008),
+        new THREE.Vector2(0.335, 0.022),
+        new THREE.Vector2(0.348, 0.040),
+        new THREE.Vector2(0.332, 0.052)
+    ], 16);
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Âncora do marinheiro: as duas unhas descem cerca de 11 cm abaixo da coroa.
  * A trave sai dos dois lados do cepo.
  */
@@ -594,7 +610,10 @@ const HEADS = {
         const { add, mats } = ctx;
         addFace(ctx);
         add.cyl(0.24, 0.26, 0.12, mats.white, [0, 0.26, 0]);
-        add.cyl(0.32, 0.32, 0.035, mats.white, [0, 0.20, 0]);
+        const brim = add.mesh(SAILOR_BRIM, mats.white, [0, 0.175, 0]);
+        brim.material = mats.white.clone();
+        brim.material.side = THREE.DoubleSide;
+        brim.name = 'sailorBrim';
         const anchor = add.mesh(SAILOR_ANCHOR, mats.primary, [0, 0.22, 0.26]);
         anchor.name = 'sailorAnchor';
         add.lathe([[0.02, 0], [0.08, 0.04], [0.05, 0.14], [0.015, 0.22]], mats.dark, [0, -0.02, -0.2], [0.4, 0, 0]);
