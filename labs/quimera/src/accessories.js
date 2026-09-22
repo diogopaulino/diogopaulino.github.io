@@ -247,6 +247,24 @@ const WARRIOR_POMMEL = (() => {
     return g;
 })();
 
+/**
+ * Cabo da prancheta: a empunhadura engrossa no meio cerca de 11 cm
+ * em relação às pontas. O torno fica centrado no eixo do cabo.
+ */
+const ASTRO_HANDLE = (() => {
+    const pts = [
+        new THREE.Vector2(0.016, 0),
+        new THREE.Vector2(0.02, 0.08),
+        new THREE.Vector2(0.055, 0.16),
+        new THREE.Vector2(0.072, 0.22),
+        new THREE.Vector2(0.04, 0.32),
+        new THREE.Vector2(0.016, 0.42)
+    ];
+    const g = new THREE.LatheGeometry(pts, 12);
+    g.translate(0, -0.21, 0);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -265,7 +283,8 @@ const ACCESSORIES = {
     }),
 
     astronaut: (kit) => build(kit, 'grip', ({ add, mats }) => {
-        add.box(0.04, 0.42, 0.04, mats.secondary, [0, 0.2, 0], [0.2, 0, 0.3]);
+        const handle = add.mesh(ASTRO_HANDLE, mats.secondary, [0, 0.2, 0], [0.2, 0, 0.3]);
+        handle.name = 'astroHandle';
         const pad = add.mesh(ASTRO_PAD, mats.primary, [0.02, 0.38, 0.04], [0.2, 0.4, 0.1]);
         pad.name = 'astroPad';
         add.box(0.08, 0.08, 0.01, mats.accent, [0.02, 0.38, 0.055]);
