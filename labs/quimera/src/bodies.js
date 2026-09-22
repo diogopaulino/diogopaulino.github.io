@@ -210,6 +210,41 @@ const PACK_TANK = new THREE.LatheGeometry([
  * Ombreira do samurai: sobe no pescoço e desce nas pontas.
  * O arco do alto tem cerca de 13 cm.
  */
+/**
+ * Cinto do viking: a fivela sobe no centro.
+ * O alto do meio fica cerca de 10 cm acima das pontas.
+ */
+const VIKING_BELT = (() => {
+    const p = [
+        [-0.26, -0.05],
+        [-0.26, 0.02],
+        [-0.14, 0.04],
+        [-0.06, 0.11],
+        [0, 0.12],
+        [0.06, 0.11],
+        [0.14, 0.04],
+        [0.26, 0.02],
+        [0.26, -0.05],
+        [0.12, -0.07],
+        [0, -0.04],
+        [-0.12, -0.07]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.025);
+    return g;
+})();
+
 /** Faixa do chef: as bordas saem e o meio aperta. Y do torno cresce. */
 const CHEF_BELT = new THREE.LatheGeometry([
     new THREE.Vector2(0.20, 0),
@@ -413,7 +448,8 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.18, 0], [0.3, 0.08], [0.26, 0.28], [0.18, 0.46]], mats.cloth, [0, 0.62, 0]);
-            add.box(0.52, 0.12, 0.12, mats.trim, [0, 0.70, 0.16], null, null, 0.03);
+            const belt = add.mesh(VIKING_BELT, mats.trim, [0, 0.70, 0.16]);
+            belt.name = 'vikingBelt';
             const cape = add.mesh(VIKING_CAPE, mats.primary, [0, 0.78, -0.22], [0.2, 0, 0]);
             cape.name = 'vikingCape';
             const pleat = add.mesh(VIKING_PLEAT, mats.accent, [0, 0.78, -0.22], [0.2, 0, 0]);
