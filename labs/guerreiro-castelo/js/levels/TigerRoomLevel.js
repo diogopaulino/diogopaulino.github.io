@@ -69,8 +69,32 @@ export class TigerRoomLevel extends Level {
         ledge.material = stoneMat;
         ledge.parent = this.group;
 
-        // Chave dourada suspensa na viga alta
-        this.keyMesh = BABYLON.MeshBuilder.CreateBox('cellKeyGold', { width: 0.12, height: 0.35, depth: 0.06 }, scene);
+        // Chave dourada suspensa na viga alta.
+        // O arco tem 11 cm, a haste 2,8 cm e o dente sai 4 cm para a direita.
+        const keyShape = [
+            [0, 0.175],
+            [0.04, 0.155],
+            [0.055, 0.12],
+            [0.04, 0.085],
+            [0.014, 0.07],
+            [0.014, -0.09],
+            [0.042, -0.10],
+            [0.042, -0.15],
+            [0.014, -0.155],
+            [0.014, -0.175],
+            [-0.014, -0.175],
+            [-0.014, 0.07],
+            [-0.04, 0.085],
+            [-0.055, 0.12],
+            [-0.04, 0.155]
+        ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+        this.keyMesh = BABYLON.MeshBuilder.ExtrudeShape('cellKeyGold', {
+            shape: keyShape,
+            path: [new BABYLON.Vector3(0, 0, -0.03), new BABYLON.Vector3(0, 0, 0.03)],
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
         this.keyMesh.position.set(4.6, 2.4, -4.4);
         const goldMat = new BABYLON.StandardMaterial('goldKeyCellMat', scene);
         goldMat.diffuseColor = new BABYLON.Color3(0.95, 0.8, 0.2);
