@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { TIDES, SURFACE, FOG0, FOG1, lerp } from './config.js';
 import { sandPBR, kelpTexture } from './textures.js';
 import { patchFloor, patchKelp, WATER_VERT, WATER_FRAG } from './shaders.js';
-import { createCoral, createRock, createAnemone, createTideLight } from './models.js';
+import { createCoral, createRock, createAnemone, createTideLight } from './models.js?v=3';
 
 export class Sanctuary {
     constructor(scene, quality) {

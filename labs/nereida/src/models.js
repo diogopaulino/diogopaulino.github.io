@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rockPBR, skinPBR, coralPBR } from './textures.js';
 
 const geo = {
@@ -22,6 +23,22 @@ const geo = {
 const skinMaps = skinPBR();
 const rockMaps = rockPBR();
 const coralMaps = coralPBR();
+
+/** Seixo compartilhado: icosa deslocada, no lugar da esfera de acento. */
+const nugget = geo.icosa.clone();
+{
+    const p = nugget.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i);
+        const y = p.getY(i);
+        const z = p.getZ(i);
+        const k = 1
+            + Math.abs(Math.sin(x * 5.1 + z * 3.4)) * 0.16
+            + Math.abs(Math.cos(y * 4.2)) * 0.08;
+        p.setXYZ(i, x * k, y * k * 0.82, z * k);
+    }
+    nugget.computeVertexNormals();
+}
 
 function phys(color, extra = {}) {
     return new THREE.MeshPhysicalMaterial({
@@ -82,6 +99,70 @@ function flukeGeometry() {
     g.translate(0, 0, -0.05);
     g.computeVertexNormals();
     return g;
+}
+
+/**
+ * Peixe de cardume, uma malha só (instancing).
+ * Perfil fusiforme em Y; rotateX(−π/2) manda o focinho para −Z,
+ * o eixo que Object3D.lookAt aponta para a direção do nado.
+ * Comprimento ~0.42, raio máximo ~0.1 — mesma escala do cone antigo.
+ */
+export function schoolFishGeometry() {
+    const len = 0.42;
+    const steps = 18;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = (t - 0.5) * len;
+        const peduncle = Math.exp(-((t - 0.12) ** 2) / 0.012);
+        const belly = Math.exp(-((t - 0.46) ** 2) / 0.028);
+        const head = Math.exp(-((t - 0.74) ** 2) / 0.014);
+        const socket = Math.exp(-((t - 0.8) ** 2) / 0.0018);
+        let r = 0.012 + peduncle * 0.022 + belly * 0.098 + head * 0.042 - socket * 0.014;
+        if (t > 0.9) r *= (1 - t) / 0.1;
+        if (t < 0.04) r *= 0.35 + (t / 0.04) * 0.65;
+        pts.push(new THREE.Vector2(Math.max(r, 0.004), y));
+    }
+    const body = new THREE.LatheGeometry(pts, 8);
+    body.rotateX(-Math.PI / 2);
+
+    const placeFin = (shape, xRot, yRot, zRot, pos) => {
+        const g = new THREE.ShapeGeometry(shape);
+        if (xRot) g.rotateX(xRot);
+        if (yRot) g.rotateY(yRot);
+        if (zRot) g.rotateZ(zRot);
+        g.translate(pos[0], pos[1], pos[2]);
+        return g;
+    };
+
+    const caudal = new THREE.Shape();
+    caudal.moveTo(0, 0);
+    caudal.quadraticCurveTo(0.045, 0.05, 0.095, 0.072);
+    caudal.quadraticCurveTo(0.04, 0.02, 0.028, 0);
+    caudal.quadraticCurveTo(0.04, -0.02, 0.095, -0.072);
+    caudal.quadraticCurveTo(0.045, -0.05, 0, 0);
+
+    const dorsal = new THREE.Shape();
+    dorsal.moveTo(0, 0);
+    dorsal.quadraticCurveTo(0.045, 0.06, 0.12, 0.01);
+    dorsal.lineTo(0.08, 0);
+    dorsal.closePath();
+
+    const pec = new THREE.Shape();
+    pec.moveTo(0, 0);
+    pec.quadraticCurveTo(0.035, 0.022, 0.08, 0.004);
+    pec.quadraticCurveTo(0.04, -0.014, 0, 0);
+
+    const caudalGeo = placeFin(caudal, 0, -Math.PI / 2, 0, [0, 0, 0.175]);
+    const dorsalGeo = placeFin(dorsal, 0, -Math.PI / 2, 0, [0, 0.09, -0.01]);
+    const pecL = placeFin(pec, Math.PI / 2, 0, 0.55, [0.07, -0.02, 0.01]);
+    const pecR = placeFin(pec, Math.PI / 2, 0, -0.55, [0, 0, 0]);
+    pecR.scale(-1, 1, 1);
+    pecR.translate(-0.07, -0.02, 0.01);
+
+    const merged = mergeGeometries([body, caudalGeo, dorsalGeo, pecL, pecR]);
+    merged.computeVertexNormals();
+    return merged;
 }
 
 /** Tentáculo pendurado em −Y, mais grosso na base. */
@@ -457,7 +538,7 @@ export function createRock(size = 1) {
         }));
     }
     if (Math.random() > 0.55) {
-        g.add(mesh(geo.sphereLo, mat, {
+        g.add(mesh(nugget, mat, {
             pos: [(Math.random() - 0.5) * size * 0.6, size * 0.1, (Math.random() - 0.5) * size * 0.6],
             scale: [size * 0.35, size * 0.28, size * 0.4]
         }));

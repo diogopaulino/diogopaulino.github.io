@@ -655,6 +655,29 @@ function buildWalkman(root, mats, refs) {
     root.add(g);
 }
 
+/**
+ * Fone de mesa: torno centrado em Y (o caller deita no X com rot Z = π/2).
+ * Bulbos nas pontas (ouvido e boca), empunhadura mais fina no meio.
+ * Comprimento 0.152 ≈ cápsula antiga (0.12 + 2×0.016).
+ */
+function handsetGeometry() {
+    const len = 0.152;
+    const steps = 16;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = (t - 0.5) * len;
+        const ear = Math.exp(-((t - 0.1) ** 2) / 0.006);
+        const mouth = Math.exp(-((t - 0.9) ** 2) / 0.006);
+        const grip = 0.0105 + Math.sin(t * Math.PI) * 0.003;
+        let r = grip + (ear + mouth) * 0.013;
+        if (t < 0.03) r *= t / 0.03;
+        if (t > 0.97) r *= (1 - t) / 0.03;
+        pts.push(new THREE.Vector2(Math.max(r, 0.002), y));
+    }
+    return new THREE.LatheGeometry(pts, 10);
+}
+
 function buildPhone(root, mats, refs) {
     const g = new THREE.Group();
     g.position.set(0.78, 0.762, 0.08);
@@ -662,7 +685,7 @@ function buildPhone(root, mats, refs) {
     add(g, new RoundedBoxGeometry(0.16, 0.04, 0.12, 2, 0.01), std({ color: 0xd8d0c8, roughness: 0.45 }));
     const hand = new THREE.Group();
     hand.position.set(0, 0.03, 0);
-    add(hand, new THREE.CapsuleGeometry(0.016, 0.12, 4, 8), std({ color: 0xd8d0c8, roughness: 0.45 }), {
+    add(hand, handsetGeometry(), std({ color: 0xd8d0c8, roughness: 0.45 }), {
         rot: [0, 0, Math.PI / 2]
     });
     g.add(hand);

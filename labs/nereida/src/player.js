@@ -12,7 +12,7 @@ import {
     ACCEL, DRAG, MAX_SPEED, VERTICAL,
     FLOOR, SURFACE, BOUND, CLEARANCE
 } from './config.js';
-import { createManta } from './models.js';
+import { createManta } from './models.js?v=3';
 
 export class Player {
     constructor(scene, camera) {
