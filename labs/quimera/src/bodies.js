@@ -17,7 +17,7 @@ const BODIES = {
     pirate: (kit) => build(kit, {
         options: { torso: null, pelvis: null, leg: null },
         detail: ({ add, mats }) => {
-            add.box(0.62, 0.7, 0.4, mats.primary, [0, 0.82, -0.04], null, null, 0.08);
+            add.lathe([[0.2, 0], [0.32, 0.1], [0.3, 0.34], [0.2, 0.56], [0.14, 0.68]], mats.primary, [0, 0.48, -0.02]);
             add.box(0.56, 0.08, 0.38, mats.accent, [0, 0.58, 0.02], null, null, 0.03);
             add.box(0.18, 0.22, 0.04, mats.trim, [0.14, 0.92, 0.18]);
             add.sphere(0.05, mats.accent, [0.14, 0.92, 0.22]);
@@ -39,7 +39,7 @@ const BODIES = {
     astronaut: (kit) => build(kit, {
         options: { torso: null, hand: null, boot: null },
         detail: ({ add, mats }) => {
-            add.box(0.58, 0.64, 0.42, mats.primary, [0, 0.86, 0], null, null, 0.1);
+            add.lathe([[0.18, 0], [0.3, 0.1], [0.28, 0.34], [0.18, 0.52], [0.12, 0.62]], mats.primary, [0, 0.54, 0]);
             add.box(0.28, 0.22, 0.08, mats.secondary, [0, 0.92, 0.22], null, null, 0.04);
             add.box(0.36, 0.42, 0.18, mats.secondary, [0, 0.90, -0.28], null, null, 0.06);
             add.cyl(0.05, 0.05, 0.16, mats.accent, [-0.12, 1.12, -0.28]);
@@ -87,7 +87,7 @@ const BODIES = {
     chef: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.54, 0.58, 0.36, mats.white, [0, 0.86, 0], null, null, 0.06);
+            add.lathe([[0.16, 0], [0.28, 0.08], [0.26, 0.28], [0.16, 0.48], [0.1, 0.56]], mats.white, [0, 0.56, 0.02]);
             add.box(0.08, 0.36, 0.02, mats.dark, [-0.1, 0.86, 0.19]);
             add.box(0.08, 0.36, 0.02, mats.dark, [0.1, 0.86, 0.19]);
             add.box(0.5, 0.14, 0.38, mats.white, [0, 0.56, 0], null, null, 0.04);
@@ -128,7 +128,7 @@ const BODIES = {
     cowboy: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.5, 0.36, 0.34, mats.primary, [0, 0.96, 0], null, null, 0.05);
+            add.lathe([[0.16, 0], [0.26, 0.06], [0.24, 0.2], [0.14, 0.34]], mats.primary, [0, 0.78, 0.02]);
             add.box(0.18, 0.22, 0.04, mats.secondary, [0.12, 0.92, 0.16]);
             add.box(0.22, 0.42, 0.22, mats.secondary, [-0.16, 0.32, 0.04], null, null, 0.04);
             add.box(0.22, 0.42, 0.22, mats.secondary, [0.16, 0.32, 0.04], null, null, 0.04);

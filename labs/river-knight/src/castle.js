@@ -20,6 +20,49 @@ import { clamp, damp, randRange } from './utils.js';
 
 const tmpSlope = { dx: 0, dz: 0 };
 
+/** Telhado de torre: beiral aberto e ponta mais íngreme que um cone liso. Altura e raio batem com o cone antigo. */
+const towerRoofs = new Map();
+function towerRoofGeometry(radius) {
+    const key = radius.toFixed(2);
+    if (towerRoofs.has(key)) return towerRoofs.get(key);
+    const h = radius * 2.1;
+    const base = radius * 1.3;
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(base * 0.06, h * 0.5),
+        new THREE.Vector2(base * 0.2, h * 0.34),
+        new THREE.Vector2(base * 0.48, h * 0.08),
+        new THREE.Vector2(base * 0.78, -h * 0.18),
+        new THREE.Vector2(base * 1.12, -h * 0.46),
+        new THREE.Vector2(base * 0.9, -h * 0.5)
+    ], 16);
+    g.computeVertexNormals();
+    towerRoofs.set(key, g);
+    return g;
+}
+
+/** Duas águas sobre o salão 26×18. Perfil em X, extrusão no Z, rotateY deita a cumeeira no comprimento. */
+function hallRoofGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-11.2, 0);
+    s.lineTo(0, 7.4);
+    s.lineTo(11.2, 0);
+    s.lineTo(10.4, -0.55);
+    s.lineTo(-10.4, -0.55);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 30,
+        bevelEnabled: true,
+        bevelThickness: 0.12,
+        bevelSize: 0.16,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -15);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
 /* ================================================================== */
 /* Castelo                                                             */
 /* ================================================================== */
@@ -51,7 +94,7 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
 
     if (roof) {
         const cone = new THREE.Mesh(
-            new THREE.ConeGeometry(radius * 1.3, radius * 2.1, 14),
+            towerRoofGeometry(radius),
             plainMaterial(COLORS.roof, 0.75, 0.05)
         );
         cone.position.y = height + radius * 1.05 + 1.6;
@@ -330,11 +373,10 @@ export function createCastle(scene) {
     group.add(hall);
 
     const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(17, 9, 4),
+        hallRoofGeometry(),
         plainMaterial(COLORS.roof, 0.78, 0.04)
     );
-    roof.position.set(-sideOffset - 6, 20.4, -26);
-    roof.rotation.y = Math.PI / 4;
+    roof.position.set(-sideOffset - 6, 16, -26);
     roof.castShadow = true;
     group.add(roof);
 
