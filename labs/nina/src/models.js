@@ -568,7 +568,23 @@ export function createCloud() {
 export function createBarn() {
     const g = new THREE.Group();
     g.add(mesh(geo.box, MAT.barn, { scale: [5.2, 3.4, 4.2], pos: [0, 1.7, 0] }));
-    g.add(mesh(geo.cone, MAT.roof, { scale: [4.4, 2.2, 4.4], pos: [0, 4.5, 0] }));
+    const barnRoof = once('barn-roof', () => {
+        const shape = new THREE.Shape();
+        shape.moveTo(-2.4, 0);
+        shape.lineTo(0, 1.15);
+        shape.lineTo(2.4, 0);
+        const gable = new THREE.ExtrudeGeometry(shape, {
+            depth: 4.6,
+            bevelEnabled: true,
+            bevelThickness: 0.06,
+            bevelSize: 0.08,
+            bevelSegments: 1
+        });
+        gable.translate(0, 0, -2.3);
+        gable.computeVertexNormals();
+        return gable;
+    });
+    g.add(mesh(barnRoof, MAT.roof, { pos: [0, 3.4, 0] }));
     g.add(mesh(geo.box, MAT.ink, { scale: [1.4, 2.1, 0.12], pos: [0, 1.05, 2.12], cast: false }));
     g.add(mesh(geo.box, MAT.gold, { scale: [0.7, 0.7, 0.08], pos: [1.4, 2.4, 2.12], cast: false }));
     g.add(mesh(geo.cylLo, MAT.wood, { scale: [0.12, 2.4, 0.12], pos: [3.1, 1.2, 2.4] }));

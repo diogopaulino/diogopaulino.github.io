@@ -289,7 +289,13 @@ export function createCastle() {
             roughness: 0.65
         });
         tower.position.set(sx, 4.6, -2.2);
-        const roof = mesh(geo('c-roof', () => new THREE.ConeGeometry(2.15, 2.6, 32)), 0xc45c6a, {
+        const roof = mesh(geo('c-roof', () => new THREE.LatheGeometry([
+            new THREE.Vector2(0.06, 1.3),
+            new THREE.Vector2(0.4, 0.8),
+            new THREE.Vector2(1.2, 0.1),
+            new THREE.Vector2(1.95, -0.75),
+            new THREE.Vector2(2.2, -1.25)
+        ], 18)), 0xc45c6a, {
             roughness: 0.42,
             metalness: 0.08,
             clearcoat: 0.15
@@ -334,7 +340,13 @@ export function createCastle() {
         }
     );
     dome.position.set(0, 8.4, 0);
-    const spire = mesh(geo('c-spire', () => new THREE.ConeGeometry(0.45, 2.2, 24)), 0xc45c6a, {
+    const spire = mesh(geo('c-spire', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 1.1),
+        new THREE.Vector2(0.14, 0.5),
+        new THREE.Vector2(0.32, -0.1),
+        new THREE.Vector2(0.42, -0.85),
+        new THREE.Vector2(0.16, -1.1)
+    ], 12)), 0xc45c6a, {
         roughness: 0.4
     });
     spire.position.set(0, 11.2, 0);

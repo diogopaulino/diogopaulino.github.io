@@ -5,6 +5,7 @@
 import { Level } from './Level.js';
 import { sandTexture, grassTexture } from '../world/Textures.js';
 import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js?v=5';
+import { createMuscle } from '../../shared/realism-bjs.js';
 
 export class BeachLevel extends Level {
     get id() {
@@ -68,16 +69,27 @@ export class BeachLevel extends Level {
         gullMat.diffuseColor = new BABYLON.Color3(0.95, 0.95, 0.92);
 
         for (let i = 0; i < 4; i++) {
-            const gull = BABYLON.MeshBuilder.CreateCylinder(`gull_${i}`, {
-                diameterTop: 0,
-                diameterBottom: 0.3,
-                height: 0.5,
-                tessellation: 4
-            }, scene);
+            const gull = new BABYLON.TransformNode(`gull_${i}`, scene);
+            const body = createMuscle(scene, `gullBody_${i}`, {
+                length: 0.42, r0: 0.03, r1: 0.055, bulge: 0.02, bulgeAt: 0.42, pinch: 0.15, tessellation: 8, rings: 5
+            });
+            body.rotation.x = Math.PI / 2;
+            body.material = gullMat;
+            body.parent = gull;
+            const wings = [];
+            for (const sx of [-1, 1]) {
+                const wing = BABYLON.MeshBuilder.CreateDisc(`gullWing_${i}_${sx}`, {
+                    radius: 0.26, tessellation: 7, arc: 0.42
+                }, scene);
+                wing.material = gullMat;
+                wing.position.set(sx * 0.04, 0.02, 0);
+                wing.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
+                wing.parent = gull;
+                wings.push(wing);
+            }
             gull.position.set(-8 + i * 5, 6 + i, 10);
-            gull.material = gullMat;
             gull.parent = this.group;
-            this.gulls.push({ m: gull, p: i });
+            this.gulls.push({ m: gull, p: i, wings });
         }
     }
 
@@ -104,6 +116,11 @@ export class BeachLevel extends Level {
             g.m.position.x = Math.sin(this.time * 0.4 + g.p) * 12;
             g.m.position.z = 8 + Math.cos(this.time * 0.3 + g.p) * 6;
             g.m.position.y = 5 + Math.sin(this.time * 2 + g.p) * 0.6;
+            const flap = Math.sin(this.time * 6 + g.p) * 0.45;
+            if (g.wings) {
+                g.wings[0].rotation.z = flap;
+                g.wings[1].rotation.z = -flap;
+            }
         }
     }
 }

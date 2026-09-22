@@ -1,6 +1,6 @@
 import { HomeLevel } from '../levels/HomeLevel.js?v=5';
 import { ShipLevel } from '../levels/ShipLevel.js?v=5';
-import { BeachLevel } from '../levels/BeachLevel.js?v=4';
+import { BeachLevel } from '../levels/BeachLevel.js?v=5';
 import { ForestLevel } from '../levels/ForestLevel.js?v=4';
 import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=5';
 import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=3';

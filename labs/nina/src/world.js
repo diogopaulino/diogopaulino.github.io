@@ -8,8 +8,8 @@ import {
     MAT, geo, mesh, pbr,
     createTree, createBarn, createPicnic, createFlower, createMushroom,
     createCloud, createRainbow, createFence, createBerry, createButterfly
-} from './models.js?v=5';
-import { createFriend } from './animals.js?v=5';
+} from './models.js?v=6';
+import { createFriend } from './animals.js?v=6';
 import { createSky } from './sky.js';
 
 
