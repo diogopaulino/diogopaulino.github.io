@@ -154,7 +154,7 @@ export class Game {
     }
 
     fadeTo(duration, onMid, outDuration) {
-        const overlay = document.getElementById('fadeOverlay');
+        const overlay = document.getElementById('fade');
         if (!overlay) {
             onMid?.();
             return;
