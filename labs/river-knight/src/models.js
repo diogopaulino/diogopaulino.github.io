@@ -552,6 +552,35 @@ function sternTransomGeometry(beam) {
     return g;
 }
 
+/** Amurada transversal da popa. O meio sobe, as pontas caem, fiadas na face de ré. */
+function sternRailGeometry(beam) {
+    const w = beam * 0.88;
+    const h = 0.32;
+    const hw = w / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(w, h, 0.12, 16, 6, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / hw;
+        const top = (y + hh) / h;
+        if (top > 0.5) {
+            const u = (top - 0.5) / 0.5;
+            y += u * (0.14 * (1 - nx * nx) - nx * nx * 0.12);
+        }
+        if (top > 0.7) z *= 1 - ((top - 0.7) / 0.3) * 0.4;
+        if (z < -0.02) {
+            const col = Math.floor((x + hw) / (w / 6));
+            if (col % 2 === 1) z += 0.05;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -690,9 +719,10 @@ export function buildLongship({
         parts.sternPlatform = platform;
 
         const rail = new THREE.Mesh(
-            new THREE.BoxGeometry(beam * 0.88, 0.32, 0.12),
+            sternRailGeometry(beam),
             woodMaterial(true, 0x3a2618)
         );
+        rail.name = 'sternRail';
         rail.position.set(0, -deckDrop + 0.28, -length * 0.48);
         group.add(rail);
 

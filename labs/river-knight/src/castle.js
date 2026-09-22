@@ -12,7 +12,7 @@ import {
     metalMaterial,
     plainMaterial,
     woodMaterial
-} from './models.js?v=26';
+} from './models.js?v=27';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { waterHeight, waterSlope } from './water.js?v=15';
 import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
