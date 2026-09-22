@@ -160,7 +160,7 @@ export function createNico() {
     const visor = mesh(geo('n-visor', () => new THREE.BoxGeometry(0.42, 0.06, 0.28, 2, 2, 2)), 0xff6b4a, {
         roughness: 0.45
     });
-    visor.position.set(0, 0.08, 0.28);
+    visor.position.set(0, 0.2, 0.32);
     head.add(visor);
 
     const emblem = mesh(geo('n-star', () => new THREE.OctahedronGeometry(0.09, 1)), 0xffe14a, {

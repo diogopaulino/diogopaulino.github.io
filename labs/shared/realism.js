@@ -344,13 +344,13 @@ export function attachHumanHead(parent, {
     parent.add(skull);
 
     const chibi = style === 'chibi';
-    const eyeR = radius * (chibi ? 0.2 : style === 'child' ? 0.15 : 0.115);
-    const eyeY = radius * (chibi ? 0.06 : 0.04);
-    const eyeX = radius * (chibi ? 0.36 : 0.3);
-    const eyeZ = radius * (chibi ? 0.72 : 0.68);
+    const eyeR = radius * (chibi ? 0.26 : style === 'child' ? 0.18 : 0.13);
+    const eyeY = radius * (chibi ? 0.02 : 0.02);
+    const eyeX = radius * (chibi ? 0.34 : 0.28);
+    const eyeZ = radius * (chibi ? 0.92 : 0.86);
     for (const sx of [-1, 1]) {
         const eye = makeEye(eyeR, iris);
-        eye.position.set(sx * eyeX, eyeY, eyeZ - eyeR * 0.25);
+        eye.position.set(sx * eyeX, eyeY, eyeZ);
         parent.add(eye);
         const lid = makeLid(eyeR, skinMat);
         lid.position.set(sx * eyeX, eyeY + eyeR * 0.45, eyeZ - eyeR * 0.05);
@@ -391,9 +391,9 @@ export function attachHumanHead(parent, {
         new THREE.Vector3(lw * 0.35, ly - radius * 0.025, lz + radius * 0.02),
         new THREE.Vector3(lw, ly, lz - radius * 0.05)
     ];
-    parent.add(new THREE.Mesh(tubeCurve(smile, 10, radius * 0.018), lipMat));
-    const lower = smile.map((p) => p.clone().add(new THREE.Vector3(0, -radius * 0.035, -radius * 0.01)));
-    parent.add(new THREE.Mesh(tubeCurve(lower, 10, radius * 0.016), lipMat));
+    parent.add(new THREE.Mesh(tubeCurve(smile, 10, radius * 0.045), lipMat));
+    const lower = smile.map((p) => p.clone().add(new THREE.Vector3(0, -radius * 0.055, radius * 0.01)));
+    parent.add(new THREE.Mesh(tubeCurve(lower, 10, radius * 0.038), lipMat));
 
     for (const sx of [-1, 1]) {
         const ear = new THREE.Mesh(earBladeGeometry({

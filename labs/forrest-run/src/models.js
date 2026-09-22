@@ -108,7 +108,7 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
         leg.parent = hips;
         leg.position.set(sx * 0.11, -0.08, 0);
         const thigh = createMuscle(scene, 'thigh', {
-            length: 0.44, r0: 0.09, r1: 0.065, bulge: 0.028, bulgeAt: 0.3
+            length: 0.44, r0: 0.11, r1: 0.055, bulge: 0.05, bulgeAt: 0.28
         });
         thigh.position.y = -0.22;
         thigh.material = khakiMat;
@@ -177,6 +177,15 @@ export function createForrest(scene, shadowGenerator = null, { follower = false 
     hair.position.set(0, 0.24, -0.01);
     hair.material = hairMat;
     hair.parent = head;
+    for (const sx of [-1, 1]) {
+        const lock = createMuscle(scene, `hairLock_${sx}`, {
+            length: 0.22, r0: 0.04, r1: 0.015, bulge: 0.01, bulgeAt: 0.2, pinch: 0, tessellation: 8, rings: 5
+        });
+        lock.material = hairMat;
+        lock.parent = head;
+        lock.position.set(sx * 0.1, 0.16, -0.02);
+        lock.rotation.z = sx * 0.7;
+    }
     for (const sx of [-1, 1]) {
         const eyeWhite = BABYLON.MeshBuilder.CreateSphere('eyeWhite', { diameter: 0.04, segments: 12 }, scene);
         eyeWhite.position.set(sx * 0.055, 0.16, -0.11);
