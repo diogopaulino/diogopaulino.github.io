@@ -392,6 +392,36 @@ const COWBOY_BANDANA = (() => {
     return g;
 })();
 
+/**
+ * Boca do robô: a fenda no meio tem cerca de 11 cm de largura.
+ * O furo gira no sentido contrário do contorno.
+ */
+const ROBOT_MOUTH = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(-0.09, -0.05);
+    s.lineTo(0.09, -0.05);
+    s.lineTo(0.09, 0.05);
+    s.lineTo(-0.09, 0.05);
+    s.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.055, -0.018);
+    hole.lineTo(-0.055, 0.018);
+    hole.lineTo(0.055, 0.018);
+    hole.lineTo(0.055, -0.018);
+    hole.closePath();
+    s.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -489,7 +519,8 @@ const HEADS = {
         visor.name = 'robotVisor';
         add.sphere(0.045, mats.glow, [-0.1, 0.06, 0.24]);
         add.sphere(0.045, mats.glow, [0.1, 0.06, 0.24]);
-        add.box(0.18, 0.04, 0.04, mats.trim, [0, -0.08, 0.22]);
+        const mouth = add.mesh(ROBOT_MOUTH, mats.trim, [0, -0.08, 0.22]);
+        mouth.name = 'robotMouth';
         add.cyl(0.03, 0.03, 0.16, mats.secondary, [0.18, 0.30, 0]);
         add.sphere(0.05, mats.glow, [0.18, 0.40, 0]);
         add.cyl(0.12, 0.14, 0.1, mats.secondary, [0, -0.24, 0]);
