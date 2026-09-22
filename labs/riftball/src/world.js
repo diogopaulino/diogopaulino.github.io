@@ -238,18 +238,39 @@ export class World {
             emissive: 0x1a3a66,
             emissiveIntensity: 0.4
         });
-        const mkRail = (w, d, x, z) => {
-            const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.85, d), railMat);
+        // Tabela: tampa larga, parede mais fina e chuteira na base. O centro continua em y = 0.35.
+        const railProfile = [
+            [0.08, 0.425], [0.22, 0.39], [0.26, 0.33], [0.12, 0.28], [0.09, 0.02],
+            [0.11, -0.22], [0.18, -0.38], [0.08, -0.425],
+            [-0.08, -0.425], [-0.18, -0.38], [-0.11, -0.22], [-0.09, 0.02],
+            [-0.12, 0.28], [-0.26, 0.33], [-0.22, 0.39], [-0.08, 0.425]
+        ];
+        const railGeo = (length, alongX) => {
+            const shape = new THREE.Shape();
+            shape.moveTo(railProfile[0][0], railProfile[0][1]);
+            for (let i = 1; i < railProfile.length; i++) shape.lineTo(railProfile[i][0], railProfile[i][1]);
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: false, curveSegments: 4 });
+            geo.translate(0, 0, -length / 2);
+            if (alongX) geo.rotateY(Math.PI / 2);
+            geo.computeVertexNormals();
+            return geo;
+        };
+        const longGeo = railGeo(ARENA.halfX * 2 + 2.2, true);
+        const sideLen = ARENA.halfZ * 2 - ARENA.goalHalfZ * 2 + 0.4;
+        const sideGeo = railGeo(sideLen, false);
+        const mkRail = (alongX, x, z) => {
+            const m = new THREE.Mesh(alongX ? longGeo : sideGeo, railMat);
+            m.name = 'arenaRail';
             m.position.set(x, 0.35, z);
             m.castShadow = true;
             this.group.add(m);
         };
-        mkRail(ARENA.halfX * 2 + 2.2, 0.42, 0, ARENA.halfZ + 0.4);
-        mkRail(ARENA.halfX * 2 + 2.2, 0.42, 0, -ARENA.halfZ - 0.4);
-        mkRail(0.42, ARENA.halfZ * 2 - ARENA.goalHalfZ * 2 + 0.4, ARENA.halfX + 0.4, ARENA.halfZ * 0.55);
-        mkRail(0.42, ARENA.halfZ * 2 - ARENA.goalHalfZ * 2 + 0.4, ARENA.halfX + 0.4, -ARENA.halfZ * 0.55);
-        mkRail(0.42, ARENA.halfZ * 2 - ARENA.goalHalfZ * 2 + 0.4, -ARENA.halfX - 0.4, ARENA.halfZ * 0.55);
-        mkRail(0.42, ARENA.halfZ * 2 - ARENA.goalHalfZ * 2 + 0.4, -ARENA.halfX - 0.4, -ARENA.halfZ * 0.55);
+        mkRail(true, 0, ARENA.halfZ + 0.4);
+        mkRail(true, 0, -ARENA.halfZ - 0.4);
+        mkRail(false, ARENA.halfX + 0.4, ARENA.halfZ * 0.55);
+        mkRail(false, ARENA.halfX + 0.4, -ARENA.halfZ * 0.55);
+        mkRail(false, -ARENA.halfX - 0.4, ARENA.halfZ * 0.55);
+        mkRail(false, -ARENA.halfX - 0.4, -ARENA.halfZ * 0.55);
 
         this.goals = [makeGoal(0), makeGoal(1)];
         this.goals.forEach((g) => this.group.add(g));
