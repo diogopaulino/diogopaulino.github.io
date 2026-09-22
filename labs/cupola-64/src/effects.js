@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { pbrMat } from './models.js?v=8';
+import { pbrMat } from './models.js?v=9';
 
 export class Effects {
     constructor(scene, camera) {

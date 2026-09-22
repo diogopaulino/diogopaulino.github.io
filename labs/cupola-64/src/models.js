@@ -258,28 +258,177 @@ export function createNico() {
     };
 }
 
+/**
+ * Planta do corpo do castelo em XZ (frente em +Z). Contrafortes saem
+ * da face sem cobrir o vão do portão (x ±1.3) nem as janelas (x ±3.2).
+ * A Shape usa y = −z para, depois de rotateX(−π/2), o eixo da extrusão
+ * cair em +Y com a frente ainda em +Z.
+ */
+function keepPlanShape() {
+    const world = [
+        [-5, -4.2], [-2.2, -4.2], [-2.2, -4.68], [-1.15, -4.68], [-1.15, -4.2],
+        [1.15, -4.2], [1.15, -4.68], [2.2, -4.68], [2.2, -4.2], [5, -4.2],
+        [5, -2.45], [5.48, -2.45], [5.48, -1.35], [5, -1.35],
+        [5, 0.35], [5.48, 0.35], [5.48, 1.5], [5, 1.5], [5, 4.2],
+        [4.15, 4.2], [4.15, 4.78], [3.6, 4.78], [3.6, 4.2],
+        [2.5, 4.2], [2.5, 4.78], [1.5, 4.78], [1.5, 4.2],
+        [-1.5, 4.2], [-1.5, 4.78], [-2.5, 4.78], [-2.5, 4.2],
+        [-3.6, 4.2], [-3.6, 4.78], [-4.15, 4.78], [-4.15, 4.2], [-5, 4.2],
+        [-5, 1.5], [-5.48, 1.5], [-5.48, 0.35], [-5, 0.35],
+        [-5, -1.35], [-5.48, -1.35], [-5.48, -2.45], [-5, -2.45]
+    ];
+    const shape = new THREE.Shape();
+    const last = world.length - 1;
+    shape.moveTo(world[last][0], -world[last][1]);
+    for (let i = last - 1; i >= 0; i--) shape.lineTo(world[i][0], -world[i][1]);
+    shape.closePath();
+    return shape;
+}
+
+/** Corpo em silhar: prumo mais largo na base, cornija chanfrada, fiadas na face. */
+function keepBodyGeometry() {
+    const bevel = 0.26;
+    const depth = 7.2 - bevel;
+    const g = new THREE.ExtrudeGeometry(keepPlanShape(), {
+        depth,
+        bevelEnabled: true,
+        bevelThickness: bevel,
+        bevelSize: 0.2,
+        bevelSegments: 2,
+        curveSegments: 1
+    });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const course = Math.sin(z * 9.2) * 0.035;
+        const block = Math.sin(x * 2.4) * Math.cos(y * 1.8 + z * 2.6) * 0.02;
+        const len = Math.hypot(x, y) || 1;
+        pos.setXY(i, x + (x / len) * (course + block), y + (y / len) * (course + block));
+    }
+    g.computeVertexNormals();
+    g.rotateX(-Math.PI / 2);
+    g.computeBoundingBox();
+    g.translate(0, -g.boundingBox.min.y, 0);
+    return g;
+}
+
+/** Fiada de ameias. O dente aponta para −Y da Shape, que vira +Z depois da rotação. */
+function merlonRunGeometry(length) {
+    const tooth = 0.7;
+    const gap = 0.46;
+    const thick = 0.58;
+    const n = Math.max(3, Math.floor((length + gap) / (tooth + gap)));
+    const pitch = tooth + gap;
+    const x0 = -((n - 1) * pitch + tooth) / 2;
+    const shape = new THREE.Shape();
+    shape.moveTo(x0, 0);
+    for (let i = 0; i < n; i++) {
+        const x = x0 + i * pitch;
+        shape.lineTo(x, 0);
+        shape.lineTo(x, -thick);
+        shape.lineTo(x + tooth, -thick);
+        shape.lineTo(x + tooth, 0);
+    }
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.78,
+        bevelEnabled: true,
+        bevelThickness: 0.045,
+        bevelSize: 0.04,
+        bevelSegments: 1
+    });
+    g.rotateX(-Math.PI / 2);
+    g.computeBoundingBox();
+    g.translate(0, -g.boundingBox.min.y, 0);
+    return g;
+}
+
+/** Porta de tábuas com arco de meio ponto. Origem na base, face em +Z. */
+function castleGateGeometry() {
+    const w = 2.55;
+    const h = 3.35;
+    const r = w / 2;
+    const spring = h - r;
+    const shape = new THREE.Shape();
+    shape.moveTo(-w / 2, 0);
+    shape.lineTo(w / 2, 0);
+    shape.lineTo(w / 2, spring);
+    shape.absarc(0, spring, r, 0, Math.PI, false);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.34,
+        bevelEnabled: true,
+        bevelThickness: 0.04,
+        bevelSize: 0.045,
+        bevelSegments: 1
+    });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const z = pos.getZ(i);
+        if (z < 0.2) continue;
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        pos.setZ(i, z + Math.abs(Math.sin(x * 7.5)) * 0.012 + Math.sin(y * 5) * 0.006);
+    }
+    g.computeVertexNormals();
+    g.translate(0, 0, -0.16);
+    return g;
+}
+
+/** Escada de três degraus. x=0 da Shape encosta no muro; a frente desce em +Z. */
+function castleStepsGeometry() {
+    const run = 3.2 / 3;
+    const rise = 0.7 / 3;
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(3.2, 0);
+    shape.lineTo(3.2, rise);
+    shape.lineTo(run * 2, rise);
+    shape.lineTo(run * 2, rise * 2);
+    shape.lineTo(run, rise * 2);
+    shape.lineTo(run, 0.7);
+    shape.lineTo(0, 0.7);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 4.4, bevelEnabled: false });
+    g.translate(0, 0, -2.2);
+    g.rotateY(-Math.PI / 2);
+    return g;
+}
+
 export function createCastle() {
     const g = new THREE.Group();
     g.name = 'castle';
     const stone = peachStone();
     const gold = goldMetal();
 
-    const keep = mesh(geo('c-keep', () => new THREE.BoxGeometry(10, 7.2, 8.4, 4, 4, 4)), 0xf3c4b4, {
+    const keep = mesh(geo('c-keep', keepBodyGeometry), 0xf3c4b4, {
         map: stone.map,
         normalMap: stone.normalMap,
         roughnessMap: stone.roughnessMap,
         roughness: 0.68,
         metalness: 0.05
     });
-    keep.position.y = 3.6;
     g.add(keep);
 
-    const trim = mesh(geo('c-trim', () => new THREE.BoxGeometry(10.4, 0.45, 8.8, 2, 1, 2)), 0xe8a898, {
+    const parapetMat = {
+        map: stone.map,
         normalMap: stone.normalMap,
-        roughness: 0.55
-    });
-    trim.position.y = 7.15;
-    g.add(trim);
+        roughness: 0.58
+    };
+    const front = mesh(geo('c-mer-f', () => merlonRunGeometry(9.6)), 0xe8a898, parapetMat);
+    front.position.set(0, 7.22, 3.62);
+    const back = mesh(geo('c-mer-b', () => merlonRunGeometry(5.2)), 0xe8a898, parapetMat);
+    back.position.set(0, 7.22, -3.62);
+    back.rotation.y = Math.PI;
+    const sideR = mesh(geo('c-mer-s', () => merlonRunGeometry(3.1)), 0xe8a898, parapetMat);
+    sideR.position.set(4.42, 7.22, 1.9);
+    sideR.rotation.y = Math.PI / 2;
+    const sideL = mesh(geo('c-mer-s', () => merlonRunGeometry(3.1)), 0xe8a898, parapetMat);
+    sideL.position.set(-4.42, 7.22, 1.9);
+    sideL.rotation.y = -Math.PI / 2;
+    g.add(front, back, sideR, sideL);
 
     for (const sx of [-4.6, 4.6]) {
         const tower = mesh(geo('c-tow', () => new THREE.CylinderGeometry(1.55, 1.7, 9.2, 48)), 0xf7d0c2, {
@@ -313,18 +462,19 @@ export function createCastle() {
         g.add(tower, roof, ball);
     }
 
-    const gate = mesh(geo('c-gate', () => new THREE.BoxGeometry(2.6, 3.4, 0.4, 2, 2, 1)), 0x4a2a38, {
-        roughness: 0.78
+    const gate = mesh(geo('c-gate', castleGateGeometry), 0x4a2a38, {
+        roughness: 0.72,
+        normalMap: stone.normalMap
     });
-    gate.position.set(0, 1.7, 4.25);
-    const arch = mesh(geo('c-arch', () => new THREE.BoxGeometry(3.4, 0.55, 0.5)), 0xffe14a, {
+    gate.position.set(0, 0.02, 4.4);
+    const arch = mesh(geo('c-arch', () => new THREE.TorusGeometry(1.38, 0.13, 8, 20, Math.PI)), 0xffe14a, {
         map: gold.map,
         roughness: 0.3,
         metalness: 0.7,
         emissive: 0x332200,
         emissiveIntensity: 0.2
     });
-    arch.position.set(0, 3.55, 4.3);
+    arch.position.set(0, 2.08, 4.66);
     g.add(gate, arch);
 
     const dome = mesh(
@@ -390,11 +540,11 @@ export function createCastle() {
         g.add(w);
     }
 
-    const steps = mesh(geo('c-steps', () => new THREE.BoxGeometry(4.4, 0.7, 3.2, 2, 1, 2)), 0xe8d4c4, {
+    const steps = mesh(geo('c-steps', castleStepsGeometry), 0xe8d4c4, {
         normalMap: stone.normalMap,
         roughness: 0.7
     });
-    steps.position.set(0, 0.35, 6.2);
+    steps.position.set(0, 0, 5.08);
     g.add(steps);
 
     const bridge = mesh(geo('c-br', () => new THREE.BoxGeometry(3.2, 0.28, 6.5, 2, 1, 2)), 0xd2b48c, {
