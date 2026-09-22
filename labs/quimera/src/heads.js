@@ -363,6 +363,35 @@ const NINJA_BAND = (() => {
     return g;
 })();
 
+/**
+ * Lenço do cowboy: a ponta desce no meio, cerca de 11 cm abaixo da faixa.
+ */
+const COWBOY_BANDANA = (() => {
+    const p = [
+        [-0.09, 0.02],
+        [0.09, 0.02],
+        [0.09, -0.01],
+        [0.035, -0.04],
+        [0, -0.12],
+        [-0.035, -0.04],
+        [-0.09, -0.01]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -483,7 +512,8 @@ const HEADS = {
         add.cyl(0.22, 0.24, 0.14, mats.secondary, [0, 0.28, 0]);
         add.cyl(0.42, 0.40, 0.04, mats.secondary, [0, 0.20, 0], [0.12, 0, 0]);
         add.box(0.18, 0.03, 0.03, mats.accent, [0, 0.22, 0.22]);
-        add.box(0.18, 0.035, 0.04, mats.dark, [0, -0.08, 0.26]);
+        const bandana = add.mesh(COWBOY_BANDANA, mats.dark, [0, -0.08, 0.26]);
+        bandana.name = 'cowboyBandana';
     }),
 
     viking: (kit) => build(kit, (ctx) => {
