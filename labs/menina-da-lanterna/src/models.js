@@ -912,8 +912,10 @@ function bridgeDeckGeometry() {
         const along = z - 4.25;
         const phase = ((z % 0.425) + 0.425) % 0.425;
         const top = y > 0.04;
-        if (top && phase < 0.03) y -= 0.045;
-        if (top) y += Math.cos((along / 4.25) * Math.PI * 0.5) * 0.055;
+        const plank = Math.floor(z / 0.425);
+        if (top && phase < 0.045) y -= 0.09;
+        else if (top && plank % 2 === 0) y += 0.035;
+        if (top) y += Math.cos((along / 4.25) * Math.PI * 0.5) * 0.05;
         if (top && Math.abs(x) > 0.62) y -= (Math.abs(x) - 0.62) * 0.07;
         pos.setXYZ(i, x, y, z);
     }
@@ -929,8 +931,11 @@ function bridgePostGeometry() {
     for (let i = 0; i <= 10; i++) {
         const t = i / 10;
         const y = (t - 0.5) * 0.7;
-        let r = 0.032 + 0.012 * Math.exp(-((t - 0.5) ** 2) / 0.02);
-        if (t < 0.1 || t > 0.9) r = 0.055;
+        let r = 0.028;
+        r += 0.05 * Math.exp(-((t - 0.08) ** 2) / 0.004);
+        r += 0.028 * Math.exp(-((t - 0.5) ** 2) / 0.012);
+        r += 0.045 * Math.exp(-((t - 0.9) ** 2) / 0.004);
+        if (t < 0.06 || t > 0.94) r = 0.08;
         pts.push(new THREE.Vector2(r, y));
     }
     const g = new THREE.LatheGeometry(pts, 8);
