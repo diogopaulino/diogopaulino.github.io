@@ -675,11 +675,39 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     return getPrefab(scene, shadowGenerator, 'createCrate', () => {
     const root = new BABYLON.TransformNode('crate', scene);
     const woodMat = pbrMat(scene, 'crateWood', 0x8a6238, 0.88, 0.02);
-    const box = BABYLON.MeshBuilder.CreateBox('box', { size: 1.1 }, scene);
-    box.position.y = 0.55;
-    box.material = woodMat;
-    box.parent = root;
-    registerShadows(box, shadowGenerator);
+    const dark = pbrMat(scene, 'crateDark', 0x4a2c16, 0.9, 0.02);
+    const S = 1.1;
+    const post = 0.1;
+    const inset = S / 2 - post / 2;
+    const board = (name, w, h, d, x, y, z) => {
+        const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, scene);
+        m.position.set(x, y, z);
+        m.material = woodMat;
+        m.parent = root;
+        registerShadows(m, shadowGenerator);
+        return m;
+    };
+    for (const x of [-inset, inset]) {
+        for (const z of [-inset, inset]) {
+            board('cratePost', post, S, post, x, S / 2, z);
+        }
+    }
+    for (const y of [0.18, 0.5, 0.84]) {
+        for (const z of [-inset, inset]) {
+            board('crateSlat', 0.86, 0.16, 0.06, 0, y, z);
+        }
+        for (const x of [-inset, inset]) {
+            board('crateSlat', 0.06, 0.16, 0.86, x, y, 0);
+        }
+    }
+    for (const tilt of [1, -1]) {
+        const mark = BABYLON.MeshBuilder.CreateBox('crateMark', { width: 0.7, height: 0.07, depth: 0.04 }, scene);
+        mark.position.set(0, 0.55, inset + 0.03);
+        mark.rotation.z = tilt * Math.PI / 4;
+        mark.material = dark;
+        mark.parent = root;
+        registerShadows(mark, shadowGenerator);
+    }
     root.metadata = { kind: 'low', clearance: 1.1, width: 1.1 };
     return root;
     });
