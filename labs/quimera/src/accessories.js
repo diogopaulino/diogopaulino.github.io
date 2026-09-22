@@ -211,6 +211,24 @@ const SAMURAI_BLADE = (() => {
     return g;
 })();
 
+/**
+ * Cabo do robô: a empunhadura engrossa no meio cerca de 11 cm
+ * em relação às pontas. O torno fica centrado no eixo do cabo.
+ */
+const ROBOT_GRIP = (() => {
+    const pts = [
+        new THREE.Vector2(0.028, 0),
+        new THREE.Vector2(0.034, 0.04),
+        new THREE.Vector2(0.07, 0.1),
+        new THREE.Vector2(0.082, 0.15),
+        new THREE.Vector2(0.05, 0.21),
+        new THREE.Vector2(0.028, 0.28)
+    ];
+    const g = new THREE.LatheGeometry(pts, 14);
+    g.translate(0, -0.14, 0);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -266,7 +284,8 @@ const ACCESSORIES = {
     }),
 
     robot: (kit) => build(kit, 'grip', ({ add, mats }) => {
-        add.box(0.06, 0.28, 0.06, mats.primary, [0, 0.14, 0], [0.3, 0, 0.2], null, 0.02);
+        const grip = add.mesh(ROBOT_GRIP, mats.primary, [0, 0.14, 0], [0.3, 0, 0.2]);
+        grip.name = 'robotGrip';
         const jaw = add.mesh(ROBOT_JAW, mats.secondary, [0.02, 0.28, 0.04], [0.3, 0, 0.2]);
         jaw.name = 'robotJaw';
         const jawLow = add.mesh(ROBOT_JAW, mats.secondary, [0.02, 0.04, 0], [0.3, 0, 0.2]);
