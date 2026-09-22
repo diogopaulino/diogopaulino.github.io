@@ -514,15 +514,18 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
     const parts = built.parts;
 
     // Elmo de ferro
-    const helm = BABYLON.MeshBuilder.CreateSphere('guardHelm', { diameter: 0.3, segments: 16 }, scene);
-    helm.position.y = 0.04;
+    const helm = createSkull(scene, 'guardHelm', { diameter: 0.32, style: 'human', segments: 14 });
+    helm.position.y = 0.02;
     const ironMat = pbr('ironMat', scene, new BABYLON.Color3(0.55, 0.55, 0.52), 0.32, 0.9);
     helm.material = ironMat;
     helm.parent = parts.head;
 
     if (fat) {
-        const belly = BABYLON.MeshBuilder.CreateSphere('guardBelly', { diameter: 0.56, segments: 16 }, scene);
-        belly.position.y = 0.12;
+        const belly = createMuscle(scene, 'guardBelly', {
+            length: 0.38, r0: 0.24, r1: 0.18, bulge: 0.08, pinch: 0.05, tessellation: 12, rings: 6
+        });
+        belly.rotation.x = Math.PI / 2;
+        belly.position.set(0, 0.02, 0.1);
         const tunicMat = pbr('tunicMat', scene, new BABYLON.Color3(0.35, 0.12, 0.12), 0.85, 0.04);
         belly.material = tunicMat;
         belly.parent = parts.chest;

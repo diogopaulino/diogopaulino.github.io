@@ -322,20 +322,16 @@ function buildDragonHead(color) {
     neck.position.set(0, 0.72, 0.15);
     group.add(neck);
 
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 22, 18), mat);
-    skull.scale.set(0.85, 0.78, 1.15);
-    skull.position.set(0, 1.48, 0.55);
+    const skull = new THREE.Mesh(headGeometry(0.32, 'dog'), mat);
+    skull.rotation.x = -0.2;
+    skull.position.set(0, 1.4, 0.62);
     group.add(skull);
 
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 18), mat);
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 1.38, 1.12);
-    group.add(snout);
-
-    const jaw = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 6, 14), dark);
-    jaw.scale.set(1.4, 1, 0.55);
-    jaw.position.set(0, 1.22, 0.95);
-    jaw.rotation.x = Math.PI / 2 + 0.18;
+    const jaw = new THREE.Mesh(limbGeometry({
+        length: 0.46, r0: 0.1, r1: 0.035, bulge: 0.02, pinch: 0, seg: 10, rings: 6
+    }), dark);
+    jaw.rotation.x = -Math.PI / 2 + 0.35;
+    jaw.position.set(0, 1.18, 0.78);
     group.add(jaw);
 
     for (let i = 0; i < 5; i++) {
@@ -997,8 +993,8 @@ export function buildAxeMesh(scale = 1) {
     );
     group.add(handle);
 
-    const head = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 14), metalMaterial(0xc9ced6, 0.28));
-    head.position.set(0, 0.3, 0.06);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.22, 10), metalMaterial(0xc9ced6, 0.28));
+    head.position.set(0, 0.32, 0.05);
     group.add(head);
 
     const bladeShape = new THREE.Shape();

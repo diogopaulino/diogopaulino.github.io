@@ -359,17 +359,39 @@ export function createTaxi() {
         clearcoat: 0.55, clearcoatRoughness: 0.2,
         emissive: 0x3a2a00, emissiveIntensity: 0.3
     });
-    const body = new THREE.Mesh(BOX, bodyMat);
-    body.scale.set(2.2, 0.85, 4.4);
-    body.position.y = 0.55;
+    const taxiPts = [
+        new THREE.Vector2(0.12, -2.05),
+        new THREE.Vector2(0.72, -1.65),
+        new THREE.Vector2(0.88, -0.3),
+        new THREE.Vector2(0.82, 1.15),
+        new THREE.Vector2(0.4, 1.85),
+        new THREE.Vector2(0.1, 2.1)
+    ];
+    const taxiGeo = new THREE.LatheGeometry(taxiPts, 22);
+    taxiGeo.rotateZ(-Math.PI / 2);
+    taxiGeo.scale(1, 0.48, 0.9);
+    const body = new THREE.Mesh(taxiGeo, bodyMat);
+    body.position.y = 0.48;
+    body.castShadow = true;
     g.add(body);
-    const cabin = new THREE.Mesh(BOX, new THREE.MeshPhysicalMaterial({
+    const cabinMat = new THREE.MeshPhysicalMaterial({
         color: 0x1a2430, roughness: 0.18, metalness: 0.45,
         clearcoat: 0.7, clearcoatRoughness: 0.15,
-        emissive: 0x223344, emissiveIntensity: 0.2
-    }));
-    cabin.scale.set(1.9, 0.7, 2.2);
-    cabin.position.set(0, 1.2, -0.2);
+        emissive: 0x223344, emissiveIntensity: 0.2,
+        transparent: true, opacity: 0.82
+    });
+    const cabinPts = [
+        new THREE.Vector2(0.05, -0.7),
+        new THREE.Vector2(0.42, -0.35),
+        new THREE.Vector2(0.48, 0.2),
+        new THREE.Vector2(0.22, 0.55),
+        new THREE.Vector2(0.04, 0.7)
+    ];
+    const cabinGeo = new THREE.LatheGeometry(cabinPts, 16);
+    cabinGeo.rotateZ(-Math.PI / 2);
+    cabinGeo.scale(1, 0.7, 0.85);
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.set(0, 0.95, -0.15);
     g.add(cabin);
     const light = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({ color: 0xf4c15d, toneMapped: false }));
     light.scale.set(0.6, 0.18, 0.8);

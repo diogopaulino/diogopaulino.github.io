@@ -341,8 +341,17 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
                 diameterX: c.dx,
                 diameterY: c.dy,
                 diameterZ: c.dz,
-                segments: 16
+                segments: 14
             }, scene);
+            const pos = canopy.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            for (let i = 0; i < pos.length; i += 3) {
+                const n = 0.78 + Math.abs(Math.sin(pos[i] * 2.4 + pos[i + 1]) * Math.cos(pos[i + 2] * 1.8 + c.y)) * 0.36;
+                pos[i] *= n;
+                pos[i + 1] *= n * 0.9;
+                pos[i + 2] *= n;
+            }
+            canopy.setVerticesData(BABYLON.VertexBuffer.PositionKind, pos);
+            canopy.createNormals(false);
             canopy.position.set(c.x, c.y, c.z);
             canopy.material = leafMat;
             canopy.parent = root;
@@ -469,13 +478,38 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     const chromeMat = pbrMat(scene, 'truckChrome', 0xe8e8e8, 0.2, 0.95);
     const glassMat = pbrMat(scene, 'truckGlass', 0x88c4e0, 0.2, 0.35);
     const tireMat = pbrMat(scene, 'truckTire', 0x1a1a1c, 0.85, 0.05);
-    const cab = BABYLON.MeshBuilder.CreateBox('cab', { width: 2.2, height: 1.3, depth: 1.8 }, scene);
-    cab.position.set(0, 1.75, -0.7);
+    const cab = BABYLON.MeshBuilder.CreateLathe('cab', {
+        shape: [
+            new BABYLON.Vector3(0.22, 0, 0),
+            new BABYLON.Vector3(0.85, 0.18, 0),
+            new BABYLON.Vector3(1.08, 0.55, 0),
+            new BABYLON.Vector3(1.02, 1.05, 0),
+            new BABYLON.Vector3(0.62, 1.45, 0),
+            new BABYLON.Vector3(0.18, 1.7, 0)
+        ],
+        tessellation: 16,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    cab.rotation.x = -Math.PI / 2;
+    cab.scaling.set(1.05, 1, 0.62);
+    cab.position.set(0, 1.15, -1.5);
     cab.material = paintMat;
     cab.parent = root;
     registerShadows(cab, shadowGenerator);
-    const bed = BABYLON.MeshBuilder.CreateBox('bed', { width: 2.2, height: 1.0, depth: 2.6 }, scene);
-    bed.position.set(0, 1.25, 1.2);
+    const bed = BABYLON.MeshBuilder.CreateLathe('bed', {
+        shape: [
+            new BABYLON.Vector3(0.35, 0, 0),
+            new BABYLON.Vector3(1.05, 0.15, 0),
+            new BABYLON.Vector3(1.1, 1.3, 0),
+            new BABYLON.Vector3(0.95, 2.2, 0),
+            new BABYLON.Vector3(0.4, 2.5, 0)
+        ],
+        tessellation: 14,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    bed.rotation.x = -Math.PI / 2;
+    bed.scaling.set(1.02, 1, 0.42);
+    bed.position.set(0, 0.85, -0.05);
     bed.material = paintMat;
     bed.parent = root;
     registerShadows(bed, shadowGenerator);
