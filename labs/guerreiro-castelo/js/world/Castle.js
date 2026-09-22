@@ -5,6 +5,44 @@
 import { castleStoneTexture, mossTexture, flagTexture, woodTexture } from './Textures.js';
 import { makeTorch } from './Environment.js?v=5';
 
+/** Telhado de torre: beiral aberto, altura 4.5 centrada como o cone antigo (diâmetro de base ~7.6). */
+function towerRoofMesh(scene, name) {
+    const h = 4.5;
+    return BABYLON.MeshBuilder.CreateLathe(name, {
+        shape: [
+            new BABYLON.Vector3(0.12, h * 0.5, 0),
+            new BABYLON.Vector3(0.7, h * 0.3, 0),
+            new BABYLON.Vector3(1.7, h * 0.04, 0),
+            new BABYLON.Vector3(2.9, -h * 0.22, 0),
+            new BABYLON.Vector3(4.2, -h * 0.46, 0),
+            new BABYLON.Vector3(3.55, -h * 0.5, 0)
+        ],
+        tessellation: 16,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+}
+
+/** Duas águas sobre a menagem 12×12. y = 0 encosta no topo da parede. */
+function keepRoofMesh(scene) {
+    const shape = [
+        new BABYLON.Vector3(-7.2, 0, 0),
+        new BABYLON.Vector3(0, 4.2, 0),
+        new BABYLON.Vector3(7.2, 0, 0),
+        new BABYLON.Vector3(6.6, -0.45, 0),
+        new BABYLON.Vector3(-6.6, -0.45, 0)
+    ];
+    return BABYLON.MeshBuilder.ExtrudeShape('keepRoof', {
+        shape,
+        path: [
+            new BABYLON.Vector3(-7.2, 0, 0),
+            new BABYLON.Vector3(7.2, 0, 0)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+}
+
 export function buildCastle(scene) {
     const root = new BABYLON.TransformNode('castleRoot', scene);
 
@@ -65,12 +103,7 @@ export function buildCastle(scene) {
         tower.parent = root;
         tower.receiveShadows = true;
 
-        const roof = BABYLON.MeshBuilder.CreateCylinder(`towerRoof_${i}`, {
-            diameterTop: 0,
-            diameterBottom: 7.6,
-            height: 4.5,
-            tessellation: 12
-        }, scene);
+        const roof = towerRoofMesh(scene, `towerRoof_${i}`);
         roof.position.set(x, 28, z);
         roof.material = roofMat;
         roof.parent = root;
@@ -87,8 +120,8 @@ export function buildCastle(scene) {
     keep.parent = root;
     keep.receiveShadows = true;
 
-    const keepRoof = BABYLON.MeshBuilder.CreateBox('keepRoof', { width: 13, height: 1.2, depth: 13 }, scene);
-    keepRoof.position.set(0, 22.4, -2);
+    const keepRoof = keepRoofMesh(scene);
+    keepRoof.position.set(0, 22, -2);
     keepRoof.material = roofMat;
     keepRoof.parent = root;
 
