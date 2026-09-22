@@ -44,6 +44,51 @@ function loadMap(url, { colorSpace = THREE.SRGBColorSpace, wrap = true, repeat =
     });
 }
 
+/** Poste 0.09×0.85, centrado. Pé e chapéu mais largos. */
+function guardPostGeometry() {
+    const H = 0.85;
+    const half = H / 2;
+    const g = new THREE.BoxGeometry(0.09, H, 0.09, 4, 10, 4);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + half) / H;
+        if (t < 0.14) {
+            const u = 1 - t / 0.14;
+            x *= 1 + u * 0.85;
+            z *= 1 + u * 0.85;
+        } else if (t > 0.88) {
+            const u = (t - 0.88) / 0.12;
+            x *= 1 + u * 0.55;
+            z *= 1 + u * 0.55;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Trilho 0.05×0.09×2.6. O perfil em W corre na altura; o comprimento fica em Z. */
+function guardRailGeometry() {
+    const g = new THREE.BoxGeometry(0.05, 0.09, 2.6, 2, 8, 10);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ny = y / 0.045;
+        x += Math.cos(ny * Math.PI * 2) * 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const GUARD_POST = guardPostGeometry();
+const GUARD_RAIL = guardRailGeometry();
+
 export class World {
     /**
      * @param {THREE.Scene} scene
@@ -499,8 +544,10 @@ export class World {
             color: 0xd0d4d8, metalness: 0.92, roughness: 0.2
         });
         const n = Math.floor(this.track.count / 2);
-        const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.85, 0.09), postMat, n);
-        const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.09, 2.6), railMat, n);
+        const posts = new THREE.InstancedMesh(GUARD_POST, postMat, n);
+        posts.name = 'guardPost';
+        const rails = new THREE.InstancedMesh(GUARD_RAIL, railMat, n);
+        rails.name = 'guardRail';
         const dummy = new THREE.Object3D();
         let pi = 0;
         for (let i = 0; i < this.track.count; i += 2) {

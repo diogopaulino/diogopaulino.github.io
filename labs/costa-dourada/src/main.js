@@ -9,7 +9,7 @@ import { detectMobile, detectSoftwareGL, formatTime } from './utils.js';
 import { Track } from './track.js';
 import { Vehicle, resolveCarContact } from './vehicle.js';
 import { createCarMesh, syncCarMesh, applyCarEnvMap, loadCarTemplate } from './carModel.js';
-import { World } from './world.js';
+import { World } from './world.js?v=1';
 import { Input } from './input.js';
 import { AiDriver } from './ai.js';
 import { GameAudio } from './audio.js';
@@ -440,6 +440,7 @@ class Game {
 }
 
 const game = new Game();
+window.__costa = game;
 game.init().catch(showBootError);
 
 // Fallback click binding in case constructor ran before DOM quirks
