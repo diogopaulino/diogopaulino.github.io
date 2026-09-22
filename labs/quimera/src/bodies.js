@@ -296,6 +296,37 @@ const VIKING_BELT = (() => {
     return g;
 })();
 
+/**
+ * Faixa do pirata: pano que desce na frente e termina em duas pontas.
+ * O meio da barra fica cerca de 8 cm acima das pontas.
+ */
+const PIRATE_SASH = (() => {
+    const p = [
+        [-0.08, 0.18],
+        [0.09, 0.18],
+        [0.10, 0.06],
+        [0.06, -0.02],
+        [0.09, -0.14],
+        [0.00, -0.06],
+        [-0.06, -0.14],
+        [-0.09, 0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
 /** Faixa do chef: as bordas saem e o meio aperta. Y do torno cresce. */
 const CHEF_BELT = new THREE.LatheGeometry([
     new THREE.Vector2(0.20, 0),
@@ -353,7 +384,8 @@ const BODIES = {
         options: { torso: null, pelvis: null, leg: null },
         detail: ({ add, mats }) => {
             add.lathe([[0.2, 0], [0.32, 0.1], [0.3, 0.34], [0.2, 0.56], [0.14, 0.68]], mats.primary, [0, 0.48, -0.02]);
-            add.box(0.56, 0.08, 0.38, mats.accent, [0, 0.58, 0.02], null, null, 0.03);
+            const sash = add.mesh(PIRATE_SASH, mats.accent, [-0.02, 0.46, 0.34]);
+            sash.name = 'pirateSash';
             add.box(0.18, 0.22, 0.04, mats.trim, [0.14, 0.92, 0.18]);
             add.sphere(0.05, mats.accent, [0.14, 0.92, 0.22]);
         }
