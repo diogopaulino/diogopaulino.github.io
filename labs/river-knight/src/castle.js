@@ -690,6 +690,55 @@ export function createCastle(scene) {
 /* Barcaça Negra (chefe)                                               */
 /* ================================================================== */
 
+/**
+ * Aríete centrado como o cone de altura 5. A ponta fica em +Y.
+ * Seis nervuras no corpo; um colar perto da base.
+ */
+function bossRamGeometry() {
+    const pts = [
+        [1.15, -2.5],
+        [1.28, -2.15],
+        [0.9, -1.65],
+        [0.68, -0.35],
+        [0.44, 0.75],
+        [0.24, 1.6],
+        [0.09, 2.2],
+        [0.012, 2.5]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 16);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 0.04 || y < -2.15 || y > 2.05) continue;
+        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 6)) ** 2 * 0.045;
+        const k = 1 + rib / rad;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tambor da balista, centrado como o cilindro de altura 3.4. */
+function ballistaDrumGeometry() {
+    const H = 3.4;
+    const pts = [];
+    for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const y = (t - 0.5) * H;
+        const course = Math.sin(t * Math.PI * 8) > 0.6 ? 0.07 : 0;
+        pts.push(new THREE.Vector2(1.78 - t * 0.28 + course, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 16);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BOSS_RAM = bossRamGeometry();
+const BALLISTA_DRUM = ballistaDrumGeometry();
+
 export class BossBarge {
     constructor(scene) {
         const group = new THREE.Group();
@@ -714,7 +763,8 @@ export class BossBarge {
         this.parts = parts;
 
         // Aríete de ferro na proa.
-        const ram = new THREE.Mesh(new THREE.ConeGeometry(1.2, 5, 8), metalMaterial(0x4a4740, 0.5));
+        const ram = new THREE.Mesh(BOSS_RAM, metalMaterial(0x4a4740, 0.5));
+        ram.name = 'bossRam';
         ram.rotation.x = -Math.PI / 2;
         ram.position.set(0, -0.4, -17.5);
         ram.castShadow = true;
@@ -724,7 +774,7 @@ export class BossBarge {
         this.ballistae = [];
         for (const side of [-1, 1]) {
             const tower = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 3.4, 8), woodMaterial(true, 0x2b2018));
+            const base = new THREE.Mesh(BALLISTA_DRUM, woodMaterial(true, 0x2b2018));
             base.position.y = 1.7;
             base.castShadow = true;
             tower.add(base);
