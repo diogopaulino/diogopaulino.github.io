@@ -5,7 +5,7 @@
 import { Level } from './Level.js';
 import { buildShip, addShipColliders } from '../world/Ship.js?v=14';
 import { makeRock } from '../world/Environment.js?v=5';
-import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=4';
+import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=5';
 
 export class ShipEscapeLevel extends Level {
     get id() {

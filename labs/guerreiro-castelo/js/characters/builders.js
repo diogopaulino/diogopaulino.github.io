@@ -392,8 +392,28 @@ export function buildDico(scene) {
     blade.material = bladeMat;
     blade.parent = sword;
 
-    const guard = BABYLON.MeshBuilder.CreateBox('swordGuard', {
-        width: 0.16, height: 0.02, depth: 0.035
+    // Guarda: as pontas descem cerca de 6 cm e o meio sobe onde a lâmina entra.
+    const guard = BABYLON.MeshBuilder.ExtrudeShape('swordGuard', {
+        shape: [
+            [-0.08, -0.045],
+            [-0.055, -0.012],
+            [-0.02, 0.004],
+            [0, 0.01],
+            [0.02, 0.004],
+            [0.055, -0.012],
+            [0.08, -0.045],
+            [0.08, -0.028],
+            [0.055, 0.002],
+            [0.02, 0.016],
+            [0, 0.022],
+            [-0.02, 0.016],
+            [-0.055, 0.002],
+            [-0.08, -0.028]
+        ].map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+        path: [new BABYLON.Vector3(0, 0, -0.018), new BABYLON.Vector3(0, 0, 0.018)],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
     }, scene);
     const goldMat = pbr('goldMat', scene, new BABYLON.Color3(0.7, 0.55, 0.2), 0.35, 0.85);
     guard.material = goldMat;

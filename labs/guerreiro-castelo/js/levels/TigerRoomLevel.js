@@ -4,7 +4,7 @@
 
 import { Level } from './Level.js';
 import { castleStoneTexture, woodTexture } from '../world/Textures.js';
-import { Tiger } from '../characters/Tiger.js?v=4';
+import { Tiger } from '../characters/Tiger.js?v=5';
 
 export class TigerRoomLevel extends Level {
     get id() {
