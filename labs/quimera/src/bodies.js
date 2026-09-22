@@ -764,6 +764,35 @@ const WARRIOR_PLEAT = capePleat(0.7);
 const VIKING_CAPE = capeGeometry({ height: 0.55, neck: 0.11, hem: 0.30 });
 const VIKING_PLEAT = capePleat(0.55);
 
+/** Painel do peito do robô: a base é reta e o topo sobe cerca de 6 cm no meio. */
+const ROBOT_PANEL = (() => {
+    const p = [
+        [-0.11, -0.08],
+        [0.11, -0.08],
+        [0.11, 0.03],
+        [0.07, 0.065],
+        [0.03, 0.082],
+        [0, 0.088],
+        [-0.03, 0.082],
+        [-0.07, 0.065],
+        [-0.11, 0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.03);
+    return g;
+})();
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -885,7 +914,8 @@ const BODIES = {
             add.cyl(0.08, 0.09, 0.12, mats.secondary, [0, 1.18, 0]);
             const chest = add.lathe([[0.16, 0], [0.26, 0.08], [0.24, 0.28], [0.16, 0.46], [0.1, 0.52]], mats.primary, [0, 0.62, 0]);
             chest.name = 'robotChest';
-            add.box(0.22, 0.16, 0.06, mats.glow, [0, 0.92, 0.20], null, null, 0.02);
+            const panel = add.mesh(ROBOT_PANEL, mats.glow, [0, 0.92, 0.20]);
+            panel.name = 'robotPanel';
             const hip = add.lathe([
                 [0.08, 0], [0.16, 0.03], [0.2, 0.08], [0.16, 0.13], [0.1, 0.17]
             ], mats.secondary, [0, 0.46, 0]);
