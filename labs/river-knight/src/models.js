@@ -581,6 +581,35 @@ function sternRailGeometry(beam) {
     return g;
 }
 
+/** Bochecha da popa ao longo de Z. A ré sobe; as fiadas recuam dos dois lados. */
+function sternCheekGeometry(length) {
+    const L = length * 0.3;
+    const h = 0.48;
+    const hl = L / 2;
+    const hh = h / 2;
+    const g = new THREE.BoxGeometry(0.12, h, L, 2, 8, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const nz = (z + hl) / L;
+        const top = (y + hh) / h;
+        if (top > 0.4) {
+            const u = (top - 0.4) / 0.6;
+            y += u * (0.2 * (1 - nz) - nz * nz * 0.08);
+        }
+        if (top > 0.7) x *= 1 - ((top - 0.7) / 0.3) * 0.42;
+        if (Math.abs(x) > 0.03 && top < 0.82) {
+            const band = Math.floor((z + hl) / (L / 5));
+            if (band % 2 === 1) x *= 0.48;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -726,11 +755,10 @@ export function buildLongship({
         rail.position.set(0, -deckDrop + 0.28, -length * 0.48);
         group.add(rail);
 
+        const cheekGeo = sternCheekGeometry(length);
         for (const side of [-1, 1]) {
-            const cheek = new THREE.Mesh(
-                new THREE.BoxGeometry(0.12, 0.48, length * 0.3),
-                woodMaterial(true, 0x3a2618)
-            );
+            const cheek = new THREE.Mesh(cheekGeo, woodMaterial(true, 0x3a2618));
+            cheek.name = 'sternCheek';
             cheek.position.set(side * beam * 0.42, -deckDrop + 0.08, -length * 0.2);
             group.add(cheek);
         }
