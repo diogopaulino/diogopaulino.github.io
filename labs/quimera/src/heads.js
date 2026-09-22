@@ -510,6 +510,23 @@ const SAILOR_BRIM = (() => {
 })();
 
 /**
+ * Copa do explorador: a base tem 30 cm de raio e o topo fecha em cúpula.
+ */
+const EXPLORER_CROWN = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.30, 0),
+        new THREE.Vector2(0.295, 0.025),
+        new THREE.Vector2(0.27, 0.055),
+        new THREE.Vector2(0.22, 0.09),
+        new THREE.Vector2(0.14, 0.12),
+        new THREE.Vector2(0.06, 0.145),
+        new THREE.Vector2(0.015, 0.162)
+    ], 16);
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Âncora do marinheiro: as duas unhas descem cerca de 11 cm abaixo da coroa.
  * A trave sai dos dois lados do cepo.
  */
@@ -699,7 +716,8 @@ const HEADS = {
     explorer: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx);
-        add.cyl(0.28, 0.30, 0.1, mats.primary, [0, 0.22, 0]);
+        const crown = add.mesh(EXPLORER_CROWN, mats.primary, [0, 0.17, 0]);
+        crown.name = 'explorerCrown';
         add.cyl(0.38, 0.38, 0.03, mats.primary, [0, 0.18, 0.02]);
         add.torus(0.07, 0.012, mats.dark, [-0.09, 0.04, 0.26], [0, 0, 0.1]);
         add.torus(0.07, 0.012, mats.dark, [0.09, 0.04, 0.26], [0, 0, -0.1]);
