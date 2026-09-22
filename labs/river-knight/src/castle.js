@@ -303,6 +303,7 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     const stone = stoneMaterial(tint);
 
     const body = new THREE.Mesh(towerShaftGeometry(radius, height), stone);
+    body.name = 'towerShaft';
     body.position.y = height / 2;
     body.castShadow = true;
     body.receiveShadow = true;
