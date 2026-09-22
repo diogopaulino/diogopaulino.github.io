@@ -16,7 +16,7 @@ import {
     buildArrowMesh,
     buildCannonballMesh,
     plainMaterial
-} from './models.js?v=30';
+} from './models.js?v=31';
 import { waterHeight, waterSlope } from './water.js?v=15';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { CANNON, SCORE } from './config.js?v=14';
