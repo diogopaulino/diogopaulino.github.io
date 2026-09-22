@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { headGeometry, limbGeometry } from '../../shared/realism.js';
 import {
     buildLongship,
     buildBanner,
@@ -11,7 +12,7 @@ import {
     metalMaterial,
     plainMaterial,
     woodMaterial
-} from './models.js?v=15';
+} from './models.js?v=16';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { waterHeight, waterSlope } from './water.js?v=15';
 import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
@@ -98,8 +99,13 @@ function buildPrincess() {
     const hairMat = plainMaterial(0x6b3b1c, 0.8, 0);
     const gold = metalMaterial(0xf0cf7a, 0.3);
 
-    const dress = new THREE.Mesh(new THREE.ConeGeometry(0.46, 1.18, 12), plainMaterial(COLORS.princess, 0.7, 0.03));
-    dress.position.y = 0.55;
+    const dress = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0),
+        new THREE.Vector2(0.46, 0.08),
+        new THREE.Vector2(0.38, 0.55),
+        new THREE.Vector2(0.2, 1.02)
+    ], 16), plainMaterial(COLORS.princess, 0.7, 0.03));
+    dress.position.y = 0.02;
     group.add(dress);
 
     const hem = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 14), metalMaterial(0xf3c96b, 0.45));
@@ -107,11 +113,16 @@ function buildPrincess() {
     hem.position.y = 0.08;
     group.add(hem);
 
-    const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.25, 0.44, 10), plainMaterial(0xb85a8a, 0.7, 0.03));
-    bodice.position.y = 1.2;
+    const bodice = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.16, 0),
+        new THREE.Vector2(0.2, 0.08),
+        new THREE.Vector2(0.18, 0.28),
+        new THREE.Vector2(0.14, 0.4)
+    ], 14), plainMaterial(0xb85a8a, 0.7, 0.03));
+    bodice.position.y = 1.02;
     group.add(bodice);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 10), skin);
+    const head = new THREE.Mesh(headGeometry(0.16, 'human'), skin);
     head.position.y = 1.58;
     group.add(head);
 
@@ -121,12 +132,20 @@ function buildPrincess() {
         group.add(eye);
     }
 
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.7), hairMat);
-    hair.position.y = 1.62;
+    const hair = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.03, 0),
+        new THREE.Vector2(0.17, 0.03),
+        new THREE.Vector2(0.18, 0.12),
+        new THREE.Vector2(0.06, 0.2)
+    ], 14), hairMat);
+    hair.position.set(0, 1.5, -0.02);
     group.add(hair);
 
-    const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.9, 6), hairMat);
-    braid.position.set(0, 1.22, -0.2);
+    const braid = new THREE.Mesh(limbGeometry({
+        length: 0.85, r0: 0.055, r1: 0.02, bulge: 0.012, bulgeAt: 0.2, pinch: 0, seg: 8, rings: 6
+    }), hairMat);
+    braid.position.set(0.04, 1.55, -0.08);
+    braid.rotation.x = 0.15;
     group.add(braid);
 
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), gold);
@@ -141,8 +160,10 @@ function buildPrincess() {
 
     const arm = new THREE.Group();
     arm.position.set(0.24, 1.38, 0.06);
-    const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.52, 8), skin);
-    armMesh.position.y = -0.22;
+    const armMesh = new THREE.Mesh(limbGeometry({
+        length: 0.48, r0: 0.055, r1: 0.04, bulge: 0.01, bulgeAt: 0.35, pinch: 0.1, seg: 8, rings: 5
+    }), skin);
+    armMesh.position.y = 0;
     arm.add(armMesh);
     group.add(arm);
 

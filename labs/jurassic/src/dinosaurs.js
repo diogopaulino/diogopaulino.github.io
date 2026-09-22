@@ -197,31 +197,29 @@ function addTeeth(jaw, { count, z0, z1, y, side = 0.16, up = false, len = 0.12 }
 
 function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = false }) {
     const hip = new THREE.Group();
-    const thigh = new THREE.Mesh(
-        new THREE.CylinderGeometry(thighR * 0.72, thighR, thighLen, 14),
-        skin
-    );
-    thigh.position.y = -thighLen * 0.5;
+    const thigh = new THREE.Mesh(limbGeometry({
+        length: thighLen, r0: thighR * 1.05, r1: thighR * 0.7, bulge: thighR * 0.32, bulgeAt: 0.32, seg: 10, rings: 6
+    }), skin);
     hip.add(thigh);
 
     const knee = new THREE.Group();
     knee.position.y = -thighLen + 0.04;
     hip.add(knee);
 
-    const shin = new THREE.Mesh(
-        new THREE.CylinderGeometry(shinR, shinR * 0.7, shinLen, 12),
-        skin
-    );
-    shin.position.y = -shinLen * 0.5;
+    const shin = new THREE.Mesh(limbGeometry({
+        length: shinLen, r0: shinR * 1.05, r1: shinR * 0.68, bulge: shinR * 0.2, bulgeAt: 0.35, pinch: 0.15, seg: 10, rings: 6
+    }), skin);
     knee.add(shin);
 
     const ankle = new THREE.Group();
     ankle.position.y = -shinLen + 0.02;
     knee.add(ankle);
 
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(shinR * 1.15, 12, 10), skin);
-    foot.scale.set(1.1, 0.55, 1.6);
-    foot.position.set(0, -0.08, 0.12);
+    const foot = new THREE.Mesh(limbGeometry({
+        length: shinR * 2.6, r0: shinR * 1.2, r1: shinR * 0.4, bulge: shinR * 0.35, pinch: 0, seg: 8, rings: 5
+    }), skin);
+    foot.rotation.x = -Math.PI / 2;
+    foot.position.set(0, -0.02, 0.04);
     ankle.add(foot);
 
     for (let i = 0; i < toes; i++) {

@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry } from '../../shared/realism.js';
+import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry } from '../../shared/realism.js';
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,
@@ -195,13 +195,18 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
         const footG = new THREE.Group();
         footG.position.set(0, -0.22, 0.04);
         shin.add(footG);
-        const footM = new THREE.Mesh(geo('hob-foot', () => warp(new THREE.SphereGeometry(0.09, 10, 8), 4, 0.12, 0.4)), foot);
-        footM.scale.set(1.2, 0.52, 1.7);
+        const footM = new THREE.Mesh(limbGeometry({
+            length: 0.16, r0: 0.07, r1: 0.04, bulge: 0.02, pinch: 0, seg: 8, rings: 5
+        }), foot);
+        footM.rotation.x = -Math.PI / 2;
+        footM.position.set(0, -0.02, 0.02);
         footG.add(footM);
-        for (let i = 0; i < 5; i++) {
-            const tuft = new THREE.Mesh(geo('hob-tuft', () => new THREE.SphereGeometry(0.028, 6, 5)), hair);
-            tuft.position.set((i - 2) * 0.022, 0.03, 0.08 + (i % 2) * 0.02);
-            tuft.scale.set(1.1, 0.55, 0.9);
+        for (let i = 0; i < 4; i++) {
+            const tuft = new THREE.Mesh(limbGeometry({
+                length: 0.045, r0: 0.012, r1: 0.004, bulge: 0.004, pinch: 0, seg: 5, rings: 3
+            }), hair);
+            tuft.position.set((i - 1.5) * 0.02, 0.02, 0.1);
+            tuft.rotation.x = -0.6;
             footG.add(tuft);
         }
         leg.userData.shin = shin;
@@ -260,23 +265,29 @@ export function buildHobbit({ vest = 0xc45a2a, pants = 0x3d4a28 } = {}) {
     head.add(nose);
 
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('hob-ear', () => warp(new THREE.SphereGeometry(0.05, 8, 6), 9, 0.15)), skin);
-        ear.scale.set(0.65, 1.15, 0.45);
-        ear.position.set(sx * 0.155, 0.02, -0.01);
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.09, width: 0.045, thickness: 0.02 }), skin);
+        ear.position.set(sx * 0.14, -0.01, 0);
+        ear.rotation.y = sx > 0 ? 0.4 : -0.4;
         head.add(ear);
     }
 
-    for (let i = 0; i < 22; i++) {
-        const curl = new THREE.Mesh(geo('hob-curl', () => new THREE.SphereGeometry(0.05, 8, 6)), hair);
-        const a = (i / 22) * Math.PI * 2;
-        curl.position.set(Math.cos(a) * 0.135, 0.09 + Math.sin(i * 1.7) * 0.045, Math.sin(a) * 0.12);
-        curl.scale.setScalar(0.85 + (i % 3) * 0.12);
-        head.add(curl);
+    const mop = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.04, -0.02),
+        new THREE.Vector2(0.15, 0.02),
+        new THREE.Vector2(0.16, 0.1),
+        new THREE.Vector2(0.05, 0.17)
+    ], 14), hair);
+    mop.position.y = 0.02;
+    head.add(mop);
+    for (let i = 0; i < 7; i++) {
+        const lock = new THREE.Mesh(limbGeometry({
+            length: 0.1, r0: 0.028, r1: 0.01, bulge: 0.008, pinch: 0, seg: 6, rings: 4
+        }), hair);
+        const a = (i / 7) * Math.PI * 2;
+        lock.position.set(Math.cos(a) * 0.12, 0.05, Math.sin(a) * 0.1);
+        lock.rotation.z = Math.cos(a) * 0.7;
+        head.add(lock);
     }
-    const bang = new THREE.Mesh(geo('hob-bang', () => new THREE.SphereGeometry(0.075, 8, 6)), hair);
-    bang.position.set(0, 0.1, 0.1);
-    bang.scale.set(1.15, 0.7, 0.9);
-    head.add(bang);
 
     for (const sx of [-1, 1]) {
         const arm = new THREE.Group();
@@ -433,21 +444,28 @@ export function buildElf({ robe = 0xc8d8c0 } = {}) {
     skull.scale.set(0.92, 1.08, 0.95);
     head.add(skull);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('elf-ear', () => new THREE.ConeGeometry(0.028, 0.16, 6)), skin);
-        ear.position.set(sx * 0.12, 0.04, -0.02);
-        ear.rotation.z = sx * -0.95;
-        ear.rotation.x = -0.25;
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.16, width: 0.04, thickness: 0.015 }), skin);
+        ear.position.set(sx * 0.11, 0.0, -0.02);
+        ear.rotation.z = sx * -0.7;
+        ear.rotation.x = -0.2;
         head.add(ear);
         const eye = new THREE.Mesh(geo('elf-eye', () => new THREE.SphereGeometry(0.018, 6, 5)), std(0x88a0c8, 0.25, 0.2));
         eye.position.set(sx * 0.04, 0.01, 0.11);
         head.add(eye);
     }
-    const hairM = new THREE.Mesh(geo('elf-hair', () => warp(new THREE.SphereGeometry(0.14, 10, 8), 15, 0.08)), hair);
-    hairM.position.y = 0.06;
-    hairM.scale.set(1.05, 0.85, 1.2);
+    const hairM = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, 0),
+        new THREE.Vector2(0.13, 0.02),
+        new THREE.Vector2(0.135, 0.1),
+        new THREE.Vector2(0.04, 0.16)
+    ], 12), hair);
+    hairM.position.y = 0.02;
     head.add(hairM);
-    const fall = new THREE.Mesh(geo('elf-fall', () => new THREE.CylinderGeometry(0.04, 0.03, 0.55, 6)), hair);
-    fall.position.set(0.08, -0.18, -0.06);
+    const fall = new THREE.Mesh(limbGeometry({
+        length: 0.55, r0: 0.04, r1: 0.012, bulge: 0.008, pinch: 0, seg: 8, rings: 5
+    }), hair);
+    fall.position.set(0.06, 0.02, -0.05);
+    fall.rotation.z = -0.12;
     head.add(fall);
 
     const circlet = new THREE.Mesh(
@@ -485,9 +503,9 @@ export function buildGoblin() {
     skull.scale.set(1.05, 0.9, 1.1);
     head.add(skull);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('gob-ear', () => warp(new THREE.ConeGeometry(0.055, 0.2, 6), 19, 0.2)), skin);
-        ear.position.set(sx * 0.17, 0.12, -0.02);
-        ear.rotation.z = sx * -0.75;
+        const ear = new THREE.Mesh(earBladeGeometry({ height: 0.2, width: 0.07, thickness: 0.025 }), skin);
+        ear.position.set(sx * 0.15, 0.04, -0.02);
+        ear.rotation.z = sx * -0.55;
         head.add(ear);
         const eye = new THREE.Mesh(
             geo('gob-eye', () => new THREE.SphereGeometry(0.038, 8, 6)),
@@ -505,9 +523,11 @@ export function buildGoblin() {
         arm.rotation.x = -0.35;
         group.add(arm);
     }
-    const jaw = new THREE.Mesh(geo('gob-jaw', () => new THREE.SphereGeometry(0.1, 8, 6)), skin);
-    jaw.scale.set(1, 0.45, 0.9);
-    jaw.position.set(0, -0.08, 0.08);
+    const jaw = new THREE.Mesh(limbGeometry({
+        length: 0.14, r0: 0.08, r1: 0.035, bulge: 0.015, pinch: 0, seg: 8, rings: 4
+    }), skin);
+    jaw.rotation.x = -Math.PI / 2 + 0.45;
+    jaw.position.set(0, -0.04, 0.06);
     head.add(jaw);
 
     const blade = new THREE.Mesh(

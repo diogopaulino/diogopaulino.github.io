@@ -1110,10 +1110,19 @@ export function buildOakGeometry() {
         [0.2, 4.6, -1.1, 1.15]
     ];
     for (const [x, y, z, r] of blobs) {
-        const s = new THREE.SphereGeometry(r, 9, 7);
-        s.scale(1, 0.82, 1);
+        const s = new THREE.SphereGeometry(r, 12, 10);
+        const pos = s.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const px = pos.getX(i);
+            const py = pos.getY(i);
+            const pz = pos.getZ(i);
+            const len = Math.hypot(px, py, pz) || 1;
+            const n = 0.78 + Math.abs(Math.sin(px * 1.8 + x) * Math.cos(pz * 1.4 + z)) * 0.34;
+            pos.setXYZ(i, (px / len) * r * n, (py / len) * r * n * 0.82, (pz / len) * r * n);
+        }
+        s.computeVertexNormals();
         s.translate(x, y, z);
-        parts.push({ geo: s, color: new THREE.Color().setHSL(0.26, 0.38, 0.19 + Math.random() * 0.06) });
+        parts.push({ geo: s, color: new THREE.Color().setHSL(0.26, 0.38, 0.18 + Math.abs(Math.sin(x + z)) * 0.06) });
     }
     return mergeWithColors(parts);
 }

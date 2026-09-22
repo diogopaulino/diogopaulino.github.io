@@ -10,7 +10,7 @@ import { ParkAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { World } from './world.js';
 import { Jeep } from './jeep.js';
-import { spawnDinosaurs } from './dinosaurs.js';
+import { spawnDinosaurs } from './dinosaurs.js?v=3';
 import { createSky, createLights, sampleDay, applySky, applyLights } from './sky.js';
 
 const TOD_LABELS = [
