@@ -89,16 +89,56 @@ export function buildShip(scene) {
     deck.parent = root;
     deck.receiveShadows = true;
 
-    // Guarda-corpo
-    const railL = BABYLON.MeshBuilder.CreateBox('shipRailL', { width: 0.14, height: 0.55, depth: 16 }, scene);
-    railL.position.set(-3.2, 1.7, 0);
-    railL.material = woodMat;
-    railL.parent = root;
-
-    const railR = BABYLON.MeshBuilder.CreateBox('shipRailR', { width: 0.14, height: 0.55, depth: 16 }, scene);
-    railR.position.set(3.2, 1.7, 0);
-    railR.material = woodMat;
-    railR.parent = root;
+    // Guarda-corpo: corrimão abaulado, travessa e balaústres. O colisor continua a parede.
+    // O nó fica em x=±3.2, y=1.7. No bombordo a face externa é −X.
+    const railCap = [
+        [0.035, -0.045], [0.04, 0.01], [0.012, 0.06], [-0.02, 0.075],
+        [-0.055, 0.04], [-0.048, -0.02], [-0.015, -0.045], [0.03, -0.05]
+    ];
+    const railMid = [
+        [0.022, -0.028], [-0.028, -0.024], [-0.032, 0.022], [0.02, 0.026]
+    ];
+    let railPostSrc = null;
+    const buildRail = (name, x, outward) => {
+        const rail = new BABYLON.TransformNode(name, scene);
+        rail.position.set(x, 1.7, 0);
+        rail.parent = root;
+        const flip = (shape) => shape.map(([sx, sy]) => [sx * outward, sy]);
+        const carve = (meshName, shape, y, z0, z1) => {
+            const mesh = BABYLON.MeshBuilder.ExtrudeShape(meshName, {
+                shape: flip(shape).map(([sx, sy]) => new BABYLON.Vector3(sx, sy, 0)),
+                path: [new BABYLON.Vector3(0, y, z0), new BABYLON.Vector3(0, y, z1)],
+                cap: BABYLON.Mesh.CAP_ALL,
+                closeShape: true,
+                sideOrientation: BABYLON.Mesh.DOUBLESIDE
+            }, scene);
+            mesh.material = woodMat;
+            mesh.parent = rail;
+        };
+        carve('railCap', railCap, 0.2, -7.85, 7.85);
+        carve('railMid', railMid, -0.06, -7.7, 7.7);
+        for (let i = 0; i < 13; i++) {
+            const post = railPostSrc
+                ? railPostSrc.clone('railPost')
+                : (railPostSrc = BABYLON.MeshBuilder.CreateLathe('railPost', {
+                    shape: [
+                        new BABYLON.Vector3(0.042, 0, 0),
+                        new BABYLON.Vector3(0.048, 0.03, 0),
+                        new BABYLON.Vector3(0.026, 0.08, 0),
+                        new BABYLON.Vector3(0.022, 0.32, 0),
+                        new BABYLON.Vector3(0.034, 0.4, 0),
+                        new BABYLON.Vector3(0.04, 0.46, 0)
+                    ],
+                    tessellation: 7,
+                    cap: BABYLON.Mesh.CAP_ALL
+                }, scene));
+            post.position.set(0, -0.275, -7.5 + i * 1.25);
+            post.material = woodMat;
+            post.parent = rail;
+        }
+    };
+    buildRail('shipRailL', -3.2, 1);
+    buildRail('shipRailR', 3.2, -1);
 
     // Tompadilho traseiro (Quarter deck)
     const qdeck = BABYLON.MeshBuilder.CreateBox('shipQDeck', { width: 6.4, height: 0.16, depth: 4.2 }, scene);
