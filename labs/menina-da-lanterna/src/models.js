@@ -419,42 +419,88 @@ export function buildNight() {
 /* Cenário                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Casa 3.2×2×2.6, centrada. Fiadas, cunhal, vão da porta e das janelas na face +Z. */
+function cottageWallGeometry() {
+    const g = new THREE.BoxGeometry(3.2, 2.0, 2.6, 8, 10, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const onX = Math.abs(x) > 1.5;
+        const onZ = Math.abs(z) > 1.2;
+        const t = (y + 1) / 2;
+        if (onX || onZ) {
+            const course = Math.sin((y + 1) * Math.PI * 4);
+            const lip = course > 0.55 ? 0.045 : 0;
+            const quoin = onX && onZ ? 0.07 : 0;
+            const batter = (1 - t) * 0.04;
+            if (onX) x = Math.sign(x) * (1.6 + batter + lip + quoin);
+            if (onZ) z = Math.sign(z) * (1.3 + batter + lip + quoin);
+        }
+        if (z > 1.15 && Math.abs(x) < 0.48 && y < 0.22) z -= 0.12;
+        if (z > 1.15 && Math.abs(Math.abs(x) - 0.95) < 0.34 && Math.abs(y - 0.2) < 0.34) z -= 0.08;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Duas águas ao longo de X. y=0 é o beiral, sobre o topo da parede. */
+function cottageRoofGeometry() {
+    const span = 1.72;
+    const rise = 0.95;
+    const s = new THREE.Shape();
+    s.moveTo(-span, 0);
+    s.lineTo(0, rise);
+    s.lineTo(span, 0);
+    s.lineTo(span - 0.1, -0.22);
+    s.lineTo(-(span - 0.1), -0.22);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 3.85,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.04,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -1.925);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const COTTAGE_WALL = cottageWallGeometry();
+const COTTAGE_ROOF = cottageRoofGeometry();
+
 export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     const group = new THREE.Group();
     const plaster = std(wall, 0.88, 0.03, { clearcoat: 0.05 });
     const timber = std(0x4a2a14, 0.82, 0.05);
-    // Corpo principal + base de pedra (cantos arredondados — menos caixa pura)
     const plinth = new THREE.Mesh(new RoundedBoxGeometry(3.35, 0.28, 2.75, 4, 0.06), std(0x6a6050, 0.92));
     plinth.position.y = 0.14;
     group.add(plinth);
-    const body = new THREE.Mesh(new RoundedBoxGeometry(3.2, 2.0, 2.6, 5, 0.1), plaster);
+    const body = new THREE.Mesh(COTTAGE_WALL, plaster);
+    body.name = 'cottageWall';
     body.position.y = 1.15;
     group.add(body);
-    // Vigas de madeira (enxaimel)
     for (const x of [-1.55, 0, 1.55]) {
         const post = new THREE.Mesh(new RoundedBoxGeometry(0.12, 2.0, 0.12, 3, 0.02), timber);
-        post.position.set(x, 1.15, 1.32);
+        post.position.set(x, 1.15, 1.36);
         group.add(post);
     }
     for (const y of [0.55, 1.15, 1.75]) {
         const beam = new THREE.Mesh(new RoundedBoxGeometry(3.15, 0.1, 0.1, 3, 0.02), timber);
-        beam.position.set(0, y, 1.32);
+        beam.position.set(0, y, 1.36);
         group.add(beam);
     }
-    // Telhado de duas águas (dois planos) em vez de cone pyramidal
     const thatchMat = new THREE.MeshPhysicalMaterial({
         map: thatchTexture(), color: roof, roughness: 0.9, metalness: 0.02, clearcoat: 0.04
     });
-    for (const sx of [-1, 1]) {
-        const slope = new THREE.Mesh(new RoundedBoxGeometry(3.6, 0.14, 1.9, 3, 0.04), thatchMat);
-        slope.position.set(0, 2.55, sx * 0.55);
-        slope.rotation.x = sx * -0.48;
-        group.add(slope);
-    }
-    const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.5, 16), timber);
-    ridge.rotation.z = Math.PI / 2;
-    ridge.position.y = 2.95;
-    group.add(ridge);
+    const slope = new THREE.Mesh(COTTAGE_ROOF, thatchMat);
+    slope.name = 'cottageRoof';
+    slope.position.y = 2.15;
+    group.add(slope);
     // Porta com batente
     const doorFrame = new THREE.Mesh(new RoundedBoxGeometry(0.85, 1.35, 0.1, 3, 0.03), timber);
     doorFrame.position.set(0, 0.72, 1.33);
