@@ -673,14 +673,30 @@ export function createOrganicTree({ tint = 0x2f9a38, scale = 1 } = {}) {
     if (!treeTemplate) {
         const g = new THREE.Group();
         const bark = new THREE.MeshPhysicalMaterial({ color: 0x6b4428, roughness: 0.92, metalness: 0.02 });
-        const trunk = new THREE.Mesh(cachedGeo('trunk', () => profileTube({
-            axis: 'y',
-            length: 1.7,
-            rings: 10,
-            seg: 10,
-            squashX: 1,
-            radius: (t) => 0.22 - t * 0.1 + Math.sin(t * 18) * 0.015
-        })), bark);
+        const trunk = new THREE.Mesh(cachedGeo('trunk', () => {
+            const H = 1.7;
+            const pts = [];
+            for (let i = 0; i <= 10; i++) {
+                const t = i / 10;
+                const y = (t - 0.5) * H;
+                const flare = Math.exp(-t * 6) * 0.12;
+                pts.push(new THREE.Vector2(0.16 - t * 0.07 + flare, y));
+            }
+            const geo = new THREE.LatheGeometry(pts, 12);
+            const pos = geo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const rad = Math.hypot(x, z);
+                if (rad < 1e-4 || y < -0.7) continue;
+                const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 5)) ** 2 * 0.02;
+                const k = 1 + rib / rad;
+                pos.setXYZ(i, x * k, y, z * k);
+            }
+            geo.computeVertexNormals();
+            return geo;
+        }), bark);
         trunk.position.y = 0.85;
         trunk.castShadow = true;
         trunk.receiveShadow = true;
@@ -694,29 +710,41 @@ export function createOrganicTree({ tint = 0x2f9a38, scale = 1 } = {}) {
         });
         leafMat.userData.leaf = true;
         const puff = cachedGeo('puff', () => {
-            const ico = new THREE.IcosahedronGeometry(1, 2);
-            const pos = ico.attributes.position;
+            const steps = 12;
+            const pts = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const y = -0.62 + t * 1.48;
+                const profile = t < 0.3
+                    ? 0.42 + (t / 0.3) * 0.58
+                    : Math.sqrt(Math.max(0, 1 - (((t - 0.3) / 0.7) * 0.88) ** 2));
+                pts.push(new THREE.Vector2(profile, y));
+            }
+            const geo = new THREE.LatheGeometry(pts, 16);
+            const pos = geo.attributes.position;
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i);
                 const y = pos.getY(i);
                 const z = pos.getZ(i);
-                const n = Math.sin(x * 3.1 + y * 2.2) * Math.cos(z * 4.1);
-                const s = 1 + n * 0.16;
-                pos.setXYZ(i, x * s, y * s * 0.82, z * s);
+                const rad = Math.hypot(x, z);
+                if (rad < 0.12) continue;
+                const lobe = 0.84 + 0.18 * Math.max(0, Math.cos(Math.atan2(z, x) * 5 + 0.6)) ** 2;
+                pos.setXYZ(i, x * lobe, y, z * lobe);
             }
-            ico.computeVertexNormals();
-            return ico;
+            geo.computeVertexNormals();
+            return geo;
         });
         const spots = [[0, 2.15, 0, 1.05], [0.7, 1.75, 0.25, 0.72], [-0.62, 1.7, -0.2, 0.68], [0.15, 2.55, -0.1, 0.62]];
-        for (const [x, y, z, s] of spots) {
+        spots.forEach(([x, y, z, s], index) => {
             const m = new THREE.Mesh(puff, leafMat);
+            m.name = index === 0 ? 'treeCrown' : 'treeClump';
             m.position.set(x, y, z);
             m.scale.setScalar(s);
             m.castShadow = true;
             m.receiveShadow = true;
             m.userData.leaf = true;
             g.add(m);
-        }
+        });
         const cardMat = new THREE.MeshStandardMaterial({
             color: tint,
             map: leafMap(),

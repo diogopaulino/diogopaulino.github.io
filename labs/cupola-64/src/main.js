@@ -8,10 +8,10 @@ import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
-import { World } from './world.js?v=9';
-import { Player } from './player.js?v=9';
-import { Entities } from './entities.js?v=9';
-import { Effects } from './effects.js?v=9';
+import { World } from './world.js?v=10';
+import { Player } from './player.js?v=10';
+import { Entities } from './entities.js?v=10';
+import { Effects } from './effects.js?v=10';
 
 class Game {
     constructor() {

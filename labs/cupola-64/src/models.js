@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { peachStone, leafCanopy, fabricTeal, goldMetal } from './textures.js';
 import {
     attachHumanHead, limbGeometry, torsoGeometry, shoeMesh, handGroup, leatherMaterial, createOrganicTree
-} from '../../shared/realism.js';
+} from '../../shared/realism.js?v=2';
 
 const geoCache = new Map();
 function geo(key, factory) {

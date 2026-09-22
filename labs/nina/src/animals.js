@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { FOLLOW_GAP, FOLLOW_LAMBDA, HOME } from './config.js';
-import { BABY_BUILDERS } from './models.js?v=7';
+import { BABY_BUILDERS } from './models.js?v=8';
 
 function wrapDelta(from, to) {
     let d = (to - from) % (Math.PI * 2);

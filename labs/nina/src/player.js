@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { createFox } from './models.js?v=7';
+import { createFox } from './models.js?v=8';
 import {
     WALK_SPEED, RUN_SPEED, ACCEL, FRICTION, JUMP_VY, GRAVITY,
     COYOTE, HOP_BOOST, clampToWorld
