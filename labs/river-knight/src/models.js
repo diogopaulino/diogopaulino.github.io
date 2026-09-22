@@ -1114,6 +1114,36 @@ export function buildLongship({
 /* Guerreiro                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Protetor nasal: a barra da testa desce e fecha numa ponta
+ * cerca de 14 cm abaixo.
+ */
+const NASAL_GUARD = (() => {
+    const p = [
+        [-0.036, 0.09],
+        [0.036, 0.09],
+        [0.036, 0.03],
+        [0.01, -0.02],
+        [0, -0.11],
+        [-0.01, -0.02],
+        [-0.036, 0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
 export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     const group = new THREE.Group();
     const steel = metalMaterial(0xb6bcc4, 0.3);
@@ -1208,7 +1238,8 @@ export function buildWarrior({ tunic = 0x8c2f3a, cape = 0x7a1f2b } = {}) {
     helm.castShadow = true;
     head.add(helm);
 
-    const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.05), steel);
+    const nasal = new THREE.Mesh(NASAL_GUARD, steel);
+    nasal.name = 'knightNasal';
     nasal.position.set(0, -0.03, 0.175);
     head.add(nasal);
 
