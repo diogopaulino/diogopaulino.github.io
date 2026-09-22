@@ -652,22 +652,56 @@ const PINE_LEADER = new THREE.LatheGeometry([
     new THREE.Vector2(0.01, 4.9)
 ], 8);
 
-function raggedCrown(radius, seed) {
-    const g = new THREE.SphereGeometry(radius, 18, 14);
+/** Tronco de carvalho, centrado na altura 2.2. Flare na base e nervuras de casca. */
+function oakTrunkGeometry() {
+    const H = 2.2;
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const y = (t - 0.5) * H;
+        let r = 0.36 - t * 0.12;
+        if (t < 0.18) r += 0.18 * (1 - t / 0.18);
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 14);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
         const z = pos.getZ(i);
-        const len = Math.hypot(x, y, z) || 1;
-        const n = 0.78 + Math.abs(Math.sin(x * 1.8 + seed) * Math.cos(z * 1.4 + seed)) * 0.34;
-        pos.setXYZ(i, (x / len) * radius * n, (y / len) * radius * n * 0.82, (z / len) * radius * n);
+        const rib = 1 + 0.14 * Math.cos(Math.atan2(z, x) * 5) ** 2;
+        pos.setXYZ(i, x * rib, y, z * rib);
     }
     g.computeVertexNormals();
     return g;
 }
 
-const OAK_CROWN = raggedCrown(1.5, 2.2);
+/** Copa larga: saia, calota e lóbulos. y negativo é a saia, junto ao tronco. */
+function oakCrownGeometry() {
+    const pts = [];
+    const rings = 14;
+    for (let i = 0; i <= rings; i++) {
+        const t = i / rings;
+        const r = t < 0.28
+            ? 0.42 + (t / 0.28) * 0.58
+            : Math.sqrt(Math.max(0, 1 - ((t - 0.28) / 0.72) ** 2));
+        pts.push(new THREE.Vector2(r * 1.75, -0.4 + t * 2.55));
+    }
+    const g = new THREE.LatheGeometry(pts, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const lobe = 0.76 + 0.3 * Math.max(0, Math.cos(Math.atan2(z, x) * 5 + 0.5)) ** 2;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const OAK_TRUNK = oakTrunkGeometry();
+const OAK_CROWN = oakCrownGeometry();
 
 export function buildPine() {
     const group = new THREE.Group();
@@ -693,14 +727,15 @@ export function buildPine() {
 export function buildOak() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.28, 0.4, 2.2, 16),
+        OAK_TRUNK,
         new THREE.MeshPhysicalMaterial({ map: barkTexture(), roughness: 0.95, clearcoat: 0.04 })
     );
+    trunk.name = 'oakTrunk';
     trunk.position.y = 1.1;
     group.add(trunk);
     const crown = new THREE.Mesh(OAK_CROWN, std(0x2a5a28, 0.9));
-    crown.position.y = 2.8;
-    crown.scale.set(1.2, 0.85, 1.15);
+    crown.name = 'oakCrown';
+    crown.position.y = 2.3;
     group.add(crown);
     enableShadows(group);
     return group;
