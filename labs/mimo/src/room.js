@@ -130,18 +130,78 @@ export function buildRoom(quality) {
         scale: [1.55, 1.55, 1], pos: [0, 0.015, 0.15], rot: [-Math.PI / 2, 0, 0], cast: false
     }));
 
+    // Sofá: assento enrolado, encosto curvo, braços e pés. O grupo continua em (1.85, 0, 0.15).
+    // A extrusão corre em Z; rotateY(π/2) deita o comprimento em X. shape.x negativo vira a frente (+Z).
     const sofa = new THREE.Group();
+    sofa.name = 'sofa';
     sofa.position.set(1.85, 0, 0.15);
     sofa.rotation.y = -Math.PI / 2.4;
-    sofa.add(mesh(box, fabricMat, { scale: [1.7, 0.38, 0.78], pos: [0, 0.28, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [1.7, 0.7, 0.16], pos: [0, 0.7, -0.32] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.14, 0.5, 0.78], pos: [-0.8, 0.52, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.14, 0.5, 0.78], pos: [0.8, 0.52, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.5, 0.28, 0.18], pos: [-0.4, 0.72, -0.18], rot: [-0.25, 0, 0] }));
-    sofa.add(mesh(box, fabricMat, { scale: [0.5, 0.28, 0.18], pos: [0.4, 0.72, -0.18], rot: [-0.25, 0, 0] }));
-    for (const [x, z] of [[-0.72, 0.32], [0.72, 0.32], [-0.72, -0.32], [0.72, -0.32]]) {
-        sofa.add(mesh(box, woodMat, { scale: [0.08, 0.22, 0.08], pos: [x, 0.08, z] }));
+    const extrude = (pts, depth) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 6 });
+        geo.translate(0, 0, -depth / 2);
+        geo.computeVertexNormals();
+        return geo;
+    };
+    const alongX = (pts, depth) => {
+        const geo = extrude(pts, depth);
+        geo.rotateY(Math.PI / 2);
+        return geo;
+    };
+    const seat = new THREE.Mesh(alongX([
+        [0.34, 0.12], [0.36, 0.28], [0.22, 0.44], [-0.08, 0.48],
+        [-0.28, 0.4], [-0.42, 0.26], [-0.34, 0.14], [0.3, 0.1]
+    ], 1.7), fabricMat);
+    seat.name = 'sofaSeat';
+    seat.castShadow = true;
+    seat.receiveShadow = true;
+    const back = new THREE.Mesh(alongX([
+        [0.24, 0.38], [0.4, 0.42], [0.42, 0.92], [0.3, 1.06], [0.22, 0.9], [0.22, 0.48]
+    ], 1.7), fabricMat);
+    back.name = 'sofaBack';
+    back.castShadow = true;
+    back.receiveShadow = true;
+    const armGeo = extrude([
+        [-0.07, 0.28], [0.07, 0.28], [0.09, 0.46], [0.05, 0.68],
+        [0, 0.76], [-0.05, 0.68], [-0.09, 0.46]
+    ], 0.78);
+    for (const x of [-0.8, 0.8]) {
+        const arm = new THREE.Mesh(armGeo, fabricMat);
+        arm.name = 'sofaArm';
+        arm.position.x = x;
+        arm.castShadow = true;
+        arm.receiveShadow = true;
+        sofa.add(arm);
     }
+    const cushionGeo = alongX([
+        [0.08, -0.1], [0.1, 0], [0.05, 0.12], [-0.05, 0.13], [-0.1, 0.02], [-0.08, -0.1]
+    ], 0.5);
+    for (const x of [-0.4, 0.4]) {
+        const cushion = new THREE.Mesh(cushionGeo, fabricMat);
+        cushion.name = 'sofaCushion';
+        cushion.position.set(x, 0.72, -0.18);
+        cushion.rotation.x = -0.25;
+        cushion.castShadow = true;
+        sofa.add(cushion);
+    }
+    const legGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.045, 0),
+        new THREE.Vector2(0.05, 0.02),
+        new THREE.Vector2(0.028, 0.06),
+        new THREE.Vector2(0.022, 0.16),
+        new THREE.Vector2(0.038, 0.2),
+        new THREE.Vector2(0.042, 0.22)
+    ], 8);
+    for (const [x, z] of [[-0.72, 0.32], [0.72, 0.32], [-0.72, -0.32], [0.72, -0.32]]) {
+        const leg = new THREE.Mesh(legGeo, woodMat);
+        leg.name = 'sofaLeg';
+        leg.position.set(x, 0, z);
+        leg.castShadow = true;
+        sofa.add(leg);
+    }
+    sofa.add(seat, back);
     root.add(sofa);
 
     const plant = new THREE.Group();
