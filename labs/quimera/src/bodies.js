@@ -3,7 +3,7 @@
  */
 
 import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
-import { wingMembrane } from '../../shared/realism.js';
+import { wingMembrane, limbGeometry, shoeMesh } from '../../shared/realism.js';
 import * as THREE from 'three';
 
 function build(kit, extras) {
@@ -100,17 +100,28 @@ const BODIES = {
 
     robot: (kit) => build(kit, {
         options: { skipBase: true },
-        detail: ({ add, mats }) => {
+        detail: ({ add, mats, group }) => {
             add.cyl(0.08, 0.09, 0.12, mats.secondary, [0, 1.18, 0]);
-            add.lathe([[0.16, 0], [0.26, 0.08], [0.24, 0.28], [0.16, 0.46], [0.1, 0.52]], mats.primary, [0, 0.62, 0]);
+            const chest = add.lathe([[0.16, 0], [0.26, 0.08], [0.24, 0.28], [0.16, 0.46], [0.1, 0.52]], mats.primary, [0, 0.62, 0]);
+            chest.name = 'robotChest';
             add.box(0.22, 0.16, 0.06, mats.glow, [0, 0.92, 0.20], null, null, 0.02);
-            add.box(0.36, 0.16, 0.3, mats.secondary, [0, 0.54, 0], null, null, 0.04);
-            add.box(0.16, 0.32, 0.16, mats.primary, [-0.12, 0.28, 0], null, null, 0.03);
-            add.box(0.16, 0.32, 0.16, mats.primary, [0.12, 0.28, 0], null, null, 0.03);
-            add.box(0.18, 0.1, 0.22, mats.secondary, [-0.12, 0.08, 0.02], null, null, 0.03);
-            add.box(0.18, 0.1, 0.22, mats.secondary, [0.12, 0.08, 0.02], null, null, 0.03);
-            add.cap(0.07, 0.32, mats.primary, [-0.36, 0.82, 0.02], [0, 0, 0.28]);
-            add.cap(0.07, 0.32, mats.primary, [0.36, 0.82, 0.02], [0, 0, -0.28]);
+            const hip = add.lathe([
+                [0.08, 0], [0.16, 0.03], [0.2, 0.08], [0.16, 0.13], [0.1, 0.17]
+            ], mats.secondary, [0, 0.46, 0]);
+            hip.name = 'robotHip';
+            const thigh = limbGeometry({ length: 0.38, r0: 0.09, r1: 0.05, bulge: 0.022, bulgeAt: 0.32, seg: 10, rings: 8 });
+            const arm = limbGeometry({ length: 0.42, r0: 0.065, r1: 0.04, bulge: 0.014, seg: 10, rings: 8 });
+            for (const sx of [-1, 1]) {
+                const leg = add.mesh(thigh, mats.primary, [sx * 0.12, 0.48, 0]);
+                leg.name = 'robotLeg';
+                const boot = shoeMesh(mats.secondary, { length: 0.2, width: 0.1, height: 0.08 });
+                boot.name = 'robotBoot';
+                boot.position.set(sx * 0.12, 0.02, 0.05);
+                boot.rotation.y = -Math.PI / 2;
+                group.add(boot);
+                const limb = add.mesh(arm, mats.primary, [sx * 0.22, 0.92, 0.02], [0.15, 0, sx * 0.65]);
+                limb.name = 'robotArm';
+            }
             add.sphere(0.09, mats.secondary, [-0.46, 0.58, 0.06]);
             add.sphere(0.09, mats.secondary, [0.46, 0.58, 0.06]);
         }
