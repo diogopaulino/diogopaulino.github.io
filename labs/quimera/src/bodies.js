@@ -161,6 +161,17 @@ function capePleat(height) {
     return g;
 }
 
+/** Tanque da mochila: fundo e topo arredondados, barriga no meio. Y cresce. */
+const PACK_TANK = new THREE.LatheGeometry([
+    new THREE.Vector2(0.05, 0),
+    new THREE.Vector2(0.13, 0.04),
+    new THREE.Vector2(0.17, 0.12),
+    new THREE.Vector2(0.18, 0.22),
+    new THREE.Vector2(0.16, 0.32),
+    new THREE.Vector2(0.10, 0.38),
+    new THREE.Vector2(0.04, 0.42)
+], 16);
+
 const WARRIOR_CAPE = capeGeometry({ height: 0.7, neck: 0.12, hem: 0.36 });
 const WARRIOR_PLEAT = capePleat(0.7);
 const VIKING_CAPE = capeGeometry({ height: 0.55, neck: 0.11, hem: 0.30 });
@@ -201,7 +212,8 @@ const BODIES = {
         detail: ({ add, mats }) => {
             add.lathe([[0.18, 0], [0.3, 0.1], [0.28, 0.34], [0.18, 0.52], [0.12, 0.62]], mats.primary, [0, 0.54, 0]);
             add.box(0.28, 0.22, 0.08, mats.secondary, [0, 0.92, 0.22], null, null, 0.04);
-            add.box(0.36, 0.42, 0.18, mats.secondary, [0, 0.90, -0.28], null, null, 0.06);
+            const pack = add.mesh(PACK_TANK, mats.secondary, [0, 0.69, -0.36]);
+            pack.name = 'astroPack';
             add.cyl(0.05, 0.05, 0.16, mats.accent, [-0.12, 1.12, -0.28]);
             add.cyl(0.05, 0.05, 0.16, mats.accent, [0.12, 1.12, -0.28]);
             add.torus(0.12, 0.025, mats.accent, [0, 1.16, 0.02], [Math.PI / 2, 0, 0]);
