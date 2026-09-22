@@ -6,6 +6,69 @@ import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
 import { wingMembrane, limbGeometry, shoeMesh } from '../../shared/realism.js';
 import * as THREE from 'three';
 
+/**
+ * Avental do chef: painel na frente das pernas.
+ * A barra é mais larga que a cintura e a bainha ondula — não é um bloco.
+ * Extrusão em +Z; a prega sai um pouco à frente do pano.
+ */
+const CHEF_APRON = (() => {
+    const s = new THREE.Shape();
+    const p = [
+        [-0.15, 0.16],
+        [-0.19, 0.05],
+        [-0.25, -0.05],
+        [-0.28, -0.16],
+        [-0.14, -0.11],
+        [0, -0.19],
+        [0.14, -0.11],
+        [0.28, -0.16],
+        [0.25, -0.05],
+        [0.19, 0.05],
+        [0.15, 0.16]
+    ];
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.055,
+        bevelEnabled: true,
+        bevelThickness: 0.01,
+        bevelSize: 0.008,
+        bevelSegments: 1,
+        curveSegments: 4
+    });
+    g.translate(0, 0, -0.028);
+    return g;
+})();
+
+const CHEF_PLEAT = (() => {
+    const s = new THREE.Shape();
+    const p = [
+        [-0.035, 0.14],
+        [-0.055, 0],
+        [-0.03, -0.15],
+        [0.03, -0.15],
+        [0.055, 0],
+        [0.035, 0.14]
+    ];
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.028, bevelEnabled: false });
+    g.translate(0, 0, 0.02);
+    return g;
+})();
+
+/** Jaleco: sai estreito da cintura e abre na bainha. Y do torno cresce. */
+const LAB_COAT = new THREE.LatheGeometry([
+    new THREE.Vector2(0.15, 0),
+    new THREE.Vector2(0.17, 0.05),
+    new THREE.Vector2(0.20, 0.12),
+    new THREE.Vector2(0.24, 0.20),
+    new THREE.Vector2(0.27, 0.25),
+    new THREE.Vector2(0.23, 0.29)
+], 16);
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -91,10 +154,12 @@ const BODIES = {
             add.box(0.08, 0.36, 0.02, mats.dark, [-0.1, 0.86, 0.19]);
             add.box(0.08, 0.36, 0.02, mats.dark, [0.1, 0.86, 0.19]);
             add.box(0.5, 0.14, 0.38, mats.white, [0, 0.56, 0], null, null, 0.04);
-            add.box(0.48, 0.32, 0.34, mats.secondary, [0, 0.32, 0], null, [1, 1, 1], 0.04);
-            add.box(0.06, 0.32, 0.02, mats.white, [-0.1, 0.32, 0.18]);
-            add.box(0.06, 0.32, 0.02, mats.white, [0, 0.32, 0.18]);
-            add.box(0.06, 0.32, 0.02, mats.white, [0.1, 0.32, 0.18]);
+            const apron = add.mesh(CHEF_APRON, mats.secondary, [0, 0.32, 0.1]);
+            apron.name = 'chefApron';
+            const pleat = add.mesh(CHEF_PLEAT, mats.white, [0, 0.32, 0.1]);
+            pleat.name = 'chefPleat';
+            add.box(0.06, 0.32, 0.02, mats.white, [-0.1, 0.32, 0.15]);
+            add.box(0.06, 0.32, 0.02, mats.white, [0.1, 0.32, 0.15]);
         }
     }),
 
@@ -202,7 +267,8 @@ const BODIES = {
             add.lathe([[0.16, 0], [0.3, 0.08], [0.28, 0.4], [0.18, 0.68]], mats.white, [0, 0.42, 0]);
             add.box(0.16, 0.08, 0.04, mats.secondary, [0, 1.02, 0.20]);
             add.box(0.1, 0.1, 0.08, mats.accent, [0.22, 0.70, 0.16], null, null, 0.02);
-            add.box(0.48, 0.28, 0.34, mats.secondary, [0, 0.32, 0], null, null, 0.04);
+            const coat = add.mesh(LAB_COAT, mats.secondary, [0, 0.18, 0]);
+            coat.name = 'labCoat';
         }
     })
 };
