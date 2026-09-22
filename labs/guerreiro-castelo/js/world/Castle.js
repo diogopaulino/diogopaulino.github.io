@@ -22,6 +22,69 @@ function towerRoofMesh(scene, name) {
     }, scene);
 }
 
+/**
+ * Corpo da menagem. A planta (x, z) vai na Shape; o caminho sobe em Y.
+ * firstNormal evita o colapso do quadro quando o caminho é vertical.
+ * A base fica em y = 0 e o topo em y = 22, onde o telhado apoia.
+ */
+function keepBodyMesh(scene) {
+    const plan = [
+        [-6, -6], [-2.2, -6], [-2.2, -6.7], [-1.05, -6.7], [-1.05, -6],
+        [1.05, -6], [1.05, -6.7], [2.2, -6.7], [2.2, -6], [6, -6],
+        [6, -2.3], [6.7, -2.3], [6.7, -1.05], [6, -1.05],
+        [6, 1.05], [6.7, 1.05], [6.7, 2.3], [6, 2.3], [6, 6],
+        [2.3, 6], [2.3, 6.7], [1.05, 6.7], [1.05, 6],
+        [-1.05, 6], [-1.05, 6.7], [-2.3, 6.7], [-2.3, 6], [-6, 6],
+        [-6, 2.3], [-6.7, 2.3], [-6.7, 1.05], [-6, 1.05],
+        [-6, -1.05], [-6.7, -1.05], [-6.7, -2.3], [-6, -2.3]
+    ];
+    const shape = plan.map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const steps = 16;
+    const height = 22;
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom('castleKeep', {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.05 - t * 0.08;
+            const course = 1 + Math.sin(distance * 2.35) * 0.012;
+            return batter * course;
+        }
+    }, scene);
+}
+
+/** Folha de portão com arco de meio ponto. Origem na base; a espessura corre em Z. */
+function gateDoorMesh(scene) {
+    const half = 3.5;
+    const spring = 6.5;
+    const shape = [
+        new BABYLON.Vector3(-half, 0, 0),
+        new BABYLON.Vector3(half, 0, 0),
+        new BABYLON.Vector3(half, spring, 0)
+    ];
+    const seg = 14;
+    for (let i = 1; i <= seg; i++) {
+        const a = (Math.PI * i) / seg;
+        shape.push(new BABYLON.Vector3(Math.cos(a) * half, spring + Math.sin(a) * half, 0));
+    }
+    return BABYLON.MeshBuilder.ExtrudeShape('mainGate', {
+        shape,
+        path: [
+            new BABYLON.Vector3(0, 0, -0.6),
+            new BABYLON.Vector3(0, 0, 0.6)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+}
+
 /** Duas águas sobre a menagem 12×12. y = 0 encosta no topo da parede. */
 function keepRoofMesh(scene) {
     const shape = [
@@ -114,8 +177,8 @@ export function buildCastle(scene) {
     });
 
     // Torre de menagem central (Keep)
-    const keep = BABYLON.MeshBuilder.CreateBox('castleKeep', { width: 12, height: 22, depth: 12 }, scene);
-    keep.position.set(0, 11, -2);
+    const keep = keepBodyMesh(scene);
+    keep.position.set(0, 0, -2);
     keep.material = stoneMat;
     keep.parent = root;
     keep.receiveShadows = true;
@@ -126,8 +189,8 @@ export function buildCastle(scene) {
     keepRoof.parent = root;
 
     // Portão principal
-    const gate = BABYLON.MeshBuilder.CreateBox('mainGate', { width: 7, height: 10, depth: 1.2 }, scene);
-    gate.position.set(0, 5, court / 2 + 0.4);
+    const gate = gateDoorMesh(scene);
+    gate.position.set(0, 0, court / 2 + 0.4);
     gate.material = woodMat;
     gate.parent = root;
 
