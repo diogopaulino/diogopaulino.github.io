@@ -5,7 +5,7 @@
 import { Level } from './Level.js';
 import { sandTexture, grassTexture } from '../world/Textures.js';
 import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js?v=5';
-import { createMuscle } from '../../shared/realism-bjs.js';
+import { createMuscle } from '../../../shared/realism-bjs.js';
 
 export class BeachLevel extends Level {
     get id() {
