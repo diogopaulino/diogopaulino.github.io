@@ -93,6 +93,43 @@ function jeepBumperGeometry() {
 
 const JEEP_BUMPER = jeepBumperGeometry();
 
+/** Grade 0.92×0.32×0.08. A face +Z tem vãos entre as barras. */
+function jeepGrilleGeometry() {
+    const g = new THREE.BoxGeometry(0.92, 0.32, 0.08, 32, 8, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x) / 0.46;
+        const ay = Math.abs(y) / 0.16;
+        if (z > 0.015 && ax < 0.88 && ay < 0.72) {
+            const frac = ((x + 0.46) / 0.92) * 8;
+            const slot = frac - Math.floor(frac);
+            if (slot > 0.38 && slot < 0.9) z -= 0.055;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Farol ao longo de Y: lente em +Y, aro mais largo. */
+function jeepLampGeometry() {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.02, -0.04),
+        new THREE.Vector2(0.1, -0.032),
+        new THREE.Vector2(0.128, 0.0),
+        new THREE.Vector2(0.09, 0.02),
+        new THREE.Vector2(0.04, 0.04)
+    ], 18);
+    g.computeVertexNormals();
+    return g;
+}
+
+const JEEP_GRILLE = jeepGrilleGeometry();
+const JEEP_LAMP = jeepLampGeometry();
+
 export function buildJeep() {
     const root = new THREE.Group();
     const paint = std(0x1c3a38, 0.42, 0.18);
@@ -134,14 +171,17 @@ export function buildJeep() {
     bumperR.position.z = -1.95;
     root.add(bumperR);
 
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.08), dark);
+    const grille = new THREE.Mesh(JEEP_GRILLE, dark);
+    grille.name = 'jeepGrille';
     grille.position.set(0, 0.78, 1.84);
     root.add(grille);
 
     const headlights = [];
     for (const sx of [-1, 1]) {
-        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.08), lightMat);
+        const lamp = new THREE.Mesh(JEEP_LAMP, lightMat);
+        lamp.name = 'jeepLamp';
         lamp.position.set(sx * 0.62, 0.82, 1.84);
+        lamp.rotation.x = Math.PI / 2;
         root.add(lamp);
         headlights.push(lamp);
         const light = new THREE.SpotLight(0xfff0c8, 0, 38, 0.42, 0.45, 1.1);
