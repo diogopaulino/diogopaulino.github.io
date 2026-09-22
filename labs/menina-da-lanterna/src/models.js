@@ -525,19 +525,71 @@ export function buildHangingLantern(color = 0xffb347) {
     return group;
 }
 
-function raggedCone(radius, height, seed) {
-    const g = new THREE.ConeGeometry(radius, height, 12);
+/** Saia de pinheiro: a bainha cai e os lóbulos quebram o cone. */
+function spruceSkirt(radius, hemY, rise, seed) {
+    const apex = hemY + rise;
+    const pts = [
+        [0.05, apex],
+        [radius * 0.28, apex - rise * 0.05],
+        [radius * 0.62, hemY + rise * 0.24],
+        [radius * 0.88, hemY + 0.1],
+        [radius, hemY],
+        [radius * 0.7, hemY + 0.12],
+        [0.06, apex - rise * 0.16]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < radius * 0.4) continue;
+        const lobe = 0.84 + 0.2 * Math.max(0, Math.cos(Math.atan2(z, x) * 7 + seed)) ** 2;
+        const outer = Math.min(1, (rad - radius * 0.4) / (radius * 0.6));
+        y -= (1 - lobe) * 0.28 * outer;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+function pineTrunkGeometry() {
+    const H = 2.55;
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const flare = Math.exp(-t * 5.5) * 0.18;
+        pts.push(new THREE.Vector2(0.14 + (1 - t) * 0.14 + flare, t * H));
+    }
+    const g = new THREE.LatheGeometry(pts, 12);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
         const z = pos.getZ(i);
-        const n = 0.84 + Math.abs(Math.sin(x * 4 + seed) * Math.cos(z * 3 + y + seed)) * 0.24;
-        pos.setXYZ(i, x * n, y, z * n);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4 || y < 0.15) continue;
+        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 5)) ** 2 * 0.028;
+        const k = 1 + rib / rad;
+        pos.setXYZ(i, x * k, y, z * k);
     }
     g.computeVertexNormals();
     return g;
 }
+
+const PINE_SKIRTS = [
+    spruceSkirt(1.32, 1.45, 1.2, 0.4),
+    spruceSkirt(1.08, 2.25, 1.05, 1.3),
+    spruceSkirt(0.82, 3.05, 0.95, 2.2),
+    spruceSkirt(0.55, 3.75, 0.78, 3.1)
+];
+const PINE_TRUNK = pineTrunkGeometry();
+const PINE_LEADER = new THREE.LatheGeometry([
+    new THREE.Vector2(0.07, 4.05),
+    new THREE.Vector2(0.035, 4.5),
+    new THREE.Vector2(0.01, 4.9)
+], 8);
 
 function raggedCrown(radius, seed) {
     const g = new THREE.SphereGeometry(radius, 18, 14);
@@ -554,24 +606,25 @@ function raggedCrown(radius, seed) {
     return g;
 }
 
-const PINE_LAYERS = [0, 1, 2, 3].map((i) => raggedCone(1.35 - i * 0.22, 1.5, i * 1.7));
 const OAK_CROWN = raggedCrown(1.5, 2.2);
-const HOLLOW_CROWN = raggedCrown(4.2, 5.1);
 
 export function buildPine() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.28, 2.4, 16),
+        PINE_TRUNK,
         new THREE.MeshPhysicalMaterial({ map: barkTexture(), roughness: 0.95, clearcoat: 0.04 })
     );
-    trunk.position.y = 1.2;
+    trunk.name = 'pineTrunk';
     group.add(trunk);
     const greens = [0x1a3a22, 0x16341c, 0x204828];
-    for (let i = 0; i < 4; i++) {
-        const cone = new THREE.Mesh(PINE_LAYERS[i], std(greens[i % 3], 0.92));
-        cone.position.y = 2.1 + i * 0.7;
-        group.add(cone);
-    }
+    PINE_SKIRTS.forEach((geo, i) => {
+        const skirt = new THREE.Mesh(geo, std(greens[i % 3], 0.92));
+        skirt.name = 'pineSkirt';
+        group.add(skirt);
+    });
+    const leader = new THREE.Mesh(PINE_LEADER, std(greens[0], 0.92));
+    leader.name = 'pineLeader';
+    group.add(leader);
     enableShadows(group);
     return group;
 }
@@ -592,23 +645,114 @@ export function buildOak() {
     return group;
 }
 
+/**
+ * Tronco da árvore oca, centrado como o cilindro de altura 8.
+ * Flare, casca e uma boca em arco na face +Z.
+ */
+function hollowTrunkGeometry() {
+    const H = 8;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 2.9 - t * 0.75;
+        if (t < 0.1) r += 0.42 * (1 - t / 0.1);
+        if (Math.sin(t * Math.PI * 8) > 0.4) r += 0.07;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 22);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad > 0.2 && y > -3.7) {
+            const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 6)) ** 2 * 0.07;
+            const k = 1 + rib / rad;
+            x *= k;
+            z *= k;
+        }
+        const mouth = z > 1.35 && Math.abs(x) < 1.05 && y > -3.55 && y < -1.15;
+        if (mouth) {
+            const nx = x / 1.05;
+            const ny = (y + 2.35) / 1.15;
+            const inside = nx * nx + ny * ny < 1;
+            if (inside) z = Math.min(z, 1.25);
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Copa em calota, y=0 na base. Não é a esfera achatada. */
+function hollowCrownGeometry() {
+    const radius = 4.1;
+    const height = 3.3;
+    const steps = 12;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const profile = t < 0.22
+            ? 0.38 + (t / 0.22) * 0.62
+            : Math.sqrt(Math.max(0, 1 - (((t - 0.22) / 0.78) * 0.9) ** 2));
+        pts.push(new THREE.Vector2(radius * profile, t * height));
+    }
+    const g = new THREE.LatheGeometry(pts, 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 0.3) continue;
+        const lobe = 0.82 + 0.22 * Math.max(0, Math.cos(Math.atan2(z, x) * 6 + 0.8)) ** 2;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+function hollowMouthGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.95, 0);
+    s.lineTo(-0.95, 1.15);
+    for (let i = 0; i <= 12; i++) {
+        const a = Math.PI * (1 - i / 12);
+        s.lineTo(Math.cos(a) * 0.95, 1.15 + Math.sin(a) * 0.8);
+    }
+    s.lineTo(0.95, 0);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.9, bevelEnabled: false, curveSegments: 2 });
+    g.translate(0, 0, -0.45);
+    g.computeVertexNormals();
+    return g;
+}
+
+const HOLLOW_TRUNK = hollowTrunkGeometry();
+const HOLLOW_CROWN = hollowCrownGeometry();
+const HOLLOW_MOUTH = hollowMouthGeometry();
+
 export function buildHollowTree() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.2, 2.8, 8, 12),
+        HOLLOW_TRUNK,
         new THREE.MeshPhysicalMaterial({ map: barkTexture(), color: 0x4a3020, roughness: 0.95, clearcoat: 0.04 })
     );
+    trunk.name = 'hollowTrunk';
     trunk.position.y = 4;
     group.add(trunk);
-    const hole = new THREE.Mesh(
-        new THREE.SphereGeometry(1.1, 10, 8),
+    const mouth = new THREE.Mesh(
+        HOLLOW_MOUTH,
         new THREE.MeshStandardMaterial({ color: 0x080408, roughness: 1 })
     );
-    hole.position.set(0, 1.6, 2.2);
-    group.add(hole);
+    mouth.name = 'hollowMouth';
+    mouth.position.set(0, 0.55, 1.7);
+    group.add(mouth);
     const crown = new THREE.Mesh(HOLLOW_CROWN, std(0x1a3018, 0.92));
-    crown.position.y = 9.2;
-    crown.scale.set(1.15, 0.7, 1.1);
+    crown.name = 'hollowCrown';
+    crown.position.y = 7.7;
     group.add(crown);
     enableShadows(group);
     return group;
