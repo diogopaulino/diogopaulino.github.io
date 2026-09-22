@@ -40,6 +40,38 @@ const SAMURAI_BRIM = (() => {
 })();
 
 /**
+ * Visor do robô: as pontas ficam baixas e o centro sobe cerca de 10 cm.
+ */
+const ROBOT_VISOR = (() => {
+    const p = [
+        [-0.21, -0.03],
+        [-0.21, 0.02],
+        [-0.10, 0.05],
+        [0, 0.12],
+        [0.10, 0.05],
+        [0.21, 0.02],
+        [0.21, -0.03],
+        [0.10, -0.05],
+        [0, -0.02],
+        [-0.10, -0.05]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+/**
  * Máscara do ninja: o nariz desce cerca de 7 cm e o queixo termina em ponta.
  */
 const NINJA_MASK = (() => {
@@ -158,7 +190,8 @@ const HEADS = {
     robot: (kit) => build(kit, (ctx) => {
         const { add, mats, group } = ctx;
         add.lathe([[0.14, -0.18], [0.26, -0.04], [0.26, 0.12], [0.16, 0.24], [0.06, 0.3]], mats.primary, [0, -0.02, 0]);
-        add.box(0.40, 0.14, 0.08, mats.dark, [0, 0.06, 0.20], null, null, 0.03);
+        const visor = add.mesh(ROBOT_VISOR, mats.dark, [0, 0.06, 0.20]);
+        visor.name = 'robotVisor';
         add.sphere(0.045, mats.glow, [-0.1, 0.06, 0.24]);
         add.sphere(0.045, mats.glow, [0.1, 0.06, 0.24]);
         add.box(0.18, 0.04, 0.04, mats.trim, [0, -0.08, 0.22]);
