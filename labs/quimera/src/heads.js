@@ -332,6 +332,37 @@ const CHEF_MUSTACHE = (() => {
     return g;
 })();
 
+/**
+ * Faixa do ninja: o nó sobe no meio, cerca de 11 cm acima da tira.
+ */
+const NINJA_BAND = (() => {
+    const p = [
+        [-0.11, -0.02],
+        [0.11, -0.02],
+        [0.11, 0.02],
+        [0.045, 0.02],
+        [0.025, 0.07],
+        [0, 0.13],
+        [-0.025, 0.07],
+        [-0.045, 0.02],
+        [-0.11, 0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.016);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -405,7 +436,8 @@ const HEADS = {
         add.sphere(0.026, mats.iris, [0.08, 0.05, 0.26]);
         add.sphere(0.01, mats.dark, [-0.074, 0.054, 0.284]);
         add.sphere(0.01, mats.dark, [0.086, 0.054, 0.284]);
-        add.box(0.22, 0.04, 0.04, mats.accent, [0, 0.18, 0.18]);
+        const band = add.mesh(NINJA_BAND, mats.accent, [0, 0.18, 0.18]);
+        band.name = 'ninjaBand';
         group.userData.lids = [];
     }, { skull: false }),
 
