@@ -984,12 +984,24 @@ export function buildTiger(scene) {
     tailMesh.material = orangeMat;
     tailMesh.parent = tail;
 
-    // Listras pretas
+    // Listras: faixa que fecha nas duas pontas e é mais larga no meio.
+    const stripeShape = [
+        [0, 0.35], [0.014, 0.2], [0.024, 0.05], [0.02, -0.08], [0.01, -0.22], [0, -0.35],
+        [-0.012, -0.2], [-0.022, -0.02], [-0.018, 0.14], [-0.008, 0.26]
+    ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
+    let stripeSrc = null;
     for (let i = 0; i < 10; i++) {
-        const stripe = BABYLON.MeshBuilder.CreateBox(`stripe_${i}`, {
-            width: 0.04, height: 0.035, depth: 0.7
-        }, scene);
+        const stripe = stripeSrc
+            ? stripeSrc.clone('tigerStripe')
+            : (stripeSrc = BABYLON.MeshBuilder.ExtrudeShape('tigerStripe', {
+                shape: stripeShape,
+                path: [new BABYLON.Vector3(0, 0, -0.016), new BABYLON.Vector3(0, 0, 0.016)],
+                cap: BABYLON.Mesh.CAP_ALL,
+                closeShape: true,
+                sideOrientation: BABYLON.Mesh.DOUBLESIDE
+            }, scene));
         stripe.position.set(-0.45 + i * 0.1, 0.9, 0);
+        stripe.rotation.x = -Math.PI / 2;
         stripe.rotation.z = (i % 2 === 0 ? 0.12 : -0.08);
         stripe.material = blackMat;
         stripe.parent = root;

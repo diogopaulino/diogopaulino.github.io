@@ -1,4 +1,4 @@
-import { CharacterAnimator, applyLocomotion } from './builders.js?v=5';
+import { CharacterAnimator, applyLocomotion } from './builders.js?v=6';
 
 export class Dico {
     constructor(built) {

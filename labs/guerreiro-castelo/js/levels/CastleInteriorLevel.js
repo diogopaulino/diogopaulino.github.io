@@ -5,7 +5,7 @@
 import { Level } from './Level.js';
 import { castleStoneTexture, woodTexture } from '../world/Textures.js';
 import { makeTorch, EnvironmentFX } from '../world/Environment.js?v=5';
-import { Guard } from '../characters/Guard.js?v=4';
+import { Guard } from '../characters/Guard.js?v=5';
 
 export class CastleInteriorLevel extends Level {
     get id() {
