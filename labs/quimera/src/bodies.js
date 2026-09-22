@@ -995,13 +995,44 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.3, 0.08], [0.28, 0.4], [0.18, 0.68]], mats.white, [0, 0.42, 0]);
-            add.box(0.16, 0.08, 0.04, mats.secondary, [0, 1.02, 0.20]);
+            const badge = add.mesh(LAB_BADGE, mats.secondary, [0, 1.02, 0.20]);
+            badge.name = 'labBadge';
             add.box(0.1, 0.1, 0.08, mats.accent, [0.22, 0.70, 0.16], null, null, 0.02);
             const coat = add.mesh(LAB_COAT, mats.secondary, [0, 0.18, 0]);
             coat.name = 'labCoat';
         }
     })
 };
+
+/**
+ * Crachá do cientista: a barra de baixo abre em duas pontas.
+ * O vão entre elas recua cerca de 10 cm.
+ */
+const LAB_BADGE = (() => {
+    const p = [
+        [-0.08, 0.05],
+        [0.08, 0.05],
+        [0.08, -0.01],
+        [0.045, -0.12],
+        [0, -0.02],
+        [-0.045, -0.12],
+        [-0.08, -0.01]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
 
 export function buildBody(kit) {
     const fn = BODIES[kit.id] || BODIES.pirate;
