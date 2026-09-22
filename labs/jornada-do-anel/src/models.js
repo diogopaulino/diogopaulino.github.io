@@ -749,18 +749,23 @@ export function buildHobbitHole({ doorColor = '#2d6b38', scale = 1 } = {}) {
 }
 
 /**
- * Copa em sino. t=0 é a saia (raio curto), a barriga abre e o topo fecha.
- * Cada lobo: raio *= 0.64 + 0.4 * max(0, cos(θ·lobes + seed))².
- * A saia (t < 0.22) encolhe mais, para a copa não virar bola.
+ * Copa em sino. t=0 é a saia (pescoço), a barriga fica larga e o topo
+ * fecha em calota — sqrt(1 - u²), não um fuso. Cada lobo:
+ * raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
  */
-function crownGeometry({ radius, height, y0, lobes, seed, seg = 20, steps = 12 }) {
+function crownGeometry({ radius, height, y0, lobes, seed, seg = 28, steps = 14 }) {
     const pts = [];
     for (let i = 0; i <= steps; i++) {
         const t = i / steps;
         const y = y0 + t * height;
-        const belly = Math.sin(Math.PI * (Math.min(1, t / 0.92) ** 0.7));
-        const skirt = t < 0.16 ? 0.42 + (t / 0.16) * 0.58 : 1;
-        pts.push(new THREE.Vector2(Math.max(0.05, radius * belly * skirt), y));
+        let profile;
+        if (t < 0.22) {
+            profile = 0.38 + (t / 0.22) * 0.62;
+        } else {
+            const u = (t - 0.22) / 0.78;
+            profile = Math.sqrt(Math.max(0, 1 - (u * 0.9) ** 2));
+        }
+        pts.push(new THREE.Vector2(Math.max(0.06, radius * profile), y));
     }
     const g = new THREE.LatheGeometry(pts, seg);
     const pos = g.attributes.position;
@@ -770,10 +775,8 @@ function crownGeometry({ radius, height, y0, lobes, seed, seg = 20, steps = 12 }
         const z = pos.getZ(i);
         const rad = Math.hypot(x, z);
         if (rad < 1e-4) continue;
-        const lobe = 0.64 + 0.4 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
-        const tuck = y < y0 + height * 0.22 ? 0.8 : 1;
-        const k = lobe * tuck;
-        pos.setXYZ(i, x * k, y, z * k);
+        const lobe = 0.82 + 0.22 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
     }
     g.computeVertexNormals();
     return g;
