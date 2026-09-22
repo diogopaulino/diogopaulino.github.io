@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { LAYOUT, KIT_BY_ID } from './config.js';
-import { buildHead } from './heads.js?v=14';
+import { buildHead } from './heads.js?v=15';
 import { buildBody } from './bodies.js?v=35';
 import { buildAccessory } from './accessories.js?v=8';
 

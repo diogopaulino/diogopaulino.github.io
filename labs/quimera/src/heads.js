@@ -299,6 +299,39 @@ const PIRATE_PATCH = (() => {
     return g;
 })();
 
+/**
+ * Bigode do chef: as duas pontas descem cerca de 11 cm abaixo da barra.
+ */
+const CHEF_MUSTACHE = (() => {
+    const p = [
+        [-0.11, -0.11],
+        [-0.07, -0.04],
+        [-0.035, 0.0],
+        [0.035, 0.0],
+        [0.07, -0.04],
+        [0.11, -0.11],
+        [0.085, -0.02],
+        [0.045, 0.03],
+        [0, 0.045],
+        [-0.045, 0.03],
+        [-0.085, -0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.014);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -382,7 +415,8 @@ const HEADS = {
         add.cyl(0.16, 0.18, 0.12, mats.white, [0, 0.28, 0]);
         add.cyl(0.22, 0.20, 0.28, mats.white, [0, 0.50, 0]);
         add.lathe([[0.04, 0], [0.2, 0.03], [0.22, 0.1], [0.08, 0.16]], mats.white, [0, 0.58, 0]);
-        add.box(0.16, 0.04, 0.04, mats.dark, [0, -0.06, 0.27]);
+        const mustache = add.mesh(CHEF_MUSTACHE, mats.dark, [0, -0.06, 0.27]);
+        mustache.name = 'chefMustache';
         add.sphere(0.03, mats.dark, [-0.07, -0.06, 0.27]);
         add.sphere(0.03, mats.dark, [0.07, -0.06, 0.27]);
     }),
