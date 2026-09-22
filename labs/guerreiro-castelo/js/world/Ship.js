@@ -248,18 +248,31 @@ export function buildShip(scene) {
         }
     }
 
+    // Duas águas em fiadas: cada telha avança sobre a de baixo. O beiral passa da parede.
+    const courses = 5;
+    const eave = 2.55;
+    const rise = 0.72;
+    const nose = 0.13;
+    const thick = 0.08;
+    const step = eave / courses;
+    const dy = rise / courses;
+    const asc = [];
+    for (let i = 0; i < courses; i++) {
+        const x0 = -eave + i * step;
+        const y0 = i * dy;
+        asc.push([x0 - nose, y0]);
+        asc.push([x0 - nose, y0 + thick]);
+        asc.push([x0 + step - nose * 0.15, y0 + thick]);
+    }
+    const profile = asc
+        .concat([[0.05, rise + thick]])
+        .concat(asc.map(([x, y]) => [-x, y]).reverse())
+        .concat([[eave - 0.18, -0.16], [0, rise * 0.62], [-(eave - 0.18), -0.16]]);
     const cabinRoof = BABYLON.MeshBuilder.ExtrudeShape('shipCabinRoof', {
-        shape: [
-            new BABYLON.Vector3(-2.35, 0, 0),
-            new BABYLON.Vector3(0, 0.62, 0),
-            new BABYLON.Vector3(2.35, 0, 0),
-            new BABYLON.Vector3(2.15, -0.22, 0),
-            new BABYLON.Vector3(0, 0.42, 0),
-            new BABYLON.Vector3(-2.15, -0.22, 0)
-        ],
+        shape: profile.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
         path: [
-            new BABYLON.Vector3(0, 0, -1.75),
-            new BABYLON.Vector3(0, 0, 1.75)
+            new BABYLON.Vector3(0, 0, -1.95),
+            new BABYLON.Vector3(0, 0, 1.95)
         ],
         cap: BABYLON.Mesh.CAP_ALL,
         closeShape: true,
