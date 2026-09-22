@@ -1200,6 +1200,29 @@ export function buildPavilion() {
     return group;
 }
 
+/** Encosto 0.55×0.7×0.12, centrado. Crista no meio e painel recuado na face interna (−Z). */
+function councilBackGeometry() {
+    const g = new THREE.BoxGeometry(0.55, 0.7, 0.12, 8, 10, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (y > 0.06) {
+            const u = Math.min(1, (y - 0.06) / 0.29);
+            const crest = Math.max(0, 0.32 - Math.abs(x) * 1.2);
+            y += u * crest;
+            x *= 1 - u * 0.18 * Math.min(1, Math.abs(x) / 0.27);
+        }
+        if (z < -0.03 && Math.abs(x) < 0.15 && y > -0.2 && y < 0.18) z += 0.055;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const COUNCIL_BACK = councilBackGeometry();
+
 export function buildCouncilRing() {
     const group = new THREE.Group();
     const stone = mapped(marbleTexture(), 0xe8e0d0, 0.55, 0.06, 0.5);
@@ -1215,7 +1238,8 @@ export function buildCouncilRing() {
         );
         seat.position.set(Math.cos(a) * 3.4, 0.02, Math.sin(a) * 3.4);
         group.add(seat);
-        const back = new THREE.Mesh(geo('council-back', () => new THREE.BoxGeometry(0.55, 0.7, 0.12)), stone);
+        const back = new THREE.Mesh(COUNCIL_BACK, stone);
+        back.name = 'councilBack';
         back.position.set(Math.cos(a) * 3.72, 0.5, Math.sin(a) * 3.72);
         back.lookAt(0, 0.5, 0);
         group.add(back);
