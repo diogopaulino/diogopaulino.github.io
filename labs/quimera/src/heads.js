@@ -448,6 +448,22 @@ const COWBOY_BANDANA = (() => {
 })();
 
 /**
+ * Aba do chapéu cowboy: sai da copa quase reta e a borda sobe cerca de 8 cm.
+ */
+const COWBOY_BRIM = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.20, 0),
+        new THREE.Vector2(0.28, 0.008),
+        new THREE.Vector2(0.34, 0.016),
+        new THREE.Vector2(0.39, 0.036),
+        new THREE.Vector2(0.43, 0.062),
+        new THREE.Vector2(0.445, 0.088)
+    ], 16);
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Boca do robô: a fenda no meio tem cerca de 11 cm de largura.
  * O furo gira no sentido contrário do contorno.
  */
@@ -675,7 +691,10 @@ const HEADS = {
         const { add, mats } = ctx;
         addFace(ctx);
         add.cyl(0.22, 0.24, 0.14, mats.secondary, [0, 0.28, 0]);
-        add.cyl(0.42, 0.40, 0.04, mats.secondary, [0, 0.20, 0], [0.12, 0, 0]);
+        const brim = add.mesh(COWBOY_BRIM, mats.secondary, [0, 0.16, 0], [0.12, 0, 0]);
+        brim.material = mats.secondary.clone();
+        brim.material.side = THREE.DoubleSide;
+        brim.name = 'cowboyBrim';
         const concho = add.mesh(COWBOY_CONCHO, mats.accent, [0, 0.22, 0.22]);
         concho.name = 'cowboyConcho';
         const bandana = add.mesh(COWBOY_BANDANA, mats.dark, [0, -0.08, 0.26]);
