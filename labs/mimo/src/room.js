@@ -298,12 +298,27 @@ export function buildRoom(quality) {
     root.add(lamp);
     refs.lamp = lamp;
 
+    // Cama: almofada abaulada no meio e rolo em volta. O grupo continua em (-1.35, 0, 1.15).
     const bed = new THREE.Group();
+    bed.name = 'petBed';
     bed.position.set(-1.35, 0, 1.15);
-    bed.add(mesh(cyl, cushionMat, { scale: [0.42, 0.1, 0.42], pos: [0, 0.08, 0] }));
-    bed.add(mesh(new THREE.TorusGeometry(0.38, 0.08, 10, 24), cushionMat, {
-        pos: [0, 0.12, 0], rot: [Math.PI / 2, 0, 0]
-    }));
+    const cushion = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.08, 0.02),
+        new THREE.Vector2(0.32, 0.035),
+        new THREE.Vector2(0.42, 0.07),
+        new THREE.Vector2(0.34, 0.11),
+        new THREE.Vector2(0.14, 0.145),
+        new THREE.Vector2(0.02, 0.16)
+    ], 20), cushionMat);
+    cushion.name = 'bedCushion';
+    cushion.castShadow = true;
+    cushion.receiveShadow = true;
+    const bolster = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 10, 24), cushionMat);
+    bolster.name = 'bedBolster';
+    bolster.position.y = 0.12;
+    bolster.rotation.x = Math.PI / 2;
+    bolster.castShadow = true;
+    bed.add(cushion, bolster);
     root.add(bed);
     refs.bed = bed;
 
