@@ -691,53 +691,74 @@ export function createCastle(scene) {
 /* ================================================================== */
 
 /**
- * Aríete centrado como o cone de altura 5. A ponta fica em +Y.
- * Seis nervuras no corpo; um colar perto da base.
+ * Rostro de bronze, centrado como o cone de altura 5. A ponta fica em +Y.
+ * Flange de fixação, dois anéis e um bico rombo — não um cone liso.
+ * Seis caneluras no haste.
  */
 function bossRamGeometry() {
     const pts = [
-        [1.15, -2.5],
-        [1.28, -2.15],
-        [0.9, -1.65],
-        [0.68, -0.35],
-        [0.44, 0.75],
-        [0.24, 1.6],
-        [0.09, 2.2],
-        [0.012, 2.5]
+        [1.35, -2.5],
+        [1.72, -2.22],
+        [0.92, -1.82],
+        [0.58, -1.15],
+        [0.78, -0.72],
+        [0.48, 0.05],
+        [0.74, 0.55],
+        [0.44, 1.25],
+        [0.66, 1.78],
+        [0.82, 2.12],
+        [0.36, 2.36],
+        [0.18, 2.5]
     ];
-    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 16);
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
         const z = pos.getZ(i);
         const rad = Math.hypot(x, z);
-        if (rad < 0.04 || y < -2.15 || y > 2.05) continue;
-        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 6)) ** 2 * 0.045;
-        const k = 1 + rib / rad;
+        if (rad < 0.22 || y < -2.05 || y > 2.05) continue;
+        const flute = Math.cos(Math.atan2(z, x) * 6);
+        const depth = flute > 0 ? 0.09 * flute * flute : -0.045 * flute * flute;
+        const k = 1 + depth / rad;
         pos.setXYZ(i, x * k, y, z * k);
     }
     g.computeVertexNormals();
     return g;
 }
 
-/** Tambor da balista, centrado como o cilindro de altura 3.4. */
+/** Tambor da balista, centrado como o cilindro de altura 3.4. Barril com aros. */
 function ballistaDrumGeometry() {
     const H = 3.4;
     const pts = [];
-    for (let i = 0; i <= 14; i++) {
-        const t = i / 14;
+    const steps = 24;
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
         const y = (t - 0.5) * H;
-        const course = Math.sin(t * Math.PI * 8) > 0.6 ? 0.07 : 0;
-        pts.push(new THREE.Vector2(1.78 - t * 0.28 + course, y));
+        const belly = Math.sin(t * Math.PI);
+        let r = 1.32 + belly * 0.48;
+        if (t < 0.07 || t > 0.93) r += 0.16;
+        if (Math.abs(Math.sin(t * Math.PI * 5)) > 0.86) r += 0.16;
+        pts.push(new THREE.Vector2(r, y));
     }
-    const g = new THREE.LatheGeometry(pts, 16);
+    const g = new THREE.LatheGeometry(pts, 18);
     g.computeVertexNormals();
     return g;
 }
 
+/** Arco da balista: prod curvo no lugar da viga reta. Corda no plano y=0. */
+function ballistaBowGeometry() {
+    const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-2.15, 0, 0),
+        new THREE.Vector3(0, 0.55, 0.42),
+        new THREE.Vector3(2.15, 0, 0)
+    );
+    return new THREE.TubeGeometry(curve, 18, 0.15, 8, false);
+}
+
 const BOSS_RAM = bossRamGeometry();
 const BALLISTA_DRUM = ballistaDrumGeometry();
+const BALLISTA_BOW = ballistaBowGeometry();
 
 export class BossBarge {
     constructor(scene) {
@@ -762,11 +783,11 @@ export class BossBarge {
         this.hullGroup = hull;
         this.parts = parts;
 
-        // Aríete de ferro na proa.
-        const ram = new THREE.Mesh(BOSS_RAM, metalMaterial(0x4a4740, 0.5));
+        // Rostro na proa (+Z), bico para a frente do rio.
+        const ram = new THREE.Mesh(BOSS_RAM, metalMaterial(0x6a5a42, 0.42));
         ram.name = 'bossRam';
         ram.rotation.x = -Math.PI / 2;
-        ram.position.set(0, -0.4, -17.5);
+        ram.position.set(0, 0.05, 16.6);
         ram.castShadow = true;
         group.add(ram);
 
@@ -775,12 +796,14 @@ export class BossBarge {
         for (const side of [-1, 1]) {
             const tower = new THREE.Group();
             const base = new THREE.Mesh(BALLISTA_DRUM, woodMaterial(true, 0x2b2018));
+            base.name = 'ballistaDrum';
             base.position.y = 1.7;
             base.castShadow = true;
             tower.add(base);
 
-            const bow = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.35, 0.35), woodMaterial(true, 0x3b2a1c));
-            bow.position.y = 3.6;
+            const bow = new THREE.Mesh(BALLISTA_BOW, woodMaterial(true, 0x3b2a1c));
+            bow.name = 'ballistaBow';
+            bow.position.y = 3.55;
             tower.add(bow);
 
             const brazier = new THREE.Mesh(
