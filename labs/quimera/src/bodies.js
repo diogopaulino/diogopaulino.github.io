@@ -524,6 +524,38 @@ const ASTRO_BOOT = (() => {
 })();
 
 /**
+ * Fecho do mago: as pontas ficam baixas e o centro sobe cerca de 10 cm.
+ */
+const WIZARD_CLASP = (() => {
+    const p = [
+        [-0.14, -0.04],
+        [-0.14, 0.03],
+        [-0.06, 0.04],
+        [0, 0.13],
+        [0.06, 0.04],
+        [0.14, 0.03],
+        [0.14, -0.04],
+        [0.06, -0.03],
+        [0, 0.01],
+        [-0.06, -0.03]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+/**
  * Colete do cowboy: cava mais baixa que o ombro e ponta na barra.
  * A cava desce cerca de 6 cm; a ponta fica cerca de 10 cm abaixo dos cantos.
  */
@@ -724,7 +756,8 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.22, 0], [0.52, 0.12], [0.4, 0.48], [0.26, 0.9], [0.16, 1.15]], mats.primary, [0, 0.05, 0]);
-            add.box(0.2, 0.08, 0.08, mats.accent, [0, 1.0, 0.16]);
+            const clasp = add.mesh(WIZARD_CLASP, mats.accent, [0, 1.0, 0.16]);
+            clasp.name = 'wizardClasp';
             add.sphere(0.04, mats.glow, [-0.16, 0.7, 0.22]);
             add.sphere(0.035, mats.glow, [0.18, 0.55, 0.2]);
             add.sphere(0.03, mats.glow, [0.08, 0.4, 0.24]);
