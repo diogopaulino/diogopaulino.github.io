@@ -1,4 +1,4 @@
-import { HomeLevel } from '../levels/HomeLevel.js?v=5';
+import { HomeLevel } from '../levels/HomeLevel.js?v=6';
 import { ShipLevel } from '../levels/ShipLevel.js?v=5';
 import { BeachLevel } from '../levels/BeachLevel.js?v=5';
 import { ForestLevel } from '../levels/ForestLevel.js?v=4';

@@ -3,7 +3,7 @@
  */
 
 import { Level } from './Level.js';
-import { buildHomeInterior, addHomeColliders } from '../world/Home.js?v=5';
+import { buildHomeInterior, addHomeColliders } from '../world/Home.js?v=6';
 import { buildRavi, CharacterAnimator } from '../characters/builders.js?v=4';
 import { EnvironmentFX } from '../world/Environment.js?v=5';
 

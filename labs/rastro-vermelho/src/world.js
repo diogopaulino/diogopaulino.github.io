@@ -257,8 +257,24 @@ export class World {
         for (const offset of [-.32, .32]) box(this.scene, parent, 'cinta', [.09, .84, .89], [x + offset, .42, z], this.mats.darkWood);
     }
     tent(parent, x, z) {
-        const tent = B.MeshBuilder.CreateCylinder('barraca', { diameter: 4, height: 4.2, tessellation: 3 }, this.scene);
-        tent.parent = parent; tent.rotation.z = Math.PI / 2; tent.rotation.y = Math.PI / 2; tent.position.set(x, 1, z); tent.material = this.mats.canvas;
+        const shape = [
+            new B.Vector3(-1.7, 0, 0),
+            new B.Vector3(0, 2.15, 0),
+            new B.Vector3(1.7, 0, 0),
+            new B.Vector3(1.45, -0.08, 0),
+            new B.Vector3(-1.45, -0.08, 0)
+        ];
+        const tent = B.MeshBuilder.ExtrudeShape('barraca', {
+            shape,
+            path: [new B.Vector3(0, 0, -2.05), new B.Vector3(0, 0, 2.05)],
+            cap: B.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: B.Mesh.DOUBLESIDE
+        }, this.scene);
+        tent.parent = parent;
+        tent.position.set(x, 0.02, z);
+        tent.material = this.mats.canvas;
+        tent.isPickable = false;
         box(this.scene, parent, 'esteio', [.1, 2.4, .1], [x, 1.2, z - 2.1], this.mats.wood);
         this.staticColliders.push({ x: parent.position.x + x, z: parent.position.z + z, radius: 2 });
     }

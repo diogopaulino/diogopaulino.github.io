@@ -6,6 +6,7 @@ import {
     woodTexture, darkWoodTexture, plasterTexture, rugTexture, clothTexture
 } from './Textures.js';
 import { makeFire } from './Environment.js?v=5';
+import { createMuscle } from '../../shared/realism-bjs.js';
 
 export function buildHomeInterior(scene) {
     const root = new BABYLON.TransformNode('homeRoot', scene);
@@ -138,11 +139,8 @@ export function buildHomeInterior(scene) {
     shiny.material = shinyMat;
     shiny.parent = root;
 
-    // Brinquedo de cavalo de madeira e bola
-    const horse = BABYLON.MeshBuilder.CreateBox('toyHorse', { width: 0.35, height: 0.22, depth: 0.12 }, scene);
-    horse.position.set(-3.4, 0.14, 2.2);
-    horse.material = woodMat;
-    horse.parent = root;
+    // Cavalo de madeira: corpo, pescoço, cabeça e quatro pernas. A bola continua esfera.
+    addToyHorse(scene, root, woodMat);
 
     const ball = BABYLON.MeshBuilder.CreateSphere('toyBall', { diameter: 0.24, segments: 8 }, scene);
     ball.position.set(-3.1, 0.12, 2.5);
@@ -153,6 +151,70 @@ export function buildHomeInterior(scene) {
 
     root.userData = { fire, shiny };
     return root;
+}
+
+/** Cavalinho de brinquedo. createMuscle é centrado em Y; rotation.x = π/2 deita o corpo em +Z. */
+function addToyHorse(scene, parent, mat) {
+    const g = new BABYLON.TransformNode('toyHorse', scene);
+    g.position.set(-3.4, 0.02, 2.2);
+    g.parent = parent;
+    const body = createMuscle(scene, 'toyBody', {
+        length: 0.34,
+        r0: 0.045,
+        r1: 0.04,
+        bulge: 0.035,
+        bulgeAt: 0.42,
+        pinch: 0.08,
+        tessellation: 8,
+        rings: 6
+    });
+    body.rotation.x = Math.PI / 2;
+    body.position.y = 0.16;
+    body.material = mat;
+    body.parent = g;
+    const neck = createMuscle(scene, 'toyNeck', {
+        length: 0.12,
+        r0: 0.032,
+        r1: 0.024,
+        bulge: 0.008,
+        bulgeAt: 0.4,
+        pinch: 0.05,
+        tessellation: 7,
+        rings: 4
+    });
+    neck.rotation.x = 0.95;
+    neck.position.set(0, 0.22, 0.14);
+    neck.material = mat;
+    neck.parent = g;
+    const head = BABYLON.MeshBuilder.CreateLathe('toyHead', {
+        shape: [
+            new BABYLON.Vector3(0.012, 0, 0),
+            new BABYLON.Vector3(0.038, 0.02, 0),
+            new BABYLON.Vector3(0.042, 0.07, 0),
+            new BABYLON.Vector3(0.018, 0.11, 0)
+        ],
+        tessellation: 8,
+        cap: BABYLON.Mesh.CAP_ALL
+    }, scene);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(0, 0.28, 0.2);
+    head.material = mat;
+    head.parent = g;
+    [[-0.055, 0.1], [0.055, 0.1], [-0.055, -0.08], [0.055, -0.08]].forEach(([x, z], i) => {
+        const leg = createMuscle(scene, `toyLeg_${i}`, {
+            length: 0.12,
+            r0: 0.018,
+            r1: 0.014,
+            bulge: 0.004,
+            bulgeAt: 0.35,
+            pinch: 0.1,
+            tessellation: 6,
+            rings: 4
+        });
+        leg.position.set(x, 0.08, z);
+        leg.material = mat;
+        leg.parent = g;
+    });
 }
 
 export function addHomeColliders(collision) {
