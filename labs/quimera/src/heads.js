@@ -333,6 +333,24 @@ const CHEF_MUSTACHE = (() => {
 })();
 
 /**
+ * Touca do chef: pregas alternam barriga e cintura.
+ * A barriga do meio chega a 25 cm de raio; as cinturas ficam em 16 cm.
+ */
+const CHEF_TOQUE = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.17, 0),
+        new THREE.Vector2(0.23, 0.05),
+        new THREE.Vector2(0.16, 0.09),
+        new THREE.Vector2(0.25, 0.15),
+        new THREE.Vector2(0.17, 0.21),
+        new THREE.Vector2(0.22, 0.25),
+        new THREE.Vector2(0.15, 0.28)
+    ], 14);
+    g.computeVertexNormals();
+    return g;
+})();
+
+/**
  * Faixa do ninja: o nó sobe no meio, cerca de 11 cm acima da tira.
  */
 const NINJA_BAND = (() => {
@@ -619,7 +637,8 @@ const HEADS = {
         const { add, mats } = ctx;
         addFace(ctx);
         add.cyl(0.16, 0.18, 0.12, mats.white, [0, 0.28, 0]);
-        add.cyl(0.22, 0.20, 0.28, mats.white, [0, 0.50, 0]);
+        const toque = add.mesh(CHEF_TOQUE, mats.white, [0, 0.36, 0]);
+        toque.name = 'chefToque';
         add.lathe([[0.04, 0], [0.2, 0.03], [0.22, 0.1], [0.08, 0.16]], mats.white, [0, 0.58, 0]);
         const mustache = add.mesh(CHEF_MUSTACHE, mats.dark, [0, -0.06, 0.27]);
         mustache.name = 'chefMustache';
