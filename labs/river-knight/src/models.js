@@ -317,7 +317,13 @@ function buildDragonHead(color) {
     const mat = woodMaterial(true, color);
     const dark = woodMaterial(true, 0x2a1810);
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.65, 20), mat);
+    const neck = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.22, -0.82),
+        new THREE.Vector2(0.28, -0.35),
+        new THREE.Vector2(0.16, 0.2),
+        new THREE.Vector2(0.11, 0.62),
+        new THREE.Vector2(0.14, 0.82)
+    ], 16), mat);
     neck.rotation.x = -0.42;
     neck.position.set(0, 0.72, 0.15);
     group.add(neck);
@@ -1090,6 +1096,15 @@ export function buildPineGeometry() {
         const r = 2.45 - i * 0.38;
         const h = 2.2 - i * 0.18;
         const cone = new THREE.ConeGeometry(r, h, 14);
+        const pos = cone.attributes.position;
+        for (let v = 0; v < pos.count; v++) {
+            const x = pos.getX(v);
+            const y = pos.getY(v);
+            const z = pos.getZ(v);
+            const n = 0.86 + Math.abs(Math.sin(x * 3.2 + i) * Math.cos(z * 2.6 + y)) * 0.22;
+            pos.setXYZ(v, x * n, y, z * n);
+        }
+        cone.computeVertexNormals();
         cone.translate((i % 2) * 0.12, 2.7 + i * 1.18, (i % 3 - 1) * 0.08);
         parts.push({ geo: cone, color: new THREE.Color().setHSL(0.30, 0.46, 0.15 + i * 0.032) });
     }

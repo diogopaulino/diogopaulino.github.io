@@ -2,7 +2,7 @@
  * Corpos dos 14 kits. Pés em y = 0; pescoço em LAYOUT.NECK_Y.
  */
 
-import { makeCtx, clothedBody, tagSlot, glass } from './kit.js';
+import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
 
 function build(kit, extras) {
     const ctx = makeCtx(kit);

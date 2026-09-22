@@ -3,7 +3,7 @@
  * character.js posiciona em LAYOUT.HEAD_Y.
  */
 
-import { makeCtx, addFace, tagSlot, glass } from './kit.js';
+import { makeCtx, addFace, tagSlot, glass } from './kit.js?v=4';
 import { headGeometry } from '../../shared/realism.js';
 
 function build(kit, fn, { skull = true } = {}) {
@@ -17,12 +17,12 @@ const HEADS = {
     pirate: (kit) => build(kit, (ctx) => {
         const { add, mats } = ctx;
         addFace(ctx);
-        add.sphere(0.31, mats.primary, [0, 0.08, 0], null, [1.02, 0.52, 1.02]);
+        add.lathe([[0.05, 0.02], [0.3, 0.06], [0.28, 0.16], [0.08, 0.22]], mats.primary, [0, 0.02, 0]);
         add.sphere(0.07, mats.primary, [-0.24, 0.14, -0.16]);
         add.sphere(0.055, mats.primary, [-0.30, 0.08, -0.12]);
         add.box(0.16, 0.08, 0.04, mats.dark, [0.12, 0.05, 0.26], [0.2, 0.4, 0]);
         add.cyl(0.01, 0.01, 0.58, mats.dark, [0, 0.12, 0.08], [0, 0, 1.05]);
-        add.sphere(0.16, mats.dark, [0, -0.22, 0.1], null, [1.15, 0.65, 0.85]);
+        add.lathe([[0.04, 0], [0.14, 0.02], [0.1, 0.1], [0.03, 0.16]], mats.dark, [0, -0.28, 0.12]);
         add.torus(0.04, 0.008, mats.accent, [0.28, -0.05, 0.1], [1.2, 0, 0.2]);
     }),
 
@@ -32,7 +32,7 @@ const HEADS = {
         add.cyl(0.24, 0.26, 0.12, mats.white, [0, 0.26, 0]);
         add.cyl(0.32, 0.32, 0.035, mats.white, [0, 0.20, 0]);
         add.box(0.08, 0.12, 0.02, mats.primary, [0, 0.22, 0.26]);
-        add.sphere(0.12, mats.dark, [0, 0.02, -0.22], null, [1.4, 0.5, 0.7]);
+        add.lathe([[0.02, 0], [0.08, 0.04], [0.05, 0.14], [0.015, 0.22]], mats.dark, [0, -0.02, -0.2], [0.4, 0, 0]);
     }),
 
     astronaut: (kit) => build(kit, (ctx) => {

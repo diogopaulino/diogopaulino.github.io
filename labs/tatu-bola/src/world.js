@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import { ISLAND } from './config.js';
 import { smoothstep, gauss } from './utils.js';
-import { pbrMat, createPalm, createIdol, createCloud, createBoat } from './models.js?v=3';
+import { pbrMat, createPalm, createIdol, createCloud, createBoat } from './models.js?v=4';
 import { sandGrain, templeStone, waterNormals } from './textures.js';
 
 const HILLS = [

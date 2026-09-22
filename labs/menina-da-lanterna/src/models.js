@@ -87,7 +87,12 @@ export function buildGirl() {
     body.position.y = 0.52;
     torso.add(body);
 
-    const cape = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 14, 1, true), std(0xa84838, 0.9));
+    const cape = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.06, 0),
+        new THREE.Vector2(0.16, 0.12),
+        new THREE.Vector2(0.28, 0.32),
+        new THREE.Vector2(0.14, 0.5)
+    ], 10, Math.PI * 0.55, Math.PI * 0.9), std(0xa84838, 0.9));
     cape.position.set(0, 0.28, -0.08);
     cape.rotation.x = 0.18;
     torso.add(cape);

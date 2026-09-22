@@ -298,6 +298,14 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
                 diameterBottom: t.d,
                 tessellation: 14
             }, scene);
+            const verts = cone.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            for (let i = 0; i < verts.length; i += 3) {
+                const n = 0.86 + Math.abs(Math.sin(verts[i] * 2.8 + t.y) * Math.cos(verts[i + 2] * 2.2)) * 0.2;
+                verts[i] *= n;
+                verts[i + 2] *= n;
+            }
+            cone.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
+            cone.createNormals(false);
             cone.position.y = t.y;
             cone.material = needleMat;
             cone.parent = root;

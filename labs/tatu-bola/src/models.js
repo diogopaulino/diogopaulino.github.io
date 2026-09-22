@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { shellArmor, barkTexture, leafTexture, templeStone } from './textures.js';
-import { limbGeometry, canineHeadGeometry, tailGeometry, shoeMesh, leatherMaterial, earBladeGeometry, wingMembrane } from '../../shared/realism.js';
+import { limbGeometry, canineHeadGeometry, tailGeometry, shoeMesh, leatherMaterial, earBladeGeometry, wingMembrane, headGeometry, torsoGeometry } from '../../shared/realism.js';
 
 const geoCache = new Map();
 function geo(key, factory) {
@@ -462,20 +462,29 @@ export function createIdol() {
     });
     base.position.y = 0.14;
     g.add(base);
-    const body = mesh(geo('idol-body', () => new THREE.CylinderGeometry(0.32, 0.48, 1.1, 48)), 0xe8c85a, {
+    const body = mesh(geo('idol-body', () => torsoGeometry({ height: 1.05, girth: 0.42, style: 'human', seg: 16 })), 0xe8c85a, {
         map: stone.map,
         normalMap: stone.normalMap,
         roughness: 0.48,
         metalness: 0.3
     });
-    body.position.y = 0.85;
+    body.position.y = 0.28;
     g.add(body);
-    const head = mesh(geo('idol-head', () => new THREE.BoxGeometry(0.7, 0.55, 0.55, 2, 2, 2)), 0xffe07a, {
+    const head = mesh(geo('idol-head', () => headGeometry(0.32, 'human')), 0xffe07a, {
         roughness: 0.42,
         metalness: 0.35
     });
-    head.position.y = 1.55;
+    head.position.y = 1.48;
     g.add(head);
+    const crown = mesh(geo('idol-crown', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.22, 0),
+        new THREE.Vector2(0.28, 0.06),
+        new THREE.Vector2(0.16, 0.14),
+        new THREE.Vector2(0.26, 0.28),
+        new THREE.Vector2(0.08, 0.36)
+    ], 6)), 0xffe07a, { roughness: 0.38, metalness: 0.45 });
+    crown.position.y = 1.68;
+    g.add(crown);
     const gem = mesh(geo('idol-gem', () => new THREE.OctahedronGeometry(0.18, 5)), 0xff3d8a, {
         roughness: 0.1,
         metalness: 0.2,

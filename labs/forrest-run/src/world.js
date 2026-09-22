@@ -3,7 +3,7 @@ import { mulberry32, pick, hexToColor3, mixHexColor3, lerp } from './utils.js';
 import {
     createTree, createHouse, createBarn, createBillboard,
     createRock, createFence, createMesa, disposeTransformNode
-} from './models.js?v=3';
+} from './models.js?v=4';
 import {
     createDirtTexture, createAsphaltTexture, createAsphaltBumpTexture,
     createGrassTexture, createCloudTexture

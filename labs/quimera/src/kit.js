@@ -102,6 +102,10 @@ export function makeAdd(parent) {
         cone(r, h, mat, pos, rot, scale, seg = 24) {
             return add.mesh(new THREE.ConeGeometry(r, h, seg), mat, pos, rot, scale);
         },
+        lathe(points, mat, pos, rot, seg = 14) {
+            const shape = points.map(([x, y]) => new THREE.Vector2(x, y));
+            return add.mesh(new THREE.LatheGeometry(shape, seg), mat, pos, rot);
+        },
         group(pos) {
             const g = new THREE.Group();
             if (pos) g.position.set(pos[0], pos[1], pos[2]);
