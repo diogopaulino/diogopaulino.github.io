@@ -224,16 +224,35 @@ export function buildShip(scene) {
     const wheelMat = new BABYLON.StandardMaterial('helmWheelMat', scene);
     wheelMat.diffuseColor = new BABYLON.Color3(0.4, 0.25, 0.12);
 
+    // Aro no plano XY, de frente para o timoneiro. O leme gira em Z.
     const wheel = BABYLON.MeshBuilder.CreateTorus('wheelTorus', {
         diameter: 0.84,
         thickness: 0.1,
         tessellation: 16
     }, scene);
+    wheel.rotation.x = Math.PI / 2;
     wheel.material = wheelMat;
     wheel.parent = helmRoot;
 
+    let spokeSrc = null;
     for (let i = 0; i < 8; i++) {
-        const spoke = BABYLON.MeshBuilder.CreateBox(`spoke_${i}`, { width: 0.05, height: 0.8, depth: 0.05 }, scene);
+        const spoke = spokeSrc
+            ? spokeSrc.clone(`spoke_${i}`)
+            : (spokeSrc = BABYLON.MeshBuilder.CreateLathe('spoke_0', {
+                shape: [
+                    new BABYLON.Vector3(0.016, -0.5, 0),
+                    new BABYLON.Vector3(0.04, -0.46, 0),
+                    new BABYLON.Vector3(0.022, -0.4, 0),
+                    new BABYLON.Vector3(0.014, -0.12, 0),
+                    new BABYLON.Vector3(0.032, 0, 0),
+                    new BABYLON.Vector3(0.014, 0.12, 0),
+                    new BABYLON.Vector3(0.022, 0.4, 0),
+                    new BABYLON.Vector3(0.04, 0.46, 0),
+                    new BABYLON.Vector3(0.016, 0.5, 0)
+                ],
+                tessellation: 7,
+                cap: BABYLON.Mesh.CAP_ALL
+            }, scene));
         spoke.rotation.z = (i / 8) * Math.PI;
         spoke.material = wheelMat;
         spoke.parent = helmRoot;
