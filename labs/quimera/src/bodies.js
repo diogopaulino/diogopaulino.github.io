@@ -206,6 +206,41 @@ const PACK_TANK = new THREE.LatheGeometry([
     new THREE.Vector2(0.04, 0.42)
 ], 16);
 
+/**
+ * Ombreira do samurai: sobe no pescoço e desce nas pontas.
+ * O arco do alto tem cerca de 13 cm.
+ */
+const SAMURAI_YOKE = (() => {
+    const p = [
+        [-0.35, -0.12],
+        [-0.35, -0.05],
+        [-0.20, 0.02],
+        [-0.08, 0.07],
+        [0, 0.08],
+        [0.08, 0.07],
+        [0.20, 0.02],
+        [0.35, -0.05],
+        [0.35, -0.12],
+        [0.20, -0.06],
+        [0, 0.02],
+        [-0.20, -0.06]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.03);
+    return g;
+})();
+
 const WARRIOR_CAPE = capeGeometry({ height: 0.7, neck: 0.12, hem: 0.36 });
 const WARRIOR_PLEAT = capePleat(0.7);
 const VIKING_CAPE = capeGeometry({ height: 0.55, neck: 0.11, hem: 0.30 });
@@ -411,7 +446,8 @@ const BODIES = {
             add.lathe([[0.14, 0], [0.24, 0.06], [0.22, 0.22], [0.14, 0.38]], mats.secondary, [0, 0.58, 0]);
             add.lathe([[0.16, 0], [0.28, 0.04], [0.24, 0.16], [0.14, 0.26]], mats.cloth, [0, 0.28, 0]);
             add.box(0.08, 0.22, 0.04, mats.accent, [0, 0.86, 0.18]);
-            add.box(0.7, 0.08, 0.18, mats.primary, [0, 1.08, 0], null, null, 0.03);
+            const yoke = add.mesh(SAMURAI_YOKE, mats.primary, [0, 1.08, 0.04]);
+            yoke.name = 'samuraiYoke';
         }
     }),
 
