@@ -1315,6 +1315,87 @@ export function buildBridge() {
     return group;
 }
 
+/** Encosto centrado. Crista no meio e um painel recuado na face +Z. */
+function throneBackGeometry() {
+    const hw = 0.72;
+    const hh = 1.125;
+    const s = new THREE.Shape();
+    s.moveTo(-hw, -hh);
+    s.lineTo(-hw, 0.2);
+    s.quadraticCurveTo(-0.15, hh + 0.22, 0, hh + 0.48);
+    s.quadraticCurveTo(0.15, hh + 0.22, hw, 0.2);
+    s.lineTo(hw, -hh);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.34,
+        bevelEnabled: true,
+        bevelThickness: 0.028,
+        bevelSize: 0.03,
+        bevelSegments: 1,
+        curveSegments: 10
+    });
+    g.translate(0, 0, -0.17);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (z > 0.04 && Math.abs(x) < 0.36 && y > -0.62 && y < 0.48) z -= 0.07;
+        if (z > 0.02) z -= Math.max(0, 1 - (x / 0.85) ** 2) * 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Assento 1.35×0.22×1.05, centrado. Prato no meio e lábio na frente (+Z). */
+function throneSeatGeometry() {
+    const g = new THREE.BoxGeometry(1.35, 0.22, 1.05, 8, 2, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y > 0.04) {
+            const dish = Math.max(0, 1 - (x / 0.72) ** 2) * Math.max(0, 1 - (z / 0.55) ** 2);
+            y -= dish * 0.055;
+            if (z > 0.38) y += 0.028;
+        }
+        if (y > 0.05 && (Math.abs(x) > 0.52 || Math.abs(z) > 0.4)) y -= 0.03;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Braço ao longo de Z, com a voluta na frente. Largura extrudada vira X. */
+function throneArmGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.45, -0.2);
+    s.lineTo(-0.45, 0.06);
+    s.lineTo(0.05, 0.16);
+    s.quadraticCurveTo(0.42, 0.2, 0.5, 0.02);
+    s.quadraticCurveTo(0.46, -0.12, 0.28, -0.16);
+    s.lineTo(0.05, -0.2);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.18,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.016,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.09);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const THRONE_BACK = throneBackGeometry();
+const THRONE_SEAT = throneSeatGeometry();
+const THRONE_ARM = throneArmGeometry();
+
 export function buildSeat() {
     const group = new THREE.Group();
     const stone = mapped(stoneTexture('#9a8a78'), 0xb0a090, 0.86, 0.04, 1.0);
@@ -1323,18 +1404,18 @@ export function buildSeat() {
         stone
     );
     group.add(base);
-    const back = new THREE.Mesh(
-        geo('seat-back', () => warp(new THREE.BoxGeometry(1.45, 2.25, 0.32), 70, 0.08, 0.5)),
-        stone
-    );
+    const back = new THREE.Mesh(THRONE_BACK, stone);
+    back.name = 'throneBack';
     back.position.set(0, 1.45, -0.52);
     group.add(back);
-    const sit = new THREE.Mesh(geo('seat-sit', () => new THREE.BoxGeometry(1.35, 0.22, 1.05)), stone);
+    const sit = new THREE.Mesh(THRONE_SEAT, stone);
+    sit.name = 'throneSeat';
     sit.position.set(0, 0.62, 0.12);
     group.add(sit);
     const arms = mapped(stoneTexture('#9a8a78'), 0xb0a090);
     for (const sx of [-1, 1]) {
-        const arm = new THREE.Mesh(geo('seat-arm', () => new THREE.BoxGeometry(0.18, 0.55, 0.9)), arms);
+        const arm = new THREE.Mesh(THRONE_ARM, arms);
+        arm.name = 'throneArm';
         arm.position.set(sx * 0.72, 0.85, 0.05);
         group.add(arm);
     }
