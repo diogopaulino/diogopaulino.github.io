@@ -211,6 +211,57 @@ const PACK_TANK = new THREE.LatheGeometry([
  * O arco do alto tem cerca de 13 cm.
  */
 /**
+ * Bolsa do explorador: mais larga embaixo, fundo arredondado.
+ * A aba cobre o alto e desce no centro.
+ */
+const EXPLORER_BAG = (() => {
+    const p = [
+        [-0.08, 0.09],
+        [-0.12, 0.02],
+        [-0.14, -0.04],
+        [-0.08, -0.10],
+        [0, -0.16],
+        [0.08, -0.10],
+        [0.14, -0.04],
+        [0.12, 0.02],
+        [0.08, 0.09]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.1,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.05);
+    return g;
+})();
+
+const EXPLORER_FLAP = (() => {
+    const p = [
+        [-0.11, 0.08],
+        [0.11, 0.08],
+        [0.12, 0.00],
+        [0.04, -0.06],
+        [0, -0.08],
+        [-0.04, -0.06],
+        [-0.12, 0.00]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.02, bevelEnabled: false });
+    g.translate(0, 0, 0.04);
+    return g;
+})();
+
+/**
  * Cinto do viking: a fivela sobe no centro.
  * O alto do meio fica cerca de 10 cm acima das pontas.
  */
@@ -424,7 +475,10 @@ const BODIES = {
     explorer: (kit) => build(kit, {
         options: {},
         detail: ({ add, mats }) => {
-            add.box(0.28, 0.22, 0.12, mats.accent, [-0.28, 0.72, 0.04], [0, 0.4, 0.15], null, 0.04);
+            const bag = add.mesh(EXPLORER_BAG, mats.accent, [-0.28, 0.72, 0.04], [0, 0.4, 0.15]);
+            bag.name = 'explorerBag';
+            const flap = add.mesh(EXPLORER_FLAP, mats.secondary, [-0.28, 0.72, 0.04], [0, 0.4, 0.15]);
+            flap.name = 'explorerFlap';
             add.box(0.16, 0.04, 0.12, mats.primary, [0, 0.98, 0.18]);
             add.box(0.1, 0.1, 0.08, mats.secondary, [0.16, 0.58, 0.16]);
         }
