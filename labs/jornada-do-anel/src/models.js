@@ -1224,21 +1224,90 @@ export function buildCouncilRing() {
     return group;
 }
 
+/** Laje 2.35×0.26×1.55, centrada. Chanfro, prato gasto no topo e cinta na face. */
+function bridgeSlabGeometry() {
+    const g = new THREE.BoxGeometry(2.35, 0.26, 1.55, 10, 3, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const edgeX = Math.abs(x) > 0.95;
+        const edgeZ = Math.abs(z) > 0.58;
+        if (y > 0.06 && (edgeX || edgeZ)) {
+            y -= 0.045;
+            if (edgeX) x *= 0.94;
+            if (edgeZ) z *= 0.93;
+        }
+        if (y > 0.04) {
+            const dish = Math.max(0, 1 - (x / 1.15) ** 2) * Math.max(0, 1 - (z / 0.75) ** 2);
+            y += dish * 0.035;
+        }
+        if (Math.abs(y) < 0.05 && (Math.abs(x) > 1.05 || Math.abs(z) > 0.68)) {
+            if (Math.abs(x) > 1.05) x = Math.sign(x) * (Math.abs(x) + 0.04);
+            if (Math.abs(z) > 0.68) z = Math.sign(z) * (Math.abs(z) + 0.035);
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Pilar de 1.15, centrado. Base, fuste e capitel. */
+function bridgePostGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const y = (t - 0.5) * 1.15;
+        let r = 0.05;
+        r += 0.045 * Math.exp(-((t - 0.08) ** 2) / 0.003);
+        r += 0.02 * Math.exp(-((t - 0.48) ** 2) / 0.012);
+        r += 0.04 * Math.exp(-((t - 0.88) ** 2) / 0.004);
+        if (t < 0.05 || t > 0.95) r = 0.095;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Travessa de 2.4 ao longo de X, seção redonda com ponteiras. */
+function bridgeRailGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const y = (t - 0.5) * 2.4;
+        const r = t < 0.07 || t > 0.93 ? 0.075 : 0.042;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.rotateZ(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BRIDGE_SLAB = bridgeSlabGeometry();
+const BRIDGE_POST = bridgePostGeometry();
+const BRIDGE_RAIL = bridgeRailGeometry();
+
 export function buildBridge() {
     const group = new THREE.Group();
     const stone = mapped(stoneTexture('#5a5048'), 0x6a6058, 0.88, 0.04, 1.05);
     for (let i = 0; i < 10; i++) {
-        const slab = new THREE.Mesh(geo('br-slab', () => new THREE.BoxGeometry(2.35, 0.26, 1.55)), stone);
+        const slab = new THREE.Mesh(BRIDGE_SLAB, stone);
+        slab.name = 'bridgeSlab';
         slab.position.set((i % 2) * 0.06, 0.13, -7.2 + i * 1.6);
         group.add(slab);
     }
     for (const z of [-7.2, 7.2]) {
         for (const x of [-1.12, 1.12]) {
-            const post = new THREE.Mesh(geo('br-post', () => new THREE.BoxGeometry(0.16, 1.15, 0.16)), stone);
+            const post = new THREE.Mesh(BRIDGE_POST, stone);
+            post.name = 'bridgePost';
             post.position.set(x, 0.7, z);
             group.add(post);
         }
-        const rail = new THREE.Mesh(geo('br-rail', () => new THREE.BoxGeometry(2.4, 0.08, 0.1)), stone);
+        const rail = new THREE.Mesh(BRIDGE_RAIL, stone);
+        rail.name = 'bridgeRail';
         rail.position.set(0, 1.15, z);
         group.add(rail);
     }
