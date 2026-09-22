@@ -29,6 +29,48 @@ function getPrefab(scene, shadowGenerator, key, builderFunc) {
     return instance;
 }
 
+/**
+ * Duas águas: cumeeira no eixo X, vão em Z, beiral abaixo de y = 0.
+ * O caller encosta y = 0 no topo da parede.
+ */
+function gableRoof(scene, name, { length, span, rise }) {
+    const hx = span / 2;
+    const lip = 0.42;
+    const shape = [
+        new BABYLON.Vector3(-hx - lip, 0, 0),
+        new BABYLON.Vector3(0, rise, 0),
+        new BABYLON.Vector3(hx + lip, 0, 0),
+        new BABYLON.Vector3(hx + lip - 0.18, -0.32, 0),
+        new BABYLON.Vector3(-(hx + lip - 0.18), -0.32, 0)
+    ];
+    const half = length / 2;
+    return BABYLON.MeshBuilder.ExtrudeShape(name, {
+        shape,
+        path: [
+            new BABYLON.Vector3(-half, 0, 0),
+            new BABYLON.Vector3(half, 0, 0)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+}
+
+/** Costelas no cilindro, sem mudar a altura. */
+function erodeColumn(mesh, ribs, amp) {
+    const pos = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    for (let i = 0; i < pos.length; i += 3) {
+        const x = pos[i];
+        const z = pos[i + 2];
+        const ang = Math.atan2(z, x);
+        const k = 1 + Math.abs(Math.sin(ang * ribs)) * amp;
+        pos[i] = x * k;
+        pos[i + 2] = z * k;
+    }
+    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, pos);
+    mesh.createNormals(false);
+}
+
 const matCache = new Map();
 function pbrMat(scene, key, colorHex, roughness = 0.8, metallic = 0.05, extra = {}) {
     const fullKey = `${key}_${colorHex}_${roughness}_${metallic}`;
@@ -413,13 +455,8 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     walls.material = wallMat;
     walls.parent = root;
     registerShadows(walls, shadowGenerator);
-    const roof = BABYLON.MeshBuilder.CreateCylinder('roof', {
-        height: 6.0,
-        diameter: 4.8,
-        tessellation: 3
-    }, scene);
-    roof.rotation.z = Math.PI / 2;
-    roof.position.y = 4.2;
+    const roof = gableRoof(scene, 'roof', { length: 6.2, span: 4.6, rise: 2.15 });
+    roof.position.y = 3.2;
     roof.material = roofMat;
     roof.parent = root;
     registerShadows(roof, shadowGenerator);
@@ -456,9 +493,8 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
     body.material = redMat;
     body.parent = root;
     registerShadows(body, shadowGenerator);
-    const roof = BABYLON.MeshBuilder.CreateCylinder('barnRoofMesh', { height: 7.0, diameter: 5.8, tessellation: 3 }, scene);
-    roof.rotation.z = Math.PI / 2;
-    roof.position.y = 5.2;
+    const roof = gableRoof(scene, 'barnRoofMesh', { length: 7.4, span: 5.6, rise: 2.45 });
+    roof.position.y = 4.2;
     roof.material = roofMat;
     roof.parent = root;
     registerShadows(roof, shadowGenerator);
@@ -475,6 +511,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         diameterBottom: 8.4,
         tessellation: 12
     }, scene);
+    erodeColumn(base, 5, 0.14);
     base.position.y = 4.25;
     base.material = rockMat;
     base.parent = root;
@@ -485,6 +522,7 @@ export function createTree(scene, shadowGenerator, kind = 'oak') {
         diameterBottom: 6.8,
         tessellation: 12
     }, scene);
+    erodeColumn(cap, 5, 0.08);
     cap.position.y = 8.8;
     cap.material = topMat;
     cap.parent = root;
