@@ -266,6 +266,38 @@ const ASTRO_HANDLE = (() => {
 })();
 
 /**
+ * Pena do pirata: a ponta fecha no alto e o cano fica estreito
+ * embaixo. A barriga abre cerca de 11 cm a mais que o cano.
+ */
+const PIRATE_FEATHER = (() => {
+    const p = [
+        [0, 0.10],
+        [0.03, 0.055],
+        [0.065, 0.02],
+        [0.022, -0.02],
+        [0.008, -0.055],
+        [-0.008, -0.055],
+        [-0.022, -0.02],
+        [-0.065, 0.02],
+        [-0.03, 0.055]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.016,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.008);
+    return g;
+})();
+
+/**
  * Tsuba do ninja: oval mais largo que alto, com a fenda do
  * nakago no meio (cerca de 9 cm de vão).
  */
@@ -314,8 +346,10 @@ const ACCESSORIES = {
         add.cone(0.03, 0.1, mats.accent, [0.14, 0.0, 0.06], [0, 0, -1.2]);
         add.sphere(0.018, mats.dark, [0.1, 0.04, 0.08]);
         add.sphere(0.03, mats.primary, [0, -0.06, -0.04]);
-        add.box(0.04, 0.08, 0.02, mats.primary, [-0.06, 0.08, 0], [0, 0, 0.5]);
-        add.box(0.04, 0.08, 0.02, mats.primary, [0.04, 0.08, -0.04], [0, 0, -0.4]);
+        const featherL = add.mesh(PIRATE_FEATHER, mats.primary, [-0.06, 0.08, 0], [0, 0, 0.5]);
+        featherL.name = 'pirateFeatherL';
+        const featherR = add.mesh(PIRATE_FEATHER, mats.primary, [0.04, 0.08, -0.04], [0, 0, -0.4]);
+        featherR.name = 'pirateFeatherR';
     }),
 
     sailor: (kit) => build(kit, 'grip', ({ add, mats }) => {
