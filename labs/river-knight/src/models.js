@@ -481,6 +481,46 @@ function cannonBarrelGeometry() {
 const CANNON_CARRIAGE = cannonCarriageGeometry();
 const CANNON_BARREL = cannonBarrelGeometry();
 
+/**
+ * Leme em pá, 1.15 de alto. Estoque estreito em cima, folha larga na água.
+ * Espessura no X, para o giro em Y do casco continuar no mesmo eixo.
+ */
+function rudderGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.045, 0.58);
+    shape.lineTo(0.05, 0.58);
+    shape.lineTo(0.07, 0.28);
+    shape.lineTo(0.1, 0.02);
+    shape.lineTo(0.24, -0.18);
+    shape.lineTo(0.2, -0.58);
+    shape.lineTo(-0.14, -0.5);
+    shape.lineTo(-0.18, -0.16);
+    shape.lineTo(-0.06, 0.22);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.07,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.01,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -0.035);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const spine = Math.exp(-(x * x) / 0.0035);
+        z += Math.sign(z || 1) * 0.016 * spine * (0.45 + (0.58 - y) / 1.16);
+        pos.setXYZ(i, x, y, z);
+    }
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const RUDDER = rudderGeometry();
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -642,11 +682,10 @@ export function buildLongship({
         transom.castShadow = true;
         group.add(transom);
 
-        const rudder = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 1.15, 0.55),
-            woodMaterial(true, 0x3a2618)
-        );
+        const rudder = new THREE.Mesh(RUDDER, woodMaterial(true, 0x3a2618));
+        rudder.name = 'rudderBlade';
         rudder.position.set(0, -0.55, -length * 0.52);
+        rudder.castShadow = true;
         group.add(rudder);
         parts.rudder = rudder;
     }
