@@ -998,7 +998,8 @@ const BODIES = {
             add.lathe([[0.16, 0], [0.3, 0.08], [0.28, 0.4], [0.18, 0.68]], mats.white, [0, 0.42, 0]);
             const badge = add.mesh(LAB_BADGE, mats.secondary, [0, 1.02, 0.20]);
             badge.name = 'labBadge';
-            add.box(0.1, 0.1, 0.08, mats.accent, [0.22, 0.70, 0.16], null, null, 0.02);
+            const pocket = add.mesh(LAB_POCKET, mats.accent, [0.22, 0.70, 0.16]);
+            pocket.name = 'labPocket';
             const coat = add.mesh(LAB_COAT, mats.secondary, [0, 0.18, 0]);
             coat.name = 'labCoat';
         }
@@ -1048,6 +1049,37 @@ const EXPLORER_POUCH = (() => {
         [0.045, -0.04],
         [0.07, 0.01],
         [0.035, 0.06]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.025);
+    return g;
+})();
+
+/**
+ * Bolso do cientista: gargalo estreito, barriga larga e base reta.
+ * A barriga tem cerca de 9 cm a mais de largura que o gargalo.
+ */
+const LAB_POCKET = (() => {
+    const p = [
+        [-0.025, 0.07],
+        [-0.07, 0.01],
+        [-0.06, -0.04],
+        [-0.03, -0.065],
+        [0.03, -0.065],
+        [0.06, -0.04],
+        [0.07, 0.01],
+        [0.025, 0.07]
     ];
     const s = new THREE.Shape();
     s.moveTo(p[0][0], p[0][1]);
