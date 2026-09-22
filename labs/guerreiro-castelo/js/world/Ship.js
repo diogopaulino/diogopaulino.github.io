@@ -217,11 +217,36 @@ export function buildShip(scene) {
     mooring.material = ropeMat;
     mooring.parent = root;
 
-    // Cabine na proa: paredes e telhado de duas águas
-    const cabin = BABYLON.MeshBuilder.CreateBox('shipCabin', { width: 4.05, height: 1.15, depth: 3.05 }, scene);
+    // Cabine na proa: esteios e tábuas com vão de porta na face de ré.
+    // O colisor continua sendo a parede sólida em addShipColliders.
+    const cabin = new BABYLON.TransformNode('shipCabin', scene);
     cabin.position.set(0, 1.925, -5.4);
-    cabin.material = woodMat;
     cabin.parent = root;
+    const cabinBoard = (name, w, h, d, x, y, z) => {
+        const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, scene);
+        m.position.set(x, y, z);
+        m.material = woodMat;
+        m.parent = cabin;
+        return m;
+    };
+    for (const x of [-1.945, 1.945]) {
+        for (const z of [-1.445, 1.445]) {
+            cabinBoard('cabinPost', 0.16, 1.15, 0.16, x, 0, z);
+        }
+    }
+    for (const y of [-0.45, -0.15, 0.15, 0.45]) {
+        for (const x of [-1.945, 1.945]) {
+            cabinBoard('cabinSide', 0.09, 0.24, 2.78, x, y, 0);
+        }
+        cabinBoard('cabinBow', 3.78, 0.24, 0.09, 0, y, -1.445);
+        if (y > 0.3) {
+            cabinBoard('cabinLintel', 3.78, 0.24, 0.09, 0, y, 1.445);
+        } else {
+            for (const x of [-1.16, 1.16]) {
+                cabinBoard('cabinDoor', 1.42, 0.24, 0.09, x, y, 1.445);
+            }
+        }
+    }
 
     const cabinRoof = BABYLON.MeshBuilder.ExtrudeShape('shipCabinRoof', {
         shape: [
