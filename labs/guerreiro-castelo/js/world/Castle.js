@@ -106,6 +106,50 @@ function keepRoofMesh(scene) {
     }, scene);
 }
 
+/** Planta da muralha, comprida em X. Pilastras nas duas faces; o portão abre um vão na face +Z. */
+function wallPlan(length, thick, gateOnPositiveZ) {
+    const hl = length / 2;
+    const ht = thick / 2;
+    const jut = 0.48;
+    const pilW = 0.85;
+    const pitch = 3.15;
+    const spots = [];
+    for (let x = -hl + 1.8; x + pilW < hl - 0.8; x += pitch) spots.push(x);
+    const blocksGate = (x) => gateOnPositiveZ && x < 4.3 && x + pilW > -4.3;
+    const pts = [[-hl, -ht]];
+    for (const x of spots) {
+        pts.push([x, -ht], [x, -ht - jut], [x + pilW, -ht - jut], [x + pilW, -ht]);
+    }
+    pts.push([hl, -ht], [hl, ht]);
+    for (let i = spots.length - 1; i >= 0; i--) {
+        const x = spots[i];
+        if (blocksGate(x)) continue;
+        pts.push([x + pilW, ht], [x + pilW, ht + jut], [x, ht + jut], [x, ht]);
+    }
+    pts.push([-hl, ht]);
+    return pts;
+}
+
+function extrudeWall(scene, name, length, thick, height, gateOnPositiveZ, steps, scaleMul) {
+    const shape = wallPlan(length, thick, gateOnPositiveZ).map(([x, z]) => new BABYLON.Vector3(x, z, 0));
+    const path = [];
+    for (let i = 0; i <= steps; i++) path.push(new BABYLON.Vector3(0, (i / steps) * height, 0));
+    return BABYLON.MeshBuilder.ExtrudeShapeCustom(name, {
+        shape,
+        path,
+        closeShape: true,
+        cap: BABYLON.Mesh.CAP_ALL,
+        firstNormal: new BABYLON.Vector3(1, 0, 0),
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+        scaleFunction: (_i, distance) => {
+            const t = distance / height;
+            const batter = 1.04 - t * 0.05;
+            const course = 1 + Math.sin(distance * 2.5) * 0.016;
+            return batter * course * scaleMul;
+        }
+    }, scene);
+}
+
 export function buildCastle(scene) {
     const root = new BABYLON.TransformNode('castleRoot', scene);
 
@@ -124,16 +168,23 @@ export function buildCastle(scene) {
     const court = 28;
 
     const mkWall = (name, w, d, x, z) => {
-        const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: wallH, depth: d }, scene);
-        m.position.set(x, wallH / 2, z);
+        const alongX = w >= d;
+        const length = alongX ? w : d;
+        const thick = alongX ? d : w;
+        const gate = alongX && z > 0;
+        const m = extrudeWall(scene, name, length, thick, wallH, gate, 12, 1);
+        const moss = extrudeWall(scene, `${name}_moss`, length, thick, 2.35, gate, 2, 1.06);
+        if (!alongX) {
+            m.rotation.y = Math.PI / 2;
+            moss.rotation.y = Math.PI / 2;
+        }
+        m.position.set(x, 0, z);
+        moss.position.set(x, 0, z);
         m.material = stoneMat;
+        moss.material = mossMat;
         m.parent = root;
+        moss.parent = root;
         m.receiveShadows = true;
-
-        const mossBand = BABYLON.MeshBuilder.CreateBox(`${name}_moss`, { width: w * 0.98, height: 2.2, depth: d * 1.02 }, scene);
-        mossBand.position.set(x, 1.1, z);
-        mossBand.material = mossMat;
-        mossBand.parent = root;
 
         addCrenels(root, stoneMat, x, z, w, d, wallH, scene);
     };
