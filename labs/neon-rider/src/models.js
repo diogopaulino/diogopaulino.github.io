@@ -494,7 +494,22 @@ export function createCar(mats, kind = 0) {
 
 export function createCassette(mats) {
     const g = new THREE.Group();
-    g.add(mesh(BOX, mats.tapeBody, 0.9, 0.55, 0.18, 0, 0, 0));
+    // Carcaça com cantos arredondados e saia embaixo. O centro continua na origem.
+    const shellShape = new THREE.Shape();
+    const shellPts = [
+        [0.22, 0.275], [0.38, 0.24], [0.43, 0.12], [0.44, -0.08], [0.48, -0.18], [0.45, -0.275],
+        [-0.45, -0.275], [-0.48, -0.18], [-0.44, -0.08], [-0.43, 0.12], [-0.38, 0.24], [-0.22, 0.275]
+    ];
+    shellShape.moveTo(shellPts[0][0], shellPts[0][1]);
+    for (let i = 1; i < shellPts.length; i++) shellShape.lineTo(shellPts[i][0], shellPts[i][1]);
+    const shellGeo = new THREE.ExtrudeGeometry(shellShape, { depth: 0.16, bevelEnabled: false, curveSegments: 4 });
+    shellGeo.translate(0, 0, -0.08);
+    shellGeo.computeVertexNormals();
+    const shell = new THREE.Mesh(shellGeo, mats.tapeBody);
+    shell.name = 'tapeShell';
+    shell.castShadow = true;
+    shell.receiveShadow = true;
+    g.add(shell);
     g.add(mesh(BOX, mats.tapeWindow, 0.55, 0.28, 0.06, 0, 0.02, 0.08));
     const reel = mesh(CYL, mats.chrome, 0.12, 0.08, 0.12, -0.16, 0.02, 0.1);
     reel.rotation.x = Math.PI / 2;

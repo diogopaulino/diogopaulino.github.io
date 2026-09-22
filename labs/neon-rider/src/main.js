@@ -10,10 +10,10 @@ import {
     QUALITY, DIFFICULTY, STATIONS, loadSettings, saveSettings
 } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL } from './utils.js';
-import { createSharedMaterials, tintMaterials } from './models.js?v=10';
-import { City, createSky, createRoad } from './world.js?v=10';
-import { Player } from './player.js?v=10';
-import { Traffic } from './traffic.js?v=10';
+import { createSharedMaterials, tintMaterials } from './models.js?v=11';
+import { City, createSky, createRoad } from './world.js?v=11';
+import { Player } from './player.js?v=11';
+import { Traffic } from './traffic.js?v=11';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';
 import { Input } from './input.js';
@@ -551,6 +551,7 @@ function hexToArr(hex) {
 }
 
 const game = new Game();
+window.__neon = game;
 game.init().catch((err) => {
     console.error(err);
     game.hud.showError(err?.message || 'Falha ao iniciar o Neon Rider.');
