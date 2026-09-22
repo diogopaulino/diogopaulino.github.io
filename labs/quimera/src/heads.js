@@ -501,6 +501,40 @@ const SAILOR_ANCHOR = (() => {
     return g;
 })();
 
+/**
+ * Módulo do capacete: a base fica baixa e a lente no meio
+ * sobe cerca de 5 cm acima das pontas.
+ */
+const ASTRO_MODULE = (() => {
+    const p = [
+        [-0.035, -0.016],
+        [-0.028, -0.020],
+        [0.028, -0.020],
+        [0.035, -0.016],
+        [0.035, 0.008],
+        [0.014, 0.012],
+        [0.008, 0.026],
+        [0, 0.034],
+        [-0.008, 0.026],
+        [-0.014, 0.012],
+        [-0.035, 0.008]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.025);
+    return g;
+})();
+
 function build(kit, fn, { skull = true } = {}) {
     const ctx = makeCtx(kit);
     if (skull) ctx.add.mesh(headGeometry(ctx.L.HEAD_R, 'human'), ctx.mats.skin);
@@ -538,7 +572,8 @@ const HEADS = {
         add.cyl(0.28, 0.30, 0.12, mats.secondary, [0, -0.18, 0]);
         add.sphere(0.36, glass(0x9ad4ea), [0, 0.04, 0.04]);
         add.torus(0.30, 0.03, mats.secondary, [0, -0.02, 0.02], [Math.PI / 2, 0, 0]);
-        add.box(0.07, 0.04, 0.05, mats.accent, [0.30, 0.1, 0]);
+        const module = add.mesh(ASTRO_MODULE, mats.accent, [0.30, 0.1, 0]);
+        module.name = 'astroModule';
         add.cyl(0.018, 0.018, 0.14, mats.secondary, [0.34, 0.2, 0]);
         add.sphere(0.03, mats.glow, [0.34, 0.28, 0]);
     }),
