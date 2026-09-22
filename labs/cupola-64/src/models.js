@@ -547,11 +547,60 @@ export function createCastle() {
     steps.position.set(0, 0, 5.08);
     g.add(steps);
 
-    const bridge = mesh(geo('c-br', () => new THREE.BoxGeometry(3.2, 0.28, 6.5, 2, 1, 2)), 0xd2b48c, {
-        roughness: 0.78
+    const bridge = mesh(geo('c-br', () => {
+        const deck = new THREE.BoxGeometry(3.2, 0.22, 6.5, 2, 1, 18);
+        const pos = deck.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            if (pos.getY(i) < 0.04) continue;
+            pos.setY(i, pos.getY(i) - Math.abs(Math.sin(pos.getZ(i) * 4.4)) * 0.018);
+        }
+        deck.computeVertexNormals();
+        return deck;
+    }), 0xd2b48c, { roughness: 0.72 });
+    bridge.position.set(0, 1.45, 10.4);
+    const stringerGeo = geo('c-br-s', () => {
+        const shape = new THREE.Shape();
+        shape.moveTo(-3.2, 0);
+        shape.lineTo(3.2, 0);
+        shape.lineTo(3.2, -0.1);
+        shape.quadraticCurveTo(0, -1.34, -3.2, -0.1);
+        shape.closePath();
+        const s = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false });
+        s.translate(0, 0, -0.07);
+        s.rotateY(-Math.PI / 2);
+        return s;
     });
-    bridge.position.set(0, 1.42, 10.4);
-    g.add(bridge);
+    const sL = mesh(stringerGeo, 0xc4a070, { roughness: 0.66 });
+    sL.position.set(-1.46, 1.32, 10.4);
+    const sR = mesh(stringerGeo, 0xc4a070, { roughness: 0.66 });
+    sR.position.set(1.46, 1.32, 10.4);
+    const postGeo = geo('c-post', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.055, 0),
+        new THREE.Vector2(0.07, 0.06),
+        new THREE.Vector2(0.04, 0.46),
+        new THREE.Vector2(0.065, 0.56),
+        new THREE.Vector2(0.028, 0.66)
+    ], 7));
+    const railGeo = geo('c-rail', () => {
+        const pts = [];
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            pts.push(new THREE.Vector3(0, Math.sin(t * Math.PI) * -0.05, (t - 0.5) * 6.1));
+        }
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.035, 5, false);
+    });
+    for (const sx of [-1.42, 1.42]) {
+        const rail = mesh(railGeo, 0xe8c898, { roughness: 0.5 });
+        rail.position.set(sx, 1.95, 10.4);
+        rail.castShadow = false;
+        g.add(rail);
+        for (let i = 0; i < 5; i++) {
+            const post = mesh(postGeo, 0xc4a070, { roughness: 0.64 });
+            post.position.set(sx, 1.52, 10.4 + (i - 2) * 1.35);
+            g.add(post);
+        }
+    }
+    g.add(bridge, sL, sR);
 
     return g;
 }
