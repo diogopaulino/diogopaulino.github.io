@@ -1279,26 +1279,89 @@ export function mergeWithColors(parts) {
     return merged;
 }
 
+/** Fuste de 9, centrado. Talude, fiadas e nervuras. */
+function watchShaftGeometry() {
+    const H = 9;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) {
+        const t = i / 18;
+        const y = (t - 0.5) * H;
+        let r = 2.55 - t * 0.5;
+        if (t < 0.08) r += 0.22 * (1 - t / 0.08);
+        if (Math.sin(t * Math.PI * 9) > 0.55) r += 0.07;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 18);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rib = 1 + 0.04 * Math.cos(Math.atan2(z, x) * 8) ** 2;
+        pos.setXYZ(i, x * rib, y, z * rib);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Coroamento de 1.2, centrado, com beiral. */
+function watchCrownGeometry() {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(2.15, -0.6),
+        new THREE.Vector2(2.28, -0.28),
+        new THREE.Vector2(2.4, 0.02),
+        new THREE.Vector2(2.75, 0.18),
+        new THREE.Vector2(2.42, 0.42),
+        new THREE.Vector2(2.15, 0.6)
+    ], 18);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Ameia 0.7×0.9×0.6, centrada. Base mais larga e topo em cunha. */
+function watchMerlonGeometry() {
+    const g = new THREE.BoxGeometry(0.7, 0.9, 0.6, 3, 6, 3);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + 0.45) / 0.9;
+        x *= 1 + (1 - t) * 0.22;
+        z *= 1 + (1 - t) * 0.14;
+        if (y > 0.08) y += (0.35 - Math.abs(x)) * 0.42;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const WATCH_SHAFT = watchShaftGeometry();
+const WATCH_CROWN = watchCrownGeometry();
+const WATCH_MERLON = watchMerlonGeometry();
+
 /** Torre de vigia inimiga fincada na margem. */
 export function buildWatchtower({ lit = true } = {}) {
     const group = new THREE.Group();
     const stone = stoneMaterial('#7d7a72');
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.6, 9, 10), stone);
+    const base = new THREE.Mesh(WATCH_SHAFT, stone);
+    base.name = 'watchShaft';
     base.position.y = 4.5;
     base.castShadow = true;
     base.receiveShadow = true;
     group.add(base);
 
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.2, 1.2, 10), stone);
+    const crown = new THREE.Mesh(WATCH_CROWN, stone);
+    crown.name = 'watchCrown';
     crown.position.y = 9.4;
     crown.castShadow = true;
     group.add(crown);
 
-    // Ameias.
     for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.6), stone);
+        const merlon = new THREE.Mesh(WATCH_MERLON, stone);
+        merlon.name = 'watchMerlon';
         merlon.position.set(Math.cos(a) * 2.2, 10.4, Math.sin(a) * 2.2);
         merlon.rotation.y = -a;
         merlon.castShadow = true;
