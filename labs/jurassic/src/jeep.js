@@ -93,26 +93,10 @@ function jeepBumperGeometry() {
 
 const JEEP_BUMPER = jeepBumperGeometry();
 
-/** Grade 0.92×0.32×0.08. A face +Z tem vãos entre as barras. */
-function jeepGrilleGeometry() {
-    const g = new THREE.BoxGeometry(0.92, 0.32, 0.08, 32, 8, 2);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        let z = pos.getZ(i);
-        const ax = Math.abs(x) / 0.46;
-        const ay = Math.abs(y) / 0.16;
-        if (z > 0.015 && ax < 0.88 && ay < 0.72) {
-            const frac = ((x + 0.46) / 0.92) * 8;
-            const slot = frac - Math.floor(frac);
-            if (slot > 0.38 && slot < 0.9) z -= 0.055;
-        }
-        pos.setXYZ(i, x, y, z);
-    }
-    g.computeVertexNormals();
-    return g;
-}
+/** Barras da grade. O vão entre elas fica aberto. */
+const JEEP_GRILLE_BAR = new THREE.BoxGeometry(0.038, 0.24, 0.05);
+const JEEP_GRILLE_RAIL = new THREE.BoxGeometry(0.86, 0.042, 0.062);
+const JEEP_GRILLE_POST = new THREE.BoxGeometry(0.046, 0.32, 0.07);
 
 /** Farol ao longo de Y: lente em +Y, aro mais largo. */
 function jeepLampGeometry() {
@@ -127,7 +111,6 @@ function jeepLampGeometry() {
     return g;
 }
 
-const JEEP_GRILLE = jeepGrilleGeometry();
 const JEEP_LAMP = jeepLampGeometry();
 
 export function buildJeep() {
@@ -171,9 +154,23 @@ export function buildJeep() {
     bumperR.position.z = -1.95;
     root.add(bumperR);
 
-    const grille = new THREE.Mesh(JEEP_GRILLE, dark);
+    const grille = new THREE.Group();
     grille.name = 'jeepGrille';
     grille.position.set(0, 0.78, 1.84);
+    for (let i = 0; i < 7; i++) {
+        const bar = new THREE.Mesh(JEEP_GRILLE_BAR, dark);
+        bar.position.x = -0.33 + i * 0.11;
+        grille.add(bar);
+    }
+    const railTop = new THREE.Mesh(JEEP_GRILLE_RAIL, dark);
+    railTop.position.y = 0.145;
+    const railBot = new THREE.Mesh(JEEP_GRILLE_RAIL, dark);
+    railBot.position.y = -0.145;
+    const postL = new THREE.Mesh(JEEP_GRILLE_POST, dark);
+    postL.position.x = -0.4;
+    const postR = new THREE.Mesh(JEEP_GRILLE_POST, dark);
+    postR.position.x = 0.4;
+    grille.add(railTop, railBot, postL, postR);
     root.add(grille);
 
     const headlights = [];
