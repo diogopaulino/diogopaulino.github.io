@@ -366,10 +366,41 @@ export function buildRoom(quality) {
     root.add(yarn);
     refs.yarn = yarn;
 
-    const frame = mesh(box, woodMat, { scale: [0.42, 0.32, 0.03], pos: [2.55, 1.7, -1.1] });
-    frame.add(mesh(plane, new THREE.MeshBasicMaterial({ color: 0xd8b090 }), {
-        scale: [0.85, 0.78, 1], pos: [0, 0, 0.55], cast: false, receive: false
-    }));
+    // Quadro: quatro peças de moldura com ogee. O grupo fica em (2.55, 1.7, -1.1) e a tela olha para +Z.
+    const frame = new THREE.Group();
+    frame.name = 'pictureFrame';
+    frame.position.set(2.55, 1.7, -1.1);
+    const rail = (pts, depth, name, rot) => {
+        const geo = shelfExtrude(pts, depth);
+        if (rot === 'x') geo.rotateY(Math.PI / 2);
+        else geo.rotateX(Math.PI / 2);
+        const m = new THREE.Mesh(geo, woodMat);
+        m.name = name;
+        m.castShadow = true;
+        m.receiveShadow = true;
+        frame.add(m);
+    };
+    const topProfile = [
+        [0.010, 0.105], [-0.012, 0.108], [-0.040, 0.114], [-0.026, 0.128],
+        [-0.048, 0.140], [-0.028, 0.152], [-0.006, 0.160], [0.012, 0.158], [0.012, 0.105]
+    ];
+    rail(topProfile, 0.42, 'frameRailTop', 'x');
+    rail(topProfile.map(([x, y]) => [x, -y]), 0.42, 'frameRailBottom', 'x');
+    const sideProfile = [
+        [0.145, -0.010], [0.150, 0.012], [0.158, 0.040], [0.172, 0.026],
+        [0.186, 0.048], [0.200, 0.028], [0.210, 0.006], [0.208, -0.012], [0.145, -0.012]
+    ];
+    rail(sideProfile, 0.24, 'frameRailRight', 'y');
+    rail(sideProfile.map(([x, y]) => [-x, y]), 0.24, 'frameRailLeft', 'y');
+    const picture = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.27, 0.19),
+        new THREE.MeshBasicMaterial({ color: 0xd8b090 })
+    );
+    picture.name = 'framePicture';
+    picture.position.z = 0.004;
+    picture.castShadow = false;
+    picture.receiveShadow = false;
+    frame.add(picture);
     root.add(frame);
 
     const tub = new THREE.Group();
