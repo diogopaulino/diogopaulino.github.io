@@ -195,6 +195,39 @@ const SAILOR_COLLAR = (() => {
 
 const SAILOR_FLAP = capeGeometry({ height: 0.36, neck: 0.11, hem: 0.24 });
 
+/**
+ * Peitilho do marinheiro: V no pescoço e a barra mais baixa no centro.
+ * O V desce cerca de 9 cm; o meio da barra, cerca de 6 cm.
+ */
+const SAILOR_BIB = (() => {
+    const p = [
+        [-0.11, 0.07],
+        [-0.04, 0.02],
+        [0, -0.02],
+        [0.04, 0.02],
+        [0.11, 0.07],
+        [0.12, -0.02],
+        [0.07, -0.09],
+        [0, -0.15],
+        [-0.07, -0.09],
+        [-0.12, -0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.004,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.012);
+    return g;
+})();
+
 /** Tanque da mochila: fundo e topo arredondados, barriga no meio. Y cresce. */
 const PACK_TANK = new THREE.LatheGeometry([
     new THREE.Vector2(0.05, 0),
@@ -579,7 +612,8 @@ const BODIES = {
             collar.name = 'sailorCollar';
             const flap = add.mesh(SAILOR_FLAP, mats.white, [0, 0.98, -0.16], [0.35, 0, 0]);
             flap.name = 'sailorFlap';
-            add.box(0.22, 0.18, 0.04, mats.white, [0, 1.02, 0.18]);
+            const bib = add.mesh(SAILOR_BIB, mats.white, [0, 1.02, 0.18]);
+            bib.name = 'sailorBib';
             add.box(0.08, 0.42, 0.02, mats.white, [-0.12, 0.86, 0.18]);
             add.box(0.08, 0.42, 0.02, mats.white, [0.12, 0.86, 0.18]);
             add.box(0.08, 0.42, 0.02, mats.white, [0, 0.86, 0.18]);
