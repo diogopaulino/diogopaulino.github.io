@@ -10,7 +10,7 @@ import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineH
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,
-    clothTexture, leatherTexture, grassBladeTexture, faceTexture, applyMaps
+    clothTexture, leatherTexture, grassBladeTexture, faceTexture, waterTexture, applyMaps
 } from './textures.js?v=3';
 import { hash2 } from './utils.js?v=3';
 
