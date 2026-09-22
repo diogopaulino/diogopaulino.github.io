@@ -877,19 +877,102 @@ export function buildRootCrystal(color) {
     return group;
 }
 
+/**
+ * Passarela 8.5×1.6. O perfil (tabuas e longarinas) extruda em Z e
+ * rotateY(π/2) deita o comprimento em X. Sulcos caem nas juntas.
+ */
+function bridgeDeckGeometry() {
+    const s = new THREE.Shape();
+    s.moveTo(0.82, 0.1);
+    s.lineTo(-0.82, 0.1);
+    s.lineTo(-0.82, 0.02);
+    s.lineTo(-0.7, 0.02);
+    s.lineTo(-0.7, -0.2);
+    s.lineTo(-0.54, -0.2);
+    s.lineTo(-0.54, -0.02);
+    s.lineTo(0.54, -0.02);
+    s.lineTo(0.54, -0.2);
+    s.lineTo(0.7, -0.2);
+    s.lineTo(0.7, 0.02);
+    s.lineTo(0.82, 0.02);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 8.5,
+        steps: 40,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.015,
+        bevelSegments: 1
+    });
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const along = z - 4.25;
+        const phase = ((z % 0.425) + 0.425) % 0.425;
+        const top = y > 0.04;
+        if (top && phase < 0.03) y -= 0.045;
+        if (top) y += Math.cos((along / 4.25) * Math.PI * 0.5) * 0.055;
+        if (top && Math.abs(x) > 0.62) y -= (Math.abs(x) - 0.62) * 0.07;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.translate(0, 0, -4.25);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Poste torneado, centrado, altura 0.7. */
+function bridgePostGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = (t - 0.5) * 0.7;
+        let r = 0.032 + 0.012 * Math.exp(-((t - 0.5) ** 2) / 0.02);
+        if (t < 0.1 || t > 0.9) r = 0.055;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Corrimão redondo ao longo de X, com ponteiras. */
+function bridgeRailGeometry() {
+    const pts = [];
+    for (let i = 0; i <= 20; i++) {
+        const t = i / 20;
+        const y = (t - 0.5) * 8.5;
+        const r = t < 0.025 || t > 0.975 ? 0.07 : 0.042;
+        pts.push(new THREE.Vector2(r, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.rotateZ(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const BRIDGE_DECK = bridgeDeckGeometry();
+const BRIDGE_POST = bridgePostGeometry();
+const BRIDGE_RAIL = bridgeRailGeometry();
+
 export function buildBridge() {
     const group = new THREE.Group();
     const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.88 });
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.18, 1.6), wood);
+    const deck = new THREE.Mesh(BRIDGE_DECK, wood);
+    deck.name = 'bridgeDeck';
     deck.position.y = 0.4;
     group.add(deck);
     for (const sz of [-0.75, 0.75]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.08, 0.08), wood);
-        rail.position.set(0, 0.95, sz);
+        const rail = new THREE.Mesh(BRIDGE_RAIL, wood);
+        rail.name = 'bridgeRail';
+        rail.position.set(0, 1.16, sz);
         group.add(rail);
         for (let i = -3; i <= 3; i++) {
-            const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), wood);
-            post.position.set(i * 1.2, 0.7, sz);
+            const post = new THREE.Mesh(BRIDGE_POST, wood);
+            post.name = 'bridgePost';
+            post.position.set(i * 1.2, 0.86, sz);
             group.add(post);
         }
     }
