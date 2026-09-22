@@ -111,6 +111,39 @@ const WARRIOR_AXE = (() => {
     return g;
 })();
 
+/**
+ * Boca da ferramenta do robô: o lado direito abre em duas garras.
+ * O fundo do vão recua cerca de 11 cm em relação às pontas.
+ */
+const ROBOT_JAW = (() => {
+    const p = [
+        [-0.07, 0.055],
+        [0.02, 0.055],
+        [0.09, 0.048],
+        [0.09, 0.022],
+        [-0.02, 0.018],
+        [-0.02, -0.018],
+        [0.09, -0.022],
+        [0.09, -0.048],
+        [0.02, -0.055],
+        [-0.07, -0.055]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.025);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -166,8 +199,10 @@ const ACCESSORIES = {
 
     robot: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.box(0.06, 0.28, 0.06, mats.primary, [0, 0.14, 0], [0.3, 0, 0.2], null, 0.02);
-        add.box(0.14, 0.06, 0.08, mats.secondary, [0.02, 0.28, 0.04], [0.3, 0, 0.2], null, 0.02);
-        add.box(0.14, 0.06, 0.08, mats.secondary, [0.02, 0.04, 0], [0.3, 0, 0.2], null, 0.02);
+        const jaw = add.mesh(ROBOT_JAW, mats.secondary, [0.02, 0.28, 0.04], [0.3, 0, 0.2]);
+        jaw.name = 'robotJaw';
+        const jawLow = add.mesh(ROBOT_JAW, mats.secondary, [0.02, 0.04, 0], [0.3, 0, 0.2]);
+        jawLow.name = 'robotJawLow';
         add.cyl(0.015, 0.015, 0.08, mats.accent, [0.1, 0.28, 0.06]);
     }),
 

@@ -9,7 +9,7 @@ import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
 } from './config.js';
-import { Character } from './character.js?v=47';
+import { Character } from './character.js?v=48';
 import { buildStudio, lightStudio, updateStudio } from './studio.js';
 import { StudioAudio } from './audio.js';
 
