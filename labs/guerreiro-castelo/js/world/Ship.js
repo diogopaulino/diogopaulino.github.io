@@ -4,6 +4,69 @@
 
 import { woodTexture, clothTexture, darkWoodTexture } from './Textures.js';
 
+/**
+ * Casco de coca: seções em U da popa à roda de proa.
+ * A boca fica cheia sob o convés e fecha na proa; as fiadas
+ * sobressaem umas das outras (clinker). A quilha é y ≈ −0.9.
+ */
+function shipHullMesh(scene) {
+    const stations = 28;
+    const bands = 7;
+    const n = bands * 2 + 1;
+    const zStern = 8.7;
+    const zBow = -11.5;
+    const positions = [];
+    const uvs = [];
+
+    for (let s = 0; s < stations; s++) {
+        const t = s / (stations - 1);
+        const z = zStern + (zBow - zStern) * t;
+        const beam = t < 0.83
+            ? 3.55 * (t < 0.05 ? 0.94 + 0.06 * (t / 0.05) : 1)
+            : 3.55 * Math.max(0, 1 - (t - 0.83) / 0.17) ** 0.7;
+        const lift = t > 0.8 ? ((t - 0.8) / 0.2) ** 1.35 * 0.7 : (t < 0.06 ? (1 - t / 0.06) * 0.12 : 0);
+        const keelY = -0.9;
+        const deckY = 1.24 + lift;
+        const rake = t > 0.83 ? ((t - 0.83) / 0.17) ** 1.5 * 1.05 : 0;
+
+        for (let i = 0; i < n; i++) {
+            const u = i / (n - 1);
+            const side = u < 0.5 ? -1 : 1;
+            const v = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2;
+            const y = keelY + (deckY - keelY) * v ** 0.62;
+            const flare = v ** 0.72;
+            const band = Math.min(bands - 1, Math.floor(v * bands));
+            const lap = band * 0.05 * Math.min(1, beam / 3.2);
+            const x = side * (beam * flare + lap);
+            positions.push(x, y, z - rake * (1 - v));
+            uvs.push(s / (stations - 1), v);
+        }
+    }
+
+    const indices = [];
+    for (let s = 0; s < stations - 1; s++) {
+        for (let i = 0; i < n - 1; i++) {
+            const a = s * n + i;
+            const c = (s + 1) * n + i;
+            indices.push(a, c, a + 1, a + 1, c, c + 1);
+        }
+    }
+    const keel = (n - 1) >> 1;
+    for (let i = 0; i < n - 1; i++) indices.push(keel, i + 1, i);
+
+    const mesh = new BABYLON.Mesh('shipHull', scene);
+    const data = new BABYLON.VertexData();
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    data.positions = positions;
+    data.indices = indices;
+    data.normals = normals;
+    data.uvs = uvs;
+    data.applyToMesh(mesh);
+    mesh.sideOrientation = BABYLON.Mesh.DOUBLESIDE;
+    return mesh;
+}
+
 export function buildShip(scene) {
     const root = new BABYLON.TransformNode('shipRoot', scene);
 
@@ -14,24 +77,10 @@ export function buildShip(scene) {
     const darkWoodMat = new BABYLON.StandardMaterial('shipDarkWoodMat', scene);
     darkWoodMat.diffuseTexture = darkWoodTexture(scene, 3, 3);
 
-    // Casco
-    const hull = BABYLON.MeshBuilder.CreateBox('shipHull', { width: 7.2, height: 2.2, depth: 18 }, scene);
-    hull.position.y = 0.2;
+    const hull = shipHullMesh(scene);
     hull.material = woodMat;
     hull.parent = root;
     hull.receiveShadows = true;
-
-    // Proa triangular
-    const bow = BABYLON.MeshBuilder.CreateCylinder('shipBow', {
-        diameterTop: 0,
-        diameterBottom: 4.4,
-        height: 4.5,
-        tessellation: 4
-    }, scene);
-    bow.rotation.x = -Math.PI / 2;
-    bow.position.set(0, 0.4, -10.2);
-    bow.material = woodMat;
-    bow.parent = root;
 
     // Convés principal
     const deck = BABYLON.MeshBuilder.CreateBox('shipDeck', { width: 6.6, height: 0.18, depth: 16.5 }, scene);
@@ -168,11 +217,32 @@ export function buildShip(scene) {
     mooring.material = ropeMat;
     mooring.parent = root;
 
-    // Cabine na proa
-    const cabin = BABYLON.MeshBuilder.CreateBox('shipCabin', { width: 4.2, height: 1.6, depth: 3.2 }, scene);
-    cabin.position.set(0, 2.15, -5.4);
+    // Cabine na proa: paredes e telhado de duas águas
+    const cabin = BABYLON.MeshBuilder.CreateBox('shipCabin', { width: 4.05, height: 1.15, depth: 3.05 }, scene);
+    cabin.position.set(0, 1.925, -5.4);
     cabin.material = woodMat;
     cabin.parent = root;
+
+    const cabinRoof = BABYLON.MeshBuilder.ExtrudeShape('shipCabinRoof', {
+        shape: [
+            new BABYLON.Vector3(-2.35, 0, 0),
+            new BABYLON.Vector3(0, 0.62, 0),
+            new BABYLON.Vector3(2.35, 0, 0),
+            new BABYLON.Vector3(2.15, -0.22, 0),
+            new BABYLON.Vector3(0, 0.42, 0),
+            new BABYLON.Vector3(-2.15, -0.22, 0)
+        ],
+        path: [
+            new BABYLON.Vector3(0, 0, -1.75),
+            new BABYLON.Vector3(0, 0, 1.75)
+        ],
+        cap: BABYLON.Mesh.CAP_ALL,
+        closeShape: true,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+    }, scene);
+    cabinRoof.position.set(0, 2.5, -5.4);
+    cabinRoof.material = darkWoodMat;
+    cabinRoof.parent = root;
 
     root.userData = {
         sail,

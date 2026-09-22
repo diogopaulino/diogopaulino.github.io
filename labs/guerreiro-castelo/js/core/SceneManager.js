@@ -1,5 +1,5 @@
 import { HomeLevel } from '../levels/HomeLevel.js?v=7';
-import { ShipLevel } from '../levels/ShipLevel.js?v=5';
+import { ShipLevel } from '../levels/ShipLevel.js?v=6';
 import { BeachLevel } from '../levels/BeachLevel.js?v=6';
 import { ForestLevel } from '../levels/ForestLevel.js?v=4';
 import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=8';
@@ -7,8 +7,8 @@ import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=3';
 import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=4';
 import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=4';
 import { EscapeLevel } from '../levels/EscapeLevel.js?v=5';
-import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=5';
-import { EndingLevel } from '../levels/EndingLevel.js?v=4';
+import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=6';
+import { EndingLevel } from '../levels/EndingLevel.js?v=5';
 
 const FACTORIES = {
     home: HomeLevel,
