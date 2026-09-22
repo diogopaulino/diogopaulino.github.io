@@ -12,7 +12,7 @@ import {
     buildSeat, buildRuinArch, buildWizard, buildElf, buildNazgul, buildGoblin,
     buildCompanion, grassBladeGeometry, grassBladeMaterial, waterMaterial,
     getOakAssets, getPineAssets, getPillarAssets, buildBalrog, std
-} from './models.js?v=10';
+} from './models.js?v=11';
 import { Rider, GoblinAI } from './npcs.js?v=3';
 
 export class ChapterWorld {
@@ -352,9 +352,12 @@ export function buildForest(quality) {
     const oakCount = Math.floor(32 * quality.trees);
 
     const pine = getPineAssets();
-    const pineMesh = new THREE.InstancedMesh(pine.geo, pine.mat, pineCount);
-    pineMesh.castShadow = true;
-    pineMesh.receiveShadow = true;
+    const pineTrunk = new THREE.InstancedMesh(pine.trunkGeo, pine.trunkMat, pineCount);
+    const pineCrown = new THREE.InstancedMesh(pine.foliageGeo, pine.foliageMat, pineCount);
+    pineTrunk.name = 'pineTrunk';
+    pineCrown.name = 'pineCrown';
+    pineTrunk.castShadow = pineCrown.castShadow = true;
+    pineTrunk.receiveShadow = pineCrown.receiveShadow = true;
     let pn = 0;
     for (let i = 0; i < pineCount; i++) {
         const z = rng() * 120 + 4;
@@ -365,11 +368,13 @@ export function buildForest(quality) {
         _dummy.rotation.set(0, rng() * 6, 0);
         _dummy.scale.setScalar(s);
         _dummy.updateMatrix();
-        pineMesh.setMatrixAt(pn++, _dummy.matrix);
+        pineTrunk.setMatrixAt(pn, _dummy.matrix);
+        pineCrown.setMatrixAt(pn, _dummy.matrix);
+        pn += 1;
         world.addCollider(x, z, 0.7);
     }
-    pineMesh.count = pn;
-    world.group.add(pineMesh);
+    pineTrunk.count = pineCrown.count = pn;
+    world.group.add(pineTrunk, pineCrown);
 
     const oak = getOakAssets(false);
     const oakTrunk = new THREE.InstancedMesh(oak.trunkGeo, oak.trunkMat, oakCount);

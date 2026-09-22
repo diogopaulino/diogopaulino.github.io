@@ -842,37 +842,108 @@ export function buildOak({ autumn = false } = {}) {
     return group;
 }
 
-function pineGeo() {
-    return geo('pine-full', () => {
-        const parts = [];
-        const trunk = warp(new THREE.CylinderGeometry(0.14, 0.22, 2.15, 8), 50, 0.12);
-        trunk.translate(0, 1.07, 0);
-        parts.push(trunk);
-        for (let i = 0; i < 5; i++) {
-            const cone = warp(new THREE.ConeGeometry(1.2 - i * 0.18, 1.2, 10), 51 + i, 0.12, 0.4);
-            cone.translate(0, 1.55 + i * 0.62, 0);
-            parts.push(cone);
+/**
+ * Saia de pinheiro. A ponta fica no tronco e a bainha cai.
+ * Sete lobos: raio *= 0.84 + 0.2 * max(0, cos(θ·7 + seed))²,
+ * e a bainha desce nos vãos.
+ */
+function spruceSkirt(radius, hemY, rise, seed) {
+    const apex = hemY + rise;
+    const pts = [
+        [0.05, apex],
+        [radius * 0.28, apex - rise * 0.05],
+        [radius * 0.62, hemY + rise * 0.24],
+        [radius * 0.88, hemY + 0.1],
+        [radius, hemY],
+        [radius * 0.7, hemY + 0.12],
+        [0.06, apex - rise * 0.16]
+    ];
+    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 24);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < radius * 0.4) continue;
+        const lobe = 0.84 + 0.2 * Math.max(0, Math.cos(Math.atan2(z, x) * 7 + seed)) ** 2;
+        const outer = Math.min(1, (rad - radius * 0.4) / (radius * 0.6));
+        y -= (1 - lobe) * 0.28 * outer;
+        pos.setXYZ(i, x * lobe, y, z * lobe);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+function pineTrunkGeo() {
+    return geo('pine-trunk', () => {
+        const H = 1.45;
+        const pts = [];
+        for (let i = 0; i <= 10; i++) {
+            const t = i / 10;
+            const flare = Math.exp(-t * 6) * 0.16;
+            pts.push(new THREE.Vector2(0.2 - t * 0.1 + flare, t * H));
         }
+        const g = new THREE.LatheGeometry(pts, 12);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const rad = Math.hypot(x, z);
+            if (rad < 1e-4 || y < 0.12) continue;
+            const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 5)) ** 2 * 0.02;
+            const k = 1 + rib / rad;
+            pos.setXYZ(i, x * k, y, z * k);
+        }
+        g.computeVertexNormals();
+        return g;
+    });
+}
+
+function pineFoliageGeo() {
+    return geo('pine-foliage', () => {
+        const tiers = [
+            [1.12, 1.02, 1.12, 0.4],
+            [0.92, 1.7, 1.02, 1.2],
+            [0.72, 2.36, 0.95, 2.1],
+            [0.52, 2.98, 0.86, 0.8],
+            [0.34, 3.55, 0.74, 1.7]
+        ];
+        const parts = tiers.map(([radius, hemY, rise, seed]) => spruceSkirt(radius, hemY, rise, seed));
+        const leader = new THREE.LatheGeometry([
+            new THREE.Vector2(0.06, 4.05),
+            new THREE.Vector2(0.035, 4.4),
+            new THREE.Vector2(0.012, 4.72)
+        ], 8);
+        parts.push(leader);
         const merged = mergeGeometries(parts, false);
         parts.forEach((g) => g.dispose());
-        if (!merged) return new THREE.ConeGeometry(1.0, 4.2, 8);
+        if (!merged) return spruceSkirt(1.12, 1.02, 1.12, 0.4);
         merged.computeVertexNormals();
         return merged;
     });
 }
 
 export function getPineAssets() {
+    const leaf = mapped(leafTexture('#1e4a28'), 0x2a5a30, 0.84, 0.02, 0.8);
+    vegWind(leaf, 0.05);
     return {
-        geo: pineGeo(),
-        mat: mapped(leafTexture('#1e4a28'), 0x2a5a30, 0.84, 0.02, 0.8)
+        trunkGeo: pineTrunkGeo(),
+        foliageGeo: pineFoliageGeo(),
+        trunkMat: mapped(barkTexture(), 0x6a4a30, 0.92, 0.02, 1.1),
+        foliageMat: leaf
     };
 }
 
 export function buildPine() {
     const group = new THREE.Group();
+    group.name = 'pineTree';
     const a = getPineAssets();
-    const mesh = new THREE.Mesh(a.geo, a.mat);
-    group.add(mesh);
+    const trunk = new THREE.Mesh(a.trunkGeo, a.trunkMat);
+    const crown = new THREE.Mesh(a.foliageGeo, a.foliageMat);
+    crown.name = 'pineCrown';
+    group.add(trunk, crown);
     enableShadows(group);
     return group;
 }
