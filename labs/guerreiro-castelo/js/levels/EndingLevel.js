@@ -3,7 +3,7 @@
  */
 
 import { Level } from './Level.js';
-import { buildShip } from '../world/Ship.js?v=8';
+import { buildShip } from '../world/Ship.js?v=9';
 import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=4';
 
 export class EndingLevel extends Level {

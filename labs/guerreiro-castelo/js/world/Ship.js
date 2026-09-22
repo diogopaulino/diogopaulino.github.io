@@ -249,11 +249,11 @@ export function buildShip(scene) {
     }
 
     // Duas águas em fiadas: cada telha avança sobre a de baixo. O beiral passa da parede.
-    const courses = 5;
-    const eave = 2.55;
-    const rise = 0.72;
-    const nose = 0.13;
-    const thick = 0.08;
+    const courses = 4;
+    const eave = 2.6;
+    const rise = 0.84;
+    const nose = 0.24;
+    const thick = 0.16;
     const step = eave / courses;
     const dy = rise / courses;
     const asc = [];

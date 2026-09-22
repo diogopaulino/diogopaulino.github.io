@@ -3,7 +3,7 @@
  */
 
 import { Level } from './Level.js';
-import { buildShip, addShipColliders } from '../world/Ship.js?v=8';
+import { buildShip, addShipColliders } from '../world/Ship.js?v=9';
 import { makeRock } from '../world/Environment.js?v=5';
 import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=4';
 
