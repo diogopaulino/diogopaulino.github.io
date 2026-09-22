@@ -10,10 +10,10 @@ import {
     QUALITY, DIFFICULTY, STATIONS, loadSettings, saveSettings
 } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL } from './utils.js';
-import { createSharedMaterials, tintMaterials } from './models.js?v=8';
-import { City, createSky, createRoad } from './world.js?v=8';
-import { Player } from './player.js?v=8';
-import { Traffic } from './traffic.js?v=8';
+import { createSharedMaterials, tintMaterials } from './models.js?v=9';
+import { City, createSky, createRoad } from './world.js?v=9';
+import { Player } from './player.js?v=9';
+import { Traffic } from './traffic.js?v=9';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';
 import { Input } from './input.js';

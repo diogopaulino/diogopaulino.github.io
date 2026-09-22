@@ -21,6 +21,26 @@ const SEDAN_FENDER = new THREE.LatheGeometry([
 ], 16);
 SEDAN_FENDER.rotateZ(-Math.PI / 2);
 
+/** Capota de vidro da van: arco baixo, no lugar da caixa 1.55×0.42×1.5. */
+const VAN_GLASS = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(-0.72, 0);
+    s.quadraticCurveTo(0, 0.18, 0.72, 0);
+    s.lineTo(0.6, -0.06);
+    s.quadraticCurveTo(0, 0.08, -0.6, -0.06);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 1.4,
+        bevelEnabled: true,
+        bevelThickness: 0.015,
+        bevelSize: 0.02,
+        bevelSegments: 1,
+        curveSegments: 6
+    });
+    g.translate(0, 0, -0.7);
+    return g;
+})();
+
 function mesh(geo, mat, sx, sy, sz, x, y, z) {
     const m = new THREE.Mesh(geo, mat);
     m.scale.set(sx, sy, sz);
@@ -96,6 +116,7 @@ export function createSharedMaterials(station) {
             clearcoatRoughness: 0.04,
             transparent: true,
             opacity: 0.7,
+            side: THREE.DoubleSide,
             emissive: 0x112244,
             emissiveIntensity: 0.35
         }),
@@ -374,7 +395,11 @@ export function createCar(mats, kind = 0) {
         van.position.y = 0.75;
         van.castShadow = true;
         g.add(van);
-        g.add(mesh(BOX, mats.glass, 1.55, 0.42, 1.5, 0, 1.25, 0.35));
+        const cabin = new THREE.Mesh(VAN_GLASS, mats.glass);
+        cabin.position.set(0, 1.2, 0.35);
+        cabin.castShadow = false;
+        cabin.receiveShadow = true;
+        g.add(cabin);
     } else {
         // Coupé baixo
         const coupePts = [
