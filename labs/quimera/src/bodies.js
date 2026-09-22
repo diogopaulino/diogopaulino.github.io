@@ -297,6 +297,39 @@ const VIKING_BELT = (() => {
 })();
 
 /**
+ * Couraça do guerreiro: ombros estreitos, peito largo e ponta na barriga.
+ * A ponta fica cerca de 8 cm abaixo dos cantos laterais.
+ */
+const WARRIOR_PLATE = (() => {
+    const p = [
+        [0, 0.16],
+        [-0.07, 0.11],
+        [-0.13, 0.02],
+        [-0.12, -0.04],
+        [-0.07, -0.10],
+        [0, -0.18],
+        [0.07, -0.10],
+        [0.12, -0.04],
+        [0.13, 0.02],
+        [0.07, 0.11]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    return g;
+})();
+
+/**
  * Placa do peito do astronauta: estreita no alto, larga no meio
  * e com o fundo mais baixo no centro.
  */
@@ -459,7 +492,8 @@ const BODIES = {
         options: {},
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.28, 0.06], [0.26, 0.28], [0.16, 0.46], [0.1, 0.5]], mats.secondary, [0, 0.66, 0.02]);
-            add.box(0.18, 0.28, 0.06, mats.accent, [0, 0.92, 0.20]);
+            const plate = add.mesh(WARRIOR_PLATE, mats.accent, [0, 0.92, 0.20]);
+            plate.name = 'warriorPlate';
             const cape = add.mesh(WARRIOR_CAPE, mats.primary, [0, 0.78, -0.22], [0.15, 0, 0]);
             cape.name = 'warriorCape';
             const pleat = add.mesh(WARRIOR_PLEAT, mats.accent, [0, 0.78, -0.22], [0.15, 0, 0]);
