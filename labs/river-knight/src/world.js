@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { buildPineGeometry, buildOakGeometry, buildRockGeometry, buildReedGeometry, applyVegetationWind } from './models.js?v=28';
+import { buildPineGeometry, buildOakGeometry, buildRockGeometry, buildReedGeometry, applyVegetationWind } from './models.js?v=29';
 import { centerX, halfWidth, terrainHeight } from './river.js';
 import { COURSE_LENGTH, BOSS_Z } from './config.js?v=14';
 import { clamp, randRange, pick } from './utils.js';

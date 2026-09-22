@@ -610,6 +610,33 @@ function sternCheekGeometry(length) {
     return g;
 }
 
+/** Tampão da proa. O topo cai nas laterais e a face de vante tem cume e fiadas. */
+function bowPanelGeometry(width, height) {
+    const hw = width / 2;
+    const hh = height / 2;
+    const g = new THREE.BoxGeometry(width, height, 0.2, 10, 12, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const nx = Math.abs(x) / Math.max(hw, 0.01);
+        const top = (y + hh) / height;
+        if (top > 0.6) {
+            const u = (top - 0.6) / 0.4;
+            y -= u * (0.05 + nx * nx * 0.48);
+        }
+        if (z > 0.04) {
+            z += Math.exp(-(x * x) / Math.max(0.012, hw * hw * 0.15)) * 0.07;
+            const row = Math.floor((y + hh) / 0.18);
+            if (row % 2 === 1 && nx > 0.22) z -= 0.055;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -714,10 +741,9 @@ export function buildLongship({
         const { hw, sheer, dep, z } = hullShapeAt(t, { length, beam });
         const bilge = sheer - dep;
         const h = Math.max(1.15, sheer - bilge + 0.6);
-        const panel = new THREE.Mesh(
-            new THREE.BoxGeometry(Math.max(0.65, hw * 2.15), h, 0.2),
-            bulkMat
-        );
+        const panelW = Math.max(0.65, hw * 2.15);
+        const panel = new THREE.Mesh(bowPanelGeometry(panelW, h), bulkMat);
+        panel.name = 'bowPanel';
         panel.position.set(0, bilge + h * 0.52, z);
         panel.castShadow = true;
         group.add(panel);
