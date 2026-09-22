@@ -463,6 +463,26 @@ const CHEF_PAN_HANDLE = (() => {
     return g;
 })();
 
+/**
+ * Frigideira: o fundo é estreito, a parede sobe e a borda
+ * sai uns 3 cm além do sulco. O lábio volta um pouco no topo.
+ */
+const CHEF_PAN = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.055, 0),
+        new THREE.Vector2(0.105, 0.012),
+        new THREE.Vector2(0.124, 0.026),
+        new THREE.Vector2(0.126, 0.040),
+        new THREE.Vector2(0.112, 0.050),
+        new THREE.Vector2(0.148, 0.060),
+        new THREE.Vector2(0.156, 0.070),
+        new THREE.Vector2(0.146, 0.078)
+    ], 16);
+    g.translate(0, -0.039, 0);
+    g.computeVertexNormals();
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -517,7 +537,8 @@ const ACCESSORIES = {
     }),
 
     chef: (kit) => build(kit, 'grip', ({ add, mats }) => {
-        add.cyl(0.14, 0.12, 0.06, mats.secondary, [0, 0.08, 0]);
+        const pan = add.mesh(CHEF_PAN, mats.secondary, [0, 0.08, 0]);
+        pan.name = 'chefPan';
         const handle = add.mesh(CHEF_PAN_HANDLE, mats.dark, [0.12, 0.08, -0.02], [0, 0, 1.1]);
         handle.name = 'chefPanHandle';
         add.sphere(0.05, mats.white, [0, 0.14, 0], null, [1.2, 0.45, 1.2]);
