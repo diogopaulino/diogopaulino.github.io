@@ -1427,6 +1427,36 @@ export function buildCannonballMesh(scale = 1) {
     return ball;
 }
 
+/**
+ * Empenagem: a pena fecha numa ponta na frente e abre a barriga
+ * cerca de 11 cm acima do cabo.
+ */
+const ARROW_FLETCH = (() => {
+    const p = [
+        [-0.16, 0],
+        [0.15, 0.006],
+        [0.15, 0.048],
+        [0.04, 0.125],
+        [-0.06, 0.09],
+        [-0.16, 0.014]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.014,
+        bevelEnabled: true,
+        bevelThickness: 0.0015,
+        bevelSize: 0.0015,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.007);
+    g.rotateY(Math.PI / 2);
+    return g;
+})();
+
 /** Flecha incendiária dos inimigos. */
 export function buildArrowMesh() {
     const group = new THREE.Group();
@@ -1452,7 +1482,8 @@ export function buildArrowMesh() {
     group.userData.flame = flame;
 
     for (let i = 0; i < 3; i++) {
-        const fletch = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.26), plainMaterial(0x8a2b2b, 0.9, 0));
+        const fletch = new THREE.Mesh(ARROW_FLETCH, plainMaterial(0x8a2b2b, 0.9, 0));
+        fletch.name = 'arrowFletch';
         fletch.position.z = -0.6;
         fletch.rotation.z = (i * Math.PI * 2) / 3;
         group.add(fletch);
