@@ -363,6 +363,59 @@ function buildDragonHead(color) {
 /**
  * Drakkar completo. Retorna o grupo e as partes animáveis.
  */
+
+/** Haste de 3.6 ao longo de Z, depois do rotateX. Cabo mais grosso, ponta fina. */
+function oarShaftGeometry() {
+    const L = 3.6;
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = (t - 0.5) * L;
+        let r = 0.048 - t * 0.016;
+        r += 0.02 * Math.exp(-((t - 0.14) ** 2) / 0.006);
+        pts.push(new THREE.Vector2(Math.max(0.022, r), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 8);
+    g.rotateX(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Pá em folha, comprimento em +Z, fina em Y. A ponta é a extremidade de fora. */
+function oarBladeGeometry() {
+    const L = 0.9;
+    const W = 0.28;
+    const s = new THREE.Shape();
+    s.moveTo(0, -L * 0.5);
+    s.quadraticCurveTo(W * 0.85, -L * 0.05, W * 0.7, L * 0.18);
+    s.quadraticCurveTo(W * 0.28, L * 0.42, 0, L * 0.5);
+    s.quadraticCurveTo(-W * 0.28, L * 0.42, -W * 0.7, L * 0.18);
+    s.quadraticCurveTo(-W * 0.85, -L * 0.05, 0, -L * 0.5);
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.012,
+        bevelSegments: 1,
+        curveSegments: 8
+    });
+    g.translate(0, 0, -0.022);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        if (z > 0 && Math.abs(x) < 0.04) z += 0.012 * (1 - Math.abs(y) / (L * 0.5));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.rotateX(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+}
+
+const OAR_SHAFT = oarShaftGeometry();
+const OAR_BLADE = oarBladeGeometry();
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -705,8 +758,6 @@ export function buildLongship({
     }
 
     if (oars) {
-        const oarGeo = new THREE.BoxGeometry(0.09, 0.09, 3.6);
-        const bladeGeo = new THREE.BoxGeometry(0.22, 0.05, 0.9);
         const oarMat = woodMaterial(true, hullColor);
         const perSide = 3;
         for (const side of [-1, 1]) {
@@ -717,13 +768,15 @@ export function buildLongship({
                 const hw = Math.max(0.09, (beam / 2) * taper);
                 pivot.position.set(side * hw, 0.35, (t * length) / 2);
 
-                const shaft = new THREE.Mesh(oarGeo, oarMat);
+                const shaft = new THREE.Mesh(OAR_SHAFT, oarMat);
+                shaft.name = 'oarShaft';
                 shaft.position.set(side * 1.5, -0.2, 0);
                 shaft.rotation.y = side * Math.PI * 0.5;
                 shaft.castShadow = true;
                 pivot.add(shaft);
 
-                const blade = new THREE.Mesh(bladeGeo, oarMat);
+                const blade = new THREE.Mesh(OAR_BLADE, oarMat);
+                blade.name = 'oarBlade';
                 blade.position.set(side * 3.1, -0.5, 0);
                 blade.rotation.y = side * Math.PI * 0.5;
                 pivot.add(blade);
