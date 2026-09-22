@@ -447,6 +447,22 @@ const ASTRO_CLIP = (() => {
     return g;
 })();
 
+/** Cabo da frigideira: a ponta é fina e a base abre onde entra na panela. */
+const CHEF_PAN_HANDLE = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.008, 0),
+        new THREE.Vector2(0.014, 0.02),
+        new THREE.Vector2(0.022, 0.045),
+        new THREE.Vector2(0.02, 0.08),
+        new THREE.Vector2(0.016, 0.11),
+        new THREE.Vector2(0.026, 0.135),
+        new THREE.Vector2(0.034, 0.16)
+    ], 12);
+    g.translate(0, -0.08, 0);
+    g.computeVertexNormals();
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -502,7 +518,8 @@ const ACCESSORIES = {
 
     chef: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.cyl(0.14, 0.12, 0.06, mats.secondary, [0, 0.08, 0]);
-        add.cyl(0.02, 0.02, 0.16, mats.dark, [0.12, 0.08, -0.02], [0, 0, 1.1]);
+        const handle = add.mesh(CHEF_PAN_HANDLE, mats.dark, [0.12, 0.08, -0.02], [0, 0, 1.1]);
+        handle.name = 'chefPanHandle';
         add.sphere(0.05, mats.white, [0, 0.14, 0], null, [1.2, 0.45, 1.2]);
         add.sphere(0.03, mats.accent, [0.04, 0.16, 0.02]);
     }),
