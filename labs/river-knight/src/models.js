@@ -1451,7 +1451,8 @@ function barricadeSpikeGeometry() {
         const t = i / 10;
         const y = -half + t * H;
         let r = 0.26 * (1 - t * 0.92);
-        if (t > 0.48 && t < 0.68) r *= 0.62;
+        if (t > 0.36 && t < 0.58) r *= 0.42;
+        if (t > 0.7 && t < 0.84) r *= 0.5;
         pts.push(new THREE.Vector2(Math.max(0.02, r), y));
     }
     const g = new THREE.LatheGeometry(pts, 8);
@@ -1461,10 +1462,10 @@ function barricadeSpikeGeometry() {
         const y = pos.getY(i);
         let z = pos.getZ(i);
         const t = (y + half) / H;
-        if (t < 0.62) {
+        if (t < 0.9) {
             const ang = Math.atan2(z, x);
-            const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.2);
-            const k = 0.34 + 0.66 / corner;
+            const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.15);
+            const k = 1 / corner;
             x *= k;
             z *= k;
         }
