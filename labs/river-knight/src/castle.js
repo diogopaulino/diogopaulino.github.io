@@ -40,6 +40,53 @@ function towerRoofGeometry(radius) {
     return g;
 }
 
+/**
+ * Cais 12×3×26, centrado como a caixa antiga. Talude na base, fiadas,
+ * pilastras na face longa e uma copeira na borda de cima.
+ */
+const DOCK_GEO = (() => {
+    const g = new THREE.BoxGeometry(12, 3, 26, 8, 8, 14);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const ax = Math.abs(x);
+        const az = Math.abs(z);
+        const t = (y + 1.5) / 3;
+        if (ax > 5.9) x = Math.sign(x) * (6 * (1 + (1 - t) * 0.045));
+        if (az > 12.9) z = Math.sign(z) * (13 * (1 + (1 - t) * 0.02));
+        if (y < 1.35 && ax > 5.9) {
+            const rib = Math.max(0, Math.sin(z * 1.15)) ** 4;
+            x += Math.sign(x) * rib * 0.32;
+        }
+        if (y < 1.35 && (ax > 5.9 || az > 12.9)) {
+            const course = Math.sin((y + 1.5) * Math.PI * 4);
+            const lip = course > 0.7 ? 0.11 : 0;
+            if (ax > 5.9) x += Math.sign(x) * lip;
+            if (az > 12.9) z += Math.sign(z) * lip;
+        }
+        if (y > 1.4 && (ax > 5.15 || az > 11.6)) {
+            y += 0.1;
+            if (ax > 5.9) x += Math.sign(x) * 0.08;
+            if (az > 12.9) z += Math.sign(z) * 0.08;
+        } else if (y > 1.4 && ax < 5.2 && az < 11.6) {
+            y -= 0.05;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
+const BOLLARD_GEO = new THREE.LatheGeometry([
+    new THREE.Vector2(0.16, -0.32),
+    new THREE.Vector2(0.22, -0.08),
+    new THREE.Vector2(0.18, 0.12),
+    new THREE.Vector2(0.3, 0.26),
+    new THREE.Vector2(0.2, 0.36)
+], 10);
+
 /** Duas águas sobre o salão 26×18. Perfil em X, extrusão no Z, rotateY deita a cumeeira no comprimento. */
 /**
  * Pilar da muralha, centrado. Comprimento em X, espessura em Z, altura 22.
@@ -502,11 +549,20 @@ export function createCastle(scene) {
     // ---- Docas de pedra junto às margens ----
     for (const side of [-1, 1]) {
         const dockX = side * (hw + 6);
-        const dock = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 26), stone);
+        const dock = new THREE.Group();
+        dock.name = 'dock';
+        const body = new THREE.Mesh(DOCK_GEO, stone);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        dock.add(body);
+        for (const dz of [-8, -2.5, 3.5, 9]) {
+            const post = new THREE.Mesh(BOLLARD_GEO, stone);
+            post.position.set(-side * 4.7, 1.82, dz);
+            post.castShadow = true;
+            dock.add(post);
+        }
         const groundY = terrainHeight(cx + dockX, z + 16);
         dock.position.set(dockX, Math.max(0.5, groundY * 0.4), 16);
-        dock.castShadow = true;
-        dock.receiveShadow = true;
         group.add(dock);
     }
 
