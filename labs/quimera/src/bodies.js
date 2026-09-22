@@ -69,6 +69,42 @@ const LAB_COAT = new THREE.LatheGeometry([
     new THREE.Vector2(0.15, 0.29)
 ], 16);
 
+/**
+ * Perneira: painel com a borda de fora recortada em franjas (~9–11 cm).
+ * side 1 = direita. O espelho inverte a ordem para o contorno continuar anti-horário.
+ */
+function chapGeometry(side) {
+    const raw = [
+        [-0.08, 0.21],
+        [0.04, 0.21],
+        [0.12, 0.08],
+        [0.03, 0.00],
+        [0.13, -0.08],
+        [0.02, -0.14],
+        [0.11, -0.21],
+        [-0.08, -0.21]
+    ];
+    const p = raw.map(([x, y]) => [x * side, y]);
+    if (side < 0) p.reverse();
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.05,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.006,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.025);
+    return g;
+}
+
+const CHAP_R = chapGeometry(1);
+const CHAP_L = chapGeometry(-1);
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -206,8 +242,10 @@ const BODIES = {
         detail: ({ add, mats }) => {
             add.lathe([[0.16, 0], [0.26, 0.06], [0.24, 0.2], [0.14, 0.34]], mats.primary, [0, 0.78, 0.02]);
             add.box(0.18, 0.22, 0.04, mats.secondary, [0.12, 0.92, 0.16]);
-            add.box(0.22, 0.42, 0.22, mats.secondary, [-0.16, 0.32, 0.04], null, null, 0.04);
-            add.box(0.22, 0.42, 0.22, mats.secondary, [0.16, 0.32, 0.04], null, null, 0.04);
+            const chapL = add.mesh(CHAP_L, mats.secondary, [-0.16, 0.32, 0.06]);
+            chapL.name = 'cowboyChap';
+            const chapR = add.mesh(CHAP_R, mats.secondary, [0.16, 0.32, 0.06]);
+            chapR.name = 'cowboyChap';
             add.box(0.16, 0.08, 0.26, mats.accent, [-0.12, 0.08, 0.06], null, null, 0.03);
             add.box(0.16, 0.08, 0.26, mats.accent, [0.12, 0.08, 0.06], null, null, 0.03);
         }
