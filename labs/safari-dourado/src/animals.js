@@ -107,14 +107,14 @@ export function buildGiraffe(BABYLON, scene) {
 
     const body = addCapsule(BABYLON, scene, root, 'corpo', 2.4, 0.55, [0, 2.35, 0], hide, [Math.PI / 2, 0, 0], [1.15, 1, 0.95]);
     addLegs(BABYLON, scene, root, dark, [-0.32, 0.32], 0.75, -0.7, 1.05, 2.0, 0.12);
-    addCyl(BABYLON, scene, root, 'pescoço', { height: 2.6, diameterTop: 0.28, diameterBottom: 0.38 }, [0, 4.0, 0.35], hide, [0.35, 0, 0]);
+    addCapsule(BABYLON, scene, root, 'pescoço', 2.6, 0.16, [0, 4.0, 0.35], hide, [0.35, 0, 0]);
     addSkull(BABYLON, scene, root, 'cabeça', 0.55, [0, 5.35, 0.95], hide, [0.85, 0.75, 1.2], 'dog');
     addCapsule(BABYLON, scene, root, 'focinho', 0.45, 0.12, [0, 5.2, 1.35], hide, [Math.PI / 2, 0, 0]);
     for (const sx of [-1, 1]) {
         addCyl(BABYLON, scene, root, 'osso', { height: 0.22, diameter: 0.06 }, [sx * 0.1, 5.65, 0.9], dark);
         addSphere(BABYLON, scene, root, 'olho', 0.07, [sx * 0.18, 5.38, 1.15], mane);
     }
-    addCyl(BABYLON, scene, root, 'crina', { height: 1.8, diameterTop: 0.04, diameterBottom: 0.08 }, [0, 4.1, 0.12], mane, [0.35, 0, 0]);
+    addCapsule(BABYLON, scene, root, 'crina', 1.8, 0.035, [0, 4.1, 0.12], mane, [0.35, 0, 0]);
     addCapsule(BABYLON, scene, root, 'cauda', 0.9, 0.06, [0, 2.1, -1.35], dark, [0.9, 0, 0]);
 
     return { root, body, species: 'giraffe', name: 'Girafa-da-savana' };
@@ -168,10 +168,10 @@ export function buildZebra(BABYLON, scene) {
     addLegs(BABYLON, scene, root, hide, [-0.22, 0.22], 0.45, -0.5, 0.55, 1.0, 0.09);
     for (const x of [-0.22, 0.22]) {
         for (const z of [0.45, -0.5]) {
-            addSphere(BABYLON, scene, root, 'casco', 0.14, [x, 0.08, z], hoof, [1, 0.55, 1.1]);
+            addCapsule(BABYLON, scene, root, 'casco', 0.12, 0.07, [x, 0.08, z], hoof, null, [1.15, 0.55, 1.2]);
         }
     }
-    addCyl(BABYLON, scene, root, 'pescoço', { height: 0.7, diameterTop: 0.2, diameterBottom: 0.28 }, [0, 1.65, 0.55], hide, [0.55, 0, 0]);
+    addCapsule(BABYLON, scene, root, 'pescoço', 0.7, 0.12, [0, 1.65, 0.55], hide, [0.55, 0, 0]);
     addSkull(BABYLON, scene, root, 'cabeça', 0.42, [0, 1.95, 0.95], hide, [0.75, 0.7, 1.15], 'dog');
     addCapsule(BABYLON, scene, root, 'focinho', 0.35, 0.1, [0, 1.85, 1.25], hide, [Math.PI / 2, 0, 0]);
     for (const sx of [-1, 1]) {
@@ -180,7 +180,7 @@ export function buildZebra(BABYLON, scene) {
             height: 0.22, width: 0.08, thick: 0.012, rotY: sx * 0.35
         });
     }
-    addCyl(BABYLON, scene, root, 'crina', { height: 0.55, diameterTop: 0.04, diameterBottom: 0.08 }, [0, 1.85, 0.4], stripe, [0.55, 0, 0]);
+    addCapsule(BABYLON, scene, root, 'crina', 0.55, 0.03, [0, 1.85, 0.4], stripe, [0.55, 0, 0]);
     addCapsule(BABYLON, scene, root, 'cauda', 0.7, 0.05, [0, 1.15, -0.95], stripe, [0.85, 0, 0]);
 
     return { root, body, species: 'zebra', name: 'Zebra-da-planície' };

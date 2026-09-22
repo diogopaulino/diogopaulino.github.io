@@ -575,9 +575,9 @@ export function buildNazgul() {
     head.position.set(0, 1.5, 1.02);
     horse.add(head);
     for (const sx of [-1, 1]) {
-        const ear = new THREE.Mesh(geo('naz-ear', () => new THREE.ConeGeometry(0.04, 0.14, 5)), hide);
-        ear.position.set(sx * 0.07, 1.68, 1.0);
-        ear.rotation.x = -0.4;
+        const ear = new THREE.Mesh(geo('naz-ear', () => earBladeGeometry({ height: 0.14, width: 0.05, thickness: 0.016 })), hide);
+        ear.position.set(sx * 0.07, 1.62, 0.98);
+        ear.rotation.z = sx * 0.25;
         horse.add(ear);
     }
     const tail = new THREE.Mesh(geo('naz-tail', () => tailGeometry({ length: 0.7, r0: 0.07, r1: 0.02, fluff: 0.04 })), black);
@@ -606,9 +606,10 @@ export function buildNazgul() {
             })), hide);
             lowM.position.y = 0;
             lower.add(lowM);
-            const hoof = new THREE.Mesh(geo('naz-hoof', () => new THREE.SphereGeometry(0.055, 6, 5)), std(0x080808, 0.5, 0.15));
-            hoof.scale.set(1.1, 0.55, 1.2);
-            hoof.position.y = -0.32;
+            const hoof = new THREE.Mesh(geo('naz-hoof', () => limbGeometry({
+                length: 0.09, r0: 0.05, r1: 0.034, bulge: 0.008, pinch: 0.05, seg: 8, rings: 5
+            })), std(0x080808, 0.5, 0.15));
+            hoof.position.y = -0.28;
             lower.add(hoof);
             leg.userData.lower = lower;
             leg.userData.sign = gaitSign[li++];
