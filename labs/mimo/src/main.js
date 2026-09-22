@@ -10,7 +10,7 @@ import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUnifo
 import { QUALITY, LIGHT, ACTIONS, breedById } from './config.js';
 import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware } from './utils.js';
 import { Pet } from './pet.js?v=4';
-import { buildRoom, updateRoom } from './room.js?v=1';
+import { buildRoom, updateRoom } from './room.js?v=2';
 import { Effects } from './effects.js';
 import { MimoAudio } from './audio.js';
 import { Hud } from './hud.js';

@@ -204,20 +204,45 @@ export function buildRoom(quality) {
     sofa.add(seat, back);
     root.add(sofa);
 
+    // Vaso com pé, bojo e borda. Folhas em lâmina, no lugar das esferas.
     const plant = new THREE.Group();
+    plant.name = 'plant';
     plant.position.set(-2.35, 0, -1.7);
-    plant.add(mesh(cyl, ceramic, { scale: [0.18, 0.28, 0.18], pos: [0, 0.14, 0] }));
-    plant.add(mesh(cyl, soil, { scale: [0.16, 0.04, 0.16], pos: [0, 0.28, 0], cast: false }));
-    plant.add(mesh(cyl, new THREE.MeshStandardMaterial({ color: 0x3a5a28 }), {
+    const pot = new THREE.Mesh(new THREE.LatheGeometry([
+        new THREE.Vector2(0.1, 0),
+        new THREE.Vector2(0.12, 0.02),
+        new THREE.Vector2(0.14, 0.06),
+        new THREE.Vector2(0.175, 0.14),
+        new THREE.Vector2(0.15, 0.22),
+        new THREE.Vector2(0.16, 0.25),
+        new THREE.Vector2(0.195, 0.28),
+        new THREE.Vector2(0.17, 0.3)
+    ], 16), ceramic);
+    pot.name = 'plantPot';
+    pot.castShadow = true;
+    pot.receiveShadow = true;
+    plant.add(pot);
+    plant.add(mesh(cyl, soil, { scale: [0.15, 0.04, 0.15], pos: [0, 0.26, 0], cast: false }));
+    const stem = mesh(cyl, new THREE.MeshStandardMaterial({ color: 0x3a5a28 }), {
         scale: [0.025, 0.7, 0.025], pos: [0, 0.62, 0]
-    }));
+    });
+    stem.name = 'plantStem';
+    plant.add(stem);
+    const leafPts = [[0, 0], [0.07, 0.08], [0.1, 0.2], [0.05, 0.34], [0, 0.46], [-0.05, 0.34], [-0.1, 0.2], [-0.07, 0.08]];
+    const leafShape = new THREE.Shape();
+    leafShape.moveTo(leafPts[0][0], leafPts[0][1]);
+    for (let i = 1; i < leafPts.length; i++) leafShape.lineTo(leafPts[i][0], leafPts[i][1]);
+    const leafGeo = new THREE.ExtrudeGeometry(leafShape, { depth: 0.018, bevelEnabled: false });
+    leafGeo.translate(0, 0, -0.009);
+    leafGeo.computeVertexNormals();
     for (let i = 0; i < 7; i++) {
         const a = (i / 7) * Math.PI * 2;
-        plant.add(mesh(sph, leafMat, {
-            scale: [0.18, 0.28, 0.06],
-            pos: [Math.cos(a) * 0.22, 0.7 + (i % 3) * 0.18, Math.sin(a) * 0.18],
-            rot: [0.6, a, 0.3]
-        }));
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.name = 'plantLeaf';
+        leaf.position.set(Math.cos(a) * 0.16, 0.55 + (i % 3) * 0.16, Math.sin(a) * 0.14);
+        leaf.rotation.set(0.5, a, 0.15);
+        leaf.castShadow = true;
+        plant.add(leaf);
     }
     root.add(plant);
 
