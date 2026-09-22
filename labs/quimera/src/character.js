@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import { LAYOUT, KIT_BY_ID } from './config.js';
 import { buildHead } from './heads.js?v=21';
-import { buildBody } from './bodies.js?v=36';
+import { buildBody } from './bodies.js?v=37';
 import { buildAccessory } from './accessories.js?v=19';
 
 const ATTACH = {

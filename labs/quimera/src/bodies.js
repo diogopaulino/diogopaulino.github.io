@@ -793,6 +793,35 @@ const ROBOT_PANEL = (() => {
     return g;
 })();
 
+/** Faixa do marinheiro: 8 cm em cima e fecha numa ponta embaixo. */
+const SAILOR_STRIPE = (() => {
+    const p = [
+        [-0.04, 0.21],
+        [0.04, 0.21],
+        [0.038, 0.12],
+        [0.03, -0.08],
+        [0.012, -0.18],
+        [0, -0.21],
+        [-0.012, -0.18],
+        [-0.03, -0.08],
+        [-0.038, 0.12]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.01);
+    return g;
+})();
+
 function build(kit, extras) {
     const ctx = makeCtx(kit);
     clothedBody(ctx, extras.options || {});
@@ -822,9 +851,10 @@ const BODIES = {
             flap.name = 'sailorFlap';
             const bib = add.mesh(SAILOR_BIB, mats.white, [0, 1.02, 0.18]);
             bib.name = 'sailorBib';
-            add.box(0.08, 0.42, 0.02, mats.white, [-0.12, 0.86, 0.18]);
-            add.box(0.08, 0.42, 0.02, mats.white, [0.12, 0.86, 0.18]);
-            add.box(0.08, 0.42, 0.02, mats.white, [0, 0.86, 0.18]);
+            for (const x of [-0.12, 0.12, 0]) {
+                const stripe = add.mesh(SAILOR_STRIPE, mats.white, [x, 0.86, 0.18]);
+                stripe.name = 'sailorStripe';
+            }
             const knot = add.mesh(SAILOR_KNOT, mats.accent, [0, 1.02, 0.20]);
             knot.name = 'sailorKnot';
         }
