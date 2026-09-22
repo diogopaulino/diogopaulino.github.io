@@ -774,9 +774,10 @@ function gateBarGeometry() {
     for (let i = 0; i <= 18; i++) {
         const t = i / 18;
         const y = (t - 0.5) * H;
-        let r = 0.2;
-        if (t < 0.06) r = 0.1 + (t / 0.06) * 0.1;
-        r += Math.sin(t * Math.PI) * 0.025;
+        let r = 0.18;
+        if (t < 0.08) r = 0.07 + (t / 0.08) * 0.11;
+        const band = Math.cos((t - 0.22) * Math.PI * 6);
+        if (band > 0.72) r += 0.045;
         pts.push(new THREE.Vector2(r, y));
     }
     const g = new THREE.LatheGeometry(pts, 8);
@@ -789,7 +790,7 @@ function gateBarGeometry() {
         if (rad < 1e-4) continue;
         const ang = Math.atan2(z, x);
         const corner = Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
-        const k = 0.78 + 0.22 / corner;
+        const k = 0.28 + 0.72 / corner;
         pos.setXYZ(i, x * k, y, z * k);
     }
     g.computeVertexNormals();
