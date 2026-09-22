@@ -416,6 +416,68 @@ function oarBladeGeometry() {
 const OAR_SHAFT = oarShaftGeometry();
 const OAR_BLADE = oarBladeGeometry();
 
+/**
+ * Carreta 0.62×0.32×0.48, centrada. Duas faces altas e um berço no meio.
+ * A boca (+Z) desce; a culatra (−Z) fica mais alta, com um entalhe de munhão.
+ */
+function cannonCarriageGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.31, -0.16);
+    shape.lineTo(-0.31, 0.24);
+    shape.lineTo(-0.17, 0.24);
+    shape.lineTo(-0.17, -0.02);
+    shape.lineTo(0.17, -0.02);
+    shape.lineTo(0.17, 0.24);
+    shape.lineTo(0.31, 0.24);
+    shape.lineTo(0.31, -0.16);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 0.48, steps: 14, bevelEnabled: false });
+    g.translate(0, 0, -0.24);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y > 0.04 && Math.abs(x) > 0.15) {
+            const along = (z + 0.24) / 0.48;
+            const notch = Math.abs(z - 0.04) < 0.07 ? 0.1 : 0;
+            y -= along * 0.18 + notch;
+        }
+        if (y < -0.1) x *= 1 + (0.12 * (1 - (y + 0.16) / 0.06));
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+/** Tubo de 1.7, centrado em Y. Boca estreita em +Y, anéis e cascabel na culatra. */
+function cannonBarrelGeometry() {
+    const half = 0.85;
+    const raw = [
+        [0.02, -half - 0.06],
+        [0.07, -half - 0.02],
+        [0.035, -half + 0.02],
+        [0.15, -half + 0.08],
+        [0.155, -0.52],
+        [0.118, -0.4],
+        [0.112, -0.05],
+        [0.15, 0.04],
+        [0.11, 0.12],
+        [0.105, 0.48],
+        [0.142, 0.56],
+        [0.098, 0.66],
+        [0.096, half - 0.07],
+        [0.128, half - 0.03],
+        [0.09, half]
+    ];
+    const g = new THREE.LatheGeometry(raw.map(([r, y]) => new THREE.Vector2(r, y)), 16);
+    g.computeVertexNormals();
+    return g;
+}
+
+const CANNON_CARRIAGE = cannonCarriageGeometry();
+const CANNON_BARREL = cannonBarrelGeometry();
+
 export function buildLongship({
     length = 15,
     beam = 3.6,
@@ -799,8 +861,10 @@ export function buildLongship({
 
         const makeGun = (side, aim = 'broadside') => {
             const gun = new THREE.Group();
-            const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.32, 0.48), wood);
+            const carriage = new THREE.Mesh(CANNON_CARRIAGE, wood);
+            carriage.name = 'cannonCarriage';
             carriage.position.y = -0.02;
+            carriage.castShadow = true;
             gun.add(carriage);
 
             const wheelGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.08, 10);
@@ -811,7 +875,8 @@ export function buildLongship({
                 gun.add(wheel);
             }
 
-            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.145, 1.7, 12), bronze);
+            const barrel = new THREE.Mesh(CANNON_BARREL, bronze);
+            barrel.name = 'cannonBarrel';
             barrel.castShadow = true;
             if (aim === 'bow') {
                 barrel.rotation.x = Math.PI / 2;
