@@ -179,6 +179,38 @@ const NINJA_SAYA = (() => {
     return g;
 })();
 
+/**
+ * Lâmina do samurai: o fio sobe na ponta e o beijo da kissaki
+ * recua cerca de 11 cm. O comprimento nasce em X e gira para Z.
+ */
+const SAMURAI_BLADE = (() => {
+    const p = [
+        [-0.35, 0.032],
+        [-0.30, 0.02],
+        [0.24, 0.018],
+        [0.30, 0.012],
+        [0.36, -0.022],
+        [0.25, -0.034],
+        [-0.30, -0.03],
+        [-0.35, -0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.02);
+    g.rotateY(-Math.PI / 2);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -270,7 +302,8 @@ const ACCESSORIES = {
     }),
 
     samurai: (kit) => build(kit, 'back', ({ add, mats }) => {
-        add.box(0.045, 0.08, 0.7, mats.accent, [0.16, 0.1, 0], [0.1, 0.6, 0.1], null, 0.01);
+        const blade = add.mesh(SAMURAI_BLADE, mats.accent, [0.16, 0.1, 0], [0.1, 0.6, 0.1]);
+        blade.name = 'samuraiBlade';
         add.cyl(0.03, 0.035, 0.18, mats.primary, [0.16, -0.22, 0.06], [0.1, 0.6, 0.1]);
         add.torus(0.05, 0.01, mats.trim, [0.16, -0.12, 0.04], [Math.PI / 2, 0.6, 0]);
     }),
