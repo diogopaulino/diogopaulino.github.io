@@ -763,5 +763,3 @@ export function fuse(geometries) {
     const merged = mergeGeometries(geometries, false);
     return merged || geometries[0];
 }
-
-export { profileTube };
