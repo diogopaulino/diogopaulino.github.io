@@ -219,11 +219,56 @@ export function buildHomeInterior(scene) {
         book.parent = root;
     }
 
-    // Mesinha lateral com o brinquedo brilhante
-    const table = BABYLON.MeshBuilder.CreateBox('sideTable', { width: 0.8, height: 0.5, depth: 0.8 }, scene);
+    // Mesinha: tampo com borda enrolada, saia e pés torneados.
+    // O nó continua em (3.2, 0.28, 1.2). O topo fica em y local 0.25, onde a bola apoia.
+    const table = new BABYLON.TransformNode('sideTable', scene);
     table.position.set(3.2, 0.28, 1.2);
-    table.material = woodMat;
     table.parent = root;
+    const tableCarve = (name, shape, path) => {
+        const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+            path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        mesh.material = woodMat;
+        mesh.parent = table;
+        return mesh;
+    };
+    tableCarve('tableTop', [
+        [0.36, -0.02], [0.38, 0], [0.34, 0.028], [-0.32, 0.028],
+        [-0.38, 0.012], [-0.42, -0.004], [-0.36, -0.022], [0.34, -0.02]
+    ], [[-0.38, 0.22, 0], [0.38, 0.22, 0]]);
+    const apron = [
+        [0.02, -0.035], [-0.02, -0.032], [-0.028, 0.02], [0.018, 0.028]
+    ];
+    tableCarve('tableApron', apron, [[-0.28, 0.14, 0.3], [0.28, 0.14, 0.3]]);
+    tableCarve('tableApron', apron, [[-0.28, 0.14, -0.3], [0.28, 0.14, -0.3]]);
+    tableCarve('tableApron', apron, [[0.3, 0.14, -0.28], [0.3, 0.14, 0.28]]);
+    tableCarve('tableApron', apron, [[-0.3, 0.14, -0.28], [-0.3, 0.14, 0.28]]);
+    let tableLegSrc = null;
+    for (const x of [-0.3, 0.3]) {
+        for (const z of [-0.28, 0.28]) {
+            const leg = tableLegSrc
+                ? tableLegSrc.clone('tableLeg')
+                : (tableLegSrc = BABYLON.MeshBuilder.CreateLathe('tableLeg', {
+                    shape: [
+                        new BABYLON.Vector3(0.045, 0, 0),
+                        new BABYLON.Vector3(0.05, 0.03, 0),
+                        new BABYLON.Vector3(0.028, 0.08, 0),
+                        new BABYLON.Vector3(0.022, 0.3, 0),
+                        new BABYLON.Vector3(0.034, 0.4, 0),
+                        new BABYLON.Vector3(0.042, 0.46, 0)
+                    ],
+                    tessellation: 8,
+                    cap: BABYLON.Mesh.CAP_ALL
+                }, scene));
+            leg.position.set(x, -0.25, z);
+            leg.material = woodMat;
+            leg.parent = table;
+        }
+    }
 
     const shiny = BABYLON.MeshBuilder.CreateSphere('shinyToy', { diameter: 0.18, segments: 10 }, scene);
     shiny.position.set(3.2, 0.62, 1.2);
