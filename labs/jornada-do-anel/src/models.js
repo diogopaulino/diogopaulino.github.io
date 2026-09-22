@@ -547,23 +547,34 @@ export function buildGoblin() {
     return { group };
 }
 
-/** Lâmina 0.04×0.85×0.08, centrada. Ponta em +Y, fio nas bordas. */
+/** Lâmina 0.85 centrada em Y. Ponta em +Y; guarda na base; fio em ±Z. */
 function nazgulBladeGeometry() {
     const H = 0.85;
     const half = H / 2;
-    const g = new THREE.BoxGeometry(0.04, H, 0.08, 2, 18, 6);
+    const g = new THREE.BoxGeometry(0.028, H, 0.09, 4, 22, 8);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
         let x = pos.getX(i);
         const y = pos.getY(i);
         let z = pos.getZ(i);
         const t = (y + half) / H;
-        let k = 1;
-        if (t < 0.1) k = 0.8;
-        else if (t > 0.48) k = Math.max(0.05, 1 - (t - 0.48) / 0.52);
-        z *= k;
-        const edge = Math.min(1, Math.abs(z) / Math.max(0.008, 0.04 * k));
-        x *= (1 - edge * 0.7) * (0.7 + 0.3 * (1 - t));
+        const widthK = t < 0.12 ? 1 : Math.max(0.035, 1 - (t - 0.12) / 0.88);
+        z *= widthK;
+        if (t < 0.1) {
+            const u = 1 - t / 0.1;
+            z *= 1 + u * 1.45;
+            x *= 1 + u * 0.9;
+        } else {
+            const edge = Math.min(1, Math.abs(z) / Math.max(0.004, 0.045 * widthK));
+            x *= 0.32 + 0.68 * (1 - edge * edge);
+            if (t < 0.9) {
+                const lim = 0.011 * widthK + 0.003;
+                if (Math.abs(z) < lim) {
+                    const groove = 1 - Math.abs(z) / lim;
+                    x *= 1 - groove * 0.62;
+                }
+            }
+        }
         pos.setXYZ(i, x, y, z);
     }
     g.computeVertexNormals();
