@@ -77,6 +77,41 @@ const SAMURAI_PLATE = (() => {
 })();
 
 /**
+ * Crista do elmo samurai: lua crescente. Os chifres descem cerca de 10 cm
+ * abaixo do vão, e o arco fica cerca de 8 cm acima do miolo.
+ */
+const SAMURAI_CREST = (() => {
+    const p = [
+        [-0.05, -0.12],
+        [-0.08, -0.02],
+        [-0.05, 0.06],
+        [0, 0.13],
+        [0.05, 0.06],
+        [0.08, -0.02],
+        [0.05, -0.12],
+        [0.022, -0.02],
+        [0.016, 0.04],
+        [0, 0.055],
+        [-0.016, 0.04],
+        [-0.022, -0.02]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.016);
+    return g;
+})();
+
+/**
  * Testeira do guerreiro: a barra desce numa ponta no meio, cerca de 10 cm.
  */
 const WARRIOR_BROW = (() => {
@@ -384,7 +419,8 @@ const HEADS = {
         const brim = add.mesh(SAMURAI_BRIM, mats.primary, [0, 0.12, 0.1], [0.15, 0, 0]);
         brim.name = 'samuraiBrim';
         add.torus(0.1, 0.02, mats.accent, [0, 0.32, 0.04], [Math.PI / 2, 0, 0]);
-        add.box(0.08, 0.16, 0.04, mats.accent, [0, 0.40, 0.04]);
+        const crest = add.mesh(SAMURAI_CREST, mats.accent, [0, 0.40, 0.04]);
+        crest.name = 'samuraiCrest';
         const plate = add.mesh(SAMURAI_PLATE, mats.secondary, [0, -0.02, 0.22]);
         plate.name = 'samuraiPlate';
     }),
