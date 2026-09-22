@@ -3,7 +3,7 @@
  */
 
 import {
-    woodTexture, darkWoodTexture, plasterTexture, rugTexture, clothTexture
+    woodTexture, darkWoodTexture, plasterTexture, rugTexture, clothTexture, stoneTexture
 } from './Textures.js';
 import { makeFire } from './Environment.js?v=5';
 import { createMuscle } from '../../../shared/realism-bjs.js';
@@ -49,27 +49,66 @@ export function buildHomeInterior(scene) {
     mkWall('wallLeft', 0.25, 3.6, 8, -5, 1.7, 0);
     mkWall('wallRight', 0.25, 3.6, 8, 5, 1.7, 0);
 
-    // Lareira
-    const fireplace = BABYLON.MeshBuilder.CreateBox('fireplace', { width: 2.4, height: 2.2, depth: 0.7 }, scene);
+    // Lareira de pedra: ombreiras, arco e soleira no volume do bloco antigo.
+    // O colisor continua em addHomeColliders. +Z é a sala.
+    const stoneMat = new BABYLON.StandardMaterial('hearthStoneMat', scene);
+    stoneMat.diffuseTexture = stoneTexture(scene, 2, 2);
+    stoneMat.diffuseColor = new BABYLON.Color3(0.78, 0.72, 0.64);
+    const fireplace = new BABYLON.TransformNode('fireplace', scene);
     fireplace.position.set(0, 1.1, -3.55);
-    fireplace.material = darkWoodMat;
     fireplace.parent = root;
-
-    const opening = BABYLON.MeshBuilder.CreateBox('fireplaceOpening', { width: 1.5, height: 1.2, depth: 0.4 }, scene);
-    opening.position.set(0, 0.75, -3.2);
+    const carve = (name, shape, path, mat) => {
+        const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
+            shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
+            path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
+            cap: BABYLON.Mesh.CAP_ALL,
+            closeShape: true,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE
+        }, scene);
+        mesh.material = mat || stoneMat;
+        mesh.parent = fireplace;
+        return mesh;
+    };
+    const archPoints = (halfW, springY, crownY, n = 10) => {
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const u = (i / n) * 2 - 1;
+            const y = springY + (crownY - springY) * Math.sqrt(Math.max(0, 1 - u * u));
+            pts.push([+(u * halfW).toFixed(4), +y.toFixed(4)]);
+        }
+        return pts;
+    };
+    const jamb = [
+        [0.3, -0.24], [-0.4, -0.24], [-0.4, 0.16], [-0.28, 0.24], [0.3, 0.24]
+    ];
+    carve('jamb', jamb, [[-0.96, -0.9, 0], [-0.96, 0.22, 0]]);
+    carve('jamb', jamb.map(([x, y]) => [x, -y]), [[0.96, -0.9, 0], [0.96, 0.22, 0]]);
+    const innerArch = archPoints(0.72, 0.18, 0.62);
+    const outerArch = archPoints(0.98, 0.06, 0.88);
+    carve('arch', innerArch.concat(outerArch.slice().reverse()), [[0, 0, -0.22], [0, 0, 0.36]]);
+    carve('breast', [
+        [-1.2, 0.4], [-1.2, 1.02], [1.2, 1.02], [1.2, 0.4],
+        [0.7, 0.72], [0, 0.94], [-0.7, 0.72]
+    ], [[0, 0, -0.25], [0, 0, 0.32]]);
+    carve('course', [
+        [0.02, -0.045], [-0.1, -0.03], [-0.11, 0.03], [0.02, 0.045]
+    ], [[-1.15, 0.62, 0.32], [1.15, 0.62, 0.32]]);
+    carve('hearth', [
+        [0.3, -0.02], [-0.62, -0.01], [-0.58, 0.06], [-0.18, 0.09], [0.32, 0.08]
+    ], [[-1.35, -1, 0], [1.35, -1, 0]]);
+    carve('mantel', [
+        [0.16, -0.05], [-0.48, -0.06], [-0.5, 0], [-0.22, 0.07], [0.14, 0.06]
+    ], [[-1.38, 1.02, 0], [1.38, 1.02, 0]], woodMat);
+    const opening = BABYLON.MeshBuilder.CreateBox('fireplaceOpening', { width: 1.28, height: 1.05, depth: 0.1 }, scene);
+    opening.position.set(0, -0.35, -0.12);
     const darkMat = new BABYLON.StandardMaterial('fpDarkMat', scene);
     darkMat.diffuseColor = new BABYLON.Color3(0.08, 0.05, 0.03);
     opening.material = darkMat;
-    opening.parent = root;
+    opening.parent = fireplace;
 
     const fire = makeFire(0.85, scene);
     fire.position.set(0, 0.15, -3.15);
     fire.parent = root;
-
-    const mantel = BABYLON.MeshBuilder.CreateBox('mantel', { width: 2.6, height: 0.12, depth: 0.5 }, scene);
-    mantel.position.set(0, 2.15, -3.45);
-    mantel.material = woodMat;
-    mantel.parent = root;
 
     // Tapete
     const rug = BABYLON.MeshBuilder.CreateBox('rug', { width: 3.2, height: 0.04, depth: 2.4 }, scene);

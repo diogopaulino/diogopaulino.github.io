@@ -2,7 +2,7 @@
  * Ponto de entrada do jogo O Guerreiro e o Castelo com Babylon.js.
  */
 
-import { Game } from './core/Game.js?v=19';
+import { Game } from './core/Game.js?v=20';
 
 const canvas = document.getElementById('scene') || document.getElementById('gameCanvas');
 const game = new Game(canvas);
