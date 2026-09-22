@@ -748,25 +748,49 @@ export function buildHobbitHole({ doorColor = '#2d6b38', scale = 1 } = {}) {
     return { group, parts: group.userData.parts };
 }
 
+/**
+ * Copa em sino. t=0 é a saia (raio curto), a barriga abre e o topo fecha.
+ * Cada lobo: raio *= 0.64 + 0.4 * max(0, cos(θ·lobes + seed))².
+ * A saia (t < 0.22) encolhe mais, para a copa não virar bola.
+ */
+function crownGeometry({ radius, height, y0, lobes, seed, seg = 20, steps = 12 }) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = y0 + t * height;
+        const belly = Math.sin(Math.PI * (Math.min(1, t / 0.92) ** 0.7));
+        const skirt = t < 0.16 ? 0.42 + (t / 0.16) * 0.58 : 1;
+        pts.push(new THREE.Vector2(Math.max(0.05, radius * belly * skirt), y));
+    }
+    const g = new THREE.LatheGeometry(pts, seg);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const rad = Math.hypot(x, z);
+        if (rad < 1e-4) continue;
+        const lobe = 0.64 + 0.4 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
+        const tuck = y < y0 + height * 0.22 ? 0.8 : 1;
+        const k = lobe * tuck;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
 function oakCanopyGeo(autumn) {
     return geo(`oak-canopy:${autumn}`, () => {
-        const blobs = [];
-        const specs = [
-            [0, 1.55, 0, 1.45, 1.05, 1.35],
-            [0.7, 1.15, 0.35, 1.05, 0.9, 1.0],
-            [-0.55, 1.25, -0.25, 0.95, 0.85, 0.95],
-            [0.15, 1.85, -0.5, 0.85, 0.75, 0.9]
+        const parts = [
+            crownGeometry({ radius: 1.35, height: 1.85, y0: 0.45, lobes: 5, seed: 0.4 }),
+            crownGeometry({ radius: 0.95, height: 1.35, y0: 0.7, lobes: 4, seed: 1.7 }),
+            crownGeometry({ radius: 0.72, height: 1.15, y0: 1.45, lobes: 5, seed: 2.4 })
         ];
-        for (let i = 0; i < specs.length; i++) {
-            const [x, y, z, sx, sy, sz] = specs[i];
-            const g = warp(new THREE.IcosahedronGeometry(1, 1), 40 + i, 0.18, 0.45);
-            g.scale(sx, sy, sz);
-            g.translate(x, y, z);
-            blobs.push(g);
-        }
-        const merged = mergeGeometries(blobs, false);
-        blobs.forEach((g) => g.dispose());
-        if (!merged) return new THREE.IcosahedronGeometry(1.4, 1);
+        parts[1].translate(0.72, 0.05, 0.28);
+        parts[2].translate(-0.15, 0.15, -0.35);
+        const merged = mergeGeometries(parts, false);
+        parts.forEach((g) => g.dispose());
+        if (!merged) return crownGeometry({ radius: 1.35, height: 1.85, y0: 0.45, lobes: 5, seed: 0.4 });
         merged.computeVertexNormals();
         return merged;
     });
@@ -852,24 +876,88 @@ export function buildPine() {
 
 export function buildPartyTree() {
     const group = new THREE.Group();
+    group.name = 'partyTree';
     const trunk = new THREE.Mesh(
-        geo('party-trunk', () => warp(new THREE.CylinderGeometry(0.5, 0.82, 4.3, 14), 60, 0.12)),
+        geo('party-trunk', () => {
+            const H = 4.35;
+            const pts = [];
+            for (let i = 0; i <= 16; i++) {
+                const t = i / 16;
+                const flare = Math.exp(-t * 5.5) * 0.55;
+                const collar = t > 0.86 ? (t - 0.86) * 0.9 : 0;
+                pts.push(new THREE.Vector2(0.42 - t * 0.1 + flare + collar, t * H));
+            }
+            const g = new THREE.LatheGeometry(pts, 16);
+            const pos = g.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const rad = Math.hypot(x, z);
+                if (rad < 1e-4 || y < 0.25 || y > H - 0.15) continue;
+                const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 7)) ** 2 * 0.045;
+                const k = 1 + rib / rad;
+                pos.setXYZ(i, x * k, y, z * k);
+            }
+            g.computeVertexNormals();
+            return g;
+        }),
         mapped(barkTexture(), 0x8a6a48, 0.9, 0.02, 1.15)
     );
-    trunk.position.y = 2.15;
     group.add(trunk);
 
     const leaf = mapped(leafTexture('#2f6a24'), 0x4a8a32, 0.8);
     vegWind(leaf, 0.07);
-    for (let i = 0; i < 6; i++) {
+    const clumps = [
+        [0, 4.55, 0, 1.7, 2.15, 5, 0.2, 1],
+        [1.25, 4.35, 0.55, 1.35, 1.7, 4, 1.1, 0.92],
+        [-1.05, 4.4, 0.7, 1.28, 1.65, 5, 2.2, 0.9],
+        [0.35, 4.5, -1.3, 1.32, 1.7, 4, 0.6, 0.94],
+        [-0.4, 5.55, 0.15, 1.15, 1.45, 5, 1.8, 0.82]
+    ];
+    clumps.forEach(([x, y, z, radius, height, lobes, seed, scale], i) => {
         const blob = new THREE.Mesh(
-            geo(`party-blob:${i}`, () => warp(new THREE.IcosahedronGeometry(1.75, 1), 61 + i, 0.16)),
+            geo(`party-crown:${i}`, () => crownGeometry({
+                radius, height, y0: -height * 0.42, lobes, seed
+            })),
             leaf
         );
-        const a = (i / 6) * Math.PI * 2;
-        blob.position.set(Math.cos(a) * 1.35, 4.35 + (i % 2) * 0.55, Math.sin(a) * 1.35);
-        blob.scale.setScalar(0.88 + (i % 3) * 0.1);
+        blob.position.set(x, y, z);
+        blob.scale.setScalar(scale);
+        if (i === 0) blob.name = 'partyCrown';
         group.add(blob);
+    });
+
+    const card = mat('party-leaf-card', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.fillStyle = '#3f7a2c';
+        ctx.beginPath();
+        ctx.ellipse(32, 36, 13, 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#214816';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(32, 12);
+        ctx.lineTo(32, 60);
+        ctx.stroke();
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.MeshStandardMaterial({
+            map: tex, color: 0x4a8a32, alphaTest: 0.45, roughness: 0.72, side: THREE.DoubleSide
+        });
+        vegWind(m, 0.16);
+        return m;
+    });
+    const cardGeo = geo('party-leaf-card', () => new THREE.PlaneGeometry(0.72, 1.05));
+    for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        const leafCard = new THREE.Mesh(cardGeo, card);
+        leafCard.position.set(Math.cos(a) * 2.25, 4.15 + (i % 4) * 0.48, Math.sin(a) * 2.25);
+        leafCard.rotation.set(0.15, a, i % 2 ? 0.4 : -0.4);
+        group.add(leafCard);
     }
 
     const lanterns = [];
