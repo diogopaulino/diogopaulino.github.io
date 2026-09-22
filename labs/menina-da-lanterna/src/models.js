@@ -419,9 +419,9 @@ export function buildNight() {
 /* Cenário                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Casa 3.2×2×2.6, centrada. Fiadas, cunhal, vão da porta e das janelas na face +Z. */
+/** Casa 3.2×2×2.6, centrada. Fiadas alternadas, cunhal, vão da porta e das janelas na face +Z. */
 function cottageWallGeometry() {
-    const g = new THREE.BoxGeometry(3.2, 2.0, 2.6, 8, 10, 6);
+    const g = new THREE.BoxGeometry(3.2, 2.0, 2.6, 10, 16, 8);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
         let x = pos.getX(i);
@@ -431,40 +431,55 @@ function cottageWallGeometry() {
         const onZ = Math.abs(z) > 1.2;
         const t = (y + 1) / 2;
         if (onX || onZ) {
-            const course = Math.sin((y + 1) * Math.PI * 4);
-            const lip = course > 0.55 ? 0.045 : 0;
-            const quoin = onX && onZ ? 0.07 : 0;
-            const batter = (1 - t) * 0.04;
+            const band = Math.floor((y + 1.02) / 0.25);
+            const lip = band % 2 === 0 ? 0.11 : 0;
+            const nearCorner = (Math.abs(x) > 1.28 && onZ) || (Math.abs(z) > 1.0 && onX);
+            const quoin = nearCorner ? 0.13 : 0;
+            const batter = (1 - t) * 0.07;
             if (onX) x = Math.sign(x) * (1.6 + batter + lip + quoin);
             if (onZ) z = Math.sign(z) * (1.3 + batter + lip + quoin);
         }
-        if (z > 1.15 && Math.abs(x) < 0.48 && y < 0.22) z -= 0.12;
-        if (z > 1.15 && Math.abs(Math.abs(x) - 0.95) < 0.34 && Math.abs(y - 0.2) < 0.34) z -= 0.08;
+        if (z > 1.2 && Math.abs(x) < 0.52 && y < 0.28) z -= 0.26;
+        if (z > 1.2 && Math.abs(Math.abs(x) - 0.95) < 0.36 && Math.abs(y - 0.2) < 0.36) z -= 0.16;
         pos.setXYZ(i, x, y, z);
     }
     g.computeVertexNormals();
     return g;
 }
 
+/** Camadas de colmo ao longo da água. A normal CCW aponta para fora quando se sobe a esquerda e se desce a direita. */
+function thatchSlope(shape, x0, y0, x1, y1, layers) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    for (let i = 0; i <= layers; i++) {
+        const t = i / layers;
+        const lip = i % 2 === 1 ? 0.11 : 0;
+        shape.lineTo(x0 + dx * t + nx * lip, y0 + dy * t + ny * lip);
+    }
+}
+
 /** Duas águas ao longo de X. y=0 é o beiral, sobre o topo da parede. */
 function cottageRoofGeometry() {
-    const span = 1.72;
-    const rise = 0.95;
+    const span = 1.9;
+    const rise = 1.05;
     const s = new THREE.Shape();
-    s.moveTo(-span, 0);
-    s.lineTo(0, rise);
-    s.lineTo(span, 0);
-    s.lineTo(span - 0.1, -0.22);
-    s.lineTo(-(span - 0.1), -0.22);
+    s.moveTo(-span, -0.28);
+    s.lineTo(-span, 0);
+    thatchSlope(s, -span, 0, 0, rise, 8);
+    thatchSlope(s, 0, rise, span, 0, 8);
+    s.lineTo(span, -0.28);
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, {
-        depth: 3.85,
+        depth: 4.1,
         bevelEnabled: true,
-        bevelThickness: 0.035,
-        bevelSize: 0.04,
+        bevelThickness: 0.04,
+        bevelSize: 0.045,
         bevelSegments: 1
     });
-    g.translate(0, 0, -1.925);
+    g.translate(0, 0, -2.05);
     g.rotateY(Math.PI / 2);
     g.computeVertexNormals();
     return g;
@@ -486,12 +501,12 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     group.add(body);
     for (const x of [-1.55, 0, 1.55]) {
         const post = new THREE.Mesh(new RoundedBoxGeometry(0.12, 2.0, 0.12, 3, 0.02), timber);
-        post.position.set(x, 1.15, 1.36);
+        post.position.set(x, 1.15, 1.62);
         group.add(post);
     }
     for (const y of [0.55, 1.15, 1.75]) {
         const beam = new THREE.Mesh(new RoundedBoxGeometry(3.15, 0.1, 0.1, 3, 0.02), timber);
-        beam.position.set(0, y, 1.36);
+        beam.position.set(0, y, 1.62);
         group.add(beam);
     }
     const thatchMat = new THREE.MeshPhysicalMaterial({
@@ -503,18 +518,18 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     group.add(slope);
     // Porta com batente
     const doorFrame = new THREE.Mesh(new RoundedBoxGeometry(0.85, 1.35, 0.1, 3, 0.03), timber);
-    doorFrame.position.set(0, 0.72, 1.33);
+    doorFrame.position.set(0, 0.72, 1.52);
     group.add(doorFrame);
     const door = new THREE.Mesh(new RoundedBoxGeometry(0.7, 1.2, 0.08, 3, 0.025), std(0x3a2010, 0.75, 0.08));
-    door.position.set(0, 0.7, 1.38);
+    door.position.set(0, 0.7, 1.58);
     group.add(door);
     const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 14, 12), std(0xc9a050, 0.35, 0.85, { clearcoat: 0.8 }));
-    knob.position.set(0.25, 0.7, 1.44);
+    knob.position.set(0.25, 0.7, 1.66);
     group.add(knob);
     // Janelas com caixilho
     for (const x of [-0.95, 0.95]) {
         const frame = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.62, 0.08, 3, 0.025), timber);
-        frame.position.set(x, 1.35, 1.33);
+        frame.position.set(x, 1.35, 1.52);
         group.add(frame);
         const glass = new THREE.Mesh(
             new RoundedBoxGeometry(0.48, 0.48, 0.05, 2, 0.02),
@@ -523,10 +538,10 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
                 roughness: 0.2, metalness: 0.15, clearcoat: 0.5, transmission: 0.15, transparent: true, opacity: 0.92
             })
         );
-        glass.position.set(x, 1.35, 1.38);
+        glass.position.set(x, 1.35, 1.58);
         group.add(glass);
         const mullion = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.48, 0.06, 2, 0.01), timber);
-        mullion.position.set(x, 1.35, 1.4);
+        mullion.position.set(x, 1.35, 1.64);
         group.add(mullion);
     }
     // Chaminé cilíndrica
