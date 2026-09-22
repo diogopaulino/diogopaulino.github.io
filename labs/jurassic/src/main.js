@@ -8,7 +8,7 @@ import { clamp, damp, detectMobile, detectSoftwareGL, rendererIsSoftware } from 
 import { Input } from './input.js';
 import { ParkAudio } from './audio.js';
 import { Hud } from './hud.js';
-import { World } from './world.js?v=5';
+import { World } from './world.js?v=6';
 import { Jeep } from './jeep.js?v=3';
 import { spawnDinosaurs } from './dinosaurs.js?v=3';
 import { createSky, createLights, sampleDay, applySky, applyLights } from './sky.js';
@@ -608,6 +608,7 @@ class Game {
 }
 
 const game = new Game();
+window.__jurassic = game;
 game.init().catch((err) => {
     console.error(err);
     document.getElementById('errorOverlay').hidden = false;

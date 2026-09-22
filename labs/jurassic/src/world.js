@@ -94,6 +94,39 @@ function gateArchGeometry() {
     return g;
 }
 
+/** Jamba do portão, 0.25×3.4, centrada. Pé largo, canal nas faces e capitel. */
+const GATE_POST = (() => {
+    const H = 3.4;
+    const hh = H / 2;
+    const g = new THREE.BoxGeometry(0.25, H, 0.25, 6, 18, 6);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        const y = pos.getY(i);
+        let z = pos.getZ(i);
+        const t = (y + hh) / H;
+        const taper = 1.1 - t * 0.2;
+        x *= taper;
+        z *= taper;
+        if (t < 0.08) {
+            const u = 1 - t / 0.08;
+            x *= 1 + u * 0.85;
+            z *= 1 + u * 0.85;
+        } else if (t > 0.92) {
+            const u = (t - 0.92) / 0.08;
+            x *= 1 + u * 0.45;
+            z *= 1 + u * 0.45;
+        } else {
+            const half = 0.125 * taper;
+            if (Math.abs(x) > half * 0.82 && Math.abs(z) < half * 0.4) x *= 0.42;
+            if (Math.abs(z) > half * 0.82 && Math.abs(x) < half * 0.4) z *= 0.42;
+        }
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+})();
+
 /**
  * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
  * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
@@ -413,8 +446,10 @@ export class World {
         roof.position.set(x, y + 4.2, z);
         roof.castShadow = true;
         this.group.add(roof);
-        const gateL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.4, 0.25), rust);
+        const gateL = new THREE.Mesh(GATE_POST, rust);
+        gateL.name = 'gatePost';
         gateL.position.set(-4, this.heightAt(-4, 94) + 1.7, 94);
+        gateL.castShadow = true;
         this.group.add(gateL);
         const gateR = gateL.clone();
         gateR.position.set(12, this.heightAt(12, 94) + 1.7, 94);
