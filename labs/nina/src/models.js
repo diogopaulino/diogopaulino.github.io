@@ -565,9 +565,40 @@ export function createCloud() {
     return g;
 }
 
+/** Celeiro 5.2×3.4×4.2, centrado. Fiadas, cunhal e o vão da porta na face +Z. */
+function barnWallGeometry() {
+    const g = new THREE.BoxGeometry(5.2, 3.4, 4.2, 10, 14, 8);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        const onX = Math.abs(x) > 2.45;
+        const onZ = Math.abs(z) > 1.95;
+        const t = (y + 1.7) / 3.4;
+        if (onX || onZ) {
+            const course = Math.sin((y + 1.7) * Math.PI * 5);
+            const lip = course > 0.62 ? 0.07 : 0;
+            const quoin = onX && onZ ? 0.12 : 0;
+            const batter = (1 - t) * 0.05;
+            if (onX) x = Math.sign(x) * (2.6 + batter + lip + quoin);
+            if (onZ) z = Math.sign(z) * (2.1 + batter + lip + quoin);
+        }
+        if (z > 1.85 && Math.abs(x) < 0.8 && y < 0.5) z -= 0.16;
+        if (z > 1.85 && Math.abs(x - 1.4) < 0.42 && Math.abs(y - 0.7) < 0.42) z -= 0.1;
+        pos.setXYZ(i, x, y, z);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const BARN_WALL = barnWallGeometry();
+
 export function createBarn() {
     const g = new THREE.Group();
-    g.add(mesh(geo.box, MAT.barn, { scale: [5.2, 3.4, 4.2], pos: [0, 1.7, 0] }));
+    const wall = mesh(BARN_WALL, MAT.barn, { pos: [0, 1.7, 0] });
+    wall.name = 'barnWall';
+    g.add(wall);
     const barnRoof = once('barn-roof', () => {
         const shape = new THREE.Shape();
         shape.moveTo(-2.4, 0);
