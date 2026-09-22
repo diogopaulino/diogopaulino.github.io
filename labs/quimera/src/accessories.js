@@ -358,6 +358,43 @@ const FAIRY_GEM = (() => {
     return g;
 })();
 
+/**
+ * Ponte do binóculo: a haste fica estreita e a roda de foco
+ * no meio abre cerca de 6 cm.
+ */
+const EXPLORER_BRIDGE = (() => {
+    const p = [
+        [-0.012, -0.045],
+        [-0.012, -0.022],
+        [-0.026, -0.016],
+        [-0.032, 0],
+        [-0.026, 0.016],
+        [-0.012, 0.022],
+        [-0.012, 0.045],
+        [0.012, 0.045],
+        [0.012, 0.022],
+        [0.026, 0.016],
+        [0.032, 0],
+        [0.026, -0.016],
+        [0.012, -0.022],
+        [0.012, -0.045]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 1,
+        curveSegments: 2
+    });
+    g.translate(0, 0, -0.03);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -430,7 +467,8 @@ const ACCESSORIES = {
     explorer: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.cyl(0.06, 0.06, 0.1, mats.dark, [-0.05, 0.1, 0], [1.2, 0, 0]);
         add.cyl(0.06, 0.06, 0.1, mats.dark, [0.05, 0.1, 0], [1.2, 0, 0]);
-        add.box(0.04, 0.04, 0.08, mats.secondary, [0, 0.1, 0]);
+        const bridge = add.mesh(EXPLORER_BRIDGE, mats.secondary, [0, 0.1, 0]);
+        bridge.name = 'explorerBridge';
         add.cyl(0.045, 0.045, 0.04, glass(0x88a0c0), [-0.05, 0.16, 0.02], [1.2, 0, 0]);
         add.cyl(0.045, 0.045, 0.04, glass(0x88a0c0), [0.05, 0.16, 0.02], [1.2, 0, 0]);
     }),
