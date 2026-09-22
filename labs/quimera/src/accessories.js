@@ -79,6 +79,38 @@ const ASTRO_PAD = (() => {
     return g;
 })();
 
+/**
+ * Machado do guerreiro: o gume abre para a direita e a barba
+ * desce cerca de 11 cm abaixo do olho. O chifre de cima sobe
+ * cerca de 11 cm acima do poll.
+ */
+const WARRIOR_AXE = (() => {
+    const p = [
+        [-0.055, 0.02],
+        [-0.01, 0.035],
+        [0.035, 0.13],
+        [0.115, 0.04],
+        [0.13, -0.02],
+        [0.05, -0.13],
+        [0.0, -0.02],
+        [-0.055, -0.025]
+    ];
+    const s = new THREE.Shape();
+    s.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) s.lineTo(p[i][0], p[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 0.04,
+        bevelEnabled: true,
+        bevelThickness: 0.004,
+        bevelSize: 0.003,
+        bevelSegments: 1,
+        curveSegments: 3
+    });
+    g.translate(0, 0, -0.016);
+    return g;
+})();
+
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
         add.sphere(0.09, mats.accent, [0, 0.04, 0]);
@@ -106,7 +138,8 @@ const ACCESSORIES = {
 
     warrior: (kit) => build(kit, 'grip', ({ add, mats }) => {
         add.cyl(0.025, 0.025, 0.42, mats.accent, [0, 0.18, 0], [0.15, 0, 0.4]);
-        add.box(0.06, 0.14, 0.02, mats.secondary, [0.02, 0.40, 0.08], [0.15, 0, 0.4]);
+        const axe = add.mesh(WARRIOR_AXE, mats.secondary, [0.02, 0.40, 0.08], [0.15, 0, 0.4]);
+        axe.name = 'warriorAxe';
         add.box(0.08, 0.08, 0.08, mats.primary, [0, 0.02, 0], null, null, 0.02);
         add.cyl(0.14, 0.14, 0.04, mats.secondary, [-0.22, 0.12, 0.04], [1.2, 0.4, 0]);
         add.cyl(0.04, 0.04, 0.08, mats.accent, [-0.22, 0.12, 0.04], [1.2, 0.4, 0]);
