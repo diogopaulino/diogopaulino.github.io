@@ -321,26 +321,54 @@ function createRider() {
     return g;
 }
 
+/** Copa irregular. Seis variantes reutilizadas — não clona uma esfera por árvore. */
+function foliageBlob(seed) {
+    const g = new THREE.SphereGeometry(1, 22, 16);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const len = Math.hypot(x, y, z) || 1;
+        const n = 0.78 + Math.abs(Math.sin(x * 2.2 + seed) * Math.cos(z * 1.7 + seed * 0.3)) * 0.34;
+        pos.setXYZ(i, (x / len) * n, (y / len) * n * 0.82, (z / len) * n);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const FOLIAGE = [0, 1.7, 3.1, 4.4, 5.9, 7.2].map((seed) => foliageBlob(seed));
+
 export function createYva() {
     const m = materials();
     const g = new THREE.Group();
     g.name = 'yva';
-    g.add(mesh(geo.cyl, m.bark, { scale: [2.8, 22, 2.8], pos: [0, 11, 0] }));
-    g.add(mesh(geo.sphereHi, m.bark, { scale: [3.4, 4.2, 3.4], pos: [0, 2.2, 0] }));
+    const trunk = new THREE.LatheGeometry([
+        new THREE.Vector2(3.8, 0),
+        new THREE.Vector2(2.4, 2.2),
+        new THREE.Vector2(1.55, 8),
+        new THREE.Vector2(1.25, 16),
+        new THREE.Vector2(0.85, 21),
+        new THREE.Vector2(0.35, 22.6)
+    ], 16);
+    g.add(mesh(trunk, m.bark, { pos: [0, 0, 0] }));
+    const branch = profileTube({
+        axis: 'y', length: 8, rings: 8, seg: 8,
+        radius: (t) => 0.48 * (1.15 - t * 0.55)
+    });
     for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        g.add(mesh(geo.cylLo, m.bark, {
-            scale: [0.55, 8, 0.55],
+        g.add(mesh(branch, m.bark, {
             pos: [Math.cos(a) * 4.5, 18, Math.sin(a) * 4.5],
             rot: [0.7, a, 0]
         }));
-        g.add(mesh(geo.sphere, m.leaf, {
+        g.add(mesh(FOLIAGE[i % FOLIAGE.length], m.leaf, {
             scale: [4.2, 2.4, 4.2],
             pos: [Math.cos(a) * 7.5, 22, Math.sin(a) * 7.5]
         }));
     }
-    g.add(mesh(geo.sphereHi, m.leafDark, { scale: [10, 5.5, 10], pos: [0, 24, 0] }));
-    g.add(mesh(geo.sphere, m.leaf, { scale: [7.5, 4, 7.5], pos: [0, 27, 0] }));
+    g.add(mesh(FOLIAGE[1], m.leafDark, { scale: [10, 5.5, 10], pos: [0, 24, 0] }));
+    g.add(mesh(FOLIAGE[3], m.leaf, { scale: [7.5, 4, 7.5], pos: [0, 27, 0] }));
     const heart = mesh(geo.icosa, m.seed, { scale: [1.4, 1.8, 1.4], pos: [0, 14, 0], cast: false });
     const light = new THREE.PointLight(0x7af0d8, 3.2, 48, 1.6);
     light.position.set(0, 14, 0);
@@ -379,7 +407,7 @@ export function createCanopyTree(rng = Math.random) {
     const layers = 2 + Math.floor(rng() * 2);
     for (let i = 0; i < layers; i++) {
         const s = 3.2 - i * 0.55 + rng() * 0.6;
-        g.add(mesh(geo.sphereLo, i % 2 ? m.leaf : m.leafDark, {
+        g.add(mesh(FOLIAGE[Math.floor(rng() * FOLIAGE.length)], i % 2 ? m.leaf : m.leafDark, {
             scale: [s, s * 0.55, s],
             pos: [(rng() - 0.5) * 0.8, h - 0.4 - i * 1.5, (rng() - 0.5) * 0.8]
         }));

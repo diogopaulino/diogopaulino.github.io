@@ -13,7 +13,7 @@ import {
     materials, createIra, createYva, createMountain, createCanopyTree,
     createPeakTree, createSpiralPlant, createWaterfall, createSeed,
     createRing, createCloud, std, geo, mesh
-} from './models.js?v=3';
+} from './models.js?v=4';
 
 const LANDMARKS = [
     { x: 0, y: 38, z: 0, size: 1.55, yva: true, fall: false },

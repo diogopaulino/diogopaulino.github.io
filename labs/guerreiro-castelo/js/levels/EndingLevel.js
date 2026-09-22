@@ -4,7 +4,7 @@
 
 import { Level } from './Level.js';
 import { buildShip } from '../world/Ship.js';
-import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=3';
+import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=4';
 
 export class EndingLevel extends Level {
     get id() {

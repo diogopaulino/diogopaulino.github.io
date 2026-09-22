@@ -2,7 +2,7 @@
  * Tigre do castelo para Babylon.js.
  */
 
-import { buildTiger, CharacterAnimator } from './builders.js?v=3';
+import { buildTiger, CharacterAnimator } from './builders.js?v=4';
 import { TigerAI } from '../ai/TigerAI.js';
 import { angleDamp } from '../utils/math.js';
 

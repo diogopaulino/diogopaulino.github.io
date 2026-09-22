@@ -12,7 +12,7 @@ import { ROOT_COLORS, ROOT_ORDER, STORY } from './config.js';import {
     buildCage, buildDawnStone, buildFence, buildMemory, buildFirefly,
     buildWell, buildVillager, buildFox, buildShadow, buildNight, buildGrandmother,
     grassBladeGeometry, std
-} from './models.js?v=4';
+} from './models.js?v=5';
 import { ShadowWisp, NightWraith, FoxCompanion } from './npcs.js';
 
 export class ChapterWorld {

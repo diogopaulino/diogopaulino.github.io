@@ -542,14 +542,20 @@ export function createKingBomb() {
     spark.position.set(0, 3.35, 0);
     spark.name = 'spark';
     const gold = goldMetal();
-    const crown = mesh(geo('k-c', () => new THREE.ConeGeometry(0.55, 0.55, 24)), 0xffe14a, {
+    const crown = mesh(geo('k-c', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.12, 0),
+        new THREE.Vector2(0.5, 0.06),
+        new THREE.Vector2(0.42, 0.16),
+        new THREE.Vector2(0.22, 0.34),
+        new THREE.Vector2(0.08, 0.5)
+    ], 6)), 0xffe14a, {
         map: gold.map,
         roughness: 0.25,
         metalness: 0.75,
         emissive: 0x442200,
         emissiveIntensity: 0.35
     });
-    crown.position.set(0, 2.7, 0);
+    crown.position.set(0, 2.55, 0);
     const eye = mesh(geo('k-e', () => new THREE.SphereGeometry(0.18, 20, 16)), 0xf4efe2, {
         roughness: 0.2,
         clearcoat: 0.9
@@ -563,19 +569,22 @@ export function createKingBomb() {
     pupil.position.set(-0.38, 1.68, 1.24);
     const pupilR = pupil.clone();
     pupilR.position.x = 0.38;
-    const arm = mesh(geo('k-a', () => new THREE.SphereGeometry(0.32, 24, 18)), 0x2a2a32, {
+    const armGeo = limbGeometry({ length: 0.85, r0: 0.22, r1: 0.14, bulge: 0.06, bulgeAt: 0.32, seg: 12 });
+    const arm = mesh(geo('k-a', () => armGeo), 0x2a2a32, {
         roughness: 0.4,
         clearcoat: 0.4
     });
-    arm.position.set(-1.4, 1.4, 0.2);
+    arm.position.set(-1.05, 1.85, 0.15);
+    arm.rotation.z = -0.85;
     const armR = arm.clone();
-    armR.position.x = 1.4;
-    const foot = mesh(geo('k-ft', () => new THREE.SphereGeometry(0.38, 24, 18)), 0x1a1a22, {
-        roughness: 0.55
-    });
-    foot.position.set(-0.55, 0.32, 0.35);
+    armR.position.x = 1.05;
+    armR.rotation.z = 0.85;
+    const footGeo = limbGeometry({ length: 0.55, r0: 0.24, r1: 0.14, bulge: 0.05, pinch: 0.12, seg: 10 });
+    const foot = mesh(geo('k-ft', () => footGeo), 0x1a1a22, { roughness: 0.55 });
+    foot.position.set(-0.5, 0.28, 0.05);
+    foot.rotation.x = -Math.PI / 2;
     const footR = foot.clone();
-    footR.position.x = 0.55;
+    footR.position.x = 0.5;
     g.add(body, fuse, spark, crown, eye, eyeR, pupil, pupilR, arm, armR, foot, footR);
     return g;
 }

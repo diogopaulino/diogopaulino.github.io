@@ -520,6 +520,39 @@ export function buildHangingLantern(color = 0xffb347) {
     return group;
 }
 
+function raggedCone(radius, height, seed) {
+    const g = new THREE.ConeGeometry(radius, height, 12);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const n = 0.84 + Math.abs(Math.sin(x * 4 + seed) * Math.cos(z * 3 + y + seed)) * 0.24;
+        pos.setXYZ(i, x * n, y, z * n);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+function raggedCrown(radius, seed) {
+    const g = new THREE.SphereGeometry(radius, 18, 14);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const len = Math.hypot(x, y, z) || 1;
+        const n = 0.78 + Math.abs(Math.sin(x * 1.8 + seed) * Math.cos(z * 1.4 + seed)) * 0.34;
+        pos.setXYZ(i, (x / len) * radius * n, (y / len) * radius * n * 0.82, (z / len) * radius * n);
+    }
+    g.computeVertexNormals();
+    return g;
+}
+
+const PINE_LAYERS = [0, 1, 2, 3].map((i) => raggedCone(1.35 - i * 0.22, 1.5, i * 1.7));
+const OAK_CROWN = raggedCrown(1.5, 2.2);
+const HOLLOW_CROWN = raggedCrown(4.2, 5.1);
+
 export function buildPine() {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(
@@ -530,7 +563,7 @@ export function buildPine() {
     group.add(trunk);
     const greens = [0x1a3a22, 0x16341c, 0x204828];
     for (let i = 0; i < 4; i++) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.35 - i * 0.22, 1.5, 16), std(greens[i % 3], 0.92));
+        const cone = new THREE.Mesh(PINE_LAYERS[i], std(greens[i % 3], 0.92));
         cone.position.y = 2.1 + i * 0.7;
         group.add(cone);
     }
@@ -546,7 +579,7 @@ export function buildOak() {
     );
     trunk.position.y = 1.1;
     group.add(trunk);
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 18), std(0x2a5a28, 0.9));
+    const crown = new THREE.Mesh(OAK_CROWN, std(0x2a5a28, 0.9));
     crown.position.y = 2.8;
     crown.scale.set(1.2, 0.85, 1.15);
     group.add(crown);
@@ -568,7 +601,7 @@ export function buildHollowTree() {
     );
     hole.position.set(0, 1.6, 2.2);
     group.add(hole);
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(4.2, 12, 10), std(0x1a3018, 0.92));
+    const crown = new THREE.Mesh(HOLLOW_CROWN, std(0x1a3018, 0.92));
     crown.position.y = 9.2;
     crown.scale.set(1.15, 0.7, 1.1);
     group.add(crown);

@@ -11,11 +11,11 @@ import {
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js?v=4';
+import { Player } from './player.js?v=5';
 import { createSky, applyChapterSky, createLights } from './sky.js';
 import {
     buildChapter, lightWorldLamp, revealBridge, lightCrystal, resetCrystals
-} from './world.js?v=4';
+} from './world.js?v=5';
 import { nearestInteractable } from './npcs.js';
 
 const LOOK = new THREE.Vector3();

@@ -352,13 +352,17 @@ export function buildDico(scene) {
     goatee.parent = parts.head;
 
     // Colete de couro
-    const vest = BABYLON.MeshBuilder.CreateCylinder('vest', {
-        diameterTop: 0.4,
-        diameterBottom: 0.44,
-        height: 0.36,
-        tessellation: 18
+    const vest = BABYLON.MeshBuilder.CreateLathe('vest', {
+        shape: [
+            new BABYLON.Vector3(0.16, 0, 0),
+            new BABYLON.Vector3(0.23, 0.04, 0),
+            new BABYLON.Vector3(0.2, 0.18, 0),
+            new BABYLON.Vector3(0.17, 0.32, 0),
+            new BABYLON.Vector3(0.1, 0.36, 0)
+        ],
+        tessellation: 16
     }, scene);
-    vest.position.y = 0.26;
+    vest.position.y = 0.08;
     const vestMat = pbr('vestMat', scene, new BABYLON.Color3(0.35, 0.22, 0.13), 0.68, 0.08);
     vest.material = vestMat;
     vest.parent = parts.chest;
@@ -519,13 +523,17 @@ export function buildCamila(scene) {
     }
 
     // Vestido
-    const dress = BABYLON.MeshBuilder.CreateCylinder('camilaDress', {
-        diameterTop: 0.35,
-        diameterBottom: 0.65,
-        height: 0.7,
-        tessellation: 20
+    const dress = BABYLON.MeshBuilder.CreateLathe('camilaDress', {
+        shape: [
+            new BABYLON.Vector3(0.12, 0, 0),
+            new BABYLON.Vector3(0.2, 0.08, 0),
+            new BABYLON.Vector3(0.17, 0.28, 0),
+            new BABYLON.Vector3(0.28, 0.55, 0),
+            new BABYLON.Vector3(0.34, 0.72, 0)
+        ],
+        tessellation: 18
     }, scene);
-    dress.position.y = 0.55;
+    dress.position.y = 0.2;
     const dressMat = pbr('dressMat', scene, new BABYLON.Color3(0.8, 0.72, 0.84), 0.78, 0.04);
     dress.material = dressMat;
     dress.parent = parts.hips;
@@ -897,8 +905,20 @@ export function buildTiger(scene) {
     nose.parent = head;
 
     for (const s of [-1, 1]) {
-        const ear = BABYLON.MeshBuilder.CreateCylinder('tigerEar', { diameterTop: 0, diameterBottom: 0.16, height: 0.12 }, scene);
-        ear.position.set(-0.05, 0.24, s * 0.14);
+        const ear = BABYLON.MeshBuilder.ExtrudeShape('tigerEar', {
+            shape: [
+                new BABYLON.Vector3(0, 0, 0),
+                new BABYLON.Vector3(0.07, 0.03, 0),
+                new BABYLON.Vector3(0.02, 0.14, 0),
+                new BABYLON.Vector3(-0.05, 0.05, 0)
+            ],
+            path: [
+                new BABYLON.Vector3(0, 0, -0.012),
+                new BABYLON.Vector3(0, 0, 0.012)
+            ],
+            cap: BABYLON.Mesh.CAP_ALL
+        }, scene);
+        ear.position.set(-0.05, 0.22, s * 0.14);
         ear.material = orangeMat;
         ear.parent = head;
 

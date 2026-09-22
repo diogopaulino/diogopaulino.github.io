@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { PHYS, CAMERA, WORLD } from './config.js';
 import { clamp, damp } from './utils.js';
-import { createIra } from './models.js?v=3';
+import { createIra } from './models.js?v=4';
 
 export class Player {
     constructor(scene, camera) {
