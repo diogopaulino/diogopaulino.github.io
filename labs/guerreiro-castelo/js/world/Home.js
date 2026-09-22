@@ -5,7 +5,7 @@
 import {
     woodTexture, darkWoodTexture, plasterTexture, rugTexture, clothTexture
 } from './Textures.js';
-import { makeFire } from './Environment.js';
+import { makeFire } from './Environment.js?v=5';
 
 export function buildHomeInterior(scene) {
     const root = new BABYLON.TransformNode('homeRoot', scene);

@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { pbr, createHeart } from './models.js?v=4';
+import { pbr, createHeart } from './models.js?v=5';
 
 export class Effects {
     constructor(scene, quality) {

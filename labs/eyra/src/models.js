@@ -338,6 +338,13 @@ function foliageBlob(seed) {
 }
 
 const FOLIAGE = [0, 1.7, 3.1, 4.4, 5.9, 7.2].map((seed) => foliageBlob(seed));
+const SPIRAL_CUP = new THREE.LatheGeometry([
+    new THREE.Vector2(0.05, 0),
+    new THREE.Vector2(0.22, 0.04),
+    new THREE.Vector2(0.4, 0.12),
+    new THREE.Vector2(0.18, 0.22),
+    new THREE.Vector2(0.04, 0.28)
+], 14);
 
 export function createYva() {
     const m = materials();
@@ -393,7 +400,7 @@ export function createSpiralPlant(rng = Math.random) {
     const stem = new THREE.Mesh(tube, m.magenta);
     stem.castShadow = true;
     g.add(stem);
-    const cup = mesh(geo.sphere, m.magenta, { scale: [0.42, 0.22, 0.42], pos: [pts[28].x, pts[28].y, pts[28].z] });
+    const cup = mesh(SPIRAL_CUP, m.magenta, { pos: [pts[28].x, pts[28].y, pts[28].z] });
     g.add(cup);
     return g;
 }
@@ -420,8 +427,8 @@ export function createPeakTree(rng = Math.random) {
     const g = new THREE.Group();
     const h = 2.4 + rng() * 2.2;
     g.add(mesh(geo.cylLo, m.bark, { scale: [0.12, h, 0.12], pos: [0, h * 0.5, 0] }));
-    g.add(mesh(geo.coneLo, m.leaf, { scale: [1.1, 2.2, 1.1], pos: [0, h + 0.4, 0] }));
-    g.add(mesh(geo.coneLo, m.leafDark, { scale: [0.75, 1.4, 0.75], pos: [0, h + 1.1, 0] }));
+    g.add(mesh(FOLIAGE[0], m.leaf, { scale: [1.15, 1.15, 1.15], pos: [0, h + 0.35, 0] }));
+    g.add(mesh(FOLIAGE[2], m.leafDark, { scale: [0.78, 0.85, 0.78], pos: [0, h + 1.15, 0] }));
     return g;
 }
 

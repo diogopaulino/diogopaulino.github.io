@@ -3,7 +3,7 @@
  */
 
 import { Level } from './Level.js';
-import { makeTree, makeBush, makeRock, makeGrassInstanced } from '../world/Environment.js';
+import { makeTree, makeBush, makeRock, makeGrassInstanced } from '../world/Environment.js?v=5';
 import { grassTexture } from '../world/Textures.js';
 import { seeded } from '../utils/math.js';
 

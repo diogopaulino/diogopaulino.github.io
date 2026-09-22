@@ -407,7 +407,19 @@ export function createCloud() {
         opacity: 0.78,
         depthWrite: false
     });
-    const a = new THREE.Mesh(geo('cl', () => new THREE.SphereGeometry(1.4, 32, 24)), mat);
+    const a = new THREE.Mesh(geo('cl', () => {
+        const s = new THREE.SphereGeometry(1.4, 24, 18);
+        const pos = s.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const n = 0.82 + Math.abs(Math.sin(x * 2.2 + y) * Math.cos(z * 2.4)) * 0.28;
+            pos.setXYZ(i, x * n, y * (0.74 + n * 0.2), z * n);
+        }
+        s.computeVertexNormals();
+        return s;
+    }), mat);
     const b = a.clone();
     b.position.set(1.3, -0.1, 0.2);
     b.scale.setScalar(0.78);
@@ -651,7 +663,19 @@ export function createPlatform(w, h, d, color = 0xc4783a) {
 export function createBush() {
     const g = new THREE.Group();
     const leaf = leafCanopy();
-    const a = mesh(geo('bush', () => new THREE.SphereGeometry(0.7, 28, 22)), 0x2a9a3a, {
+    const a = mesh(geo('bush', () => {
+        const s = new THREE.SphereGeometry(0.7, 20, 16);
+        const pos = s.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const n = 0.78 + Math.abs(Math.sin(x * 4.2 + y * 2.1) * Math.cos(z * 3.6)) * 0.36;
+            pos.setXYZ(i, x * n, y * n * 0.9, z * n);
+        }
+        s.computeVertexNormals();
+        return s;
+    }), 0x2a9a3a, {
         map: leaf.map,
         normalMap: leaf.normalMap,
         roughness: 0.65

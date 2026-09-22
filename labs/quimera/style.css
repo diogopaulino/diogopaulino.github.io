@@ -517,4 +517,36 @@ footer[data-lab-footer] a {
 /* agent-responsive-768 */
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
+
+  header[data-lab-header] {
+    gap: 0.35rem !important;
+    padding-inline: max(0.45rem, var(--safe-left)) max(0.45rem, var(--safe-right)) !important;
+  }
+
+  header[data-lab-header] .header-actions {
+    gap: 0.15rem;
+  }
+
+  header[data-lab-header] .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  header[data-lab-header] .app-logo {
+    font-size: 1.05rem;
+    max-width: min(9rem, 38vw);
+  }
+
+  .hud-left {
+    top: max(4.1rem, calc(var(--safe-top) + 3.3rem));
+    left: max(0.55rem, var(--safe-left));
+    width: min(22rem, calc(100vw - 1.1rem));
+    padding: 0.65rem 0.75rem;
+  }
+
+  .dock {
+    max-height: min(42dvh, 300px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }

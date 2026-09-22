@@ -518,24 +518,50 @@ export function createMushroom({ s = 1, cap = 0xff6b7a } = {}) {
 
 export function createFlower(color = MAT.flowerP) {
     const g = new THREE.Group();
+    const petal = once('flower-petal', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.008, 0),
+        new THREE.Vector2(0.04, 0.03),
+        new THREE.Vector2(0.07, 0.09),
+        new THREE.Vector2(0.028, 0.15),
+        new THREE.Vector2(0.006, 0.19)
+    ], 8));
+    const heart = once('flower-heart', () => new THREE.LatheGeometry([
+        new THREE.Vector2(0.01, 0),
+        new THREE.Vector2(0.055, 0.02),
+        new THREE.Vector2(0.04, 0.07),
+        new THREE.Vector2(0.012, 0.1)
+    ], 10));
     g.add(mesh(geo.cylLo, MAT.leaf, { scale: [0.025, 0.28, 0.025], pos: [0, 0.14, 0], cast: false }));
     for (let i = 0; i < 5; i++) {
         const a = (i / 5) * Math.PI * 2;
-        g.add(mesh(geo.sphereLo, color, {
-            scale: [0.08, 0.05, 0.08],
-            pos: [Math.cos(a) * 0.1, 0.3, Math.sin(a) * 0.1],
+        g.add(mesh(petal, color, {
+            pos: [Math.cos(a) * 0.07, 0.26, Math.sin(a) * 0.07],
+            rot: [0.55, a, 0],
             cast: false
         }));
     }
-    g.add(mesh(geo.sphereLo, MAT.gold, { scale: [0.06, 0.05, 0.06], pos: [0, 0.32, 0], cast: false }));
+    g.add(mesh(heart, MAT.gold, { pos: [0, 0.3, 0], cast: false }));
     return g;
 }
 
 export function createCloud() {
     const g = new THREE.Group();
-    g.add(mesh(geo.sphereLo, MAT.cloud, { scale: [1.4, 0.85, 1.1], pos: [0, 0, 0], cast: false, receive: false }));
-    g.add(mesh(geo.sphereLo, MAT.cloud, { scale: [0.9, 0.7, 0.8], pos: [0.9, 0.15, 0.1], cast: false, receive: false }));
-    g.add(mesh(geo.sphereLo, MAT.cloud, { scale: [0.7, 0.55, 0.65], pos: [-0.85, 0.1, -0.15], cast: false, receive: false }));
+    const puff = once('cloud-puff', () => {
+        const blob = new THREE.SphereGeometry(1, 18, 14);
+        const pos = blob.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const n = 0.8 + Math.abs(Math.sin(x * 3.1 + y * 2.4) * Math.cos(z * 2.7)) * 0.3;
+            pos.setXYZ(i, x * n, y * (0.7 + n * 0.22), z * n);
+        }
+        blob.computeVertexNormals();
+        return blob;
+    });
+    g.add(mesh(puff, MAT.cloud, { scale: [1.4, 0.85, 1.1], pos: [0, 0, 0], cast: false, receive: false }));
+    g.add(mesh(puff, MAT.cloud, { scale: [0.9, 0.7, 0.8], pos: [0.9, 0.15, 0.1], cast: false, receive: false }));
+    g.add(mesh(puff, MAT.cloud, { scale: [0.7, 0.55, 0.65], pos: [-0.85, 0.1, -0.15], cast: false, receive: false }));
     return g;
 }
 

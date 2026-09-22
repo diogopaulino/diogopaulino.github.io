@@ -3,7 +3,7 @@
  */
 
 import { castleStoneTexture, mossTexture, flagTexture, woodTexture } from './Textures.js';
-import { makeTorch } from './Environment.js';
+import { makeTorch } from './Environment.js?v=5';
 
 export function buildCastle(scene) {
     const root = new BABYLON.TransformNode('castleRoot', scene);

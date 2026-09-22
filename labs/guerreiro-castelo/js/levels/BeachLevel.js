@@ -4,7 +4,7 @@
 
 import { Level } from './Level.js';
 import { sandTexture, grassTexture } from '../world/Textures.js';
-import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js';
+import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js?v=5';
 
 export class BeachLevel extends Level {
     get id() {

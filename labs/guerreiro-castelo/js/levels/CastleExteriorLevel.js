@@ -3,8 +3,8 @@
  */
 
 import { Level } from './Level.js';
-import { buildCastle, addCastleColliders } from '../world/Castle.js';
-import { makeTree } from '../world/Environment.js';
+import { buildCastle, addCastleColliders } from '../world/Castle.js?v=5';
+import { makeTree } from '../world/Environment.js?v=5';
 import { grassTexture } from '../world/Textures.js';
 import { buildGuard, CharacterAnimator } from '../characters/builders.js?v=4';
 
