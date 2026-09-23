@@ -10,7 +10,7 @@ const MUSICAL_DATA = {
   latinNames: { C: 'Dó', D: 'Ré', E: 'Mi', F: 'Fá', G: 'Sol', A: 'Lá', B: 'Si' },
   frequencies: {
     // 3 oitavas completas abarcando os graves da Clave de Fá até os agudos da Clave de Sol
-    'E2': 82.41,  'F2': 87.31,  'F#2': 92.50,  'G2': 98.00,  'G#2': 103.83, 'A2': 110.00, 'A#2': 116.54, 'B2': 123.47,
+    'E2': 82.41,  'F2': 87.31,  'F#2': 92.50,  'G2': 98.00,  'G#2': 103.83, 'A2': 110.00, 'A#2': 116.54, 'Bb2': 116.54, 'B2': 123.47,
     'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
     'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
     'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00
@@ -37,6 +37,7 @@ const MUSICAL_DATA = {
       'G2': { y: 150, ledger: [], name: 'Sol Grave (1ª Linha)' },
       'A2': { y: 140, ledger: [], name: 'Lá Grave (1º Espaço)' },
       'B2': { y: 130, ledger: [], name: 'Si Grave (2ª Linha)' },
+      'Bb2': { y: 130, ledger: [], name: 'Si Bemol (2ª Linha)' },
       'C3': { y: 120, ledger: [], name: 'Dó Grave (2º Espaço)' },
       'D3': { y: 110, ledger: [], name: 'Ré Grave (3ª Linha)' },
       'E3': { y: 100, ledger: [], name: 'Mi Grave (3º Espaço)' },
@@ -62,7 +63,7 @@ const MUSICAL_DATA = {
     },
     'F-major': { 
       name: 'Fá Maior (Apresenta o Si Bemol ♭ na Clave de Fá!)', 
-      notes: ['F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3'], 
+      notes: ['F2', 'G2', 'A2', 'Bb2', 'C3', 'D3', 'E3', 'F3'], 
       clef: 'bass',
       theory: '💡 <strong>Fá Maior (F Major):</strong> Aqui exploramos a profunda <strong>Clave de Fá (Baixo)</strong>! Ela apresenta um Si Bemol (B♭) para preservar a perfeita simetria dos intervalos de oitava.'
     },
@@ -609,7 +610,9 @@ class StaffSVGRenderer {
         guideText.setAttribute('font-weight', 'bold');
         guideText.setAttribute('fill', isTarget ? '#fbbf24' : '#94a3b8');
         const noteNameOnly = pitch.replace(/[0-9]/g, '');
-        guideText.textContent = useLatinNotation ? (MUSICAL_DATA.latinNames[noteNameOnly.charAt(0)] + (noteNameOnly.length > 1 ? noteNameOnly.slice(1) : '')) : noteNameOnly;
+        const pretty = noteNameOnly.replace('#', '♯').replace('b', '♭');
+        const latinBase = MUSICAL_DATA.latinNames[noteNameOnly.charAt(0)] || noteNameOnly.charAt(0);
+        guideText.textContent = useLatinNotation ? latinBase + pretty.slice(1) : pretty;
         group.appendChild(guideText);
       }
 
@@ -744,8 +747,7 @@ function setupVirtualKeyboard() {
       const bKey = document.createElement('div');
       bKey.className = 'black-key';
       bKey.dataset.pitch = bPitch;
-      const offsetLeft = (i + 1) * 39 - 12;
-      bKey.style.left = `${offsetLeft}px`;
+      bKey.dataset.afterWhite = String(i + 1);
       
       bKey.addEventListener('mousedown', (e) => { e.stopPropagation(); handleNoteInput(bPitch); });
       bKey.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); handleNoteInput(bPitch); });
@@ -755,6 +757,21 @@ function setupVirtualKeyboard() {
   });
 
   updateKeyboardZones();
+  layoutPartituraKeys();
+}
+
+function layoutPartituraKeys() {
+  const kb = document.getElementById('piano-keyboard');
+  if (!kb) return;
+  const white = kb.querySelector('.white-key');
+  if (!white) return;
+  const step = white.getBoundingClientRect().width;
+  if (!step) return;
+  const pad = parseFloat(getComputedStyle(kb).paddingLeft) || 0;
+  kb.querySelectorAll('.black-key').forEach((key) => {
+    const after = Number(key.dataset.afterWhite);
+    key.style.left = `${pad + after * step - key.offsetWidth / 2}px`;
+  });
 }
 
 function updateKeyboardZones() {
@@ -844,7 +861,8 @@ function setTargetClefAndPitch() {
     selectedClef = Math.random() < 0.5 ? 'treble' : 'bass';
   }
 
-  const availablePitches = Object.keys(MUSICAL_DATA.staffPositions[selectedClef]);
+  const availablePitches = Object.keys(MUSICAL_DATA.staffPositions[selectedClef])
+    .filter((pitch) => !pitch.includes('#') && !pitch.slice(1).includes('b'));
   let nextPitch = currentTargetPitch;
   while (nextPitch === currentTargetPitch && availablePitches.length > 1) {
     nextPitch = availablePitches[Math.floor(Math.random() * availablePitches.length)];
@@ -1231,6 +1249,7 @@ function setupControlBars() {
 // --- 12. INICIALIZAÇÃO AO CARREGAR A PÁGINA ---
 document.addEventListener('DOMContentLoaded', () => {
   setupVirtualKeyboard();
+  window.addEventListener('resize', layoutPartituraKeys);
   updateNotationButtons();
   setupTabs();
   setupControlBars();

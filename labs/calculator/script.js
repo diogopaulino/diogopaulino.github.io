@@ -9,15 +9,22 @@ class Calculator {
         this.currentOperand = '0';
         this.previousOperand = '';
         this.operation = undefined;
+        this._error = false;
+        if (this._paren) this._paren.length = 0;
     }
 
     delete() {
+        if (this._error) {
+            this.clear();
+            return;
+        }
         if (this.currentOperand === '0') return;
         this.currentOperand = this.currentOperand.toString().slice(0, -1);
         if (this.currentOperand === '') this.currentOperand = '0';
     }
 
     appendNumber(number) {
+        if (this._error) this.clear();
         if (number === '.' && this.currentOperand.includes('.')) return;
         if (this.currentOperand === '0' && number !== '.') {
             this.currentOperand = number.toString();
@@ -27,13 +34,40 @@ class Calculator {
     }
 
     chooseOperation(operation) {
+        if (this._error) this.clear();
         if (this.currentOperand === '') return;
         if (this.previousOperand !== '') {
             this.compute();
+            if (this._error) return;
         }
         this.operation = operation;
         this.previousOperand = this.currentOperand;
         this.currentOperand = '';
+    }
+
+    /** % de calculadora: 200 + 10 % = 220; 200 × 10 % = 20; 50 % = 0,5. */
+    percent() {
+        if (this._error) return;
+        const current = parseFloat(this.currentOperand);
+        if (isNaN(current)) return;
+        const prev = parseFloat(this.previousOperand);
+        const value = !isNaN(prev) && (this.operation === '+' || this.operation === '-')
+            ? prev * (current / 100)
+            : current / 100;
+        this._setResult(value);
+    }
+
+    _setResult(n) {
+        if (!Number.isFinite(n)) {
+            this.currentOperand = 'Erro';
+            this._error = true;
+            this.operation = undefined;
+            this.previousOperand = '';
+            return false;
+        }
+        const rounded = Math.round((n + Number.EPSILON) * 1e12) / 1e12;
+        this.currentOperand = String(rounded);
+        return true;
     }
 
     compute() {
@@ -52,17 +86,20 @@ class Calculator {
                 computation = prev * current;
                 break;
             case '÷':
+                if (current === 0) {
+                    this._setResult(Infinity);
+                    return;
+                }
                 computation = prev / current;
-                break;
-            case '%':
-                computation = prev % current;
                 break;
             default:
                 return;
         }
-        this.currentOperand = computation;
-        this.operation = undefined;
-        this.previousOperand = '';
+        this._setResult(computation);
+        if (!this._error) {
+            this.operation = undefined;
+            this.previousOperand = '';
+        }
     }
 
     getDisplayNumber(number) {
@@ -83,6 +120,11 @@ class Calculator {
     }
 
     updateDisplay() {
+        if (this._error) {
+            this.currentOperandTextElement.innerText = 'Erro';
+            this.previousOperandTextElement.innerText = '';
+            return;
+        }
         this.currentOperandTextElement.innerText = this.getDisplayNumber(this.currentOperand);
         if (this.operation != null) {
             this.previousOperandTextElement.innerText =
@@ -90,12 +132,46 @@ class Calculator {
         } else {
             this.previousOperandTextElement.innerText = '';
         }
+        if (this._paren?.length) {
+            const marks = '('.repeat(this._paren.length);
+            const prev = this.previousOperandTextElement.innerText;
+            this.previousOperandTextElement.innerText = prev ? `${marks} ${prev}` : marks;
+        }
     }
 }
 
 class ScientificCalculator extends Calculator {
     constructor(previousOperandTextElement, currentOperandTextElement) {
         super(previousOperandTextElement, currentOperandTextElement);
+        this._paren = [];
+    }
+
+    openParen() {
+        if (this._error) this.clear();
+        if (this.currentOperand !== '' && this.currentOperand !== '0' && this.previousOperand === '') {
+            this._paren.push({ previousOperand: this.currentOperand, operation: '×' });
+        } else {
+            this._paren.push({
+                previousOperand: this.previousOperand,
+                operation: this.operation
+            });
+        }
+        this.previousOperand = '';
+        this.operation = undefined;
+        this.currentOperand = '0';
+    }
+
+    closeParen() {
+        if (this._error || !this._paren.length) return;
+        if (this.operation && this.previousOperand !== '' && this.currentOperand !== '') {
+            this.compute();
+            if (this._error) return;
+        }
+        const frame = this._paren.pop();
+        const inner = this.currentOperand;
+        this.previousOperand = frame.previousOperand || '';
+        this.operation = frame.operation;
+        this.currentOperand = inner;
     }
 
     computeScientific(action) {
@@ -111,7 +187,7 @@ class ScientificCalculator extends Calculator {
             case 'ln': result = Math.log(current); break;
             case 'sqrt': result = Math.sqrt(current); break;
             case 'square': result = Math.pow(current, 2); break;
-            case 'inv': result = 1 / current; break;
+            case 'inv': result = current === 0 ? NaN : 1 / current; break;
             case 'abs': result = Math.abs(current); break;
             case 'fact': result = this.factorial(current); break;
             case 'pi':
@@ -132,14 +208,16 @@ class ScientificCalculator extends Calculator {
         }
 
         if (result !== undefined) {
-            this.currentOperand = result;
-            this.operation = undefined;
-            this.previousOperand = '';
+            this._setResult(result);
+            if (!this._error) {
+                this.operation = undefined;
+                this.previousOperand = '';
+            }
         }
     }
 
     factorial(n) {
-        if (n < 0) return NaN;
+        if (n < 0 || !Number.isInteger(n) || n > 170) return NaN;
         if (n === 0 || n === 1) return 1;
         let result = 1;
         for (let i = 2; i <= n; i++) result *= i;
@@ -159,9 +237,11 @@ class ScientificCalculator extends Calculator {
                 super.compute();
                 return;
         }
-        this.currentOperand = computation;
-        this.operation = undefined;
-        this.previousOperand = '';
+        this._setResult(computation);
+        if (!this._error) {
+            this.operation = undefined;
+            this.previousOperand = '';
+        }
     }
 }
 
@@ -185,7 +265,8 @@ numberBtns.forEach(button => {
 
 operatorBtns.forEach(button => {
     button.addEventListener('click', () => {
-        calculator.chooseOperation(button.innerText);
+        if (button.dataset.action === 'percent') calculator.percent();
+        else calculator.chooseOperation(button.innerText);
         calculator.updateDisplay();
     });
 });
@@ -226,7 +307,8 @@ sciNumberBtns.forEach(button => {
 
 sciOperatorBtns.forEach(button => {
     button.addEventListener('click', () => {
-        sciCalculator.chooseOperation(button.innerText);
+        if (button.dataset.action === 'percent') sciCalculator.percent();
+        else sciCalculator.chooseOperation(button.innerText);
         sciCalculator.updateDisplay();
     });
 });
@@ -236,6 +318,10 @@ sciFuncBtns.forEach(button => {
         const action = button.dataset.action;
         if (action === 'pow') {
             sciCalculator.chooseOperation('^');
+        } else if (action === 'open-paren') {
+            sciCalculator.openParen();
+        } else if (action === 'close-paren') {
+            sciCalculator.closeParen();
         } else {
             sciCalculator.computeScientific(action);
         }

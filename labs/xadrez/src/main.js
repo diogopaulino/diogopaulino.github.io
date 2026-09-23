@@ -313,7 +313,7 @@ class Atelier {
             const interval = moving || this.renderDirty ? 1000 / 60 : 1000 / 24;
             if (now - (this.lastRenderAt || 0) < interval - 1) return;
             const elapsed = now - (this.lastRenderAt || now);
-            const dt = Math.min(0.05, elapsed / 1000);
+            const dt = Math.min(0.05, Math.max(0, elapsed / 1000));
             this.lastRenderAt = now;
             const start = performance.now();
             this.frame(dt);

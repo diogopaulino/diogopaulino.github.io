@@ -531,7 +531,7 @@ class Game {
     _loop = () => {
         if (document.hidden) return;
         requestAnimationFrame(this._loop);
-        const dt = Math.min(0.05, this.clock.getDelta());
+        const dt = Math.min(0.05, Math.max(0, this.clock.getDelta()));
         this.time += dt;
 
         if (this.state === 'menu' || this.state === 'pause' || this.state === 'victory' || this.state === 'caught') {

@@ -23,7 +23,7 @@ export function createInput() {
   function onKey(e, isDown) {
     const bind = map[e.key];
     if (!bind) return;
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
       e.preventDefault();
     }
     if (isDown) {

@@ -2092,14 +2092,22 @@ function getTotalXp(data = appData) {
     return Object.values(data.languages).reduce((sum, l) => sum + (l.xp || 0), 0);
 }
 
+function formatLocalDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+    return formatLocalDate(new Date());
 }
 
 function shiftDateStr(dateStr, days) {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1);
+    dt.setDate(dt.getDate() + days);
+    return formatLocalDate(dt);
 }
 
 function getEffectiveStreak(data = appData) {
@@ -3108,7 +3116,7 @@ function renderDailyWeek() {
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        const key = formatLocalDate(d);
         const active = (appData.daily.history[key] || 0) > 0;
 
         const dot = document.createElement('div');

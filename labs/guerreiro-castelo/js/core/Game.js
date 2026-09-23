@@ -198,7 +198,7 @@ export class Game {
         const now = performance.now();
         const rawDt = this.lastTime ? (now - this.lastTime) / 1000 : 0.016;
         this.lastTime = now;
-        const dt = Math.min(0.08, rawDt);
+        const dt = Math.min(0.08, Math.max(0, rawDt));
 
         this.input.update();
 

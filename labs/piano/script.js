@@ -347,10 +347,7 @@ function generatePiano() {
       key.appendChild(label);
 
       if (isBlack) {
-        const prevWhiteKey = whiteKeyIndex - 1;
-        const keyWidth = 48;
-        const blackKeyWidth = 32;
-        key.style.left = `${prevWhiteKey * keyWidth + keyWidth - blackKeyWidth / 2}px`;
+        key.dataset.afterWhite = String(whiteKeyIndex);
       } else {
         whiteKeyIndex++;
       }
@@ -358,6 +355,21 @@ function generatePiano() {
       setupKeyEvents(key, fullNote);
       pianoElement.appendChild(key);
     });
+  });
+}
+
+function layoutBlackKeys() {
+  const pianoElement = document.getElementById('piano');
+  if (!pianoElement) return;
+  const white = pianoElement.querySelector('.key.white');
+  const black = pianoElement.querySelector('.key.black');
+  if (!white || !black) return;
+  const keyWidth = white.getBoundingClientRect().width;
+  const blackKeyWidth = black.getBoundingClientRect().width;
+  if (!keyWidth || !blackKeyWidth) return;
+  pianoElement.querySelectorAll('.key.black').forEach((key) => {
+    const after = Number(key.dataset.afterWhite);
+    key.style.left = `${after * keyWidth - blackKeyWidth / 2}px`;
   });
 }
 
@@ -523,6 +535,8 @@ function setupKeyboardEvents() {
 
 function init() {
   generatePiano();
+  layoutBlackKeys();
+  window.addEventListener('resize', layoutBlackKeys);
   setupControls();
   setupKeyboardEvents();
 

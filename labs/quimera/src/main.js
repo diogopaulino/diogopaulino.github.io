@@ -291,7 +291,7 @@ class Quimera {
     loop() {
         if (document.hidden) return;
         const now = performance.now();
-        const dt = Math.min(0.05, (now - this.lastT) / 1000);
+        const dt = Math.min(0.05, Math.max(0, (now - this.lastT) / 1000));
         this.lastT = now;
         const t = (now - this.t0) / 1000;
         this.controls.update();

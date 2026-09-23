@@ -173,25 +173,36 @@ function createParticles(x, y, color) {
     }
 }
 
+// A/D usam e.code para Caps Lock e Shift não inverterem o key em 'A'/'D'.
+function moveKey(e) {
+    if (e.code === 'KeyA') return 'a';
+    if (e.code === 'KeyD') return 'd';
+    if (e.code === 'Space' || e.key === ' ') return 'Space';
+    if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') return e.code;
+    return null;
+}
+
 // Input Handling
 window.addEventListener('keydown', e => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+    const flag = moveKey(e);
+    if (flag || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
     }
     if (e.key === 'Enter' && !gameRunning) {
         if (document.activeElement?.tagName !== 'BUTTON') startGame();
         return;
     }
-    if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = true;
-    if (e.key === ' ' && gameRunning && !e.repeat) {
+    if (flag) keys[flag] = true;
+    if (flag === 'Space' && gameRunning && !e.repeat) {
         fireHeld = true;
         fireCooldown = 0;
     }
 });
 
 window.addEventListener('keyup', e => {
-    if (keys.hasOwnProperty(e.key) || e.key === ' ') keys[e.key === ' ' ? 'Space' : e.key] = false;
-    if (e.key === ' ') fireHeld = false;
+    const flag = moveKey(e);
+    if (flag) keys[flag] = false;
+    if (flag === 'Space') fireHeld = false;
 });
 
 // Touch/Mouse support for shooting
