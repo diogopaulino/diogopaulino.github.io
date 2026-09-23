@@ -659,8 +659,8 @@
     applySavedTheme();
     /* Registrado já na avaliação do script, não no init: o `error` do
        <script type="module"> pode disparar antes do DOMContentLoaded, e um
-       listener criado depois disso perderia o evento (foi o que acontecia no
-       Mimo, que carrega este arquivo de forma síncrona). */
+       listener criado depois disso perderia o evento (acontecia quando um lab
+       carregava este arquivo de forma síncrona). */
     watchModuleFailures();
 
     window.LabShell = Object.freeze({ init, buildHeader, buildFooter });
