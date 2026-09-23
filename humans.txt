@@ -15,4 +15,4 @@ Language: Português (pt-BR)
 Doctype: HTML5
 Playground: https://diogopaulino.com.br/labs/
 Software: Vanilla — sem build, sem npm
-Last update: 2026-08-14
+Last update: 2026-09-23
