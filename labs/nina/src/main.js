@@ -407,7 +407,7 @@ class Nina {
     }
 
     frame(now) {
-        const dt = Math.min(0.033, (now - this.last) / 1000) || 0.016;
+        const dt = Math.min(0.033, Math.max(0, (now - this.last) / 1000)) || 0.016;
         this.last = now;
 
         const look = this.input.sample();

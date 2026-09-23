@@ -409,7 +409,7 @@ class Game {
 
     _loop() {
         const now = performance.now();
-        const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+        const dt = Math.min(0.05, Math.max(0, (now - this.lastTime) / 1000));
         this.lastTime = now;
         this.time += dt;
 

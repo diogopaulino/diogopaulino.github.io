@@ -251,7 +251,7 @@ class RastroVermelho {
         this.pad.previous = pressed;
     }
     frame() {
-        const raw = this.engine.getDeltaTime() / 1000, dt = Math.min(raw, .05);
+        const raw = this.engine.getDeltaTime() / 1000, dt = Math.min(Math.max(raw, 0), .05);
         this.readGamepad(dt);
         if (this.state === 'play') this.update(dt);
         else if (this.state === 'menu') { this.world.update(this.player.x, this.player.z); this.menuCamera(dt); this.updateAtmosphere(); }

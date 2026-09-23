@@ -423,7 +423,7 @@ class Game {
         if (document.hidden) return;
         requestAnimationFrame((t) => this._loop(t));
         this.timer.update(timestamp);
-        const dt = Math.min(0.05, this.timer.getDelta());
+        const dt = Math.min(0.05, Math.max(0, this.timer.getDelta()));
         this.time += dt;
         this._update(dt);
         this.renderer.render(this.scene, this.camera);

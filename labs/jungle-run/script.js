@@ -493,7 +493,7 @@ class JungleRun {
     setupEventListeners() {
         window.addEventListener('keydown', (event) => {
             this.keys[event.code] = true;
-            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS'].includes(event.code)) {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
                 event.preventDefault();
             }
             if (!event.repeat && ['Space', 'ArrowUp', 'KeyW'].includes(event.code)) {

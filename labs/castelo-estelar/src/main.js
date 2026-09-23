@@ -240,7 +240,7 @@ class CasteloEstelar {
     }
 
     frame() {
-        const dt = Math.min(this.clock.getDelta(), 0.05);
+        const dt = Math.min(0.05, Math.max(0, this.clock.getDelta()));
         const time = this.clock.elapsedTime;
         this.kingdom.tick(time);
         this.magic.tick(dt);

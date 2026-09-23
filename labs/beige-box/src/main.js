@@ -618,7 +618,7 @@ class BeigeBox {
     }
 
     frame() {
-        const dt = Math.min(0.05, this._clock.getDelta());
+        const dt = Math.min(0.05, Math.max(0, this._clock.getDelta()));
         this.time += dt;
 
         this.controls.enabled = this.intro <= 0 && !this.focus;

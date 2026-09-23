@@ -234,7 +234,7 @@ class Game {
 
     loop = () => {
         const tick = () => {
-            const dt = Math.min(0.033, this.clock.getDelta());
+            const dt = Math.min(0.033, Math.max(0, this.clock.getDelta()));
             if (this.state === 'play') this.update(dt);
             else if (this.world) this.world.update(dt * 0.35, this.clock.elapsedTime);
             this.render();
