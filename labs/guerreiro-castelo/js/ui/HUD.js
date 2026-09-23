@@ -105,11 +105,11 @@ export class HUD {
         this.el.stealth.dataset.danger = amount > 0.65 ? 'true' : 'false';
     }
 
-    showToast(text) {
+    showToast(text, seconds = 3.2) {
         if (!this.el.toast) return;
         this.el.toast.hidden = false;
         this.el.toast.textContent = text;
-        this._toastT = 3.2;
+        this._toastT = seconds;
     }
 
     showChapter(title, sub) {

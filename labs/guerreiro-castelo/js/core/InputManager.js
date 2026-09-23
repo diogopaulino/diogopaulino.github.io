@@ -17,6 +17,8 @@ export class InputManager {
         this.tab = false;
         this.advance = false;
         this._lookBuffer = { x: 0, y: 0 };
+        this._drag = null;
+        this._rmb = false;
         this.enabled = true;
         /* Estado alimentado pelos controles de toque (ver setupTouch). */
         this.touch = { x: 0, z: 0, sprint: false, crouch: false, block: false, active: false };
@@ -25,6 +27,10 @@ export class InputManager {
         this._onKeyUp = this.onKeyUp.bind(this);
         this._onMouseMove = this.onMouseMove.bind(this);
         this._onMouseDown = this.onMouseDown.bind(this);
+        this._onMouseUp = this.onMouseUp.bind(this);
+        this._onPointerDown = this.onPointerDown.bind(this);
+        this._onPointerMove = this.onPointerMove.bind(this);
+        this._onPointerUp = this.onPointerUp.bind(this);
         this._onWheel = this.onWheel.bind(this);
         this._onLockChange = this.onLockChange.bind(this);
         this._onContext = (e) => e.preventDefault();
@@ -32,6 +38,10 @@ export class InputManager {
         window.addEventListener('keyup', this._onKeyUp);
         document.addEventListener('mousemove', this._onMouseMove);
         dom.addEventListener('mousedown', this._onMouseDown);
+        window.addEventListener('mouseup', this._onMouseUp);
+        dom.addEventListener('pointerdown', this._onPointerDown);
+        dom.addEventListener('pointermove', this._onPointerMove);
+        window.addEventListener('pointerup', this._onPointerUp);
         dom.addEventListener('wheel', this._onWheel, { passive: false });
         document.addEventListener('pointerlockchange', this._onLockChange);
         dom.addEventListener('contextmenu', this._onContext);
@@ -98,7 +108,7 @@ export class InputManager {
 
         /* Câmera: arrastar em qualquer área livre da tela. */
         const lookZone = layer.querySelector('[data-touch-look]');
-        const LOOK_SENSITIVITY = 1.35;
+        const LOOK_SENSITIVITY = 1.9;
         let lookId = null;
         let lastX = 0;
         let lastY = 0;
@@ -223,10 +233,42 @@ export class InputManager {
     }
 
     onMouseDown(e) {
-        /* Em telas de toque não existe pointer lock: pedir trava só engoliria o
-           primeiro toque e, no iOS, falharia em silêncio. */
-        if (this.touch.active) return;
-        if (e.button === 0 && !this.locked && this.enabled) this.requestLock();
+        if (this.touch.active || !this.enabled) return;
+        if (e.button === 2) this._rmb = true;
+    }
+
+    onMouseUp(e) {
+        if (e.button === 2) this._rmb = false;
+    }
+
+    /* Sem pointer lock o jogo continua jogável: arrastar olha, um clique
+       curto ataca. A trava do cursor é opcional e só entra nesse clique. */
+    onPointerDown(e) {
+        if (this.touch.active || !this.enabled || e.button !== 0) return;
+        this._drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    }
+
+    onPointerMove(e) {
+        if (!this._drag || e.pointerId !== this._drag.id || this.locked) return;
+        const dx = e.clientX - this._drag.x;
+        const dy = e.clientY - this._drag.y;
+        if (dx * dx + dy * dy > 16) this._drag.moved = true;
+        this._lookBuffer.x += dx * 1.25;
+        this._lookBuffer.y += dy * 1.25;
+        this._drag.x = e.clientX;
+        this._drag.y = e.clientY;
+    }
+
+    onPointerUp(e) {
+        if (!this._drag || e.pointerId !== this._drag.id) return;
+        const moved = this._drag.moved;
+        this._drag = null;
+        if (!this.enabled || this.touch.active || moved) return;
+        this.attack = true;
+        if (!this.locked && !this._lockAsked) {
+            this._lockAsked = true;
+            this.requestLock();
+        }
     }
 
     onWheel(e) {
@@ -280,7 +322,7 @@ export class InputManager {
         this.move.z = z;
         this.move.sprint = Boolean(this.keys.ShiftLeft || this.keys.ShiftRight || this.touch.sprint);
         this.move.crouch = Boolean(this.keys.KeyC || this.touch.crouch);
-        this.block = Boolean(this.keys.KeyQ || this.touch.block);
+        this.block = Boolean(this.keys.KeyQ || this.touch.block || this._rmb);
     }
 
     dispose() {
@@ -288,6 +330,10 @@ export class InputManager {
         window.removeEventListener('keyup', this._onKeyUp);
         document.removeEventListener('mousemove', this._onMouseMove);
         this.dom.removeEventListener('mousedown', this._onMouseDown);
+        window.removeEventListener('mouseup', this._onMouseUp);
+        this.dom.removeEventListener('pointerdown', this._onPointerDown);
+        this.dom.removeEventListener('pointermove', this._onPointerMove);
+        window.removeEventListener('pointerup', this._onPointerUp);
         this.dom.removeEventListener('wheel', this._onWheel);
         document.removeEventListener('pointerlockchange', this._onLockChange);
         this.dom.removeEventListener('contextmenu', this._onContext);

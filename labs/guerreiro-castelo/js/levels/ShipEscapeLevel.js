@@ -107,7 +107,7 @@ export class ShipEscapeLevel extends Level {
             if (g.player.hurt(0.5)) g.cameraRig.addShake(0.1, 0.2);
         };
 
-        g.input.requestLock();
+        g.hud.showToast('Arraste para olhar. Clique ataca.', 4);
         g.dialogue.say('DICO', 'Soltem as amarras!');
     }
 

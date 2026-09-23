@@ -4,18 +4,18 @@
  */
 
 import * as THREE from 'three';
-import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js';
+import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=15';
 import {
     clamp, detectMobile, detectTouch, detectSoftwareGL, rendererIsSoftware, formatTime, lerp
 } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js?v=14';
+import { Player } from './player.js?v=15';
 import { createSky, applyChapterSky, createLights } from './sky.js';
 import {
     buildChapter, lightWorldLamp, revealBridge, lightCrystal, resetCrystals
-} from './world.js?v=14';
+} from './world.js?v=15';
 import { nearestInteractable } from './npcs.js';
 
 const LOOK = new THREE.Vector3();

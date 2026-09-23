@@ -2,10 +2,10 @@ import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY } from './constants.js';
 import { $, $$, approach } from './utils.js';
 import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
 import audio from './audio.js';
-import { Fighter } from './fighter.js';
+import { Fighter } from './fighter.js?v=6';
 import { resolveCombat, bodyPush, updateProjectiles, updateEffects, addDust } from './combat.js';
 import { updateCpu } from './ai.js';
-import { initRenderer, render } from './renderer.js';
+import { initRenderer, render } from './renderer.js?v=6';
 import { updateHud, announce, showCombo, showScreen, renderRoster, fillVersus } from './ui.js';
 
 let match = null;
@@ -198,6 +198,9 @@ function startMatch() {
 
   match.p1.setMatch(match);
   match.p2.setMatch(match);
+  lastTime = performance.now();
+  accumulator = 0;
+  startLoop();
   paused = false;
   $('#pause-layer').hidden = true;
   showScreen('arena-screen');
@@ -358,16 +361,22 @@ function togglePause(force) {
 }
 
 function loop(now) {
+  if (!match || paused || document.hidden) {
+    rafId = 0;
+    return;
+  }
   const delta = Math.min(50, now - lastTime);
   lastTime = now;
   accumulator += delta;
-  while (accumulator >= STEP) {
+  let steps = 0;
+  while (accumulator >= STEP && steps < 3) {
     fixedUpdate();
     accumulator -= STEP;
+    steps++;
   }
+  if (accumulator > STEP) accumulator = 0;
   render(ctx, match, frameNumber, images, renderState);
-  if (!paused && !document.hidden) rafId = requestAnimationFrame(loop);
-  else rafId = 0;
+  rafId = requestAnimationFrame(loop);
 }
 
 function goSelect() {
@@ -511,5 +520,3 @@ loadAssets().catch(error => {
   $('#loading span').textContent = error.message;
   console.error(error);
 });
-
-startLoop();

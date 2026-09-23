@@ -1,5 +1,6 @@
 /**
- * Catálogo do Sistema Solar hiper-realista.
+ * Catálogo do Sistema Solar.
+ * Nomes, classes e luas são os reais. O mapa de cada mundo vem de textures.js.
  */
 
 export const SLIDERS = [
@@ -43,12 +44,14 @@ export function generateSystem(seed) {
         {
             kindId: 'carbon',
             kind: 0,
-            label: 'Rochoso Árido',
+            label: 'Planeta rochoso',
             name: 'Mercúrio',
             designation: 'I',
             lore: 'O planeta mais próximo do Sol, marcado por crateras e sem atmosfera visível.',
             water: 0, ice: 0, temp: 0.85, clouds: 0, atmos: 0.02, mountain: 0.8, warp: 0.6, cities: 0, emissive: 0.0,
             rings: 0, moons: 0,
+            texture: 'mercury', spec: 0.1,
+            moonsNamed: [],
             oceanDeep: [0.15, 0.15, 0.15], oceanShallow: [0.25, 0.25, 0.25], landA: [0.35, 0.35, 0.35], landB: [0.45, 0.45, 0.45],
             desert: [0.55, 0.55, 0.55], snow: [0.65, 0.65, 0.65], lava: [1.0, 0.3, 0.1], atmosColor: [0.1, 0.1, 0.1], atmosColor2: [0.2, 0.2, 0.2],
             ringColor: [0, 0, 0], seed: 101, cloudSeed: 101, aurora: 0,
@@ -57,12 +60,14 @@ export function generateSystem(seed) {
         {
             kindId: 'toxic',
             kind: 0,
-            label: 'Estufa Tóxica',
+            label: 'Planeta rochoso',
             name: 'Vênus',
             designation: 'II',
             lore: 'Um inferno nublado com pressão esmagadora e chuvas de ácido sulfúrico.',
-            water: 0, ice: 0, temp: 0.95, clouds: 0.9, atmos: 1.0, mountain: 0.5, warp: 0.4, cities: 0, emissive: 0.1,
+            water: 0, ice: 0, temp: 0.95, clouds: 0.35, atmos: 0.85, mountain: 0.5, warp: 0.4, cities: 0, emissive: 0.1,
             rings: 0, moons: 0,
+            texture: 'venus', spec: 0.06,
+            moonsNamed: [],
             oceanDeep: [0.6, 0.4, 0.2], oceanShallow: [0.7, 0.5, 0.3], landA: [0.75, 0.55, 0.35], landB: [0.8, 0.6, 0.4],
             desert: [0.9, 0.7, 0.45], snow: [1.0, 0.85, 0.55], lava: [1.0, 0.5, 0.1], atmosColor: [0.9, 0.75, 0.4], atmosColor2: [1.0, 0.85, 0.55],
             ringColor: [0, 0, 0], seed: 102, cloudSeed: 102, aurora: 0,
@@ -71,12 +76,14 @@ export function generateSystem(seed) {
         {
             kindId: 'terra',
             kind: 0,
-            label: 'Terrestre',
+            label: 'Planeta rochoso',
             name: 'Terra',
             designation: 'III',
             lore: 'Oásis azul pálido, o único mundo conhecido a abrigar vida.',
             water: 0.71, ice: 0.12, temp: 0.48, clouds: 0.45, atmos: 0.65, mountain: 0.45, warp: 0.55, cities: 0.5, emissive: 0,
             rings: 0, moons: 1,
+            texture: 'earth', spec: 0.58,
+            moonsNamed: [{ name: 'Lua', texture: 'moon', tint: [1, 0.98, 0.94], scale: 0.27 }],
             oceanDeep: [0.02, 0.12, 0.35], oceanShallow: [0.05, 0.3, 0.5], landA: [0.15, 0.35, 0.15], landB: [0.25, 0.4, 0.12],
             desert: [0.7, 0.6, 0.35], snow: [0.95, 0.95, 1.0], lava: [0.8, 0.3, 0.1], atmosColor: [0.35, 0.55, 1.0], atmosColor2: [0.55, 0.82, 1.0],
             ringColor: [0, 0, 0], seed: 103, cloudSeed: 103, aurora: 0.65,
@@ -85,12 +92,17 @@ export function generateSystem(seed) {
         {
             kindId: 'desert',
             kind: 0,
-            label: 'Deserto Frio',
+            label: 'Planeta rochoso',
             name: 'Marte',
             designation: 'IV',
             lore: 'O planeta vermelho, outrora quente e úmido, agora um deserto gelado com calotas polares.',
             water: 0, ice: 0.08, temp: 0.28, clouds: 0.08, atmos: 0.25, mountain: 0.65, warp: 0.5, cities: 0, emissive: 0,
             rings: 0, moons: 2,
+            texture: 'mars', spec: 0.14,
+            moonsNamed: [
+                { name: 'Fobos', texture: 'phobos', tint: [0.85, 0.78, 0.7], scale: 0.12 },
+                { name: 'Deimos', texture: 'deimos', tint: [0.9, 0.84, 0.76], scale: 0.09 }
+            ],
             oceanDeep: [0.65, 0.35, 0.2], oceanShallow: [0.75, 0.4, 0.25], landA: [0.7, 0.4, 0.25], landB: [0.8, 0.45, 0.3],
             desert: [0.85, 0.5, 0.35], snow: [0.95, 0.9, 0.85], lava: [1.0, 0.4, 0.1], atmosColor: [0.85, 0.55, 0.35], atmosColor2: [0.95, 0.65, 0.45],
             ringColor: [0, 0, 0], seed: 104, cloudSeed: 104, aurora: 0,
@@ -101,6 +113,11 @@ export function generateSystem(seed) {
             kind: 1,
             label: 'Gigante Gasoso',
             name: 'Júpiter',
+            texture: 'jupiter', spec: 0.22,
+            moonsNamed: [
+                { name: 'Io', texture: 'io', tint: [1, 0.96, 0.86], scale: 0.16 },
+                { name: 'Europa', texture: 'europa', tint: [0.96, 0.97, 1], scale: 0.14 }
+            ],
             designation: 'V',
             lore: 'O rei dos planetas, lar da Grande Mancha Vermelha e tempestades colossais.',
             water: 0.45, ice: 0.2, temp: 0.4, clouds: 0.08, atmos: 0.95, mountain: 0.6, warp: 0.35, cities: 0, emissive: 0,
@@ -115,6 +132,11 @@ export function generateSystem(seed) {
             kind: 1,
             label: 'Gigante Gasoso',
             name: 'Saturno',
+            texture: 'saturn', spec: 0.2,
+            moonsNamed: [
+                { name: 'Titã', texture: 'titan', tint: [1, 0.9, 0.72], scale: 0.18 },
+                { name: 'Encélado', texture: 'enceladus', tint: [0.95, 0.98, 1], scale: 0.1 }
+            ],
             designation: 'VI',
             lore: 'A joia do sistema solar, coroada por um sistema de anéis deslumbrante e complexo.',
             water: 0.35, ice: 0.25, temp: 0.3, clouds: 0.05, atmos: 0.9, mountain: 0.4, warp: 0.25, cities: 0, emissive: 0,
@@ -129,6 +151,11 @@ export function generateSystem(seed) {
             kind: 1,
             label: 'Gigante de Gelo',
             name: 'Urano',
+            texture: 'uranus', spec: 0.16,
+            moonsNamed: [
+                { name: 'Titânia', texture: 'titania', tint: [0.9, 0.94, 0.96], scale: 0.14 },
+                { name: 'Oberon', texture: 'oberon', tint: [0.86, 0.88, 0.9], scale: 0.13 }
+            ],
             designation: 'VII',
             lore: 'Um mundo gelado tombado de lado, orbitando o Sol como um barril rodopiante.',
             water: 0.55, ice: 0.75, temp: 0.1, clouds: 0.02, atmos: 0.85, mountain: 0.35, warp: 0.25, cities: 0, emissive: 0,
@@ -143,6 +170,11 @@ export function generateSystem(seed) {
             kind: 1,
             label: 'Gigante de Gelo',
             name: 'Netuno',
+            texture: 'neptune', spec: 0.2,
+            moonsNamed: [
+                { name: 'Tritão', texture: 'triton', tint: [1, 0.94, 0.96], scale: 0.16 },
+                { name: 'Proteu', texture: 'proteus', tint: [0.82, 0.8, 0.78], scale: 0.08 }
+            ],
             designation: 'VIII',
             lore: 'O planeta mais distante, de um azul profundo e varrido por ventos supersônicos.',
             water: 0.6, ice: 0.65, temp: 0.05, clouds: 0.12, atmos: 0.9, mountain: 0.45, warp: 0.3, cities: 0, emissive: 0,
@@ -153,6 +185,15 @@ export function generateSystem(seed) {
             orbit: 26.0, radius: 0.4, inclination: 0.03, orbitSpeed: 0.05, spin: 0.65, tilt: 0.5, phase: 3.2
         }
     ];
+
+    for (const p of planets) {
+        p.paint = 1;
+        p.base = {
+            water: p.water, ice: p.ice, temp: p.temp, clouds: p.clouds,
+            atmos: p.atmos, mountain: p.mountain, cities: p.cities,
+            emissive: p.emissive, rings: p.rings, aurora: p.aurora
+        };
+    }
 
     return {
         seed: 1,
@@ -165,4 +206,11 @@ export function generateSystem(seed) {
             count: 1
         }
     };
+}
+
+export function moonLine(planet) {
+    const names = (planet.moonsNamed || []).map((m) => m.name);
+    if (!names.length) return 'sem satélites';
+    if (names.length === 1) return names[0];
+    return `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
 }

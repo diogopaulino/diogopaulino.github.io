@@ -9,7 +9,7 @@
 Mais de 20 anos em tecnologia, entre liderança, código hands-on e design UI/UX.
 
 [![Website](https://img.shields.io/badge/Website-diogopaulino.com.br-3B82F6?style=flat-square&logo=googlechrome&logoColor=white)](https://diogopaulino.com.br/)
-[![Labs](https://img.shields.io/badge/Labs-57_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
+[![Labs](https://img.shields.io/badge/Labs-44_experimentos-8B5CF6?style=flat-square&logo=stackblitz&logoColor=white)](https://diogopaulino.com.br/labs/)
 [![GitHub](https://img.shields.io/badge/GitHub-diogopaulino-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/diogopaulino)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Diogo_Paulino-0A66C2?style=flat-square)](https://br.linkedin.com/in/diogopaulino)
 [![Spotify](https://img.shields.io/badge/Spotify-Artist-1DB954?style=flat-square&logo=spotify&logoColor=white)](https://open.spotify.com/intl-pt/artist/0ue2WfDQ1P4XR2vXdSIrYQ)
@@ -32,7 +32,7 @@ Gosto de construir coisas — de time e produto até interface e código. Nessa 
 
 > *Abre, experimenta, quebra, reconstrói. Esse é o espírito.*
 
-Um laboratório aberto com **57 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
+Um laboratório aberto com **44 experimentos** que rodam direto no navegador — HTML, CSS e JavaScript puro, sem instalar nada. Catálogo completo em [diogopaulino.com.br/labs](https://diogopaulino.com.br/labs/).
 
 Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaixo e da URL `https://diogopaulino.com.br/labs/<slug>/`.
 
@@ -42,33 +42,20 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | :--- | :--- |
 | ♟️ **[Xadrez](https://diogopaulino.com.br/labs/xadrez/)** | Atelier 3D — peças Staunton de marfim e ébano, reflexos e um mestre que ensina a jogar |
 | 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D hiper-realista — humanoides PBR, galope por serras, cânions e pradarias |
-| 🟡 **[Tatu Bola](https://diogopaulino.com.br/labs/tatu-bola/)** | Platformer 3D hiper-realista — pule, role e colete cristais numa ilha paradisíaca |
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D cinematográfico — Nico, câmera orbital, pulo triplo e sete estrelas no vitral |
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D hiper-realista — Clara, casas detalhadas e a última chama em Vale-da-Bruma |
-| 🏃 **[Forrest Run](https://diogopaulino.com.br/labs/forrest-run/)** | Endless runner 3D hiper-realista — Forrest PBR corre pelos EUA, pena branca e o pessoal atrás |
 | 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D hiper-realista — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
-| 🐾 **[Mimo](https://diogopaulino.com.br/labs/mimo/)** | Pet virtual 3D — escolha cão ou gato, dê nome e raça, alimente, dê banho e brinque |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
 | 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
-| ✧ **[Eyra](https://diogopaulino.com.br/labs/eyra/)** | Voo hiper-realista numa fera alada pelos picos flutuantes — sementes de luz, cachoeiras no céu e a Yva |
-| 🪻 **[Lavandula](https://diogopaulino.com.br/labs/lavandula/)** | Passeio 3D hiper-realista pelos campos de lavanda ao entardecer — ande, sente-se e deixe o vento passar |
-| 🐋 **[Nereida](https://diogopaulino.com.br/labs/nereida/)** | Santuário submarino hiper-realista — pele PBR, medusas e baleia cinematográfica |
-| ◎ **[Riftball](https://diogopaulino.com.br/labs/riftball/)** | Duelo 1v1 hiper-realista — hovers PBR, bola de éter e gol online |
 | 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D hiper-realista — jipe, diário de campo e dinossauros com crânios orgânicos |
 | 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU |
-| 🛡️ **[O Último Bastião](https://diogopaulino.com.br/labs/ultimo-bastiao/)** | Batalha medieval 3D — cavaleiro GLB, espada, escudo, ondas inimigas e chefe final em Babylon.js |
-| 🕸️ **[Spider Swing](https://diogopaulino.com.br/labs/spider-swing/)** | Balanço 3D hiper-realista em Manhattan — fachadas PBR, teias, chuva e combos |
-| 🎖️ **[Honor Front](https://diogopaulino.com.br/labs/honor-front/)** | FPS 3D estilo Medal of Honor — desembarque ao amanhecer, muralha sob fogo e a bateria no penhasco |
-| 🦁 **[Safari Dourado](https://diogopaulino.com.br/labs/safari-dourado/)** | Savana 3D ao entardecer — dirija o jeep, enquadre elefantes e leões e complete o caderno de campo |
-| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D hiper-realista — explore de Mercúrio a Netuno com shaders customizados |
+| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D — Mercúrio a Netuno com texturas dos planetas e os nomes reais das luas |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida hiper-realista anos 80 — moto cromada PBR, néon e synthwave |
-| 🏎️ **[Costa Dourada](https://diogopaulino.com.br/labs/costa-dourada/)** | Ferrari 458 glTF, pista costeira PBR e golden hour em three.js |
 | ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D hiper-realista — personagens PBR, Dico e Teco até o castelo |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval hiper-realista — drakkar PBR, machados e o resgate no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
 | 💻 **[Beige Box](https://diogopaulino.com.br/labs/beige-box/)** | Quarto retrô: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa |
-| 🏎️ **[F1 Grand Prix](https://diogopaulino.com.br/labs/f1-racing/)** | Simulador WebGPU com circuitos reais, física de pneus, DRS/ERS e IA |
 
 ### 🎮 Games & Retrô
 

@@ -5,7 +5,7 @@
 import { Level } from './Level.js';
 import { castleStoneTexture, woodTexture } from '../world/Textures.js';
 import { makeTorch, EnvironmentFX } from '../world/Environment.js?v=5';
-import { Guard } from '../characters/Guard.js?v=5';
+import { Guard } from '../characters/Guard.js?v=33';
 
 export class CastleInteriorLevel extends Level {
     get id() {
@@ -243,7 +243,7 @@ export class CastleInteriorLevel extends Level {
         g.input.enabled = true;
         g.player.controller.setMode('walk');
         g.hud.showStealth(true, 0);
-        g.input.requestLock();
+        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre.', 5);
     }
 
     stealKeys(game) {

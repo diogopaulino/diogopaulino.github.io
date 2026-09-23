@@ -10,10 +10,10 @@ export class ThirdPersonCamera {
         this.scene = scene;
         this.yaw = 0;
         this.pitch = 0.32;
-        this.distance = 4.4;
-        this.targetDistance = 4.4;
-        this.minDistance = 1.4;
-        this.maxDistance = 7.2;
+        this.distance = 5.4;
+        this.targetDistance = 5.4;
+        this.minDistance = 2.2;
+        this.maxDistance = 9.2;
         this.pitchMin = -0.55;
         this.pitchMax = 1.15;
         this.shoulder = 0.55;
@@ -65,8 +65,8 @@ export class ThirdPersonCamera {
     update(dt, player, lookDelta, zoomDelta, sprinting) {
         if (this.cutscene) return;
 
-        this.yaw -= lookDelta.x * 0.00215;
-        this.pitch = clamp(this.pitch - lookDelta.y * 0.0019, this.pitchMin, this.pitchMax);
+        this.yaw -= lookDelta.x * 0.0036;
+        this.pitch = clamp(this.pitch - lookDelta.y * 0.003, this.pitchMin, this.pitchMax);
         this.targetDistance = clamp(this.targetDistance + zoomDelta * 0.45, this.minDistance, this.maxDistance);
         this.distance = damp(this.distance, this.targetDistance, 8, dt);
 
@@ -110,7 +110,7 @@ export class ThirdPersonCamera {
                     }
                 }
                 if (hit) {
-                    const safeDist = Math.max(0.6, hit.distance - 0.28);
+                    const safeDist = Math.max(1.8, hit.distance - 0.35);
                     desired.copyFrom(targetLook.add(rayDir.scale(safeDist)));
                 }
             }

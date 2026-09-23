@@ -4,8 +4,8 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { generateSystem, SHOWCASE, SLIDERS } from './catalog.js';
-import { StarSystem } from './system.js';
+import { generateSystem, SHOWCASE, SLIDERS, moonLine } from './catalog.js?v=4';
+import { StarSystem } from './system.js?v=4';
 import { clamp, damp, hashString } from './rng.js';
 
 const QUALITY = {
@@ -222,7 +222,7 @@ class Orbis {
                     <span class="world-orb" style="background: radial-gradient(circle at 32% 28%, ${swatch}, ${ocean} 72%)"></span>
                     <span class="world-copy">
                         <strong>${p.name}</strong>
-                        <em>${this.data.name}-${p.designation} · ${p.label}</em>
+                        <em>${p.label} · ${moonLine(p)}</em>
                     </span>
                 </button>
             `;
@@ -234,8 +234,8 @@ class Orbis {
         const p = this.data.planets[this.focus];
         if (!p) return;
         $('#planetName').textContent = p.name;
-        $('#planetTag').textContent = `${this.data.name}-${p.designation}`;
-        $('#planetKind').textContent = p.label;
+        $('#planetTag').textContent = p.label;
+        $('#planetKind').textContent = moonLine(p);
         $('#planetLore').textContent = p.lore;
         $('#planetCount').textContent = String(this.data.planets.length);
     }
@@ -291,6 +291,10 @@ class Orbis {
             if (!key) return;
             const p = this.data.planets[this.focus];
             p[key] = Number(e.target.value);
+            const forgeKeys = ['water', 'temp', 'mountain', 'cities', 'emissive'];
+            let delta = 0;
+            for (const k of forgeKeys) delta += Math.abs(p[k] - (p.base?.[k] ?? p[k]));
+            p.paint = Math.max(0.22, 1 - delta * 0.85);
             this.system.applyParams(this.focus, p);
         });
 

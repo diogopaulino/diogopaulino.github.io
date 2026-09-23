@@ -8,14 +8,14 @@ export class PlayerController {
     constructor(player, collision) {
         this.player = player;
         this.collision = collision;
-        this.walkSpeed = 2.35;
-        this.runSpeed = 4.15;
-        this.sprintSpeed = 6.1;
-        this.crouchSpeed = 1.15;
-        this.accel = 14;
-        this.decel = 16;
+        this.walkSpeed = 3.6;
+        this.runSpeed = 6.4;
+        this.sprintSpeed = 9.2;
+        this.crouchSpeed = 2.1;
+        this.accel = 28;
+        this.decel = 22;
         this.gravity = 22;
-        this.jumpSpeed = 7.2;
+        this.jumpSpeed = 8.8;
         this.vx = 0;
         this.vz = 0;
         this.vy = 0;

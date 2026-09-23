@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#02040a">
     <title>Orbis — Sistema Solar em 3D | Diogo Paulino</title>
     <meta name="description"
-        content="Explore nosso Sistema Solar em 3D hiper-realista: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno com shaders customizados.">
+        content="Explore o Sistema Solar em 3D: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno, com texturas dos planetas e os nomes reais das luas.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/orbis/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,11 +23,11 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/orbis/">
     <meta property="og:title" content="Orbis — Sistema Solar em 3D | Diogo Paulino">
     <meta property="og:description"
-        content="Explore nosso Sistema Solar em 3D hiper-realista com shaders customizados em three.js.">
+        content="Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno em 3D, com texturas dos planetas e luas reais.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Orbis — Sistema Solar em 3D | Diogo Paulino">
     <meta name="twitter:description"
-        content="Explore nosso Sistema Solar em 3D hiper-realista com shaders customizados em three.js.">
+        content="Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno em 3D, com texturas dos planetas e luas reais.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,7 +35,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
@@ -53,7 +53,7 @@
           "@type": "WebApplication",
           "name": "Orbis",
           "url": "https://diogopaulino.com.br/labs/orbis/",
-          "description": "Explore nosso Sistema Solar em 3D hiper-realista: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno.",
+          "description": "Explore o Sistema Solar em 3D: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno, com texturas dos planetas e os nomes reais das luas.",
           "applicationCategory": "WebApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -138,8 +138,8 @@
             <h2 id="systemName">—</h2>
             <p class="meta-line">
                 <span id="starType">—</span>
-                · <span id="planetCount">0</span> mundos
-                · seed <span id="seedValue" class="mono">0</span>
+                · <span id="planetCount">0</span> planetas
+                <span id="seedValue" class="mono" hidden>0</span>
             </p>
             <div id="planetList" class="planet-list"></div>
         </aside>
@@ -178,7 +178,7 @@
     <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
 
     <script src="/labs/shared.js?v=13" defer></script>
-    <script type="module" src="./src/main.js?v=3"></script>
+    <script type="module" src="./src/main.js?v=4"></script>
 </body>
 
 </html>
