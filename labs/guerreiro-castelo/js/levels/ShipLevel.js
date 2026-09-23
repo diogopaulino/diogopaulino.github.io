@@ -131,7 +131,7 @@ export class ShipLevel extends Level {
         g.cameraRig.cutscene = false;
         g.cameraRig.snapToPlayer(g.player);
         g.hud.showObjective('Explore o navio');
-        g.input.requestLock();
+        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre, E interage.', 7);
     }
 
     beginNight() {

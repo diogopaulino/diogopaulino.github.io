@@ -107,7 +107,7 @@ export class BeachLevel extends Level {
         g.hud.showObjective('Chegue até o castelo');
         g.input.enabled = true;
         g.player.controller.setMode('walk');
-        g.input.requestLock();
+        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre.', 5);
     }
 
     update(dt) {

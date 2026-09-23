@@ -3,7 +3,7 @@
  */
 
 import { CapsuleCollider } from './CapsuleCollider.js';
-import { PlayerController } from './PlayerController.js';
+import { PlayerController } from './PlayerController.js?v=33';
 import { buildDico, CharacterAnimator, applyLocomotion } from '../characters/builders.js?v=6';
 import { angleDamp } from '../utils/math.js';
 
@@ -96,8 +96,11 @@ export class Player {
         this.interactT = Math.max(0, this.interactT - dt);
 
         if (input.attack && this.attackT <= 0) {
-            this.attackT = 0.45;
+            this.attackT = 0.42;
+            this.swingHit = false;
             input.attack = false;
+            this.controller.vx += Math.sin(this.facing) * 3.2;
+            this.controller.vz += Math.cos(this.facing) * 3.2;
         }
         if (input.block) this.blockT = 0.1;
 

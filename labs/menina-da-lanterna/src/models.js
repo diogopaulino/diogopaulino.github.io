@@ -204,7 +204,7 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
 
     let point = null;
     if (light) {
-        point = new THREE.PointLight(0xffc060, 2.4, 14, 1.6);
+        point = new THREE.PointLight(0xffe0a0, 3.4, 26, 1.05);
         point.position.y = 0.05;
         group.add(point);
     }

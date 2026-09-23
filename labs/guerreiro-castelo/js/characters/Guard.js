@@ -3,7 +3,7 @@
  */
 
 import { buildGuard, CharacterAnimator } from './builders.js?v=6';
-import { GuardAI } from '../ai/GuardAI.js';
+import { GuardAI } from '../ai/GuardAI.js?v=33';
 import { angleDamp } from '../utils/math.js';
 
 export class Guard {

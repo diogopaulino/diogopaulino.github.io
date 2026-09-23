@@ -21,10 +21,37 @@ export function initRenderer(canvas) {
   floorShade.addColorStop(0, '#00000000');
   floorShade.addColorStop(1, '#00000082');
 
+  const rain = document.createElement('canvas');
+  rain.width = W;
+  rain.height = H;
+  const rainCtx = rain.getContext('2d');
+  rainCtx.strokeStyle = '#b8d2e08a';
+  rainCtx.lineWidth = 1.2;
+  rainCtx.beginPath();
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 97) % W;
+    const y = (i * 53) % H;
+    rainCtx.moveTo(x, y);
+    rainCtx.lineTo(x - 5, y + 22);
+  }
+  rainCtx.stroke();
+
+  const mote = document.createElement('canvas');
+  mote.width = mote.height = 8;
+  const moteCtx = mote.getContext('2d');
+  moteCtx.fillStyle = '#d9b77b';
+  moteCtx.beginPath();
+  moteCtx.arc(4, 4, 3, 0, Math.PI * 2);
+  moteCtx.fill();
+
+  ctx.imageSmoothingEnabled = true;
+
   return {
     ctx,
     renderState: {
       floorShade,
+      rain,
+      mote,
       coliseumGlow: makeGlow('#e9a45b28', '#e9a45b12'),
       projectileGlows: new Map(),
       makeGlow
@@ -70,18 +97,9 @@ export function render(ctx, match, frameNumber, images, renderState) {
   if (image) ctx.drawImage(image, 0, 0, W, H);
 
   if (match.stageId === 'seattle') {
-    ctx.save();
-    ctx.strokeStyle = '#b8d2e05c';
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 75; i++) {
-      const x = (i * 97 + frameNumber * 7) % W;
-      const y = (i * 53 + frameNumber * 13) % H;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - 5, y + 22);
-      ctx.stroke();
-    }
-    ctx.restore();
+    const shift = (frameNumber * 6) % H;
+    ctx.drawImage(renderState.rain, 0, shift);
+    ctx.drawImage(renderState.rain, 0, shift - H);
   } else if (match.stageId === 'coliseum') {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -92,13 +110,11 @@ export function render(ctx, match, frameNumber, images, renderState) {
     ctx.restore();
   } else {
     ctx.save();
-    ctx.fillStyle = '#d9b77b22';
-    for (let i = 0; i < 30; i++) {
+    ctx.globalAlpha = 0.16;
+    for (let i = 0; i < 16; i++) {
       const x = (i * 137 + frameNumber * 0.22) % W;
       const y = 120 + ((i * 89 - frameNumber * 0.12 + H) % 430);
-      ctx.beginPath();
-      ctx.arc(x, y, 1.4 + (i % 2), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(renderState.mote, x, y, 4, 4);
     }
     ctx.restore();
   }
@@ -125,13 +141,19 @@ export function render(ctx, match, frameNumber, images, renderState) {
     ctx.save();
     if (fighter.invuln > 0 && Math.floor(fighter.invuln / 3) % 2 === 0) ctx.globalAlpha = 0.42;
     const flash = fighter.hitstun > 8;
-    if (flash) ctx.filter = 'brightness(1.75) saturate(.5)';
-    drawSheet(ctx, sheet, fighter.spriteFrame(), fighter.x, fighter.y, fighter.facing, SPRITE_SIZE, ctx.globalAlpha, inner => {
+    const frame = fighter.spriteFrame();
+    const pose = inner => {
       if (fighter.state === 'knockdown') {
         inner.translate(0, 22);
         inner.rotate(-0.55);
       }
-    });
+    };
+    drawSheet(ctx, sheet, frame, fighter.x, fighter.y, fighter.facing, SPRITE_SIZE, ctx.globalAlpha, pose);
+    if (flash) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.45;
+      drawSheet(ctx, sheet, frame, fighter.x, fighter.y, fighter.facing, SPRITE_SIZE, 0.45, pose);
+    }
     ctx.restore();
   }
 

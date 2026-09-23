@@ -96,7 +96,7 @@ export class EscapeLevel extends Level {
             }
         };
 
-        g.input.requestLock();
+        g.hud.showToast('Arraste para olhar. Clique ataca.', 4);
     }
 
     update(dt) {

@@ -94,12 +94,23 @@ uniform vec3 uDesert;
 uniform vec3 uSnow;
 uniform vec3 uLava;
 uniform vec3 uSunPos;
+uniform sampler2D uMap;
+uniform float uUseMap;
+uniform float uPaint;
+uniform float uSpecGain;
 
 varying vec3 vObj;
 varying vec3 vWorld;
 varying vec3 vN;
 
 ${NOISE_GLSL}
+
+vec2 sphereUv(vec3 dir) {
+    return vec2(
+        atan(dir.z, dir.x) * 0.15915494 + 0.5,
+        0.5 - asin(clamp(dir.y, -1.0, 1.0)) * 0.31830989
+    );
+}
 
 vec3 terrainColor(vec3 p, float h, float lat) {
     float moisture = fbm(p * 3.1 + 17.0);
@@ -114,6 +125,34 @@ vec3 terrainColor(vec3 p, float h, float lat) {
 }
 
 void main() {
+    vec3 N = normalize(vN);
+    vec3 V = normalize(cameraPosition - vWorld);
+    vec3 L = normalize(uSunPos - vWorld);
+    float ndotl = dot(N, L);
+    float fres = pow(1.0 - max(dot(N, V), 0.0), 3.2);
+
+    if (uUseMap > 0.5 && uPaint > 0.97) {
+        vec3 dir = normalize(vObj);
+        vec3 albedo = texture2D(uMap, sphereUv(dir)).rgb;
+        float lum = dot(albedo, vec3(0.3, 0.59, 0.11));
+        float relief = (1.0 - step(0.5, uKind)) * (0.45 + uMountain * 0.55);
+        N = normalize(N - vec3(dFdx(lum), dFdy(lum), 0.0) * relief);
+        float light = pow(max(dot(N, L), 0.0), 0.85);
+        float wrap = dot(N, L) * 0.5 + 0.5;
+        float night = smoothstep(0.18, -0.08, dot(N, L));
+        float iceCap = smoothstep(0.78, 0.96, abs(dir.y)) * clamp(uIce * 1.35, 0.0, 1.0) * (1.0 - step(0.5, uKind));
+        albedo = mix(albedo, vec3(0.95, 0.97, 1.0), iceCap);
+        float landish = smoothstep(0.02, 0.2, albedo.g - albedo.b * 0.65);
+        float spec = pow(max(dot(normalize(L + V), N), 0.0), mix(18.0, 64.0, uSpecGain)) * uSpecGain;
+        vec3 city = vec3(1.0, 0.84, 0.52) * uCities * night * landish;
+        city *= smoothstep(0.55, 0.8, noise(dir * 42.0));
+        vec3 ambient = albedo * 0.1;
+        vec3 diffuse = albedo * (light * 0.94 + wrap * 0.1);
+        vec3 rim = vec3(0.62, 0.78, 1.0) * fres * 0.16;
+        gl_FragColor = vec4(ambient + diffuse + spec * vec3(1.0, 0.97, 0.9) + rim + city, 1.0);
+        return;
+    }
+
     vec3 p = normalize(vObj);
     vec3 seed = vec3(uSeed * 0.137, uSeed * 0.071, uSeed * 0.219);
     vec3 q = p * 2.4 + seed;
@@ -125,18 +164,15 @@ void main() {
     h = mix(h, ridged(pw * 2.4), uMountain * 0.55);
 
     float lat = abs(p.y);
-    vec3 N = normalize(vN);
     float dhx = dFdx(h);
     float dhy = dFdy(h);
     N = normalize(N - vec3(dhx, dhy, 0.0) * (uMountain * 1.8 + 0.15) * uBump);
 
-    vec3 V = normalize(cameraPosition - vWorld);
-    vec3 L = normalize(uSunPos - vWorld);
-    float ndotl = dot(N, L);
+    ndotl = dot(N, L);
     float wrap = ndotl * 0.5 + 0.5;
     float light = pow(max(ndotl, 0.0), 0.85);
     float night = smoothstep(0.18, -0.08, ndotl);
-    float fres = pow(1.0 - max(dot(N, V), 0.0), 3.2);
+    fres = pow(1.0 - max(dot(N, V), 0.0), 3.2);
 
     vec3 col;
     float spec = 0.0;
@@ -182,6 +218,11 @@ void main() {
     float cloudShadow = 0.0;
     float cloudN = fbm(p * 3.2 + vec3(uTime * 0.017, 0.0, uSeed * 0.01));
     cloudShadow = smoothstep(0.48, 0.72, cloudN) * 0.22;
+
+    if (uUseMap > 0.5) {
+        vec3 albedo = texture2D(uMap, sphereUv(normalize(vObj))).rgb;
+        col = mix(col, albedo, uPaint);
+    }
 
     vec3 ambient = col * 0.045;
     vec3 diffuse = col * (light * (1.0 - cloudShadow) + wrap * 0.12);
@@ -458,6 +499,7 @@ export const MOON_FRAG = /* glsl */ `
 uniform float uSeed;
 uniform vec3 uColor;
 uniform vec3 uSunPos;
+uniform sampler2D uMap;
 
 varying vec3 vObj;
 varying vec3 vWorld;
@@ -467,15 +509,16 @@ ${NOISE_GLSL}
 
 void main() {
     vec3 p = normalize(vObj);
-    float n = fbm(p * 6.0 + uSeed);
-    float craters = 1.0 - smoothstep(0.45, 0.62, ridged(p * 8.0 + uSeed));
-    vec3 col = mix(uColor * 0.45, uColor, n);
-    col *= mix(1.0, 0.55, craters);
-
-    vec3 N = normalize(vN);
+    vec2 uv = vec2(
+        atan(p.z, p.x) * 0.15915494 + 0.5,
+        0.5 - asin(clamp(p.y, -1.0, 1.0)) * 0.31830989
+    );
+    vec3 col = texture2D(uMap, uv).rgb * uColor;
+    float lum = dot(col, vec3(0.3, 0.59, 0.11));
+    vec3 N = normalize(normalize(vN) - vec3(dFdx(lum), dFdy(lum), 0.0) * 1.4);
     vec3 L = normalize(uSunPos - vWorld);
     float light = pow(max(dot(N, L), 0.0), 0.9);
-    col = col * (0.04 + light * 0.96);
+    col = col * (0.06 + light * 0.94);
 
     gl_FragColor = vec4(col, 1.0);
 }

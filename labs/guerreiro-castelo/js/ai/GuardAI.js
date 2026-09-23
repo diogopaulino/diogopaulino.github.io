@@ -112,8 +112,8 @@ export class GuardAI {
         if (this.state === 'ATTACK') {
             this.facing = Math.atan2(dx, dz);
             g.speed = 0;
-            if (this.attackCd <= 0 && dist < 2.1) {
-                this.attackCd = 1.1;
+            if (this.attackCd <= 0 && dist < 1.65) {
+                this.attackCd = 1.55;
                 if (!game.player.blockT) game.player.hurt(1);
                 game.audio?.play('hit');
                 game.cameraRig?.addShake(0.1, 0.2);

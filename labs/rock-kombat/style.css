@@ -803,7 +803,7 @@ legend {
 }
 
 @keyframes danger-pulse {
-  50% { filter: brightness(1.35); }
+  50% { opacity: 0.72; }
 }
 
 .p2 .life i,
@@ -1228,8 +1228,7 @@ dialog {
 }
 
 dialog::backdrop {
-  background: #050608e8;
-  backdrop-filter: blur(8px);
+  background: #050608ee;
 }
 
 dialog h2 {
@@ -1289,8 +1288,7 @@ dialog h2 {
   inset: 0;
   display: grid;
   place-items: center;
-  background: #050608dd;
-  backdrop-filter: blur(7px);
+  background: #050608ee;
 }
 
 .pause-layer[hidden] {

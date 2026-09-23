@@ -278,7 +278,7 @@ export class Fighter {
         facing: this.facing,
         life: 8
       });
-      if (this.trail.length > 6) this.trail.shift();
+      if (this.trail.length > 3) this.trail.shift();
     }
     for (let i = this.trail.length - 1; i >= 0; i--) {
       if (--this.trail[i].life <= 0) this.trail.splice(i, 1);

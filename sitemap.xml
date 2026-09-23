@@ -61,24 +61,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/eyra/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/f1-racing/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/forrest-run/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/grao/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -92,12 +74,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/guerreiro-castelo/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/honor-front/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -151,12 +127,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/lavandula/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/matrix/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -169,31 +139,13 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/mimo/</loc>
-    <lastmod>2026-08-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/minesweeper/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/costa-dourada/</loc>
-    <lastmod>2026-04-09</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/neon-rider/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/nereida/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -259,12 +211,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://diogopaulino.com.br/labs/riftball/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://diogopaulino.com.br/labs/river-knight/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -272,18 +218,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/rock-kombat/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/safari-dourado/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/spider-swing/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -302,12 +236,6 @@
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/tamagotchi/</loc>
-    <lastmod>2026-08-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/tatu-bola/</loc>
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -341,12 +269,6 @@
     <lastmod>2026-08-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://diogopaulino.com.br/labs/ultimo-bastiao/</loc>
-    <lastmod>2026-08-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://diogopaulino.com.br/labs/claude-bros/</loc>

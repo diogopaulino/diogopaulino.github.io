@@ -5,13 +5,13 @@
  * Fórmulas:
  *   fuel' = fuel - drain * dt   (só se capítulo.dark e longe de lampião aceso)
  *   flash: se fuel >= 14, fuel -= 14, flashT = 0.55
- *   intensidade da PointLight = 0.55 + (fuel/100)*2.6 + sin(flash)*7
+ *   intensidade da PointLight = 1.35 + (fuel/100)*3.6 + sin(flash)*8
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA } from './config.js';
+import { PLAYER, CAMERA } from './config.js?v=15';
 import { clamp, damp } from './utils.js';
-import { buildGirl } from './models.js?v=14';
+import { buildGirl } from './models.js?v=15';
 
 export class Player {
     constructor(scene) {
@@ -182,8 +182,8 @@ export class Player {
         const lantern = this.parts.lantern;
         if (!lantern) return;
         const t = this.fuel / PLAYER.fuelMax;
-        const intensity = 0.45 + t * 2.55 + pulse * 7.5;
-        const dist = 7 + t * 8 + pulse * 10;
+        const intensity = 1.35 + t * 3.6 + pulse * 8;
+        const dist = 16 + t * 14 + pulse * 12;
         if (lantern.userData.light) {
             lantern.userData.light.intensity = intensity;
             lantern.userData.light.distance = dist;

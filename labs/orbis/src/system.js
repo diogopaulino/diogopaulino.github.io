@@ -3,6 +3,7 @@
  * cinturão de asteroides, nébula e campo de estrelas.
  */
 import * as THREE from 'three';
+import { createPlanetTexture } from './textures.js?v=4';
 import {
     PLANET_VERT, PLANET_FRAG,
     CLOUD_VERT, CLOUD_FRAG,
@@ -12,7 +13,7 @@ import {
     NEBULA_VERT, NEBULA_FRAG,
     STARFIELD_VERT, STARFIELD_FRAG,
     MOON_FRAG
-} from './shaders.js';
+} from './shaders.js?v=4';
 
 function color(rgb) {
     return new THREE.Color(rgb[0], rgb[1], rgb[2]);
@@ -38,7 +39,11 @@ function planetUniforms(p) {
         uDesert: { value: color(p.desert) },
         uSnow: { value: color(p.snow) },
         uLava: { value: color(p.lava) },
-        uSunPos: { value: new THREE.Vector3(0, 0, 0) }
+        uSunPos: { value: new THREE.Vector3(0, 0, 0) },
+        uMap: { value: null },
+        uUseMap: { value: 0 },
+        uPaint: { value: p.paint ?? 1 },
+        uSpecGain: { value: p.spec ?? 0.15 }
     };
 }
 
@@ -62,6 +67,19 @@ export class StarSystem {
         this.group.add(this.planetsGroup);
         this.orbitLines = new THREE.Group();
         this.group.add(this.orbitLines);
+        this._tex = new Map();
+    }
+
+    _map(id) {
+        if (!this._tex.has(id)) {
+            const map = new THREE.CanvasTexture(createPlanetTexture(id));
+            map.colorSpace = THREE.SRGBColorSpace;
+            map.anisotropy = 8;
+            map.wrapS = THREE.ClampToEdgeWrapping;
+            map.wrapT = THREE.ClampToEdgeWrapping;
+            this._tex.set(id, map);
+        }
+        return this._tex.get(id);
     }
 
     _buildBackground() {
@@ -273,6 +291,8 @@ export class StarSystem {
         holder.rotation.z = p.tilt;
 
         const uniforms = planetUniforms(p);
+        uniforms.uMap.value = this._map(p.texture || 'mercury');
+        uniforms.uUseMap.value = 1;
         const planet = new THREE.Mesh(
             new THREE.SphereGeometry(p.radius, segs, Math.floor(segs * 0.7)),
             new THREE.ShaderMaterial({
@@ -354,20 +374,24 @@ export class StarSystem {
         holder.add(rings);
 
         const moons = [];
-        for (let m = 0; m < 2; m++) {
+        const moonDefs = p.moonsNamed || [];
+        for (let m = 0; m < moonDefs.length; m++) {
+            const def = moonDefs[m];
             const moonRoot = new THREE.Group();
             const moonHold = new THREE.Group();
-            const dist = p.radius * (2.6 + m * 0.85);
+            const dist = p.radius * (3.1 + m * 1.15);
             moonHold.position.x = dist;
             moonRoot.add(moonHold);
-            const moonR = p.radius * (0.14 + m * 0.05);
+            const moonR = p.radius * (def.scale || 0.16);
+            const tint = def.tint || [1, 1, 1];
             const moon = new THREE.Mesh(
-                new THREE.SphereGeometry(moonR, 16, 12),
+                new THREE.SphereGeometry(moonR, 24, 16),
                 new THREE.ShaderMaterial({
                     uniforms: {
                         uSeed: { value: p.seed + 20 + m },
-                        uColor: { value: new THREE.Color(0.55, 0.52, 0.48) },
-                        uSunPos: { value: this.sunPos }
+                        uColor: { value: new THREE.Color(tint[0], tint[1], tint[2]) },
+                        uSunPos: { value: this.sunPos },
+                        uMap: { value: this._map(def.texture || 'moon') }
                     },
                     vertexShader: PLANET_VERT,
                     fragmentShader: MOON_FRAG
@@ -375,11 +399,10 @@ export class StarSystem {
             );
             moonHold.add(moon);
             holder.add(moonRoot);
-            moonRoot.visible = m < p.moons;
             moons.push({
                 root: moonRoot,
-                speed: 0.6 + m * 0.35,
-                phase: Math.random() * Math.PI * 2
+                speed: 0.45 + m * 0.28,
+                phase: m * 1.7
             });
         }
 
@@ -442,6 +465,8 @@ export class StarSystem {
         u.uDesert.value.set(params.desert[0], params.desert[1], params.desert[2]);
         u.uSnow.value.set(params.snow[0], params.snow[1], params.snow[2]);
         u.uLava.value.set(params.lava[0], params.lava[1], params.lava[2]);
+        u.uPaint.value = params.paint ?? 1;
+        u.uSpecGain.value = params.spec ?? u.uSpecGain.value;
 
         body.cloudUniforms.uCover.value = params.clouds;
         body.atmosUniforms.uDensity.value = params.atmos;
@@ -451,8 +476,8 @@ export class StarSystem {
         body.ringUniforms.uOpacity.value = params.rings;
         body.ringUniforms.uColor.value.set(params.ringColor[0], params.ringColor[1], params.ringColor[2]);
         body.rings.visible = params.rings > 0.04;
-        body.moons.forEach((m, i) => {
-            m.root.visible = i < params.moons;
+        body.moons.forEach((m) => {
+            m.root.visible = true;
         });
     }
 
