@@ -16,3 +16,4 @@ Diogo Paulino constrói experiências digitais com design UI/UX, código hands-o
 ## Labs
 
 Catálogo completo: https://diogopaulino.com.br/labs/
+A galeria é a lista atual. Endereços que saíram do playground não têm página própria.
