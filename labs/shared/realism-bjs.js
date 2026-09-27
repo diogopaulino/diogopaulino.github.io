@@ -192,11 +192,11 @@ export function addRealisticFace(scene, head, skinMat, {
     const s = scale;
     const eyeMat = new (B().StandardMaterial)(`eyeWhite_${head.name || 'h'}`, scene);
     eyeMat.diffuseColor = new (B().Color3)(0.95, 0.93, 0.9);
-    eyeMat.specularColor = new (B().Color3)(0.4, 0.4, 0.4);
+    eyeMat.specularColor = new (B().Color3)(0.22, 0.22, 0.22);
     const irisMat = new (B().StandardMaterial)(`iris_${head.name || 'h'}`, scene);
     irisMat.diffuseTexture = irisTexture(scene, iris);
     irisMat.emissiveTexture = irisMat.diffuseTexture;
-    irisMat.emissiveColor = new (B().Color3)(0.25, 0.25, 0.25);
+    irisMat.emissiveColor = new (B().Color3)(0.04, 0.04, 0.04);
     irisMat.disableLighting = false;
     irisMat.backFaceCulling = false;
 
