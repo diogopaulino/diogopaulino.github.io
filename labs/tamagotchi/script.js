@@ -1615,8 +1615,6 @@
   }
 
   function render(timestamp) {
-    if (document.hidden) return;
-    requestAnimationFrame(render);
     if (timestamp - lastFrameAt < 430) return;
     lastFrameAt = timestamp;
     frame += 1;
@@ -1698,8 +1696,15 @@
   updateIconSelection();
   catchUp();
   maybeAlert();
-  requestAnimationFrame(render);
-  window.LabVisibility?.whenVisible(() => requestAnimationFrame(render));
+  if (window.LabRuntime) {
+    LabRuntime.createLoop(render).start();
+  } else {
+    const fallbackLoop = (now) => {
+      render(now);
+      requestAnimationFrame(fallbackLoop);
+    };
+    requestAnimationFrame(fallbackLoop);
+  }
   setInterval(() => {
     if (document.hidden) return;
     catchUp();
