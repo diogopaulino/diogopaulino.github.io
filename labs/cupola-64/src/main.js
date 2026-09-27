@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
+import { configureCinematicRenderer } from '../../shared/cinematic.js?v=1';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
 import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';
@@ -143,7 +143,6 @@ class Game {
         this.renderer.toneMappingExposure = 1.12;
 
         this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.52 });
         this.camera = new THREE.PerspectiveCamera(56, 1, 0.12, 160);
         this.clock = new THREE.Clock();
 
@@ -154,6 +153,7 @@ class Game {
         sunLite.position.set(4, 8, 2);
         envScene.add(sunLite);
         this.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+        this.scene.environmentIntensity = this.quality.id === 'low' ? 0.24 : 0.52;
         pmrem.dispose();
         envScene.clear();
 
