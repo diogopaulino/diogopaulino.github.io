@@ -13,6 +13,8 @@ function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) 
     mat.albedoColor = color.clone ? color.clone() : color;
     mat.roughness = roughness;
     mat.metallic = metallic;
+    mat.environmentIntensity = 0.82;
+    mat.enableSpecularAntiAliasing = true;
     if (extra.emissiveColor) mat.emissiveColor = extra.emissiveColor;
     if (extra.emissiveIntensity !== undefined) mat.emissiveIntensity = extra.emissiveIntensity;
     if (extra.albedoTexture) mat.albedoTexture = extra.albedoTexture;
@@ -155,8 +157,8 @@ export function buildHumanoid({
     const scale = height / 1.8;
     const root = new BABYLON.TransformNode('humanoidRoot', scene);
 
-    const skinMat = pbr('skinMat', scene, skinColor, 0.62, 0.02);
-    const hairMat = pbr('hairMat', scene, hairColor, 0.88, 0.03);
+    const skinMat = pbr('skinMat', scene, skinColor, 0.54, 0);
+    const hairMat = pbr('hairMat', scene, hairColor, 0.58, 0);
     const shirtMat = pbr('shirtMat', scene, shirtColor, 0.82, 0.04);
     const pantsMat = pbr('pantsMat', scene, pantsColor, 0.86, 0.04);
     const bootMat = pbr('bootMat', scene, bootColor, 0.55, 0.12);
