@@ -1017,8 +1017,6 @@ const FRAME_MS = 1000 / 60;
 let lastFrameAt = -Infinity;
 
 function animate(frameNow) {
-    if (document.hidden) return;
-    requestAnimationFrame(animate);
     if (paused) return;
 
     const stamp = frameNow === undefined ? performance.now() : frameNow;
@@ -1409,5 +1407,12 @@ if (reducedMotion) {
 buildSceneRail();
 resize();
 applyScene(currentKey, true);
-animate();
-window.LabVisibility?.whenVisible(() => animate());
+if (window.LabRuntime) {
+    LabRuntime.createLoop(animate).start();
+} else {
+    const fallbackLoop = (now) => {
+        animate(now);
+        requestAnimationFrame(fallbackLoop);
+    };
+    requestAnimationFrame(fallbackLoop);
+}
