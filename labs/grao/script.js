@@ -750,7 +750,9 @@ function bind() {
         closeModal('custom-modal');
     });
 
-    window.addEventListener('resize', () => drawChart(new Date()));
+    const redrawChart = () => drawChart(new Date());
+    if (window.LabRuntime) LabRuntime.debounceResize(redrawChart);
+    else window.addEventListener('resize', redrawChart);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') render();
     });
@@ -765,4 +767,5 @@ function bind() {
 
 bind();
 render();
-setInterval(() => render(), 30_000);
+if (window.LabRuntime) LabRuntime.createInterval(render, 30_000).start();
+else setInterval(render, 30_000);
