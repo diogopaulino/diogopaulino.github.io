@@ -9,6 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatBtns = document.querySelectorAll('.format-btn');
 
     let currentFiles = [];
+    const cardsByFile = new Map();
+    const resultUrls = new Set();
+
+    function releaseResultUrls() {
+        resultUrls.forEach((url) => URL.revokeObjectURL(url));
+        resultUrls.clear();
+    }
+
+    window.addEventListener('pagehide', releaseResultUrls);
+
     let currentOptions = {
         format: 'original',
         quality: 0.8,
@@ -70,6 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        releaseResultUrls();
+        cardsByFile.clear();
         currentFiles = validFiles;
         controlsPanel.style.display = 'flex';
 
@@ -77,13 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsGrid.innerHTML = '';
 
         // Show initial previews
-        validFiles.forEach(createPreviewCard);
+        validFiles.forEach((file, index) => createPreviewCard(file, index));
     }
 
-    function createPreviewCard(file) {
+    function createPreviewCard(file, index) {
         const card = document.createElement('div');
         card.className = 'image-card';
-        card.id = `card-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`; // Simple ID sanitization
+        card.id = `image-card-${index}`;
+        cardsByFile.set(file, card);
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -112,8 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         processBtn.textContent = 'Processando...';
 
         for (const file of currentFiles) {
-            const cardId = `card-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`;
-            const card = document.getElementById(cardId);
+            const card = cardsByFile.get(file);
             if (card) {
                 const status = card.querySelector('.status');
                 if (status) {
@@ -158,23 +170,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Determine output format
                     let outputFormat = currentOptions.format;
                     if (outputFormat === 'original') {
-                        outputFormat = file.type;
+                        const encodable = ['image/jpeg', 'image/png', 'image/webp'];
+                        outputFormat = encodable.includes(file.type) ? file.type : 'image/png';
                     }
 
                     // Convert to blob
                     canvas.toBlob((blob) => {
+                        if (!blob) {
+                            const status = cardsByFile.get(file)?.querySelector('.status');
+                            if (status) status.textContent = 'Formato não suportado';
+                            resolve();
+                            return;
+                        }
                         updateResultCard(file, blob, outputFormat);
                         resolve();
                     }, outputFormat, currentOptions.quality);
                 };
+                img.onerror = () => {
+                    const status = cardsByFile.get(file)?.querySelector('.status');
+                    if (status) status.textContent = 'Falha ao ler imagem';
+                    resolve();
+                };
+            };
+            reader.onerror = () => {
+                const status = cardsByFile.get(file)?.querySelector('.status');
+                if (status) status.textContent = 'Falha ao ler arquivo';
+                resolve();
             };
             reader.readAsDataURL(file);
         });
     }
 
     function updateResultCard(originalFile, newBlob, format) {
-        const cardId = `card-${originalFile.name.replace(/[^a-zA-Z0-9]/g, '')}`;
-        const card = document.getElementById(cardId);
+        const card = cardsByFile.get(originalFile);
         if (!card) return;
 
         const originalSize = originalFile.size;
@@ -186,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newFileName = originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) + '_opt.' + extension;
 
         const url = URL.createObjectURL(newBlob);
+        resultUrls.add(url);
 
         const infoDiv = card.querySelector('.card-info');
         infoDiv.innerHTML = `
