@@ -4,6 +4,7 @@
 
 import { Level } from './Level.js';
 import { buildShip, addShipColliders } from '../world/Ship.js?v=14';
+import { buildCastle } from '../world/Castle.js?v=10';
 import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=7';
 import { makeRock } from '../world/Environment.js?v=5';
 
@@ -196,11 +197,10 @@ export class ShipLevel extends Level {
         g.weather.apply('dawn');
         g.audio.setTheme('land');
 
-        const castleHint = BABYLON.MeshBuilder.CreateBox('castleHint', { width: 18, height: 28, depth: 18 }, this.game.scene);
-        const cMat = new BABYLON.StandardMaterial('cHintMat', this.game.scene);
-        cMat.diffuseColor = new BABYLON.Color3(0.55, 0.5, 0.45);
-        castleHint.material = cMat;
-        castleHint.position.set(8, 16, -160);
+        // Silhueta real do castelo no horizonte (antes era CreateBox cinza).
+        const castleHint = buildCastle(this.game.scene);
+        castleHint.position.set(8, 0, -160);
+        castleHint.scaling.setAll(0.45);
         this._hint = castleHint;
 
         g.cutscenes.play({

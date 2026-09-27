@@ -9,9 +9,13 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Outfit', sans-serif;
     /* Background and color handled by shared.css */
     line-height: 1.6;
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
 .container {
@@ -20,6 +24,8 @@ body {
     max-width: 1000px;
     margin: 0 auto;
     padding: 2rem;
+    padding-left: max(2rem, env(safe-area-inset-left, 0px));
+    padding-right: max(2rem, env(safe-area-inset-right, 0px));
 }
 
 .app-container {
@@ -331,6 +337,9 @@ input[type="number"] {
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
+        padding-left: max(1rem, env(safe-area-inset-left, 0px));
+        padding-right: max(1rem, env(safe-area-inset-right, 0px));
+        padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     }
 }
 /* --- lab-responsive-pass --- */

@@ -1,24 +1,24 @@
 :root {
-    --talk-primary: #667eea;
-    --talk-primary-dark: #5a67d8;
-    --talk-secondary: #f093fb;
+    --talk-primary: #0d9488;
+    --talk-primary-dark: #0f766e;
+    --talk-secondary: #d97706;
     --talk-success: #48bb78;
     --talk-success-dark: #38a169;
     --talk-danger: #fc8181;
     --talk-danger-dark: #f56565;
     --talk-warning: #fbd38d;
     --talk-streak: #ed8936;
-    --talk-xp: #9f7aea;
+    --talk-xp: #0891b2;
     
-    --avatar-bg: linear-gradient(135deg, #667eea 0%, #f093fb 100%);
-    --card-hover: rgba(102, 126, 234, 0.1);
-    --glow-primary: rgba(102, 126, 234, 0.4);
+    --avatar-bg: linear-gradient(135deg, #0d9488 0%, #14b8a6 55%, #d97706 100%);
+    --card-hover: rgba(13, 148, 136, 0.1);
+    --glow-primary: rgba(13, 148, 136, 0.35);
     --glow-success: rgba(72, 187, 120, 0.4);
     --glow-danger: rgba(252, 129, 129, 0.4);
 }
 
 [data-theme="dark"] {
-    --card-hover: rgba(102, 126, 234, 0.15);
+    --card-hover: rgba(13, 148, 136, 0.18);
 }
 
 * {
@@ -29,7 +29,7 @@
 
 body {
     font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .ambient-bg {
@@ -44,13 +44,14 @@ body {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.5;
+    opacity: 0.45;
     animation: float 20s infinite ease-in-out;
+    max-width: 100%;
 }
 
 .orb-1 {
-    width: 400px;
-    height: 400px;
+    width: min(400px, 90vw);
+    height: min(400px, 90vw);
     background: var(--talk-primary);
     top: -100px;
     left: -100px;
@@ -58,8 +59,8 @@ body {
 }
 
 .orb-2 {
-    width: 300px;
-    height: 300px;
+    width: min(300px, 70vw);
+    height: min(300px, 70vw);
     background: var(--talk-secondary);
     bottom: -50px;
     right: -50px;
@@ -67,8 +68,8 @@ body {
 }
 
 .orb-3 {
-    width: 250px;
-    height: 250px;
+    width: min(250px, 60vw);
+    height: min(250px, 60vw);
     background: var(--talk-xp);
     top: 50%;
     left: 50%;
@@ -77,7 +78,7 @@ body {
 }
 
 [data-theme="dark"] .gradient-orb {
-    opacity: 0.2;
+    opacity: 0.18;
 }
 
 @keyframes float {
@@ -99,8 +100,9 @@ body {
     width: 100%;
     max-width: 600px;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 max(1rem, env(safe-area-inset-right, 0px)) 0 max(1rem, env(safe-area-inset-left, 0px));
     min-height: calc(100vh - 200px);
+    min-height: calc(100dvh - 200px);
 }
 
 .app-logo {
@@ -1198,6 +1200,9 @@ body {
     left: 0;
     right: 0;
     padding: 1.5rem;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
     z-index: 100;
     transform: translateY(100%);
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1585,7 +1590,7 @@ body {
 }
 
 .btn-listen-large:hover {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(13, 148, 136, 0.1);
     transform: scale(1.02);
 }
 
@@ -1694,7 +1699,7 @@ body {
 
 .match-card.selected {
     border-color: var(--talk-primary);
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(13, 148, 136, 0.1);
     box-shadow: 0 0 0 3px var(--glow-primary);
 }
 
@@ -1790,6 +1795,13 @@ body {
 @media (max-width: 768px) {
     .sound-toggle,
     .btn-back-lang { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+
+    .orb-1,
+    .orb-2,
+    .orb-3 {
+        width: min(220px, 55vw);
+        height: min(220px, 55vw);
+    }
 }
 
 @media (max-width: 420px) {

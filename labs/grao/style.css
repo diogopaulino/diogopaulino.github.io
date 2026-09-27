@@ -27,6 +27,10 @@
 body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-image: none;
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
 .ambient {
@@ -54,8 +58,10 @@ header .app-logo .logo-mark {
 }
 
 .icon-btn {
-    width: 40px;
-    height: 40px;
+    width: var(--touch-target, 44px);
+    height: var(--touch-target, 44px);
+    min-width: var(--touch-target, 44px);
+    min-height: var(--touch-target, 44px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -502,6 +508,9 @@ header .app-logo .logo-mark {
     align-items: flex-end;
     justify-content: center;
     padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
 }
 
 .modal-backdrop[hidden] {

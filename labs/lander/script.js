@@ -659,7 +659,7 @@ function draw() {
 
 let rafId = 0;
 
-function gameLoop(timestamp) {
+function frame(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const frameTime = Math.min((timestamp - lastTime) / 1000, PHYSICS.maxFrameTime);
     lastTime = timestamp;
@@ -682,16 +682,32 @@ function gameLoop(timestamp) {
     checkLowFuel();
     updateHUD();
     draw();
+}
+
+const labLoop = window.LabRuntime
+    ? LabRuntime.createLoop(frame)
+    : null;
+
+function gameLoop(timestamp) {
+    frame(timestamp);
     rafId = requestAnimationFrame(gameLoop);
 }
 
 function startLoop() {
+    if (labLoop) {
+        labLoop.start();
+        return;
+    }
     if (rafId) return;
     lastTime = 0;
     rafId = requestAnimationFrame(gameLoop);
 }
 
 function stopLoop() {
+    if (labLoop) {
+        labLoop.stop();
+        return;
+    }
     if (!rafId) return;
     const id = rafId;
     rafId = 0;
@@ -758,15 +774,21 @@ if (labAudio) {
     labAudio.onChange(() => setEngineLevel(lander.engineOn ? 1 : 0));
 }
 
-// Aba escondida: corta o motor e cancela o rAF (LabAudio mute permanece).
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        setEngineLevel(0);
-        stopLoop();
-    } else {
-        startLoop();
-    }
-});
+// Aba escondida: corta o motor. O rAF pausa via LabRuntime.createLoop
+// (autoPause); sem LabRuntime, cai no listener manual.
+if (window.LabVisibility && labLoop) {
+    LabVisibility.whenHidden(() => setEngineLevel(0));
+    LabVisibility.whenVisible(() => { lastTime = 0; });
+} else {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            setEngineLevel(0);
+            stopLoop();
+        } else {
+            startLoop();
+        }
+    });
+}
 
 generateStars();
 generateTerrain();

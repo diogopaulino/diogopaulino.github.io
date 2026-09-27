@@ -6,6 +6,7 @@ import { Level } from './Level.js';
 import { makeTree, makeGrassInstanced } from '../world/Environment.js?v=6';
 import { grassTexture, sandTexture } from '../world/Textures.js';
 import { buildGuard, CharacterAnimator } from '../characters/builders.js?v=7';
+import { buildShip } from '../world/Ship.js?v=14';
 import { seeded } from '../utils/math.js';
 
 export class EscapeLevel extends Level {
@@ -54,11 +55,10 @@ export class EscapeLevel extends Level {
             this.archers.push({ root: a.root, anim: new CharacterAnimator(a.root, a.clips), t: i * 0.4 });
         }
 
-        const shipHint = BABYLON.MeshBuilder.CreateBox('shipEscapeHint', { width: 6, height: 3, depth: 14 }, scene);
-        shipHint.position.set(0, 1.6, 46);
-        const shipMat = new BABYLON.StandardMaterial('sHintMat', scene);
-        shipMat.diffuseColor = new BABYLON.Color3(0.5, 0.35, 0.2);
-        shipHint.material = shipMat;
+        // Navio real na praia (antes era CreateBox marrom). Quest dispara em z>40.
+        const shipHint = buildShip(scene);
+        shipHint.position.set(0, 0, 46);
+        shipHint.scaling.setAll(0.55);
         shipHint.parent = this.group;
 
         this.game.collision.addFloor(0, 10, 60, 100, 0);

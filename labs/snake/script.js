@@ -55,75 +55,39 @@ function syncColors() {
 }
 
 /* --- Áudio 8-bit -----------------------------------------------------------
-   Ondas quadradas curtas sintetizadas na hora: nenhum asset, mesmo timbre do
-   console que o aparelho imita. O contexto só nasce no primeiro gesto do
-   usuário porque navegadores bloqueiam áudio antes disso. */
-const SOUND_KEY = 'snakeMuted';
-let audioCtx = null;
-let muted = readMuted();
-
-function readMuted() {
-    try {
-        return localStorage.getItem(SOUND_KEY) === '1';
-    } catch (err) {
-        return false;
-    }
-}
-
-function saveMuted(value) {
-    try {
-        localStorage.setItem(SOUND_KEY, value ? '1' : '0');
-    } catch (err) {
-        /* Storage can be unavailable in private browsing contexts. */
-    }
-}
-
-function ensureAudio() {
-    if (muted) return null;
-    if (!audioCtx) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return null;
-        audioCtx = new Ctx();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    return audioCtx;
-}
-
-function blip(freq, duration = 0.08, type = 'square', gain = 0.05) {
-    const ctxAudio = ensureAudio();
-    if (!ctxAudio) return;
-    const now = ctxAudio.currentTime;
-    const osc = ctxAudio.createOscillator();
-    const amp = ctxAudio.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
-    amp.gain.setValueAtTime(0, now);
-    amp.gain.linearRampToValueAtTime(gain, now + 0.008);
-    amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    osc.connect(amp).connect(ctxAudio.destination);
-    osc.start(now);
-    osc.stop(now + duration + 0.02);
-}
+   Ondas quadradas curtas via LabAudio: nenhum asset, mesmo timbre do console
+   que o aparelho imita. O contexto só nasce no primeiro gesto do usuário. */
+const audio = window.LabAudio;
 
 function sfxEat() {
-    blip(660, 0.06);
-    setTimeout(() => blip(990, 0.07), 55);
+    if (!audio) return;
+    audio.tone({ freq: 660, duration: 0.06, gain: 0.05 });
+    audio.tone({ freq: 990, duration: 0.07, gain: 0.05, delay: 0.055 });
 }
 
 function sfxTurn() {
-    blip(320, 0.03, 'square', 0.022);
+    if (!audio) return;
+    audio.tone({ freq: 320, duration: 0.03, type: 'square', gain: 0.022 });
 }
 
 function sfxStart() {
-    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => blip(f, 0.09), i * 70));
+    if (!audio) return;
+    audio.sequence([523, 659, 784, 1047], { step: 0.07, duration: 0.09, gain: 0.05 });
 }
 
 function sfxDeath() {
-    [440, 349, 262, 175].forEach((f, i) => setTimeout(() => blip(f, 0.16, 'sawtooth', 0.045), i * 110));
+    if (!audio) return;
+    audio.sequence([440, 349, 262, 175], {
+        step: 0.11,
+        duration: 0.16,
+        type: 'sawtooth',
+        gain: 0.045
+    });
 }
 
 function syncMuteButton() {
-    if (!muteBtn) return;
+    if (!muteBtn || !audio) return;
+    const muted = audio.isMuted();
     muteBtn.setAttribute('aria-pressed', String(muted));
     muteBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
     muteBtn.textContent = muted ? '🔇' : '🔊';
@@ -634,13 +598,17 @@ if (screenPlay) {
     });
 }
 
-if (muteBtn) {
-    muteBtn.addEventListener('click', () => {
-        muted = !muted;
-        saveMuted(muted);
-        syncMuteButton();
-        if (!muted) blip(880, 0.06);
-    });
+if (audio) {
+    audio.configure({ storageKey: 'snakeMuted', volume: 0.45 });
+    if (muteBtn) {
+        audio.onChange(syncMuteButton);
+        muteBtn.addEventListener('click', () => {
+            audio.setMuted(!audio.isMuted());
+            if (!audio.isMuted()) audio.tone({ freq: 880, duration: 0.06, gain: 0.14 });
+        });
+    } else {
+        audio.mountToggle('[data-lab-header] .header-actions');
+    }
 }
 
 document.getElementById('btnStart').addEventListener('click', () => handleInput('Start'));

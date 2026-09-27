@@ -311,9 +311,11 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'lab-icon-btn';
+            const ICON_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4h3l4 3V7l-4 3H4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8 8 0 010 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
+            const ICON_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4h3l4 3V7l-4 3H4z" fill="currentColor"/><path d="M18 9l-6 6M12 9l6 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
 
             const sync = () => {
-                btn.textContent = muted ? '🔇' : '🔊';
+                btn.innerHTML = muted ? ICON_OFF : ICON_ON;
                 btn.setAttribute('aria-pressed', String(muted));
                 btn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
                 btn.title = muted ? 'Ativar som' : 'Desativar som';

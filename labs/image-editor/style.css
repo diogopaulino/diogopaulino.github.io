@@ -1,5 +1,13 @@
 /* Image Editor Styles */
 
+/* Safe-area: notch / home indicator (shared já cobre body; reforço local) */
+body {
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
 .editor-container {
     background: var(--bg-card);
     border-radius: 1.5rem;
@@ -172,6 +180,7 @@ canvas.comparing {
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
     gap: 1.5rem;
     overflow-y: auto;
 }
