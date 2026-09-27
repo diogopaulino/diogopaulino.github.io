@@ -1654,7 +1654,8 @@
         }
     });
 
-    window.addEventListener('resize', resize);
+    if (window.LabRuntime) LabRuntime.debounceResize(resize);
+    else window.addEventListener('resize', resize);
 
     const hashScene = (location.hash || '').replace('#', '');
     if (scenarios[hashScene]) currentScenario = hashScene;
