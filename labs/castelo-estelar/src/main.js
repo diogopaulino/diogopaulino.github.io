@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -119,6 +120,7 @@ class CasteloEstelar {
         this.renderer.toneMappingExposure = 0.88;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
         this.renderer.setClearColor(0x050814, 1);
 
         this.quality = pickQuality(this.settings.quality, this.renderer);
@@ -127,6 +129,7 @@ class CasteloEstelar {
         this.renderer.shadowMap.enabled = this.quality.shadows;
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.55 });
         this.scene.fog = new THREE.FogExp2(0x0a1528, 0.0032);
 
         this.camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.2, 700);
