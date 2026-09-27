@@ -1393,8 +1393,6 @@
     }
 
     function animate(now) {
-        if (document.hidden) return;
-        requestAnimationFrame(animate);
         now = now || performance.now();
         updateFps(now);
 
@@ -1656,12 +1654,20 @@
         }
     });
 
-    window.addEventListener('resize', resize);
+    if (window.LabRuntime) LabRuntime.debounceResize(resize);
+    else window.addEventListener('resize', resize);
 
     const hashScene = (location.hash || '').replace('#', '');
     if (scenarios[hashScene]) currentScenario = hashScene;
 
     resize();
-    requestAnimationFrame(animate);
-    window.LabVisibility?.whenVisible(() => requestAnimationFrame(animate));
+    if (window.LabRuntime) {
+        LabRuntime.createLoop(animate).start();
+    } else {
+        const fallbackLoop = (now) => {
+            animate(now);
+            requestAnimationFrame(fallbackLoop);
+        };
+        requestAnimationFrame(fallbackLoop);
+    }
 })();
