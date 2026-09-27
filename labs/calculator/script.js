@@ -394,6 +394,19 @@ let allCurrencies = [];
 let exchangeRates = {};
 
 const RATES_CACHE_KEY = 'calculator_exchange_rates_v1';
+const RATES_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), RATES_TIMEOUT_MS);
+    try {
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
 
 function normalizeRates(rates) {
     const normalized = {};
@@ -406,7 +419,7 @@ function normalizeRates(rates) {
 
 // Primary provider: dedicated FX API, no key required
 async function fetchFromPrimary() {
-    const response = await fetch('https://open.er-api.com/v6/latest/USD');
+    const response = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD');
     const data = await response.json();
     if (!data || data.result !== 'success' || !data.rates) throw new Error('Primary provider returned no rates');
     return normalizeRates(data.rates);
@@ -414,7 +427,7 @@ async function fetchFromPrimary() {
 
 // Fallback provider: served from a CDN, works even when finance/crypto domains are blocked
 async function fetchFromFallback() {
-    const response = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+    const response = await fetchWithTimeout('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
     const data = await response.json();
     if (!data || !data.usd) throw new Error('Fallback provider returned no rates');
     return normalizeRates(data.usd);
@@ -449,6 +462,8 @@ async function initCurrencyConverter() {
         lastUpdatedEl.innerText = `Cotação de ${new Date(cached.timestamp).toLocaleTimeString('pt-BR')} (cache)`;
     }
 
+    if (refreshBtn.disabled) return;
+    refreshBtn.disabled = true;
     refreshBtn.classList.add('loading');
     try {
         let rates;
@@ -479,6 +494,7 @@ async function initCurrencyConverter() {
         lastUpdatedEl.setAttribute('role', 'status');
     } finally {
         refreshBtn.classList.remove('loading');
+        refreshBtn.disabled = false;
     }
 }
 
