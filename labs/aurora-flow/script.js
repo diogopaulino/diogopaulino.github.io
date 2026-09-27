@@ -1398,7 +1398,8 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-window.addEventListener('resize', resize);
+if (window.LabRuntime) LabRuntime.debounceResize(resize);
+else window.addEventListener('resize', resize);
 
 if (reducedMotion) {
     flowSpeed = 0.35;
