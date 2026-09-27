@@ -10,7 +10,7 @@ import {
     attachHumanHead, limbGeometry, shoeMesh, handGroup,
     torsoGeometry, headGeometry, canineTorsoGeometry, canineHeadGeometry,
     tailGeometry, earBladeGeometry
-} from '../../shared/realism.js';
+} from '../../shared/realism.js?v=3';
 
 const matCache = new Map();
 

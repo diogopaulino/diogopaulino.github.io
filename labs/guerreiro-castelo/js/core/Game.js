@@ -19,13 +19,13 @@ import { QuestManager } from '../game/QuestManager.js';
 import { CombatSystem } from '../game/CombatSystem.js?v=33';
 import { CheckpointManager } from '../game/CheckpointManager.js';
 import { StoryDirector } from '../game/StoryDirector.js';
-import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=33';
+import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=34';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js?v=33';
-import { Player } from '../player/Player.js?v=33';
-import { Teco } from '../characters/Teco.js?v=6';
-import { Camila } from '../characters/Camila.js?v=6';
+import { Player } from '../player/Player.js?v=34';
+import { Teco } from '../characters/Teco.js?v=7';
+import { Camila } from '../characters/Camila.js?v=7';
 import { HUD } from '../ui/HUD.js?v=33';
-import { Menu } from '../ui/Menu.js';
+import { Menu } from '../ui/Menu.js?v=2';
 import { PauseMenu } from '../ui/PauseMenu.js';
 import { SETTINGS_KEY } from './assets.js';
 
@@ -60,6 +60,17 @@ export class Game {
 
         this.scene = new BABYLON.Scene(this.engine);
         this.scene.clearColor = new BABYLON.Color4(0.02, 0.03, 0.05, 1);
+        try {
+            this.scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+                'https://assets.babylonjs.com/environments/environmentSpecular.env',
+                this.scene
+            );
+            this.scene.environmentIntensity = this.quality.id === 'low' ? 0.28 : 0.62;
+        } catch { /* IBL opcional: o jogo segue com as luzes locais. */ }
+        this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
+        this.scene.imageProcessingConfiguration.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+        this.scene.imageProcessingConfiguration.exposure = 1.02;
+        this.scene.imageProcessingConfiguration.contrast = 1.08;
 
         // Câmera Universal controlada manualmente pelo ThirdPersonCamera rig
         this.camera = new BABYLON.UniversalCamera('mainCamera', new BABYLON.Vector3(0, 2, 6), this.scene);
@@ -67,6 +78,14 @@ export class Game {
         this.camera.maxZ = this.quality.far || 500;
         this.camera.fov = 0.95;
         this.scene.activeCamera = this.camera;
+
+        this.pipeline = new BABYLON.DefaultRenderingPipeline('cinematic', true, this.scene, [this.camera]);
+        this.pipeline.samples = 1;
+        this.pipeline.fxaaEnabled = this.quality.aa !== false;
+        this.pipeline.bloomEnabled = !!this.quality.bloom;
+        this.pipeline.bloomThreshold = 1.05;
+        this.pipeline.bloomWeight = 0.12;
+        this.pipeline.bloomKernel = 32;
 
         this.cameraRig = new ThirdPersonCamera(this.camera, this.scene);
 

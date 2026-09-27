@@ -5,7 +5,7 @@
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
-import { createMuscle, createSkull, createHand, createTorso } from '../../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createHand, createTorso, addRealisticFace } from '../../../shared/realism-bjs.js?v=2';
 
 /** PBRMaterial com albedo, roughness e metallic sensatos. */
 function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
@@ -13,6 +13,8 @@ function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) 
     mat.albedoColor = color.clone ? color.clone() : color;
     mat.roughness = roughness;
     mat.metallic = metallic;
+    mat.environmentIntensity = 0.82;
+    mat.enableSpecularAntiAliasing = true;
     if (extra.emissiveColor) mat.emissiveColor = extra.emissiveColor;
     if (extra.emissiveIntensity !== undefined) mat.emissiveIntensity = extra.emissiveIntensity;
     if (extra.albedoTexture) mat.albedoTexture = extra.albedoTexture;
@@ -155,8 +157,8 @@ export function buildHumanoid({
     const scale = height / 1.8;
     const root = new BABYLON.TransformNode('humanoidRoot', scene);
 
-    const skinMat = pbr('skinMat', scene, skinColor, 0.62, 0.02);
-    const hairMat = pbr('hairMat', scene, hairColor, 0.88, 0.03);
+    const skinMat = pbr('skinMat', scene, skinColor, 0.54, 0);
+    const hairMat = pbr('hairMat', scene, hairColor, 0.58, 0);
     const shirtMat = pbr('shirtMat', scene, shirtColor, 0.82, 0.04);
     const pantsMat = pbr('pantsMat', scene, pantsColor, 0.86, 0.04);
     const bootMat = pbr('bootMat', scene, bootColor, 0.55, 0.12);
@@ -279,16 +281,12 @@ export function buildHumanoid({
     const skull = createSkull(scene, 'skull', { diameter: 0.25 * scale, style: 'human', segments: 18 });
     skull.scaling.set(0.92, 1.05, 0.95);
     skull.material = skinMat;
+    addRealisticFace(scene, skull, skinMat, {
+        scale: 0.82 * scale,
+        iris: 0x385530,
+        browMat: hairMat
+    });
     skull.parent = head;
-
-    // Olhos
-    const eyeMat = pbr('eyeMat', scene, new BABYLON.Color3(0.08, 0.08, 0.08), 0.22, 0.15);
-    for (const s of [-1, 1]) {
-        const eye = BABYLON.MeshBuilder.CreateSphere('eye', { diameter: 0.04 * scale, segments: 10 }, scene);
-        eye.position.set(s * 0.045 * scale, 0.04 * scale, 0.11 * scale);
-        eye.material = eyeMat;
-        eye.parent = head;
-    }
 
     const parts = { hips, spine, chest, head, armL, armR, legL, legR, root, skinMat, hairMat };
     const clips = makeHumanoidClips();

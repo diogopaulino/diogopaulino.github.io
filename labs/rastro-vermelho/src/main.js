@@ -4,7 +4,7 @@
  * the terrain mesh, and the streamed scenery so the world remains continuous.
  */
 import { clamp, damp, lerp, angleDelta, terrainHeight, roadX, biomeAt, LANDMARKS, freshPlayer, stepRiding, worldClock, loadSettings, saveSettings, loadJourney, saveJourney } from './simulation.js';
-import { World, PROFILES, loadHorse, createPerson, material } from './world.js?v=7';
+import { World, PROFILES, loadHorse, createPerson, material } from './world.js?v=8';
 import { Soundscape } from './audio.js';
 const B = window.BABYLON, $ = s => document.querySelector(s), canvas = $('#scene');
 const CHAPTERS = ['I · A carta', 'II · Santa Luz', 'III · A passagem', 'IV · Provisões', 'V · Sol poente', 'VI · A promessa'];
@@ -26,6 +26,8 @@ class RastroVermelho {
         this.engine = new B.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: false, powerPreference: 'high-performance', adaptToDeviceRatio: false });
         this.engine.setHardwareScalingLevel(1 / Math.min(devicePixelRatio || 1, this.profile.scale));
         this.scene = new B.Scene(this.engine); this.scene.skipPointerMovePicking = true; this.scene.autoClear = true;
+        this.scene.environmentTexture = B.CubeTexture.CreateFromPrefilteredData('https://assets.babylonjs.com/environments/environmentSpecular.env', this.scene);
+        this.scene.environmentIntensity = this.profile.id === 'low' ? .34 : this.profile.id === 'high' ? .74 : .58;
         this.scene.fogMode = B.Scene.FOGMODE_EXP2; this.scene.fogDensity = this.profile.id === 'high' ? .005 : .007;
         this.scene.fogColor = B.Color3.FromHexString('#b0b3a2'); this.scene.clearColor = new B.Color4(.57, .66, .71, 1);
         this.cameraPosition = new B.Vector3(); this.cameraTarget = new B.Vector3(); this.sunsetFog = B.Color3.FromHexString('#a68a75'); this.dayFog = B.Color3.FromHexString('#a4b6ba'); this.nightFog = B.Color3.FromHexString('#26313e');
@@ -63,9 +65,16 @@ class RastroVermelho {
         this.shadow = new B.ShadowGenerator(this.profile.shadowSize, this.sun); this.shadow.usePercentageCloserFiltering = true;
         this.shadow.filteringQuality = B.ShadowGenerator.QUALITY_LOW; this.shadow.bias = .001; this.shadow.normalBias = .025; this.shadow.setDarkness(.23);
         this.pipeline = new B.DefaultRenderingPipeline('cinema', true, scene, [this.camera]); this.pipeline.samples = 1; this.pipeline.fxaaEnabled = true;
-        this.pipeline.bloomEnabled = this.profile.bloom; this.pipeline.bloomThreshold = 1.15; this.pipeline.bloomWeight = .13; this.pipeline.bloomKernel = 32;
+        this.pipeline.bloomEnabled = this.profile.bloom; this.pipeline.bloomThreshold = 1.18; this.pipeline.bloomWeight = .09; this.pipeline.bloomKernel = 32;
+        this.pipeline.sharpenEnabled = this.profile.id !== 'low';
+        if (this.pipeline.sharpen) { this.pipeline.sharpen.edgeAmount = .18; this.pipeline.sharpen.colorAmount = .72; }
+        this.pipeline.grainEnabled = this.profile.id === 'high' && !this.reducedMotion;
+        if (this.pipeline.grain) { this.pipeline.grain.intensity = 4; this.pipeline.grain.animated = false; }
         this.pipeline.imageProcessing.toneMappingEnabled = true; this.pipeline.imageProcessing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-        this.pipeline.imageProcessing.exposure = 1.05; this.pipeline.imageProcessing.contrast = 1.06;
+        this.pipeline.imageProcessing.exposure = 1.02; this.pipeline.imageProcessing.contrast = 1.08;
+        this.pipeline.imageProcessing.vignetteEnabled = true;
+        this.pipeline.imageProcessing.vignetteWeight = 1.22;
+        this.pipeline.imageProcessing.vignetteStretch = .18;
         this.setLoading(.15, 'Desenhando estradas e povoados…'); this.world = new World(scene, this.shadow, this.profile);
         this.setLoading(.35, 'Selando o cavalo…');
         let timeout;
@@ -218,6 +227,9 @@ class RastroVermelho {
     applyQuality() {
         this.profile = this.pickQuality(); this.engine.setHardwareScalingLevel(1 / Math.min(devicePixelRatio || 1, this.profile.scale));
         this.shadow.getShadowMap().resize(this.profile.shadowSize); this.pipeline.bloomEnabled = this.profile.bloom;
+        this.pipeline.sharpenEnabled = this.profile.id !== 'low';
+        this.pipeline.grainEnabled = this.profile.id === 'high' && !this.reducedMotion;
+        this.scene.environmentIntensity = this.profile.id === 'low' ? .34 : this.profile.id === 'high' ? .74 : .58;
         this.scene.fogDensity = this.profile.id === 'high' ? .005 : .007;
         this.world.setProfile(this.profile); this.world.update(this.player.x, this.player.z); this.engine.resize(); this.badFrames = 0;
         this.ui.saveNote.textContent = 'Qualidade aplicada. Os detalhes do cenário estão sendo atualizados.';
@@ -323,7 +335,9 @@ class RastroVermelho {
         this.sun.direction.set(-.65, -Math.max(.08, elevation), .45); this.sun.direction.normalize();
         this.sun.position.set(this.player.x - this.sun.direction.x * 85, terrainHeight(this.player.x, this.player.z) - this.sun.direction.y * 85, this.player.z - this.sun.direction.z * 85);
         this.sun.intensity = .07 + Math.max(0, elevation) * 2.2; this.sun.diffuse.set(1, lerp(.62, .95, day), lerp(.38, .87, day));
-        this.hemi.intensity = lerp(.28, .8, day);
+        this.hemi.intensity = lerp(.25, .72, day);
+        this.scene.environmentIntensity = lerp(this.profile.id === 'low' ? .22 : .34, this.profile.id === 'high' ? .78 : .62, day);
+        this.pipeline.imageProcessing.exposure = lerp(.91, 1.03, day);
         this.skyMaterial.sunPosition.set(-100, elevation * 100, 60); this.skyMaterial.luminance = lerp(.1, .85, day);
         this.skyMaterial.rayleigh = lerp(1, 2.2, day);
         B.Color3.LerpToRef(this.sunsetFog, this.dayFog, day, this.scene.fogColor);

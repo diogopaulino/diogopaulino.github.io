@@ -9,7 +9,7 @@ import { grassTexture, woodTexture, picnicTexture, barnTexture } from './texture
 import {
     canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry, limbGeometry,
     headGeometry, profileTube, wingMembrane, createOrganicTree
-} from '../../shared/realism.js?v=2';
+} from '../../shared/realism.js?v=3';
 
 export const geo = {
     sphere: new THREE.SphereGeometry(1, 32, 24),

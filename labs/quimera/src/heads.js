@@ -3,8 +3,8 @@
  * character.js posiciona em LAYOUT.HEAD_Y.
  */
 
-import { makeCtx, addFace, tagSlot, glass } from './kit.js?v=4';
-import { headGeometry } from '../../shared/realism.js';
+import { makeCtx, addFace, tagSlot, glass } from './kit.js?v=5';
+import { headGeometry } from '../../shared/realism.js?v=3';
 import * as THREE from 'three';
 
 /**

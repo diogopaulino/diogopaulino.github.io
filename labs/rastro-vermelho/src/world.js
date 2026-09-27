@@ -1,7 +1,7 @@
 /** Streamed scenery shares geometry/materials. Terrain, collision and hooves sample
  * the same height function; vegetation is deterministic when revisiting a chunk. */
 import { hash, terrainHeight, roadDistance, roadX, LANDMARKS, clamp, lerp } from './simulation.js';
-import { createMuscle, createSkull, createTorso, createHand } from '../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createTorso, createHand, addRealisticFace } from '../../shared/realism-bjs.js';
 const B = window.BABYLON;
 export const CHUNK_SIZE = 96;
 export const PROFILES = {
@@ -11,7 +11,10 @@ export const PROFILES = {
 };
 export function material(scene, name, color, roughness = 0.9, metallic = 0) {
     const m = new B.PBRMaterial(name, scene);
-    m.albedoColor = B.Color3.FromHexString(color); m.roughness = roughness; m.metallic = metallic;
+    m.albedoColor = B.Color3.FromHexString(color);
+    m.roughness = roughness;
+    m.metallic = metallic;
+    m.environmentIntensity = 0.92;
     return m;
 }
 function box(scene, parent, name, size, pos, mat) {
@@ -36,6 +39,14 @@ export function createPerson(scene, palette, mounted = false) {
     const head = createSkull(scene, 'rosto', { diameter: 0.32, style: 'human', segments: 16 });
     head.parent = root; head.position.set(0, 1.72, 0.02); head.scaling.set(0.95, 1.08, 0.95);
     head.material = palette.skin; head.isPickable = false;
+    addRealisticFace(scene, head, palette.skin, {
+        scale: 1.02,
+        iris: mounted ? 0x55704a : 0x405846,
+        browMat: palette.hat,
+        lipMat: palette.scarf
+    });
+    const neck = B.MeshBuilder.CreateCylinder('pescoço', { height: .22, diameterTop: .18, diameterBottom: .21, tessellation: 14 }, scene);
+    neck.parent = root; neck.position.set(0, 1.48, 0); neck.material = palette.skin; neck.isPickable = false;
     const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 28 }, scene);
     brim.parent = root; brim.position.y = 1.97; brim.material = palette.hat;
     const hat = B.MeshBuilder.CreateCylinder('chapéu', { height: .22, diameterTop: .3, diameterBottom: .38, tessellation: 22 }, scene);
@@ -349,7 +360,13 @@ export async function loadHorse(scene, shadow, palette) {
     const result = await B.SceneLoader.ImportMeshAsync('', '', 'assets/horse.gltf', scene, undefined, '.gltf');
     const mount = new B.TransformNode('montaria', scene), model = result.meshes[0];
     model.parent = mount; model.rotationQuaternion = null; model.rotation.y = 0; model.scaling.setAll(.85);
-    result.animationGroups.forEach(g => g.stop());
+    result.animationGroups.forEach(g => {
+        g.stop();
+        for (const targeted of g.targetedAnimations || []) {
+            targeted.animation.enableBlending = true;
+            targeted.animation.blendingSpeed = 0.08;
+        }
+    });
     const animations = new Map(result.animationGroups.map(g => [g.name.toLowerCase(), g]));
     const rider = createPerson(scene, palette, true); rider.root.parent = mount; rider.root.position.set(0, 3.02, -.18); rider.root.scaling.setAll(.88);
     const saddle = box(scene, mount, 'sela', [.72, .16, .92], [0, 3.02, -.16], palette.hat);
@@ -375,7 +392,11 @@ export async function loadHorse(scene, shadow, palette) {
     let active = null;
     return { root: mount, rider, saddle, animations, update(speed, phase, steer) {
         const name = speed < .15 ? 'idle' : speed < 6 ? 'walk' : 'gallop', next = animations.get(name);
-        if (next !== active) { active?.stop(); next?.start(true); active = next; }
+        if (next !== active) {
+            active?.stop();
+            next?.start(true);
+            active = next;
+        }
         if (active) active.speedRatio = speed < .15 ? 1 : clamp(speed / (name === 'walk' ? 3 : 10), .5, 1.65);
         rider.root.position.y = 3.02 + (speed > 1 ? Math.sin(phase * 2.3) * .035 : 0);
         rider.torso.rotation.x = speed > 11 ? .16 : .03; rider.root.rotation.z = steer * -.04;

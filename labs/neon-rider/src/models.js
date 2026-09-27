@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './textures.js';
 import { pick } from './utils.js';
-import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js';
+import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js?v=3';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 36);

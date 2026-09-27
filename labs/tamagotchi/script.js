@@ -1615,8 +1615,6 @@
   }
 
   function render(timestamp) {
-    if (document.hidden) return;
-    requestAnimationFrame(render);
     if (timestamp - lastFrameAt < 430) return;
     lastFrameAt = timestamp;
     frame += 1;
@@ -1696,13 +1694,26 @@
 
   updateSoundLabel();
   updateIconSelection();
-  catchUp();
-  maybeAlert();
-  requestAnimationFrame(render);
-  window.LabVisibility?.whenVisible(() => requestAnimationFrame(render));
-  setInterval(() => {
-    if (document.hidden) return;
+  const syncPet = () => {
     catchUp();
     maybeAlert();
-  }, 30 * 1000);
+  };
+  syncPet();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncPet();
+  });
+  if (window.LabRuntime) {
+    LabRuntime.createLoop(render).start();
+    LabRuntime.createInterval(syncPet, 30 * 1000).start();
+  } else {
+    const fallbackLoop = (now) => {
+      render(now);
+      requestAnimationFrame(fallbackLoop);
+    };
+    requestAnimationFrame(fallbackLoop);
+    setInterval(() => {
+      if (document.hidden) return;
+      syncPet();
+    }, 30 * 1000);
+  }
 })();

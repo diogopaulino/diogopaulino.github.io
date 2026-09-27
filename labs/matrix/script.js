@@ -80,7 +80,6 @@
     let messageStreams = [];
     let messageTimer = 2;
     let paused = false;
-    let rafId = 0;
     let lastTime = 0;
     let fpsAccum = 0;
     let fpsFrames = 0;
@@ -530,8 +529,6 @@
     /* ------------------------------------------------------------------ */
 
     function frame(now) {
-        rafId = requestAnimationFrame(frame);
-
         if (!lastTime) lastTime = now;
         const dt = Math.min((now - lastTime) / 1000, 0.05);
         lastTime = now;
@@ -1042,21 +1039,8 @@
 
     /* Ciclo de vida */
 
-    let resizeTimer = null;
-    window.addEventListener('resize', function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(resize, 150);
-    });
-
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-            cancelAnimationFrame(rafId);
-            rafId = 0;
-        } else if (!rafId) {
-            lastTime = 0;
-            rafId = requestAnimationFrame(frame);
-        }
-    });
+    if (window.LabRuntime) LabRuntime.debounceResize(resize);
+    else window.addEventListener('resize', resize);
 
     // O contador de streams muda pouco; atualizar fora do loop evita layout a 60fps.
     const streamCounter = window.LabRuntime
@@ -1088,5 +1072,14 @@
 
     if (!introSeen) runBoot();
 
-    rafId = requestAnimationFrame(frame);
+    if (window.LabRuntime) {
+        window.LabVisibility?.whenVisible(() => { lastTime = 0; });
+        LabRuntime.createLoop(frame).start();
+    } else {
+        const fallbackLoop = (now) => {
+            frame(now);
+            requestAnimationFrame(fallbackLoop);
+        };
+        requestAnimationFrame(fallbackLoop);
+    }
 })();

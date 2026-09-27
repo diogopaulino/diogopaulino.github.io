@@ -60,7 +60,6 @@ let lastAnnounce = '';
 let last = performance.now();
 
 function frame(now) {
-  if (document.hidden) return;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   game.update(dt);
@@ -78,9 +77,15 @@ function frame(now) {
   pauseBtn.classList.toggle('is-dim', game.mode === 'title' || game.mode === 'map');
   syncMute();
 
-  requestAnimationFrame(frame);
 }
 
 syncMute();
-requestAnimationFrame(frame);
-window.LabVisibility?.whenVisible(() => requestAnimationFrame(frame));
+if (window.LabRuntime) {
+  LabRuntime.createLoop(frame).start();
+} else {
+  const fallbackLoop = (now) => {
+    frame(now);
+    requestAnimationFrame(fallbackLoop);
+  };
+  requestAnimationFrame(fallbackLoop);
+}

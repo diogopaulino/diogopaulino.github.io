@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { headGeometry, limbGeometry } from '../../shared/realism.js';
+import { headGeometry, limbGeometry } from '../../shared/realism.js?v=3';
 import {
     buildLongship,
     buildBanner,

@@ -2,7 +2,7 @@
  * Guarda do castelo / Arqueiro para Babylon.js.
  */
 
-import { buildGuard, CharacterAnimator } from './builders.js?v=6';
+import { buildGuard, CharacterAnimator } from './builders.js?v=7';
 import { GuardAI } from '../ai/GuardAI.js?v=33';
 import { angleDamp } from '../utils/math.js';
 

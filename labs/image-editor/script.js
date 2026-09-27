@@ -496,16 +496,31 @@ function setupEventListeners() {
     }
 }
 
-function handleFile(file) {
-    if (!file.type.match('image.*')) return;
+const uploadMessage = uploadPlaceholder.querySelector('p');
+const uploadMessageDefault = uploadMessage ? uploadMessage.textContent : '';
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => onImageReady(img);
-        img.src = e.target.result;
+function setUploadMessage(text) {
+    if (uploadMessage) uploadMessage.textContent = text;
+}
+
+function handleFile(file) {
+    if (!file || !file.type || !file.type.match(/^image\//)) {
+        setUploadMessage('Esse arquivo não é uma imagem.');
+        return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+        URL.revokeObjectURL(url);
+        setUploadMessage(uploadMessageDefault);
+        onImageReady(img);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        setUploadMessage('Não foi possível abrir essa imagem.');
+    };
+    img.src = url;
 }
 
 function loadImageFromURL(url) {
@@ -596,6 +611,7 @@ async function copyImage() {
     const originalLabel = copyBtn.textContent;
     try {
         const blob = await new Promise((resolve) => exportCanvas.toBlob(resolve, 'image/png'));
+        if (!blob) throw new Error('Não foi possível gerar a imagem');
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         copyBtn.textContent = 'Copiado!';
     } catch (err) {

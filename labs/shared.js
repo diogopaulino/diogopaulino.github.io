@@ -566,17 +566,28 @@
             };
         }
 
-        /* Intervalo que congela o relógio enquanto a aba está oculta. */
+        /* Intervalo que congela o relógio enquanto a aba está oculta.
+           stop() é definitivo: voltar para a aba não rearma um timer pausado. */
         function createInterval(fn, ms) {
             let id = null;
-            let hiddenAt = 0;
+            let active = false;
 
-            function start() {
-                stop();
+            function arm() {
+                if (id !== null) {
+                    clearInterval(id);
+                    id = null;
+                }
+                if (!active || document.hidden) return;
                 id = setInterval(fn, ms);
             }
 
+            function start() {
+                active = true;
+                arm();
+            }
+
             function stop() {
+                active = false;
                 if (id !== null) {
                     clearInterval(id);
                     id = null;
@@ -585,11 +596,12 @@
 
             const unbind = VisibilityAPI.onChange((hidden) => {
                 if (hidden) {
-                    hiddenAt = Date.now();
-                    stop();
-                } else if (hiddenAt) {
-                    hiddenAt = 0;
-                    start();
+                    if (id !== null) {
+                        clearInterval(id);
+                        id = null;
+                    }
+                } else {
+                    arm();
                 }
             });
 

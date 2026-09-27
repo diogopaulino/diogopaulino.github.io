@@ -2297,31 +2297,54 @@ class SpeechManager {
     }
 
     speak(text, lang = 'en-US') {
-        if (!this.synth || this.speaking) return;
-        
+        if (!this.synth || !text) return;
+
+        this._token = (this._token || 0) + 1;
+        const token = this._token;
+        if (this._timer) window.clearTimeout(this._timer);
         this.synth.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang;
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
-        
-        utterance.onstart = () => {
-            this.speaking = true;
-            document.querySelector('.btn-speak')?.classList.add('speaking');
-        };
-        
-        utterance.onend = () => {
-            this.speaking = false;
-            document.querySelector('.btn-speak')?.classList.remove('speaking');
-        };
-        
-        utterance.onerror = () => {
-            this.speaking = false;
-            document.querySelector('.btn-speak')?.classList.remove('speaking');
-        };
-        
-        this.synth.speak(utterance);
+        this.speaking = false;
+        document.querySelector('.btn-speak')?.classList.remove('speaking');
+
+        // Chrome descarta speak() no mesmo turno de cancel().
+        this._timer = window.setTimeout(() => {
+            this._timer = null;
+            if (token !== this._token || !this.synth) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            utterance.rate = 0.85;
+            utterance.pitch = 1;
+
+            utterance.onstart = () => {
+                if (token !== this._token) return;
+                this.speaking = true;
+                document.querySelector('.btn-speak')?.classList.add('speaking');
+            };
+
+            utterance.onend = () => {
+                if (token !== this._token) return;
+                this.speaking = false;
+                document.querySelector('.btn-speak')?.classList.remove('speaking');
+            };
+
+            utterance.onerror = () => {
+                if (token !== this._token) return;
+                this.speaking = false;
+                document.querySelector('.btn-speak')?.classList.remove('speaking');
+            };
+
+            this.synth.speak(utterance);
+        }, 60);
+    }
+
+    stop() {
+        this._token = (this._token || 0) + 1;
+        if (this._timer) window.clearTimeout(this._timer);
+        this._timer = null;
+        if (!this.synth) return;
+        this.synth.cancel();
+        this.speaking = false;
+        document.querySelector('.btn-speak')?.classList.remove('speaking');
     }
 }
 
@@ -2401,6 +2424,7 @@ function selectLanguage(langCode) {
 }
 
 function goBackToLanguageSelect() {
+    speech.stop();
     audio.playClick();
     DOM.gameScreen.classList.add('hidden');
     DOM.languageSelect.classList.remove('hidden');
@@ -2739,7 +2763,7 @@ function renderMatchPairsExercise() {
     DOM.questionText.textContent = 'Conecte cada palavra com sua tradução:';
     
     const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    const selectedLessons = lessons.sort(() => Math.random() - 0.5).slice(0, 4);
+    const selectedLessons = [...lessons].sort(() => Math.random() - 0.5).slice(0, 4);
     
     gameState.matchedPairs.clear();
     gameState.currentExercise.pairs = selectedLessons;

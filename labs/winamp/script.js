@@ -1422,29 +1422,30 @@ function init() {
     drawIdleVisualizer();
     updateTransportUi();
 
-    let resizeTimer = 0;
-    window.addEventListener(
-        "resize",
-        () => {
-            window.clearTimeout(resizeTimer);
-            resizeTimer = window.setTimeout(() => {
-                fitPlayer();
-                resizeCanvas();
-                if (!state.playing) drawIdleVisualizer();
-            }, 150);
-        },
-        { passive: true }
-    );
+    const handleResize = () => {
+        fitPlayer();
+        resizeCanvas();
+        if (!state.playing) drawIdleVisualizer();
+    };
+    if (window.LabRuntime) LabRuntime.debounceResize(handleResize);
+    else window.addEventListener("resize", handleResize, { passive: true });
 
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) stopVisualizer();
         else startVisualizer();
     });
 
-    window.setInterval(updateClock, 30000);
-    window.setInterval(() => {
-        if (state.playing || state.seeking) updateTimeDisplay();
-    }, 250);
+    if (window.LabRuntime) {
+        LabRuntime.createInterval(updateClock, 30000).start();
+        LabRuntime.createInterval(() => {
+            if (state.playing || state.seeking) updateTimeDisplay();
+        }, 250).start();
+    } else {
+        window.setInterval(updateClock, 30000);
+        window.setInterval(() => {
+            if (state.playing || state.seeking) updateTimeDisplay();
+        }, 250);
+    }
 
     showTip("Pronto! Pressione X (ou o botão Play) para ouvir a trilha chiptune.", 6500);
 }

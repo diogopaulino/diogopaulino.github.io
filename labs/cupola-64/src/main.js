@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer } from '../../shared/cinematic.js?v=2';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
 import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';
@@ -136,6 +137,7 @@ class Game {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
         this.renderer.setClearColor(0x7ec8ff, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.12;
@@ -151,6 +153,7 @@ class Game {
         sunLite.position.set(4, 8, 2);
         envScene.add(sunLite);
         this.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+        this.scene.environmentIntensity = this.quality.id === 'low' ? 0.24 : 0.52;
         pmrem.dispose();
         envScene.clear();
 

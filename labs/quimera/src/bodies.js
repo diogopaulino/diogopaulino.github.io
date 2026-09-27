@@ -2,8 +2,8 @@
  * Corpos dos 14 kits. Pés em y = 0; pescoço em LAYOUT.NECK_Y.
  */
 
-import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=4';
-import { wingMembrane, limbGeometry, shoeMesh } from '../../shared/realism.js';
+import { makeCtx, clothedBody, tagSlot, glass } from './kit.js?v=5';
+import { wingMembrane, limbGeometry, shoeMesh } from '../../shared/realism.js?v=3';
 import * as THREE from 'three';
 
 /**
