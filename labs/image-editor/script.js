@@ -499,13 +499,14 @@ function setupEventListeners() {
 function handleFile(file) {
     if (!file.type.match('image.*')) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => onImageReady(img);
-        img.src = e.target.result;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+        URL.revokeObjectURL(url);
+        onImageReady(img);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
 }
 
 function loadImageFromURL(url) {
@@ -596,6 +597,7 @@ async function copyImage() {
     const originalLabel = copyBtn.textContent;
     try {
         const blob = await new Promise((resolve) => exportCanvas.toBlob(resolve, 'image/png'));
+        if (!blob) throw new Error('Não foi possível gerar a imagem');
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         copyBtn.textContent = 'Copiado!';
     } catch (err) {
