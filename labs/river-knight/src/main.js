@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 
 import {
     QUALITY,
@@ -139,6 +140,7 @@ class Game {
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.5 });
         this.camera = new THREE.PerspectiveCamera(
             62,
             window.innerWidth / window.innerHeight,
