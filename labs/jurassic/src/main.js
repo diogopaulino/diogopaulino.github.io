@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL, rendererIsSoftware } from './utils.js';
 import { Input } from './input.js';
@@ -105,6 +106,7 @@ class Game {
         this.renderer.toneMappingExposure = 1.1;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.quality.shadows });
         this.renderer.setClearColor(0x6aa0d0);
 
         if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
@@ -114,6 +116,7 @@ class Game {
         }
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.58 });
         this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.18, 520);
         this.sky = createSky();
         this.scene.add(this.sky.mesh);
