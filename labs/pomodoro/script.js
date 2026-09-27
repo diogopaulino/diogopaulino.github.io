@@ -293,6 +293,9 @@
             this.remaining = this.settings.focus * 60000;
             this.endsAt = 0;
             this.timerId = null;
+            this.runtimeTicker = window.LabRuntime
+                ? LabRuntime.createInterval(() => this.tick(), TICK_MS)
+                : null;
             this.completionId = null;
             this.tickSecond = -1;
             this.lastTitle = '';
@@ -561,13 +564,15 @@
 
         startLoop() {
             this.stopLoop();
-            this.timerId = setInterval(() => this.tick(), TICK_MS);
-            // Abas em segundo plano sofrem throttling do setInterval; este timeout
-            // único costuma acordar mais perto do fim real do ciclo.
+            if (this.runtimeTicker) this.runtimeTicker.start();
+            else this.timerId = setInterval(() => this.tick(), TICK_MS);
+            // O timestamp continua sendo a fonte da verdade; ao voltar para a aba
+            // syncFromTimestamp corrige qualquer throttling do navegador.
             this.completionId = setTimeout(() => this.syncFromTimestamp(), Math.max(0, this.remaining) + 60);
         }
 
         stopLoop() {
+            if (this.runtimeTicker) this.runtimeTicker.stop();
             if (this.timerId) clearInterval(this.timerId);
             if (this.completionId) clearTimeout(this.completionId);
             this.timerId = null;
