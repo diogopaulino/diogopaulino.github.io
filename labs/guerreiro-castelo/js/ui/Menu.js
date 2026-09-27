@@ -40,6 +40,11 @@ export class Menu {
                     const pr = Math.min(window.devicePixelRatio || 1, q.pixelRatio || 1.5);
                     game.engine?.setHardwareScalingLevel(1 / pr);
                     if (game.camera) game.camera.maxZ = q.far || 500;
+                    if (game.pipeline) {
+                        game.pipeline.bloomEnabled = !!q.bloom;
+                        game.pipeline.fxaaEnabled = q.aa !== false;
+                    }
+                    if (game.scene) game.scene.environmentIntensity = q.id === 'low' ? 0.28 : 0.62;
                     this._saveSettings();
                 }
             });

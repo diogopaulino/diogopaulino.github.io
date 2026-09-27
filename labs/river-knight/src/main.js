@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
 
 import {
     QUALITY,

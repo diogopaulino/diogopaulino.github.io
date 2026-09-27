@@ -25,7 +25,7 @@ import { Player } from '../player/Player.js?v=34';
 import { Teco } from '../characters/Teco.js?v=7';
 import { Camila } from '../characters/Camila.js?v=7';
 import { HUD } from '../ui/HUD.js?v=33';
-import { Menu } from '../ui/Menu.js';
+import { Menu } from '../ui/Menu.js?v=2';
 import { PauseMenu } from '../ui/PauseMenu.js';
 import { SETTINGS_KEY } from './assets.js';
 
@@ -81,7 +81,7 @@ export class Game {
 
         this.pipeline = new BABYLON.DefaultRenderingPipeline('cinematic', true, this.scene, [this.camera]);
         this.pipeline.samples = 1;
-        this.pipeline.fxaaEnabled = true;
+        this.pipeline.fxaaEnabled = this.quality.aa !== false;
         this.pipeline.bloomEnabled = !!this.quality.bloom;
         this.pipeline.bloomThreshold = 1.05;
         this.pipeline.bloomWeight = 0.12;

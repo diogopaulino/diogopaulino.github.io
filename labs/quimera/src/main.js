@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
 import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash

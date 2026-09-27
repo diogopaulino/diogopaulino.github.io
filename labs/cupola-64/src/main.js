@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer } from '../../shared/cinematic.js?v=1';
+import { configureCinematicRenderer } from '../../shared/cinematic.js?v=2';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
 import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';

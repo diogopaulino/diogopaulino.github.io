@@ -25,7 +25,9 @@ export function applyCinematicEnvironment(scene, renderer, {
         return null;
     }
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const room = new RoomEnvironment();
+    const environment = pmrem.fromScene(room, 0.04).texture;
+    room.dispose?.();
     scene.environment = environment;
     scene.environmentIntensity = intensity;
     pmrem.dispose();

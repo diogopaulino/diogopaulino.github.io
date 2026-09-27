@@ -103,11 +103,10 @@ class Game {
 
         this.pipeline = new B.DefaultRenderingPipeline('cinematic', true, this.scene, [this.camera]);
         this.pipeline.samples = 1;
-        this.pipeline.fxaaEnabled = true;
-        this.pipeline.bloomEnabled = this.quality.id === 'high';
         this.pipeline.bloomThreshold = 1.1;
         this.pipeline.bloomWeight = 0.09;
         this.pipeline.bloomKernel = 32;
+        this._syncPipeline();
 
         this.sky = createSky(this.scene);
 
@@ -148,6 +147,12 @@ class Game {
         });
     }
 
+    _syncPipeline() {
+        if (!this.pipeline) return;
+        this.pipeline.fxaaEnabled = this.quality.id !== 'low';
+        this.pipeline.bloomEnabled = this.quality.id === 'high';
+    }
+
     _bindUi() {
         this.hud.el.qualitySelect.addEventListener('change', () => {
             this.settings.quality = this.hud.el.qualitySelect.value;
@@ -155,6 +160,7 @@ class Game {
             this.quality = this.resolveQuality();
             const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
             this.engine.setHardwareScalingLevel(1 / pr);
+            this._syncPipeline();
         });
         this.hud.el.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(this.hud.el.volumeSlider.value);
@@ -334,6 +340,7 @@ class Game {
         this.quality = this.resolveQuality();
         const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
         this.engine.setHardwareScalingLevel(1 / pr);
+        this._syncPipeline();
 
         this.pendingChapter = index;
         this.chapterIndex = index;
