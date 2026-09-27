@@ -3,7 +3,7 @@
  * Nenhum GLB externo. Cache de material nunca serializa Texture (ciclo no engine).
  */
 
-import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js?v=2';
 import { hexToColor3 } from './sky.js';
 import {
     surface, thatchTexture, goldTexture, cloudTexture, clothTexture,
