@@ -15,6 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function releaseResultUrls() {
         resultUrls.forEach((url) => URL.revokeObjectURL(url));
         resultUrls.clear();
+        cardsByFile.forEach((card) => delete card.dataset.resultUrl);
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[char]);
     }
 
     window.addEventListener('pagehide', releaseResultUrls);
@@ -100,12 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reader = new FileReader();
         reader.onload = (e) => {
+            const safeName = escapeHtml(file.name);
             card.innerHTML = `
                 <div class="image-preview">
-                    <img src="${e.target.result}" alt="${file.name}">
+                    <img src="${e.target.result}" alt="${safeName}">
                 </div>
                 <div class="card-info">
-                    <div class="file-name" title="${file.name}">${file.name}</div>
+                    <div class="file-name" title="${safeName}">${safeName}</div>
                     <div class="stats-row">
                         <span>Original: ${formatBytes(file.size)}</span>
                         <span class="status">Aguardando...</span>
@@ -213,19 +225,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const extension = format.split('/')[1];
         const newFileName = originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) + '_opt.' + extension;
 
+        if (card.dataset.resultUrl) {
+            URL.revokeObjectURL(card.dataset.resultUrl);
+            resultUrls.delete(card.dataset.resultUrl);
+        }
         const url = URL.createObjectURL(newBlob);
+        card.dataset.resultUrl = url;
         resultUrls.add(url);
+        const safeFileName = escapeHtml(newFileName);
 
         const infoDiv = card.querySelector('.card-info');
         infoDiv.innerHTML = `
-            <div class="file-name" title="${newFileName}">${newFileName}</div>
+            <div class="file-name" title="${safeFileName}">${safeFileName}</div>
             <div class="stats-row">
                 <span>${formatBytes(newSize)}</span>
                 <span class="savings" style="color: ${isSavings ? 'var(--success)' : 'var(--text-secondary)'}">
                     ${isSavings ? '-' + savings + '%' : '+0%'}
                 </span>
             </div>
-            <a href="${url}" download="${newFileName}" class="download-btn">
+            <a href="${url}" download="${safeFileName}" class="download-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="7 10 12 15 17 10"/>
