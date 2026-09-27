@@ -101,6 +101,14 @@ class Game {
         this.camera.maxZ = 750;
         this.camera.inputs?.clear();
 
+        this.pipeline = new B.DefaultRenderingPipeline('cinematic', true, this.scene, [this.camera]);
+        this.pipeline.samples = 1;
+        this.pipeline.fxaaEnabled = true;
+        this.pipeline.bloomEnabled = this.quality.id === 'high';
+        this.pipeline.bloomThreshold = 1.1;
+        this.pipeline.bloomWeight = 0.09;
+        this.pipeline.bloomKernel = 32;
+
         this.sky = createSky(this.scene);
 
         this.hud.setLoading(0.4, 'Plantando o quintal…');
