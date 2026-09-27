@@ -288,15 +288,6 @@ export function buildHumanoid({
     });
     skull.parent = head;
 
-    // Olhos
-    const eyeMat = pbr('eyeMat', scene, new BABYLON.Color3(0.08, 0.08, 0.08), 0.22, 0.15);
-    for (const s of [-1, 1]) {
-        const eye = BABYLON.MeshBuilder.CreateSphere('eye', { diameter: 0.04 * scale, segments: 10 }, scene);
-        eye.position.set(s * 0.045 * scale, 0.04 * scale, 0.11 * scale);
-        eye.material = eyeMat;
-        eye.parent = head;
-    }
-
     const parts = { hips, spine, chest, head, armL, armR, legL, legR, root, skinMat, hairMat };
     const clips = makeHumanoidClips();
     root.userData = { parts, clips };
