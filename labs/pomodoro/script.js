@@ -580,6 +580,7 @@
         }
 
         tick() {
+            if (!this.running) return;
             const left = this.endsAt - Date.now();
             this.remaining = Math.max(0, left);
 
