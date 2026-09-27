@@ -156,81 +156,6 @@ const updateUndoRedoButtons = () => {
 };
 
 // Drawing Logic
-const startDraw = (e) => {
-    isDrawing = true;
-    ctx.beginPath(); // Start a new path
-
-    // Get correct coordinates
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    ctx.moveTo(x, y);
-
-    // For shapes, we need a snapshot of the canvas before dragging
-    if (['rect', 'circle', 'line'].includes(currentTool)) {
-        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        ctx.beginPath(); // Reset path for the shape
-    } else if (currentTool === 'fill') {
-        floodFill(x, y, hexToRgba(currentColor));
-        isDrawing = false; // Fill is a one-time action
-    }
-};
-
-const drawing = (e) => {
-    if (!isDrawing) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    ctx.strokeStyle = currentColor;
-    ctx.fillStyle = currentColor;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = currentOpacity;
-
-    if (currentTool === 'brush') {
-        ctx.lineTo(x, y);
-        ctx.stroke();
-    } else if (currentTool === 'eraser') {
-        ctx.strokeStyle = '#ffffff'; // Assuming white background
-        ctx.globalAlpha = 1; // Eraser always full opacity
-        ctx.lineTo(x, y);
-        ctx.stroke();
-    } else if (['rect', 'circle', 'line'].includes(currentTool)) {
-        ctx.putImageData(snapshot, 0, 0); // Restore original state
-
-        if (currentTool === 'rect') {
-            drawRect(e);
-        } else if (currentTool === 'circle') {
-            drawCircle(e);
-        } else if (currentTool === 'line') {
-            drawLine(e);
-        }
-    }
-};
-
-const stopDraw = () => {
-    if (isDrawing) {
-        if (currentTool !== 'fill') {
-            saveState(); // Save state after drawing stroke/shape
-        }
-        isDrawing = false;
-    }
-};
-
-// Shape Helpers
-const drawRect = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    // We need the start point. Since we didn't save it globally, let's just use a simple way:
-    // Actually, for shapes, we need the start point. Let's store it in startDraw.
-    // Re-implementing startDraw to store startX/startY
-};
-
 // Re-implementing startDraw and drawing to handle start coordinates properly
 let startX, startY;
 
@@ -359,36 +284,32 @@ const rgbToHex = (r, g, b) => {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 };
 
-const getTouchCoords = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0] || e.changedTouches[0];
-    return {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-    };
-};
+let activePointerId = null;
 
-canvas.addEventListener('mousedown', startDrawFixed);
-canvas.addEventListener('mousemove', drawingFixed);
-canvas.addEventListener('mouseup', stopDraw);
-canvas.addEventListener('mouseout', stopDraw);
-
-canvas.addEventListener('touchstart', (e) => {
+canvas.addEventListener('pointerdown', (e) => {
+    if (activePointerId !== null) return;
     e.preventDefault();
-    const coords = getTouchCoords(e);
-    startDrawFixed({ clientX: coords.clientX, clientY: coords.clientY });
-}, { passive: false });
+    activePointerId = e.pointerId;
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    startDrawFixed(e);
+});
 
-canvas.addEventListener('touchmove', (e) => {
+canvas.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== activePointerId) return;
     e.preventDefault();
-    const coords = getTouchCoords(e);
-    drawingFixed({ clientX: coords.clientX, clientY: coords.clientY });
-}, { passive: false });
+    drawingFixed(e);
+});
 
-canvas.addEventListener('touchend', (e) => {
+const endPointerDraw = (e) => {
+    if (activePointerId === null || e.pointerId !== activePointerId) return;
     e.preventDefault();
     stopDraw();
-}, { passive: false });
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    activePointerId = null;
+};
+
+canvas.addEventListener('pointerup', endPointerDraw);
+canvas.addEventListener('pointercancel', endPointerDraw);
 
 toolBtns.forEach(btn => {
     btn.addEventListener('click', () => {
