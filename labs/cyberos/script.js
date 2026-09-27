@@ -287,10 +287,12 @@ para perguntar como cada lab foi construído.`
     }
   }
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopClock();
-    else startClock();
-  });
+  if (!sharedClock) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopClock();
+      else startClock();
+    });
+  }
 
   startClock();
 
