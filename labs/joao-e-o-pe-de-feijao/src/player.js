@@ -5,7 +5,7 @@
 
 import { PLAYER, CAMERA } from './config.js';
 import { clamp, damp } from './utils.js';
-import { buildJoao } from './models.js?v=4';
+import { buildJoao } from './models.js?v=5';
 
 const B = window.BABYLON;
 
