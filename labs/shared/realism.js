@@ -60,15 +60,17 @@ export function skinMaterial(color = 0xf0c4a0) {
     pore.repeat.set(3, 3);
     const mat = new THREE.MeshPhysicalMaterial({
         color,
-        roughness: 0.46,
-        metalness: 0.02,
-        sheen: 0.42,
+        roughness: 0.5,
+        metalness: 0,
+        sheen: 0.24,
         sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffe4d4), 0.55),
-        sheenRoughness: 0.62,
-        clearcoat: 0.12,
-        clearcoatRoughness: 0.55,
+        sheenRoughness: 0.72,
+        clearcoat: 0.04,
+        clearcoatRoughness: 0.7,
+        specularIntensity: 0.34,
+        specularColor: new THREE.Color(0xffd2bf),
         normalMap: pore,
-        normalScale: new THREE.Vector2(0.28, 0.28)
+        normalScale: new THREE.Vector2(0.2, 0.2)
     });
     matCache.set(key, mat);
     return mat;
@@ -79,9 +81,10 @@ export function hairMaterial(color = 0x3a2414) {
     if (matCache.has(key)) return matCache.get(key);
     const mat = new THREE.MeshPhysicalMaterial({
         color,
-        roughness: 0.62,
-        metalness: 0.04,
-        sheen: 0.85,
+        roughness: 0.48,
+        metalness: 0,
+        sheen: 0.72,
+        anisotropy: 0.3,
         sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xfff0e0), 0.35),
         sheenRoughness: 0.35
     });
@@ -295,10 +298,10 @@ function makeEye(radius, iris) {
         cachedGeo(`eyeW:${radius}`, () => new THREE.SphereGeometry(radius, 16, 12)),
         new THREE.MeshPhysicalMaterial({
             color: 0xf4f1ea,
-            roughness: 0.18,
-            metalness: 0.02,
-            clearcoat: 0.85,
-            clearcoatRoughness: 0.12
+            roughness: 0.26,
+            metalness: 0,
+            clearcoat: 0.42,
+            clearcoatRoughness: 0.2
         })
     );
     white.castShadow = false;
@@ -374,11 +377,11 @@ export function attachHumanHead(parent, {
 
     const lipMat = new THREE.MeshPhysicalMaterial({
         color: lips,
-        roughness: 0.38,
-        metalness: 0.02,
-        clearcoat: 0.45,
-        clearcoatRoughness: 0.25,
-        sheen: 0.4,
+        roughness: 0.56,
+        metalness: 0,
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.55,
+        sheen: 0.18,
         sheenColor: 0xffc8c0
     });
     const ly = -radius * (chibi ? 0.26 : 0.36);
@@ -391,9 +394,9 @@ export function attachHumanHead(parent, {
         new THREE.Vector3(lw * 0.35, ly - radius * 0.025, lz + radius * 0.02),
         new THREE.Vector3(lw, ly, lz - radius * 0.05)
     ];
-    parent.add(new THREE.Mesh(tubeCurve(smile, 10, radius * 0.045), lipMat));
+    parent.add(new THREE.Mesh(tubeCurve(smile, 10, radius * 0.033), lipMat));
     const lower = smile.map((p) => p.clone().add(new THREE.Vector3(0, -radius * 0.055, radius * 0.01)));
-    parent.add(new THREE.Mesh(tubeCurve(lower, 10, radius * 0.038), lipMat));
+    parent.add(new THREE.Mesh(tubeCurve(lower, 10, radius * 0.028), lipMat));
 
     for (const sx of [-1, 1]) {
         const ear = new THREE.Mesh(earBladeGeometry({
