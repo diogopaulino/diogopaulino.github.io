@@ -1073,7 +1073,7 @@
     if (!introSeen) runBoot();
 
     if (window.LabRuntime) {
-        LabVisibility?.whenVisible(() => { lastTime = 0; });
+        window.LabVisibility?.whenVisible(() => { lastTime = 0; });
         LabRuntime.createLoop(frame).start();
     } else {
         const fallbackLoop = (now) => {
