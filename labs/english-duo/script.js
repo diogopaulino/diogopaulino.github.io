@@ -2297,10 +2297,12 @@ class SpeechManager {
     }
 
     speak(text, lang = 'en-US') {
-        if (!this.synth || this.speaking) return;
-        
+        if (!this.synth) return;
+
         this.synth.cancel();
-        
+        this.speaking = false;
+        document.querySelector('.btn-speak')?.classList.remove('speaking');
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
         utterance.rate = 0.85;
@@ -2322,6 +2324,13 @@ class SpeechManager {
         };
         
         this.synth.speak(utterance);
+    }
+
+    stop() {
+        if (!this.synth) return;
+        this.synth.cancel();
+        this.speaking = false;
+        document.querySelector('.btn-speak')?.classList.remove('speaking');
     }
 }
 
@@ -2401,6 +2410,7 @@ function selectLanguage(langCode) {
 }
 
 function goBackToLanguageSelect() {
+    speech.stop();
     audio.playClick();
     DOM.gameScreen.classList.add('hidden');
     DOM.languageSelect.classList.remove('hidden');
@@ -2739,7 +2749,7 @@ function renderMatchPairsExercise() {
     DOM.questionText.textContent = 'Conecte cada palavra com sua tradução:';
     
     const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    const selectedLessons = lessons.sort(() => Math.random() - 0.5).slice(0, 4);
+    const selectedLessons = [...lessons].sort(() => Math.random() - 0.5).slice(0, 4);
     
     gameState.matchedPairs.clear();
     gameState.currentExercise.pairs = selectedLessons;
