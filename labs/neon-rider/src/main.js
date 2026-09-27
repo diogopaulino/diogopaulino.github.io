@@ -5,6 +5,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 
 import {
     QUALITY, DIFFICULTY, STATIONS, loadSettings, saveSettings
@@ -85,8 +86,10 @@ class Game {
         this.renderer.toneMappingExposure = 1.12;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.68 });
         this.camera = new THREE.PerspectiveCamera(
             58,
             window.innerWidth / window.innerHeight,
