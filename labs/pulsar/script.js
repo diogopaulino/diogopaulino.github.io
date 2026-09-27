@@ -78,8 +78,6 @@
     let dragState = null;
     let lastTap = { id: null, time: 0 };
     let saveTimer = 0;
-    let raf = 0;
-    let running = true;
     let finePointer = true;
 
     const hudPreset = document.getElementById('hudPreset');
@@ -726,18 +724,6 @@
         drawRipples(t);
         drawSparks(t);
         drawOrbs(t);
-        raf = requestAnimationFrame(frame);
-    }
-
-    function startLoop() {
-        if (running) return;
-        running = true;
-        raf = requestAnimationFrame(frame);
-    }
-
-    function stopLoop() {
-        running = false;
-        cancelAnimationFrame(raf);
     }
 
     function resize() {
@@ -1016,11 +1002,6 @@
         }
     });
 
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) stopLoop();
-        else startLoop();
-    });
-
     if (window.LabTheme) {
         LabTheme.onChange(function () {
             applyThemeVars();
@@ -1042,6 +1023,17 @@
     applyThemeVars();
     retuneAll();
     updateHud();
-    running = true;
-    raf = requestAnimationFrame(frame);
+    if (window.LabRuntime) {
+        LabRuntime.createLoop(frame).start();
+    } else {
+        const fallbackLoop = () => {
+            if (document.hidden) return;
+            frame();
+            requestAnimationFrame(fallbackLoop);
+        };
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) requestAnimationFrame(fallbackLoop);
+        });
+        requestAnimationFrame(fallbackLoop);
+    }
 })();

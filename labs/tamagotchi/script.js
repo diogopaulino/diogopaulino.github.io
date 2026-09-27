@@ -1694,20 +1694,26 @@
 
   updateSoundLabel();
   updateIconSelection();
-  catchUp();
-  maybeAlert();
+  const syncPet = () => {
+    catchUp();
+    maybeAlert();
+  };
+  syncPet();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncPet();
+  });
   if (window.LabRuntime) {
     LabRuntime.createLoop(render).start();
+    LabRuntime.createInterval(syncPet, 30 * 1000).start();
   } else {
     const fallbackLoop = (now) => {
       render(now);
       requestAnimationFrame(fallbackLoop);
     };
     requestAnimationFrame(fallbackLoop);
+    setInterval(() => {
+      if (document.hidden) return;
+      syncPet();
+    }, 30 * 1000);
   }
-  setInterval(() => {
-    if (document.hidden) return;
-    catchUp();
-    maybeAlert();
-  }, 30 * 1000);
 })();
