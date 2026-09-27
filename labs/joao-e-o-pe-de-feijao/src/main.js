@@ -10,7 +10,7 @@ import { Hud, statsBlock } from './hud.js';
 import { Player } from './player.js?v=4';
 import { createSky, applyChapterSky, createLights } from './sky.js';
 import { buildChapter, bindShadows } from './world.js?v=4';
-import { setModelQuality } from './models.js?v=4';
+import { setModelQuality } from './models.js?v=5';
 import { nearestInteractable } from './npcs.js';
 
 const B = window.BABYLON;
