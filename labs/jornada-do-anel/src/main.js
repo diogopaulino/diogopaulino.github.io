@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js?v=3';
 import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, disposeObject } from './utils.js?v=3';
