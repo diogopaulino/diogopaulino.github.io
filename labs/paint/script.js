@@ -156,7 +156,13 @@ const updateUndoRedoButtons = () => {
 };
 
 // Drawing Logic
-// Re-implementing startDraw and drawing to handle start coordinates properly
+const stopDraw = () => {
+    if (!isDrawing) return;
+    if (currentTool !== 'fill' && currentTool !== 'picker') saveState();
+    isDrawing = false;
+};
+
+// Shape drawing keeps the initial canvas snapshot while the pointer moves.
 let startX, startY;
 
 const startDrawFixed = (e) => {
