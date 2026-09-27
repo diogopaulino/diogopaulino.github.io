@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
