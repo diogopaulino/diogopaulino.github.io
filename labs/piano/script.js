@@ -11,10 +11,11 @@ function ensureAudioContext() {
   if (!audioContext) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
-    audioContext = new AudioContextClass();
-  }
-  if (audioContext.state === 'suspended') {
-    void audioContext.resume();
+    try {
+      audioContext = new AudioContextClass();
+    } catch (err) {
+      return null;
+    }
   }
   return audioContext;
 }
@@ -56,6 +57,7 @@ let masterVolume = 0.7;
 let sustainActive = false;
 let octaveShift = 0;
 const activeNotes = new Map();
+const heldNotes = new Set();
 const sustainedNotes = new Set();
 const pressedKeys = new Set();
 let compressor = null;
@@ -237,20 +239,16 @@ class PianoVoice {
 // ============================================================================
 
 function playNote(noteName, velocity = 0.7) {
-  if (activeNotes.has(noteName)) return;
+  if (activeNotes.has(noteName) || heldNotes.has(noteName)) return;
 
-  if (!ensureAudioContext()) return;
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
 
   const note = noteName.slice(0, -1);
   const octave = parseInt(noteName.slice(-1)) + octaveShift;
-
   if (octave < 0 || octave > 8) return;
 
-  const frequency = getNoteFrequency(note, octave);
-  const voice = new PianoVoice(frequency, velocity);
-
-  activeNotes.set(noteName, voice);
-
+  heldNotes.add(noteName);
   const keyElement = document.querySelector(`[data-note="${noteName}"]`);
   if (keyElement) {
     keyElement.classList.add('active');
@@ -259,6 +257,19 @@ function playNote(noteName, velocity = 0.7) {
     void keyElement.offsetWidth;
     keyElement.classList.add('key-strike');
   }
+
+  const begin = () => {
+    if (!heldNotes.has(noteName) || activeNotes.has(noteName)) return;
+    const frequency = getNoteFrequency(note, octave);
+    activeNotes.set(noteName, new PianoVoice(frequency, velocity));
+  };
+
+  // No iOS o contexto nasce suspenso; osciladores criados antes do resume ficam mudos.
+  if (ctx.state !== 'running') {
+    ctx.resume().then(begin).catch(() => {});
+    return;
+  }
+  begin();
 }
 
 function stopNote(noteName, force = false) {
@@ -275,6 +286,7 @@ function stopNote(noteName, force = false) {
     return;
   }
 
+  heldNotes.delete(noteName);
   const voice = activeNotes.get(noteName);
   if (!voice) return;
 
@@ -293,6 +305,7 @@ function stopNote(noteName, force = false) {
 }
 
 function stopAllNotes() {
+  heldNotes.clear();
   const notes = Array.from(activeNotes.keys());
   notes.forEach(note => stopNote(note, true));
   sustainedNotes.clear();
@@ -316,9 +329,8 @@ function toggleSustain(active) {
     if (wasActive) {
       const notes = Array.from(sustainedNotes);
       notes.forEach(note => {
-        if (activeNotes.has(note)) {
-          stopNote(note, true);
-        }
+        if (activeNotes.has(note)) stopNote(note, true);
+        else heldNotes.delete(note);
       });
       sustainedNotes.clear();
     }
