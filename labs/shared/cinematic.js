@@ -31,20 +31,3 @@ export function applyCinematicEnvironment(scene, renderer, {
     pmrem.dispose();
     return environment;
 }
-
-export function tunePbrMaterials(root, {
-    envMapIntensity = 1.0,
-    softenClearcoat = true
-} = {}) {
-    root?.traverse?.((node) => {
-        if (!node.isMesh || !node.material) return;
-        const materials = Array.isArray(node.material) ? node.material : [node.material];
-        for (const material of materials) {
-            if (!material?.isMeshStandardMaterial && !material?.isMeshPhysicalMaterial) continue;
-            material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, envMapIntensity);
-            if (material.isMeshPhysicalMaterial && softenClearcoat && material.clearcoat > 0.8) {
-                material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0, 0.08);
-            }
-        }
-    });
-}
