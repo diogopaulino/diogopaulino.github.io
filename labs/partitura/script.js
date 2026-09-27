@@ -716,6 +716,10 @@ let currentTargetBaseNote = 'G';
 let useLatinNotation = true;
 let arcadeTimerInterval = null;
 let arcadeEndsAt = 0;
+let onArcadeTick = null;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) onArcadeTick?.();
+});
 let arcadeTimeRemaining = 60;
 let arcadeIsRunning = false;
 let arcadeCurrentScore = 0;
@@ -1033,6 +1037,7 @@ function startArcadeMode() {
   const finishArcade = () => {
     clearInterval(arcadeTimerInterval);
     arcadeTimerInterval = null;
+    onArcadeTick = null;
     arcadeIsRunning = false;
     arcadeTimeRemaining = 0;
     if (timerEl) timerEl.textContent = '0s';
@@ -1062,6 +1067,7 @@ function startArcadeMode() {
     if (arcadeTimeRemaining <= 0) finishArcade();
   };
 
+  onArcadeTick = tickArcade;
   tickArcade();
   arcadeTimerInterval = setInterval(tickArcade, 250);
 }
