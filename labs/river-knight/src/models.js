@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { limbGeometry, torsoGeometry, headGeometry } from '../../shared/realism.js';
+import { limbGeometry, torsoGeometry, headGeometry } from '../../shared/realism.js?v=3';
 import { COLORS } from './config.js?v=14';
 import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
 
