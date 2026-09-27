@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
 import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
 import { Input } from './input.js';
@@ -136,11 +137,13 @@ class Game {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
         this.renderer.setClearColor(0x7ec8ff, 1);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.12;
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.52 });
         this.camera = new THREE.PerspectiveCamera(56, 1, 0.12, 160);
         this.clock = new THREE.Clock();
 
