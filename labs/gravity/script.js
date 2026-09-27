@@ -1393,8 +1393,6 @@
     }
 
     function animate(now) {
-        if (document.hidden) return;
-        requestAnimationFrame(animate);
         now = now || performance.now();
         updateFps(now);
 
@@ -1662,6 +1660,13 @@
     if (scenarios[hashScene]) currentScenario = hashScene;
 
     resize();
-    requestAnimationFrame(animate);
-    window.LabVisibility?.whenVisible(() => requestAnimationFrame(animate));
+    if (window.LabRuntime) {
+        LabRuntime.createLoop(animate).start();
+    } else {
+        const fallbackLoop = (now) => {
+            animate(now);
+            requestAnimationFrame(fallbackLoop);
+        };
+        requestAnimationFrame(fallbackLoop);
+    }
 })();
