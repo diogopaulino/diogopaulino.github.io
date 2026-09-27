@@ -3,7 +3,7 @@
  * Nenhum GLB externo. Cache de material nunca serializa Texture (ciclo no engine).
  */
 
-import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js?v=2';
 import { hexToColor3 } from './sky.js';
 import {
     surface, thatchTexture, goldTexture, cloudTexture, clothTexture,
@@ -264,18 +264,18 @@ function leafMat(scene) {
 
 function addHumanFace(scene, head, skin, opts = {}) {
     const s = opts.scale ?? 1;
-    const eyeWhite = std(scene, 0xf7f2ea, 0.28, 0.02);
-    const iris = std(scene, opts.eyeHex ?? 0x2d5a1c, 0.32, 0.04);
-    const pupil = std(scene, 0x0a0806, 0.2);
+    const eyeWhite = std(scene, 0xf7f2ea, 0.38, 0);
+    const iris = std(scene, opts.eyeHex ?? 0x2d5a1c, 0.42, 0);
+    const pupil = std(scene, 0x0a0806, 0.38);
     const brow = std(scene, opts.browHex ?? 0x3a2414, 0.9);
-    const lip = std(scene, 0xc4786a, 0.55);
+    const lip = std(scene, 0xb87468, 0.68);
     [-1, 1].forEach((sx, i) => {
         const eye = limb(scene, `eyeW_${i}`, 'sphere', { diameter: 0.056 * s, segments: 8 }, eyeWhite, head, 0.02 * s);
         eye.position.set(sx * 0.056 * s, 0.02 * s, 0.132 * s);
-        const ir = limb(scene, `iris_${i}`, 'sphere', { diameter: 0.028 * s, segments: 6 }, iris, head, 0.02 * s);
-        ir.position.set(sx * 0.056 * s, 0.02 * s, 0.15 * s);
-        const pu = limb(scene, `pupil_${i}`, 'sphere', { diameter: 0.014 * s, segments: 5 }, pupil, head, 0.018 * s);
-        pu.position.set(sx * 0.056 * s, 0.018 * s, 0.158 * s);
+        const ir = limb(scene, `iris_${i}`, 'sphere', { diameter: 0.026 * s, segments: 6 }, iris, head, 0.02 * s);
+        ir.position.set(sx * 0.056 * s, 0.02 * s, 0.148 * s);
+        const pu = limb(scene, `pupil_${i}`, 'sphere', { diameter: 0.012 * s, segments: 5 }, pupil, head, 0.018 * s);
+        pu.position.set(sx * 0.056 * s, 0.018 * s, 0.153 * s);
         const br = limb(scene, `brow_${i}`, 'box', { width: 0.072 * s, height: 0.012 * s, depth: 0.018 * s }, brow, head, 0.058 * s);
         br.position.set(sx * 0.056 * s, 0.058 * s, 0.122 * s);
         br.rotation.z = sx * -0.14;

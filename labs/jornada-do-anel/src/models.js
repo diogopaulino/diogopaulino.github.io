@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry } from '../../shared/realism.js';
+import { limbGeometry, headGeometry, torsoGeometry, canineTorsoGeometry, canineHeadGeometry, tailGeometry, earBladeGeometry } from '../../shared/realism.js?v=3';
 import {
     grassTexture, barkTexture, leafTexture, stoneTexture, marbleTexture,
     woodTexture, goldTexture, doorTexture, brickTexture, skinTexture,

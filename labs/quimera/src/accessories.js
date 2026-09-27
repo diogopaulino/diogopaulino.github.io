@@ -8,7 +8,7 @@
  *   back     — costas (katana, tanque)
  */
 
-import { makeCtx, tagSlot, glass } from './kit.js?v=4';
+import { makeCtx, tagSlot, glass } from './kit.js?v=5';
 import * as THREE from 'three';
 
 function build(kit, attach, fn) {

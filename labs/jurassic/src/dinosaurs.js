@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { headGeometry, limbGeometry } from '../../shared/realism.js';
+import { headGeometry, limbGeometry } from '../../shared/realism.js?v=3';
 import { dinoSkin } from './textures.js';
 import { patchSkin } from './shaders.js';
 import { clamp, damp, wrapPi, hash2 } from './utils.js';

@@ -5,11 +5,12 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
 import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
 } from './config.js';
-import { Character } from './character.js?v=73';
+import { Character } from './character.js?v=74';
 import { buildStudio, lightStudio, updateStudio } from './studio.js';
 import { StudioAudio } from './audio.js';
 
@@ -89,8 +90,7 @@ class Quimera {
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: this.quality !== 'low',
-            powerPreference: this.quality === 'low' ? 'low-power' : 'high-performance',
-            powerPreference: 'high-performance'
+            powerPreference: this.quality === 'low' ? 'low-power' : 'high-performance'
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pr));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -99,11 +99,13 @@ class Quimera {
         this.renderer.toneMappingExposure = 1.05;
         this.renderer.shadowMap.enabled = this.quality !== 'low';
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.quality !== 'low' });
         this.renderer.setClearColor(0x1b1430, 1);
     }
 
     _scene() {
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality === 'low' ? 0.22 : 0.5 });
         this.scene.fog = new THREE.FogExp2(0x3a2438, 0.028);
 
         this.camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 40);

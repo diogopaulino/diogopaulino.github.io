@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
 import { Valley } from './world.js?v=8';
 import { Player } from './player.js?v=8';
 import { Effects } from './effects.js?v=8';
@@ -175,8 +176,10 @@ class Nina {
         this.renderer.toneMappingExposure = 1.08;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.quality.shadows });
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.48 });
         this.camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.2, 900);
 
         const hemi = new THREE.HemisphereLight(0xffe0c0, 0x6fd15a, 0.9);

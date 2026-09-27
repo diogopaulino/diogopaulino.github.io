@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { LAYOUT } from './config.js';
-import { handGroup, limbGeometry, shoeMesh, torsoGeometry } from '../../shared/realism.js';
+import { handGroup, limbGeometry, shoeMesh, torsoGeometry } from '../../shared/realism.js?v=3';
 
 export function vinyl(color, extra = {}) {
     return new THREE.MeshPhysicalMaterial({

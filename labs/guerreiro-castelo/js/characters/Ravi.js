@@ -1,4 +1,4 @@
-import { buildRavi, CharacterAnimator } from './builders.js?v=6';
+import { buildRavi, CharacterAnimator } from './builders.js?v=7';
 
 export class Ravi {
     constructor(parent) {
