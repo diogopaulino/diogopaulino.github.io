@@ -5,7 +5,7 @@
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
-import { createMuscle, createSkull, createHand, createTorso, addRealisticFace } from '../../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createHand, createTorso, addRealisticFace } from '../../../shared/realism-bjs.js?v=2';
 
 /** PBRMaterial com albedo, roughness e metallic sensatos. */
 function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
