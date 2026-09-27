@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
+import { configureCinematicRenderer } from '../../shared/cinematic.js?v=1';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js?v=3';
 import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, disposeObject } from './utils.js?v=3';
@@ -108,11 +108,10 @@ class Game {
         }
 
         this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.5 });
         this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.12, 520);
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.scene.environmentIntensity = 0.42;
+        this.scene.environmentIntensity = this.quality.id === 'low' ? 0.24 : 0.5;
         pmrem.dispose();
         this.sky = createSky();
         this.scene.add(this.sky.mesh);
