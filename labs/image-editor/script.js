@@ -496,16 +496,30 @@ function setupEventListeners() {
     }
 }
 
+const uploadMessage = uploadPlaceholder.querySelector('p');
+const uploadMessageDefault = uploadMessage ? uploadMessage.textContent : '';
+
+function setUploadMessage(text) {
+    if (uploadMessage) uploadMessage.textContent = text;
+}
+
 function handleFile(file) {
-    if (!file.type.match('image.*')) return;
+    if (!file || !file.type || !file.type.match(/^image\//)) {
+        setUploadMessage('Esse arquivo não é uma imagem.');
+        return;
+    }
 
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
         URL.revokeObjectURL(url);
+        setUploadMessage(uploadMessageDefault);
         onImageReady(img);
     };
-    img.onerror = () => URL.revokeObjectURL(url);
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        setUploadMessage('Não foi possível abrir essa imagem.');
+    };
     img.src = url;
 }
 

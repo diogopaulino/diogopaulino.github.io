@@ -10,12 +10,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentFiles = [];
     const cardsByFile = new Map();
+    const previewUrls = new Set();
     const resultUrls = new Set();
+
+    function releasePreviewUrls() {
+        previewUrls.forEach((url) => URL.revokeObjectURL(url));
+        previewUrls.clear();
+    }
 
     function releaseResultUrls() {
         resultUrls.forEach((url) => URL.revokeObjectURL(url));
         resultUrls.clear();
         cardsByFile.forEach((card) => delete card.dataset.resultUrl);
+    }
+
+    function releaseAllUrls() {
+        releasePreviewUrls();
+        releaseResultUrls();
     }
 
     function escapeHtml(value) {
@@ -28,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })[char]);
     }
 
-    window.addEventListener('pagehide', releaseResultUrls);
+    window.addEventListener('pagehide', releaseAllUrls);
 
     let currentOptions = {
         format: 'original',
@@ -91,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        releaseResultUrls();
+        releaseAllUrls();
         cardsByFile.clear();
         currentFiles = validFiles;
         controlsPanel.style.display = 'flex';
@@ -109,23 +120,22 @@ document.addEventListener('DOMContentLoaded', () => {
         card.id = `image-card-${index}`;
         cardsByFile.set(file, card);
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const safeName = escapeHtml(file.name);
-            card.innerHTML = `
-                <div class="image-preview">
-                    <img src="${e.target.result}" alt="${safeName}">
+        const safeName = escapeHtml(file.name);
+        const url = URL.createObjectURL(file);
+        previewUrls.add(url);
+        card.innerHTML = `
+            <div class="image-preview">
+                <img src="${url}" alt="${safeName}">
+            </div>
+            <div class="card-info">
+                <div class="file-name" title="${safeName}">${safeName}</div>
+                <div class="stats-row">
+                    <span>Original: ${formatBytes(file.size)}</span>
+                    <span class="status">Aguardando...</span>
                 </div>
-                <div class="card-info">
-                    <div class="file-name" title="${safeName}">${safeName}</div>
-                    <div class="stats-row">
-                        <span>Original: ${formatBytes(file.size)}</span>
-                        <span class="status">Aguardando...</span>
-                    </div>
-                </div>
-            `;
-        };
-        reader.readAsDataURL(file);
+            </div>
+        `;
+        card.querySelector('img').onerror = () => markStatus(file, 'Falha ao ler imagem');
         resultsGrid.appendChild(card);
     }
 
@@ -154,63 +164,69 @@ document.addEventListener('DOMContentLoaded', () => {
         processBtn.textContent = 'Processar Imagens';
     }
 
-    function processSingleFile(file) {
-        return new Promise((resolve) => {
+    function markStatus(file, text) {
+        const status = cardsByFile.get(file)?.querySelector('.status');
+        if (status) status.textContent = text;
+    }
+
+    function decodeWithElement(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
             const img = new Image();
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    // Resize logic
-                    if (currentOptions.maxWidth > 0 && width > currentOptions.maxWidth) {
-                        const ratio = currentOptions.maxWidth / width;
-                        width = currentOptions.maxWidth;
-                        height = height * ratio;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // Determine output format
-                    let outputFormat = currentOptions.format;
-                    if (outputFormat === 'original') {
-                        const encodable = ['image/jpeg', 'image/png', 'image/webp'];
-                        outputFormat = encodable.includes(file.type) ? file.type : 'image/png';
-                    }
-
-                    // Convert to blob
-                    canvas.toBlob((blob) => {
-                        if (!blob) {
-                            const status = cardsByFile.get(file)?.querySelector('.status');
-                            if (status) status.textContent = 'Formato não suportado';
-                            resolve();
-                            return;
-                        }
-                        updateResultCard(file, blob, outputFormat);
-                        resolve();
-                    }, outputFormat, currentOptions.quality);
-                };
-                img.onerror = () => {
-                    const status = cardsByFile.get(file)?.querySelector('.status');
-                    if (status) status.textContent = 'Falha ao ler imagem';
-                    resolve();
-                };
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(img);
             };
-            reader.onerror = () => {
-                const status = cardsByFile.get(file)?.querySelector('.status');
-                if (status) status.textContent = 'Falha ao ler arquivo';
-                resolve();
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('read'));
             };
-            reader.readAsDataURL(file);
+            img.src = url;
         });
+    }
+
+    function decodeImage(file) {
+        if (typeof createImageBitmap !== 'function') return decodeWithElement(file);
+        return createImageBitmap(file).catch(() => decodeWithElement(file));
+    }
+
+    async function processSingleFile(file) {
+        let bitmap = null;
+        try {
+            bitmap = await decodeImage(file);
+            const canvas = document.createElement('canvas');
+            let width = bitmap.width;
+            let height = bitmap.height;
+
+            if (currentOptions.maxWidth > 0 && width > currentOptions.maxWidth) {
+                const ratio = currentOptions.maxWidth / width;
+                width = currentOptions.maxWidth;
+                height = height * ratio;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+
+            let outputFormat = currentOptions.format;
+            if (outputFormat === 'original') {
+                const encodable = ['image/jpeg', 'image/png', 'image/webp'];
+                outputFormat = encodable.includes(file.type) ? file.type : 'image/png';
+            }
+
+            const blob = await new Promise((resolve) => {
+                canvas.toBlob(resolve, outputFormat, currentOptions.quality);
+            });
+            if (!blob) {
+                markStatus(file, 'Formato não suportado');
+                return;
+            }
+            updateResultCard(file, blob, outputFormat);
+        } catch {
+            markStatus(file, 'Falha ao ler imagem');
+        } finally {
+            if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+        }
     }
 
     function updateResultCard(originalFile, newBlob, format) {
@@ -222,8 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const savings = ((originalSize - newSize) / originalSize * 100).toFixed(1);
         const isSavings = newSize < originalSize;
 
-        const extension = format.split('/')[1];
-        const newFileName = originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) + '_opt.' + extension;
+        const extension = format.split('/')[1] || 'png';
+        const dot = originalFile.name.lastIndexOf('.');
+        const base = dot > 0 ? originalFile.name.slice(0, dot) : originalFile.name;
+        const newFileName = `${base}_opt.${extension}`;
 
         if (card.dataset.resultUrl) {
             URL.revokeObjectURL(card.dataset.resultUrl);
