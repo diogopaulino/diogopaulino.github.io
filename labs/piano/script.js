@@ -5,7 +5,19 @@
 (function() {
   'use strict';
 
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let audioContext = null;
+
+function ensureAudioContext() {
+  if (!audioContext) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    audioContext = new AudioContextClass();
+  }
+  if (audioContext.state === 'suspended') {
+    void audioContext.resume();
+  }
+  return audioContext;
+}
 
 // ============================================================================
 // CONFIGURAÇÃO DAS NOTAS E FREQUÊNCIAS
@@ -53,6 +65,7 @@ let compressor = null;
 // ============================================================================
 
 function initAudioChain() {
+  if (!ensureAudioContext()) return false;
   if (!compressor) {
     compressor = audioContext.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-24, audioContext.currentTime);
@@ -62,6 +75,7 @@ function initAudioChain() {
     compressor.release.setValueAtTime(0.25, audioContext.currentTime);
     compressor.connect(audioContext.destination);
   }
+  return true;
 }
 
 class PianoVoice {
@@ -71,7 +85,7 @@ class PianoVoice {
     this.nodes = [];
     this.isReleasing = false;
 
-    initAudioChain();
+    if (!initAudioChain()) return;
     this.createVoice();
   }
 
@@ -225,9 +239,7 @@ class PianoVoice {
 function playNote(noteName, velocity = 0.7) {
   if (activeNotes.has(noteName)) return;
 
-  if (audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
+  if (!ensureAudioContext()) return;
 
   const note = noteName.slice(0, -1);
   const octave = parseInt(noteName.slice(-1)) + octaveShift;
@@ -536,7 +548,8 @@ function setupKeyboardEvents() {
 function init() {
   generatePiano();
   layoutBlackKeys();
-  window.addEventListener('resize', layoutBlackKeys);
+  if (window.LabRuntime) LabRuntime.debounceResize(layoutBlackKeys);
+  else window.addEventListener('resize', layoutBlackKeys);
   setupControls();
   setupKeyboardEvents();
 
