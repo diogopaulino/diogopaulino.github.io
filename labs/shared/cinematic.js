@@ -7,12 +7,12 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 export function configureCinematicRenderer(renderer, {
-    exposure = 1.0,
+    exposure = null,
     shadows = true
 } = {}) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = exposure;
+    if (Number.isFinite(exposure)) renderer.toneMappingExposure = exposure;
     renderer.shadowMap.enabled = shadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 }
