@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
 import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=15';
 import {
     clamp, detectMobile, detectTouch, detectSoftwareGL, rendererIsSoftware, formatTime, lerp
