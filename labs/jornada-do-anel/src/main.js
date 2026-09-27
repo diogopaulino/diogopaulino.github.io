@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js?v=3';
 import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, disposeObject } from './utils.js?v=3';
@@ -97,6 +98,7 @@ class Game {
         this.renderer.toneMappingExposure = CHAPTERS[0].exposure ?? 1.2;
         this.renderer.shadowMap.enabled = this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
         this.renderer.setClearColor(CHAPTERS[0].clear);
 
         if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
@@ -106,6 +108,7 @@ class Game {
         }
 
         this.scene = new THREE.Scene();
+        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality?.id === 'low' ? 0.24 : 0.5 });
         this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.12, 520);
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
