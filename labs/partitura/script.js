@@ -715,6 +715,11 @@ let currentTargetPitch = 'G4';
 let currentTargetBaseNote = 'G';
 let useLatinNotation = true;
 let arcadeTimerInterval = null;
+let arcadeEndsAt = 0;
+let onArcadeTick = null;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) onArcadeTick?.();
+});
 let arcadeTimeRemaining = 60;
 let arcadeIsRunning = false;
 let arcadeCurrentScore = 0;
@@ -1027,33 +1032,44 @@ function startArcadeMode() {
   setTargetClefAndPitch();
 
   clearInterval(arcadeTimerInterval);
-  arcadeTimerInterval = setInterval(() => {
-    if (document.hidden) return;
-    arcadeTimeRemaining--;
-    if (timerEl) timerEl.textContent = `${arcadeTimeRemaining}s`;
+  arcadeEndsAt = Date.now() + 60_000;
 
-    if (arcadeTimeRemaining <= 0) {
-      clearInterval(arcadeTimerInterval);
-      arcadeIsRunning = false;
-      if (btnStart) {
-        btnStart.textContent = '⚡ Jogar Novamente';
-        btnStart.disabled = false;
-        btnStart.classList.add('pulse-btn');
-      }
-
-      if (arcadeCurrentScore > gameManager.state.maxArcadeScore) {
-        gameManager.state.maxArcadeScore = arcadeCurrentScore;
-        gameManager.saveState();
-        document.getElementById('arcade-highscore').textContent = arcadeCurrentScore;
-        updateFeedback(`🏆 NOVO RECORDE PESSOAL! Você conquistou impressionantes ${arcadeCurrentScore} pontos!`, 'success');
-        synth.playSFX('levelup');
-      } else {
-        updateFeedback(`⏰ Fim de papo! Você conquistou ${arcadeCurrentScore} pontos neste round!`, 'normal');
-      }
-
-      if (arcadeCurrentScore >= 150) gameManager.unlockBadge('speed_demon');
+  const finishArcade = () => {
+    clearInterval(arcadeTimerInterval);
+    arcadeTimerInterval = null;
+    onArcadeTick = null;
+    arcadeIsRunning = false;
+    arcadeTimeRemaining = 0;
+    if (timerEl) timerEl.textContent = '0s';
+    if (btnStart) {
+      btnStart.textContent = '⚡ Jogar Novamente';
+      btnStart.disabled = false;
+      btnStart.classList.add('pulse-btn');
     }
-  }, 1000);
+
+    if (arcadeCurrentScore > gameManager.state.maxArcadeScore) {
+      gameManager.state.maxArcadeScore = arcadeCurrentScore;
+      gameManager.saveState();
+      document.getElementById('arcade-highscore').textContent = arcadeCurrentScore;
+      updateFeedback(`🏆 NOVO RECORDE PESSOAL! Você conquistou impressionantes ${arcadeCurrentScore} pontos!`, 'success');
+      synth.playSFX('levelup');
+    } else {
+      updateFeedback(`⏰ Fim de papo! Você conquistou ${arcadeCurrentScore} pontos neste round!`, 'normal');
+    }
+
+    if (arcadeCurrentScore >= 150) gameManager.unlockBadge('speed_demon');
+  };
+
+  const tickArcade = () => {
+    if (!arcadeIsRunning) return;
+    arcadeTimeRemaining = Math.max(0, Math.ceil((arcadeEndsAt - Date.now()) / 1000));
+    if (timerEl) timerEl.textContent = `${arcadeTimeRemaining}s`;
+    if (arcadeTimeRemaining <= 0) finishArcade();
+  };
+
+  onArcadeTick = tickArcade;
+  tickArcade();
+  arcadeTimerInterval = setInterval(tickArcade, 250);
 }
 
 // --- 10. GALERIA DE TROFÉUS MODAL ---
@@ -1249,7 +1265,8 @@ function setupControlBars() {
 // --- 12. INICIALIZAÇÃO AO CARREGAR A PÁGINA ---
 document.addEventListener('DOMContentLoaded', () => {
   setupVirtualKeyboard();
-  window.addEventListener('resize', layoutPartituraKeys);
+  if (window.LabRuntime) LabRuntime.debounceResize(layoutPartituraKeys);
+  else window.addEventListener('resize', layoutPartituraKeys);
   updateNotationButtons();
   setupTabs();
   setupControlBars();

@@ -260,8 +260,9 @@ para perguntar como cada lab foi construído.`
 
   setPhosphor(document.body.dataset.phosphor || 'green');
 
-  /* Clock — pausa quando a aba está oculta para não acordar o main thread à toa */
+  /* Clock — usa o runtime compartilhado para pausar automaticamente em background. */
   let clockTimer = null;
+  const sharedClock = window.LabRuntime ? LabRuntime.createInterval(tickClock, 1000) : null;
 
   function tickClock() {
     const now = new Date();
@@ -270,20 +271,28 @@ para perguntar como cada lab foi construído.`
 
   function startClock() {
     tickClock();
-    if (clockTimer === null) clockTimer = setInterval(tickClock, 1000);
+    if (sharedClock) {
+      sharedClock.start();
+    } else if (clockTimer === null) {
+      clockTimer = setInterval(tickClock, 1000);
+    }
   }
 
   function stopClock() {
-    if (clockTimer !== null) {
+    if (sharedClock) {
+      sharedClock.stop();
+    } else if (clockTimer !== null) {
       clearInterval(clockTimer);
       clockTimer = null;
     }
   }
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopClock();
-    else startClock();
-  });
+  if (!sharedClock) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopClock();
+      else startClock();
+    });
+  }
 
   startClock();
 
