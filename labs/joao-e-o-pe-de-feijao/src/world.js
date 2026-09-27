@@ -9,7 +9,7 @@ import {
     buildCastle, buildTable, buildGoldBag, buildHen, buildHarp, buildAxe, buildWell,
     buildMother, buildMerchant, buildCow, buildGiant, makeBeacon, buildGateArch,
     buildRock, grassTuft, std, surf, setModelQuality
-} from './models.js?v=4';
+} from './models.js?v=5';
 import { CowAI, GiantAI } from './npcs.js';
 
 const B = window.BABYLON;
