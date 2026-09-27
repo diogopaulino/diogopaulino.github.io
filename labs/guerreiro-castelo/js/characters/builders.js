@@ -5,7 +5,7 @@
 
 import { leatherTexture, clothTexture } from '../world/Textures.js';
 import { angleLerp, damp } from '../utils/math.js';
-import { createMuscle, createSkull, createHand, createTorso } from '../../../shared/realism-bjs.js';
+import { createMuscle, createSkull, createHand, createTorso, addRealisticFace } from '../../../shared/realism-bjs.js';
 
 /** PBRMaterial com albedo, roughness e metallic sensatos. */
 function pbr(name, scene, color, roughness = 0.72, metallic = 0.04, extra = {}) {
@@ -279,6 +279,11 @@ export function buildHumanoid({
     const skull = createSkull(scene, 'skull', { diameter: 0.25 * scale, style: 'human', segments: 18 });
     skull.scaling.set(0.92, 1.05, 0.95);
     skull.material = skinMat;
+    addRealisticFace(scene, skull, skinMat, {
+        scale: 0.82 * scale,
+        iris: 0x385530,
+        browMat: hairMat
+    });
     skull.parent = head;
 
     // Olhos
