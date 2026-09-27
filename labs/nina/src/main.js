@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js';
+import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=1';
 import { Valley } from './world.js?v=8';
 import { Player } from './player.js?v=8';
 import { Effects } from './effects.js?v=8';
