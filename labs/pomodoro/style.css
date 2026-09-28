@@ -63,6 +63,10 @@ body[data-mode="long"] {
 body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-image: none;
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
 /* Brilho ambiente que acompanha o modo atual */
@@ -716,7 +720,10 @@ kbd {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: max(1rem, env(safe-area-inset-top, 0px))
+        max(1rem, env(safe-area-inset-right, 0px))
+        max(1rem, env(safe-area-inset-bottom, 0px))
+        max(1rem, env(safe-area-inset-left, 0px));
 }
 
 .modal[hidden] {

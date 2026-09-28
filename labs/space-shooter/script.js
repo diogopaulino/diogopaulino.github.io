@@ -65,35 +65,31 @@ const ENEMY_SPEED_BASE = 50;
 let enemySpeed = ENEMY_SPEED_BASE;
 let enemyDirection = 1; // 1 right, -1 left
 
-// Audio Context (Simple synth for beeps)
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-let audioCtx;
+/* Áudio via LabAudio — mudo persistido e mesmo motor dos outros labs. */
+const labAudio = window.LabAudio || null;
+if (labAudio) {
+    labAudio.configure({ storageKey: 'neonInvaders:muted', volume: 0.45 });
+    soundEnabled = !labAudio.isMuted();
+}
 
 function playSound(type) {
-    if (!soundEnabled) return;
-    if (!audioCtx) audioCtx = new AudioContext();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
+    if (!soundEnabled || !labAudio) return;
     if (type === 'shoot') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
+        labAudio.tone({
+            freq: 880,
+            slideTo: 110,
+            duration: 0.1,
+            type: 'square',
+            gain: 0.1
+        });
     } else if (type === 'explosion') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
+        labAudio.tone({
+            freq: 100,
+            slideTo: 40,
+            duration: 0.28,
+            type: 'sawtooth',
+            gain: 0.18
+        });
     }
 }
 
@@ -578,8 +574,14 @@ function updateHud() {
     document.getElementById('score').innerText = formatScore(score);
     document.getElementById('level').innerText = String(level).padStart(2, '0');
     document.getElementById('lives').innerText = Array(lives).fill('♥').join(' ');
-    document.getElementById('highScore').innerText = formatScore(Math.max(highScore, score));
-    document.getElementById('weaponLevel').innerText = `LASER ${['I', 'II', 'III'][bulletLevel - 1]}`;
+    const hsText = formatScore(Math.max(highScore, score));
+    const weaponText = `LASER ${['I', 'II', 'III'][bulletLevel - 1]}`;
+    document.getElementById('highScore').innerText = hsText;
+    document.getElementById('weaponLevel').innerText = weaponText;
+    const mobileHs = document.getElementById('mobileHighScore');
+    const mobileWeapon = document.getElementById('mobileWeapon');
+    if (mobileHs) mobileHs.innerText = hsText;
+    if (mobileWeapon) mobileWeapon.innerText = weaponText;
 }
 
 function bindHoldControl(element, keyName) {
@@ -614,16 +616,35 @@ shootBtn.addEventListener('pointerdown', e => {
     });
 });
 
-document.getElementById('soundToggle').addEventListener('click', e => {
-    soundEnabled = !soundEnabled;
-    e.currentTarget.setAttribute('aria-pressed', String(soundEnabled));
-    e.currentTarget.lastElementChild.textContent = soundEnabled ? 'Som ativado' : 'Som desativado';
+function syncSoundToggle() {
+    const btn = document.getElementById('soundToggle');
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', String(soundEnabled));
+    btn.lastElementChild.textContent = soundEnabled ? 'Som ativado' : 'Som desativado';
+}
+
+document.getElementById('soundToggle').addEventListener('click', () => {
+    if (labAudio) {
+        labAudio.setMuted(!labAudio.isMuted());
+        soundEnabled = !labAudio.isMuted();
+    } else {
+        soundEnabled = !soundEnabled;
+    }
+    syncSoundToggle();
 });
 
+if (labAudio) {
+    labAudio.onChange((muted) => {
+        soundEnabled = !muted;
+        syncSoundToggle();
+    });
+}
+syncSoundToggle();
+
 // Aba escondida: congela o jogo em vez de deixar a horda avançar sozinha.
-document.addEventListener('visibilitychange', () => {
+function onVisibility(hidden) {
     if (!gameRunning) return;
-    if (document.hidden) {
+    if (hidden) {
         cancelAnimationFrame(animationId);
         fireHeld = false;
         keys.ArrowLeft = keys.ArrowRight = keys.a = keys.d = false;
@@ -631,7 +652,13 @@ document.addEventListener('visibilitychange', () => {
         lastTime = performance.now();
         animationId = requestAnimationFrame(loop);
     }
-});
+}
+
+if (window.LabVisibility) {
+    LabVisibility.onChange(onVisibility);
+} else {
+    document.addEventListener('visibilitychange', () => onVisibility(document.hidden));
+}
 
 // Initial Resize
 window.addEventListener('resize', () => {

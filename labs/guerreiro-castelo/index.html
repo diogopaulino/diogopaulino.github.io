@@ -250,14 +250,34 @@
             </div>
         </div>
 
+        <div id="errorOverlay" class="overlay" role="alert" hidden>
+            <div class="overlay-card">
+                <p class="eyebrow">o mar não abriu</p>
+                <h2>Não deu para carregar o motor 3D</h2>
+                <p class="lede">Este lab precisa de WebGL e do Babylon.js via CDN. Verifique a conexão ou a aceleração de hardware e tente de novo.</p>
+                <div class="menu-actions">
+                    <button class="primary-button" type="button" onclick="location.reload()">Tentar novamente</button>
+                    <a class="ghost-button" href="/labs/">Voltar aos labs</a>
+                </div>
+            </div>
+        </div>
+
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="/labs/shared.js?v=13" defer></script>
-    <script type="module" src="js/main.js?v=36"></script>
+    <script src="/labs/shared.js?v=14" defer></script>
+    <script>
+        window.guerreiroLoadError = function () {
+            const loading = document.getElementById('loadingOverlay');
+            const error = document.getElementById('errorOverlay');
+            if (loading) loading.hidden = true;
+            if (error) error.hidden = false;
+        };
+    </script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js" onerror="guerreiroLoadError()"></script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js" onerror="guerreiroLoadError()"></script>
+    <script src="https://cdn.babylonjs.com/v9.25.0/materialsLibrary/babylonjs.materials.min.js" onerror="guerreiroLoadError()"></script>
+    <script type="module" src="js/main.js?v=37" onerror="guerreiroLoadError()"></script>
 </body>
 
 </html>

@@ -29,6 +29,11 @@ body {
     /* align-items: center; handled by shared.css */
     color: var(--text-primary);
     transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Safe-area: reforça notch/home indicator além do padding do shared */
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
 .container {
@@ -494,7 +499,8 @@ body {
 @media (max-width: 480px) {
     .mode-switch { flex-wrap: nowrap; gap: 4px; }
     .mode-btn { flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 0.78rem; padding: 8px 6px; gap: 4px; }
-    .scientific-grid { gap: 8px; }
+    /* 5 colunas ficam apertadas no SE; cai para 4 e deixa o grid refluir */
+    .scientific-grid { gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .scientific-grid .btn { padding: 12px 0; font-size: 0.95rem; min-height: 44px; }
     .btn-swap { width: 44px; height: 44px; }
     .btn-refresh { min-width: 44px; min-height: 44px; }

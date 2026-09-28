@@ -15,6 +15,7 @@
 html {
     background: var(--ink);
     overscroll-behavior: none;
+    overflow-x: clip;
 }
 
 body {
@@ -91,7 +92,7 @@ header .theme-toggle-thumb {
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(300px, 3fr) minmax(260px, 1.1fr);
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1.1fr);
     align-items: stretch;
     gap: clamp(12px, 1.5vw, 20px);
 }
@@ -505,6 +506,10 @@ kbd {
     color: var(--neon-green);
 }
 
+.mobile-mission-bar {
+    display: none;
+}
+
 .touch-controls {
     display: none;
 }
@@ -529,14 +534,18 @@ footer a {
 @media (max-width: 900px) {
     body {
         padding: 10px;
+        overflow-x: clip;
     }
 
     .arcade-shell {
         display: flex;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .game-panel {
         width: 100%;
+        max-width: 100%;
+        min-width: 0;
         padding: 7px;
         border-radius: 18px;
     }
@@ -549,6 +558,52 @@ footer a {
 
     .mission-panel {
         display: none;
+    }
+
+    .mobile-mission-bar {
+        position: absolute;
+        z-index: 3;
+        top: clamp(42px, 8vh, 58px);
+        left: max(8px, env(safe-area-inset-left, 0px));
+        right: max(8px, env(safe-area-inset-right, 0px));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 28px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        background: rgba(3, 4, 10, 0.72);
+        backdrop-filter: blur(8px);
+        pointer-events: none;
+    }
+
+    .mobile-mission-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+    }
+
+    .mobile-mission-stat:last-child {
+        text-align: right;
+        align-items: flex-end;
+    }
+
+    .mobile-mission-stat span {
+        color: rgba(255, 255, 255, 0.42);
+        font-family: 'Outfit', sans-serif;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .mobile-mission-stat strong {
+        color: #fff;
+        font-size: clamp(7px, 2.4vw, 9px);
+        letter-spacing: 0.06em;
+        white-space: nowrap;
     }
 
     footer[data-lab-footer] {
@@ -654,6 +709,12 @@ footer a {
     .primary-action {
         min-height: 54px;
         margin-top: 14px;
+    }
+
+    .mobile-mission-bar {
+        top: clamp(34px, 12vh, 46px);
+        padding: 4px 8px;
+        min-height: 24px;
     }
 
     .touch-controls {

@@ -13,7 +13,7 @@
   border-radius: 1.5rem;
   background:
     radial-gradient(ellipse 80% 60% at 12% 0%, rgba(37, 99, 235, 0.12), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 88% 100%, rgba(139, 92, 246, 0.1), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 88% 100%, rgba(14, 165, 233, 0.08), transparent 50%),
     var(--bg-card);
   box-shadow: var(--shadow-sm);
 }
@@ -21,7 +21,7 @@
 [data-theme="dark"] .labs-hero {
   background:
     radial-gradient(ellipse 80% 60% at 12% 0%, rgba(59, 130, 246, 0.16), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 88% 100%, rgba(167, 139, 250, 0.12), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 88% 100%, rgba(56, 189, 248, 0.1), transparent 50%),
     linear-gradient(145deg, rgba(23, 23, 23, 0.95), rgba(15, 15, 15, 0.88));
   border-color: rgba(255, 255, 255, 0.08);
 }

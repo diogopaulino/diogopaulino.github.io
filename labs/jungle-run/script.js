@@ -67,75 +67,62 @@ const LEVELS = [
     }
 ];
 
+/* Áudio via LabAudio: mudo persistido + tons sintéticos. O botão #soundBtn
+   continua no chrome do lab; só a engine muda. */
 class JungleAudio {
     constructor(button) {
         this.button = button;
-        this.context = null;
-        this.muted = this.readMuted();
+        this.lab = window.LabAudio || null;
+        if (this.lab) {
+            this.lab.configure({ storageKey: 'jungleRunMuted', volume: 0.45 });
+            // Formato antigo gravava 'true'/'false'; LabAudio usa '1'/'0'.
+            try {
+                const legacy = localStorage.getItem('jungleRunMuted');
+                if (legacy === 'true') this.lab.setMuted(true);
+                else if (legacy === 'false') this.lab.setMuted(false);
+            } catch {}
+            this.lab.onChange(() => this.syncButton());
+        }
         this.syncButton();
     }
 
-    readMuted() {
-        try {
-            return localStorage.getItem('jungleRunMuted') === 'true';
-        } catch {
-            return false;
-        }
+    get muted() {
+        return this.lab ? this.lab.isMuted() : false;
     }
 
     toggle() {
-        this.muted = !this.muted;
-        try {
-            localStorage.setItem('jungleRunMuted', String(this.muted));
-        } catch {}
-        this.syncButton();
-        if (!this.muted) this.play('select');
+        if (!this.lab) return;
+        this.lab.setMuted(!this.lab.isMuted());
+        if (!this.lab.isMuted()) this.play('select');
     }
 
     syncButton() {
-        this.button.setAttribute('aria-pressed', String(this.muted));
-        this.button.setAttribute('aria-label', this.muted ? 'Ativar som' : 'Desativar som');
-        this.button.querySelector('span').textContent = this.muted ? '×' : '♪';
+        if (!this.button) return;
+        const muted = this.muted;
+        this.button.setAttribute('aria-pressed', String(muted));
+        this.button.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
+        const icon = this.button.querySelector('span');
+        if (icon) icon.textContent = muted ? '×' : '♪';
     }
 
     ensureContext() {
-        if (!this.context) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) this.context = new AudioContext();
-        }
-        if (this.context?.state === 'suspended') this.context.resume();
-        return this.context;
+        /* LabAudio cria o AudioContext no primeiro tone após um gesto. */
     }
 
     play(type) {
-        if (this.muted) return;
-        const context = this.ensureContext();
-        if (!context) return;
+        if (!this.lab || this.lab.isMuted()) return;
 
         const presets = {
-            jump: [180, 330, 0.12, 'square', 0.035],
-            coin: [520, 900, 0.1, 'sine', 0.045],
-            relic: [420, 1100, 0.22, 'triangle', 0.05],
-            hit: [150, 55, 0.3, 'sawtooth', 0.06],
-            select: [300, 440, 0.08, 'sine', 0.025],
-            milestone: [330, 760, 0.38, 'triangle', 0.045],
-            land: [90, 55, 0.08, 'sine', 0.025],
-            victory: [440, 880, 0.5, 'triangle', 0.06]
+            jump: { freq: 180, slideTo: 330, duration: 0.12, type: 'square', gain: 0.035 },
+            coin: { freq: 520, slideTo: 900, duration: 0.1, type: 'sine', gain: 0.045 },
+            relic: { freq: 420, slideTo: 1100, duration: 0.22, type: 'triangle', gain: 0.05 },
+            hit: { freq: 150, slideTo: 55, duration: 0.3, type: 'sawtooth', gain: 0.06 },
+            select: { freq: 300, slideTo: 440, duration: 0.08, type: 'sine', gain: 0.025 },
+            milestone: { freq: 330, slideTo: 760, duration: 0.38, type: 'triangle', gain: 0.045 },
+            land: { freq: 90, slideTo: 55, duration: 0.08, type: 'sine', gain: 0.025 },
+            victory: { freq: 440, slideTo: 880, duration: 0.5, type: 'triangle', gain: 0.06 }
         };
-        const [from, to, duration, wave, volume] = presets[type] || presets.select;
-        const now = context.currentTime;
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-
-        oscillator.type = wave;
-        oscillator.frequency.setValueAtTime(from, now);
-        oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, to), now + duration);
-        gain.gain.setValueAtTime(volume, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(now);
-        oscillator.stop(now + duration);
+        this.lab.tone(presets[type] || presets.select);
     }
 }
 
