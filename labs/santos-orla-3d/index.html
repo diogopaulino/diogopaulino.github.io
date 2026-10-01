@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a1620">
+    <title>Santos Orla 3D — digital twin navegável | Diogo Paulino</title>
+    <meta name="description"
+        content="Explore a orla de Santos como ela é hoje: visão aérea, canais 1–7, jardins Guinness e walk do José Menino à Ponta da Praia em three.js.">
+    <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-orla-3d/">
+    <meta name="author" content="Diogo Paulino">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Diogo Paulino · Labs">
+    <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-orla-3d/">
+    <meta property="og:title" content="Santos Orla 3D — digital twin navegável | Diogo Paulino">
+    <meta property="og:description"
+        content="Digital twin da orla santista: voo aéreo, walk pelos jardins e hotspots do José Menino à Ponta da Praia.">
+    <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+    <meta property="og:image:alt" content="Diogo Paulino">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Santos Orla 3D — digital twin navegável | Diogo Paulino">
+    <meta name="twitter:description"
+        content="Digital twin da orla santista: voo aéreo, walk pelos jardins e hotspots do José Menino à Ponta da Praia.">
+    <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="style.css?v=3">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Santos Orla 3D",
+          "url": "https://diogopaulino.com.br/labs/santos-orla-3d/",
+          "description": "Explore a orla de Santos como ela é hoje: visão aérea, canais 1–7, jardins Guinness e walk do José Menino à Ponta da Praia em three.js.",
+          "applicationCategory": "EntertainmentApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "pt-BR",
+          "isAccessibleForFree": true,
+          "author": {
+            "@type": "Person",
+            "name": "Diogo Paulino",
+            "url": "https://diogopaulino.com.br/"
+          },
+          "image": "https://diogopaulino.com.br/assets/img/diogo.jpeg"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Diogo Paulino",
+              "item": "https://diogopaulino.com.br/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Labs",
+              "item": "https://diogopaulino.com.br/labs/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Santos Orla 3D",
+              "item": "https://diogopaulino.com.br/labs/santos-orla-3d/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <main class="game-shell">
+        <header data-lab-header data-title="Santos Orla 3D" data-back-label="Labs">
+            <template data-slot="logo">
+                <div class="app-logo">
+                    <span class="brand-mark" aria-hidden="true">◈</span>
+                    <span>Santos Orla 3D</span>
+                </div>
+            </template>
+        </header>
+
+        <canvas id="scene" aria-label="Orla de Santos em 3D, do José Menino à Ponta da Praia"></canvas>
+        <div id="worldLabels" class="world-labels" aria-hidden="true"></div>
+
+        <div id="hud" class="hud" hidden>
+            <div class="hud-top">
+                <div class="panel place-panel">
+                    <span class="hud-label">Trecho</span>
+                    <strong id="beachName">Gonzaga</strong>
+                    <span id="beachMeta" class="meta">coração da orla</span>
+                </div>
+                <div class="panel spot-panel">
+                    <span class="hud-label">Agora</span>
+                    <strong id="placeName">Av. Bartolomeu de Gusmão</strong>
+                    <span id="placeBlurb" class="meta">Orla contínua</span>
+                </div>
+                <div class="panel clock-panel">
+                    <span class="hud-label">Camada viva</span>
+                    <strong id="clockValue" class="mono">--:--</strong>
+                    <span id="dayLabel" class="meta">Tarde</span>
+                </div>
+            </div>
+
+            <p id="introBanner" class="intro-banner" hidden>Visão aérea da orla de Santos</p>
+            <p id="hintBar" class="hint-bar" hidden></p>
+
+            <div class="hud-modes" id="hudModeOptions" role="toolbar" aria-label="Modo de visão">
+                <button type="button" class="chip" data-mode="tourist" aria-pressed="true">Turista</button>
+                <button type="button" class="chip" data-mode="resident">Morador</button>
+                <button type="button" class="chip" data-mode="map">Mapa</button>
+                <button type="button" class="chip" data-mode="cinematic">Drone</button>
+            </div>
+
+            <div class="hud-actions">
+                <button id="dayButton" class="icon-button" type="button" title="Hora do dia (L)"
+                    aria-label="Alternar hora do dia">☀</button>
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
+                    title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
+                    aria-label="Pausar">II</button>
+                <span id="fpsCounter" class="fps mono">—</span>
+                <span id="modeLabel" class="mode-pill">Turista</span>
+            </div>
+
+            <div id="touchControls" class="touch-controls" hidden>
+                <div id="moveStick" class="stick" aria-label="Andar">
+                    <span id="moveKnob" class="stick-knob"></span>
+                    <span class="stick-hint">andar</span>
+                </div>
+                <div id="lookPad" class="look-pad" aria-label="Olhar">
+                    <span class="stick-hint">olhar</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="overlay loading-overlay">
+            <div class="loading-card">
+                <span class="loading-mark" aria-hidden="true">◈</span>
+                <h1>Santos Orla 3D</h1>
+                <p id="loadingText">Mapeando a enseada…</p>
+                <div class="loading-bar"><i id="loadingFill"></i></div>
+            </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay menu-overlay" hidden>
+            <div class="overlay-card menu-card">
+                <header class="menu-head">
+                    <p class="eyebrow"><i></i> digital twin · three.js · orla contemporânea</p>
+                    <h1>Santos <span>Orla 3D</span></h1>
+                    <p class="lede">Comece no ar, desça até a praia e caminhe pelos jardins, canais e
+                        ciclovia — do José Menino à Ponta da Praia, como a cidade é hoje.</p>
+                </header>
+
+                <div id="factsStrip" class="facts-strip" aria-label="Números da orla"></div>
+
+                <div class="menu-grid">
+                    <section class="menu-section">
+                        <h2>Modo de visão</h2>
+                        <div id="modeOptions" class="chip-row" role="radiogroup" aria-label="Modo"></div>
+                        <p class="section-note">Turista destaca hotspots · Morador é walk limpo · Mapa e Drone sobem a câmera</p>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ir para</h2>
+                        <div id="landmarkList" class="hotspot-list"></div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Comandos</h2>
+                        <div class="keys">
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar</span>
+                            <span><kbd>←</kbd><kbd>→</kbd> ou <kbd>Q</kbd><kbd>E</kbd> virar</span>
+                            <span><kbd>Shift</kbd> correr · <kbd>T</kbd> modo · <kbd>L</kbd> hora do dia</span>
+                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                        </div>
+                    </section>
+
+                    <section class="menu-section">
+                        <h2>Ajustes</h2>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Qualidade</span>
+                                <select id="qualitySelect">
+                                    <option value="auto">Automática</option>
+                                    <option value="low">Performance</option>
+                                    <option value="medium">Equilibrada</option>
+                                    <option value="high">Cinemática</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Volume <b id="volumeValue">65</b></span>
+                                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="65">
+                            </label>
+                        </div>
+                        <p class="section-note">Base visual procedural alinhada à geografia real. Camadas dinâmicas: horário e iluminação.</p>
+                    </section>
+                </div>
+
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button" type="button">
+                        <span>Sobrevoar a orla</span>
+                        <i aria-hidden="true">↓</i>
+                    </button>
+                </footer>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> Pausa</p>
+                <h2>A maré espera.</h2>
+                <div class="card-actions">
+                    <button id="resumeButton" class="primary-button" type="button">
+                        <span>Continuar</span><i aria-hidden="true">→</i>
+                    </button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <h2>Não deu para abrir<br>a orla neste aparelho.</h2>
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                    atualizado ou reative a aceleração de hardware.</p>
+            </div>
+        </div>
+
+        <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
+    </main>
+
+    <script src="/labs/shared.js?v=14" defer></script>
+    <script type="module" src="src/main.js?v=3"></script>
+</body>
+
+</html>
