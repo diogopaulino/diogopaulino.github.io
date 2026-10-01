@@ -116,7 +116,7 @@ button {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 20;
+    z-index: 15;
     pointer-events: none;
 }
 
@@ -264,6 +264,7 @@ button {
     pointer-events: auto;
     max-width: min(96vw, 420px);
     padding: 0.3rem;
+    z-index: 25;
 }
 
 .hud-actions {

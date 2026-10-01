@@ -46,15 +46,22 @@ export function createCity(quality) {
     let wi = 0;
 
     for (let i = 0; i < count; i++) {
-        const x = (rand() - 0.5) * (ORLA_LENGTH - 30);
-        if (CANALS.some((c) => Math.abs(x - c.x) < c.width + 6)) {
-            // empurra para o lado
+        let x = (rand() - 0.5) * (ORLA_LENGTH - 30);
+        // Empurra para fora do canal
+        for (const c of CANALS) {
+            if (Math.abs(x - c.x) < c.width + 5) x += (x < c.x ? -1 : 1) * (c.width + 6);
         }
-        const row = rand() < 0.55 ? 0 : rand() < 0.75 ? 1 : 2;
-        const z = ZONES.buildings - row * 14 - rand() * 6;
-        const w = 4 + rand() * 7;
-        const d = 4 + rand() * 6;
-        const floors = 4 + Math.floor(rand() * (row === 0 ? 18 : 12));
+        // Fileira da frente (orla) mais densa e alta — o skyline clássico de Santos
+        const front = i < count * 0.55;
+        const row = front ? 0 : rand() < 0.6 ? 1 : 2;
+        const z = front
+            ? ZONES.buildings - rand() * 4
+            : ZONES.buildings - row * 14 - rand() * 6;
+        const w = front ? 5 + rand() * 8 : 4 + rand() * 7;
+        const d = front ? 5 + rand() * 5 : 4 + rand() * 6;
+        const floors = front
+            ? 8 + Math.floor(rand() * 16)
+            : 4 + Math.floor(rand() * 12);
         const h = floors * 2.8;
         p.set(x, 0, z);
         q.identity();
@@ -64,11 +71,10 @@ export function createCity(quality) {
         color.set(PALETTE[(rand() * PALETTE.length) | 0]);
         mesh.setColorAt(i, color);
 
-        // algumas janelas frontais
-        if (wi < windowCount - 2 && rand() > 0.35) {
+        if (wi < windowCount - 2 && (front || rand() > 0.4)) {
             for (let f = 2; f < floors; f += 2) {
                 if (wi >= windowCount) break;
-                if (rand() > 0.55) continue;
+                if (rand() > 0.5) continue;
                 p.set(x, f * 2.8 + 1.2, z + d * 0.51);
                 s.set(w * 0.55, 1.1, 1);
                 m.compose(p, q, s);

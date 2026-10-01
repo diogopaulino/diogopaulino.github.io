@@ -4,7 +4,29 @@
 
 import * as THREE from 'three';
 import { ORLA_LENGTH, ZONES, CANALS } from './config.js';
-import { seeded, makeNoiseTexture } from './utils.js';
+import { seeded } from './utils.js';
+
+/** Textura procedural só em tons de areia (evita mapa RGB “TV estática”). */
+function makeSandTexture(size = 128) {
+    const data = new Uint8Array(size * size * 4);
+    const rand = seeded(0xa5e);
+    for (let i = 0; i < size * size; i++) {
+        const n = rand();
+        const o = i * 4;
+        const r = 210 + Math.floor(n * 28);
+        const g = 185 + Math.floor(rand() * 22);
+        const b = 140 + Math.floor(rand() * 18);
+        data[o] = r;
+        data[o + 1] = g;
+        data[o + 2] = b;
+        data[o + 3] = 255;
+    }
+    const tex = new THREE.DataTexture(data, size, size);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+}
 
 function strip(width, depth, color, roughness = 0.9, metalness = 0) {
     const geo = new THREE.PlaneGeometry(width, depth);
@@ -20,39 +42,53 @@ function strip(width, depth, color, roughness = 0.9, metalness = 0) {
 
 function addPalms(group, count) {
     const rand = seeded(0xc0ffee);
-    const trunkGeo = new THREE.CylinderGeometry(0.12, 0.22, 5.2, 6);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.92 });
-    const crownGeo = new THREE.ConeGeometry(2.1, 2.4, 7);
-    const crownMat = new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.85 });
+    const trunkGeo = new THREE.CylinderGeometry(0.1, 0.2, 6.2, 7);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5a38, roughness: 0.92 });
+    // Copa em camadas (mais “palmeira imperial” do que cone único)
+    const frondGeo = new THREE.ConeGeometry(0.35, 2.8, 5, 1, true);
+    const crownMat = new THREE.MeshStandardMaterial({
+        color: 0x2d7a3c,
+        roughness: 0.78,
+        side: THREE.DoubleSide
+    });
+    const frondsPerTree = 6;
     const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
-    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, count);
-    trunks.castShadow = crowns.castShadow = true;
+    const fronds = new THREE.InstancedMesh(frondGeo, crownMat, count * frondsPerTree);
+    trunks.castShadow = fronds.castShadow = true;
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
+    const eul = new THREE.Euler();
     let i = 0;
+    let fi = 0;
     while (i < count) {
         const x = (rand() - 0.5) * (ORLA_LENGTH - 20);
-        // Evita plantar no meio dos canais
         if (CANALS.some((c) => Math.abs(x - c.x) < c.width + 3)) continue;
         const z = ZONES.gardenInner + 2 + rand() * (ZONES.gardenOuter - ZONES.gardenInner - 4);
-        const h = 0.85 + rand() * 0.45;
-        p.set(x, 2.6 * h, z);
+        const h = 0.9 + rand() * 0.5;
+        p.set(x, 3.1 * h, z);
         q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2);
-        s.set(h * 0.9, h, h * 0.9);
+        s.set(h * 0.85, h, h * 0.85);
         m.compose(p, q, s);
         trunks.setMatrixAt(i, m);
-        p.y = 5.2 * h + 0.4;
-        s.set(h, h * (0.85 + rand() * 0.3), h);
-        m.compose(p, q, s);
-        crowns.setMatrixAt(i, m);
+        const topY = 6.2 * h;
+        for (let f = 0; f < frondsPerTree; f++) {
+            const yaw = (f / frondsPerTree) * Math.PI * 2 + rand() * 0.2;
+            eul.set(-0.95 - rand() * 0.25, yaw, 0.15);
+            q.setFromEuler(eul);
+            p.set(x, topY - 0.2, z);
+            s.set(1.6 * h, h * (0.9 + rand() * 0.25), 1.6 * h);
+            m.compose(p, q, s);
+            fronds.setMatrixAt(fi++, m);
+        }
         i++;
     }
     trunks.instanceMatrix.needsUpdate = true;
-    crowns.instanceMatrix.needsUpdate = true;
-    group.add(trunks, crowns);
-    return { trunks, crowns };
+    fronds.count = fi;
+    fronds.instanceMatrix.needsUpdate = true;
+    group.add(trunks, fronds);
+    return { trunks, fronds };
 }
 
 function addShrubs(group, count) {
@@ -112,15 +148,20 @@ export function createOrla(quality) {
     const root = new THREE.Group();
     root.name = 'orla';
 
-    const sand = strip(ORLA_LENGTH + 40, ZONES.sandOuter - ZONES.gardenOuter + 4, 0xd8c29a, 0.98);
+    const sand = strip(ORLA_LENGTH + 40, ZONES.sandOuter - ZONES.gardenOuter + 4, 0xe6d2a8, 0.98);
     sand.position.set(0, 0.02, (ZONES.sandOuter + ZONES.gardenOuter) * 0.5);
     sand.receiveShadow = true;
-    // Micro variação na areia
-    const noise = makeNoiseTexture(64, 1);
-    sand.material.map = noise;
-    sand.material.map.repeat.set(40, 4);
-    sand.material.color.set(0xe2cd9f);
+    // Granulação de areia (tons de areia, não RGB barulhento)
+    sand.material.map = makeSandTexture();
+    sand.material.map.repeat.set(48, 6);
+    sand.material.roughnessMap = sand.material.map;
     root.add(sand);
+
+    // Faixa molhada perto da água
+    const wet = strip(ORLA_LENGTH + 30, 4.5, 0xc4b08a, 0.55, 0.08);
+    wet.position.set(0, 0.03, ZONES.sandOuter - 1.5);
+    wet.receiveShadow = true;
+    root.add(wet);
 
     const garden = strip(ORLA_LENGTH + 20, ZONES.gardenOuter - ZONES.gardenInner, 0x3f8f4a, 0.95);
     garden.position.set(0, 0.04, (ZONES.gardenOuter + ZONES.gardenInner) * 0.5);

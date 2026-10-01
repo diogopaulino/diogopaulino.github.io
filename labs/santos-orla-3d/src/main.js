@@ -33,7 +33,7 @@ class App {
         this.fpsFrames = 0;
         this.input = new Input();
         this.audio = new OrlaAudio();
-        this.player = new Player();
+        this.player = null;
         this.touchLookActive = false;
         this._landedOnce = false;
     }
@@ -97,6 +97,7 @@ class App {
         this.world = new World(this.scene, this.renderer, quality);
         this.world.build((p, text) => this.ui.setLoading(p, text));
 
+        this.player = new Player(this.scene);
         this.rig = new OrlaCamera(this.camera);
         this.dayStop = this.world.setDay(this.settings.day ?? 1);
         this.ui.setDay(this.dayStop);
@@ -142,19 +143,38 @@ class App {
         });
 
         const applyMode = (mode) => {
+            if (!VIEW_MODES[mode]) return;
             this.mode = mode;
             this.settings.mode = mode;
             this.saveSettings();
             this.ui.setMode(mode);
-            if (this.state === 'playing') this.rig.setMode(mode);
+            if (this.state === 'playing') {
+                this.rig.setMode(mode);
+                this.ui.setHint(mode === 'map'
+                    ? 'Vista mapa da orla inteira · clique Turista para voltar a caminhar'
+                    : mode === 'cinematic'
+                        ? 'Voo drone · T troca o modo'
+                        : detectTouch()
+                            ? 'Stick para andar · área direita para olhar'
+                            : 'WASD andar · ←→ virar · Shift correr · T modo · L hora do dia');
+            }
         };
 
-        document.querySelectorAll('#modeOptions, #hudModeOptions').forEach((row) => {
-            row?.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-mode]');
-                if (btn) applyMode(btn.dataset.mode);
-            });
+        // Delegação no shell — chips do menu e do HUD (evita overlap / rebind)
+        document.querySelector('.game-shell')?.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-mode]');
+            if (!btn || !btn.classList.contains('chip')) return;
+            e.preventDefault();
+            applyMode(btn.dataset.mode);
         });
+
+        // Esconde toque em ponteiro fino (VM às vezes reporta coarse)
+        const touch = document.getElementById('touchControls');
+        if (touch) {
+            const coarse = matchMedia('(pointer: coarse)').matches || (detectTouch() && detectMobile());
+            touch.hidden = !coarse;
+            touch.style.display = coarse ? '' : 'none';
+        }
 
         document.getElementById('landmarkList')?.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-goto]');
@@ -236,9 +256,7 @@ class App {
             if (e.code === 'KeyT' && this.state === 'playing') {
                 const ids = Object.keys(VIEW_MODES);
                 const next = ids[(ids.indexOf(this.mode) + 1) % ids.length];
-                this.mode = next;
-                this.ui.setMode(next);
-                this.rig.setMode(next);
+                applyMode(next);
             }
             if (e.code === 'KeyL' && this.state === 'playing') {
                 this.dayStop = this.world.cycleDay();
@@ -256,8 +274,7 @@ class App {
         if (vv) vv.textContent = String(this.settings.volume);
         this.ui.setMode(this.mode);
 
-        const touch = document.getElementById('touchControls');
-        if (touch) touch.hidden = !detectTouch();
+        // touch visibility already set above
     }
 
     start({ skipIntro = false } = {}) {
