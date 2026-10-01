@@ -132,7 +132,7 @@ export const VIEW_MODES = {
         hint: 'Vista aérea ortográfica da orla inteira',
         showLabels: true,
         showPath: true,
-        height: 220
+        height: 280
     },
     cinematic: {
         id: 'cinematic',
@@ -238,7 +238,7 @@ export const WALK = {
 };
 
 export const INTRO = {
-    duration: 11,
+    duration: 7.5,
     startY: 260,
     startZ: 90,
     endY: 2.4,

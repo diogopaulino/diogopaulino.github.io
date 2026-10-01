@@ -514,10 +514,29 @@ button {
     background: color-mix(in oklab, var(--sea-deep) 25%, transparent);
 }
 
+.menu-card {
+    display: flex;
+    flex-direction: column;
+}
+
 .menu-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.menu-foot {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    position: sticky;
+    bottom: 0;
+    padding-top: 0.75rem;
+    background: linear-gradient(to top, oklch(13% 0.03 230) 60%, transparent);
+    z-index: 2;
 }
 
 .menu-section h2 {
@@ -618,12 +637,6 @@ kbd {
     border: 1px solid var(--line-soft);
     background: var(--ink);
     padding: 0.45rem 0.6rem;
-}
-
-.menu-foot {
-    margin-top: 1.2rem;
-    display: flex;
-    justify-content: flex-end;
 }
 
 .primary-button,

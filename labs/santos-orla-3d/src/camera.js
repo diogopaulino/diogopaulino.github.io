@@ -62,11 +62,11 @@ export class OrlaCamera {
         }
 
         if (this.phase === 'map') {
-            const target = this._pos.set(player.x * 0.15, VIEW_MODES.map.height, 40);
-            this.camera.position.x = damp(this.camera.position.x, target.x, 3, dt);
-            this.camera.position.y = damp(this.camera.position.y, target.y, 3, dt);
-            this.camera.position.z = damp(this.camera.position.z, target.z, 3, dt);
-            this.lookTarget.set(player.x * 0.2, 0, 12);
+            const tx = player.x * 0.12;
+            this.camera.position.x = damp(this.camera.position.x, tx, 5, dt);
+            this.camera.position.y = damp(this.camera.position.y, VIEW_MODES.map.height, 5, dt);
+            this.camera.position.z = damp(this.camera.position.z, 18, 5, dt);
+            this.lookTarget.set(tx, 0, 14);
             this.camera.lookAt(this.lookTarget);
             return { introProgress: 1, landed: true };
         }
