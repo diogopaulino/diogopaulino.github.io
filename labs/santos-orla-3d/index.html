@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Santos Orla 3D — Explore a cidade e o mar | Diogo Paulino</title>
+  <meta name="description" content="Explore a orla de Santos por satélite, voe sobre seus bairros e conecte a cidade fotorrealista do Google para caminhar em primeira pessoa.">
+  <meta name="author" content="Diogo Paulino">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#091a23">
+  <link rel="canonical" href="https://diogopaulino.com.br/labs/santos-orla-3d/">
+  <link rel="icon" href="/favicon.ico">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diogo Paulino · Labs">
+  <meta property="og:url" content="https://diogopaulino.com.br/labs/santos-orla-3d/">
+  <meta property="og:title" content="Santos Orla 3D | Diogo Paulino">
+  <meta property="og:description" content="Do voo sobre a baía à caminhada pela orla. Uma exploração geográfica de Santos no navegador.">
+  <meta property="og:image" content="https://diogopaulino.com.br/labs/santos-orla-3d/cover.svg">
+  <meta property="og:image:alt" content="Mapa da orla de Santos, do José Menino à Ponta da Praia">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Santos Orla 3D | Diogo Paulino">
+  <meta name="twitter:description" content="Do voo sobre a baía à caminhada pela orla. Uma exploração geográfica de Santos no navegador.">
+  <meta name="twitter:image" content="https://diogopaulino.com.br/labs/santos-orla-3d/cover.svg">
+  <link rel="stylesheet" href="./style.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","name":"Santos Orla 3D","url":"https://diogopaulino.com.br/labs/santos-orla-3d/","applicationCategory":"TravelApplication","operatingSystem":"Web","author":{"@type":"Person","name":"Diogo Paulino"},"description":"Exploração geográfica da orla de Santos com satélite e integração de malha 3D fotorrealista."},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Diogo Paulino","item":"https://diogopaulino.com.br/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://diogopaulino.com.br/labs/"},{"@type":"ListItem","position":3,"name":"Santos Orla 3D","item":"https://diogopaulino.com.br/labs/santos-orla-3d/"}]}]}</script>
+</head>
+<body>
+  <main id="app">
+    <div id="globe" aria-label="Vista geográfica interativa de Santos"></div>
+    <div id="map-view" hidden><svg id="route-map" viewBox="0 0 1000 620" role="img" aria-label="Mapa esquemático da rota na orla de Santos"></svg></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="back" href="/labs/" aria-label="Voltar aos Labs">↖ <span>LABS</span></a>
+      <a class="brand" href="./">SANTOS<span>ORLA / 3D</span></a>
+      <div class="top-actions">
+        <button id="sound" class="icon-button" aria-label="Ativar som do mar" aria-pressed="false">♪</button>
+        <button id="share" class="icon-button" aria-label="Compartilhar este trecho">↗</button>
+        <button id="settings-open" class="icon-button" aria-label="Configurar cidade 3D">⚙</button>
+      </div>
+    </header>
+    <section class="intro" id="intro">
+      <p class="eyebrow"><span class="dot"></span> 23°58′ S &nbsp; 46°20′ W</p>
+      <h1>A cidade.<br>O mar.<br><em>Você.</em></h1>
+      <p class="intro-copy">Uma nova perspectiva da orla.<br>Do José Menino à Ponta da Praia.</p>
+      <button id="explore" class="primary">Explorar Santos <span>↗</span></button>
+      <p class="small" id="imagery-note">Imagens de satélite reais. Não são ao vivo.</p>
+    </section>
+    <aside class="places-panel" id="places-panel" hidden aria-label="Lugares da orla">
+      <div class="panel-heading"><div><p class="eyebrow">SEU PRÓXIMO DESTINO</p><h2>Pela orla</h2></div><button id="places-close" class="icon-button" aria-label="Fechar lugares">×</button></div>
+      <div class="perspectives" aria-label="Perspectiva"><button data-perspective="tourist" aria-pressed="true">Turista</button><button data-perspective="resident" aria-pressed="false">Morador</button></div>
+      <div id="places"></div>
+    </aside>
+    <aside class="place-detail" id="place-detail" hidden>
+      <button id="detail-close" class="icon-button" aria-label="Fechar detalhes">×</button>
+      <p class="eyebrow" id="place-type"></p><h2 id="place-name"></h2><p id="place-description"></p>
+      <a id="streetview" target="_blank" rel="noopener noreferrer">Ver fotos no Street View ↗</a>
+    </aside>
+    <div class="telemetry"><span id="source-badge">Conectando imagens</span><span id="weather">Santos · SP</span></div>
+    <div class="loading" id="loading" role="status"><span class="spinner"></span><span id="loading-text">Preparando a baía de Santos…</span></div>
+    <p class="toast" id="toast" role="status" hidden></p>
+    <section class="journey" aria-label="Navegação pela orla">
+      <div class="journey-heading"><span id="location">José Menino</span><span id="distance">0,0 km</span></div>
+      <label class="sr-only" for="progress">Posição ao longo da orla</label><input id="progress" type="range" min="0" max="1000" value="0" step="1">
+      <div class="endpoints"><span>JOSÉ MENINO</span><span>PONTA DA PRAIA</span></div>
+      <nav class="dock" aria-label="Modos de exploração">
+        <button data-mode="aerial" aria-pressed="true"><span>↗</span>Aérea</button>
+        <button data-mode="walk" aria-pressed="false"><span>↟</span>Caminhar</button>
+        <button data-mode="drone" aria-pressed="false"><span>▷</span>Drone</button>
+        <button data-mode="map" aria-pressed="false"><span>⌘</span>Mapa</button>
+        <button id="places-open" aria-expanded="false"><span>◎</span>Lugares</button>
+      </nav>
+    </section>
+    <div class="walk-controls" id="walk-controls" hidden aria-label="Controles da caminhada">
+      <button id="walk-back" aria-label="Caminhar para trás">↓</button><button id="walk-play" aria-label="Iniciar caminhada automática" aria-pressed="false">▶</button><button id="walk-forward" aria-label="Caminhar para frente">↑</button>
+      <span>W/S · andar &nbsp; A/D · olhar</span>
+    </div>
+    <button id="drone-pause" class="drone-pause" hidden aria-pressed="false">Pausar voo</button>
+    <footer class="credits"><a href="/">Diogo Paulino</a><button id="about-open">Fontes e atualização</button><span id="google-credit" hidden>Google Maps</span></footer>
+  </main>
+  <dialog id="settings"><form id="key-form">
+    <div class="panel-heading"><div><p class="eyebrow">CIDADE FOTORREALISTA</p><h2>Conectar o 3D real</h2></div><button type="button" data-close="settings" class="icon-button" aria-label="Fechar configurações">×</button></div>
+    <p>Para ver os edifícios, jardins e praia em 3D, conecte sua chave do Google Maps Platform.</p>
+    <label for="api-key">Chave da Map Tiles API</label><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Cole sua chave aqui">
+    <p class="small">A chave fica apenas nesta sessão. A API precisa estar habilitada, com faturamento e permissão para este domínio. A utilização pode gerar cobrança na sua conta Google.</p>
+    <button id="connect" class="primary" type="submit">Conectar cidade 3D <span>↗</span></button>
+    <button id="satellite" class="secondary" type="button">Usar apenas satélite</button>
+    <a href="https://developers.google.com/maps/documentation/tile/get-api-key" target="_blank" rel="noopener noreferrer">Como obter a chave ↗</a>
+    <p id="key-status" role="status" class="small"></p>
+  </form></dialog>
+  <dialog id="about"><div class="panel-heading"><h2>O que você está vendo</h2><button data-close="about" class="icon-button" aria-label="Fechar fontes">×</button></div>
+    <p>Uma exploração da Santos contemporânea. As imagens são atualizadas pelos provedores, sem garantia de captura no dia da visita.</p>
+    <ul><li><strong>Satélite:</strong> Esri World Imagery, sobre o globo terrestre. Não tem edifícios em relevo.</li><li><strong>3D real:</strong> Google Photorealistic 3D Tiles, quando conectado e disponível na região. A qualidade ao nível do pedestre depende da malha.</li><li><strong>Rota e lugares:</strong> referências geográficas da orla. O percurso é aproximado e não serve como orientação de trânsito ou acessibilidade.</li><li><strong>Clima:</strong> modelo meteorológico Open-Meteo, com horário da atualização. Não representa ocupação ou condições locais da praia.</li><li><strong>Som:</strong> ambientação de ondas sintetizada, não uma transmissão da praia.</li></ul>
+    <p>Fontes: <a href="https://www.turismosantos.com.br/" target="_blank" rel="noopener noreferrer">Turismo Santos</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>.</p>
+    <p>Inspirado no processo de pesquisa, módulos e revisão independente de <a href="https://www.rubenmarcus.dev/pt/blog/reconstruindo-1554-no-navegador" target="_blank" rel="noopener noreferrer">Ruben Marcus</a>.</p>
+    <p class="small">Privacidade: o app não pede localização, não tem analytics e não guarda sua chave. Provedores de mapas e clima recebem as requisições necessárias, incluindo IP; o Google recebe a chave informada. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacidade Google</a> · <a href="https://www.esri.com/en-us/privacy/privacy-statements/privacy-statement" target="_blank" rel="noopener noreferrer">Privacidade Esri</a>.</p>
+    <p class="small">Ao usar mapas Google, aplicam-se os <a href="https://www.google.com/intl/pt-BR/help/terms_maps/" target="_blank" rel="noopener noreferrer">Termos Google Maps</a>. Dados e imagens pertencem aos respectivos provedores.</p>
+  </dialog>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
