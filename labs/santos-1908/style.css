@@ -1,0 +1,590 @@
+/* ================================================================
+   Santos, 1908 — filme portuário cinematográfico
+   Paleta: ocre de armazém, aço de vapor, café, manhã de inverno.
+   ================================================================ */
+
+:root {
+    --ink: oklch(12% 0.02 70);
+    --ink-deep: oklch(8% 0.02 70);
+    --ochre: oklch(72% 0.1 75);
+    --ochre-deep: oklch(58% 0.1 65);
+    --foam: oklch(92% 0.02 85);
+    --sea: oklch(42% 0.06 210);
+    --steam: oklch(78% 0.02 80);
+
+    --text: oklch(95% 0.015 80);
+    --text-soft: oklch(82% 0.03 75);
+    --text-dim: oklch(64% 0.03 70);
+
+    --panel: color-mix(in oklab, oklch(16% 0.03 70) 62%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(12% 0.03 70) 88%, transparent);
+    --line: color-mix(in oklab, var(--ochre) 36%, transparent);
+    --line-soft: color-mix(in oklab, var(--foam) 14%, transparent);
+
+    --radius: 16px;
+    --radius-lg: 24px;
+    --blur: 20px;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: clip;
+    overscroll-behavior: none;
+    background: var(--ink-deep);
+}
+
+body {
+    min-height: 100dvh;
+    padding: 0 !important;
+    display: block !important;
+    align-items: stretch !important;
+    color: var(--text);
+    font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+button,
+input,
+select {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.game-shell {
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: clip;
+}
+
+.game-shell > header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    padding-top: var(--safe-top);
+    pointer-events: auto;
+}
+
+.app-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.brand-mark {
+    opacity: 0.85;
+}
+
+.stage {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(120% 80% at 50% 20%, oklch(28% 0.04 70), transparent 55%),
+        var(--ink-deep);
+}
+
+#scene {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+.vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at center, transparent 42%, oklch(6% 0.02 70 / 0.72) 100%);
+    z-index: 2;
+}
+
+.film-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.07;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* —— Título —— */
+.title-card {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    z-index: 12;
+    text-align: center;
+    pointer-events: none;
+    padding: 0 1.25rem;
+    max-width: min(92vw, 36rem);
+    animation: titleIn 1.2s var(--ease) both;
+}
+
+.title-kicker {
+    margin: 0 0 0.6rem;
+    font-size: clamp(0.72rem, 2.2vw, 0.85rem);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ochre);
+}
+
+.title-card h1 {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 650;
+    font-size: clamp(2.2rem, 8vw, 4.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--foam);
+    text-shadow: 0 8px 40px oklch(0% 0 0 / 0.45);
+}
+
+.title-sub {
+    margin: 0.55rem 0 0;
+    font-size: clamp(0.95rem, 2.8vw, 1.15rem);
+    color: var(--text-soft);
+    font-weight: 400;
+}
+
+.title-rule {
+    display: block;
+    width: 3.5rem;
+    height: 2px;
+    margin: 1.1rem auto 0;
+    background: linear-gradient(90deg, transparent, var(--ochre), transparent);
+}
+
+@keyframes titleIn {
+    from { opacity: 0; transform: translate(-50%, -46%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* —— HUD —— */
+.hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+    padding:
+        0.75rem
+        max(1rem, var(--safe-right))
+        max(0.9rem, calc(0.6rem + var(--safe-bottom)))
+        max(1rem, var(--safe-left));
+    pointer-events: none;
+    background: linear-gradient(to top, oklch(8% 0.02 70 / 0.75), transparent 70%);
+}
+
+.hud-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4rem 1rem;
+}
+
+.chapter {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1rem, 3.2vw, 1.25rem);
+    font-weight: 600;
+    color: var(--foam);
+    transition: opacity 0.35s var(--ease);
+}
+
+.chapter[data-flash='1'] {
+    opacity: 0.35;
+}
+
+.meta-row {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+.diegetic {
+    color: var(--ochre);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.hint {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    max-width: 40rem;
+}
+
+.dock {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    pointer-events: auto;
+}
+
+.dock-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-soft);
+    background: var(--panel);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    color: var(--text-soft);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.dock-btn:hover,
+.dock-btn:focus-visible {
+    border-color: var(--line);
+    color: var(--text);
+    outline: none;
+}
+
+.dock-btn.accent {
+    border-color: color-mix(in oklab, var(--ochre) 50%, transparent);
+    color: var(--ochre);
+}
+
+.dock-btn[aria-pressed='true'] {
+    color: var(--text-dim);
+}
+
+/* —— Overlays —— */
+.overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding:
+        max(1rem, calc(0.5rem + var(--safe-top)))
+        max(1rem, var(--safe-right))
+        max(1rem, calc(0.5rem + var(--safe-bottom)))
+        max(1rem, var(--safe-left));
+    background:
+        radial-gradient(ellipse at 30% 20%, oklch(28% 0.05 70 / 0.45), transparent 50%),
+        oklch(8% 0.02 70 / 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow-y: auto;
+    max-height: 100dvh;
+}
+
+.overlay[hidden] {
+    display: none !important;
+}
+
+.overlay-card {
+    width: min(100%, 34rem);
+    max-height: min(92dvh, 40rem);
+    overflow-y: auto;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+    box-shadow: 0 24px 80px oklch(0% 0 0 / 0.45);
+}
+
+.compact-card {
+    text-align: center;
+    max-width: 22rem;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.85rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ochre);
+}
+
+.eyebrow i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--ochre);
+    box-shadow: 0 0 12px var(--ochre);
+}
+
+.eyebrow--danger {
+    color: oklch(70% 0.15 25);
+}
+
+.eyebrow--danger i {
+    background: oklch(70% 0.15 25);
+    box-shadow: none;
+}
+
+.overlay-card h2 {
+    margin: 0 0 0.75rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 650;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.lede {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.lede a,
+.feature-list a {
+    color: var(--ochre);
+}
+
+.feature-list {
+    margin: 1.1rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.feature-list li {
+    position: relative;
+    padding-left: 1.1rem;
+    font-size: 0.88rem;
+    color: var(--text-soft);
+    line-height: 1.45;
+}
+
+.feature-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.45em;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--ochre-deep);
+}
+
+.settings-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+}
+
+.field select,
+.field input[type='range'] {
+    width: 100%;
+    min-height: 44px;
+}
+
+.field select {
+    border-radius: 10px;
+    border: 1px solid var(--line-soft);
+    background: oklch(10% 0.02 70);
+    padding: 0.5rem 0.75rem;
+}
+
+.card-actions {
+    margin-top: 1.35rem;
+}
+
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--ochre), var(--ochre-deep));
+    color: var(--ink);
+    font-weight: 650;
+    font-size: 0.95rem;
+    border: 0;
+    transition: transform 0.2s var(--ease), filter 0.2s;
+}
+
+.primary-button:hover,
+.primary-button:focus-visible {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    outline: none;
+}
+
+.load-bar {
+    margin-top: 1.25rem;
+    height: 3px;
+    border-radius: 99px;
+    background: var(--line-soft);
+    overflow: hidden;
+}
+
+.load-bar i {
+    display: block;
+    height: 100%;
+    width: 8%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--ochre-deep), var(--ochre));
+    transition: width 0.25s var(--ease);
+}
+
+.lab-foot {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 25;
+    pointer-events: none;
+}
+
+body[data-state='playing'] .lab-foot,
+body[data-state='paused'] .lab-foot,
+body[data-state='ready'] .lab-foot,
+body[data-state='boot'] .lab-foot {
+    display: none !important;
+}
+
+body[data-state='ready'] .loading-overlay {
+    display: none;
+}
+
+body[data-state='boot'] .hud,
+body[data-state='ready'] .hud {
+    display: none;
+}
+
+/* —— Responsivo —— */
+@media (max-width: 768px) {
+    .settings-row {
+        grid-template-columns: 1fr;
+    }
+
+    .hint {
+        display: none;
+    }
+
+    .hud {
+        gap: 0.4rem;
+    }
+
+    .overlay-card {
+        padding: 1.15rem;
+    }
+
+    .title-card {
+        top: 38%;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .title-card {
+        top: 32%;
+    }
+
+    .title-card h1 {
+        font-size: clamp(1.4rem, 6vh, 2rem);
+    }
+
+    .title-sub {
+        font-size: 0.85rem;
+    }
+
+    .hud {
+        padding-bottom: max(0.4rem, var(--safe-bottom));
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .hud-meta {
+        flex: 1 1 auto;
+    }
+
+    .dock {
+        flex: 0 0 auto;
+    }
+
+    .overlay-card {
+        max-height: min(88dvh, 28rem);
+        padding: 1rem 1.15rem;
+    }
+
+    .feature-list {
+        display: none;
+    }
+
+    .intro-card .lede {
+        font-size: 0.85rem;
+    }
+}
+
+@media (pointer: fine) {
+    .dock-btn:hover {
+        background: color-mix(in oklab, var(--panel) 70%, var(--ochre) 12%);
+    }
+}
