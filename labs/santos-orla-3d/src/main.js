@@ -1,6 +1,6 @@
 /**
  * Santos Orla 3D — laço principal.
- * Digital twin navegável: intro aérea → walk pela orla José Menino → Ponta da Praia.
+ * Reconstrução procedural navegável: intro aérea → walk pela orla José Menino → Ponta da Praia.
  */
 
 import * as THREE from 'three';
@@ -36,6 +36,7 @@ class App {
         this.player = null;
         this.touchLookActive = false;
         this._landedOnce = false;
+        this.pixelRatio = 1;
     }
 
     loadSettings() {
@@ -57,8 +58,14 @@ class App {
     resolveQuality() {
         const choice = this.settings.quality;
         if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
-        return Math.min(window.innerWidth, window.innerHeight) >= 900 ? QUALITY.high : QUALITY.medium;
+
+        const memory = navigator.deviceMemory || 8;
+        const cores = navigator.hardwareConcurrency || 8;
+        const shortSide = Math.min(window.innerWidth, window.innerHeight);
+
+        if (detectMobile() || detectSoftwareGL() || memory <= 4 || cores <= 4) return QUALITY.low;
+        if (memory >= 8 && cores >= 8 && shortSide >= 900) return QUALITY.high;
+        return QUALITY.medium;
     }
 
     async init() {
@@ -78,8 +85,8 @@ class App {
             return;
         }
 
-        const pr = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
-        this.renderer.setPixelRatio(pr);
+        this.pixelRatio = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
+        this.renderer.setPixelRatio(this.pixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         configureCinematicRenderer(this.renderer, {
             exposure: 1.05,
@@ -95,7 +102,11 @@ class App {
         } catch { /* RoomEnvironment opcional */ }
 
         this.world = new World(this.scene, this.renderer, quality);
-        this.world.build((p, text) => this.ui.setLoading(p, text));
+        this.world.build((p, text) => this.ui.setLoading(p * 0.9, text));
+
+        this.ui.setLoading(0.94, 'Compilando shaders…');
+        await this.renderer.compileAsync(this.scene, this.camera);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
 
         this.player = new Player(this.scene);
         this.rig = new OrlaCamera(this.camera);
@@ -333,6 +344,22 @@ class App {
         this.renderer.setSize(w, h, false);
     };
 
+    adaptResolution(fps) {
+        if (this.settings.quality !== 'auto') return;
+
+        const minPr = 0.75;
+        const maxPr = this.quality.pixelRatio;
+        let next = this.pixelRatio;
+
+        if (fps < 38) next = Math.max(minPr, next - 0.1);
+        else if (fps > 56) next = Math.min(maxPr, next + 0.05);
+
+        if (Math.abs(next - this.pixelRatio) < 0.04) return;
+        this.pixelRatio = next;
+        this.renderer.setPixelRatio(this.pixelRatio);
+        this.onResize();
+    }
+
     nearestLandmark() {
         let best = null;
         let dist = Infinity;
@@ -395,7 +422,9 @@ class App {
         this.fpsAccum += dt;
         this.fpsFrames++;
         if (this.fpsAccum >= 0.5) {
-            this.ui.setFps(Math.round(this.fpsFrames / this.fpsAccum));
+            const fps = this.fpsFrames / this.fpsAccum;
+            this.ui.setFps(Math.round(fps));
+            this.adaptResolution(fps);
             this.fpsAccum = 0;
             this.fpsFrames = 0;
         }
