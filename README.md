@@ -40,7 +40,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
-| ◈ **[Santos Orla 3D](https://diogopaulino.com.br/labs/santos-orla-3d/)** | Digital twin da orla — voo aéreo, walk pelos jardins e canais 1–7, José Menino → Ponta da Praia |
+| ◈ **[Santos Orla 3D](https://diogopaulino.com.br/labs/santos-orla-3d/)** | Reconstrução procedural da orla — voo aéreo, walk pelos jardins e canais 1–7, José Menino → Ponta da Praia |
 | ♟️ **[Xadrez](https://diogopaulino.com.br/labs/xadrez/)** | Atelier 3D — peças Staunton de marfim e ébano, reflexos e um mestre que ensina a jogar |
 | 🐎 **[Rastro Vermelho](https://diogopaulino.com.br/labs/rastro-vermelho/)** | Faroeste 3D hiper-realista — humanoides PBR, galope por serras, cânions e pradarias |
 | ★ **[Cúpola 64](https://diogopaulino.com.br/labs/cupola-64/)** | Platformer 3D cinematográfico — Nico, câmera orbital, pulo triplo e sete estrelas no vitral |
