@@ -124,20 +124,8 @@ function bindUi() {
 
     document.addEventListener('keydown', (e) => {
         if (e.target.matches('input, select, textarea')) return;
-        const key = e.key.toLowerCase();
-        if (key === 'm') $('#muteBtn')?.click();
-        if (key === 'n') $('#btnNewHand')?.click();
-        if (key === 'f') $('button[data-action="fold"]')?.click();
-        if (key === 'c') ($('button[data-action="check"]') || $('button[data-action="call"]'))?.click();
-        if (key === 'r') ($('button[data-action="raise"]') || $('button[data-action="bet"]'))?.click();
-        if (key === 'a') {
-            const allInChip = $('.size-chip[data-frac="allin"]') || $('.size-chip:last-of-type');
-            allInChip?.click();
-        }
-        if (key === ' ' || key === 'enter') {
-            const nextBtn = $('button[data-action="nexthand"]') || $('#btnNewHand');
-            if (nextBtn && !nextBtn.hidden) nextBtn.click();
-        }
+        if (e.key === 'm' || e.key === 'M') $('#muteBtn')?.click();
+        if (e.key === 'n' || e.key === 'N') $('#btnNewHand')?.click();
     });
 
     // Micro parallax leve na mesa (desktop)

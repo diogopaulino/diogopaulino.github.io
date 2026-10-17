@@ -482,13 +482,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     flagToggle?.addEventListener('click', () => setFlagMode(!flagMode));
 
-    /* F alterna o modo pelo teclado, R reinicia a partida */
+    /* F alterna o modo pelo teclado — o equivalente do botão direito para quem
+       joga no notebook sem mouse. */
     document.addEventListener('keydown', (e) => {
-        if (e.target.closest('input, select, textarea')) return;
         if (e.key === 'f' || e.key === 'F') {
+            if (e.target.closest('input, select, textarea')) return;
             setFlagMode(!flagMode);
-        } else if (e.key === 'r' || e.key === 'R') {
-            initGame();
         }
     });
 

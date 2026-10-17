@@ -390,21 +390,6 @@
 
         drawMessages(colors);
 
-        if (pulses.length > 0) {
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            for (let p = 0; p < pulses.length; p++) {
-                const pulse = pulses[p];
-                ctx.strokeStyle = colors.glow;
-                ctx.lineWidth = 3.5 * pulse.life;
-                ctx.globalAlpha = pulse.life * 0.8;
-                ctx.beginPath();
-                ctx.arc(pulse.x, pulse.y, pulse.r, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-            ctx.restore();
-        }
-
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1;
 

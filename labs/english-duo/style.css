@@ -1808,36 +1808,3 @@ body {
     .question-text { padding-right: 0; padding-bottom: 3rem; }
     .btn-speak { top: auto; bottom: 0; }
 }
-
-/* agent-responsive-768 */
-@media (max-width: 768px) {
-  html, body { overflow-x: clip; }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .container {
-        padding-top: max(0.4rem, env(safe-area-inset-top));
-        padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
-        padding-left: max(0.8rem, env(safe-area-inset-left));
-        padding-right: max(0.8rem, env(safe-area-inset-right));
-    }
-    .game-header {
-        margin-bottom: 0.5rem;
-    }
-    .question-card {
-        padding: 0.65rem 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-    .question-text {
-        font-size: 1rem;
-    }
-    .options-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-    }
-    .option-card {
-        min-height: 44px;
-        padding: 0.45rem 0.75rem;
-        font-size: 0.95rem;
-    }
-}

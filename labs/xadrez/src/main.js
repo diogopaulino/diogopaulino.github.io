@@ -554,9 +554,9 @@ class Atelier {
         this.renderDirty = true;
         if (!this.drag.active) { this.updateHover(); return; }
         if (!this.drag.mesh || Math.hypot(e.clientX - this.drag.x, e.clientY - this.drag.y) < 8) return;
+        this.canvas.classList.add('is-dragging');
         const ray = this.scene.createPickingRay(this.pointerX, this.pointerY, window.BABYLON.Matrix.Identity(), this.camera);
-        if (!this._dragPlane) this._dragPlane = new window.BABYLON.Plane(0, 1, 0, -0.3);
-        const distance = ray.intersectsPlane(this._dragPlane);
+        const distance = ray.intersectsPlane(new window.BABYLON.Plane(0, 1, 0, -0.3));
         if (distance !== null && distance >= 0) {
             const pt = ray.origin.add(ray.direction.scale(distance));
             this.drag.mesh.position.set(Math.max(-4.2, Math.min(4.2, pt.x)), 0.3, Math.max(-4.2, Math.min(4.2, pt.z)));

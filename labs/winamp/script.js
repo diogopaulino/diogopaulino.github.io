@@ -839,8 +839,6 @@ function drawIdleVisualizer() {
     canvasCtx.globalAlpha = 1;
 }
 
-const peakCaps = new Float32Array(24);
-
 function drawVisualizer() {
     visFrame = requestAnimationFrame(drawVisualizer);
     if (!audio.analyser) return;
@@ -864,22 +862,9 @@ function drawVisualizer() {
             for (let j = from; j < to; j++) sum += freqData[j];
             const level = sum / (to - from) / 255;
             const barHeight = Math.max(height * 0.04, level * height);
-
-            if (barHeight >= peakCaps[i]) {
-                peakCaps[i] = barHeight;
-            } else {
-                peakCaps[i] = Math.max(0, peakCaps[i] - 0.75);
-            }
-
             canvasCtx.fillStyle = fg;
             canvasCtx.globalAlpha = 0.35 + level * 0.65;
             canvasCtx.fillRect(i * (barWidth + gap), height - barHeight, barWidth, barHeight);
-
-            // Tampa de pico (peak-hold cap) clássica do Winamp
-            if (peakCaps[i] > 1.5) {
-                canvasCtx.globalAlpha = 0.95;
-                canvasCtx.fillRect(i * (barWidth + gap), Math.max(0, height - peakCaps[i]), barWidth, 1.5);
-            }
         }
         canvasCtx.globalAlpha = 1;
     } else if (state.visMode === "scope") {
@@ -1098,15 +1083,14 @@ function applySkin(key) {
 }
 
 function fitPlayer() {
-    const compact = window.matchMedia("(max-width: 760px)").matches;
-    const stageWidth = compact ? 550 : 1100;
-    const stageHeight = compact ? 783 : 464;
+    const stageWidth = isCompact ? 550 : 1100;
+    const stageHeight = isCompact ? 783 : 464;
     /* Precisa bater com os insets de `.player-workspace` no CSS: a conta antiga
        descontava a trilha de ícones e mais 18px de folga que o layout já não
        reservava, e o player saía menor do que cabia. Com o player a 0,5x cada
        botão do transporte tem 20px de dedo, então cada ponto de escala conta. */
-    const iconRail = compact ? 77 : 132;
-    const gutter = compact ? 7 : 18;
+    const iconRail = isCompact ? 77 : 132;
+    const gutter = isCompact ? 7 : 18;
     const horizontalRoom = Math.max(260, window.innerWidth - iconRail - gutter);
     const verticalRoom = Math.max(250, window.innerHeight - 58);
     const scale = Math.min(1, horizontalRoom / stageWidth, verticalRoom / stageHeight);
@@ -1222,20 +1206,7 @@ function bindEqualizer() {
         ensureAudio();
         applyEq();
     });
-    ui.eqBands.addEventListener("dblclick", (e) => {
-        const slider = e.target.closest("input[data-band]");
-        if (slider) {
-            slider.value = "0";
-            ensureAudio();
-            applyEq();
-        }
-    });
     ui.preamp.addEventListener("input", () => {
-        ensureAudio();
-        applyEq();
-    });
-    ui.preamp.addEventListener("dblclick", () => {
-        ui.preamp.value = "0";
         ensureAudio();
         applyEq();
     });

@@ -418,14 +418,14 @@ function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(rect.width * dpr));
     const h = Math.max(1, Math.round(rect.height * dpr));
-    if (canvas.width !== w || canvas.height !== h || !chart.ctx) {
+    if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
-        chart.width = rect.width;
-        chart.height = rect.height;
-        chart.ctx = canvas.getContext('2d');
-        chart.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+    chart.width = rect.width;
+    chart.height = rect.height;
+    chart.ctx = canvas.getContext('2d');
+    chart.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 function xOf(t) {

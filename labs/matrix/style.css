@@ -1066,13 +1066,3 @@ body.cinema.pointer-idle .cinema-exit {
     .glyph-btn { min-height: var(--touch-target, 44px); }
     .mini-btn { width: var(--touch-target, 44px); min-height: var(--touch-target, 44px); }
 }
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .controls-panel {
-        max-height: 94dvh;
-    }
-    .hud {
-        top: max(0.4rem, env(safe-area-inset-top, 0px));
-        font-size: 0.72rem;
-    }
-}
