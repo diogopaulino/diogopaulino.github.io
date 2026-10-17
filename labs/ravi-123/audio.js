@@ -208,3 +208,8 @@ export const Audio = {
     if (ctx && ctx.state === 'suspended') ctx.resume();
   }
 };
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) Audio.suspend();
+  else Audio.resume();
+});

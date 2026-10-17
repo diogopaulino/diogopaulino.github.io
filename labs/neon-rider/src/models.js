@@ -392,11 +392,82 @@ export function createBike(mats) {
     armR.rotation.z = 0.35;
     armL.castShadow = armR.castShadow = true;
     rider.add(armL, armR);
+
+    // Pernas e botas do piloto dobradas sobre as pedaleiras
+    const legGeo = limbGeometry({ length: 0.42, r0: 0.05, r1: 0.035, bulge: 0.012, seg: 10, rings: 8 });
+    const bootGeo = new THREE.BoxGeometry(0.08, 0.09, 0.16);
+    for (const sx of [-1, 1]) {
+        const leg = new THREE.Mesh(legGeo, suit);
+        leg.position.set(sx * 0.18, 0.9, -0.22);
+        leg.rotation.x = -0.75;
+        leg.rotation.z = sx * -0.25;
+        const boot = new THREE.Mesh(bootGeo, suit);
+        boot.position.set(sx * 0.22, 0.55, -0.38);
+        boot.rotation.x = -0.3;
+        leg.castShadow = boot.castShadow = true;
+        rider.add(leg, boot);
+    }
     lean.add(rider);
 
     root.userData = { lean, wheels, glow, paint, head, tail };
     return root;
 }
+
+const SEDAN_GEO = (() => {
+    const pts = [
+        new THREE.Vector2(0.35, -2.05),
+        new THREE.Vector2(0.72, -1.7),
+        new THREE.Vector2(0.82, -0.4),
+        new THREE.Vector2(0.78, 0.9),
+        new THREE.Vector2(0.55, 1.7),
+        new THREE.Vector2(0.22, 2.05)
+    ];
+    const g = new THREE.LatheGeometry(pts, 32);
+    g.rotateX(Math.PI / 2);
+    g.scale(0.95, 0.58, 1);
+    return g;
+})();
+
+const VAN_GEO = (() => {
+    const pts = [
+        new THREE.Vector2(0.55, -2.2),
+        new THREE.Vector2(0.85, -1.6),
+        new THREE.Vector2(0.9, 0.2),
+        new THREE.Vector2(0.85, 1.5),
+        new THREE.Vector2(0.5, 2.1)
+    ];
+    const g = new THREE.LatheGeometry(pts, 28);
+    g.rotateX(Math.PI / 2);
+    g.scale(0.95, 0.75, 1);
+    return g;
+})();
+
+const COUPE_GEO = (() => {
+    const pts = [
+        new THREE.Vector2(0.28, -1.75),
+        new THREE.Vector2(0.68, -1.35),
+        new THREE.Vector2(0.75, -0.2),
+        new THREE.Vector2(0.7, 0.9),
+        new THREE.Vector2(0.4, 1.45),
+        new THREE.Vector2(0.15, 1.75)
+    ];
+    const g = new THREE.LatheGeometry(pts, 28);
+    g.rotateX(Math.PI / 2);
+    g.scale(0.92, 0.48, 1);
+    return g;
+})();
+
+const CAR_LAMP_GEO = (() => {
+    const g = new THREE.LatheGeometry([
+        new THREE.Vector2(0.015, 0),
+        new THREE.Vector2(0.055, 0.015),
+        new THREE.Vector2(0.07, 0.04),
+        new THREE.Vector2(0.055, 0.07),
+        new THREE.Vector2(0.02, 0.09)
+    ], 14);
+    g.rotateX(Math.PI / 2);
+    return g;
+})();
 
 export function createCar(mats, kind = 0) {
     const g = new THREE.Group();
@@ -411,19 +482,8 @@ export function createCar(mats, kind = 0) {
     });
 
     if (kind % 3 === 0) {
-        // Sedã — perfil lathe (comprimento ~4.2)
-        const sedanPts = [
-            new THREE.Vector2(0.35, -2.05),
-            new THREE.Vector2(0.72, -1.7),
-            new THREE.Vector2(0.82, -0.4),
-            new THREE.Vector2(0.78, 0.9),
-            new THREE.Vector2(0.55, 1.7),
-            new THREE.Vector2(0.22, 2.05)
-        ];
-        const sedanGeo = new THREE.LatheGeometry(sedanPts, 32);
-        sedanGeo.rotateX(Math.PI / 2);
-        sedanGeo.scale(0.95, 0.58, 1);
-        const sedan = new THREE.Mesh(sedanGeo, body);
+        // Sedã
+        const sedan = new THREE.Mesh(SEDAN_GEO, body);
         sedan.name = 'carBody';
         sedan.position.y = 0.55;
         sedan.castShadow = true;
@@ -436,17 +496,7 @@ export function createCar(mats, kind = 0) {
         g.add(fender);
     } else if (kind % 3 === 1) {
         // Van / wagon
-        const vanPts = [
-            new THREE.Vector2(0.55, -2.2),
-            new THREE.Vector2(0.85, -1.6),
-            new THREE.Vector2(0.9, 0.2),
-            new THREE.Vector2(0.85, 1.5),
-            new THREE.Vector2(0.5, 2.1)
-        ];
-        const vanGeo = new THREE.LatheGeometry(vanPts, 28);
-        vanGeo.rotateX(Math.PI / 2);
-        vanGeo.scale(0.95, 0.75, 1);
-        const van = new THREE.Mesh(vanGeo, body);
+        const van = new THREE.Mesh(VAN_GEO, body);
         van.name = 'carBody';
         van.position.y = 0.75;
         van.castShadow = true;
@@ -458,18 +508,7 @@ export function createCar(mats, kind = 0) {
         g.add(cabin);
     } else {
         // Coupé baixo
-        const coupePts = [
-            new THREE.Vector2(0.28, -1.75),
-            new THREE.Vector2(0.68, -1.35),
-            new THREE.Vector2(0.75, -0.2),
-            new THREE.Vector2(0.7, 0.9),
-            new THREE.Vector2(0.4, 1.45),
-            new THREE.Vector2(0.15, 1.75)
-        ];
-        const coupeGeo = new THREE.LatheGeometry(coupePts, 28);
-        coupeGeo.rotateX(Math.PI / 2);
-        coupeGeo.scale(0.92, 0.48, 1);
-        const coupe = new THREE.Mesh(coupeGeo, body);
+        const coupe = new THREE.Mesh(COUPE_GEO, body);
         coupe.name = 'carBody';
         coupe.position.y = 0.48;
         coupe.castShadow = true;
@@ -477,16 +516,8 @@ export function createCar(mats, kind = 0) {
         g.add(mesh(SPH, mats.glass, 0.75, 0.28, 1.2, 0, 0.82, 0.1));
     }
 
-    const lampGeo = new THREE.LatheGeometry([
-        new THREE.Vector2(0.015, 0),
-        new THREE.Vector2(0.055, 0.015),
-        new THREE.Vector2(0.07, 0.04),
-        new THREE.Vector2(0.055, 0.07),
-        new THREE.Vector2(0.02, 0.09)
-    ], 14);
-    lampGeo.rotateX(Math.PI / 2);
     const addLamp = (mat, x, y, z, rear) => {
-        const m = new THREE.Mesh(lampGeo, mat);
+        const m = new THREE.Mesh(CAR_LAMP_GEO, mat);
         m.name = 'carLamp';
         m.position.set(x, y, z);
         m.scale.set(2.2, 0.9, 1);

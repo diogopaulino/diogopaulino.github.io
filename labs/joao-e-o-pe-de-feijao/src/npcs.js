@@ -43,6 +43,14 @@ export class CowAI {
         if (this.group.userData?.parts?.head) {
             this.group.userData.parts.head.rotation.x = Math.sin(this.phase * 2) * 0.08;
         }
+        if (this.group.userData?.parts?.legs) {
+            const legs = this.group.userData.parts.legs;
+            const swing = Math.sin(this.phase) * 0.35;
+            if (legs[0]) legs[0].rotation.x = swing;
+            if (legs[1]) legs[1].rotation.x = -swing;
+            if (legs[2]) legs[2].rotation.x = -swing;
+            if (legs[3]) legs[3].rotation.x = swing;
+        }
     }
 }
 

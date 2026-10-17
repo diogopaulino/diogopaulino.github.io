@@ -123,12 +123,21 @@ export function buildWorld(B, scene, tex, quality) {
     const table = bevelBox(B, 'table_top', 12.8, 0.5, 12, 0.16, scene);
     table.position.y = -0.6; table.material = tableMat; table.receiveShadows = true;
     const apron = bevelBox(B, 'table_apron', 12.2, 1.2, 11.4, 0.1, scene);
-    apron.position.y = -1.35; apron.material = frameMat;
+    const legShape = [
+        new B.Vector3(0.42, 0, 0),
+        new B.Vector3(0.42, 1.4, 0),
+        new B.Vector3(0.52, 2.4, 0),
+        new B.Vector3(0.38, 3.8, 0),
+        new B.Vector3(0.48, 5.2, 0),
+        new B.Vector3(0.32, 7.8, 0),
+        new B.Vector3(0.38, 10.4, 0),
+        new B.Vector3(0.24, 12.2, 0)
+    ];
     for (const x of [-5.3, 5.3]) for (const z of [-4.8, 4.8]) {
-        const leg = B.MeshBuilder.CreateCylinder('table_leg', {
-            height: 12.2, diameterTop: 0.65, diameterBottom: 0.38, tessellation: 20
+        const leg = B.MeshBuilder.CreateLathe('table_leg', {
+            shape: legShape, tessellation: 24, sideOrientation: B.Mesh.DOUBLESIDE
         }, scene);
-        leg.position.set(x, -7.4, z); leg.material = frameMat; leg.isPickable = false;
+        leg.position.set(x, -13.5, z); leg.material = frameMat; leg.isPickable = false;
     }
     const floorMat = makePhysMat(B, 'oak_floor', scene, tex.mahogany, {
         roughness: 0.95, color: new B.Color3(0.6, 0.59, 0.56), environmentIntensity: 0.08

@@ -480,7 +480,10 @@ export function buildCow(scene) {
         ear.position.set(sx * 0.2, 0.08, -0.08);
         const eye = limb(scene, `cowEye_${i}`, 'sphere', { diameter: 0.055, segments: 6 }, std(scene, 0x1a140e, 0.35), head, 0.06);
         eye.position.set(sx * 0.1, 0.06, 0.16);
+    });
 
+    const legs = [];
+    [-1, 1].forEach((sx, i) => {
         const legF = limb(scene, `cowLegF_${i}`, 'capsule', {
             height: 0.5, radius: 0.065, tessellation: 6
         }, hide, root, 0.26);
@@ -491,6 +494,7 @@ export function buildCow(scene) {
         legB.position.set(sx * 0.22, 0.26, -0.22);
         limb(scene, `cowHoofF_${i}`, 'sphere', { diameter: 0.12, segments: 5 }, hoof, legF, -0.26);
         limb(scene, `cowHoofB_${i}`, 'sphere', { diameter: 0.12, segments: 5 }, hoof, legB, -0.26);
+        legs.push(legF, legB);
     });
 
     const udder = limb(scene, 'cowUdder', 'sphere', { diameter: 0.22, segments: 8 }, pink, root, 0.28);
@@ -499,7 +503,7 @@ export function buildCow(scene) {
     tail.position.z = -0.5;
     tail.rotation.x = 0.55;
 
-    root.userData = { parts: { head } };
+    root.userData = { parts: { head, legs } };
     return root;
 }
 
@@ -833,11 +837,18 @@ export function buildCastle(scene) {
 export function buildTable(scene) {
     const root = new B.TransformNode('tableRoot', scene);
     const wood = surf(scene, 'wood');
-    limb(scene, 'tableTop', 'box', { width: 8, height: 0.32, depth: 4.2 }, wood, root, 1.8);
-    [-3.4, 3.4].forEach((sx) => {
-        [-1.6, 1.6].forEach((sz) => {
-            const leg = limb(scene, 'tableLeg', 'box', { width: 0.28, height: 1.8, depth: 0.28 }, wood, root, 0.9);
+    limb(scene, 'tableTop', 'box', { width: 8.2, height: 0.36, depth: 4.4 }, wood, root, 1.82);
+    // Moldura chanfrada sob o tampo
+    limb(scene, 'tableApron', 'box', { width: 7.6, height: 0.22, depth: 3.8 }, wood, root, 1.6);
+    [-3.3, 3.3].forEach((sx) => {
+        [-1.5, 1.5].forEach((sz) => {
+            const leg = limb(scene, 'tableLeg', 'cylinder', {
+                height: 1.8, diameterTop: 0.32, diameterBottom: 0.22, tessellation: 12
+            }, wood, root, 0.9);
             leg.position.set(sx, 0.9, sz);
+            const collar = limb(scene, 'tableLegCollar', 'cylinder', {
+                height: 0.12, diameter: 0.38, tessellation: 12
+            }, wood, leg, 0.65);
         });
     });
     return root;
@@ -852,18 +863,22 @@ export function buildGoldBag(scene) {
         mapKey: 'gold'
     });
     const sack = surf(scene, 'leather', 0x8a6a20, { roughness: 0.7 });
+    // Saco abaulado com pregas
     limb(scene, 'goldBagMesh', 'sphere', {
-        diameterX: 0.78, diameterY: 0.9, diameterZ: 0.78, segments: 12
-    }, goldMat, root, 0);
-    limb(scene, 'goldBagNeck', 'cylinder', {
-        height: 0.22, diameterTop: 0.22, diameterBottom: 0.36, tessellation: 8
-    }, sack, root, 0.44);
-    for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
+        diameterX: 0.84, diameterY: 0.88, diameterZ: 0.84, segments: 14
+    }, sack, root, 0);
+    limb(scene, 'goldBagTop', 'cylinder', {
+        height: 0.28, diameterTop: 0.42, diameterBottom: 0.2, tessellation: 10
+    }, sack, root, 0.46);
+    limb(scene, 'goldBagRope', 'torus', {
+        diameter: 0.24, thickness: 0.05, tessellation: 12
+    }, std(scene, 0xd0b880, 0.8), root, 0.36);
+    for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
         const coin = limb(scene, `coin_${i}`, 'cylinder', {
-            height: 0.04, diameter: 0.14, tessellation: 10
-        }, goldMat, root, 0.18);
-        coin.position.set(Math.cos(a) * 0.22, 0.18 + (i % 2) * 0.08, Math.sin(a) * 0.22);
+            height: 0.04, diameter: 0.15, tessellation: 12
+        }, goldMat, root, 0.2);
+        coin.position.set(Math.cos(a) * 0.24, 0.2 + (i % 2) * 0.08, Math.sin(a) * 0.24);
         coin.rotation.x = Math.PI / 2;
     }
     return root;
@@ -877,29 +892,40 @@ export function buildHen(scene) {
         emissiveIntensity: 0.38,
         mapKey: 'gold'
     });
+    const orange = std(scene, 0xf08020, 0.5, 0.2);
     limb(scene, 'henBody', 'sphere', {
-        diameterX: 0.68, diameterY: 0.5, diameterZ: 0.54, segments: 12
-    }, gold, root, 0.3);
-    const head = limb(scene, 'henHead', 'sphere', { diameter: 0.26, segments: 8 }, gold, root, 0.52);
+        diameterX: 0.7, diameterY: 0.52, diameterZ: 0.54, segments: 14
+    }, gold, root, 0.38);
+    const head = limb(scene, 'henHead', 'sphere', { diameter: 0.28, segments: 10 }, gold, root, 0.6);
     head.position.x = 0.24;
     const beak = limb(scene, 'henBeak', 'cylinder', {
-        height: 0.12, diameterTop: 0.01, diameterBottom: 0.07, tessellation: 6
-    }, std(scene, 0xffaa33, 0.4, 0.45), root, 0.5);
-    beak.position.x = 0.38;
+        height: 0.14, diameterTop: 0.01, diameterBottom: 0.08, tessellation: 8
+    }, orange, root, 0.58);
+    beak.position.x = 0.4;
     beak.rotation.z = -Math.PI / 2;
-    const comb = limb(scene, 'henComb', 'sphere', { diameter: 0.12, segments: 6 }, std(scene, 0xff5533, 0.5), root, 0.66);
-    comb.position.x = 0.2;
+    const comb = limb(scene, 'henComb', 'sphere', { diameter: 0.13, segments: 8 }, std(scene, 0xff4422, 0.5), root, 0.74);
+    comb.position.x = 0.22;
     [-1, 1].forEach((sx) => {
         const wing = limb(scene, 'henWing', 'sphere', {
-            diameterX: 0.3, diameterY: 0.18, diameterZ: 0.08, segments: 8
-        }, gold, root, 0.32);
-        wing.position.set(-0.04, 0.32, sx * 0.24);
+            diameterX: 0.34, diameterY: 0.2, diameterZ: 0.09, segments: 10
+        }, gold, root, 0.38);
+        wing.position.set(-0.04, 0.38, sx * 0.26);
+
+        // Pernas e pés de galinha dourada
+        const leg = limb(scene, `henLeg_${sx}`, 'cylinder', {
+            height: 0.24, diameter: 0.035, tessellation: 8
+        }, orange, root, 0.12);
+        leg.position.set(0.04, 0.12, sx * 0.12);
+        const foot = limb(scene, `henFoot_${sx}`, 'box', {
+            width: 0.14, height: 0.025, depth: 0.1
+        }, orange, root, 0.02);
+        foot.position.set(0.08, 0.02, sx * 0.12);
     });
     const tail = limb(scene, 'henTail', 'sphere', {
-        diameterX: 0.22, diameterY: 0.28, diameterZ: 0.08, segments: 8
-    }, gold, root, 0.4);
-    tail.position.set(-0.32, 0.4, 0);
-    tail.rotation.z = 0.5;
+        diameterX: 0.24, diameterY: 0.32, diameterZ: 0.09, segments: 10
+    }, gold, root, 0.46);
+    tail.position.set(-0.34, 0.46, 0);
+    tail.rotation.z = 0.55;
     return root;
 }
 
@@ -911,20 +937,35 @@ export function buildHarp(scene) {
         emissiveIntensity: 0.48,
         mapKey: 'gold'
     });
-    const frame = limb(scene, 'harpFrame', 'torus', {
-        diameter: 1.12, thickness: 0.12, tessellation: 24
-    }, gold, root, 0.58);
-    frame.rotation.y = Math.PI / 2;
+    // Base ornamental e coluna torneada
+    limb(scene, 'harpBase', 'cylinder', {
+        height: 0.12, diameterTop: 0.6, diameterBottom: 0.7, tessellation: 16
+    }, gold, root, 0.06);
     const pillar = limb(scene, 'harpPillar', 'cylinder', {
-        height: 1.18, diameter: 0.09, tessellation: 10
-    }, gold, root, 0.58);
-    pillar.position.x = 0.55;
-    limb(scene, 'harpBase', 'box', { width: 0.72, height: 0.1, depth: 0.22 }, gold, root, 0.05);
-    for (let i = 0; i < 8; i++) {
+        height: 1.25, diameterTop: 0.08, diameterBottom: 0.12, tessellation: 12
+    }, gold, root, 0.68);
+    pillar.position.x = 0.52;
+
+    // Caixa acústica inclinada (soundbox)
+    const soundbox = limb(scene, 'harpSoundbox', 'cylinder', {
+        height: 1.22, diameterTop: 0.12, diameterBottom: 0.24, tessellation: 12
+    }, gold, root, 0.62);
+    soundbox.position.x = -0.35;
+    soundbox.rotation.z = -0.32;
+
+    // Braço curvo superior (harmonic curve)
+    const arm = limb(scene, 'harpArm', 'box', {
+        width: 0.95, height: 0.1, depth: 0.14
+    }, gold, root, 1.25);
+    arm.position.x = 0.08;
+    arm.rotation.z = -0.15;
+
+    for (let i = 0; i < 9; i++) {
+        const h = 0.62 + i * 0.065;
         const s = limb(scene, `harpString_${i}`, 'cylinder', {
-            height: 0.68 + i * 0.05, diameter: 0.014, tessellation: 4
-        }, std(scene, 0xfff8d0, 0.35, 0.1, { emissive: 0xffeedd, emissiveIntensity: 0.55 }), root, 0.52);
-        s.position.x = -0.22 + i * 0.1;
+            height: h, diameter: 0.012, tessellation: 6
+        }, std(scene, 0xfff8d0, 0.35, 0.1, { emissive: 0xffeedd, emissiveIntensity: 0.6 }), root, 0.58);
+        s.position.x = -0.26 + i * 0.085;
     }
     return root;
 }
@@ -932,14 +973,16 @@ export function buildHarp(scene) {
 export function buildAxe(scene) {
     const root = new B.TransformNode('axeRoot', scene);
     limb(scene, 'axeHandle', 'cylinder', {
-        height: 1.12, diameterTop: 0.07, diameterBottom: 0.1, tessellation: 8
+        height: 1.15, diameterTop: 0.06, diameterBottom: 0.09, tessellation: 10
     }, surf(scene, 'wood', 0x6a3a18), root, 0.55);
-    const head = limb(scene, 'axeHead', 'box', { width: 0.48, height: 0.28, depth: 0.07 },
+    const head = limb(scene, 'axeHead', 'box', { width: 0.44, height: 0.28, depth: 0.08 },
         std(scene, 0xc8d0d8, 0.28, 0.78), root, 1.05);
-    head.position.x = 0.18;
-    const bit = limb(scene, 'axeBit', 'box', { width: 0.18, height: 0.34, depth: 0.04 },
-        std(scene, 0xe8eef2, 0.22, 0.85), root, 1.05);
-    bit.position.x = 0.38;
+    head.position.x = 0.16;
+    const bit = limb(scene, 'axeBit', 'cylinder', {
+        height: 0.38, diameterTop: 0.03, diameterBottom: 0.28, tessellation: 10
+    }, std(scene, 0xe8eef2, 0.22, 0.85), root, 1.05);
+    bit.position.set(0.38, 1.05, 0);
+    bit.rotation.z = Math.PI / 2;
     return root;
 }
 
