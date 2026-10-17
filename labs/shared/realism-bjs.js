@@ -248,3 +248,101 @@ export function addRealisticFace(scene, head, skinMat, {
         lip.position.set(0, -0.045 * s, 0.135 * s);
     }
 }
+
+const bjsTexCache = new WeakMap();
+
+function sceneTexMap(scene, key, size, draw) {
+    let map = bjsTexCache.get(scene);
+    if (!map) {
+        map = new Map();
+        bjsTexCache.set(scene, map);
+    }
+    if (map.has(key)) return map.get(key);
+    const tex = new (B().DynamicTexture)(key, { width: size, height: size }, scene, true);
+    draw(tex.getContext(), size);
+    tex.update();
+    tex.wrapU = B().Texture.WRAP_ADDRESSMODE;
+    tex.wrapV = B().Texture.WRAP_ADDRESSMODE;
+    map.set(key, tex);
+    return tex;
+}
+
+export function createPBRWood(scene, name, {
+    hex = '#6b4428',
+    roughness = 0.68,
+    planks = true,
+    uScale = 2,
+    vScale = 2
+} = {}) {
+    const mat = new (B().PBRMaterial)(name, scene);
+    const albedo = sceneTexMap(scene, `woodAlb_${hex}_${planks}`, 128, (ctx, S) => {
+        ctx.fillStyle = hex;
+        ctx.fillRect(0, 0, S, S);
+        for (let y = 0; y < S; y++) {
+            ctx.fillStyle = y % 2 === 0 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.04)';
+            ctx.fillRect(0, y, S, 1);
+        }
+        if (planks) {
+            ctx.fillStyle = 'rgba(15,8,4,0.42)';
+            for (let p = 0; p < S; p += 16) {
+                ctx.fillRect(0, p, S, 1.5);
+                ctx.fillRect(((p * 37) % 96) + 16, p, 1.5, 16);
+            }
+        }
+    });
+    albedo.uScale = uScale;
+    albedo.vScale = vScale;
+    mat.albedoTexture = albedo;
+    mat.metallic = 0.03;
+    mat.roughness = roughness;
+    return mat;
+}
+
+export function createPBRStone(scene, name, {
+    hex = '#7a756c',
+    roughness = 0.86,
+    uScale = 3,
+    vScale = 2
+} = {}) {
+    const mat = new (B().PBRMaterial)(name, scene);
+    const albedo = sceneTexMap(scene, `stoneAlb_${hex}`, 128, (ctx, S) => {
+        ctx.fillStyle = hex;
+        ctx.fillRect(0, 0, S, S);
+        ctx.strokeStyle = 'rgba(20,18,15,0.32)';
+        ctx.lineWidth = 2;
+        for (let y = 0; y <= S; y += 16) {
+            const off = ((y / 16) % 2) * 16;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(S, y);
+            ctx.stroke();
+            for (let x = -16; x < S; x += 32) {
+                ctx.fillStyle = ((x + y) % 64 === 0) ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                ctx.fillRect(x + off + 1, y + 1, 30, 14);
+                ctx.beginPath();
+                ctx.moveTo(x + off, y);
+                ctx.lineTo(x + off, y + 16);
+                ctx.stroke();
+            }
+        }
+    });
+    albedo.uScale = uScale;
+    albedo.vScale = vScale;
+    mat.albedoTexture = albedo;
+    mat.metallic = 0.04;
+    mat.roughness = roughness;
+    return mat;
+}
+
+export function createPBRMetal(scene, name, {
+    color = [0.68, 0.7, 0.74],
+    roughness = 0.34,
+    metallic = 0.85
+} = {}) {
+    const mat = new (B().PBRMaterial)(name, scene);
+    mat.albedoColor = new (B().Color3)(color[0], color[1], color[2]);
+    mat.roughness = roughness;
+    mat.metallic = metallic;
+    return mat;
+}
+

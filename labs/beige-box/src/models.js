@@ -485,22 +485,56 @@ function buildMouse(root, mats, tex, refs) {
     add(g, new THREE.BoxGeometry(0.22, 0.004, 0.24), std({
         map: tex.mousepad.map, roughness: 0.88
     }), { pos: [0, 0, 0], cast: false });
-    const body = add(g, new THREE.SphereGeometry(0.032, 18, 12), mats.beige, {
-        pos: [0, 0.02, 0], scale: [1.35, 0.7, 1.7]
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.024, -0.044);
+    shape.quadraticCurveTo(0, -0.050, 0.024, -0.044);
+    shape.quadraticCurveTo(0.032, 0, 0.022, 0.044);
+    shape.quadraticCurveTo(0, 0.050, -0.022, 0.044);
+    shape.quadraticCurveTo(-0.032, 0, -0.024, -0.044);
+
+    const extrude = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.016,
+        bevelEnabled: true,
+        bevelSegments: 5,
+        steps: 1,
+        bevelSize: 0.008,
+        bevelThickness: 0.010
     });
-    add(g, new THREE.BoxGeometry(0.028, 0.006, 0.03), mats.beigeDark, { pos: [-0.012, 0.032, -0.01] });
-    add(g, new THREE.BoxGeometry(0.028, 0.006, 0.03), mats.beigeDark, { pos: [0.012, 0.032, -0.01] });
-    add(g, new THREE.SphereGeometry(0.012, 10, 8), std({ color: 0x222, roughness: 0.5 }), {
-        pos: [0, 0.004, 0.01]
+    extrude.rotateX(-Math.PI / 2);
+    const pos = extrude.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        if (y < 0.002) {
+            pos.setY(i, 0.002);
+        } else {
+            const slope = z < 0 ? 1.0 - Math.abs(z) * 3.2 : 1.0 - z * 1.8;
+            pos.setY(i, 0.002 + y * Math.max(0.45, slope));
+        }
+    }
+    extrude.computeVertexNormals();
+    add(g, extrude, mats.beige, { pos: [0, 0.002, 0] });
+
+    // 2 botões separados + fenda central + rodinha scroll
+    add(g, new RoundedBoxGeometry(0.022, 0.005, 0.034, 2, 0.002), mats.beigeDark, {
+        pos: [-0.013, 0.024, -0.022], rot: [0.14, 0, 0]
     });
+    add(g, new RoundedBoxGeometry(0.022, 0.005, 0.034, 2, 0.002), mats.beigeDark, {
+        pos: [0.013, 0.024, -0.022], rot: [0.14, 0, 0]
+    });
+    const wheelGeo = new THREE.CylinderGeometry(0.0055, 0.0055, 0.004, 14);
+    wheelGeo.rotateZ(Math.PI / 2);
+    add(g, wheelGeo, mats.charcoal, { pos: [0, 0.026, -0.022] });
+
     const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-0.02, 0.02, -0.04),
-        new THREE.Vector3(-0.08, 0.03, -0.12),
-        new THREE.Vector3(-0.18, 0.04, -0.22),
-        new THREE.Vector3(-0.28, 0.06, -0.28)
+        new THREE.Vector3(0, 0.008, -0.048),
+        new THREE.Vector3(-0.08, 0.012, -0.12),
+        new THREE.Vector3(-0.18, 0.015, -0.22),
+        new THREE.Vector3(-0.28, 0.04, -0.28)
     ]);
-    add(g, new THREE.TubeGeometry(curve, 16, 0.004, 6, false), std({ color: 0x1a1a18, roughness: 0.6 }));
-    tag(g, 'mouse', 'Mouse de bolinha', 'Clique na tela do CRT');
+    add(g, new THREE.TubeGeometry(curve, 16, 0.0035, 6, false), std({ color: 0x1a1a18, roughness: 0.6 }));
+    tag(g, 'mouse', 'Mouse ergonômico', 'Clique na tela do CRT');
     refs.mouse = g;
     root.add(g);
 }
@@ -749,26 +783,90 @@ function buildBooks(root, mats, tex) {
     root.add(g);
 }
 
+function makeUpholsteryMat() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#3a2a22';
+    ctx.fillRect(0, 0, 64, 64);
+    for (let y = 0; y < 64; y += 2) {
+        for (let x = 0; x < 64; x += 2) {
+            const odd = ((x >> 1) + (y >> 1)) & 1;
+            ctx.fillStyle = odd ? 'rgba(255,220,190,0.09)' : 'rgba(10,6,4,0.16)';
+            ctx.fillRect(x, y, 2, 1);
+            ctx.fillStyle = odd ? 'rgba(10,6,4,0.14)' : 'rgba(255,220,190,0.07)';
+            ctx.fillRect(x, y + 1, 1, 1);
+        }
+    }
+    const map = new THREE.CanvasTexture(c);
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(6, 6);
+    map.colorSpace = THREE.SRGBColorSpace;
+    return phys({
+        color: 0x48342a,
+        map,
+        bumpMap: map,
+        bumpScale: 0.006,
+        roughness: 0.82,
+        metalness: 0.02,
+        sheen: 0.35,
+        sheenRoughness: 0.75,
+        sheenColor: new THREE.Color(0x6e5244)
+    });
+}
+
 function buildChair(root, mats, refs) {
     const g = new THREE.Group();
     g.position.set(0.1, 0, 0.78);
     const metal = mats.metal;
-    add(g, new THREE.CylinderGeometry(0.03, 0.03, 0.42, 12), metal, { pos: [0, 0.32, 0] });
+    const fabric = makeUpholsteryMat();
+
+    // Coluna a gás central + capa telescópica
+    add(g, new THREE.CylinderGeometry(0.026, 0.03, 0.42, 14), metal, { pos: [0, 0.31, 0] });
+    add(g, new THREE.CylinderGeometry(0.036, 0.04, 0.16, 14), mats.charcoal, { pos: [0, 0.18, 0] });
+
+    // Base estrela de 5 pontas + 5 rodízios duplos (caster wheels)
+    const wheelGeo = new THREE.CylinderGeometry(0.024, 0.024, 0.012, 14);
+    wheelGeo.rotateZ(Math.PI / 2);
     for (let i = 0; i < 5; i++) {
         const a = (i / 5) * Math.PI * 2;
-        add(g, new THREE.BoxGeometry(0.28, 0.025, 0.04), metal, {
-            pos: [Math.cos(a) * 0.14, 0.06, Math.sin(a) * 0.14], rot: [0, -a, 0]
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        add(g, new THREE.BoxGeometry(0.28, 0.024, 0.038), metal, {
+            pos: [ca * 0.14, 0.068, sa * 0.14], rot: [0, -a, 0]
         });
-        add(g, new THREE.SphereGeometry(0.03, 10, 8), mats.charcoal, {
-            pos: [Math.cos(a) * 0.28, 0.03, Math.sin(a) * 0.28]
-        });
+        const caster = new THREE.Group();
+        caster.position.set(ca * 0.27, 0.024, sa * 0.27);
+        caster.rotation.y = -a + 0.35;
+        add(caster, new THREE.CylinderGeometry(0.01, 0.012, 0.028, 10), metal, { pos: [0, 0.024, 0] });
+        add(caster, new THREE.BoxGeometry(0.028, 0.022, 0.026), mats.charcoal, { pos: [0, 0.01, 0] });
+        add(caster, wheelGeo, mats.charcoal, { pos: [-0.011, 0, 0] });
+        add(caster, wheelGeo, mats.charcoal, { pos: [0.011, 0, 0] });
+        g.add(caster);
     }
-    add(g, new RoundedBoxGeometry(0.42, 0.06, 0.42, 3, 0.02), std({ color: 0x3a2a22, roughness: 0.75 }), {
-        pos: [0, 0.54, 0]
+
+    // Assento estofado + prato inferior
+    add(g, new THREE.BoxGeometry(0.22, 0.025, 0.24), mats.charcoal, { pos: [0, 0.505, -0.01] });
+    add(g, new RoundedBoxGeometry(0.44, 0.068, 0.43, 4, 0.026), fabric, {
+        pos: [0, 0.545, 0]
     });
-    add(g, new RoundedBoxGeometry(0.42, 0.42, 0.06, 3, 0.02), std({ color: 0x3a2a22, roughness: 0.75 }), {
-        pos: [0, 0.78, -0.18]
+
+    // Haste traseira curva em J (spine) conectando a base do assento ao encosto
+    const spineCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0.505, -0.04),
+        new THREE.Vector3(0, 0.50, -0.18),
+        new THREE.Vector3(0, 0.54, -0.235),
+        new THREE.Vector3(0, 0.66, -0.23),
+        new THREE.Vector3(0, 0.78, -0.21)
+    ]);
+    add(g, new THREE.TubeGeometry(spineCurve, 20, 0.018, 10, false), mats.charcoal);
+    add(g, new THREE.BoxGeometry(0.14, 0.12, 0.022), mats.charcoal, { pos: [0, 0.77, -0.205] });
+
+    // Encosto estofado
+    add(g, new RoundedBoxGeometry(0.40, 0.38, 0.062, 4, 0.024), fabric, {
+        pos: [0, 0.78, -0.175]
     });
+
     refs.chair = g;
     tag(g, 'chair', 'Cadeira giratória', 'Dar um giro');
     root.add(g);
@@ -777,16 +875,95 @@ function buildChair(root, mats, refs) {
 function buildPlant(root, mats, tex, refs) {
     const g = new THREE.Group();
     g.position.set(1.55, 0, -1.55);
-    add(g, new THREE.CylinderGeometry(0.09, 0.07, 0.16, 12), std({ color: 0x8a4030, roughness: 0.7 }), { pos: [0, 0.08, 0] });
-    add(g, new THREE.CylinderGeometry(0.02, 0.03, 0.55, 8), std({ color: 0x2a5a22, roughness: 0.7 }), { pos: [0, 0.42, 0] });
-    const leafMat = std({ map: tex.leaf.map, roughness: 0.65, side: THREE.DoubleSide });
-    for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * Math.PI * 2;
-        add(g, new THREE.PlaneGeometry(0.16, 0.32), leafMat, {
-            pos: [Math.cos(a) * 0.08, 0.55 + (i % 3) * 0.08, Math.sin(a) * 0.08],
-            rot: [0.5, a, 0.2]
+
+    // Vaso de terracota torneado (LatheGeometry com borda superior)
+    const potPts = [
+        new THREE.Vector2(0.001, 0.002),
+        new THREE.Vector2(0.078, 0.002),
+        new THREE.Vector2(0.095, 0.08),
+        new THREE.Vector2(0.112, 0.18),
+        new THREE.Vector2(0.124, 0.19),
+        new THREE.Vector2(0.126, 0.225),
+        new THREE.Vector2(0.106, 0.225),
+        new THREE.Vector2(0.102, 0.185),
+        new THREE.Vector2(0.001, 0.185)
+    ];
+    const potGeo = new THREE.LatheGeometry(potPts, 20);
+    potGeo.computeVertexNormals();
+    const terraMat = std({ color: 0x9c4a32, roughness: 0.76, metalness: 0.03 });
+    add(g, potGeo, terraMat, { pos: [0, 0, 0] });
+
+    // Pratinho da base + disco de terra escura
+    add(g, new THREE.CylinderGeometry(0.11, 0.095, 0.018, 18), terraMat, { pos: [0, 0.009, 0] });
+    add(g, new THREE.CylinderGeometry(0.102, 0.102, 0.016, 18), std({ color: 0x261a12, roughness: 0.96 }), {
+        pos: [0, 0.188, 0]
+    });
+
+    // Textura listrada de espada-de-são-jorge (variegada com bordas amarelo-limão)
+    const sc = document.createElement('canvas');
+    sc.width = 64;
+    sc.height = 256;
+    const sctx = sc.getContext('2d');
+    sctx.fillStyle = '#234f22';
+    sctx.fillRect(0, 0, 64, 256);
+    sctx.fillStyle = '#c8bd52';
+    sctx.fillRect(0, 0, 7, 256);
+    sctx.fillRect(57, 0, 7, 256);
+    for (let y = 8; y < 250; y += 16) {
+        sctx.fillStyle = 'rgba(130, 185, 105, 0.42)';
+        sctx.beginPath();
+        sctx.moveTo(8, y);
+        sctx.quadraticCurveTo(32, y - 6, 56, y + 2);
+        sctx.lineTo(56, y + 9);
+        sctx.quadraticCurveTo(32, y + 2, 8, y + 7);
+        sctx.closePath();
+        sctx.fill();
+    }
+    const snakeTex = new THREE.CanvasTexture(sc);
+    snakeTex.colorSpace = THREE.SRGBColorSpace;
+    const leafMat = std({
+        map: snakeTex,
+        bumpMap: snakeTex,
+        bumpScale: 0.004,
+        roughness: 0.52,
+        metalness: 0.02,
+        side: THREE.DoubleSide
+    });
+
+    // Folhas esculpidas de espada-de-são-jorge (afiladas, côncavas e levemente curvadas)
+    const count = 9;
+    for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2 + (i % 2) * 0.18;
+        const r = (i % 3 === 0) ? 0.022 : 0.052;
+        const h = 0.34 + (i % 4) * 0.065;
+        const w = 0.044 + (i % 2) * 0.008;
+        const bend = 0.035 + (i % 3) * 0.018;
+
+        const lGeo = new THREE.PlaneGeometry(w, h, 4, 14);
+        lGeo.translate(0, h / 2, 0);
+        const pos = lGeo.attributes.position;
+        for (let k = 0; k < pos.count; k++) {
+            const lx = pos.getX(k);
+            const ly = pos.getY(k);
+            const t = ly / h;
+            // Perfil lanceolado: estreito na base, largo no meio, ponta aguda no topo
+            const widthFactor = t < 0.72
+                ? 0.55 + 0.55 * Math.sin((t / 0.72) * Math.PI * 0.65)
+                : Math.max(0.02, (1 - (t - 0.72) / 0.28) * 0.92);
+            const nx = lx * widthFactor;
+            // Calha central (côncava) + arco para fora + leve torção
+            const cup = (1 - Math.pow(lx / (w * 0.5), 2)) * -0.007 * Math.sin(t * Math.PI);
+            const arch = Math.pow(t, 1.8) * bend;
+            const twist = nx * t * 0.25 * (i % 2 === 0 ? 1 : -1);
+            pos.setXYZ(k, nx, ly, cup + arch + twist);
+        }
+        lGeo.computeVertexNormals();
+        add(g, lGeo, leafMat, {
+            pos: [Math.cos(a) * r, 0.185, Math.sin(a) * r],
+            rot: [0, -a + Math.PI / 2, 0]
         });
     }
+
     tag(g, 'plant', 'Espada-de-são-jorge', 'Sobreviveu a 1994');
     refs.plant = g;
     root.add(g);
@@ -795,17 +972,55 @@ function buildPlant(root, mats, tex, refs) {
 function buildFan(root, mats, refs) {
     const g = new THREE.Group();
     g.position.set(-1.85, 0, 0.9);
-    add(g, new THREE.CylinderGeometry(0.12, 0.14, 0.04, 16), mats.charcoal, { pos: [0, 0.02, 0] });
-    add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8), mats.metal, { pos: [0, 0.37, 0] });
+    add(g, new THREE.CylinderGeometry(0.12, 0.14, 0.04, 18), mats.charcoal, { pos: [0, 0.02, 0] });
+    add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.7, 10), mats.metal, { pos: [0, 0.37, 0] });
+
     const head = new THREE.Group();
     head.position.set(0, 0.78, 0);
-    add(head, new THREE.TorusGeometry(0.16, 0.01, 8, 20), mats.metal);
-    const blades = new THREE.Group();
-    const bladeMat = std({ color: 0xc8d0d4, roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
-    for (let i = 0; i < 3; i++) {
-        add(blades, new THREE.BoxGeometry(0.28, 0.04, 0.004), bladeMat, {
-            rot: [0, 0, (i / 3) * Math.PI * 2]
+
+    // Motor traseiro
+    const motorGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.09, 14);
+    motorGeo.rotateX(Math.PI / 2);
+    add(head, motorGeo, mats.charcoal, { pos: [0, 0, -0.05] });
+
+    // Grade protetora com aro externo, anéis concêntricos e hastes radiais
+    add(head, new THREE.TorusGeometry(0.165, 0.008, 10, 28), mats.metal, { pos: [0, 0, 0.01] });
+    for (const r of [0.055, 0.095, 0.132]) {
+        add(head, new THREE.TorusGeometry(r, 0.0025, 6, 24), mats.metal, { pos: [0, 0, 0.026] });
+        add(head, new THREE.TorusGeometry(r, 0.0022, 6, 20), mats.metal, { pos: [0, 0, -0.012] });
+    }
+    for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI;
+        add(head, new THREE.CylinderGeometry(0.0022, 0.0022, 0.33, 6), mats.metal, {
+            pos: [0, 0, 0.026], rot: [0, 0, a]
         });
+    }
+    // Emblema central da grade
+    const badgeGeo = new THREE.CylinderGeometry(0.024, 0.024, 0.006, 14);
+    badgeGeo.rotateX(Math.PI / 2);
+    add(head, badgeGeo, mats.charcoal, { pos: [0, 0, 0.028] });
+
+    // Pás inclinadas (pitch angle) dentro da grade
+    const blades = new THREE.Group();
+    blades.position.z = 0.008;
+    const bladeMat = std({ color: 0xc8d0d4, roughness: 0.32, metalness: 0.45, side: THREE.DoubleSide });
+    const hubGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.024, 12);
+    hubGeo.rotateX(Math.PI / 2);
+    add(blades, hubGeo, mats.charcoal);
+
+    const paddleShape = new THREE.Shape();
+    paddleShape.moveTo(0.018, -0.012);
+    paddleShape.quadraticCurveTo(0.085, -0.036, 0.138, -0.022);
+    paddleShape.quadraticCurveTo(0.148, 0, 0.138, 0.026);
+    paddleShape.quadraticCurveTo(0.085, 0.038, 0.018, 0.012);
+    paddleShape.closePath();
+    const paddleGeo = new THREE.ShapeGeometry(paddleShape, 8);
+
+    for (let i = 0; i < 3; i++) {
+        const arm = new THREE.Group();
+        arm.rotation.z = (i / 3) * Math.PI * 2;
+        add(arm, paddleGeo, bladeMat, { rot: [0.42, 0, 0] });
+        blades.add(arm);
     }
     head.add(blades);
     g.add(head);

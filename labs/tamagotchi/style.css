@@ -351,7 +351,16 @@ header {
   color: var(--ink);
   opacity: 0.49;
   filter: blur(0.12px);
-  transition: opacity 70ms linear;
+  cursor: pointer;
+  transition: opacity 70ms linear, transform 70ms ease;
+}
+
+.lcd-icon:hover {
+  opacity: 0.78;
+}
+
+.lcd-icon:active {
+  transform: scale(0.92);
 }
 
 .lcd-icon svg {

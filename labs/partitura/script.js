@@ -402,13 +402,27 @@ class MaestroGameManager {
   }
 
   resetProgress() {
-    if (confirm('Tem certeza de que deseja zerar seu progresso, moedas e recordes no localStorage?')) {
-      localStorage.removeItem(this.storageKey);
-      this.state = this.loadState();
-      this.saveState();
-      renderBadgesModal();
-      this.showToast('🔄 Progresso Zerado', 'Um novo recomeço musical aguarda por você!');
+    const btn = document.getElementById('btn-reset-data');
+    if (btn && !btn.dataset.confirming) {
+      btn.dataset.confirming = 'true';
+      const origText = btn.textContent;
+      btn.textContent = '⚠️ Confirmar?';
+      this._resetConfirmTimer = setTimeout(() => {
+        delete btn.dataset.confirming;
+        btn.textContent = origText;
+      }, 3000);
+      return;
     }
+    if (btn) {
+      clearTimeout(this._resetConfirmTimer);
+      delete btn.dataset.confirming;
+      btn.textContent = '🔄 Zerar Progresso';
+    }
+    localStorage.removeItem(this.storageKey);
+    this.state = this.loadState();
+    this.saveState();
+    renderBadgesModal();
+    this.showToast('🔄 Progresso Zerado', 'Um novo recomeço musical aguarda por você!');
   }
 }
 

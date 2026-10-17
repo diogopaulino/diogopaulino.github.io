@@ -8,6 +8,48 @@ import { seeded } from './utils.js';
 
 const PALETTE = [0xd9d2c5, 0xe8e4dc, 0xcfc8ba, 0xb8c4c8, 0xe2d8c8, 0xcbd0d4, 0xf0ebe3];
 
+function createApartmentFacadeTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f2eee8';
+    ctx.fillRect(0, 0, 256, 512);
+
+    const floors = 16;
+    const cols = 4;
+    const fh = 512 / floors;
+    const cw = 256 / cols;
+
+    for (let r = 0; r < floors; r++) {
+        const y = r * fh;
+        // Laje / varanda horizontal típica da orla de Santos
+        ctx.fillStyle = 'rgba(120, 118, 112, 0.32)';
+        ctx.fillRect(0, y + fh - 5, 256, 4);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(0, y + fh - 8, 256, 3);
+
+        for (let col = 0; col < cols; col++) {
+            const x = col * cw;
+            // Janela / porta de varanda com vidro escuro azulado
+            ctx.fillStyle = 'rgba(42, 68, 86, 0.72)';
+            ctx.fillRect(x + 8, y + 6, cw - 16, fh - 15);
+            // Esquadria central
+            ctx.fillStyle = 'rgba(235, 235, 232, 0.65)';
+            ctx.fillRect(x + cw * 0.5 - 1, y + 6, 2, fh - 15);
+            // Guarda-corpo de vidro da sacada
+            ctx.fillStyle = 'rgba(155, 200, 218, 0.45)';
+            ctx.fillRect(x + 5, y + fh - 14, cw - 10, 6);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+}
+
 export function createCity(quality) {
     const root = new THREE.Group();
     root.name = 'city';
@@ -16,10 +58,14 @@ export function createCity(quality) {
 
     const geo = new THREE.BoxGeometry(1, 1, 1);
     geo.translate(0, 0.5, 0);
+    const facadeTex = createApartmentFacadeTexture();
     const mat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        roughness: 0.72,
-        metalness: 0.08
+        map: facadeTex,
+        bumpMap: facadeTex,
+        bumpScale: 0.04,
+        roughness: 0.65,
+        metalness: 0.12
     });
     const mesh = new THREE.InstancedMesh(geo, mat, count);
     mesh.castShadow = true;

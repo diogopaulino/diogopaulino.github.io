@@ -485,15 +485,37 @@ const CHEF_PAN = (() => {
 
 const ACCESSORIES = {
     pirate: (kit) => build(kit, 'shoulder', ({ add, mats }) => {
-        add.sphere(0.09, mats.accent, [0, 0.04, 0]);
-        add.sphere(0.055, mats.primary, [0.08, 0.02, 0.04]);
-        add.cone(0.03, 0.1, mats.accent, [0.14, 0.0, 0.06], [0, 0, -1.2]);
-        add.sphere(0.018, mats.dark, [0.1, 0.04, 0.08]);
-        add.sphere(0.03, mats.primary, [0, -0.06, -0.04]);
-        const featherL = add.mesh(PIRATE_FEATHER, mats.primary, [-0.06, 0.08, 0], [0, 0, 0.5]);
-        featherL.name = 'pirateFeatherL';
-        const featherR = add.mesh(PIRATE_FEATHER, mats.primary, [0.04, 0.08, -0.04], [0, 0, -0.4]);
-        featherR.name = 'pirateFeatherR';
+        // Corpo arredondado + peito amarelo
+        add.sphere(0.078, mats.primary, [0, 0.03, 0], [0.18, 0, 0], [0.92, 1.18, 0.96]);
+        add.sphere(0.058, mats.accent, [0.01, 0.025, 0.036], [0.15, 0, 0], [0.78, 1.02, 0.65]);
+        // Cabeça separada + topete
+        add.sphere(0.056, mats.primary, [0.02, 0.12, 0.025]);
+        const crest = add.mesh(PIRATE_FEATHER, mats.accent, [0.01, 0.175, 0.01], [-0.35, 0, 0.15]);
+        crest.scale.setScalar(0.65);
+        // Olhos com mancha branca de arara e pupila escura
+        for (const sx of [-1, 1]) {
+            add.sphere(0.019, mats.white, [0.02 + sx * 0.042, 0.128, 0.048], null, [0.55, 0.9, 0.85]);
+            add.sphere(0.01, mats.dark, [0.02 + sx * 0.048, 0.128, 0.056]);
+        }
+        // Bico curvo superior e inferior
+        add.cone(0.024, 0.075, mats.accent, [0.02, 0.115, 0.088], [1.85, 0, 0]);
+        add.cone(0.016, 0.042, mats.dark, [0.02, 0.098, 0.072], [2.1, 0, 0]);
+        // Asas laterais esculpidas
+        const wingL = add.mesh(PIRATE_FEATHER, mats.secondary, [-0.068, 0.035, -0.01], [0.35, 0.2, 0.52]);
+        wingL.name = 'pirateFeatherL';
+        wingL.scale.set(1.15, 1.25, 1.1);
+        const wingR = add.mesh(PIRATE_FEATHER, mats.secondary, [0.078, 0.035, -0.01], [0.35, -0.2, -0.52]);
+        wingR.name = 'pirateFeatherR';
+        wingR.scale.set(1.15, 1.25, 1.1);
+        // Cauda longa em camadas
+        const tailMain = add.mesh(PIRATE_FEATHER, mats.primary, [0, -0.085, -0.075], [-0.65, 0, 0]);
+        tailMain.scale.set(0.9, 1.65, 1);
+        const tailTip = add.mesh(PIRATE_FEATHER, mats.accent, [0, -0.11, -0.09], [-0.72, 0, 0]);
+        tailTip.scale.set(0.65, 1.35, 1);
+        // Garrinhas apoiadas no ombro
+        for (const sx of [-0.028, 0.032]) {
+            add.cyl(0.008, 0.008, 0.035, mats.accent, [sx, -0.045, 0.02], [Math.PI / 2, 0, 0]);
+        }
     }),
 
     sailor: (kit) => build(kit, 'grip', ({ add, mats }) => {

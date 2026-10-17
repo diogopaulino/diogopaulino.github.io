@@ -11,14 +11,32 @@ const CELL = canvas.width / COLS; // 20px por célula no buffer do canvas
 context.scale(CELL, CELL);
 nextContext.scale(CELL, CELL);
 
-// Game Boy Palette
-const colors = [
-    null,
-    '#0f380f', // Darkest (Block fill)
-    '#306230', // Dark (Block border)
-    '#8bac0f', // Light (Empty space/bg)
-    '#9bbc0f', // Lightest (Highlight)
-];
+// Game Boy Palette (synchronized with theme)
+const PALETTES = {
+    light: [
+        null,
+        '#0f380f', // 1: Darkest (ink)
+        '#306230', // 2: Dark (mid-dark)
+        '#8bac0f', // 3: Light (screen bg)
+        '#9bbc0f', // 4: Lightest (highlight)
+    ],
+    dark: [
+        null,
+        '#072207', // 1: Deepest LCD ink
+        '#245224', // 2: Mid-dark olive
+        '#6e8c0b', // 3: Dimmed backlit LCD bg
+        '#88ab14', // 4: Backlit highlight
+    ]
+};
+
+let colors = PALETTES.light.slice();
+
+function syncPalette() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const nextPalette = isDark ? PALETTES.dark : PALETTES.light;
+    for (let i = 1; i <= 4; i++) colors[i] = nextPalette[i];
+}
+syncPalette();
 
 /* --- Som -------------------------------------------------------------------
    Timbre de chip: quadrada curta para os controles, arpejo para as linhas.
@@ -60,7 +78,7 @@ function sfx(name) {
     }
 }
 
-// Tetromino definitions
+// Tetromino definitions (1..7 para padrões clássicos distintos estilo Game Boy)
 const pieces = 'ILJOTSZ';
 const piecesMap = {
     'I': [
@@ -70,32 +88,32 @@ const piecesMap = {
         [0, 1, 0, 0],
     ],
     'L': [
-        [0, 1, 0],
-        [0, 1, 0],
-        [0, 1, 1],
+        [0, 2, 0],
+        [0, 2, 0],
+        [0, 2, 2],
     ],
     'J': [
-        [0, 1, 0],
-        [0, 1, 0],
-        [1, 1, 0],
+        [0, 3, 0],
+        [0, 3, 0],
+        [3, 3, 0],
     ],
     'O': [
-        [1, 1],
-        [1, 1],
+        [4, 4],
+        [4, 4],
     ],
     'Z': [
-        [1, 1, 0],
-        [0, 1, 1],
+        [5, 5, 0],
+        [0, 5, 5],
         [0, 0, 0],
     ],
     'S': [
-        [0, 1, 1],
-        [1, 1, 0],
+        [0, 6, 6],
+        [6, 6, 0],
         [0, 0, 0],
     ],
     'T': [
-        [0, 1, 0],
-        [1, 1, 1],
+        [0, 7, 0],
+        [7, 7, 7],
         [0, 0, 0],
     ],
 };
@@ -168,20 +186,83 @@ function createMatrix(w, h) {
     return matrix;
 }
 
+function drawBlock(ctx, bx, by, value) {
+    // Sombra projetada sutil no cristal líquido
+    ctx.fillStyle = 'rgba(15, 56, 15, 0.22)';
+    ctx.fillRect(bx + 0.08, by + 0.08, 0.96, 0.96);
+
+    // Base escura (contorno 1px em escala 20x)
+    ctx.fillStyle = colors[1];
+    ctx.fillRect(bx, by, 0.95, 0.95);
+
+    switch (value) {
+        case 1: // I: chanfro 3D iluminado + rebite central
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.05, by + 0.05, 0.85, 0.12);
+            ctx.fillRect(bx + 0.05, by + 0.05, 0.12, 0.85);
+            ctx.fillStyle = colors[2];
+            ctx.fillRect(bx + 0.15, by + 0.15, 0.65, 0.65);
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.38, by + 0.38, 0.2, 0.2);
+            break;
+        case 2: // L: moldura escura com miolo claro e ponto interno
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.12, by + 0.12, 0.71, 0.71);
+            ctx.fillStyle = colors[2];
+            ctx.fillRect(bx + 0.25, by + 0.25, 0.45, 0.45);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.38, by + 0.38, 0.2, 0.2);
+            break;
+        case 3: // J: moldura dupla concêntrica escura
+            ctx.fillStyle = colors[2];
+            ctx.fillRect(bx + 0.1, by + 0.1, 0.75, 0.75);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.22, by + 0.22, 0.51, 0.51);
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.35, by + 0.35, 0.25, 0.25);
+            break;
+        case 4: // O: bloco solar claro com quadrado sólido central
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.1, by + 0.1, 0.75, 0.75);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.3, by + 0.3, 0.35, 0.35);
+            break;
+        case 5: // Z: hachura cruzada (xadrez 2x2 Game Boy)
+            ctx.fillStyle = colors[2];
+            ctx.fillRect(bx + 0.1, by + 0.1, 0.75, 0.75);
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.15, by + 0.15, 0.3, 0.3);
+            ctx.fillRect(bx + 0.5, by + 0.5, 0.3, 0.3);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.5, by + 0.15, 0.25, 0.25);
+            ctx.fillRect(bx + 0.15, by + 0.5, 0.25, 0.25);
+            break;
+        case 6: // S: chanfro escuro com quatro rebites nos cantos
+            ctx.fillStyle = colors[3];
+            ctx.fillRect(bx + 0.1, by + 0.1, 0.75, 0.75);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.18, by + 0.18, 0.16, 0.16);
+            ctx.fillRect(bx + 0.6, by + 0.18, 0.16, 0.16);
+            ctx.fillRect(bx + 0.18, by + 0.6, 0.16, 0.16);
+            ctx.fillRect(bx + 0.6, by + 0.6, 0.16, 0.16);
+            break;
+        default: // 7 (T): chanfro elevado clássico com brilho superior esquerdo
+            ctx.fillStyle = colors[2];
+            ctx.fillRect(bx + 0.08, by + 0.08, 0.79, 0.79);
+            ctx.fillStyle = colors[4];
+            ctx.fillRect(bx + 0.12, by + 0.12, 0.65, 0.14);
+            ctx.fillRect(bx + 0.12, by + 0.12, 0.14, 0.65);
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(bx + 0.35, by + 0.35, 0.26, 0.26);
+            break;
+    }
+}
+
 function drawMatrix(matrix, offset, ctx = context) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                // Draw block
-                ctx.fillStyle = colors[1]; // Darkest
-                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-
-                // Draw inner detail for "retro" look
-                ctx.fillStyle = colors[2];
-                ctx.fillRect(x + offset.x + 0.1, y + offset.y + 0.1, 0.8, 0.8);
-
-                ctx.fillStyle = colors[1];
-                ctx.fillRect(x + offset.x + 0.3, y + offset.y + 0.3, 0.4, 0.4);
+                drawBlock(ctx, x + offset.x, y + offset.y, value);
             }
         });
     });
@@ -196,6 +277,14 @@ function draw() {
     // Clear screen with "screen bg" color
     context.fillStyle = colors[3];
     context.fillRect(0, 0, COLS, ROWS);
+
+    // Grade sutil da matriz LCD
+    context.fillStyle = 'rgba(15, 56, 15, 0.065)';
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            context.fillRect(x + 0.04, y + 0.04, 0.9, 0.9);
+        }
+    }
 
     drawMatrix(arena, { x: 0, y: 0 });
     if (player.matrix) {
@@ -226,24 +315,25 @@ function drawGhost() {
 
     if (ghostY === startY) return;
 
-    // Ghost oco: contorno legível no LCD verde (os pontos 0.3 eram quase invisíveis).
+    // Ghost pontilhado estilo LCD clássico
     context.save();
-    context.globalAlpha = 0.22;
+    context.globalAlpha = 0.2;
     context.fillStyle = colors[2];
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                context.fillRect(x + player.pos.x + 0.08, y + ghostY + 0.08, 0.84, 0.84);
+                context.fillRect(x + player.pos.x + 0.1, y + ghostY + 0.1, 0.78, 0.78);
             }
         });
     });
-    context.globalAlpha = 1;
-    context.strokeStyle = colors[2];
-    context.lineWidth = 0.08;
+    context.globalAlpha = 0.85;
+    context.strokeStyle = colors[1];
+    context.lineWidth = 0.07;
+    context.setLineDash([0.16, 0.12]);
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                context.strokeRect(x + player.pos.x + 0.12, y + ghostY + 0.12, 0.76, 0.76);
+                context.strokeRect(x + player.pos.x + 0.1, y + ghostY + 0.1, 0.78, 0.78);
             }
         });
     });
@@ -797,6 +887,20 @@ function fitConsole() {
 window.addEventListener('resize', fitConsole);
 window.addEventListener('orientationchange', fitConsole);
 window.visualViewport?.addEventListener('resize', fitConsole);
+
+if (window.LabTheme) {
+    LabTheme.onChange(() => {
+        syncPalette();
+        draw();
+        drawNext();
+    });
+} else {
+    new MutationObserver(() => {
+        syncPalette();
+        draw();
+        drawNext();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+}
 
 document.getElementById('highscore').innerText = highScore;
 resetGame();

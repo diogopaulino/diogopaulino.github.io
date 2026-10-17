@@ -423,17 +423,47 @@ export function buildDico(scene) {
     hilt.material = hiltMat;
     hilt.parent = sword;
 
-    // Escudo no braço esquerdo
-    const shield = BABYLON.MeshBuilder.CreateCylinder('shield', {
-        diameter: 0.38,
-        height: 0.04,
-        tessellation: 20
-    }, scene);
+    // Escudo abaulado torneado no braço esquerdo (domo + bossa central + borda de ferro)
+    const shield = new BABYLON.TransformNode('shield', scene);
     shield.rotation.z = Math.PI / 2;
     shield.position.set(-0.08, -0.15, 0.06);
-    const shieldMat = pbr('shieldMat', scene, new BABYLON.Color3(0.45, 0.12, 0.12), 0.45, 0.55);
-    shield.material = shieldMat;
     shield.parent = parts.armL;
+
+    const shieldMat = pbr('shieldMat', scene, new BABYLON.Color3(0.48, 0.12, 0.12), 0.42, 0.35);
+    const rimMat = pbr('shieldRimMat', scene, new BABYLON.Color3(0.58, 0.6, 0.64), 0.32, 0.88);
+
+    const dome = BABYLON.MeshBuilder.CreateLathe('shieldDome', {
+        shape: [
+            new BABYLON.Vector3(0.001, 0.048, 0),
+            new BABYLON.Vector3(0.055, 0.042, 0),
+            new BABYLON.Vector3(0.12, 0.028, 0),
+            new BABYLON.Vector3(0.185, 0.008, 0),
+            new BABYLON.Vector3(0.195, -0.008, 0),
+            new BABYLON.Vector3(0.175, -0.012, 0),
+            new BABYLON.Vector3(0.001, 0.018, 0)
+        ],
+        tessellation: 24
+    }, scene);
+    dome.material = shieldMat;
+    dome.parent = shield;
+
+    const rim = BABYLON.MeshBuilder.CreateTorus('shieldRim', {
+        diameter: 0.38,
+        thickness: 0.024,
+        tessellation: 24
+    }, scene);
+    rim.material = rimMat;
+    rim.parent = shield;
+
+    const boss = BABYLON.MeshBuilder.CreateSphere('shieldBoss', {
+        diameterX: 0.095,
+        diameterY: 0.055,
+        diameterZ: 0.095,
+        segments: 12
+    }, scene);
+    boss.position.y = 0.038;
+    boss.material = goldMat;
+    boss.parent = shield;
 
     // Tocha portátil na mão esquerda
     const torch = new BABYLON.TransformNode('torchDico', scene);
@@ -631,36 +661,85 @@ export function buildGuard(scene, { fat = false, archer = false } = {}) {
 
     if (archer) {
         spear.setEnabled(false);
+        const bowRoot = new BABYLON.TransformNode('guardBowRoot', scene);
+        bowRoot.parent = parts.armL;
         const bow = BABYLON.MeshBuilder.CreateTorus('guardBow', {
-            diameter: 0.56,
-            thickness: 0.036,
-            tessellation: 24
+            diameter: 0.62,
+            thickness: 0.034,
+            tessellation: 28,
+            arc: 0.55
         }, scene);
         bow.rotation.y = Math.PI / 2;
+        bow.rotation.z = -Math.PI * 0.275;
         bow.material = woodM;
-        bow.parent = parts.armL;
+        bow.parent = bowRoot;
+
+        const stringMat = pbr('bowStringMat', scene, new BABYLON.Color3(0.88, 0.84, 0.74), 0.65, 0.05);
+        const bowString = BABYLON.MeshBuilder.CreateCylinder('guardBowString', {
+            height: 0.58,
+            diameter: 0.006,
+            tessellation: 6
+        }, scene);
+        bowString.position.set(0, 0, -0.045);
+        bowString.material = stringMat;
+        bowString.parent = bowRoot;
     }
 
-    // Molho de chaves na cintura
+    // Molho de chaves na cintura (argola trabalhada + hastes com dentes de chave)
     const keys = new BABYLON.TransformNode('guardKeys', scene);
     keys.parent = parts.hips;
-    const goldKeyMat = pbr('goldKeyMat', scene, new BABYLON.Color3(0.8, 0.65, 0.15), 0.35, 0.85);
+    const goldKeyMat = pbr('goldKeyMat', scene, new BABYLON.Color3(0.85, 0.68, 0.18), 0.3, 0.88);
+
+    const keyRing = BABYLON.MeshBuilder.CreateTorus('guardKeyRing', {
+        diameter: 0.048, thickness: 0.006, tessellation: 14
+    }, scene);
+    keyRing.position.set(0.08, 0.74, 0.14);
+    keyRing.rotation.x = Math.PI / 3;
+    keyRing.material = goldKeyMat;
+    keyRing.parent = keys;
 
     for (let i = 0; i < 3; i++) {
+        const keyNode = new BABYLON.TransformNode(`guardKeyNode_${i}`, scene);
+        keyNode.position.set(0.08 + (i - 1) * 0.012, 0.73, 0.14);
+        keyNode.rotation.z = (i - 1) * 0.22;
+        keyNode.rotation.y = i * 0.35;
+        keyNode.parent = keys;
+
         const k = BABYLON.MeshBuilder.CreateCylinder(`guardKey_${i}`, {
-            height: 0.09, diameter: 0.01, tessellation: 6
+            height: 0.095, diameter: 0.01, tessellation: 8
         }, scene);
-        k.position.set(0.08, 0.68 + i * 0.02, 0.14);
-        k.rotation.z = 0.25 * i;
+        k.position.y = -0.045;
         k.material = goldKeyMat;
-        k.parent = keys;
-        const bow = BABYLON.MeshBuilder.CreateTorus(`guardKeyBow_${i}`, {
-            diameter: 0.028, thickness: 0.006, tessellation: 8
+        k.parent = keyNode;
+
+        const collar = BABYLON.MeshBuilder.CreateTorus(`guardKeyCollar_${i}`, {
+            diameter: 0.016, thickness: 0.004, tessellation: 8
         }, scene);
-        bow.position.set(0.08, 0.73 + i * 0.02, 0.14);
-        bow.rotation.y = 0.4 * i;
+        collar.position.y = -0.015;
+        collar.material = goldKeyMat;
+        collar.parent = keyNode;
+
+        const bow = BABYLON.MeshBuilder.CreateTorus(`guardKeyBow_${i}`, {
+            diameter: 0.028, thickness: 0.006, tessellation: 10
+        }, scene);
+        bow.position.y = 0.005;
+        bow.rotation.x = Math.PI / 2;
         bow.material = goldKeyMat;
-        bow.parent = keys;
+        bow.parent = keyNode;
+
+        const tooth1 = BABYLON.MeshBuilder.CreateBox(`guardKeyTooth1_${i}`, {
+            width: 0.018, height: 0.008, depth: 0.005
+        }, scene);
+        tooth1.position.set(0.01, -0.072, 0);
+        tooth1.material = goldKeyMat;
+        tooth1.parent = keyNode;
+
+        const tooth2 = BABYLON.MeshBuilder.CreateBox(`guardKeyTooth2_${i}`, {
+            width: 0.022, height: 0.01, depth: 0.005
+        }, scene);
+        tooth2.position.set(0.012, -0.086, 0);
+        tooth2.material = goldKeyMat;
+        tooth2.parent = keyNode;
     }
     keys.setEnabled(fat);
 
@@ -950,23 +1029,32 @@ export function buildTiger(scene) {
         eye.parent = head;
     }
 
-    // 4 Patas
-    for (const [x, z] of [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]]) {
-        const leg = createMuscle(scene, 'tigerLeg', {
+    // 4 Patas articuladas no quadril/ombro para animação de caminhada, corrida e bote
+    const legs = [];
+    const legCoords = [[-0.35, 0.22], [-0.35, -0.22], [0.35, 0.22], [0.35, -0.22]];
+    for (let i = 0; i < legCoords.length; i++) {
+        const [x, z] = legCoords[i];
+        const legPivot = new BABYLON.TransformNode(`leg_${i}`, scene);
+        legPivot.position.set(x, 0.42, z);
+        legPivot.parent = root;
+
+        const leg = createMuscle(scene, `tigerLeg_${i}`, {
             length: 0.36, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0.2, tessellation: 10, rings: 6
         });
-        leg.position.set(x, 0.22, z);
+        leg.position.set(0, -0.20, 0);
         leg.material = orangeMat;
-        leg.parent = root;
+        leg.parent = legPivot;
 
-        const paw = createMuscle(scene, 'tigerPaw', {
+        const paw = createMuscle(scene, `tigerPaw_${i}`, {
             length: 0.16, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0, tessellation: 8, rings: 4
         });
         paw.rotation.z = -Math.PI / 2;
         paw.scaling.x = 0.5;
-        paw.position.set(x + 0.05, 0.05, z);
+        paw.position.set(0.05, -0.37, 0);
         paw.material = blackMat;
-        paw.parent = root;
+        paw.parent = legPivot;
+
+        legs.push(legPivot);
     }
 
     // Cauda
@@ -1005,22 +1093,53 @@ export function buildTiger(scene) {
         stripe.parent = root;
     }
 
-    const parts = { head, tail, root };
+    const parts = {
+        head, tail, root, legs,
+        leg0: legs[0], leg1: legs[1], leg2: legs[2], leg3: legs[3]
+    };
+    const walkChannels = [
+        { target: 'head', axis: 'x', amp: 0.08, phase: 0 },
+        { target: 'tail', axis: 'z', amp: 0.4, phase: 0 },
+        { target: 'leg0', axis: 'x', amp: 0.48, phase: 0 },
+        { target: 'leg1', axis: 'x', amp: 0.48, phase: Math.PI },
+        { target: 'leg2', axis: 'x', amp: 0.48, phase: Math.PI },
+        { target: 'leg3', axis: 'x', amp: 0.48, phase: 0 }
+    ];
+    const runChannels = [
+        { target: 'head', axis: 'x', amp: 0.14, phase: 0 },
+        { target: 'tail', axis: 'z', amp: 0.55, phase: 0 },
+        { target: 'leg0', axis: 'x', amp: 0.78, phase: 0 },
+        { target: 'leg1', axis: 'x', amp: 0.78, phase: 0.35 },
+        { target: 'leg2', axis: 'x', amp: 0.78, phase: Math.PI },
+        { target: 'leg3', axis: 'x', amp: 0.78, phase: Math.PI + 0.35 }
+    ];
+    const pounceChannels = [
+        { target: 'head', axis: 'x', amp: 0.3, phase: 0, base: 0.2 },
+        { target: 'tail', axis: 'z', amp: 0.5, phase: 0, base: -0.25 },
+        { target: 'leg0', axis: 'x', amp: 0.55, phase: 0, base: 0.45 },
+        { target: 'leg1', axis: 'x', amp: 0.55, phase: 0, base: 0.45 },
+        { target: 'leg2', axis: 'x', amp: 0.65, phase: Math.PI, base: -0.55 },
+        { target: 'leg3', axis: 'x', amp: 0.65, phase: Math.PI, base: -0.55 }
+    ];
     const clips = {
         Idle: new ProceduralClip(2.0, [
             { target: 'head', axis: 'y', amp: 0.15, phase: 0 },
-            { target: 'tail', axis: 'z', amp: 0.25, phase: 1 }
+            { target: 'tail', axis: 'z', amp: 0.25, phase: 1 },
+            { target: 'leg0', axis: 'x', amp: 0.02, phase: 0 },
+            { target: 'leg1', axis: 'x', amp: 0.02, phase: Math.PI },
+            { target: 'leg2', axis: 'x', amp: 0.02, phase: Math.PI },
+            { target: 'leg3', axis: 'x', amp: 0.02, phase: 0 }
         ]),
-        Walk: new ProceduralClip(0.8, [
-            { target: 'head', axis: 'x', amp: 0.08, phase: 0 },
-            { target: 'tail', axis: 'z', amp: 0.4, phase: 0 }
-        ]),
+        Walk: new ProceduralClip(0.8, walkChannels),
+        walk: new ProceduralClip(0.8, walkChannels),
+        Run: new ProceduralClip(0.5, runChannels),
+        run: new ProceduralClip(0.5, runChannels),
         Growl: new ProceduralClip(0.6, [
             { target: 'head', axis: 'x', amp: 0.2, phase: 0, base: -0.15 }
         ]),
-        Jump: new ProceduralClip(0.5, [
-            { target: 'head', axis: 'x', amp: 0.3, phase: 0, base: 0.2 }
-        ])
+        Jump: new ProceduralClip(0.5, pounceChannels),
+        Pounce: new ProceduralClip(0.5, pounceChannels),
+        pounce: new ProceduralClip(0.5, pounceChannels)
     };
 
     root.userData = { parts, clips };

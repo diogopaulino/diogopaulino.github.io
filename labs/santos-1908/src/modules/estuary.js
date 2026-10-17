@@ -81,16 +81,36 @@ export function create(ctx) {
     bank.receiveShadow = true;
     group.add(bank);
 
-    // Vegetação baixa na margem
-    const bushGeo = new THREE.ConeGeometry(2.2, 4, 5);
-    const vegetationRandom = seeded(0x1908e57);
-    for (let i = 0; i < quality.trees * 0.4; i++) {
-        const b = new THREE.Mesh(bushGeo, mats.foliage);
-        b.position.set(-70 - vegetationRandom() * 30, 2, -280 + vegetationRandom() * 500);
-        b.scale.setScalar(0.6 + vegetationRandom() * 1.2);
-        b.castShadow = quality.shadows;
-        group.add(b);
+    // Vegetação de mangue na margem oposta (InstancedMesh orgânico)
+    const bushGeo = new THREE.IcosahedronGeometry(2.1, 2);
+    const bPos = bushGeo.attributes.position;
+    for (let i = 0; i < bPos.count; i++) {
+        const bx = bPos.getX(i);
+        const by = bPos.getY(i);
+        const bz = bPos.getZ(i);
+        const m = 0.8 + 0.25 * Math.sin(bx * 0.9 + bz * 0.8);
+        bPos.setXYZ(i, bx * m, by * 0.72 * m, bz * m);
     }
+    bushGeo.computeVertexNormals();
+
+    const bushCount = Math.max(8, Math.floor(quality.trees * 0.4));
+    const bushes = new THREE.InstancedMesh(bushGeo, mats.foliage, bushCount);
+    bushes.castShadow = quality.shadows;
+    const vegetationRandom = seeded(0x1908e57);
+    const mat4 = new THREE.Matrix4();
+    const posVec = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const sclVec = new THREE.Vector3();
+    for (let i = 0; i < bushCount; i++) {
+        posVec.set(-70 - vegetationRandom() * 30, 1.8, -280 + vegetationRandom() * 500);
+        quat.setFromEuler(new THREE.Euler(0, vegetationRandom() * Math.PI * 2, 0));
+        const sc = 0.65 + vegetationRandom() * 1.15;
+        sclVec.set(sc, sc * 0.85, sc);
+        mat4.compose(posVec, quat, sclVec);
+        bushes.setMatrixAt(i, mat4);
+    }
+    bushes.instanceMatrix.needsUpdate = true;
+    group.add(bushes);
 
     scene.add(group);
 
@@ -107,3 +127,4 @@ export function create(ctx) {
         }
     };
 }
+

@@ -1,13 +1,45 @@
 /**
- * port — cais, armazéns, guindastes a vapor (P01–P07).
- * Tipologia fotográfica: armazéns longos, amurada, guindastes esparsos.
+ * port — cais, armazéns com telhado de duas águas, placas numeradas e guindastes a vapor (P01–P07).
  */
 
 import * as THREE from 'three';
 import { LAYOUT } from '../config.js';
 import { seeded } from '../utils.js';
 
-function makeWarehouse(mats, len, depth, h, rnd) {
+function makeSignTexture(num) {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#e8e2d4';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.strokeStyle = '#2a241e';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(3, 3, 122, 58);
+    ctx.fillStyle = '#1e1a16';
+    ctx.font = 'bold 34px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Nº ${num}`, 64, 34);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+}
+
+function makeGableRoofGeometry(depth, roofH, len) {
+    const shape = new THREE.Shape();
+    const hw = (depth + 1.4) * 0.5;
+    shape.moveTo(-hw, 0);
+    shape.lineTo(0, roofH);
+    shape.lineTo(hw, 0);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: len + 0.8, bevelEnabled: false });
+    geo.translate(0, 0, -(len + 0.8) * 0.5);
+    geo.computeVertexNormals();
+    return geo;
+}
+
+function makeWarehouse(mats, len, depth, h, rnd, numberLabel) {
     const g = new THREE.Group();
     const body = new THREE.Mesh(
         new THREE.BoxGeometry(depth, h, len),
@@ -18,26 +50,49 @@ function makeWarehouse(mats, len, depth, h, rnd) {
     body.receiveShadow = true;
     g.add(body);
 
-    const roof = new THREE.Mesh(
-        new THREE.BoxGeometry(depth + 1.2, 0.6, len + 0.8),
-        mats.roof
+    // Embasamento de pedra na base do armazém
+    const plinth = new THREE.Mesh(
+        new THREE.BoxGeometry(depth + 0.3, 1.1, len + 0.3),
+        mats.quay
     );
-    roof.position.y = h + 0.2;
+    plinth.position.y = 0.55;
+    g.add(plinth);
+
+    // Telhado de duas águas com lanternim de ventilação
+    const roofH = 2.6;
+    const roof = new THREE.Mesh(makeGableRoofGeometry(depth, roofH, len), mats.roof);
+    roof.position.y = h;
     roof.castShadow = true;
+    roof.receiveShadow = true;
     g.add(roof);
 
-    // Portas / vãos tipológicos
+    const skylight = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.75, len * 0.65),
+        mats.glass
+    );
+    skylight.position.y = h + roofH + 0.15;
+    g.add(skylight);
+
+    // Portas correderas duplas com verga arqueada
     const doorMat = mats.wood;
-    const nDoors = Math.max(2, Math.floor(len / 18));
+    const nDoors = Math.max(2, Math.floor(len / 16));
     for (let i = 0; i < nDoors; i++) {
-        const door = new THREE.Mesh(new THREE.BoxGeometry(0.4, h * 0.55, 4.5), doorMat);
-        door.position.set(-depth * 0.5 - 0.1, h * 0.28, -len * 0.4 + (i / (nDoors - 1 || 1)) * len * 0.8);
+        const dz = -len * 0.38 + (i / (nDoors - 1 || 1)) * len * 0.76;
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.35, h * 0.56, 4.2), doorMat);
+        door.position.set(-depth * 0.5 - 0.08, h * 0.28, dz);
         g.add(door);
+        const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 4.6), mats.quay);
+        lintel.position.set(-depth * 0.5 - 0.12, h * 0.58, dz);
+        g.add(lintel);
     }
 
-    // Número do armazém (placa)
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 2.4), mats.white);
-    plate.position.set(-depth * 0.5 - 0.2, h * 0.75, 0);
+    // Placa numerada histórica do armazém
+    const signMat = new THREE.MeshStandardMaterial({
+        map: makeSignTexture(numberLabel),
+        roughness: 0.7
+    });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.35, 2.7), signMat);
+    plate.position.set(-depth * 0.5 - 0.16, h * 0.78, 0);
     g.add(plate);
 
     return g;
@@ -45,32 +100,57 @@ function makeWarehouse(mats, len, depth, h, rnd) {
 
 function makeCrane(mats) {
     const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 2.2, 8), mats.steel);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.85, 2.2, 12), mats.steel);
     base.position.y = 1.1;
     base.castShadow = true;
     g.add(base);
 
-    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.7, 14, 0.7), mats.steel);
-    mast.position.y = 8;
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.48, 13.5, 10), mats.steel);
+    mast.position.y = 7.8;
     mast.castShadow = true;
     g.add(mast);
 
-    const boom = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 16), mats.steel);
-    boom.position.set(0, 13.5, -6);
-    boom.rotation.x = -0.35;
-    boom.castShadow = true;
-    g.add(boom);
+    // Lança treliçada articulada com polia, cabo e gancho
+    const boomGroup = new THREE.Group();
+    boomGroup.position.set(0, 7.2, -0.3);
+    boomGroup.rotation.x = -0.35;
 
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.8), mats.funnelBand);
-    cabin.position.set(0, 4.5, 0.5);
+    for (const sx of [-0.28, 0.28]) {
+        const chord = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 16, 6), mats.steel);
+        chord.rotation.x = Math.PI / 2;
+        chord.position.set(sx, 3.8, -6.5);
+        chord.castShadow = true;
+        boomGroup.add(chord);
+    }
+    const sheave = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 8, 16), mats.funnelBand);
+    sheave.rotation.y = Math.PI / 2;
+    sheave.position.set(0, 3.8, -14.5);
+    boomGroup.add(sheave);
+
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 7.5, 6), mats.steel);
+    cable.position.set(0, 0.1, -14.5);
+    boomGroup.add(cable);
+
+    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.06, 8, 14, Math.PI * 1.35), mats.funnelBand);
+    hook.position.set(0, -3.7, -14.5);
+    boomGroup.add(hook);
+
+    g.add(boomGroup);
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.3, 2.8), mats.wood);
+    cabin.position.set(0, 3.3, 0.6);
+    cabin.castShadow = true;
     g.add(cabin);
 
-    // Caldeira / vapor base
-    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 2.5, 8), mats.funnel);
-    boiler.position.set(1.8, 1.4, 1.2);
+    // Caldeira vertical a vapor com chaminé
+    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.9, 2.8, 12), mats.funnel);
+    boiler.position.set(0, 3.4, 2.2);
     g.add(boiler);
+    const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 2.1, 10), mats.funnel);
+    stack.position.set(0, 5.4, 2.2);
+    g.add(stack);
 
-    g.userData.boom = boom;
+    g.userData.boom = boomGroup;
     return g;
 }
 
@@ -80,7 +160,7 @@ export function create(ctx) {
     group.name = 'port';
     const rnd = seeded(1908);
 
-    // Plataforma do cais
+    // Plataforma de cantaria do cais
     const quayLen = LAYOUT.quayZ1 - LAYOUT.quayZ0;
     const quay = new THREE.Mesh(
         new THREE.BoxGeometry(22, 1.4, quayLen + 40),
@@ -91,37 +171,48 @@ export function create(ctx) {
     quay.castShadow = true;
     group.add(quay);
 
-    // Amurada
+    // Meio-fio de granito e cabeços de amarração (bollards)
     const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 1.1, quayLen + 40),
+        new THREE.BoxGeometry(0.75, 0.55, quayLen + 40),
         mats.quay
     );
-    wall.position.set(LAYOUT.quayX - 5.5, 1.4, quay.position.z);
+    wall.position.set(LAYOUT.quayX - 5.5, 1.25, quay.position.z);
     group.add(wall);
 
-    // Armazéns
+    const bollardGeo = new THREE.CylinderGeometry(0.22, 0.28, 0.65, 10);
+    for (let bz = LAYOUT.quayZ0; bz <= LAYOUT.quayZ1; bz += 18) {
+        const bol = new THREE.Mesh(bollardGeo, mats.steel);
+        bol.position.set(LAYOUT.quayX - 5.4, 1.65, bz);
+        bol.castShadow = true;
+        group.add(bol);
+    }
+
+    // Armazéns numerados (Armazém 14 no ponto de atracação)
     const n = quality.warehouses;
     let z = LAYOUT.quayZ0 + 10;
     for (let i = 0; i < n; i++) {
         const len = 28 + rnd() * 22;
-        const h = 8 + rnd() * 4;
-        const w = makeWarehouse(mats, len, LAYOUT.warehouseDepth, h, rnd);
+        const h = 8 + rnd() * 3.5;
+        const isDock = Math.abs(z + len * 0.5 - LAYOUT.dockZ) < 35;
+        const num = isDock ? 14 : 11 + i;
+        const w = makeWarehouse(mats, len, LAYOUT.warehouseDepth, h, rnd, num);
         w.position.set(LAYOUT.quayX + 18, 0, z + len * 0.5);
         group.add(w);
 
-        // Armazém 14 marcado perto do ponto de atracação
-        if (Math.abs(z + len * 0.5 - LAYOUT.dockZ) < 35) {
+        if (isDock) {
             w.userData.is14 = true;
-            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 3.5), mats.funnelBand);
-            flag.position.set(-LAYOUT.warehouseDepth * 0.5 - 0.3, h + 1.5, 0);
-            w.add(flag);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.2, 8), mats.steel);
+            pole.position.set(-LAYOUT.warehouseDepth * 0.5 - 0.2, h + 2.1, 0);
+            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 2.4), mats.funnelBand);
+            flag.position.set(-LAYOUT.warehouseDepth * 0.5 - 0.2, h + 3.4, 1.2);
+            w.add(pole, flag);
         }
 
         z += len + 6 + rnd() * 4;
         if (z > LAYOUT.quayZ1) break;
     }
 
-    // Guindastes a vapor (P05) — esparsos
+    // Guindastes a vapor (P05)
     const craneCount = quality.id === 'low' ? 2 : 4;
     for (let i = 0; i < craneCount; i++) {
         const cr = makeCrane(mats);
@@ -134,14 +225,23 @@ export function create(ctx) {
         group.add(cr);
     }
 
-    // Postes / luminárias a gás tipológicas
+    // Postes de ferro fundido / luminárias a gás tipológicas
+    const lampMat = new THREE.MeshStandardMaterial({
+        color: 0xffe6a8,
+        emissive: 0xffb84d,
+        emissiveIntensity: 0.45,
+        roughness: 0.25
+    });
     for (let i = 0; i < 10; i++) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 5.5, 6), mats.steel);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, 5.5, 10), mats.steel);
         pole.position.set(LAYOUT.quayX + 2, 2.75, LAYOUT.quayZ0 + 20 + i * 30);
+        pole.castShadow = true;
         group.add(pole);
-        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), mats.funnelBand);
-        lamp.position.set(0, 2.9, 0);
-        pole.add(lamp);
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.32, 8), mats.steel);
+        cap.position.set(0, 3.18, 0);
+        const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.52, 8), lampMat);
+        lamp.position.set(0, 2.85, 0);
+        pole.add(lamp, cap);
     }
 
     scene.add(group);
@@ -159,3 +259,4 @@ export function create(ctx) {
         }
     };
 }
+

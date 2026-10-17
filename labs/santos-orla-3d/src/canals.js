@@ -4,21 +4,23 @@
 
 import * as THREE from 'three';
 import { CANALS, ZONES, ORLA_HALF } from './config.js';
+import { stoneMaterial, plasterMaterial, metalMaterial } from '../../shared/realism.js';
 
 export function createCanals() {
     const root = new THREE.Group();
     root.name = 'canals';
 
-    const waterMat = new THREE.MeshStandardMaterial({
+    const waterMat = new THREE.MeshPhysicalMaterial({
         color: 0x1a6a7a,
-        roughness: 0.25,
-        metalness: 0.15,
+        roughness: 0.18,
+        metalness: 0.12,
+        clearcoat: 0.85,
         transparent: true,
-        opacity: 0.88
+        opacity: 0.9
     });
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a8680, roughness: 0.9 });
-    const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x5a5a60, roughness: 0.7, metalness: 0.1 });
-    const railMat = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.45, metalness: 0.55 });
+    const wallMat = stoneMaterial(0x8a8680, { roughness: 0.88, repeat: 3 });
+    const bridgeMat = plasterMaterial(0x626268, { roughness: 0.72, repeat: 2 });
+    const railMat = metalMaterial(0xd4ac2b, { roughness: 0.32, metalness: 0.78 });
 
     const labels = [];
 

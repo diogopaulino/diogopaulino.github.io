@@ -156,6 +156,7 @@ function initGame() {
     powerLed.classList.add('on');
     eatPulse = 0;
     deathFlash = 0;
+    digestPulses = [];
     updateHud();
     announce('Partida iniciada. Escolha uma direção.');
     sfxStart();
@@ -245,6 +246,14 @@ function update() {
 
     snake.unshift(head);
 
+    // Avança pulsos de digestão pelo corpo da cobra
+    for (let i = digestPulses.length - 1; i >= 0; i--) {
+        digestPulses[i] += 1;
+        if (digestPulses[i] >= snake.length - 1) {
+            digestPulses.splice(i, 1);
+        }
+    }
+
     // Check Food Collision
     if (willGrow) {
         score += 10;
@@ -252,6 +261,7 @@ function update() {
         stepInterval = Math.max(MIN_SPEED, BASE_SPEED - Math.floor(score / 10) * 3);
         placeFood();
         eatPulse = 1;
+        digestPulses.push(0);
         sfxEat();
         updateHud();
     } else {
@@ -265,14 +275,16 @@ function update() {
 let eatPulse = 0;    // 1 → 0 logo depois de comer: brilho na fruta e na cabeça
 let deathFlash = 0;  // 1 → 0 na morte: inverte a tela por alguns frames
 let foodPhase = 0;   // fase da respiração da fruta
+let digestPulses = []; // índices dos segmentos onde passa o pulso de digestão
 
 // Um retângulo com cantos arredondados só onde a cobra NÃO continua. É isso que
 // transforma quadradinhos soltos em um corpo contínuo — sem sair do look 8-bit,
 // porque o raio é 1/4 da célula.
-function bodyCell(x, y, prev, next) {
-    const px = x * GRID_SIZE;
-    const py = y * GRID_SIZE;
-    const inset = 1;
+function bodyCell(x, y, prev, next, index = 0, shadowPass = false) {
+    const isDigesting = digestPulses.includes(index);
+    const px = x * GRID_SIZE + (shadowPass ? 2 : 0);
+    const py = y * GRID_SIZE + (shadowPass ? 2 : 0);
+    const inset = isDigesting ? 0 : 1;
     const r = GRID_SIZE / 4;
     const size = GRID_SIZE - inset * 2;
 
@@ -304,6 +316,31 @@ function bodyCell(x, y, prev, next) {
     // fendas de 2px entre segmentos em linha reta.
     if (right) ctx.fillRect(px + GRID_SIZE - inset - 1, py + inset, inset * 2 + 1, size);
     if (down) ctx.fillRect(px + inset, py + GRID_SIZE - inset - 1, size, inset * 2 + 1);
+
+    // Textura de escamas / chanfro nos segmentos do corpo (exceto cabeça e sombra)
+    if (!shadowPass && index > 0) {
+        ctx.save();
+        ctx.fillStyle = COLORS.bg;
+        const cx = px + GRID_SIZE / 2;
+        const cy = py + GRID_SIZE / 2;
+        if (isDigesting) {
+            // Destaque de pulso de digestão percorrendo o segmento
+            ctx.globalAlpha = 0.55;
+            ctx.fillRect(cx - 3, cy - 3, 6, 6);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = COLORS.snake;
+            ctx.fillRect(cx - 1, cy - 1, 2, 2);
+        } else {
+            // Chanfro superior-esquerdo e escama central alternada estilo Nokia LCD
+            ctx.globalAlpha = 0.24;
+            ctx.fillRect(px + 3, py + 3, size - 6, 1.5);
+            ctx.globalAlpha = 0.36;
+            const offset = (index % 2 === 0) ? -1 : 1;
+            ctx.fillRect(cx - 2, cy - 2 + offset, 4, 2);
+            ctx.fillRect(cx - 1, cy + offset, 2, 2);
+        }
+        ctx.restore();
+    }
 }
 
 function drawHeadEyes(segment) {
@@ -356,8 +393,7 @@ function drawTongue(head) {
     ctx.stroke();
 }
 
-// Maçã: corpo redondo com talo e folha, respirando devagar. O pulso ao comer
-// reaproveita a mesma escala para dar o "pop" de coleta.
+// Maçã: corpo redondo com talo, folha, sombra LCD e brilho especular animado.
 function drawFood() {
     const cx = food.x * GRID_SIZE + GRID_SIZE / 2;
     const cy = food.y * GRID_SIZE + GRID_SIZE / 2;
@@ -365,8 +401,31 @@ function drawFood() {
     const scale = breathe * (1 + eatPulse * 0.5);
     const r = (GRID_SIZE / 2 - 2) * scale;
 
+    // Sombra projetada no cristal líquido da tela Nokia
+    ctx.save();
+    ctx.globalAlpha = 0.18;
     ctx.fillStyle = COLORS.food;
-    // Duas lobos: silhueta de maçã, ainda 2-tone Game Boy.
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.28 + 2, cy + 3, r * 0.82, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.28 + 2, cy + 3, r * 0.82, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Halo de brilho pulsante ao redor da maçã
+    if (Math.sin(foodPhase * 1.6) > -0.2) {
+        ctx.save();
+        ctx.globalAlpha = 0.22 + 0.12 * Math.sin(foodPhase * 2);
+        ctx.strokeStyle = COLORS.food;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath();
+        ctx.arc(cx, cy + 1, r + 3.2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.fillStyle = COLORS.food;
+    // Dois lobos: silhueta de maçã, ainda 2-tone LCD.
     ctx.beginPath();
     ctx.arc(cx - r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
     ctx.arc(cx + r * 0.28, cy + 1, r * 0.82, 0, Math.PI * 2);
@@ -383,9 +442,31 @@ function drawFood() {
     ctx.ellipse(cx + 4, cy - r - 3, 4, 2.2, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Brilho: um furinho na cor do fundo, do jeito que um sprite 8-bit faria.
+    // Brilho especular em L na cor do fundo, do jeito que um sprite 8-bit faria.
     ctx.fillStyle = COLORS.bg;
-    ctx.fillRect(cx - r * 0.55, cy - r * 0.5, 2, 2);
+    ctx.fillRect(cx - r * 0.58, cy - r * 0.45, 3, 2);
+    ctx.fillRect(cx - r * 0.58, cy - r * 0.45 + 2, 1.8, 2);
+}
+
+function drawSnakePass(shadowPass) {
+    snake.forEach((segment, index) => {
+        const prev = snake[index - 1];
+        const next = snake[index + 1];
+        const fromTail = snake.length - 1 - index;
+        if (fromTail < 3 && snake.length > 4) {
+            const shrink = (3 - fromTail) * 1.6;
+            const ox = shadowPass ? 2 : 0;
+            const oy = shadowPass ? 2 : 0;
+            ctx.fillRect(
+                segment.x * GRID_SIZE + 1 + shrink / 2 + ox,
+                segment.y * GRID_SIZE + 1 + shrink / 2 + oy,
+                GRID_SIZE - 2 - shrink,
+                GRID_SIZE - 2 - shrink
+            );
+        } else {
+            bodyCell(segment.x, segment.y, prev, next, index, shadowPass);
+        }
+    });
 }
 
 function draw() {
@@ -410,24 +491,15 @@ function draw() {
 
     drawFood();
 
+    // Sombra projetada da cobra no cristal líquido Nokia
+    ctx.save();
+    ctx.globalAlpha = 0.16;
     ctx.fillStyle = COLORS.snake;
-    snake.forEach((segment, index) => {
-        const prev = snake[index - 1];
-        const next = snake[index + 1];
-        // A cauda afina: as três últimas células encolhem progressivamente.
-        const fromTail = snake.length - 1 - index;
-        if (fromTail < 3 && snake.length > 4) {
-            const shrink = (3 - fromTail) * 1.6;
-            ctx.fillRect(
-                segment.x * GRID_SIZE + 1 + shrink / 2,
-                segment.y * GRID_SIZE + 1 + shrink / 2,
-                GRID_SIZE - 2 - shrink,
-                GRID_SIZE - 2 - shrink
-            );
-        } else {
-            bodyCell(segment.x, segment.y, prev, next);
-        }
-    });
+    drawSnakePass(true);
+    ctx.restore();
+
+    ctx.fillStyle = COLORS.snake;
+    drawSnakePass(false);
 
     if (snake.length) {
         drawTongue(snake[0]);
@@ -508,13 +580,13 @@ function queueDirection(nextDx, nextDy) {
 // Input Handling
 function handleInput(key) {
     if (!isGameRunning) {
-        if (key === 'Enter' || key === 'Start') {
+        if (key === 'Enter' || key === 'Start' || key === 'Space') {
             initGame();
         }
         return;
     }
 
-    if (isPaused && key !== 'Enter' && key !== 'Start') return;
+    if (isPaused && key !== 'Enter' && key !== 'Start' && key !== 'Space') return;
 
     switch (key) {
         case 'ArrowUp':
@@ -531,21 +603,38 @@ function handleInput(key) {
             break;
         case 'Enter':
         case 'Start':
+        case 'Space':
             setPaused(!isPaused);
             break;
     }
 }
 
-// Keyboard Listeners
+// Keyboard Listeners (Setas + WASD + Space/Enter)
+const KEY_MAP = {
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    w: 'ArrowUp',
+    W: 'ArrowUp',
+    s: 'ArrowDown',
+    S: 'ArrowDown',
+    a: 'ArrowLeft',
+    A: 'ArrowLeft',
+    d: 'ArrowRight',
+    D: 'ArrowRight',
+};
+
 document.addEventListener('keydown', (e) => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    const mapped = KEY_MAP[e.key];
+    if (mapped) {
         e.preventDefault();
-        handleInput(e.key);
+        handleInput(mapped);
         return;
     }
-    if (e.key === 'Enter' && !e.target.closest('a, button')) {
+    if ((e.key === 'Enter' || e.key === ' ' || e.code === 'Space') && !e.target.closest('a, button')) {
         e.preventDefault();
-        handleInput('Enter');
+        handleInput(e.key === 'Enter' ? 'Enter' : 'Space');
     }
 });
 

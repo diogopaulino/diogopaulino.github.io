@@ -148,6 +148,10 @@ function makePines(quality) {
         leavesB.setMatrixAt(i, dummy.matrix);
     });
 
+    trunks.count = placed;
+    leavesA.count = placed;
+    leavesB.count = placed;
+
     const group = new THREE.Group();
     group.add(trunks, leavesA, leavesB);
     return group;

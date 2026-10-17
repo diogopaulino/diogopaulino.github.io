@@ -63,12 +63,36 @@ body {
 .piano {
   position: relative;
   display: flex;
-  height: 260px;
+  height: 274px;
   margin: 0 auto;
   width: fit-content;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  padding: 18px 14px 12px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #0b0d13 0%, #171922 45%, #090a0f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    inset 0 2px 1px rgba(255, 255, 255, 0.14),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.8);
+}
+
+/* Tira de feltro vermelho aveludado na base superior das teclas (estilo Steinway) */
+.piano::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  height: 7px;
+  background: linear-gradient(180deg, #450a0a 0%, #991b1b 50%, #7f1d1d 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.65);
+  z-index: 3;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .key {
@@ -78,45 +102,59 @@ body {
   border: none;
   outline: none;
   --key-velocity: 0.7;
+  transform-origin: top center;
 }
 
 .key.white {
   width: 48px;
   height: 100%;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 70%, #e2e8f0 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 15%, #f8fafc 84%, #e2e8f0 96%, #cbd5e1 100%);
+  border: 1px solid #cbd5e1;
+  border-top: 1px solid #0f172a;
+  border-radius: 0 0 6px 6px;
   z-index: 1;
-  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255,255,255,0.6);
+  box-shadow:
+    inset 0 -7px 0 #cbd5e1,
+    inset 0 -8px 2px rgba(15, 23, 42, 0.18),
+    inset 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 4px 8px rgba(0, 0, 0, 0.35);
 }
 
 .key.black {
   position: absolute;
-  width: 32px;
-  height: 58%;
-  background: linear-gradient(180deg, #334155 0%, var(--piano-black) 55%, #020617 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0 0 3px 3px;
+  top: 18px;
+  width: 30px;
+  height: calc(58% - 10px);
+  background: linear-gradient(180deg, #27272a 0%, #18181b 65%, #09090b 92%, #27272a 100%);
+  border: 1px solid #09090b;
+  border-radius: 0 0 5px 5px;
   z-index: 2;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.12);
+  box-shadow:
+    inset 0 -8px 0 #09090b,
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 2px 0 2px rgba(255, 255, 255, 0.08),
+    inset -2px 0 2px rgba(0, 0, 0, 0.7),
+    0 7px 10px rgba(0, 0, 0, 0.55);
 }
 
 .key.white:active,
 .key.white.active {
-  background: linear-gradient(180deg, #e2e8f0 0%, var(--piano-white-active) 100%);
+  background: linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 85%, #cbd5e1 100%);
   box-shadow:
-    inset 0 calc(2px + var(--key-velocity) * 6px) calc(8px + var(--key-velocity) * 8px) rgba(0, 0, 0, 0.16),
-    0 0 calc(8px + var(--key-velocity) * 14px) rgba(148, 163, 184, calc(0.15 + var(--key-velocity) * 0.35));
-  transform: translateY(calc(1px + var(--key-velocity) * 2px));
+    inset 0 -3px 0 #94a3b8,
+    inset 0 calc(2px + var(--key-velocity) * 6px) calc(8px + var(--key-velocity) * 8px) rgba(0, 0, 0, 0.22),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translateY(calc(1px + var(--key-velocity) * 2.5px));
 }
 
 .key.black:active,
 .key.black.active {
-  background: linear-gradient(180deg, #0f172a 0%, var(--piano-black-active) 100%);
+  background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
   box-shadow:
-    inset 0 calc(2px + var(--key-velocity) * 5px) 10px rgba(0, 0, 0, 0.45),
-    0 0 calc(6px + var(--key-velocity) * 12px) rgba(96, 165, 250, calc(0.12 + var(--key-velocity) * 0.35));
-  transform: translateY(calc(1px + var(--key-velocity) * 1.5px));
+    inset 0 -3px 0 #000,
+    inset 0 calc(2px + var(--key-velocity) * 5px) 10px rgba(0, 0, 0, 0.65),
+    0 3px 5px rgba(0, 0, 0, 0.45);
+  transform: translateY(calc(1.5px + var(--key-velocity) * 2px));
 }
 
 .key.key-strike::after {
@@ -134,32 +172,57 @@ body {
   to { opacity: 0; }
 }
 
+.key-shortcut {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #64748b;
+  background: rgba(15, 23, 42, 0.07);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.1;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.key.black .key-shortcut {
+  bottom: 24px;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  font-size: 0.54rem;
+}
+
 .key-note {
   position: absolute;
-  bottom: 10px;
+  bottom: 11px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.65rem;
-  font-weight: 500;
-  color: #999;
+  font-weight: 600;
+  color: #64748b;
   pointer-events: none;
   letter-spacing: -0.01em;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 .key.black .key-note {
-  color: #555;
-  bottom: 6px;
-  font-size: 0.6rem;
+  color: #9ca3af;
+  bottom: 9px;
+  font-size: 0.58rem;
 }
 
 .key.active .key-note {
-  color: #000;
+  color: #0f172a;
   opacity: 1;
 }
 
 .key.black.active .key-note {
-  color: #ccc;
+  color: #f8fafc;
 }
 
 .controls {
@@ -196,7 +259,46 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   min-width: 72px;
+  min-height: 44px;
   touch-action: manipulation;
+}
+
+.sustain-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  background: var(--bg-body);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s;
+  touch-action: manipulation;
+}
+
+.sustain-lock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.sustain-lock-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+}
+
+.sustain-lock-btn.active .sustain-lock-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
 }
 
 .sustain-btn .sustain-icon {

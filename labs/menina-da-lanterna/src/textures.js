@@ -43,6 +43,19 @@ function grain(ctx, w, h, amount, seed = 0) {
     ctx.putImageData(img, 0, 0);
 }
 
+function attachBump(tex, el, repeat, bumpScale) {
+    const bump = new THREE.CanvasTexture(el);
+    bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+    bump.repeat.set(repeat[0], repeat[1]);
+    bump.anisotropy = 4;
+    bump.colorSpace = THREE.NoColorSpace;
+    bump.bumpScale = bumpScale;
+    bump.needsUpdate = true;
+    tex.bumpMap = bump;
+    tex.bumpScale = bumpScale;
+    return tex;
+}
+
 export function grassTexture(tint = '#2a4a22') {
     return cached(`grass:${tint}`, () => {
         const size = 256;
@@ -61,7 +74,8 @@ export function grassTexture(tint = '#2a4a22') {
             ctx.stroke();
         }
         grain(ctx, size, size, 22, 3);
-        return toTexture(el, { repeat: [16, 16] });
+        const tex = toTexture(el, { repeat: [16, 16] });
+        return attachBump(tex, el, [16, 16], 0.06);
     });
 }
 
@@ -82,7 +96,8 @@ export function cobbleTexture() {
             }
         }
         grain(ctx, size, size, 28, 6);
-        return toTexture(el, { repeat: [8, 8] });
+        const tex = toTexture(el, { repeat: [8, 8] });
+        return attachBump(tex, el, [8, 8], 0.14);
     });
 }
 
@@ -105,7 +120,8 @@ export function barkTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 30, 2);
-        return toTexture(el, { repeat: [2, 4] });
+        const tex = toTexture(el, { repeat: [2, 4] });
+        return attachBump(tex, el, [2, 4], 0.12);
     });
 }
 
@@ -125,7 +141,27 @@ export function woodTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 24, 5);
-        return toTexture(el, { repeat: [2, 2] });
+        const tex = toTexture(el, { repeat: [2, 2] });
+        return attachBump(tex, el, [2, 2], 0.09);
+    });
+}
+
+export function snowTexture() {
+    return cached('snow', () => {
+        const size = 256;
+        const el = canvas(size);
+        const ctx = el.getContext('2d');
+        ctx.fillStyle = '#e8eef6';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < 60; i++) {
+            ctx.fillStyle = `rgba(190,206,228,${0.12 + hash2(i, 3) * 0.16})`;
+            ctx.beginPath();
+            ctx.ellipse(hash2(i, 1) * size, hash2(i, 2) * size, 10 + hash2(i, 4) * 20, 5 + hash2(i, 5) * 10, hash2(i, 6) * 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        grain(ctx, size, size, 16, 9);
+        const tex = toTexture(el, { repeat: [12, 12] });
+        return attachBump(tex, el, [12, 12], 0.05);
     });
 }
 
@@ -164,6 +200,7 @@ export function thatchTexture() {
             ctx.lineTo(x + 2, hash2(i, 3) * size + 10);
             ctx.stroke();
         }
-        return toTexture(el, { repeat: [4, 4] });
+        const tex = toTexture(el, { repeat: [4, 4] });
+        return attachBump(tex, el, [4, 4], 0.1);
     });
 }

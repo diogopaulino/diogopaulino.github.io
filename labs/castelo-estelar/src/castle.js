@@ -10,6 +10,7 @@ import {
     limestone, roofTiles, flagTexture, clockTexture, goldOrnament
 } from './textures.js';
 import { makeFlagMaterial } from './shaders.js';
+import { woodMaterial, metalMaterial, roofTileMaterial } from '../../shared/realism.js';
 
 const GEO = {
     box: new THREE.BoxGeometry(1, 1, 1),
@@ -61,13 +62,16 @@ function makeMats() {
         emissiveIntensity: 0.16
     });
 
+    const baseRoofTile = roofTileMaterial(0x5b82d4, { roughness: 0.44, repeatX: 6, repeatY: 4 });
     const roofMat = new THREE.MeshStandardMaterial({
-        color: 0x5b82d4,
+        color: 0x628ae0,
         map: roof.map,
         normalMap: roof.normalMap,
-        normalScale: new THREE.Vector2(1.0, 1.0),
-        roughness: 0.48,
-        metalness: 0.14,
+        normalScale: new THREE.Vector2(1.25, 1.25),
+        bumpMap: baseRoofTile.map,
+        bumpScale: 0.035,
+        roughness: 0.44,
+        metalness: 0.16,
         emissive: 0x14244a,
         emissiveIntensity: 0.12
     });
@@ -95,17 +99,8 @@ function makeMats() {
         metalness: 0.05
     });
 
-    const woodMat = new THREE.MeshStandardMaterial({
-        color: 0x4a3218,
-        roughness: 0.86,
-        metalness: 0.02
-    });
-
-    const leadMat = new THREE.MeshStandardMaterial({
-        color: 0x6a736e,
-        roughness: 0.45,
-        metalness: 0.35
-    });
+    const woodMat = woodMaterial(0x4a3218, { roughness: 0.78, planks: true, repeat: 3 });
+    const leadMat = metalMaterial(0x5e6764, { roughness: 0.36, metalness: 0.68, repeat: 3 });
 
     return { stoneMat, roofMat, goldMat, windowMat, darkMat, woodMat, leadMat };
 }

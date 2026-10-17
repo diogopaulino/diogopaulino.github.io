@@ -222,12 +222,33 @@ export function buildLantern({ light = false, scale = 1, color = 0xffb347 } = {}
 export function buildVillager({ coat = 0x3a5a48, hat = 0x2a2418 } = {}) {
     const group = new THREE.Group();
     const cloth = std(coat, 0.88);
+    const pantsMat = std(0x2c241d, 0.86);
+    const bootMat = std(0x3a2214, 0.68);
     const hatMat = std(hat, 0.85);
+
+    // Pernas e botas (limbGeometry + shoeMesh) conectadas a leftLeg / rightLeg
+    const legGeo = limbGeometry({
+        length: 0.42, r0: 0.075, r1: 0.052, bulge: 0.018, bulgeAt: 0.35, pinch: 0.22, seg: 10
+    });
+    const legs = [];
+    for (const sx of [-1, 1]) {
+        const leg = new THREE.Group();
+        leg.position.set(sx * 0.11, 0.46, 0);
+        const shin = new THREE.Mesh(legGeo, pantsMat);
+        leg.add(shin);
+        const boot = shoeMesh(bootMat, { length: 0.21, width: 0.088, height: 0.068 });
+        boot.position.set(0, -0.41, 0.035);
+        leg.add(boot);
+        group.add(leg);
+        legs.push(leg);
+    }
+    const [leftLeg, rightLeg] = legs;
+
     const torso = new THREE.Mesh(torsoGeometry({ height: 0.82, girth: 0.32, style: 'human' }), cloth);
-    torso.position.y = 0.08;
+    torso.position.y = 0.38;
     group.add(torso);
     const head = new THREE.Group();
-    head.position.y = 1.02;
+    head.position.y = 1.32;
     group.add(head);
     attachHumanHead(head, {
         radius: 0.16, style: 'human', skin: 0xe0b080, hair: 0x3a2414, hairStyle: 'none', iris: 0x3a2418
@@ -257,10 +278,15 @@ export function buildVillager({ coat = 0x3a5a48, hat = 0x2a2418 } = {}) {
     const armGeo = limbGeometry({ length: 0.46, r0: 0.07, r1: 0.042, bulge: 0.016, seg: 10 });
     for (const sx of [-1, 1]) {
         const arm = new THREE.Mesh(armGeo, cloth);
-        arm.position.set(sx * 0.26, 0.78, 0);
+        arm.position.set(sx * 0.26, 1.08, 0);
         arm.rotation.z = sx * 0.18;
         group.add(arm);
     }
+    group.leftLeg = leftLeg;
+    group.rightLeg = rightLeg;
+    group.userData.leftLeg = leftLeg;
+    group.userData.rightLeg = rightLeg;
+    group.userData.legs = legs;
     enableShadows(group);
     return group;
 }
@@ -304,6 +330,7 @@ export function buildFox() {
     const group = new THREE.Group();
     const fur = std(0xd46828, 0.75);
     const white = std(0xf2e8d8, 0.8);
+    const pawMat = std(0x2a1810, 0.78);
     const body = new THREE.Mesh(canineTorsoGeometry({ length: 0.55, girth: 0.16, chest: 0.045 }), fur);
     body.position.y = 0.28;
     group.add(body);
@@ -324,10 +351,19 @@ export function buildFox() {
         head.add(eye);
     }
     const legGeo = limbGeometry({ length: 0.2, r0: 0.04, r1: 0.022, bulge: 0.01, seg: 8 });
+    const pawGeo = new THREE.SphereGeometry(0.024, 8, 6);
+    const legs = [];
     for (const [sx, sz] of [[-1, 0.12], [1, 0.12], [-1, -0.1], [1, -0.1]]) {
-        const leg = new THREE.Mesh(legGeo, fur);
+        const leg = new THREE.Group();
         leg.position.set(sx * 0.1, 0.2, sz);
+        const limb = new THREE.Mesh(legGeo, fur);
+        leg.add(limb);
+        const paw = new THREE.Mesh(pawGeo, pawMat);
+        paw.scale.set(0.9, 0.65, 1.25);
+        paw.position.set(0, -0.19, 0.012);
+        leg.add(paw);
         group.add(leg);
+        legs.push(leg);
     }
     const tail = new THREE.Group();
     tail.position.set(0, 0.32, -0.18);
@@ -341,6 +377,8 @@ export function buildFox() {
     group.add(tail);
     enableShadows(group);
     group.userData.tail = tail;
+    group.userData.legs = legs;
+    group.userData.head = head;
     return group;
 }
 
@@ -492,7 +530,13 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     const group = new THREE.Group();
     const plaster = std(wall, 0.88, 0.03, { clearcoat: 0.05 });
     const timber = std(0x4a2a14, 0.82, 0.05);
-    const plinth = new THREE.Mesh(new RoundedBoxGeometry(3.35, 0.28, 2.75, 4, 0.06), std(0x6a6050, 0.92));
+    const cobbleTex = cobbleTexture();
+    const plinth = new THREE.Mesh(
+        new RoundedBoxGeometry(3.35, 0.28, 2.75, 4, 0.06),
+        new THREE.MeshStandardMaterial({
+            map: cobbleTex, bumpMap: cobbleTex.bumpMap, bumpScale: cobbleTex.bumpScale ?? 0.14, color: 0x7a7062, roughness: 0.92
+        })
+    );
     plinth.position.y = 0.14;
     group.add(plinth);
     const body = new THREE.Mesh(COTTAGE_WALL, plaster);
@@ -509,8 +553,9 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
         beam.position.set(0, y, 1.62);
         group.add(beam);
     }
+    const thatchTex = thatchTexture();
     const thatchMat = new THREE.MeshPhysicalMaterial({
-        map: thatchTexture(), color: roof, roughness: 0.9, metalness: 0.02, clearcoat: 0.04
+        map: thatchTex, bumpMap: thatchTex.bumpMap, bumpScale: thatchTex.bumpScale ?? 0.1, color: roof, roughness: 0.9, metalness: 0.02, clearcoat: 0.04
     });
     const slope = new THREE.Mesh(COTTAGE_ROOF, thatchMat);
     slope.name = 'cottageRoof';
@@ -555,15 +600,85 @@ export function buildCottage({ roof = 0x6a3a22, wall = 0xd8c4a0 } = {}) {
     return group;
 }
 
+const LAMP_BASE_GEO = new THREE.LatheGeometry([
+    new THREE.Vector2(0.22, 0),
+    new THREE.Vector2(0.22, 0.08),
+    new THREE.Vector2(0.17, 0.14),
+    new THREE.Vector2(0.18, 0.22),
+    new THREE.Vector2(0.12, 0.34),
+    new THREE.Vector2(0.13, 0.42),
+    new THREE.Vector2(0.075, 0.56)
+], 16);
+
+const LAMP_CORBEL_GEO = (() => {
+    const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.04, 2.02, 0),
+        new THREE.Vector3(0.16, 2.18, 0),
+        new THREE.Vector3(0.12, 2.38, 0),
+        new THREE.Vector3(0.28, 2.52, 0),
+        new THREE.Vector3(0.44, 2.56, 0)
+    ]);
+    return new THREE.TubeGeometry(curve, 16, 0.018, 8, false);
+})();
+
 export function buildLampPost() {
     const group = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.4, 14), std(0x2a2418, 0.6, 0.3));
-    pole.position.y = 1.2;
+    const iron = std(0x23201c, 0.48, 0.55, { clearcoat: 0.25 });
+    const brass = std(0x9a7432, 0.38, 0.65);
+
+    // Base moldada em ferro fundido
+    const base = new THREE.Mesh(LAMP_BASE_GEO, iron);
+    base.name = 'lampBase';
+    group.add(base);
+
+    // Fuste principal com anel decorativo
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.068, 2.15, 14), iron);
+    pole.position.y = 1.56;
     group.add(pole);
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.018, 8, 16), brass);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = 2.02;
+    group.add(collar);
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 10), brass);
+    finial.position.y = 2.68;
+    group.add(finial);
+
+    // Braço horizontal + mão-francesa curva (corbel)
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.54, 10), iron);
+    arm.rotation.z = Math.PI / 2;
+    arm.position.set(0.25, 2.58, 0);
+    group.add(arm);
+    const corbel = new THREE.Mesh(LAMP_CORBEL_GEO, iron);
+    corbel.name = 'lampBracket';
+    group.add(corbel);
+
+    // Lanterna suspensa com gaiola de ferro e painéis de vidro
     const lantern = buildLantern({ light: true, scale: 1.15 });
-    lantern.position.y = 2.45;
+    lantern.position.set(0.46, 2.38, 0);
+
+    // Gaiola de ferro (4 hastes + aros superior/inferior + cúpula) ao redor dos painéis de vidro
+    const cage = new THREE.Group();
+    cage.name = 'lanternCage';
+    const barGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.2, 6);
+    for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const bar = new THREE.Mesh(barGeo, iron);
+        bar.position.set(Math.cos(a) * 0.095, 0, Math.sin(a) * 0.095);
+        bar.rotation.z = Math.cos(a) * 0.06;
+        bar.rotation.x = -Math.sin(a) * 0.06;
+        cage.add(bar);
+    }
+    const rimTop = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.01, 6, 16), iron);
+    rimTop.rotation.x = Math.PI / 2;
+    rimTop.position.y = 0.085;
+    const rimBot = rimTop.clone();
+    rimBot.position.y = -0.085;
+    cage.add(rimTop, rimBot);
+    lantern.add(cage);
+
     group.add(lantern);
     if (lantern.userData.light) lantern.userData.light.intensity = 0;
+    if (lantern.userData.glass?.material) lantern.userData.glass.material.emissiveIntensity = 0.05;
     lantern.userData.glass.emissiveIntensity = 0.05;
     lantern.userData.flame.visible = false;
     enableShadows(group);
@@ -1219,7 +1334,10 @@ const FENCE_RAIL = fenceRailGeometry();
 
 export function buildFence(length = 4) {
     const group = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.9 });
+    const woodTex = woodTexture();
+    const wood = new THREE.MeshStandardMaterial({
+        map: woodTex, bumpMap: woodTex.bumpMap, bumpScale: woodTex.bumpScale ?? 0.09, roughness: 0.9
+    });
     for (const y of [0.28, 0.58]) {
         const rail = new THREE.Mesh(FENCE_RAIL, wood);
         rail.name = 'fenceRail';
@@ -1264,21 +1382,122 @@ export function buildFirefly() {
     return mesh;
 }
 
+const WELL_ROOF_GEO = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(-0.92, -0.08);
+    s.lineTo(-0.92, 0.02);
+    s.lineTo(0, 0.62);
+    s.lineTo(0.92, 0.02);
+    s.lineTo(0.92, -0.08);
+    s.lineTo(0, 0.48);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+        depth: 1.72,
+        bevelEnabled: true,
+        bevelThickness: 0.025,
+        bevelSize: 0.025,
+        bevelSegments: 1
+    });
+    g.translate(0, 0, -0.86);
+    g.rotateY(Math.PI / 2);
+    g.computeVertexNormals();
+    return g;
+})();
+
 export function buildWell() {
     const group = new THREE.Group();
-    const ring = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.7, 0.78, 0.55, 12),
-        new THREE.MeshStandardMaterial({ map: cobbleTexture(), roughness: 0.92 })
-    );
-    ring.position.y = 0.28;
+    const cobbleTex = cobbleTexture();
+    const woodTex = woodTexture();
+    const thatchTex = thatchTexture();
+
+    const stoneMat = new THREE.MeshStandardMaterial({
+        map: cobbleTex, bumpMap: cobbleTex.bumpMap, bumpScale: cobbleTex.bumpScale ?? 0.14, roughness: 0.92
+    });
+    const woodMat = new THREE.MeshStandardMaterial({
+        map: woodTex, bumpMap: woodTex.bumpMap, bumpScale: woodTex.bumpScale ?? 0.09, roughness: 0.86
+    });
+    const roofMat = new THREE.MeshPhysicalMaterial({
+        map: thatchTex, bumpMap: thatchTex.bumpMap, bumpScale: thatchTex.bumpScale ?? 0.1, color: 0x5c381e, roughness: 0.9
+    });
+    const ironMat = std(0x28262a, 0.45, 0.72);
+    const ropeMat = std(0xb89660, 0.92, 0.02);
+
+    // Anel de pedra e borda superior
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.78, 0.58, 16), stoneMat);
+    ring.position.y = 0.29;
     group.add(ring);
+    const coping = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.085, 10, 20), stoneMat);
+    coping.rotation.x = Math.PI / 2;
+    coping.position.y = 0.58;
+    group.add(coping);
+
     const water = new THREE.Mesh(
-        new THREE.CircleGeometry(0.55, 12),
-        new THREE.MeshStandardMaterial({ color: 0x1a3040, roughness: 0.2, metalness: 0.3 })
+        new THREE.CircleGeometry(0.58, 16),
+        new THREE.MeshStandardMaterial({ color: 0x1a3040, roughness: 0.18, metalness: 0.35 })
     );
     water.rotation.x = -Math.PI / 2;
     water.position.y = 0.38;
     group.add(water);
+
+    // 2 colunas de madeira + travessa superior
+    const postGeo = new THREE.CylinderGeometry(0.065, 0.075, 1.52, 10);
+    for (const sx of [-0.66, 0.66]) {
+        const post = new THREE.Mesh(postGeo, woodMat);
+        post.name = 'wellPost';
+        post.position.set(sx, 1.24, 0);
+        group.add(post);
+        const brace = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.07), woodMat);
+        brace.position.set(sx * 0.82, 1.82, 0);
+        brace.rotation.z = sx * 0.65;
+        group.add(brace);
+    }
+
+    // Telhadinho de duas águas
+    const roof = new THREE.Mesh(WELL_ROOF_GEO, roofMat);
+    roof.name = 'wellRoof';
+    roof.position.y = 1.92;
+    group.add(roof);
+
+    // Eixo horizontal com manivela
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.38, 10), woodMat);
+    axle.name = 'wellAxle';
+    axle.rotation.z = Math.PI / 2;
+    axle.position.y = 1.38;
+    group.add(axle);
+
+    const crankArm = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.24, 0.035), ironMat);
+    crankArm.position.set(0.72, 1.28, 0);
+    const crankHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.18, 8), woodMat);
+    crankHandle.rotation.z = Math.PI / 2;
+    crankHandle.position.set(0.81, 1.18, 0);
+    group.add(crankArm, crankHandle);
+
+    // Corda enrolada no eixo e descendo até o balde
+    const coil = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.078, 0.22, 12), ropeMat);
+    coil.rotation.z = Math.PI / 2;
+    coil.position.y = 1.38;
+    const ropeLine = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.56, 6), ropeMat);
+    ropeLine.name = 'wellRope';
+    ropeLine.position.y = 1.08;
+    group.add(coil, ropeLine);
+
+    // Balde de madeira suspenso com aros de ferro
+    const bucket = new THREE.Group();
+    bucket.name = 'wellBucket';
+    bucket.position.y = 0.74;
+    const bucketBody = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.105, 0.24, 12), woodMat);
+    bucket.add(bucketBody);
+    for (const by of [-0.07, 0.07]) {
+        const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 6, 14), ironMat);
+        hoop.rotation.x = Math.PI / 2;
+        hoop.position.y = by;
+        bucket.add(hoop);
+    }
+    const bail = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 6, 14, Math.PI), ironMat);
+    bail.position.y = 0.11;
+    bucket.add(bail);
+    group.add(bucket);
+
     enableShadows(group);
     return group;
 }

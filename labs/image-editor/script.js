@@ -443,16 +443,26 @@ function setupEventListeners() {
     // Adjustments
     [brightnessInput, contrastInput, saturationInput, blurInput].forEach((input) => {
         input.addEventListener('input', updateState);
+        const defaultVal = input.dataset.default ?? (input.id === 'blur' ? '0' : '100');
+        const resetSingle = () => {
+            input.value = defaultVal;
+            updateState();
+        };
+        input.addEventListener('dblclick', resetSingle);
+        const header = input.closest('.slider-group')?.querySelector('.slider-header');
+        if (header) header.addEventListener('dblclick', resetSingle);
     });
 
     // Transforms
     rotateLeftBtn.addEventListener('click', () => {
         state.rotate -= 90;
+        updateDimensionsBadge();
         scheduleRender();
         generateThumbnails();
     });
     rotateRightBtn.addEventListener('click', () => {
         state.rotate += 90;
+        updateDimensionsBadge();
         scheduleRender();
         generateThumbnails();
     });
@@ -498,6 +508,24 @@ function setupEventListeners() {
 
 const uploadMessage = uploadPlaceholder.querySelector('p');
 const uploadMessageDefault = uploadMessage ? uploadMessage.textContent : '';
+const imageDimensionsBadge = document.getElementById('imageDimensionsBadge');
+const exportFormatSelect = document.getElementById('exportFormatSelect');
+
+function updateDimensionsBadge() {
+    if (!imageDimensionsBadge) return;
+    if (!originalImage) {
+        imageDimensionsBadge.hidden = true;
+        imageDimensionsBadge.textContent = '';
+        return;
+    }
+    const angleInRadians = (state.rotate || 0) * Math.PI / 180;
+    const absSin = Math.abs(Math.sin(angleInRadians));
+    const absCos = Math.abs(Math.cos(angleInRadians));
+    const w = Math.round(originalImage.width * absCos + originalImage.height * absSin);
+    const h = Math.round(originalImage.width * absSin + originalImage.height * absCos);
+    imageDimensionsBadge.textContent = `${w} × ${h} px`;
+    imageDimensionsBadge.hidden = false;
+}
 
 function setUploadMessage(text) {
     if (uploadMessage) uploadMessage.textContent = text;
@@ -537,6 +565,7 @@ function onImageReady(img) {
     previewArea.classList.add('has-image');
     controlsArea.classList.remove('disabled');
     resetEditor();
+    updateDimensionsBadge();
     generateThumbnails();
 }
 
@@ -546,6 +575,7 @@ function showUploadState() {
     previewArea.classList.remove('has-image');
     uploadPlaceholder.style.display = 'flex';
     controlsArea.classList.add('disabled');
+    updateDimensionsBadge();
 }
 
 function updateState() {
@@ -586,6 +616,7 @@ function resetEditor() {
     filterButtons.none?.classList.add('active');
     filterButtons.none?.setAttribute('aria-pressed', 'true');
 
+    updateDimensionsBadge();
     updateState();
 }
 
@@ -599,9 +630,13 @@ function exportCanvasAtFullResolution() {
 function saveImage() {
     if (!originalImage) return;
     const exportCanvas = exportCanvasAtFullResolution();
+    const mime = exportFormatSelect ? exportFormatSelect.value : 'image/png';
+    const extMap = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+    const ext = extMap[mime] || 'png';
+    const quality = mime === 'image/png' ? undefined : 0.92;
     const link = document.createElement('a');
-    link.download = 'edited-image.png';
-    link.href = exportCanvas.toDataURL('image/png');
+    link.download = `edited-image.${ext}`;
+    link.href = exportCanvas.toDataURL(mime, quality);
     link.click();
 }
 

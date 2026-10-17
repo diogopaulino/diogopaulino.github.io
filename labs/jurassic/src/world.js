@@ -354,8 +354,11 @@ export class World {
         }
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
+        const grassTex = grassTexture();
         const mat = new THREE.MeshStandardMaterial({
-            map: grassTexture(),
+            map: grassTex,
+            bumpMap: grassTex.bumpMap,
+            bumpScale: grassTex.bumpScale ?? 0.06,
             vertexColors: true,
             roughness: 0.92,
             metalness: 0.02
@@ -413,8 +416,13 @@ export class World {
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
         geo.setIndex(indices);
         geo.computeVertexNormals();
+        const dirtTex = dirtTexture();
         const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-            map: dirtTexture(), roughness: 0.92, metalness: 0.02
+            map: dirtTex,
+            bumpMap: dirtTex.bumpMap,
+            bumpScale: dirtTex.bumpScale ?? 0.12,
+            roughness: 0.92,
+            metalness: 0.02
         }));
         mesh.receiveShadow = true;
         this.group.add(mesh);
@@ -439,17 +447,64 @@ export class World {
 
     _fences() {
         const steel = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.4, metalness: 0.7 });
+        const wireMat = new THREE.MeshStandardMaterial({ color: 0x9aa4ae, roughness: 0.25, metalness: 0.88 });
+        const porcelain = new THREE.MeshPhysicalMaterial({
+            color: 0xeef2f6, roughness: 0.18, metalness: 0.05, clearcoat: 0.85, clearcoatRoughness: 0.15
+        });
         const warn = new THREE.MeshStandardMaterial({ color: 0xc4a018, roughness: 0.45, metalness: 0.3 });
         const paddock = { cx: 42, cz: 14, rx: 22, rz: 18 };
         const posts = 36;
+        const wireHeights = [0.68, 1.32, 1.96, 2.6];
+        const insulatorGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.11, 8);
+        insulatorGeo.rotateZ(Math.PI / 2);
+        const cableUnitGeo = new THREE.CylinderGeometry(0.016, 0.016, 1, 6);
+        cableUnitGeo.rotateX(Math.PI / 2);
+
+        const postCoords = [];
         for (let i = 0; i < posts; i++) {
             const a = (i / posts) * Math.PI * 2;
             const x = paddock.cx + Math.cos(a) * paddock.rx;
             const z = paddock.cz + Math.sin(a) * paddock.rz;
-            if (i >= 30 && i <= 33) continue;
+            const y0 = this.heightAt(x, z);
+            const isBroken = i >= 30 && i <= 33;
+            postCoords.push({ x, z, y0, a, isBroken });
+            if (isBroken) continue;
             this._post(x, z, 3.2, steel);
             this.addCollider(x, z, 0.25);
+
+            // Isoladores de porcelana em cada poste
+            const nx = Math.cos(a);
+            const nz = Math.sin(a);
+            for (const wh of wireHeights) {
+                const ins = new THREE.Mesh(insulatorGeo, porcelain);
+                ins.name = 'fenceInsulator';
+                ins.position.set(x - nx * 0.1, y0 + wh, z - nz * 0.1);
+                ins.rotation.y = -a;
+                this.group.add(ins);
+            }
         }
+
+        // Cabos horizontais eletrificados entre postes adjacentes
+        const pA = new THREE.Vector3();
+        const pB = new THREE.Vector3();
+        for (let i = 0; i < posts; i++) {
+            const cur = postCoords[i];
+            const nxt = postCoords[(i + 1) % posts];
+            if (cur.isBroken || nxt.isBroken) continue;
+            for (const wh of wireHeights) {
+                pA.set(cur.x, cur.y0 + wh, cur.z);
+                pB.set(nxt.x, nxt.y0 + wh, nxt.z);
+                const len = pA.distanceTo(pB);
+                const cable = new THREE.Mesh(cableUnitGeo, wireMat);
+                cable.name = 'fenceCable';
+                cable.position.lerpVectors(pA, pB, 0.5);
+                cable.lookAt(pB);
+                cable.scale.set(1, 1, len);
+                cable.castShadow = true;
+                this.group.add(cable);
+            }
+        }
+
         const broken = new THREE.Mesh(BROKEN_RAIL, steel);
         broken.name = 'brokenRail';
         broken.position.set(paddock.cx - paddock.rx + 1, this.heightAt(paddock.cx - paddock.rx, paddock.cz) + 1.4, paddock.cz);
@@ -478,7 +533,10 @@ export class World {
     }
 
     _station() {
-        const concrete = new THREE.MeshStandardMaterial({ color: 0x8a8678, roughness: 0.8, map: rockTexture() });
+        const rockTex = rockTexture();
+        const concrete = new THREE.MeshStandardMaterial({
+            color: 0x8a8678, roughness: 0.8, map: rockTex, bumpMap: rockTex.bumpMap, bumpScale: rockTex.bumpScale ?? 0.12
+        });
         const rust = new THREE.MeshStandardMaterial({ color: 0x6a4030, roughness: 0.7, metalness: 0.3 });
         const x = 4;
         const z = 108;
@@ -518,9 +576,12 @@ export class World {
 
     _makePalm() {
         const g = new THREE.Group();
+        const barkTex = barkTexture();
         const trunk = new THREE.Mesh(
             PALM_TRUNK,
-            new THREE.MeshStandardMaterial({ map: barkTexture(), color: 0xc4a070, roughness: 0.9 })
+            new THREE.MeshStandardMaterial({
+                map: barkTex, bumpMap: barkTex.bumpMap, bumpScale: barkTex.bumpScale ?? 0.14, color: 0xc4a070, roughness: 0.9
+            })
         );
         trunk.position.y = 2.7;
         trunk.rotation.z = 0.08;
@@ -544,9 +605,12 @@ export class World {
     _makeCanopy() {
         const g = new THREE.Group();
         g.name = 'broadleaf';
+        const barkTex = barkTexture();
         const trunk = new THREE.Mesh(
             BROADLEAF_TRUNK,
-            new THREE.MeshStandardMaterial({ map: barkTexture(), roughness: 0.92 })
+            new THREE.MeshStandardMaterial({
+                map: barkTex, bumpMap: barkTex.bumpMap, bumpScale: barkTex.bumpScale ?? 0.14, roughness: 0.92
+            })
         );
         trunk.name = 'broadleafTrunk';
         g.add(trunk);

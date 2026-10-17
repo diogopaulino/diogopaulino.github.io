@@ -90,6 +90,7 @@ class Santos1908 {
 
     bindUi() {
         document.getElementById('startButton')?.addEventListener('click', () => this.start());
+        document.getElementById('pauseBtn')?.addEventListener('click', () => this.togglePause());
         document.getElementById('replayButton')?.addEventListener('click', () => this.replay());
         document.getElementById('muteBtn')?.addEventListener('click', () => this.toggleMute());
         document.getElementById('qualitySelect')?.addEventListener('change', (e) => {
@@ -112,7 +113,7 @@ class Santos1908 {
         if (q) q.value = this.settings.quality;
 
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && this.state === 'playing') {
+            if (e.code === 'Space' && (this.state === 'playing' || this.state === 'paused')) {
                 e.preventDefault();
                 this.togglePause();
             }
@@ -121,6 +122,11 @@ class Santos1908 {
             if (e.code === 'KeyF') this.toggleFullscreen();
         });
         window.addEventListener('resize', () => this.resize());
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && (this.state === 'playing' || this.state === 'paused')) {
+                this.clock.getDelta();
+            }
+        });
     }
 
     async boot() {
@@ -227,6 +233,7 @@ class Santos1908 {
             if (tc) tc.hidden = true;
         }, 5000);
         this.updateMuteUi();
+        this.updatePauseUi();
     }
 
     replay() {
@@ -234,6 +241,7 @@ class Santos1908 {
         this.cine.playing = true;
         this.state = 'playing';
         document.body.dataset.state = 'playing';
+        this.updatePauseUi();
         document.getElementById('titleCard').hidden = false;
         setTimeout(() => {
             const tc = document.getElementById('titleCard');
@@ -251,6 +259,17 @@ class Santos1908 {
             this.cine.playing = true;
             this.state = 'playing';
             document.body.dataset.state = 'playing';
+            this.clock.getDelta();
+        }
+        this.updatePauseUi();
+    }
+
+    updatePauseUi() {
+        const btn = document.getElementById('pauseBtn');
+        if (btn) {
+            const paused = this.state === 'paused';
+            btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+            btn.textContent = paused ? 'Continuar' : 'Pausar';
         }
     }
 
@@ -302,6 +321,7 @@ class Santos1908 {
 
     tick() {
         this._raf = requestAnimationFrame(() => this.tick());
+        if (document.hidden) return;
         const dt = Math.min(this.clock.getDelta(), 0.05);
         const t = this.cine.filmT;
 
@@ -334,3 +354,4 @@ class Santos1908 {
 }
 
 new Santos1908();
+

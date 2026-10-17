@@ -16,6 +16,11 @@
 [data-theme="dark"] {
     --gb-body: #4a4a4a;
     --gb-screen-border: #333;
+    --gb-screen-bg: #6e8c0b;
+    --gb-pixel-dark: #072207;
+    --gb-pixel-light: #88ab14;
+    --gb-pixel-med: #6e8c0b;
+    --gb-pixel-shadow: #245224;
 }
 
 * {
@@ -374,8 +379,9 @@ body {
     right: 0;
 }
 
-.d-pad div:active {
-    transform: scale(0.95);
+.d-pad div:active,
+.d-pad button:active {
+    scale: 0.92;
 }
 
 .action-buttons {

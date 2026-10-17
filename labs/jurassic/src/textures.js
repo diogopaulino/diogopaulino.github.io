@@ -56,9 +56,20 @@ function mixRgb(a, b, t) {
     ];
 }
 
+function toBumpTexture(el, repeat = [1, 1], bumpScale = 0.08) {
+    const tex = new THREE.CanvasTexture(el);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat[0], repeat[1]);
+    tex.anisotropy = 4;
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.bumpScale = bumpScale;
+    tex.needsUpdate = true;
+    return tex;
+}
+
 /**
  * Pele de dinossauro: escamas em favo, listras dorsais e ventre mais claro.
- * Devolve albedo, normal e roughness.
+ * Devolve albedo, normal, roughness e bumpMap com bumpScale.
  */
 export function dinoSkin({
     key,
@@ -73,12 +84,15 @@ export function dinoSkin({
         const el = canvas(size);
         const nEl = canvas(size);
         const rEl = canvas(size);
+        const bEl = canvas(size);
         const ctx = el.getContext('2d');
         const nctx = nEl.getContext('2d');
         const rctx = rEl.getContext('2d');
+        const bctx = bEl.getContext('2d');
         const img = ctx.createImageData(size, size);
         const nimg = nctx.createImageData(size, size);
         const rimg = rctx.createImageData(size, size);
+        const bimg = bctx.createImageData(size, size);
         const d = hexRgb(dorsal);
         const v = hexRgb(ventral);
         const s = hexRgb(stripe);
@@ -115,16 +129,26 @@ export function dinoSkin({
                 rimg.data[i + 1] = rv;
                 rimg.data[i + 2] = rv;
                 rimg.data[i + 3] = 255;
+
+                const bv = Math.max(0, Math.min(255, ((1 - cell) * 0.75 + n1 * 0.25) * 255));
+                bimg.data[i] = bv;
+                bimg.data[i + 1] = bv;
+                bimg.data[i + 2] = bv;
+                bimg.data[i + 3] = 255;
             }
         }
         ctx.putImageData(img, 0, 0);
         nctx.putImageData(nimg, 0, 0);
         rctx.putImageData(rimg, 0, 0);
+        bctx.putImageData(bimg, 0, 0);
 
         const map = toTexture(el, { repeat: [2.4, 2.4] });
         const normalMap = toTexture(nEl, { repeat: [2.4, 2.4], srgb: false, normal: true });
         const roughnessMap = toTexture(rEl, { repeat: [2.4, 2.4], srgb: false });
-        return { map, normalMap, roughnessMap };
+        const bumpMap = toBumpTexture(bEl, [2.4, 2.4], 0.08);
+        map.bumpMap = bumpMap;
+        map.bumpScale = 0.08;
+        return { map, normalMap, roughnessMap, bumpMap, bumpScale: 0.08 };
     });
 }
 
@@ -167,7 +191,10 @@ export function grassTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 18, 3);
-        return toTexture(el, { repeat: [28, 28] });
+        const tex = toTexture(el, { repeat: [28, 28] });
+        tex.bumpMap = toBumpTexture(el, [28, 28], 0.06);
+        tex.bumpScale = 0.06;
+        return tex;
     });
 }
 
@@ -185,7 +212,10 @@ export function dirtTexture() {
             ctx.fill();
         }
         grain(ctx, size, size, 42, 8);
-        return toTexture(el, { repeat: [6, 18] });
+        const tex = toTexture(el, { repeat: [6, 18] });
+        tex.bumpMap = toBumpTexture(el, [6, 18], 0.12);
+        tex.bumpScale = 0.12;
+        return tex;
     });
 }
 
@@ -210,7 +240,10 @@ export function barkTexture() {
             ctx.stroke();
         }
         grain(ctx, size, size, 28, 5);
-        return toTexture(el, { repeat: [1, 3] });
+        const tex = toTexture(el, { repeat: [1, 3] });
+        tex.bumpMap = toBumpTexture(el, [1, 3], 0.14);
+        tex.bumpScale = 0.14;
+        return tex;
     });
 }
 
@@ -270,7 +303,10 @@ export function rockTexture() {
         ctx.fillStyle = '#6a665c';
         ctx.fillRect(0, 0, size, size);
         grain(ctx, size, size, 55, 12);
-        return toTexture(el, { repeat: [3, 3] });
+        const tex = toTexture(el, { repeat: [3, 3] });
+        tex.bumpMap = toBumpTexture(el, [3, 3], 0.12);
+        tex.bumpScale = 0.12;
+        return tex;
     });
 }
 
@@ -286,7 +322,10 @@ export function metalTexture() {
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
         grain(ctx, size, size, 18, 2);
-        return toTexture(el, { repeat: [2, 2] });
+        const tex = toTexture(el, { repeat: [2, 2] });
+        tex.bumpMap = toBumpTexture(el, [2, 2], 0.04);
+        tex.bumpScale = 0.04;
+        return tex;
     });
 }
 

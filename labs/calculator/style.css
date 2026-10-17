@@ -43,9 +43,12 @@ body {
 }
 
 .calculator-wrapper {
-    background: var(--bg-card);
+    background: linear-gradient(165deg, color-mix(in srgb, var(--bg-card) 96%, #ffffff) 0%, var(--bg-card) 100%);
     border-radius: 30px;
-    box-shadow: 0 20px 50px var(--shadow-xl);
+    box-shadow:
+        0 26px 55px var(--shadow-xl),
+        0 6px 0 color-mix(in srgb, var(--border-subtle) 85%, #000000),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35);
     padding: 25px;
     width: 100%;
     max-width: 400px;
@@ -63,8 +66,9 @@ body {
     background: var(--bg-body);
     border-radius: 15px;
     padding: 5px;
-    margin-bottom: 25px;
+    margin-bottom: 22px;
     border: 1px solid var(--border-subtle);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .mode-btn {
@@ -90,7 +94,7 @@ body {
 .mode-btn.active {
     background: var(--bg-card);
     color: var(--accent);
-    box-shadow: 0 4px 6px var(--shadow-sm);
+    box-shadow: 0 4px 6px var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
     border: 1px solid var(--border-subtle);
 }
 
@@ -106,63 +110,94 @@ body {
 
 .display {
     text-align: right;
-    margin-bottom: 25px;
-    padding: 10px;
-    min-height: 100px;
+    margin-bottom: 22px;
+    padding: 14px 18px;
+    min-height: 104px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-body) 88%, #0f172a 12%) 0%, var(--bg-body) 100%);
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+        inset 0 3px 8px rgba(0, 0, 0, 0.18),
+        inset 0 1px 2px rgba(0, 0, 0, 0.22),
+        0 1px 0 rgba(255, 255, 255, 0.25);
+    font-variant-numeric: tabular-nums;
+}
+
+.display::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(125deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 38%, transparent 42%);
+    pointer-events: none;
 }
 
 .previous-operand {
     color: var(--text-secondary);
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     min-height: 1.5rem;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
 }
 
 .current-operand {
     color: var(--text-primary);
-    font-size: 3rem;
+    font-size: 2.85rem;
     font-weight: 700;
     word-wrap: break-word;
     word-break: break-all;
     line-height: 1.1;
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.02em;
 }
 
 .buttons {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
+    gap: 14px;
 }
 
 .btn {
-    border: none;
-    background: var(--btn-bg);
-    color: var(--text-primary);
-    font-size: 1.5rem;
-    font-weight: 500;
-    border-radius: 20px;
-    padding: 20px 0;
-    cursor: pointer;
-    transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, filter 0.12s ease;
-    box-shadow: 0 4px 6px var(--shadow-sm);
-    user-select: none;
     border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--btn-bg) 92%, #ffffff 8%) 0%, var(--btn-bg) 100%);
+    color: var(--text-primary);
+    font-size: 1.45rem;
+    font-weight: 600;
+    border-radius: 18px;
+    padding: 18px 0;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.15s ease, border-color 0.15s ease, filter 0.08s ease;
+    box-shadow:
+        0 4px 0 color-mix(in srgb, var(--border-subtle) 80%, #0f172a 20%),
+        0 6px 12px var(--shadow-sm),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
 .btn:hover {
-    background: var(--btn-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px var(--shadow-md);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--btn-hover) 90%, #ffffff 10%) 0%, var(--btn-hover) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 5px 0 color-mix(in srgb, var(--border-subtle) 80%, #0f172a 20%),
+        0 8px 16px var(--shadow-md),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
     border-color: var(--accent);
 }
 
-.btn:active {
-    transform: translateY(1px) scale(0.94);
-    box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.22), 0 1px 2px var(--shadow-sm);
-    filter: brightness(0.92);
+.btn:active,
+.btn.is-pressed {
+    transform: translateY(3px);
+    box-shadow:
+        0 1px 0 color-mix(in srgb, var(--border-subtle) 80%, #0f172a 20%),
+        inset 0 2px 6px rgba(0, 0, 0, 0.22);
+    filter: brightness(0.95);
 }
 
 .btn.function {
@@ -173,7 +208,7 @@ body {
 .btn.operator {
     color: var(--operator-color);
     font-weight: 700;
-    background: var(--bg-body);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-body) 90%, #ffffff 10%) 0%, var(--bg-body) 100%);
 }
 
 .btn.operator:hover {
@@ -185,14 +220,29 @@ body {
 }
 
 .btn.equals {
-    background: var(--accent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #ffffff 12%) 0%, var(--accent) 100%);
     color: #ffffff;
-    box-shadow: 0 4px 15px var(--shadow-accent);
+    border-color: color-mix(in srgb, var(--accent) 75%, #000000);
+    box-shadow:
+        0 4px 0 color-mix(in srgb, var(--accent) 68%, #000000),
+        0 6px 16px var(--shadow-accent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn.equals:hover {
-    box-shadow: 0 6px 20px var(--shadow-accent);
+    box-shadow:
+        0 5px 0 color-mix(in srgb, var(--accent) 68%, #000000),
+        0 8px 20px var(--shadow-accent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
     background: var(--accent-hover);
+}
+
+.btn.equals:active,
+.btn.equals.is-pressed {
+    transform: translateY(3px);
+    box-shadow:
+        0 1px 0 color-mix(in srgb, var(--accent) 68%, #000000),
+        inset 0 2px 6px rgba(0, 0, 0, 0.28);
 }
 
 /* Currency Section */

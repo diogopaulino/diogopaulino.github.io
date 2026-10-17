@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { limbGeometry, torsoGeometry, headGeometry } from '../../shared/realism.js?v=3';
+import { limbGeometry, torsoGeometry, headGeometry, handGroup } from '../../shared/realism.js?v=3';
 import { COLORS } from './config.js?v=14';
 import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
 
@@ -23,14 +23,19 @@ function cachedMaterial(key, factory) {
 }
 
 export function woodMaterial(dark = false, color = COLORS.hull) {
-    return cachedMaterial(`wood:${dark}:${color}`, () => new THREE.MeshPhysicalMaterial({
-        map: woodTexture(dark),
-        color,
-        roughness: 0.78,
-        metalness: 0.04,
-        clearcoat: 0.1,
-        clearcoatRoughness: 0.7
-    }));
+    return cachedMaterial(`wood:${dark}:${color}`, () => {
+        const tex = woodTexture(dark);
+        return new THREE.MeshPhysicalMaterial({
+            map: tex,
+            bumpMap: tex,
+            bumpScale: 0.032,
+            color,
+            roughness: 0.78,
+            metalness: 0.04,
+            clearcoat: 0.1,
+            clearcoatRoughness: 0.7
+        });
+    });
 }
 
 export function metalMaterial(color = 0xa9adb4, roughness = 0.34) {
@@ -55,13 +60,66 @@ export function plainMaterial(color, roughness = 0.7, metalness = 0.05, emissive
 }
 
 export function stoneMaterial(tint = '#8f8d87') {
-    return cachedMaterial(`stone:${tint}`, () => new THREE.MeshPhysicalMaterial({
-        map: stoneTexture(tint),
-        roughness: 0.92,
-        metalness: 0.03,
-        clearcoat: 0.04,
-        clearcoatRoughness: 0.85
-    }));
+    return cachedMaterial(`stone:${tint}`, () => {
+        const tex = stoneTexture(tint);
+        return new THREE.MeshPhysicalMaterial({
+            map: tex,
+            bumpMap: tex,
+            bumpScale: 0.048,
+            roughness: 0.92,
+            metalness: 0.03,
+            clearcoat: 0.04,
+            clearcoatRoughness: 0.85
+        });
+    });
+}
+
+/** Escudo medieval abaulado torneado (LatheGeometry) com bossa central de ferro e aro metálico rebitado. */
+const shieldGeoCache = new Map();
+function buildShieldMesh(radius, material) {
+    let bodyGeo = shieldGeoCache.get(radius);
+    if (!bodyGeo) {
+        const h = 0.048 * (radius / 0.46);
+        const pts = [
+            new THREE.Vector2(0.001, -h * 1.35),
+            new THREE.Vector2(radius * 0.35, -h * 1.25),
+            new THREE.Vector2(radius * 0.72, -h * 0.95),
+            new THREE.Vector2(radius * 0.98, -h * 0.45),
+            new THREE.Vector2(radius, 0),
+            new THREE.Vector2(radius * 0.98, h * 0.45),
+            new THREE.Vector2(radius * 0.72, h * 0.95),
+            new THREE.Vector2(radius * 0.35, h * 1.25),
+            new THREE.Vector2(0.001, h * 1.35)
+        ];
+        bodyGeo = new THREE.LatheGeometry(pts, 20);
+        const pos = bodyGeo.attributes.position;
+        const uv = bodyGeo.attributes.uv;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            uv.setXY(i, x / (radius * 2) + 0.5, z / (radius * 2) + 0.5);
+        }
+        uv.needsUpdate = true;
+        bodyGeo.computeVertexNormals();
+        shieldGeoCache.set(radius, bodyGeo);
+    }
+    const shield = new THREE.Mesh(bodyGeo, material);
+    const ironMat = metalMaterial(0x7c828a, 0.38);
+    const bossGeo = cachedMaterial(`shieldBossGeo:${radius}`, () => {
+        const g = new THREE.SphereGeometry(radius * 0.24, 12, 8);
+        g.scale(1, 0.52, 1);
+        return g;
+    });
+    const boss = new THREE.Mesh(bossGeo, ironMat);
+    shield.add(boss);
+    const rimGeo = cachedMaterial(`shieldRimGeo:${radius}`, () => {
+        const g = new THREE.TorusGeometry(radius * 0.96, radius * 0.055, 8, 20);
+        g.rotateX(Math.PI / 2);
+        return g;
+    });
+    const rim = new THREE.Mesh(rimGeo, ironMat);
+    shield.add(rim);
+    return shield;
 }
 
 /**
@@ -72,6 +130,8 @@ export function stoneMaterial(tint = '#8f8d87') {
 export function clothMaterial({ map = null, color = 0xffffff, side = THREE.DoubleSide, wind = 1 } = {}) {
     const material = new THREE.MeshPhysicalMaterial({
         map,
+        bumpMap: map || null,
+        bumpScale: map ? 0.015 : 0,
         color,
         side,
         roughness: 0.86,

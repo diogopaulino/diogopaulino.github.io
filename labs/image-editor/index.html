@@ -120,6 +120,7 @@
                         Prévia da imagem carregada para edição.
                     </canvas>
                     <span class="compare-hint" id="compareHint">Segure a imagem para comparar com o original</span>
+                    <span class="image-dimensions-badge" id="imageDimensionsBadge" aria-live="polite" hidden></span>
                 </div>
 
                 <div class="controls-area" id="controlsArea">
@@ -132,31 +133,31 @@
                     <div class="tab-content active" id="adjust-tab">
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label for="brightness">Brilho</label>
+                                <label for="brightness" title="Duplo clique para resetar">Brilho</label>
                                 <span class="value">100%</span>
                             </div>
-                            <input type="range" id="brightness" min="0" max="200" value="100">
+                            <input type="range" id="brightness" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label for="contrast">Contraste</label>
+                                <label for="contrast" title="Duplo clique para resetar">Contraste</label>
                                 <span class="value">100%</span>
                             </div>
-                            <input type="range" id="contrast" min="0" max="200" value="100">
+                            <input type="range" id="contrast" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label for="saturation">Saturação</label>
+                                <label for="saturation" title="Duplo clique para resetar">Saturação</label>
                                 <span class="value">100%</span>
                             </div>
-                            <input type="range" id="saturation" min="0" max="200" value="100">
+                            <input type="range" id="saturation" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
                         </div>
                         <div class="slider-group">
                             <div class="slider-header">
-                                <label for="blur">Desfoque</label>
+                                <label for="blur" title="Duplo clique para resetar">Desfoque</label>
                                 <span class="value">0px</span>
                             </div>
-                            <input type="range" id="blur" min="0" max="10" value="0" step="0.1">
+                            <input type="range" id="blur" min="0" max="10" value="0" step="0.1" data-default="0" title="Duplo clique para resetar">
                         </div>
                     </div>
 
@@ -184,23 +185,19 @@
                             </button>
                             <button class="tool-btn" id="flipHorizontal" title="Espelhar horizontalmente">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <polyline points="16 3 21 3 21 8" />
-                                    <line x1="4" y1="20" x2="21" y2="3" />
-                                    <polyline points="21 16 21 21 16 21" />
-                                    <line x1="15" y1="15" x2="21" y2="21" />
-                                    <line x1="4" y1="4" x2="9" y2="9" />
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3" />
+                                    <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
+                                    <path d="M12 20v2M12 14v2M12 8v2M12 2v2" />
                                 </svg>
                                 Espelhar H
                             </button>
                             <button class="tool-btn" id="flipVertical" title="Espelhar verticalmente">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <polyline points="16 3 21 3 21 8" />
-                                    <line x1="4" y1="20" x2="21" y2="3" />
-                                    <polyline points="21 16 21 21 16 21" />
-                                    <line x1="15" y1="15" x2="21" y2="21" />
-                                    <line x1="4" y1="4" x2="9" y2="9" />
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3" />
+                                    <path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3" />
+                                    <path d="M4 12H2M10 12H8M16 12h-2M22 12h-2" />
                                 </svg>
                                 Espelhar V
                             </button>
@@ -213,7 +210,14 @@
                             <button class="btn secondary" id="changeImageBtn">Trocar</button>
                             <button class="btn secondary" id="copyBtn">Copiar</button>
                         </div>
-                        <button class="btn primary" id="saveBtn">Baixar Imagem</button>
+                        <div class="export-row">
+                            <select id="exportFormatSelect" class="export-format-select" aria-label="Formato de exportação">
+                                <option value="image/png" data-ext="png">PNG</option>
+                                <option value="image/jpeg" data-ext="jpg">JPEG</option>
+                                <option value="image/webp" data-ext="webp">WebP</option>
+                            </select>
+                            <button class="btn primary" id="saveBtn">Baixar Imagem</button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,10 +1,10 @@
 /**
- * Avatar caminhando pela orla — colisão suave com canais e limites da faixa.
+ * Avatar esculpido caminhando pela orla — colisão suave com canais e limites da faixa.
  */
 
-import * as THREE from 'three';
 import { ORLA_HALF, CANALS, WALK, ZONES } from './config.js';
 import { clamp } from './utils.js';
+import { createSculptedHuman, animateSculptedHuman } from '../../shared/realism.js';
 
 export class Player {
     constructor(scene) {
@@ -13,26 +13,23 @@ export class Player {
         this.yaw = Math.PI * 0.5; // olhando para a Ponta da Praia (leste)
         this.pitch = -0.05;
         this.speed = 0;
+        this.walkPhase = 0;
         this.mesh = this._buildMesh();
         if (scene) scene.add(this.mesh);
     }
 
     _buildMesh() {
-        const g = new THREE.Group();
-        const body = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.28, 0.85, 4, 8),
-            new THREE.MeshStandardMaterial({ color: 0x2a5f8f, roughness: 0.75 })
-        );
-        body.position.y = 1.05;
-        body.castShadow = true;
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.22, 10, 8),
-            new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.7 })
-        );
-        head.position.y = 1.85;
-        head.castShadow = true;
-        g.add(body, head);
-        return g;
+        return createSculptedHuman({
+            style: 'human',
+            skin: 0xd4a574,
+            hair: 0x2a1c12,
+            hairStyle: 'short',
+            shirt: 0x1e6b9e,
+            pants: 0x26303d,
+            shoes: 0x1e1a18,
+            detailedFace: true,
+            scale: 1.08
+        });
     }
 
     reset(landmarkX = -100) {
@@ -41,20 +38,25 @@ export class Player {
         this.yaw = Math.PI * 0.5;
         this.pitch = -0.05;
         this.speed = 0;
-        this.syncMesh();
+        this.walkPhase = 0;
+        this.syncMesh(0);
     }
 
-    syncMesh() {
+    syncMesh(dt = 0.016) {
         if (!this.mesh) return;
         this.mesh.position.set(this.x, 0, this.z);
         this.mesh.rotation.y = this.yaw;
-        const bob = this.speed > 0.5 ? Math.sin(performance.now() * 0.012) * 0.04 : 0;
-        this.mesh.children[0].position.y = 1.05 + bob;
+        if (this.speed > 0.3) {
+            this.walkPhase += dt * (this.speed * 0.95);
+            animateSculptedHuman(this.mesh, this.walkPhase, Math.min(0.75, 0.35 + this.speed * 0.03));
+        } else {
+            animateSculptedHuman(this.mesh, 0, 0);
+        }
     }
 
     update(dt, input, locked = false) {
         if (locked) {
-            this.syncMesh();
+            this.syncMesh(dt);
             return;
         }
 
@@ -92,6 +94,7 @@ export class Player {
         this.x = nx;
         this.z = nz;
         this.speed = Math.hypot(vx, vz);
-        this.syncMesh();
+        this.syncMesh(dt);
     }
 }
+

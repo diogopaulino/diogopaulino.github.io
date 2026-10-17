@@ -567,3 +567,41 @@ body {
     .close-btn { min-width: 44px; min-height: 44px; }
     .hud-strip { flex-wrap: wrap; gap: 0.5rem; }
 }
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .maestro-container {
+        padding: 0.25rem max(0.75rem, env(safe-area-inset-right, 0px))
+            max(0.35rem, env(safe-area-inset-bottom, 0px))
+            max(0.75rem, env(safe-area-inset-left, 0px));
+        gap: 0.35rem;
+    }
+
+    .compact-header {
+        padding-block: 0.15rem !important;
+    }
+
+    .hud-strip,
+    .control-deck {
+        padding: 0.3rem 0.65rem;
+        gap: 0.4rem;
+    }
+
+    .studio-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+        gap: 0.5rem;
+        align-items: start;
+    }
+
+    #staff-canvas {
+        max-height: 115px;
+    }
+
+    .piano-keyboard {
+        height: 98px;
+    }
+
+    .compact-footer {
+        display: none;
+    }
+}

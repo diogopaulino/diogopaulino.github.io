@@ -687,9 +687,12 @@ kbd {
     }
 
     .side-bar.right .separator,
-    .side-bar.right .shortcuts-hint,
-    .side-bar.right .shape-fill-group {
+    .side-bar.right .shortcuts-hint {
         display: none;
+    }
+
+    .side-bar.right .shape-fill-group {
+        grid-column: 1 / -1;
     }
 
     .tool-group {

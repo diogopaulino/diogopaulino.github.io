@@ -1,9 +1,20 @@
 /**
- * Materiais compartilhados (PBR leve).
+ * Materiais compartilhados (PBR procedural com mapas de normal e textura).
  * Paleta: manhã de inverno no porto — ocre de armazém, aço escuro, café.
  */
 
 import * as THREE from 'three';
+import {
+    woodMaterial,
+    brickMaterial,
+    stoneMaterial,
+    plasterMaterial,
+    metalMaterial,
+    burlapMaterial,
+    roofTileMaterial,
+    skinMaterial,
+    clothMaterial
+} from '../../shared/realism.js';
 
 export function createMaterials() {
     const mats = {
@@ -19,113 +30,43 @@ export function createMaterials() {
             metalness: 0.05,
             envMapIntensity: 0.5
         }),
-        quay: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#6a655c'),
-            roughness: 0.92,
-            metalness: 0.02
-        }),
-        brick: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#8a6a4e'),
-            roughness: 0.88,
-            metalness: 0.02
-        }),
-        plaster: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#c4b59a'),
-            roughness: 0.85,
-            metalness: 0.01
-        }),
-        roof: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#4a3a32'),
-            roughness: 0.9,
-            metalness: 0.05
-        }),
-        steel: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#2c3036'),
-            roughness: 0.45,
-            metalness: 0.65
-        }),
-        hull: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#1e2430'),
-            roughness: 0.55,
-            metalness: 0.35
-        }),
-        hullBoot: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#6b2a1e'),
-            roughness: 0.7,
-            metalness: 0.15
-        }),
-        deck: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#8b7355'),
-            roughness: 0.82,
-            metalness: 0.05
-        }),
-        funnel: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#1a1a1c'),
-            roughness: 0.5,
-            metalness: 0.4
-        }),
-        funnelBand: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#c4a35a'),
-            roughness: 0.55,
-            metalness: 0.3
-        }),
-        sack: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#a89060'),
-            roughness: 0.95,
-            metalness: 0
-        }),
-        rail: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#3a3a3c'),
-            roughness: 0.4,
-            metalness: 0.7
-        }),
-        wood: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#5c4030'),
-            roughness: 0.9,
-            metalness: 0
-        }),
-        skin: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#c4a07a'),
-            roughness: 0.75,
-            metalness: 0
-        }),
-        cloth: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#3a4550'),
-            roughness: 0.9,
-            metalness: 0
-        }),
-        clothLight: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#d8d0c0'),
-            roughness: 0.88,
-            metalness: 0
-        }),
-        foliage: new THREE.MeshStandardMaterial({
+        quay: stoneMaterial(0x6a655c, { roughness: 0.9, repeatX: 18, repeatY: 4 }),
+        brick: brickMaterial(0x8a5842, { mortar: 0xc2b8a6, roughness: 0.88, repeatX: 6, repeatY: 3 }),
+        plaster: plasterMaterial(0xc4b59a, { roughness: 0.84, repeat: 4 }),
+        roof: roofTileMaterial(0x5a3c32, { roughness: 0.8, repeatX: 8, repeatY: 3 }),
+        steel: metalMaterial(0x2c3036, { roughness: 0.42, metalness: 0.72 }),
+        hull: metalMaterial(0x1e2430, { roughness: 0.5, metalness: 0.42 }),
+        hullBoot: metalMaterial(0x6b2a1e, { roughness: 0.65, metalness: 0.22 }),
+        deck: woodMaterial(0x8b7355, { roughness: 0.78, planks: true, repeat: 6 }),
+        funnel: metalMaterial(0x1a1a1c, { roughness: 0.48, metalness: 0.45 }),
+        funnelBand: metalMaterial(0xc4a35a, { roughness: 0.42, metalness: 0.55 }),
+        sack: burlapMaterial(0xa89060, { roughness: 0.94 }),
+        rail: metalMaterial(0x3a3a3c, { roughness: 0.35, metalness: 0.78 }),
+        wood: woodMaterial(0x5c4030, { roughness: 0.84, planks: true, repeat: 3 }),
+        skin: skinMaterial(0xc4a07a),
+        cloth: clothMaterial(0x3a4550, { roughness: 0.86 }),
+        clothLight: clothMaterial(0xd8d0c0, { roughness: 0.84 }),
+        foliage: new THREE.MeshPhysicalMaterial({
             color: new THREE.Color('#2d4a28'),
-            roughness: 0.95,
-            metalness: 0
+            roughness: 0.78,
+            sheen: 0.35,
+            sheenColor: new THREE.Color('#7ca868'),
+            sheenRoughness: 0.6
         }),
         mountain: new THREE.MeshStandardMaterial({
             color: new THREE.Color('#3a4a38'),
-            roughness: 0.95,
-            metalness: 0,
-            flatShading: true
-        }),
-        sand: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#8a7a60'),
-            roughness: 0.98,
+            roughness: 0.92,
             metalness: 0
         }),
-        white: new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#e8e4dc'),
-            roughness: 0.7,
-            metalness: 0.1
-        }),
-        glass: new THREE.MeshStandardMaterial({
+        sand: plasterMaterial(0x8a7a60, { roughness: 0.95, repeat: 8 }),
+        white: plasterMaterial(0xe8e4dc, { roughness: 0.68, repeat: 2 }),
+        glass: new THREE.MeshPhysicalMaterial({
             color: new THREE.Color('#8ab0c4'),
-            roughness: 0.15,
-            metalness: 0.3,
+            roughness: 0.12,
+            metalness: 0.15,
+            transmission: 0.35,
             transparent: true,
-            opacity: 0.55
+            opacity: 0.68
         }),
         smoke: new THREE.MeshBasicMaterial({
             color: new THREE.Color('#b8b4ae'),
@@ -145,3 +86,4 @@ export function createMaterials() {
 export function disposeMaterials(mats) {
     for (const m of Object.values(mats)) m.dispose?.();
 }
+

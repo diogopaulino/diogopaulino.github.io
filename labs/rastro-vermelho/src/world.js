@@ -1,7 +1,10 @@
 /** Streamed scenery shares geometry/materials. Terrain, collision and hooves sample
  * the same height function; vegetation is deterministic when revisiting a chunk. */
 import { hash, terrainHeight, roadDistance, roadX, LANDMARKS, clamp, lerp } from './simulation.js';
-import { createMuscle, createSkull, createTorso, createHand, addRealisticFace } from '../../shared/realism-bjs.js';
+import {
+    createMuscle, createSkull, createTorso, createHand, createShoe,
+    addRealisticFace, createPBRWood, createPBRStone, createPBRMetal
+} from '../../shared/realism-bjs.js';
 const B = window.BABYLON;
 export const CHUNK_SIZE = 96;
 export const PROFILES = {
@@ -47,10 +50,31 @@ export function createPerson(scene, palette, mounted = false) {
     });
     const neck = B.MeshBuilder.CreateCylinder('pescoço', { height: .22, diameterTop: .18, diameterBottom: .21, tessellation: 14 }, scene);
     neck.parent = root; neck.position.set(0, 1.48, 0); neck.material = palette.skin; neck.isPickable = false;
-    const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .045, diameter: .67, tessellation: 28 }, scene);
+    // Chapéu de cowboy com aba curvada nas laterais, fita de couro e copa com vinco duplo (cattleman crease)
+    const brim = B.MeshBuilder.CreateCylinder('aba-do-chapéu', { height: .032, diameter: .68, tessellation: 28 }, scene);
+    const brimPos = brim.getVerticesData(B.VertexBuffer.PositionKind);
+    for (let i = 0; i < brimPos.length; i += 3) {
+        const bx = brimPos[i], bz = brimPos[i + 2];
+        brimPos[i + 1] += (bx * bx) * 0.42 - (bz * bz) * 0.08;
+    }
+    brim.setVerticesData(B.VertexBuffer.PositionKind, brimPos);
+    brim.createNormals(false);
     brim.parent = root; brim.position.y = 1.97; brim.material = palette.hat;
-    const hat = B.MeshBuilder.CreateCylinder('chapéu', { height: .22, diameterTop: .3, diameterBottom: .38, tessellation: 22 }, scene);
+    const hat = B.MeshBuilder.CreateCylinder('chapéu', { height: .22, diameterTop: .31, diameterBottom: .38, tessellation: 24, subdivisions: 2 }, scene);
+    const hatPos = hat.getVerticesData(B.VertexBuffer.PositionKind);
+    for (let i = 0; i < hatPos.length; i += 3) {
+        const hx = hatPos[i], hy = hatPos[i + 1], hz = hatPos[i + 2];
+        if (hy > 0.04) {
+            const crease = Math.exp(-((Math.abs(hx) - 0.065) ** 2) / 0.0022) * 0.045;
+            hatPos[i + 1] -= crease;
+            hatPos[i] *= 1 - Math.max(0, hz) * 0.32;
+        }
+    }
+    hat.setVerticesData(B.VertexBuffer.PositionKind, hatPos);
+    hat.createNormals(false);
     hat.parent = root; hat.position.y = 2.08; hat.material = palette.hat;
+    const hatBand = B.MeshBuilder.CreateTorus('fita-chapéu', { diameter: 0.37, thickness: 0.025, tessellation: 24 }, scene);
+    hatBand.parent = root; hatBand.rotation.x = Math.PI / 2; hatBand.position.y = 1.99; hatBand.material = palette.scarf;
     // Lenço carmim
     const scarf = B.MeshBuilder.CreateTorus('lenço', { diameter: 0.34, thickness: 0.045, tessellation: 20 }, scene);
     scarf.parent = root; scarf.rotation.x = Math.PI / 2; scarf.position.set(0, 1.55, 0.02); scarf.material = palette.scarf;
@@ -68,14 +92,25 @@ export function createPerson(scene, palette, mounted = false) {
         leg.isPickable = false;
         if (mounted) leg.rotation.set(0.35, 0, side * 0.12);
         else leg.rotation.set(0, 0, side * -0.04);
-        const boot = createMuscle(scene, 'bota', {
-            length: 0.22, r0: 0.08, r1: 0.1, bulge: 0.02, pinch: 0, tessellation: 8, rings: 5
+        // Bota de cowboy com cano, bico esculpido e espora metálica
+        const bootShaft = createMuscle(scene, 'cano-bota', {
+            length: 0.24, r0: 0.082, r1: 0.068, bulge: 0.015, pinch: 0.1, tessellation: 10, rings: 5
         });
-        boot.parent = root;
-        boot.position.set(side * (mounted ? .22 : .14), 0.14, 0.08);
-        boot.rotation.x = Math.PI / 2;
-        boot.material = palette.hat;
-        boot.isPickable = false;
+        bootShaft.parent = root;
+        bootShaft.position.set(side * (mounted ? .22 : .14), mounted ? 0.24 : 0.22, mounted ? -0.02 : 0);
+        bootShaft.material = palette.hat;
+        bootShaft.isPickable = false;
+        const bootFoot = createShoe(scene, 'bota', { length: 0.25, width: 0.1, height: 0.09 });
+        bootFoot.parent = root;
+        bootFoot.position.set(side * (mounted ? .22 : .14), mounted ? 0.11 : 0.08, mounted ? 0.04 : 0.05);
+        bootFoot.rotation.y = -Math.PI / 2;
+        bootFoot.material = palette.hat;
+        const spur = B.MeshBuilder.CreateTorus('espora', { diameter: 0.055, thickness: 0.01, tessellation: 12 }, scene);
+        spur.parent = root;
+        spur.position.set(side * (mounted ? .22 : .14), mounted ? 0.12 : 0.09, mounted ? -0.08 : -0.07);
+        spur.rotation.y = Math.PI / 2;
+        spur.material = palette.metal;
+        spur.isPickable = false;
         const arm = createMuscle(scene, 'manga', {
             length: 0.46, r0: 0.09, r1: 0.06, bulge: 0.02, pinch: 0.25, tessellation: 10, rings: 6
         });
@@ -91,7 +126,7 @@ export function createPerson(scene, palette, mounted = false) {
         hand.position.set(side * .34, mounted ? 1.02 : .9, mounted ? .38 : .02);
         if (side < 0) hand.scaling.x = -1;
     }
-    // Revólver — cilindro + cano
+    // Revólver de 6 tiros — empunhadura, tambor canelado, cão, guarda-mato e cano
     const gun = new B.TransformNode('revólver', scene);
     gun.parent = root;
     gun.position.set(.36, mounted ? 1.03 : .85, .26);
@@ -108,12 +143,41 @@ export function createPerson(scene, palette, mounted = false) {
     grip.position.set(0, -0.08, 0);
     grip.material = palette.hat;
     grip.isPickable = false;
+    const revCyl = B.MeshBuilder.CreateCylinder('tambor-revolver', {
+        height: 0.085, diameter: 0.066, tessellation: 12
+    }, scene);
+    const cylPos = revCyl.getVerticesData(B.VertexBuffer.PositionKind);
+    for (let i = 0; i < cylPos.length; i += 3) {
+        const ang = Math.atan2(cylPos[i + 2], cylPos[i]);
+        const flute = 1 - Math.max(0, Math.cos(ang * 6)) * 0.12;
+        cylPos[i] *= flute;
+        cylPos[i + 2] *= flute;
+    }
+    revCyl.setVerticesData(B.VertexBuffer.PositionKind, cylPos);
+    revCyl.createNormals(false);
+    revCyl.parent = gun;
+    revCyl.rotation.x = Math.PI / 2;
+    revCyl.position.set(0, 0.018, 0.035);
+    revCyl.material = palette.metal;
+    revCyl.isPickable = false;
+    const hammer = B.MeshBuilder.CreateBox('cão-revolver', { width: 0.012, height: 0.034, depth: 0.024 }, scene);
+    hammer.parent = gun;
+    hammer.position.set(0, 0.046, -0.018);
+    hammer.rotation.x = -0.45;
+    hammer.material = palette.metal;
+    hammer.isPickable = false;
+    const triggerGuard = B.MeshBuilder.CreateTorus('guarda-mato', { diameter: 0.052, thickness: 0.008, tessellation: 12 }, scene);
+    triggerGuard.parent = gun;
+    triggerGuard.rotation.y = Math.PI / 2;
+    triggerGuard.position.set(0, -0.02, 0.026);
+    triggerGuard.material = palette.metal;
+    triggerGuard.isPickable = false;
     const barrel = B.MeshBuilder.CreateCylinder('cano', {
         height: 0.26, diameterTop: 0.028, diameterBottom: 0.04, tessellation: 10
     }, scene);
     barrel.parent = gun;
     barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0.02, 0.14);
+    barrel.position.set(0, 0.02, 0.16);
     barrel.material = palette.metal;
     barrel.isPickable = false;
     root.getChildMeshes().forEach(m => { m.isPickable = false; m.receiveShadows = true; });
@@ -123,9 +187,13 @@ export class World {
     constructor(scene, shadow, profile) {
         this.scene = scene; this.shadow = shadow; this.profile = profile; this.chunks = new Map(); this.queue = []; this.center = ''; this.staticColliders = []; this.fires = [];
         this.mats = {
-            wood: material(scene, 'madeira-envelhecida', '#65513d'), darkWood: material(scene, 'madeira-escura', '#33281f'),
-            canvas: material(scene, 'lona', '#b4a488', .82), metal: material(scene, 'ferro', '#343a3a', .28, .85),
-            leaves: material(scene, 'folhas', '#455338'), bark: material(scene, 'casca', '#483c2d'),
+            wood: createPBRWood(scene, 'madeira-envelhecida', { hex: '#65513d', roughness: 0.72, planks: true, uScale: 2, vScale: 2 }),
+            darkWood: createPBRWood(scene, 'madeira-escura', { hex: '#33281f', roughness: 0.78, planks: false, uScale: 2, vScale: 2 }),
+            stone: createPBRStone(scene, 'pedra-pbr', { hex: '#7a756c', roughness: 0.86, uScale: 3, vScale: 2 }),
+            canvas: material(scene, 'lona', '#b4a488', .82),
+            metal: createPBRMetal(scene, 'ferro', { color: [0.22, 0.24, 0.25], roughness: 0.28, metallic: 0.85 }),
+            leaves: material(scene, 'folhas', '#455338'),
+            bark: createPBRWood(scene, 'casca', { hex: '#483c2d', roughness: 0.88, planks: false, uScale: 1, vScale: 3 }),
             grass: material(scene, 'capim-seco', '#9d9159'), coat: material(scene, 'casaco', '#514d3d', .78),
             pants: material(scene, 'calça', '#333c41', .8), skin: material(scene, 'pele', '#b38a67', .62),
             hat: material(scene, 'couro', '#30261e', .75), scarf: material(scene, 'lenço-carmim', '#8e3027', .7),
@@ -140,7 +208,7 @@ export class World {
         terrain.metallicTexture = new B.Texture('assets/ground-roughness.webp', scene);
         terrain.useRoughnessFromMetallicTextureAlpha = false; terrain.useRoughnessFromMetallicTextureGreen = true; terrain.useMetallnessFromMetallicTextureBlue = false;
         terrain.roughness = 1; this.terrainMaterial = terrain;
-        this.rockMaterial = material(scene, 'arenito-pbr', '#a38a68');
+        this.rockMaterial = createPBRStone(scene, 'arenito-pbr', { hex: '#a38a68', roughness: 0.88, uScale: 2, vScale: 2 });
         this.rockMaterial.albedoTexture = new B.Texture('assets/rock-albedo.webp', scene);
         this.rockMaterial.bumpTexture = new B.Texture('assets/rock-normal.webp', scene); this.rockMaterial.bumpTexture.level = .5;
         this.createTemplates(); this.createLandmarks();
@@ -312,11 +380,37 @@ export class World {
         this.staticColliders.push({ x: parent.position.x + x, z: parent.position.z + z, radius: 2 });
     }
     campfire(parent, x, z) {
-        for (let i = 0; i < 9; i++) {
-            const stone = this.rock.createInstance('pedra-da-fogueira'); stone.parent = parent;
-            stone.position.set(x + Math.sin(i * .7) * .8, .12, z + Math.cos(i * .7) * .8); stone.scaling.set(.23, .18, .23);
+        for (let i = 0; i < 10; i++) {
+            const ang = (i / 10) * Math.PI * 2;
+            const stone = this.rock.createInstance('pedra-da-fogueira');
+            stone.parent = parent;
+            stone.position.set(x + Math.sin(ang) * .82, .12, z + Math.cos(ang) * .82);
+            stone.scaling.set(.24, .18 + (i % 3) * .03, .22);
+            stone.rotation.y = ang * 1.7;
         }
-        for (const a of [-.6, .6]) { const log = box(this.scene, parent, 'lenha', [1.3, .15, .17], [x, .17, z], this.mats.darkWood); log.rotation.y = a; }
+        const emberBed = B.MeshBuilder.CreateCylinder('leito-brasas', { height: 0.06, diameter: 0.92, tessellation: 14 }, this.scene);
+        emberBed.parent = parent;
+        emberBed.position.set(x, 0.05, z);
+        emberBed.material = this.mats.fire;
+        emberBed.isPickable = false;
+        for (const [idx, a] of [[-0.65, 0], [0.55, 1], [1.65, 2]].entries()) {
+            const log = B.MeshBuilder.CreateCylinder(`tora-lenha-${idx}`, {
+                height: 1.32, diameterTop: 0.14, diameterBottom: 0.17, tessellation: 10
+            }, this.scene);
+            log.parent = parent;
+            log.position.set(x, 0.14 + a * 0.035, z);
+            log.rotation.set(0, idx * 1.05 - 0.6, Math.PI / 2 - 0.12);
+            log.material = this.mats.bark;
+            log.isPickable = false;
+            log.receiveShadows = true;
+            const tip = B.MeshBuilder.CreateCylinder(`brasa-ponta-${idx}`, {
+                height: 0.24, diameter: 0.145, tessellation: 10
+            }, this.scene);
+            tip.parent = log;
+            tip.position.y = 0.22;
+            tip.material = this.mats.fire;
+            tip.isPickable = false;
+        }
         const flame = sphere(this.scene, parent, 'fogo', [.6, .9, .6], [x, .4, z], this.mats.fire); flame.metadata = { fire: true };
         const light = new B.PointLight('luz-da-fogueira', new B.Vector3(parent.position.x + x, parent.position.y + 1, parent.position.z + z), this.scene);
         light.diffuse.set(1, .44, .13); light.range = 9; light.intensity = 4;
@@ -324,7 +418,7 @@ export class World {
     }
     building(parent, x, z, width, depth, label) {
         const s = this.scene, m = this.mats;
-        box(s, parent, 'fundação', [width + .3, .3, depth + .2], [x, .15, z], m.darkWood);
+        box(s, parent, 'fundação', [width + .3, .3, depth + .2], [x, .15, z], m.stone);
         for (let row = 0; row < 11; row++) {
             const y = .45 + row * .25;
             box(s, parent, 'tábua-fundo', [width, .23, .15], [x, y, z + depth / 2], m.wood);
@@ -342,7 +436,10 @@ export class World {
         box(s, parent, 'cobertura-varanda', [width + .8, .15, 1.8], [x, 3, z - depth / 2 - .8], m.darkWood);
         const texture = new B.DynamicTexture(`letreiro-${label}`, { width: 512, height: 128 }, s, false);
         texture.drawText(label, null, 84, 'bold 60px Georgia', '#e3d3a7', '#30291e', true);
-        const signMat = new B.StandardMaterial(`placa-${label}`, s); signMat.diffuseTexture = texture; signMat.specularColor.set(0, 0, 0);
+        const signMat = new B.PBRMaterial(`placa-${label}`, s);
+        signMat.albedoTexture = texture;
+        signMat.roughness = 0.85;
+        signMat.metallic = 0.04;
         const sign = B.MeshBuilder.CreatePlane('letreiro', { width: width * .65, height: .8, sideOrientation: B.Mesh.DOUBLESIDE }, s);
         sign.parent = parent; sign.position.set(x, 3.4, z - depth / 2 - .12); sign.material = signMat;
         this.staticColliders.push({ x: parent.position.x + x, z: parent.position.z + z, radius: Math.max(width, depth) * .55 });
@@ -369,8 +466,40 @@ export async function loadHorse(scene, shadow, palette) {
     });
     const animations = new Map(result.animationGroups.map(g => [g.name.toLowerCase(), g]));
     const rider = createPerson(scene, palette, true); rider.root.parent = mount; rider.root.position.set(0, 3.02, -.18); rider.root.scaling.setAll(.88);
-    const saddle = box(scene, mount, 'sela', [.72, .16, .92], [0, 3.02, -.16], palette.hat);
+    // Manta sob a sela
+    const blanket = box(scene, mount, 'manta-sela', [.84, .08, 1.06], [0, 2.94, -.18], palette.scarf);
+    blanket.isPickable = false;
+    // Assento da sela + pito frontal (saddle horn) + encosto traseiro (cantle) + estribos laterais
+    const saddle = box(scene, mount, 'sela', [.72, .14, .88], [0, 3.02, -.16], palette.hat);
+    const pommel = B.MeshBuilder.CreateCylinder('arcão-frontal', { height: 0.16, diameterTop: 0.22, diameterBottom: 0.34, tessellation: 12 }, scene);
+    pommel.parent = mount;
+    pommel.position.set(0, 3.12, 0.18);
+    pommel.material = palette.hat;
+    pommel.isPickable = false;
+    const saddleHorn = B.MeshBuilder.CreateCylinder('pito-sela', { height: 0.14, diameterTop: 0.07, diameterBottom: 0.05, tessellation: 10 }, scene);
+    saddleHorn.parent = mount;
+    saddleHorn.position.set(0, 3.23, 0.22);
+    saddleHorn.rotation.x = 0.32;
+    saddleHorn.material = palette.hat;
+    saddleHorn.isPickable = false;
+    const cantle = B.MeshBuilder.CreateCylinder('encosto-sela', { height: 0.16, diameterTop: 0.48, diameterBottom: 0.56, tessellation: 14, arc: 0.55 }, scene);
+    cantle.parent = mount;
+    cantle.position.set(0, 3.14, -0.44);
+    cantle.rotation.y = Math.PI * 0.72;
+    cantle.rotation.x = -0.22;
+    cantle.material = palette.hat;
+    cantle.isPickable = false;
     for (const side of [-1, 1]) {
+        const fender = box(scene, mount, 'aba-sela', [0.05, 0.48, 0.24], [side * 0.37, 2.74, -0.1], palette.hat);
+        fender.rotation.z = side * -0.1;
+        const strap = box(scene, mount, 'loro-estribo', [0.03, 0.38, 0.05], [side * 0.39, 2.48, -0.08], palette.hat);
+        strap.isPickable = false;
+        const stirrup = B.MeshBuilder.CreateTorus('estribo', { diameter: 0.14, thickness: 0.022, tessellation: 12 }, scene);
+        stirrup.parent = mount;
+        stirrup.position.set(side * 0.4, 2.26, -0.08);
+        stirrup.rotation.y = Math.PI / 2;
+        stirrup.material = palette.metal;
+        stirrup.isPickable = false;
         const bag = B.MeshBuilder.CreateLathe('alforje', {
             shape: [
                 new B.Vector3(0.06, 0, 0),

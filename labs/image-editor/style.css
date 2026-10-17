@@ -451,30 +451,86 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     border-color: var(--text-tertiary);
 }
 
+.image-dimensions-badge {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 8px var(--shadow-sm);
+    pointer-events: none;
+}
+
+.slider-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.export-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.export-format-select {
+    min-height: var(--touch-target, 44px);
+    padding: 0 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.export-format-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+    .editor-container,
+    .editor-wrapper {
+        min-height: 0;
+    }
+
     .editor-wrapper {
         grid-template-columns: 1fr;
-        grid-template-rows: 1fr auto;
+        grid-template-rows: auto auto;
         height: auto;
-        min-height: 0;
+    }
+
+    .preview-area,
+    .canvas-area {
+        height: min(42dvh, 320px);
+        min-height: min(42dvh, 320px);
+        max-height: min(42dvh, 320px);
+        padding: 0.85rem;
+    }
+
+    .preview-area:not(.has-image) {
+        height: auto;
+        max-height: none;
+        min-height: min(42dvh, 320px);
     }
 
     .controls-area {
         border-left: none;
         border-top: 1px solid var(--border-subtle);
-        max-height: 50vh;
+        max-height: none;
     }
 
-    .preview-area {
-        min-height: min(50vh, 360px);
+    .tab-btn {
+        min-height: 44px;
     }
-}
-/* --- lab-responsive-pass --- */
-@media (max-width: 768px) {
-    .editor-container,
-    .editor-wrapper { min-height: 0; }
-    .preview-area { min-height: min(45dvh, 320px); }
-    .controls-area { max-height: none; }
-    .tab-btn { min-height: 44px; }
 }

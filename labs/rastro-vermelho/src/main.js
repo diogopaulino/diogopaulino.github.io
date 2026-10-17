@@ -263,6 +263,7 @@ class RastroVermelho {
         this.pad.previous = pressed;
     }
     frame() {
+        if (document.hidden) return;
         const raw = this.engine.getDeltaTime() / 1000, dt = Math.min(Math.max(raw, 0), .05);
         this.readGamepad(dt);
         if (this.state === 'play') this.update(dt);
