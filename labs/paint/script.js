@@ -156,6 +156,10 @@ const updateUndoRedoButtons = () => {
 };
 
 // Drawing Logic
+// Offscreen buffer for brush strokes so opacity < 1 doesn't accumulate within the same stroke
+const strokeCanvas = document.createElement('canvas');
+const strokeCtx = strokeCanvas.getContext('2d');
+
 const stopDraw = () => {
     if (!isDrawing) return;
     if (currentTool !== 'fill' && currentTool !== 'picker') saveState();
@@ -164,6 +168,7 @@ const stopDraw = () => {
 
 // Shape drawing keeps the initial canvas snapshot while the pointer moves.
 let startX, startY;
+let strokePoints = [];
 
 const startDrawFixed = (e) => {
     isDrawing = true;
@@ -174,8 +179,16 @@ const startDrawFixed = (e) => {
     ctx.beginPath();
     ctx.moveTo(startX, startY);
 
-    if (['rect', 'circle', 'line'].includes(currentTool)) {
+    if (['rect', 'circle', 'line', 'brush'].includes(currentTool)) {
         snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        if (currentTool === 'brush') {
+            if (strokeCanvas.width !== canvas.width || strokeCanvas.height !== canvas.height) {
+                strokeCanvas.width = canvas.width;
+                strokeCanvas.height = canvas.height;
+            }
+            strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
+            strokePoints = [{ x: startX, y: startY }];
+        }
     } else if (currentTool === 'fill') {
         floodFill(Math.floor(startX), Math.floor(startY), hexToRgba(currentColor));
         isDrawing = false;
@@ -198,8 +211,29 @@ const drawingFixed = (e) => {
     ctx.globalAlpha = currentOpacity;
 
     if (currentTool === 'brush') {
-        ctx.lineTo(x, y);
-        ctx.stroke();
+        if (currentOpacity < 1 && snapshot) {
+            strokePoints.push({ x, y });
+            strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
+            strokeCtx.strokeStyle = currentColor;
+            strokeCtx.lineWidth = brushSize;
+            strokeCtx.lineCap = 'round';
+            strokeCtx.lineJoin = 'round';
+            strokeCtx.beginPath();
+            strokeCtx.moveTo(strokePoints[0].x, strokePoints[0].y);
+            for (let i = 1; i < strokePoints.length; i++) {
+                strokeCtx.lineTo(strokePoints[i].x, strokePoints[i].y);
+            }
+            strokeCtx.stroke();
+
+            ctx.putImageData(snapshot, 0, 0);
+            ctx.save();
+            ctx.globalAlpha = currentOpacity;
+            ctx.drawImage(strokeCanvas, 0, 0);
+            ctx.restore();
+        } else {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
     } else if (currentTool === 'eraser') {
         ctx.strokeStyle = '#ffffff';
         ctx.globalAlpha = 1;
@@ -226,29 +260,46 @@ const drawingFixed = (e) => {
 
 // Flood Fill Algorithm
 const floodFill = (x, y, fillColor) => {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
+    if (x < 0 || x >= w || y < 0 || y >= h) return;
+
+    const imageData = ctx.getImageData(0, 0, w, h);
     const data = imageData.data;
 
-    // Get target color
+    // Get target color (R, G, B, A)
     const targetColor = getPixelColor(data, x, y);
 
     // If target is same as fill, return
     if (colorsMatch(targetColor, fillColor)) return;
 
+    const visited = new Uint8Array(w * h);
     const stack = [[x, y]];
+    visited[y * w + x] = 1;
 
     while (stack.length) {
         const [cx, cy] = stack.pop();
-        const pixelIndex = (cy * canvas.width + cx) * 4;
+        const pixelIndex = (cy * w + cx) * 4;
 
-        if (cx >= 0 && cx < canvas.width && cy >= 0 && cy < canvas.height) {
-            if (colorsMatch(getPixelColor(data, cx, cy), targetColor)) {
-                setPixelColor(data, pixelIndex, fillColor);
+        if (colorsMatch(getPixelColor(data, cx, cy), targetColor)) {
+            setPixelColor(data, pixelIndex, fillColor);
 
-                stack.push([cx + 1, cy]);
-                stack.push([cx - 1, cy]);
-                stack.push([cx, cy + 1]);
-                stack.push([cx, cy - 1]);
+            const neighbors = [
+                [cx + 1, cy],
+                [cx - 1, cy],
+                [cx, cy + 1],
+                [cx, cy - 1]
+            ];
+            for (let i = 0; i < 4; i++) {
+                const nx = neighbors[i][0];
+                const ny = neighbors[i][1];
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                    const nIdx = ny * w + nx;
+                    if (!visited[nIdx]) {
+                        visited[nIdx] = 1;
+                        stack.push([nx, ny]);
+                    }
+                }
             }
         }
     }
@@ -266,11 +317,11 @@ const setPixelColor = (data, i, color) => {
     data[i] = color[0];
     data[i + 1] = color[1];
     data[i + 2] = color[2];
-    data[i + 3] = 255; // Force opaque for fill
+    data[i + 3] = color[3] ?? 255;
 };
 
 const colorsMatch = (c1, c2) => {
-    return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2]; // Ignoring alpha for simplicity in match
+    return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2] && c1[3] === c2[3];
 };
 
 const hexToRgba = (hex) => {
@@ -390,15 +441,59 @@ saveBtn.addEventListener('click', () => {
 });
 
 // Keyboard Shortcuts
+const selectToolByName = (toolName) => {
+    const targetBtn = Array.from(toolBtns).find(b => b.dataset.tool === toolName);
+    if (targetBtn) targetBtn.click();
+};
+
+const adjustBrushSize = (delta) => {
+    const next = Math.max(1, Math.min(50, Number(brushSize) + delta));
+    brushSize = next;
+    brushSizeInput.value = String(next);
+    brushSizeVal.textContent = `${next}px`;
+    syncBrushCursor();
+};
+
 document.addEventListener('keydown', (e) => {
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) {
+        return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'z') {
+        if (e.key.toLowerCase() === 'z') {
             e.preventDefault();
-            undo();
-        } else if (e.key === 'y') {
+            if (e.shiftKey) redo();
+            else undo();
+        } else if (e.key.toLowerCase() === 'y') {
             e.preventDefault();
             redo();
         }
+        return;
+    }
+
+    if (e.altKey) return;
+
+    const key = e.key.toLowerCase();
+    const keyMap = {
+        b: 'brush',
+        e: 'eraser',
+        g: 'fill',
+        i: 'picker',
+        r: 'rect',
+        c: 'circle',
+        l: 'line'
+    };
+
+    if (keyMap[key]) {
+        e.preventDefault();
+        selectToolByName(keyMap[key]);
+    } else if (e.key === '[') {
+        e.preventDefault();
+        adjustBrushSize(-2);
+    } else if (e.key === ']') {
+        e.preventDefault();
+        adjustBrushSize(2);
     }
 });
 

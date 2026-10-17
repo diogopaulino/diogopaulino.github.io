@@ -14,9 +14,11 @@ import {
     createCannon,
     createFlag,
     createPlatform,
+    createCaveEntrance,
     createBush
 } from './models.js?v=11';
 import { grassDetail, waterNormals } from './textures.js';
+import { stoneMaterial, brickMaterial } from '../../shared/realism.js?v=3';
 
 export class World {
     constructor(scene, quality) {
@@ -137,7 +139,7 @@ export class World {
     }
 
     _water() {
-        const geo = new THREE.PlaneGeometry(160, 160, 48, 48);
+        const geo = new THREE.PlaneGeometry(160, 160, 32, 32);
         geo.rotateX(-Math.PI / 2);
         const normals = waterNormals();
         const mat = new THREE.MeshPhysicalMaterial({
@@ -180,17 +182,28 @@ export class World {
             [2.2, -20.4, 9.4, 3.2, 0.5, 2.2]
         ];
         for (const [x, z, y, w, h, d] of steps) {
-            const p = createPlatform(w, h, d, 0xc4b49a);
+            const p = createPlatform(w, h, d, 0xc4b49a, 'stone');
             p.position.set(x, y, z);
             this.group.add(p);
             this._platform(x, y + h / 2, z, w, d);
         }
 
-        const mouth = createPlatform(5.6, 3.2, 1.2, 0x5a4030);
-        mouth.position.set(2.6, 6.4, -11.4);
+        // Rampa de alvenaria conectando o sopé ao primeiro patamar
+        const ramp = new THREE.Mesh(
+            new THREE.BoxGeometry(3.2, 0.42, 4.8),
+            stoneMaterial(0xb8a88e, { roughness: 0.86, repeatX: 3, repeatY: 3 })
+        );
+        ramp.position.set(3, 1.9, -11.2);
+        ramp.rotation.x = 0.42;
+        ramp.castShadow = true;
+        ramp.receiveShadow = true;
+        this.group.add(ramp);
+
+        const mouth = createCaveEntrance();
+        mouth.position.set(2.6, 6.0, -11.4);
         this.group.add(mouth);
 
-        const caveFloorMesh = createPlatform(6.4, 0.4, 10.5, 0x6a5040);
+        const caveFloorMesh = createPlatform(6.4, 0.4, 10.5, 0x6a5040, 'stone');
         caveFloorMesh.position.set(2.6, 4.35, -16.6);
         this.group.add(caveFloorMesh);
         this._platform(2.6, 4.55, -16.6, 6.4, 10.5);
@@ -212,15 +225,20 @@ export class World {
             [-10, 8.2, 16, 2.4, 0.3, 2.4]
         ];
         for (const [x, y, z, w, h, d] of wood) {
-            const p = createPlatform(w, h, d, 0xc4783a);
+            const p = createPlatform(w, h, d, 0xc4783a, 'brick');
             p.position.set(x, y, z);
-            const edge = createPlatform(w + 0.12, 0.12, d + 0.12, 0xffe14a);
+            const edge = createPlatform(w + 0.12, 0.12, d + 0.12, 0xffe14a, 'gold');
             edge.position.set(x, y + h / 2 + 0.04, z);
             this.group.add(p, edge);
             this._platform(x, y + h / 2, z, w, d);
         }
 
-        const skyHouse = createPlatform(2.2, 2.4, 2.2, 0xf3c4b4);
+        const skyHouse = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 2.4, 2.2),
+            brickMaterial(0xf3c4b4, { roughness: 0.78, repeatX: 3, repeatY: 3 })
+        );
+        skyHouse.castShadow = true;
+        skyHouse.receiveShadow = true;
         skyHouse.position.set(28, 17.4, 2);
         const roof = new THREE.Mesh(new THREE.LatheGeometry([
             new THREE.Vector2(0.04, 0.7),
@@ -335,6 +353,25 @@ export class World {
         return Math.hypot(x - this.cannonPos.x, z - this.cannonPos.z) < 1.35;
     }
 
+    updateWater(t) {
+        if (!this._waterGeo) return;
+        const pos = this._waterGeo.attributes.position;
+        const norm = this._waterGeo.attributes.normal;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            const ax = x * 0.12 + t * 1.4;
+            const az = z * 0.1 + t * 1.1;
+            pos.setY(i, Math.sin(ax) * 0.18 + Math.cos(az) * 0.14);
+            const dydx = 0.18 * 0.12 * Math.cos(ax);
+            const dydz = -0.14 * 0.1 * Math.sin(az);
+            const invLen = 1 / Math.hypot(dydx, 1, dydz);
+            norm.setXYZ(i, -dydx * invLen, invLen, -dydz * invLen);
+        }
+        pos.needsUpdate = true;
+        norm.needsUpdate = true;
+    }
+
     update(dt, t) {
         for (const c of this.clouds) {
             c.a += c.speed * dt;
@@ -342,16 +379,7 @@ export class World {
             c.mesh.position.z = Math.sin(c.a) * c.r;
             c.mesh.position.y = 16 + Math.sin(t * 0.3 + c.a) * 0.6;
         }
-        if (this._waterGeo) {
-            const pos = this._waterGeo.attributes.position;
-            for (let i = 0; i < pos.count; i++) {
-                const x = pos.getX(i);
-                const z = pos.getZ(i);
-                pos.setY(i, Math.sin(x * 0.12 + t * 1.4) * 0.18 + Math.cos(z * 0.1 + t * 1.1) * 0.14);
-            }
-            pos.needsUpdate = true;
-            this._waterGeo.computeVertexNormals();
-        }
+        this.updateWater(t);
         const cloth = this.flag?.getObjectByName('cloth');
         if (cloth) cloth.rotation.y = Math.sin(t * 2.4) * 0.18;
         const cupola = this.castle?.getObjectByName('cupolaStar');

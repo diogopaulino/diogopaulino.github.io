@@ -24,13 +24,28 @@ const INITIAL_FUEL = 1000;
 const LANDER_FOOT_OFFSET = 12;
 const LANDER_HALF_WIDTH = 13;
 const CEILING = 30;
+const LOGICAL_WIDTH = 800;
+const LOGICAL_HEIGHT = 600;
+let dpr = 1;
+
+function syncHiDPI() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (canvas.width !== Math.round(LOGICAL_WIDTH * dpr) || canvas.height !== Math.round(LOGICAL_HEIGHT * dpr)) {
+        canvas.width = Math.round(LOGICAL_WIDTH * dpr);
+        canvas.height = Math.round(LOGICAL_HEIGHT * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+syncHiDPI();
+window.addEventListener('resize', syncHiDPI);
+
 const COLORS = Object.freeze({
-    background: '#000',
-    terrain: '#fff',
+    background: '#03050a',
+    terrain: '#d8dce3',
     stars: '#fff',
-    ship: '#fff',
-    legs: '#ff0',
-    pad: '#ff0',
+    ship: '#e2e8f0',
+    legs: '#eab308',
+    pad: '#fbbf24',
     danger: '#f33'
 });
 
@@ -40,9 +55,12 @@ let score = 0;
 let lastTime = 0;
 let accumulator = 0;
 let terrain = [];
+let terrainCraters = [];
+let terrainRocks = [];
 let landingPads = [];
 let stars = [];
 let particles = [];
+let crashPieces = [];
 let engineParticleBudget = 0;
 
 const keys = {};
@@ -176,6 +194,7 @@ const lander = {
         this.landed = false;
         accumulator = 0;
         particles = [];
+        crashPieces = [];
         engineParticleBudget = 0;
         clearKeys();
         updateHUD();
@@ -219,8 +238,8 @@ const lander = {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        if (this.x < -LANDER_HALF_WIDTH) this.x = canvas.width + LANDER_HALF_WIDTH;
-        if (this.x > canvas.width + LANDER_HALF_WIDTH) this.x = -LANDER_HALF_WIDTH;
+        if (this.x < -LANDER_HALF_WIDTH) this.x = LOGICAL_WIDTH + LANDER_HALF_WIDTH;
+        if (this.x > LOGICAL_WIDTH + LANDER_HALF_WIDTH) this.x = -LANDER_HALF_WIDTH;
 
         if (this.y < CEILING) {
             this.y = CEILING;
@@ -229,64 +248,189 @@ const lander = {
     },
 
     draw(target) {
+        if (this.crashed) {
+            // Destroços do Módulo Lunar rotacionando após impacto
+            for (const piece of crashPieces) {
+                target.save();
+                target.translate(piece.x, piece.y);
+                target.rotate(piece.angle);
+                target.fillStyle = piece.color;
+                if (piece.shape === 'foil') {
+                    target.fillRect(-piece.size, -piece.size * 0.5, piece.size * 2, piece.size);
+                } else if (piece.shape === 'strut') {
+                    target.strokeStyle = piece.color;
+                    target.lineWidth = 1.6;
+                    target.beginPath();
+                    target.moveTo(-piece.size, 0);
+                    target.lineTo(piece.size, 0);
+                    target.stroke();
+                } else {
+                    target.beginPath();
+                    target.moveTo(0, -piece.size);
+                    target.lineTo(piece.size, piece.size);
+                    target.lineTo(-piece.size, piece.size * 0.6);
+                    target.closePath();
+                    target.fill();
+                }
+                target.restore();
+            }
+            return;
+        }
+
         target.save();
         target.translate(this.x, this.y);
         target.rotate(this.angle);
 
-        if (this.crashed) {
-            target.fillStyle = COLORS.danger;
-            target.fillRect(-2, -2, 4, 4);
-            target.restore();
-            return;
-        }
-
-        target.fillStyle = COLORS.legs;
-        target.beginPath();
-        target.moveTo(-8, 5);
-        target.quadraticCurveTo(-12, 12, -14, 12);
-        target.lineTo(-10, 12);
-        target.lineTo(-6, 8);
-        target.fill();
-
-        target.beginPath();
-        target.moveTo(8, 5);
-        target.quadraticCurveTo(12, 12, 14, 12);
-        target.lineTo(10, 12);
-        target.lineTo(6, 8);
-        target.fill();
-
-        target.fillStyle = COLORS.ship;
-        target.beginPath();
-        target.arc(0, 0, 7, Math.PI, 0);
-        target.lineTo(7, 3);
-        target.lineTo(-7, 3);
-        target.fill();
-
-        target.fillStyle = '#000';
-        target.fillRect(-3, -4, 2, 2);
-        target.fillRect(1, -4, 2, 2);
-
-        target.fillStyle = '#888';
-        target.fillRect(-3, 3, 6, 3);
-
-        // Chama do motor — o lander “dispara” visualmente, não só com partículas.
+        // Pluma de propulsão principal com discos de Mach
         if (this.engineOn) {
-            const h = 6 + Math.random() * 4;
-            target.fillStyle = '#ff0';
+            const flicker = Math.sin(performance.now() * 0.06) * 2.5;
+            const plumeLen = 19 + Math.random() * 6 + flicker;
+
+            const outerGrad = target.createLinearGradient(0, 5, 0, 6 + plumeLen);
+            outerGrad.addColorStop(0, 'rgba(255, 250, 220, 0.95)');
+            outerGrad.addColorStop(0.35, 'rgba(251, 191, 36, 0.85)');
+            outerGrad.addColorStop(0.75, 'rgba(234, 88, 12, 0.45)');
+            outerGrad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+            target.fillStyle = outerGrad;
             target.beginPath();
-            target.moveTo(-4, 6);
-            target.lineTo(0, 6 + h);
-            target.lineTo(4, 6);
+            target.moveTo(-3.8, 5.5);
+            target.quadraticCurveTo(-6.5, 5.5 + plumeLen * 0.55, 0, 6 + plumeLen);
+            target.quadraticCurveTo(6.5, 5.5 + plumeLen * 0.55, 3.8, 5.5);
             target.closePath();
             target.fill();
-            target.fillStyle = '#f30';
-            target.beginPath();
-            target.moveTo(-2, 6);
-            target.lineTo(0, 6 + h * 0.65);
-            target.lineTo(2, 6);
-            target.closePath();
-            target.fill();
+
+            // Discos de Mach incandescentes na pluma supersônica
+            target.fillStyle = 'rgba(224, 242, 254, 0.92)';
+            for (let m = 0; m < 3; m++) {
+                const my = 8.5 + m * 4.2;
+                const mw = Math.max(1.0, 2.5 - m * 0.6);
+                target.beginPath();
+                target.ellipse(0, my, mw, 1.3, 0, 0, Math.PI * 2);
+                target.fill();
+            }
         }
+
+        // Jatos de controle de reação (RCS) laterais quando rotacionando
+        if (!this.onGround && (this.rotatingLeft || this.rotatingRight)) {
+            target.fillStyle = 'rgba(224, 242, 254, 0.85)';
+            if (this.rotatingRight) {
+                // Empurra o nariz para a direita (jato superior esquerdo + inferior direito)
+                target.beginPath();
+                target.moveTo(-7.5, -5);
+                target.lineTo(-14 - Math.random() * 3, -6.8);
+                target.lineTo(-14 - Math.random() * 3, -3.2);
+                target.closePath();
+                target.fill();
+            }
+            if (this.rotatingLeft) {
+                target.beginPath();
+                target.moveTo(7.5, -5);
+                target.lineTo(14 + Math.random() * 3, -6.8);
+                target.lineTo(14 + Math.random() * 3, -3.2);
+                target.closePath();
+                target.fill();
+            }
+        }
+
+        // Trens de pouso articulados com amortecedores e sapatas circulares
+        target.strokeStyle = '#cbd5e1';
+        target.lineWidth = 1.5;
+        target.beginPath();
+        // Perna esquerda
+        target.moveTo(-6.5, 1.5);
+        target.lineTo(-11.5, 11.2);
+        target.moveTo(-4.5, 4.5);
+        target.lineTo(-10.5, 9.5);
+        // Perna direita
+        target.moveTo(6.5, 1.5);
+        target.lineTo(11.5, 11.2);
+        target.moveTo(4.5, 4.5);
+        target.lineTo(10.5, 9.5);
+        target.stroke();
+
+        // Sapatas circulares douradas (footpads)
+        target.fillStyle = '#eab308';
+        target.beginPath();
+        target.ellipse(-11.8, 11.6, 2.8, 1.0, 0, 0, Math.PI * 2);
+        target.ellipse(11.8, 11.6, 2.8, 1.0, 0, 0, Math.PI * 2);
+        target.fill();
+
+        // Bocal do motor de descida (sino ablativo escuro)
+        target.fillStyle = '#334155';
+        target.beginPath();
+        target.moveTo(-2.5, 3.5);
+        target.lineTo(-4.2, 6.4);
+        target.lineTo(4.2, 6.4);
+        target.lineTo(2.5, 3.5);
+        target.closePath();
+        target.fill();
+
+        // Estágio de Descida revestido em folha de ouro Kapton (manta térmica)
+        const kaptonGrad = target.createLinearGradient(-7.5, 0, 7.5, 4);
+        kaptonGrad.addColorStop(0, '#fde047');
+        kaptonGrad.addColorStop(0.45, '#eab308');
+        kaptonGrad.addColorStop(0.8, '#a16207');
+        kaptonGrad.addColorStop(1, '#713f12');
+        target.fillStyle = kaptonGrad;
+        target.fillRect(-7.5, -0.5, 15, 4.8);
+        target.strokeStyle = 'rgba(113, 63, 18, 0.75)';
+        target.lineWidth = 0.8;
+        target.strokeRect(-7.5, -0.5, 15, 4.8);
+        // Painéis verticais na manta Kapton
+        target.beginPath();
+        target.moveTo(-3.2, -0.5);
+        target.lineTo(-3.2, 4.3);
+        target.moveTo(3.2, -0.5);
+        target.lineTo(3.2, 4.3);
+        target.stroke();
+
+        // Módulo de Ascensão facetado estilo Apollo
+        const ascentGrad = target.createLinearGradient(-7, -9, 7, 0);
+        ascentGrad.addColorStop(0, '#f8fafc');
+        ascentGrad.addColorStop(0.55, '#cbd5e1');
+        ascentGrad.addColorStop(1, '#475569');
+        target.fillStyle = ascentGrad;
+        target.beginPath();
+        target.moveTo(-4.2, -9.2);
+        target.lineTo(4.2, -9.2);
+        target.lineTo(7.4, -4.5);
+        target.lineTo(6.2, -0.5);
+        target.lineTo(-6.2, -0.5);
+        target.lineTo(-7.4, -4.5);
+        target.closePath();
+        target.fill();
+        target.strokeStyle = '#1e293b';
+        target.lineWidth = 0.9;
+        target.stroke();
+
+        // Janelas triangulares inclinadas com reflexo azulado
+        target.fillStyle = '#0f172a';
+        target.beginPath();
+        target.moveTo(-4.8, -4.8);
+        target.lineTo(-1.4, -6.2);
+        target.lineTo(-1.8, -3.2);
+        target.closePath();
+        target.moveTo(4.8, -4.8);
+        target.lineTo(1.4, -6.2);
+        target.lineTo(1.8, -3.2);
+        target.closePath();
+        target.fill();
+
+        target.fillStyle = 'rgba(56, 189, 248, 0.65)';
+        target.fillRect(-3.8, -5.2, 1.5, 1.1);
+        target.fillRect(2.3, -5.2, 1.5, 1.1);
+
+        // Antena parabólica S-Band no topo
+        target.strokeStyle = '#e2e8f0';
+        target.lineWidth = 1;
+        target.beginPath();
+        target.moveTo(0, -9.2);
+        target.lineTo(0, -12.2);
+        target.stroke();
+        target.beginPath();
+        target.arc(0, -12.6, 2.1, 0.15 * Math.PI, 0.85 * Math.PI);
+        target.stroke();
+
         target.restore();
     }
 };
@@ -314,18 +458,19 @@ function handleInput() {
 }
 
 function generateStars() {
-    stars = Array.from({ length: 65 }, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height * 0.78,
-        size: Math.random() > 0.88 ? 2 : 1,
-        alpha: 0.45 + Math.random() * 0.55
+    stars = Array.from({ length: 75 }, () => ({
+        x: Math.random() * LOGICAL_WIDTH,
+        y: Math.random() * LOGICAL_HEIGHT * 0.78,
+        size: Math.random() > 0.85 ? 2 : 1.1,
+        alpha: 0.4 + Math.random() * 0.6,
+        tint: Math.random() > 0.82 ? '#bae6fd' : (Math.random() > 0.9 ? '#fef08a' : '#ffffff')
     }));
 }
 
 function generateTerrain() {
-    const homeY = canvas.height * 0.82;
+    const homeY = LOGICAL_HEIGHT * 0.82;
     terrain = [
-        { x: 0, y: canvas.height },
+        { x: 0, y: LOGICAL_HEIGHT },
         { x: 0, y: homeY },
         { x: 20, y: homeY },
         { x: 110, y: homeY }
@@ -342,18 +487,18 @@ function generateTerrain() {
     let x = 110;
     let y = homeY;
 
-    while (x < canvas.width - 35) {
-        const roughEnd = Math.min(x + 42 + Math.random() * 68, canvas.width);
+    while (x < LOGICAL_WIDTH - 35) {
+        const roughEnd = Math.min(x + 42 + Math.random() * 68, LOGICAL_WIDTH);
         y += (Math.random() - 0.5) * (82 + level * 3);
-        y = Math.max(canvas.height * 0.48, Math.min(canvas.height * 0.91, y));
+        y = Math.max(LOGICAL_HEIGHT * 0.48, Math.min(LOGICAL_HEIGHT * 0.91, y));
         terrain.push({ x: roughEnd, y });
         x = roughEnd;
 
-        if (x >= canvas.width - 65) break;
+        if (x >= LOGICAL_WIDTH - 65) break;
 
         const baseWidth = Math.max(40, 74 - level * 2);
         const padWidth = Math.round(baseWidth - Math.random() * 22);
-        const padEnd = Math.min(x + padWidth, canvas.width - 8);
+        const padEnd = Math.min(x + padWidth, LOGICAL_WIDTH - 8);
         const multiplier = padWidth <= 46 ? 5 : padWidth <= 59 ? 3 : 2;
 
         landingPads.push({
@@ -368,12 +513,39 @@ function generateTerrain() {
         x = padEnd;
     }
 
-    if (x < canvas.width) terrain.push({ x: canvas.width, y: canvas.height * 0.82 });
-    terrain.push({ x: canvas.width, y: canvas.height });
+    if (x < LOGICAL_WIDTH) terrain.push({ x: LOGICAL_WIDTH, y: LOGICAL_HEIGHT * 0.82 });
+    terrain.push({ x: LOGICAL_WIDTH, y: LOGICAL_HEIGHT });
+
+    // Gerar crateras sombreadas e rochas lunares no regolito
+    terrainCraters = [];
+    for (let i = 0; i < 14; i++) {
+        const cx = 35 + (i * 55) + (Math.random() - 0.5) * 26;
+        const groundY = getGroundY(cx);
+        terrainCraters.push({
+            x: cx,
+            y: groundY + 14 + Math.random() * Math.max(12, LOGICAL_HEIGHT - groundY - 26),
+            rx: 10 + Math.random() * 18,
+            ry: 4 + Math.random() * 7
+        });
+    }
+
+    terrainRocks = [];
+    for (let i = 0; i < 28; i++) {
+        const rx = 12 + Math.random() * (LOGICAL_WIDTH - 24);
+        const onPad = landingPads.some(p => rx >= p.x1 - 6 && rx <= p.x2 + 6);
+        if (onPad) continue;
+        const gy = getGroundY(rx);
+        terrainRocks.push({
+            x: rx,
+            y: gy + 2 + Math.random() * 12,
+            w: 3 + Math.random() * 6,
+            h: 2 + Math.random() * 4
+        });
+    }
 }
 
 function getGroundY(screenX) {
-    const wrappedX = ((screenX % canvas.width) + canvas.width) % canvas.width;
+    const wrappedX = ((screenX % LOGICAL_WIDTH) + LOGICAL_WIDTH) % LOGICAL_WIDTH;
 
     for (let i = 0; i < terrain.length - 1; i++) {
         const current = terrain[i];
@@ -384,7 +556,7 @@ function getGroundY(screenX) {
         return current.y + progress * (next.y - current.y);
     }
 
-    return canvas.height;
+    return LOGICAL_HEIGHT;
 }
 
 function getCurrentAltitude() {
@@ -526,6 +698,8 @@ function emitEngineParticles(dt) {
 
     const exhaustX = -Math.sin(lander.angle);
     const exhaustY = Math.cos(lander.angle);
+    const groundY = getGroundY(lander.x);
+    const alt = groundY - (lander.y + LANDER_FOOT_OFFSET);
 
     for (let i = 0; i < count; i++) {
         const speed = 58 + Math.random() * 32;
@@ -535,26 +709,58 @@ function emitEngineParticles(dt) {
             vx: exhaustX * speed + lander.vx * 0.15 + (Math.random() - 0.5) * 18,
             vy: exhaustY * speed + lander.vy * 0.15,
             life: 0.28 + Math.random() * 0.25,
-            color: Math.random() > 0.3 ? '#ff0' : '#f30',
+            color: Math.random() > 0.3 ? '#fde047' : '#f97316',
             debris: false
         });
+
+        // Poeira lunar (regolito) soprada horizontalmente quando próximo ao solo
+        if (alt < 75 && Math.random() < 0.75) {
+            const side = Math.random() < 0.5 ? -1 : 1;
+            const dustSpeed = (28 + (75 - alt) * 0.9) * (0.6 + Math.random() * 0.6);
+            particles.push({
+                x: lander.x + side * (4 + Math.random() * 10),
+                y: groundY - 1,
+                vx: side * dustSpeed,
+                vy: -6 - Math.random() * 14,
+                life: 0.35 + Math.random() * 0.35,
+                color: Math.random() > 0.4 ? '#cbd5e1' : '#94a3b8',
+                debris: false
+            });
+        }
     }
 }
 
 function createCrashDebris() {
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 24; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 35 + Math.random() * 80;
+        const speed = 35 + Math.random() * 90;
         particles.push({
             x: lander.x,
             y: lander.y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed - 25,
             life: 1.1 + Math.random() * 1.1,
-            color: i % 4 === 0 ? '#ff0' : '#fff',
+            color: i % 3 === 0 ? '#eab308' : (i % 2 === 0 ? '#f97316' : '#f8fafc'),
             debris: true
         });
     }
+
+    const shapes = ['foil', 'hull', 'strut', 'foil', 'hull', 'strut', 'foil'];
+    crashPieces = shapes.map((shape, idx) => {
+        const angle = -Math.PI * 0.85 + (idx / shapes.length) * Math.PI * 0.7 + (Math.random() - 0.5) * 0.4;
+        const speed = 28 + Math.random() * 55;
+        return {
+            x: lander.x + (Math.random() - 0.5) * 8,
+            y: lander.y + (Math.random() - 0.5) * 6,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 22,
+            angle: Math.random() * Math.PI * 2,
+            vAngle: (Math.random() - 0.5) * 9,
+            size: 3.5 + Math.random() * 3.5,
+            shape,
+            color: shape === 'foil' ? '#eab308' : (shape === 'strut' ? '#94a3b8' : '#e2e8f0')
+        };
+    });
 }
 
 function updateParticles(dt) {
@@ -565,6 +771,20 @@ function updateParticles(dt) {
         if (particle.debris) particle.vy += PHYSICS.gravity * 1.6 * dt;
         particle.life -= dt;
         if (particle.life <= 0) particles.splice(i, 1);
+    }
+
+    for (const piece of crashPieces) {
+        const gy = getGroundY(piece.x);
+        if (piece.y < gy - 2) {
+            piece.x += piece.vx * dt;
+            piece.y += piece.vy * dt;
+            piece.vy += PHYSICS.gravity * 1.3 * dt;
+            piece.angle += piece.vAngle * dt;
+        } else {
+            piece.y = gy - 2;
+            piece.vx *= 0.85;
+            piece.vAngle *= 0.8;
+        }
     }
 }
 
@@ -604,40 +824,129 @@ function updateHUD() {
 function drawStars(target) {
     stars.forEach(star => {
         target.globalAlpha = star.alpha;
-        target.fillStyle = COLORS.stars;
+        target.fillStyle = star.tint || COLORS.stars;
         target.fillRect(star.x, star.y, star.size, star.size);
     });
     target.globalAlpha = 1;
 }
 
 function drawTerrain(target) {
-    target.fillStyle = COLORS.terrain;
+    target.save();
     target.beginPath();
-    target.moveTo(0, canvas.height);
+    target.moveTo(0, LOGICAL_HEIGHT);
     terrain.forEach(point => target.lineTo(point.x, point.y));
-    target.lineTo(canvas.width, canvas.height);
+    target.lineTo(LOGICAL_WIDTH, LOGICAL_HEIGHT);
+    target.closePath();
+
+    // Regolito lunar com gradiente de profundidade realista
+    const regolithGrad = target.createLinearGradient(0, LOGICAL_HEIGHT * 0.45, 0, LOGICAL_HEIGHT);
+    regolithGrad.addColorStop(0, '#cbd5e1');
+    regolithGrad.addColorStop(0.22, '#94a3b8');
+    regolithGrad.addColorStop(0.58, '#475569');
+    regolithGrad.addColorStop(1, '#1e293b');
+    target.fillStyle = regolithGrad;
     target.fill();
 
-    const beaconPulse = 2 + Math.sin(performance.now() / 180) * 1.5;
+    // Recorte para desenhar crateras sombreadas e rochas dentro do solo lunar
+    target.save();
+    target.clip();
+
+    for (const c of terrainCraters) {
+        target.fillStyle = 'rgba(15, 23, 42, 0.42)';
+        target.beginPath();
+        target.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, Math.PI * 2);
+        target.fill();
+
+        target.strokeStyle = 'rgba(241, 245, 249, 0.35)';
+        target.lineWidth = 1.2;
+        target.beginPath();
+        target.ellipse(c.x, c.y, c.rx, c.ry, 0, 0.1 * Math.PI, 0.9 * Math.PI);
+        target.stroke();
+    }
+
+    for (const r of terrainRocks) {
+        target.fillStyle = 'rgba(30, 41, 59, 0.55)';
+        target.fillRect(r.x, r.y, r.w, r.h);
+        target.fillStyle = 'rgba(248, 250, 252, 0.45)';
+        target.fillRect(r.x, r.y, r.w * 0.6, 1.2);
+    }
+    target.restore();
+
+    // Crista iluminada da superfície lunar
+    target.strokeStyle = '#f8fafc';
+    target.lineWidth = 1.8;
+    target.beginPath();
+    for (let i = 1; i < terrain.length - 1; i++) {
+        const pt = terrain[i];
+        if (i === 1) target.moveTo(pt.x, pt.y);
+        else target.lineTo(pt.x, pt.y);
+    }
+    target.stroke();
+
+    // Plataformas de pouso metálicas em treliça 3D com luzes sinalizadoras piscantes
+    const now = performance.now();
+    const blinkOn = Math.sin(now / 160) > 0;
     landingPads.forEach(pad => {
-        target.fillStyle = COLORS.pad;
-        target.fillRect(pad.x1, pad.y - 2, pad.x2 - pad.x1, 3);
+        const pw = pad.x2 - pad.x1;
+        const py = pad.y;
 
-        target.font = '12px "Courier New", monospace';
-        target.textAlign = 'center';
-        target.fillStyle = '#000';
-        target.fillText(
-            pad.home ? 'BASE' : `×${pad.multiplier}`,
-            (pad.x1 + pad.x2) / 2,
-            pad.y + 14
-        );
-
-        if (!pad.home) {
-            target.fillStyle = COLORS.pad;
-            target.fillRect(pad.x1 - beaconPulse / 2, pad.y - 7, beaconPulse, 5);
-            target.fillRect(pad.x2 - beaconPulse / 2, pad.y - 7, beaconPulse, 5);
+        // Treliça metálica estrutural sob a plataforma
+        target.strokeStyle = '#64748b';
+        target.lineWidth = 1.2;
+        target.beginPath();
+        const step = 10;
+        for (let tx = pad.x1; tx < pad.x2 - 2; tx += step) {
+            const nx = Math.min(pad.x2, tx + step);
+            target.moveTo(tx, py);
+            target.lineTo(tx, py + 7);
+            target.lineTo(nx, py);
+            target.lineTo(nx, py + 7);
         }
+        target.moveTo(pad.x1, py + 7);
+        target.lineTo(pad.x2, py + 7);
+        target.stroke();
+
+        // Deck superior metálico com faixas de alerta
+        target.fillStyle = pad.home ? '#38bdf8' : '#fbbf24';
+        target.fillRect(pad.x1, py - 2.5, pw, 3.5);
+        target.fillStyle = '#0f172a';
+        for (let sx = pad.x1 + 4; sx < pad.x2 - 4; sx += 10) {
+            target.fillRect(sx, py - 2, 4, 2.5);
+        }
+
+        // Placa de multiplicador / BASE legível com contraste
+        const label = pad.home ? 'BASE' : `${pad.multiplier}x`;
+        target.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        target.fillRect((pad.x1 + pad.x2) / 2 - 18, py + 9, 36, 13);
+        target.strokeStyle = pad.home ? '#38bdf8' : '#fbbf24';
+        target.lineWidth = 1;
+        target.strokeRect((pad.x1 + pad.x2) / 2 - 18, py + 9, 36, 13);
+
+        target.font = 'bold 11px "Courier New", monospace';
+        target.textAlign = 'center';
+        target.fillStyle = pad.home ? '#e0f2fe' : '#fef08a';
+        target.fillText(label, (pad.x1 + pad.x2) / 2, py + 19);
+
+        // Luzes sinalizadoras piscantes nas extremidades da plataforma
+        const beaconColor = pad.visited ? '#22c55e' : (blinkOn ? '#ef4444' : '#f59e0b');
+        [pad.x1 + 1, pad.x2 - 1].forEach((bx, idx) => {
+            const active = (idx === 0 ? blinkOn : !blinkOn) || pad.visited;
+            target.fillStyle = '#475569';
+            target.fillRect(bx - 1, py - 6, 2, 4);
+            target.fillStyle = active ? beaconColor : '#451a03';
+            target.beginPath();
+            target.arc(bx, py - 6.5, active ? 2.4 : 1.6, 0, Math.PI * 2);
+            target.fill();
+            if (active) {
+                target.fillStyle = pad.visited ? 'rgba(34, 197, 94, 0.32)' : 'rgba(239, 68, 68, 0.35)';
+                target.beginPath();
+                target.arc(bx, py - 6.5, 5.5, 0, Math.PI * 2);
+                target.fill();
+            }
+        });
     });
+
+    target.restore();
 }
 
 function drawParticles(target) {
@@ -649,8 +958,9 @@ function drawParticles(target) {
 }
 
 function draw() {
+    syncHiDPI();
     ctx.fillStyle = COLORS.background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
     drawStars(ctx);
     drawTerrain(ctx);
     drawParticles(ctx);

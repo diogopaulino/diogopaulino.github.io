@@ -1424,8 +1424,64 @@
     sound.enter();
   });
 
+  for (const id of ALL_ICONS) {
+    const el = iconElements[id];
+    if (!el) continue;
+    el.addEventListener('click', (event) => {
+      event.preventDefault();
+      ensureAudio();
+      if (animation || uiMode === 'clock_wait' || uiMode === 'clock_set') return;
+      selectedSide = LEFT_ICONS.includes(id) ? 'left' : 'right';
+      selectedIndex = (selectedSide === 'left' ? LEFT_ICONS : RIGHT_ICONS).indexOf(id);
+      if (uiMode !== 'idle') {
+        uiMode = 'idle';
+        rps = null;
+      }
+      updateIconSelection();
+      executeAction(id);
+    });
+  }
+
+  let cachedInk = '#17231b';
+  function syncInkColor() {
+    cachedInk = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#17231b';
+  }
+  syncInkColor();
+  if (window.LabTheme) {
+    LabTheme.onChange(syncInkColor);
+  } else {
+    new MutationObserver(syncInkColor).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'style', 'class']
+    });
+  }
+
   function pixel(x, y, width = 1, height = 1) {
-    ctx.fillRect(Math.round(x * CELL), Math.round(y * CELL), Math.round(width * CELL), Math.round(height * CELL));
+    const pxX = Math.round(x * CELL);
+    const pxY = Math.round(y * CELL);
+    const pxW = Math.round(width * CELL);
+    const pxH = Math.round(height * CELL);
+    const shadowOffset = Math.max(0.9, CELL * 0.15);
+    ctx.fillStyle = 'rgba(17, 29, 19, 0.16)';
+    ctx.fillRect(pxX + shadowOffset, pxY + shadowOffset, pxW, pxH);
+    ctx.fillStyle = cachedInk;
+    ctx.fillRect(pxX, pxY, pxW, pxH);
+  }
+
+  function drawDirt() {
+    // Classic pixel-art dirt/poop coil in bottom-right corner (up to x: 38, y: 20..22)
+    const baseX = 31;
+    const baseY = 18;
+    pixel(baseX + 2, baseY, 2, 1);
+    pixel(baseX + 1, baseY + 1, 4, 1);
+    pixel(baseX, baseY + 2, 6, 1);
+    pixel(baseX, baseY + 3, 6, 1);
+    // Animated stink waves rising above
+    const waveShift = frame % 2;
+    pixel(baseX + 1 + waveShift, baseY - 2, 1, 1);
+    pixel(baseX + 2 - waveShift, baseY - 3, 1, 1);
+    pixel(baseX + 4 + waveShift, baseY - 2, 1, 1);
+    pixel(baseX + 5 - waveShift, baseY - 4, 1, 1);
   }
 
   function drawMatrix(matrix, x, y, flip = false) {
@@ -1620,10 +1676,19 @@
     frame += 1;
     finishRpsReveal();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#17231b';
 
     const screenOff = state.initialized && !state.lightsOn;
     lcd.classList.toggle('screen-off', screenOff);
+
+    if (!screenOff || uiMode === 'clock_wait' || uiMode === 'clock_set') {
+      ctx.fillStyle = 'rgba(17, 29, 19, 0.055)';
+      for (let gy = 0; gy < GRID_H; gy += 1) {
+        for (let gx = 0; gx < GRID_W; gx += 1) {
+          ctx.fillRect(gx * CELL + 0.5, gy * CELL + 0.5, CELL - 1, CELL - 1);
+        }
+      }
+    }
+    ctx.fillStyle = cachedInk;
 
     if (uiMode === 'clock_wait' || uiMode === 'clock_set') {
       lcd.classList.remove('screen-off');
@@ -1653,9 +1718,8 @@
     }
     if (screenOff) return;
 
-    if (state.dirty && frame % 2 === 1) {
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      return;
+    if (state.dirty) {
+      drawDirt();
     }
 
     if (isSleeping()) {
@@ -1683,10 +1747,11 @@
       return;
     }
 
+    const maxWalkRight = state.dirty ? 29 : 34;
     if (frame % 3 === 0) {
       walkX += walkDirection;
       const spriteWidth = matrixSize(getDinoFrames()[frame % 2]).width;
-      if (walkX + spriteWidth >= 34) walkDirection = -1;
+      if (walkX + spriteWidth >= maxWalkRight) walkDirection = -1;
       if (walkX <= 4) walkDirection = 1;
     }
     drawDinoAt(walkX, 22, walkDirection < 0);

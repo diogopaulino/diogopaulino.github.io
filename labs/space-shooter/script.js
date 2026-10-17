@@ -28,6 +28,8 @@ let highScore = readHighScore();
 const FIRE_INTERVAL = 0.14; // segundos entre disparos com o gatilho preso
 let fireHeld = false;
 let fireCooldown = 0;
+let frameCount = 0;
+let enemyFireCooldown = 1.4;
 
 // Entities
 const player = {
@@ -37,10 +39,13 @@ const player = {
     height: 40,
     speed: 300, // pixels per second
     color: '#00f3ff',
-    dx: 0
+    dx: 0,
+    vx: 0,
+    invuln: 0
 };
 
 let bullets = [];
+let enemyBullets = [];
 let enemies = [];
 let particles = [];
 let stars = [];
@@ -90,8 +95,18 @@ function playSound(type) {
             type: 'sawtooth',
             gain: 0.18
         });
+    } else if (type === 'playerHit') {
+        labAudio.tone({
+            freq: 220,
+            slideTo: 55,
+            duration: 0.42,
+            type: 'sawtooth',
+            gain: 0.22
+        });
     }
 }
+
+const AudioFX = { play: playSound };
 
 // Initialization
 function resize() {
@@ -149,7 +164,7 @@ function initEnemies() {
                 height: enemyHeight,
                 row: row,
                 col: col,
-                color: row === 0 ? '#ff00ff' : (row === 1 ? '#00ff00' : '#00f3ff')
+                color: row % 3 === 0 ? '#ff2ae6' : (row % 3 === 1 ? '#00ff88' : '#00f3ff')
             });
         }
     }
@@ -157,12 +172,12 @@ function initEnemies() {
 }
 
 function createParticles(x, y, color) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
         particles.push({
             x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 100,
-            vy: (Math.random() - 0.5) * 100,
+            vx: (Math.random() - 0.5) * 140,
+            vy: (Math.random() - 0.5) * 140,
             life: 1.0,
             color: color
         });
@@ -190,7 +205,6 @@ window.addEventListener('keydown', e => {
     }
     if (flag) keys[flag] = true;
     if (flag === 'Space' && gameRunning && !e.repeat) {
-        fireHeld = true;
         fireCooldown = 0;
     }
 });
@@ -198,7 +212,6 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => {
     const flag = moveKey(e);
     if (flag) keys[flag] = false;
-    if (flag === 'Space') fireHeld = false;
 });
 
 // Touch/Mouse support for shooting
@@ -213,7 +226,9 @@ window.addEventListener('pointercancel', () => { fireHeld = false; });
 canvas.addEventListener('pointermove', e => {
     if (!gameRunning || e.pointerType === 'mouse') return;
     const rect = canvas.getBoundingClientRect();
-    player.x = Math.max(0, Math.min(gameWidth - player.width, e.clientX - rect.left - player.width / 2));
+    const nextX = Math.max(0, Math.min(gameWidth - player.width, e.clientX - rect.left - player.width / 2));
+    player.vx = (nextX - player.x) * 12;
+    player.x = nextX;
 });
 
 function fireBullet() {
@@ -221,73 +236,94 @@ function fireBullet() {
     if (bullets.length < maxBullets) {
         if (bulletLevel === 1) {
             bullets.push({
-                x: player.x + player.width / 2 - 2,
-                y: player.y,
-                width: 4,
-                height: 10,
-                color: '#fff',
+                x: player.x + player.width / 2 - 2.5,
+                y: player.y - 4,
+                width: 5,
+                height: 14,
+                color: '#00f3ff',
                 vx: 0
             });
         } else if (bulletLevel === 2) {
             bullets.push({
                 x: player.x + 5,
                 y: player.y,
-                width: 4,
-                height: 10,
-                color: '#00ff00',
+                width: 5,
+                height: 14,
+                color: '#00ff88',
                 vx: 0
             });
             bullets.push({
-                x: player.x + player.width - 9,
+                x: player.x + player.width - 10,
                 y: player.y,
-                width: 4,
-                height: 10,
-                color: '#00ff00',
+                width: 5,
+                height: 14,
+                color: '#00ff88',
                 vx: 0
             });
         } else {
             bullets.push({
-                x: player.x + player.width / 2 - 2,
-                y: player.y,
-                width: 4,
-                height: 10,
-                color: '#ff00ff',
+                x: player.x + player.width / 2 - 2.5,
+                y: player.y - 4,
+                width: 5,
+                height: 15,
+                color: '#ff2ae6',
                 vx: 0
             });
             bullets.push({
-                x: player.x,
-                y: player.y + 5,
-                width: 4,
-                height: 10,
-                color: '#ff00ff',
-                vx: -50
+                x: player.x + 2,
+                y: player.y + 4,
+                width: 5,
+                height: 14,
+                color: '#ff2ae6',
+                vx: -65
             });
             bullets.push({
-                x: player.x + player.width - 4,
-                y: player.y + 5,
-                width: 4,
-                height: 10,
-                color: '#ff00ff',
-                vx: 50
+                x: player.x + player.width - 7,
+                y: player.y + 4,
+                width: 5,
+                height: 14,
+                color: '#ff2ae6',
+                vx: 65
             });
         }
         playSound('shoot');
     }
 }
 
+function handlePlayerHit() {
+    if (player.invuln > 0) return;
+    lives--;
+    player.invuln = 1.5;
+    createParticles(player.x + player.width / 2, player.y + player.height / 2, '#ff3366');
+    AudioFX.play('playerHit');
+    updateHud();
+    if (lives <= 0) {
+        gameOver();
+    }
+}
+
 // Game Loop
 function update(dt) {
+    frameCount++;
+    if (player.invuln > 0) {
+        player.invuln = Math.max(0, player.invuln - dt);
+    }
+
     // Gatilho preso: dispara na cadência de FIRE_INTERVAL enquanto estiver ativo.
+    const fireOn = fireHeld || Boolean(keys.Space);
     fireCooldown -= dt;
-    if (fireHeld && fireCooldown <= 0) {
+    if (fireOn && fireCooldown <= 0) {
         fireBullet();
         fireCooldown = FIRE_INTERVAL;
     }
 
-    // Player Movement
-    if (keys.ArrowLeft || keys.a) player.dx = -player.speed;
-    else if (keys.ArrowRight || keys.d) player.dx = player.speed;
-    else player.dx = 0;
+    // Player Movement + smooth 2.5D banking velocity
+    let targetVx = 0;
+    if (keys.ArrowLeft || keys.a) targetVx = -player.speed;
+    else if (keys.ArrowRight || keys.d) targetVx = player.speed;
+
+    player.dx = targetVx;
+    player.vx += (targetVx - player.vx) * Math.min(1, dt * 12);
 
     player.x += player.dx * dt;
     // Clamp player to screen
@@ -298,7 +334,46 @@ function update(dt) {
     for (let i = bullets.length - 1; i >= 0; i--) {
         bullets[i].y -= BULLET_SPEED * dt;
         if (bullets[i].vx) bullets[i].x += bullets[i].vx * dt;
-        if (bullets[i].y < 0) bullets.splice(i, 1);
+        if (bullets[i].y < -20) bullets.splice(i, 1);
+    }
+
+    // Enemy Plasma Fire (scales with wave/level)
+    enemyFireCooldown -= dt;
+    if (enemyFireCooldown <= 0 && enemies.length > 0) {
+        const shooter = enemies[Math.floor(Math.random() * enemies.length)];
+        const aimDx = (player.x + player.width / 2) - (shooter.x + shooter.width / 2);
+        const leadVx = Math.max(-75, Math.min(75, aimDx * 0.28));
+        enemyBullets.push({
+            x: shooter.x + shooter.width / 2 - 3,
+            y: shooter.y + shooter.height,
+            width: 6,
+            height: 14,
+            vx: leadVx,
+            vy: 210 + Math.min(180, level * 22),
+            color: shooter.color || '#ff3b6b'
+        });
+        enemyFireCooldown = Math.max(0.38, 1.55 - level * 0.12) * (0.75 + Math.random() * 0.5);
+    }
+
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const eb = enemyBullets[i];
+        eb.x += (eb.vx || 0) * dt;
+        eb.y += eb.vy * dt;
+        if (eb.y > gameHeight + 20) {
+            enemyBullets.splice(i, 1);
+            continue;
+        }
+        if (
+            player.invuln <= 0 &&
+            eb.x < player.x + player.width - 6 &&
+            eb.x + eb.width > player.x + 6 &&
+            eb.y < player.y + player.height - 4 &&
+            eb.y + eb.height > player.y + 6
+        ) {
+            enemyBullets.splice(i, 1);
+            handlePlayerHit();
+            if (!gameRunning) return;
+        }
     }
 
     // Enemies
@@ -348,6 +423,7 @@ function update(dt) {
                 // Check win/respawn
                 if (enemies.length === 0) {
                     level++;
+                    enemyBullets = [];
                     updateHud();
                     initEnemies();
                 }
@@ -367,12 +443,21 @@ function update(dt) {
         }
     }
 
-    // Enemy vs Player (Game Over)
-    enemies.forEach(e => {
-        if (e.y + e.height >= player.y) {
-            gameOver();
+    // Enemy vs Player
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        if (e.y + e.height >= player.y + 4) {
+            enemies.splice(i, 1);
+            handlePlayerHit();
+            if (!gameRunning) return;
+            if (enemies.length === 0) {
+                level++;
+                updateHud();
+                initEnemies();
+            }
+            break;
         }
-    });
+    }
 
     // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -388,6 +473,204 @@ function update(dt) {
         star.y += star.speed;
         if (star.y > gameHeight) star.y = 0;
     });
+}
+
+function drawPlasmaCapsule(b, isEnemy = false) {
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
+    const color = b.color || (isEnemy ? '#ff3b6b' : '#00f3ff');
+
+    ctx.save();
+    // Halo colorido externo da cápsula de plasma
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, b.width * 1.15, b.height * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cápsula intermediária saturada
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, b.width * 0.65, b.height * 0.52, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Núcleo incandescente branco
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, b.width * 0.32, b.height * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawShip(starT, fireOn) {
+    if (player.invuln > 0 && Math.floor(player.invuln * 14) % 2 === 0) return;
+
+    const cx = player.x + player.width / 2;
+    const cy = player.y + player.height / 2;
+    const pw = player.width;
+    const ph = player.height;
+    const bank = Math.max(-0.28, Math.min(0.28, (player.vx || 0) / player.speed * 0.25));
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(bank * 0.45);
+    ctx.scale(1 - Math.abs(bank) * 0.22, 1);
+
+    // Pós-combustor animado duplo / central
+    const flick = (fireOn ? 0.82 : 0.48) + 0.22 * Math.sin(starT * 36);
+    const reach = (fireOn ? 14 : 8) + Math.sin(starT * 45) * 3;
+    ctx.save();
+    ctx.globalAlpha = flick;
+    const flameGrad = ctx.createLinearGradient(0, ph * 0.36, 0, ph * 0.5 + reach);
+    flameGrad.addColorStop(0, '#ffffff');
+    flameGrad.addColorStop(0.35, '#00f3ff');
+    flameGrad.addColorStop(0.75, '#ff2ae6');
+    flameGrad.addColorStop(1, 'rgba(255, 42, 230, 0)');
+    ctx.fillStyle = flameGrad;
+    ctx.beginPath();
+    ctx.moveTo(-pw * 0.16, ph * 0.36);
+    ctx.lineTo(0, ph * 0.5 + reach);
+    ctx.lineTo(pw * 0.16, ph * 0.36);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Canhões duplos de plasma nas asas
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-pw * 0.38, -ph * 0.26, 3.2, ph * 0.38);
+    ctx.fillRect(pw * 0.38 - 3.2, -ph * 0.26, 3.2, ph * 0.38);
+    ctx.fillStyle = fireOn ? '#ff2ae6' : '#00f3ff';
+    ctx.fillRect(-pw * 0.38, -ph * 0.30, 3.2, 4);
+    ctx.fillRect(pw * 0.38 - 3.2, -ph * 0.30, 3.2, 4);
+
+    // Asas metálicas sombreadas em 2.5D (lado esquerdo / direito reage ao banking)
+    const leftWingLight = bank > 0 ? '#38bdf8' : '#0284c7';
+    const rightWingLight = bank < 0 ? '#38bdf8' : '#0369a1';
+
+    ctx.fillStyle = leftWingLight;
+    ctx.beginPath();
+    ctx.moveTo(0, -ph * 0.42);
+    ctx.lineTo(-pw * 0.52, ph * 0.28);
+    ctx.lineTo(-pw * 0.18, ph * 0.18);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = rightWingLight;
+    ctx.beginPath();
+    ctx.moveTo(0, -ph * 0.42);
+    ctx.lineTo(pw * 0.52, ph * 0.28);
+    ctx.lineTo(pw * 0.18, ph * 0.18);
+    ctx.closePath();
+    ctx.fill();
+
+    // Fuselagem central facetada metálica
+    const hullGrad = ctx.createLinearGradient(-pw * 0.22, -ph * 0.5, pw * 0.22, ph * 0.5);
+    hullGrad.addColorStop(0, '#e0f2fe');
+    hullGrad.addColorStop(0.45, '#00f3ff');
+    hullGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = hullGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, -ph * 0.5);
+    ctx.lineTo(pw * 0.22, ph * 0.15);
+    ctx.lineTo(pw * 0.12, ph * 0.44);
+    ctx.lineTo(-pw * 0.12, ph * 0.44);
+    ctx.lineTo(-pw * 0.22, ph * 0.15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cockpit de cristal com reflexo especular
+    ctx.fillStyle = '#082f49';
+    ctx.beginPath();
+    ctx.ellipse(0, -ph * 0.08, pw * 0.1, ph * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#bae6fd';
+    ctx.beginPath();
+    ctx.ellipse(-pw * 0.03, -ph * 0.13, pw * 0.04, ph * 0.08, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawEnemy(e) {
+    const w = e.width;
+    const h = e.height;
+    const cx = e.x + w * 0.5;
+    const cy = e.y + h * 0.5;
+    const species = e.row % 3;
+    const phase = frameCount * 0.12 + e.col * 0.7 + e.row * 0.5;
+    const pulse = Math.sin(phase);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    if (species === 0) {
+        // Espécie 0: Cefalópode biomecânico imperial com tentáculos oscilantes e coroa neural
+        ctx.fillStyle = e.color;
+        for (let t = -2; t <= 2; t++) {
+            const sway = Math.sin(phase + t * 0.8) * (w * 0.08);
+            ctx.beginPath();
+            ctx.moveTo(t * w * 0.12, h * 0.05);
+            ctx.quadraticCurveTo(t * w * 0.16 + sway, h * 0.28, t * w * 0.14 - sway * 0.6, h * 0.46);
+            ctx.lineTo(t * w * 0.14 - sway * 0.6 + 2.5, h * 0.46);
+            ctx.quadraticCurveTo(t * w * 0.18 + sway, h * 0.26, t * w * 0.12 + 3, h * 0.05);
+            ctx.fill();
+        }
+        // Domo craniano blindado
+        ctx.beginPath();
+        ctx.ellipse(0, -h * 0.1, w * 0.38, h * 0.3, 0, Math.PI, 0);
+        ctx.lineTo(w * 0.32, h * 0.12);
+        ctx.lineTo(-w * 0.32, h * 0.12);
+        ctx.closePath();
+        ctx.fill();
+    } else if (species === 1) {
+        // Espécie 1: Invasor aracnídeo com asas bio-plasma batendo
+        const wingFlap = pulse * h * 0.14;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.15, -h * 0.1);
+        ctx.lineTo(-w * 0.48, -h * 0.25 + wingFlap);
+        ctx.lineTo(-w * 0.38, h * 0.28 - wingFlap * 0.5);
+        ctx.lineTo(-w * 0.12, h * 0.16);
+        ctx.moveTo(w * 0.15, -h * 0.1);
+        ctx.lineTo(w * 0.48, -h * 0.25 + wingFlap);
+        ctx.lineTo(w * 0.38, h * 0.28 - wingFlap * 0.5);
+        ctx.lineTo(w * 0.12, h * 0.16);
+        ctx.fill();
+
+        // Carapaça central hexagonal
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w * 0.26, h * 0.32, 0, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // Espécie 2:Manta cibernética com mandíbulas articuladas
+        const jaw = Math.abs(pulse) * w * 0.08;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -h * 0.42);
+        ctx.quadraticCurveTo(w * 0.48, -h * 0.08, w * 0.36, h * 0.28);
+        ctx.lineTo(w * 0.14 + jaw, h * 0.44);
+        ctx.lineTo(0, h * 0.18);
+        ctx.lineTo(-w * 0.14 - jaw, h * 0.44);
+        ctx.lineTo(-w * 0.36, h * 0.28);
+        ctx.quadraticCurveTo(-w * 0.48, -h * 0.08, 0, -h * 0.42);
+        ctx.fill();
+    }
+
+    // Olhos bioluminescentes comuns às 3 espécies
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(-w * 0.13, -h * 0.06, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.13, -h * 0.06, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    ctx.arc(-w * 0.13, -h * 0.05, w * 0.032, 0, Math.PI * 2);
+    ctx.arc(w * 0.13, -h * 0.05, w * 0.032, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
 }
 
 function draw() {
@@ -426,90 +709,16 @@ function draw() {
     });
     ctx.globalAlpha = 1;
 
-    // Draw Player — sem shadowBlur (caro em mobile); brilho via alpha no fill
     ctx.shadowBlur = 0;
-    // Pluma do motor: sempre um sopro baixo; no tiro fica mais forte.
-    const fireOn = keys.Space;
-    {
-        const cx = player.x + player.width / 2;
-        const by = player.y + player.height;
-        const flick = (fireOn ? 0.7 : 0.35) + 0.25 * (0.5 + 0.5 * Math.sin(starT * 28));
-        const reach = fireOn ? 10 : 5;
-        ctx.globalAlpha = flick;
-        ctx.fillStyle = '#ff9f1c';
-        ctx.beginPath();
-        ctx.moveTo(cx - 5, by - 4);
-        ctx.lineTo(cx, by + reach + Math.sin(starT * 40) * 2);
-        ctx.lineTo(cx + 5, by - 4);
-        ctx.closePath();
-        ctx.fill();
-        if (fireOn) {
-            ctx.fillStyle = '#ff4fd8';
-            ctx.beginPath();
-            ctx.moveTo(cx - 3, by - 2);
-            ctx.lineTo(cx, by + 6);
-            ctx.lineTo(cx + 3, by - 2);
-            ctx.closePath();
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-    }
-    const px = player.x;
-    const py = player.y;
-    const pw = player.width;
-    const ph = player.height;
-    ctx.fillStyle = player.color;
-    ctx.beginPath();
-    ctx.moveTo(px + pw * 0.5, py);
-    ctx.quadraticCurveTo(px + pw * 0.78, py + ph * 0.28, px + pw, py + ph * 0.62);
-    ctx.lineTo(px + pw * 0.68, py + ph * 0.52);
-    ctx.quadraticCurveTo(px + pw * 0.58, py + ph * 0.82, px + pw * 0.5, py + ph);
-    ctx.quadraticCurveTo(px + pw * 0.42, py + ph * 0.82, px + pw * 0.32, py + ph * 0.52);
-    ctx.lineTo(px, py + ph * 0.62);
-    ctx.quadraticCurveTo(px + pw * 0.22, py + ph * 0.28, px + pw * 0.5, py);
-    ctx.fill();
-    ctx.fillStyle = '#d8f4ff';
-    ctx.beginPath();
-    ctx.ellipse(px + pw * 0.5, py + ph * 0.36, pw * 0.1, ph * 0.14, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const fireOn = fireHeld || Boolean(keys.Space);
+    drawShip(starT, fireOn);
 
-    // Draw Bullets
-    ctx.fillStyle = '#fff';
-    bullets.forEach(b => {
-        ctx.fillRect(b.x, b.y, b.width, b.height);
-    });
+    // Draw Player & Enemy Plasma Bullets
+    bullets.forEach(b => drawPlasmaCapsule(b, false));
+    enemyBullets.forEach(eb => drawPlasmaCapsule(eb, true));
 
     // Draw Enemies
-    enemies.forEach(e => {
-        const w = e.width;
-        const h = e.height;
-        const x = e.x;
-        const y = e.y;
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        ctx.ellipse(x + w * 0.5, y + h * 0.34, w * 0.32, h * 0.24, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#f4fff8';
-        ctx.beginPath();
-        ctx.ellipse(x + w * 0.38, y + h * 0.3, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
-        ctx.ellipse(x + w * 0.62, y + h * 0.3, w * 0.07, h * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#102018';
-        ctx.beginPath();
-        ctx.arc(x + w * 0.39, y + h * 0.31, w * 0.03, 0, Math.PI * 2);
-        ctx.arc(x + w * 0.63, y + h * 0.31, w * 0.03, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        ctx.moveTo(x + w * 0.32, y + h * 0.5);
-        ctx.quadraticCurveTo(x + w * 0.16, y + h * 0.78, x + w * 0.26, y + h);
-        ctx.lineTo(x + w * 0.4, y + h);
-        ctx.quadraticCurveTo(x + w * 0.44, y + h * 0.72, x + w * 0.5, y + h * 0.52);
-        ctx.quadraticCurveTo(x + w * 0.56, y + h * 0.72, x + w * 0.6, y + h);
-        ctx.lineTo(x + w * 0.74, y + h);
-        ctx.quadraticCurveTo(x + w * 0.84, y + h * 0.78, x + w * 0.68, y + h * 0.5);
-        ctx.fill();
-    });
+    enemies.forEach(e => drawEnemy(e));
 
     // Draw Particles
     particles.forEach(p => {
@@ -539,6 +748,11 @@ function startGame() {
     lives = 3;
     level = 1;
     bulletLevel = 1;
+    bullets = [];
+    enemyBullets = [];
+    player.invuln = 0;
+    player.vx = 0;
+    enemyFireCooldown = 1.2;
     updateHud();
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');

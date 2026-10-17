@@ -280,6 +280,19 @@ class JungleRun {
         }
     }
 
+    readLevelBestScore(levelId) {
+        return Math.max(
+            this.readNumber(`jungleRunLevelBestScore_lvl_${levelId}`),
+            this.readNumber(`jungleRunBestScore_lvl_${levelId}`)
+        );
+    }
+
+    saveLevelBestScore(levelId, score, distance) {
+        this.saveNumber(`jungleRunLevelBestScore_lvl_${levelId}`, score);
+        this.saveNumber(`jungleRunBestScore_lvl_${levelId}`, score);
+        this.saveNumber(`jungleRunLevelBestDistance_lvl_${levelId}`, distance);
+    }
+
     renderLevelSelector() {
         const grid = document.getElementById('levelGrid');
         grid.innerHTML = '';
@@ -289,7 +302,7 @@ class JungleRun {
             const isEndlessLocked = level.id === 5 && this.unlockedLevel < 4;
             
             const locked = isLocked || isEndlessLocked;
-            const recordScore = this.readNumber(`jungleRunBestScore_lvl_${level.id}`);
+            const recordScore = this.readLevelBestScore(level.id);
             
             const card = document.createElement('button');
             card.type = 'button';
@@ -378,29 +391,107 @@ class JungleRun {
         };
     }
 
-    createWorld() {
-        this.world = new PIXI.Container();
-        this.app.stage.addChild(this.world);
+    createGroundTexture() {
+        const tileW = 256;
+        const topPad = 24;
+        const groundH = CONFIG.HEIGHT - CONFIG.GROUND_Y + topPad;
+        const canvas = document.createElement('canvas');
+        canvas.width = tileW;
+        canvas.height = groundH;
+        const ctx = canvas.getContext('2d');
 
-        this.ground = new PIXI.Graphics();
-        this.ground.rect(0, CONFIG.GROUND_Y, 100000, CONFIG.HEIGHT - CONFIG.GROUND_Y).fill(0x0e1713);
-        this.ground.rect(0, CONFIG.GROUND_Y, 100000, 10).fill(0x386d3b);
-        this.ground.rect(0, CONFIG.GROUND_Y + 10, 100000, 6).fill(0x1a3a22);
-        
-        for (let x = 0; x < 100000; x += 32) {
-            const height = 4 + (x % 11);
-            this.ground.moveTo(x, CONFIG.GROUND_Y);
-            this.ground.lineTo(x + 5, CONFIG.GROUND_Y - height);
-            this.ground.lineTo(x + 10, CONFIG.GROUND_Y);
-            this.ground.fill(x % 64 ? 0x2e602f : 0x51914b);
+        // Subsolo com gradiente de profundidade
+        const soilGrad = ctx.createLinearGradient(0, topPad, 0, groundH);
+        soilGrad.addColorStop(0, '#1e3a24');
+        soilGrad.addColorStop(0.12, '#14261a');
+        soilGrad.addColorStop(0.45, '#0d1912');
+        soilGrad.addColorStop(1, '#050b08');
+        ctx.fillStyle = soilGrad;
+        ctx.fillRect(0, topPad, tileW, groundH - topPad);
+
+        // Estratificação de terra, pedras e raízes entrelaçadas
+        const rng = this.seededRandom(1337);
+        for (let i = 0; i < 28; i++) {
+            const rx = rng() * tileW;
+            const ry = topPad + 16 + rng() * (groundH - topPad - 24);
+            const rw = 6 + rng() * 18;
+            const rh = 4 + rng() * 8;
+            ctx.fillStyle = rng() > 0.5 ? 'rgba(42, 68, 48, 0.35)' : 'rgba(8, 16, 11, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(rx, ry, rw, rh, (rng() - 0.5) * 0.5, 0, Math.PI * 2);
+            ctx.fill();
         }
+
+        // Raízes orgânicas no subsolo
+        ctx.strokeStyle = 'rgba(38, 26, 16, 0.55)';
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 7; i++) {
+            const sx = (i * 38) + rng() * 14;
+            ctx.lineWidth = 2 + rng() * 2.5;
+            ctx.beginPath();
+            ctx.moveTo(sx, topPad + 8);
+            ctx.quadraticCurveTo(
+                sx + (rng() - 0.5) * 34,
+                topPad + 36 + rng() * 30,
+                sx + (rng() - 0.5) * 48,
+                topPad + 70 + rng() * 55
+            );
+            ctx.stroke();
+        }
+
+        // Faixa de musgo e grama iluminada no topo
+        const mossGrad = ctx.createLinearGradient(0, topPad - 2, 0, topPad + 16);
+        mossGrad.addColorStop(0, '#68b85e');
+        mossGrad.addColorStop(0.45, '#386d3b');
+        mossGrad.addColorStop(1, '#1a3a22');
+        ctx.fillStyle = mossGrad;
+        ctx.fillRect(0, topPad, tileW, 15);
+
+        //Fios de brilho superior na borda do solo
+        ctx.fillStyle = 'rgba(165, 239, 144, 0.45)';
+        ctx.fillRect(0, topPad, tileW, 2);
+
+        // Folhas de grama e samambaias na superfície (seamless em 256px)
+        for (let x = 0; x < tileW; x += 8) {
+            const bladeH = 5 + ((x * 7) % 11);
+            const lean = ((x % 16) - 8) * 0.35;
+            ctx.fillStyle = (x % 16 === 0) ? '#63ab59' : ((x % 24 === 0) ? '#84d475' : '#2e602f');
+            ctx.beginPath();
+            ctx.moveTo(x, topPad + 2);
+            ctx.quadraticCurveTo(x + lean * 0.5, topPad - bladeH * 0.6, x + lean + 3, topPad - bladeH);
+            ctx.lineTo(x + 6, topPad + 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        return PIXI.Texture.from(canvas);
+    }
+
+    createGround() {
+        const topPad = 24;
+        this.groundTexture = this.createGroundTexture();
+        this.ground = new PIXI.TilingSprite({
+            texture: this.groundTexture,
+            width: CONFIG.WIDTH + 640,
+            height: CONFIG.HEIGHT - CONFIG.GROUND_Y + topPad
+        });
+        this.ground.x = -160;
+        this.ground.y = CONFIG.GROUND_Y - topPad;
         this.world.addChild(this.ground);
 
         this.groundDecor = new PIXI.Container();
         this.world.addChild(this.groundDecor);
-        for (let x = 60; x < 6000; x += 180) {
-            this.createGroundFern(x);
+        this.groundFerns = [];
+        for (let i = 0; i < 12; i++) {
+            this.createGroundFern(60 + i * 180);
         }
+    }
+
+    createWorld() {
+        this.world = new PIXI.Container();
+        this.app.stage.addChild(this.world);
+
+        this.createGround();
 
         this.playerShadow = new PIXI.Graphics();
         this.playerShadow.ellipse(0, 0, 32, 7).fill({ color: 0x000603, alpha: 0.4 });
@@ -420,6 +511,7 @@ class JungleRun {
         plant.x = x;
         plant.y = CONFIG.GROUND_Y + 4;
         this.groundDecor.addChild(plant);
+        if (this.groundFerns) this.groundFerns.push(plant);
     }
 
     createPlayer() {
@@ -705,6 +797,7 @@ class JungleRun {
         
         vine.addChild(ropeLine, grip);
         vine.x = x;
+        vine.baseX = x;
         vine.y = 40;
         vine.type = 'vine';
         vine.rope = ropeLine;
@@ -1249,6 +1342,7 @@ class JungleRun {
             vine.angularVelocity += -Math.sin(vine.angle) * 0.0006 * delta;
             vine.angularVelocity *= 0.997;
             vine.angle += vine.angularVelocity * delta;
+            if (Math.abs((vine.baseX ?? vine.x) - this.player.x) > 1200) continue;
             this.drawVine(vine);
         }
     }
@@ -1257,6 +1351,19 @@ class JungleRun {
         const target = Math.max(0, this.player.x - CONFIG.WIDTH * 0.3);
         this.cameraX += (target - this.cameraX) * 0.085;
         this.world.x = -this.cameraX;
+
+        if (this.ground) {
+            this.ground.x = this.cameraX - 160;
+            this.ground.tilePosition.x = -(this.cameraX - 160);
+        }
+
+        if (this.groundFerns) {
+            const span = this.groundFerns.length * 180;
+            for (const fern of this.groundFerns) {
+                while (fern.x < this.cameraX - 180) fern.x += span;
+                while (fern.x > this.cameraX + span - 180) fern.x -= span;
+            }
+        }
 
         for (const layer of this.parallaxLayers) {
             layer.sprite.tilePosition.x = -this.cameraX * layer.speed;
@@ -1508,10 +1615,9 @@ class JungleRun {
             this.saveNumber('jungleRunUnlockedLevel', this.unlockedLevel);
         }
 
-        const lvlBest = this.readNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`);
+        const lvlBest = this.readLevelBestScore(this.currentLevel.id);
         if (this.score > lvlBest) {
-            this.saveNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`, this.score);
-            this.saveNumber(`jungleRunLevelBestDistance_lvl_${this.currentLevel.id}`, this.distance);
+            this.saveLevelBestScore(this.currentLevel.id, this.score, this.distance);
         }
         
         const bestScore = this.readNumber('jungleRunBestScore');
@@ -1560,12 +1666,11 @@ class JungleRun {
         this.state = 'over';
         this.releaseInputs();
         
-        const lvlBest = this.readNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`);
+        const lvlBest = this.readLevelBestScore(this.currentLevel.id);
         const isRecord = this.score > lvlBest;
         
         if (isRecord) {
-            this.saveNumber(`jungleRunLevelBestScore_lvl_${this.currentLevel.id}`, this.score);
-            this.saveNumber(`jungleRunLevelBestDistance_lvl_${this.currentLevel.id}`, this.distance);
+            this.saveLevelBestScore(this.currentLevel.id, this.score, this.distance);
         }
         
         const bestScore = this.readNumber('jungleRunBestScore');

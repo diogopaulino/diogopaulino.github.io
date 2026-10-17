@@ -178,6 +178,7 @@
     // ---- Starfield + nebula ----
     let stars = [];
     let nebula = [];
+    let nebulaCanvas = null;
 
     function generateStars() {
         stars = [];
@@ -202,6 +203,25 @@
             { x: 0.62, y: 0.78, r: 0.44, c: 'rgba(160, 40, 90, 0.1)' },
             { x: 0.28, y: 0.72, r: 0.32, c: 'rgba(20, 140, 150, 0.1)' }
         ];
+        if (!nebulaCanvas) nebulaCanvas = document.createElement('canvas');
+        const pad = 120;
+        nebulaCanvas.width = Math.max(1, width + pad * 2);
+        nebulaCanvas.height = Math.max(1, height + pad * 2);
+        const nctx = nebulaCanvas.getContext('2d');
+        nctx.clearRect(0, 0, nebulaCanvas.width, nebulaCanvas.height);
+        for (let i = 0; i < nebula.length; i++) {
+            const n = nebula[i];
+            const x = pad + n.x * width;
+            const y = pad + n.y * height;
+            const rad = n.r * Math.max(width, height);
+            const g = nctx.createRadialGradient(x, y, 0, x, y, rad);
+            g.addColorStop(0, n.c);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            nctx.fillStyle = g;
+            nctx.beginPath();
+            nctx.arc(x, y, rad, 0, TAU);
+            nctx.fill();
+        }
     }
 
     function drawBackdrop(t) {
@@ -209,20 +229,10 @@
         ctx.fillStyle = enableTrails ? 'rgba(4, 4, 12, 0.2)' : '#04040c';
         ctx.fillRect(0, 0, width, height);
 
-        const ox = (boundW / 2 - cam.x) * 0.04;
-        const oy = (boundH / 2 - cam.y) * 0.04;
-        for (let i = 0; i < nebula.length; i++) {
-            const n = nebula[i];
-            const x = n.x * width + ox;
-            const y = n.y * height + oy;
-            const rad = n.r * Math.max(width, height);
-            const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-            g.addColorStop(0, n.c);
-            g.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = g;
-            ctx.beginPath();
-            ctx.arc(x, y, rad, 0, TAU);
-            ctx.fill();
+        if (nebulaCanvas) {
+            const ox = Math.max(-110, Math.min(110, (boundW / 2 - cam.x) * 0.04));
+            const oy = Math.max(-110, Math.min(110, (boundH / 2 - cam.y) * 0.04));
+            ctx.drawImage(nebulaCanvas, ox - 120, oy - 120);
         }
 
         if (!enableStars) return;
@@ -295,7 +305,7 @@
 
             if (this.absorbed) return;
 
-            if (isPointerDown && mouseMode !== 'spawn' && mouseMode !== 'body' && mouseMode !== 'erase') {
+            if (isPointerDown && mouseMode !== 'spawn' && mouseMode !== 'body' && mouseMode !== 'erase' && mouseMode !== 'pan') {
                 const dx = pointerW.x - this.x;
                 const dy = pointerW.y - this.y;
                 const distSq = dx * dx + dy * dy;
@@ -376,6 +386,38 @@
         }
     }
 
+    const glowCache = new Map();
+    const surfaceCache = new Map();
+
+    function getGlowSprite(color) {
+        if (glowCache.has(color)) return glowCache.get(color);
+        const size = 128;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const gctx = c.getContext('2d');
+        const g = gctx.createRadialGradient(size / 2, size / 2, size * 0.04, size / 2, size / 2, size / 2);
+        g.addColorStop(0, color);
+        g.addColorStop(0.4, color);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        gctx.fillStyle = g;
+        gctx.fillRect(0, 0, size, size);
+        glowCache.set(color, c);
+        return c;
+    }
+
+    function getPlanetSurfaceSprite(key, builder) {
+        if (surfaceCache.has(key)) return surfaceCache.get(key);
+        const size = 128;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const sctx = c.getContext('2d');
+        builder(sctx, size / 2, size / 2, size * 0.46);
+        surfaceCache.set(key, c);
+        return c;
+    }
+
     // ---- Body ----
     class Body {
         constructor(x, y, vx, vy, radius, color, kind, name) {
@@ -388,6 +430,7 @@
             this.color = color;
             this.rgb = hexToRgb(color);
             this.kind = kind || 'planet';
+            this.tex = this.kind;
             this.name = name || '';
             this.pulse = 0;
             this.spin = Math.random() * TAU;
@@ -432,18 +475,29 @@
         drawTrail() {
             if (!enableOrbits || this.trail.length < 4) return;
             const n = this.trail.length / 2;
-            for (let i = 1; i < n; i++) {
-                const s0 = toScreen(this.trail[(i - 1) * 2], this.trail[(i - 1) * 2 + 1]);
-                const s1 = toScreen(this.trail[i * 2], this.trail[i * 2 + 1]);
-                if (Math.hypot(s1.x - s0.x, s1.y - s0.y) > 48) continue;
-                const t = i / (n - 1);
+            const bands = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            for (let b = 0; b < bands; b++) {
+                const startIdx = Math.max(1, Math.floor(((n - 1) * b) / bands));
+                const endIdx = Math.floor(((n - 1) * (b + 1)) / bands);
+                if (endIdx < startIdx) continue;
+                const tMid = (b + 0.5) / bands;
                 ctx.beginPath();
-                ctx.moveTo(s0.x, s0.y);
-                ctx.lineTo(s1.x, s1.y);
-                ctx.strokeStyle = this.colorAlpha(0.08 + t * 0.42);
-                ctx.lineWidth = Math.max(0.7, (0.7 + t * 1.6) * cam.zoom);
-                ctx.lineCap = 'round';
-                ctx.stroke();
+                let hasSegment = false;
+                for (let i = startIdx; i <= endIdx; i++) {
+                    const s0 = toScreen(this.trail[(i - 1) * 2], this.trail[(i - 1) * 2 + 1]);
+                    const s1 = toScreen(this.trail[i * 2], this.trail[i * 2 + 1]);
+                    if (Math.hypot(s1.x - s0.x, s1.y - s0.y) > 48) continue;
+                    ctx.moveTo(s0.x, s0.y);
+                    ctx.lineTo(s1.x, s1.y);
+                    hasSegment = true;
+                }
+                if (hasSegment) {
+                    ctx.strokeStyle = this.colorAlpha(0.10 + tMid * 0.40);
+                    ctx.lineWidth = Math.max(0.7, (0.7 + tMid * 1.6) * cam.zoom);
+                    ctx.stroke();
+                }
             }
         }
 
@@ -452,13 +506,17 @@
             const r = Math.max(1.2, this.radius * cam.zoom);
             if (s.x < -r * 5 || s.x > width + r * 5 || s.y < -r * 5 || s.y > height + r * 5) return;
 
-            switch (this.kind) {
+            const tex = this.tex || this.kind;
+            switch (tex) {
                 case 'blackhole': drawBlackHole(s, r, this); break;
                 case 'sun':
                 case 'star': drawSun(s, r, this); break;
                 case 'saturn': drawSaturn(s, r, this); break;
                 case 'jupiter': drawJupiter(s, r, this); break;
                 case 'earth': drawEarth(s, r, this); break;
+                case 'mars': drawMars(s, r, this); break;
+                case 'ice': drawIce(s, r, this); break;
+                case 'moon': drawMoon(s, r, this); break;
                 case 'comet': drawCometBody(s, r, this); break;
                 default: drawPlanet(s, r, this); break;
             }
@@ -485,30 +543,17 @@
     function drawGlow(s, r, color, mul) {
         if (!enableGlow) return;
         const outer = r * mul * 1.2;
-        const g = ctx.createRadialGradient(s.x, s.y, r * 0.12, s.x, s.y, outer);
-        g.addColorStop(0, color);
-        g.addColorStop(0.4, color);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
+        const sprite = getGlowSprite(color);
+        ctx.save();
         ctx.globalAlpha = 0.85;
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, outer, 0, TAU);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        ctx.drawImage(sprite, s.x - outer, s.y - outer, outer * 2, outer * 2);
+        ctx.restore();
     }
 
     function drawSun(s, r, b) {
         const t = b.spin;
         const glowR = r * (2.6 + Math.sin(t * 2) * 0.12 + b.pulse * 0.4);
-        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
-        g.addColorStop(0, 'rgba(255,255,230,1)');
-        g.addColorStop(0.12, b.colorAlpha(0.95));
-        g.addColorStop(0.38, b.colorAlpha(0.4));
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, glowR, 0, TAU);
-        ctx.fill();
+        drawGlow(s, r, b.colorAlpha(0.75), glowR / r);
 
         ctx.save();
         ctx.translate(s.x, s.y);
@@ -526,26 +571,22 @@
         }
         ctx.restore();
 
-        const core = ctx.createRadialGradient(s.x - r * 0.2, s.y - r * 0.2, r * 0.1, s.x, s.y, r);
-        core.addColorStop(0, '#fff7d1');
-        core.addColorStop(0.45, b.color);
-        core.addColorStop(1, '#ea580c');
-        ctx.fillStyle = core;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, r, 0, TAU);
-        ctx.fill();
+        const sunSprite = getPlanetSurfaceSprite('sun:' + b.color, (sctx, cx, cy, cr) => {
+            const core = sctx.createRadialGradient(cx - cr * 0.2, cy - cr * 0.2, cr * 0.1, cx, cy, cr);
+            core.addColorStop(0, '#fff7d1');
+            core.addColorStop(0.45, b.color);
+            core.addColorStop(1, '#ea580c');
+            sctx.fillStyle = core;
+            sctx.beginPath();
+            sctx.arc(cx, cy, cr, 0, TAU);
+            sctx.fill();
+        });
+        const d = r / 0.46;
+        ctx.drawImage(sunSprite, s.x - d / 2, s.y - d / 2, d, d);
     }
 
     function drawBlackHole(s, r, b) {
-        const glow = ctx.createRadialGradient(s.x, s.y, r * 0.2, s.x, s.y, r * 3.1);
-        glow.addColorStop(0, 'rgba(255, 214, 140, 0.9)');
-        glow.addColorStop(0.16, 'rgba(255, 120, 50, 0.45)');
-        glow.addColorStop(0.42, 'rgba(90, 40, 170, 0.22)');
-        glow.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, r * 3.1, 0, TAU);
-        ctx.fill();
+        drawGlow(s, r, 'rgba(255, 160, 70, 0.55)', 2.8);
 
         ctx.save();
         ctx.translate(s.x, s.y);
@@ -586,25 +627,172 @@
 
     function drawPlanet(s, r, b) {
         drawGlow(s, r, b.colorAlpha(0.62), 2.45 + b.pulse * 0.5);
-        const g = ctx.createRadialGradient(s.x - r * 0.3, s.y - r * 0.35, r * 0.1, s.x, s.y, r);
-        g.addColorStop(0, 'rgba(255,255,255,0.55)');
-        g.addColorStop(0.35, b.color);
-        g.addColorStop(1, 'rgba(0,0,0,0.55)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, r, 0, TAU);
-        ctx.fill();
+        const sprite = getPlanetSurfaceSprite('planet:' + b.color, (sctx, cx, cy, cr) => {
+            const g = sctx.createRadialGradient(cx - cr * 0.3, cy - cr * 0.35, cr * 0.1, cx, cy, cr);
+            g.addColorStop(0, 'rgba(255,255,255,0.55)');
+            g.addColorStop(0.35, b.color);
+            g.addColorStop(1, 'rgba(0,0,0,0.55)');
+            sctx.fillStyle = g;
+            sctx.beginPath();
+            sctx.arc(cx, cy, cr, 0, TAU);
+            sctx.fill();
+        });
+        const d = r / 0.46;
+        ctx.drawImage(sprite, s.x - d / 2, s.y - d / 2, d, d);
+    }
+
+    function drawMars(s, r, b) {
+        // Atmosfera âmbar empoeirada
+        drawGlow(s, r, 'rgba(234, 88, 12, 0.48)', 1.9 + b.pulse * 0.4);
+        const sprite = getPlanetSurfaceSprite('mars', (sctx, cx, cy, cr) => {
+            sctx.save();
+            sctx.beginPath();
+            sctx.arc(cx, cy, cr, 0, TAU);
+            sctx.clip();
+
+            const base = sctx.createRadialGradient(cx - cr * 0.28, cy - cr * 0.28, cr * 0.1, cx, cy, cr);
+            base.addColorStop(0, '#fb923c');
+            base.addColorStop(0.5, '#c2410c');
+            base.addColorStop(1, '#431407');
+            sctx.fillStyle = base;
+            sctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+
+            // Cânions escuros Valles Marineris
+            sctx.strokeStyle = 'rgba(67, 20, 7, 0.72)';
+            sctx.lineWidth = cr * 0.11;
+            sctx.lineCap = 'round';
+            sctx.beginPath();
+            sctx.moveTo(cx - cr * 0.65, cy + cr * 0.08);
+            sctx.quadraticCurveTo(cx - cr * 0.05, cy - cr * 0.06, cx + cr * 0.58, cy + cr * 0.14);
+            sctx.stroke();
+
+            // Crateras marcianas
+            const craters = [
+                [-0.32, -0.22, 0.18],
+                [0.28, 0.34, 0.22],
+                [-0.18, 0.42, 0.14]
+            ];
+            for (const [ox, oy, crR] of craters) {
+                sctx.fillStyle = 'rgba(67, 20, 7, 0.45)';
+                sctx.beginPath();
+                sctx.arc(cx + ox * cr, cy + oy * cr, crR * cr, 0, TAU);
+                sctx.fill();
+                sctx.strokeStyle = 'rgba(254, 215, 170, 0.35)';
+                sctx.lineWidth = Math.max(1, cr * 0.04);
+                sctx.beginPath();
+                sctx.arc(cx + ox * cr, cy + oy * cr, crR * cr, Math.PI * 0.8, Math.PI * 1.7);
+                sctx.stroke();
+            }
+
+            // Calotas polares brancas
+            sctx.fillStyle = 'rgba(255, 247, 237, 0.88)';
+            sctx.beginPath();
+            sctx.ellipse(cx, cy - cr * 0.88, cr * 0.42, cr * 0.16, 0, 0, TAU);
+            sctx.fill();
+            sctx.beginPath();
+            sctx.ellipse(cx, cy + cr * 0.91, cr * 0.3, cr * 0.11, 0, 0, TAU);
+            sctx.fill();
+            sctx.restore();
+        });
+        const d = r / 0.46;
+        ctx.drawImage(sprite, s.x - d / 2, s.y - d / 2, d, d);
+    }
+
+    function drawIce(s, r, b) {
+        // Mundo glacial estilo Europa / Urano com fissuras ciano e reflexo cristalino
+        drawGlow(s, r, 'rgba(56, 189, 248, 0.52)', 2.1 + b.pulse * 0.4);
+        const sprite = getPlanetSurfaceSprite('ice:' + b.color, (sctx, cx, cy, cr) => {
+            sctx.save();
+            sctx.beginPath();
+            sctx.arc(cx, cy, cr, 0, TAU);
+            sctx.clip();
+
+            const base = sctx.createRadialGradient(cx - cr * 0.3, cy - cr * 0.3, cr * 0.08, cx, cy, cr);
+            base.addColorStop(0, '#f0f9ff');
+            base.addColorStop(0.45, b.color || '#7dd3fc');
+            base.addColorStop(1, '#0c4a6e');
+            sctx.fillStyle = base;
+            sctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+
+            // Fissuras glaciais ciano cruzadas (Europa lineae)
+            sctx.strokeStyle = 'rgba(14, 116, 144, 0.62)';
+            sctx.lineWidth = Math.max(1.2, cr * 0.06);
+            const lines = [
+                [-0.8, -0.3, 0.1, 0.05, 0.85, -0.2],
+                [-0.7, 0.35, -0.1, 0.12, 0.75, 0.45],
+                [-0.35, -0.85, 0.05, -0.1, 0.35, 0.85]
+            ];
+            for (const [x0, y0, cx1, cy1, x1, y1] of lines) {
+                sctx.beginPath();
+                sctx.moveTo(cx + x0 * cr, cy + y0 * cr);
+                sctx.quadraticCurveTo(cx + cx1 * cr, cy + cy1 * cr, cx + x1 * cr, cy + y1 * cr);
+                sctx.stroke();
+            }
+
+            // Brilho especular cristalino
+            sctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+            sctx.beginPath();
+            sctx.ellipse(cx - cr * 0.32, cy - cr * 0.34, cr * 0.24, cr * 0.12, -0.6, 0, TAU);
+            sctx.fill();
+            sctx.restore();
+        });
+        const d = r / 0.46;
+        ctx.drawImage(sprite, s.x - d / 2, s.y - d / 2, d, d);
+    }
+
+    function drawMoon(s, r, b) {
+        drawGlow(s, r, 'rgba(203, 213, 225, 0.35)', 1.65);
+        const sprite = getPlanetSurfaceSprite('moon', (sctx, cx, cy, cr) => {
+            sctx.save();
+            sctx.beginPath();
+            sctx.arc(cx, cy, cr, 0, TAU);
+            sctx.clip();
+
+            const base = sctx.createRadialGradient(cx - cr * 0.28, cy - cr * 0.28, cr * 0.08, cx, cy, cr);
+            base.addColorStop(0, '#f1f5f9');
+            base.addColorStop(0.55, '#94a3b8');
+            base.addColorStop(1, '#334155');
+            sctx.fillStyle = base;
+            sctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+
+            // Mares basálticos lunares
+            sctx.fillStyle = 'rgba(51, 65, 85, 0.42)';
+            sctx.beginPath();
+            sctx.ellipse(cx - cr * 0.2, cy - cr * 0.12, cr * 0.36, cr * 0.26, 0.3, 0, TAU);
+            sctx.fill();
+            sctx.beginPath();
+            sctx.ellipse(cx + cr * 0.22, cy + cr * 0.18, cr * 0.28, cr * 0.22, -0.2, 0, TAU);
+            sctx.fill();
+
+            // Crateras com sombra interna e aro iluminado
+            const craters = [
+                [-0.28, 0.28, 0.2],
+                [0.3, -0.24, 0.16],
+                [0.05, 0.42, 0.13],
+                [-0.36, -0.32, 0.12]
+            ];
+            for (const [ox, oy, crR] of craters) {
+                const x = cx + ox * cr;
+                const y = cy + oy * cr;
+                const rad = crR * cr;
+                sctx.fillStyle = 'rgba(30, 41, 59, 0.55)';
+                sctx.beginPath();
+                sctx.arc(x, y, rad, 0, TAU);
+                sctx.fill();
+                sctx.strokeStyle = 'rgba(248, 250, 252, 0.65)';
+                sctx.lineWidth = Math.max(1, cr * 0.045);
+                sctx.beginPath();
+                sctx.arc(x, y, rad, -Math.PI * 0.15, Math.PI * 0.75);
+                sctx.stroke();
+            }
+            sctx.restore();
+        });
+        const d = r / 0.46;
+        ctx.drawImage(sprite, s.x - d / 2, s.y - d / 2, d, d);
     }
 
     function drawEarth(s, r, b) {
-        const atmo = ctx.createRadialGradient(s.x, s.y, r * 0.8, s.x, s.y, r * 1.32);
-        atmo.addColorStop(0, 'rgba(80,170,255,0)');
-        atmo.addColorStop(0.72, 'rgba(80,170,255,0.18)');
-        atmo.addColorStop(1, 'rgba(80,170,255,0)');
-        ctx.fillStyle = atmo;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, r * 1.32, 0, TAU);
-        ctx.fill();
+        drawGlow(s, r, 'rgba(80, 170, 255, 0.45)', 1.75);
 
         ctx.save();
         ctx.beginPath();
@@ -1176,15 +1364,26 @@
         pointerW = toWorld(x, y);
         downOnBody = hitBody(pointerW.x, pointerW.y);
 
-        if (pan) {
+        if (pan || mouseMode === 'pan') {
+            if (downOnBody && mouseMode === 'pan') {
+                selected = downOnBody;
+                syncInspect();
+            }
             panning = true;
             panLast = { x, y };
-            cam.follow = false;
-            syncFollowBtn();
+            if (!downOnBody) {
+                cam.follow = false;
+                syncFollowBtn();
+            }
             return;
         }
 
         if (mouseMode === 'body') {
+            if (downOnBody) {
+                selected = downOnBody;
+                syncInspect();
+                return;
+            }
             slingActive = true;
             slingStart = { x: pointerW.x, y: pointerW.y, sx: x, sy: y };
             showSlingshotHint(x, y);
@@ -1631,7 +1830,7 @@
     }
     playPauseBtn.addEventListener('click', () => setRunning(!running));
 
-    const modeKeys = { q: 'spawn', w: 'body', a: 'attract', e: 'repel', h: 'blackhole', x: 'erase' };
+    const modeKeys = { v: 'pan', q: 'spawn', w: 'body', a: 'attract', e: 'repel', h: 'blackhole', x: 'erase' };
 
     document.addEventListener('keydown', (e) => {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;

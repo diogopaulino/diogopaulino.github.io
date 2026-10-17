@@ -276,6 +276,35 @@ button {
     line-height: 1.35;
 }
 
+.dos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+    pointer-events: auto;
+}
+
+.dos-chip {
+    min-height: 30px;
+    padding: 0.22rem 0.55rem;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: color-mix(in oklab, var(--ink-deep) 72%, transparent);
+    color: var(--phosphor);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    transition: transform 0.15s var(--ease), background 0.15s, border-color 0.15s;
+}
+
+.dos-chip:hover,
+.dos-chip:active {
+    background: color-mix(in oklab, var(--phosphor) 18%, var(--ink-deep));
+    border-color: var(--phosphor);
+    transform: translateY(-1px);
+}
+
 .tooltip {
     justify-self: center;
     align-self: end;

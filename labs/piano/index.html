@@ -89,12 +89,16 @@
 
     <div class="controls">
       <div class="control-item sustain-control">
-        <button id="sustain-btn" class="sustain-btn" aria-label="Sustain Pedal">
+        <button id="sustain-btn" class="sustain-btn" type="button" aria-label="Pedal Sustain (Segurar)">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="sustain-icon">
             <path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"
               stroke-linejoin="round" />
           </svg>
           <span class="sustain-label">Sustain</span>
+        </button>
+        <button id="sustain-lock-btn" class="sustain-lock-btn" type="button" aria-pressed="false" title="Travar Sustain (ideal para celular)">
+          <span class="sustain-lock-dot" aria-hidden="true"></span>
+          <span>Travar</span>
         </button>
       </div>
 

@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileInput');
     const controlsPanel = document.getElementById('controlsPanel');
     const processBtn = document.getElementById('processBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const clearListBtn = document.getElementById('clearListBtn');
+    const toastBanner = document.getElementById('toastBanner');
     const resultsGrid = document.getElementById('resultsGrid');
     const qualityRange = document.getElementById('qualityRange');
     const qualityValue = document.getElementById('qualityValue');
@@ -12,6 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardsByFile = new Map();
     const previewUrls = new Set();
     const resultUrls = new Set();
+    let toastTimer = null;
+
+    function showNotice(message) {
+        if (!toastBanner) return;
+        toastBanner.textContent = message;
+        toastBanner.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            toastBanner.hidden = true;
+        }, 4000);
+    }
 
     function releasePreviewUrls() {
         previewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -94,11 +108,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     processBtn.addEventListener('click', processAllFiles);
 
+    if (downloadAllBtn) {
+        downloadAllBtn.addEventListener('click', () => {
+            const links = resultsGrid.querySelectorAll('a.download-btn');
+            links.forEach((a, idx) => {
+                setTimeout(() => a.click(), idx * 140);
+            });
+        });
+    }
+
+    if (clearListBtn) {
+        clearListBtn.addEventListener('click', () => {
+            releaseAllUrls();
+            cardsByFile.clear();
+            currentFiles = [];
+            resultsGrid.innerHTML = '';
+            controlsPanel.style.display = 'none';
+            if (downloadAllBtn) downloadAllBtn.hidden = true;
+            fileInput.value = '';
+        });
+    }
+
     function handleFiles(files) {
         const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
 
         if (validFiles.length === 0) {
-            alert('Por favor, selecione apenas arquivos de imagem.');
+            showNotice('Por favor, selecione apenas arquivos de imagem válidos (JPG, PNG, WebP).');
             return;
         }
 
@@ -106,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cardsByFile.clear();
         currentFiles = validFiles;
         controlsPanel.style.display = 'flex';
+        if (downloadAllBtn) downloadAllBtn.hidden = true;
 
         // Clear previous results
         resultsGrid.innerHTML = '';
@@ -126,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
             <div class="image-preview">
                 <img src="${url}" alt="${safeName}">
+                <span class="dimensions-pill" hidden></span>
             </div>
             <div class="card-info">
                 <div class="file-name" title="${safeName}">${safeName}</div>
@@ -135,7 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-        card.querySelector('img').onerror = () => markStatus(file, 'Falha ao ler imagem');
+        const imgEl = card.querySelector('img');
+        const dimPill = card.querySelector('.dimensions-pill');
+        imgEl.onload = () => {
+            if (dimPill && imgEl.naturalWidth) {
+                dimPill.textContent = `${imgEl.naturalWidth} × ${imgEl.naturalHeight}`;
+                dimPill.hidden = false;
+            }
+            card.dataset.origW = imgEl.naturalWidth;
+            card.dataset.origH = imgEl.naturalHeight;
+        };
+        imgEl.onerror = () => markStatus(file, 'Falha ao ler imagem');
         resultsGrid.appendChild(card);
     }
 
@@ -162,6 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         processBtn.disabled = false;
         processBtn.textContent = 'Processar Imagens';
+
+        const readyCount = resultsGrid.querySelectorAll('a.download-btn').length;
+        if (downloadAllBtn) {
+            downloadAllBtn.hidden = readyCount < 2;
+        }
     }
 
     function markStatus(file, text) {
@@ -200,8 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (currentOptions.maxWidth > 0 && width > currentOptions.maxWidth) {
                 const ratio = currentOptions.maxWidth / width;
-                width = currentOptions.maxWidth;
-                height = height * ratio;
+                width = Math.round(currentOptions.maxWidth);
+                height = Math.round(height * ratio);
             }
 
             canvas.width = width;
@@ -221,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 markStatus(file, 'Formato não suportado');
                 return;
             }
-            updateResultCard(file, blob, outputFormat);
+            updateResultCard(file, blob, outputFormat, width, height);
         } catch {
             markStatus(file, 'Falha ao ler imagem');
         } finally {
@@ -229,14 +281,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateResultCard(originalFile, newBlob, format) {
+    function updateResultCard(originalFile, newBlob, format, outWidth, outHeight) {
         const card = cardsByFile.get(originalFile);
         if (!card) return;
 
         const originalSize = originalFile.size;
         const newSize = newBlob.size;
-        const savings = ((originalSize - newSize) / originalSize * 100).toFixed(1);
+        const diffPercent = ((newSize - originalSize) / originalSize * 100);
         const isSavings = newSize < originalSize;
+        const isLarger = newSize > originalSize;
 
         const extension = format.split('/')[1] || 'png';
         const dot = originalFile.name.lastIndexOf('.');
@@ -252,15 +305,29 @@ document.addEventListener('DOMContentLoaded', () => {
         resultUrls.add(url);
         const safeFileName = escapeHtml(newFileName);
 
+        const dimPill = card.querySelector('.dimensions-pill');
+        if (dimPill && outWidth && outHeight) {
+            dimPill.textContent = `${outWidth} × ${outHeight}`;
+            dimPill.hidden = false;
+        }
+
+        const deltaLabel = isSavings
+            ? `${diffPercent.toFixed(1)}%`
+            : isLarger
+                ? `+${diffPercent.toFixed(1)}%`
+                : '0%';
+        const deltaClass = isSavings ? 'savings' : isLarger ? 'savings is-larger' : 'savings is-neutral';
+
         const infoDiv = card.querySelector('.card-info');
         infoDiv.innerHTML = `
             <div class="file-name" title="${safeFileName}">${safeFileName}</div>
             <div class="stats-row">
-                <span>${formatBytes(newSize)}</span>
-                <span class="savings" style="color: ${isSavings ? 'var(--success)' : 'var(--text-secondary)'}">
-                    ${isSavings ? '-' + savings + '%' : '+0%'}
+                <span>${formatBytes(originalSize)} → <strong>${formatBytes(newSize)}</strong></span>
+                <span class="${deltaClass}">
+                    ${deltaLabel}
                 </span>
             </div>
+            <div class="dims-meta">${outWidth} × ${outHeight} px</div>
             <a href="${url}" download="${safeFileName}" class="download-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>

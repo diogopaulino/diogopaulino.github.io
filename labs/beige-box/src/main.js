@@ -288,7 +288,14 @@ class BeigeBox {
 
     bind() {
         const canvas = this.canvas;
-        canvas.addEventListener('pointermove', (e) => this.onMove(e));
+        canvas.addEventListener('pointermove', (e) => {
+            if (e.buttons > 0 && this._downX !== undefined) {
+                const dx = e.clientX - this._downX;
+                const dy = e.clientY - this._downY;
+                if (Math.hypot(dx, dy) >= 6) this.dragging = true;
+            }
+            this.onMove(e);
+        });
         canvas.addEventListener('pointerdown', (e) => {
             this.dragging = false;
             this._downX = e.clientX;
@@ -297,13 +304,27 @@ class BeigeBox {
         });
         canvas.addEventListener('pointerup', (e) => {
             canvas.classList.remove('is-drag');
-            const dx = e.clientX - this._downX;
-            const dy = e.clientY - this._downY;
-            if (Math.hypot(dx, dy) < 6) this.onClick(e);
+            const dx = e.clientX - (this._downX ?? e.clientX);
+            const dy = e.clientY - (this._downY ?? e.clientY);
+            if (!this.dragging && Math.hypot(dx, dy) < 6) this.onClick(e);
+            this.dragging = false;
         });
         canvas.addEventListener('pointerleave', () => this.setHover(null));
 
+        this.controls.addEventListener('change', () => {
+            if (this._downX !== undefined && this.canvas.classList.contains('is-drag')) {
+                this.dragging = true;
+            }
+        });
+
         window.addEventListener('keydown', (e) => this.onKey(e));
+
+        document.querySelectorAll('.dos-chip[data-cmd]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.runQuickCommand(btn.dataset.cmd);
+            });
+        });
 
         this.dom.sound.addEventListener('click', () => {
             this.audio.init();
@@ -318,6 +339,32 @@ class BeigeBox {
             window.removeEventListener('pointerdown', unlock);
         };
         window.addEventListener('pointerdown', unlock);
+    }
+
+    runQuickCommand(cmd) {
+        if (!cmd) return;
+        this.audio.init();
+        if (!this.crt.power) {
+            this.togglePower();
+        }
+        if (cmd.toUpperCase() === 'SECRET' && !this.floppyIn) {
+            this.insertFloppy();
+        }
+        if (this.crt.mode === 'boot') {
+            this.crt.bootT = 4.0;
+            this.crt.update(0.1);
+        }
+        if (this.crt.mode === 'win' || this.crt.mode === 'saver') {
+            this.crt.mode = 'dos';
+        }
+        this.crt.input = '';
+        for (const ch of cmd) {
+            this.crt.type(ch);
+        }
+        this.crt.type('Enter');
+        this.audio.key();
+        this.pressKey(Math.floor(Math.random() * (this.refs.keyPositions.length || 1)));
+        this.say(`Comando ${cmd} enviado ao CRT.`);
     }
 
     onMove(e) {
@@ -618,6 +665,7 @@ class BeigeBox {
     }
 
     frame() {
+        if (document.hidden) return;
         const dt = Math.min(0.05, Math.max(0, this._clock.getDelta()));
         this.time += dt;
 

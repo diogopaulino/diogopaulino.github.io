@@ -419,8 +419,8 @@ body {
 .icon-github-outline,
 .icon-linkedin-outline,
 .icon-music-outline {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,6 +429,7 @@ body {
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
     0 2px 4px var(--shadow-sm),
     0 4px 8px var(--shadow-md);
 }
@@ -644,5 +645,54 @@ body {
   .icon-music-outline::before {
     width: 22px;
     height: 22px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  body {
+    padding: max(0.5rem, env(safe-area-inset-top, 0px))
+      max(1rem, env(safe-area-inset-right, 0px))
+      max(0.5rem, env(safe-area-inset-bottom, 0px))
+      max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  .card-container.minimal {
+    max-width: min(560px, 100%);
+    padding: 1.15rem 1.5rem 1.1rem;
+    gap: 0.2rem;
+  }
+
+  .profile-pic-minimal {
+    width: 68px;
+    height: 68px;
+    margin-bottom: 0.25rem;
+  }
+
+  .main-name {
+    font-size: 1.45rem;
+    margin: 0.2rem 0 0.1rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .subdesc {
+    font-size: 0.85rem;
+    margin-top: 0;
+  }
+
+  .impact-phrase {
+    font-size: 0.9rem;
+    margin: 0.45rem 0 0.65rem;
+    line-height: 1.4;
+  }
+
+  .social-icons.minimal {
+    margin-top: 0.15rem;
+  }
+
+  .labs-easter-egg {
+    margin-top: 0.5rem;
   }
 }

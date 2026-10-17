@@ -41,28 +41,58 @@ export function buildStudio(quality = 'high') {
     ring.receiveShadow = true;
     root.add(ring);
 
+    const podiumGeo = new THREE.LatheGeometry([
+        new THREE.Vector2(0.001, 0.0),
+        new THREE.Vector2(1.22, 0.0),
+        new THREE.Vector2(1.20, 0.028),
+        new THREE.Vector2(1.14, 0.036),
+        new THREE.Vector2(1.11, 0.062),
+        new THREE.Vector2(1.15, 0.072),
+        new THREE.Vector2(1.14, 0.108),
+        new THREE.Vector2(1.07, 0.125),
+        new THREE.Vector2(0.001, 0.125)
+    ], 48);
+    podiumGeo.computeVertexNormals();
     const podium = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.12, 1.18, 0.12, 40),
-        new THREE.MeshStandardMaterial({
-            color: 0x6a4a38,
-            roughness: 0.62,
-            metalness: 0.08
+        podiumGeo,
+        new THREE.MeshPhysicalMaterial({
+            color: 0x5c3e30,
+            roughness: 0.48,
+            metalness: 0.12,
+            clearcoat: 0.35,
+            clearcoatRoughness: 0.28
         })
     );
-    podium.position.y = 0.06;
+    podium.position.y = 0;
     podium.receiveShadow = true;
     podium.castShadow = true;
     root.add(podium);
 
-    const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.05, 1.05, 0.04, 40),
+    const ledRing = new THREE.Mesh(
+        new THREE.TorusGeometry(1.125, 0.012, 12, 48),
         new THREE.MeshStandardMaterial({
-            color: 0xc4a07a,
-            roughness: 0.48,
-            metalness: 0.12
+            color: 0xffdf9a,
+            emissive: 0xffb84d,
+            emissiveIntensity: 1.6,
+            roughness: 0.2,
+            metalness: 0.1
         })
     );
-    top.position.y = 0.13;
+    ledRing.rotation.x = Math.PI / 2;
+    ledRing.position.y = 0.052;
+    root.add(ledRing);
+
+    const top = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.05, 1.065, 0.036, 48),
+        new THREE.MeshPhysicalMaterial({
+            color: 0xc8a47e,
+            roughness: 0.32,
+            metalness: 0.14,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.22
+        })
+    );
+    top.position.y = 0.132;
     top.receiveShadow = true;
     root.add(top);
 

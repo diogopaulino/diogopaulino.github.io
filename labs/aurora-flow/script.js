@@ -357,18 +357,78 @@ function initIce() {
     }
 }
 
-function drawPine(c, x, y, h) {
-    const w = h * 0.52;
-    c.fillStyle = '#05080f';
-    for (let t = 0; t < 3; t++) {
+const starSprite = document.createElement('canvas');
+starSprite.width = 64;
+starSprite.height = 64;
+(function initStarSprite() {
+    const sctx = starSprite.getContext('2d');
+    const g = sctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+    g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    g.addColorStop(0.18, 'rgba(220, 238, 255, 0.65)');
+    g.addColorStop(0.5, 'rgba(175, 210, 255, 0.16)');
+    g.addColorStop(1, 'rgba(175, 210, 255, 0)');
+    sctx.fillStyle = g;
+    sctx.fillRect(0, 0, 64, 64);
+    // Difração sutil em cruz para estrelas mais brilhantes
+    sctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    sctx.fillRect(10, 31.5, 44, 1);
+    sctx.fillRect(31.5, 10, 1, 44);
+})();
+
+const glowSpriteCache = new Map();
+function getGlowSprite(color) {
+    let spr = glowSpriteCache.get(color);
+    if (spr) return spr;
+    spr = document.createElement('canvas');
+    spr.width = 64;
+    spr.height = 64;
+    const gctx = spr.getContext('2d');
+    const g = gctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+    g.addColorStop(0, color);
+    g.addColorStop(0.4, hexAlpha(color, 0.35));
+    g.addColorStop(1, 'transparent');
+    gctx.fillStyle = g;
+    gctx.fillRect(0, 0, 64, 64);
+    glowSpriteCache.set(color, spr);
+    return spr;
+}
+
+function drawPine(c, x, y, h, snowTint = false) {
+    const w = h * 0.48;
+    c.fillStyle = '#04070e';
+    const tiers = 4;
+    for (let t = 0; t < tiers; t++) {
+        const ty = y - h + t * (h * 0.19);
+        const tw = w * (0.45 + (t / (tiers - 1)) * 0.65);
+        const th = h * 0.34;
         c.beginPath();
-        c.moveTo(x, y - h + t * h * 0.2);
-        c.lineTo(x - w * (1 - t * 0.2), y - h * 0.42 + t * h * 0.26);
-        c.lineTo(x + w * (1 - t * 0.2), y - h * 0.42 + t * h * 0.26);
+        c.moveTo(x, ty);
+        c.lineTo(x - tw, ty + th);
+        c.lineTo(x + tw, ty + th);
         c.closePath();
         c.fill();
+        if (snowTint && t < 2) {
+            c.strokeStyle = 'rgba(200, 224, 255, 0.14)';
+            c.lineWidth = 0.8;
+            c.beginPath();
+            c.moveTo(x, ty);
+            c.lineTo(x - tw * 0.7, ty + th * 0.7);
+            c.stroke();
+        }
     }
-    c.fillRect(x - 1.4, y - h * 0.12, 2.8, h * 0.18);
+    c.fillRect(x - 1.2, y - h * 0.14, 2.4, h * 0.2);
+}
+
+function buildMountain(layer, layers, base) {
+    const profile = [];
+    for (let x = -20; x <= width + 20; x += 7) {
+        const n = noise3D(x * 0.0028 + layer * 31, layer * 9.1, 0.21);
+        const n2 = noise3D(x * 0.011 + layer * 7, 3.2, 0.4);
+        const n3 = noise3D(x * 0.027 + layer * 13, 1.7, 0.8) * 4;
+        const peak = Math.max(0, n * 0.55 + 0.42) * (70 + layer * 54) * (layer === layers - 1 ? 1.2 : 0.72);
+        profile.push({ x, y: base - peak + n2 * 10 + n3 });
+    }
+    return profile;
 }
 
 function buildTerrain() {
@@ -378,17 +438,18 @@ function buildTerrain() {
 
     const hzn = horizonY();
     const layers = current.terrain === 'ice' ? 2 : 3;
+    let frontProfile = [];
 
     for (let layer = 0; layer < layers; layer++) {
         const base = hzn + 6 - layer * 10;
+        const profile = buildMountain(layer, layers, base);
+        if (layer === layers - 1) frontProfile = profile;
+
         landCtx.beginPath();
         landCtx.moveTo(-20, height);
         landCtx.lineTo(-20, base);
-        for (let x = 0; x <= width + 20; x += 7) {
-            const n = noise3D(x * 0.0028 + layer * 31, layer * 9.1, 0.21);
-            const n2 = noise3D(x * 0.011 + layer * 7, 3.2, 0.4);
-            const peak = Math.max(0, n * 0.55 + 0.42) * (70 + layer * 54) * (layer === layers - 1 ? 1.2 : 0.72);
-            landCtx.lineTo(x, base - peak + n2 * 10);
+        for (const pt of profile) {
+            landCtx.lineTo(pt.x, pt.y);
         }
         landCtx.lineTo(width + 20, height);
         landCtx.closePath();
@@ -409,25 +470,38 @@ function buildTerrain() {
             landCtx.strokeStyle = 'rgba(214, 228, 255, 0.22)';
             landCtx.lineWidth = 1.6;
             landCtx.beginPath();
-            for (let x = 0; x <= width + 20; x += 7) {
-                const n = noise3D(x * 0.0028 + layer * 31, layer * 9.1, 0.21);
-                const n2 = noise3D(x * 0.011 + layer * 7, 3.2, 0.4);
-                const peak = Math.max(0, n * 0.55 + 0.42) * (70 + layer * 54) * 1.2;
-                const y = base - peak + n2 * 10;
-                if (x === 0) landCtx.moveTo(x, y);
-                else landCtx.lineTo(x, y);
-            }
+            profile.forEach((pt, idx) => {
+                if (idx === 0) landCtx.moveTo(pt.x, pt.y);
+                else landCtx.lineTo(pt.x, pt.y);
+            });
             landCtx.stroke();
             landCtx.restore();
         }
     }
 
-    const pineCount = Math.floor(width / (isMobile ? 52 : 36));
+    // Linha de pinheiros boreais procedurais acompanhando a crista próxima e a margem do fiorde
+    if (frontProfile.length > 2) {
+        const ridgeStep = isMobile ? 3 : 2;
+        for (let i = 1; i < frontProfile.length - 1; i += ridgeStep) {
+            const pt = frontProfile[i];
+            const slope = Math.abs(frontProfile[i + 1].y - frontProfile[i - 1].y);
+            // Pinheiros crescem nas encostas mais suaves e baixas da crista
+            if (pt.y > hzn - 68 && slope < 14) {
+                const n = noise3D(pt.x * 0.04, 2.1, 0.7);
+                if (n > -0.25) {
+                    const treeH = 10 + Math.abs(n) * 14;
+                    drawPine(landCtx, pt.x + n * 3, pt.y + 3, treeH, true);
+                }
+            }
+        }
+    }
+
+    const pineCount = Math.floor(width / (isMobile ? 42 : 28));
     for (let i = 0; i < pineCount; i++) {
         const nx = noise3D(i * 0.73, 4.2, 0.5);
         const x = (i + 0.25 + nx * 0.4) * (width / pineCount);
         const y = hzn + 10 + nx * 8;
-        drawPine(landCtx, x, y, 16 + Math.abs(nx) * 22);
+        drawPine(landCtx, x, y, 16 + Math.abs(nx) * 24, true);
     }
 
     landCtx.fillStyle = current.terrain === 'ice' ? '#0a121c' : '#050910';
@@ -674,11 +748,17 @@ function drawStars() {
         const alpha = (Math.sin(star.twinkle) + 1) * 0.32 + 0.18;
         const px = star.x + parallaxX * (0.35 + star.layer);
         const py = star.y + parallaxY * (0.35 + star.layer);
-        skyCtx.fillStyle = `rgba(255,255,255,${alpha * 0.75})`;
-        skyCtx.beginPath();
-        skyCtx.arc(px, py, star.size, 0, Math.PI * 2);
-        skyCtx.fill();
+        if (star.size > 0.95) {
+            const sprSize = star.size * 8.5;
+            skyCtx.globalAlpha = alpha * 0.9;
+            skyCtx.drawImage(starSprite, px - sprSize * 0.5, py - sprSize * 0.5, sprSize, sprSize);
+        } else {
+            skyCtx.globalAlpha = alpha * 0.78;
+            skyCtx.fillStyle = '#ffffff';
+            skyCtx.fillRect(px - star.size * 0.5, py - star.size * 0.5, star.size, star.size);
+        }
     }
+    skyCtx.globalAlpha = 1;
     skyCtx.restore();
 }
 
@@ -697,10 +777,36 @@ function drawMoon() {
     const g = skyCtx.createRadialGradient(mx - r * 0.3, my - r * 0.3, 0, mx, my, r);
     g.addColorStop(0, '#f4f7ff');
     g.addColorStop(1, '#c5d0e8');
+    skyCtx.save();
     skyCtx.fillStyle = g;
     skyCtx.beginPath();
     skyCtx.arc(mx, my, r, 0, Math.PI * 2);
     skyCtx.fill();
+    skyCtx.clip();
+
+    // Textura sutil de mares lunares e crateras no disco da lua
+    const craters = [
+        { dx: -0.28, dy: -0.18, cr: 0.26, a: 0.18 },
+        { dx: 0.22, dy: -0.12, cr: 0.32, a: 0.22 },
+        { dx: 0.08, dy: 0.28, cr: 0.22, a: 0.19 },
+        { dx: -0.34, dy: 0.24, cr: 0.17, a: 0.16 },
+        { dx: 0.36, dy: 0.2, cr: 0.14, a: 0.15 }
+    ];
+    for (const c of craters) {
+        const cx = mx + c.dx * r;
+        const cy = my + c.dy * r;
+        const cr = c.cr * r;
+        skyCtx.fillStyle = `rgba(135, 152, 188, ${c.a})`;
+        skyCtx.beginPath();
+        skyCtx.arc(cx, cy, cr, 0, Math.PI * 2);
+        skyCtx.fill();
+        skyCtx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        skyCtx.lineWidth = Math.max(0.5, r * 0.04);
+        skyCtx.beginPath();
+        skyCtx.arc(cx - cr * 0.1, cy - cr * 0.1, cr * 0.9, -0.8, 1.8);
+        skyCtx.stroke();
+    }
+    skyCtx.restore();
 }
 
 function horizonY() {
@@ -819,13 +925,8 @@ function drawParticles() {
     for (const p of particles) {
         if (!p.glow) continue;
         const r = p.size * 5.2;
-        const g = skyCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-        g.addColorStop(0, p.color);
-        g.addColorStop(1, 'transparent');
-        skyCtx.fillStyle = g;
-        skyCtx.beginPath();
-        skyCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        skyCtx.fill();
+        const spr = getGlowSprite(p.color);
+        skyCtx.drawImage(spr, p.x - r, p.y - r, r * 2, r * 2);
     }
     skyCtx.restore();
 }
@@ -957,37 +1058,59 @@ function drawReticle() {
 
 function drawLake() {
     const hzn = horizonY();
-    if (current.terrain === 'void' || hzn >= height - 8) return;
+    const lakeH = height - hzn;
+    if (current.terrain === 'void' || lakeH <= 8) return;
 
+    ctx.fillStyle = current.terrain === 'ice' ? '#040a14' : '#020812';
+    ctx.fillRect(0, hzn, width, lakeH);
+
+    // Reflexos ondulados (water ripples) fatiando o céu espelhado na superfície do lago ártico
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, hzn, width, height - hzn);
+    ctx.rect(0, hzn, width, lakeH);
     ctx.clip();
-    ctx.translate(0, hzn);
-    ctx.scale(1, -0.36);
-    ctx.globalAlpha = 0.28;
-    ctx.drawImage(sky, 0, 0, sky.width, sky.height * (hzn / height), 0, -hzn, width, hzn);
+
+    const strips = isMobile ? 22 : 38;
+    const stripH = lakeH / strips;
+    const skySrcH = sky.height * (hzn / height);
+    for (let i = 0; i < strips; i++) {
+        const ratio = i / strips;
+        const dstY = hzn + i * stripH;
+        const srcY = Math.max(0, skySrcH * (1 - (i + 1) / strips));
+        const srcH = Math.max(1, skySrcH / strips);
+        const rippleX = Math.sin(time * 2.4 + i * 0.55) * (1.2 + ratio * 7.5);
+        ctx.globalAlpha = (0.38 - ratio * 0.22) * (current.terrain === 'ice' ? 0.75 : 1);
+        ctx.drawImage(sky, 0, srcY, sky.width, srcH, rippleX, dstY, width, stripH + 0.8);
+    }
     ctx.restore();
 
-    ctx.fillStyle = current.terrain === 'ice' ? 'rgba(8, 16, 28, 0.52)' : 'rgba(2, 10, 18, 0.58)';
-    ctx.fillRect(0, hzn, width, height - hzn);
+    ctx.fillStyle = current.terrain === 'ice' ? 'rgba(8, 16, 28, 0.42)' : 'rgba(2, 10, 18, 0.45)';
+    ctx.fillRect(0, hzn, width, lakeH);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = 'rgba(180, 210, 255, 0.08)';
-    ctx.lineWidth = 1;
-    const wobble = Math.sin(time * 0.8) * 3;
-    for (let i = 0; i < 5; i++) {
-        const y = hzn + 18 + i * ((height - hzn) / 6) + wobble * (i % 2 ? 1 : -1);
+    // Ondulações luminosas da aurora na água (water ripples)
+    const rippleRows = isMobile ? 14 : 24;
+    const intensity = auroraIntensity / 100;
+    for (let i = 0; i < rippleRows; i++) {
+        const tRow = (i + 0.5) / rippleRows;
+        const y = hzn + 8 + Math.pow(tRow, 1.15) * (lakeH - 12);
+        const col = current.colors[i % current.colors.length];
+        const waveShift = Math.sin(time * 1.9 + i * 0.9) * 18;
+        const segW = 28 + Math.sin(i * 1.7 + time) * 16 + tRow * 42;
+        const xCenter = ((i * 97 + waveShift) % width + width) % width;
+        ctx.strokeStyle = hexAlpha(col, (0.06 + intensity * 0.14) * (1 - tRow * 0.5));
+        ctx.lineWidth = 1 + tRow * 1.2;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.bezierCurveTo(width * 0.3, y + 4, width * 0.7, y - 3, width, y + 2);
+        ctx.moveTo(xCenter - segW, y);
+        ctx.quadraticCurveTo(xCenter, y + Math.sin(time * 2.5 + i) * 1.8, xCenter + segW, y);
         ctx.stroke();
     }
+
     for (const ice of iceSpark) {
         ice.x += ice.s * 8;
         if (ice.x > width) ice.x = 0;
-        const y = hzn + ice.y * (height - hzn);
+        const y = hzn + ice.y * lakeH;
         ctx.globalAlpha = ice.a * (0.5 + Math.sin(time * 2 + ice.x) * 0.5);
         ctx.fillStyle = '#dce9ff';
         ctx.fillRect(ice.x, y, ice.w, 1);

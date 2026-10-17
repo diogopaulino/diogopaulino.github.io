@@ -1,61 +1,101 @@
 /**
- * workers + cargo — estivadores, carroças, sacas de café (P03–P04, H01).
+ * workers + cargo — estivadores esculpidos, carroças com rodas raiadas e sacas de café (P03–P04, H01).
  */
 
 import * as THREE from 'three';
 import { LAYOUT } from '../config.js';
 import { seeded } from '../utils.js';
+import {
+    createSculptedHuman,
+    animateSculptedHuman,
+    createCoffeeSack,
+    createSpokedWheel
+} from '../../../shared/realism.js';
 
-function makeWorker(mats, rnd) {
-    const g = new THREE.Group();
-    const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.28, 0.85, 3, 6),
-        rnd() > 0.4 ? mats.cloth : mats.clothLight
-    );
-    body.position.y = 1.15;
-    body.castShadow = true;
-    g.add(body);
+const SHIRT_COLORS = [0xd8d0c0, 0xc9bfa8, 0x3a4550, 0x5c5346, 0x7a6e5d];
+const PANTS_COLORS = [0x2c323b, 0x3d352e, 0x464a52, 0x2a2622];
+const HAT_COLORS = [0x4a3b2c, 0x2e2a25, 0x8a795d, null];
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mats.skin);
-    head.position.y = 1.95;
-    g.add(head);
-
-    // Saca às vezes
-    if (rnd() > 0.35) {
-        const sack = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.4), mats.sack);
-        sack.position.set(0, 1.7, -0.35);
-        sack.rotation.x = 0.4;
-        g.add(sack);
-        g.userData.hasSack = true;
-    }
-
+function makeWorker(_mats, rnd) {
+    const hasSack = rnd() > 0.35;
+    const shirt = SHIRT_COLORS[(rnd() * SHIRT_COLORS.length) | 0];
+    const pants = PANTS_COLORS[(rnd() * PANTS_COLORS.length) | 0];
+    const hat = HAT_COLORS[(rnd() * HAT_COLORS.length) | 0];
+    const g = createSculptedHuman({
+        style: 'human',
+        skin: rnd() > 0.35 ? 0xc49a72 : 0x8d6242,
+        hair: 0x241810,
+        shirt,
+        pants,
+        shoes: 0x221812,
+        hat,
+        carrySack: hasSack,
+        detailedFace: false,
+        scale: 1.05
+    });
+    g.userData.hasSack = hasSack;
     g.userData.phase = rnd() * Math.PI * 2;
-    g.userData.speed = 0.4 + rnd() * 0.6;
+    g.userData.speed = 0.45 + rnd() * 0.55;
     return g;
 }
 
 function makeCart(mats) {
     const g = new THREE.Group();
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 3.5), mats.wood);
-    bed.position.y = 1.1;
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.24, 3.5), mats.wood);
+    bed.position.y = 1.05;
     bed.castShadow = true;
+    bed.receiveShadow = true;
     g.add(bed);
 
-    const side = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.15), mats.wood);
-    side.position.set(0, 1.5, -1.7);
-    g.add(side);
+    // Fueiros e grades laterais de madeira
+    for (const sx of [-1.04, 1.04]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 3.45), mats.wood);
+        rail.position.set(sx, 1.52, 0);
+        g.add(rail);
+        for (const sz of [-1.4, -0.5, 0.5, 1.4]) {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.58, 6), mats.wood);
+            post.position.set(sx, 1.32, sz);
+            g.add(post);
+        }
+    }
 
-    for (const [x, z] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
-        const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.2, 10), mats.wood);
-        wh.rotation.z = Math.PI / 2;
-        wh.position.set(x * 1.1, 0.55, z * 1.1);
+    const frontBoard = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.65, 0.12), mats.wood);
+    frontBoard.position.set(0, 1.42, -1.68);
+    g.add(frontBoard);
+
+    // Varais dianteiros da carroça
+    for (const sx of [-0.55, 0.55]) {
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.7, 6), mats.wood);
+        shaft.rotation.x = Math.PI / 2 - 0.15;
+        shaft.position.set(sx, 0.96, -2.45);
+        g.add(shaft);
+    }
+
+    // Rodas raiadas com aro de ferro
+    for (const [x, z, r] of [[-1.14, 1.05, 0.52], [1.14, 1.05, 0.52], [-1.14, -1.05, 0.44], [1.14, -1.05, 0.44]]) {
+        const wh = createSpokedWheel({
+            radius: r,
+            width: 0.12,
+            spokes: 10,
+            rimMaterial: mats.wood,
+            hubMaterial: mats.steel
+        });
+        wh.rotation.y = Math.PI / 2;
+        wh.position.set(x, r, z);
         g.add(wh);
     }
 
-    // Pilha de sacas
-    for (let i = 0; i < 6; i++) {
-        const s = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.7), mats.sack);
-        s.position.set((i % 3 - 1) * 0.55, 1.4 + Math.floor(i / 3) * 0.4, (i % 2) * 0.4);
+    // Pilha orgânica de sacas de café
+    for (let i = 0; i < 8; i++) {
+        const s = createCoffeeSack(mats.sack, { width: 0.58, height: 0.36, depth: 0.78 });
+        const row = i % 3;
+        const layer = Math.floor(i / 3);
+        s.position.set(
+            (row - 1) * 0.56 + (layer % 2) * 0.06,
+            1.32 + layer * 0.31,
+            -0.6 + (i % 2) * 0.72
+        );
+        s.rotation.y = ((i * 1.7) % 0.4) - 0.2;
         g.add(s);
     }
 
@@ -89,10 +129,11 @@ export function createWorkers(ctx) {
     return {
         update(t, dt) {
             for (const w of workers) {
-                const walk = Math.sin(t * w.userData.speed + w.userData.phase);
+                const phase = t * w.userData.speed * 5.2 + w.userData.phase;
                 w.position.z += w.userData.dir * dt * 0.9 * w.userData.speed;
-                w.position.y = 1.2 + Math.abs(walk) * 0.04;
+                w.position.y = 1.2;
                 w.rotation.y = w.userData.dir > 0 ? 0 : Math.PI;
+                animateSculptedHuman(w, phase, 0.55);
                 if (w.position.z > LAYOUT.quayZ1 - 10) w.userData.dir = -1;
                 if (w.position.z < LAYOUT.quayZ0 + 20) w.userData.dir = 1;
             }
@@ -109,17 +150,19 @@ export function createCargo(ctx) {
     group.name = 'cargo';
     const rnd = seeded(958);
 
-    // Pilhas de sacas no cais
+    // Pilhas de sacas de café esculpidas no cais
     for (let p = 0; p < 12; p++) {
         const pile = new THREE.Group();
-        const n = 4 + Math.floor(rnd() * 8);
+        const n = 5 + Math.floor(rnd() * 8);
         for (let i = 0; i < n; i++) {
-            const s = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.75), mats.sack);
+            const s = createCoffeeSack(mats.sack, { width: 0.56, height: 0.35, depth: 0.76 });
+            const layer = Math.floor(i / 3);
             s.position.set(
-                (i % 3) * 0.55,
-                Math.floor(i / 3) * 0.4 + 0.2,
-                Math.floor(i / 6) * 0.7
+                (i % 3) * 0.54 + (layer % 2) * 0.08,
+                layer * 0.3 + 0.18,
+                Math.floor(i / 6) * 0.68
             );
+            s.rotation.y = (rnd() - 0.5) * 0.25;
             s.castShadow = quality.shadows;
             pile.add(s);
         }
@@ -150,7 +193,6 @@ export function createCargo(ctx) {
         update(t) {
             group.children.forEach((c, i) => {
                 if (c.userData.phase != null) {
-                    // carroças quase paradas, leve oscilação
                     c.position.x = LAYOUT.quayX + 2 + (i % 3) + Math.sin(t * 0.2 + c.userData.phase) * 0.15;
                 }
             });
@@ -160,3 +202,4 @@ export function createCargo(ctx) {
         }
     };
 }
+

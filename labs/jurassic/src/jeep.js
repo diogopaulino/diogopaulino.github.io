@@ -127,8 +127,21 @@ const JEEP_RACK_SHORT = (() => {
 
 export function buildJeep() {
     const root = new THREE.Group();
-    const paint = std(0x1c3a38, 0.42, 0.18);
+    const paint = new THREE.MeshPhysicalMaterial({
+        color: 0x1c3a38,
+        roughness: 0.36,
+        metalness: 0.22,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.22
+    });
     const dark = std(0x121416, 0.7, 0.2);
+    const leather = new THREE.MeshPhysicalMaterial({
+        color: 0x4a2e1b,
+        roughness: 0.56,
+        metalness: 0.05,
+        clearcoat: 0.28,
+        clearcoatRoughness: 0.45
+    });
     const chrome = new THREE.MeshStandardMaterial({
         map: metalTexture(), color: 0xccd2d8, roughness: 0.28, metalness: 0.85
     });
@@ -153,6 +166,57 @@ export function buildJeep() {
     windshield.position.set(0, 1.42, 0.72);
     windshield.rotation.x = -0.28;
     root.add(windshield);
+
+    // Interior: bancos dianteiros e traseiros de couro (seat + backrest) e volante com coluna
+    const interior = new THREE.Group();
+    interior.name = 'jeepInterior';
+    const seatGeo = new THREE.BoxGeometry(0.52, 0.14, 0.52);
+    const backrestGeo = new THREE.BoxGeometry(0.5, 0.56, 0.12);
+    const headrestGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.26, 10);
+    headrestGeo.rotateZ(Math.PI / 2);
+
+    for (const sx of [-0.42, 0.42]) {
+        const frontSeat = new THREE.Group();
+        frontSeat.position.set(sx, 0.86, 0.12);
+        const seat = new THREE.Mesh(seatGeo, leather);
+        seat.name = 'seat';
+        const backrest = new THREE.Mesh(backrestGeo, leather);
+        backrest.name = 'backrest';
+        backrest.position.set(0, 0.3, -0.22);
+        backrest.rotation.x = -0.18;
+        const headrest = new THREE.Mesh(headrestGeo, leather);
+        headrest.position.set(0, 0.62, -0.27);
+        frontSeat.add(seat, backrest, headrest);
+        interior.add(frontSeat);
+    }
+
+    for (const sx of [-0.42, 0.42]) {
+        const rearSeat = new THREE.Group();
+        rearSeat.position.set(sx, 0.9, -0.68);
+        const seat = new THREE.Mesh(seatGeo, leather);
+        seat.name = 'seat';
+        const backrest = new THREE.Mesh(backrestGeo, leather);
+        backrest.name = 'backrest';
+        backrest.position.set(0, 0.28, -0.22);
+        backrest.rotation.x = -0.14;
+        rearSeat.add(seat, backrest);
+        interior.add(rearSeat);
+    }
+
+    // Coluna de direção e volante inclinado
+    const steeringGroup = new THREE.Group();
+    steeringGroup.name = 'steeringWheel';
+    steeringGroup.position.set(0.42, 1.16, 0.52);
+    steeringGroup.rotation.x = 0.58;
+    const steeringCol = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.42, 10), dark);
+    steeringCol.position.y = -0.2;
+    const wheelRim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 8, 20), dark);
+    wheelRim.rotation.x = Math.PI / 2;
+    const wheelHub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 10), chrome);
+    const wheelSpoke = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.02, 0.028), chrome);
+    steeringGroup.add(steeringCol, wheelRim, wheelHub, wheelSpoke);
+    interior.add(steeringGroup);
+    root.add(interior);
 
     const rack = new THREE.Group();
     rack.name = 'jeepRack';
@@ -230,10 +294,42 @@ export function buildJeep() {
         wheels.push(w);
     }
 
-    const roll = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 6, 12, Math.PI), chrome);
-    roll.rotation.z = Math.PI / 2;
-    roll.position.set(0, 1.55, -1.05);
-    root.add(roll);
+    // Gaiola de proteção (roll cage): arcos + barras laterais e superiores
+    const rollCage = new THREE.Group();
+    rollCage.name = 'rollCage';
+    const hoopGeo = new THREE.TorusGeometry(0.68, 0.036, 8, 16, Math.PI);
+    for (const z of [-0.18, -1.08]) {
+        const hoop = new THREE.Mesh(hoopGeo, chrome);
+        hoop.position.set(0, 1.15, z);
+        rollCage.add(hoop);
+    }
+    const sideBarGeo = new THREE.CylinderGeometry(0.032, 0.032, 1.62, 8);
+    sideBarGeo.rotateX(Math.PI / 2);
+    for (const sx of [-0.68, 0.68]) {
+        const topBar = new THREE.Mesh(sideBarGeo, chrome);
+        topBar.position.set(sx, 1.82, -0.35);
+        rollCage.add(topBar);
+        const waistBar = new THREE.Mesh(sideBarGeo, dark);
+        waistBar.position.set(sx * 1.08, 1.14, -0.35);
+        rollCage.add(waistBar);
+        const pillarF = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 8), chrome);
+        pillarF.position.set(sx, 1.48, 0.56);
+        pillarF.rotation.x = -0.28;
+        rollCage.add(pillarF);
+    }
+    root.add(rollCage);
+
+    // Estepe traseiro (TorusGeometry + calota) preso na tampa traseira
+    const spareWheel = new THREE.Group();
+    spareWheel.name = 'spareWheel';
+    spareWheel.position.set(0, 0.92, -1.89);
+    const spareTire = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.12, 12, 22), rubber);
+    const spareCap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.14, 14), chrome);
+    spareCap.rotation.x = Math.PI / 2;
+    const spareHub = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.17, 10), paint);
+    spareHub.rotation.x = Math.PI / 2;
+    spareWheel.add(spareTire, spareCap, spareHub);
+    root.add(spareWheel);
 
     root.traverse((c) => {
         if (c.isMesh) {

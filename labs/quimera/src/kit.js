@@ -8,6 +8,61 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { LAYOUT } from './config.js';
 import { handGroup, limbGeometry, shoeMesh, torsoGeometry } from '../../shared/realism.js?v=3';
 
+const geoCache = new Map();
+let vinylBumpTex = null;
+let clothBumpTex = null;
+
+function cachedGeo(key, factory) {
+    if (!geoCache.has(key)) geoCache.set(key, factory());
+    return geoCache.get(key);
+}
+
+function getVinylBump() {
+    if (vinylBumpTex) return vinylBumpTex;
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            const f = n - Math.floor(n);
+            const v = 120 + Math.round(f * 24);
+            const i = (y * size + x) * 4;
+            img.data[i] = v;
+            img.data[i + 1] = v;
+            img.data[i + 2] = v;
+            img.data[i + 3] = 255;
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+    vinylBumpTex = new THREE.CanvasTexture(c);
+    vinylBumpTex.wrapS = vinylBumpTex.wrapT = THREE.RepeatWrapping;
+    vinylBumpTex.repeat.set(6, 6);
+    return vinylBumpTex;
+}
+
+function getClothBump() {
+    if (clothBumpTex) return clothBumpTex;
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < size; i += 4) {
+        ctx.fillStyle = '#a8a8a8';
+        ctx.fillRect(0, i, size, 1);
+        ctx.fillStyle = '#585858';
+        ctx.fillRect(i, 0, 1, size);
+    }
+    clothBumpTex = new THREE.CanvasTexture(c);
+    clothBumpTex.wrapS = clothBumpTex.wrapT = THREE.RepeatWrapping;
+    clothBumpTex.repeat.set(8, 8);
+    return clothBumpTex;
+}
+
 export function vinyl(color, extra = {}) {
     return new THREE.MeshPhysicalMaterial({
         color,
@@ -15,6 +70,10 @@ export function vinyl(color, extra = {}) {
         metalness: extra.metalness ?? 0.06,
         clearcoat: extra.clearcoat ?? 0.55,
         clearcoatRoughness: extra.clearcoatRoughness ?? 0.22,
+        bumpMap: extra.bumpMap ?? getVinylBump(),
+        bumpScale: extra.bumpScale ?? 0.004,
+        sheen: extra.sheen ?? 0,
+        sheenRoughness: extra.sheenRoughness ?? 0.6,
         emissive: extra.emissive ?? 0x000000,
         emissiveIntensity: extra.emissiveIntensity ?? 0,
         transparent: extra.transparent ?? false,
@@ -41,13 +100,13 @@ export function glass(color = 0x88c8e8) {
 export function makePalette(kit) {
     const c = kit.colors;
     return {
-        skin: vinyl(kit.skin, { roughness: 0.62, clearcoat: 0.15, clearcoatRoughness: 0.45 }),
+        skin: vinyl(kit.skin, { roughness: 0.62, clearcoat: 0.15, clearcoatRoughness: 0.45, bumpScale: 0.005 }),
         primary: vinyl(c.primary),
         secondary: vinyl(c.secondary),
-        accent: vinyl(c.accent, { metalness: 0.72, roughness: 0.18, clearcoat: 0.85, clearcoatRoughness: 0.08 }),
-        cloth: vinyl(c.cloth, { roughness: 0.78, clearcoat: 0.05, clearcoatRoughness: 0.6 }),
+        accent: vinyl(c.accent, { metalness: 0.72, roughness: 0.18, clearcoat: 0.85, clearcoatRoughness: 0.08, bumpScale: 0.002 }),
+        cloth: vinyl(c.cloth, { roughness: 0.78, clearcoat: 0.05, clearcoatRoughness: 0.6, bumpMap: getClothBump(), bumpScale: 0.016, sheen: 0.35 }),
         trim: vinyl(c.trim, { clearcoat: 0.7 }),
-        iris: vinyl(kit.iris, { roughness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.05 }),
+        iris: vinyl(kit.iris, { roughness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.05, bumpScale: 0 }),
         white: vinyl(0xf6f3ee, { roughness: 0.32 }),
         dark: vinyl(0x1a1a22, { roughness: 0.38 }),
         gum: vinyl(0xd47878, { roughness: 0.55, clearcoat: 0.2 }),
@@ -56,14 +115,15 @@ export function makePalette(kit) {
             metalness: 0.25,
             clearcoat: 0.8,
             emissive: c.accent,
-            emissiveIntensity: 0.55
+            emissiveIntensity: 0.55,
+            bumpScale: 0.002
         })
     };
 }
 
 /**
- * Contexto de montagem: um Group + helpers que já parentam e projetam sombra.
- */
+  * Contexto de montagem: um Group + helpers que já parentam e projetam sombra.
+  */
 export function makeCtx(kit) {
     const group = new THREE.Group();
     const mats = makePalette(kit);
@@ -84,27 +144,36 @@ export function makeAdd(parent) {
             return m;
         },
         sphere(r, mat, pos, rot, scale, seg = 32) {
-            return add.mesh(new THREE.SphereGeometry(r, seg, seg), mat, pos, rot, scale);
+            const geo = cachedGeo(`sph:${r}:${seg}`, () => new THREE.SphereGeometry(r, seg, seg));
+            return add.mesh(geo, mat, pos, rot, scale);
         },
         box(w, h, d, mat, pos, rot, scale, r = 0.04) {
-            return add.mesh(new RoundedBoxGeometry(w, h, d, 4, r), mat, pos, rot, scale);
+            const geo = cachedGeo(`box:${w}:${h}:${d}:${r}`, () => new RoundedBoxGeometry(w, h, d, 4, r));
+            return add.mesh(geo, mat, pos, rot, scale);
         },
         cyl(rt, rb, h, mat, pos, rot, scale, seg = 28) {
-            const geo = new THREE.CylinderGeometry(rt, rb, h, seg);
+            const geo = cachedGeo(`cyl:${rt}:${rb}:${h}:${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg));
             return add.mesh(geo, mat, pos, rot, scale);
         },
         cap(r, len, mat, pos, rot, scale) {
-            return add.mesh(new THREE.CapsuleGeometry(r, len, 8, 20), mat, pos, rot, scale);
+            const geo = cachedGeo(`cap:${r}:${len}`, () => new THREE.CapsuleGeometry(r, len, 8, 20));
+            return add.mesh(geo, mat, pos, rot, scale);
         },
         torus(r, t, mat, pos, rot, scale, radial = 16, tubular = 28) {
-            return add.mesh(new THREE.TorusGeometry(r, t, radial, tubular), mat, pos, rot, scale);
+            const geo = cachedGeo(`tor:${r}:${t}:${radial}:${tubular}`, () => new THREE.TorusGeometry(r, t, radial, tubular));
+            return add.mesh(geo, mat, pos, rot, scale);
         },
         cone(r, h, mat, pos, rot, scale, seg = 24) {
-            return add.mesh(new THREE.ConeGeometry(r, h, seg), mat, pos, rot, scale);
+            const geo = cachedGeo(`con:${r}:${h}:${seg}`, () => new THREE.ConeGeometry(r, h, seg));
+            return add.mesh(geo, mat, pos, rot, scale);
         },
         lathe(points, mat, pos, rot, seg = 14) {
-            const shape = points.map(([x, y]) => new THREE.Vector2(x, y));
-            return add.mesh(new THREE.LatheGeometry(shape, seg), mat, pos, rot);
+            const key = `lat:${seg}:${points.map(([x, y]) => `${x},${y}`).join(';')}`;
+            const geo = cachedGeo(key, () => {
+                const shape = points.map(([x, y]) => new THREE.Vector2(x, y));
+                return new THREE.LatheGeometry(shape, seg);
+            });
+            return add.mesh(geo, mat, pos, rot);
         },
         group(pos) {
             const g = new THREE.Group();
@@ -138,7 +207,8 @@ export function addFace(ctx, { iris = ctx.mats.iris, smile = true, mask = false 
 
     const lids = new THREE.Group();
     const lidMat = mats.skin;
-    const lidL = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lidMat);
+    const lidGeo = cachedGeo('lid:0.058', () => new THREE.SphereGeometry(0.058, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2));
+    const lidL = new THREE.Mesh(lidGeo, lidMat);
     const lidR = lidL.clone();
     lidL.rotation.x = Math.PI;
     lidR.rotation.x = Math.PI;

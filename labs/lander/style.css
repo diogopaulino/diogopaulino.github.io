@@ -224,17 +224,19 @@ canvas {
     white-space: nowrap;
 }
 
-/* On-Screen Controls — só em ponteiro grosso; no desktop o teclado basta. */
+/* On-Screen Controls — só em ponteiro grosso; separados em 2 grupos ergonômicos para os polegares (esquerda: ◀ ▶ rotação; direita: ▲ propulsor). */
 .onscreen-controls {
     position: absolute;
     top: auto;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
     right: max(12px, env(safe-area-inset-right, 0px));
     display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    pointer-events: auto;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    pointer-events: none;
     z-index: 4;
 }
 
@@ -246,14 +248,15 @@ canvas {
 
 .onscreen-controls .row {
     display: flex;
-    gap: 5px;
+    gap: 8px;
+    pointer-events: auto;
 }
 
 .control-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 54px;
+    height: 54px;
+    min-width: 52px;
+    min-height: 52px;
     background-color: #c0c0c0;
     border-top: 2px solid #fff;
     border-left: 2px solid #fff;
@@ -413,13 +416,16 @@ canvas {
 
     .onscreen-controls {
         top: auto;
-        bottom: max(2px, env(safe-area-inset-bottom, 0px));
-        right: max(14px, env(safe-area-inset-right, 0px));
+        bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
     }
 
     .control-btn {
-        height: 48px;
-        width: 48px;
+        height: 54px;
+        width: 54px;
+        min-width: 52px;
+        min-height: 52px;
     }
 
     .center-msg {
@@ -475,13 +481,16 @@ canvas {
 
     .onscreen-controls {
         top: auto;
-        bottom: 2px;
-        right: 14px;
+        bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
     }
 
     .control-btn {
-        height: 48px;
-        width: 48px;
+        height: 54px;
+        width: 54px;
+        min-width: 52px;
+        min-height: 52px;
     }
 
     .center-msg {
@@ -517,8 +526,9 @@ canvas {
     .win31-window { width: 100%; max-width: 100%; }
     .hud-stats { min-width: 0; max-width: 48%; font-size: 12px; }
     .onscreen-controls {
-        bottom: max(2px, env(safe-area-inset-bottom, 0px));
-        right: max(14px, env(safe-area-inset-right, 0px));
+        bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
     }
 }
 

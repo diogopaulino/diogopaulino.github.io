@@ -315,12 +315,15 @@ function stopAllNotes() {
 // SUSTAIN PEDAL IGUAL PIANO REAL
 // ============================================================================
 
+let sustainLocked = false;
+
 function toggleSustain(active) {
+  const effectiveActive = sustainLocked ? true : active;
   const wasActive = sustainActive;
-  sustainActive = active;
+  sustainActive = effectiveActive;
 
   const sustainBtn = document.getElementById('sustain-btn');
-  if (active) {
+  if (effectiveActive) {
     sustainBtn.classList.add('active');
   } else {
     sustainBtn.classList.remove('active');
@@ -352,6 +355,11 @@ function changeOctave(delta) {
 // GERAÇÃO DO TECLADO
 // ============================================================================
 
+const NOTE_TO_KEY_LABEL = {};
+Object.entries(KEYBOARD_MAP).forEach(([k, n]) => {
+  if (!NOTE_TO_KEY_LABEL[n]) NOTE_TO_KEY_LABEL[n] = k.toUpperCase();
+});
+
 function generatePiano() {
   const pianoElement = document.getElementById('piano');
   let whiteKeyIndex = 0;
@@ -365,9 +373,17 @@ function generatePiano() {
       key.className = `key ${isBlack ? 'black' : 'white'}`;
       key.dataset.note = fullNote;
 
+      const shortcutChar = NOTE_TO_KEY_LABEL[fullNote];
+      if (shortcutChar) {
+        const kbdLabel = document.createElement('span');
+        kbdLabel.className = 'key-shortcut';
+        kbdLabel.textContent = shortcutChar;
+        key.appendChild(kbdLabel);
+      }
+
       const label = document.createElement('span');
       label.className = 'key-note';
-      label.textContent = noteName;
+      label.textContent = noteName === 'C' ? `${noteName}${octave}` : noteName;
       key.appendChild(label);
 
       if (isBlack) {
@@ -376,10 +392,11 @@ function generatePiano() {
         whiteKeyIndex++;
       }
 
-      setupKeyEvents(key, fullNote);
       pianoElement.appendChild(key);
     });
   });
+
+  setupPianoGlissando(pianoElement);
 }
 
 function layoutBlackKeys() {
@@ -391,60 +408,102 @@ function layoutBlackKeys() {
   const keyWidth = white.getBoundingClientRect().width;
   const blackKeyWidth = black.getBoundingClientRect().width;
   if (!keyWidth || !blackKeyWidth) return;
+  const padLeft = parseFloat(getComputedStyle(pianoElement).paddingLeft) || 0;
   pianoElement.querySelectorAll('.key.black').forEach((key) => {
     const after = Number(key.dataset.afterWhite);
-    key.style.left = `${after * keyWidth - blackKeyWidth / 2}px`;
+    key.style.left = `${padLeft + after * keyWidth - blackKeyWidth / 2}px`;
   });
 }
 
-function setupKeyEvents(keyElement, noteName) {
-  let touchId = null;
+function getKeyVelocityAtPoint(keyEl, clientY) {
+  const rect = keyEl.getBoundingClientRect();
+  const relY = Math.max(0, Math.min(1, (clientY - rect.top) / (rect.height || 1)));
+  return 0.5 + relY * 0.5;
+}
 
-  // Mouse events
-  keyElement.addEventListener('mousedown', (e) => {
+function setupPianoGlissando(pianoElement) {
+  // Rastreia qual nota cada ponteiro (mouse ou touch identifier) está pressionando
+  const pointerNotes = new Map();
+
+  const resolveKeyAt = (clientX, clientY) => {
+    const el = document.elementFromPoint(clientX, clientY);
+    return el ? el.closest('.key') : null;
+  };
+
+  const updatePointerNote = (id, clientX, clientY) => {
+    const keyEl = resolveKeyAt(clientX, clientY);
+    const nextNote = keyEl?.dataset?.note || null;
+    const prevNote = pointerNotes.get(id) || null;
+    if (nextNote === prevNote) return;
+
+    if (prevNote) {
+      pointerNotes.delete(id);
+      // Só para a nota se nenhum outro dedo ainda estiver segurando ela
+      const stillHeldByOther = Array.from(pointerNotes.values()).includes(prevNote);
+      if (!stillHeldByOther) stopNote(prevNote);
+    }
+
+    if (nextNote && keyEl) {
+      pointerNotes.set(id, nextNote);
+      playNote(nextNote, getKeyVelocityAtPoint(keyEl, clientY));
+    }
+  };
+
+  const releasePointer = (id) => {
+    const prevNote = pointerNotes.get(id);
+    if (!prevNote) return;
+    pointerNotes.delete(id);
+    const stillHeldByOther = Array.from(pointerNotes.values()).includes(prevNote);
+    if (!stillHeldByOther) stopNote(prevNote);
+  };
+
+  // Mouse glissando
+  let mouseDown = false;
+  pianoElement.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
     e.preventDefault();
-    const rect = keyElement.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const velocity = 0.5 + (y / rect.height) * 0.5;
-    playNote(noteName, velocity);
+    mouseDown = true;
+    updatePointerNote('mouse', e.clientX, e.clientY);
   });
 
-  keyElement.addEventListener('mouseup', () => {
-    stopNote(noteName);
+  window.addEventListener('mousemove', (e) => {
+    if (!mouseDown) return;
+    updatePointerNote('mouse', e.clientX, e.clientY);
   });
 
-  keyElement.addEventListener('mouseleave', () => {
-    stopNote(noteName);
+  window.addEventListener('mouseup', () => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    releasePointer('mouse');
   });
 
-  // Touch events otimizados para mobile
-  keyElement.addEventListener('touchstart', (e) => {
+  // Touch glissando (multitoque + deslizar o dedo entre teclas)
+  pianoElement.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (touchId !== null) return;
-
-    const touch = e.changedTouches[0];
-    touchId = touch.identifier;
-
-    const rect = keyElement.getBoundingClientRect();
-    const y = touch.clientY - rect.top;
-    const velocity = 0.5 + (y / rect.height) * 0.5;
-    playNote(noteName, velocity);
-  }, { passive: false });
-
-  keyElement.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
-    if (touch) {
-      touchId = null;
-      stopNote(noteName);
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      updatePointerNote(`touch-${t.identifier}`, t.clientX, t.clientY);
     }
   }, { passive: false });
 
-  keyElement.addEventListener('touchcancel', (e) => {
+  pianoElement.addEventListener('touchmove', (e) => {
     e.preventDefault();
-    touchId = null;
-    stopNote(noteName);
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      updatePointerNote(`touch-${t.identifier}`, t.clientX, t.clientY);
+    }
   }, { passive: false });
+
+  const endTouches = (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      releasePointer(`touch-${t.identifier}`);
+    }
+  };
+
+  pianoElement.addEventListener('touchend', endTouches, { passive: false });
+  pianoElement.addEventListener('touchcancel', endTouches, { passive: false });
 }
 
 // ============================================================================
@@ -461,6 +520,17 @@ function setupControls() {
   });
 
   const sustainBtn = document.getElementById('sustain-btn');
+  const sustainLockBtn = document.getElementById('sustain-lock-btn');
+
+  if (sustainLockBtn) {
+    sustainLockBtn.addEventListener('click', () => {
+      sustainLocked = !sustainLocked;
+      sustainLockBtn.classList.toggle('active', sustainLocked);
+      sustainLockBtn.setAttribute('aria-pressed', String(sustainLocked));
+      toggleSustain(sustainLocked);
+    });
+  }
+
   sustainBtn.addEventListener('mousedown', (e) => {
     e.preventDefault();
     toggleSustain(true);
@@ -472,7 +542,7 @@ function setupControls() {
   });
 
   sustainBtn.addEventListener('mouseleave', () => {
-    if (sustainActive) {
+    if (sustainActive && !sustainLocked) {
       toggleSustain(false);
     }
   });

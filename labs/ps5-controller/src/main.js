@@ -469,7 +469,10 @@ var init_ProductModel = __esm({
           if (!mesh.isMesh) return;
           const material = mesh.material;
           if (!material) return;
+          const originallyTransparent = Boolean(material.userData?.originallyTransparent);
+          const originalOpacity = material.userData?.originalOpacity ?? 1;
           this.materials.push(material);
+          this.entries.push({ material, originallyTransparent, originalOpacity });
           proxied.push({ mesh });
         });
         for (const { mesh } of proxied) {
@@ -485,6 +488,7 @@ var init_ProductModel = __esm({
       group = new Group3();
       inner = new Group3();
       materials = [];
+      entries = [];
       /**
        * Depth-only stand-ins, one per mesh, shown only while the product is fading.
        *
@@ -525,24 +529,29 @@ var init_ProductModel = __esm({
         }
       }
       /**
-       * Fades the product.
-       *
-       * The materials are transparent from the start and stay that way, so opacity
-       * itself is only a uniform update. What does change is who owns the depth
-       * buffer: while fading, the pre-pass writes it and the blended pass merely
-       * tests against it, which is what stops the product showing its own insides.
-       *
-       * A product at zero opacity is taken out of the scene entirely rather than
-       * merely drawn as nothing. Its depth pre-pass is still a solid object as far
-       * as the depth buffer is concerned, and an invisible controller waiting to
-       * enter would otherwise stamp its own silhouette into the buffer and punch
-       * that shape straight out of the one still on screen.
+       * Fades the product and updates depth-sorting mode for opaque vs fading shells.
        */
-      setOpacity(value) {
-        const visible = value > 1e-3;
+      setOpacity(opacity) {
+        const visible = opacity > 1e-3;
         this.group.visible = visible;
-        for (const material of this.materials) material.opacity = value;
-        this.setDepthMode(value < 0.999 && visible);
+        const isOpaque = opacity >= 0.999;
+        for (const entry of this.entries) {
+          if (isOpaque && !entry.originallyTransparent) {
+            entry.material.transparent = false;
+            entry.material.depthWrite = true;
+            entry.material.opacity = 1;
+          } else {
+            entry.material.transparent = true;
+            entry.material.depthWrite = opacity > 0.85;
+            entry.material.opacity = isOpaque ? entry.originalOpacity : opacity * entry.originalOpacity;
+          }
+        }
+        for (const proxy of this.depthProxies) {
+          proxy.visible = !isOpaque && opacity <= 0.85 && visible;
+        }
+      }
+      setReveal(opacity) {
+        this.setOpacity(opacity);
       }
       /**
        * Chooses which pass owns the depth buffer, independently of opacity.
@@ -552,7 +561,15 @@ var init_ProductModel = __esm({
        * without ever making the product visible.
        */
       setDepthMode(fading) {
-        for (const material of this.materials) material.depthWrite = !fading;
+        for (const entry of this.entries) {
+          if (!fading && !entry.originallyTransparent) {
+            entry.material.transparent = false;
+            entry.material.depthWrite = true;
+          } else {
+            entry.material.transparent = true;
+            entry.material.depthWrite = !fading;
+          }
+        }
         for (const proxy of this.depthProxies) proxy.visible = fading && this.group.visible;
       }
       /** Returns the product to full opacity once a fade has finished. */
@@ -588,6 +605,7 @@ import {
   FloatType,
   LinearFilter,
   LinearSRGBColorSpace as LinearSRGBColorSpace2,
+  RepeatWrapping,
   RGBAFormat,
   SRGBColorSpace,
   Texture
@@ -595,6 +613,34 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+function getMicroGripBumpMap() {
+  if (gripBumpTex) return gripBumpTex;
+  const size = 64;
+  const data = new Float32Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const gx = (x % 8) - 3.5;
+      const gy = (y % 8) - 3.5;
+      const d = Math.hypot(gx, gy);
+      const micro = d < 2.4 ? 0.5 + 0.5 * Math.cos((d / 2.4) * Math.PI) : 0.35;
+      const grain = 0.92 + 0.08 * Math.sin(x * 1.7 + y * 2.3);
+      const h = micro * grain;
+      const i = (y * size + x) * 4;
+      data[i] = h;
+      data[i + 1] = h;
+      data[i + 2] = h;
+      data[i + 3] = 1;
+    }
+  }
+  gripBumpTex = new DataTexture(data, size, size, RGBAFormat, FloatType);
+  gripBumpTex.wrapS = RepeatWrapping;
+  gripBumpTex.wrapT = RepeatWrapping;
+  gripBumpTex.repeat.set(28, 28);
+  gripBumpTex.minFilter = LinearFilter;
+  gripBumpTex.magFilter = LinearFilter;
+  gripBumpTex.needsUpdate = true;
+  return gripBumpTex;
+}
 function getLoader() {
   if (!loader) {
     loader = new GLTFLoader();
@@ -623,6 +669,7 @@ function loadModel(url, options = {}) {
   return promise;
 }
 function prepare(root2, anisotropy) {
+  const microBump = getMicroGripBumpMap();
   root2.traverse((child) => {
     const mesh = child;
     if (!mesh.isMesh) return;
@@ -641,13 +688,21 @@ function prepare(root2, anisotropy) {
       map.anisotropy = anisotropy;
       map.needsUpdate = true;
     }
+    const originallyTransparent = Boolean(material.transparent && (material.opacity ?? 1) < 0.999);
+    material.userData = material.userData || {};
+    material.userData.originallyTransparent = originallyTransparent;
+    material.userData.originalOpacity = material.opacity ?? 1;
     material.envMapIntensity = 1;
     material.roughness = Math.min(1, material.roughness ?? 1);
     material.metalness = material.metalness ?? 1;
     material.normalScale?.set(1.15, 1.15);
-    material.transparent = true;
-    material.depthWrite = true;
-    material.opacity = 1;
+    if (!material.bumpMap && !originallyTransparent) {
+      material.bumpMap = microBump;
+      material.bumpScale = 0.006;
+    }
+    material.transparent = originallyTransparent;
+    material.depthWrite = !originallyTransparent;
+    material.opacity = originallyTransparent ? material.userData.originalOpacity : 1;
     material.needsUpdate = true;
   });
   return root2;
@@ -784,7 +839,7 @@ async function loadBrushTexture(url, width = 1536) {
   texture2.needsUpdate = true;
   return texture2;
 }
-var loader, draco, modelCache, ANISOTROPY;
+var loader, draco, modelCache, ANISOTROPY, gripBumpTex;
 var init_assets = __esm({
   "src/three/assets.ts"() {
     "use strict";
@@ -792,6 +847,7 @@ var init_assets = __esm({
     draco = null;
     modelCache = /* @__PURE__ */ new Map();
     ANISOTROPY = 16;
+    gripBumpTex = null;
   }
 });
 
@@ -1304,7 +1360,7 @@ var init_ProductScene = __esm({
         this.frameCamera();
       }
       start() {
-        if (this.running || this.disposed) return;
+        if (this.running || this.disposed || document.hidden) return;
         this.running = true;
         this.lastTime = performance.now();
         this.renderer.setAnimationLoop(this.tick);
@@ -1315,6 +1371,7 @@ var init_ProductScene = __esm({
         this.renderer.setAnimationLoop(null);
       }
       tick = () => {
+        if (document.hidden) return;
         const now = performance.now();
         const delta = Math.min(0.1, (now - this.lastTime) / 1e3);
         this.lastTime = now;

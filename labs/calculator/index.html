@@ -90,13 +90,13 @@
         <main class="calculator-wrapper">
             <div class="mode-switch">
                 <button class="mode-btn active" data-mode="calculator">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg> Simple
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg> Simples
                 </button>
                 <button class="mode-btn" data-mode="scientific">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg> Scientific
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg> Científica
                 </button>
                 <button class="mode-btn" data-mode="currency">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/></svg> Currency
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/></svg> Moedas
                 </button>
             </div>
 
@@ -190,18 +190,18 @@
             <!-- Currency Converter Section -->
             <div class="currency-section" id="currency">
                 <div class="currency-header">
-                    <h3>Real-time Converter</h3>
-                    <div class="last-updated">Loading rates...</div>
-                    <button id="refresh-rates" class="btn-refresh" title="Refresh Rates" aria-label="Atualizar cotações">
+                    <h3>Conversor de Moedas</h3>
+                    <div class="last-updated">Carregando cotações...</div>
+                    <button id="refresh-rates" class="btn-refresh" title="Atualizar cotações" aria-label="Atualizar cotações">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11A8 8 0 0 0 6.3 6.3L3 9.5"/><path d="M3 4.5v5h5"/><path d="M4 13a8 8 0 0 0 13.7 4.7L21 14.5"/><path d="M21 19.5v-5h-5"/></svg>
                     </button>
                 </div>
 
                 <div class="converter-box">
                     <div class="input-group">
-                        <label>From</label>
+                        <label>De</label>
                         <div class="currency-select-wrapper">
-                            <input type="text" class="currency-search" id="search-one" placeholder="Search currency..."
+                            <input type="text" class="currency-search" id="search-one" placeholder="Buscar moeda..."
                                 aria-label="Buscar moeda de origem">
                             <select id="currency-one" aria-label="Moeda de origem">
                                 <option value="USD" selected>USD</option>
@@ -209,7 +209,7 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Amount</label>
+                        <label>Valor</label>
                         <input type="number" id="amount-one" value="1" placeholder="0" aria-label="Valor de origem">
                     </div>
                 </div>
@@ -223,9 +223,9 @@
 
                 <div class="converter-box">
                     <div class="input-group">
-                        <label>To</label>
+                        <label>Para</label>
                         <div class="currency-select-wrapper">
-                            <input type="text" class="currency-search" id="search-two" placeholder="Search currency..."
+                            <input type="text" class="currency-search" id="search-two" placeholder="Buscar moeda..."
                                 aria-label="Buscar moeda de destino">
                             <select id="currency-two" aria-label="Moeda de destino">
                                 <option value="BRL" selected>BRL</option>
@@ -233,7 +233,7 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Converted</label>
+                        <label>Convertido</label>
                         <input type="number" id="amount-two" placeholder="0" aria-label="Valor convertido">
                     </div>
                 </div>

@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import { peachStone, leafCanopy, fabricTeal, goldMetal } from './textures.js';
 import {
-    attachHumanHead, limbGeometry, torsoGeometry, shoeMesh, handGroup, leatherMaterial, createOrganicTree
+    attachHumanHead, limbGeometry, torsoGeometry, shoeMesh, handGroup, leatherMaterial, createOrganicTree,
+    stoneMaterial, brickMaterial, woodMaterial
 } from '../../shared/realism.js?v=3';
 
 const geoCache = new Map();
@@ -847,28 +848,74 @@ export function createKingBomb() {
 
 export function createCannon() {
     const g = new THREE.Group();
-    const base = mesh(geo('cn-b', () => new THREE.CylinderGeometry(0.7, 0.9, 0.55, 32)), 0x3a3a44, {
-        roughness: 0.45,
-        metalness: 0.55
-    });
+    const baseMat = stoneMaterial(0x52525c, { roughness: 0.78, repeatX: 2, repeatY: 1 });
+    const base = new THREE.Mesh(geo('cn-b', () => new THREE.CylinderGeometry(0.72, 0.92, 0.56, 32)), baseMat);
+    base.castShadow = true;
+    base.receiveShadow = true;
     base.position.y = 0.28;
-    const barrel = mesh(geo('cn-r', () => new THREE.CylinderGeometry(0.42, 0.5, 2.4, 32)), 0x2a2a32, {
-        roughness: 0.38,
-        metalness: 0.6,
-        clearcoat: 0.25
+
+    // Suporte lateral com munhões (trunnion)
+    const cheekGeo = geo('cn-chk', () => new THREE.BoxGeometry(0.16, 0.58, 0.72));
+    const ironDark = pbrMat(0x23242b, { roughness: 0.36, metalness: 0.72, clearcoat: 0.25 });
+    const cheekL = new THREE.Mesh(cheekGeo, ironDark);
+    cheekL.position.set(-0.46, 0.78, 0.22);
+    cheekL.castShadow = true;
+    const cheekR = cheekL.clone();
+    cheekR.position.x = 0.46;
+
+    const trunnion = new THREE.Mesh(
+        geo('cn-tr', () => {
+            const c = new THREE.CylinderGeometry(0.11, 0.11, 1.18, 18);
+            c.rotateZ(Math.PI / 2);
+            return c;
+        }),
+        ironDark
+    );
+    trunnion.position.set(0, 0.98, 0.28);
+
+    // Tubo do canhão torneado (LatheGeometry com culatra reforçada, anéis e boca alargada)
+    const barrelGeo = geo('cn-lathe', () => {
+        const pts = [
+            new THREE.Vector2(0.001, -1.15),
+            new THREE.Vector2(0.16, -1.14),
+            new THREE.Vector2(0.20, -1.04),
+            new THREE.Vector2(0.14, -0.95),
+            new THREE.Vector2(0.46, -0.88),
+            new THREE.Vector2(0.52, -0.55),
+            new THREE.Vector2(0.55, -0.48),
+            new THREE.Vector2(0.49, -0.40),
+            new THREE.Vector2(0.45, 0.12),
+            new THREE.Vector2(0.49, 0.18),
+            new THREE.Vector2(0.43, 0.24),
+            new THREE.Vector2(0.39, 0.92),
+            new THREE.Vector2(0.50, 1.12),
+            new THREE.Vector2(0.52, 1.22),
+            new THREE.Vector2(0.34, 1.22),
+            new THREE.Vector2(0.31, 0.85),
+            new THREE.Vector2(0.001, 0.85)
+        ];
+        const l = new THREE.LatheGeometry(pts, 32);
+        l.computeVertexNormals();
+        return l;
     });
-    barrel.rotation.x = -Math.PI / 2.6;
+    const barrel = mesh(barrelGeo, 0x2a2a32, {
+        roughness: 0.34,
+        metalness: 0.68,
+        clearcoat: 0.3
+    });
+    barrel.rotation.x = Math.PI / 2 - Math.PI / 2.6;
     barrel.position.set(0, 1.15, 0.55);
     barrel.name = 'barrel';
+
     const gold = goldMetal();
-    const rim = mesh(geo('cn-m', () => new THREE.TorusGeometry(0.44, 0.08, 16, 40)), 0xffe14a, {
+    const rim = mesh(geo('cn-m', () => new THREE.TorusGeometry(0.46, 0.065, 16, 40)), 0xffe14a, {
         map: gold.map,
-        roughness: 0.3,
-        metalness: 0.75
+        roughness: 0.28,
+        metalness: 0.78
     });
     rim.rotation.x = Math.PI / 2.6;
     rim.position.set(0, 1.72, 1.55);
-    g.add(base, barrel, rim);
+    g.add(base, cheekL, cheekR, trunnion, barrel, rim);
     return g;
 }
 
@@ -909,13 +956,92 @@ export function createFlag() {
     return g;
 }
 
-export function createPlatform(w, h, d, color = 0xc4783a) {
-    const m = mesh(new THREE.BoxGeometry(w, h, d, 2, 1, 2), color, {
-        roughness: 0.68,
-        metalness: 0.05
-    });
+export function createPlatform(w, h, d, color = 0xc4783a, kind = 'auto') {
+    const rx = Math.max(1, Math.round(w * 0.6));
+    const ry = Math.max(1, Math.round(d * 0.6));
+    let mat;
+    if (kind === 'brick' || color === 0xf3c4b4) {
+        mat = brickMaterial(color, { roughness: 0.82, repeatX: rx, repeatY: Math.max(1, Math.round(h * 0.8)) });
+    } else if (kind === 'wood' || color === 0xc4783a) {
+        mat = woodMaterial(color, { roughness: 0.68, planks: true, repeat: Math.max(2, rx) });
+    } else if (kind === 'gold' || color === 0xffe14a) {
+        mat = pbrMat(color, { roughness: 0.34, metalness: 0.55, clearcoat: 0.35 });
+    } else {
+        mat = stoneMaterial(color, { roughness: 0.84, repeatX: rx, repeatY: ry });
+    }
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d, 2, 1, 2), mat);
+    m.castShadow = true;
     m.receiveShadow = true;
     return m;
+}
+
+export function createCaveEntrance() {
+    const g = new THREE.Group();
+    const rockMat = stoneMaterial(0x5a4334, { roughness: 0.9, repeatX: 3, repeatY: 2 });
+    const darkArchMat = stoneMaterial(0x3b2c22, { roughness: 0.92, repeatX: 2, repeatY: 2 });
+
+    // Moldura de rocha esculpida em arco com ombreiras e aduelas
+    const shape = new THREE.Shape();
+    shape.moveTo(-3.1, -1.6);
+    shape.lineTo(3.1, -1.6);
+    shape.lineTo(2.85, 1.35);
+    shape.quadraticCurveTo(1.8, 1.95, 0, 2.05);
+    shape.quadraticCurveTo(-1.8, 1.95, -2.85, 1.35);
+    shape.closePath();
+
+    const hole = new THREE.Path();
+    hole.moveTo(-1.85, -1.6);
+    hole.lineTo(1.85, -1.6);
+    hole.lineTo(1.85, 0.15);
+    hole.absarc(0, 0.15, 1.85, 0, Math.PI, false);
+    hole.closePath();
+    shape.holes.push(hole);
+
+    const archGeo = geo('cave-arch', () => {
+        const ex = new THREE.ExtrudeGeometry(shape, {
+            depth: 1.35,
+            bevelEnabled: true,
+            bevelThickness: 0.18,
+            bevelSize: 0.14,
+            bevelSegments: 2,
+            curveSegments: 14
+        });
+        ex.translate(0, 0, -0.675);
+        const pos = ex.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const crag = (Math.sin(x * 2.7 + y * 1.9) * Math.cos(z * 3.1)) * 0.08;
+            pos.setXYZ(i, x + crag, y + crag * 0.6, z);
+        }
+        ex.computeVertexNormals();
+        return ex;
+    });
+
+    const archMesh = new THREE.Mesh(archGeo, rockMat);
+    archMesh.castShadow = true;
+    archMesh.receiveShadow = true;
+    g.add(archMesh);
+
+    // Pedra-chave (keystone) no topo do arco
+    const keystone = new THREE.Mesh(
+        geo('cave-key', () => new THREE.BoxGeometry(0.75, 0.62, 1.68)),
+        darkArchMat
+    );
+    keystone.position.set(0, 1.55, 0);
+    keystone.castShadow = true;
+    g.add(keystone);
+
+    // Fundo escuro de caverna para sensação de profundidade
+    const shadowPortal = new THREE.Mesh(
+        geo('cave-void', () => new THREE.PlaneGeometry(3.8, 3.4)),
+        new THREE.MeshBasicMaterial({ color: 0x120c08, side: THREE.DoubleSide })
+    );
+    shadowPortal.position.set(0, 0.1, -0.35);
+    g.add(shadowPortal);
+
+    return g;
 }
 
 export function createBush() {

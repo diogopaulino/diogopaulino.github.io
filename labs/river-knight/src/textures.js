@@ -16,12 +16,13 @@ function canvas(size, height = size) {
     return el;
 }
 
-function toTexture(el, { repeat = [1, 1], srgb = true, aniso = 4 } = {}) {
+function toTexture(el, { repeat = [1, 1], srgb = true, aniso = 4, bumpScale = 0.03 } = {}) {
     const tex = new THREE.CanvasTexture(el);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repeat[0], repeat[1]);
     tex.anisotropy = aniso;
     if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.userData = { bumpMap: tex, bumpScale };
     tex.needsUpdate = true;
     return tex;
 }

@@ -523,23 +523,36 @@ function populateSelects() {
     currencyTwo.innerHTML = '';
     currencyOne.appendChild(fragmentOne);
     currencyTwo.appendChild(fragmentTwo);
+    updateCurrencyUI();
+}
+
+function updateCurrencyUI() {
+    const val1 = currencyOne.value;
+    const val2 = currencyTwo.value;
+    const term1 = (searchOne?.value || '').toLowerCase();
+    const term2 = (searchTwo?.value || '').toLowerCase();
+
+    Array.from(currencyOne.options).forEach((opt) => {
+        const isSame = opt.value === val2 && currencyOne.options.length > 1;
+        const matches = opt.text.toLowerCase().includes(term1);
+        const hide = isSame || !matches;
+        opt.hidden = hide;
+        opt.disabled = isSame;
+        opt.style.display = hide ? 'none' : '';
+    });
+
+    Array.from(currencyTwo.options).forEach((opt) => {
+        const isSame = opt.value === val1 && currencyTwo.options.length > 1;
+        const matches = opt.text.toLowerCase().includes(term2);
+        const hide = isSame || !matches;
+        opt.hidden = hide;
+        opt.disabled = isSame;
+        opt.style.display = hide ? 'none' : '';
+    });
 }
 
 function filterCurrencies(searchTerm, selectElement) {
-    const term = searchTerm.toLowerCase();
-    const options = selectElement.options;
-
-    let firstVisible = null;
-    for (let i = 0; i < options.length; i++) {
-        const txt = options[i].text.toLowerCase();
-        const display = txt.includes(term);
-        options[i].style.display = display ? '' : 'none';
-        if (display && !firstVisible) firstVisible = options[i];
-    }
-
-    if (firstVisible && term !== '') {
-        // We don't auto-select because it would trigger a calculation prematurely
-    }
+    updateCurrencyUI();
 }
 
 // Fetch exchange rates and update the DOM
@@ -572,8 +585,14 @@ function calculate(direction = 'one-to-two') {
 }
 
 // Event listeners
-currencyOne.addEventListener('change', () => calculate('one-to-two'));
-currencyTwo.addEventListener('change', () => calculate('one-to-two'));
+currencyOne.addEventListener('change', () => {
+    updateCurrencyUI();
+    calculate('one-to-two');
+});
+currencyTwo.addEventListener('change', () => {
+    updateCurrencyUI();
+    calculate('one-to-two');
+});
 
 amountOne.addEventListener('input', () => calculate('one-to-two'));
 amountTwo.addEventListener('input', () => calculate('two-to-one'));
@@ -587,7 +606,100 @@ swap.addEventListener('click', () => {
     const temp = currencyOne.value;
     currencyOne.value = currencyTwo.value;
     currencyTwo.value = temp;
+    updateCurrencyUI();
     calculate('one-to-two');
+});
+
+// Physical Keyboard Support for Simple and Scientific Calculator
+function flashButton(selector, root) {
+    const btn = root.querySelector(selector);
+    if (!btn) return;
+    btn.classList.add('is-pressed');
+    setTimeout(() => btn.classList.remove('is-pressed'), 120);
+}
+
+document.addEventListener('keydown', (e) => {
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const isSci = scientificSection.classList.contains('active');
+    const isSimple = calculatorSection.classList.contains('active');
+    if (!isSimple && !isSci) return;
+
+    const activeCalc = isSci ? sciCalculator : calculator;
+    const activeRoot = isSci ? scientificSection : calculatorSection;
+    const key = e.key;
+
+    if (/^[0-9]$/.test(key)) {
+        e.preventDefault();
+        activeCalc.appendNumber(key);
+        activeCalc.updateDisplay();
+        const numBtn = Array.from(activeRoot.querySelectorAll('.btn.number')).find(b => b.innerText.trim() === key);
+        if (numBtn) {
+            numBtn.classList.add('is-pressed');
+            setTimeout(() => numBtn.classList.remove('is-pressed'), 120);
+        }
+    } else if (key === '.' || key === ',') {
+        e.preventDefault();
+        activeCalc.appendNumber('.');
+        activeCalc.updateDisplay();
+        const dotBtn = Array.from(activeRoot.querySelectorAll('.btn.number')).find(b => b.innerText.trim() === '.');
+        if (dotBtn) {
+            dotBtn.classList.add('is-pressed');
+            setTimeout(() => dotBtn.classList.remove('is-pressed'), 120);
+        }
+    } else if (key === '+' || key === '-') {
+        e.preventDefault();
+        activeCalc.chooseOperation(key);
+        activeCalc.updateDisplay();
+        flashButton(`[data-action="${key === '+' ? 'add' : 'subtract'}"]`, activeRoot);
+    } else if (key === '*') {
+        e.preventDefault();
+        activeCalc.chooseOperation('×');
+        activeCalc.updateDisplay();
+        flashButton('[data-action="multiply"]', activeRoot);
+    } else if (key === '/') {
+        e.preventDefault();
+        activeCalc.chooseOperation('÷');
+        activeCalc.updateDisplay();
+        flashButton('[data-action="divide"]', activeRoot);
+    } else if (key === '%') {
+        e.preventDefault();
+        activeCalc.percent();
+        activeCalc.updateDisplay();
+        flashButton('[data-action="percent"]', activeRoot);
+    } else if (key === 'Enter' || key === '=') {
+        e.preventDefault();
+        activeCalc.compute();
+        activeCalc.updateDisplay();
+        flashButton('.btn.equals', activeRoot);
+    } else if (key === 'Backspace') {
+        e.preventDefault();
+        activeCalc.delete();
+        activeCalc.updateDisplay();
+        flashButton('[data-action="delete"], [data-action="sci-delete"]', activeRoot);
+    } else if (key === 'Escape' || key === 'Delete') {
+        e.preventDefault();
+        activeCalc.clear();
+        activeCalc.updateDisplay();
+        flashButton('[data-action="clear"], [data-action="sci-clear"]', activeRoot);
+    } else if (isSci && key === '(') {
+        e.preventDefault();
+        sciCalculator.openParen();
+        sciCalculator.updateDisplay();
+        flashButton('[data-action="open-paren"]', activeRoot);
+    } else if (isSci && key === ')') {
+        e.preventDefault();
+        sciCalculator.closeParen();
+        sciCalculator.updateDisplay();
+        flashButton('[data-action="close-paren"]', activeRoot);
+    } else if (isSci && key === '^') {
+        e.preventDefault();
+        sciCalculator.chooseOperation('^');
+        sciCalculator.updateDisplay();
+        flashButton('[data-action="pow"]', activeRoot);
+    }
 });
 
 // Initial load

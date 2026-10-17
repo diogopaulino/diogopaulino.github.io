@@ -313,6 +313,76 @@ input[type="number"] {
     font-weight: 600;
 }
 
+.savings.is-larger {
+    color: #f59e0b;
+}
+
+.savings.is-neutral {
+    color: var(--text-secondary);
+}
+
+.toast-banner {
+    background: color-mix(in srgb, #f59e0b 14%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border-subtle));
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.batch-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    flex: 1 1 280px;
+}
+
+.secondary-action-btn {
+    background: var(--bg-body);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: 0.75rem 1.1rem;
+    min-height: var(--touch-target, 44px);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    flex: 1 1 auto;
+}
+
+.secondary-action-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.secondary-action-btn.danger-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.dimensions-pill {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background: rgba(15, 23, 42, 0.78);
+    color: #f8fafc;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.dims-meta {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    margin-top: -0.5rem;
+    margin-bottom: 0.75rem;
+}
+
 .download-btn {
     width: 100%;
     background: var(--bg-body);

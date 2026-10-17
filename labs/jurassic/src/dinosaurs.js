@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { headGeometry, limbGeometry } from '../../shared/realism.js?v=3';
+import { headGeometry, limbGeometry, wingMembrane } from '../../shared/realism.js?v=3';
 import { dinoSkin } from './textures.js';
 import { patchSkin } from './shaders.js';
 import { clamp, damp, wrapPi, hash2 } from './utils.js';
@@ -37,6 +37,8 @@ function skinMat(key, colors, quality) {
         map: maps.map,
         normalMap: maps.normalMap,
         normalScale: new THREE.Vector2(1.4, 1.4),
+        bumpMap: maps.bumpMap,
+        bumpScale: maps.bumpScale ?? 0.08,
         roughnessMap: maps.roughnessMap,
         roughness: 0.55,
         metalness: 0.1,
@@ -501,12 +503,41 @@ export function buildTriceratops(quality) {
     beak.rotation.x = Math.PI / 2;
     beak.position.set(0, -0.05, 0.7);
     head.add(beak);
-    const frill = new THREE.Mesh(new THREE.CircleGeometry(1.05, 16), skin);
+    const frillShape = new THREE.Shape();
+    const frillR = 1.05;
+    frillShape.moveTo(0, -0.35);
+    const frillSegs = 14;
+    for (let i = 0; i <= frillSegs; i++) {
+        const a = -Math.PI * 0.15 + (i / frillSegs) * Math.PI * 1.3;
+        const scallop = 1 + Math.sin(i * Math.PI) * 0.04;
+        frillShape.lineTo(Math.cos(a) * frillR * scallop, Math.sin(a) * frillR * 0.92 + 0.1);
+    }
+    frillShape.closePath();
+    const frillGeo = new THREE.ExtrudeGeometry(frillShape, {
+        depth: 0.14,
+        bevelEnabled: true,
+        bevelThickness: 0.035,
+        bevelSize: 0.035,
+        bevelSegments: 2,
+        curveSegments: 8
+    });
+    frillGeo.translate(0, 0, -0.07);
+    frillGeo.computeVertexNormals();
+    const frill = new THREE.Mesh(frillGeo, skin);
+    frill.name = 'triFrill';
     frill.position.set(0, 0.25, -0.35);
+    frill.rotation.x = -0.22;
+    const osteoGeo = new THREE.ConeGeometry(0.055, 0.14, 6);
+    for (let i = 1; i < frillSegs; i++) {
+        const a = -Math.PI * 0.15 + (i / frillSegs) * Math.PI * 1.3;
+        const ox = Math.cos(a) * (frillR + 0.03);
+        const oy = Math.sin(a) * frillR * 0.92 + 0.1;
+        const osteo = new THREE.Mesh(osteoGeo, horn);
+        osteo.position.set(ox, oy, 0);
+        osteo.rotation.z = a - Math.PI / 2;
+        frill.add(osteo);
+    }
     head.add(frill);
-    const frillB = frill.clone();
-    frillB.rotation.y = Math.PI;
-    head.add(frillB);
 
     const nHorn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 7), horn);
     nHorn.rotation.x = 0.9;
@@ -547,7 +578,7 @@ export function buildStegosaurus(quality) {
         dorsal: 0x7a6238, ventral: 0xd8c8a0, stripe: 0x4a3818, stripeAmt: 0.35, scale: 12
     }, quality);
     const plate = new THREE.MeshStandardMaterial({
-        color: 0xa85838, roughness: 0.7, metalness: 0.04, side: THREE.DoubleSide
+        color: 0xa85838, roughness: 0.65, metalness: 0.05
     });
     const root = new THREE.Group();
     const body = new THREE.Group();
@@ -563,13 +594,34 @@ export function buildStegosaurus(quality) {
     ], segs(quality, 28), segs(quality, 12));
     body.add(new THREE.Mesh(geo, skin));
 
+    // Placa pentagonal 3D extrudada com chanfro (depth: 0.08, bevelEnabled: true)
+    const plateShape = new THREE.Shape();
+    plateShape.moveTo(-0.22, -0.35);
+    plateShape.lineTo(0.22, -0.35);
+    plateShape.lineTo(0.34, 0.08);
+    plateShape.lineTo(0, 0.56);
+    plateShape.lineTo(-0.34, 0.08);
+    plateShape.closePath();
+    const plateGeo = new THREE.ExtrudeGeometry(plateShape, {
+        depth: 0.08,
+        bevelEnabled: true,
+        bevelThickness: 0.02,
+        bevelSize: 0.02,
+        bevelSegments: 2,
+        curveSegments: 4
+    });
+    plateGeo.translate(0, 0, -0.04);
+    plateGeo.computeVertexNormals();
+
     const zs = [-3.4, -2.4, -1.4, -0.4, 0.6, 1.5, 2.3, 3.0];
     zs.forEach((z, i) => {
         const h = 0.55 + (i % 2) * 0.45 + Math.sin(i) * 0.15;
-        const p = new THREE.Mesh(new THREE.CircleGeometry(h * 0.55, 6), plate);
-        p.scale.set(0.55, 1.15, 1);
-        p.position.set((i % 2 === 0 ? 0.08 : -0.08), 2.05 + (i > 2 && i < 6 ? 0.35 : 0), z);
+        const p = new THREE.Mesh(plateGeo, plate);
+        p.name = 'stegoPlate';
+        p.scale.set(h * 0.95, h * 1.15, 1);
+        p.position.set((i % 2 === 0 ? 0.09 : -0.09), 2.02 + (i > 2 && i < 6 ? 0.35 : 0), z);
         p.rotation.y = Math.PI / 2;
+        p.rotation.z = (i % 2 === 0 ? -0.1 : 0.1);
         body.add(p);
     });
     for (const sx of [-1, 1]) {
@@ -661,17 +713,20 @@ export function buildPteranodon(quality) {
     addEyes(head, { y: 0.02, z: 0.05, s: 0.03, spread: 0.07 });
 
     const wings = [];
+    const sailGeo = wingMembrane({ span: 2.5, chord: 1.25 });
     for (const sx of [-1, 1]) {
         const arm = new THREE.Group();
         arm.position.set(sx * 0.12, 0.06, 0.15);
         body.add(arm);
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 2.4, 5), skin);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 2.4, 6), skin);
         bone.rotation.z = Math.PI / 2;
         bone.position.x = sx * 1.2;
         arm.add(bone);
-        const sail = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.15, 4, 2), membrane);
-        sail.position.set(sx * 1.2, -0.35, -0.15);
-        sail.rotation.x = 0.15;
+        const sail = new THREE.Mesh(sailGeo, membrane);
+        sail.name = 'wingMembrane';
+        sail.scale.x = sx;
+        sail.rotation.x = -Math.PI / 2 + 0.18;
+        sail.position.set(0, 0, 0.04);
         arm.add(sail);
         wings.push(arm);
     }

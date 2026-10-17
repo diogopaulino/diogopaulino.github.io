@@ -243,6 +243,7 @@ class CasteloEstelar {
     }
 
     frame() {
+        if (document.hidden) return;
         const dt = Math.min(0.05, Math.max(0, this.clock.getDelta()));
         const time = this.clock.elapsedTime;
         this.kingdom.tick(time);

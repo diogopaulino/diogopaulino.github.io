@@ -164,17 +164,31 @@ export class FoxCompanion {
             this.group.position.set(this.x, y, this.z);
             return;
         }
-        this.bob += dt * 8;
         const tx = player.x - Math.sin(player.yaw) * 1.4;
         const tz = player.z - Math.cos(player.yaw) * 1.4;
+        const prevX = this.x;
+        const prevZ = this.z;
         this.x += (tx - this.x) * dt * 3.4;
         this.z += (tz - this.z) * dt * 3.4;
         const dx = tx - this.x;
         const dz = tz - this.z;
+        const stepDist = Math.hypot(this.x - prevX, this.z - prevZ) / Math.max(dt, 1e-4);
+        const moveFactor = clamp(stepDist * 0.45, 0, 1.2);
+        this.bob += dt * (3.5 + moveFactor * 9.5);
         if (Math.hypot(dx, dz) > 0.05) this.yaw = Math.atan2(dx, dz);
         const y = heightAt(this.x, this.z);
-        this.group.position.set(this.x, y + Math.abs(Math.sin(this.bob)) * 0.04, this.z);
+        this.group.position.set(this.x, y + Math.abs(Math.sin(this.bob)) * 0.04 * (0.3 + moveFactor * 0.7), this.z);
         this.group.rotation.y = this.yaw;
+
+        // Animação das 4 patas em trote diagonal quando caminha/corre ao lado da menina
+        const legs = this.group.userData.legs;
+        if (legs && legs.length === 4) {
+            const swing = Math.sin(this.bob * 1.35) * 0.58 * Math.max(0.12, moveFactor);
+            legs[0].rotation.x = swing;
+            legs[1].rotation.x = -swing;
+            legs[2].rotation.x = -swing;
+            legs[3].rotation.x = swing;
+        }
         if (this.group.userData.tail) {
             this.group.userData.tail.rotation.z = Math.sin(this.bob) * 0.35;
         }

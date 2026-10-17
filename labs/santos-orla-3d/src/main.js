@@ -375,6 +375,10 @@ class App {
 
     loop = (now) => {
         requestAnimationFrame(this.loop);
+        if (document.hidden) {
+            this._last = now;
+            return;
+        }
         const dt = Math.min(0.05, (now - (this._last || now)) / 1000);
         this._last = now;
 

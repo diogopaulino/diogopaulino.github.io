@@ -794,3 +794,600 @@ export function fuse(geometries) {
     const merged = mergeGeometries(geometries, false);
     return merged || geometries[0];
 }
+
+/* --- Materiais PBR procedurais de arquitetura, solo e objetos ------------ */
+
+export function woodMaterial(color = 0x6b4428, { roughness = 0.72, clearcoat = 0.12, planks = false, repeat = 2 } = {}) {
+    const key = `wood:${color}:${roughness}:${clearcoat}:${planks}:${repeat}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`woodMap:${color}:${planks}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(color);
+        ctx.fillRect(0, 0, 128, 128);
+        for (let y = 0; y < 128; y++) {
+            const wave = Math.sin(y * 0.22) * 8 + Math.cos(y * 0.07) * 5;
+            ctx.fillStyle = y % 2 === 0 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.04)';
+            ctx.fillRect(0, y, 128, 1);
+            ctx.strokeStyle = 'rgba(25,12,4,0.14)';
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.quadraticCurveTo(64, y + wave * 0.25, 128, y);
+            ctx.stroke();
+        }
+        if (planks) {
+            ctx.fillStyle = 'rgba(10,6,3,0.45)';
+            for (let p = 0; p < 128; p += 16) {
+                ctx.fillRect(0, p, 128, 1.5);
+                const joint = ((p * 37) % 96) + 16;
+                ctx.fillRect(joint, p, 1.5, 16);
+            }
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    const norm = canvasTex(`woodNorm:${planks}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#8080ff';
+        ctx.fillRect(0, 0, 128, 128);
+        for (let y = 0; y < 128; y += 2) {
+            ctx.fillStyle = y % 4 === 0 ? 'rgba(110,128,255,0.45)' : 'rgba(146,128,255,0.45)';
+            ctx.fillRect(0, y, 128, 1);
+        }
+        if (planks) {
+            ctx.fillStyle = '#5050ff';
+            for (let p = 0; p < 128; p += 16) ctx.fillRect(0, p, 128, 2);
+        }
+    }, { color: false, wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeat, repeat);
+    norm.repeat.set(repeat, repeat);
+    const mat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        map,
+        normalMap: norm,
+        normalScale: new THREE.Vector2(0.28, 0.28),
+        roughness,
+        metalness: 0.02,
+        clearcoat,
+        clearcoatRoughness: 0.45
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function brickMaterial(color = 0x8a5842, { mortar = 0xc8bfae, roughness = 0.86, repeatX = 4, repeatY = 2 } = {}) {
+    const key = `brick:${color}:${mortar}:${roughness}:${repeatX}:${repeatY}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`brickMap:${color}:${mortar}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(mortar);
+        ctx.fillRect(0, 0, 128, 128);
+        const rows = 8;
+        const cols = 4;
+        const rh = 128 / rows;
+        const cw = 128 / cols;
+        const base = new THREE.Color(color);
+        for (let r = 0; r < rows; r++) {
+            const off = (r % 2) * (cw * 0.5);
+            for (let col = -1; col <= cols; col++) {
+                const n = Math.sin(r * 7.3 + col * 13.1) * 0.06;
+                const cBrick = base.clone().offsetHSL(n * 0.2, 0, n);
+                ctx.fillStyle = `#${cBrick.getHexString()}`;
+                ctx.fillRect(col * cw + off + 1.5, r * rh + 1.5, cw - 3, rh - 3);
+            }
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    const norm = canvasTex('brickNorm', (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#8080ff';
+        ctx.fillRect(0, 0, 128, 128);
+        const rows = 8;
+        const cols = 4;
+        const rh = 128 / rows;
+        const cw = 128 / cols;
+        for (let r = 0; r < rows; r++) {
+            const off = (r % 2) * (cw * 0.5);
+            ctx.fillStyle = '#5560e8';
+            ctx.fillRect(0, r * rh, 128, 2);
+            for (let col = -1; col <= cols; col++) {
+                ctx.fillRect(col * cw + off, r * rh, 2, rh);
+            }
+        }
+    }, { color: false, wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeatX, repeatY);
+    norm.repeat.set(repeatX, repeatY);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        normalMap: norm,
+        normalScale: new THREE.Vector2(0.45, 0.45),
+        roughness,
+        metalness: 0.02
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function stoneMaterial(color = 0x747068, { roughness = 0.88, repeatX = 4, repeatY = 2 } = {}) {
+    const key = `stone:${color}:${roughness}:${repeatX}:${repeatY}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`stoneMap:${color}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        const base = new THREE.Color(color);
+        ctx.fillStyle = `#${base.getHexString()}`;
+        ctx.fillRect(0, 0, 128, 128);
+        for (let y = 0; y < 128; y += 16) {
+            const off = ((y / 16) % 2) * 16;
+            for (let x = -16; x < 128; x += 32) {
+                const v = Math.sin(x * 0.3 + y * 0.7) * 0.05;
+                const tint = base.clone().offsetHSL(0, 0, v);
+                ctx.fillStyle = `#${tint.getHexString()}`;
+                ctx.fillRect(x + off + 1, y + 1, 30, 14);
+            }
+        }
+        ctx.strokeStyle = 'rgba(20,18,15,0.28)';
+        ctx.lineWidth = 1.5;
+        for (let y = 0; y <= 128; y += 16) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(128, y);
+            ctx.stroke();
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    const norm = canvasTex('stoneNorm', (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#8080ff';
+        ctx.fillRect(0, 0, 128, 128);
+        const img = ctx.getImageData(0, 0, 128, 128);
+        for (let y = 0; y < 128; y++) {
+            for (let x = 0; x < 128; x++) {
+                const i = (y * 128 + x) * 4;
+                const seam = (y % 16 < 2) || ((x + ((y >> 4) % 2) * 16) % 32 < 2);
+                const n = Math.sin(x * 0.45) * Math.cos(y * 0.45) * 18;
+                img.data[i] = (seam ? 92 : 128) + n;
+                img.data[i + 1] = (seam ? 92 : 128) + n;
+                img.data[i + 2] = 255;
+                img.data[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    }, { color: false, wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeatX, repeatY);
+    norm.repeat.set(repeatX, repeatY);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        normalMap: norm,
+        normalScale: new THREE.Vector2(0.5, 0.5),
+        roughness,
+        metalness: 0.03
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function plasterMaterial(color = 0xcfc2a8, { roughness = 0.84, repeat = 3 } = {}) {
+    const key = `plaster:${color}:${roughness}:${repeat}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`plasterMap:${color}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(color);
+        ctx.fillRect(0, 0, 128, 128);
+        for (let i = 0; i < 180; i++) {
+            const x = (i * 53) % 128;
+            const y = (i * 97) % 128;
+            ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.035)' : 'rgba(255,255,255,0.035)';
+            ctx.beginPath();
+            ctx.arc(x, y, 4 + (i % 7), 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeat, repeat);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        roughness,
+        metalness: 0.01
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function metalMaterial(color = 0x30363d, { roughness = 0.38, metalness = 0.78, repeat = 2 } = {}) {
+    const key = `metal:${color}:${roughness}:${metalness}:${repeat}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const norm = canvasTex('metalNorm', (c) => {
+        c.width = c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#8080ff';
+        ctx.fillRect(0, 0, 64, 64);
+        for (let y = 0; y < 64; y++) {
+            ctx.fillStyle = y % 2 === 0 ? 'rgba(118,128,255,0.4)' : 'rgba(138,128,255,0.4)';
+            ctx.fillRect(0, y, 64, 1);
+        }
+    }, { color: false, wrap: THREE.RepeatWrapping });
+    norm.repeat.set(repeat, repeat);
+    const mat = new THREE.MeshPhysicalMaterial({
+        color,
+        normalMap: norm,
+        normalScale: new THREE.Vector2(0.18, 0.18),
+        roughness,
+        metalness,
+        clearcoat: 0.15,
+        clearcoatRoughness: 0.4
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function burlapMaterial(color = 0xa89060, { roughness = 0.92 } = {}) {
+    const key = `burlap:${color}:${roughness}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`burlapMap:${color}`, (c) => {
+        c.width = c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(color);
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.strokeStyle = 'rgba(40,25,10,0.22)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 64; i += 4) {
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(64, i);
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 64);
+            ctx.stroke();
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    map.repeat.set(3, 3);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        roughness,
+        metalness: 0
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function roofTileMaterial(color = 0x683c2e, { roughness = 0.78, repeatX = 6, repeatY = 3 } = {}) {
+    const key = `rooftile:${color}:${roughness}:${repeatX}:${repeatY}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`roofMap:${color}`, (c) => {
+        c.width = c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(color);
+        ctx.fillRect(0, 0, 128, 128);
+        for (let x = 0; x < 128; x += 16) {
+            const grad = ctx.createLinearGradient(x, 0, x + 16, 0);
+            grad.addColorStop(0, 'rgba(0,0,0,0.28)');
+            grad.addColorStop(0.45, 'rgba(255,255,255,0.12)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(x, 0, 16, 128);
+        }
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        for (let y = 0; y < 128; y += 24) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(128, y);
+            ctx.stroke();
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeatX, repeatY);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        roughness,
+        metalness: 0.04
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+export function sidewalkMosaicMaterial({ light = 0xe8e2d5, dark = 0x26262a, repeatX = 36, repeatY = 2 } = {}) {
+    const key = `mosaic:${light}:${dark}:${repeatX}:${repeatY}`;
+    if (matCache.has(key)) return matCache.get(key);
+    const map = canvasTex(`mosaicMap:${light}:${dark}`, (c) => {
+        c.width = 128;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = hexCss(light);
+        ctx.fillRect(0, 0, 128, 64);
+        ctx.fillStyle = hexCss(dark);
+        for (const baseY of [14, 46]) {
+            ctx.beginPath();
+            for (let x = 0; x <= 128; x += 2) {
+                const y = baseY + Math.sin((x / 128) * Math.PI * 4) * 7;
+                if (x === 0) ctx.moveTo(x, y - 4);
+                else ctx.lineTo(x, y - 4);
+            }
+            for (let x = 128; x >= 0; x -= 2) {
+                const y = baseY + Math.sin((x / 128) * Math.PI * 4) * 7;
+                ctx.lineTo(x, y + 4);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 0.7;
+        for (let x = 0; x < 128; x += 6) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, 64);
+            ctx.stroke();
+        }
+        for (let y = 0; y < 64; y += 6) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(128, y);
+            ctx.stroke();
+        }
+    }, { wrap: THREE.RepeatWrapping });
+    map.repeat.set(repeatX, repeatY);
+    const mat = new THREE.MeshStandardMaterial({
+        map,
+        roughness: 0.82,
+        metalness: 0.02
+    });
+    matCache.set(key, mat);
+    return mat;
+}
+
+/* --- Personagens, aves, rodas e sacas esculpidos ------------------------- */
+
+export function createCoffeeSack(material = null, { width = 0.56, height = 0.36, depth = 0.76 } = {}) {
+    const key = `sackGeo:${width}:${height}:${depth}`;
+    const geo = cachedGeo(key, () => {
+        const g = new THREE.SphereGeometry(0.5, 14, 10);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const corner = (x * x + z * z) * 0.55;
+            const sx = Math.sign(x) * Math.pow(Math.abs(x * 2), 0.78) * width * 0.5;
+            const sy = Math.sign(y) * Math.pow(Math.abs(y * 2), 0.82) * height * 0.5 * (1 - corner * 0.2);
+            const sz = Math.sign(z) * Math.pow(Math.abs(z * 2), 0.78) * depth * 0.5;
+            const ear = Math.max(0, Math.abs(z) - 0.32) * Math.max(0, Math.abs(x) - 0.28) * 0.45;
+            pos.setXYZ(i, sx * (1 + ear), sy, sz * (1 + ear));
+        }
+        g.computeVertexNormals();
+        return g;
+    });
+    const mesh = new THREE.Mesh(geo, material || burlapMaterial());
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+}
+
+export function createSpokedWheel({ radius = 0.55, width = 0.14, spokes = 8, rimMaterial = null, hubMaterial = null } = {}) {
+    const rimMat = rimMaterial || woodMaterial(0x5c4030, { roughness: 0.85 });
+    const hubMat = hubMaterial || metalMaterial(0x2c3036, { roughness: 0.5, metalness: 0.7 });
+    const g = new THREE.Group();
+    const rim = new THREE.Mesh(
+        cachedGeo(`wheelRim:${radius}:${width}`, () => new THREE.TorusGeometry(radius * 0.9, width * 0.42, 10, 24)),
+        rimMat
+    );
+    rim.castShadow = true;
+    g.add(rim);
+    const tire = new THREE.Mesh(
+        cachedGeo(`wheelBand:${radius}:${width}`, () => new THREE.TorusGeometry(radius * 0.96, width * 0.18, 8, 24)),
+        hubMat
+    );
+    g.add(tire);
+    const hub = new THREE.Mesh(
+        cachedGeo(`wheelHub:${radius}:${width}`, () => {
+            const c = new THREE.CylinderGeometry(radius * 0.18, radius * 0.18, width * 1.25, 12);
+            c.rotateX(Math.PI / 2);
+            return c;
+        }),
+        hubMat
+    );
+    g.add(hub);
+    const spokeGeo = cachedGeo(`wheelSpoke:${radius}:${width}`, () => new THREE.CylinderGeometry(width * 0.16, width * 0.2, radius * 1.72, 6));
+    for (let i = 0; i < Math.floor(spokes / 2); i++) {
+        const sp = new THREE.Mesh(spokeGeo, rimMat);
+        sp.rotation.z = (i / Math.floor(spokes / 2)) * Math.PI;
+        g.add(sp);
+    }
+    return g;
+}
+
+export function createSculptedBird({ wingspan = 0.9, bodyColor = 0xf4f4f0, tipColor = 0x2c3038 } = {}) {
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.65 });
+    const tipMat = new THREE.MeshStandardMaterial({ color: tipColor, roughness: 0.7, side: THREE.DoubleSide });
+    const beakMat = new THREE.MeshStandardMaterial({ color: 0xe69a28, roughness: 0.5 });
+
+    const bodyGeo = cachedGeo(`birdBody:${wingspan}`, () => profileTube({
+        axis: 'z',
+        length: wingspan * 0.48,
+        rings: 10,
+        seg: 12,
+        squashY: 0.78,
+        radius: (t) => Math.sin(t * Math.PI) * wingspan * 0.085
+    }));
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    g.add(body);
+
+    const head = new THREE.Mesh(
+        cachedGeo(`birdHead:${wingspan}`, () => new THREE.SphereGeometry(wingspan * 0.065, 10, 8)),
+        bodyMat
+    );
+    head.position.set(0, wingspan * 0.03, wingspan * 0.23);
+    g.add(head);
+
+    const beak = new THREE.Mesh(
+        cachedGeo(`birdBeak:${wingspan}`, () => {
+            const c = new THREE.ConeGeometry(wingspan * 0.022, wingspan * 0.09, 6);
+            c.rotateX(Math.PI / 2);
+            return c;
+        }),
+        beakMat
+    );
+    beak.position.set(0, wingspan * 0.02, wingspan * 0.31);
+    g.add(beak);
+
+    const wingGeo = wingMembrane({ span: wingspan * 0.5, chord: wingspan * 0.22 });
+    const leftWing = new THREE.Mesh(wingGeo, tipMat);
+    leftWing.rotation.x = -Math.PI / 2;
+    leftWing.position.set(wingspan * 0.04, wingspan * 0.02, 0.02);
+    const rightWing = new THREE.Mesh(wingGeo, tipMat);
+    rightWing.rotation.x = -Math.PI / 2;
+    rightWing.scale.x = -1;
+    rightWing.position.set(-wingspan * 0.04, wingspan * 0.02, 0.02);
+    g.add(leftWing, rightWing);
+    g.userData.leftWing = leftWing;
+    g.userData.rightWing = rightWing;
+    return g;
+}
+
+export function createSculptedHuman({
+    style = 'human',
+    skin = 0xd4a574,
+    hair = 0x2c1d12,
+    hairStyle = 'short',
+    shirt = 0x2a5f8f,
+    pants = 0x2b303a,
+    shoes = 0x241a14,
+    hat = null,
+    carrySack = false,
+    detailedFace = true,
+    scale = 1
+} = {}) {
+    const root = new THREE.Group();
+    const skinMat = skinMaterial(skin);
+    const shirtMat = clothMaterial(shirt);
+    const pantsMat = clothMaterial(pants, { roughness: 0.84 });
+    const shoeMat = leatherMaterial(shoes);
+
+    const torso = new THREE.Mesh(torsoGeometry({ height: 0.58, girth: 0.19, style, seg: 14 }), shirtMat);
+    torso.position.y = 0.78;
+    torso.castShadow = true;
+    torso.receiveShadow = true;
+    root.add(torso);
+
+    const pelvis = new THREE.Mesh(
+        cachedGeo('humanPelvis', () => new THREE.SphereGeometry(0.16, 12, 8)),
+        pantsMat
+    );
+    pelvis.scale.set(1.05, 0.65, 0.85);
+    pelvis.position.y = 0.76;
+    root.add(pelvis);
+
+    const neck = new THREE.Mesh(
+        cachedGeo('humanNeck', () => new THREE.CylinderGeometry(0.055, 0.065, 0.1, 10)),
+        skinMat
+    );
+    neck.position.y = 1.38;
+    root.add(neck);
+
+    const headGroup = new THREE.Group();
+    headGroup.position.y = 1.54;
+    if (detailedFace) {
+        attachHumanHead(headGroup, {
+            radius: 0.145,
+            style,
+            skin,
+            hair,
+            hairStyle: hat ? 'none' : hairStyle
+        });
+    } else {
+        const skull = new THREE.Mesh(headGeometry(0.145, style), skinMat);
+        skull.castShadow = true;
+        headGroup.add(skull);
+        if (!hat && hairStyle !== 'none') {
+            const cap = new THREE.Mesh(
+                cachedGeo('fastHairCap', () => new THREE.SphereGeometry(0.152, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.56)),
+                hairMaterial(hair)
+            );
+            cap.position.y = 0.01;
+            headGroup.add(cap);
+        }
+    }
+
+    if (hat != null) {
+        const hatMat = clothMaterial(hat, { roughness: 0.75 });
+        const brim = new THREE.Mesh(
+            cachedGeo('hatBrim', () => new THREE.CylinderGeometry(0.24, 0.25, 0.025, 16)),
+            hatMat
+        );
+        brim.position.y = 0.09;
+        const crown = new THREE.Mesh(
+            cachedGeo('hatCrown', () => new THREE.CylinderGeometry(0.13, 0.155, 0.11, 14)),
+            hatMat
+        );
+        crown.position.y = 0.15;
+        headGroup.add(brim, crown);
+    }
+    root.add(headGroup);
+
+    const armGeo = limbGeometry({ length: 0.54, r0: 0.062, r1: 0.042, bulge: 0.014, bulgeAt: 0.32, pinch: 0.25, seg: 12, rings: 8 });
+    const legGeo = limbGeometry({ length: 0.72, r0: 0.092, r1: 0.056, bulge: 0.022, bulgeAt: 0.34, pinch: 0.32, seg: 12, rings: 9 });
+
+    const leftArm = new THREE.Group();
+    leftArm.position.set(-0.21, 1.28, 0);
+    const lArmMesh = new THREE.Mesh(armGeo, shirtMat);
+    lArmMesh.castShadow = true;
+    const lHand = handGroup(skinMat, { scale: 0.72 });
+    lHand.position.y = -0.53;
+    leftArm.add(lArmMesh, lHand);
+
+    const rightArm = new THREE.Group();
+    rightArm.position.set(0.21, 1.28, 0);
+    const rArmMesh = new THREE.Mesh(armGeo, shirtMat);
+    rArmMesh.castShadow = true;
+    const rHand = handGroup(skinMat, { scale: 0.72 });
+    rHand.position.y = -0.53;
+    rightArm.add(rArmMesh, rHand);
+
+    const leftLeg = new THREE.Group();
+    leftLeg.position.set(-0.095, 0.74, 0);
+    const lLegMesh = new THREE.Mesh(legGeo, pantsMat);
+    lLegMesh.castShadow = true;
+    const lShoe = shoeMesh(shoeMat, { length: 0.22, width: 0.09, height: 0.075 });
+    lShoe.rotation.y = Math.PI / 2;
+    lShoe.position.set(0, -0.71, 0.04);
+    leftLeg.add(lLegMesh, lShoe);
+
+    const rightLeg = new THREE.Group();
+    rightLeg.position.set(0.095, 0.74, 0);
+    const rLegMesh = new THREE.Mesh(legGeo, pantsMat);
+    rLegMesh.castShadow = true;
+    const rShoe = shoeMesh(shoeMat, { length: 0.22, width: 0.09, height: 0.075 });
+    rShoe.rotation.y = Math.PI / 2;
+    rShoe.position.set(0, -0.71, 0.04);
+    rightLeg.add(rLegMesh, rShoe);
+
+    root.add(leftArm, rightArm, leftLeg, rightLeg);
+
+    if (carrySack) {
+        const sack = createCoffeeSack(null, { width: 0.52, height: 0.34, depth: 0.68 });
+        sack.position.set(0, 1.38, -0.22);
+        sack.rotation.x = 0.45;
+        root.add(sack);
+        leftArm.rotation.x = -0.85;
+        rightArm.rotation.x = -0.85;
+    }
+
+    root.scale.setScalar(scale);
+    root.userData.rig = { torso, headGroup, leftArm, rightArm, leftLeg, rightLeg, carrySack };
+    return root;
+}
+
+export function animateSculptedHuman(human, phase, stride = 0.55) {
+    const rig = human?.userData?.rig;
+    if (!rig) return;
+    const s = Math.sin(phase) * stride;
+    const c = Math.cos(phase) * stride;
+    rig.leftLeg.rotation.x = s;
+    rig.rightLeg.rotation.x = -s;
+    if (!rig.carrySack) {
+        rig.leftArm.rotation.x = -s * 0.75;
+        rig.rightArm.rotation.x = s * 0.75;
+    }
+    rig.torso.rotation.y = s * 0.08;
+    rig.headGroup.rotation.y = -s * 0.05;
+    rig.torso.position.y = 0.78 + Math.abs(c) * 0.025;
+}
+
