@@ -1569,9 +1569,7 @@ body {
     max-height: min(28dvh, 160px);
   }
 
-  :root {
-    --card-w: clamp(40px, 9vw, 58px);
-  }
+  --card-w: clamp(40px, 9vw, 58px);
 
   .lab-footer {
     display: none;

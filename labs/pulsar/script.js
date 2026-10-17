@@ -643,14 +643,11 @@
         ctx.fill();
 
         if (burst > 0.05 && !ghosted) {
-            for (let k = 0; k < 3; k++) {
-                const ringProgress = (1 - burst + k * 0.28) % 1;
-                ctx.strokeStyle = rgba(o.color, (1 - ringProgress) * 0.55);
-                ctx.lineWidth = 1.5 + (1 - ringProgress) * 2;
-                ctx.beginPath();
-                ctx.arc(o.x, o.y, r + 4 + ringProgress * 38, 0, Math.PI * 2);
-                ctx.stroke();
-            }
+            ctx.strokeStyle = rgba(o.color, burst * 0.55);
+            ctx.lineWidth = 2 + burst * 2;
+            ctx.beginPath();
+            ctx.arc(o.x, o.y, r + 10 + (1 - burst) * 28, 0, Math.PI * 2);
+            ctx.stroke();
         }
 
         const body = ctx.createRadialGradient(o.x - r * 0.25, o.y - r * 0.3, r * 0.1, o.x, o.y, r);

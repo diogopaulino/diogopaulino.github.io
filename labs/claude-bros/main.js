@@ -574,84 +574,46 @@ function drawTiles() {
         const y = tile.y - camera.y - (tile.bump || 0) * 6;
 
         if (tile.kind === 'grass' || tile.kind === 'dirt') {
-            // Bloco de terra com textura volumétrica
-            ctx.fillStyle = '#835439';
+            ctx.fillStyle = '#8c5b3e';
             ctx.fillRect(x, y, TILE, TILE);
-            // Chanfro 3D na borda inferior e direita
-            ctx.fillStyle = 'rgba(0,0,0,0.22)';
-            ctx.fillRect(x, y + TILE - 4, TILE, 4);
-            ctx.fillRect(x + TILE - 4, y, 4, TILE);
-            // Chanfro iluminado no topo e esquerda
-            ctx.fillStyle = 'rgba(255,255,255,0.12)';
-            ctx.fillRect(x, y, TILE, 2);
-            ctx.fillRect(x, y, 2, TILE);
-            // Camadas e seixos orgânicos
-            ctx.fillStyle = 'rgba(60,35,20,0.35)';
-            const seed = ((tile.x * 17 + tile.y * 31) % 99);
-            ctx.fillRect(x + 5 + (seed % 14), y + 12 + ((seed * 3) % 10), 6, 4);
-            ctx.fillRect(x + 16 + ((seed * 7) % 8), y + 18, 5, 3);
-            ctx.fillStyle = 'rgba(235,215,190,0.22)';
-            ctx.fillRect(x + 8, y + 14, 2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            ctx.fillRect(x, y + TILE - 5, TILE, 5);
+            // Pedrinhas: posição derivada do próprio tile, então não tremem.
+            ctx.fillStyle = 'rgba(255,255,255,0.10)';
+            ctx.fillRect(x + ((tile.x / TILE) % 3) * 8 + 4, y + 14, 5, 4);
 
             if (tile.kind === 'grass') {
-                // Grama fofa 3D com lâminas suspensas
-                ctx.fillStyle = '#3d8633';
-                ctx.fillRect(x, y, TILE, 10);
-                ctx.fillStyle = '#59b84a';
-                ctx.fillRect(x, y, TILE, 6);
-                ctx.fillStyle = '#7ae668';
-                ctx.fillRect(x, y, TILE, 2);
-                // Pontas de grama recortadas
-                ctx.fillStyle = '#4da83e';
-                for (let g = 0; g < 4; g++) {
-                    ctx.fillRect(x + g * 8 + 2, y + 8, 4, 3);
-                }
+                ctx.fillStyle = '#53a847';
+                ctx.fillRect(x, y, TILE, 9);
+                ctx.fillStyle = '#67c95a';
+                ctx.fillRect(x, y, TILE, 4);
             }
         } else if (tile.kind === 'platform') {
-            // Madeira trabalhada com veios e chanfro
-            ctx.fillStyle = '#a66432';
-            roundRect(x + 1, y + 1, TILE - 2, TILE - 2, 4);
-            ctx.fill();
-            // Iluminação superior
-            ctx.fillStyle = '#d99052';
-            roundRect(x + 2, y + 2, TILE - 4, TILE - 8, 3);
-            ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.25)';
-            ctx.fillRect(x + 3, y + 2, TILE - 6, 2);
-            ctx.fillStyle = 'rgba(70,30,10,0.45)';
-            ctx.fillRect(x + 2, y + TILE - 5, TILE - 4, 3);
-            // Rebites e linhas de tábua
-            ctx.fillStyle = '#542910';
-            ctx.fillRect(x + 4, y + 6, 2, 2);
-            ctx.fillRect(x + TILE - 6, y + 6, 2, 2);
-        } else if (tile.kind === 'bonus') {
-            const used = tile.bumped;
-            // Bloco metálico com relevo e parafusos nas 4 pontas
-            ctx.fillStyle = used ? '#6e6252' : '#d48d28';
+            ctx.fillStyle = '#b8763f';
             roundRect(x + 1, y + 1, TILE - 2, TILE - 2, 5);
             ctx.fill();
-            ctx.fillStyle = used ? '#8a7c6a' : '#f8ca4d';
-            roundRect(x + 3, y + 3, TILE - 6, TILE - 6, 4);
+            ctx.fillStyle = '#d99a5f';
+            roundRect(x + 1, y + 1, TILE - 2, TILE - 8, 5);
             ctx.fill();
-            // Brilho especular chanfrado
-            ctx.fillStyle = 'rgba(255,255,255,0.45)';
-            ctx.fillRect(x + 4, y + 4, TILE - 8, 3);
-            // Rebites dourados nos 4 cantos
-            const rivetCol = used ? '#4d4236' : '#9e5f14';
-            ctx.fillStyle = rivetCol;
-            for (const rx of [x + 5, x + TILE - 7]) {
-                for (const ry of [y + 5, y + TILE - 7]) {
-                    ctx.fillRect(rx, ry, 2, 2);
-                }
-            }
+            ctx.strokeStyle = 'rgba(120, 70, 30, 0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y + 13);
+            ctx.lineTo(x + TILE - 6, y + 13);
+            ctx.stroke();
+        } else if (tile.kind === 'bonus') {
+            const used = tile.bumped;
+            ctx.fillStyle = used ? '#8a7a63' : '#e8a63c';
+            roundRect(x + 1, y + 1, TILE - 2, TILE - 2, 5);
+            ctx.fill();
+            ctx.fillStyle = used ? '#6f6250' : '#f6c860';
+            roundRect(x + 4, y + 4, TILE - 8, TILE - 8, 4);
+            ctx.fill();
             if (!used) {
-                // Sombra do '?'
-                ctx.fillStyle = 'rgba(80, 40, 10, 0.4)';
-                ctx.font = '900 17px system-ui, sans-serif';
+                ctx.fillStyle = '#7a4a15';
+                ctx.font = 'bold 17px system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('?', x + TILE / 2 + 1, y + TILE / 2 + 2);
-                ctx.fillStyle = '#ffffff';
                 ctx.fillText('?', x + TILE / 2, y + TILE / 2 + 1);
             }
         }
@@ -661,77 +623,51 @@ function drawTiles() {
         if (spike.x + TILE < camera.x - TILE || spike.x > camera.x + VIEW_WIDTH + TILE) continue;
         const x = spike.x - camera.x;
         const y = spike.y - camera.y;
+        ctx.fillStyle = '#c2c8d0';
         for (let i = 0; i < 4; i++) {
-            // Lado sombreado do espinho
-            ctx.fillStyle = '#7a828e';
             ctx.beginPath();
             ctx.moveTo(x + i * 8, y + spike.h);
             ctx.lineTo(x + i * 8 + 4, y);
             ctx.lineTo(x + i * 8 + 8, y + spike.h);
             ctx.closePath();
             ctx.fill();
-            // Fio iluminado do espinho
-            ctx.fillStyle = '#e4e8ee';
-            ctx.beginPath();
-            ctx.moveTo(x + i * 8, y + spike.h);
-            ctx.lineTo(x + i * 8 + 4, y);
-            ctx.lineTo(x + i * 8 + 3, y + spike.h);
-            ctx.closePath();
-            ctx.fill();
         }
-        ctx.fillStyle = '#555b64';
+        ctx.fillStyle = '#8a919c';
         ctx.fillRect(x, y + spike.h - 3, TILE, 3);
     }
 }
 
-/* Estrela Gemini: rotação 3D perspectiva, brilho e pulso volumétrico */
+/* Estrela Gemini: quatro pontas, girando devagar e flutuando. */
 function drawCoins() {
     for (const coin of coins) {
         if (coin.taken) continue;
         const x = coin.x - camera.x;
-        const y = coin.y - camera.y + Math.sin(coin.phase * 1.5) * 4;
+        const y = coin.y - camera.y + Math.sin(coin.phase) * 4;
         if (x < -TILE || x > VIEW_WIDTH + TILE) continue;
 
         ctx.save();
         ctx.translate(x, y);
-        // Efeito de rotação 3D sobre o eixo Y
-        const scaleX = Math.cos(coin.phase * 2.2);
-        ctx.scale(Math.abs(scaleX) < 0.15 ? 0.15 : scaleX, 1);
-
-        // Brilho pulsante
-        ctx.fillStyle = 'rgba(138, 180, 248, 0.35)';
+        // O brilho pulsa junto com a flutuação.
+        ctx.fillStyle = 'rgba(138, 180, 248, 0.25)';
         ctx.beginPath();
-        ctx.arc(0, 0, 16 + Math.sin(coin.phase * 2) * 2.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 15 + Math.sin(coin.phase) * 2, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.rotate(coin.phase * 0.4);
-        ctx.fillStyle = '#3367d6';
+        ctx.rotate(coin.phase * 0.35);
+        ctx.fillStyle = '#4285f4';
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
             const angle = (Math.PI / 4) * i;
-            const radius = i % 2 === 0 ? 12 : 4.5;
+            const radius = i % 2 === 0 ? 11 : 4;
             const px = Math.cos(angle) * radius;
             const py = Math.sin(angle) * radius;
             if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
         ctx.closePath();
         ctx.fill();
-
-        ctx.fillStyle = '#66a3ff';
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-            const angle = (Math.PI / 4) * i;
-            const radius = i % 2 === 0 ? 9 : 3.5;
-            const px = Math.cos(angle) * radius;
-            const py = Math.sin(angle) * radius;
-            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
-
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
+        ctx.arc(0, 0, 3.4, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }

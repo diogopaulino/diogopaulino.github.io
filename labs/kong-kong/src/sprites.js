@@ -302,36 +302,20 @@ export function drawBarrel(ctx, x, y, kind, t, angle = 0, charge = 0) {
     return;
   }
   const body = kind === 'tnt' ? '#b43a28' : kind === 'bounce' ? '#3a8a48' : '#c07838';
-  const band = kind === 'tnt' ? '#f0e0a0' : '#38322c';
+  const band = kind === 'tnt' ? '#f0e0a0' : '#5a3418';
   if (kind === 'tnt' && charge > 0) {
     const pulse = 0.3 + 0.45 * (0.5 + 0.5 * Math.sin(t * (8 + charge * 30)));
     ctx.fillStyle = `rgba(255,90,40,${pulse * charge})`;
     ellipse(ctx, 0, 0, 13 + charge * 4, 14 + charge * 4);
   }
-  // Sombra e corpo do barril
-  ctx.fillStyle = '#3a1e0a';
-  ellipse(ctx, 0, 1.5, 11, 12);
+  ctx.fillStyle = '#4a2a10';
+  ellipse(ctx, 0, 1, 11, 12);
   ctx.fillStyle = body;
-  ellipse(ctx, 0, 0, 10.5, 11.5);
-  // Sulcos de ripas de madeira
-  ctx.fillStyle = 'rgba(40,20,5,0.35)';
-  for (const sx of [-5, 0, 5]) {
-    ctx.fillRect(sx, -10, 1, 20);
-  }
-  // Aros de ferro com rebites
+  ellipse(ctx, 0, 0, 10, 11);
   ctx.fillStyle = band;
-  ctx.fillRect(-10, -5, 20, 3.5);
-  ctx.fillRect(-10, 3.5, 20, 3.5);
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.fillRect(-10, -5, 20, 1);
-  ctx.fillRect(-10, 3.5, 20, 1);
-  // Rebites
-  ctx.fillStyle = '#6a6058';
-  for (const rx of [-7, 0, 7]) {
-    ctx.fillRect(rx, -4.5, 1.5, 1.5);
-    ctx.fillRect(rx, 4.5, 1.5, 1.5);
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.fillRect(-10, -3, 20, 3);
+  ctx.fillRect(-10, 4, 20, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
   ellipse(ctx, -3, -4, 3, 4);
   if (kind === 'tnt') {
     ctx.fillStyle = '#f0e0a0';
@@ -631,21 +615,10 @@ export function drawBackground(ctx, themeName, camX, camY, t) {
   }
 
   if (themeName === 'falls') {
+    ctx.fillStyle = 'rgba(180, 230, 255, 0.22)';
     for (let i = 0; i < 4; i++) {
       const wx = 80 + i * 110 - ((camX * 0.3) % 110);
-      // Coluna principal translúcida de água
-      ctx.fillStyle = 'rgba(160, 220, 255, 0.28)';
       ctx.fillRect(wx, 0, 18, VIEW_H);
-      // Riscas de espuma branca descendo animadas
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-      const streamT = (t * 120 + i * 40) % 28;
-      for (let s = 0; s < 7; s++) {
-        const sy = (s * 36 + streamT) % VIEW_H;
-        ctx.fillRect(wx + 3 + (s % 3) * 4, sy, 3, 14);
-      }
-      // Névoa de spray na base da queda d'água
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      ellipse(ctx, wx + 9, VIEW_H - 18, 16 + Math.sin(t * 8 + i) * 3, 8);
     }
   }
 
