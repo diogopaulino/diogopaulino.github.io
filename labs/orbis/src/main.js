@@ -9,9 +9,9 @@ import { StarSystem } from './system.js?v=4';
 import { clamp, damp, hashString } from './rng.js';
 
 const QUALITY = {
-    high: { planetSeg: 64, starSeg: 48, stars: 4000, asteroids: 800, bloom: true, pr: 1.5, antialias: true },
-    medium: { planetSeg: 72, starSeg: 48, stars: 4200, asteroids: 800, bloom: true, pr: 1.5, antialias: true },
-    low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1, antialias: false }
+    high: { planetSeg: 80, starSeg: 56, stars: 5200, asteroids: 1200, bloom: true, pr: 1.5, antialias: true },
+    medium: { planetSeg: 64, starSeg: 44, stars: 3600, asteroids: 750, bloom: true, pr: 1.3, antialias: true },
+    low: { planetSeg: 44, starSeg: 28, stars: 1800, asteroids: 350, bloom: false, pr: 1, antialias: false }
 };
 
 function detectSoftwareGL() {
@@ -376,6 +376,7 @@ class Orbis {
     }
 
     frame() {
+        if (document.hidden) return;
         const now = performance.now();
         const dt = clamp((now - this.lastTime) / 1000, 0, 0.05);
         this.lastTime = now;

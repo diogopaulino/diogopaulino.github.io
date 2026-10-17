@@ -616,7 +616,17 @@ export function createBarn() {
         return gable;
     });
     g.add(mesh(barnRoof, MAT.roof, { pos: [0, 3.4, 0] }));
+    // Base de pedra
+    g.add(mesh(geo.box, pbr(0x7a7872, { roughness: 0.9 }), { scale: [4.9, 0.28, 4.3], pos: [0, 0.14, 0] }));
+    // Porta do celeiro com travessas brancas em X
     g.add(mesh(geo.box, MAT.ink, { scale: [1.4, 2.1, 0.12], pos: [0, 1.05, 2.12], cast: false }));
+    const whiteMat = pbr(0xf4f0e8, { roughness: 0.75 });
+    g.add(mesh(geo.box, whiteMat, { scale: [1.44, 0.08, 0.04], pos: [0, 2.08, 2.2], cast: false }));
+    g.add(mesh(geo.box, whiteMat, { scale: [1.44, 0.08, 0.04], pos: [0, 0.08, 2.2], cast: false }));
+    const braceA = mesh(geo.box, whiteMat, { scale: [0.07, 2.25, 0.03], pos: [0, 1.05, 2.19], rot: [0, 0, 0.58], cast: false });
+    const braceB = mesh(geo.box, whiteMat, { scale: [0.07, 2.25, 0.03], pos: [0, 1.05, 2.19], rot: [0, 0, -0.58], cast: false });
+    g.add(braceA, braceB);
+
     g.add(mesh(geo.box, MAT.gold, { scale: [0.7, 0.7, 0.08], pos: [1.4, 2.4, 2.12], cast: false }));
     g.add(mesh(geo.cylLo, MAT.wood, { scale: [0.12, 2.4, 0.12], pos: [3.1, 1.2, 2.4] }));
     g.add(mesh(geo.box, pbr(0xfff0e0, { map: picnicTexture(), roughness: 0.78 }), {
@@ -700,8 +710,21 @@ export function createButterfly(color = 0xff7ab0) {
 export function createHeart() {
     const g = new THREE.Group();
     const mat = pbr(0xff6b9a, { emissive: 0xff4d80, em: 0.7, transparent: true, opacity: 0.95, roughness: 0.3, clearcoat: 0.4 });
-    g.add(mesh(geo.sphereLo, mat, { scale: [0.12, 0.12, 0.1], pos: [0.07, 0.04, 0], cast: false }));
-    g.add(mesh(geo.sphereLo, mat, { scale: [0.12, 0.12, 0.1], pos: [-0.07, 0.04, 0], cast: false }));
-    g.add(mesh(geo.cone, mat, { scale: [0.16, 0.2, 0.1], pos: [0, -0.08, 0], rot: [Math.PI, 0, 0], cast: false }));
+    const heartShape = new THREE.Shape();
+    heartShape.moveTo(0, 0.08);
+    heartShape.bezierCurveTo(0, 0.14, 0.12, 0.22, 0.18, 0.16);
+    heartShape.bezierCurveTo(0.24, 0.1, 0.16, 0, 0, -0.16);
+    heartShape.bezierCurveTo(-0.16, 0, -0.24, 0.1, -0.18, 0.16);
+    heartShape.bezierCurveTo(-0.12, 0.22, 0, 0.14, 0, 0.08);
+    const heartGeo = new THREE.ExtrudeGeometry(heartShape, {
+        depth: 0.08,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        bevelSize: 0.03,
+        bevelThickness: 0.03
+    });
+    heartGeo.center();
+    const hMesh = new THREE.Mesh(heartGeo, mat);
+    g.add(hMesh);
     return g;
 }

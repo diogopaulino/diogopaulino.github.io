@@ -1239,8 +1239,13 @@ dialog h2 {
   position: absolute;
   right: 14px;
   top: 12px;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line);
   background: #1a1c20;
   font-size: 24px;

@@ -374,12 +374,18 @@ body {
         overflow-x: clip;
     }
     .face-btn {
-        width: 32px;
-        height: 32px;
+        min-width: 44px;
+        min-height: 44px;
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
     .title-bar .title { font-size: 12px; }
-    .window { margin: 0 auto; }
+    .window { margin: 0 auto; max-height: calc(100dvh - 1.5rem); }
+    .instructions-card { display: none; }
 }

@@ -144,8 +144,8 @@ export function render(ctx, match, frameNumber, images, renderState) {
     const frame = fighter.spriteFrame();
     const pose = inner => {
       if (fighter.state === 'knockdown') {
-        inner.translate(0, 22);
-        inner.rotate(-0.55);
+        inner.translate(0, 36);
+        inner.rotate(-Math.PI / 2);
       }
     };
     drawSheet(ctx, sheet, frame, fighter.x, fighter.y, fighter.facing, SPRITE_SIZE, ctx.globalAlpha, pose);
@@ -188,9 +188,15 @@ export function render(ctx, match, frameNumber, images, renderState) {
     ctx.save();
     ctx.translate(fx.x, fx.y);
     if (fx.spark) {
-      ctx.rotate(fx.life * 0.2);
-      ctx.fillRect(-fx.size, -1.2, fx.size * 2, 2.4);
-      ctx.fillRect(-1.2, -fx.size, 2.4, fx.size * 2);
+      ctx.rotate(fx.life * 0.25);
+      for (let s = 0; s < 4; s++) {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-fx.size, -1.2, fx.size * 2, 2.4);
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, fx.size * 0.35, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       ctx.beginPath();
       ctx.arc(0, 0, fx.size, 0, Math.PI * 2);

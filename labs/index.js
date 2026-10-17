@@ -42,6 +42,32 @@ document.addEventListener('DOMContentLoaded', () => {
         resultCount.textContent = searchQuery ? `${label} encontrados` : `${visible} labs`;
     }
 
+    const emptyState = document.getElementById('labsEmptyState');
+    const emptyReset = document.getElementById('labsEmptyReset');
+
+    if (emptyReset) {
+        emptyReset.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            searchQuery = '';
+            currentFilter = 'all';
+            filterButtons.forEach((btn) => {
+                btn.setAttribute('aria-pressed', btn.dataset.filter === 'all' ? 'true' : 'false');
+            });
+            applyFilters();
+            searchInput?.focus();
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            const tag = document.activeElement ? document.activeElement.tagName : '';
+            if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+                event.preventDefault();
+                searchInput?.focus();
+            }
+        }
+    });
+
     function applyFilters() {
         let visibleCount = 0;
         let featuredVisible = 0;
@@ -77,6 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (featuredSection) {
             const hideFeatured = searchQuery.length > 0 && featuredVisible === 0;
             featuredSection.hidden = hideFeatured;
+        }
+
+        if (emptyState) {
+            emptyState.hidden = visibleCount > 0;
         }
 
         updateResultCount(visibleCount);

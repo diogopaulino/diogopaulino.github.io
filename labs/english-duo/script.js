@@ -2294,6 +2294,13 @@ class SpeechManager {
     constructor() {
         this.synth = window.speechSynthesis;
         this.speaking = false;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.synth) {
+                this.synth.cancel();
+                this.speaking = false;
+                document.querySelector('.btn-speak')?.classList.remove('speaking');
+            }
+        });
     }
 
     speak(text, lang = 'en-US') {

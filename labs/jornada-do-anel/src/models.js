@@ -535,11 +535,23 @@ export function buildGoblin() {
         geo('gob-body', () => torsoGeometry({ height: 0.46, girth: 0.2, style: 'child', seg: 14 })),
         dark
     );
-    body.position.y = 0.28;
+    body.position.y = 0.44;
     group.add(body);
 
+    // Pernas do Goblin
+    for (const sx of [-1, 1]) {
+        const leg = new THREE.Mesh(geo('gob-leg', () => limbGeometry({
+            length: 0.32, r0: 0.055, r1: 0.038, bulge: 0.01, seg: 8, rings: 4
+        })), dark);
+        leg.position.set(sx * 0.1, 0.32, 0);
+        leg.rotation.z = sx * 0.1;
+        const foot = new THREE.Mesh(geo('gob-foot', () => new THREE.BoxGeometry(0.08, 0.04, 0.14)), dark);
+        foot.position.set(sx * 0.1, 0.03, 0.04);
+        group.add(leg, foot);
+    }
+
     const head = new THREE.Group();
-    head.position.y = 0.92;
+    head.position.y = 0.98;
     group.add(head);
     const skull = new THREE.Mesh(geo('gob-skull', () => headGeometry(0.19, 'child')), skin);
     skull.scale.set(1.05, 0.9, 1.1);
@@ -560,7 +572,7 @@ export function buildGoblin() {
         const arm = new THREE.Mesh(geo('gob-arm', () => limbGeometry({
             length: 0.34, r0: 0.05, r1: 0.03, bulge: 0.01, seg: 10, rings: 6
         })), skin);
-        arm.position.set(sx * 0.24, 0.72, 0.04);
+        arm.position.set(sx * 0.24, 0.76, 0.04);
         arm.rotation.z = sx * 0.45;
         arm.rotation.x = -0.35;
         group.add(arm);
@@ -572,6 +584,10 @@ export function buildGoblin() {
     jaw.position.set(0, -0.04, 0.06);
     head.add(jaw);
 
+    const bladeGroup = new THREE.Group();
+    bladeGroup.position.set(0.38, 0.46, 0.12);
+    bladeGroup.rotation.x = 0.55;
+
     const blade = new THREE.Mesh(
         geo('gob-blade', () => {
             const g = new THREE.ConeGeometry(0.035, 0.48, 6);
@@ -580,9 +596,13 @@ export function buildGoblin() {
         }),
         std(0xb0b8c0, 0.28, 0.88)
     );
-    blade.position.set(0.38, 0.42, 0.12);
-    blade.rotation.x = 0.55;
-    group.add(blade);
+    const guard = new THREE.Mesh(
+        geo('gob-guard', () => new THREE.BoxGeometry(0.14, 0.025, 0.04)),
+        std(0x3a3832, 0.4, 0.8)
+    );
+    guard.position.y = -0.22;
+    bladeGroup.add(blade, guard);
+    group.add(bladeGroup);
 
     enableShadows(group);
     group.userData.hp = 2;
@@ -1681,7 +1701,7 @@ export function buildSword() {
 export function buildBalrog() {
     const group = new THREE.Group();
     const body = new THREE.Mesh(
-        lathe([[0.2, 0], [2.2, 0.2], [1.8, 2.4], [1.1, 5.2], [0.7, 7.2], [0.2, 8]], 10, 'balrog-body'),
+        lathe([[0.2, 0], [2.2, 0.2], [1.8, 2.4], [1.1, 5.2], [0.7, 7.2], [0.2, 8]], 12, 'balrog-body'),
         mat('balrog', () => new THREE.MeshStandardMaterial({
             color: 0x1a0804, emissive: 0xff3300, emissiveIntensity: 0.55, roughness: 0.72, metalness: 0.08
         }))
@@ -1689,43 +1709,53 @@ export function buildBalrog() {
     group.add(body);
     for (const sx of [-1, 1]) {
         const horn = new THREE.Mesh(
-            geo('bal-horn', () => warp(new THREE.ConeGeometry(0.32, 2.4, 7), 80, 0.15)),
+            geo('bal-horn', () => warp(new THREE.ConeGeometry(0.35, 2.8, 8), 80, 0.18)),
             std(0x2a1008, 0.78)
         );
-        horn.position.set(sx * 1.05, 8.1, 0.1);
-        horn.rotation.z = sx * 0.55;
-        horn.rotation.x = -0.25;
+        horn.position.set(sx * 1.1, 8.1, 0.1);
+        horn.rotation.z = sx * 0.65;
+        horn.rotation.x = -0.3;
         group.add(horn);
+
+        // Membrana de asa demoníaca volumétrica com costelas
         const wing = new THREE.Mesh(
-            geo('bal-wing', () => new THREE.PlaneGeometry(3.2, 4.4, 4, 4)),
+            geo('bal-wing', () => new THREE.PlaneGeometry(3.6, 4.8, 6, 6)),
             mat('bal-wing', () => new THREE.MeshStandardMaterial({
-                color: 0x120804, emissive: 0x881100, emissiveIntensity: 0.35,
-                side: THREE.DoubleSide, transparent: true, opacity: 0.72, roughness: 0.9
+                color: 0x120804, emissive: 0xaa1800, emissiveIntensity: 0.45,
+                side: THREE.DoubleSide, transparent: true, opacity: 0.82, roughness: 0.85
             }))
         );
-        wing.position.set(sx * 2.1, 5.2, -0.4);
+        wing.position.set(sx * 2.2, 5.2, -0.4);
         wing.rotation.y = sx * 0.7;
         group.add(wing);
+
+        // Olhos flamejantes duplos
+        const eye = new THREE.Mesh(
+            geo('bal-eye', () => new THREE.SphereGeometry(0.24, 10, 8)),
+            mat('bal-eye', () => new THREE.MeshStandardMaterial({
+                color: 0xffee88, emissive: 0xff7700, emissiveIntensity: 4.8, roughness: 0.2
+            }))
+        );
+        eye.position.set(sx * 0.45, 6.25, 1.35);
+        group.add(eye);
     }
-    const eye = new THREE.Mesh(
-        geo('bal-eye', () => new THREE.SphereGeometry(0.32, 10, 8)),
-        mat('bal-eye', () => new THREE.MeshStandardMaterial({
-            color: 0xffee88, emissive: 0xffaa00, emissiveIntensity: 4.2, roughness: 0.2
-        }))
-    );
-    eye.position.set(0, 6.15, 1.35);
-    group.add(eye);
+
+    // Chicote de fogo curvo com relevo
+    const whipCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(1.8, 3.8, 0.6),
+        new THREE.Vector3(2.6, 2.8, 1.2),
+        new THREE.Vector3(3.2, 1.4, 0.8),
+        new THREE.Vector3(2.4, 0.4, 1.8),
+        new THREE.Vector3(3.6, -0.6, 2.2)
+    ]);
+    const whipGeo = new THREE.TubeGeometry(whipCurve, 24, 0.08, 8, false);
     const whip = new THREE.Mesh(
-        geo('bal-whip', () => new THREE.CylinderGeometry(0.04, 0.09, 6.5, 6)),
+        whipGeo,
         mat('bal-whip', () => new THREE.MeshStandardMaterial({
-            color: 0xff6611, emissive: 0xff3300, emissiveIntensity: 2.2, roughness: 0.4
+            color: 0xff6611, emissive: 0xff3300, emissiveIntensity: 3.2, roughness: 0.35
         }))
     );
-    whip.position.set(2.2, 3.2, 0.8);
-    whip.rotation.z = -0.9;
-    whip.rotation.x = 0.4;
     group.add(whip);
-    group.userData.eye = eye;
     group.userData.whip = whip;
     enableShadows(group);
     return group;
