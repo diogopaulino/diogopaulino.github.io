@@ -537,6 +537,15 @@ button {
     padding-top: 0.75rem;
     background: linear-gradient(to top, oklch(13% 0.03 230) 60%, transparent);
     z-index: 2;
+    pointer-events: auto;
+}
+
+.menu-foot .primary-button {
+    width: min(100%, 320px);
+    justify-content: center;
+    position: relative;
+    z-index: 3;
+    cursor: pointer;
 }
 
 .menu-section h2 {

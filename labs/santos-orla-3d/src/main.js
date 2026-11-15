@@ -455,6 +455,8 @@ class App {
 }
 
 const app = new App();
+// Exposto para debug / automação de testes (não usado pela UI).
+window.__santosOrla = app;
 app.init().catch((err) => {
     console.error(err);
     app.ui.showError(err?.message || 'Falha ao iniciar o laboratório.');
