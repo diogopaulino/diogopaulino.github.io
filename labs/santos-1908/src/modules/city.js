@@ -155,25 +155,33 @@ export function create(ctx) {
     }
 
     // Cobertura de Mata Atlântica instanciada com copas orgânicas (1 draw call!)
+    const treeCount = quality.trees * 3;
     const treeGeo = makeOrganicCanopyGeo();
-    const trees = new THREE.InstancedMesh(treeGeo, mats.foliage, quality.trees);
+    const treeMat = mats.foliage.clone();
+    const trees = new THREE.InstancedMesh(treeGeo, treeMat, treeCount);
+    trees.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(treeCount * 3), 3);
+    const treePalette = [0x2a4a24, 0x34582c, 0x223d1e, 0x3d6430, 0x2f5228];
+    const tCol = new THREE.Color();
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
-    for (let i = 0; i < quality.trees; i++) {
-        p.set(
-            LAYOUT.serraX - 20 + rnd() * 80,
-            8 + rnd() * 20,
-            -220 + rnd() * 400
-        );
+    for (let i = 0; i < treeCount; i++) {
+        const tx = LAYOUT.serraX - 4 + rnd() * 64;
+        const tz = -220 + rnd() * 400;
+        const slope = THREE.MathUtils.clamp((tx - (LAYOUT.serraX - 10)) / 70, 0, 1);
+        const ty = 2 + slope * 20 + rnd() * 6;
+        p.set(tx, ty, tz);
         q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI * 2, 0));
-        const sc = 0.8 + rnd() * 1.4;
-        s.set(sc, sc * (0.85 + rnd() * 0.3), sc);
+        const sc = 1.0 + rnd() * 1.6;
+        s.set(sc, sc * (0.85 + rnd() * 0.35), sc);
         m.compose(p, q, s);
         trees.setMatrixAt(i, m);
+        tCol.set(treePalette[(rnd() * treePalette.length) | 0]);
+        trees.setColorAt(i, tCol);
     }
     trees.instanceMatrix.needsUpdate = true;
+    if (trees.instanceColor) trees.instanceColor.needsUpdate = true;
     serra.add(trees);
     group.add(serra);
 

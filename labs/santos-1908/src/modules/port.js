@@ -122,6 +122,15 @@ function makeCrane(mats) {
         chord.castShadow = true;
         boomGroup.add(chord);
     }
+    // Treliças diagonais da lança do guindaste a vapor
+    for (let k = 0; k < 10; k++) {
+        const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 5), mats.steel);
+        brace.rotation.z = Math.PI / 2;
+        brace.rotation.y = (k % 2 === 0 ? 0.55 : -0.55);
+        brace.position.set(0, 3.8, -0.5 - k * 1.35);
+        boomGroup.add(brace);
+    }
+
     const sheave = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 8, 16), mats.funnelBand);
     sheave.rotation.y = Math.PI / 2;
     sheave.position.set(0, 3.8, -14.5);
@@ -134,6 +143,12 @@ function makeCrane(mats) {
     const hook = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.06, 8, 14, Math.PI * 1.35), mats.funnelBand);
     hook.position.set(0, -3.7, -14.5);
     boomGroup.add(hook);
+
+    // Lingada de sacas de café suspensa no gancho
+    const sling = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.75, 1.15), mats.sack);
+    sling.position.set(0, -4.35, -14.5);
+    sling.castShadow = true;
+    boomGroup.add(sling);
 
     g.add(boomGroup);
 

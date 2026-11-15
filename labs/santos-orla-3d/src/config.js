@@ -154,7 +154,7 @@ export const QUALITY = {
         palmCount: 120,
         peopleCount: 18,
         waterSeg: 64,
-        fogFar: 280
+        fogFar: 540
     },
     medium: {
         id: 'medium',
@@ -165,7 +165,7 @@ export const QUALITY = {
         palmCount: 220,
         peopleCount: 40,
         waterSeg: 96,
-        fogFar: 360
+        fogFar: 620
     },
     high: {
         id: 'high',
@@ -176,7 +176,7 @@ export const QUALITY = {
         palmCount: 360,
         peopleCount: 70,
         waterSeg: 140,
-        fogFar: 420
+        fogFar: 720
     }
 };
 

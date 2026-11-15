@@ -239,7 +239,7 @@ button {
 .hint-bar {
     position: absolute;
     left: 50%;
-    bottom: calc(5.5rem + var(--safe-bottom));
+    bottom: calc(6.5rem + var(--safe-bottom));
     transform: translateX(-50%);
     margin: 0;
     padding: 0.45rem 0.9rem;
@@ -255,7 +255,7 @@ button {
 .hud-modes {
     position: absolute;
     left: 50%;
-    bottom: calc(1rem + var(--safe-bottom));
+    bottom: calc(2.6rem + var(--safe-bottom));
     transform: translateX(-50%);
     display: flex;
     flex-wrap: wrap;
@@ -519,24 +519,32 @@ button {
     flex-direction: column;
 }
 
+.menu-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+}
+
 .menu-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
 }
 
 .menu-foot {
     margin-top: 1rem;
     display: flex;
     justify-content: flex-end;
-    position: sticky;
-    bottom: 0;
-    padding-top: 0.75rem;
-    background: linear-gradient(to top, oklch(13% 0.03 230) 60%, transparent);
-    z-index: 2;
+    padding-top: 0.5rem;
 }
 
 .menu-section h2 {
@@ -695,11 +703,11 @@ kbd {
 
     .hud-actions {
         top: auto;
-        bottom: calc(9.5rem + var(--safe-bottom));
+        bottom: calc(11.2rem + var(--safe-bottom));
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: flex-end;
-        max-width: 46vw;
+        max-width: calc(100vw - 1.5rem);
     }
 
     .menu-grid {
@@ -707,16 +715,27 @@ kbd {
     }
 
     .hud-modes {
-        bottom: calc(0.55rem + var(--safe-bottom));
+        bottom: calc(2.6rem + var(--safe-bottom));
+        flex-wrap: nowrap;
+        gap: 0.25rem;
+        max-width: calc(100vw - 1rem);
+        padding: 0.2rem;
+    }
+
+    .hud-modes .chip {
+        min-height: 44px;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.76rem;
+        white-space: nowrap;
     }
 
     .hint-bar {
-        bottom: calc(7.8rem + var(--safe-bottom));
+        bottom: calc(6.2rem + var(--safe-bottom));
         font-size: 0.72rem;
     }
 
     .touch-controls {
-        bottom: calc(3.6rem + var(--safe-bottom));
+        bottom: calc(6.2rem + var(--safe-bottom));
     }
 
     .stick, .look-pad {
@@ -744,9 +763,9 @@ kbd {
     }
 
     .hud-modes .chip {
-        padding: 0.35rem 0.65rem;
-        font-size: 0.75rem;
-        min-height: 38px;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.74rem;
+        min-height: 44px;
     }
 }
 
@@ -772,10 +791,16 @@ kbd {
     }
 
     .hud-actions {
-        top: calc(2.8rem + var(--safe-top));
+        top: calc(3.2rem + var(--safe-top));
         bottom: auto;
+        right: max(0.5rem, var(--safe-right));
         max-width: none;
-        flex-direction: column;
+        flex-direction: row;
+    }
+
+    .hud-actions .fps,
+    .hud-actions .mode-pill {
+        display: none;
     }
 
     .touch-controls {

@@ -45,7 +45,7 @@ export class World {
         this.lights.amb = new THREE.AmbientLight(0xffffff, 0.18);
         this.scene.add(this.lights.hemi, this.lights.sun, this.lights.amb);
 
-        this.scene.fog = new THREE.Fog(0xaec8e0, 40, this.quality.fogFar);
+        this.scene.fog = new THREE.Fog(0xaec8e0, 120, this.quality.fogFar);
 
         onProgress?.(0.35, 'Ondas na enseada…');
         this.parts.water = createWater(this.skyUniforms, this.quality);
@@ -92,6 +92,8 @@ export class World {
     update(t, dt) {
         this.parts.sky?.update(t);
         this.parts.water?.update(t);
+        this.parts.orla?.update(t, dt);
+        this.parts.city?.update(t);
         this.parts.life?.update(t, dt);
         // Sombra segue o jogador no eixo X (orla longa)
     }

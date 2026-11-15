@@ -176,6 +176,34 @@ function makeDeck() {
         slat.position.set(0, 3.0, 10.6 + b * 1.05);
         g.add(slat);
     }
+
+    // Barcos de pesca ancorados ao lado do Deck do Pescador
+    const hullMat = plasterMaterial(0xf0ece0, { roughness: 0.55 });
+    const trimBlue = metalMaterial(0x1e5c8c, { roughness: 0.45, metalness: 0.25 });
+    const boats = [];
+    for (const [bx, bz, rot] of [[-7.5, 13.5, 0.15], [7.8, 16.5, -0.2]]) {
+        const boat = new THREE.Group();
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.85, 6.2), hullMat);
+        hull.position.y = 0.25;
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.22, 6.25), trimBlue);
+        stripe.position.y = 0.48;
+        const bow = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.2, 4), hullMat);
+        bow.rotation.x = Math.PI / 2;
+        bow.rotation.z = Math.PI / 4;
+        bow.scale.set(1, 1, 0.45);
+        bow.position.set(0, 0.3, 4.1);
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1.8), trimBlue);
+        cabin.position.set(0, 1.15, -0.4);
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.8, 8), pileWood);
+        mast.position.set(0, 2.2, 0.6);
+        boat.add(hull, stripe, bow, cabin, mast);
+        boat.position.set(bx, 0.05, bz);
+        boat.rotation.y = rot;
+        boat.userData.phase = bx;
+        g.add(boat);
+        boats.push(boat);
+    }
+    g.userData.boats = boats;
     return g;
 }
 
@@ -211,14 +239,14 @@ function makePark() {
         new THREE.Vector3(0.8, 14.2, 16.5),
         new THREE.Vector3(2.4, 11.8, 18.4)
     ]);
-    const ribbonGeo = new THREE.TubeGeometry(curve, 48, 0.68, 12, false);
+    const ribbonGeo = new THREE.TubeGeometry(curve, 56, 0.68, 14, false);
     ribbonGeo.scale(1.45, 1.0, 0.58);
     const ribbonMat = new THREE.MeshPhysicalMaterial({
         color: 0xd61f1f,
-        roughness: 0.26,
-        metalness: 0.18,
-        clearcoat: 0.85,
-        clearcoatRoughness: 0.18
+        roughness: 0.24,
+        metalness: 0.2,
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.15
     });
     const tomieSculpture = new THREE.Mesh(ribbonGeo, ribbonMat);
     tomieSculpture.castShadow = true;
@@ -231,7 +259,7 @@ function makeRock() {
     const g = new THREE.Group();
     const mat = stoneMaterial(0x6e685e, { roughness: 0.92, repeat: 2 });
     for (let i = 0; i < 6; i++) {
-        const rockGeo = new THREE.DodecahedronGeometry(1.4 + i * 0.35, 1);
+        const rockGeo = new THREE.DodecahedronGeometry(1.5 + i * 0.36, 1);
         const pos = rockGeo.attributes.position;
         for (let k = 0; k < pos.count; k++) {
             const vx = pos.getX(k);
@@ -247,6 +275,22 @@ function makeRock() {
         rock.scale.set(1 + (i % 2) * 0.38, 0.68 + i * 0.14, 1);
         g.add(rock);
     }
+
+    // Vegetação costeira e espuma na base da Ilha Urubuqueçaba
+    const bushMat = new THREE.MeshStandardMaterial({ color: 0x2f6e38, roughness: 0.85 });
+    for (let b = 0; b < 4; b++) {
+        const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), bushMat);
+        bush.position.set((b - 1.5) * 1.6, 2.3 + (b % 2) * 0.5, 0.6);
+        bush.scale.set(1.2, 0.75, 1.1);
+        g.add(bush);
+    }
+    const foamRing = new THREE.Mesh(
+        new THREE.RingGeometry(4.8, 6.2, 28),
+        new THREE.MeshBasicMaterial({ color: 0xeef8fc, transparent: true, opacity: 0.38, side: THREE.DoubleSide })
+    );
+    foamRing.rotation.x = -Math.PI / 2;
+    foamRing.position.set(0, 0.16, 0.8);
+    g.add(foamRing);
     return g;
 }
 
@@ -277,6 +321,21 @@ function makeDistrictMarker() {
     armR.position.set(0.34, 0.42, 0.12);
     armR.rotation.x = -0.8;
     figure.add(torso, head, armL, armR);
+
+    // Mastros da Praça das Bandeiras (Gonzaga)
+    const poleMat = metalMaterial(0xd8dde2, { roughness: 0.28, metalness: 0.82 });
+    const flagColors = [0x1c7a3c, 0xf2c628, 0x1e5ca8];
+    for (let f = 0; f < 3; f++) {
+        const fx = (f - 1) * 2.8;
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 5.6, 8), poleMat);
+        pole.position.set(fx, 2.8, -2.5);
+        const flag = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.1, 0.7),
+            new THREE.MeshStandardMaterial({ color: flagColors[f], roughness: 0.7, side: THREE.DoubleSide })
+        );
+        flag.position.set(fx + 0.55, 5.1, -2.5);
+        g.add(pole, flag);
+    }
 
     g.add(plaza, pedestal, figure);
     return g;
