@@ -1708,15 +1708,16 @@ export function createBeachUmbrella({
 }
 
 /**
- * Torre residencial da orla com lajes, sacadas e caixa d'água —
- * tipologias típicas do skyline de Santos (não só um cubo texturizado).
+ * Torre residencial da orla com sacadas e terraço técnico.
+ * `detail`: 'full' (poucas torres herói) · 'mid' (lajes a cada 2 andares) · 'lod' (só volume+terraço).
  */
 export function createApartmentTower({
     width = 8,
     depth = 7,
     floors = 12,
     tint = 0xe8e4dc,
-    detailed = true
+    detailed = true,
+    detail = detailed ? 'mid' : 'lod'
 } = {}) {
     const root = new THREE.Group();
     const floorH = 2.85;
@@ -1728,9 +1729,8 @@ export function createApartmentTower({
         metalness: 0.25,
         transparent: true,
         opacity: 0.78,
-        clearcoat: 0.7
+        clearcoat: 0.55
     });
-    const rail = metalMaterial(0xd8dee4, { roughness: 0.3, metalness: 0.75 });
     const roofMat = plasterMaterial(0x9aa0a6, { roughness: 0.75, repeat: 1 });
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(width, h, depth), plaster);
@@ -1739,60 +1739,60 @@ export function createApartmentTower({
     body.receiveShadow = true;
     root.add(body);
 
-    if (detailed) {
-        const slabGeo = new THREE.BoxGeometry(width + 0.55, 0.12, depth + 0.55);
-        const railGeo = new THREE.BoxGeometry(width * 0.92, 0.08, 0.05);
-        for (let f = 1; f < floors; f++) {
+    if (detail !== 'lod') {
+        const step = detail === 'full' ? 1 : 2;
+        const slabGeo = new THREE.BoxGeometry(width + 0.5, 0.12, depth + 0.5);
+        const balconyGeo = new THREE.BoxGeometry(width * 0.88, 0.08, 0.8);
+        const railGeo = new THREE.BoxGeometry(width * 0.86, 0.08, 0.05);
+        for (let f = step; f < floors; f += step) {
             const y = f * floorH;
             const slab = new THREE.Mesh(slabGeo, plaster);
             slab.position.y = y;
-            slab.castShadow = true;
             root.add(slab);
-
-            const balcony = new THREE.Mesh(
-                new THREE.BoxGeometry(width * 0.9, 0.08, 0.85),
-                plaster
-            );
-            balcony.position.set(0, y + 0.05, depth * 0.5 + 0.35);
+            const balcony = new THREE.Mesh(balconyGeo, plaster);
+            balcony.position.set(0, y + 0.05, depth * 0.5 + 0.32);
             root.add(balcony);
-
-            const glassRail = new THREE.Mesh(railGeo, glass);
-            glassRail.position.set(0, y + 0.55, depth * 0.5 + 0.72);
-            root.add(glassRail);
-
-            // Faixa de janelas
-            if (f % 1 === 0) {
-                const pane = new THREE.Mesh(
-                    new THREE.PlaneGeometry(width * 0.78, floorH * 0.55),
-                    glass
-                );
-                pane.position.set(0, y + floorH * 0.45, depth * 0.501);
-                root.add(pane);
+            if (detail === 'full') {
+                const glassRail = new THREE.Mesh(railGeo, glass);
+                glassRail.position.set(0, y + 0.5, depth * 0.5 + 0.68);
+                root.add(glassRail);
             }
         }
 
-        // Caixa d'água / casa de máquinas no terraço
+        // Faixa de vidro única na fachada (1 draw call, não N andares)
+        const facadeGlass = new THREE.Mesh(
+            new THREE.PlaneGeometry(width * 0.82, h * 0.78),
+            glass
+        );
+        facadeGlass.position.set(0, h * 0.52, depth * 0.501);
+        root.add(facadeGlass);
+
         const mech = new THREE.Mesh(
-            new THREE.BoxGeometry(width * 0.35, 2.2, depth * 0.4),
+            new THREE.BoxGeometry(width * 0.35, 2.0, depth * 0.38),
             roofMat
         );
-        mech.position.set(-width * 0.15, h + 1.1, 0);
+        mech.position.set(-width * 0.15, h + 1.0, 0);
         mech.castShadow = true;
         root.add(mech);
         const tank = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.7, 0.75, 1.4, 12),
+            new THREE.CylinderGeometry(0.65, 0.7, 1.25, 10),
             metalMaterial(0xb8c0c6, { roughness: 0.4, metalness: 0.55 })
         );
-        tank.position.set(width * 0.22, h + 0.9, depth * 0.1);
+        tank.position.set(width * 0.22, h + 0.85, depth * 0.1);
         root.add(tank);
     } else {
-        // LOD longe: só cornija e terraço
         const cornice = new THREE.Mesh(
             new THREE.BoxGeometry(width + 0.4, 0.25, depth + 0.4),
             plaster
         );
         cornice.position.y = h;
         root.add(cornice);
+        const tank = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.55, 0.6, 1.1, 8),
+            metalMaterial(0xb8c0c6, { roughness: 0.45, metalness: 0.5 })
+        );
+        tank.position.set(width * 0.15, h + 0.7, 0);
+        root.add(tank);
     }
 
     root.userData.floors = floors;

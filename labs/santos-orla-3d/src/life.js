@@ -125,7 +125,7 @@ export function createLife(quality) {
     }
 
     // Cães na areia / calçadão
-    const dogCount = quality.id === 'low' ? 4 : quality.id === 'medium' ? 8 : 12;
+    const dogCount = quality.id === 'low' ? 3 : quality.id === 'medium' ? 7 : 12;
     const coats = [0xc4a06a, 0x3a2a20, 0xe8e0d4, 0x8a6a48, 0x2c3038];
     for (let i = 0; i < dogCount; i++) {
         const dog = createSculptedDog({
@@ -149,7 +149,7 @@ export function createLife(quality) {
     }
 
     // Tráfego leve na avenida Bartolomeu de Gusmão
-    const carCount = quality.id === 'low' ? 4 : quality.id === 'medium' ? 8 : 12;
+    const carCount = quality.id === 'low' ? 3 : quality.id === 'medium' ? 7 : 12;
     for (let i = 0; i < carCount; i++) {
         const car = createBeachCar({
             body: carColors[i % carColors.length],
@@ -172,7 +172,7 @@ export function createLife(quality) {
     }
 
     // Guarda-sóis na faixa de areia (José Menino → Ponta)
-    const umbCount = quality.id === 'low' ? 10 : quality.id === 'medium' ? 18 : 28;
+    const umbCount = quality.id === 'low' ? 8 : quality.id === 'medium' ? 16 : 26;
     for (let i = 0; i < umbCount; i++) {
         const umb = createBeachUmbrella({
             canopy: umbrellaColors[i % umbrellaColors.length],

@@ -34,9 +34,14 @@ export function createPost(renderer, scene, camera, quality) {
     );
     composer.addPass(bloom);
 
-    if (quality.id === 'high') {
-        const smaa = new SMAAPass();
-        composer.addPass(smaa);
+    // SMAA só em high + WebGL2 real (evita custo em softGL / SwiftShader)
+    const gl = renderer.getContext?.();
+    const soft = /swiftshader|llvmpipe|softpipe/i.test(gl?.getParameter?.(gl.RENDERER) || '');
+    if (quality.id === 'high' && !soft) {
+        try {
+            const smaa = new SMAAPass();
+            composer.addPass(smaa);
+        } catch { /* SMAA opcional */ }
     }
 
     composer.addPass(new OutputPass());

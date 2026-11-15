@@ -127,7 +127,16 @@ class App {
     }
 
     bindUI() {
-        document.getElementById('startButton')?.addEventListener('click', () => this.start());
+        document.getElementById('startButton')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                this.start();
+            } catch (err) {
+                console.error(err);
+                this.ui.showError(err?.message || 'Falha ao iniciar a orla.');
+            }
+        });
         document.getElementById('resumeButton')?.addEventListener('click', () => this.setPaused(false));
         document.getElementById('pauseMenuButton')?.addEventListener('click', () => {
             this.setPaused(false);

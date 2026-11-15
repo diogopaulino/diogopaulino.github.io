@@ -55,11 +55,10 @@ export function createCity(quality) {
     root.name = 'city';
     const rand = seeded(0x5a47105);
     const count = quality.buildingCount;
-    const detailedCount = quality.id === 'low'
-        ? Math.min(18, count)
-        : quality.id === 'medium'
-            ? Math.min(36, Math.floor(count * 0.45))
-            : Math.min(55, Math.floor(count * 0.5));
+    // Poucas torres compostas na frente; o restante é InstancedMesh (FPS estável em softGL).
+    const heroCount = quality.id === 'low' ? 6 : quality.id === 'medium' ? 14 : 22;
+    const midCount = quality.id === 'low' ? 8 : quality.id === 'medium' ? 16 : 24;
+    const detailedCount = Math.min(count, heroCount + midCount);
 
     const detailedRoot = new THREE.Group();
     detailedRoot.name = 'city-detailed';
@@ -122,12 +121,15 @@ export function createCity(quality) {
         const tint = PALETTE[(rand() * PALETTE.length) | 0];
 
         if (front) {
+            const isHero = i < heroCount;
             const tower = createApartmentTower({
                 width: w,
                 depth: d,
                 floors,
                 tint,
-                detailed: quality.id !== 'low'
+                detail: isHero
+                    ? (quality.id === 'high' ? 'full' : 'mid')
+                    : 'lod'
             });
             tower.position.set(x, 0, z);
             tower.rotation.y = (rand() - 0.5) * 0.08;
