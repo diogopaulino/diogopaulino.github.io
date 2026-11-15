@@ -70,13 +70,49 @@ function makeBlock(mats, facadeMat, w, h, d) {
     body.receiveShadow = true;
     g.add(body);
 
+    // Cornijas de pavimento + sacadas rasas (ecletismo santista)
+    const floors = Math.max(2, Math.floor(h / 3.4));
+    for (let f = 1; f < floors; f++) {
+        const y = f * (h / floors);
+        const ledge = new THREE.Mesh(
+            new THREE.BoxGeometry(w + 0.35, 0.14, d + 0.35),
+            mats.plaster
+        );
+        ledge.position.y = y;
+        g.add(ledge);
+        if (f % 2 === 0) {
+            const balc = new THREE.Mesh(
+                new THREE.BoxGeometry(w * 0.55, 0.1, 0.7),
+                mats.plaster
+            );
+            balc.position.set(0, y + 0.05, -d * 0.5 - 0.3);
+            g.add(balc);
+            const rail = new THREE.Mesh(
+                new THREE.BoxGeometry(w * 0.52, 0.55, 0.06),
+                mats.steel
+            );
+            rail.position.set(0, y + 0.4, -d * 0.5 - 0.6);
+            g.add(rail);
+        }
+    }
+
     // Telhado de quatro águas (piramidal achatado)
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(w, d) * 0.54, 2.2, 4), mats.roof);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(w, d) * 0.54, 2.4, 4), mats.roof);
     roof.rotation.y = Math.PI * 0.25;
     roof.scale.set(w / Math.max(w, d), 1, d / Math.max(w, d));
-    roof.position.y = h + 1.05;
+    roof.position.y = h + 1.15;
     roof.castShadow = true;
     g.add(roof);
+
+    // Chaminé tipológica
+    if (h > 10) {
+        const chimney = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 1.8, 0.7),
+            mats.brick
+        );
+        chimney.position.set(w * 0.25, h + 2.2, d * 0.15);
+        g.add(chimney);
+    }
     return g;
 }
 

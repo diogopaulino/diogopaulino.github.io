@@ -1,5 +1,5 @@
 /**
- * Vida na orla: pedestres esculpidos, ciclistas com bicicleta 3D e gaivotas com asas articuladas.
+ * Vida na orla: pedestres e ciclistas esculpidos, cães, carros, guarda-sóis e gaivotas.
  */
 
 import * as THREE from 'three';
@@ -9,7 +9,12 @@ import {
     createSculptedHuman,
     animateSculptedHuman,
     createSculptedBird,
-    metalMaterial
+    createSculptedDog,
+    animateSculptedDog,
+    createBeachCar,
+    createBeachUmbrella,
+    metalMaterial,
+    createSpokedWheel
 } from '../../shared/realism.js';
 
 function makeBicycle(frameColor = 0xc43c28) {
@@ -18,32 +23,36 @@ function makeBicycle(frameColor = 0xc43c28) {
     const frameMat = metalMaterial(frameColor, { roughness: 0.35, metalness: 0.7 });
     const chromeMat = metalMaterial(0xd8dde4, { roughness: 0.25, metalness: 0.85 });
 
-    const wheelGeo = new THREE.TorusGeometry(0.32, 0.035, 8, 18);
-    wheelGeo.rotateY(Math.PI / 2);
+    for (const z of [-0.52, 0.52]) {
+        const wheel = createSpokedWheel({
+            radius: 0.34,
+            width: 0.08,
+            spokes: 10,
+            rimMaterial: tireMat,
+            hubMaterial: chromeMat
+        });
+        wheel.rotation.y = Math.PI / 2;
+        wheel.position.set(0, 0.34, z);
+        bike.add(wheel);
+    }
 
-    const rearWheel = new THREE.Mesh(wheelGeo, tireMat);
-    rearWheel.position.set(0, 0.34, -0.52);
-    const frontWheel = new THREE.Mesh(wheelGeo, tireMat);
-    frontWheel.position.set(0, 0.34, 0.52);
-    bike.add(rearWheel, frontWheel);
-
-    const topTube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.88, 6), frameMat);
+    const topTube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.88, 8), frameMat);
     topTube.rotation.x = Math.PI / 2;
     topTube.position.set(0, 0.68, 0);
 
-    const downTube = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.82, 6), frameMat);
+    const downTube = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.82, 8), frameMat);
     downTube.rotation.x = 0.85;
     downTube.position.set(0, 0.52, 0.14);
 
-    const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.62, 6), frameMat);
+    const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.62, 8), frameMat);
     seatPost.rotation.x = -0.22;
     seatPost.position.set(0, 0.58, -0.22);
 
-    const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.64, 6), chromeMat);
+    const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.64, 8), chromeMat);
     fork.rotation.x = -0.24;
     fork.position.set(0, 0.58, 0.44);
 
-    const handlebar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.48, 6), chromeMat);
+    const handlebar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.48, 8), chromeMat);
     handlebar.rotation.z = Math.PI / 2;
     handlebar.position.set(0, 0.88, 0.38);
 
@@ -61,22 +70,27 @@ export function createLife(quality) {
     const people = [];
     const bikes = [];
     const birds = [];
+    const dogs = [];
+    const cars = [];
+    const umbrellas = [];
 
-    const shirts = [0x2a5f8f, 0xc45c2a, 0x3d7a45, 0x6b4a8a, 0xd99b26, 0x2c6e78, 0xe8e4dc];
-    const shorts = [0x262b34, 0x3d4856, 0x4a3c30, 0x1e242c];
-    const skins = [0xd4a574, 0xe0b892, 0x9c6e49, 0x6b462b];
+    const shirts = [0x2a5f8f, 0xc45c2a, 0x3d7a45, 0x6b4a8a, 0xd99b26, 0x2c6e78, 0xe8e4dc, 0xf0f0f2];
+    const shorts = [0x262b34, 0x3d4856, 0x4a3c30, 0x1e242c, 0xd8c8a0];
+    const skins = [0xd4a574, 0xe0b892, 0x9c6e49, 0x6b462b, 0xc49a72];
+    const carColors = [0xc43c28, 0x2a5f8f, 0xf2f0ea, 0x1e242c, 0xd99b26, 0x3d7a45];
+    const umbrellaColors = [0xc43c28, 0x2a6a8c, 0xe8dfca, 0x3d7a45, 0xd99b26, 0xf0f0f2];
 
     for (let i = 0; i < quality.peopleCount; i++) {
         const onBike = rand() > 0.72;
         const human = createSculptedHuman({
-            style: 'human',
+            style: rand() > 0.88 ? 'child' : 'human',
             skin: skins[(rand() * skins.length) | 0],
             hair: rand() > 0.3 ? 0x241810 : 0x6e4c28,
             shirt: shirts[(rand() * shirts.length) | 0],
             pants: shorts[(rand() * shorts.length) | 0],
             hat: onBike ? 0x286494 : (rand() > 0.78 ? 0xe8dfca : null),
-            detailedFace: false,
-            scale: 0.96
+            detailedFace: quality.id === 'high' && i < 8,
+            scale: rand() > 0.88 ? 0.78 : 0.96
         });
 
         let actor = human;
@@ -108,6 +122,68 @@ export function createLife(quality) {
         };
         root.add(actor);
         (onBike ? bikes : people).push(actor);
+    }
+
+    // Cães na areia / calçadão
+    const dogCount = quality.id === 'low' ? 4 : quality.id === 'medium' ? 8 : 12;
+    const coats = [0xc4a06a, 0x3a2a20, 0xe8e0d4, 0x8a6a48, 0x2c3038];
+    for (let i = 0; i < dogCount; i++) {
+        const dog = createSculptedDog({
+            coat: coats[i % coats.length],
+            scale: 0.85 + rand() * 0.35
+        });
+        dog.position.set(
+            (rand() - 0.5) * (ORLA_LENGTH - 60),
+            0.02,
+            ZONES.sandInner + rand() * (ZONES.sandOuter - ZONES.sandInner - 4)
+        );
+        dog.userData = {
+            ...dog.userData,
+            speed: 4 + rand() * 5,
+            dir: rand() > 0.5 ? 1 : -1,
+            phase: rand() * Math.PI * 2,
+            baseZ: dog.position.z
+        };
+        root.add(dog);
+        dogs.push(dog);
+    }
+
+    // Tráfego leve na avenida Bartolomeu de Gusmão
+    const carCount = quality.id === 'low' ? 4 : quality.id === 'medium' ? 8 : 12;
+    for (let i = 0; i < carCount; i++) {
+        const car = createBeachCar({
+            body: carColors[i % carColors.length],
+            scale: 1.05
+        });
+        const lane = i % 2 === 0 ? -1 : 1;
+        car.position.set(
+            (rand() - 0.5) * (ORLA_LENGTH - 40),
+            0,
+            ZONES.avenue - 1.5 + lane * 2.2
+        );
+        car.rotation.y = lane > 0 ? Math.PI / 2 : -Math.PI / 2;
+        car.userData = {
+            speed: 16 + rand() * 10,
+            dir: lane > 0 ? 1 : -1,
+            lane
+        };
+        root.add(car);
+        cars.push(car);
+    }
+
+    // Guarda-sóis na faixa de areia (José Menino → Ponta)
+    const umbCount = quality.id === 'low' ? 10 : quality.id === 'medium' ? 18 : 28;
+    for (let i = 0; i < umbCount; i++) {
+        const umb = createBeachUmbrella({
+            canopy: umbrellaColors[i % umbrellaColors.length],
+            scale: 0.95 + rand() * 0.25
+        });
+        let x = (rand() - 0.5) * (ORLA_LENGTH - 50);
+        if (CANALS.some((c) => Math.abs(x - c.x) < c.width + 4)) x += 8;
+        umb.position.set(x, 0, ZONES.sandInner + 2 + rand() * 8);
+        umb.rotation.y = rand() * Math.PI * 2;
+        root.add(umb);
+        umbrellas.push(umb);
     }
 
     // Gaivotas esculpidas com asas articuladas
@@ -163,6 +239,24 @@ export function createLife(quality) {
                 rig.rightLeg.rotation.x = -0.35 - pedal;
             }
         }
+        for (const dog of dogs) {
+            const u = dog.userData;
+            dog.position.x += u.dir * u.speed * dt;
+            if (dog.position.x > ORLA_LENGTH * 0.45) u.dir = -1;
+            if (dog.position.x < -ORLA_LENGTH * 0.45) u.dir = 1;
+            dog.position.z = u.baseZ + Math.sin(t * 0.7 + u.phase) * 1.5;
+            dog.rotation.y = u.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+            animateSculptedDog(dog, t * u.speed * 2.2 + u.phase, 0.5);
+        }
+        for (const car of cars) {
+            const u = car.userData;
+            car.position.x += u.dir * u.speed * dt;
+            if (car.position.x > ORLA_LENGTH * 0.48) car.position.x = -ORLA_LENGTH * 0.48;
+            if (car.position.x < -ORLA_LENGTH * 0.48) car.position.x = ORLA_LENGTH * 0.48;
+            if (car.userData.lightMat) {
+                car.userData.lightMat.emissiveIntensity = 0.35 + Math.sin(t * 8) * 0.05;
+            }
+        }
         for (const bird of birds) {
             const u = bird.userData;
             const a = t * 0.35 + u.phase;
@@ -174,8 +268,11 @@ export function createLife(quality) {
             if (u.leftWing) u.leftWing.rotation.z = flap;
             if (u.rightWing) u.rightWing.rotation.z = -flap;
         }
+        // Guarda-sóis: leve balanço no vento
+        for (let i = 0; i < umbrellas.length; i++) {
+            umbrellas[i].rotation.z = Math.sin(t * 0.8 + i) * 0.03;
+        }
     }
 
     return { root, update };
 }
-

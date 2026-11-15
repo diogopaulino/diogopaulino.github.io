@@ -298,9 +298,7 @@ export function createOrla(quality) {
     addShrubs(root, Math.floor(quality.palmCount * 0.75));
     addQuiosques(root);
 
-    // Postes de luz curvos ao longo da orla
-    const poleGeo = new THREE.CylinderGeometry(0.07, 0.11, 4.6, 8);
-    const lampGeo = new THREE.SphereGeometry(0.28, 12, 10);
+    // Postes curvos estilo orla (haste + braço + globo)
     const poleMat = metalMaterial(0x2c2e34, { roughness: 0.45, metalness: 0.65 });
     const lampMat = new THREE.MeshStandardMaterial({
         color: 0xfff2c8,
@@ -309,30 +307,35 @@ export function createOrla(quality) {
         roughness: 0.3
     });
     const poles = 28;
-    const poleMesh = new THREE.InstancedMesh(poleGeo, poleMat, poles);
-    const lampMesh = new THREE.InstancedMesh(lampGeo, lampMat, poles);
-    const m = new THREE.Matrix4();
-    const p = new THREE.Vector3();
-    const q = new THREE.Quaternion();
-    const s = new THREE.Vector3(1, 1, 1);
+    const lampGroup = new THREE.Group();
     for (let i = 0; i < poles; i++) {
         const x = -ORLA_LENGTH * 0.48 + i * (ORLA_LENGTH * 0.96 / (poles - 1));
-        p.set(x, 2.3, ZONES.sidewalk + 0.8);
-        m.compose(p, q, s);
-        poleMesh.setMatrixAt(i, m);
-        p.y = 4.6;
-        m.compose(p, q, s);
-        lampMesh.setMatrixAt(i, m);
+        const lamp = new THREE.Group();
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 4.2, 10), poleMat);
+        shaft.position.y = 2.1;
+        shaft.castShadow = true;
+        const armCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 4.15, 0),
+            new THREE.Vector3(0, 4.45, 0.35),
+            new THREE.Vector3(0, 4.35, 0.95)
+        ]);
+        const arm = new THREE.Mesh(
+            new THREE.TubeGeometry(armCurve, 8, 0.045, 6, false),
+            poleMat
+        );
+        const globe = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 12), lampMat);
+        globe.position.set(0, 4.25, 1.05);
+        lamp.add(shaft, arm, globe);
+        lamp.position.set(x, 0, ZONES.sidewalk + 0.8);
+        lampGroup.add(lamp);
     }
-    poleMesh.instanceMatrix.needsUpdate = true;
-    lampMesh.instanceMatrix.needsUpdate = true;
-    root.add(poleMesh, lampMesh);
+    root.add(lampGroup);
 
     return {
         root,
         lampMat,
         setNight(night) {
-            lampMat.emissiveIntensity = night ? 1.6 : 0.25;
+            lampMat.emissiveIntensity = night ? 1.85 : 0.28;
         }
     };
 }

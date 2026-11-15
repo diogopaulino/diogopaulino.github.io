@@ -75,9 +75,9 @@ export function createWater(skyUniforms, quality) {
         uniforms: {
             ...skyUniforms,
             uTime: { value: 0 },
-            uDeep: { value: new THREE.Color(0x0a3a55) },
-            uShallow: { value: new THREE.Color(0x2a8fb8) },
-            uFoam: { value: new THREE.Color(0xe8f4fa) },
+            uDeep: { value: new THREE.Color(0x073248) },
+            uShallow: { value: new THREE.Color(0x2a9ec4) },
+            uFoam: { value: new THREE.Color(0xeef8fc) },
             uSandLine: { value: ZONES.sandOuter }
         },
         vertexShader: /* glsl */ `
@@ -116,12 +116,14 @@ export function createWater(skyUniforms, quality) {
                 float depthFade = smoothstep(uSandLine - 2.0, uSandLine + 35.0, vWorld.z);
                 vec3 water = mix(uShallow, uDeep, depthFade);
                 float sparkle = soFbm(vWorld.xz * 0.08 + uTime * 0.05);
-                water += sparkle * 0.04;
-                vec3 col = mix(water, sky, 0.28 + fres * 0.55);
+                water += sparkle * 0.055;
+                float specular = pow(max(dot(N, normalize(uSunDir + V)), 0.0), 48.0);
+                water += uSunColor * specular * 0.35;
+                vec3 col = mix(water, sky, 0.32 + fres * 0.58);
                 float shore = 1.0 - smoothstep(uSandLine - 1.5, uSandLine + 6.0, vWorld.z);
-                col = mix(col, uFoam, shore * 0.55 * (0.5 + 0.5 * vFoam));
-                col = mix(col, uFoam, vFoam * 0.12 * (1.0 - shore));
-                float alpha = mix(0.92, 0.78, fres);
+                col = mix(col, uFoam, shore * 0.62 * (0.5 + 0.5 * vFoam));
+                col = mix(col, uFoam, vFoam * 0.16 * (1.0 - shore));
+                float alpha = mix(0.94, 0.8, fres);
                 gl_FragColor = vec4(col, alpha);
             }
         `

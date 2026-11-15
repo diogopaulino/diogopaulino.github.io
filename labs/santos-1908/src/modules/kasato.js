@@ -1,22 +1,33 @@
 /**
  * kasato — Kasato Maru (K01–K03).
- * ~123,4 × 15,4 m; 1 chaminé; ponte separada; casco preto com faixa de bojo.
- * Posição animada: mar aberto → atracação no armazém 14 (D06).
+ * Casco com seções densas, deckhouses chanfrados, chaminé, mastros e passageiros
+ * com kimono Meiji no convés (H02).
  */
 
 import * as THREE from 'three';
 import { LAYOUT } from '../config.js';
 import { smoothstep, lerp, seeded } from '../utils.js';
-import { createSculptedHuman, profileTube } from '../../../shared/realism.js';
+import {
+    createSculptedHuman,
+    attachKimono,
+    profileTube,
+    createDeckHouse
+} from '../../../shared/realism.js';
 
 function buildHullGeometry(length, beam) {
+    // Mais estações = silhueta de vapor britânico mais fiel (K02–K03)
     const sections = [
-        { z: -length * 0.50, w: beam * 0.08, deck: 5.2, keel: -2.1 },
-        { z: -length * 0.44, w: beam * 0.78, deck: 5.7, keel: -2.9 },
-        { z: -length * 0.28, w: beam * 0.98, deck: 6.0, keel: -3.2 },
-        { z:  length * 0.22, w: beam,        deck: 6.0, keel: -3.2 },
-        { z:  length * 0.43, w: beam * 0.92, deck: 5.7, keel: -2.8 },
-        { z:  length * 0.50, w: beam * 0.58, deck: 5.25, keel: -2.2 }
+        { z: -length * 0.50, w: beam * 0.06, deck: 5.1, keel: -1.9 },
+        { z: -length * 0.47, w: beam * 0.42, deck: 5.4, keel: -2.5 },
+        { z: -length * 0.42, w: beam * 0.78, deck: 5.7, keel: -2.95 },
+        { z: -length * 0.32, w: beam * 0.95, deck: 5.95, keel: -3.15 },
+        { z: -length * 0.18, w: beam * 0.99, deck: 6.05, keel: -3.25 },
+        { z: 0.0,            w: beam,        deck: 6.1, keel: -3.3 },
+        { z:  length * 0.18, w: beam * 0.99, deck: 6.05, keel: -3.25 },
+        { z:  length * 0.32, w: beam * 0.94, deck: 5.9, keel: -3.05 },
+        { z:  length * 0.42, w: beam * 0.82, deck: 5.65, keel: -2.7 },
+        { z:  length * 0.48, w: beam * 0.55, deck: 5.3, keel: -2.2 },
+        { z:  length * 0.50, w: beam * 0.22, deck: 5.15, keel: -1.85 }
     ];
 
     const positions = [];
@@ -24,16 +35,23 @@ function buildHullGeometry(length, beam) {
 
     for (const section of sections) {
         const half = section.w * 0.5;
+        // Perfil com flare e bilge suave (mais pontos no anel)
         const ring = [
-            [-half * 0.96, section.deck],
-            [-half, 2.4],
-            [-half * 0.78, -0.5],
-            [-half * 0.42, section.keel + 0.35],
+            [-half * 0.94, section.deck],
+            [-half * 0.99, section.deck * 0.72],
+            [-half, 2.55],
+            [-half * 0.92, 0.85],
+            [-half * 0.72, -0.55],
+            [-half * 0.42, section.keel + 0.4],
+            [-half * 0.18, section.keel + 0.12],
             [0, section.keel],
-            [half * 0.42, section.keel + 0.35],
-            [half * 0.78, -0.5],
-            [half, 2.4],
-            [half * 0.96, section.deck]
+            [half * 0.18, section.keel + 0.12],
+            [half * 0.42, section.keel + 0.4],
+            [half * 0.72, -0.55],
+            [half * 0.92, 0.85],
+            [half, 2.55],
+            [half * 0.99, section.deck * 0.72],
+            [half * 0.94, section.deck]
         ];
         rings.push(ring);
         for (const [x, y] of ring) positions.push(x, y, section.z);
@@ -55,7 +73,7 @@ function buildHullGeometry(length, beam) {
                 + rings[section + 1][p][1]
                 + rings[section + 1][p + 1][1]
             ) * 0.25;
-            const target = avgY < 0.5 ? boot : upper;
+            const target = avgY < 0.55 ? boot : upper;
             target.push(a, c, b, b, c, d);
         }
     }
@@ -75,9 +93,9 @@ function makeLifeboat(mats) {
     const hullGeo = profileTube({
         axis: 'z',
         length: 6.4,
-        rings: 10,
-        seg: 12,
-        squashY: 0.58,
+        rings: 12,
+        seg: 14,
+        squashY: 0.55,
         radius: (t) => Math.sin(t * Math.PI) * 0.95
     });
     const hull = new THREE.Mesh(hullGeo, mats.white);
@@ -86,15 +104,21 @@ function makeLifeboat(mats) {
     const cover = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.14, 4.8), mats.deck);
     cover.position.y = 0.32;
     boat.add(cover);
+    // Bancos internos
+    for (const z of [-1.2, 0, 1.2]) {
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.28), mats.wood);
+        seat.position.set(0, 0.12, z);
+        boat.add(seat);
+    }
     return boat;
 }
 
 function makeAnchor(mats) {
     const g = new THREE.Group();
-    const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.9, 8), mats.steel);
+    const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.9, 10), mats.steel);
     g.add(shank);
     const crown = new THREE.Mesh(
-        new THREE.TorusGeometry(0.65, 0.12, 8, 16, Math.PI),
+        new THREE.TorusGeometry(0.65, 0.12, 8, 18, Math.PI),
         mats.steel
     );
     crown.rotation.z = Math.PI;
@@ -121,109 +145,145 @@ function buildKasato(mats, quality) {
     hull.receiveShadow = true;
     g.add(hull);
 
-    // Convés de madeira pranchada
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(B - 0.6, 0.4, L * 0.88), mats.deck);
-    deck.position.y = 6.2;
+    // Convés de madeira — leve camber
+    const deckGeo = new THREE.BoxGeometry(B - 0.5, 0.35, L * 0.88, 1, 1, 8);
+    const dPos = deckGeo.attributes.position;
+    for (let i = 0; i < dPos.count; i++) {
+        const x = dPos.getX(i);
+        const y = dPos.getY(i);
+        const camber = (1 - (x / (B * 0.5)) ** 2) * 0.12;
+        dPos.setY(i, y + camber);
+    }
+    deckGeo.computeVertexNormals();
+    const deck = new THREE.Mesh(deckGeo, mats.deck);
+    deck.position.y = 6.25;
     deck.receiveShadow = true;
     g.add(deck);
 
-    // Castelo de proa e popa elevados
     const forecastle = new THREE.Mesh(new THREE.BoxGeometry(B * 0.68, 1.5, 16), mats.hull);
-    forecastle.position.set(0, 6.9, -L * 0.36);
+    forecastle.position.set(0, 6.95, -L * 0.36);
+    forecastle.castShadow = true;
     g.add(forecastle);
     const foreDeck = new THREE.Mesh(new THREE.BoxGeometry(B * 0.66, 0.22, 15.6), mats.deck);
-    foreDeck.position.set(0, 7.7, -L * 0.36);
+    foreDeck.position.set(0, 7.75, -L * 0.36);
     g.add(foreDeck);
 
-    // Superestrutura central em 2 pavimentos com passadiço
-    const superstructure = new THREE.Mesh(
-        new THREE.BoxGeometry(B * 0.72, 3.2, L * 0.28),
-        mats.white
-    );
-    superstructure.position.set(0, 7.9, 5);
-    superstructure.castShadow = true;
-    g.add(superstructure);
+    // Superestrutura central com deckhouses chanfrados
+    const mid = createDeckHouse({
+        width: B * 0.72,
+        height: 3.2,
+        length: L * 0.28,
+        material: mats.white,
+        glassMaterial: mats.glass
+    });
+    mid.position.set(0, 7.95, 5);
+    g.add(mid);
 
-    const upperDeckHouse = new THREE.Mesh(
-        new THREE.BoxGeometry(B * 0.62, 2.4, L * 0.22),
-        mats.white
-    );
-    upperDeckHouse.position.set(0, 10.6, 5);
-    upperDeckHouse.castShadow = true;
-    g.add(upperDeckHouse);
+    const upper = createDeckHouse({
+        width: B * 0.62,
+        height: 2.4,
+        length: L * 0.22,
+        material: mats.white,
+        glassMaterial: mats.glass
+    });
+    upper.position.set(0, 10.7, 5);
+    g.add(upper);
 
-    // Botes salva-vidas em turcos laterais
     const boatTemplate = makeLifeboat(mats);
     for (const side of [-1, 1]) {
-        for (const z of [-4, 6, 16]) {
+        for (const z of [-8, -1, 6, 14]) {
             const b = boatTemplate.clone();
-            b.position.set(side * (B * 0.41), 11.4, z);
-            g.add(b);
+            b.position.set(side * (B * 0.42), 11.5, z);
+            // Turcos
+            const davit = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 2.4, 8),
+                mats.steel
+            );
+            davit.position.set(side * (B * 0.46), 12.4, z);
+            davit.rotation.z = side * 0.35;
+            g.add(b, davit);
         }
     }
 
-    // Ventiladores de convés (cowl ventilators clássicos de 1908)
-    for (const [vx, vz] of [[-2.4, 0], [2.4, 0], [-2.2, 13], [2.2, 13]]) {
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 2.1, 10), mats.white);
-        stem.position.set(vx, 12.6, vz);
-        const cowl = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), mats.funnelBand);
-        cowl.scale.set(1, 0.9, 1.35);
-        cowl.position.set(vx, 13.7, vz - 0.15);
+    for (const [vx, vz] of [[-2.4, -2], [2.4, -2], [-2.2, 12], [2.2, 12], [0, 18]]) {
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 2.1, 12), mats.white);
+        stem.position.set(vx, 12.7, vz);
+        const cowl = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 12), mats.funnelBand);
+        cowl.scale.set(1, 0.9, 1.4);
+        cowl.position.set(vx, 13.8, vz - 0.18);
         g.add(stem, cowl);
     }
 
-    // Ponte de comando separada (K03) com janelas do passadiço
-    const bridge = new THREE.Mesh(
-        new THREE.BoxGeometry(B * 0.85, 3.2, 8),
-        mats.white
-    );
-    bridge.position.set(0, 11.5, -18);
-    bridge.castShadow = true;
+    const bridge = createDeckHouse({
+        width: B * 0.88,
+        height: 3.1,
+        length: 8.2,
+        material: mats.white,
+        glassMaterial: mats.glass
+    });
+    bridge.position.set(0, 11.55, -18);
     g.add(bridge);
-    const bridgeGlass = new THREE.Mesh(
-        new THREE.BoxGeometry(B * 0.78, 0.95, 0.25),
-        mats.glass
-    );
-    bridgeGlass.position.set(0, 12.1, -22.05);
-    g.add(bridgeGlass);
-    const bridgeRoof = new THREE.Mesh(new THREE.BoxGeometry(B * 0.9, 0.35, 8.5), mats.deck);
-    bridgeRoof.position.set(0, 13.2, -18);
+
+    const bridgeRoof = new THREE.Mesh(new THREE.BoxGeometry(B * 0.92, 0.32, 8.6), mats.deck);
+    bridgeRoof.position.set(0, 13.25, -18);
     g.add(bridgeRoof);
 
-    // Chaminé única com colar e apito a vapor
-    const funnel = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.55, 12, 18), mats.funnel);
-    funnel.position.set(0, 14, 8);
+    // Asas do passadiço
+    for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(
+            new THREE.BoxGeometry(1.8, 0.18, 3.2),
+            mats.deck
+        );
+        wing.position.set(sx * B * 0.52, 12.4, -18);
+        g.add(wing);
+        const wingRail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.7, 3.0),
+            mats.steel
+        );
+        wingRail.position.set(sx * B * 0.58, 12.8, -18);
+        g.add(wingRail);
+    }
+
+    const funnel = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.55, 12.5, 24), mats.funnel);
+    funnel.position.set(0, 14.2, 8);
     funnel.castShadow = true;
     g.add(funnel);
-    for (const y of [15.2, 16.8]) {
-        const band = new THREE.Mesh(new THREE.CylinderGeometry(2.36, 2.38, 0.72, 18), mats.white);
+    for (const y of [15.3, 16.9]) {
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(2.32, 2.38, 0.7, 24), mats.white);
         band.position.set(0, y, 8);
         g.add(band);
     }
     const whistle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 8), mats.funnelBand);
-    whistle.position.set(0, 16.2, 5.55);
+    whistle.position.set(0, 16.4, 5.5);
     g.add(whistle);
 
-    // Mastros + paus de carga (derricks)
+    // Topo da chaminé (coroa)
+    const funnelCap = new THREE.Mesh(
+        new THREE.TorusGeometry(2.15, 0.12, 8, 24),
+        mats.steel
+    );
+    funnelCap.rotation.x = Math.PI / 2;
+    funnelCap.position.set(0, 20.4, 8);
+    g.add(funnelCap);
+
     for (const [z, boomDir] of [[-42, 1], [35, -1]]) {
-        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, 23, 10), mats.wood);
-        mast.position.set(0, 17.5, z);
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.42, 24, 12), mats.wood);
+        mast.position.set(0, 18, z);
         mast.castShadow = true;
         g.add(mast);
-        const nest = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.55, 0.9, 10), mats.wood);
-        nest.position.set(0, 23, z);
+        const nest = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.55, 0.95, 12), mats.wood);
+        nest.position.set(0, 24, z);
         g.add(nest);
-        for (const sx of [-0.6, 0.6]) {
-            const derrick = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 11, 8), mats.wood);
-            derrick.position.set(sx, 11.2, z + boomDir * 4.2);
-            derrick.rotation.x = boomDir * 0.92;
+        for (const sx of [-0.65, 0.65]) {
+            const derrick = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 12, 8), mats.wood);
+            derrick.position.set(sx, 11.4, z + boomDir * 4.4);
+            derrick.rotation.x = boomDir * 0.95;
             derrick.rotation.z = -sx * 0.18;
             g.add(derrick);
         }
     }
 
-    // Estais e cabos dos mastros
-    const riggingMat = new THREE.LineBasicMaterial({ color: 0x302c26, transparent: true, opacity: 0.72 });
+    const riggingMat = new THREE.LineBasicMaterial({ color: 0x302c26, transparent: true, opacity: 0.75 });
     const addRigging = (from, to) => {
         const geo = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(...from),
@@ -231,79 +291,89 @@ function buildKasato(mats, quality) {
         ]);
         g.add(new THREE.Line(geo, riggingMat));
     };
-    addRigging([0, 28, -42], [-B * 0.46, 6.7, -57]);
-    addRigging([0, 28, -42], [ B * 0.46, 6.7, -57]);
-    addRigging([0, 28, -42], [0, 13.2, -18]);
-    addRigging([0, 28,  35], [-B * 0.46, 6.7,  52]);
-    addRigging([0, 28,  35], [ B * 0.46, 6.7,  52]);
-    addRigging([0, 28,  35], [0, 11.8, 8]);
+    addRigging([0, 29, -42], [-B * 0.46, 6.7, -57]);
+    addRigging([0, 29, -42], [B * 0.46, 6.7, -57]);
+    addRigging([0, 29, -42], [0, 13.2, -18]);
+    addRigging([0, 29, 35], [-B * 0.46, 6.7, 52]);
+    addRigging([0, 29, 35], [B * 0.46, 6.7, 52]);
+    addRigging([0, 29, 35], [0, 12.0, 8]);
 
-    // Amuradas laterais
     for (const side of [-1, 1]) {
-        const r = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.95, L * 0.85), mats.steel);
-        r.position.set(side * B * 0.48, 6.7, 0);
+        const r = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.95, L * 0.85), mats.steel);
+        r.position.set(side * B * 0.48, 6.75, 0);
         g.add(r);
-        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.1, L * 0.85), mats.wood);
-        cap.position.set(side * B * 0.48, 7.2, 0);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, L * 0.85), mats.wood);
+        cap.position.set(side * B * 0.48, 7.25, 0);
         g.add(cap);
+        // Stanchions
+        for (let i = 0; i < 18; i++) {
+            const st = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.035, 0.85, 6),
+                mats.steel
+            );
+            st.position.set(side * B * 0.48, 6.7, -L * 0.4 + i * (L * 0.8 / 17));
+            g.add(st);
+        }
     }
 
-    // Vigias em lote
-    const portholeGeo = new THREE.CircleGeometry(0.19, 12);
-    const portholes = new THREE.InstancedMesh(portholeGeo, mats.funnelBand, 40);
+    const portholeGeo = new THREE.CircleGeometry(0.2, 14);
+    const portholes = new THREE.InstancedMesh(portholeGeo, mats.funnelBand, 48);
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3(1, 1, 1);
     let pi = 0;
     for (const side of [-1, 1]) {
         quaternion.setFromEuler(new THREE.Euler(0, side * Math.PI / 2, 0));
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 12; i++) {
             matrix.compose(
-                new THREE.Vector3(side * B * 0.365, 8.6, -7 + i * 2.6),
+                new THREE.Vector3(side * B * 0.36, 8.7, -10 + i * 2.5),
                 quaternion,
                 scale
             );
             portholes.setMatrixAt(pi++, matrix);
         }
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 12; i++) {
             matrix.compose(
-                new THREE.Vector3(side * B * 0.49, 4.2, -28 + i * 6.0),
+                new THREE.Vector3(side * B * 0.495, 4.15, -32 + i * 5.5),
                 quaternion,
                 scale
             );
             portholes.setMatrixAt(pi++, matrix);
         }
     }
+    portholes.count = pi;
     portholes.instanceMatrix.needsUpdate = true;
     g.add(portholes);
 
-    // Imigrantes esculpidos no convés olhando para o cais (H02)
-    const nPax = quality.id === 'low' ? 12 : 26;
+    // Imigrantes no convés — kimono / viagem Meiji (H02)
+    const nPax = quality.id === 'low' ? 14 : quality.id === 'medium' ? 28 : 40;
     const paxRandom = seeded(0x19080618);
-    const paxShirts = [0xd8d0c0, 0x2c3440, 0x4a525d, 0xc8bfb0, 0x6b3a32];
+    const kimonoColors = [0x2c3d5c, 0x4a2c28, 0x3a4a3c, 0x5c4a32, 0x2a2e38, 0x6b3a32];
+    const sashColors = [0xc45c3a, 0xd8c8a0, 0x8a3030, 0x2c4058];
     for (let i = 0; i < nPax; i++) {
+        const isChild = i % 6 === 0;
         const p = createSculptedHuman({
-            style: i % 5 === 0 ? 'child' : 'human',
+            style: isChild ? 'child' : 'human',
             skin: 0xd8b490,
             hair: 0x1c1612,
-            shirt: paxShirts[i % paxShirts.length],
+            shirt: kimonoColors[i % kimonoColors.length],
             pants: 0x242830,
-            hat: i % 2 === 0 ? 0x2c2824 : null,
+            hat: null,
             detailedFace: false,
-            scale: i % 5 === 0 ? 0.78 : 1.0
+            scale: isChild ? 0.72 : 1.0
         });
+        if (i % 3 !== 2) {
+            attachKimono(p, kimonoColors[i % kimonoColors.length], sashColors[i % sashColors.length]);
+        }
         const atRail = i % 3 !== 0;
-        const px = atRail ? (B * 0.41) : (paxRandom() - 0.5) * B * 0.52;
-        p.position.set(
-            px,
-            6.4,
-            -32 + paxRandom() * 62
-        );
-        p.rotation.y = Math.PI * 0.5 + (paxRandom() - 0.5) * 0.45;
+        const px = atRail
+            ? (i % 2 === 0 ? 1 : -1) * (B * 0.4)
+            : (paxRandom() - 0.5) * B * 0.45;
+        p.position.set(px, 6.45, -36 + paxRandom() * 68);
+        p.rotation.y = (px > 0 ? Math.PI * 0.5 : -Math.PI * 0.5) + (paxRandom() - 0.5) * 0.35;
         g.add(p);
     }
 
-    // Âncoras esculpidas de proa
     for (const sx of [-1, 1]) {
         const anchor = makeAnchor(mats);
         anchor.position.set(sx * B * 0.34, 4.2, -L * 0.44);
@@ -311,16 +381,41 @@ function buildKasato(mats, quality) {
         g.add(anchor);
     }
 
+    // Nome no casco (placa tipográfica)
+    const nameCanvas = document.createElement('canvas');
+    nameCanvas.width = 512;
+    nameCanvas.height = 64;
+    const nctx = nameCanvas.getContext('2d');
+    nctx.fillStyle = 'rgba(0,0,0,0)';
+    nctx.clearRect(0, 0, 512, 64);
+    nctx.fillStyle = '#e8e0d0';
+    nctx.font = 'bold 36px Georgia, serif';
+    nctx.textAlign = 'center';
+    nctx.textBaseline = 'middle';
+    nctx.fillText('KASATO MARU', 256, 32);
+    const nameTex = new THREE.CanvasTexture(nameCanvas);
+    nameTex.colorSpace = THREE.SRGBColorSpace;
+    const namePlate = new THREE.Mesh(
+        new THREE.PlaneGeometry(14, 1.6),
+        new THREE.MeshStandardMaterial({
+            map: nameTex,
+            transparent: true,
+            roughness: 0.55,
+            metalness: 0.1
+        })
+    );
+    namePlate.position.set(B * 0.505, 3.6, -8);
+    namePlate.rotation.y = Math.PI / 2;
+    g.add(namePlate);
+
     g.userData.funnel = funnel;
     g.userData.length = L;
     return g;
 }
 
-/** Posição do navio ao longo do filme. */
 export function kasatoPose(t) {
     const dockZ = LAYOUT.dockZ;
     const startZ = 280;
-    // Aproxima até ~t=110, depois para
     const u = smoothstep(0, 110, t);
     const z = lerp(startZ, dockZ, u);
     const x = lerp(-8, LAYOUT.quayX - 12, smoothstep(40, 105, t));
@@ -335,11 +430,11 @@ export function create(ctx) {
     scene.add(ship);
 
     const wake = new THREE.Mesh(
-        new THREE.PlaneGeometry(8, 40),
+        new THREE.PlaneGeometry(10, 48),
         new THREE.MeshBasicMaterial({
             color: '#d0ddd8',
             transparent: true,
-            opacity: 0.25,
+            opacity: 0.28,
             depthWrite: false,
             side: THREE.DoubleSide
         })
@@ -356,8 +451,8 @@ export function create(ctx) {
             ship.rotation.y = p.yaw;
             const moving = t < 115;
             wake.visible = moving;
-            wake.position.set(p.x, 0.15, p.z + 30);
-            wake.material.opacity = moving ? 0.22 * (1 - smoothstep(90, 115, t)) : 0;
+            wake.position.set(p.x, 0.15, p.z + 32);
+            wake.material.opacity = moving ? 0.26 * (1 - smoothstep(90, 115, t)) : 0;
         },
         dispose() {
             scene.remove(ship);

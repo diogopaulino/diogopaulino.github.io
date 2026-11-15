@@ -182,7 +182,7 @@ class Santos1908 {
 
             this.audio = audioMod.create(ctx);
             this.cine = cameraMod.create(ctx);
-            this.post = postMod.create(ctx);
+            this.post = await postMod.create(ctx);
             this.modules.push({ name: 'audio', update: (t, dt) => this.audio.update(t, dt, chapterAt(t).id) });
             this.modules.push({ name: 'camera', update: (_t, dt) => this.cine.update(dt) });
 

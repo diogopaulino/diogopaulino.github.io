@@ -150,10 +150,10 @@ export const QUALITY = {
         pixelRatio: 1,
         antialias: false,
         shadows: false,
-        buildingCount: 48,
+        buildingCount: 52,
         palmCount: 120,
-        peopleCount: 18,
-        waterSeg: 64,
+        peopleCount: 20,
+        waterSeg: 72,
         fogFar: 280
     },
     medium: {
@@ -161,22 +161,22 @@ export const QUALITY = {
         pixelRatio: 1.5,
         antialias: true,
         shadows: true,
-        buildingCount: 90,
-        palmCount: 220,
-        peopleCount: 40,
-        waterSeg: 96,
-        fogFar: 360
+        buildingCount: 100,
+        palmCount: 240,
+        peopleCount: 44,
+        waterSeg: 110,
+        fogFar: 380
     },
     high: {
         id: 'high',
         pixelRatio: 2,
         antialias: true,
         shadows: true,
-        buildingCount: 140,
-        palmCount: 360,
-        peopleCount: 70,
-        waterSeg: 140,
-        fogFar: 420
+        buildingCount: 150,
+        palmCount: 380,
+        peopleCount: 72,
+        waterSeg: 160,
+        fogFar: 450
     }
 };
 

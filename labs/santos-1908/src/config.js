@@ -41,19 +41,19 @@ export const QUALITY = {
     },
     high: {
         id: 'high',
-        pr: 1.5,
+        pr: 1.75,
         antialias: true,
         bloom: true,
         shadows: true,
         shadowMap: 4096,
-        waterSeg: 128,
+        waterSeg: 144,
         warehouses: 14,
-        workers: 52,
+        workers: 56,
         carts: 10,
         ships: 4,
-        birds: 22,
-        steam: 110,
-        trees: 60
+        birds: 24,
+        steam: 120,
+        trees: 64
     }
 };
 

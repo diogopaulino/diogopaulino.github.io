@@ -104,26 +104,54 @@ function makeAquarium() {
         emissiveIntensity: 0.28
     });
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(14, 6.8, 10), wallMat);
+    // Volume principal com cantos suaves (não só caixa crua)
+    const bodyGeo = new THREE.BoxGeometry(14, 6.8, 10, 1, 1, 1);
+    const bodyPos = bodyGeo.attributes.position;
+    for (let i = 0; i < bodyPos.count; i++) {
+        const x = bodyPos.getX(i);
+        const y = bodyPos.getY(i);
+        const z = bodyPos.getZ(i);
+        const edge = Math.max(Math.abs(x) / 7, Math.abs(z) / 5);
+        const pull = edge > 0.92 ? 0.96 : 1;
+        bodyPos.setXYZ(i, x * pull, y, z * pull);
+    }
+    bodyGeo.computeVertexNormals();
+    const body = new THREE.Mesh(bodyGeo, wallMat);
     body.position.y = 3.4;
+    body.castShadow = true;
 
-    // Cúpula central aquática + marquise curva
     const dome = new THREE.Mesh(
-        new THREE.SphereGeometry(4.2, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        new THREE.SphereGeometry(4.2, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
         glassMat
     );
     dome.position.set(0, 6.8, 0);
+
+    // Anel estrutural da cúpula
+    const domeRing = new THREE.Mesh(
+        new THREE.TorusGeometry(4.15, 0.18, 10, 36),
+        trimMat
+    );
+    domeRing.rotation.x = Math.PI / 2;
+    domeRing.position.set(0, 6.85, 0);
 
     const glass = new THREE.Mesh(new THREE.BoxGeometry(9.6, 4.4, 0.32), glassMat);
     glass.position.set(0, 3.3, 5.05);
 
     const roof = new THREE.Mesh(new THREE.BoxGeometry(15.2, 0.55, 11.2), trimMat);
     roof.position.y = 7.05;
+    roof.castShadow = true;
 
-    // Escotilhas náuticas laterais
+    // Entrada com marquises curvas
+    const canopy = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.2, 3.4, 0.35, 20, 1, false, 0, Math.PI),
+        trimMat
+    );
+    canopy.rotation.z = Math.PI / 2;
+    canopy.position.set(0, 5.4, 5.6);
+
     const portholeGeo = new THREE.TorusGeometry(0.65, 0.1, 8, 18);
     const portholeGlassGeo = new THREE.CircleGeometry(0.6, 16);
-    for (const x of [-4.5, 4.5]) {
+    for (const x of [-4.5, -1.5, 1.5, 4.5]) {
         const ring = new THREE.Mesh(portholeGeo, trimMat);
         ring.position.set(x, 4.8, 5.06);
         const pane = new THREE.Mesh(portholeGlassGeo, glassMat);
@@ -131,7 +159,17 @@ function makeAquarium() {
         g.add(ring, pane);
     }
 
-    g.add(body, dome, glass, roof);
+    // Escadaria frontal
+    for (let s = 0; s < 4; s++) {
+        const step = new THREE.Mesh(
+            new THREE.BoxGeometry(8 - s * 0.4, 0.22, 0.55),
+            plasterMaterial(0xc8d0d4, { roughness: 0.7 })
+        );
+        step.position.set(0, 0.12 + s * 0.22, 5.4 + s * 0.4);
+        g.add(step);
+    }
+
+    g.add(body, dome, domeRing, glass, roof, canopy);
     return g;
 }
 

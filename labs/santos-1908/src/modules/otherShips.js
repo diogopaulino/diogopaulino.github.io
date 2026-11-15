@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { LAYOUT } from '../config.js';
 import { seeded } from '../utils.js';
-import { profileTube } from '../../../shared/realism.js';
+import { profileTube, createDeckHouse } from '../../../shared/realism.js';
 
 function makeShipHull(L, B, H) {
     const geo = profileTube({
@@ -48,12 +48,23 @@ function makeFreighter(mats, scale = 1) {
     deck.position.y = 4.55 * scale;
     g.add(deck);
 
-    const mid = new THREE.Mesh(new THREE.BoxGeometry(B * 0.58, 3.6 * scale, L * 0.24), mats.white);
+    const mid = createDeckHouse({
+        width: B * 0.58,
+        height: 3.6 * scale,
+        length: L * 0.24,
+        material: mats.white,
+        glassMaterial: mats.glass
+    });
     mid.position.set(0, 6.4 * scale, 0);
-    mid.castShadow = true;
     g.add(mid);
 
-    const bridge = new THREE.Mesh(new THREE.BoxGeometry(B * 0.66, 2.1 * scale, 4.5 * scale), mats.white);
+    const bridge = createDeckHouse({
+        width: B * 0.66,
+        height: 2.1 * scale,
+        length: 4.5 * scale,
+        material: mats.white,
+        glassMaterial: mats.glass
+    });
     bridge.position.set(0, 8.6 * scale, -L * 0.06);
     g.add(bridge);
 

@@ -1391,3 +1391,461 @@ export function animateSculptedHuman(human, phase, stride = 0.55) {
     rig.torso.position.y = 0.78 + Math.abs(c) * 0.025;
 }
 
+/* --- Props e personagens avançados (orla / porto 1908) ------------------- */
+
+/** Kimono Meiji simplificado — envelopa o torso já esculpido. */
+export function attachKimono(human, color = 0x2c3d5c, sash = 0xc45c3a) {
+    if (!human?.userData?.rig) return human;
+    const robeMat = clothMaterial(color, { roughness: 0.8 });
+    const sashMat = clothMaterial(sash, { roughness: 0.72 });
+    const robe = new THREE.Mesh(
+        cachedGeo('kimonoRobe', () => {
+            const g = new THREE.CylinderGeometry(0.28, 0.34, 0.95, 14, 1, true);
+            g.translate(0, -0.2, 0);
+            return g;
+        }),
+        robeMat
+    );
+    robe.position.y = 1.05;
+    robe.castShadow = true;
+    const collar = new THREE.Mesh(
+        cachedGeo('kimonoCollar', () => new THREE.TorusGeometry(0.16, 0.035, 8, 18, Math.PI * 1.2)),
+        robeMat
+    );
+    collar.rotation.x = Math.PI / 2;
+    collar.position.set(0, 1.42, 0.02);
+    const obi = new THREE.Mesh(
+        cachedGeo('kimonoObi', () => new THREE.TorusGeometry(0.24, 0.055, 8, 20)),
+        sashMat
+    );
+    obi.rotation.x = Math.PI / 2;
+    obi.position.y = 0.92;
+    human.add(robe, collar, obi);
+    human.userData.kimono = true;
+    return human;
+}
+
+/** Cão esculpido (anatomia canina do shared). */
+export function createSculptedDog({
+    coat = 0xc4a06a,
+    style = 'dog',
+    scale = 1
+} = {}) {
+    const root = new THREE.Group();
+    const fur = new THREE.MeshPhysicalMaterial({
+        color: coat,
+        roughness: 0.72,
+        sheen: 0.35,
+        sheenColor: new THREE.Color(coat).lerp(new THREE.Color(0xffffff), 0.35),
+        sheenRoughness: 0.55
+    });
+    const torso = new THREE.Mesh(canineTorsoGeometry({ length: 0.72, girth: 0.16, chest: 0.05 }), fur);
+    torso.position.set(0, 0.32, 0);
+    torso.castShadow = true;
+    root.add(torso);
+
+    const head = new THREE.Mesh(canineHeadGeometry({ radius: 0.13, style }), fur);
+    head.position.set(0, 0.42, 0.38);
+    head.castShadow = true;
+    root.add(head);
+
+    const earGeo = earBladeGeometry({ height: 0.12, width: 0.07, thickness: 0.02 });
+    for (const side of [-1, 1]) {
+        const ear = new THREE.Mesh(earGeo, fur);
+        ear.position.set(side * 0.08, 0.52, 0.32);
+        ear.rotation.z = side * 0.35;
+        root.add(ear);
+    }
+
+    const legGeo = limbGeometry({ length: 0.28, r0: 0.035, r1: 0.022, bulge: 0.01, pinch: 0.2, seg: 8, rings: 6 });
+    const legs = [];
+    for (const [x, z] of [[-0.08, 0.18], [0.08, 0.18], [-0.08, -0.22], [0.08, -0.22]]) {
+        const leg = new THREE.Group();
+        leg.position.set(x, 0.28, z);
+        const mesh = new THREE.Mesh(legGeo, fur);
+        mesh.castShadow = true;
+        leg.add(mesh);
+        root.add(leg);
+        legs.push(leg);
+    }
+
+    const tail = new THREE.Mesh(tailGeometry({ length: 0.28, r0: 0.04, r1: 0.015, fluff: 0.02 }), fur);
+    tail.position.set(0, 0.38, -0.38);
+    tail.rotation.x = 0.55;
+    root.add(tail);
+
+    root.scale.setScalar(scale);
+    root.userData.rig = { legs, tail, head };
+    return root;
+}
+
+export function animateSculptedDog(dog, phase, stride = 0.45) {
+    const rig = dog?.userData?.rig;
+    if (!rig) return;
+    const s = Math.sin(phase) * stride;
+    rig.legs[0].rotation.x = s;
+    rig.legs[1].rotation.x = -s;
+    rig.legs[2].rotation.x = -s;
+    rig.legs[3].rotation.x = s;
+    if (rig.tail) rig.tail.rotation.y = Math.sin(phase * 1.4) * 0.35;
+}
+
+/** Cavalo de carroça (1908) — silhueta de trabalho, não Pegasus. */
+export function createSculptedHorse({ coat = 0x4a3424, scale = 1 } = {}) {
+    const root = new THREE.Group();
+    const hide = new THREE.MeshPhysicalMaterial({
+        color: coat,
+        roughness: 0.7,
+        sheen: 0.2,
+        sheenColor: 0xc8a888
+    });
+    const mane = hairMaterial(0x1c1410);
+
+    const body = new THREE.Mesh(canineTorsoGeometry({ length: 1.55, girth: 0.42, chest: 0.14 }), hide);
+    body.position.set(0, 1.05, 0);
+    body.castShadow = true;
+    root.add(body);
+
+    const neck = new THREE.Mesh(
+        cachedGeo('horseNeck', () => profileTube({
+            axis: 'z',
+            length: 0.7,
+            rings: 8,
+            seg: 12,
+            squashY: 0.85,
+            radius: (t) => 0.16 - t * 0.04
+        })),
+        hide
+    );
+    neck.position.set(0, 1.45, 0.72);
+    neck.rotation.x = -0.55;
+    root.add(neck);
+
+    const head = new THREE.Mesh(canineHeadGeometry({ radius: 0.22, style: 'dog' }), hide);
+    head.position.set(0, 1.72, 1.15);
+    head.scale.set(0.85, 0.9, 1.25);
+    head.castShadow = true;
+    root.add(head);
+
+    const maneMesh = new THREE.Mesh(
+        cachedGeo('horseMane', () => new THREE.BoxGeometry(0.08, 0.35, 0.55)),
+        mane
+    );
+    maneMesh.position.set(0, 1.62, 0.55);
+    root.add(maneMesh);
+
+    const legGeo = limbGeometry({ length: 0.95, r0: 0.08, r1: 0.045, bulge: 0.02, pinch: 0.35, seg: 10, rings: 8 });
+    const hoofMat = leatherMaterial(0x1a1210);
+    const legs = [];
+    for (const [x, z] of [[-0.18, 0.42], [0.18, 0.42], [-0.2, -0.48], [0.2, -0.48]]) {
+        const leg = new THREE.Group();
+        leg.position.set(x, 0.95, z);
+        const mesh = new THREE.Mesh(legGeo, hide);
+        mesh.castShadow = true;
+        const hoof = new THREE.Mesh(
+            cachedGeo('horseHoof', () => new THREE.CylinderGeometry(0.05, 0.055, 0.08, 8)),
+            hoofMat
+        );
+        hoof.position.y = -0.95;
+        leg.add(mesh, hoof);
+        root.add(leg);
+        legs.push(leg);
+    }
+
+    const tail = new THREE.Mesh(tailGeometry({ length: 0.7, r0: 0.08, r1: 0.03, fluff: 0.05 }), mane);
+    tail.position.set(0, 1.2, -0.85);
+    tail.rotation.x = 0.4;
+    root.add(tail);
+
+    root.scale.setScalar(scale);
+    root.userData.rig = { legs, head, neck };
+    return root;
+}
+
+export function animateSculptedHorse(horse, phase, stride = 0.35) {
+    const rig = horse?.userData?.rig;
+    if (!rig) return;
+    const s = Math.sin(phase) * stride;
+    rig.legs[0].rotation.x = s;
+    rig.legs[1].rotation.x = -s * 0.9;
+    rig.legs[2].rotation.x = -s;
+    rig.legs[3].rotation.x = s * 0.9;
+    if (rig.head) rig.head.rotation.x = Math.sin(phase * 0.5) * 0.04;
+}
+
+/** Sedã contemporâneo da orla (lataria + vidro + rodas). */
+export function createBeachCar({
+    body = 0xc45c3a,
+    cabin = 0x1e2830,
+    scale = 1
+} = {}) {
+    const root = new THREE.Group();
+    const paint = new THREE.MeshPhysicalMaterial({
+        color: body,
+        roughness: 0.28,
+        metalness: 0.55,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.18
+    });
+    const glass = new THREE.MeshPhysicalMaterial({
+        color: cabin,
+        roughness: 0.08,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.72,
+        transmission: 0.35
+    });
+    const rubber = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: 0.9 });
+
+    const chassis = new THREE.Mesh(
+        cachedGeo('carBody', () => {
+            const g = new THREE.BoxGeometry(1.85, 0.55, 4.2);
+            const pos = g.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i);
+                const z = pos.getZ(i);
+                const taper = 1 - Math.max(0, Math.abs(z) - 1.6) * 0.08;
+                const roofCut = y > 0.15 && Math.abs(z) < 1.1 ? 0.92 : 1;
+                pos.setXYZ(i, x * taper * roofCut, y, z);
+            }
+            g.computeVertexNormals();
+            return g;
+        }),
+        paint
+    );
+    chassis.position.y = 0.55;
+    chassis.castShadow = true;
+    root.add(chassis);
+
+    const cabinMesh = new THREE.Mesh(
+        cachedGeo('carCabin', () => {
+            const g = new THREE.BoxGeometry(1.65, 0.55, 2.1);
+            const pos = g.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const z = pos.getZ(i);
+                const y = pos.getY(i);
+                if (y > 0 && z > 0.4) pos.setZ(i, z * 0.82);
+                if (y > 0 && z < -0.5) pos.setZ(i, z * 0.88);
+            }
+            g.computeVertexNormals();
+            return g;
+        }),
+        glass
+    );
+    cabinMesh.position.set(0, 1.05, -0.15);
+    root.add(cabinMesh);
+
+    const wheelGeo = cachedGeo('carWheel', () => {
+        const t = new THREE.TorusGeometry(0.32, 0.1, 10, 18);
+        t.rotateY(Math.PI / 2);
+        return t;
+    });
+    for (const [x, z] of [[-0.85, 1.25], [0.85, 1.25], [-0.85, -1.3], [0.85, -1.3]]) {
+        const w = new THREE.Mesh(wheelGeo, rubber);
+        w.position.set(x, 0.32, z);
+        w.castShadow = true;
+        root.add(w);
+    }
+
+    const lightMat = new THREE.MeshStandardMaterial({
+        color: 0xfff2c8,
+        emissive: 0xffd27a,
+        emissiveIntensity: 0.4
+    });
+    for (const x of [-0.55, 0.55]) {
+        const light = new THREE.Mesh(
+            cachedGeo('carLight', () => new THREE.SphereGeometry(0.1, 10, 8)),
+            lightMat
+        );
+        light.position.set(x, 0.55, 2.05);
+        light.scale.set(1.2, 0.7, 0.5);
+        root.add(light);
+    }
+
+    root.scale.setScalar(scale);
+    root.userData.lightMat = lightMat;
+    return root;
+}
+
+/** Guarda-sol de praia com mastro e tecido cônico. */
+export function createBeachUmbrella({
+    canopy = 0xc43c28,
+    pole = 0xe8dfca,
+    scale = 1
+} = {}) {
+    const root = new THREE.Group();
+    const poleMesh = new THREE.Mesh(
+        cachedGeo('umbPole', () => new THREE.CylinderGeometry(0.035, 0.045, 2.4, 8)),
+        woodMaterial(pole, { roughness: 0.7 })
+    );
+    poleMesh.position.y = 1.2;
+    root.add(poleMesh);
+
+    const cloth = new THREE.Mesh(
+        cachedGeo('umbCanopy', () => {
+            const g = new THREE.ConeGeometry(1.35, 0.55, 12, 1, true);
+            const pos = g.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const y = pos.getY(i);
+                if (y < 0) {
+                    const x = pos.getX(i);
+                    const z = pos.getZ(i);
+                    const scallop = 1 + 0.06 * Math.sin(Math.atan2(z, x) * 6);
+                    pos.setXYZ(i, x * scallop, y, z * scallop);
+                }
+            }
+            g.computeVertexNormals();
+            return g;
+        }),
+        clothMaterial(canopy, { roughness: 0.75 })
+    );
+    cloth.position.y = 2.25;
+    cloth.castShadow = true;
+    root.add(cloth);
+    root.scale.setScalar(scale);
+    return root;
+}
+
+/**
+ * Torre residencial da orla com lajes, sacadas e caixa d'água —
+ * tipologias típicas do skyline de Santos (não só um cubo texturizado).
+ */
+export function createApartmentTower({
+    width = 8,
+    depth = 7,
+    floors = 12,
+    tint = 0xe8e4dc,
+    detailed = true
+} = {}) {
+    const root = new THREE.Group();
+    const floorH = 2.85;
+    const h = floors * floorH;
+    const plaster = plasterMaterial(tint, { roughness: 0.62, repeat: 2 });
+    const glass = new THREE.MeshPhysicalMaterial({
+        color: 0x6aa0b8,
+        roughness: 0.12,
+        metalness: 0.25,
+        transparent: true,
+        opacity: 0.78,
+        clearcoat: 0.7
+    });
+    const rail = metalMaterial(0xd8dee4, { roughness: 0.3, metalness: 0.75 });
+    const roofMat = plasterMaterial(0x9aa0a6, { roughness: 0.75, repeat: 1 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(width, h, depth), plaster);
+    body.position.y = h * 0.5;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    root.add(body);
+
+    if (detailed) {
+        const slabGeo = new THREE.BoxGeometry(width + 0.55, 0.12, depth + 0.55);
+        const railGeo = new THREE.BoxGeometry(width * 0.92, 0.08, 0.05);
+        for (let f = 1; f < floors; f++) {
+            const y = f * floorH;
+            const slab = new THREE.Mesh(slabGeo, plaster);
+            slab.position.y = y;
+            slab.castShadow = true;
+            root.add(slab);
+
+            const balcony = new THREE.Mesh(
+                new THREE.BoxGeometry(width * 0.9, 0.08, 0.85),
+                plaster
+            );
+            balcony.position.set(0, y + 0.05, depth * 0.5 + 0.35);
+            root.add(balcony);
+
+            const glassRail = new THREE.Mesh(railGeo, glass);
+            glassRail.position.set(0, y + 0.55, depth * 0.5 + 0.72);
+            root.add(glassRail);
+
+            // Faixa de janelas
+            if (f % 1 === 0) {
+                const pane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(width * 0.78, floorH * 0.55),
+                    glass
+                );
+                pane.position.set(0, y + floorH * 0.45, depth * 0.501);
+                root.add(pane);
+            }
+        }
+
+        // Caixa d'água / casa de máquinas no terraço
+        const mech = new THREE.Mesh(
+            new THREE.BoxGeometry(width * 0.35, 2.2, depth * 0.4),
+            roofMat
+        );
+        mech.position.set(-width * 0.15, h + 1.1, 0);
+        mech.castShadow = true;
+        root.add(mech);
+        const tank = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7, 0.75, 1.4, 12),
+            metalMaterial(0xb8c0c6, { roughness: 0.4, metalness: 0.55 })
+        );
+        tank.position.set(width * 0.22, h + 0.9, depth * 0.1);
+        root.add(tank);
+    } else {
+        // LOD longe: só cornija e terraço
+        const cornice = new THREE.Mesh(
+            new THREE.BoxGeometry(width + 0.4, 0.25, depth + 0.4),
+            plaster
+        );
+        cornice.position.y = h;
+        root.add(cornice);
+    }
+
+    root.userData.floors = floors;
+    root.userData.height = h;
+    return root;
+}
+
+/** Deckhouse de vapor com cantos chanfrados (Kasato / cargo). */
+export function createDeckHouse({
+    width = 10,
+    height = 3.2,
+    length = 28,
+    material = null,
+    glassMaterial = null
+} = {}) {
+    const root = new THREE.Group();
+    const mat = material || plasterMaterial(0xe8e4dc, { roughness: 0.65 });
+    const glass = glassMaterial || new THREE.MeshPhysicalMaterial({
+        color: 0x8ab0c4,
+        roughness: 0.12,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.7
+    });
+
+    const bodyGeo = cachedGeo(`deckHouse:${width}:${height}:${length}`, () => {
+        const g = new THREE.BoxGeometry(width, height, length, 1, 1, 4);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const z = pos.getZ(i);
+            const end = Math.max(0, Math.abs(z) - length * 0.35) / (length * 0.15);
+            const chamfer = 1 - end * 0.08;
+            const topPull = y > 0 ? 0.97 : 1;
+            pos.setXYZ(i, x * chamfer * topPull, y, z);
+        }
+        g.computeVertexNormals();
+        return g;
+    });
+    const body = new THREE.Mesh(bodyGeo, mat);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    root.add(body);
+
+    // Faixa de vigias / janelas do passadiço
+    const pane = new THREE.Mesh(
+        new THREE.BoxGeometry(width * 0.88, height * 0.35, 0.12),
+        glass
+    );
+    pane.position.set(0, height * 0.12, -length * 0.5 - 0.02);
+    root.add(pane);
+
+    return root;
+}
+

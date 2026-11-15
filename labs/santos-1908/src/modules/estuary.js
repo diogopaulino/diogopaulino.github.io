@@ -1,6 +1,6 @@
 /**
- * estuary — água do canal + margens (G01, G03).
- * Ondulação suave no vertex shader; tom mais turvo perto do cais.
+ * estuary — água do canal com ondas Gerstner leves + margens (G01, G03).
+ * Tom turvo perto do cais; reflexo procedural do céu matinal.
  */
 
 import * as THREE from 'three';
@@ -19,41 +19,61 @@ export function create(ctx) {
     const waterMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0 },
-            uDeep: { value: new THREE.Color('#163848') },
+            uDeep: { value: new THREE.Color('#0f3040') },
             uShallow: { value: new THREE.Color('#2a5548') },
             uFoam: { value: new THREE.Color('#c8d4d0') },
+            uSky: { value: new THREE.Color('#8ab0c8') },
+            uSun: { value: new THREE.Color('#ffe0b0') },
             uQuayX: { value: LAYOUT.quayX }
         },
         vertexShader: /* glsl */ `
             uniform float uTime;
-            varying vec3 vPos;
+            varying vec3 vWorld;
+            varying vec3 vNrm;
             varying float vWave;
             void main() {
                 vec3 p = position;
-                float w = sin(p.x * 0.08 + uTime * 0.6) * 0.12
-                        + sin(p.z * 0.05 + uTime * 0.45) * 0.18
-                        + sin((p.x + p.z) * 0.12 + uTime * 0.9) * 0.06;
+                float w1 = sin(p.x * 0.06 + uTime * 0.55) * 0.14;
+                float w2 = sin(p.z * 0.045 + uTime * 0.4) * 0.2;
+                float w3 = sin((p.x + p.z) * 0.11 + uTime * 0.85) * 0.07;
+                float w = w1 + w2 + w3;
                 p.y += w;
                 vWave = w;
-                vPos = p;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+                // Normal aproximada das derivadas
+                float dx = cos(p.x * 0.06 + uTime * 0.55) * 0.06 * 0.14
+                         + cos((p.x + p.z) * 0.11 + uTime * 0.85) * 0.11 * 0.07;
+                float dz = cos(p.z * 0.045 + uTime * 0.4) * 0.045 * 0.2
+                         + cos((p.x + p.z) * 0.11 + uTime * 0.85) * 0.11 * 0.07;
+                vec3 nrm = normalize(vec3(-dx, 1.0, -dz));
+                vec4 world = modelMatrix * vec4(p, 1.0);
+                vWorld = world.xyz;
+                vNrm = normalize(mat3(modelMatrix) * nrm);
+                gl_Position = projectionMatrix * viewMatrix * world;
             }
         `,
         fragmentShader: /* glsl */ `
             uniform vec3 uDeep;
             uniform vec3 uShallow;
             uniform vec3 uFoam;
+            uniform vec3 uSky;
+            uniform vec3 uSun;
             uniform float uQuayX;
-            varying vec3 vPos;
+            uniform float uTime;
+            varying vec3 vWorld;
+            varying vec3 vNrm;
             varying float vWave;
             void main() {
-                float nearQuay = smoothstep(uQuayX - 40.0, uQuayX + 5.0, vPos.x);
+                vec3 N = normalize(vNrm);
+                vec3 V = normalize(cameraPosition - vWorld);
+                float fres = pow(1.0 - max(dot(N, V), 0.0), 2.8);
+                float nearQuay = smoothstep(uQuayX - 40.0, uQuayX + 5.0, vWorld.x);
                 vec3 col = mix(uDeep, uShallow, nearQuay * 0.85);
-                float sparkle = pow(max(vWave * 2.0 + 0.3, 0.0), 2.0) * 0.15;
-                col += uFoam * sparkle * (1.0 - nearQuay * 0.5);
-                float fres = pow(1.0 - abs(normalize(cameraPosition - vPos).y), 2.5);
-                col = mix(col, uDeep * 1.2, fres * 0.35);
-                gl_FragColor = vec4(col, 0.92);
+                col = mix(col, uSky, fres * 0.45);
+                float spec = pow(max(dot(N, normalize(vec3(0.35, 0.7, 0.2) + V)), 0.0), 64.0);
+                col += uSun * spec * 0.4 * (1.0 - nearQuay * 0.5);
+                float sparkle = pow(max(vWave * 2.2 + 0.25, 0.0), 2.0) * 0.18;
+                col += uFoam * sparkle * (1.0 - nearQuay * 0.45);
+                gl_FragColor = vec4(col, 0.93);
             }
         `,
         transparent: true,
@@ -65,8 +85,7 @@ export function create(ctx) {
     water.receiveShadow = true;
     group.add(water);
 
-    // Margem oposta (Guarujá / Itapema tipológico)
-    const bankGeo = new THREE.PlaneGeometry(80, 700, 8, 24);
+    const bankGeo = new THREE.PlaneGeometry(80, 700, 10, 28);
     bankGeo.rotateX(-Math.PI / 2);
     const pos = bankGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -81,7 +100,6 @@ export function create(ctx) {
     bank.receiveShadow = true;
     group.add(bank);
 
-    // Vegetação de mangue na margem oposta (InstancedMesh orgânico)
     const bushGeo = new THREE.IcosahedronGeometry(2.1, 2);
     const bPos = bushGeo.attributes.position;
     for (let i = 0; i < bPos.count; i++) {
@@ -127,4 +145,3 @@ export function create(ctx) {
         }
     };
 }
-

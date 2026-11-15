@@ -19,6 +19,7 @@ import { OrlaCamera } from './camera.js';
 import { Input } from './input.js';
 import { OrlaAudio } from './audio.js';
 import { UI } from './ui.js';
+import { createPost } from './post.js';
 
 class App {
     constructor() {
@@ -110,6 +111,7 @@ class App {
 
         this.player = new Player(this.scene);
         this.rig = new OrlaCamera(this.camera);
+        this.post = createPost(this.renderer, this.scene, this.camera, quality);
         this.dayStop = this.world.setDay(this.settings.day ?? 1);
         this.ui.setDay(this.dayStop);
 
@@ -342,6 +344,8 @@ class App {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h, false);
+        this.post?.resize(w, h);
+        this.post?.setPixelRatio?.(this.pixelRatio);
     };
 
     adaptResolution(fps) {
@@ -357,7 +361,13 @@ class App {
         if (Math.abs(next - this.pixelRatio) < 0.04) return;
         this.pixelRatio = next;
         this.renderer.setPixelRatio(this.pixelRatio);
+        this.post?.setPixelRatio?.(this.pixelRatio);
         this.onResize();
+    }
+
+    draw() {
+        if (this.post?.enabled) this.post.render();
+        else this.renderer.render(this.scene, this.camera);
     }
 
     nearestLandmark() {
@@ -391,12 +401,12 @@ class App {
             const t = this.time * 0.08;
             this.camera.position.set(Math.sin(t) * 80, 140, 100 + Math.cos(t) * 20);
             this.camera.lookAt(0, 0, 20);
-            this.renderer.render(this.scene, this.camera);
+            this.draw();
             return;
         }
 
         if (this.state !== 'playing' || this.paused) {
-            this.renderer.render(this.scene, this.camera);
+            this.draw();
             return;
         }
 
@@ -421,7 +431,7 @@ class App {
 
         this.audio.update(this.player.z, this.player.speed, this.dayStop?.id === 'night');
 
-        this.renderer.render(this.scene, this.camera);
+        this.draw();
 
         this.fpsAccum += dt;
         this.fpsFrames++;

@@ -28,22 +28,27 @@ export class World {
         this.parts.sky = createSky(this.skyUniforms);
         this.scene.add(this.parts.sky.mesh);
 
-        this.lights.hemi = new THREE.HemisphereLight(0x9ec8ff, 0x6a5a40, 0.55);
-        this.lights.sun = new THREE.DirectionalLight(0xfff2d6, 2.0);
+        this.lights.hemi = new THREE.HemisphereLight(0x9ec8ff, 0x6a5a40, 0.62);
+        this.lights.sun = new THREE.DirectionalLight(0xfff2d6, 2.15);
         this.lights.sun.position.set(40, 80, 30);
         if (this.quality.shadows) {
+            const mapSize = this.quality.id === 'high' ? 2048 : 1024;
             this.lights.sun.castShadow = true;
-            this.lights.sun.shadow.mapSize.set(1024, 1024);
-            this.lights.sun.shadow.camera.left = -80;
-            this.lights.sun.shadow.camera.right = 80;
-            this.lights.sun.shadow.camera.top = 80;
-            this.lights.sun.shadow.camera.bottom = -80;
-            this.lights.sun.shadow.camera.near = 10;
-            this.lights.sun.shadow.camera.far = 250;
-            this.lights.sun.shadow.bias = -0.0002;
+            this.lights.sun.shadow.mapSize.set(mapSize, mapSize);
+            this.lights.sun.shadow.camera.left = -90;
+            this.lights.sun.shadow.camera.right = 90;
+            this.lights.sun.shadow.camera.top = 90;
+            this.lights.sun.shadow.camera.bottom = -90;
+            this.lights.sun.shadow.camera.near = 8;
+            this.lights.sun.shadow.camera.far = 280;
+            this.lights.sun.shadow.bias = -0.00015;
+            this.lights.sun.shadow.normalBias = 0.035;
+            this.lights.sun.shadow.radius = this.quality.id === 'high' ? 2.5 : 1.5;
         }
-        this.lights.amb = new THREE.AmbientLight(0xffffff, 0.18);
-        this.scene.add(this.lights.hemi, this.lights.sun, this.lights.amb);
+        this.lights.amb = new THREE.AmbientLight(0xffffff, 0.2);
+        this.lights.fill = new THREE.DirectionalLight(0xa8c8e8, 0.35);
+        this.lights.fill.position.set(-30, 25, -40);
+        this.scene.add(this.lights.hemi, this.lights.sun, this.lights.amb, this.lights.fill);
 
         this.scene.fog = new THREE.Fog(0xaec8e0, 40, this.quality.fogFar);
 
@@ -92,8 +97,8 @@ export class World {
     update(t, dt) {
         this.parts.sky?.update(t);
         this.parts.water?.update(t);
+        this.parts.canals?.update?.(t);
         this.parts.life?.update(t, dt);
-        // Sombra segue o jogador no eixo X (orla longa)
     }
 
     followShadow(x) {

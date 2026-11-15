@@ -73,7 +73,7 @@ function makeWarehouse(mats, len, depth, h, rnd, numberLabel) {
     skylight.position.y = h + roofH + 0.15;
     g.add(skylight);
 
-    // Portas correderas duplas com verga arqueada
+    // Portas correderas + arco de alvenaria + janelas altas
     const doorMat = mats.wood;
     const nDoors = Math.max(2, Math.floor(len / 16));
     for (let i = 0; i < nDoors; i++) {
@@ -81,10 +81,45 @@ function makeWarehouse(mats, len, depth, h, rnd, numberLabel) {
         const door = new THREE.Mesh(new THREE.BoxGeometry(0.35, h * 0.56, 4.2), doorMat);
         door.position.set(-depth * 0.5 - 0.08, h * 0.28, dz);
         g.add(door);
-        const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 4.6), mats.quay);
+
+        // Verga arqueada esculpida
+        const arch = new THREE.Mesh(
+            new THREE.TorusGeometry(2.15, 0.22, 8, 16, Math.PI),
+            mats.quay
+        );
+        arch.rotation.y = Math.PI / 2;
+        arch.rotation.z = Math.PI / 2;
+        arch.position.set(-depth * 0.5 - 0.12, h * 0.58, dz);
+        g.add(arch);
+
+        const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 4.6), mats.quay);
         lintel.position.set(-depth * 0.5 - 0.12, h * 0.58, dz);
         g.add(lintel);
+
+        // Par de janelas acima da porta
+        for (const wz of [-1.1, 1.1]) {
+            const win = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 1.4, 1.1),
+                mats.glass
+            );
+            win.position.set(-depth * 0.5 - 0.05, h * 0.72, dz + wz);
+            g.add(win);
+            const frame = new THREE.Mesh(
+                new THREE.BoxGeometry(0.16, 1.55, 1.25),
+                mats.wood
+            );
+            frame.position.set(-depth * 0.5 - 0.02, h * 0.72, dz + wz);
+            g.add(frame);
+        }
     }
+
+    // Cornija ao longo da fachada do cais
+    const cornice = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.35, len + 0.6),
+        mats.quay
+    );
+    cornice.position.set(-depth * 0.5 - 0.1, h - 0.2, 0);
+    g.add(cornice);
 
     // Placa numerada histórica do armazém
     const signMat = new THREE.MeshStandardMaterial({
