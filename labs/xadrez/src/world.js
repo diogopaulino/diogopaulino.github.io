@@ -8,7 +8,7 @@
  */
 
 import { fileOf, rankOf } from './engine.js';
-import { buildRoom } from './room.js?v=3';
+import { buildRoom } from './room.js?v=4';
 
 export const BOARD_Y = 0.07;
 export const TABLE_Y = -0.35;
@@ -324,7 +324,7 @@ export function buildWorld(B, scene, tex, quality) {
     }
     const labelBatch = B.Mesh.MergeMeshes(labels, true, true); labelBatch.isPickable = false;
     for (const mesh of scene.meshes) { mesh.isPickable = false; mesh.freezeWorldMatrix(); }
-    const room = buildRoom(B, scene);
+    const room = buildRoom(B, scene, [floor, rug, border]);
     const reflection = buildReflection(B, scene);
     reflection.plane.freezeWorldMatrix();
     reflection.setEnabled(!!quality.reflections);

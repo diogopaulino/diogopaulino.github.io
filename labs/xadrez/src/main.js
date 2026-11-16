@@ -11,7 +11,7 @@ import { PieceFactory } from './pieces.js?v=3';
 import {
     buildWorld, setupLights, setupEnvironment, setupPostProcess, applyShadowQuality,
     squareToWorld, worldToSquare, placeMark, traySlot, BOARD_Y, TRAY_Y
-} from './world.js?v=3';
+} from './world.js?v=4';
 import { SalonAudio } from './audio.js';
 
 const STORAGE = 'xadrez-settings';
