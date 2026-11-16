@@ -15,10 +15,10 @@ import { createTreeKit, createShrubKit, updateWind } from '../../shared/gfx/flor
 import { applyWorldUV, seeded } from '../../shared/gfx/core.js';
 import { pbr } from '../../shared/gfx/textures.js';
 import { hash, roadDistance, roadX, LANDMARKS, worldClock, clamp, lerp } from './simulation.js';
-import { CHUNK, hAt, biome, terrainMaterial, terrainGeometry, GrassRing } from './terrain.js?v=10';
-import { variantMesh } from './assets.js?v=10';
-import { createMaterials, Batch, building, waterTower, windmill, fence, hitchingPost, wagon, tent, campfireLogs, watchtower, mineEntrance, cactusGeometry, mesaGeometry } from './props.js?v=10';
-import { createFolk, createTetheredHorse } from './actors.js?v=10';
+import { CHUNK, hAt, biome, terrainMaterial, terrainGeometry, GrassRing } from './terrain.js?v=14';
+import { variantMesh } from './assets.js?v=14';
+import { createMaterials, Batch, building, waterTower, windmill, fence, hitchingPost, wagon, tent, campfireLogs, watchtower, mineEntrance, cactusGeometry, mesaGeometry } from './props.js?v=14';
+import { createFolk, createTetheredHorse } from './actors.js?v=14';
 
 export const CHUNK_SIZE = CHUNK;
 /** pr = teto do pixel ratio; radius = blocos em cada direção; grass = tufos do anel. */

@@ -17,16 +17,96 @@
  * chapéu de aba curva e copa vincada, lenço, cinturão, coldre, revólver, esporas.
  */
 import * as THREE from 'three';
+import { createHead } from './head.js?v=3';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { GLSL_NOISE, place, seeded } from '../../shared/gfx/core.js';
 import { createHuman, poseHuman } from '../../shared/gfx/human.js';
-import { loadGLTF } from './assets.js?v=10';
+import { loadGLTF } from './assets.js?v=14';
 import { clamp, damp } from './simulation.js';
 
 const HORSE_SCALE = 0.44; // modelo tem ~5,3 u de comprimento → cavalo de ~2,5 m, cernelha ≈ 1,55 m
 const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const merge = (list) => mergeGeometries(list.map((g) => { const o = g.index ? g.toNonIndexed() : g; for (const n of Object.keys(o.attributes)) if (n !== 'position' && n !== 'normal') o.deleteAttribute(n); return o; }));
+
+/**
+ * Tesselação curva (PN triangles, Vlachos et al. 2001) do cavalo low-poly.
+ * Cada passe divide o triângulo em 4; o ponto médio de cada aresta sai da cúbica de Bézier
+ * definida pelos extremos e suas normais suaves:
+ *   b210 = (2·P1 + P2 − ((P2−P1)·N1)·N1) / 3      b120 = (2·P2 + P1 − ((P1−P2)·N2)·N2) / 3
+ *   M    = (P1 + 3·b210 + 3·b120 + P2) / 8
+ * As normais são a média (ponderada por área) de todas as faces que tocam a mesma posição,
+ * então arestas compartilhadas geram o mesmo ponto — sem frestas entre primitivas.
+ * Pesos de skin do ponto médio: média dos dois extremos, 4 maiores influências, renormalizados.
+ */
+function tessellate(meshes, passes = 2) {
+    const key = (x, y, z) => `${Math.round(x * 4e4)},${Math.round(y * 4e4)},${Math.round(z * 4e4)}`;
+    let data = meshes.map((m) => {
+        const g = m.geometry, p = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, idx = g.index;
+        const n = idx ? idx.count : p.count;
+        const pos = new Float32Array(n * 3), ji = new Uint16Array(n * 4), jw = new Float32Array(n * 4);
+        for (let k = 0; k < n; k++) {
+            const i = idx ? idx.getX(k) : k;
+            pos[k * 3] = p.getX(i); pos[k * 3 + 1] = p.getY(i); pos[k * 3 + 2] = p.getZ(i);
+            for (let c = 0; c < 4; c++) { ji[k * 4 + c] = si.getComponent(i, c); jw[k * 4 + c] = sw.getComponent(i, c); }
+        }
+        return { pos, ji, jw };
+    });
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+    for (let pass = 0; pass < passes; pass++) {
+        const acc = new Map();
+        for (const d of data) {
+            for (let f = 0; f < d.pos.length; f += 9) {
+                a.fromArray(d.pos, f); b.fromArray(d.pos, f + 3); c.fromArray(d.pos, f + 6);
+                n.crossVectors(b.sub(a), c.sub(a));
+                for (let v = 0; v < 3; v++) {
+                    const k = key(d.pos[f + v * 3], d.pos[f + v * 3 + 1], d.pos[f + v * 3 + 2]);
+                    const e = acc.get(k);
+                    if (e) e.add(n); else acc.set(k, n.clone());
+                }
+            }
+        }
+        for (const v of acc.values()) v.normalize();
+        const N = (pos, o) => acc.get(key(pos[o], pos[o + 1], pos[o + 2]));
+        data = data.map((d) => {
+            const tris = d.pos.length / 9;
+            const pos = new Float32Array(tris * 36), ji = new Uint16Array(tris * 48), jw = new Float32Array(tris * 48);
+            const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+            const W = [null, null, null, null, null, null];
+            const mid = (i0, i1, f, out) => {
+                const p1 = P[i0], p2 = P[i1], n1 = N(d.pos, f + i0 * 3), n2 = N(d.pos, f + i1 * 3);
+                const w12 = b.subVectors(p2, p1).dot(n1), w21 = -b.dot(n2);
+                // M = (P1 + P2)/2 − (w12·N1 + w21·N2)/8
+                out.addVectors(p1, p2).multiplyScalar(0.5).addScaledVector(n1, -w12 / 8).addScaledVector(n2, -w21 / 8);
+            };
+            const skin = (v, f) => { const o = (f / 3 + v) * 4, m = new Map(); for (let c = 0; c < 4; c++) if (d.jw[o + c] > 0) m.set(d.ji[o + c], d.jw[o + c]); return m; };
+            const blend = (m1, m2) => { const m = new Map(); for (const [k, w] of m1) m.set(k, w * 0.5); for (const [k, w] of m2) m.set(k, (m.get(k) || 0) + w * 0.5); return m; };
+            let o = 0;
+            const emit = (i) => {
+                P[i].toArray(pos, o * 3);
+                const top = [...W[i]].sort((x, y) => y[1] - x[1]).slice(0, 4);
+                const sum = top.reduce((t, e) => t + e[1], 0) || 1;
+                top.forEach((e, c) => { ji[o * 4 + c] = e[0]; jw[o * 4 + c] = e[1] / sum; });
+                o++;
+            };
+            for (let f = 0; f < d.pos.length; f += 9) {
+                for (let v = 0; v < 3; v++) { P[v].fromArray(d.pos, f + v * 3); W[v] = skin(v, f); }
+                mid(0, 1, f, P[3]); mid(1, 2, f, P[4]); mid(2, 0, f, P[5]);
+                W[3] = blend(W[0], W[1]); W[4] = blend(W[1], W[2]); W[5] = blend(W[2], W[0]);
+                for (const i of [0, 3, 5, 3, 1, 4, 5, 4, 2, 3, 4, 5]) emit(i);
+            }
+            return { pos, ji, jw };
+        });
+    }
+    meshes.forEach((m, i) => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(data[i].pos, 3));
+        g.setAttribute('skinIndex', new THREE.BufferAttribute(data[i].ji, 4));
+        g.setAttribute('skinWeight', new THREE.BufferAttribute(data[i].jw, 4));
+        m.geometry.dispose();
+        m.geometry = g;
+    });
+}
 
 function smoothNormals(meshes) {
     const acc = new Map();
@@ -127,6 +207,7 @@ async function horseAsset() {
         const gltf = await loadGLTF('assets/horse.glb');
         const meshes = [];
         gltf.scene.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+        tessellate(meshes, 2);
         smoothNormals(meshes);
         // posição de repouso em unidades do modelo (a quantização meshopt vive nas matrizes de bind):
         // serve ao pelo procedural e para medir dorso/focinho
@@ -343,29 +424,28 @@ function gearKit() {
  * Veste uma pessoa do kit com roupa de fronteira. Devolve { hat, gun, holsterGun }.
  * mask = lenço cobrindo o rosto (bandido).
  */
-function dress(h, { hatColor = 0x3a2a1c, bandColor = 0x1a120c, scarfColor = 0x8e3027, mask = false, armed = true, belt = true } = {}) {
+function dress(h, { hatColor = 0x3a2a1c, bandColor = 0x1a120c, scarfColor = 0x8e3027, mask = false, armed = true, belt = true, stubble = false, mustache = false, eyes = 0x4a3020 } = {}) {
     const b = h.bones, kit = gearKit(), out = {};
+    // A cabeça-manequim do kit colapsa (osso em escala 1/1000) e dá lugar à cabeça esculpida,
+    // pendurada num proxy de escala inversa: segue a rotação do osso em tamanho real.
+    const HEAD_EPS = 1e-3;
+    b.head.scale.setScalar(HEAD_EPS);
+    const headProxy = new THREE.Group();
+    headProxy.scale.setScalar(1 / HEAD_EPS);
+    b.head.add(headProxy);
+    headProxy.add(createHead({ skin: h.opts.skin, hair: h.opts.hair, eyes, stubble, mustache: mustache && !mask }));
     const hat = new THREE.Group();
     const hm = new THREE.Mesh(kit.hat.felt, felt(hatColor)); hm.castShadow = true;
     hat.add(hm, new THREE.Mesh(kit.hat.band, new THREE.MeshStandardMaterial({ color: bandColor, roughness: 0.6 })));
     hat.position.set(0, 0.168, -0.006); hat.rotation.x = -0.06;
-    b.head.add(hat); out.hat = hat;
+    headProxy.add(hat); out.hat = hat;
     const scarfMat = new THREE.MeshStandardMaterial({ color: scarfColor, roughness: 0.9, side: THREE.DoubleSide });
     const scarf = [place(new THREE.TorusGeometry(0.066, 0.02, 6, 16), 0, 0.0, 0.004, Math.PI / 2 - 0.25, 0, 0, 1, 1.12, 1)];
     scarf.push(place(new THREE.ConeGeometry(0.075, 0.13, 3, 1, true), 0, -0.07, 0.068, Math.PI + 0.25, Math.PI / 3, 0, 1, 1, 0.35));
     const sc = new THREE.Mesh(merge(scarf), scarfMat); sc.castShadow = true; b.neck.add(sc);
-    // rosto: sobrancelhas, olhos e bigode maiores que os do kit — leem de longe, na câmera de perseguição
-    const dark = new THREE.MeshStandardMaterial({ color: 0x1a110b, roughness: 0.8 });
-    const face = [];
-    for (const s of [-1, 1]) {
-        face.push(place(new THREE.BoxGeometry(0.03, 0.007, 0.012), s * 0.031, 0.128, 0.086, 0, 0, s * -0.16));
-        face.push(place(new THREE.SphereGeometry(0.0075, 8, 6), s * 0.031, 0.112, 0.088));
-        if (!mask) face.push(place(new THREE.CapsuleGeometry(0.008, 0.03, 3, 6), s * 0.02, 0.052, 0.094, 0, 0, Math.PI / 2 + s * 0.35));
-    }
-    b.head.add(new THREE.Mesh(merge(face), dark));
     if (mask) {
-        const mk = new THREE.Mesh(place(new THREE.SphereGeometry(0.086, 14, 8, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.36), 0, 0.085, 0.022, 0, 0, 0, 1, 1.05, 1.16), scarfMat);
-        b.head.add(mk);
+        const mk = new THREE.Mesh(place(new THREE.SphereGeometry(0.086, 18, 10, 0, Math.PI * 2, Math.PI * 0.4, Math.PI * 0.4), 0, 0.088, 0.018, 0, 0, 0, 0.98, 1.05, 1.36), scarfMat);
+        headProxy.add(mk);
     }
     if (belt) {
         const bl = [place(new THREE.TorusGeometry(1, 0.11, 6, 22), 0, 0.045, 0.0, Math.PI / 2, 0, 0, 0.165, 0.118, 0.2), place(new THREE.BoxGeometry(0.045, 0.04, 0.012), 0, 0.045, 0.125)];
@@ -412,7 +492,7 @@ export async function createMount() {
     const horse = await createHorse('bay');
     const tack = createTack(horse);
     const rider = createHuman({ height: 1.8, build: 1.05, skin: 0xb98a66, hair: 0x2a1a10, top: 'jacket', topColor: 0x6a5842, bottom: 'pants', bottomColor: 0x34383c, shoes: 'boot', shoeColor: 0x2b1c12, hat: 'none', detail: 2 });
-    const kit = dress(rider, { hatColor: 0x4a3c2c, scarfColor: 0x9a2e22 });
+    const kit = dress(rider, { hatColor: 0x4a3c2c, scarfColor: 0x9a2e22, stubble: true, mustache: true });
     const s = rider.object.scale.x;
     rider.object.position.set(0, tack.seatY + 0.085 - rider.hipsRest * s, tack.seatZ - 0.03);
     tack.tack.add(rider.object);
@@ -484,7 +564,7 @@ const OUTLAWS = [
 export function createOutlaw(i = 0) {
     const o = OUTLAWS[i % OUTLAWS.length];
     const h = createHuman({ height: 1.72 + (i % 3) * 0.04, build: 1 + (i % 2) * 0.1, skin: o.skin, hair: 0x1a120c, top: 'jacket', topColor: o.topColor, bottom: 'pants', bottomColor: o.bottomColor, shoes: 'boot', shoeColor: 0x1c1410, hat: 'none', detail: 2 });
-    const kit = dress(h, { hatColor: o.hatColor, scarfColor: o.scarfColor, mask: true });
+    const kit = dress(h, { hatColor: o.hatColor, scarfColor: o.scarfColor, mask: true, stubble: i % 2 === 0, eyes: [0x2a1c12, 0x4a5a5c, 0x3a2a18][i % 3] });
     const root = new THREE.Group();
     root.add(h.object);
     const st = { aim: 0, fall: 0, t: i * 1.7 };
@@ -520,7 +600,7 @@ const FOLK = [
 export function createFolk(i = 0, mode = 'idle') {
     const o = FOLK[i % FOLK.length];
     const h = createHuman({ height: 1.7 + (i % 4) * 0.03, build: 0.95 + (i % 3) * 0.08, skin: o.skin, hair: i % 2 ? 0x5a3a1e : 0x241710, top: o.top, topColor: o.topColor, bottom: o.bottom, bottomColor: o.bottomColor, shoes: 'boot', shoeColor: 0x2a1c12, hat: 'none', detail: 2 });
-    dress(h, { hatColor: o.hatColor, scarfColor: o.scarfColor, armed: false, belt: i % 2 === 0 });
+    dress(h, { hatColor: o.hatColor, scarfColor: o.scarfColor, armed: false, belt: i % 2 === 0, stubble: i % 3 === 0, mustache: i % 2 === 1, eyes: [0x4a3020, 0x52605e, 0x2a1c12][i % 3] });
     const t0 = seeded(i + 5)() * 10;
     return { root: h.object, human: h, update(t) { poseHuman(h, mode, t + t0); } };
 }
