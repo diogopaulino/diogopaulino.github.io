@@ -6,11 +6,12 @@
 import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js';
 
 import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js';
-import { createTextures } from './textures.js';
-import { PieceFactory } from './pieces.js';
+import { createTextures } from './textures.js?v=3';
+import { PieceFactory } from './pieces.js?v=3';
 import {
-    buildWorld, setupLights, setupEnvironment, setupPostProcess, squareToWorld, worldToSquare, placeMark
-} from './world.js';
+    buildWorld, setupLights, setupEnvironment, setupPostProcess, applyShadowQuality,
+    squareToWorld, worldToSquare, placeMark, traySlot, BOARD_Y, TRAY_Y
+} from './world.js?v=3';
 import { SalonAudio } from './audio.js';
 
 const STORAGE = 'xadrez-settings';
@@ -20,9 +21,10 @@ const GLYPH = {
 };
 
 const QUALITY = {
-    low: { id: 'low', pr: 1, seg: 24, shadows: false, shadowMap: 1024, antialias: false },
-    medium: { id: 'medium', pr: 1.25, seg: 40, shadows: true, shadowMap: 1536, antialias: true },
-    high: { id: 'high', pr: 1.75, seg: 64, shadows: true, shadowMap: 2048, antialias: true }
+    // pr = teto de pixels por ponto CSS; reflections = reflexo planar do verniz.
+    low: { id: 'low', pr: 1, seg: 24, shadows: true, shadowMap: 1024, antialias: false, reflections: false, msaa: 1 },
+    medium: { id: 'medium', pr: 1.5, seg: 40, shadows: true, shadowMap: 2048, antialias: true, reflections: true, msaa: 1 },
+    high: { id: 'high', pr: 2, seg: 64, shadows: true, shadowMap: 4096, antialias: true, reflections: true, msaa: 4 }
 };
 
 function isMobile() {
@@ -55,6 +57,13 @@ function easeInOut(t) {
 }
 
 class Atelier {
+    /**
+     * Render sob demanda: marcar "sujo" pede alguns quadros seguidos (materiais
+     * e texturas terminam de compilar de forma assíncrona); depois a cena para.
+     */
+    get renderDirty() { return this._dirtyFrames > 0; }
+    set renderDirty(value) { if (value) { this._dirtyFrames = 6; this._verify = true; } }
+
     constructor() {
         this.canvas = document.getElementById('scene');
         this.settings = this.loadSettings();
@@ -87,6 +96,8 @@ class Atelier {
         this.adaptiveTime = 0;
         this.renderScale = 1;
         this.diagnostics = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).has('diagnostics');
+        // Só em localhost com ?diagnostics: expõe a instância para medições.
+        if (this.diagnostics) window.__atelier = this;
         this.generation = 0;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -249,10 +260,11 @@ class Atelier {
         // próxima da câmera aparecia enorme e a última fileira, minúscula.
         this.camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, 0.9, 21.5, new BABYLON.Vector3(0, 0.25, 0), this.scene);
         this.camera.fov = 0.58;
-        this.camera.lowerRadiusLimit = isMobile() ? 12.5 : 14;
+        this.camera.lowerRadiusLimit = isMobile() ? 11.5 : 12;
         this.camera.upperRadiusLimit = 30;
         this.camera.lowerBetaLimit = 0.02;
-        this.camera.upperBetaLimit = 1.23;
+        this.camera.upperBetaLimit = 1.34;
+        this.camera.minZ = 1; this.camera.maxZ = 900;
         this.camera.wheelDeltaPercentage = 0.015;
         this.camera.pinchDeltaPercentage = 0.015;
         this.camera.inertia = 0.85;
@@ -274,7 +286,7 @@ class Atelier {
         const tex = createTextures(this.scene);
 
         this.setLoad(0.45, 'Montando o atelier…');
-        setupEnvironment(BABYLON, this.scene);
+        setupEnvironment(BABYLON, this.scene, this.quality, () => { this.renderDirty = true; });
         this.world = buildWorld(BABYLON, this.scene, tex, this.quality);
         this.lights = setupLights(BABYLON, this.scene, this.quality);
         this.postProcess = setupPostProcess(BABYLON, this.scene, this.quality);
@@ -307,10 +319,19 @@ class Atelier {
         this._renderLoop = () => {
             if (document.hidden) return;
             const now = performance.now();
-            // Teto de 60 fps mesmo em monitores 120/144 Hz; cena parada em 24 fps.
+            // Teto de 60 fps mesmo em monitores 120/144 Hz. Cena parada não
+            // redesenha: só o pulso do xeque (20 fps). Depois de cada mudança a
+            // cena é conferida (10×/s) até shaders e texturas ficarem prontos;
+            // nesse instante saem os quadros finais e o laço volta a dormir.
             const moving = this.anims.length || this.drag.active || this.cameraTransition ||
                 Math.abs(this.camera.inertialAlphaOffset) + Math.abs(this.camera.inertialBetaOffset) + Math.abs(this.camera.inertialRadiusOffset) > 0.001;
-            const interval = moving || this.renderDirty ? 1000 / 60 : 1000 / 24;
+            const pulsing = !this.reducedMotion && this.world?.marks?.check?.isVisible;
+            if (!moving && !this.renderDirty && this._verify && now - (this._verifyAt || 0) > 100) {
+                this._verifyAt = now;
+                if (this.scene.isReady()) { this._verify = false; this._dirtyFrames = 3; }
+            }
+            if (!moving && !this.renderDirty && !pulsing) return;
+            const interval = moving || this.renderDirty ? 1000 / 60 : 1000 / 20;
             if (now - (this.lastRenderAt || 0) < interval - 1) return;
             const elapsed = now - (this.lastRenderAt || now);
             const dt = Math.min(0.05, Math.max(0, elapsed / 1000));
@@ -318,7 +339,8 @@ class Atelier {
             const start = performance.now();
             this.frame(dt);
             this.scene.render();
-            this.renderDirty = false;
+            this.frameCount = (this.frameCount || 0) + 1;
+            if (this._dirtyFrames > 0) this._dirtyFrames--;
             this.adaptQuality(performance.now() - start, moving, elapsed);
         };
         if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
@@ -502,19 +524,48 @@ class Atelier {
             else mesh = this.factory.spawn(p.t, p.c);
             if (!mesh) continue;
             mesh.chessPiece = p;
-            mesh.material = this.factory.mats[p.c];
+            mesh.material = this.factory.materialFor(p.t, p.c);
             mesh.scaling.setAll(1); mesh.isVisible = true;
             const pos = squareToWorld(i);
-            mesh.position.set(pos.x, 0.07, pos.z);
+            mesh.position.set(pos.x, BOARD_Y, pos.z);
             mesh.metadata = { kind: p.t, color: p.c, index: i };
-            this.lights.shadowGen.addShadowCaster(mesh);
+            if (mesh.contact) mesh.contact.isVisible = true;
+            this.factory.syncContact(mesh);
+            // Só a peça projeta sombra; feltro e disco de contato ficam de fora.
+            this.lights.shadowGen.addShadowCaster(mesh, false);
             next.set(i, mesh);
         }
         for (const mesh of old) { this.lights.shadowGen.removeShadowCaster(mesh); mesh.dispose(); }
         this.pieces = next;
+        this.syncTray();
         this.lights.shadowGen.getShadowMap().resetRefreshCounter();
         this.renderDirty = true;
         this.refreshMarks();
+    }
+
+    /**
+     * Bandejas de capturadas: derivadas do histórico (game.stack), então
+     * desfazer, reiniciar e carregar lições mantêm a mesa sempre coerente.
+     */
+    syncTray() {
+        const taken = this.game.stack.filter(u => u.captured).map(u => u.captured);
+        const key = this.factory.theme + taken.map(c => c.c + c.t).join('');
+        if (key === this.trayKey) return;
+        this.trayKey = key;
+        for (const mesh of this.trayMeshes || []) { this.lights.shadowGen.removeShadowCaster(mesh); mesh.dispose(); }
+        this.trayMeshes = [];
+        const count = { w: 0, b: 0 };
+        for (const piece of taken) {
+            const mesh = this.factory.spawn(piece.t, piece.c);
+            if (!mesh) continue;
+            const slot = traySlot(piece.c, count[piece.c]++);
+            mesh.position.set(slot.x, slot.y, slot.z);
+            mesh.metadata = { kind: piece.t, color: piece.c, tray: true };
+            mesh.isPickable = false;
+            this.factory.syncContact(mesh, TRAY_Y);
+            this.lights.shadowGen.addShadowCaster(mesh, false);
+            this.trayMeshes.push(mesh);
+        }
     }
 
     pieceAt(index) {
@@ -760,15 +811,22 @@ class Atelier {
         this.refreshMarks();
         this.renderHud();
 
-        if (move.flag === 'k' || move.flag === 'q') this.audio.castle();
-        else if (captured) this.audio.capture();
-        else if (move.promo) this.audio.promote();
-        else this.audio.move();
+        // O som toca no pouso da peça, não na largada.
+        const land = () => {
+            if (generation !== this.generation) return;
+            if (move.flag === 'k' || move.flag === 'q') this.audio.castle();
+            else if (captured) this.audio.capture();
+            else if (move.promo) this.audio.promote();
+            else this.audio.move();
+        };
 
         const hops = [];
-        if (mesh) hops.push(this.hop(mesh, from, to));
+        if (mesh) hops.push(this.hop(mesh, from, to, land)); else land();
         if (rookMesh && rookDest >= 0) hops.push(this.hop(rookMesh, rookSrc, rookDest));
-        if (capMesh) hops.push(this.fadeOut(capMesh));
+        if (capMesh && captured) {
+            const index = this.game.stack.filter(u => u.captured && u.captured.c === captured.c).length - 1;
+            hops.push(this.toTray(capMesh, traySlot(captured.c, Math.max(0, index))));
+        } else if (capMesh) hops.push(this.fadeOut(capMesh));
 
         Promise.all(hops).then(() => {
             if (generation !== this.generation) return;
@@ -778,16 +836,42 @@ class Atelier {
         });
     }
 
-    hop(mesh, from, to) {
+    /**
+     * Lance: a peça levanta, desliza em arco e pousa.
+     *   posição xz = lerp(a, b, easeInOut(t))
+     *   altura  y  = BOARD_Y + h · sin(π·t)^0.7      (sobe rápido, desce assentando)
+     *   h = cavalo: 0.95 + 0.05·dist (salta por cima das peças)
+     *       demais: 0.16 + 0.035·dist, até 0.42 (desliza quase rente)
+     *   duração = 0.26 s + 0.03 s por casa, até 0.5 s
+     */
+    hop(mesh, from, to, onLand) {
         const a = squareToWorld(from);
         const b = squareToWorld(to);
         const dist = Math.hypot(b.x - a.x, b.z - a.z);
-        const h = mesh.metadata?.kind === 'n' ? Math.max(0.45, dist * 0.15) : Math.min(0.38, Math.max(0.1, dist * 0.08));
-        return this.tween(0.3, (t) => {
+        const h = mesh.metadata?.kind === 'n' ? 0.95 + dist * 0.05 : Math.min(0.42, 0.16 + dist * 0.035);
+        let landed = false;
+        return this.tween(Math.min(0.5, 0.26 + dist * 0.03), (t) => {
             const k = easeInOut(t);
             mesh.position.x = a.x + (b.x - a.x) * k;
             mesh.position.z = a.z + (b.z - a.z) * k;
-            mesh.position.y = 0.07 + Math.sin(k * Math.PI) * h;
+            mesh.position.y = BOARD_Y + Math.pow(Math.sin(t * Math.PI), 0.7) * h;
+            if (!landed && t >= 0.9) { landed = true; onLand?.(); }
+        });
+    }
+
+    /** Captura: a peça tomada sai num arco alto e pousa na bandeja lateral. */
+    toTray(mesh, slot) {
+        const a = mesh.position.clone();
+        if (mesh.contact) mesh.contact.isVisible = false;
+        mesh.metadata = { ...mesh.metadata, index: undefined, flying: true };
+        mesh.isPickable = false;
+        return this.tween(0.62, (t) => {
+            const k = easeInOut(t);
+            // Sobe antes de andar: libera a casa para quem captura.
+            const lift = Math.sin(Math.min(1, t * 1.15) * Math.PI);
+            mesh.position.x = a.x + (slot.x - a.x) * k * k;
+            mesh.position.z = a.z + (slot.z - a.z) * k * k;
+            mesh.position.y = a.y + (slot.y - a.y) * k + Math.max(0, lift) * 1.9;
         });
     }
 
@@ -932,14 +1016,23 @@ class Atelier {
             this.postProcess.ao?.dispose();
             this.postProcess.pipe.dispose();
             this.postProcess = setupPostProcess(window.BABYLON, this.scene, this.quality);
+            // Materiais das peças dependem do nível (sheen/translucidez).
+            this.factory.quality = this.quality;
+            this.factory.setTheme(this.factory.theme);
+            this.trayKey = null;
+            this.rebuildPieces();
         }
+        applyShadowQuality(window.BABYLON, this.lights, this.quality);
+        this.world.reflection.setEnabled(this.quality.reflections);
         this.renderScale = Math.min(devicePixelRatio || 1, this.quality.pr);
         this.engine.setHardwareScalingLevel(1 / this.renderScale);
         this.scene.shadowsEnabled = this.quality.shadows;
         this.lights.shadowGen.mapSize = this.quality.shadowMap;
+        // Trocar filtro ou tamanho recria o mapa: a sombra volta a ser desenhada
+        // uma vez só e reaproveitada até alguma peça se mover.
+        this.lights.shadowGen.getShadowMap().refreshRate = window.BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
         this.lights.shadowGen.getShadowMap().resetRefreshCounter();
-        this.postProcess.pipe.bloomEnabled = false;
-        this.postProcess.pipe.samples = this.quality.id === 'high' ? Math.min(2, this.engine.getCaps().maxMSAASamples) : 1;
+        this.postProcess.pipe.samples = Math.min(this.quality.msaa, this.engine.getCaps().maxMSAASamples || 1);
         this.updateDepthOfField();
         this.adaptiveFrames = this.adaptiveTime = 0;
         document.getElementById('qualityLabel').textContent = this.settings.quality === 'auto' ? 'Automática' : { low: 'Leve', medium: 'Equilibrada', high: 'Alta' }[this.quality.id];
@@ -967,7 +1060,8 @@ class Atelier {
         if (this.settings.quality === 'auto' && this.adaptiveTime / this.adaptiveFrames > 23 && this.renderScale > 0.8) {
             this.renderScale = Math.max(0.8, this.renderScale - 0.15);
             this.engine.setHardwareScalingLevel(1 / this.renderScale);
-            this.postProcess.pipe.depthOfFieldEnabled = false;
+            this.dofDisabled = true;
+            this.updateDepthOfField();
             this.renderDirty = true;
         }
         this.adaptiveFrames = this.adaptiveTime = 0;
@@ -975,16 +1069,21 @@ class Atelier {
 
     updateDepthOfField() {
         const pipe = this.postProcess.pipe;
-        pipe.depthOfFieldEnabled = this.view === 'detail' && this.quality.id === 'high';
+        // Jogar: abertura fechada (só o fundo e a última fileira amaciam).
+        // Detalhe: lente aberta, foco no centro do tabuleiro. Superior: sem desfoque.
+        pipe.depthOfFieldEnabled = this.quality.id !== 'low' && this.view !== 'top' && !this.dofDisabled;
+        pipe.depthOfField.fStop = this.view === 'detail' ? 2.2 : 7;
         pipe.depthOfField.focusDistance = this.camera.radius * 1000;
+        // Sem desfoque não há por que redesenhar as peças num passe de profundidade.
+        if (!pipe.depthOfFieldEnabled) this.scene.disableDepthRenderer(this.camera);
     }
 
     cameraView(view) {
         if (!this.camera) return;
         this.view = view;
-        const alpha = (this.flip ? -Math.PI / 2 : Math.PI / 2) + (view === 'detail' ? -0.27 : 0);
-        const beta = view === 'top' ? 0.02 : view === 'detail' ? 1.23 : 0.9;
-        const radius = view === 'detail' ? 19.8 : 21.5;
+        const alpha = (this.flip ? -Math.PI / 2 : Math.PI / 2) + (view === 'detail' ? -0.42 : 0);
+        const beta = view === 'top' ? 0.02 : view === 'detail' ? 1.3 : 0.9;
+        const radius = view === 'detail' ? 16.5 : 21.5;
         this.moveCamera(alpha, beta, radius);
         this.updateDepthOfField();
         document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === view)));
@@ -1029,7 +1128,10 @@ class Atelier {
     toggleFlip() {
         if (!this.camera || this.drag.active) return;
         this.flip = !this.flip;
-        this.moveCamera(this.camera.alpha + Math.PI, this.camera.beta, this.camera.radius);
+        // Parte do destino da transição em curso (se houver): dois toques
+        // rápidos voltam ao lado original em vez de parar no meio do giro.
+        const from = this.cameraTransition ? this.cameraTransition.to[0] : this.camera.alpha;
+        this.moveCamera(from + Math.PI, this.camera.beta, this.camera.radius);
         document.getElementById('flipBtn').setAttribute('aria-pressed', String(this.flip));
     }
 
@@ -1193,9 +1295,8 @@ class Atelier {
                 this.anims.splice(i, 1);
             }
         }
-        if (this.world?.marks?.select?.isVisible) {
-            this.world.marks.select.rotation.y += dt * 0.8;
-        }
+        // Sombra de contato acompanha a altura de cada peça (lance, arraste).
+        for (const mesh of this.pieces.values()) this.factory.syncContact(mesh);
         if (!this.reducedMotion && this.world?.marks?.check?.isVisible) {
             const mat = this.world.marks.check.material;
             if (mat) mat.alpha = 0.55 + Math.sin(Date.now() * 0.006) * 0.35;

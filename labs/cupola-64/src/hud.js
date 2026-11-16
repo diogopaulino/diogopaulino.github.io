@@ -2,8 +2,8 @@
  * HUD do platformer — estrelas, moedas, vidas e a fanfarra da estrela.
  */
 
-import { formatTime } from './utils.js';
-import { QUEST } from './config.js';
+import { formatTime } from './utils.js?v=13';
+import { QUEST } from './config.js?v=12';
 
 export class Hud {
     constructor() {

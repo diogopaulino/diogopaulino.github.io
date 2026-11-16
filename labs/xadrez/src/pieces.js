@@ -1,6 +1,10 @@
 /**
- * Peças Staunton procedurais de alta definição em Babylon.js.
- * Torno (Lathe) + ornamentos detalhados + materiais PBR (Marfim, Ébano, Cristal).
+ * Peças Staunton em Babylon.js.
+ * Malhas escaneadas (rei, dama, torre, bispo, cavalo e peão) com seus mapas
+ * originais de normal/ORM; o torno procedural abaixo é apenas a reserva caso o
+ * pacote binário não carregue. Materiais PBR: buxo/marfim acetinado, ébano
+ * laqueado, guarnições de latão e cristal. Cada peça leva feltro na base e
+ * uma sombra de contato que afrouxa quando ela é erguida.
  */
 
 function lathe(BABYLON, name, xy, seg, scene) {
@@ -197,93 +201,84 @@ export function buildPieceGeometries(BABYLON, scene, seg = 48) {
     return { p: pawn, r: rook, n: knight, b: bishop, q: queen, k: king };
 }
 
-export function makeMaterials(BABYLON, scene, tex, theme = 'classic') {
-    const ivory = new BABYLON.PBRMaterial('mat_ivory', scene);
-    ivory.albedoColor = new BABYLON.Color3(0.92, 0.85, 0.74);
-    if (tex.ivory) {
-        ivory.albedoTexture = tex.ivory.map;
-        ivory.bumpTexture = tex.ivory.normalMap;
-    }
-    ivory.metallic = 0;
-    ivory.roughness = 0.48;
-    if (tex.ivory?.roughnessMap) {
-        ivory.metallicTexture = tex.ivory.roughnessMap;
-        ivory.useRoughnessFromMetallicTextureAlpha = false;
-        ivory.useRoughnessFromMetallicTextureGreen = true;
-        ivory.useMetallnessFromMetallicTextureBlue = false;
-    }
-    ivory.clearCoat.isEnabled = true;
-    ivory.clearCoat.intensity = 0.1;
-    ivory.clearCoat.roughness = 0.42;
-    ivory.sheen.isEnabled = false;
-    ivory.environmentIntensity = 0.48;
-    ivory.enableSpecularAntiAliasing = true;
-    ivory.sheen.intensity = 0.35;
-    ivory.sheen.color = new BABYLON.Color3(0.95, 0.88, 0.78);
+const KINDS = ['k', 'q', 'r', 'b', 'n', 'p'];
+const BOARD_Y = 0.07;
 
-    const ebony = new BABYLON.PBRMaterial('mat_ebony', scene);
-    ebony.albedoColor = new BABYLON.Color3(0.95, 0.93, 0.90);
-    if (tex.ebony) {
-        ebony.albedoTexture = tex.ebony.map;
-        ebony.bumpTexture = tex.ebony.normalMap;
-    }
-    ebony.metallic = 0;
-    ebony.roughness = 0.48;
-    if (tex.ebony?.roughnessMap) {
-        ebony.metallicTexture = tex.ebony.roughnessMap;
-        ebony.useRoughnessFromMetallicTextureAlpha = false;
-        ebony.useRoughnessFromMetallicTextureGreen = true;
-        ebony.useMetallnessFromMetallicTextureBlue = false;
-    }
-    ebony.clearCoat.isEnabled = true;
-    ebony.clearCoat.intensity = 0.16;
-    ebony.clearCoat.roughness = 0.4;
-    ebony.sheen.isEnabled = false;
-    ebony.environmentIntensity = 0.68;
-    ebony.enableSpecularAntiAliasing = true;
-    ebony.sheen.intensity = 0.3;
-    ebony.sheen.color = new BABYLON.Color3(0.25, 0.14, 0.09);
-
-    const accentLight = new BABYLON.PBRMaterial('mat_acc_light', scene);
-    accentLight.albedoColor = new BABYLON.Color3(0.35, 0.20, 0.12);
-    accentLight.metallic = 0.15;
-    accentLight.roughness = 0.35;
-
-    const accentDark = new BABYLON.PBRMaterial('mat_acc_dark', scene);
-    accentDark.albedoColor = new BABYLON.Color3(0.06, 0.04, 0.03);
-    accentDark.metallic = 0.2;
-    accentDark.roughness = 0.4;
-
-    if (theme === 'crystal') {
-        const glassW = new BABYLON.PBRMaterial('mat_glass_w', scene);
-        glassW.albedoColor = new BABYLON.Color3(0.95, 0.98, 1.0);
-        glassW.metallic = 0.05;
-        glassW.roughness = 0.04;
-        glassW.alpha = 0.55;
-        glassW.subSurface.isRefractionEnabled = true;
-        glassW.subSurface.indexOfRefraction = 1.52;
-        glassW.clearCoat.isEnabled = true;
-        glassW.clearCoat.intensity = 1.0;
-
-        const glassB = new BABYLON.PBRMaterial('mat_glass_b', scene);
-        glassB.albedoColor = new BABYLON.Color3(0.15, 0.08, 0.06);
-        glassB.metallic = 0.3;
-        glassB.roughness = 0.06;
-        glassB.alpha = 0.65;
-        glassB.subSurface.isRefractionEnabled = true;
-        glassB.subSurface.indexOfRefraction = 1.5;
-        glassB.clearCoat.isEnabled = true;
-        glassB.clearCoat.intensity = 1.0;
-
-        const gold = new BABYLON.PBRMaterial('mat_gold', scene);
-        gold.albedoColor = new BABYLON.Color3(0.85, 0.68, 0.32);
-        gold.metallic = 0.95;
-        gold.roughness = 0.18;
-
-        return { w: glassW, b: glassB, accentW: gold, accentB: gold, theme: 'crystal' };
-    }
-
-    return { w: ivory, b: ebony, accentW: accentLight, accentB: accentDark, theme: 'classic' };
+/**
+ * Um material por (tipo, cor): cada tipo tem seu próprio atlas UV.
+ * Retorna { w: {k..p}, b: {k..p}, theme }.
+ */
+export function makeMaterials(BABYLON, scene, tex, theme = 'classic', quality = {}) {
+    const rich = quality.id !== 'low';
+    const build = (kind, color) => {
+        const maps = tex.pieces?.[kind];
+        const mat = new BABYLON.PBRMaterial(`mat_${theme}_${kind}_${color}`, scene);
+        mat.enableSpecularAntiAliasing = true;
+        // glTF destro: normal map no padrão OpenGL, como o carregador oficial.
+        mat.invertNormalMapX = false;
+        mat.invertNormalMapY = true;
+        if (theme === 'crystal') {
+            // Vidro maciço: refração do ambiente + verniz; o cristal escuro é fumê.
+            mat.albedoColor = color === 'w' ? new BABYLON.Color3(0.96, 0.98, 1) : new BABYLON.Color3(0.2, 0.13, 0.1);
+            mat.metallic = 0;
+            mat.roughness = color === 'w' ? 0.04 : 0.07;
+            mat.subSurface.isRefractionEnabled = true;
+            mat.subSurface.refractionIntensity = color === 'w' ? 0.92 : 0.8;
+            mat.subSurface.indexOfRefraction = 1.52;
+            mat.subSurface.tintColor = color === 'w' ? new BABYLON.Color3(0.92, 0.97, 1) : new BABYLON.Color3(0.42, 0.24, 0.16);
+            mat.subSurface.tintColorAtDistance = 0.6;
+            mat.clearCoat.isEnabled = true;
+            mat.clearCoat.intensity = 1;
+            mat.clearCoat.roughness = 0.02;
+            mat.environmentIntensity = 1.25;
+            if (maps?.normal) { mat.bumpTexture = maps.normal; mat.bumpTexture.level = 1; }
+            return mat;
+        }
+        if (maps?.orm && maps.albedo[color]) {
+            mat.albedoTexture = maps.albedo[color];
+            mat.bumpTexture = maps.normal;
+            mat.metallicTexture = maps.orm;
+            mat.useRoughnessFromMetallicTextureAlpha = false;
+            mat.useRoughnessFromMetallicTextureGreen = true;
+            mat.useMetallnessFromMetallicTextureBlue = true;
+            mat.useAmbientOcclusionFromMetallicTextureRed = true;
+            mat.metallic = 1;
+            // Fator sobre a rugosidade escaneada: buxo acetinado, ébano polido.
+            mat.roughness = color === 'w' ? 0.92 : 0.62;
+        } else {
+            mat.albedoColor = color === 'w' ? new BABYLON.Color3(0.82, 0.68, 0.45) : new BABYLON.Color3(0.03, 0.022, 0.018);
+            mat.metallic = 0;
+            mat.roughness = color === 'w' ? 0.46 : 0.3;
+        }
+        mat.environmentIntensity = 1;
+        mat.clearCoat.isEnabled = true;
+        if (color === 'w') {
+            // Buxo encerado: verniz fino + sheen quente nas bordas + luz que
+            // atravessa de leve as partes finas (translucidez barata, sem pré-passe).
+            mat.clearCoat.intensity = 0.35;
+            mat.clearCoat.roughness = 0.28;
+            if (rich) {
+                mat.sheen.isEnabled = true;
+                mat.sheen.intensity = 0.22;
+                mat.sheen.color = new BABYLON.Color3(1, 0.9, 0.74);
+                mat.sheen.roughness = 0.5;
+                mat.subSurface.isTranslucencyEnabled = true;
+                mat.subSurface.translucencyIntensity = 0.28;
+                mat.subSurface.tintColor = new BABYLON.Color3(1, 0.82, 0.6);
+                mat.subSurface.minimumThickness = 0.4;
+                mat.subSurface.maximumThickness = 2.2;
+            }
+        } else {
+            // Ébano laqueado: camada de verniz espelhada sobre madeira escura.
+            mat.clearCoat.intensity = 0.95;
+            mat.clearCoat.roughness = 0.08;
+            mat.clearCoat.indexOfRefraction = 1.55;
+        }
+        return mat;
+    };
+    const out = { w: {}, b: {}, theme };
+    for (const kind of KINDS) { out.w[kind] = build(kind, 'w'); out.b[kind] = build(kind, 'b'); }
+    return out;
 }
 
 export class PieceFactory {
@@ -292,8 +287,10 @@ export class PieceFactory {
         this.scene = scene;
         this.tex = tex;
         this.quality = quality;
-        this.mats = makeMaterials(this.BABYLON, scene, tex, 'classic');
+        this.theme = 'classic';
+        this.mats = makeMaterials(this.BABYLON, scene, tex, 'classic', quality);
         this.prototypes = buildPieceGeometries(this.BABYLON, scene, quality.seg || 40);
+        this.baseRadius = { k: 0.33, q: 0.31, r: 0.31, b: 0.28, n: 0.3, p: 0.25 };
 
         // Esconder os protótipos mestres
         for (const key in this.prototypes) {
@@ -303,12 +300,42 @@ export class PieceFactory {
                 mesh.isVisible = false;
             }
         }
+        this.buildShared();
+    }
+
+    /** Feltro verde da base e disco de sombra de contato, instanciados por peça. */
+    buildShared() {
+        const B = this.BABYLON, scene = this.scene;
+        const feltMat = new B.PBRMaterial('piece_felt', scene);
+        feltMat.albedoColor = new B.Color3(0.05, 0.2, 0.11);
+        feltMat.albedoTexture = this.tex.felt?.map || null;
+        feltMat.bumpTexture = this.tex.felt?.normalMap || null;
+        feltMat.metallic = 0; feltMat.roughness = 1;
+        feltMat.sheen.isEnabled = true; feltMat.sheen.intensity = 0.6;
+        feltMat.sheen.color = new B.Color3(0.35, 0.7, 0.45);
+        feltMat.backFaceCulling = false;
+        this.felt = B.MeshBuilder.CreateDisc('piece_felt_src', { radius: 1, tessellation: 40 }, scene);
+        this.felt.rotation.x = Math.PI / 2;
+        this.felt.bakeCurrentTransformIntoVertices();
+        this.felt.material = feltMat; this.felt.isPickable = false; this.felt.isVisible = false;
+
+        const contactMat = new B.StandardMaterial('piece_contact', scene);
+        contactMat.diffuseColor = B.Color3.Black(); contactMat.specularColor = B.Color3.Black();
+        contactMat.emissiveColor = B.Color3.Black(); contactMat.disableLighting = true;
+        contactMat.opacityTexture = this.tex.contact; contactMat.backFaceCulling = false;
+        contactMat.zOffset = -2;
+        this.contact = B.MeshBuilder.CreateDisc('piece_contact_src', { radius: 1, tessellation: 4 }, scene);
+        this.contact.rotation.x = Math.PI / 2; this.contact.rotation.y = Math.PI / 4;
+        this.contact.scaling.setAll(Math.SQRT2);
+        this.contact.bakeCurrentTransformIntoVertices();
+        this.contact.material = contactMat; this.contact.isPickable = false; this.contact.isVisible = false;
     }
 
     async loadSculpted() {
         const [layoutResponse, binaryResponse] = await Promise.all([
-            fetch(new URL('../assets/staunton.json', import.meta.url)),
-            fetch(new URL('../assets/staunton.bin.gz', import.meta.url))
+            fetch(new URL('../assets/staunton.json?v=3', import.meta.url)),
+            fetch(new URL('../assets/staunton.bin.gz?v=3', import.meta.url)),
+            this.tex.piecesReady
         ]);
         if (!layoutResponse.ok || !binaryResponse.ok) return;
         const layout = await layoutResponse.json();
@@ -333,13 +360,21 @@ export class PieceFactory {
             mesh.overrideMaterialSideOrientation = this.BABYLON.Material.CounterClockWiseSideOrientation;
             mesh.setEnabled(false); mesh.isVisible = false;
             this.prototypes[kind].dispose(); this.prototypes[kind] = mesh;
+            this.baseRadius[kind] = Math.min(attributes.extent[0], attributes.extent[2]) / 2;
         }
+        // Os mapas das peças chegaram depois da primeira leva de materiais.
+        this.setTheme(this.theme);
     }
 
     setTheme(theme) {
         const previous = this.mats;
-        this.mats = makeMaterials(this.BABYLON, this.scene, this.tex, theme);
-        new Set(Object.values(previous)).forEach(mat => { if (mat?.dispose) mat.dispose(false, false); });
+        this.theme = theme;
+        this.mats = makeMaterials(this.BABYLON, this.scene, this.tex, theme, this.quality);
+        for (const color of ['w', 'b']) for (const mat of Object.values(previous[color])) mat.dispose(false, false);
+    }
+
+    materialFor(type, color) {
+        return this.mats[color][type];
     }
 
     spawn(type, color) {
@@ -349,15 +384,40 @@ export class PieceFactory {
         const mesh = proto.clone(`piece_${type}_${color}_${Date.now()}_${Math.random()}`);
         mesh.setEnabled(true);
         mesh.isVisible = true;
-        mesh.material = color === 'w' ? this.mats.w : this.mats.b;
+        mesh.material = this.materialFor(type, color);
         mesh.metadata = { kind: type, color };
         mesh.isPickable = true;
         mesh.receiveShadows = true;
 
+        // O cavalo escaneado olha para −z (o lado das pretas): o branco já
+        // nasce encarando o adversário; o preto gira meia-volta.
         if (type === 'n' && color === 'b') {
             mesh.rotation.y = Math.PI;
         }
 
+        const r = this.baseRadius[type];
+        const felt = this.felt.createInstance('felt');
+        felt.parent = mesh; felt.position.y = 0.0015; felt.scaling.setAll(r * 0.93);
+        felt.isPickable = false;
+        // Clone (e não instância): a opacidade é individual por peça.
+        const contact = this.contact.clone('contact');
+        contact.parent = mesh; contact.isPickable = false; contact.isVisible = true;
+        mesh.contact = contact; mesh.contactRadius = r * 1.75;
+        this.syncContact(mesh);
         return mesh;
+    }
+
+    /**
+     * Sombra de contato: fica colada na superfície de apoio enquanto a peça sobe.
+     *   elevação h = y − y_apoio;  raio = r·(1 + 0.9·h);  opacidade = 1 / (1 + 5·h)
+     */
+    syncContact(mesh, restY = BOARD_Y) {
+        const contact = mesh.contact;
+        if (!contact) return;
+        const h = Math.max(0, mesh.position.y - restY);
+        const s = mesh.scaling.x || 1;
+        contact.position.y = (0.004 - h) / s;
+        contact.scaling.setAll(mesh.contactRadius * (1 + h * 0.9));
+        contact.visibility = 0.85 / (1 + h * 5);
     }
 }

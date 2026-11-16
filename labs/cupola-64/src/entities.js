@@ -1,17 +1,20 @@
 /**
  * Moedas, estrelas, fungos e a bomba-rei — coleta, stomp e as sete missões.
+ *
+ * Contagem: moeda dourada = 1; moeda vermelha = 2 (48 douradas + 8 vermelhas = 64,
+ * o bastante para a estrela das 50 moedas — só com as douradas ela era inalcançável).
  */
 
 import * as THREE from 'three';
-import { QUEST, STAR_META } from './config.js';
-import { randRange } from './utils.js';
-import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=11';
+import { QUEST, STAR_META } from './config.js?v=12';
+import { randRange } from './utils.js?v=13';
+import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=13';
 
 const YELLOW = [
     [0, 8], [2, 10], [-2, 10], [4, 14], [-4, 14], [0, 18],
     [6, 6], [-6, 6], [8, 2], [-8, 4], [10, 10], [-10, 12],
     [3, -8], [-3, -6], [8, -10], [12, 4], [-12, 0], [14, 16],
-    [-14, 10], [16, 10], [1, -16], [5, -18], [0, 22], [-5, 20],
+    [-14, 10], [16, 10], [1, -16], [5, -18], [-2, 18], [-5, 20],
     [18, 6], [-16, 6], [7, 18], [-7, 8], [11, -4], [-11, 14],
     [20, 14], [-18, 14], [4, 2], [-4, 0], [2, -12], [-2, -14],
     [9, 8], [-9, -2], [13, 12], [-13, 8], [15, 2], [6, -4],
@@ -24,9 +27,9 @@ const RED = [
     { x: -14, z: 6 },
     { x: 3, z: -26 },
     { x: 28, y: 16.9, z: 2 },
-    { x: 2.6, y: 5.2, z: -16 },
-    { x: -10, y: 8.4, z: 16 },
-    { x: 16, z: 8 }
+    { x: 2.6, z: -16 },
+    { x: -10, y: 9.3, z: 16 },
+    { x: 16, z: 8, lift: 2.3 } // sobre o canhão: pega ao entrar nele
 ];
 
 const STAR_POS = {
@@ -34,10 +37,12 @@ const STAR_POS = {
     roof: [0, 0, 25],
     red: [0, 0, 6],
     sky: [28, 16.4, 2],
-    cave: [2.6, 5.4, -19],
+    cave: [2.6, 0, -19],
     king: [8, 0, -18],
     coins: [-3, 0, 10]
 };
+
+const KING_HOME = [8, -18];
 
 export class Entities {
     constructor(scene, world) {
@@ -70,7 +75,7 @@ export class Entities {
             const mesh = createCoin(true);
             const x = r.x;
             const z = r.z;
-            const y = r.y ?? this.world.groundAt(x, z, 40) + 1.05;
+            const y = r.y ?? this.world.groundAt(x, z, 40) + (r.lift ?? 1.05);
             mesh.position.set(x, y, z);
             this.scene.add(mesh);
             this.reds.push({ mesh, x, y, z, taken: false });
@@ -81,8 +86,9 @@ export class Entities {
             const p = STAR_POS[meta.id];
             let y = p[1];
             if (meta.id === 'summit') y = this.world.groundAt(p[0], p[2], 40) + 1.6;
-            if (meta.id === 'roof') y = this.world.castle.position.y + 12.6;
-            if (meta.id === 'red' || meta.id === 'coins' || meta.id === 'king') y = this.world.groundAt(p[0], p[2], 40) + 1.4;
+            // a estrela do telhado flutua dentro da rotunda (piso a +8,4 m)
+            if (meta.id === 'roof') y = this.world.castle.position.y + 9.9;
+            if (meta.id === 'red' || meta.id === 'coins' || meta.id === 'king' || meta.id === 'cave') y = this.world.groundAt(p[0], p[2], 40) + 1.4;
             mesh.position.set(p[0], y, p[2]);
             mesh.visible = meta.id === 'summit' || meta.id === 'roof' || meta.id === 'sky' || meta.id === 'cave';
             this.scene.add(mesh);
@@ -113,6 +119,7 @@ export class Entities {
         this.scene.add(king);
         this.king = {
             mesh: king,
+            spark: king.getObjectByName('spark'),
             x: 8, z: -18,
             y: king.position.y,
             hits: 0,
@@ -166,11 +173,12 @@ export class Entities {
             if (c.taken) continue;
             c.mesh.rotation.y += dt * 4;
             c.mesh.position.y = c.y + Math.sin(t * 4 + c.z) * 0.16;
-            c.mesh.scale.setScalar(1.08);
+            c.mesh.scale.setScalar(1.12);
         }
         for (const s of this.stars) {
             if (s.taken) continue;
             s.mesh.rotation.y += dt * 2.2;
+            s.mesh.rotation.z = Math.sin(t * 1.7 + s.x) * 0.08;
             s.mesh.position.y = s.y + Math.sin(t * 2.4) * 0.18;
             if (s.id === 'red') s.mesh.visible = !s.taken && this.redCount >= QUEST.redCoins;
             if (s.id === 'coins') s.mesh.visible = !s.taken && this.coinCount >= QUEST.coinStar;
@@ -208,7 +216,10 @@ export class Entities {
             f.y = this.world.groundAt(f.x, f.z, 40);
             f.mesh.position.set(f.x, f.y + Math.abs(Math.sin(f.bob)) * 0.08, f.z);
             f.mesh.rotation.y = f.facing;
-            f.mesh.scale.y = 1 + Math.sin(f.bob) * 0.06;
+            // bamboleio: achata/estica conservando volume e gingado lateral
+            const sq = 1 + Math.sin(f.bob * 2) * 0.07;
+            f.mesh.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+            f.mesh.rotation.z = Math.sin(f.bob) * 0.12;
         }
     }
 
@@ -219,12 +230,24 @@ export class Entities {
         const dx = player.x - k.x;
         const dz = player.z - k.z;
         const dist = Math.hypot(dx, dz);
+        // Só persegue a até 14 m; fora disso volta a rondar o posto (raio 3 m em torno
+        // de KING_HOME) em vez de caçar o jogador pela ilha inteira.
         k.chase = dist < 14 ? 1 : 0;
-        const speed = k.chase ? 3.6 : 1.8;
-        if (dist > 1.6) {
-            k.facing = Math.atan2(dx, dz);
-            k.x += Math.sin(k.facing) * speed * dt;
-            k.z += Math.cos(k.facing) * speed * dt;
+        if (k.chase) {
+            if (dist > 1.6) {
+                k.facing = Math.atan2(dx, dz);
+                k.x += Math.sin(k.facing) * 3.6 * dt;
+                k.z += Math.cos(k.facing) * 3.6 * dt;
+            }
+        } else {
+            const ang = this._spin * 0.25;
+            const tx = KING_HOME[0] + Math.cos(ang) * 3 - k.x;
+            const tz = KING_HOME[1] + Math.sin(ang) * 3 - k.z;
+            if (Math.hypot(tx, tz) > 0.15) {
+                k.facing = Math.atan2(tx, tz);
+                k.x += Math.sin(k.facing) * 1.8 * dt;
+                k.z += Math.cos(k.facing) * 1.8 * dt;
+            }
         }
         const hit = this.world.collide(k.x, k.z, 1.3);
         k.x = hit.x;
@@ -232,8 +255,10 @@ export class Entities {
         k.y = this.world.groundAt(k.x, k.z, 40);
         k.mesh.position.set(k.x, k.y, k.z);
         k.mesh.rotation.y = k.facing;
-        const spark = k.mesh.getObjectByName('spark');
-        if (spark) spark.scale.setScalar(0.8 + Math.sin(this._spin * 12) * 0.25);
+        if (k.spark) k.spark.scale.setScalar(0.8 + Math.sin(this._spin * 12) * 0.25 + Math.random() * 0.2);
+        // passo pesado: o corpo balança de um lado para o outro
+        k.mesh.rotation.z = Math.sin(this._spin * 5) * 0.06;
+        k.mesh.position.y = k.y + Math.abs(Math.sin(this._spin * 5)) * 0.08;
         k.mesh.visible = k.hurtT <= 0 || Math.sin(k.hurtT * 30) > 0;
     }
 
@@ -258,6 +283,7 @@ export class Entities {
                 c.taken = true;
                 c.mesh.visible = false;
                 this.redCount += 1;
+                this.coinCount += 2;
                 events.push({ type: 'red', pos: c.mesh.position, left: QUEST.redCoins - this.redCount });
             }
         }

@@ -79,12 +79,21 @@ export function detectSoftwareGL() {
 }
 
 /**
- * Altura do terreno da Ilha da Cúpola.
+ * Altura do terreno da Ilha da Cúpola (m).
  * Colinas senoidais + montanha ao norte + platô do castelo ao sul + praia.
+ *
+ *   base     = 0.22 + Σ senos (três frequências)
+ *   montanha = t²·(1.15 − 0.12·t)·17.4,  t = 1 − d/20   (d = distância ao cume em (3, −26))
+ *   cume     = mistura suave até 16.85 m entre d = 7 e d = 3 (platô sem degrau vertical;
+ *              inclinação máxima ≈ 3,4:1, abaixo do limite de parede de 5,5:1 do Player)
+ *   castelo  = platô 1.28 + 0.55·t em volta de (0, 25), também com borda suavizada
+ *   praia    = h → −0.2 entre r = 38 e 52; o leito desce até −3.2 em r = 58
+ *
+ * A mesma fórmula existe em GLSL (HEIGHT_GLSL) para o mar saber a profundidade.
  */
 export function heightAt(x, z) {
     const r = Math.hypot(x, z);
-    if (r > 54) return -2.4;
+    if (r > 58) return -3.2;
 
     const island = smoothstep(52, 36, r);
     let h = 0.22;
@@ -96,13 +105,13 @@ export function heightAt(x, z) {
     if (md < 20) {
         const t = 1 - md / 20;
         h += t * t * (1.15 - t * 0.12) * 17.4;
-        if (md < 3.4) h = Math.max(h, 16.85);
+        h = lerp(h, Math.max(h, 16.85), smoothstep(7.0, 3.0, md));
     }
 
     const cd = Math.hypot(x, z - 25);
     if (cd < 13.5) {
         const t = 1 - cd / 13.5;
-        h = Math.max(h, 1.28 + t * 0.55);
+        h = lerp(h, Math.max(h, 1.28 + t * 0.55), smoothstep(13.5, 11.4, cd));
     }
 
     const knoll = Math.hypot(x + 18, z - 4);
@@ -116,29 +125,70 @@ export function heightAt(x, z) {
         const beach = smoothstep(52, 38, r);
         h = lerp(-0.2, Math.max(h, 0.04), beach);
     }
+    if (r > 50) h = lerp(h, -3.2, smoothstep(50, 58, r));
     return h;
 }
 
-export function inCave(x, z, y) {
-    return x > -2.8 && x < 8.4 && z > -22.5 && z < -11.2 && y < 9.4 && y > 3.2;
+/** heightAt em GLSL — usado pelo oceano (profundidade = nível da água − altura). */
+export const HEIGHT_GLSL = /* glsl */ `
+float cupolaHeight(vec2 p) {
+    float x = p.x;
+    float z = p.y;
+    float r = length(p);
+    if (r > 58.0) return -3.2;
+    float island = 1.0 - smoothstep(36.0, 52.0, r);
+    float h = 0.22;
+    h += sin(x * 0.11) * cos(z * 0.09) * 1.2;
+    h += sin(x * 0.047 + z * 0.061) * 0.72;
+    h += cos((x - z) * 0.075) * 0.38;
+    float md = length(p - vec2(3.0, -26.0));
+    if (md < 20.0) {
+        float t = 1.0 - md / 20.0;
+        h += t * t * (1.15 - t * 0.12) * 17.4;
+        h = mix(h, max(h, 16.85), 1.0 - smoothstep(3.0, 7.0, md));
+    }
+    float cd = length(p - vec2(0.0, 25.0));
+    if (cd < 13.5) {
+        float t = 1.0 - cd / 13.5;
+        h = mix(h, max(h, 1.28 + t * 0.55), 1.0 - smoothstep(11.4, 13.5, cd));
+    }
+    float k1 = length(p - vec2(-18.0, 4.0));
+    if (k1 < 8.0) { float q = 1.0 - k1 / 8.0; h += q * q * 2.4; }
+    float k2 = length(p - vec2(16.0, -8.0));
+    if (k2 < 7.0) { float q = 1.0 - k2 / 7.0; h += q * q * 1.8; }
+    h *= island;
+    if (r > 38.0) {
+        float beach = 1.0 - smoothstep(38.0, 52.0, r);
+        h = mix(-0.2, max(h, 0.04), beach);
+    }
+    if (r > 50.0) h = mix(h, -3.2, smoothstep(50.0, 58.0, r));
+    return h;
+}`;
+
+/**
+ * Gruta do farol: uma garganta a céu aberto escavada na encosta da montanha.
+ * Dentro do retângulo GORGE o piso é min(terreno, linha da gruta); a linha desce
+ * de 6.25 m na boca (z = −11.2) até 4.15 m no fundo (z = −22.5). A transição de
+ * 0.35 m nas bordas vira parede de rocha (o jogador não escala: ver Player._move).
+ */
+export const GORGE = { x0: 0.4, x1: 4.8, z0: -22.4 };
+
+export function gorgeFloor(z) {
+    const t = clamp((z + 22.5) / 11.3, 0, 1);
+    return 4.15 + t * 2.1;
 }
 
-export function caveFloor(x, z) {
-    const t = clamp((z + 22.5) / 11.3, 0, 1);
-    return 4.15 + t * 2.1 + Math.sin(x * 0.4) * 0.12;
+/** Superfície caminhável/visível: terreno com a garganta escavada. */
+export function surfaceAt(x, z) {
+    const h = heightAt(x, z);
+    const d = Math.min(x - GORGE.x0, GORGE.x1 - x, z - GORGE.z0);
+    if (d <= 0) return h;
+    const floor = gorgeFloor(z);
+    if (h <= floor) return h;
+    return lerp(h, floor, smoothstep(0, 0.35, d));
 }
 
 function smoothstep(edge0, edge1, x) {
     const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
     return t * t * (3 - 2 * t);
-}
-
-export function terrainColor(x, z, y) {
-    const r = Math.hypot(x, z);
-    const md = Math.hypot(x - 3, z + 26);
-    if (y < 0.12 || r > 44) return 0xe8d39a;
-    if (md < 14 && y > 8) return 0xc4b49a;
-    if (md < 8 && y > 13) return 0xefe6d8;
-    if (Math.abs(x) < 2.4 && z > 2 && z < 22 && y < 2.4) return 0xd2b48c;
-    return ((Math.floor(x * 0.35) + Math.floor(z * 0.35)) & 1) === 0 ? 0x3ecf4a : 0x2faf3d;
 }

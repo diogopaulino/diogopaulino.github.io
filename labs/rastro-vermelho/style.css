@@ -215,3 +215,31 @@ body[data-state="play"] .lab-foot { display: none; }
     max-width: 100%;
   }
 }
+
+/* Toque: o HUD sobe para cima do direcional e dos botões — nada fica embaixo dos controles. */
+@media (pointer: coarse) {
+    .rider-hud { bottom: calc(126px + 2rem + var(--safe-bottom)); }
+    .weapon-hud { bottom: calc(112px + 1.9rem + var(--safe-bottom)); gap: .1rem; }
+    .weapon-hud .eyebrow, .weapon-hud > span:last-child { display: none; }
+    .prompt { display: none; }
+    .interaction { bottom: calc(126px + 6.6rem + var(--safe-bottom)); }
+    .message { bottom: calc(126px + 10rem + var(--safe-bottom)); }
+}
+@media (pointer: coarse) and (max-width: 600px) {
+    /* no retrato estreito o losango de destino já orienta; o mapa cede lugar ao cavalo */
+    #minimap { display: none; }
+}
+@media (pointer: coarse) and (max-height: 520px) and (orientation: landscape) {
+    #minimap { display: none; }
+    .rider-hud { left: calc(92px + 1.5rem + var(--safe-left)); bottom: calc(.6rem + var(--safe-bottom)); }
+    .weapon-hud { right: calc(.6rem + var(--safe-right)); bottom: calc(44px + 1.3rem + var(--safe-bottom)); }
+    .vitals { width: 120px; }
+    .pad { font-size: .54rem; letter-spacing: .03em; }
+    .interaction { bottom: calc(44px + 1.3rem + var(--safe-bottom)); }
+    .message { bottom: calc(44px + 4.6rem + var(--safe-bottom)); }
+}
+
+/* Legibilidade do HUD sobre céu e pasto claros (a cena deixou de ser escura). */
+.hud { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 12px rgba(0,0,0,.6); }
+.vital, .location > span:last-child { color: var(--paper-soft); }
+meter, meter::-webkit-meter-bar { background: rgba(10,12,11,.5); }

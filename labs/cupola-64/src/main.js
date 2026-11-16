@@ -1,18 +1,27 @@
 /**
- * Cúpola 64 — laço principal: renderer PBR, câmera orbital, estrelas e o vitral.
+ * Cúpola 64 — laço principal: renderer HDR, câmera orbital, estrelas e o vitral.
+ *
+ * Quadro: cena em RGBA16F + MSAA → AO → neblina atmosférica → bloom → DoF/raios →
+ * ACES + gradação (pipeline de labs/shared/gfx/post.js). O céu físico alimenta o IBL
+ * e a luz do sol; a sombra do sol segue o Nico.
+ *
+ * Resolução adaptativa: a cada 0,6 s mede o fps; abaixo de 50 reduz o pixel ratio em
+ * 10 % (piso de 62 % do teto do tier), acima de 58 devolve 5 % até o teto.
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer } from '../../shared/cinematic.js?v=2';
-import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js';
-import { detectMobile, detectSoftwareGL, pick, formatTime } from './utils.js';
+import { createPipeline } from '../../shared/gfx/post.js';
+import { configureTextures } from '../../shared/gfx/textures.js';
+import { detectSoftwareGL as softwareGL } from '../../shared/gfx/core.js';
+import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js?v=12';
+import { detectMobile, pick, formatTime } from './utils.js?v=13';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
-import { Hud } from './hud.js';
-import { World } from './world.js?v=11';
-import { Player } from './player.js?v=11';
-import { Entities } from './entities.js?v=11';
-import { Effects } from './effects.js?v=11';
+import { Hud } from './hud.js?v=12';
+import { World } from './world.js?v=15';
+import { Player } from './player.js?v=13';
+import { Entities } from './entities.js?v=14';
+import { Effects } from './effects.js?v=13';
 
 class Game {
     constructor() {
@@ -50,10 +59,13 @@ class Game {
 
     qualityPreset() {
         // SoftGL/SwiftShader: sempre low, mesmo com preset salvo em "high".
-        if (detectSoftwareGL()) return QUALITY.low;
+        if (this.software) return QUALITY.low;
         let key = this.settings.quality;
         if (key === 'auto') {
-            key = this.mobile ? 'low' : (innerWidth >= 1400 ? 'high' : 'medium');
+            const cores = navigator.hardwareConcurrency || 8;
+            const memory = navigator.deviceMemory || 8;
+            if (this.mobile || cores <= 4 || memory <= 4) key = 'low';
+            else key = cores >= 8 && Math.min(innerWidth, innerHeight) >= 700 ? 'high' : 'medium';
         }
         return QUALITY[key] || QUALITY.medium;
     }
@@ -81,13 +93,9 @@ class Game {
         h.qualitySelect.addEventListener('change', () => {
             this.settings.quality = h.qualitySelect.value;
             this.saveSettings();
-            this.quality = this.qualityPreset();
-            this.resize?.();
-            if (this.renderer) {
-                this.renderer.shadowMap.enabled = !!this.quality.shadows;
-                const pr = Math.min(window.devicePixelRatio || 1, this.quality.pr || 1);
-                this.renderer.setPixelRatio(pr);
-            }
+            // o tier muda malha do terreno, grama, sombras e pós: reconstruir tudo é mais seguro
+            // do que remendar a cena — a ilha recarrega em ~1 s já no novo tier
+            if (this.renderer && this.qualityPreset() !== this.quality) location.reload();
         });
         h.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(h.volumeSlider.value);
@@ -119,63 +127,83 @@ class Game {
     }
 
     async boot() {
-        this.hud.setLoading(0.08, 'Preparando a ilha…');
+        this.hud.setLoading(0.05, 'Preparando a ilha…');
         try {
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: true,
+                antialias: false, // o AA vem do MSAA do alvo HDR
                 powerPreference: 'high-performance',
-                alpha: false
+                alpha: false,
+                stencil: false
             });
         } catch (err) {
             this.hud.fail(err?.message || 'WebGL indisponível neste navegador.');
             return;
         }
 
+        this.software = softwareGL(this.renderer);
         this.quality = this.qualityPreset();
-
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.maxPr = Math.min(window.devicePixelRatio || 1, this.quality.pr);
+        this.pr = this.maxPr;
+        this.renderer.setPixelRatio(this.pr);
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
-        this.renderer.setClearColor(0x7ec8ff, 1);
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.12;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        this.renderer.info.autoReset = false;
+        configureTextures(this.renderer);
 
         this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(56, 1, 0.12, 160);
-        this.clock = new THREE.Clock();
+        this.camera = new THREE.PerspectiveCamera(56, 1, 0.15, this.quality.far);
+        this._last = performance.now();
+        this.focus = new THREE.Vector3(0, 2, 14);
+        this.worldTime = 0;
 
-        const pmrem = new THREE.PMREMGenerator(this.renderer);
-        const envScene = new THREE.Scene();
-        envScene.add(new THREE.HemisphereLight(0xb8d8ff, 0x3a6048, 1));
-        const sunLite = new THREE.DirectionalLight(0xfff4dc, 1.2);
-        sunLite.position.set(4, 8, 2);
-        envScene.add(sunLite);
-        this.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-        this.scene.environmentIntensity = this.quality.id === 'low' ? 0.24 : 0.52;
-        pmrem.dispose();
-        envScene.clear();
+        try {
+            this.world = new World(this.scene, this.renderer, this.quality);
+            await this.world.build((p, text) => this.hud.setLoading(p, text));
 
-        this.hud.setLoading(0.32, 'Modelando a ilha…');
-        this.world = new World(this.scene, this.quality);
+            this.post = createPipeline(this.renderer, { tier: this.quality.id, sky: this.world.sky, software: this.software });
+            Object.assign(this.post.params, {
+                exposure: 1.0, bloom: 0.1, ao: 0.9, aoRadius: 0.9,
+                // neblina rasteira leve + bruma de distância: o horizonte do mar dissolve no céu
+                fogDensity: 0.0035, fogFalloff: 0.07, fogBase: 0, haze: 0.0011, fogSunGlow: 0.5,
+                rays: 0.4, saturation: 1.14, contrast: 1.05, vignette: 0.2, grain: 0.008
+            });
 
-        this.hud.setLoading(0.55, 'Chamando Nico…');
-        this.player = new Player(this.scene);
-        this.effects = new Effects(this.scene, this.camera);
-        this.entities = new Entities(this.scene, this.world);
-        window.__cupola = this;
+            this.hud.setLoading(0.84, 'Chamando Nico…');
+            await new Promise((r) => setTimeout(r, 0));
+            this.player = new Player(this.scene);
+            this.effects = new Effects(this.scene, this.camera);
+            this.entities = new Entities(this.scene, this.world);
+            window.__cupola = this;
 
-        this.hud.setLoading(0.84, 'Afinando o vitral…');
-        this.resize();
-        this.renderer.compile(this.scene, this.camera);
-        this.render();
+            this.hud.setLoading(0.92, 'Afinando o vitral…');
+            this.resize();
+            this.menuCamera(0);
+            this.world.update(0.016, 0, this.camera, this.focus);
+            try {
+                await this.renderer.compileAsync(this.scene, this.camera);
+            } catch { /* compila sob demanda */ }
+            this.render(0.016);
+        } catch (err) {
+            console.error(err);
+            this.hud.fail(err?.message || 'Não foi possível montar a ilha.');
+            return;
+        }
         this.hud.setLoading(1, 'Pronto');
         setTimeout(() => {
             this.hud.hideLoading();
             this.enterMenu();
             this.loop();
-        }, 280);
+        }, 200);
+    }
+
+    /** Fora da partida a câmera sobrevoa a ilha em órbita lenta, de olho no castelo. */
+    menuCamera(t) {
+        const a = 3.4 + t * 0.05;
+        const r = 30 + Math.sin(t * 0.07) * 4;
+        this.camera.position.set(Math.sin(a) * r, 9.5 + Math.sin(t * 0.11) * 2.5, 16 + Math.cos(a) * r);
+        this.camera.lookAt(0, 6.5, 20);
+        this.focus.set(0, 2, 18);
     }
 
     enterMenu() {
@@ -197,6 +225,7 @@ class Game {
         this.player.spawn(this.world);
         this.entities.reset();
         this.state = 'play';
+        this.post.params.dofRange = 0;
         this.hud.showPlay();
         const coarse = window.matchMedia('(pointer: coarse)').matches;
         this.hud.setTouchVisible(coarse || this.mobile);
@@ -208,7 +237,7 @@ class Game {
         });
         this.hud.say('Bem-vindo à Ilha da Cúpola!');
         document.body.dataset.state = 'play';
-        this.clock.getDelta();
+        this.delta();
     }
 
     pause() {
@@ -223,7 +252,7 @@ class Game {
         this.state = 'play';
         this.hud.hidePause();
         this.hud.showPlay();
-        this.clock.getDelta();
+        this.delta();
         document.body.dataset.state = 'play';
     }
 
@@ -235,12 +264,32 @@ class Game {
         if (!this.settings.muted) this.audio.init();
     }
 
+    /** Segundos desde a última chamada (zera o relógio ao retomar a partida). */
+    delta() {
+        const now = performance.now();
+        const dt = Math.max(0, (now - this._last) / 1000);
+        this._last = now;
+        return dt;
+    }
+
     loop = () => {
         const tick = () => {
-            const dt = Math.min(0.033, Math.max(0, this.clock.getDelta()));
-            if (this.state === 'play') this.update(dt);
-            else if (this.world) this.world.update(dt * 0.35, this.clock.elapsedTime);
-            this.render();
+            const dt = Math.min(0.033, this.delta());
+            if (this.state === 'play') {
+                this.update(dt);
+            } else if (this.world) {
+                // menu, pausa e telas finais: o mundo continua vivo em câmera lenta
+                const slow = this.state === 'pause' ? 0 : dt;
+                this.worldTime += slow;
+                if (this.state === 'menu') {
+                    this.menuT = (this.menuT || 0) + dt;
+                    this.menuCamera(this.menuT);
+                }
+                this.world.update(slow, this.worldTime, this.camera, this.focus);
+                this.effects.update(slow);
+            }
+            this.render(dt);
+            this.measure(dt);
         };
         if (window.LabRuntime) {
             this._raf = LabRuntime.createLoop(() => tick());
@@ -256,31 +305,41 @@ class Game {
 
     update(dt) {
         this.elapsed += dt;
-        this.world.update(dt, this.elapsed);
+        this.worldTime += dt;
         const flags = this.player.update(dt, this.input, this.world, this.camera);
+        this.focus.copy(this.player.position);
+        this.world.update(dt, this.worldTime, this.camera, this.focus);
+
+        // a poeira e a água recebem a cor do sol do momento
+        const sky = this.world.sky;
+        this.effects.light.copy(sky.lightColor).multiplyScalar(0.55 + sky.lightIntensity * 0.16);
         this.effects.update(dt);
 
         if (flags.jumped) this.audio.jump(this.player.jumpCombo || 1);
         if (flags.pounded && this.player.grounded) {
             this.audio.pound();
-            this.effects.dust(this.player.position);
+            this.effects.dust(this.player.position, 1.7);
         }
         if (flags.cannon) this.audio.cannon();
-        if (flags.swam && flags.landed) this.audio.splash();
-        if (flags.landed && !flags.pounded) this.effects.dust(this.player.position);
+        if (flags.splash) {
+            this.audio.splash();
+            this.effects.splash(this.player.position, this.world.ocean.mesh.position.y);
+        }
+        if (flags.landed && !flags.pounded && !this.player.swimming) this.effects.dust(this.player.position, 0.8);
+        if (flags.step) this.effects.step(this.player.position, Math.sin(this.player.yaw), Math.cos(this.player.yaw));
 
         const events = this.entities.update(dt, this.player);
         for (const ev of events) {
             if (ev.type === 'coin') {
                 this.audio.coin();
-                this.effects.sparkle(ev.pos, 8);
+                this.effects.sparkle(ev.pos, 9);
             } else if (ev.type === 'red') {
                 this.audio.red();
-                this.effects.sparkle(ev.pos, 12);
+                this.effects.sparkle(ev.pos, 14, [1.0, 0.25, 0.2]);
                 this.hud.say(ev.left > 0 ? `${ev.left} vermelhas restantes` : pick(QUOTES.red));
             } else if (ev.type === 'star') {
                 this.audio.star();
-                this.effects.burst(ev.pos, 22);
+                this.effects.burst(ev.pos, 26);
                 this.player.celebrate();
                 this.hud.showStarGet(ev.meta.title);
                 this.hud.say(pick(QUOTES.star), 3200);
@@ -307,6 +366,17 @@ class Game {
             }
         }
 
+        // cintilação em volta das estrelas visíveis (até 60 m do Nico)
+        this._twinkle = (this._twinkle || 0) - dt;
+        if (this._twinkle <= 0) {
+            this._twinkle = 0.09;
+            for (const s of this.entities.stars) {
+                if (!s.taken && s.mesh.visible && s.mesh.position.distanceToSquared(this.player.position) < 3600) {
+                    this.effects.twinkle(s.mesh.position);
+                }
+            }
+        }
+
         this.hud.setStats({
             stars: this.entities.starCount,
             coins: this.entities.coinCount,
@@ -314,6 +384,23 @@ class Game {
             lives: this.player.lives
         });
         this.effects.applyShake();
+    }
+
+    /** Mede fps e ajusta o pixel ratio (ver cabeçalho). */
+    measure(dt) {
+        this._acc = (this._acc || 0) + dt;
+        this._frames = (this._frames || 0) + 1;
+        if (this._acc < 0.6) return;
+        this.fps = this._frames / this._acc;
+        this._acc = 0;
+        this._frames = 0;
+        if (this.state !== 'play' || this.software) return;
+        let next = this.pr;
+        if (this.fps < 50) next = Math.max(this.maxPr * 0.62, this.pr * 0.9);
+        else if (this.fps > 58) next = Math.min(this.maxPr, this.pr * 1.05);
+        if (Math.abs(next - this.pr) < 0.03) return;
+        this.pr = next;
+        this.resize();
     }
 
     win() {
@@ -353,16 +440,27 @@ class Game {
     resize() {
         const w = this.canvas.clientWidth || innerWidth;
         const h = this.canvas.clientHeight || innerHeight;
-        const pr = Math.min(devicePixelRatio || 1, this.quality.pr);
-        this.renderer.setPixelRatio(pr);
+        this.renderer.setPixelRatio(this.pr);
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / Math.max(1, h);
+        // retrato estreito: abre o campo de visão para o Nico não sumir atrás do HUD
+        this.camera.fov = this.camera.aspect < 0.8 ? 68 : 56;
         this.camera.updateProjectionMatrix();
+        this.camera.userData.bufferHeight = h * this.pr;
+        this.post?.setSize();
     }
 
-    render() {
-        this.renderer.render(this.scene, this.camera);
+    render(dt = 0.016) {
+        this.renderer.info.reset();
+        this.post.render(this.scene, this.camera, dt);
+    }
+
+    /** Diagnóstico para testes: fps medido e carga de desenho do último quadro. */
+    stats() {
+        const i = this.renderer.info.render;
+        return { fps: Math.round(this.fps || 0), calls: i.calls, triangles: i.triangles, pr: +this.pr.toFixed(2), tier: this.quality.id };
     }
 }
 
-new Game();
+// Alça de inspeção para testes no console (não usada pelo jogo).
+globalThis.__cupola64 = new Game();
