@@ -181,3 +181,11 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
 }
+
+/* Alvos de toque: nada interativo abaixo de 44 px em telas de toque/estreitas. */
+@media (max-width: 760px), (pointer: coarse), (max-height: 540px) and (orientation: landscape) {
+    .back-link { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; min-width: 44px; }
+    .camera-bar button, .mode-nav button, .play-actions button, .dock button,
+    .coach-toggle, #intro .learn-button, .lesson-nav button, .promo-grid button { min-height: 44px; }
+    #intro .field select { min-height: 44px; }
+}

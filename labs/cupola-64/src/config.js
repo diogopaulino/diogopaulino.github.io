@@ -51,6 +51,8 @@ export const CAMERA = {
     distance: 9.2,
     minDistance: 4.6,
     maxDistance: 16,
+    /** raio da esfera de colisão da câmera contra o terreno (m) */
+    clearance: 0.55,
     phi: 1.18,
     phiMin: 0.42,
     phiMax: 1.42,
@@ -67,10 +69,15 @@ export const QUEST = {
     kingHits: 3
 };
 
+/**
+ * Tiers gráficos. `pr` é o teto do pixel ratio (a resolução adaptativa desce até
+ * 0.6× quando o fps cai). `shadowRadius` é o meio-lado (m) coberto pela sombra do sol,
+ * que segue o Nico; `grass`/`flowers` são instâncias; `terrain` são segmentos por lado.
+ */
 export const QUALITY = {
-    low: { pr: 1, antialias: false, shadows: false, shadowSize: 512, trees: 0.45, grass: 0.4, clouds: 8, snap: 64 },
-    medium: { pr: 1.25, antialias: false, shadows: true, shadowSize: 1024, trees: 0.75, grass: 0.7, clouds: 12, snap: 84 },
-    high: { pr: 1.6, antialias: true, shadows: true, shadowSize: 2048, trees: 1, grass: 1, clouds: 16, snap: 110 }
+    low: { id: 'low', pr: 1, shadows: true, shadowSize: 1024, shadowRadius: 30, terrain: 128, grass: 10000, flowers: 220, rocks: 0.6, trees: 0.6, far: 420 },
+    medium: { id: 'medium', pr: 1.5, shadows: true, shadowSize: 2048, shadowRadius: 40, terrain: 184, grass: 18000, flowers: 460, rocks: 0.85, trees: 0.85, far: 520 },
+    high: { id: 'high', pr: 2, shadows: true, shadowSize: 4096, shadowRadius: 46, terrain: 240, grass: 38000, flowers: 760, rocks: 1, trees: 1, far: 620 }
 };
 
 export const STAR_META = [

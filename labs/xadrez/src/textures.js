@@ -1,6 +1,8 @@
 /**
- * Texturas PBR procedurais — madeira, marfim, ébano, feltro e mármore para Babylon.js.
- * Mapas locais de madeira fotografada e microtexturas determinísticas em canvas.
+ * Texturas PBR — madeira, marfim, ébano, feltro e latão para Babylon.js.
+ * Marchetaria procedural determinística (anéis de crescimento, fibras e poros),
+ * madeira fotografada para moldura e mesa, e os mapas originais das peças
+ * escaneadas (normal + ORM) de onde também sai o albedo de cada cor.
  */
 
 function canvas(w, h = w) {
@@ -92,64 +94,150 @@ function pack(scene, draw, { w = 512, strength = 1.8, roughBase = 0.32, roughCon
     return maps;
 }
 
-function grain(ctx, w, rand, colorA, colorB, bands = 28) {
+/** Ruído de valor 2D determinístico, com período opcional em x (veio tileável). */
+function makeNoise(seed) {
+    const perm = new Uint8Array(512);
+    const rand = rng(seed);
+    for (let i = 0; i < 256; i++) perm[i] = i;
+    for (let i = 255; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+    for (let i = 0; i < 256; i++) perm[i + 256] = perm[i];
+    const h = (x, y) => perm[(perm[x & 255] + y) & 255] / 255;
+    return (x, y) => {
+        const xi = Math.floor(x), yi = Math.floor(y);
+        const xf = x - xi, yf = y - yi;
+        const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+        const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+        return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    };
+}
+
+/**
+ * Lâmina de madeira: o veio corre no eixo x do canvas.
+ *   anel  = v·rings + fbm(u, v)·warp        (anéis de crescimento ondulados)
+ *   tom   = mix(lenho tardio, lenho inicial, serra(anel)^sharp)
+ *   fibra = ruído muito esticado ao longo do veio; poros = traços escuros curtos
+ * `figure` adiciona o "chatoyance" transversal do bordo (tiger maple suave).
+ */
+function veneer(ctx, w, { seed, early, late, rings = 9, warp = 1.4, sharp = 1.6, fiber = 0.05, pores = 0.5, figure = 0 }) {
+    const n = makeNoise(seed), n2 = makeNoise(seed + 17);
     const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-    const a = rgb(colorA), b = rgb(colorB);
+    const a = rgb(early), b = rgb(late);
     const image = ctx.createImageData(w, w);
-    // Veios longos com poros finos, sem os degraus de um gradiente em faixas.
-    for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) {
-        const warp = x + 3 * Math.sin(y / w * Math.PI * 2) + Math.sin(y / w * Math.PI * 6);
-        const vein = Math.sin(warp / w * Math.PI * bands * 2);
-        const pore = Math.pow(Math.abs(Math.sin(warp * 1.31)), 24) * 3;
-        const mix = 0.5 + vein * 0.16 + Math.sin(warp * 0.17) * 0.1;
-        const noise = (rand() - 0.5) * 3 - pore;
-        const i = (y * w + x) * 4;
-        for (let c = 0; c < 3; c++) image.data[i + c] = a[c] * mix + b[c] * (1 - mix) + noise;
-        image.data[i + 3] = 255;
+    const d = image.data;
+    const rand = rng(seed * 7 + 3);
+    for (let y = 0; y < w; y++) {
+        const v = y / w;
+        for (let x = 0; x < w; x++) {
+            const u = x / w;
+            const wobble = n(u * 2.2, v * 3.1) * 0.6 + n(u * 5.3 + 9, v * 7.7) * 0.28 + n2(u * 1.1, v * 14) * 0.12;
+            const ring = v * rings + wobble * warp;
+            const saw = ring - Math.floor(ring);
+            // Transição suave no lenho inicial e borda nítida no lenho tardio.
+            const band = Math.pow(saw, sharp) * (1 - Math.pow(saw, 14));
+            const fib = (n(u * 6, v * 260) - 0.5) * fiber * 2 + (n2(u * 22, v * 620) - 0.5) * fiber;
+            const fig = figure ? Math.sin(u * 46 + n2(u * 3, v * 5) * 5) * figure * (0.5 + n(u * 2, v * 2) * 0.5) : 0;
+            let k = 0.34 + band * 0.52 + fib + fig + (n2(u * 1.3, v * 1.7) - 0.5) * 0.16;
+            // Poros: aparecem no lenho inicial, alongados no sentido do veio.
+            const pore = pores && n(u * 34, v * 900) > 0.86 - band * 0.1 && n2(u * 9, v * 240) > 0.5 ? pores : 0;
+            k = Math.max(0, Math.min(1, k)) * (1 - pore * 0.32);
+            const i = (y * w + x) * 4;
+            const grainNoise = (rand() - 0.5) * 2.2;
+            for (let c = 0; c < 3; c++) d[i + c] = b[c] + (a[c] - b[c]) * k + grainNoise;
+            d[i + 3] = 255;
+        }
     }
     ctx.putImageData(image, 0, 0);
 }
 
+/** Disco radial macio (alfa) para a sombra de contato sob cada peça. */
+function contactTexture(scene) {
+    const el = canvas(128), ctx = ctx2d(el);
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(0,0,0,0.92)');
+    g.addColorStop(0.42, 'rgba(0,0,0,0.78)');
+    g.addColorStop(0.7, 'rgba(0,0,0,0.3)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+    const tex = new window.BABYLON.DynamicTexture('contact_shadow', el, scene, true);
+    tex.hasAlpha = true; tex.update(false);
+    return tex;
+}
+
+const PIECE_KINDS = ['k', 'q', 'r', 'b', 'n', 'p'];
+/** Cores-base lineares aproximadas, em sRGB 0–255: buxo/marfim, ébano e latão. */
+const PIECE_TONES = {
+    w: { base: [226, 204, 162], vein: [198, 170, 124], brass: [203, 160, 82] },
+    b: { base: [34, 26, 22], vein: [58, 42, 33], brass: [176, 134, 66] }
+};
+
+/**
+ * Mapas das peças escaneadas. O ORM original (R = oclusão, G = rugosidade,
+ * B = metal) marca as guarnições metálicas; o albedo de cada cor é derivado
+ * dele: mix(madeira com veio fino, latão, metal). Resolve quando tudo carregou.
+ */
+function loadPieceMaps(scene) {
+    const B = window.BABYLON;
+    const maps = {};
+    const jobs = PIECE_KINDS.map(kind => new Promise((resolve) => {
+        const url = name => new URL(`../assets/pieces/${kind}-${name}.jpg`, import.meta.url).href;
+        // invertY = false: as UVs vêm do glTF (origem no canto superior esquerdo).
+        const normal = new B.Texture(url('normal'), scene, false, false, B.Texture.TRILINEAR_SAMPLINGMODE);
+        normal.gammaSpace = false;
+        normal.anisotropicFilteringLevel = 4;
+        const entry = maps[kind] = { normal, orm: null, albedo: {} };
+        const img = new Image();
+        img.onload = () => {
+            const size = img.naturalWidth;
+            const src = canvas(size), sctx = ctx2d(src);
+            sctx.drawImage(img, 0, 0);
+            const orm = sctx.getImageData(0, 0, size, size).data;
+            entry.orm = new B.DynamicTexture(`orm_${kind}`, src, scene, true, B.Texture.TRILINEAR_SAMPLINGMODE);
+            entry.orm.update(false); entry.orm.gammaSpace = false;
+            const noise = makeNoise(kind.charCodeAt(0));
+            for (const color of ['w', 'b']) {
+                const tone = PIECE_TONES[color];
+                const el = canvas(size), ctx = ctx2d(el);
+                const out = ctx.createImageData(size, size), d = out.data;
+                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                    const i = (y * size + x) * 4;
+                    const metal = Math.min(1, Math.max(0, (orm[i + 2] - 70) / 120));
+                    const g = noise(x / size * 5, y / size * 70) * 0.7 + noise(x / size * 19, y / size * 230) * 0.3;
+                    for (let c = 0; c < 3; c++) {
+                        const wood = tone.vein[c] + (tone.base[c] - tone.vein[c]) * (0.25 + g * 0.75);
+                        d[i + c] = wood + (tone.brass[c] - wood) * metal;
+                    }
+                    d[i + 3] = 255;
+                }
+                ctx.putImageData(out, 0, 0);
+                entry.albedo[color] = new B.DynamicTexture(`albedo_${kind}_${color}`, el, scene, true, B.Texture.TRILINEAR_SAMPLINGMODE);
+                entry.albedo[color].update(false);
+            }
+            resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = url('orm');
+    }));
+    return { maps, ready: Promise.all(jobs) };
+}
+
 export function createTextures(scene) {
-    const maple = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(11), '#d8c9ac', '#c7b795', 22);
-    }, { repeat: [1, 1], roughBase: 0.76, strength: 0.4 });
+    // Bordo (casas claras) e nogueira (casas escuras): 1024 px, cada casa usa
+    // uma janela própria da lâmina (ver world.js), como numa marchetaria real.
+    const maple = pack(scene, (ctx, w) => veneer(ctx, w, {
+        seed: 11, early: '#ecd9b2', late: '#c9a874', rings: 7, warp: 1.1, sharp: 1.3, fiber: 0.035, pores: 0.18, figure: 0.045
+    }), { w: 1024, strength: 0.7 });
 
-    const walnut = pack(scene, (ctx, w) => {
-        grain(ctx, w, rng(29), '#735744', '#604936', 18);
-    }, { repeat: [1, 1], roughBase: 0.8, strength: 0.5 });
-
-    const ebony = pack(scene, (ctx, w) => {
-        const rand = rng(101);
-        ctx.fillStyle = '#1a120f';
-        ctx.fillRect(0, 0, w, w);
-        grain(ctx, w, rand, '#38322c', '#24221f', 12);
-        ctx.globalAlpha = 0.18;
-        ctx.fillStyle = '#4a2818';
-        for (let i = 0; i < 40; i++) {
-            ctx.fillRect(rand() * w, 0, 1 + rand() * 2, w);
-        }
-        ctx.globalAlpha = 1;
-    }, { w: 256, roughness: true, repeat: [1, 1], roughBase: 0.72, roughContrast: 0.08, strength: 0.3 });
-
-    const ivory = pack(scene, (ctx, w) => {
-        const rand = rng(53);
-        const g = ctx.createLinearGradient(0, 0, w, w);
-        g.addColorStop(0, '#eadcc4');
-        g.addColorStop(0.45, '#e2d0b4');
-        g.addColorStop(1, '#d4c09a');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, w, w);
-        ctx.strokeStyle = 'rgba(160,130,90,0.18)';
-        for (let i = 0; i < 18; i++) {
-            ctx.lineWidth = 0.8 + rand();
-            ctx.beginPath();
-            const y = rand() * w;
-            ctx.moveTo(0, y);
-            ctx.bezierCurveTo(w * 0.3, y + (rand() - 0.5) * 40, w * 0.7, y + (rand() - 0.5) * 40, w, y + (rand() - 0.5) * 20);
-            ctx.stroke();
-        }
-    }, { w: 256, roughness: true, repeat: [1, 1], roughBase: 0.8, strength: 0.2 });
+    const walnut = pack(scene, (ctx, w) => veneer(ctx, w, {
+        seed: 29, early: '#7a5236', late: '#3b2417', rings: 10, warp: 1.9, sharp: 1.9, fiber: 0.06, pores: 0.6
+    }), { w: 1024, strength: 0.9 });
+    for (const set of [maple, walnut]) {
+        set.map.anisotropicFilteringLevel = 8;
+        set.normalMap.anisotropicFilteringLevel = 8;
+        set.normalMap.level = 0.35;
+    }
 
     const felt = pack(scene, (ctx, w) => {
         const rand = rng(7);
@@ -158,19 +246,22 @@ export function createTextures(scene) {
         const img = ctx.getImageData(0, 0, w, w);
         const d = img.data;
         for (let i = 0; i < d.length; i += 4) {
-            const noise = (rand() - 0.5) * 26;
+            const noise = (rand() - 0.5) * 46;
             d[i] = Math.max(0, Math.min(255, d[i] + noise));
             d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + noise));
             d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + noise));
         }
         ctx.putImageData(img, 0, 0);
-    }, { w: 256, repeat: [4, 4], roughBase: 0.95, strength: 0.4 });
+    }, { w: 256, repeat: [6, 6], roughBase: 0.95, strength: 1.4 });
+    felt.normalMap.level = 0.6;
 
     const photographed = {
         map: new window.BABYLON.Texture(new URL('../assets/wood.jpg', import.meta.url).href, scene),
         normalMap: new window.BABYLON.Texture(new URL('../assets/wood-normal.jpg', import.meta.url).href, scene)
     };
+    photographed.map.anisotropicFilteringLevel = 8;
     photographed.normalMap.gammaSpace = false;
-    photographed.normalMap.level = 0.25;
-    return { maple, walnut, mahogany: photographed, ebony, ivory, felt };
+    photographed.normalMap.level = 0.45;
+    const pieces = loadPieceMaps(scene);
+    return { maple, walnut, mahogany: photographed, felt, contact: contactTexture(scene), pieces: pieces.maps, piecesReady: pieces.ready };
 }

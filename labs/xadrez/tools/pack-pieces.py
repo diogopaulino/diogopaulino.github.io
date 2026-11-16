@@ -1,5 +1,10 @@
-"""Pack the credited glTF geometry without topology simplification.
+"""Pack the credited glTF geometry (optionally pre-simplified, see below).
 Usage: python3 pack-pieces.py /path/ABeautifulGame.gltf /path/ABeautifulGame.bin
+
+Optional offline pre-pass (keeps UVs/normals, bounds the geometric error to
+0.05% of each mesh so 32 pieces stay near 400k triangles instead of 1.4M):
+  npx @gltf-transform/cli weld in.gltf welded.gltf
+  npx @gltf-transform/cli simplify welded.gltf out.gltf --ratio 0.15 --error 0.0005
 Positions/UVs use bounded 16-bit quantization, normals signed 16-bit.
 No runtime dependencies; the browser uses its native gzip decoder.
 """
@@ -36,12 +41,28 @@ def append(values, code):
     return [offset, len(values)]
 
 
-for kind, mesh_index, height in [('k', 0, 1.8), ('q', 2, 1.58), ('r', 9, 1.13), ('n', 11, 1.3), ('b', 13, 1.45)]:
+def read_mesh(mesh_index, offset=(0, 0, 0)):
     primitive = source['meshes'][mesh_index]['primitives'][0]
     positions = accessor(primitive['attributes']['POSITION'])
-    normals = accessor(primitive['attributes']['NORMAL'])
-    uvs = accessor(primitive['attributes']['TEXCOORD_0'])
-    indices = accessor(primitive['indices'])
+    positions = [v + offset[i % 3] for i, v in enumerate(positions)]
+    return (positions, accessor(primitive['attributes']['NORMAL']),
+            accessor(primitive['attributes']['TEXCOORD_0']), accessor(primitive['indices']))
+
+
+def node_translation(name):
+    return next(n.get('translation', [0, 0, 0]) for n in source['nodes'] if n.get('name') == name)
+
+
+# O peão do conjunto original tem duas malhas: corpo torneado e a esfera do
+# topo (um nó irmão deslocado). Aqui as duas viram uma peça só, na origem.
+# Alturas em casas (1 u): proporção original em relação ao rei de 1,8 u.
+PIECES = [('k', [0], 1.8), ('q', [2], 1.58), ('r', [9], 1.13), ('n', [11], 1.19), ('b', [13], 1.45), ('p', [6, 5], 0.79)]
+for kind, mesh_indices, height in PIECES:
+    positions, normals, uvs, indices = read_mesh(mesh_indices[0])
+    for extra in mesh_indices[1:]:
+        ep, en, eu, ei = read_mesh(extra, node_translation('Pawn_Top_W1'))
+        base = len(positions) // 3
+        positions += ep; normals += en; uvs += eu; indices += [i + base for i in ei]
     low = [min(positions[i::3]) for i in range(3)]
     high = [max(positions[i::3]) for i in range(3)]
     scale = height / (high[1] - low[1])

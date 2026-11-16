@@ -89,7 +89,8 @@ test('compressed sculpted assets decode within their declared bounds', () => {
     const layout = JSON.parse(readFileSync(new URL('../assets/staunton.json', import.meta.url)));
     const bytes = gunzipSync(readFileSync(new URL('../assets/staunton.bin.gz', import.meta.url)));
     assert.equal(layout.version, 2);
-    assert.equal(Object.keys(layout.pieces).length, 5);
+    // Rei, dama, torre, cavalo, bispo e — desde o pacote v3 dos assets — o peão.
+    assert.deepEqual(Object.keys(layout.pieces).sort(), ['b', 'k', 'n', 'p', 'q', 'r']);
     for (const part of Object.values(layout.pieces)) {
         for (const name of ['positions', 'normals', 'uvs', 'indices']) {
             const [offset, count] = part[name];
