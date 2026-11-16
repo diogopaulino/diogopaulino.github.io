@@ -59,7 +59,8 @@ body {
     font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none;
+    /* o canvas (#scene) segue com touch-action: none; aqui liberamos a rolagem dos cartões no toque */
+    touch-action: manipulation;
 }
 
 button,

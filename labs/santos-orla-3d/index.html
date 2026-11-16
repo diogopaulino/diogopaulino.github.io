@@ -38,7 +38,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
@@ -58,7 +58,7 @@
           "url": "https://diogopaulino.com.br/labs/santos-orla-3d/",
           "description": "Explore uma reconstrução 3D da orla de Santos, com canais 1–7, jardins e praias, do José Menino à Ponta da Praia.",
           "datePublished": "2026-10-01",
-          "dateModified": "2026-10-05",
+          "dateModified": "2026-11-15",
           "applicationCategory": "EntertainmentApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -174,12 +174,12 @@
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
-                <header class="menu-head">
+                <div class="menu-head">
                     <p class="eyebrow"><i></i> digital twin · three.js · orla contemporânea</p>
                     <h1>Santos <span>Orla 3D</span></h1>
                     <p class="lede">Comece no ar, desça até a praia e caminhe pelos jardins, canais e
                         ciclovia — do José Menino à Ponta da Praia, como a cidade é hoje.</p>
-                </header>
+                </div>
 
                 <div id="factsStrip" class="facts-strip" aria-label="Números da orla"></div>
 
@@ -187,7 +187,7 @@
                     <section class="menu-section">
                         <h2>Modo de visão</h2>
                         <div id="modeOptions" class="chip-row" role="radiogroup" aria-label="Modo"></div>
-                        <p class="section-note">Turista destaca hotspots · Morador é walk limpo · Mapa e Drone sobem a câmera</p>
+                        <p class="section-note">Turista destaca hotspots · Morador é câmera no ombro · Mapa e Drone sobem a câmera</p>
                     </section>
 
                     <section class="menu-section">
@@ -199,7 +199,7 @@
                         <h2>Comandos</h2>
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar</span>
-                            <span><kbd>←</kbd><kbd>→</kbd> ou <kbd>Q</kbd><kbd>E</kbd> virar</span>
+                            <span><kbd>←</kbd><kbd>→</kbd>, <kbd>Q</kbd><kbd>E</kbd> ou arrastar o mouse: virar</span>
                             <span><kbd>Shift</kbd> correr · <kbd>T</kbd> modo · <kbd>L</kbd> hora do dia</span>
                             <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
@@ -222,7 +222,7 @@
                                 <input id="volumeSlider" type="range" min="0" max="100" step="1" value="65">
                             </label>
                         </div>
-                        <p class="section-note">Base visual procedural alinhada à geografia real. Camadas dinâmicas: horário e iluminação.</p>
+                        <p class="section-note">Céu físico, mar com ondas de Gerstner, sombras, pessoas com esqueleto e pós-processamento HDR — tudo procedural, sem assets baixados. Trocar a qualidade recarrega a cena.</p>
                     </section>
                 </div>
 
@@ -261,7 +261,7 @@
     </main>
 
     <script src="/labs/shared.js?v=14" defer></script>
-    <script type="module" src="src/main.js?v=3"></script>
+    <script type="module" src="src/main.js?v=4"></script>
 </body>
 
 </html>

@@ -236,7 +236,13 @@ button {
     to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
+.hint-bar.is-faded {
+    opacity: 0;
+    pointer-events: none;
+}
+
 .hint-bar {
+    transition: opacity 0.6s var(--ease);
     position: absolute;
     left: 50%;
     bottom: calc(5.5rem + var(--safe-bottom));
@@ -443,6 +449,14 @@ button {
     font-weight: 600;
     letter-spacing: -0.02em;
     margin: 0.4rem 0 0.5rem;
+}
+
+.menu-head {
+    display: block;
+}
+
+.menu-head .lede {
+    max-width: 62ch;
 }
 
 .menu-head h1 {
@@ -706,17 +720,38 @@ kbd {
         grid-template-columns: 1fr;
     }
 
+    /* linha única de modos no rodapé; stick e pad de olhar logo acima, sem sobrepor */
     .hud-modes {
-        bottom: calc(0.55rem + var(--safe-bottom));
+        bottom: calc(0.45rem + var(--safe-bottom));
+        flex-wrap: nowrap;
+        max-width: 100vw;
+        gap: 0.3rem;
+        padding: 0.2rem;
+    }
+
+    .hud-modes .chip {
+        min-height: 44px;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
     }
 
     .hint-bar {
-        bottom: calc(7.8rem + var(--safe-bottom));
+        bottom: calc(15.2rem + var(--safe-bottom));
         font-size: 0.72rem;
+        max-width: min(88vw, 320px);
     }
 
     .touch-controls {
-        bottom: calc(3.6rem + var(--safe-bottom));
+        bottom: calc(4.1rem + var(--safe-bottom));
+    }
+
+    .hud-actions {
+        bottom: calc(11.2rem + var(--safe-bottom)) !important;
+    }
+
+    .fps {
+        display: none;
     }
 
     .stick, .look-pad {
@@ -744,9 +779,9 @@ kbd {
     }
 
     .hud-modes .chip {
-        padding: 0.35rem 0.65rem;
-        font-size: 0.75rem;
-        min-height: 38px;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.74rem;
+        min-height: 44px;
     }
 }
 
@@ -761,21 +796,39 @@ kbd {
         display: none;
     }
 
+    /* paisagem curta: modos em linha no centro do rodapé, entre o stick e o pad de olhar */
     .hud-modes {
-        left: auto;
-        right: max(0.5rem, var(--safe-right));
-        transform: none;
-        bottom: calc(0.4rem + var(--safe-bottom));
-        flex-direction: column;
-        align-items: stretch;
-        max-width: 120px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        bottom: calc(0.35rem + var(--safe-bottom));
+        flex-direction: row;
+        flex-wrap: nowrap;
+        max-width: calc(100vw - 13.5rem);
+    }
+
+    .hud-modes .chip {
+        min-height: 44px;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.76rem;
+        white-space: nowrap;
     }
 
     .hud-actions {
-        top: calc(2.8rem + var(--safe-top));
-        bottom: auto;
+        top: calc(2.9rem + var(--safe-top));
+        bottom: auto !important;
         max-width: none;
         flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .fps, .mode-pill {
+        display: none;
+    }
+
+    .hint-bar {
+        bottom: calc(3.6rem + var(--safe-bottom));
+        max-width: calc(100vw - 14rem);
     }
 
     .touch-controls {

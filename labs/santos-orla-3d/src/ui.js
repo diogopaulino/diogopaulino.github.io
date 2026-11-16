@@ -3,7 +3,7 @@
  */
 
 import { VIEW_MODES, BEACHES, LANDMARKS, DAY_STOPS, CANALS } from './config.js';
-import { beachAt, formatClock } from './utils.js';
+import { beachAt } from './utils.js';
 
 export class UI {
     constructor() {
@@ -112,7 +112,11 @@ export class UI {
 
     setDay(stop) {
         if (this.els.dayLabel) this.els.dayLabel.textContent = stop.label;
-        if (this.els.clock) this.els.clock.textContent = formatClock();
+        if (this.els.clock) {
+            const h = Math.floor(stop.hour);
+            const m = Math.round((stop.hour - h) * 60);
+            this.els.clock.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
     }
 
     updatePlace(x, nearestLandmark) {
@@ -151,18 +155,22 @@ export class UI {
         }
     }
 
+    /** Mostra a dica e a esmaece após alguns segundos (não fica cobrindo a cena). */
     setHint(text) {
-        if (this.els.hint) {
-            this.els.hint.textContent = text;
-            this.els.hint.hidden = !text;
-        }
+        const el = this.els.hint;
+        if (!el) return;
+        el.textContent = text;
+        el.hidden = !text;
+        el.classList.remove('is-faded');
+        clearTimeout(this._hintTimer);
+        if (text) this._hintTimer = setTimeout(() => el.classList.add('is-faded'), 9000);
     }
 
     setFps(n) {
         if (this.els.fps) this.els.fps.textContent = `${n} fps`;
     }
 
-    syncLabels(camera, landmarks, show) {
+    syncLabels(camera, landmarks, show, maxDist = Infinity) {
         const host = this.els.labels;
         if (!host) return;
         if (!show) {
@@ -181,7 +189,12 @@ export class UI {
         for (const lm of landmarks) {
             const el = host.querySelector(`[data-id="${lm.id}"]`);
             if (!el) continue;
-            v.set(lm.x, 3.5, lm.z);
+            const cp = camera.position;
+            if (Math.hypot(lm.x - cp.x, lm.z - cp.z) > maxDist) {
+                el.style.opacity = '0';
+                continue;
+            }
+            v.set(lm.lx ?? lm.x, lm.y ?? 6, lm.lz ?? lm.z);
             v.project(camera);
             if (v.z > 1) {
                 el.style.opacity = '0';
