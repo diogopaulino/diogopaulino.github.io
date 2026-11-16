@@ -1,216 +1,223 @@
 /**
  * Santos, 1908 — orquestrador.
- * Contrato dos módulos: create(ctx) → { update(t, dt), dispose? }
- * Um módulo que falha é registrado e pulado (receita Tupi).
+ * Contrato dos módulos: create(ctx, world) → { update(t, dt, camera) }.
+ * Um módulo que falha no boot ou no update é registrado e pulado; o filme segue.
+ *
+ * Tempo: `filmT` (0–180 s) é a única fonte de verdade — todo movimento é função de t,
+ * então seek/replay reproduzem o mesmo quadro.
  */
-
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
+import { pickTier, detectSoftwareGL } from '../../shared/gfx/core.js';
+import { configureTextures } from '../../shared/gfx/textures.js';
+import { createPipeline } from '../../shared/gfx/post.js';
+import { createSunRig } from '../../shared/gfx/rig.js';
+import { updateWind } from '../../shared/gfx/flora.js';
 import { QUALITY, FILM_DURATION, chapterAt } from './config.js';
-import { createMaterials, disposeMaterials } from './materials.js';
-import { detectMobile, detectSoftwareGL, formatClock } from './utils.js';
-
-import * as skyMod from './modules/sky.js';
-import * as estuaryMod from './modules/estuary.js';
-import * as portMod from './modules/port.js';
-import * as cityMod from './modules/city.js';
-import * as kasatoMod from './modules/kasato.js';
-import * as otherShipsMod from './modules/otherShips.js';
-import * as railwayMod from './modules/railway.js';
-import { createWorkers, createCargo } from './modules/workers.js';
-import * as birdsMod from './modules/birds.js';
-import * as steamMod from './modules/steam.js';
-import * as audioMod from './modules/audio.js';
-import * as cameraMod from './modules/camera.js';
-import * as ambienceMod from './modules/ambience.js';
-import * as postMod from './modules/post.js';
+import { createMats } from './kit.js';
+import { createWorld } from './world.js';
+import { createKasato } from './kasato.js';
+import { createPort } from './port.js';
+import { createCity } from './city.js';
+import { createRail } from './rail.js';
+import { createVessels } from './vessels.js';
+import { createLife } from './life.js';
+import { createCamera } from './camera.js';
+import { createAudio } from './audio.js';
 
 const STORAGE = 'santos-1908-settings';
+const $ = (id) => document.getElementById(id);
+const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
-const MODULE_BUILDERS = [
-    ['sky', skyMod.create],
-    ['estuary', estuaryMod.create],
-    ['port', portMod.create],
-    ['city', cityMod.create],
-    ['kasato', kasatoMod.create],
-    ['other-ships', otherShipsMod.create],
-    ['railway', railwayMod.create],
-    ['workers', createWorkers],
-    ['cargo', createCargo],
-    ['birds', birdsMod.create],
-    ['steam', steamMod.create],
-    ['ambience', ambienceMod.create]
+const BUILDERS = [
+    ['kasato', createKasato],
+    ['port', createPort],
+    ['city', createCity],
+    ['rail', createRail],
+    ['vessels', createVessels],
+    ['life', createLife]
 ];
-
-function pickQuality(mode) {
-    if (QUALITY[mode]) return QUALITY[mode];
-
-    const memory = navigator.deviceMemory || 8;
-    const cores = navigator.hardwareConcurrency || 8;
-    const shortSide = Math.min(window.innerWidth, window.innerHeight);
-
-    if (detectMobile() || memory <= 4 || cores <= 4) return QUALITY.low;
-    if (memory >= 8 && cores >= 8 && shortSide >= 800) return QUALITY.high;
-    return QUALITY.medium;
-}
 
 class Santos1908 {
     constructor() {
-        this.canvas = document.getElementById('scene');
+        this.canvas = $('scene');
         this.settings = this.loadSettings();
+        const q = new URLSearchParams(location.search).get('q');
+        if (q && QUALITY[q]) this.settings.quality = q;
         this.state = 'boot';
-        this.clock = new THREE.Clock(false);
         this.modules = [];
         this.failed = [];
-        this.fpsAccum = 0;
-        this.fpsFrames = 0;
-        this.pixelRatio = 1;
+        this.last = 0;
+        this.fpsAcc = 0;
+        this.fpsN = 0;
+        this.fps = 0;
+        this.focus = new THREE.Vector3();
         this.bindUi();
         this.boot();
     }
 
     loadSettings() {
+        const base = { quality: 'auto', volume: 70, muted: false };
         try {
-            return {
-                quality: 'auto',
-                volume: 70,
-                muted: false,
-                ...JSON.parse(localStorage.getItem(STORAGE) || '{}')
-            };
+            return { ...base, ...JSON.parse(localStorage.getItem(STORAGE) || '{}') };
         } catch {
-            return { quality: 'auto', volume: 70, muted: false };
+            return base;
         }
     }
 
     saveSettings() {
         try {
             localStorage.setItem(STORAGE, JSON.stringify(this.settings));
-        } catch { /* privado */ }
+        } catch { /* modo privado */ }
     }
 
     bindUi() {
-        document.getElementById('startButton')?.addEventListener('click', () => this.start());
-        document.getElementById('pauseBtn')?.addEventListener('click', () => this.togglePause());
-        document.getElementById('replayButton')?.addEventListener('click', () => this.replay());
-        document.getElementById('muteBtn')?.addEventListener('click', () => this.toggleMute());
-        document.getElementById('qualitySelect')?.addEventListener('change', (e) => {
+        $('startButton')?.addEventListener('click', () => this.start());
+        $('pauseBtn')?.addEventListener('click', () => this.togglePause());
+        $('replayButton')?.addEventListener('click', () => this.replay());
+        $('muteBtn')?.addEventListener('click', () => this.toggleMute());
+        $('qualitySelect')?.addEventListener('change', (e) => {
             this.settings.quality = e.target.value;
             this.saveSettings();
+            // qualidade muda geometria e alvos de render: recarrega já com a escolha salva
+            location.reload();
         });
-        document.getElementById('volumeSlider')?.addEventListener('input', (e) => {
+        $('volumeSlider')?.addEventListener('input', (e) => {
             const v = Number(e.target.value);
             this.settings.volume = v;
-            document.getElementById('volumeValue').textContent = String(v);
+            $('volumeValue').textContent = String(v);
             this.audio?.setVolume(v / 100);
             this.saveSettings();
         });
-        const vol = document.getElementById('volumeSlider');
-        if (vol) {
-            vol.value = String(this.settings.volume);
-            document.getElementById('volumeValue').textContent = String(this.settings.volume);
+        if ($('volumeSlider')) {
+            $('volumeSlider').value = String(this.settings.volume);
+            $('volumeValue').textContent = String(this.settings.volume);
         }
-        const q = document.getElementById('qualitySelect');
-        if (q) q.value = this.settings.quality;
+        if ($('qualitySelect')) $('qualitySelect').value = this.settings.quality;
 
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && (this.state === 'playing' || this.state === 'paused')) {
                 e.preventDefault();
                 this.togglePause();
             }
-            if (e.code === 'KeyR' && this.state !== 'boot') this.replay();
+            if (e.code === 'KeyR' && this.state !== 'boot' && this.state !== 'ready') this.replay();
             if (e.code === 'KeyM') this.toggleMute();
-            if (e.code === 'KeyF') this.toggleFullscreen();
-        });
-        window.addEventListener('resize', () => this.resize());
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && (this.state === 'playing' || this.state === 'paused')) {
-                this.clock.getDelta();
+            if (e.code === 'KeyF') {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+                else document.exitFullscreen?.();
             }
         });
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    fail(err) {
+        console.error(err);
+        $('loadingOverlay').hidden = true;
+        if ($('errorText')) $('errorText').textContent = err?.message || String(err);
+        $('errorOverlay').hidden = false;
     }
 
     async boot() {
+        const t0 = performance.now();
+        const bar = $('loadProgress');
+        const progress = (p) => { if (bar) bar.style.width = `${Math.round(p * 100)}%`; };
+        // setTimeout (não rAF): o boot avança mesmo com a aba em segundo plano
+        const frame = () => new Promise((r) => setTimeout(r, 0));
         try {
-            const initialQuality = pickQuality(this.settings.quality);
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: initialQuality.antialias,
-                powerPreference: 'high-performance',
-                alpha: false
-            });
-            this.quality = detectSoftwareGL(this.renderer) ? QUALITY.low : initialQuality;
-            this.pixelRatio = Math.min(devicePixelRatio || 1, this.quality.pr);
-            this.renderer.setPixelRatio(this.pixelRatio);
-            this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-            configureCinematicRenderer(this.renderer, {
-                exposure: 1.05,
-                shadows: this.quality.shadows
-            });
+            this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false, powerPreference: 'high-performance', alpha: false });
+        } catch (err) {
+            this.fail(new Error('WebGL indisponível neste aparelho.'));
+            return;
+        }
+        try {
+            const renderer = this.renderer;
+            const software = detectSoftwareGL(renderer);
+            this.tier = software ? 'low' : pickTier(this.settings.quality);
+            this.quality = QUALITY[this.tier];
+            this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.quality.pr);
+            renderer.setPixelRatio(this.pixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight, false);
+            renderer.shadowMap.enabled = this.quality.shadows;
+            renderer.shadowMap.type = THREE.PCFShadowMap;
+            renderer.info.autoReset = false;
+            configureTextures(renderer);
 
             this.scene = new THREE.Scene();
-            this.scene.background = new THREE.Color('#c4b8a0');
-            this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 1200);
-
-            applyCinematicEnvironment(this.scene, this.renderer, { intensity: 0.35 });
-            this.mats = createMaterials();
-
+            this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.4, 9000);
             const ctx = {
-                scene: this.scene,
-                renderer: this.renderer,
-                camera: this.camera,
-                canvas: this.canvas,
-                mats: this.mats,
-                quality: this.quality
+                scene: this.scene, renderer, camera: this.camera, canvas: this.canvas,
+                tier: this.tier, quality: this.quality, mats: createMats()
             };
+            this.ctx = ctx;
+            progress(0.08);
+            await frame();
 
-            // Warm-up modular — um módulo por frame de microtarefa
-            const progress = document.getElementById('loadProgress');
-            for (let i = 0; i < MODULE_BUILDERS.length; i++) {
-                const [name, build] = MODULE_BUILDERS[i];
+            this.world = createWorld(ctx);
+            this.sky = this.world.sky;
+            this.rig = createSunRig(this.scene, this.sky, { shadows: this.quality.shadows, mapSize: this.quality.shadowMap, radius: 90, depth: 900 });
+            progress(0.2);
+            await frame();
+
+            for (let i = 0; i < BUILDERS.length; i++) {
+                const [name, build] = BUILDERS[i];
                 try {
-                    const mod = build(ctx);
+                    const mod = build(ctx, this.world, this.modules);
                     this.modules.push({ name, ...mod });
                 } catch (err) {
                     console.warn(`[santos-1908] módulo "${name}" falhou:`, err);
                     this.failed.push(name);
                 }
-                if (progress) {
-                    progress.style.width = `${((i + 1) / (MODULE_BUILDERS.length + 2)) * 100}%`;
-                }
-                await new Promise((r) => requestAnimationFrame(r));
+                progress(0.2 + ((i + 1) / BUILDERS.length) * 0.62);
+                await frame();
             }
 
-            this.audio = audioMod.create(ctx);
-            this.cine = cameraMod.create(ctx);
-            this.post = postMod.create(ctx);
-            this.modules.push({ name: 'audio', update: (t, dt) => this.audio.update(t, dt, chapterAt(t).id) });
-            this.modules.push({ name: 'camera', update: (_t, dt) => this.cine.update(dt) });
+            this.post = createPipeline(renderer, { tier: this.tier, sky: this.sky, software });
+            // Manhã de inverno: bruma baixa sobre o estuário, grade levemente quente/sépia
+            Object.assign(this.post.params, {
+                exposure: 1.06, bloom: 0.1, ao: 0.8, aoRadius: 1.3,
+                fogDensity: 0.0032, fogFalloff: 0.03, fogBase: 0, haze: 0.00016, fogSunGlow: 0.95,
+                rays: 0.6, saturation: 0.96, contrast: 1.05, sepia: 0.12, vignette: 0.16, grain: 0.012
+            });
+            this.post.params.gain.setRGB(1.03, 1.0, 0.95);
+            this.post.params.lift.setRGB(0.012, 0.009, 0.004);
+            ctx.post = this.post;
+            ctx.fogBase = this.post.params.fogDensity;
+            ctx.glowBase = this.post.params.fogSunGlow;
 
-            // Compila shaders ainda atrás do loading para evitar travada no primeiro plano.
-            if (progress) progress.style.width = '92%';
+            this.audio = createAudio();
+            this.cine = createCamera(ctx);
             this.cine.restart();
-            await this.renderer.compileAsync(this.scene, this.camera);
-            this.resize();
-            // Também aquece o pipeline de pós-processamento (bloom/output).
-            this.post.render();
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+            progress(0.9);
 
-            if (progress) progress.style.width = '100%';
+            // IBL + LUT prontos antes de compilar, para não haver troca de programa no 1º quadro
+            this.sky.flush();
+            this.step(0, 0);
+            await renderer.compileAsync(this.scene, this.camera);
+            this.resize();
+            this.post.render(this.scene, this.camera, 0);
+            await frame();
+            progress(1);
+
+            this.bootMs = Math.round(performance.now() - t0);
             this.state = 'ready';
             document.body.dataset.state = 'ready';
-            document.getElementById('loadingOverlay').hidden = true;
-            document.getElementById('intro').hidden = false;
+            $('loadingOverlay').hidden = true;
+            $('intro').hidden = false;
+            if (this.failed.length) console.info('[santos-1908] módulos pulados:', this.failed.join(', '));
 
-            if (this.failed.length) {
-                console.info('[santos-1908] módulos pulados:', this.failed.join(', '));
-            }
+            window.__lab = {
+                seek: (t) => { this.cine.seek(t); this.step(this.cine.filmT, 0); this.render(0); },
+                free: (pos, look, fov) => { this.cine.free(pos, look, fov); },
+                pause: () => { if (this.state === 'playing') this.togglePause(); },
+                play: () => { if (this.state === 'paused') this.togglePause(); else if (this.state === 'ready') this.start(); },
+                renderer, camera: this.camera, scene: this.scene, post: this.post,
+                get fps() { return app.fps; },
+                get bootMs() { return app.bootMs; },
+                get tier() { return app.tier; },
+                get failed() { return app.failed; }
+            };
+            this.loop(performance.now());
         } catch (err) {
-            console.error(err);
-            document.getElementById('loadingOverlay').hidden = true;
-            const errEl = document.getElementById('errorOverlay');
-            const txt = document.getElementById('errorText');
-            if (txt) txt.textContent = err?.message || String(err);
-            if (errEl) errEl.hidden = false;
+            this.fail(err);
         }
     }
 
@@ -218,22 +225,23 @@ class Santos1908 {
         this.audio.init();
         this.audio.setVolume(this.settings.volume / 100);
         this.audio.setEnabled(!this.settings.muted);
-        document.getElementById('intro').hidden = true;
-        document.getElementById('hud').hidden = false;
-        document.getElementById('titleCard').hidden = false;
+        $('intro').hidden = true;
+        $('hud').hidden = false;
+        this.showTitle(5200);
         document.body.dataset.state = 'playing';
         this.state = 'playing';
         this.cine.restart();
         this.cine.playing = true;
-        this.clock.start();
-        this.tick();
-        // Esconde cartão de título após alguns segundos
-        setTimeout(() => {
-            const tc = document.getElementById('titleCard');
-            if (tc) tc.hidden = true;
-        }, 5000);
         this.updateMuteUi();
         this.updatePauseUi();
+    }
+
+    showTitle(ms) {
+        const tc = $('titleCard');
+        if (!tc) return;
+        tc.hidden = false;
+        clearTimeout(this._title);
+        this._title = setTimeout(() => { tc.hidden = true; }, ms);
     }
 
     replay() {
@@ -242,35 +250,27 @@ class Santos1908 {
         this.state = 'playing';
         document.body.dataset.state = 'playing';
         this.updatePauseUi();
-        document.getElementById('titleCard').hidden = false;
-        setTimeout(() => {
-            const tc = document.getElementById('titleCard');
-            if (tc) tc.hidden = true;
-        }, 4500);
-        if (!this._raf) this.tick();
+        this.showTitle(4500);
     }
 
     togglePause() {
         if (this.state === 'playing') {
             this.cine.playing = false;
             this.state = 'paused';
-            document.body.dataset.state = 'paused';
         } else if (this.state === 'paused') {
             this.cine.playing = true;
             this.state = 'playing';
-            document.body.dataset.state = 'playing';
-            this.clock.getDelta();
         }
+        document.body.dataset.state = this.state;
         this.updatePauseUi();
     }
 
     updatePauseUi() {
-        const btn = document.getElementById('pauseBtn');
-        if (btn) {
-            const paused = this.state === 'paused';
-            btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
-            btn.textContent = paused ? 'Continuar' : 'Pausar';
-        }
+        const btn = $('pauseBtn');
+        if (!btn) return;
+        const paused = this.state === 'paused';
+        btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+        btn.textContent = paused ? 'Continuar' : 'Pausar';
     }
 
     toggleMute() {
@@ -281,77 +281,99 @@ class Santos1908 {
     }
 
     updateMuteUi() {
-        const btn = document.getElementById('muteBtn');
-        if (btn) {
-            btn.setAttribute('aria-pressed', this.settings.muted ? 'true' : 'false');
-            btn.textContent = this.settings.muted ? 'Mudo' : 'Som';
-        }
-    }
-
-    toggleFullscreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-        else document.exitFullscreen?.();
+        const btn = $('muteBtn');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', this.settings.muted ? 'true' : 'false');
+        btn.textContent = this.settings.muted ? 'Mudo' : 'Som';
     }
 
     resize() {
+        if (!this.renderer) return;
         const w = window.innerWidth;
         const h = window.innerHeight;
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h, false);
-        this.post?.resize(w, h);
+        this.post?.setSize();
     }
 
-    adaptResolution(fps) {
+    /** Resolução adaptativa (só em "auto"): cai abaixo de 42 fps, sobe acima de 57. */
+    adapt(fps) {
         if (this.settings.quality !== 'auto') return;
-
-        const minPr = 0.75;
-        const maxPr = this.quality.pr;
         let next = this.pixelRatio;
-
-        if (fps < 38) next = Math.max(minPr, next - 0.1);
-        else if (fps > 56) next = Math.min(maxPr, next + 0.05);
-
+        if (fps < 42) next = Math.max(0.7, next - 0.1);
+        else if (fps > 57) next = Math.min(Math.min(window.devicePixelRatio || 1, this.quality.pr), next + 0.05);
         if (Math.abs(next - this.pixelRatio) < 0.04) return;
         this.pixelRatio = next;
-        this.renderer.setPixelRatio(this.pixelRatio);
-        this.post?.setPixelRatio?.(this.pixelRatio);
+        this.renderer.setPixelRatio(next);
         this.resize();
     }
 
-    tick() {
-        this._raf = requestAnimationFrame(() => this.tick());
-        if (document.hidden) return;
-        const dt = Math.min(this.clock.getDelta(), 0.05);
-        const t = this.cine.filmT;
-
+    /** Avança o mundo para o instante t do filme. */
+    step(t, dt) {
+        const cam = this.camera;
+        updateWind(t, 0.8);
+        this.world.update(t, dt, cam);
         for (const mod of this.modules) {
+            if (mod._dead) continue;
             try {
-                mod.update?.(t, dt);
+                mod.update?.(t, dt, cam);
             } catch (err) {
-                if (!mod._dead) {
-                    console.warn(`[santos-1908] update "${mod.name}" falhou:`, err);
-                    mod._dead = true;
-                }
+                console.warn(`[santos-1908] update "${mod.name}" falhou:`, err);
+                mod._dead = true;
             }
         }
-
-        this.post.render();
-
-        const timeEl = document.getElementById('filmTime');
-        if (timeEl) timeEl.textContent = `${formatClock(t)} / ${formatClock(FILM_DURATION)}`;
-
-        if (this.state === 'playing') {
-            this.fpsAccum += dt;
-            this.fpsFrames++;
-            if (this.fpsAccum >= 2) {
-                this.adaptResolution(this.fpsFrames / this.fpsAccum);
-                this.fpsAccum = 0;
-                this.fpsFrames = 0;
-            }
+        // sombra: centra no que a câmera olha, raio cresce com a altura do plano
+        const look = this.cine?.look;
+        if (look) {
+            const d = Math.min(cam.position.distanceTo(look), 160);
+            this.focus.copy(cam.position).lerp(look, Math.min(1, (d * 0.55) / Math.max(1, cam.position.distanceTo(look))));
+            this.focus.y = 2;
+            this.rig.update(this.focus, Math.min(240, Math.max(70, 50 + cam.position.y * 1.6 + d * 0.5)));
         }
     }
+
+    render(dt) {
+        this.renderer.info.reset(); // soma todos os passes do quadro (cena + sombras + pós)
+        this.post.render(this.scene, this.camera, dt);
+    }
+
+    loop = (now) => {
+        requestAnimationFrame(this.loop);
+        if (document.hidden) {
+            this.last = now;
+            return;
+        }
+        const dt = Math.min(0.05, (now - (this.last || now)) / 1000);
+        this.last = now;
+        this.cine.update(dt);
+        const t = this.cine.filmT;
+        this.step(t, dt);
+        const ch = chapterAt(t);
+        this.audio.update(t, dt, ch.id, this.state === 'playing');
+        this.render(dt);
+
+        if (this._ch !== ch.id) {
+            this._ch = ch.id;
+            if ($('chapterLabel')) $('chapterLabel').textContent = ch.label;
+        }
+        const sec = Math.floor(t);
+        if (sec !== this._sec) {
+            this._sec = sec;
+            if ($('filmTime')) $('filmTime').textContent = `${fmt(t)} / ${fmt(FILM_DURATION)}`;
+            // relógio diegético: o filme comprime 9h00 → 9h40 (atracação às 9h30, D05)
+            const mins = t < 112 ? (t / 112) * 30 : 30 + ((t - 112) / 68) * 10;
+            if ($('filmClock')) $('filmClock').textContent = `9:${String(Math.floor(mins)).padStart(2, '0')}`;
+        }
+        this.fpsAcc += dt;
+        this.fpsN++;
+        if (this.fpsAcc >= 1) {
+            this.fps = Math.round(this.fpsN / this.fpsAcc);
+            if (this.state === 'playing') this.adapt(this.fps);
+            this.fpsAcc = 0;
+            this.fpsN = 0;
+        }
+    };
 }
 
-new Santos1908();
-
+const app = new Santos1908();
