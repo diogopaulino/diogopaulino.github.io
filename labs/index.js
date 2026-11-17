@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateResultCount(visible) {
         if (!resultCount) return;
         const label = visible === 1 ? '1 lab' : `${visible} labs`;
-        resultCount.textContent = searchQuery ? `${label} encontrados` : `${visible} labs`;
+        resultCount.textContent = visible === 0 ? 'Nenhum lab encontrado' : label;
+        document.getElementById('emptyResults').hidden = visible !== 0;
     }
 
     function applyFilters() {
@@ -94,6 +95,17 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFilter = targetFilter;
             applyFilters();
         });
+    });
+
+    document.getElementById('resetFilters').addEventListener('click', () => {
+        searchInput.value = '';
+        searchQuery = '';
+        currentFilter = 'all';
+        filterButtons.forEach((button) => {
+            button.setAttribute('aria-pressed', String(button.dataset.filter === currentFilter));
+        });
+        applyFilters();
+        searchInput.focus();
     });
 
     if (searchInput) {

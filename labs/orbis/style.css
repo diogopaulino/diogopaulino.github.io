@@ -644,7 +644,23 @@ body[data-view="system"] #backSystem {
 
 @media (max-height: 520px) and (orientation: landscape) {
     .hud-left { max-height: 28dvh; width: min(220px, 42vw); }
-    .hud-right { display: none; }
+    .hud-right {
+        left: auto;
+        right: max(1rem, var(--safe-right));
+        bottom: max(1rem, var(--safe-bottom));
+        width: min(260px, 44vw);
+        max-height: 55dvh;
+        overflow-y: auto;
+    }
+    .hud-right .lore { display: none; }
+    .forge {
+        top: max(4.5rem, var(--safe-top));
+        bottom: max(1rem, var(--safe-bottom));
+        left: max(1rem, var(--safe-left));
+        right: auto;
+        width: min(280px, 46vw);
+        overflow-y: auto;
+    }
 }
 
 /* --- mobile: HUD, toque, landscape curto --- */

@@ -47,6 +47,16 @@ body {
     position: relative;
 }
 
+.upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-zone:focus-within,
 .upload-zone:hover,
 .upload-zone.dragover {
     border-color: var(--accent);

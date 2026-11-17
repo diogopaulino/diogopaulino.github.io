@@ -41,7 +41,6 @@ class Game {
         this.fadeDir = -1;
         this.dialogue = null;
         this.fpsAccum = 0;
-        this.fpsFrames = 0;
         this.hudAccum = 0;
         this.orbit = 0;
         this.pendingChapter = 0;
@@ -486,11 +485,9 @@ class Game {
         this._update(dt);
         this.valley.update(dt, this.time, this.player, this.camera);
         this._applyAtmos(dt);
-        this.fpsFrames += 1;
         this.fpsAccum += dt;
         if (this.fpsAccum >= 0.5) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
-            this.fpsFrames = 0;
+            this.hud.setFps(Math.round(this.stage.fps));
             this.fpsAccum = 0;
         }
     }

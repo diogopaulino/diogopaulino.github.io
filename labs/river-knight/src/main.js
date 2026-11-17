@@ -67,7 +67,6 @@ class Game {
         this.victoryTimer = 0;
         this.defeatTimer = 0;
         this.fpsAccum = 0;
-        this.fpsFrames = 0;
         this.hudAccum = 0;
         this.pullVec = { x: 0, drag: 0 };
         this.landmarkIndex = 0;
@@ -491,11 +490,9 @@ class Game {
 
     frame(dt) {
         this.fpsAccum += dt;
-        this.fpsFrames++;
         if (this.fpsAccum > 0.5) {
-            this.hud.setFps(this.fpsFrames / this.fpsAccum);
+            this.hud.setFps(this.stage.fps);
             this.fpsAccum = 0;
-            this.fpsFrames = 0;
         }
 
         if (this.state === 'paused') return;

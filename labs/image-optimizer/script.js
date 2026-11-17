@@ -53,17 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
         })[char]);
     }
 
-    window.addEventListener('pagehide', releaseAllUrls);
+    window.addEventListener('pagehide', (event) => {
+        if (!event.persisted) releaseAllUrls();
+    });
 
-    let currentOptions = {
+    const currentOptions = {
         format: 'original',
         quality: 0.8,
         maxWidth: 0 // 0 means auto/original
     };
 
     // Event Listeners
-    dropZone.addEventListener('click', () => fileInput.click());
-
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.classList.add('dragover');
@@ -187,13 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function processAllFiles() {
+        const files = currentFiles;
         const maxWidthInput = document.getElementById('maxWidth').value;
         currentOptions.maxWidth = maxWidthInput ? parseInt(maxWidthInput) : 0;
 
+        const options = { ...currentOptions };
         processBtn.disabled = true;
         processBtn.textContent = 'Processando...';
 
-        for (const file of currentFiles) {
+        for (const file of files) {
+            if (files !== currentFiles) break;
             const card = cardsByFile.get(file);
             if (card) {
                 const status = card.querySelector('.status');
@@ -203,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 card.classList.add('is-processing');
             }
-            await processSingleFile(file);
+            await processSingleFile(file, options);
             if (card) card.classList.remove('is-processing');
         }
 
@@ -242,38 +245,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return createImageBitmap(file).catch(() => decodeWithElement(file));
     }
 
-    async function processSingleFile(file) {
+    async function processSingleFile(file, options) {
         let bitmap = null;
         try {
             bitmap = await decodeImage(file);
             const canvas = document.createElement('canvas');
+            if (!cardsByFile.has(file)) return;
             let width = bitmap.width;
             let height = bitmap.height;
 
-            if (currentOptions.maxWidth > 0 && width > currentOptions.maxWidth) {
-                const ratio = currentOptions.maxWidth / width;
-                width = Math.round(currentOptions.maxWidth);
-                height = Math.round(height * ratio);
+            if (options.maxWidth > 0 && width > options.maxWidth) {
+                const ratio = options.maxWidth / width;
+                width = Math.round(options.maxWidth);
+                height = Math.max(1, Math.round(height * ratio));
             }
 
             canvas.width = width;
             canvas.height = height;
-            canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+            const context = canvas.getContext('2d');
+            context.imageSmoothingQuality = 'high';
+            context.drawImage(bitmap, 0, 0, width, height);
 
-            let outputFormat = currentOptions.format;
+            let outputFormat = options.format;
             if (outputFormat === 'original') {
                 const encodable = ['image/jpeg', 'image/png', 'image/webp'];
                 outputFormat = encodable.includes(file.type) ? file.type : 'image/png';
             }
 
             const blob = await new Promise((resolve) => {
-                canvas.toBlob(resolve, outputFormat, currentOptions.quality);
+                canvas.toBlob(resolve, outputFormat, options.quality);
             });
             if (!blob) {
                 markStatus(file, 'Formato não suportado');
                 return;
             }
-            updateResultCard(file, blob, outputFormat, width, height);
+            updateResultCard(file, blob, blob.type, width, height);
         } catch {
             markStatus(file, 'Falha ao ler imagem');
         } finally {

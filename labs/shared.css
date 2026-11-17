@@ -712,3 +712,10 @@ footer.lab-foot a {
 footer.lab-foot a:hover {
     color: var(--accent, #4f8bf0);
 }
+
+@media (pointer: coarse), (max-width: 768px) {
+    .menu-card .primary-button,
+    #startButton.primary-button {
+        min-block-size: 44px;
+    }
+}

@@ -594,3 +594,10 @@
     margin-bottom: 1rem;
   }
 }
+
+.empty-results {
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.empty-results p { margin-bottom: 1rem; }

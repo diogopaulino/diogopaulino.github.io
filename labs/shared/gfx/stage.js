@@ -365,7 +365,7 @@ export function createStage({
         for (const fn of tierListeners) fn(tier);
     }
     function measure(dt) {
-        if (dt > 0.2) return; // volta de aba oculta / travada de carregamento
+        if (dt <= 0) return;
         if (perf.warm > 0) {
             perf.warm -= dt;
             return;
@@ -405,7 +405,7 @@ export function createStage({
      * Desenha um quadro. Devolve false (sem tocar na GPU) se o canvas está sem
      * tamanho, a aba está oculta ou o contexto foi perdido.
      */
-    function render(dt = 1 / 60) {
+    function render(dt = 1 / 60, elapsed = dt) {
         if (disposed || contextLost || document.hidden) return false;
         if (!state.sizeOk && !resize()) return false;
         state.t += dt;
@@ -428,7 +428,7 @@ export function createStage({
         updateWind(state.t, state.wind * (0.85 + Math.sin(state.t * 0.13) * 0.3));
         renderer.info.reset();
         pipeline.render(scene, camera, dt);
-        measure(dt);
+        measure(elapsed);
         return true;
     }
 
@@ -440,9 +440,11 @@ export function createStage({
         raf = requestAnimationFrame(loop);
         timer.update(now);
         if (document.hidden) return;
-        const dt = Math.min(0.05, timer.getDelta());
+        // A física limita o passo. O orçamento da GPU precisa do tempo real do quadro.
+        const elapsed = timer.getDelta();
+        const dt = Math.min(0.05, elapsed);
         onFrame?.(dt, state.t);
-        render(dt);
+        render(dt, elapsed);
     }
     const onVisibility = () => {
         // ao voltar, descarta o intervalo em que a aba ficou oculta

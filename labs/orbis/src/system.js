@@ -3,7 +3,7 @@
  * cinturão de asteroides, nébula e campo de estrelas.
  */
 import * as THREE from 'three';
-import { createPlanetTexture } from './textures.js?v=4';
+import { createPlanetTexture } from './textures.js?v=5';
 import {
     PLANET_VERT, PLANET_FRAG,
     CLOUD_VERT, CLOUD_FRAG,
@@ -75,7 +75,7 @@ export class StarSystem {
             const map = new THREE.CanvasTexture(createPlanetTexture(id));
             map.colorSpace = THREE.SRGBColorSpace;
             map.anisotropy = 8;
-            map.wrapS = THREE.ClampToEdgeWrapping;
+            map.wrapS = THREE.RepeatWrapping;
             map.wrapT = THREE.ClampToEdgeWrapping;
             this._tex.set(id, map);
         }

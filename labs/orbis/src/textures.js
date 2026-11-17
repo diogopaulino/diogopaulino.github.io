@@ -48,17 +48,29 @@ function craters(ctx, w, h, seed, count, rim) {
     const rand = rng(seed);
     for (let i = 0; i < count; i++) {
         const x = rand() * w;
-        const y = rand() * h * 0.92 + h * 0.04;
+        // Uma latitude uniforme em seno distribui as crateras pela área do globo.
+        const latitude = Math.asin(rand() * 2 - 1);
+        const y = (0.5 - latitude / Math.PI) * h;
         const r = 1.5 + rand() ** 2.4 * (i < count * 0.06 ? 54 : 16);
-        const g = ctx.createRadialGradient(x - r * 0.28, y - r * 0.32, r * 0.08, x, y, r);
-        g.addColorStop(0, 'rgba(22,20,18,0.78)');
-        g.addColorStop(0.58, 'rgba(80,76,72,0.05)');
-        g.addColorStop(0.76, rim);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
+        // Compensa a compressão longitudinal do mapa junto aos polos.
+        const stretch = 1 / Math.max(0.25, Math.cos(latitude));
+        const radiusX = r * stretch;
+        function stamp(cx) {
+            ctx.save();
+            ctx.translate(cx, y);
+            ctx.scale(stretch, 1);
+            const g = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.08, 0, 0, r);
+            g.addColorStop(0, 'rgba(22,20,18,0.78)');
+            g.addColorStop(0.58, 'rgba(80,76,72,0.05)');
+            g.addColorStop(0.76, rim);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(-r, -r, 2 * r, 2 * r);
+            ctx.restore();
+        }
+        stamp(x);
+        if (x < radiusX) stamp(x + w);
+        if (x + radiusX > w) stamp(x - w);
     }
 }
 
