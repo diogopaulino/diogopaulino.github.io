@@ -39,45 +39,36 @@ export const CAMERA = {
     lookY: 1.05
 };
 
+/**
+ * Luz da lanterna de Clara (PointLight em candelas, ver player.js):
+ *   I = base + (fuel/100)·gain + pulso·flash
+ */
+export const LANTERN = { base: 1.3, gain: 3.4, flash: 16 };
+
+/**
+ * Carga por tier (o palco, o terreno e a grama têm os próprios orçamentos por tier):
+ *   lights        PointLights sem sombra repartidas entre os lampiões acesos mais próximos
+ *   lanternShadow lado do mapa de sombra em cubo da lanterna (0 = sem sombra)
+ *   trees         árvores no vale · scatter: multiplicador de rochas/samambaias/arbustos
+ *   npcDetail     detalhe dos aldeões (hero.js) · motes: vaga-lumes de ambiente
+ */
 export const QUALITY = {
-    low: {
-        id: 'low',
-        pixelRatio: 1,
-        antialias: false,
-        shadows: false,
-        shadowSize: 512,
-        trees: 0.42,
-        grass: 0.3,
-        particles: 0.4,
-        lights: false
-    },
-    medium: {
-        id: 'medium',
-        pixelRatio: 1.35,
-        antialias: true,
-        shadows: true,
-        shadowSize: 1024,
-        trees: 0.75,
-        grass: 0.7,
-        particles: 0.75,
-        lights: true
-    },
-    high: {
-        id: 'high',
-        pixelRatio: 1.75,
-        antialias: true,
-        shadows: true,
-        shadowSize: 2048,
-        trees: 1,
-        grass: 1,
-        particles: 1,
-        lights: true
-    }
+    low: { id: 'low', lights: 3, lanternShadow: 0, trees: 260, scatter: 0.3, npcDetail: 0, motes: 60, props: false },
+    medium: { id: 'medium', lights: 5, lanternShadow: 512, trees: 430, scatter: 0.7, npcDetail: 1, motes: 120, props: true },
+    high: { id: 'high', lights: 6, lanternShadow: 1024, trees: 600, scatter: 1, npcDetail: 1, motes: 180, props: true }
 };
 
 /**
  * Cinco capítulos de um conto original.
  * A noite esqueceu de acabar; Clara carrega a última chama da avó Nara.
+ *
+ * `atmos` — atmosfera do capítulo. Pares [apagado, aceso] são interpolados pelo
+ * progresso w ∈ [0,1] (lampiões acesos / necessários): cada chama recua a névoa,
+ * devolve a cor (saturação) e esquenta a grade.
+ *   hour: hora solar (a lua fica oposta ao sol) · fog/falloff/haze: névoa de altura
+ *   sat: saturação · exposure · gain: ganho RGB da grade · fill: luz de preenchimento
+ *   tint: multiplica a cor da névoa (o céu noturno é quase preto; > 1 dá bruma leitosa)
+ *   dawn (cap. V): hora final do nascer do sol quando a lanterna pousa na pedra
  */
 export const CHAPTERS = [
     {
@@ -90,14 +81,7 @@ export const CHAPTERS = [
         hint: 'Espaço pulsa a chama. E acende o que estiver perto.',
         music: 'aldeia',
         dark: true,
-        fog: { color: 0x3a4a72, near: 28, far: 130 },
-        clear: 0x24345c,
-        ambient: 0x8aa0d0,
-        ambientIntensity: 0.92,
-        exposure: 1.32,
-        sun: { color: 0xc5d4f2, intensity: 0.95, dir: [0.35, 0.72, 0.4] },
-        hemi: { sky: 0x6a84b8, ground: 0x4a3a28, intensity: 0.95 },
-        sky: { top: 0x243860, mid: 0x4a6290, bot: 0x6a5840 }
+        atmos: { hour: 22.6, clouds: 0.3, fog: [0.034, 0.008], falloff: 0.075, haze: [0.0016, 0.0004], sat: [0.7, 0.92], exposure: [2.5, 2.25], gain: [[0.84, 0.95, 1.14], [1.03, 1.0, 0.95]], fill: [1.25, 0.95], tint: [1.5, 1.6, 1.75] }
     },
     {
         id: 'trilha',
@@ -109,14 +93,7 @@ export const CHAPTERS = [
         hint: 'Pulse a lanterna para afastar os Sombrios. Vaga-lumes reabastecem a chama.',
         music: 'trilha',
         dark: true,
-        fog: { color: 0x243830, near: 22, far: 96 },
-        clear: 0x1a2820,
-        ambient: 0x6a9880,
-        ambientIntensity: 0.78,
-        exposure: 1.22,
-        sun: { color: 0x9ec8b0, intensity: 0.72, dir: [0.15, 0.9, -0.3] },
-        hemi: { sky: 0x3a5850, ground: 0x2a3018, intensity: 0.78 },
-        sky: { top: 0x1a2830, mid: 0x345848, bot: 0x3a4030 }
+        atmos: { hour: 23.8, clouds: 0.45, fog: [0.05, 0.014], falloff: 0.06, haze: [0.0022, 0.0006], sat: [0.66, 0.92], exposure: [2.5, 2.25], gain: [[0.82, 1.0, 1.06], [1.0, 1.02, 0.95]], fill: [1.25, 0.95], tint: [1.5, 1.6, 1.75] }
     },
     {
         id: 'rio',
@@ -128,14 +105,7 @@ export const CHAPTERS = [
         hint: 'A raposa aponta segredos. A ponte só aparece com as bóias acesas.',
         music: 'rio',
         dark: true,
-        fog: { color: 0x3a6880, near: 24, far: 110 },
-        clear: 0x1c384c,
-        ambient: 0x7eb0c8,
-        ambientIntensity: 0.8,
-        exposure: 1.26,
-        sun: { color: 0xb0d8ee, intensity: 0.78, dir: [-0.4, 0.75, 0.2] },
-        hemi: { sky: 0x4a88a8, ground: 0x2a4030, intensity: 0.82 },
-        sky: { top: 0x1a3858, mid: 0x3a7090, bot: 0x3a4838 }
+        atmos: { hour: 1.2, clouds: 0.25, fog: [0.042, 0.012], falloff: 0.11, haze: [0.0016, 0.0004], sat: [0.7, 0.92], exposure: [2.5, 2.25], gain: [[0.8, 0.97, 1.16], [0.98, 1.0, 1.02]], fill: [1.25, 0.95], tint: [1.5, 1.6, 1.75] }
     },
     {
         id: 'arvore',
@@ -147,14 +117,7 @@ export const CHAPTERS = [
         hint: 'A ordem é a da carta: dourado, azul, rosa, verde. Pulse se a Noite chegar.',
         music: 'arvore',
         dark: true,
-        fog: { color: 0x4a3060, near: 22, far: 100 },
-        clear: 0x2a1840,
-        ambient: 0xb080c8,
-        ambientIntensity: 0.76,
-        exposure: 1.24,
-        sun: { color: 0xd0b0e8, intensity: 0.7, dir: [0.2, 0.85, 0.45] },
-        hemi: { sky: 0x704888, ground: 0x301828, intensity: 0.74 },
-        sky: { top: 0x281440, mid: 0x583070, bot: 0x402838 }
+        atmos: { hour: 3.0, clouds: 0.55, fog: [0.046, 0.012], falloff: 0.07, haze: [0.002, 0.0005], sat: [0.7, 0.92], exposure: [2.5, 2.25], gain: [[0.98, 0.86, 1.14], [1.04, 0.98, 1.0]], fill: [1.25, 0.95], tint: [1.5, 1.6, 1.75] }
     },
     {
         id: 'alvorecer',
@@ -166,14 +129,7 @@ export const CHAPTERS = [
         hint: 'Suba a colina. E na pedra dourada.',
         music: 'alvorecer',
         dark: false,
-        fog: { color: 0xc8a078, near: 22, far: 110 },
-        clear: 0xf0b878,
-        ambient: 0xffd0a0,
-        ambientIntensity: 0.62,
-        exposure: 1.32,
-        sun: { color: 0xffc878, intensity: 2.05, dir: [-0.55, 0.42, 0.35] },
-        hemi: { sky: 0xffc8a0, ground: 0x6a4830, intensity: 0.95 },
-        sky: { top: 0x6a90c8, mid: 0xf0b878, bot: 0xe88858 }
+        atmos: { hour: 4.75, dawn: 7.1, clouds: 0.42, fog: [0.03, 0.02], falloff: 0.09, haze: [0.0012, 0.0006], sat: [0.72, 1.1], exposure: [2.6, 1.0], gain: [[0.92, 0.95, 1.1], [1.05, 1.0, 0.94]], fill: [1.3, 0.25], tint: [1.5, 1.6, 1.75] }
     }
 ];
 
