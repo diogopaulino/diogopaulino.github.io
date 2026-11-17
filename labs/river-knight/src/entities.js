@@ -7,52 +7,27 @@
  */
 
 import * as THREE from 'three';
+import { Entity } from './entity.js?v=50';
+import { Tower, Barricade } from './structures.js?v=50';
+import { buildLongship } from './ships.js?v=50';
 import {
-    buildLongship,
-    buildWatchtower,
-    buildBarricade,
     buildRockGeometry,
     buildPickup,
     buildArrowMesh,
     buildCannonballMesh,
     plainMaterial
-} from './models.js?v=33';
-import { waterHeight, waterSlope } from './water.js?v=15';
-import { centerX, halfWidth, terrainHeight } from './river.js';
-import { CANNON, SCORE } from './config.js?v=14';
-import { clamp, damp, randRange } from './utils.js';
+} from './models.js?v=50';
+import { waterHeight, waterSlope } from './water.js?v=50';
+import { centerX, halfWidth } from './river.js?v=50';
+import { CANNON, SCORE } from './config.js?v=50';
+import { clamp, damp, randRange } from './utils.js?v=50';
 
 const tmpSlope = { dx: 0, dz: 0 };
+const ROW = { rowRate: 2.6, speedRatio: 0.5 };
 
 /* ================================================================== */
 /* Base                                                                */
 /* ================================================================== */
-
-class Entity {
-    constructor(group) {
-        this.group = group;
-        this.group.visible = false;
-        this.active = false;
-        this.radius = 2;
-        this.hp = 1;
-        this.maxHp = 1;
-        this.kind = 'entity';
-    }
-
-    get position() {
-        return this.group.position;
-    }
-
-    activate() {
-        this.active = true;
-        this.group.visible = true;
-    }
-
-    deactivate() {
-        this.active = false;
-        this.group.visible = false;
-    }
-}
 
 /* ================================================================== */
 /* Barco inimigo                                                       */
@@ -63,14 +38,18 @@ class EnemyShip extends Entity {
         const { group, parts } = buildLongship({
             length: 11,
             beam: 2.9,
-            hullColor: 0x33241c,
+            hullColor: 0x6a5648,
             sailBase: '#241d28',
             sailStripe: '#8b1d1d',
             emblem: 'rune',
-            shields: false,
+            shields: true,
             oars: true,
             dragon: true,
-            lantern: false
+            lantern: false,
+            palette: 'dark',
+            tier: 'low',
+            oarsPerSide: 2,
+            crew: { presets: ['pirate', 'orc'], rowers: 2, detail: 0 }
         });
         super(group);
         this.parts = parts;
@@ -91,6 +70,7 @@ class EnemyShip extends Entity {
         this.fireRate = fireRate;
         this.speed = speed;
         this.sinking = 0;
+        this.parts.crew?.reset();
         this.lane = randRange(-0.5, 0.5);
         this.laneTimer = randRange(1.5, 3.5);
         this.activate();
@@ -132,11 +112,8 @@ class EnemyShip extends Entity {
         this.group.rotation.x = tmpSlope.dz * 1.3;
         this.group.rotation.y = Math.PI + Math.sin(ctx.time * 0.6) * 0.05;
 
-        // Remos.
-        for (const oar of this.parts.oars) {
-            oar.rotation.x = Math.sin(ctx.time * 2.6 + oar.userData.phase) * 0.42;
-            oar.rotation.z = oar.userData.baseRoll - oar.userData.side * Math.sin(ctx.time * 2.6 + oar.userData.phase + 1.4) * 0.2;
-        }
+        // Remos e tripulação.
+        this.parts.animate(dt, ctx.time, ROW);
 
         // Ataque.
         const dz = pos.z - ctx.player.z;
@@ -159,122 +136,6 @@ class EnemyShip extends Entity {
         this.sinking = 0.001;
         ctx.effects.explosion(this.position.x, this.position.y + 1.2, this.position.z, 1.3);
         ctx.audio.sfx('explosion', 0.9);
-        return true;
-    }
-}
-
-/* ================================================================== */
-/* Torre de vigia                                                      */
-/* ================================================================== */
-
-class Tower extends Entity {
-    constructor(lit = true) {
-        super(buildWatchtower({ lit }));
-        this.kind = 'tower';
-        this.radius = 3.4;
-        this.maxHp = 4;
-        this.crumble = 0;
-    }
-
-    spawn(x, z, { fireRate = 3.2 } = {}) {
-        const y = terrainHeight(x, z);
-        this.group.position.set(x, Math.max(-1.2, y) - 0.6, z);
-        this.group.rotation.set(0, randRange(0, Math.PI * 2), 0);
-        this.group.scale.setScalar(1);
-        this.hp = this.maxHp;
-        this.fireRate = fireRate;
-        this.fireTimer = randRange(1, fireRate);
-        this.crumble = 0;
-        this.activate();
-    }
-
-    update(dt, ctx) {
-        const pos = this.group.position;
-
-        if (this.crumble > 0) {
-            this.crumble += dt;
-            this.group.scale.y = Math.max(0.02, 1 - this.crumble * 0.9);
-            this.group.position.y -= dt * 1.2;
-            if (this.crumble > 1.3) this.deactivate();
-            return;
-        }
-
-        const fire = this.group.userData.fire;
-        if (fire) {
-            const s = 0.85 + Math.sin(ctx.time * 9 + pos.x) * 0.15;
-            fire.scale.set(s, s * 1.25, s);
-        }
-
-        const dz = pos.z - ctx.player.z;
-        if (dz > -90 && dz < 12 && Math.random() < 0.035) {
-            ctx.effects.fire(pos.x, pos.y + 11, pos.z, 1, 0.85);
-        }
-
-        this.fireTimer -= dt;
-        if (this.fireTimer <= 0 && dz < 6 && dz > -150) {
-            this.fireTimer = this.fireRate * randRange(0.85, 1.2);
-            ctx.fireArrow(pos.x, pos.y + 10, pos.z, 1);
-        }
-
-        if (dz > 60) this.deactivate();
-    }
-
-    hit(damage, ctx) {
-        this.hp -= damage;
-        const pos = this.position;
-        if (this.hp > 0) {
-            ctx.effects.impact(pos.x, pos.y + 9, pos.z, 0xcfc9bd);
-            ctx.audio.sfx('hitMetal');
-            return false;
-        }
-        this.crumble = 0.001;
-        ctx.effects.explosion(pos.x, pos.y + 8, pos.z, 1.5, 0.09);
-        ctx.effects.smokePuff(pos.x, pos.y + 6, pos.z, 8, 2.2);
-        ctx.audio.sfx('explosion');
-        const light = this.group.userData.light;
-        if (light) light.intensity = 0;
-        return true;
-    }
-}
-
-/* ================================================================== */
-/* Barricada de troncos                                                */
-/* ================================================================== */
-
-class Barricade extends Entity {
-    constructor() {
-        super(buildBarricade());
-        this.kind = 'barricade';
-        this.radius = 4.4;
-        this.maxHp = 2;
-    }
-
-    spawn(x, z) {
-        this.group.position.set(x, 0, z);
-        this.group.rotation.set(0, randRange(-0.25, 0.25), 0);
-        this.hp = this.maxHp;
-        this.activate();
-    }
-
-    update(dt, ctx) {
-        const pos = this.group.position;
-        pos.y = waterHeight(pos.x, pos.z, ctx.time) + 0.35;
-        waterSlope(pos.x, pos.z, ctx.time, tmpSlope);
-        this.group.rotation.z = -tmpSlope.dx * 2.2;
-        if (pos.z - ctx.player.z > 40) this.deactivate();
-    }
-
-    hit(damage, ctx) {
-        this.hp -= damage;
-        const pos = this.position;
-        if (this.hp > 0) {
-            ctx.effects.impact(pos.x, pos.y + 0.5, pos.z, 0xd9b98a);
-            ctx.audio.sfx('hitWood');
-            return false;
-        }
-        ctx.effects.explosion(pos.x, pos.y + 0.4, pos.z, 0.9, 0.08);
-        ctx.audio.sfx('explosion', 0.7);
-        this.deactivate();
         return true;
     }
 }
@@ -515,9 +376,10 @@ class Cannonball extends Entity {
         this.life -= dt;
 
         const pos = this.group.position;
+        ctx.effects.trail?.(pos.x, pos.y, pos.z);
         if (pos.y < waterHeight(pos.x, pos.z, ctx.time) - 0.15) {
-            ctx.effects.splash(pos.x, 0.15, pos.z, 18, 1.25);
-            ctx.effects.smokePuff(pos.x, 0.4, pos.z, 4, 0.7);
+            if (ctx.effects.column) ctx.effects.column(pos.x, pos.z, 1);
+            else ctx.effects.splash(pos.x, 0.15, pos.z, 18, 1.25);
             ctx.audio.sfx('splash', 0.7);
             this.deactivate();
             return;

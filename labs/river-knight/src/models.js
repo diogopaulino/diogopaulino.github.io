@@ -8,8 +8,8 @@
 
 import * as THREE from 'three';
 import { limbGeometry, torsoGeometry, headGeometry, handGroup } from '../../shared/realism.js?v=3';
-import { COLORS } from './config.js?v=14';
-import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=14';
+import { COLORS } from './config.js?v=50';
+import { woodTexture, sailTexture, shieldTexture, stoneTexture, bannerTexture } from './textures.js?v=50';
 
 /* ------------------------------------------------------------------ */
 /* Materiais                                                           */
