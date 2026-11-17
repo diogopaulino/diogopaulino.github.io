@@ -2,7 +2,7 @@
  * HUD: amoras, filhotes, objetivo e overlays.
  */
 
-import { TOTAL_FRIENDS } from './config.js';
+import { TOTAL_FRIENDS } from './config.js?v=20';
 
 export class Hud {
     constructor() {
