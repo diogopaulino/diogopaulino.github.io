@@ -1,30 +1,50 @@
 /**
- * João e o Pé de Feijão — laço principal, capítulos e câmera cinematográfica no Babylon.js.
+ * João e o Pé de Feijão — laço principal, capítulos, câmera e cutscenes (three.js r185).
+ *
+ * O palco (renderer, céu, sol com sombra, pós) é `createStage` de gfx/stage.js;
+ * o mundo vem de world.js. Aqui ficam as regras do conto:
+ *   I   fale com a mãe → chame a Mimosa → leve-a ao arco da feira
+ *   II  fale com o mercador → cinco feijões
+ *   III fale com a mãe → olhe os feijões (o pé cresce) → suba além de y = 66
+ *   IV  pegue ouro, galinha e harpa (a harpa acorda o gigante) → com os três, fuja
+ *   V   desça, pegue o machado e dê 8 machadadas no pé
+ * Pontuação: +40 vaca · +100 troca · +80 plantio · +120 por tesouro · +60 machado
+ *            · +250 corte · +200 por capítulo · bônus de tempo max(0, 700 − s).
+ *
+ * Câmera: órbita em volta do João (yaw/pitch/distância) suavizada com
+ *   pos ← lerp(pos, alvo, 1 − e^(−10·dt)); não desce abaixo do chão + 0,5 m, é
+ *   puxada para perto quando uma parede fica no meio e treme com `shake`.
  */
 
-import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js';
-import { clamp, lerp, detectMobile, detectSoftwareGL, formatTime } from './utils.js';
+import * as THREE from 'three';
+import { CHAPTERS, QUALITY, STORAGE_KEY, CAMERA } from './config.js';
+import { clamp, lerp, formatTime } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js?v=4';
-import { createSky, applyChapterSky, createLights } from './sky.js';
-import { buildChapter, bindShadows } from './world.js?v=4';
-import { setModelQuality } from './models.js?v=5';
-import { nearestInteractable } from './npcs.js';
+import { Player } from './player.js?v=8';
+import { createWorld } from './world.js?v=8';
+import { nearestInteractable } from './npcs.js?v=8';
+import { createStage } from '../../shared/gfx/stage.js';
+import { pickTier, detectMobile } from '../../shared/gfx/core.js';
 
-const B = window.BABYLON;
-/* Criados sob demanda, não na avaliação do módulo: sem Babylon carregado,
-   `new B.Vector3()` no topo do arquivo derrubava o módulo inteiro antes de
-   qualquer guarda rodar — nem a própria tela de erro do lab chegava a aparecer.
-   São scratch vectors reaproveitados a cada frame, então continuam únicos. */
-let LOOK = null;
-let CAM = null;
+const LOOK = new THREE.Vector3();
+const CAM = new THREE.Vector3();
+const TMP = new THREE.Vector3();
+const DEBUG = new URLSearchParams(location.search).has('debug');
+
+/** Luz das nuvens por capítulo: [borda, barriga, ganho da borda, ganho da barriga]. */
+const CLOUD_LIGHT = {
+    night: [0x8fa8ff, 0x3a4a8a, 0.1, 0.12],
+    castle: [0xfff0d0, 0xffb060, 0.2, 0.34],
+    escape: [0xffd0b0, 0xff8a50, 0.22, 0.4]
+};
 
 class Game {
     constructor() {
         this.hud = new Hud();
         this.canvas = document.getElementById('scene');
+        this.fadeEl = document.getElementById('fade');
         this.settings = this.loadSettings();
         this.state = 'loading';
         this.chapterIndex = 0;
@@ -36,14 +56,13 @@ class Game {
         this.fade = 1;
         this.fadeDir = -1;
         this.dialogue = null;
-        this.fpsAccum = 0;
-        this.fpsFrames = 0;
         this.hudAccum = 0;
         this.orbit = 0;
         this.pendingChapter = 0;
         this.shake = 0;
-        this.carry = { beans: 0, treasures: { gold: false, hen: false, harp: false } };
-        this.lastTime = performance.now();
+        this.cut = null;
+        this.clearing = null;
+        this.envBase = 1;
     }
 
     loadSettings() {
@@ -62,66 +81,49 @@ class Game {
         } catch (err) { /* armazenamento privado */ }
     }
 
-    resolveQuality() {
-        if (detectSoftwareGL()) return QUALITY.low;
-        const choice = this.settings.quality;
-        if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.high : QUALITY.medium;
-    }
-
     async init() {
-        this.hud.setLoading(0.1, 'Abrindo o livro do conto…');
-        this.quality = this.resolveQuality();
+        this.hud.setLoading(0.05, 'Abrindo o livro do conto…');
         this.mobile = detectMobile();
-        setModelQuality(this.quality.id);
+        const choice = QUALITY[this.settings.quality] ? this.settings.quality : 'auto';
 
-        try {
-            this.engine = new B.Engine(this.canvas, !!this.quality.antialias, {
-                preserveDrawingBuffer: false,
-                stencil: true,
-                powerPreference: 'high-performance',
-                antialias: this.quality.antialias
-            });
-        } catch (err) {
-            this.hud.showError('Não foi possível criar o contexto WebGL.');
+        // progresso real dos downloads (texturas, glTF) na barra, entre as etapas de montagem
+        const manager = new THREE.LoadingManager();
+        let stageP = 0.05;
+        manager.onProgress = (url, loaded, total) => {
+            if (this.state === 'loading') this.hud.setLoading(Math.min(0.97, stageP + (loaded / Math.max(1, total)) * 0.08));
+        };
+
+        this.stage = createStage({ canvas: this.canvas, tier: choice, preset: 'dia-claro', fov: 54, near: 0.2, loadingManager: manager });
+        if (!this.stage) {
+            this.hud.showError('Não foi possível criar o contexto WebGL 2.');
             return;
         }
+        this.camera = this.stage.camera;
+        this.quality = QUALITY[this.stage.tier];
+        this.focus = new THREE.Vector3();
+        this.stage.focus = this.focus;
 
-        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
-        this.engine.setHardwareScalingLevel(1 / pr);
-
-        this.scene = new B.Scene(this.engine);
-        this.scene.clearColor = new B.Color4(0.5, 0.7, 0.9, 1);
-
-        this.camera = new B.UniversalCamera('camera', new B.Vector3(18, 10, 16), this.scene);
-        this.camera.fov = 54 * (Math.PI / 180);
-        this.camera.minZ = 0.12;
-        this.camera.maxZ = 750;
-        this.camera.inputs?.clear();
-
-        this.pipeline = new B.DefaultRenderingPipeline('cinematic', true, this.scene, [this.camera]);
-        this.pipeline.samples = 1;
-        this.pipeline.bloomThreshold = 1.1;
-        this.pipeline.bloomWeight = 0.09;
-        this.pipeline.bloomKernel = 32;
-        this._syncPipeline();
-
-        this.sky = createSky(this.scene);
-
-        this.hud.setLoading(0.4, 'Plantando o quintal…');
         this.input = new Input(this.canvas);
         this.audio = new GameAudio();
-        this.player = new Player(this.scene);
+        this.player = new Player(this.stage.scene, this.quality.heroDetail);
         this.player.setVisible(false);
 
         this._bindUi();
-        if (window.LabRuntime) LabRuntime.debounceResize(() => this._resize());
-        else window.addEventListener('resize', () => this._resize());
 
-        await this._loadChapter(0, { menu: true });
-        this.hud.setLoading(1, 'O conto espera.');
+        this.worlds = await createWorld(this.stage, this.quality, (p, text) => {
+            stageP = p;
+            this.hud.setLoading(p, text);
+        });
+        this.stage.onTier((t) => {
+            this.quality = QUALITY[t];
+            this.worlds.grass.setDensity(t === 'low' ? 0.5 : 1);
+        });
+
+        this._loadChapter(0, { menu: true });
+        this.hud.setLoading(0.98, 'O conto espera.');
+        this._updateMenuCam(0);
+        this.worlds.update(0.016, 0, this.camera, this.player, null);
+        await this.stage.warmup();
         this.hud.hideLoading();
         this._refreshChapterList();
 
@@ -134,10 +136,8 @@ class Game {
         this.state = 'menu';
         this.hud.setState('menu');
 
-        this.lastTime = performance.now();
-        this._renderLoop = () => this._loop();
-        if (window.LabRuntime) LabRuntime.bindBabylonLoop(this.engine, this._renderLoop);
-        else this.engine.runRenderLoop(this._renderLoop);
+        this.stage.start((dt) => this._update(dt));
+        if (DEBUG) this._debugApi();
     }
 
     _refreshChapterList() {
@@ -147,20 +147,12 @@ class Game {
         });
     }
 
-    _syncPipeline() {
-        if (!this.pipeline) return;
-        this.pipeline.fxaaEnabled = this.quality.id !== 'low';
-        this.pipeline.bloomEnabled = this.quality.id === 'high';
-    }
-
     _bindUi() {
         this.hud.el.qualitySelect.addEventListener('change', () => {
             this.settings.quality = this.hud.el.qualitySelect.value;
             this.saveSettings();
-            this.quality = this.resolveQuality();
-            const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
-            this.engine.setHardwareScalingLevel(1 / pr);
-            this._syncPipeline();
+            // sombra, pós e pixelRatio trocam na hora; árvores e detalhe dos modelos, na próxima leitura
+            this.stage.setTier(pickTier(this.settings.quality));
         });
         this.hud.el.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(this.hud.el.volumeSlider.value);
@@ -193,7 +185,7 @@ class Game {
             if (this.state === 'dialogue') this._advanceDialogue();
         });
         this.input.on('pointerdown', () => {
-            if (this.state === 'playing') this.input.requestLock();
+            if (this.state === 'playing' && !this.mobile) this.input.requestLock();
             if (this.state === 'dialogue') this._advanceDialogue();
         });
 
@@ -288,36 +280,48 @@ class Game {
         });
     }
 
-    async _loadChapter(index, { menu = false } = {}) {
+    /** Monta o capítulo: estado lógico (world.js), céu/hora/névoa do palco e posição do João. */
+    _loadChapter(index, { menu = false } = {}) {
         const ch = CHAPTERS[index];
         this.chapterIndex = index;
         this.chapter = ch;
+        this.cut = null;
+        this.clearing = null;
+        this.shake = 0;
 
-        if (this.world) {
-            this.world.dispose();
-            this.world = null;
+        this.world = this.worlds.enter(ch.id);
+        const w = this.world;
+        const st = this.stage;
+        st.setPreset(ch.sky.preset);
+        st.setTimeOfDay(ch.sky.hour);
+        st.sky.setClouds(ch.sky.clouds);
+        st.follow({ heightAt: w.heightAt, bounds: { minY: w.minY } });
+        const pp = st.pipeline.params;
+        pp.fogBase = w.fogBase;
+        st.shadowRadius = w.shadowRadius;
+        if (ch.id === 'castle') {
+            // bruma rente ao mar de nuvens: funde o horizonte e dá profundidade aos cúmulos
+            pp.fogDensity = 0.011;
+            pp.fogFalloff = 0.05;
+            pp.haze = 0.0005;
+            pp.exposure *= 0.84;
+        } else if (ch.id === 'night') {
+            pp.bloom = 0.2;
         }
-        if (this.lights) {
-            this.lights.dispose();
-            this.lights = null;
-        }
-
-        const world = buildChapter(ch.id, this.scene, this.quality);
-        const lights = createLights(this.scene, ch, this.quality);
-        this.world = world;
-        this.lights = lights;
-        bindShadows(world, lights);
-
-        applyChapterSky(this.sky, ch, this.scene);
+        // luz de preenchimento: sem ela o lado em sombra de madeira e palha afunda no preto
+        st.fill.intensity = ch.id === 'night' ? 0.9 : ch.id === 'castle' ? 0.55 : 0.75;
+        const cl = CLOUD_LIGHT[ch.id];
+        if (cl) this.worlds.setCloudLight(...cl);
+        this.envBase = st.scene.environmentIntensity;
         this.audio.setTheme(ch.music);
 
+        this.player.hero.equip({ handR: null });
         if (!menu) {
-            const s = this.world.spawn;
-            this.player.spawn(s.x, s.z, s.yaw, this.world.heightAt, s.y);
+            const s = w.spawn;
+            this.player.spawn(s.x, s.z, s.yaw, w.heightAt, s.y);
+            if (s.climbing) this.player.climbing = true;
             if (index >= 1) this.player.beans = 5;
-            if (index >= 4) {
-                this.player.treasures = { gold: true, hen: true, harp: true };
-            }
+            if (index >= 4) this.player.treasures = { gold: true, hen: true, harp: true };
         } else {
             this.player.setVisible(false);
         }
@@ -337,11 +341,6 @@ class Game {
         this.audio.setVolume(this.settings.volume / 100);
         this.audio.setMuted(this.settings.muted);
 
-        this.quality = this.resolveQuality();
-        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
-        this.engine.setHardwareScalingLevel(1 / pr);
-        this._syncPipeline();
-
         this.pendingChapter = index;
         this.chapterIndex = index;
         this.elapsed = 0;
@@ -360,7 +359,7 @@ class Game {
         this.hud.hideDialogue();
         this.hud.showPause(false);
 
-        await this._loadChapter(index);
+        this._loadChapter(index);
         this._beginIntro();
     }
 
@@ -373,6 +372,7 @@ class Game {
         this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || this.mobile);
         this.hud.setChapter(this.chapter);
         this.hud.setHearts(this.player.health, this.player.maxHealth);
+        this.hud.setMeter('', 0);
         this._syncRelics();
         this.hud.showChapterCard(this.chapter);
         this.hud.say(this.chapter.objective, 5);
@@ -399,7 +399,7 @@ class Game {
         if (!this.mobile) this.input.requestLock();
     }
 
-    async toMenu() {
+    toMenu() {
         this.hud.showPause(false);
         this.hud.hideDefeat();
         this.hud.hideVictory();
@@ -408,11 +408,12 @@ class Game {
         this.player.setVisible(false);
         this.input.exitLock();
         this.input.enabled = true;
-        await this._loadChapter(0, { menu: true });
+        this._loadChapter(0, { menu: true });
         this._refreshChapterList();
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
+        this.fadeDir = -1;
     }
 
     toggleMute() {
@@ -422,89 +423,84 @@ class Game {
         this.saveSettings();
     }
 
-    _loop() {
-        const now = performance.now();
-        const dt = Math.min(0.05, Math.max(0, (now - this.lastTime) / 1000));
-        this.lastTime = now;
-        this.time += dt;
-
-        this._update(dt);
-        this.scene.render();
-
-        this.fpsFrames += 1;
-        this.fpsAccum += dt;
-        if (this.fpsAccum >= 0.5) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
-            this.fpsFrames = 0;
-            this.fpsAccum = 0;
-        }
-    }
-
     _update(dt) {
+        this.time += dt;
         this.hud.tick(dt);
         this.audio.update(dt);
-        this.world?.updateFns.forEach((fn) => fn(this.time, dt));
+        const w = this.world;
+        for (const fn of w.updateFns) fn(this.time, dt);
 
         this.fade = clamp(this.fade + this.fadeDir * dt * 0.85, 0, 1);
-        document.getElementById('fade').style.opacity = String(this.fade);
+        this.fadeEl.style.opacity = this.fade.toFixed(3);
         this.shake = Math.max(0, this.shake - dt * 4);
 
-        if (this.state === 'menu') {
-            if (this.world) this._updateMenuCam(dt);
-            return;
-        }
-        if (this.state === 'intro') {
-            this._updateIntro(dt);
-            return;
-        }
-        if (this.state === 'pause' || this.state === 'dialogue' || this.state === 'defeat' || this.state === 'victory') {
-            this._followCamera(1);
-            return;
-        }
-        if (this.state !== 'playing') return;
-
-        this.elapsed += dt;
         this.hudAccum += dt;
-        if (this.hudAccum > 0.2) {
-            this.hud.setTime(this.elapsed);
+        if (this.hudAccum > 0.25) {
             this.hudAccum = 0;
+            this.hud.setFps(Math.round(this.stage.fps));
+            if (this.state === 'playing') this.hud.setTime(this.elapsed);
+        }
+        this._updateWeather(dt);
+
+        if (this.state === 'menu') {
+            this._updateMenuCam(dt);
+        } else if (this.state === 'intro') {
+            this.player.idle(dt);
+            this._updateIntro(dt);
+        } else if (this.state === 'cutscene') {
+            this.player.idle(dt);
+            this._updateNpcs(dt, true);
+            this._updateCut(dt);
+        } else if (this.state === 'playing') {
+            this.elapsed += dt;
+            const info = this.player.update(dt, this.input, w);
+            if (info.fell) {
+                this._defeat('João caiu das nuvens.');
+            } else {
+                if (info.footstep) this.audio.footstep();
+                if (info.jumped) this.audio.chime();
+                this._updateNpcs(dt);
+                this._updateInteract();
+                this._updateChapterLogic();
+                this._followCamera(dt);
+            }
+        } else {
+            // pausa, diálogo, transição, derrota, vitória: o mundo respira, o João fica parado
+            this.player.idle(dt, this.state === 'victory' ? 'cheer' : 'idle');
+            if (w.cow && this.state !== 'pause') w.cow.update(dt, this.player, w.heightAt);
+            if (this.state === 'victory' || this.state === 'transition') this._updateNpcs(dt, true);
+            this._followCamera(dt);
         }
 
-        const info = this.player.update(dt, this.input, this.world);
-        if (info.footstep) this.audio.footstep();
-        if (info.jumped) this.audio.chime();
-        if (info.fell) {
-            this._defeat('João caiu das nuvens.');
-            return;
-        }
+        this.worlds.update(dt, this.time, this.camera, this.player, this.state === 'dialogue' ? this.dialogue?.speaker : null);
+        this.stage.scene.environmentIntensity = this.envBase * (w.envK ?? 1);
+        this.focus.set(this.player.x, this.player.y, this.player.z);
+        if (this.state === 'menu') this.focus.copy(w.overview.look);
+    }
 
-        this._updateNpcs(dt);
-        this._updateInteract();
-        this._updateChapterLogic(dt);
-        this._followCamera(dt);
-
-        if (this.sky?.mesh) {
-            this.sky.mesh.position.copyFrom(this.camera.position);
-        }
-        if (this.quality.shadows && this.lights?.dir) {
-            this.lights.dir.position.set(
-                this.player.x + this.chapter.sun.dir[0] * 50,
-                this.player.y + this.chapter.sun.dir[1] * 50,
-                this.player.z + this.chapter.sun.dir[2] * 50
-            );
-        }
+    /**
+     * Capítulo I: o dia nasce nublado e abre quando a Mimosa sai do pasto.
+     * cobertura(t) = lerp(0,92, 0,36, t/12 s), reaplicada a cada 0,6 s (cada troca reassa o céu).
+     */
+    _updateWeather(dt) {
+        const c = this.clearing;
+        if (!c) return;
+        c.t += dt;
+        c.acc += dt;
+        if (c.acc < 0.6) return;
+        c.acc = 0;
+        const k = clamp(c.t / 12, 0, 1);
+        this.stage.sky.setClouds(lerp(c.from, c.to, k * k * (3 - 2 * k)));
+        if (k >= 1) this.clearing = null;
     }
 
     _updateMenuCam(dt) {
-        this.orbit += dt * 0.12;
+        this.orbit += dt * 0.07;
         const o = this.world.overview;
-        this.camera.position.set(
-            Math.sin(this.orbit) * o.x,
-            o.y,
-            Math.cos(this.orbit) * o.z
-        );
-        this.camera.setTarget(new B.Vector3(0, 2.5, 0));
-        if (this.sky?.mesh) this.sky.mesh.position.copyFrom(this.camera.position);
+        const x = o.look.x + Math.sin(this.orbit + 0.6) * o.radius;
+        const z = o.look.z + Math.cos(this.orbit + 0.6) * o.radius;
+        this.camera.position.set(x, Math.max(o.pos.y, this.world.heightAt(x, z) + 2.5), z);
+        this.camera.lookAt(o.look);
     }
 
     _updateIntro(dt) {
@@ -512,23 +508,10 @@ class Game {
         const t = clamp(this.introT / 3.2, 0, 1);
         const e = t * t * (3 - 2 * t);
         const o = this.world.overview;
-        if (!CAM) {
-            CAM = new B.Vector3();
-            LOOK = new B.Vector3();
-        }
-        this.player.cameraPosition(CAM);
-        this.player.lookAt(LOOK);
-        this.camera.position.set(
-            lerp(o.x, CAM.x, e),
-            lerp(o.y, CAM.y, e),
-            lerp(o.z, CAM.z, e)
-        );
-        const look = new B.Vector3(
-            lerp(0, LOOK.x, e),
-            lerp(3, LOOK.y, e),
-            lerp(0, LOOK.z, e)
-        );
-        this.camera.setTarget(look);
+        this._cameraTarget();
+        this.camera.position.lerpVectors(o.pos, CAM, e);
+        TMP.lerpVectors(o.look, LOOK, e);
+        this.camera.lookAt(TMP);
         if (t >= 1) {
             this.state = 'playing';
             this.hud.setState('playing');
@@ -537,50 +520,133 @@ class Game {
         }
     }
 
-    _followCamera(dt) {
-        this.player.cameraPosition(CAM);
-        this.player.lookAt(LOOK);
-        const gy = this.world.heightAt(CAM.x, CAM.z) + 1.15;
-        if (CAM.y < gy) CAM.y = gy;
-        const k = 1 - Math.exp(-10 * (dt || 0.016));
-        this.camera.position.x = lerp(this.camera.position.x, CAM.x, k);
-        this.camera.position.y = lerp(this.camera.position.y, CAM.y, k);
-        this.camera.position.z = lerp(this.camera.position.z, CAM.z, k);
-
-        if (this.shake > 0) {
-            this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.35;
-            this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.2;
+    /** Posição desejada da câmera (CAM) e alvo (LOOK), já com colisão. */
+    _cameraTarget() {
+        const p = this.player;
+        const w = this.world;
+        p.cameraPosition(CAM);
+        p.lookAt(LOOK);
+        if (p.climbing) {
+            // na escalada a câmera sobe e olha para baixo: o chão encolhe sob os pés
+            CAM.y += 2.6;
+            LOOK.y -= 0.8;
         }
-        this.camera.setTarget(LOOK);
+        // parede no meio: anda do João até a câmera e para no primeiro ponto bloqueado
+        let k = 1;
+        for (let i = 1; i <= 8; i++) {
+            const u = i / 8;
+            const x = lerp(LOOK.x, CAM.x, u);
+            const z = lerp(LOOK.z, CAM.z, u);
+            if (this._camBlocked(x, lerp(LOOK.y, CAM.y, u), z)) {
+                k = Math.max(0.16, (i - 1) / 8);
+                break;
+            }
+        }
+        if (k < 1) CAM.lerpVectors(LOOK, CAM, k);
+        if (w.cam && w.inside?.(p.x, p.z)) {
+            CAM.x = clamp(CAM.x, w.cam.minX, w.cam.maxX);
+            CAM.z = clamp(CAM.z, w.cam.minZ, w.cam.maxZ);
+            CAM.y = Math.min(CAM.y, w.cam.maxY);
+        }
+        const gy = w.heightAt(CAM.x, CAM.z) + 0.5;
+        if (gy > -20 && CAM.y < gy) CAM.y = gy;
     }
 
-    _updateNpcs(dt) {
-        if (this.world.cow) {
-            this.world.cow.update(dt, this.player, this.world.heightAt);
+    _camBlocked(x, y, z) {
+        for (const c of this.world.colliders) {
+            if (!c.box) continue;
+            if (c.camTop != null && y > c.camTop) continue;
+            const dx = x - c.x;
+            const dz = z - c.z;
+            const lx = dx * c.cos - dz * c.sin;
+            const lz = dx * c.sin + dz * c.cos;
+            if (Math.abs(lx) < c.hx + 0.25 && Math.abs(lz) < c.hz + 0.25) return true;
         }
+        return false;
+    }
 
-        const giant = this.world.giant;
+    _followCamera(dt) {
+        this._cameraTarget();
+        const k = 1 - Math.exp(-10 * (dt || 0.016));
+        this.camera.position.lerp(CAM, k);
+        this._applyShake();
+        this.camera.lookAt(LOOK);
+    }
+
+    _applyShake() {
+        if (this.shake <= 0) return;
+        this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.35;
+        this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.22;
+    }
+
+    /** Cutscene: câmera fixa em `pos` olhando `look(t)`; `tick` roda a cada quadro e `end` ao fim. */
+    _beginCut(cut) {
+        this.cut = { t: 0, ...cut };
+        this.state = 'cutscene';
+        this.hud.setState('cutscene');
+        this.hud.setPrompt('');
+        this.input.enabled = false;
+    }
+
+    _updateCut(dt) {
+        const c = this.cut;
+        c.t += dt;
+        c.tick?.(c.t, dt);
+        c.pos(c.t, CAM);
+        c.look(c.t, LOOK);
+        this.camera.position.lerp(CAM, 1 - Math.exp(-(c.snap ?? 3) * dt));
+        this._applyShake();
+        this.camera.lookAt(LOOK);
+        if (c.t >= c.dur) {
+            this.cut = null;
+            c.end();
+        }
+    }
+
+    _resumePlay() {
+        this.state = 'playing';
+        this.hud.setState('playing');
+        this.input.enabled = true;
+    }
+
+    _updateNpcs(dt, passive = false) {
+        const w = this.world;
+        if (w.cow && !passive) w.cow.update(dt, this.player, w.heightAt);
+
+        const giant = w.giant;
         if (!giant) {
-            if (this.chapter.id !== 'escape') this.hud.setMeter('', 0);
+            if (!passive) this.hud.setMeter('', 0);
             return;
         }
 
         let ev;
-        if (this.chapter.id === 'escape' && !this.world.flags.chopped) {
-            ev = giant.chaseDown(dt, this.player, this.world.stalkX, this.world.stalkZ);
+        if (this.chapter.id === 'escape' && !w.flags.chopped) {
+            if (passive) return;
+            ev = giant.chaseDown(dt, this.player, w.stalk.axis);
             this.hud.setMeter('O gigante desce', clamp((80 - giant.y) / 80, 0, 1), giant.y < this.player.y + 10);
         } else if (this.chapter.id === 'castle') {
-            ev = giant.update(dt, this.player, this.world.heightAt);
-            this.hud.setMeter('O gigante fareja', giant.alert, giant.alert > 0.55 || giant.state === 'chase');
-            if (ev === 'stir') {
-                this.audio.roar();
-                this.hud.say('Fee-fi-fo-fum! O gigante acordou!', 4);
+            // em cutscene o João não conta como alvo: o gigante só levanta e urra
+            ev = giant.update(dt, passive && giant.state === 'chase' ? giant : this.player, w.heightAt);
+            if (!passive) {
+                this.hud.setMeter('O gigante fareja', giant.alert, giant.alert > 0.55 || giant.state !== 'sleep');
+                if (ev === 'stir') {
+                    this.audio.roar();
+                    this.shake = 1.4;
+                    this.hud.say('Fee-fi-fo-fum! O gigante acordou!', 4);
+                }
             }
         } else {
-            ev = giant.update(dt, this.player, this.world.heightAt);
+            ev = giant.update(dt, this.player, w.heightAt);
         }
 
-        if (ev === 'caught') {
+        if (giant.stomp) {
+            // passada do gigante: tremor cai com a distância (some além de ~40 m)
+            const d = Math.hypot(this.player.x - giant.x, this.player.z - giant.z);
+            this.shake = Math.max(this.shake, clamp(1.5 - d / 28, 0, 1.3));
+            if (this.audio.ctx && !this.settings.muted) this.audio._drum();
+        }
+
+        if (ev === 'caught' && !passive) {
             this.caught += 1;
             this.audio.danger();
             this.hud.flashHit();
@@ -590,9 +656,16 @@ class Game {
                 this.hud.say('O gigante quase te pegou!', 2.5);
                 if (!this.player.alive) {
                     this._defeat('Fee-fi-fo-fum. O gigante alcançou João.');
+                } else if (this.chapter.id === 'castle') {
+                    // empurrão de 3,2 m para longe do gigante (só se o destino estiver livre)
+                    const nx = this.player.x + Math.sin(giant.yaw) * 3.2;
+                    const nz = this.player.z + Math.cos(giant.yaw) * 3.2;
+                    if (!this.player._blocked(nx, nz, w) && w.heightAt(nx, nz) > -10) {
+                        this.player.x = nx;
+                        this.player.z = nz;
+                    }
+                    this.player.invuln = 1.6;
                 } else {
-                    this.player.x -= Math.sin(giant.yaw) * 3.2;
-                    this.player.z -= Math.cos(giant.yaw) * 3.2;
                     this.player.invuln = 1.6;
                 }
             }
@@ -600,7 +673,8 @@ class Game {
     }
 
     _updateInteract() {
-        const near = nearestInteractable(this.player, this.world.interactables);
+        const w = this.world;
+        const near = nearestInteractable(this.player, w.interactables);
         let label = near ? near.label : '';
         if (near?.kind === 'goal' && this.chapter.id === 'cottage' && !this.player.hasCow) {
             label = 'Leve a Mimosa com você';
@@ -608,14 +682,14 @@ class Game {
         if (near?.kind === 'chop' && !this.player.hasAxe) {
             label = 'Pegue o machado primeiro';
         }
-        if (near?.kind === 'plant' && !this.world.flags.talkedMother) {
+        if (near?.kind === 'plant' && !w.flags.talkedMother) {
             label = 'Fale com a mãe primeiro';
         }
-        if (near?.kind === 'goal' && this.chapter.id === 'night' && !this.world.flags.grown) {
+        if (near?.kind === 'goal' && this.chapter.id === 'night' && !w.flags.grown) {
             label = '';
         }
         if (near?.kind === 'chop' && this.player.hasAxe) {
-            label = `Cortar o pé (${this.world.chop}/${this.world.chopNeeded})`;
+            label = `Cortar o pé (${w.chop}/${w.chopNeeded})`;
         }
         this.hud.setPrompt(label);
         if (!near || !this.input.consumeInteract()) return;
@@ -625,23 +699,20 @@ class Game {
             return;
         }
         if (near.kind === 'cow') {
-            if (!this.world.flags.talkedMother) {
+            if (!w.flags.talkedMother) {
                 this.hud.say('Fale com a mãe antes de levar a Mimosa.', 3);
                 return;
             }
             this.player.hasCow = true;
-            this.world.cow.follow = true;
-            this.world.flags.hasCow = true;
+            w.cow.follow = true;
+            w.flags.hasCow = true;
             near.done = true;
             this.audio.moo();
-            const gx = 16;
-            const gz = 9;
-            this.player.facing = Math.atan2(gx - this.player.x, gz - this.player.z);
-            this.player.yaw = this.player.facing;
-            this.player.camYaw = this.player.facing + Math.PI;
-            this.hud.say('A Mimosa te segue. Siga o caminho de terra até o arco dourado.', 4);
+            this.hud.say('A Mimosa te segue. Siga o caminho de terra até o arco da feira.', 4);
             this.hud.setObjective('Siga o caminho de terra até o arco da feira.');
             this.score += 40;
+            const sky = this.chapter.sky;
+            if (sky.clearTo != null) this.clearing = { t: 0, acc: 0, from: sky.clouds, to: sky.clearTo };
             return;
         }
         if (near.kind === 'goal') {
@@ -656,7 +727,7 @@ class Game {
                 return;
             }
             if (this.chapter.id === 'night') {
-                if (!this.world.flags.grown || this.player.y < 64) {
+                if (!w.flags.grown || this.player.y < 64) {
                     this.hud.say('Suba até o topo do pé de feijão.', 2.5);
                     return;
                 }
@@ -670,43 +741,37 @@ class Game {
             return;
         }
         if (near.kind === 'plant') {
-            if (!this.world.flags.talkedMother) {
+            if (!w.flags.talkedMother) {
                 this.hud.say('Primeiro, fale com a mãe.', 2.5);
                 return;
             }
-            if (this.world.flags.growing || this.world.flags.grown) return;
+            if (w.flags.growing || w.flags.grown) return;
             near.done = true;
-            this.world.growStalk();
-            this.audio.grow();
-            this.hud.say('Os feijões acordam. O pé sobe até as nuvens…', 5);
-            this.hud.setObjective('Suba o pé de feijão — trepe no caule ou pule nas folhas.');
-            this.score += 80;
+            this._growCutscene();
             return;
         }
         if (near.kind === 'treasure') {
             near.done = true;
-            if (near.mesh) near.mesh.setEnabled(false);
+            if (near.mesh) near.mesh.visible = false;
             this.player.treasures[near.id] = true;
             this.score += 120;
             this._syncRelics();
             if (near.id === 'harp') {
                 this.audio.harp();
-                this.world.giant?.wake();
+                w.giant?.wake();
                 this.hud.say('A harpa canta — o gigante abre um olho!', 4);
             } else {
                 this.audio.pickup();
                 this.hud.say(near.id === 'gold' ? 'O saco de ouro é seu.' : 'A galinha dos ovos de ouro!', 3);
             }
-            if (this.player.treasureCount >= 3) {
-                this.hud.say('Os três tesouros estão na sacola. Fuja!', 3);
-                this._completeChapter();
-            }
+            if (this.player.treasureCount >= 3) this._wakeCutscene();
             return;
         }
         if (near.kind === 'axe') {
             near.done = true;
-            if (near.mesh) near.mesh.setEnabled(false);
+            if (near.mesh) near.mesh.visible = false;
             this.player.hasAxe = true;
+            this.player.hero.equip({ handR: 'axe' });
             this.audio.pickup();
             this.hud.say('O machado está na mão. Corte o pé!', 3.5);
             this.hud.setObjective('Corte o pé de feijão na base — aperte E várias vezes.');
@@ -715,25 +780,82 @@ class Game {
         }
         if (near.kind === 'chop') {
             if (!this.player.hasAxe) {
-                this.hud.say('O machado está junto à lenha, ao lado da cabana.', 3);
+                this.hud.say('O machado está no toco, junto à lenha, em frente à cabana.', 3);
                 return;
             }
-            this.world.chop += 1;
+            if (this.player.swing > 0.2) return; // uma machadada por vez
+            w.chop += 1;
+            this.player.attack();
+            this.player.facing = Math.atan2(near.x - this.player.x, near.z - this.player.z);
             this.audio.chop();
             this.shake = 0.8;
-            this.hud.setMeter('Corte o pé', this.world.chop / this.world.chopNeeded, false);
-            if (this.world.stalk) {
-                this.world.stalk.group.rotation.z = (this.world.chop / this.world.chopNeeded) * 0.35;
-            }
-            if (this.world.chop >= this.world.chopNeeded) {
-                this._chopDown();
-            }
+            this.hud.setMeter('Corte o pé', w.chop / w.chopNeeded, false);
+            if (w.chop >= w.chopNeeded) this._chopDown();
         }
     }
 
-    _updateChapterLogic(dt) {
+    /** III — os feijões acordam: 8 s de câmera recuada vendo o pé furar a noite até as nuvens. */
+    _growCutscene() {
+        const w = this.world;
+        w.growStalk();
+        this.audio.grow();
+        this.hud.say('Os feijões acordam. O pé sobe até as nuvens…', 6);
+        this.score += 80;
+        const sx = w.stalk.x;
+        const sz = w.stalk.z;
+        this._beginCut({
+            dur: 8.2,
+            snap: 1.6,
+            pos: (t, out) => out.set(sx + 15 + t * 1.6, w.heightAt(sx + 15, sz + 12) + 1.3 + t * 0.25, sz + 12 + t * 1.2),
+            look: (t, out) => out.set(sx, 2 + (w.growK || 0) * 44, sz),
+            tick: (t) => {
+                if (!w.flags.grown) this.shake = Math.max(this.shake, 0.35);
+            },
+            end: () => {
+                this.hud.setObjective('Suba o pé de feijão — pule junto ao caule para agarrar e segure W.');
+                this.hud.say('Chegue perto do caule e pule para agarrar. W sobe, A/D dá a volta.', 5);
+                this._resumePlay();
+            }
+        });
+    }
+
+    /** IV — terceiro tesouro: o gigante acorda, levanta e urra; então a fuga começa. */
+    _wakeCutscene() {
+        const w = this.world;
+        const g = w.giant;
+        g.wake();
+        this.hud.say('Os três tesouros estão na sacola. Fuja!', 3.5);
+        let roared = false;
+        const p = this.player;
+        this._beginCut({
+            dur: 4,
+            snap: 2.4,
+            pos: (t, out) => {
+                const dx = p.x - g.x;
+                const dz = p.z - g.z;
+                const d = Math.hypot(dx, dz) || 1;
+                return out.set(p.x + (dx / d) * 3.5 + (dz / d) * 2, p.y + 1.6, p.z + (dz / d) * 3.5 - (dx / d) * 2);
+            },
+            look: (t, out) => out.set(g.x, g.y + 7.2, g.z),
+            tick: (t) => {
+                if (t > 0.8 && !roared) {
+                    roared = true;
+                    this.audio.roar();
+                    this.shake = 1.6;
+                    this.hud.say('Fee-fi-fo-fum!', 3);
+                }
+            },
+            end: () => {
+                this.state = 'playing';
+                this._completeChapter();
+            }
+        });
+    }
+
+    _updateChapterLogic() {
+        const w = this.world;
         if (this.chapter.id === 'cottage' && this.player.hasCow) {
-            const gate = this.world.interactables.find((i) => i.id === 'gate');
+            const gate = w.interactables.find((i) => i.id === 'gate');
             if (gate && !gate.done && Math.hypot(this.player.x - gate.x, this.player.z - gate.z) < 4.2) {
                 gate.done = true;
                 this.audio.chime();
@@ -741,35 +863,47 @@ class Game {
                 return;
             }
         }
-        if (this.chapter.id === 'night' && this.world.flags.grown && this.player.y > 66) {
-            const clouds = this.world.interactables.find((i) => i.id === 'clouds');
-            if (clouds && !clouds.done && Math.hypot(this.player.x - clouds.x, this.player.z - clouds.z) < 3.2) {
+        if (this.chapter.id === 'night' && w.flags.grown && this.player.y > 66) {
+            const clouds = w.interactables.find((i) => i.id === 'clouds');
+            if (clouds && !clouds.done && Math.hypot(this.player.x - clouds.x, this.player.z - clouds.z) < 4.2) {
                 clouds.done = true;
                 this.audio.chime();
                 this._completeChapter();
             }
         }
-        if (this.chapter.id === 'escape' && this.world.flags.chopped) {
-            if (this.world.stalk) {
-                this.world.stalk.group.userData = this.world.stalk.group.userData || {};
-                this.world.stalk.group.userData.fall = (this.world.stalk.group.userData.fall || 0) + dt * 0.9;
-                this.world.stalk.group.rotation.z = Math.min(1.35, this.world.stalk.group.userData.fall);
-            }
-        }
     }
 
+    /** V — oitava machadada: o pé tomba (world.js), o gigante cai com ele e o conto fecha ao pôr do sol. */
     _chopDown() {
-        if (this.world.flags.chopped) return;
-        this.world.flags.chopped = true;
+        const w = this.world;
+        if (w.flags.chopped) return;
+        w.flags.chopped = true;
         this.audio.crash();
         this.audio.roar();
         this.shake = 2.2;
-        this.world.giant?.drop();
+        w.giant?.drop(w.fallDir, w.heightAt);
         this.hud.say('O pé cai — e o gigante com ele.', 4);
         this.hud.setMeter('', 0);
         this.score += 250;
-        wait(2200).then(() => {
-            if (this.state === 'playing' || this.state === 'transition') this._completeChapter();
+        const sx = w.stalk.x;
+        const sz = w.stalk.z;
+        let hit = false;
+        this._beginCut({
+            dur: 7,
+            snap: 1.8,
+            pos: (t, out) => out.set(sx - 13, w.heightAt(sx - 13, sz + 13) + 3.2, sz + 13),
+            look: (t, out) => out.set(sx + w.fallDir.x * 14, 20 - Math.min(16, w.fall.th * 11), sz + w.fallDir.z * 14),
+            tick: () => {
+                if (w.fall.impact && !hit) {
+                    hit = true;
+                    this.audio.crash();
+                    this.shake = 2.6;
+                }
+            },
+            end: () => {
+                this.state = 'playing';
+                this._completeChapter();
+            }
         });
     }
 
@@ -777,8 +911,12 @@ class Game {
         this.dialogue = { speaker, lines: [...lines], item };
         this.state = 'dialogue';
         this.hud.setState('dialogue');
+        this.hud.setPrompt('');
         this.input.exitLock();
         this.input.enabled = true;
+        this.player.facing = Math.atan2(item.x - this.player.x, item.z - this.player.z);
+        this.player.yaw = this.player.facing;
+        this.player.sync();
         this.hud.showDialogue(speaker, lines[0]);
         this.dialogue.lines.shift();
     }
@@ -790,10 +928,11 @@ class Game {
             this.audio.chime();
             return;
         }
+        const w = this.world;
         const item = this.dialogue.item;
         if (item) {
             if (item.id === 'mother') {
-                this.world.flags.talkedMother = true;
+                w.flags.talkedMother = true;
                 if (this.chapter.id === 'cottage') {
                     this.hud.setObjective('Chame a Mimosa e leve-a ao caminho da feira.');
                     this.hud.say('A Mimosa pasta perto da cerca.', 3.5);
@@ -806,11 +945,10 @@ class Game {
             if (item.id === 'merchant') {
                 this.player.beans = 5;
                 this.player.hasCow = false;
-                if (this.world.cow) {
-                    this.world.cow.follow = false;
-                    this.world.cow.parked = true;
-                    this.world.cow.x = 1.6;
-                    this.world.cow.z = 12.4;
+                if (w.cow) {
+                    w.cow.follow = false;
+                    w.cow.parked = true;
+                    w.cow.place(w.cowPark.x, w.cowPark.z, -2.2);
                 }
                 this._syncRelics();
                 this.audio.beans();
@@ -819,6 +957,7 @@ class Game {
                 this.score += 100;
                 this.dialogue = null;
                 this.hud.hideDialogue();
+                this.state = 'playing';
                 this._completeChapter();
                 return;
             }
@@ -834,23 +973,27 @@ class Game {
         if (this.state === 'transition') return;
         this.state = 'transition';
         this.hud.setState('transition');
+        this.hud.setPrompt('');
         this.input.enabled = false;
         this.input.exitLock();
         this.score += 200;
         this.fadeDir = 1;
         const last = this.chapterIndex === CHAPTERS.length - 1;
         this.hud.say(last ? 'E viveram com ouro, ovos e música.' : 'O conto continua…', 2.5);
+        const from = this.chapterIndex;
         await wait(1400);
+        if (this.state !== 'transition' || this.chapterIndex !== from) return; // saiu para o menu no meio
 
         const next = this.chapterIndex + 1;
-        this.settings.unlocked = Math.max(this.settings.unlocked, next);
+        this.settings.unlocked = Math.max(this.settings.unlocked, Math.min(next, CHAPTERS.length - 1));
         this.saveSettings();
 
         if (next >= CHAPTERS.length) {
+            this.fadeDir = -1;
             this._victory();
             return;
         }
-        await this._loadChapter(next);
+        this._loadChapter(next);
         this._beginIntro();
     }
 
@@ -858,6 +1001,7 @@ class Game {
         if (this.state === 'defeat') return;
         this.state = 'defeat';
         this.hud.setState('defeat');
+        this.hud.setPrompt('');
         this.input.exitLock();
         this.input.enabled = true;
         this.audio.danger();
@@ -874,6 +1018,7 @@ class Game {
         this.state = 'victory';
         this.hud.setState('victory');
         this.input.exitLock();
+        this.input.enabled = true;
         const total = this.score + this.player.treasureCount * 80 + Math.max(0, 700 - Math.floor(this.elapsed));
         if (total > this.settings.best) {
             this.settings.best = total;
@@ -888,8 +1033,34 @@ class Game {
         this.hud.setBest(this.settings.best);
     }
 
-    _resize() {
-        this.engine.resize();
+    /** Atalhos de depuração (só com ?debug=1): pular capítulo, teleportar, medir. */
+    _debugApi() {
+        const g = this;
+        window.__lab = {
+            game: g,
+            stage: g.stage,
+            goto: (i) => g.start(i),
+            skipIntro: () => { g.introT = 99; },
+            tp: (x, z, y) => {
+                g.player.x = x;
+                g.player.z = z;
+                g.player.y = y ?? g.world.heightAt(x, z);
+                g.player.vy = 0;
+                g.player.sync();
+            },
+            cam: (yaw, pitch = CAMERA.defaultPitch, dist = CAMERA.distance) => {
+                g.player.camYaw = yaw;
+                g.player.camPitch = pitch;
+                g.player.camDist = dist;
+            },
+            press: () => { g.input.interactPressed = true; },
+            talk: () => { while (g.dialogue) g._advanceDialogue(); },
+            state: () => ({
+                state: g.state, chapter: g.chapter.id, x: +g.player.x.toFixed(2), y: +g.player.y.toFixed(2), z: +g.player.z.toFixed(2),
+                climbing: g.player.climbing, flags: g.world.flags, giant: g.world.giant?.state, health: g.player.health
+            }),
+            stats: () => g.stage.stats()
+        };
     }
 }
 
@@ -906,4 +1077,3 @@ function boot() {
 }
 
 boot();
-

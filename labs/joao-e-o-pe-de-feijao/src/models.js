@@ -1,1010 +1,1074 @@
 /**
- * Modelos do conto: cápsulas, tubos e lathe + PBR fotográfico.
- * Nenhum GLB externo. Cache de material nunca serializa Texture (ciclo no engine).
+ * João e o Pé de Feijão — construções e objetos modelados em three.js.
+ *
+ * Tudo aqui é geometria de verdade (paredes com espessura e vãos recortados,
+ * vigas chanfradas, palha com beiral, cantaria) com materiais PBR de
+ * `gfx/assets.js` e UV em metros (`applyWorldUV`). Cada construtor devolve um
+ * `THREE.Group` com a origem no chão; peças do mesmo material são fundidas em
+ * uma malha só (1 draw call por material).
+ *
+ * Convenções: frente = +Z local, medidas em metros.
  */
 
-import { createMuscle, createSkull, createShoe, createHand } from '../../shared/realism-bjs.js?v=2';
-import { hexToColor3 } from './sky.js';
-import {
-    surface, thatchTexture, goldTexture, cloudTexture, clothTexture,
-    leafTexture, skinTexture, cowHideTexture, bladeTexture, setTextureQuality
-} from './textures.js';
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { applyWorldUV, fbm2, seeded } from '../../shared/gfx/core.js';
+import { pbrMaterial, pbrSet, loadModel } from '../../shared/gfx/assets.js';
 
-const B = window.BABYLON;
+const _m = new THREE.Matrix4();
+const _q = new THREE.Quaternion();
+const _e = new THREE.Euler();
+const _p = new THREE.Vector3();
+const _s = new THREE.Vector3();
+
+/* ------------------------------------------------------------------ */
+/* Materiais (cache por chave: N casas compartilham os mesmos)         */
+/* ------------------------------------------------------------------ */
+
 const matCache = new Map();
-
-let tess = 12;
-
-export function setModelQuality(id) {
-    tess = id === 'low' ? 6 : id === 'medium' ? 10 : 14;
-    setTextureQuality(id);
+function mat(key, make) {
+    if (!matCache.has(key)) matCache.set(key, make());
+    return matCache.get(key);
 }
 
-export function clearMaterialCache() {
-    matCache.clear();
+export const MAT = {
+    /* Reboco caiado: só o relevo (normal + AO/rugosidade) de rough_plaster_03 — o albedo do conjunto é escuro demais para cal. */
+    plaster: () => mat('plaster', () => {
+        const set = pbrSet('rough_plaster_03');
+        const m = new THREE.MeshStandardMaterial({ color: 0xefe3c8, normalMap: set.normalMap, roughnessMap: set.roughnessMap, aoMap: set.aoMap, roughness: 1 });
+        m.normalScale.set(1.4, 1.4);
+        return m;
+    }),
+    timber: () => mat('timber', () => {
+        const m = pbrMaterial('dark_wooden_planks', { color: 0xc8aa8a, normalScale: 1.2 });
+        m.color.multiplyScalar(2.1); // a textura é bem escura: ganho > 1 para a viga ler como carvalho velho
+        return m;
+    }),
+    planks: () => mat('planks', () => {
+        const m = pbrMaterial('weathered_brown_planks', { color: 0xd9c8ae, normalScale: 1.1 });
+        m.color.multiplyScalar(1.9);
+        return m;
+    }),
+    oak: () => mat('oak', () => pbrMaterial('oak_wood_planks', { color: 0xcaa67a })),
+    thatch: () => mat('thatch', () => {
+        const m = pbrMaterial('thatch_roof_angled', { color: 0xf0dca8, normalScale: 1.5 });
+        m.color.multiplyScalar(1.5);
+        return m;
+    }),
+    fieldstone: () => mat('fieldstone', () => pbrMaterial('mossy_cobblestone', { color: 0xd8d2c6, normalScale: 1.4 })),
+    cobble: () => mat('cobble', () => pbrMaterial('cobblestone_floor_08', { color: 0xd6cfc2, normalScale: 1.2 })),
+    blocks: () => mat('blocks', () => pbrMaterial('medieval_blocks_02', { color: 0xe6e0d6, normalScale: 1.3 })),
+    slates: () => mat('slates', () => pbrMaterial('castle_wall_slates', { color: 0xd9d4cc, normalScale: 1.2 })),
+    roofSlate: () => mat('roofSlate', () => pbrMaterial('roof_slates_02', { color: 0x9aa4b4, normalScale: 1.3 })),
+    floorSlate: () => mat('floorSlate', () => pbrMaterial('slate_floor_02', { color: 0xcfc8be, normalScale: 1.1, roughness: 0.9 })),
+    iron: () => mat('iron', () => pbrMaterial('rusty_metal_02', { color: 0x6a625c, metal: true, roughness: 0.9 })),
+    cloth: (color) => mat(`cloth:${color}`, () => pbrMaterial('fabric_pattern_07', {
+        color, normalScale: 0.8, side: THREE.DoubleSide, repeat: 2
+    })),
+    burlap: () => mat('burlap', () => pbrMaterial('fabric_pattern_07', { color: 0xb89c6a, normalScale: 1.6, repeat: 3 })),
+    rope: () => mat('rope', () => new THREE.MeshStandardMaterial({ color: 0xa88c5c, roughness: 0.95 })),
+    /* Ouro polido: metal 1, rugosidade baixa — o reflexo vem do IBL do palco. */
+    gold: () => mat('gold', () => new THREE.MeshStandardMaterial({
+        color: 0xffc64a, metalness: 1, roughness: 0.24, envMapIntensity: 1.6
+    })),
+    goldSoft: () => mat('goldSoft', () => new THREE.MeshStandardMaterial({
+        color: 0xf2b23a, metalness: 1, roughness: 0.42, envMapIntensity: 1.3
+    })),
+    water: () => mat('water', () => new THREE.MeshStandardMaterial({
+        color: 0x2f5a62, roughness: 0.06, metalness: 0.1, transparent: true, opacity: 0.86
+    })),
+    /* Vidro da janela: escuro de dia, âmbar aceso à noite (emissiveIntensity). */
+    windowGlow: () => mat('windowGlow', () => new THREE.MeshStandardMaterial({
+        color: 0x0e0b08, roughness: 0.3, emissive: 0xffb45a, emissiveIntensity: 0
+    })),
+    ember: () => mat('ember', () => new THREE.MeshStandardMaterial({
+        color: 0x1a0f08, roughness: 0.9, emissive: 0xff5a14, emissiveIntensity: 2.4
+    })),
+    flame: () => mat('flame', () => new THREE.MeshBasicMaterial({ color: 0xffc070 }))
+};
+
+/* ------------------------------------------------------------------ */
+/* Ajudantes de geometria                                              */
+/* ------------------------------------------------------------------ */
+
+/** Aplica TRS e devolve a geometria (encadeável). */
+function xf(geo, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) {
+    _e.set(rx, ry, rz);
+    _m.compose(_p.set(px, py, pz), _q.setFromEuler(_e), _s.set(sx, sy, sz));
+    geo.applyMatrix4(_m);
+    return geo;
 }
 
-function extraKey(extra) {
-    return [
-        extra.map?.name || extra.mapKey || '',
-        extra.bump?.name || '',
-        extra.roughnessMap?.name || '',
-        extra.emissive ?? '',
-        extra.emissiveIntensity ?? '',
-        extra.alpha ?? '',
-        extra.alphaTest ? 1 : 0,
-        extra.doubleSided ? 1 : 0,
-        extra.bumpLevel ?? ''
-    ].join(':');
-}
-
-function mat(scene, key, factory) {
-    const fullKey = `${scene?.uid || 'default'}:${key}`;
-    if (!matCache.has(fullKey)) matCache.set(fullKey, factory());
-    return matCache.get(fullKey);
-}
-
-export function std(scene, hex, roughness = 0.78, metallic = 0.04, extra = {}) {
-    const colStr = typeof hex === 'number' ? hex.toString(16).padStart(6, '0') : String(hex);
-    return mat(scene, `std:${colStr}:${roughness}:${metallic}:${extraKey(extra)}`, () => {
-        const material = new B.PBRMaterial(`mat_${colStr}`, scene);
-        material.albedoColor = hexToColor3(hex);
-        material.roughness = roughness;
-        material.metallic = metallic;
-        if (extra.emissive) {
-            material.emissiveColor = hexToColor3(extra.emissive);
-            material.emissiveIntensity = extra.emissiveIntensity ?? 0.5;
+/** Funde geometrias (indexadas ou não) e projeta UV em metros / `uvScale`. */
+function fuse(list, uvScale = 1) {
+    const flat = list.map((g) => {
+        const n = g.index ? g.toNonIndexed() : g;
+        for (const k of Object.keys(n.attributes)) {
+            if (k !== 'position' && k !== 'normal' && k !== 'uv') n.deleteAttribute(k);
         }
-        if (extra.map) {
-            material.albedoTexture = extra.map;
-            if (extra.map.hasAlpha || extra.alphaTest) {
-                material.albedoTexture.hasAlpha = true;
-                material.transparencyMode = B.PBRMaterial.PBRMATERIAL_ALPHATEST;
-                material.needAlphaTesting = true;
-                material.alphaCutOff = extra.alphaCutOff ?? 0.38;
+        if (!n.attributes.normal) n.computeVertexNormals();
+        if (!n.attributes.uv) n.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n.attributes.position.count * 2), 2));
+        return n;
+    });
+    const g = mergeGeometries(flat, false);
+    if (uvScale) applyWorldUV(g, uvScale);
+    return g;
+}
+
+function mesh(geo, material, { cast = true, receive = true } = {}) {
+    const m = new THREE.Mesh(geo, material);
+    m.castShadow = cast;
+    m.receiveShadow = receive;
+    return m;
+}
+
+/**
+ * Viga chanfrada: seção retangular w×h com cantos cortados (chanfro `c`),
+ * extrudada ao longo de +Z por `len`, centrada na seção e no comprimento.
+ */
+function beam(w, h, len, c = Math.min(w, h) * 0.14) {
+    const s = new THREE.Shape();
+    const x = w / 2;
+    const y = h / 2;
+    s.moveTo(-x + c, -y);
+    s.lineTo(x - c, -y);
+    s.lineTo(x, -y + c);
+    s.lineTo(x, y - c);
+    s.lineTo(x - c, y);
+    s.lineTo(-x + c, y);
+    s.lineTo(-x, y - c);
+    s.lineTo(-x, -y + c);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: len, bevelEnabled: false, steps: 1 });
+    g.translate(0, 0, -len / 2);
+    return g;
+}
+
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+/** Viga entre dois pontos (o eixo Z da viga é girado para a direção a→b). */
+function beamBetween(a, b, w, h) {
+    const d = new THREE.Vector3().subVectors(b, a);
+    const len = d.length();
+    const g = beam(w, h, len);
+    _m.makeRotationFromQuaternion(_q.setFromUnitVectors(Z_AXIS, d.divideScalar(len || 1)));
+    g.applyMatrix4(_m);
+    g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    return g;
+}
+
+/**
+ * Parede com espessura e vãos recortados. Elevação no plano XY (x ∈ [−w/2, w/2],
+ * y ∈ [0, h]), espessura `t` centrada em Z. `gable` > 0 acrescenta a empena
+ * (triângulo até h + gable). Vãos: { x, y, w, h, arch } (y = base do vão;
+ * `arch` = raio do arco pleno no topo).
+ */
+function wall(w, h, t, holes = [], gable = 0) {
+    const s = new THREE.Shape();
+    s.moveTo(-w / 2, 0);
+    s.lineTo(w / 2, 0);
+    s.lineTo(w / 2, h);
+    if (gable > 0) s.lineTo(0, h + gable);
+    s.lineTo(-w / 2, h);
+    s.closePath();
+    for (const o of holes) {
+        const p = new THREE.Path();
+        const x0 = o.x - o.w / 2;
+        const x1 = o.x + o.w / 2;
+        p.moveTo(x0, o.y);
+        if (o.arch) {
+            p.lineTo(x0, o.y + o.h - o.w / 2);
+            p.absarc(o.x, o.y + o.h - o.w / 2, o.w / 2, Math.PI, 0, true);
+            p.lineTo(x1, o.y);
+        } else {
+            p.lineTo(x0, o.y + o.h);
+            p.lineTo(x1, o.y + o.h);
+            p.lineTo(x1, o.y);
+        }
+        p.closePath();
+        s.holes.push(p);
+    }
+    const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false, curveSegments: 10 });
+    g.translate(0, 0, -t / 2);
+    return g;
+}
+
+/**
+ * Desloca vértices por ruído função só da posição (vértices coincidentes
+ * recebem o mesmo deslocamento → sem frestas em arestas vivas):
+ *   p += amp · (n(p.yz), n(p.zx), n(p.xy)) − ½
+ */
+function roughen(geo, amp = 0.04, freq = 1.7, seed = 0) {
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        pos.setXYZ(
+            i,
+            x + (fbm2(y * freq + seed, z * freq - seed, 2) - 0.5) * 2 * amp,
+            y + (fbm2(z * freq + 7 + seed, x * freq + 3, 2) - 0.5) * 2 * amp,
+            z + (fbm2(x * freq - 5, y * freq + 11 + seed, 2) - 0.5) * 2 * amp
+        );
+    }
+    geo.computeVertexNormals();
+    return geo;
+}
+
+/** Sólido de revolução a partir de um perfil [[raio, y], …]. */
+function lathe(profile, segs = 20) {
+    return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), segs);
+}
+
+/** Tubo ao longo de pontos (Catmull-Rom). */
+function tube(points, radius, segs = 24, radial = 8, closed = false) {
+    const curve = new THREE.CatmullRomCurve3(points.map((p) => (p.isVector3 ? p : new THREE.Vector3(p[0], p[1], p[2]))), closed);
+    return new THREE.TubeGeometry(curve, segs, radius, radial, closed);
+}
+
+/* ------------------------------------------------------------------ */
+/* Cabana do João                                                       */
+/* ------------------------------------------------------------------ */
+
+export const COTTAGE = { w: 6.8, d: 4.8, h: 2.45, rise: 2.35, t: 0.3, doorX: 0.95 };
+
+/**
+ * Cabana de camponês: soco de pedra, paredes de reboco com enxaimel, porta e
+ * janelas recortadas, telhado de palha com beiral e cumeeira, chaminé de pedra.
+ * @returns {THREE.Group} userData: { chimneyTop: Vector3 (local), half: [hx, hz], glow: material }
+ */
+export function buildCottage() {
+    const { w, d, h, rise, t, doorX } = COTTAGE;
+    const g = new THREE.Group();
+    g.name = 'cabana';
+    const base = 0.35; // topo do soco de pedra
+
+    // --- soco de pedra (desce 0,7 m para cobrir desnível do terreno)
+    const plinth = roughen(new THREE.BoxGeometry(w + 0.36, 1.05, d + 0.36, 14, 3, 10), 0.035, 2.3, 4);
+    plinth.translate(0, base - 0.525, 0);
+    const step = roughen(new THREE.BoxGeometry(1.5, 0.3, 0.7, 5, 1, 3), 0.03, 3, 9);
+    step.translate(doorX, 0.1, d / 2 + 0.5);
+
+    // --- paredes de reboco
+    const front = wall(w, h, t, [
+        { x: doorX, y: 0, w: 1.02, h: 1.95 },
+        { x: -1.75, y: 0.95, w: 0.95, h: 0.95 }
+    ]);
+    xf(front, 0, base, d / 2 - t / 2);
+    const back = wall(w, h, t, [{ x: 1.3, y: 0.95, w: 0.95, h: 0.95 }]);
+    xf(back, 0, base, -d / 2 + t / 2, 0, Math.PI, 0);
+    const sideR = wall(d - t * 2, h, t, [{ x: 0, y: 1.0, w: 0.8, h: 0.85 }], rise * ((d - t * 2) / d));
+    xf(sideR, w / 2 - t / 2, base, 0, 0, Math.PI / 2, 0);
+    const sideL = wall(d - t * 2, h, t, [], rise * ((d - t * 2) / d));
+    xf(sideL, -w / 2 + t / 2, base, 0, 0, -Math.PI / 2, 0);
+    g.add(mesh(fuse([front, back, sideR, sideL], 2.2), MAT.plaster()));
+
+    // --- enxaimel: frechal, baldrame, esteios, travessas, mãos-francesas
+    const tim = [];
+    const zf = d / 2 + 0.02;
+    const zb = -d / 2 - 0.02;
+    const bw = 0.17;
+    const addH = (x0, x1, y, z, hh = bw) => tim.push(xf(beam(0.12, hh, Math.abs(x1 - x0)), (x0 + x1) / 2, y, z, 0, Math.PI / 2, 0));
+    const addV = (x, y0, y1, z, ww = bw) => tim.push(xf(beam(ww, 0.12, y1 - y0), x, (y0 + y1) / 2, z, Math.PI / 2, 0, 0));
+    for (const z of [zf, zb]) {
+        addH(-w / 2, w / 2, base + 0.09, z);
+        addH(-w / 2 - 0.25, w / 2 + 0.25, base + h - 0.09, z, 0.2);
+        for (const x of [-w / 2 + 0.09, w / 2 - 0.09]) addV(x, base, base + h, z, 0.2);
+    }
+    // frente: esteios de porta/janela e travessa do meio
+    addV(doorX - 0.62, base, base + h, zf);
+    addV(doorX + 0.62, base, base + h, zf);
+    addH(doorX - 0.62, doorX + 0.62, base + 2.04, zf);
+    addV(-1.75 - 0.58, base, base + h, zf);
+    addV(-1.75 + 0.58, base, base + h, zf);
+    addH(-1.75 - 0.58, -1.75 + 0.58, base + 0.86, zf, 0.14);
+    addH(-1.75 - 0.58, -1.75 + 0.58, base + 1.99, zf, 0.14);
+    addH(-w / 2, -1.75 - 0.58, base + 1.25, zf, 0.13);
+    addH(-1.75 + 0.58, doorX - 0.62, base + 1.25, zf, 0.13);
+    addH(doorX + 0.62, w / 2, base + 1.25, zf, 0.13);
+    tim.push(beamBetween(new THREE.Vector3(doorX + 0.7, base + 0.2, zf), new THREE.Vector3(w / 2 - 0.15, base + 1.2, zf), 0.12, 0.13));
+    // fundos
+    addV(1.3 - 0.58, base, base + h, zb);
+    addV(1.3 + 0.58, base, base + h, zb);
+    addH(1.3 - 0.58, 1.3 + 0.58, base + 0.86, zb, 0.14);
+    addH(1.3 - 0.58, 1.3 + 0.58, base + 1.99, zb, 0.14);
+    addH(-w / 2, 1.3 - 0.58, base + 1.25, zb, 0.13);
+    addV(-1.2, base, base + h, zb);
+    // laterais: esteios, travessa e tesoura da empena
+    for (const sx of [-1, 1]) {
+        const x = sx * (w / 2 + 0.02);
+        const addZ = (z0, z1, y, hh = bw) => tim.push(xf(beam(0.12, hh, Math.abs(z1 - z0)), x, y, (z0 + z1) / 2));
+        const addVz = (z, y0, y1) => tim.push(xf(beam(0.12, bw, y1 - y0), x, (y0 + y1) / 2, z, Math.PI / 2, 0, 0));
+        addZ(-d / 2, d / 2, base + 0.09);
+        addZ(-d / 2, d / 2, base + h - 0.09, 0.2);
+        addZ(-d / 2, d / 2, base + 1.25, 0.13);
+        addVz(-d / 2 + 0.09, base, base + h);
+        addVz(d / 2 - 0.09, base, base + h);
+        addVz(0, base + h, base + h + rise - 0.25);
+        if (sx > 0) {
+            addVz(-0.5, base, base + h);
+            addVz(0.5, base, base + h);
+        } else addVz(0.9, base, base + h);
+        tim.push(beamBetween(new THREE.Vector3(x, base + h + 0.05, -d / 2 + 0.2), new THREE.Vector3(x, base + h + rise - 0.2, 0), 0.12, 0.16));
+        tim.push(beamBetween(new THREE.Vector3(x, base + h + 0.05, d / 2 - 0.2), new THREE.Vector3(x, base + h + rise - 0.2, 0), 0.12, 0.16));
+    }
+    // caibros aparentes sob o beiral
+    for (let i = 0; i <= 8; i++) {
+        const x = -w / 2 - 0.3 + (i / 8) * (w + 0.6);
+        for (const sz of [-1, 1]) {
+            tim.push(beamBetween(
+                new THREE.Vector3(x, base + h + rise - 0.14, 0),
+                new THREE.Vector3(x, base + h - 0.34, sz * (d / 2 + 0.52)), 0.09, 0.11
+            ));
+        }
+    }
+    // caixilhos das janelas (montante + travessa) e folhas (venezianas de tábua)
+    const frame = (cx, cy, ww, hh, z, ry) => {
+        const parts = [
+            xf(beam(0.07, 0.05, hh), 0, cy, 0, Math.PI / 2, 0, 0),
+            xf(beam(0.05, 0.07, ww), 0, cy, 0, 0, Math.PI / 2, 0)
+        ];
+        for (const p of parts) tim.push(xf(p, 0, 0, 0, 0, ry, 0).translate(cx, 0, z));
+    };
+    frame(-1.75, base + 1.425, 0.95, 0.95, d / 2 - 0.1, 0);
+    frame(1.3, base + 1.425, 0.95, 0.95, -d / 2 + 0.1, 0);
+    tim.push(xf(beam(0.07, 0.05, 0.85), w / 2 - 0.1, base + 1.425, 0, Math.PI / 2, 0, 0));
+    tim.push(xf(beam(0.05, 0.07, 0.8), w / 2 - 0.1, base + 1.425, 0));
+    g.add(mesh(fuse(tim, 1.1), MAT.timber()));
+
+    // --- telhado de palha: duas águas grossas com beiral irregular + cumeeira
+    const thatch = [];
+    const run = d / 2 + 0.62;
+    const slopeLen = Math.hypot(run, rise * (run / (d / 2)));
+    const ang = Math.atan2(rise, d / 2);
+    const roofLen = w + 1.1;
+    for (const sz of [-1, 1]) {
+        const slab = new THREE.BoxGeometry(roofLen, 0.34, slopeLen, 26, 2, 12);
+        const pos = slab.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            const edge = z / (slopeLen / 2); // +1 no beiral
+            // beiral desfiado e leve barriga da palha
+            const rag = edge > 0.92 ? (fbm2(x * 2.6 + sz * 9, 3.1, 2) - 0.5) * 0.22 : 0;
+            const belly = Math.sin((edge * 0.5 + 0.5) * Math.PI) * 0.05;
+            const side = Math.abs(x) > roofLen / 2 - 0.05 ? (fbm2(z * 2.2, x, 2) - 0.5) * 0.16 : 0;
+            pos.setXYZ(i, x + side, pos.getY(i) + belly * (pos.getY(i) > 0 ? 1 : 0) + (fbm2(x * 1.3, z * 1.3 + sz * 5, 2) - 0.5) * 0.05, z + rag);
+        }
+        slab.computeVertexNormals();
+        // z local +: desce a água; gira para a inclinação e leva até a cumeeira
+        xf(slab, 0, 0, slopeLen / 2 - 0.12, 0, 0, 0);
+        xf(slab, 0, base + h + rise + 0.2, 0, ang, 0, 0);
+        if (sz < 0) xf(slab, 0, 0, 0, 0, Math.PI, 0);
+        thatch.push(slab);
+    }
+    const ridge = new THREE.CylinderGeometry(0.3, 0.3, roofLen + 0.1, 12, 18, false);
+    roughen(ridge, 0.04, 2.4, 2);
+    xf(ridge, 0, base + h + rise + 0.2, 0, 0, 0, Math.PI / 2, 1, 1, 1.25);
+    thatch.push(ridge);
+    g.add(mesh(fuse(thatch, 1.6), MAT.thatch()));
+
+    // --- chaminé de pedra encostada na empena esquerda
+    const chim = [];
+    const cx = -w / 2 - 0.36;
+    const stack = roughen(new THREE.BoxGeometry(1.25, 3.3, 1.5, 5, 10, 6), 0.045, 2.1, 6);
+    stack.translate(cx, 1.35, -0.3);
+    const neck = roughen(new THREE.BoxGeometry(0.82, 2.9, 0.9, 4, 8, 4), 0.035, 2.4, 3);
+    neck.translate(cx + 0.12, 4.3, -0.3);
+    const cap = roughen(new THREE.BoxGeometry(1.04, 0.2, 1.12, 4, 1, 4), 0.02, 3, 1);
+    cap.translate(cx + 0.12, 5.82, -0.3);
+    chim.push(plinth, step, stack, neck, cap);
+    g.add(mesh(fuse(chim, 1.5), MAT.fieldstone()));
+
+    // --- porta de tábuas entreaberta (dobradiça na ombreira esquerda)
+    const door = new THREE.Group();
+    const leaf = [];
+    for (let i = 0; i < 5; i++) leaf.push(xf(beam(0.19, 0.055, 1.9, 0.012), 0.1 + i * 0.196, 0.95, 0, Math.PI / 2, 0, 0));
+    leaf.push(xf(beam(0.1, 0.03, 0.92), 0.5, 0.42, 0.04, 0, Math.PI / 2, 0));
+    leaf.push(xf(beam(0.1, 0.03, 0.92), 0.5, 1.5, 0.04, 0, Math.PI / 2, 0));
+    door.add(mesh(fuse(leaf, 0.9), MAT.oak()));
+    const hw = [
+        xf(new THREE.TorusGeometry(0.06, 0.012, 6, 14), 0.86, 1.0, 0.07),
+        xf(new THREE.BoxGeometry(0.42, 0.045, 0.012), 0.21, 0.42, 0.062),
+        xf(new THREE.BoxGeometry(0.42, 0.045, 0.012), 0.21, 1.5, 0.062)
+    ];
+    door.add(mesh(fuse(hw, 0.4), MAT.iron()));
+    door.position.set(doorX - 0.5, base, d / 2 - 0.2);
+    door.rotation.y = -0.42;
+    g.add(door);
+
+    // venezianas abertas, rentes à parede
+    const shut = [];
+    const shutter = (cx2, z, flip) => {
+        for (const sx of [-1, 1]) {
+            for (let i = 0; i < 3; i++) {
+                shut.push(xf(beam(0.15, 0.03, 0.95, 0.008), cx2 + sx * (0.56 + 0.08 + i * 0.155), base + 1.425, z + flip * 0.03, Math.PI / 2, 0, 0));
             }
+            shut.push(xf(beam(0.05, 0.02, 0.44), cx2 + sx * (0.56 + 0.235), base + 1.7, z + flip * 0.055, 0, Math.PI / 2, 0));
+            shut.push(xf(beam(0.05, 0.02, 0.44), cx2 + sx * (0.56 + 0.235), base + 1.15, z + flip * 0.055, 0, Math.PI / 2, 0));
         }
-        if (extra.bump) {
-            material.bumpTexture = extra.bump;
-            material.bumpTexture.level = extra.bumpLevel ?? 0.5;
-        }
-        if (extra.roughnessMap) {
-            material.metallicTexture = extra.roughnessMap;
-            material.useRoughnessFromMetallicTextureAlpha = false;
-            material.useRoughnessFromMetallicTextureGreen = true;
-            material.useMetallnessFromMetallicTextureBlue = false;
-        }
-        if (extra.alpha != null && !extra.alphaTest) {
-            material.alpha = extra.alpha;
-            material.transparencyMode = B.PBRMaterial.PBRMATERIAL_ALPHABLEND;
-        }
-        if (extra.doubleSided) material.backFaceCulling = false;
-        return material;
-    });
-}
+    };
+    shutter(-1.75, d / 2 + 0.03, 1);
+    shutter(1.3, -d / 2 - 0.03, -1);
+    g.add(mesh(fuse(shut, 0.8), MAT.planks()));
 
-export function surf(scene, kind, tint = 0xffffff, extra = {}) {
-    const maps = surface(scene, kind);
-    return std(scene, tint, extra.roughness ?? 0.82, extra.metallic ?? 0.04, {
-        ...extra,
-        map: maps.albedo,
-        bump: maps.bump,
-        roughnessMap: maps.rough,
-        mapKey: kind
-    });
-}
+    // --- "vidro": plano âmbar atrás dos caixilhos + fundo escuro do interior
+    const glow = [
+        xf(new THREE.PlaneGeometry(0.95, 0.95), -1.75, base + 1.425, d / 2 - 0.16),
+        xf(new THREE.PlaneGeometry(0.95, 0.95), 1.3, base + 1.425, -d / 2 + 0.16, 0, Math.PI, 0),
+        xf(new THREE.PlaneGeometry(0.8, 0.85), w / 2 - 0.16, base + 1.425, 0, 0, Math.PI / 2, 0),
+        xf(new THREE.PlaneGeometry(1.0, 1.95), doorX, base + 0.975, d / 2 - 0.5)
+    ];
+    const glass = mesh(fuse(glow, 0), MAT.windowGlow(), { cast: false, receive: false });
+    g.add(glass);
 
-function centeredLathe(scene, name, shape, tessellation = 14) {
-    return B.MeshBuilder.CreateLathe(name, { shape, tessellation, cap: B.Mesh.CAP_ALL }, scene);
-}
-
-function limb(scene, name, type, options, material, parent, y = 0) {
-    let mesh;
-    const dx = options.diameterX || options.diameter || options.diameterY || 0.2;
-    const dy = options.diameterY || options.diameter || 0.2;
-    const dz = options.diameterZ || options.diameter || 0.2;
-    if (type === 'cylinder' && /hat/i.test(name) && !/brim/i.test(name)) {
-        const h = options.height || 0.1;
-        const top = (options.diameterTop || options.diameter || 0.28) * 0.5;
-        const bot = (options.diameterBottom || options.diameter || top * 2) * 0.5;
-        mesh = centeredLathe(scene, name, [
-            new B.Vector3(bot * 0.35, -h * 0.5, 0),
-            new B.Vector3(bot, -h * 0.35, 0),
-            new B.Vector3(top, h * 0.15, 0),
-            new B.Vector3(top * 0.35, h * 0.5, 0)
-        ]);
-    } else if (type === 'cylinder' && /brim/i.test(name)) {
-        const h = options.height || 0.025;
-        const r = (options.diameter || 0.4) * 0.5;
-        mesh = centeredLathe(scene, name, [
-            new B.Vector3(0.02, -h * 0.5, 0),
-            new B.Vector3(r, -h * 0.2, 0),
-            new B.Vector3(r * 0.92, h * 0.5, 0)
-        ], 18);
-    } else if (type === 'cylinder' && /beard/i.test(name)) {
-        const h = options.height || 0.4;
-        const top = (options.diameterTop || 0.3) * 0.5;
-        const bot = (options.diameterBottom || 0.08) * 0.5;
-        mesh = centeredLathe(scene, name, [
-            new B.Vector3(top, -h * 0.5, 0),
-            new B.Vector3(top * 0.85, -h * 0.1, 0),
-            new B.Vector3((top + bot) * 0.45, h * 0.25, 0),
-            new B.Vector3(bot, h * 0.5, 0)
-        ], 12);
-    } else if (type === 'cylinder') mesh = B.MeshBuilder.CreateCylinder(name, options, scene);
-    else if (type === 'box') mesh = B.MeshBuilder.CreateBox(name, options, scene);
-    else if (type === 'sphere' && /skull|cowHead|henHead/i.test(name)) {
-        mesh = createSkull(scene, name, {
-            diameter: options.diameter || dy,
-            style: /cow|hen/i.test(name) ? 'dog' : 'child',
-            segments: options.segments || 16
-        });
-    } else if (type === 'sphere' && /foot|boot/i.test(name)) {
-        mesh = createShoe(scene, name, { length: dz, width: dx, height: dy });
-        mesh.rotation.y = -Math.PI / 2;
-    } else if (type === 'sphere' && /hand|fist/i.test(name)) {
-        mesh = createHand(scene, name, material, { scale: (options.diameter || 0.09) / 0.09 });
-    } else if (type === 'sphere' && /ear_/i.test(name)) {
-        const h = dy;
-        const w = dx;
-        mesh = B.MeshBuilder.ExtrudeShape(name, {
-            shape: [
-                new B.Vector3(0, 0, 0),
-                new B.Vector3(w * 0.85, h * 0.28, 0),
-                new B.Vector3(w * 0.12, h, 0),
-                new B.Vector3(-w * 0.5, h * 0.4, 0)
-            ],
-            path: [
-                new B.Vector3(0, 0, -Math.max(0.008, dz * 0.35)),
-                new B.Vector3(0, 0, Math.max(0.008, dz * 0.35))
-            ],
-            cap: B.Mesh.CAP_ALL,
-            closeShape: true
-        }, scene);
-    } else if (type === 'sphere' && /hair|bun/i.test(name)) {
-        mesh = centeredLathe(scene, name, [
-            new B.Vector3(dx * 0.2, -dy * 0.45, 0),
-            new B.Vector3(dx * 0.48, -dy * 0.05, 0),
-            new B.Vector3(dx * 0.36, dy * 0.35, 0),
-            new B.Vector3(dx * 0.08, dy * 0.5, 0)
-        ]);
-    } else if (type === 'sphere' && /Body$/i.test(name)) {
-        const alongX = dx >= dz;
-        mesh = createMuscle(scene, name, {
-            length: Math.max(dx, dz) * 0.92,
-            r0: dy * 0.46,
-            r1: dy * 0.34,
-            bulge: dy * 0.1,
-            bulgeAt: 0.42,
-            pinch: 0.08,
-            tessellation: 12,
-            rings: 8
-        });
-        mesh.rotation[alongX ? 'z' : 'x'] = Math.PI / 2;
-    } else if (type === 'sphere' && /belly/i.test(name)) {
-        mesh = centeredLathe(scene, name, [
-            new B.Vector3(dx * 0.22, -dy * 0.48, 0),
-            new B.Vector3(dx * 0.48, -dy * 0.1, 0),
-            new B.Vector3(dx * 0.42, dy * 0.22, 0),
-            new B.Vector3(dx * 0.18, dy * 0.48, 0)
-        ], 16);
-    } else if (type === 'sphere' && /wing/i.test(name)) {
-        mesh = B.MeshBuilder.ExtrudeShape(name, {
-            shape: [
-                new B.Vector3(0, 0, 0),
-                new B.Vector3(dx * 0.7, dy * 0.15, 0),
-                new B.Vector3(dx, -dy * 0.05, 0),
-                new B.Vector3(dx * 0.35, -dy * 0.7, 0)
-            ],
-            path: [
-                new B.Vector3(0, 0, -0.012),
-                new B.Vector3(0, 0, 0.012)
-            ],
-            cap: B.Mesh.CAP_ALL,
-            closeShape: true
-        }, scene);
-    } else if (type === 'sphere' && /comb/i.test(name)) {
-        mesh = B.MeshBuilder.ExtrudeShape(name, {
-            shape: [
-                new B.Vector3(0, 0, 0),
-                new B.Vector3(dx * 0.35, dy * 0.4, 0),
-                new B.Vector3(0, dy, 0),
-                new B.Vector3(-dx * 0.2, dy * 0.35, 0)
-            ],
-            path: [
-                new B.Vector3(0, 0, -0.012),
-                new B.Vector3(0, 0, 0.012)
-            ],
-            cap: B.Mesh.CAP_ALL,
-            closeShape: true
-        }, scene);
-    } else if (type === 'sphere') mesh = B.MeshBuilder.CreateSphere(name, options, scene);
-    else if (type === 'capsule') {
-        const r = options.radius ?? 0.05;
-        mesh = createMuscle(scene, name, {
-            length: options.height ?? r * 2,
-            r0: r * 1.2,
-            r1: r * 0.8,
-            bulge: r * 0.28,
-            bulgeAt: 0.38,
-            tessellation: Math.min(12, options.tessellation || 10)
-        });
-    }
-    else if (type === 'torus') mesh = B.MeshBuilder.CreateTorus(name, options, scene);
-    else if (type === 'disc') {
-        mesh = B.MeshBuilder.CreateDisc(name, options, scene);
-        mesh.rotation.x = Math.PI / 2;
-    } else {
-        throw new Error(`limb desconhecido: ${type}`);
-    }
-    mesh.material = material;
-    if (parent) mesh.parent = parent;
-    mesh.position.y = y;
-    mesh.isPickable = false;
-    return mesh;
-}
-
-function lathe(scene, name, shape, tessellation, material, parent, y = 0) {
-    const mesh = B.MeshBuilder.CreateLathe(name, { shape, tessellation, cap: B.Mesh.CAP_END }, scene);
-    mesh.material = material;
-    if (parent) mesh.parent = parent;
-    mesh.position.y = y;
-    mesh.isPickable = false;
-    return mesh;
-}
-
-function leafMat(scene) {
-    return std(scene, 0xffffff, 0.72, 0.02, {
-        map: leafTexture(scene),
-        doubleSided: true,
-        alphaTest: true,
-        mapKey: 'leafAlpha'
-    });
-}
-
-function addHumanFace(scene, head, skin, opts = {}) {
-    const s = opts.scale ?? 1;
-    const eyeWhite = std(scene, 0xf7f2ea, 0.38, 0);
-    const iris = std(scene, opts.eyeHex ?? 0x2d5a1c, 0.42, 0);
-    const pupil = std(scene, 0x0a0806, 0.38);
-    const brow = std(scene, opts.browHex ?? 0x3a2414, 0.9);
-    const lip = std(scene, 0xb87468, 0.68);
-    [-1, 1].forEach((sx, i) => {
-        const eye = limb(scene, `eyeW_${i}`, 'sphere', { diameter: 0.056 * s, segments: 8 }, eyeWhite, head, 0.02 * s);
-        eye.position.set(sx * 0.056 * s, 0.02 * s, 0.132 * s);
-        const ir = limb(scene, `iris_${i}`, 'sphere', { diameter: 0.026 * s, segments: 6 }, iris, head, 0.02 * s);
-        ir.position.set(sx * 0.056 * s, 0.02 * s, 0.148 * s);
-        const pu = limb(scene, `pupil_${i}`, 'sphere', { diameter: 0.012 * s, segments: 5 }, pupil, head, 0.018 * s);
-        pu.position.set(sx * 0.056 * s, 0.018 * s, 0.153 * s);
-        const br = limb(scene, `brow_${i}`, 'box', { width: 0.072 * s, height: 0.012 * s, depth: 0.018 * s }, brow, head, 0.058 * s);
-        br.position.set(sx * 0.056 * s, 0.058 * s, 0.122 * s);
-        br.rotation.z = sx * -0.14;
-        const ear = limb(scene, `ear_${i}`, 'sphere', {
-            diameterX: 0.042 * s, diameterY: 0.072 * s, diameterZ: 0.032 * s, segments: 6
-        }, skin, head, 0);
-        ear.position.set(sx * 0.158 * s, 0, 0);
-    });
-    const nose = limb(scene, 'nose', 'capsule', {
-        height: 0.072 * s, radius: 0.016 * s, tessellation: 6
-    }, skin, head, -0.008 * s);
-    nose.position.set(0, -0.008 * s, 0.148 * s);
-    nose.rotation.x = 0.55;
-    const mouth = limb(scene, 'mouth', 'sphere', {
-        diameterX: 0.07 * s, diameterY: 0.018 * s, diameterZ: 0.024 * s, segments: 6
-    }, lip, head, -0.052 * s);
-    mouth.position.set(0, -0.052 * s, 0.128 * s);
+    g.userData.chimneyTop = new THREE.Vector3(cx + 0.12, 5.95, -0.3);
+    g.userData.half = [w / 2 + 0.55, d / 2 + 0.3];
+    g.userData.glow = MAT.windowGlow();
+    return g;
 }
 
 /* ------------------------------------------------------------------ */
-/* Personagens                                                         */
+/* Poço de pedra                                                        */
 /* ------------------------------------------------------------------ */
 
-export function buildJoao(scene) {
-    const root = new B.TransformNode('joaoRoot', scene);
-    const skin = std(scene, 0xffffff, 0.62, 0.02, { map: skinTexture(scene), mapKey: 'skin' });
-    const hair = std(scene, 0x4a2a12, 0.9);
-    const vest = surf(scene, 'leather', 0x3d8a48, { roughness: 0.78 });
-    const pants = surf(scene, 'leather', 0x6a4428, { roughness: 0.86 });
-    const cap = std(scene, 0xc43a2a, 0.62, 0.05);
-    const boot = surf(scene, 'leather', 0x3a2414, { roughness: 0.8 });
+/** Poço: anel de pedra irregular, cobertura de palha em duas águas, sarilho e corda. O balde (glTF) entra depois. */
+export function buildWell() {
+    const g = new THREE.Group();
+    g.name = 'poco';
+    const ring = lathe([[0.62, 0], [0.98, 0], [1.0, 0.25], [0.95, 0.82], [0.98, 0.9], [0.66, 0.92], [0.62, 0.8], [0.62, 0]], 22);
+    roughen(ring, 0.04, 2.6, 5);
+    const flag = roughen(new THREE.CylinderGeometry(1.45, 1.55, 0.1, 18, 1), 0.03, 2, 2);
+    flag.translate(0, 0.02, 0);
+    g.add(mesh(fuse([ring, flag], 1.2), MAT.fieldstone()));
 
-    const hips = new B.TransformNode('joaoHips', scene);
-    hips.parent = root;
-    const parts = { legs: [], arms: [], feet: [] };
+    const wood = [];
+    for (const sx of [-1, 1]) {
+        wood.push(xf(beam(0.15, 0.15, 2.5), sx * 0.9, 1.25, 0, Math.PI / 2, 0, 0));
+        wood.push(beamBetween(new THREE.Vector3(sx * 0.9, 2.45, 0), new THREE.Vector3(sx * 0.9, 2.02, 0.72), 0.1, 0.1));
+        wood.push(beamBetween(new THREE.Vector3(sx * 0.9, 2.45, 0), new THREE.Vector3(sx * 0.9, 2.02, -0.72), 0.1, 0.1));
+    }
+    wood.push(xf(beam(0.13, 0.13, 2.1), 0, 2.5, 0, 0, Math.PI / 2, 0));
+    // sarilho (eixo torneado) + manivela
+    const axle = lathe([[0.03, -0.95], [0.05, -0.9], [0.11, -0.7], [0.11, 0.7], [0.05, 0.9], [0.03, 0.98]], 12);
+    wood.push(xf(axle, 0, 1.62, 0, 0, 0, Math.PI / 2));
+    wood.push(xf(beam(0.05, 0.05, 0.36), 1.02, 1.46, 0, Math.PI / 2, 0, 0));
+    wood.push(xf(beam(0.05, 0.05, 0.22), 1.12, 1.3, 0, 0, Math.PI / 2, 0));
+    g.add(mesh(fuse(wood, 0.9), MAT.timber()));
 
-    [-1, 1].forEach((sx, i) => {
-        const leg = new B.TransformNode(`joaoLeg_${i}`, scene);
-        leg.parent = hips;
-        leg.position.set(sx * 0.11, 0.46, 0);
-        limb(scene, `joaoThigh_${i}`, 'capsule', {
-            height: 0.44, radius: 0.07, tessellation: tess
-        }, pants, leg, -0.2);
-        const foot = limb(scene, `joaoFoot_${i}`, 'sphere', {
-            diameterX: 0.14, diameterY: 0.07, diameterZ: 0.22, segments: 8
-        }, boot, leg, -0.44);
-        foot.position.z = 0.04;
-        parts.legs.push(leg);
-        parts.feet.push(foot);
-    });
+    const roof = [];
+    for (const sz of [-1, 1]) {
+        const slab = new THREE.BoxGeometry(2.5, 0.16, 1.05, 10, 1, 5);
+        roughen(slab, 0.03, 3, sz + 3);
+        xf(slab, 0, 0, 0.5, 0, 0, 0);
+        xf(slab, 0, 2.62, 0, 0.56, 0, 0);
+        if (sz < 0) xf(slab, 0, 0, 0, 0, Math.PI, 0);
+        roof.push(slab);
+    }
+    g.add(mesh(fuse(roof, 1.2), MAT.thatch()));
 
-    const torso = new B.TransformNode('joaoTorso', scene);
-    torso.parent = hips;
-    torso.position.y = 0.46;
-    limb(scene, 'joaoBody', 'capsule', {
-        height: 0.48, radius: 0.16, tessellation: tess
-    }, vest, torso, 0.28);
-    limb(scene, 'joaoShirt', 'cylinder', {
-        height: 0.1, diameterTop: 0.22, diameterBottom: 0.26, tessellation: 10
-    }, std(scene, 0xf2e8d0, 0.88), torso, 0.5);
-    const belt = limb(scene, 'joaoBelt', 'cylinder', {
-        height: 0.05, diameter: 0.34, tessellation: 10
-    }, surf(scene, 'leather', 0x4a2a14), torso, 0.1);
-    belt.position.z = 0;
+    // corda enrolada no sarilho e descendo ao balde
+    const rope = [];
+    for (let i = 0; i < 5; i++) rope.push(xf(new THREE.TorusGeometry(0.125, 0.018, 6, 16), -0.2 + i * 0.045, 1.62, 0, 0, Math.PI / 2, 0));
+    rope.push(tube([[0, 1.5, 0.12], [0.02, 1.25, 0.2], [0.05, 1.02, 0.42], [0.1, 0.96, 0.62]], 0.016, 10, 6));
+    g.add(mesh(fuse(rope, 0), MAT.rope()));
 
-    const head = new B.TransformNode('joaoHead', scene);
-    head.parent = torso;
-    head.position.y = 0.64;
-    limb(scene, 'joaoSkull', 'sphere', { diameter: 0.3, segments: tess }, skin, head, 0);
-    addHumanFace(scene, head, skin, { scale: 1, eyeHex: 0x2a5a18, browHex: 0x5a3218 });
-    limb(scene, 'joaoHair', 'sphere', {
-        diameterX: 0.31, diameterY: 0.2, diameterZ: 0.3, segments: 10
-    }, hair, head, 0.05);
-    limb(scene, 'joaoHat', 'cylinder', {
-        height: 0.1, diameterTop: 0.28, diameterBottom: 0.32, tessellation: 12
-    }, cap, head, 0.16);
-    limb(scene, 'joaoBrim', 'cylinder', {
-        height: 0.025, diameter: 0.44, tessellation: 14
-    }, cap, head, 0.12);
-
-    [-1, 1].forEach((sx, i) => {
-        const arm = new B.TransformNode(`joaoArm_${i}`, scene);
-        arm.parent = torso;
-        arm.position.set(sx * 0.2, 0.42, 0);
-        limb(scene, `joaoArmMesh_${i}`, 'capsule', {
-            height: 0.38, radius: 0.05, tessellation: 8
-        }, skin, arm, -0.16);
-        limb(scene, `joaoHand_${i}`, 'sphere', { diameter: 0.09, segments: 6 }, skin, arm, -0.36);
-        parts.arms.push(arm);
-    });
-
-    const resultParts = { ...parts, torso, head, hips, root };
-    root.userData = { parts: resultParts };
-    return { group: root, parts: resultParts };
-}
-
-export function buildMother(scene) {
-    const root = new B.TransformNode('motherRoot', scene);
-    const skin = std(scene, 0xffffff, 0.66, 0.02, { map: skinTexture(scene), mapKey: 'skin' });
-    const dress = std(scene, 0x6a3a78, 0.82, 0.02, { map: clothTexture(scene), mapKey: 'cloth' });
-    const apron = std(scene, 0xf0e4c8, 0.88);
-    const hair = std(scene, 0x3a2414, 0.9);
-
-    lathe(scene, 'motherSkirt', [
-        new B.Vector3(0.44, 0, 0),
-        new B.Vector3(0.4, 0.28, 0),
-        new B.Vector3(0.26, 0.7, 0),
-        new B.Vector3(0.2, 1.02, 0),
-        new B.Vector3(0.22, 1.18, 0)
-    ], 16, dress, root, 0);
-
-    const ap = limb(scene, 'motherApron', 'box', { width: 0.3, height: 0.48, depth: 0.03 }, apron, root, 0.7);
-    ap.position.z = 0.2;
-
-    const head = new B.TransformNode('motherHead', scene);
-    head.parent = root;
-    head.position.y = 1.32;
-    limb(scene, 'motherSkull', 'sphere', { diameter: 0.3, segments: tess }, skin, head, 0);
-    addHumanFace(scene, head, skin, { scale: 1, eyeHex: 0x4a3020, browHex: 0x3a2414 });
-    const bun = limb(scene, 'motherBun', 'sphere', { diameter: 0.16, segments: 8 }, hair, head, 0.1);
-    bun.position.z = -0.1;
-    limb(scene, 'motherHair', 'sphere', {
-        diameterX: 0.32, diameterY: 0.18, diameterZ: 0.3, segments: 8
-    }, hair, head, 0.04);
-
-    [-1, 1].forEach((sx, i) => {
-        const arm = limb(scene, `motherArm_${i}`, 'capsule', {
-            height: 0.46, radius: 0.05, tessellation: 8
-        }, skin, root, 0.95);
-        arm.position.set(sx * 0.24, 0.95, 0.04);
-        arm.rotation.z = sx * 0.38;
-    });
-    return root;
-}
-
-export function buildMerchant(scene) {
-    const root = new B.TransformNode('merchantRoot', scene);
-    const robe = std(scene, 0xc8a0e0, 0.8, 0.02, { map: clothTexture(scene), mapKey: 'cloth' });
-    const skin = std(scene, 0xffffff, 0.66, 0.02, { map: skinTexture(scene), mapKey: 'skin' });
-    const hatMat = std(scene, 0x3a1848, 0.68, 0.05);
-    const hair = std(scene, 0xd8d0c0, 0.88);
-
-    lathe(scene, 'merchantCloak', [
-        new B.Vector3(0.08, 0, 0),
-        new B.Vector3(0.42, 0.15, 0),
-        new B.Vector3(0.48, 0.7, 0),
-        new B.Vector3(0.28, 1.2, 0),
-        new B.Vector3(0.16, 1.38, 0)
-    ], 16, robe, root, 0);
-
-    const head = new B.TransformNode('merchantHead', scene);
-    head.parent = root;
-    head.position.y = 1.48;
-    limb(scene, 'merchantSkull', 'sphere', { diameter: 0.3, segments: tess }, skin, head, 0);
-    addHumanFace(scene, head, skin, { scale: 1, eyeHex: 0x3a2060, browHex: 0xc8c0b0 });
-    limb(scene, 'merchantHat', 'cylinder', {
-        height: 0.52, diameterTop: 0.02, diameterBottom: 0.42, tessellation: 12
-    }, hatMat, head, 0.28);
-    limb(scene, 'merchantBrim', 'cylinder', {
-        height: 0.035, diameter: 0.62, tessellation: 14
-    }, hatMat, head, 0.04);
-    const beard = limb(scene, 'merchantBeard', 'cylinder', {
-        height: 0.22, diameterTop: 0.18, diameterBottom: 0.02, tessellation: 8
-    }, hair, head, -0.16);
-    beard.position.z = 0.1;
-    beard.rotation.x = 0.35;
-
-    const pouch = limb(scene, 'merchantPouch', 'sphere', { diameter: 0.22, segments: 8 }, surf(scene, 'leather'), root, 0.7);
-    pouch.position.set(0.28, 0.7, 0.1);
-    return root;
-}
-
-export function buildCow(scene) {
-    const root = new B.TransformNode('cowRoot', scene);
-    const hide = std(scene, 0xffffff, 0.86, 0.02, { map: cowHideTexture(scene), bump: surface(scene, 'leather').bump, mapKey: 'cowHide' });
-    const hoof = std(scene, 0x2a1a10, 0.7);
-    const pink = std(scene, 0xe8c8b0, 0.75);
-    const horn = std(scene, 0xf0e8d0, 0.45, 0.18);
-
-    limb(scene, 'cowBody', 'sphere', {
-        diameterX: 1.28, diameterY: 0.82, diameterZ: 0.72, segments: tess
-    }, hide, root, 0.58);
-
-    const head = new B.TransformNode('cowHead', scene);
-    head.parent = root;
-    head.position.set(0, 0.78, 0.58);
-    limb(scene, 'cowHeadMesh', 'sphere', { diameter: 0.42, segments: 10 }, hide, head, 0);
-    const snout = limb(scene, 'cowSnout', 'sphere', {
-        diameterX: 0.26, diameterY: 0.18, diameterZ: 0.3, segments: 8
-    }, pink, head, -0.08);
-    snout.position.z = 0.18;
-
-    [-1, 1].forEach((sx, i) => {
-        const h = limb(scene, `cowHorn_${i}`, 'cylinder', {
-            height: 0.16, diameterTop: 0.012, diameterBottom: 0.055, tessellation: 6
-        }, horn, head, 0.2);
-        h.position.set(sx * 0.12, 0.2, -0.04);
-        h.rotation.z = sx * -0.42;
-        const ear = limb(scene, `cowEar_${i}`, 'sphere', {
-            diameterX: 0.06, diameterY: 0.14, diameterZ: 0.09, segments: 6
-        }, hide, head, 0.08);
-        ear.position.set(sx * 0.2, 0.08, -0.08);
-        const eye = limb(scene, `cowEye_${i}`, 'sphere', { diameter: 0.055, segments: 6 }, std(scene, 0x1a140e, 0.35), head, 0.06);
-        eye.position.set(sx * 0.1, 0.06, 0.16);
-
-        const legF = limb(scene, `cowLegF_${i}`, 'capsule', {
-            height: 0.5, radius: 0.065, tessellation: 6
-        }, hide, root, 0.26);
-        legF.position.set(sx * 0.22, 0.26, 0.2);
-        const legB = limb(scene, `cowLegB_${i}`, 'capsule', {
-            height: 0.5, radius: 0.065, tessellation: 6
-        }, hide, root, 0.26);
-        legB.position.set(sx * 0.22, 0.26, -0.22);
-        limb(scene, `cowHoofF_${i}`, 'sphere', { diameter: 0.12, segments: 5 }, hoof, legF, -0.26);
-        limb(scene, `cowHoofB_${i}`, 'sphere', { diameter: 0.12, segments: 5 }, hoof, legB, -0.26);
-    });
-
-    const udder = limb(scene, 'cowUdder', 'sphere', { diameter: 0.22, segments: 8 }, pink, root, 0.28);
-    udder.position.z = -0.04;
-    const tail = limb(scene, 'cowTail', 'capsule', { height: 0.42, radius: 0.03, tessellation: 5 }, hide, root, 0.62);
-    tail.position.z = -0.5;
-    tail.rotation.x = 0.55;
-
-    root.userData = { parts: { head } };
-    return root;
-}
-
-export function buildGiant(scene) {
-    const root = new B.TransformNode('giantRoot', scene);
-    const skin = std(scene, 0xffffff, 0.7, 0.02, { map: skinTexture(scene), mapKey: 'skin' });
-    const cloth = surf(scene, 'leather', 0x4a3020, { roughness: 0.88 });
-    const hair = std(scene, 0x3a2010, 0.92);
-    const boot = surf(scene, 'leather', 0x2a1810);
-
-    const hips = new B.TransformNode('giantHips', scene);
-    hips.parent = root;
-    const parts = { legs: [], arms: [] };
-
-    [-1, 1].forEach((sx, i) => {
-        const leg = new B.TransformNode(`giantLeg_${i}`, scene);
-        leg.parent = hips;
-        leg.position.set(sx * 0.52, 1.65, 0);
-        limb(scene, `giantThigh_${i}`, 'capsule', {
-            height: 1.55, radius: 0.28, tessellation: 8
-        }, cloth, leg, -0.72);
-        const bootM = limb(scene, `giantBoot_${i}`, 'sphere', {
-            diameterX: 0.42, diameterY: 0.26, diameterZ: 0.7, segments: 8
-        }, boot, leg, -1.52);
-        bootM.position.z = 0.12;
-        parts.legs.push(leg);
-    });
-
-    const torso = new B.TransformNode('giantTorso', scene);
-    torso.parent = hips;
-    torso.position.y = 1.7;
-    const belly = limb(scene, 'giantBelly', 'sphere', {
-        diameterX: 2.15, diameterY: 1.7, diameterZ: 1.65, segments: tess
-    }, cloth, torso, 1.1);
-    limb(scene, 'giantChest', 'capsule', {
-        height: 1.35, radius: 0.72, tessellation: 10
-    }, cloth, torso, 1.85);
-
-    const head = new B.TransformNode('giantHead', scene);
-    head.parent = torso;
-    head.position.y = 2.7;
-    limb(scene, 'giantSkull', 'sphere', { diameter: 1.2, segments: tess }, skin, head, 0);
-    addHumanFace(scene, head, skin, { scale: 3.6, eyeHex: 0x3a2010, browHex: 0x2a1810 });
-    const beard = limb(scene, 'giantBeard', 'cylinder', {
-        height: 0.7, diameterTop: 0.7, diameterBottom: 0.08, tessellation: 8
-    }, hair, head, -0.48);
-    beard.position.z = 0.28;
-    beard.rotation.x = 0.22;
-    limb(scene, 'giantHair', 'sphere', {
-        diameterX: 1.24, diameterY: 0.7, diameterZ: 1.2, segments: 10
-    }, hair, head, 0.22);
-
-    [-1, 1].forEach((sx, i) => {
-        const arm = new B.TransformNode(`giantArm_${i}`, scene);
-        arm.parent = torso;
-        arm.position.set(sx * 1.02, 2.05, 0);
-        limb(scene, `giantArmMesh_${i}`, 'capsule', {
-            height: 1.55, radius: 0.2, tessellation: 8
-        }, skin, arm, -0.7);
-        limb(scene, `giantFist_${i}`, 'sphere', { diameter: 0.42, segments: 8 }, skin, arm, -1.48);
-        parts.arms.push(arm);
-    });
-
-    const club = limb(scene, 'giantClub', 'cylinder', {
-        height: 2.2, diameterTop: 0.2, diameterBottom: 0.52, tessellation: 8
-    }, surf(scene, 'bark'), parts.arms[1], -1.35);
-    club.position.set(0.18, -1.35, 0.28);
-    club.rotation.z = 0.28;
-
-    const resultParts = { ...parts, torso, head, hips, belly, club, root };
-    root.userData = { parts: resultParts };
-    return { group: root, parts: resultParts };
+    const water = mesh(xf(new THREE.CircleGeometry(0.62, 20), 0, 0.42, 0, -Math.PI / 2, 0, 0), MAT.water(), { cast: false });
+    g.add(water);
+    return g;
 }
 
 /* ------------------------------------------------------------------ */
-/* Arquitetura                                                         */
+/* Arco da estrada da feira                                             */
 /* ------------------------------------------------------------------ */
 
-export function buildCottage(scene) {
-    const root = new B.TransformNode('cottageRoot', scene);
-    const plaster = surf(scene, 'wood', 0xf0d8b0, { roughness: 0.9 });
-    const timber = surf(scene, 'wood', 0x6a3e20, { roughness: 0.82 });
-    const thatch = std(scene, 0xffffff, 0.95, 0.02, { map: thatchTexture(scene), mapKey: 'thatch' });
-    const stone = surf(scene, 'stone');
-
-    limb(scene, 'cottageBase', 'box', { width: 5.5, height: 0.45, depth: 4.5 }, stone, root, 0.22);
-    limb(scene, 'cottageBody', 'box', { width: 5.2, height: 2.35, depth: 4.2 }, plaster, root, 1.4);
-
-    [[-2.5, 0], [2.5, 0], [0, -2.05], [0, 2.05]].forEach(([x, z], i) => {
-        const beam = limb(scene, `cottageBeam_${i}`, 'box', {
-            width: z === 0 ? 0.16 : 5.2, height: 2.35, depth: x === 0 ? 0.16 : 4.2
-        }, timber, root, 1.4);
-        beam.position.set(x * 0.02 + (z === 0 ? x : 0), 1.4, z === 0 ? 0 : z * 0.02 + (x === 0 ? z : 0));
-    });
-    [-1, 1].forEach((sx) => {
-        const post = limb(scene, 'cottagePost', 'box', { width: 0.18, height: 2.4, depth: 0.18 }, timber, root, 1.4);
-        post.position.set(sx * 2.45, 1.4, 2.05);
-    });
-
-    const slopeL = limb(scene, 'cottageRoofL', 'box', { width: 3.4, height: 0.28, depth: 5.0 }, thatch, root, 3.15);
-    slopeL.rotation.z = 0.52;
-    slopeL.position.set(-1.35, 3.15, 0);
-    const slopeR = limb(scene, 'cottageRoofR', 'box', { width: 3.4, height: 0.28, depth: 5.0 }, thatch, root, 3.15);
-    slopeR.rotation.z = -0.52;
-    slopeR.position.set(1.35, 3.15, 0);
-    limb(scene, 'cottageRidge', 'box', { width: 0.22, height: 0.18, depth: 5.1 }, timber, root, 3.85);
-
-    const door = limb(scene, 'cottageDoor', 'box', { width: 0.88, height: 1.55, depth: 0.1 }, timber, root, 0.9);
-    door.position.z = 2.16;
-    const knob = limb(scene, 'cottageKnob', 'sphere', { diameter: 0.09, segments: 6 }, std(scene, 0xd4a020, 0.28, 0.82), root, 0.85);
-    knob.position.set(0.3, 0.85, 2.24);
-
-    [-1.35, 1.35].forEach((sx, i) => {
-        const win = limb(scene, `cottageWin_${i}`, 'box', { width: 0.72, height: 0.72, depth: 0.08 },
-            std(scene, 0x88c8e8, 0.22, 0.08, { emissive: 0xffcc66, emissiveIntensity: 0.4 }), root, 1.62);
-        win.position.set(sx, 1.62, 2.12);
-        const frame = limb(scene, `cottageWinF_${i}`, 'box', { width: 0.82, height: 0.82, depth: 0.06 }, timber, root, 1.62);
-        frame.position.set(sx, 1.62, 2.1);
-    });
-
-    const chimney = limb(scene, 'cottageChimney', 'box', { width: 0.58, height: 1.55, depth: 0.58 }, stone, root, 4.2);
-    chimney.position.set(1.55, 4.2, -0.7);
-    return root;
-}
-
-export function buildFence(scene, len = 6) {
-    const root = new B.TransformNode('fenceRoot', scene);
-    const wood = surf(scene, 'wood', 0x8a6a40);
-    const posts = Math.max(2, Math.round(len / 1.15));
-    for (let i = 0; i < posts; i++) {
-        const x = (i / (posts - 1) - 0.5) * len;
-        const p = limb(scene, `fencePost_${i}`, 'cylinder', {
-            height: 0.95, diameterTop: 0.1, diameterBottom: 0.13, tessellation: 6
-        }, wood, root, 0.48);
-        p.position.set(x, 0.48, 0);
+function signTexture(text) {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 160;
+    const x = c.getContext('2d');
+    x.fillStyle = '#a07a4c';
+    x.fillRect(0, 0, 512, 160);
+    for (let i = 0; i < 60; i++) {
+        x.fillStyle = `rgba(${40 + Math.random() * 40}, ${24 + Math.random() * 20}, 10, ${0.08 + Math.random() * 0.1})`;
+        x.fillRect(0, Math.random() * 160, 512, 1 + Math.random() * 3);
     }
-    [0.3, 0.64].forEach((y, i) => {
-        limb(scene, `fenceRail_${i}`, 'box', { width: len, height: 0.07, depth: 0.07 }, wood, root, y);
-    });
-    return root;
+    x.font = '700 96px "Fraunces", Georgia, serif';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillStyle = '#2a170a';
+    x.fillText(text, 256, 86);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
 }
 
-export function buildTree(scene, rng = Math.random) {
-    const root = new B.TransformNode('treeRoot', scene);
-    const barkMat = surf(scene, 'bark');
-    const foliage = leafMat(scene);
-    const lean = (rng() - 0.5) * 0.28;
-    const path = [];
-    for (let i = 0; i <= 7; i++) {
-        const t = i / 7;
-        path.push(new B.Vector3(lean * t * t * 1.4, t * 2.55, (rng() - 0.5) * 0.08));
+/** Pórtico de madeira com placa "FEIRA" pendurada por correntes de corda. */
+export function buildGateArch() {
+    const g = new THREE.Group();
+    g.name = 'arcoFeira';
+    const span = 2.4;
+    const wood = [];
+    for (const sx of [-1, 1]) {
+        const post = roughen(xf(beam(0.3, 0.3, 3.9, 0.05), sx * span, 1.75, 0, Math.PI / 2, 0, 0), 0.012, 3, sx);
+        wood.push(post);
+        wood.push(beamBetween(new THREE.Vector3(sx * span, 2.5, 0), new THREE.Vector3(sx * (span - 0.95), 3.42, 0), 0.14, 0.14));
+        wood.push(xf(roughen(new THREE.CylinderGeometry(0.34, 0.4, 0.4, 10, 2), 0.03, 3, 2), sx * span, 0.12, 0));
     }
-    const trunk = B.MeshBuilder.CreateTube('treeTrunk', {
-        path,
-        radius: 0.2,
-        tessellation: Math.max(5, tess - 4),
-        cap: B.Mesh.CAP_ALL
-    }, scene);
-    trunk.material = barkMat;
-    trunk.parent = root;
-    trunk.isPickable = false;
-
-    const cards = tess < 8 ? 5 : 11;
-    for (let i = 0; i < cards; i++) {
-        const card = B.MeshBuilder.CreatePlane(`treeLeaf_${i}`, {
-            width: 1.1 + rng() * 0.7,
-            height: 1.3 + rng() * 0.6
-        }, scene);
-        card.material = foliage;
-        card.parent = root;
-        card.position.set((rng() - 0.5) * 1.5, 2.15 + rng() * 1.1, (rng() - 0.5) * 1.5);
-        card.rotation.set(rng() * 0.5, rng() * Math.PI * 2, rng() * 0.4);
-        card.isPickable = false;
+    // travessa levemente arqueada
+    const top = [];
+    for (let i = 0; i <= 12; i++) {
+        const u = i / 12;
+        top.push(new THREE.Vector3((u - 0.5) * (span * 2 + 1.1), 3.52 + Math.sin(u * Math.PI) * 0.24, 0));
     }
-    return root;
+    const arc = tube(top, 0.17, 24, 8);
+    arc.scale(1, 1, 0.8);
+    wood.push(arc);
+    g.add(mesh(fuse(wood, 1.0), MAT.timber()));
+
+    const sign = new THREE.Mesh(
+        xf(new THREE.BoxGeometry(2.3, 0.72, 0.07), 0, 2.78, 0),
+        new THREE.MeshStandardMaterial({ map: signTexture('FEIRA'), roughness: 0.85 })
+    );
+    sign.castShadow = true;
+    g.add(sign);
+    const rope = [];
+    for (const sx of [-1, 1]) rope.push(tube([[sx * 0.95, 3.6, 0], [sx * 0.96, 3.3, 0], [sx * 0.95, 3.12, 0]], 0.02, 4, 6));
+    g.add(mesh(fuse(rope, 0), MAT.rope()));
+    return g;
 }
 
-export function buildRock(scene, rng = Math.random) {
-    const mesh = B.MeshBuilder.CreateIcoSphere('rock', {
-        radius: 0.32 + rng() * 0.45,
-        subdivisions: 1
-    }, scene);
-    mesh.scaling.set(1 + rng() * 0.7, 0.4 + rng() * 0.45, 0.75 + rng() * 0.6);
-    mesh.material = surf(scene, 'rock');
-    mesh.rotation.y = rng() * Math.PI * 2;
-    mesh.isPickable = false;
-    return mesh;
+/* ------------------------------------------------------------------ */
+/* Poste de lampião da estrada                                          */
+/* ------------------------------------------------------------------ */
+
+/** Poste torto com braço; a lanterna (glTF) é pendurada em userData.hook (posição local). */
+export function buildLampPost(seed = 1) {
+    const rnd = seeded(seed * 17 + 3);
+    const g = new THREE.Group();
+    const lean = (rnd() - 0.5) * 0.12;
+    const post = tube([[0, -0.3, 0], [lean * 0.4, 0.8, 0], [lean, 1.7, 0.01], [lean * 1.2, 2.35, 0]], 0.065, 10, 7);
+    const arm = tube([[lean * 1.2, 2.2, 0], [lean * 1.2 + 0.25, 2.34, 0], [lean * 1.2 + 0.5, 2.3, 0]], 0.035, 6, 6);
+    g.add(mesh(fuse([post, arm], 0.6), MAT.timber()));
+    g.userData.hook = new THREE.Vector3(lean * 1.2 + 0.48, 2.27, 0);
+    return g;
 }
 
-export function buildStall(scene, color = 0xc45a2a) {
-    const root = new B.TransformNode('stallRoot', scene);
-    const wood = surf(scene, 'wood');
-    limb(scene, 'stallTable', 'box', { width: 2.2, height: 0.12, depth: 1.1 }, wood, root, 0.85);
-    [-0.9, 0.9].forEach((sx) => {
-        [-0.4, 0.4].forEach((sz) => {
-            const leg = limb(scene, 'stallLeg', 'box', { width: 0.1, height: 0.85, depth: 0.1 }, wood, root, 0.42);
-            leg.position.set(sx, 0.42, sz);
-        });
-    });
-    limb(scene, 'stallCloth', 'box', { width: 2.45, height: 0.06, depth: 1.65 }, std(scene, color, 0.82), root, 1.88);
-    [-1.05, 1.05].forEach((sx) => {
-        const pole = limb(scene, 'stallPole', 'cylinder', { height: 2.05, diameter: 0.09, tessellation: 6 }, wood, root, 1.02);
-        pole.position.set(sx, 1.02, -0.5);
-    });
-    return root;
-}
+/* ------------------------------------------------------------------ */
+/* Barraca de feira                                                     */
+/* ------------------------------------------------------------------ */
 
-export function buildBeanstalk(scene, height = 78, quality = 'high') {
-    const root = new B.TransformNode('beanstalkRoot', scene);
-    const stemMat = surf(scene, 'bark', 0x3a8a32, { roughness: 0.8 });
-    const foliage = leafMat(scene);
-    const segs = quality === 'low' ? 28 : 52;
-    const path = [];
-    for (let i = 0; i <= segs; i++) {
-        const t = i / segs;
-        const a = t * Math.PI * 2 * 6.2;
-        const r = 0.42 + Math.sin(t * 11) * 0.1;
-        path.push(new B.Vector3(Math.cos(a) * r, t * height, Math.sin(a) * r));
+/**
+ * Barraca: bancada de tábuas sobre cavaletes, quatro esteios e toldo de lona
+ * com barriga e barra em bicos. `props` lista onde ficam os produtos (locais).
+ * @returns {THREE.Group} userData.props = [{ model, x, y, z, ry, s }]
+ */
+export function buildStall(color = 0xc43a2a, seed = 1) {
+    const rnd = seeded(seed * 29 + 1);
+    const g = new THREE.Group();
+    g.name = 'barraca';
+    const W = 2.8;
+    const D = 1.5;
+    const wood = [];
+    for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+            const hh = sz < 0 ? 2.5 : 2.15;
+            wood.push(xf(roughen(beam(0.1, 0.1, hh + 0.2), 0.006, 4, sx + sz), sx * (W / 2), hh / 2 - 0.1, sz * (D / 2), Math.PI / 2, 0, 0));
+        }
+        wood.push(beamBetween(new THREE.Vector3(sx * (W / 2), 2.44, -D / 2), new THREE.Vector3(sx * (W / 2), 2.1, D / 2), 0.07, 0.07));
+        // cavalete
+        wood.push(beamBetween(new THREE.Vector3(sx * (W / 2 - 0.3), 0, -D / 2 + 0.2), new THREE.Vector3(sx * (W / 2 - 0.3), 0.86, 0), 0.07, 0.07));
+        wood.push(beamBetween(new THREE.Vector3(sx * (W / 2 - 0.3), 0, D / 2 - 0.2), new THREE.Vector3(sx * (W / 2 - 0.3), 0.86, 0), 0.07, 0.07));
     }
-    const vine = B.MeshBuilder.CreateTube('stalkVine', {
-        path,
-        radius: 0.55,
-        tessellation: quality === 'low' ? 6 : 9,
-        cap: B.Mesh.CAP_ALL
-    }, scene);
-    vine.material = stemMat;
-    vine.parent = root;
-    vine.isPickable = false;
+    wood.push(xf(beam(0.07, 0.07, W), 0, 2.46, -D / 2, 0, Math.PI / 2, 0));
+    wood.push(xf(beam(0.07, 0.07, W), 0, 2.12, D / 2, 0, Math.PI / 2, 0));
+    g.add(mesh(fuse(wood, 0.8), MAT.timber()));
 
-    const tendrilPath = path.map((p, i) => {
-        const t = i / segs;
-        const a = t * Math.PI * 2 * 6.2 + 0.9;
-        return new B.Vector3(Math.cos(a) * 0.85, p.y, Math.sin(a) * 0.85);
-    });
-    const tendril = B.MeshBuilder.CreateTube('stalkTendril', {
-        path: tendrilPath,
-        radius: 0.16,
-        tessellation: 5,
-        cap: B.Mesh.CAP_ALL
-    }, scene);
-    tendril.material = stemMat;
-    tendril.parent = root;
-    tendril.isPickable = false;
+    const top = [];
+    for (let i = 0; i < 5; i++) top.push(xf(beam(0.28, 0.05, W + 0.3, 0.01), 0, 0.9, -0.58 + i * 0.29, 0, Math.PI / 2, 0));
+    g.add(mesh(fuse(top, 0.9), MAT.planks()));
 
-    const platforms = [];
-    const count = quality === 'low' ? 12 : 18;
-    for (let i = 0; i < count; i++) {
-        const y = 3.2 + i * (height - 10) / count;
-        const a = i * 0.92;
-        const r = 3.15;
-        const x = Math.cos(a) * r;
-        const z = Math.sin(a) * r;
-        const pad = limb(scene, `stalkPad_${i}`, 'sphere', {
-            diameterX: 3.1, diameterY: 0.26, diameterZ: 2.4, segments: 10
-        }, foliage, root, y);
-        pad.position.set(x, y, z);
-        pad.rotation.y = a;
-        platforms.push({ x, y, z, r: 1.45 });
+    // toldo: grade 14×8 com barriga (parábola nos dois eixos) e barra em bicos na frente
+    const cloth = new THREE.PlaneGeometry(W + 0.5, D + 0.7, 14, 8);
+    const pos = cloth.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i) / (W + 0.5) + 0.5;
+        const v = pos.getY(i) / (D + 0.7) + 0.5; // 0 = frente
+        const sag = Math.sin(u * Math.PI) * Math.sin(v * Math.PI) * 0.14;
+        let y = 2.16 + v * 0.36 - sag;
+        let z = (0.5 - v) * (D + 0.7);
+        if (v < 0.01) {
+            y -= 0.2 + Math.abs(Math.sin(u * Math.PI * 7)) * 0.16;
+            z += 0.03;
+        }
+        pos.setXYZ(i, pos.getX(i), y, z);
     }
+    cloth.computeVertexNormals();
+    g.add(mesh(cloth, MAT.cloth(color)));
 
-    const flower = limb(scene, 'stalkFlower', 'cylinder', {
-        height: 2.1, diameterTop: 0.15, diameterBottom: 2.6, tessellation: 10
-    }, std(scene, 0x7a3aaa, 0.55, 0.05, { emissive: 0x5a2088, emissiveIntensity: 0.5 }), root, height + 0.35);
-    flower.position.y = height + 0.35;
-    return { group: root, platforms, height };
-}
-
-export function buildCloudIsland(scene, radius = 28) {
-    const root = new B.TransformNode('cloudIslandRoot', scene);
-    const cloudMat = std(scene, 0xffffff, 0.95, 0.02, {
-        map: cloudTexture(scene),
-        emissive: 0xe8f0fa,
-        emissiveIntensity: 0.18,
-        mapKey: 'cloud'
-    });
-    limb(scene, 'cloudTop', 'cylinder', {
-        height: 2.0, diameterTop: radius * 2, diameterBottom: radius * 1.84, tessellation: 28
-    }, cloudMat, root, 0);
-    const puffs = tess < 8 ? 8 : 14;
-    for (let i = 0; i < puffs; i++) {
-        const a = (i / puffs) * Math.PI * 2;
-        const puff = limb(scene, `cloudPuff_${i}`, 'sphere', {
-            diameterX: 9 + (i % 4) * 2.4,
-            diameterY: 4.2 + (i % 3) * 1.2,
-            diameterZ: 9 + (i % 4) * 2.4,
-            segments: 10
-        }, cloudMat, root, -1.15);
-        puff.position.set(Math.cos(a) * (radius * 0.8), -1.15, Math.sin(a) * (radius * 0.8));
+    const y = 0.93;
+    g.userData.props = [
+        { model: 'wooden_crate_01', x: -0.75, y, z: -0.1, ry: 0.2 + rnd() * 0.4, s: 0.9 },
+        { model: 'wicker_basket_01', x: 0.25, y, z: 0.12, ry: rnd() * 3, s: 1.5 },
+        { model: 'wine_barrel_01', x: W / 2 + 0.55, y: 0, z: 0.2 + rnd() * 0.3, ry: rnd() * 3, s: 0.95 },
+        { model: 'wooden_crate_01', x: -W / 2 - 0.45, y: 0, z: -0.3, ry: rnd() * 3, s: 1.15 }
+    ];
+    // maçãs dentro dos cestos e sobre a bancada
+    for (let i = 0; i < 4; i++) {
+        const a = rnd() * Math.PI * 2;
+        const r = rnd() * 0.16;
+        const bx = 0.25;
+        const bz = 0.12;
+        g.userData.props.push({ model: 'food_apple_01', x: bx + Math.cos(a) * r, y: y + 0.1 + rnd() * 0.05, z: bz + Math.sin(a) * r * 0.8, ry: a, s: 1.25 });
     }
-    return root;
+    return g;
 }
 
-export function buildCastle(scene) {
-    const root = new B.TransformNode('castleRoot', scene);
-    const stone = surf(scene, 'stone');
-    const roofMat = surf(scene, 'tiles', 0x8a4aaa, { roughness: 0.65 });
-    const wood = surf(scene, 'wood', 0x3a2414);
+/* ------------------------------------------------------------------ */
+/* Carroça do mercador                                                  */
+/* ------------------------------------------------------------------ */
 
-    limb(scene, 'castleKeep', 'box', { width: 16, height: 10, depth: 14 }, stone, root, 5);
-    limb(scene, 'castleHall', 'box', { width: 10, height: 6, depth: 12 }, stone, root, 3).position.z = 10;
-
-    for (let i = -7; i <= 7; i += 2) {
-        const merlon = limb(scene, `castleMerlon_${i}`, 'box', { width: 1.1, height: 0.85, depth: 0.55 }, stone, root, 10.4);
-        merlon.position.set(i, 10.4, 7.05);
-        const merlonB = limb(scene, `castleMerlonB_${i}`, 'box', { width: 1.1, height: 0.85, depth: 0.55 }, stone, root, 10.4);
-        merlonB.position.set(i, 10.4, -7.05);
+function wheel(R = 0.62) {
+    const parts = [];
+    const rim = new THREE.TorusGeometry(R, 0.055, 8, 28);
+    rim.scale(1, 1, 1.5);
+    parts.push(rim);
+    parts.push(xf(lathe([[0, -0.13], [0.07, -0.13], [0.12, -0.06], [0.12, 0.06], [0.07, 0.13], [0, 0.13]], 12), 0, 0, 0, Math.PI / 2, 0, 0));
+    for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        parts.push(xf(beam(0.05, 0.035, R - 0.1, 0.008), Math.cos(a) * (R / 2 + 0.03), Math.sin(a) * (R / 2 + 0.03), 0, Math.PI / 2, 0, a - Math.PI / 2));
     }
-
-    [[-7, -6], [7, -6], [-7, 6], [7, 6], [-4, 15], [4, 15]].forEach(([x, z], i) => {
-        const t = limb(scene, `castleTower_${i}`, 'cylinder', {
-            height: 14, diameterTop: 2.7, diameterBottom: 3.2, tessellation: 12
-        }, stone, root, 7);
-        t.position.set(x, 7, z);
-        const cap = limb(scene, `castleCap_${i}`, 'cylinder', {
-            height: 2.5, diameterTop: 0.15, diameterBottom: 3.5, tessellation: 10
-        }, roofMat, root, 15.15);
-        cap.position.set(x, 15.15, z);
-    });
-
-    [-5, 0, 5].forEach((x, i) => {
-        const win = limb(scene, `castleWin_${i}`, 'box', { width: 0.7, height: 1.4, depth: 0.12 },
-            std(scene, 0x1a2840, 0.3, 0.05, { emissive: 0xffaa55, emissiveIntensity: 0.25 }), root, 6.2);
-        win.position.set(x, 6.2, 7.05);
-    });
-
-    const door = limb(scene, 'castleDoor', 'box', { width: 3.2, height: 4.4, depth: 0.35 }, wood, root, 2.2);
-    door.position.z = 16.1;
-    return root;
+    return parts;
 }
 
-export function buildTable(scene) {
-    const root = new B.TransformNode('tableRoot', scene);
-    const wood = surf(scene, 'wood');
-    limb(scene, 'tableTop', 'box', { width: 8, height: 0.32, depth: 4.2 }, wood, root, 1.8);
-    [-3.4, 3.4].forEach((sx) => {
-        [-1.6, 1.6].forEach((sz) => {
-            const leg = limb(scene, 'tableLeg', 'box', { width: 0.28, height: 1.8, depth: 0.28 }, wood, root, 0.9);
-            leg.position.set(sx, 0.9, sz);
-        });
-    });
-    return root;
+/** Carroça de duas rodas com varais, caixa de tábuas e toldo violeta em arcos (a carga glTF entra depois). */
+export function buildCart(color = 0x7a3aaa) {
+    const g = new THREE.Group();
+    g.name = 'carroca';
+    const wood = [];
+    const L = 2.6;
+    const Wd = 1.4;
+    for (let i = 0; i < 5; i++) wood.push(xf(beam(0.27, 0.05, L, 0.01), -0.56 + i * 0.28, 0.82, 0));
+    for (const sx of [-1, 1]) {
+        for (let i = 0; i < 2; i++) wood.push(xf(beam(0.04, 0.2, L, 0.01), sx * (Wd / 2), 0.98 + i * 0.22, 0));
+        for (const z of [-L / 2 + 0.08, 0, L / 2 - 0.08]) wood.push(xf(beam(0.07, 0.07, 0.62), sx * (Wd / 2 + 0.03), 1.08, z, Math.PI / 2, 0, 0));
+        // varal
+        wood.push(tube([[sx * 0.5, 0.78, L / 2], [sx * 0.5, 0.72, L / 2 + 0.9], [sx * 0.46, 0.5, L / 2 + 1.7], [sx * 0.44, 0.22, L / 2 + 2.2]], 0.045, 10, 7));
+        for (const p of wheel()) wood.push(xf(p, sx * (Wd / 2 + 0.2), 0.62, -0.15, 0, Math.PI / 2, 0));
+    }
+    for (const z of [-L / 2, L / 2]) {
+        for (let i = 0; i < 2; i++) wood.push(xf(beam(0.04, 0.2, Wd, 0.01), 0, 0.98 + i * 0.22, z, 0, Math.PI / 2, 0));
+    }
+    wood.push(xf(lathe([[0, -0.86], [0.05, -0.86], [0.05, 0.86], [0, 0.86]], 8), 0, 0.62, -0.15, 0, 0, Math.PI / 2));
+    wood.push(xf(beam(0.08, 0.08, 0.7), 0, 0.36, L / 2 - 0.3, Math.PI / 2, 0, 0));
+    g.add(mesh(fuse(wood, 0.9), MAT.planks()));
+
+    // toldo em túnel sobre três arcos
+    const hoops = [];
+    for (const z of [-L / 2 + 0.1, 0, L / 2 - 0.1]) {
+        const pts = [];
+        for (let i = 0; i <= 10; i++) {
+            const a = (i / 10) * Math.PI;
+            pts.push(new THREE.Vector3(Math.cos(a) * (Wd / 2), 1.2 + Math.sin(a) * 0.95, z));
+        }
+        hoops.push(tube(pts, 0.03, 14, 6));
+    }
+    g.add(mesh(fuse(hoops, 0.6), MAT.timber()));
+    const cloth = new THREE.PlaneGeometry(1, 1, 16, 8);
+    const pos = cloth.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i) + 0.5;
+        const v = pos.getY(i) + 0.5;
+        const a = u * Math.PI;
+        const sag = 1 - Math.abs(Math.sin(v * Math.PI * 2)) * 0.05;
+        pos.setXYZ(i, Math.cos(a) * (Wd / 2 + 0.04) * sag, 1.2 + Math.sin(a) * 0.99 * sag - (u < 0.03 || u > 0.97 ? 0.12 : 0), (v - 0.5) * (L + 0.25));
+    }
+    cloth.computeVertexNormals();
+    g.add(mesh(cloth, MAT.cloth(color)));
+    return g;
 }
 
-export function buildGoldBag(scene) {
-    const root = new B.TransformNode('goldBagRoot', scene);
-    const goldMat = std(scene, 0xffffff, 0.32, 0.72, {
-        map: goldTexture(scene),
-        emissive: 0xaa7700,
-        emissiveIntensity: 0.42,
-        mapKey: 'gold'
+/* ------------------------------------------------------------------ */
+/* Chafariz da praça                                                    */
+/* ------------------------------------------------------------------ */
+
+export function buildFountain() {
+    const g = new THREE.Group();
+    g.name = 'chafariz';
+    const basin = lathe([[1.15, 0], [1.72, 0], [1.76, 0.12], [1.66, 0.2], [1.7, 0.62], [1.78, 0.7], [1.74, 0.78], [1.42, 0.78], [1.38, 0.3], [0, 0.26]], 28);
+    roughen(basin, 0.022, 2.4, 8);
+    const pillar = lathe([[0.4, 0.2], [0.34, 0.5], [0.2, 0.7], [0.17, 1.3], [0.26, 1.42], [0.62, 1.5], [0.7, 1.6], [0.66, 1.66], [0.2, 1.62], [0.14, 1.8], [0.2, 1.98], [0.1, 2.12], [0, 2.14]], 20);
+    roughen(pillar, 0.012, 3, 1);
+    g.add(mesh(fuse([basin, pillar], 1.3), MAT.cobble()));
+    const water = mesh(xf(new THREE.CircleGeometry(1.4, 28), 0, 0.62, 0, -Math.PI / 2, 0, 0), MAT.water(), { cast: false });
+    const bowl = mesh(xf(new THREE.CircleGeometry(0.62, 20), 0, 1.6, 0, -Math.PI / 2, 0, 0), MAT.water(), { cast: false });
+    g.add(water, bowl);
+    return g;
+}
+
+/* ------------------------------------------------------------------ */
+/* Horta e lenha                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Pilha de lenha rachada (toras em meia-cana empilhadas) — fica ao lado do toco do machado. */
+export function buildWoodpile(seed = 3) {
+    const rnd = seeded(seed * 41);
+    const logs = [];
+    for (let row = 0; row < 4; row++) {
+        const n = 6 - row;
+        for (let i = 0; i < n; i++) {
+            const r = 0.1 + rnd() * 0.035;
+            const log = new THREE.CylinderGeometry(r, r * (0.9 + rnd() * 0.1), 0.95 + rnd() * 0.12, 9, 3, false, 0, Math.PI * (1.1 + rnd() * 0.9));
+            roughen(log, 0.01, 6, i + row);
+            logs.push(xf(log, (i - (n - 1) / 2) * 0.235 + (rnd() - 0.5) * 0.03, 0.11 + row * 0.19, (rnd() - 0.5) * 0.08, Math.PI / 2, 0, rnd() * 6));
+        }
+    }
+    const m = mat('firewood', () => {
+        const mm = pbrMaterial('bark_brown_02', { color: 0xc9b08c, normalScale: 1.2 });
+        mm.color.multiplyScalar(1.8);
+        return mm;
     });
-    const sack = surf(scene, 'leather', 0x8a6a20, { roughness: 0.7 });
-    limb(scene, 'goldBagMesh', 'sphere', {
-        diameterX: 0.78, diameterY: 0.9, diameterZ: 0.78, segments: 12
-    }, goldMat, root, 0);
-    limb(scene, 'goldBagNeck', 'cylinder', {
-        height: 0.22, diameterTop: 0.22, diameterBottom: 0.36, tessellation: 8
-    }, sack, root, 0.44);
+    const g = new THREE.Group();
+    g.add(mesh(fuse(logs, 0.5), m));
+    return g;
+}
+
+/** Canteiros da horta: leiras de terra revolvida (meias-canas irregulares). As plantas entram por dispersão. */
+export function buildGardenBeds(rows = 4, len = 4.2) {
+    const beds = [];
+    for (let i = 0; i < rows; i++) {
+        const bed = new THREE.CylinderGeometry(0.36, 0.36, len, 12, 14);
+        roughen(bed, 0.05, 2.8, i * 3);
+        // leira = cilindro deitado, achatado e meio enterrado
+        xf(bed, 0, 0, 0, Math.PI / 2, 0, 0, 1, 0.5, 1);
+        beds.push(bed.translate((i - (rows - 1) / 2) * 0.9, -0.04, 0));
+    }
+    const m = mat('soil', () => pbrMaterial('brown_mud_leaves_01', { color: 0x8a6f58, normalScale: 1.4 }));
+    const g = new THREE.Group();
+    g.add(mesh(fuse(beds, 0.9), m, { cast: false }));
+    return g;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tesouros                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Moeda: disco torneado com borda saliente. */
+function coinGeo() {
+    return lathe([[0, 0], [0.058, 0], [0.062, 0.004], [0.062, 0.012], [0.058, 0.016], [0.05, 0.013], [0, 0.013]], 14);
+}
+
+/**
+ * Saco de ouro: corpo de aniagem torneado com pregas (ruído na revolução),
+ * gola amarrada por corda, boca aberta cheia de moedas e moedas caídas em volta.
+ * `s` = escala (o saco do gigante é do tamanho do João).
+ */
+export function buildGoldBag(s = 1) {
+    const g = new THREE.Group();
+    g.name = 'sacoOuro';
+    const body = lathe([[0, 0], [0.3, 0.01], [0.43, 0.1], [0.47, 0.28], [0.42, 0.5], [0.27, 0.68], [0.17, 0.76], [0.2, 0.86], [0.28, 0.93], [0.26, 0.95], [0.16, 0.84]], 28);
+    const pos = body.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const a = Math.atan2(z, x);
+        // pregas verticais mais fundas perto da gola + abaulado irregular do conteúdo
+        const fold = Math.sin(a * 9 + y * 3) * 0.035 * THREE.MathUtils.smoothstep(y, 0.35, 0.8);
+        const lump = (fbm2(Math.cos(a) * 1.5 + 4, y * 3 + Math.sin(a) * 1.5, 2) - 0.5) * 0.09 * (1 - THREE.MathUtils.smoothstep(y, 0.5, 0.8));
+        const k = 1 + fold + lump;
+        pos.setXYZ(i, x * k, y, z * k);
+    }
+    body.computeVertexNormals();
+    g.add(mesh(body, MAT.burlap()));
+
+    const tie = xf(new THREE.TorusGeometry(0.185, 0.022, 7, 20), 0, 0.77, 0, Math.PI / 2, 0, 0);
+    const tail = tube([[0.18, 0.77, 0.02], [0.3, 0.7, 0.08], [0.33, 0.52, 0.1], [0.3, 0.4, 0.14]], 0.016, 8, 6);
+    g.add(mesh(fuse([tie, tail], 0), MAT.rope()));
+
+    // moedas: montinho na boca + espalhadas no chão (uma malha só)
+    const rnd = seeded(77);
+    const coins = [];
+    for (let i = 0; i < 26; i++) {
+        const a = rnd() * Math.PI * 2;
+        const r = Math.sqrt(rnd()) * 0.16;
+        coins.push(xf(coinGeo(), Math.cos(a) * r, 0.84 + rnd() * 0.07 - r * 0.2, Math.sin(a) * r, (rnd() - 0.5) * 1.2, rnd() * 6, (rnd() - 0.5) * 1.2));
+    }
+    for (let i = 0; i < 22; i++) {
+        const a = rnd() * Math.PI * 2;
+        const r = 0.5 + rnd() * 0.5;
+        const flat = rnd() < 0.75;
+        coins.push(xf(coinGeo(), Math.cos(a) * r, flat ? 0.002 + (rnd() < 0.3 ? 0.016 : 0) : 0.06, Math.sin(a) * r, flat ? 0 : Math.PI / 2 - 0.3, rnd() * 6, 0));
+    }
+    g.add(mesh(fuse(coins, 0), MAT.gold()));
+    g.scale.setScalar(s);
+    return g;
+}
+
+/** Ovo de ouro: revolução de perfil ovoide r(t) = R·sin(πt)·(1 + 0,22·cos(πt)) — mais largo na base. */
+export function eggGeometry(R = 0.085, H = 0.23) {
+    const prof = [];
+    for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        prof.push([Math.max(0, R * Math.sin(Math.PI * t) * (1 + 0.22 * Math.cos(Math.PI * t))), t * H]);
+    }
+    return lathe(prof, 20);
+}
+
+/** Ninho de palha trançada (toros irregulares empilhados) com ovos de ouro. A galinha fica em cima. */
+export function buildNest(s = 1) {
+    const g = new THREE.Group();
+    g.name = 'ninho';
+    const rnd = seeded(5);
+    const straw = [];
+    for (let i = 0; i < 7; i++) {
+        const R = 0.5 + Math.sin(i / 6 * Math.PI) * 0.16;
+        const ring = new THREE.TorusGeometry(R, 0.075, 6, 26);
+        roughen(ring, 0.035, 5, i);
+        straw.push(xf(ring, (rnd() - 0.5) * 0.03, 0.07 + i * 0.062, (rnd() - 0.5) * 0.03, Math.PI / 2, 0, rnd()));
+    }
+    const pad = roughen(new THREE.CylinderGeometry(0.5, 0.42, 0.12, 16, 1), 0.03, 4, 2);
+    pad.translate(0, 0.1, 0);
+    straw.push(pad);
+    g.add(mesh(fuse(straw, 0.5), MAT.thatch()));
+    const eggs = [];
+    for (let i = 0; i < 4; i++) {
+        const a = i * 1.7 + 0.4;
+        eggs.push(xf(eggGeometry(), Math.cos(a) * 0.28, 0.2, Math.sin(a) * 0.28, 1.2 + rnd() * 0.5, a, 0));
+    }
+    eggs.push(xf(eggGeometry(), 0.86, 0.085, 0.3, Math.PI / 2, 0.4, 0));
+    g.add(mesh(fuse(eggs, 0), MAT.gold()));
+    g.scale.setScalar(s);
+    return g;
+}
+
+/**
+ * Harpa dourada: coluna torneada, braço em S (tubo ao longo de spline) com
+ * voluta, caixa de ressonância afilada e 16 cordas. Altura ≈ 1,9 m × `s`.
+ * @returns {THREE.Group} userData.strings = Mesh das cordas (vibra quando canta)
+ */
+export function buildHarp(s = 1) {
+    const g = new THREE.Group();
+    g.name = 'harpa';
+    const gold = [];
+    // coluna (pilar da frente)
+    const column = lathe([[0.075, 0], [0.11, 0.03], [0.1, 0.1], [0.05, 0.16], [0.042, 0.8], [0.05, 1.5], [0.075, 1.6], [0.06, 1.66], [0.085, 1.74], [0.05, 1.8], [0, 1.82]], 14);
+    gold.push(xf(column, 0.52, 0.06, 0));
+    // braço em S, da coluna ao topo da caixa
+    const neckPts = [[0.52, 1.82, 0], [0.34, 1.95, 0], [0.1, 1.86, 0], [-0.1, 1.62, 0], [-0.3, 1.5, 0], [-0.46, 1.58, 0]];
+    gold.push(tube(neckPts, 0.05, 30, 9));
+    // voluta no topo da coluna
+    const scroll = [];
+    for (let i = 0; i <= 26; i++) {
+        const a = (i / 26) * Math.PI * 3.2;
+        const r = 0.15 * (1 - i / 30);
+        scroll.push(new THREE.Vector3(0.6 + Math.cos(a) * r, 1.9 + Math.sin(a) * r, 0));
+    }
+    gold.push(tube(scroll, 0.028, 40, 7));
+    // caixa de ressonância: tronco afilado inclinado (seção em D)
+    const box = new THREE.CylinderGeometry(0.075, 0.17, 1.62, 12, 6, false, 0, Math.PI);
+    xf(box, 0, 0, 0, 0, Math.PI / 2, 0);
+    xf(box, -0.36, 0.86, 0, 0, 0, -0.2);
+    gold.push(box);
+    // base em sapata
+    const foot = lathe([[0, 0], [0.34, 0], [0.36, 0.03], [0.3, 0.07], [0.12, 0.1], [0, 0.1]], 20);
+    gold.push(xf(foot, 0.12, 0, 0, 0, 0, 0, 1.5, 1, 0.75));
+    g.add(mesh(fuse(gold, 0), MAT.gold()));
+
+    // cordas: do braço (curva) até a caixa (reta inclinada)
+    const curve = new THREE.CatmullRomCurve3(neckPts.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
+    const strings = [];
+    for (let i = 0; i < 16; i++) {
+        const u = 0.14 + (i / 15) * 0.8;
+        const top = curve.getPoint(u);
+        const bx = 0.4 - (i / 15) * 0.86;
+        const by = 0.14 + ((0.4 - bx) / 0.86) * 1.25 * 0.92;
+        const len = top.y - by;
+        const st = new THREE.CylinderGeometry(0.0035, 0.0035, len, 4, 1);
+        const dx = top.x - bx;
+        strings.push(xf(st, (top.x + bx) / 2, (top.y + by) / 2, 0, 0, 0, -Math.atan2(dx, len)));
+    }
+    const sm = mesh(fuse(strings, 0), mat('strings', () => new THREE.MeshStandardMaterial({
+        color: 0xfff1c4, metalness: 1, roughness: 0.18, emissive: 0xffd27a, emissiveIntensity: 0.25
+    })), { cast: false });
+    g.add(sm);
+    g.userData.strings = sm;
+    g.scale.setScalar(s);
+    return g;
+}
+
+/* ------------------------------------------------------------------ */
+/* Castelo do gigante                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Medidas do salão (interior). Tudo em escala de gigante: a porta tem 11 m. */
+export const HALL = {
+    x0: -15, x1: 15, z0: -22, z1: 20, h: 15, t: 2.2, floor: 0.25,
+    door: { w: 6.6, h: 10.6 }
+};
+
+/** Torre redonda com mísulas, ameias e telhado cônico de ardósia. */
+function towerParts(x, z, R, H, stone, slate) {
+    const body = lathe([[R * 1.08, -3], [R * 1.05, 0], [R, 1.2], [R, H - 1.6], [R * 1.14, H - 0.9], [R * 1.14, H], [R * 0.86, H], [R * 0.86, H - 0.5]], 22);
+    roughen(body, 0.05, 0.9, x + z);
+    stone.push(body.translate(x, 0, z));
+    for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const merlon = roughen(new THREE.BoxGeometry(R * 0.4, 1.3, 0.55, 2, 2, 1), 0.03, 1.5, i);
+        stone.push(xf(merlon, x + Math.cos(a) * R * 1.0, H + 0.65, z + Math.sin(a) * R * 1.0, 0, -a + Math.PI / 2, 0));
+    }
+    const cone = lathe([[R * 1.02, H + 0.9], [R * 0.98, H + 1.2], [R * 0.5, H + 5.2], [0.12, H + 9.4], [0, H + 9.6]], 20);
+    slate.push(cone.translate(x, 0, z));
+}
+
+/**
+ * Salão do gigante: quatro paredes de cantaria com 2,2 m de espessura, vão da
+ * porta em arco, janelas altas em arco nas laterais, torres nos cantos,
+ * ameias, telhado de ardósia em duas águas sobre tesouras, piso de lajes e
+ * lareira com chaminé. A porta (glTF) é montada à parte.
+ * @returns {THREE.Group} userData: { hearth: Vector3, chandelier: Vector3 }
+ */
+export function buildCastleHall() {
+    const { x0, x1, z0, z1, h, t, floor, door } = HALL;
+    const g = new THREE.Group();
+    g.name = 'salao';
+    const W = x1 - x0;
+    const D = z1 - z0;
+    const cz = (z0 + z1) / 2;
+    const stone = [];
+    const slate = [];
+
+    // paredes (elevação → extrusão). A frente tem o vão da porta; laterais têm janelas em arco.
+    const front = wall(W + t * 2, h, t, [{ x: 0, y: floor, w: door.w, h: door.h, arch: true }]);
+    stone.push(xf(front, 0, 0, z1 + t / 2));
+    const back = wall(W + t * 2, h, t, [{ x: 0, y: 8.2, w: 3.2, h: 5.2, arch: true }]);
+    stone.push(xf(back, 0, 0, z0 - t / 2, 0, Math.PI, 0));
+    const sideHoles = [-13, -4.5, 4.5, 13].map((x) => ({ x, y: 6.4, w: 2.6, h: 6.6, arch: true }));
+    const east = wall(D, h, t, sideHoles);
+    stone.push(xf(east, x1 + t / 2, 0, cz, 0, Math.PI / 2, 0));
+    // oeste: a lareira ocupa o meio; janelas só nas pontas
+    const west = wall(D, h, t, [sideHoles[0], sideHoles[3]]);
+    stone.push(xf(west, x0 - t / 2, 0, cz, 0, -Math.PI / 2, 0));
+    // empenas sobre frente e fundos
+    for (const [z, ry] of [[z1 + t / 2, 0], [z0 - t / 2, Math.PI]]) {
+        const gab = wall(W + t * 2, 0.01, t, [], 7.2);
+        stone.push(xf(gab, 0, h - 0.01, z, 0, ry, 0));
+    }
+    // ameias ao longo das laterais
+    for (const x of [x0 - t / 2, x1 + t / 2]) {
+        for (let i = 0; i < 12; i++) {
+            const merlon = roughen(new THREE.BoxGeometry(t * 0.9, 1.5, 1.9, 2, 2, 2), 0.04, 1.2, i);
+            stone.push(merlon.translate(x + Math.sign(x) * 0.5, h + 0.75, z0 + 2.2 + i * (D - 4.4) / 11));
+        }
+    }
+    // soco externo que mergulha na nuvem
+    const skirt = roughen(new THREE.BoxGeometry(W + t * 2 + 1.2, 5, D + t * 2 + 1.2, 16, 3, 20), 0.08, 0.7, 3);
+    skirt.translate(0, -2.5 + 0.02, cz);
+    stone.push(skirt);
+    // degraus da entrada
+    for (let i = 0; i < 3; i++) {
+        const st = roughen(new THREE.BoxGeometry(door.w + 3 - i * 0.6, 0.14, 1.3, 8, 1, 2), 0.02, 1.5, i);
+        stone.push(st.translate(0, 0.02 + i * 0.07, z1 + t + 0.6 + (2 - i) * 0.9));
+    }
+    // torres nos quatro cantos
+    for (const [tx, tz] of [[x0 - t / 2, z1 + t / 2], [x1 + t / 2, z1 + t / 2], [x0 - t / 2, z0 - t / 2], [x1 + t / 2, z0 - t / 2]]) {
+        towerParts(tx, tz, 3.4, h + 4.5, stone, slate);
+    }
+    g.add(mesh(fuse(stone, 3.2), MAT.blocks()));
+
+    // telhado: duas águas de ardósia com espessura
+    const half = W / 2 + t + 0.8;
+    const rise = 7.6;
+    const sl = Math.hypot(half, rise);
+    const ang = Math.atan2(rise, half);
+    for (const sx of [-1, 1]) {
+        const slab = new THREE.BoxGeometry(sl, 0.5, D + t * 2 + 1.6, 1, 1, 1);
+        xf(slab, sl / 2, 0, 0, 0, 0, 0);
+        xf(slab, 0, 0, 0, 0, 0, -ang);
+        if (sx < 0) xf(slab, 0, 0, 0, 0, Math.PI, 0);
+        slate.push(slab.translate(0, h + rise + 0.1, cz));
+    }
+    g.add(mesh(fuse(slate, 2.4), MAT.roofSlate()));
+
+    // tesouras de madeira aparentes (tirante + pernas + pendural) a cada 7 m
+    const tim = [];
+    for (let i = 0; i < 7; i++) {
+        const z = z0 + 0.5 + i * (D - 1) / 6;
+        tim.push(xf(beam(0.7, 0.8, W + 1), 0, h - 0.3, z, 0, Math.PI / 2, 0));
+        tim.push(beamBetween(new THREE.Vector3(-W / 2, h, z), new THREE.Vector3(0, h + rise - 1.2, z), 0.55, 0.6));
+        tim.push(beamBetween(new THREE.Vector3(W / 2, h, z), new THREE.Vector3(0, h + rise - 1.2, z), 0.55, 0.6));
+        tim.push(xf(beam(0.5, 0.5, rise - 1.4), 0, h + (rise - 1.4) / 2, z, Math.PI / 2, 0, 0));
+    }
+    for (const x of [-W / 4, 0, W / 4]) tim.push(xf(beam(0.4, 0.45, D), x, h + (x === 0 ? rise - 1.1 : rise / 2 - 0.5), cz));
+    g.add(mesh(fuse(tim, 2.2), MAT.timber()));
+
+    // piso de lajes
+    const slab = new THREE.BoxGeometry(W, floor + 0.5, D + t, 1, 1, 1);
+    slab.translate(0, floor - (floor + 0.5) / 2, cz + t / 2);
+    g.add(mesh(fuse([slab], 3.4), MAT.floorSlate(), { cast: false }));
+
+    // --- lareira na parede oeste: boca em arco, coifa afunilada, soleira
+    const hz = -6;
+    const fp = [];
+    const mouth = wall(11, 9.2, 2.4, [{ x: 0, y: 0, w: 6.4, h: 6, arch: true }]);
+    fp.push(xf(mouth, x0 + 1.2, floor, hz, 0, Math.PI / 2, 0));
+    const hood = new THREE.CylinderGeometry(2.2, 5.6, 5.4, 4, 3, false, Math.PI / 4);
+    hood.scale(0.55, 1, 1);
+    roughen(hood, 0.05, 0.9, 12);
+    fp.push(hood.translate(x0 + 1.25, floor + 9.2 + 2.7, hz));
+    const mantel = roughen(new THREE.BoxGeometry(3.4, 0.7, 12.2, 4, 1, 12), 0.04, 1.1, 5);
+    fp.push(mantel.translate(x0 + 1.5, floor + 9.2, hz));
+    const hearthSlab = roughen(new THREE.BoxGeometry(5.2, 0.3, 9.4, 6, 1, 10), 0.03, 1.2, 8);
+    fp.push(hearthSlab.translate(x0 + 2.4, floor + 0.12, hz));
+    // fundo da fornalha (escuro de fuligem vem do AO; o brilho vem da luz pontual)
+    const backWall = new THREE.BoxGeometry(0.4, 6.2, 6.6);
+    fp.push(backWall.translate(x0 + 0.2, floor + 3.1, hz));
+    g.add(mesh(fuse(fp, 2.6), MAT.slates()));
+
+    // toras em brasa
+    const logs = [];
+    const rnd = seeded(9);
     for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        const coin = limb(scene, `coin_${i}`, 'cylinder', {
-            height: 0.04, diameter: 0.14, tessellation: 10
-        }, goldMat, root, 0.18);
-        coin.position.set(Math.cos(a) * 0.22, 0.18 + (i % 2) * 0.08, Math.sin(a) * 0.22);
-        coin.rotation.x = Math.PI / 2;
+        const log = new THREE.CylinderGeometry(0.34, 0.4, 3.4 + rnd(), 9, 4);
+        roughen(log, 0.05, 2.5, i);
+        logs.push(xf(log, x0 + 1.5 + rnd() * 0.5, floor + 0.55 + (i > 2 ? 0.55 : 0), hz + (i % 3 - 1) * 0.9 + (rnd() - 0.5) * 0.3, Math.PI / 2 + (rnd() - 0.5) * 0.3, (rnd() - 0.5) * 0.8, 0));
     }
-    return root;
+    g.add(mesh(fuse(logs, 0.8), MAT.ember(), { cast: false }));
+
+    // ferragens: argolas de tocha nas paredes
+    g.userData.hearth = new THREE.Vector3(x0 + 2.0, floor + 1.4, hz);
+    g.userData.chandelier = new THREE.Vector3(0, 12.6, -1);
+    return g;
 }
 
-export function buildHen(scene) {
-    const root = new B.TransformNode('henRoot', scene);
-    const gold = std(scene, 0xffffff, 0.28, 0.78, {
-        map: goldTexture(scene),
-        emissive: 0xaa7700,
-        emissiveIntensity: 0.38,
-        mapKey: 'gold'
-    });
-    limb(scene, 'henBody', 'sphere', {
-        diameterX: 0.68, diameterY: 0.5, diameterZ: 0.54, segments: 12
-    }, gold, root, 0.3);
-    const head = limb(scene, 'henHead', 'sphere', { diameter: 0.26, segments: 8 }, gold, root, 0.52);
-    head.position.x = 0.24;
-    const beak = limb(scene, 'henBeak', 'cylinder', {
-        height: 0.12, diameterTop: 0.01, diameterBottom: 0.07, tessellation: 6
-    }, std(scene, 0xffaa33, 0.4, 0.45), root, 0.5);
-    beak.position.x = 0.38;
-    beak.rotation.z = -Math.PI / 2;
-    const comb = limb(scene, 'henComb', 'sphere', { diameter: 0.12, segments: 6 }, std(scene, 0xff5533, 0.5), root, 0.66);
-    comb.position.x = 0.2;
-    [-1, 1].forEach((sx) => {
-        const wing = limb(scene, 'henWing', 'sphere', {
-            diameterX: 0.3, diameterY: 0.18, diameterZ: 0.08, segments: 8
-        }, gold, root, 0.32);
-        wing.position.set(-0.04, 0.32, sx * 0.24);
-    });
-    const tail = limb(scene, 'henTail', 'sphere', {
-        diameterX: 0.22, diameterY: 0.28, diameterZ: 0.08, segments: 8
-    }, gold, root, 0.4);
-    tail.position.set(-0.32, 0.4, 0);
-    tail.rotation.z = 0.5;
-    return root;
-}
-
-export function buildHarp(scene) {
-    const root = new B.TransformNode('harpRoot', scene);
-    const gold = std(scene, 0xffffff, 0.24, 0.82, {
-        map: goldTexture(scene),
-        emissive: 0xaa8800,
-        emissiveIntensity: 0.48,
-        mapKey: 'gold'
-    });
-    const frame = limb(scene, 'harpFrame', 'torus', {
-        diameter: 1.12, thickness: 0.12, tessellation: 24
-    }, gold, root, 0.58);
-    frame.rotation.y = Math.PI / 2;
-    const pillar = limb(scene, 'harpPillar', 'cylinder', {
-        height: 1.18, diameter: 0.09, tessellation: 10
-    }, gold, root, 0.58);
-    pillar.position.x = 0.55;
-    limb(scene, 'harpBase', 'box', { width: 0.72, height: 0.1, depth: 0.22 }, gold, root, 0.05);
-    for (let i = 0; i < 8; i++) {
-        const s = limb(scene, `harpString_${i}`, 'cylinder', {
-            height: 0.68 + i * 0.05, diameter: 0.014, tessellation: 4
-        }, std(scene, 0xfff8d0, 0.35, 0.1, { emissive: 0xffeedd, emissiveIntensity: 0.55 }), root, 0.52);
-        s.position.x = -0.22 + i * 0.1;
+/**
+ * Banquinho de três pés em escala de gigante (assento torneado + pés abertos):
+ * pedestal da harpa e do saco de ouro.
+ */
+export function buildStool(R = 1.3, H = 1.1) {
+    const g = new THREE.Group();
+    const parts = [xf(lathe([[0, 0], [R * 0.92, 0], [R, 0.06], [R, 0.2], [R * 0.9, 0.26], [0, 0.26]], 24), 0, H - 0.26, 0)];
+    for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + 0.3;
+        parts.push(tube([[Math.cos(a) * R * 0.5, H - 0.2, Math.sin(a) * R * 0.5], [Math.cos(a) * R * 0.7, H * 0.45, Math.sin(a) * R * 0.7], [Math.cos(a) * R * 0.88, 0, Math.sin(a) * R * 0.88]], 0.13, 6, 8));
     }
-    return root;
+    g.add(mesh(fuse(parts, 1.2), MAT.oak()));
+    return g;
 }
 
-export function buildAxe(scene) {
-    const root = new B.TransformNode('axeRoot', scene);
-    limb(scene, 'axeHandle', 'cylinder', {
-        height: 1.12, diameterTop: 0.07, diameterBottom: 0.1, tessellation: 8
-    }, surf(scene, 'wood', 0x6a3a18), root, 0.55);
-    const head = limb(scene, 'axeHead', 'box', { width: 0.48, height: 0.28, depth: 0.07 },
-        std(scene, 0xc8d0d8, 0.28, 0.78), root, 1.05);
-    head.position.x = 0.18;
-    const bit = limb(scene, 'axeBit', 'box', { width: 0.18, height: 0.34, depth: 0.04 },
-        std(scene, 0xe8eef2, 0.22, 0.85), root, 1.05);
-    bit.position.x = 0.38;
-    return root;
-}
+/* ------------------------------------------------------------------ */
+/* Props glTF                                                            */
+/* ------------------------------------------------------------------ */
 
-export function buildWell(scene) {
-    const root = new B.TransformNode('wellRoot', scene);
-    const stone = surf(scene, 'stone', 0x9aa0a8);
-    const wood = surf(scene, 'wood');
-    limb(scene, 'wellRing', 'cylinder', {
-        height: 0.72, diameterTop: 1.65, diameterBottom: 1.9, tessellation: 16
-    }, stone, root, 0.36);
-    limb(scene, 'wellWater', 'cylinder', {
-        height: 0.02, diameter: 1.35, tessellation: 16
-    }, std(scene, 0x3a88aa, 0.12, 0.28, { alpha: 0.78 }), root, 0.42);
-    [-0.7, 0.7].forEach((sx) => {
-        const post = limb(scene, 'wellPost', 'cylinder', {
-            height: 1.15, diameter: 0.08, tessellation: 6
-        }, wood, root, 1.05);
-        post.position.set(sx, 1.05, 0);
+/** Carrega um prop, liga sombras e devolve o grupo (ou null se a rede falhar — o jogo segue sem ele). */
+export async function prop(name, opts = {}) {
+    const o = await loadModel(name, opts);
+    if (!o) return null;
+    o.traverse((c) => {
+        if (c.isMesh) {
+            c.castShadow = true;
+            c.receiveShadow = true;
+        }
     });
-    limb(scene, 'wellBeam', 'cylinder', {
-        height: 1.5, diameter: 0.07, tessellation: 6
-    }, wood, root, 1.62).rotation.z = Math.PI / 2;
-    return root;
-}
-
-export function buildGateArch(scene) {
-    const root = new B.TransformNode('gateArchRoot', scene);
-    const wood = surf(scene, 'wood', 0x6a3e1c);
-    [-1.6, 1.6].forEach((sx) => {
-        const post = limb(scene, 'gatePost', 'box', { width: 0.28, height: 3.4, depth: 0.28 }, wood, root, 1.7);
-        post.position.set(sx, 1.7, 0);
-    });
-    limb(scene, 'gateBar', 'box', { width: 3.6, height: 0.28, depth: 0.28 }, wood, root, 3.25);
-    limb(scene, 'gateSign', 'box', { width: 1.6, height: 0.55, depth: 0.08 }, std(scene, 0xc4a050, 0.65), root, 3.7);
-    limb(scene, 'gateGlow', 'cylinder', {
-        height: 0.12, diameterTop: 1.8, diameterBottom: 2.2, tessellation: 16
-    }, std(scene, 0xffee88, 0.4, 0.1, { alpha: 0.55, emissive: 0xffee88, emissiveIntensity: 0.55 }), root, 0.08);
-    return root;
-}
-
-export function makeBeacon(scene, colorHex = 0xaaff66) {
-    const beacon = B.MeshBuilder.CreateCylinder('beacon', {
-        height: 8.5, diameterTop: 0.36, diameterBottom: 1.1, tessellation: 8
-    }, scene);
-    const mat = new B.StandardMaterial('beaconMat', scene);
-    const col = hexToColor3(colorHex);
-    mat.diffuseColor = col;
-    mat.emissiveColor = col;
-    mat.alpha = 0.42;
-    mat.backFaceCulling = false;
-    mat.disableLighting = true;
-    beacon.material = mat;
-    beacon.isPickable = false;
-    return beacon;
-}
-
-export function grassTuft(scene) {
-    const plane = B.MeshBuilder.CreatePlane('grassTuft', { width: 0.7, height: 0.85 }, scene);
-    plane.material = std(scene, 0xffffff, 0.85, 0.02, {
-        map: bladeTexture(scene),
-        doubleSided: true,
-        alphaTest: true,
-        mapKey: 'bladeAlpha'
-    });
-    plane.billboardMode = B.Mesh.BILLBOARDMODE_Y;
-    plane.isPickable = false;
-    return plane;
+    return o;
 }

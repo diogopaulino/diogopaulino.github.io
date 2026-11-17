@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#14281c">
     <title>João e o Pé de Feijão — conto 3D | Diogo Paulino</title>
     <meta name="description"
-        content="Jogo 3D em Babylon.js do conto completo: venda a vaca, suba o pé de feijão, roube os tesouros e fuja do gigante. Diogo Paulino.">
+        content="Jogo 3D em three.js do conto completo: venda a vaca, suba o pé de feijão, roube os tesouros e fuja do gigante. Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,20 +23,27 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/">
     <meta property="og:title" content="João e o Pé de Feijão — conto 3D | Diogo Paulino">
     <meta property="og:description"
-        content="Cinco capítulos em third-person: a cabana, a feira dos feijões, a subida, o castelo nas nuvens e o machado. Feito com Babylon.js.">
+        content="Cinco capítulos em third-person: a cabana, a feira dos feijões, a subida, o castelo nas nuvens e o machado. Feito com three.js.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="João e o Pé de Feijão — conto 3D | Diogo Paulino">
-    <meta name="twitter:description" content="Cinco capítulos em third-person: a cabana, a feira dos feijões, a subida, o castelo nas nuvens e o machado. Feito com Babylon.js.">
+    <meta name="twitter:description" content="Cinco capítulos em third-person: a cabana, a feira dos feijões, a subida, o castelo nas nuvens e o machado. Feito com three.js.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
-    <link rel="preconnect" href="https://dl.polyhaven.org" crossorigin>
-    <link rel="preconnect" href="https://assets.babylonjs.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=5">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+    }
+    </script>
 
     <script type="application/ld+json">
     {
@@ -46,7 +53,7 @@
           "@type": "WebApplication",
           "name": "João e o Pé de Feijão",
           "url": "https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/",
-          "description": "Jogo 3D em Babylon.js do conto completo: venda a vaca, suba o pé de feijão, roube os tesouros e fuja do gigante.",
+          "description": "Jogo 3D em three.js do conto completo: venda a vaca, suba o pé de feijão, roube os tesouros e fuja do gigante.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -172,7 +179,7 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> Babylon.js · third-person · cinco capítulos</p>
+                    <p class="eyebrow"><i></i> three.js · terceira pessoa · cinco capítulos</p>
                     <h1>João e o <span>Pé de Feijão</span></h1>
                     <p class="lede">A despensa está vazia, a Mimosa é tudo o que resta, e um estranho de capa roxa
                         oferece cinco feijões. Suba, roube, desça e corte — o conto inteiro, no navegador.</p>
@@ -282,7 +289,7 @@
             <div class="overlay-card compact-card">
                 <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
                 <h2>Os feijões<br>não germinaram.</h2>
-                <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
+                <p class="lede" id="errorText">Este laboratório precisa de WebGL 2. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
             </div>
         </div>
@@ -290,35 +297,26 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/v9.25.0/loaders/babylonjs.loaders.min.js"></script>
     <script src="/labs/shared.js?v=14" defer></script>
     <script>
         (function () {
             function hasGpu() {
                 try {
                     var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+                    return !!c.getContext('webgl2');
                 } catch (e) { return false; }
             }
-            // Duas causas diferentes, mensagens diferentes: sem GPU o problema é
-            // o navegador; sem BABYLON o problema é a rede que não trouxe o CDN.
-            var noEngine = typeof BABYLON === 'undefined';
-            if (!hasGpu() || noEngine || !BABYLON.Engine?.isSupported()) {
+            if (!hasGpu()) {
                 document.addEventListener('DOMContentLoaded', function () {
                     var err = document.getElementById('errorOverlay');
                     var load = document.getElementById('loadingOverlay');
-                    var txt = document.getElementById('errorText');
                     if (load) load.hidden = true;
-                    if (txt && noEngine) {
-                        txt.textContent = 'O motor 3D (Babylon.js) não pôde ser baixado. Verifique a conexão e recarregue a página.';
-                    }
                     if (err) err.hidden = false;
                 });
             }
         })();
     </script>
-    <script type="module" src="src/main.js?v=7"></script>
+    <script type="module" src="src/main.js?v=8"></script>
 </body>
 
 </html>
