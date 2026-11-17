@@ -1,15 +1,15 @@
 /**
- * Trilha e efeitos — Web Audio, temas originais (nada da trilha do filme).
+ * Trilha e efeitos — Web Audio, temas originais gerados em tempo real.
  */
 
-import { clamp } from './utils.js?v=3';
+import { clamp } from './utils.js?v=30';
 
 const THEMES = {
     shire: { base: 196, mode: [0, 2, 4, 7, 9], tempo: 0.9, filter: 900, drone: 98 },
     forest: { base: 110, mode: [0, 3, 5, 7, 10], tempo: 0.55, filter: 420, drone: 55 },
-    rivendell: { base: 262, mode: [0, 2, 4, 5, 7, 9], tempo: 0.75, filter: 1400, drone: 131 },
-    moria: { base: 73, mode: [0, 3, 5, 6, 10], tempo: 0.4, filter: 280, drone: 36.5 },
-    amonhen: { base: 147, mode: [0, 2, 3, 7, 9], tempo: 0.62, filter: 700, drone: 73.5 }
+    vale: { base: 262, mode: [0, 2, 4, 5, 7, 9], tempo: 0.75, filter: 1400, drone: 131 },
+    mines: { base: 73, mode: [0, 3, 5, 6, 10], tempo: 0.4, filter: 280, drone: 36.5 },
+    summit: { base: 147, mode: [0, 2, 3, 7, 9], tempo: 0.62, filter: 700, drone: 73.5 }
 };
 
 export class GameAudio {
@@ -103,7 +103,7 @@ export class GameAudio {
             this._step -= interval;
             if (Math.random() > 0.35) this._note(theme);
         }
-        if (this.theme === 'moria' && Math.random() < dt * 0.35) this._drum();
+        if (this.theme === 'mines' && Math.random() < dt * 0.35) this._drum();
     }
 
     _note(theme) {
@@ -112,11 +112,11 @@ export class GameAudio {
         const oct = Math.random() > 0.7 ? 2 : 1;
         const freq = theme.base * oct * Math.pow(2, deg / 12);
         const osc = this.ctx.createOscillator();
-        osc.type = this.theme === 'rivendell' ? 'sine' : this.theme === 'shire' ? 'triangle' : 'sawtooth';
+        osc.type = this.theme === 'vale' ? 'sine' : this.theme === 'shire' ? 'triangle' : 'sawtooth';
         osc.frequency.value = freq;
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(this.theme === 'moria' ? 0.04 : 0.07, now + 0.04);
+        g.gain.exponentialRampToValueAtTime(this.theme === 'mines' ? 0.04 : 0.07, now + 0.04);
         g.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
         osc.connect(g).connect(this.filter);
         osc.start(now);

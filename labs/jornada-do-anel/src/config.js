@@ -1,8 +1,9 @@
 /**
  * A Jornada do Anel — constantes, capítulos e presets de qualidade.
  *
- * Homenagem visual ao primeiro filme da trilogia: cinco cenas, cada uma
- * com um objetivo, uma paleta e um clima sonoro próprios.
+ * Homenagem em cinco cenas à aventura clássica de fantasia: cada capítulo
+ * tem um objetivo, uma atmosfera e um clima sonoro próprios. Textos, música,
+ * mapas e figurinos são originais deste lab.
  */
 
 export const STORAGE_KEY = 'jornada-do-anel-v1';
@@ -23,52 +24,67 @@ export const CAMERA = {
     distance: 6.4,
     minDistance: 3.2,
     maxDistance: 11,
-    height: 1.55,
+    height: 1.45,
     pitchMin: -0.42,
     pitchMax: 0.72,
     defaultPitch: 0.18,
-    lookY: 1.05
+    lookY: 0.98,
+    /** folga entre a câmera e o que estiver no caminho (m) */
+    skin: 0.35
 };
 
+/**
+ * Detalhe por tier (o tier vem de `pickTier` + seletor do menu; o palco pode
+ * rebaixar sozinho se o fps cair).
+ *   hero / npc      nível de detalhe de `createHero` (2 herói · 1 NPC · 0 multidão)
+ *   trees / props   multiplicadores de contagem          lights  luzes pontuais por cena
+ *   pointShadow     sombra da luz do cajado/lanterna (cubemap) — só no tier alto
+ */
 export const QUALITY = {
-    low: {
-        id: 'low',
-        pixelRatio: 1,
-        antialias: false,
-        shadows: false,
-        shadowSize: 512,
-        trees: 0.45,
-        grass: 0.35,
-        particles: 0.4,
-        lights: false
+    low: { id: 'low', npc: 0, trees: 0.5, props: 0.4, particles: 0.45, lights: 3, pointShadow: 0, extras: 0.5 },
+    medium: { id: 'medium', npc: 1, trees: 0.8, props: 0.75, particles: 0.8, lights: 6, pointShadow: 0, extras: 0.8 },
+    high: { id: 'high', npc: 1, trees: 1, props: 1, particles: 1, lights: 9, pointShadow: 512, extras: 1 }
+};
+
+/**
+ * Atmosferas dos capítulos — entram em PRESETS de `gfx/stage.js` (mesmos campos:
+ * hora, nuvens, exposição, sol/ambiente, névoa de altura, bruma, bloom, raios, grade).
+ */
+export const ATMOSPHERES = {
+    // I — fim de tarde dourado
+    condado: {
+        hour: 16.7, clouds: 0.34, exposure: 1.1, sun: 1.05, env: 1.25, fog: 0.0024, falloff: 0.03, haze: 0.00018,
+        fogGlow: 0.55, bloom: 0.1, rays: 0.6, saturation: 1.12, contrast: 1.05, vignette: 0.26,
+        fogTint: [0.9, 0.84, 0.74], gain: [1.05, 1.0, 0.92], lift: [0.012, 0.008, 0.004], wind: 0.7, fill: 0.24
     },
-    medium: {
-        id: 'medium',
-        pixelRatio: 1.35,
-        antialias: true,
-        shadows: true,
-        shadowSize: 1024,
-        trees: 0.75,
-        grass: 0.7,
-        particles: 0.75,
-        lights: true
+    // II — noite de lua, névoa rasteira
+    fuga: {
+        hour: 23, clouds: 0.3, exposure: 2.6, sun: 1.7, env: 1.25, fog: 0.016, falloff: 0.1, haze: 0.0011,
+        fogGlow: 0.55, bloom: 0.14, rays: 0.55, saturation: 0.84, contrast: 1.1, vignette: 0.46,
+        fogTint: [0.74, 0.86, 1.06], gain: [0.9, 0.98, 1.1], lift: [0.004, 0.008, 0.02], wind: 0.45, fill: 0.5
     },
-    high: {
-        id: 'high',
-        pixelRatio: 1.75,
-        antialias: true,
-        shadows: true,
-        shadowSize: 2048,
-        trees: 1,
-        grass: 1,
-        particles: 1,
-        lights: true
+    // III — amanhecer com bruma e raios de sol
+    vale: {
+        hour: 7.4, clouds: 0.4, exposure: 1.1, sun: 0.95, env: 1.2, fog: 0.011, falloff: 0.05, haze: 0.0005,
+        fogGlow: 1.4, bloom: 0.14, rays: 1.0, saturation: 1.05, contrast: 1.03, vignette: 0.28,
+        fogTint: [1.0, 0.95, 0.86], gain: [1.05, 1.01, 0.94], lift: [0.016, 0.016, 0.014], wind: 0.4, fill: 0.22
+    },
+    // IV — subterrâneo: sem sol, só fogo e cajado
+    minas: {
+        hour: 12, clouds: 0, exposure: 1.45, sun: 0, env: 0.05, fog: 0.03, falloff: 0.02, haze: 0.006,
+        fogGlow: 0, bloom: 0.2, rays: 0, saturation: 0.96, contrast: 1.1, vignette: 0.5,
+        fogTint: [0.02, 0.016, 0.014], gain: [1.05, 0.98, 0.9], lift: [0.002, 0.001, 0.0], wind: 0, fill: 0.03
+    },
+    // V — entardecer com vento
+    cume: {
+        hour: 17.35, clouds: 0.5, exposure: 1.25, sun: 1.05, env: 1.3, fog: 0.0028, falloff: 0.03, haze: 0.0002,
+        fogGlow: 0.45, bloom: 0.12, rays: 0.6, saturation: 0.98, contrast: 1.05, vignette: 0.32,
+        fogTint: [0.62, 0.54, 0.52], gain: [1.0, 1.0, 0.98], lift: [0.014, 0.006, 0.016], wind: 1.3, fill: 0.42
     }
 };
 
 /**
- * Cinco capítulos alinhados às batidas do primeiro filme.
- * Textos originais — nenhum diálogo copiado.
+ * Cinco capítulos da jornada. Textos originais — nenhum diálogo copiado.
  */
 export const CHAPTERS = [
     {
@@ -80,13 +96,8 @@ export const CHAPTERS = [
         objective: 'Encontre a toca de porta verde e pegue o Anel.',
         hint: 'Siga as lanternas até a colina mais alta.',
         music: 'shire',
-        fog: { color: 0xc8d6a8, near: 28, far: 118 },
-        clear: 0x8eb4d4,
-        ambient: 0xffe2b0,
-        ambientIntensity: 0.62,
-        exposure: 1.32,
-        sun: { color: 0xffd39a, intensity: 2.55, dir: [-0.45, 0.82, 0.32] },
-        hemi: { sky: 0xffe8c4, ground: 0x6a8a3a, intensity: 1.05 }
+        atmosphere: 'condado',
+        loading: 'Erguendo as colinas do Condado…'
     },
     {
         id: 'forest',
@@ -97,63 +108,43 @@ export const CHAPTERS = [
         objective: 'Alcance o vau do rio sem ser pego pelos Cavaleiros.',
         hint: 'Esconda-se atrás das árvores. Eles enxergam à frente.',
         music: 'forest',
-        fog: { color: 0x1a2230, near: 8, far: 62 },
-        clear: 0x0c1018,
-        ambient: 0x2a3348,
-        ambientIntensity: 0.4,
-        exposure: 0.92,
-        sun: { color: 0x8aa0c8, intensity: 0.35, dir: [0.2, 0.85, -0.4] },
-        hemi: { sky: 0x1c2740, ground: 0x0a120c, intensity: 0.45 }
+        atmosphere: 'fuga',
+        loading: 'A noite cai sobre a estrada…'
     },
     {
-        id: 'rivendell',
+        id: 'vale',
         roman: 'III',
         title: 'O Vale Élfico',
         subtitle: 'O conselho',
         blurb: 'Quedas d’água, pedra clara e um círculo de pedras. Alguém precisa levar o Anel.',
         objective: 'Entre no círculo do conselho e aceite a jornada.',
-        hint: 'Suba as terraces até o pavilhão dourado.',
-        music: 'rivendell',
-        fog: { color: 0xb7d4d8, near: 35, far: 130 },
-        clear: 0x9ec8d6,
-        ambient: 0xdcecff,
-        ambientIntensity: 0.55,
-        exposure: 1.22,
-        sun: { color: 0xfff1d2, intensity: 1.55, dir: [0.35, 0.8, 0.45] },
-        hemi: { sky: 0xd8f0ff, ground: 0x5a7a4a, intensity: 0.8 }
+        hint: 'Cruze a ponte e suba até o terraço das colunas.',
+        music: 'vale',
+        atmosphere: 'vale',
+        loading: 'A bruma sobe das quedas d’água…'
     },
     {
-        id: 'moria',
+        id: 'mines',
         roman: 'IV',
         title: 'As Minas',
         subtitle: 'A ponte',
         blurb: 'Pilares sem fim, tambores na escuridão e uma fenda que não perdoa.',
         objective: 'Atravesse o salão e a ponte antes que a Sombra chegue.',
         hint: 'Espaço para atacar. Corra quando a ponte tremer.',
-        music: 'moria',
-        fog: { color: 0x0a0706, near: 6, far: 48 },
-        clear: 0x070504,
-        ambient: 0x3a2214,
-        ambientIntensity: 0.45,
-        exposure: 0.88,
-        sun: { color: 0xff7a32, intensity: 0.15, dir: [0, 1, 0] },
-        hemi: { sky: 0x2a1810, ground: 0x140804, intensity: 0.35 }
+        music: 'mines',
+        atmosphere: 'minas',
+        loading: 'Acendendo os braseiros do salão…'
     },
     {
-        id: 'amonhen',
+        id: 'summit',
         roman: 'V',
         title: 'O Monte da Visão',
         subtitle: 'A partida',
         blurb: 'Ruínas no alto, o grande rio abaixo. A companhia se parte — e a jornada continua.',
         objective: 'Sente-se no trono de pedra e escolha seguir adiante.',
         hint: 'Suba até o assento no cume.',
-        music: 'amonhen',
-        fog: { color: 0xd08a5a, near: 40, far: 140 },
-        clear: 0xe8a060,
-        ambient: 0xffc080,
-        ambientIntensity: 0.58,
-        exposure: 1.18,
-        sun: { color: 0xff8a3a, intensity: 1.7, dir: [-0.75, 0.35, 0.2] },
-        hemi: { sky: 0xffc090, ground: 0x4a3020, intensity: 0.7 }
+        music: 'summit',
+        atmosphere: 'cume',
+        loading: 'O vento varre as ruínas do cume…'
     }
 ];

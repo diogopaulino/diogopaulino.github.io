@@ -479,6 +479,24 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .eyebrow--danger { color: oklch(72% 0.16 25); }
 .eyebrow--gold { color: var(--gold); }
 
+/* Cabeçalho do menu: título à esquerda, apresentação à direita (era um <header>
+   e herdava a grade de 3 colunas do cabeçalho compartilhado, espremendo o texto). */
+.menu-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 0.4rem 2rem;
+    align-items: end;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.menu-card {
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
 .menu-head h1, .overlay-card h2 {
     font-family: 'Cinzel', Georgia, serif;
     font-weight: 700;
@@ -488,7 +506,9 @@ body[data-state="playing"] .game-shell > header .app-logo {
 }
 
 .menu-head h1 {
-    font-size: clamp(2rem, 5vw, 3.1rem);
+    font-size: clamp(1.9rem, 4.4vw, 3rem);
+    margin: 0;
+    text-wrap: balance;
 }
 
 .menu-head h1 span { color: var(--gold); }
@@ -504,7 +524,7 @@ body[data-state="playing"] .game-shell > header .app-logo {
     display: grid;
     grid-template-columns: 1.1fr 1fr 1fr;
     gap: 1.1rem;
-    margin: 1.3rem 0 1.1rem;
+    margin: 1.1rem 0 1.1rem;
 }
 
 .menu-section h2 {
@@ -546,6 +566,8 @@ body[data-state="playing"] .game-shell > header .app-logo {
     color: var(--parchment);
 }
 
+.chapter-chip { min-height: 40px; transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease); }
+.chapter-chip:not(:disabled):hover { border-color: var(--line); transform: translateX(2px); }
 .chapter-chip:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .keys {
@@ -591,7 +613,25 @@ kbd {
     color: var(--text-dim);
 }
 
-.menu-foot { display: flex; justify-content: flex-end; }
+.menu-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line-soft);
+}
+
+.chapter-blurb {
+    margin: 0;
+    max-width: 46ch;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text-soft);
+    font-style: italic;
+}
+
+.menu-foot .primary-button { flex: none; min-height: 48px; }
 
 .primary-button, .ghost-button {
     display: inline-flex;
@@ -665,6 +705,45 @@ kbd {
     font-size: 1.05rem;
     line-height: 1.5;
     color: var(--parchment);
+}
+
+/* cartão de viagem: aparece sobre o fade enquanto o capítulo carrega */
+.travel-card {
+    position: absolute;
+    inset: 0;
+    z-index: 26;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.35rem;
+    text-align: center;
+    pointer-events: none;
+    padding: 1rem;
+    animation: travelIn 0.6s var(--ease) both;
+}
+
+.travel-card[hidden] { display: none; }
+
+.travel-card h2 {
+    margin: 0.2rem 0 0;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: clamp(1.7rem, 5vw, 2.8rem);
+    font-weight: 700;
+    color: var(--parchment);
+}
+
+.travel-card p {
+    margin: 0 0 0.9rem;
+    color: var(--text-soft);
+    font-size: 0.92rem;
+    letter-spacing: 0.04em;
+}
+
+.ring-loader--small { width: 30px; height: 30px; border-width: 3px; }
+
+@keyframes travelIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
 }
 
 /* loading */
@@ -776,11 +855,16 @@ kbd {
     font-size: 0.75rem;
 }
 
+.pad[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 14px oklch(75% 0.16 82 / 0.4); }
+.pad { min-height: 46px; }
 .pad-atk { background: color-mix(in oklab, var(--ember) 35%, var(--panel-strong)); }
 .pad-use { background: color-mix(in oklab, var(--gold) 28%, var(--panel-strong)); color: var(--ink); }
 
 @media (max-width: 860px) {
     .menu-grid { grid-template-columns: 1fr; }
+    .menu-head { grid-template-columns: 1fr; }
+    .menu-foot { flex-direction: column; align-items: stretch; }
+    .menu-foot .primary-button { justify-content: center; }
     .hud-top { grid-template-columns: 1fr 1fr; }
     .quest-panel { grid-column: 1 / -1; justify-self: stretch; width: auto; }
 }
@@ -867,4 +951,48 @@ kbd {
 /* agent-responsive-768 */
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
+}
+
+/* --- HUD compacto no toque/tela estreita ---
+   Uma linha só (vida · objetivo · crônica) logo abaixo do cabeçalho; som e
+   pausa sobem para a linha do cabeçalho, longe do analógico e dos botões. */
+@media (max-width: 860px), (max-height: 520px) and (orientation: landscape) {
+    .hud { padding-top: calc(3.9rem + var(--safe-top)); }
+    .hud-top { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.4rem; align-items: stretch; }
+    .quest-panel { grid-column: auto; justify-self: stretch; width: auto; }
+    .panel { padding: 0.4rem 0.6rem; border-radius: 12px; }
+    .heart-panel .hud-label, .score-panel .hud-label { display: none; }
+    .hearts { margin: 0.15rem 0 0.3rem; gap: 0.2rem; }
+    .heart { width: 13px; height: 13px; }
+    .ring-badge { font-size: 0.6rem; }
+    .quest-panel .hud-label { font-size: 0.55rem; }
+    .objective { font-size: 0.8rem; margin-top: 0.1rem; line-height: 1.25; }
+    .score-panel { min-width: 0; }
+    .score-row { gap: 0.3rem; }
+    .hud-actions {
+        top: calc(0.72rem + var(--safe-top));
+        bottom: auto;
+        right: calc(5.6rem + var(--safe-right));
+    }
+    .fps { display: none; }
+    .stealth { top: calc(8.4rem + var(--safe-top)); }
+    .message { bottom: calc(11.5rem + var(--safe-bottom)); font-size: 0.92rem; }
+    .prompt { bottom: calc(9.4rem + var(--safe-bottom)); max-width: 86vw; }
+    .pad-atk { font-size: 1.15rem; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .message { bottom: calc(3.6rem + var(--safe-bottom)); }
+    .prompt { bottom: calc(1rem + var(--safe-bottom)); }
+    .stealth { top: calc(7.2rem + var(--safe-top)); width: min(220px, 40vw); }
+    .overlay { padding-top: calc(3.6rem + var(--safe-top)); padding-bottom: calc(0.6rem + var(--safe-bottom)); }
+    .dialogue-card { margin-bottom: 0.4rem; }
+}
+
+/* Menu: o cartão nunca passa por baixo do cabeçalho; rola por dentro quando não cabe. */
+.overlay { max-height: none; }
+.menu-overlay { place-items: start center; }
+.menu-card { max-height: calc(100dvh - 6.2rem - var(--safe-top) - var(--safe-bottom)); }
+@media (min-height: 760px) and (min-width: 861px) {
+    .menu-overlay { place-items: center; }
 }
