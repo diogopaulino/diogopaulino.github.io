@@ -1,10 +1,17 @@
 /**
- * Capítulo 9: Sala do Tigre & Puzzle Aéreo com Teco em Babylon.js.
+ * Capítulo 9: Sala do Tigre & Puzzle Aéreo com Teco.
+ * A chave dourada da cela pende de uma viga alta. O tigre dorme; quando Dico entra, acorda e
+ * ameaça (chegar a menos de 2,3 m rende uma patada). Teco cruza a sala pelas vigas.
  */
 
-import { Level } from './Level.js';
-import { castleStoneTexture, woodTexture } from '../world/Textures.js';
-import { Tiger } from '../characters/Tiger.js?v=6';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { Tiger } from '../characters/Tiger.js?v=40';
+import { Kit, block } from '../world/Build.js?v=40';
+import { UP } from '../world/Dungeon.js?v=40';
+
+/* vigas: [x, y, z] relativos ao centro da sala — o caminho de Teco passa por cima delas */
+const BEAMS = [[-3, 2.6, -2], [0, 3.1, 1], [2.4, 3.4, -1], [4, 3.6, 2]];
 
 export class TigerRoomLevel extends Level {
     get id() {
@@ -12,117 +19,67 @@ export class TigerRoomLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        this.group = new BABYLON.TransformNode('tigerRoomGroup', scene);
-        this.group.position.set(12, 3.2, -18);
+        const g = this.game;
+        this.group = new THREE.Group();
+        this.group.position.set(12, UP, -18);
+        const kit = new Kit();
 
-        const stoneMat = new BABYLON.StandardMaterial('tigerStoneMat', scene);
-        stoneMat.diffuseTexture = castleStoneTexture(scene, 4, 4);
-
-        const woodMat = new BABYLON.StandardMaterial('tigerWoodMat', scene);
-        woodMat.diffuseTexture = woodTexture(scene, 2, 2);
-
-        // Piso
-        const floor = BABYLON.MeshBuilder.CreateBox('tigerFloor', { width: 12, height: 0.2, depth: 12 }, scene);
-        floor.position.y = -0.1;
-        floor.material = stoneMat;
-        floor.parent = this.group;
-        floor.receiveShadows = true;
-        this.game.collision.addFloor(12, -18, 12, 12, 3.2);
-
-        // 4 Paredes
-        const walls = [
-            { name: 'tWallN', w: 12, h: 4.2, d: 0.3, x: 0, y: 2, z: -6 },
-            { name: 'tWallS', w: 12, h: 4.2, d: 0.3, x: 0, y: 2, z: 6 },
-            { name: 'tWallW', w: 0.3, h: 4.2, d: 12, x: -6, y: 2, z: 0 },
-            { name: 'tWallE', w: 0.3, h: 4.2, d: 12, x: 6, y: 2, z: 0 }
-        ];
-
-        for (const w of walls) {
-            const m = BABYLON.MeshBuilder.CreateBox(w.name, { width: w.w, height: w.h, depth: w.d }, scene);
-            m.position.set(w.x, w.y, w.z);
-            m.material = stoneMat;
-            m.parent = this.group;
+        // vigas de madeira atravessando a sala (apoiadas nas paredes) e a mísula de pedra
+        for (const [x, y, z] of BEAMS) {
+            kit.put('darkwood', block(0.34, 0.3, 12.6, 0.03), x, y, 0);
+            kit.put('darkwood', block(0.7, 0.22, 2.2, 0.03), x, y + 0.02, z);
         }
-
-        this.game.collision.addWall(12, -24, 12, 0.4, 4, 3.2);
-        this.game.collision.addWall(12, -12, 12, 0.4, 4, 3.2);
-        this.game.collision.addWall(6, -18, 0.4, 12, 4, 3.2);
-        this.game.collision.addWall(18, -18, 0.4, 12, 4, 3.2);
-
-        // Vigas de madeira no alto
-        const beamCoords = [
-            [-3, 2.6, -2],
-            [0, 3.1, 1],
-            [2.4, 3.4, -1],
-            [4, 3.6, 2]
-        ];
-        for (const [x, y, z] of beamCoords) {
-            const beam = BABYLON.MeshBuilder.CreateBox('beam', { width: 0.7, height: 0.25, depth: 2.2 }, scene);
-            beam.position.set(x, y, z);
-            beam.material = woodMat;
-            beam.parent = this.group;
-        }
-
-        const ledge = BABYLON.MeshBuilder.CreateBox('ledge', { width: 1.2, height: 0.3, depth: 1.2 }, scene);
-        ledge.position.set(-4, 2.2, 3.4);
-        ledge.material = stoneMat;
-        ledge.parent = this.group;
+        kit.put('blocks', block(1.3, 0.35, 1.3, 0.05), -4, 2.2, 3.4);
+        kit.put('blocks', block(0.5, 2.2, 0.5, 0.05), -4.3, 1.1, 3.4);
+        // palha no chão e argola da corrente do tigre
+        kit.put('iron', new THREE.TorusGeometry(0.12, 0.025, 8, 16).rotateX(Math.PI / 2), 1.2, 0.03, -1.5);
+        kit.build(this.group);
 
         // Chave dourada suspensa na viga alta.
         // O arco tem 11 cm, a haste 2,8 cm e o dente sai 4 cm para a direita.
-        const keyShape = [
-            [0, 0.175],
-            [0.04, 0.155],
-            [0.055, 0.12],
-            [0.04, 0.085],
-            [0.014, 0.07],
-            [0.014, -0.09],
-            [0.042, -0.10],
-            [0.042, -0.15],
-            [0.014, -0.155],
-            [0.014, -0.175],
-            [-0.014, -0.175],
-            [-0.014, 0.07],
-            [-0.04, 0.085],
-            [-0.055, 0.12],
-            [-0.04, 0.155]
-        ].map(([x, y]) => new BABYLON.Vector3(x, y, 0));
-        this.keyMesh = BABYLON.MeshBuilder.ExtrudeShape('cellKeyGold', {
-            shape: keyShape,
-            path: [new BABYLON.Vector3(0, 0, -0.03), new BABYLON.Vector3(0, 0, 0.03)],
-            cap: BABYLON.Mesh.CAP_ALL,
-            closeShape: true,
-            sideOrientation: BABYLON.Mesh.DOUBLESIDE
-        }, scene);
-        this.keyMesh.position.set(4.6, 2.4, -4.4);
-        const goldMat = new BABYLON.StandardMaterial('goldKeyCellMat', scene);
-        goldMat.diffuseColor = new BABYLON.Color3(0.95, 0.8, 0.2);
-        goldMat.specularColor = new BABYLON.Color3(1, 1, 0.8);
-        goldMat.emissiveColor = new BABYLON.Color3(0.4, 0.3, 0.05);
-        this.keyMesh.material = goldMat;
-        this.keyMesh.parent = this.group;
+        const shape = new THREE.Shape([
+            [0, 0.175], [0.04, 0.155], [0.055, 0.12], [0.04, 0.085], [0.014, 0.07], [0.014, -0.09], [0.042, -0.10],
+            [0.042, -0.15], [0.014, -0.155], [0.014, -0.175], [-0.014, -0.175], [-0.014, 0.07], [-0.04, 0.085],
+            [-0.055, 0.12], [-0.04, 0.155]
+        ].map(([x, y]) => new THREE.Vector2(x, y)));
+        const hole = new THREE.Path();
+        hole.absarc(0, 0.12, 0.022, 0, Math.PI * 2, true);
+        shape.holes.push(hole);
+        const keyGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.018, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004, bevelSegments: 2 });
+        keyGeo.translate(0, 0, -0.009);
+        keyGeo.scale(1.6, 1.6, 1.6);
+        this.keyMesh = new THREE.Mesh(keyGeo, new THREE.MeshStandardMaterial({
+            color: 0xf2c84a, metalness: 1, roughness: 0.28, emissive: 0x6a4a08, emissiveIntensity: 0.8
+        }));
+        this.keyMesh.position.set(4.6, 2.5, -4.4);
+        this.keyMesh.castShadow = true;
+        this.keyMesh.userData.ownGeo = true;
+        this.keyMesh.visible = !g.inventory.cellKey;
+        this.group.add(this.keyMesh);
+        const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 2.2, 5), new THREE.MeshStandardMaterial({ color: 0x3a2a1a }));
+        cord.position.set(4.6, 3.85, -4.4);
+        cord.userData.ownGeo = true;
+        this.group.add(cord);
+        this.keyGlow = new THREE.PointLight(0xffd070, 1.2, 4, 2);
+        this.keyGlow.position.set(4.6, 2.5, -4.1);
+        this.keyGlow.visible = this.keyMesh.visible;
+        this.group.add(this.keyGlow);
 
-        // Tigre patrulhando
+        // Tigre
         this.tiger = new Tiger(this.group);
-        this.tiger.spawn(1.2, 0, -1.5, Math.PI);
+        this.tiger.spawn(1.2, 0, -1.5, Math.PI * 0.75);
         this.tiger.ai.setBounds(-4, 4, -4, 4);
-        this.game.tiger = this.tiger;
+        g.tiger = this.tiger;
 
-        this.addInteract({
+        this.keyItem = this.addInteract({
             object: this.keyMesh,
+            flat: true,
+            enabled: false,
             interactionLabel: 'Mandar Teco',
-            interactionDistance: 8,
+            interactionDistance: 11,
             interact: (_p, game) => this.sendTeco(game)
         });
 
-        const dim = new BABYLON.PointLight('tigerRoomLight', new BABYLON.Vector3(0, 3, 0), scene);
-        dim.diffuse = new BABYLON.Color3(1.0, 0.7, 0.4);
-        dim.intensity = 0.55;
-        dim.range = 12;
-        dim.parent = this.group;
-
-        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
         this.sent = false;
         this.greeted = false;
     }
@@ -130,10 +87,11 @@ export class TigerRoomLevel extends Level {
     sendTeco(game) {
         if (this.sent || game.inventory.cellKey) return;
         this.sent = true;
+        this.keyItem.enabled = false;
         game.dialogue.say('DICO', 'Teco… consegue alcançar aquela chave dourada nas vigas?');
 
         const roomPos = this.group.position;
-        const wp = (x, y, z) => new BABYLON.Vector3(roomPos.x + x, roomPos.y + y, roomPos.z + z);
+        const wp = (x, y, z) => new THREE.Vector3(roomPos.x + x, roomPos.y + y, roomPos.z + z);
 
         const path = [
             wp(-4, 2.4, 3.4),
@@ -141,7 +99,7 @@ export class TigerRoomLevel extends Level {
             wp(0, 3.3, 1),
             wp(2.4, 3.6, -1),
             wp(4.2, 3.8, 2),
-            wp(4.6, 2.6, -4.2)
+            wp(4.6, 2.9, -4.2)
         ];
 
         game.teco.ai.command(path, {
@@ -149,31 +107,39 @@ export class TigerRoomLevel extends Level {
             scared: true,
             celebrate: true,
             onComplete: () => {
-                this.keyMesh.setEnabled(false);
+                this.keyMesh.visible = false;
+                this.keyGlow.visible = false;
                 game.audio.play('pickup');
                 game.dialogue.say('TECO', 'Consegui!');
                 game.dialogue.say('DICO', 'Muito bem!');
                 game.story.notify('cell_key');
-                const back = new BABYLON.Vector3(game.player.position.x, game.player.position.y + 0.2, game.player.position.z);
-                game.teco.ai.command([back], { onComplete: () => {} });
+                const p = game.player.position;
+                game.teco.ai.command([wp(4.2, 3.8, 2), wp(0, 3.3, 1), wp(-4, 2.4, 3.4), new THREE.Vector3(p.x, p.y + 0.1, p.z)], { climb: true, onComplete: () => {} });
             }
         });
     }
 
     update(dt) {
-        this.tiger.update(dt, this.game);
-        const p = this.game.player.position;
+        const g = this.game;
+        this.tiger.update(dt, g);
+        const p = g.player.position;
         const room = this.group.position;
-        const inside = Math.abs(p.x - room.x) < 5.5 && Math.abs(p.z - room.z) < 5.5;
+        const inside = Math.abs(p.x - room.x) < 6.3 && Math.abs(p.z - room.z) < 6 && p.y > 2.5;
 
         if (inside && !this.greeted) {
             this.greeted = true;
-            this.game.audio.setTheme('tiger');
-            this.game.dialogue.say('TIGRE', 'Grrrrrr!');
-            this.game.audio.play('growl');
+            g.audio.setTheme('tiger');
+            g.dialogue.say('TIGRE', 'Grrrrrr!');
+            g.audio.play('growl');
             this.tiger.ai.state = 'THREATEN';
-            this.game.checkpoints.save('tiger_room', this.game.story._saveBlob());
+            this.tiger.ai.growlT = 1.5;
+            this.tiger.ai.roarT = 5;
+            if (!g.inventory.cellKey) {
+                g.hud.showToast('Fique longe do tigre. Olhe para a chave e mande Teco.', 6);
+                g.checkpoints.save('tiger_room', g.story._saveBlob());
+            }
         }
+        this.keyItem.enabled = inside && !this.sent && !g.inventory.cellKey;
 
         this.keyMesh.rotation.y += dt * 1.2;
     }

@@ -1,48 +1,33 @@
 /**
- * Nina — laço principal: renderer, pulo, amoras, fila de filhotes e a festa.
+ * Nina — laço principal: palco, pulo, amoras, fila de filhotes e a festa.
+ *
+ * Palco: gfx/stage (céu físico, sol com sombra, pós-processamento) no preset
+ * 'dia-claro' às 8h40 — manhã de depois da chuva, sombras compridas, raios de
+ * sol e arco-íris. A sombra do sol é centrada em Nina (raio 30 m) para ficar
+ * nítida na grama.
+ *
+ * Profundidade de campo (tiers médio/alto): foco na distância câmera → Nina,
+ * faixa nítida de 16 m; desfoca só o fundo distante e o capim colado na lente.
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
-import { Valley } from './world.js?v=8';
-import { Player } from './player.js?v=8';
-import { Effects } from './effects.js?v=8';
-import { Input } from './input.js';
-import { Hud } from './hud.js';
-import { NinaAudio } from './audio.js';
-import { updateFriend } from './animals.js?v=8';
+import { createStage } from '../../shared/gfx/stage.js';
+import { pickTier } from '../../shared/gfx/core.js';
+import { Valley } from './world.js?v=20';
+import { Player } from './player.js?v=20';
+import { Effects } from './effects.js?v=20';
+import { Input } from './input.js?v=20';
+import { Hud } from './hud.js?v=20';
+import { NinaAudio } from './audio.js?v=20';
+import { updateFriend } from './animals.js?v=20';
 import {
     TOTAL_FRIENDS, BEFRIEND_R, HOME_R, BERRY_R, HOME
-} from './config.js';
+} from './config.js?v=20';
 
 const STORAGE = 'nina-settings';
-
-const QUALITY = {
-    low: { pr: 1, antialias: false, bloom: false, ssao: false, shadows: false, clouds: 5, butterflies: 6, flowers: 28, sparks: 12, confetti: 18 },
-    medium: { pr: 1.35, antialias: true, bloom: true, ssao: false, shadows: true, clouds: 10, butterflies: 14, flowers: 70, sparks: 28, confetti: 40 },
-    high: { pr: 1.75, antialias: true, bloom: true, ssao: true, shadows: true, clouds: 16, butterflies: 22, flowers: 110, sparks: 36, confetti: 56 }
-};
-
-function detectSoftwareGL(renderer) {
-    try {
-        const gl = renderer.getContext();
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        if (!info) return false;
-        const name = gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '';
-        return /swiftshader|llvmpipe|softpipe|microsoft basic render/i.test(name);
-    } catch {
-        return false;
-    }
-}
-
-function pickQuality(mode, renderer) {
-    if (detectSoftwareGL(renderer)) return QUALITY.low;
-    if (QUALITY[mode]) return QUALITY[mode];
-    const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
-    if (mobile) return QUALITY.low;
-    if (devicePixelRatio >= 2 && innerWidth >= 1400) return QUALITY.high;
-    return QUALITY.medium;
-}
+const DEBUG = new URLSearchParams(location.search).has('debug');
+/** Fração das lâminas de grama por tier quando a qualidade muda com o jogo aberto. */
+const GRASS_K = { low: 0.45, medium: 0.75, high: 1 };
 
 class Nina {
     constructor() {
@@ -55,6 +40,11 @@ class Nina {
         this.won = false;
         this.party = 0;
         this.settings = this.loadSettings();
+        this.tramplers = Array.from({ length: 8 }, () => ({ x: 0, y: -999, z: 0, radius: 0 }));
+        this.focus = new THREE.Vector3();
+        this.tmp = new THREE.Vector3();
+        this.friendCtx = { valley: null, nina: null, ninaHead: null, ninaYaw: 0, trail: null, index: 0, t: 0, party: false };
+        this.chain = [];
         this.bindUi();
         this.boot();
     }
@@ -74,7 +64,9 @@ class Nina {
     }
 
     saveSettings() {
-        localStorage.setItem(STORAGE, JSON.stringify(this.settings));
+        try {
+            localStorage.setItem(STORAGE, JSON.stringify(this.settings));
+        } catch { /* modo privado: segue sem salvar */ }
     }
 
     bindUi() {
@@ -85,7 +77,10 @@ class Nina {
         this.hud.setBest(this.settings.best);
         this.hud.setSound(!this.settings.muted);
 
-        document.getElementById('startButton').addEventListener('click', () => this.start());
+        // o vale monta de forma assíncrona: ignora o clique enquanto ainda está em 'boot'
+        document.getElementById('startButton').addEventListener('click', () => {
+            if (this.state !== 'boot') this.start();
+        });
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.enterMenu());
         document.getElementById('replayButton').addEventListener('click', () => this.start());
@@ -98,6 +93,11 @@ class Nina {
         h.qualitySelect.addEventListener('change', () => {
             this.settings.quality = h.qualitySelect.value;
             this.saveSettings();
+            // palco e grama mudam na hora; relevo e árvores usam o novo nível na próxima visita
+            if (this.stage) {
+                this.stage.setTier(pickTier(this.settings.quality));
+                this.valley?.grass.setDensity(GRASS_K[this.stage.tier] ?? 1);
+            }
         });
         h.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(h.volumeSlider.value);
@@ -119,126 +119,98 @@ class Nina {
             run: document.getElementById('btnRun')
         });
 
-        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
-        else window.addEventListener('resize', () => this.resize());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'play') this.pause();
         });
     }
 
     async boot() {
-        this.hud.setLoading(0.08, 'Abrindo o vale…');
+        this.hud.setLoading(0.06, 'Abrindo o vale…');
+        // progresso real: texturas, HDR e modelos passam por este LoadingManager
+        const manager = new THREE.LoadingManager();
+        let phase = 0.1;
+        manager.onProgress = (url, loaded, total) => {
+            this.hud.setLoading(Math.min(0.92, phase + (loaded / Math.max(total, 1)) * (0.92 - phase)));
+        };
+        let stage = null;
         try {
-            await this.setupRenderer();
+            stage = createStage({
+                canvas: this.canvas,
+                tier: (DEBUG && new URLSearchParams(location.search).get('tier')) || this.settings.quality,
+                preset: 'dia-claro',
+                time: 8.65,
+                fov: 50,
+                near: 0.12,
+                shadowRadius: 30,
+                loadingManager: manager,
+                post: {
+                    bloom: 0.1, saturation: 1.12, contrast: 1.05, vignette: 0.24, rays: 0.6,
+                    gain: new THREE.Color(1.05, 1.0, 0.93), lift: new THREE.Color(0.006, 0.004, 0.0),
+                    fogDensity: 0.0022, haze: 0.00022
+                }
+            });
         } catch (err) {
             this.hud.fail(err?.message || 'Falha ao iniciar o WebGL.');
             return;
         }
+        if (!stage) {
+            this.hud.fail('Este laboratório precisa de WebGL 2. Tente um navegador atualizado ou reative a aceleração de hardware.');
+            return;
+        }
+        this.stage = stage;
+        this.scene = stage.scene;
+        this.camera = stage.camera;
+        stage.sky.setClouds?.(0.42);
+        stage.onTier((tier) => this.valley?.grass.setDensity(GRASS_K[tier] ?? 1));
 
-        this.hud.setLoading(0.38, 'Plantando o gramado…');
-        this.valley = new Valley(this.scene, this.quality);
+        try {
+            this.hud.setLoading(0.1, 'Plantando o gramado…');
+            await this.nextFrame();
+            this.valley = new Valley(stage);
+            this.friendCtx.valley = this.valley;
 
-        this.hud.setLoading(0.62, 'Chamando Nina…');
-        this.player = new Player(this.scene, this.camera);
-        this.effects = new Effects(this.scene, this.quality);
+            this.hud.setLoading(0.2, 'Chamando Nina…');
+            await this.nextFrame();
+            this.player = new Player(this.scene, this.camera, stage.tier === 'low' ? 1 : 2);
+            this.player.reset(this.valley);
+            this.friendCtx.trail = this.player.trailAt;
+            this.effects = new Effects(this.scene);
+            phase = 0.24;
 
-        this.hud.setLoading(0.84, 'Acendendo o sol…');
-        await this.setupBloom();
+            this.hud.setLoading(0.24, 'Acordando os filhotes…');
+            // um asset que não chega não trava o jogo: segue depois de 25 s com o que houver
+            await Promise.race([this.valley.ready, new Promise((r) => setTimeout(r, 25000))]);
 
-        this.renderer.compile(this.scene, this.camera);
-        this.render();
+            this.hud.setLoading(0.94, 'Acendendo o sol…');
+            this.menuCamera(0);
+            // os impostores das árvores são assados um por quadro dentro de forest.update
+            let baked = false;
+            this.valley.forest.ready.then(() => { baked = true; });
+            for (let i = 0; i < 240 && !baked; i++) {
+                this.valley.forest.update(this.camera);
+                await this.nextFrame();
+            }
+            stage.focus = this.focus.set(HOME.x, 0, HOME.z);
+            this.step(1 / 60, false);
+            await stage.warmup();
+            stage.render(1 / 60);
+        } catch (err) {
+            console.error(err);
+            this.hud.fail('O vale não conseguiu carregar. Recarregue a página para tentar de novo.');
+            return;
+        }
+
         this.hud.setLoading(1, 'Pronto');
+        if (DEBUG) this.exposeDebug();
         setTimeout(() => {
             this.hud.hideLoading();
             this.enterMenu();
-            this.last = performance.now();
-            const loop = (now) => this.frame(now);
-            if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, loop);
-            else this.renderer.setAnimationLoop(loop);
-        }, 280);
+            stage.start((dt) => this.frame(dt));
+        }, 200);
     }
 
-    async setupRenderer() {
-        this.renderer = new THREE.WebGLRenderer({
-            canvas: this.canvas,
-            antialias: true,
-            powerPreference: 'high-performance',
-            stencil: false
-        });
-        if (!this.renderer.getContext()) {
-            throw new Error('WebGL indisponível neste navegador.');
-        }
-        this.quality = pickQuality(this.settings.quality, this.renderer);
-        this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.quality.pr));
-        this.renderer.setSize(innerWidth, innerHeight);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.08;
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: this.quality.shadows });
-
-        this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.48 });
-        this.camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.2, 900);
-
-        const hemi = new THREE.HemisphereLight(0xffe0c0, 0x6fd15a, 0.9);
-        this.scene.add(hemi);
-
-        this.sun = new THREE.DirectionalLight(0xfff0c8, 1.28);
-        this.sun.position.set(24, 32, 16);
-        this.sun.castShadow = this.quality.shadows;
-        if (this.quality.shadows) {
-            this.sun.shadow.mapSize.set(2048, 2048);
-            this.sun.shadow.camera.near = 4;
-            this.sun.shadow.camera.far = 90;
-            this.sun.shadow.camera.left = -42;
-            this.sun.shadow.camera.right = 42;
-            this.sun.shadow.camera.top = 42;
-            this.sun.shadow.camera.bottom = -42;
-            this.sun.shadow.bias = -0.0004;
-        }
-        this.scene.add(this.sun);
-        this.scene.add(new THREE.AmbientLight(0xffd8c4, 0.32));
-        const fill = new THREE.DirectionalLight(0xa8d4ff, 0.38);
-        fill.position.set(-20, 14, -14);
-        this.scene.add(fill);
-    }
-
-    async setupBloom() {
-        if (!this.quality.bloom && !this.quality.ssao) return;
-        try {
-            const [{ EffectComposer }, { RenderPass }, { OutputPass }] = await Promise.all([
-                import('three/addons/postprocessing/EffectComposer.js'),
-                import('three/addons/postprocessing/RenderPass.js'),
-                import('three/addons/postprocessing/OutputPass.js')
-            ]);
-            const composer = new EffectComposer(this.renderer);
-            composer.setPixelRatio(this.renderer.getPixelRatio());
-            composer.setSize(innerWidth, innerHeight);
-            
-            composer.addPass(new RenderPass(this.scene, this.camera));
-
-            if (this.quality.ssao) {
-                const { SSAOPass } = await import('three/addons/postprocessing/SSAOPass.js');
-                const ssaoPass = new SSAOPass(this.scene, this.camera, innerWidth, innerHeight);
-                ssaoPass.kernelRadius = 0.8;
-                ssaoPass.minDistance = 0.001;
-                ssaoPass.maxDistance = 0.05;
-                composer.addPass(ssaoPass);
-            }
-
-            if (this.quality.bloom) {
-                const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
-                const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.5, 0.78);
-                composer.addPass(bloomPass);
-            }
-
-            composer.addPass(new OutputPass());
-            this.composer = composer;
-        } catch {
-            this.composer = null;
-        }
+    nextFrame() {
+        return new Promise((r) => requestAnimationFrame(() => r()));
     }
 
     start() {
@@ -248,8 +220,10 @@ class Nina {
         this.playTime = 0;
         this.won = false;
         this.party = 0;
-        this.player.reset();
+        clearTimeout(this.winTimer);
         this.valley.reset();
+        this.player.reset(this.valley);
+        this.effects.clear();
         this.syncHud();
         this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches);
         this.hud.showPlay();
@@ -259,8 +233,10 @@ class Nina {
     }
 
     enterMenu() {
+        clearTimeout(this.winTimer);
         this.state = 'menu';
         document.body.dataset.state = 'menu';
+        this.party = 0;
         this.hud.showMenu();
     }
 
@@ -274,7 +250,6 @@ class Nina {
         if (this.state !== 'pause') return;
         this.state = 'play';
         this.hud.hidePause();
-        this.last = performance.now();
     }
 
     toggleMute() {
@@ -284,12 +259,19 @@ class Nina {
         this.saveSettings();
     }
 
+    /** Seguidores na ordem em que entraram na fila (lista reutilizada). */
     followers() {
-        return this.valley.friends.filter((f) => f.state === 'follow');
+        const list = this.chain;
+        list.length = 0;
+        for (const f of this.valley.friends) if (f.state === 'follow') list.push(f);
+        list.sort((a, b) => a.joined - b.joined);
+        return list;
     }
 
     homeCount() {
-        return this.valley.friends.filter((f) => f.state === 'home').length;
+        let n = 0;
+        for (const f of this.valley.friends) if (f.state === 'home') n++;
+        return n;
     }
 
     nearestLost() {
@@ -304,6 +286,7 @@ class Nina {
                 best = f;
             }
         }
+        this.nearestLostD = bestD;
         return best;
     }
 
@@ -320,12 +303,11 @@ class Nina {
     collectBerries() {
         const p = this.player.pos;
         for (const b of this.valley.berries) {
-            if (b.userData.taken) continue;
-            if (p.distanceTo(b.position) < BERRY_R) {
-                b.userData.taken = true;
-                b.visible = false;
+            if (b.taken) continue;
+            if (Math.hypot(p.x - b.x, p.z - b.z) < BERRY_R && p.y - b.y < 2.2) {
+                this.valley.takeBerry(b);
                 this.player.berries++;
-                this.effects.burst(b.position, 0xff6eb4);
+                this.effects.burst(this.tmp.set(b.x, b.y + 0.7, b.z), 0xd47bff, 14);
                 this.audio.berry();
                 this.hud.say(`Amora! Você tem ${this.player.berries}.`);
                 this.syncHud();
@@ -339,7 +321,7 @@ class Nina {
         let nearestD = BEFRIEND_R;
         for (const f of this.valley.friends) {
             if (f.state !== 'lost') continue;
-            const d = p.distanceTo(f.mesh.position);
+            const d = Math.hypot(p.x - f.mesh.position.x, p.z - f.mesh.position.z);
             if (d < nearestD) {
                 nearestD = d;
                 nearest = f;
@@ -354,8 +336,10 @@ class Nina {
             }
             this.player.berries--;
             nearest.state = 'follow';
-            this.effects.heart(nearest.mesh.position);
-            this.effects.burst(nearest.mesh.position, 0xffe066);
+            nearest.joined = performance.now();
+            nearest.hop = 1;
+            this.effects.heart(nearest.mesh.position, 3);
+            this.effects.burst(nearest.mesh.position, 0xffe066, 12);
             this.audio.friend();
             this.hud.say(`${nearest.name} veio com você! Leve ao ninho.`);
             this.syncHud();
@@ -372,13 +356,15 @@ class Nina {
     }
 
     dropOff() {
-        const waiting = this.followers();
+        const waiting = this.followers().slice();
         const already = this.homeCount();
         waiting.forEach((f, i) => {
             f.state = 'home';
             f.homeSlot = already + i;
+            f.seated = false;
+            this.effects.heart(f.mesh.position, 1);
         });
-        this.effects.burst(new THREE.Vector3(HOME.x, this.valley.groundHeight(HOME.x, HOME.z) + 1, HOME.z), 0xffe066);
+        this.effects.burst(this.tmp.set(HOME.x, this.valley.groundHeight(HOME.x, HOME.z) + 0.8, HOME.z), 0xffe066, 18);
         this.audio.home();
         const n = this.homeCount();
         this.hud.say(n >= TOTAL_FRIENDS ? 'Todos no piquenique!' : `${waiting.length === 1 ? waiting[0].name + ' chegou' : waiting.length + ' filhotes chegaram'} ao ninho.`);
@@ -389,8 +375,7 @@ class Nina {
     win() {
         this.won = true;
         this.party = 1;
-        const origin = new THREE.Vector3(HOME.x, this.valley.groundHeight(HOME.x, HOME.z) + 1.4, HOME.z);
-        this.effects.party(origin);
+        this.effects.party(this.tmp.set(HOME.x, this.valley.groundHeight(HOME.x, HOME.z) + 1.2, HOME.z));
         this.audio.victory();
         const seconds = this.playTime;
         const stamp = `${Math.floor(seconds)}s`;
@@ -399,7 +384,8 @@ class Nina {
             this.saveSettings();
             this.hud.setBest(stamp);
         }
-        setTimeout(() => {
+        this.winTimer = setTimeout(() => {
+            if (!this.won) return;
             this.state = 'victory';
             this.hud.showVictory({
                 home: TOTAL_FRIENDS,
@@ -409,53 +395,134 @@ class Nina {
         }, 1800);
     }
 
-    frame(now) {
-        const dt = Math.min(0.033, Math.max(0, (now - this.last) / 1000)) || 0.016;
-        this.last = now;
+    /** Câmera do menu e da vitória: órbita baixa em volta do ninho. */
+    menuCamera(dt, radius = 12.5, height = 2.6, speed = 0.05) {
+        this.orbit = (this.orbit ?? 2.2) + dt * speed;
+        const cam = this.camera;
+        const x = HOME.x + Math.cos(this.orbit) * radius;
+        const z = HOME.z + Math.sin(this.orbit) * radius;
+        const g = this.valley.groundHeight(x, z);
+        cam.position.set(x, Math.max(g + 1.1, this.valley.groundHeight(HOME.x, HOME.z) + height + Math.sin(this.orbit * 0.7) * 0.5), z);
+        cam.lookAt(HOME.x, this.valley.groundHeight(HOME.x, HOME.z) + 0.7, HOME.z);
+    }
 
+    /** Avança o mundo um passo. `playing` = Nina obedece aos controles. */
+    step(dt, playing) {
+        const valley = this.valley;
+        const player = this.player;
+        const ctx = this.friendCtx;
         const look = this.input.sample();
-        const playing = this.state === 'play';
-        const t = now * 0.001;
 
         if (playing) {
             this.playTime += dt;
-            this.player.update(dt, this.input, look, this.valley);
+            const lost = this.nearestLost();
+            player.lookAt = lost && this.nearestLostD < 12 ? this.tmp.copy(lost.mesh.position).setY(lost.mesh.position.y + lost.creature.height * 0.7) : null;
+            player.update(dt, this.input, look, valley);
             if (this.input.consumeJump()) this.tryAction();
             this.collectBerries();
-
-            const chain = this.followers();
-            const leader = { x: this.player.pos.x, z: this.player.pos.z, yaw: this.player.yaw };
-            for (const friend of this.valley.friends) {
-                const idx = chain.indexOf(friend);
-                updateFriend(friend, dt, this.valley, leader, Math.max(0, idx), t, this.party > 0.5);
-            }
         } else {
-            const orbit = now * 0.0001;
-            this.camera.position.set(Math.cos(orbit) * 28, 12 + Math.sin(orbit * 0.7) * 2.4, Math.sin(orbit) * 28);
-            this.camera.lookAt(0, 1.2, 2);
-            this.input.look.dx = this.input.look.dy = 0;
-            for (const friend of this.valley.friends) {
-                updateFriend(friend, dt, this.valley, null, 0, t, false);
-            }
+            this.input.consumeJump();
+            player.idle(dt, valley);
+            if (this.state === 'victory' || this.won) this.menuCamera(dt, 7.5, 2.2, 0.12);
+            else this.menuCamera(dt);
         }
 
-        this.valley.update(dt, this.party, playing ? this.followers().length : 0);
-        this.effects.update(dt);
-        this.render();
+        const chain = playing || this.won ? this.followers() : this.chain;
+        if (!playing && !this.won) chain.length = 0;
+        ctx.nina = playing || this.won ? player.pos : null;
+        ctx.ninaHead = player.head;
+        ctx.ninaYaw = player.yaw;
+        ctx.t = valley.clock;
+        ctx.party = this.party > 0.5;
+        const tr = this.tramplers;
+        tr[0].x = player.pos.x;
+        tr[0].y = player.pos.y;
+        tr[0].z = player.pos.z;
+        tr[0].radius = player.trample;
+        let i = 1;
+        for (const friend of valley.friends) {
+            ctx.index = Math.max(0, chain.indexOf(friend));
+            updateFriend(friend, dt, ctx);
+            const t = tr[i++];
+            t.x = friend.mesh.position.x;
+            t.y = friend.mesh.position.y;
+            t.z = friend.mesh.position.z;
+            t.radius = friend.trample;
+        }
+
+        // foco da sombra e da profundidade de campo
+        const cam = this.camera;
+        if (playing) this.focus.copy(player.pos);
+        else this.focus.set(HOME.x, 0, HOME.z);
+        const params = this.stage.pipeline.params;
+        params.dofFocus = cam.position.distanceTo(playing ? player.pos : this.tmp.set(HOME.x, cam.position.y, HOME.z));
+        params.dofRange = 16;
+        params.dofMax = 0.55;
+
+        const pxScale = this.stage.renderer.domElement.height / (2 * Math.tan(cam.fov * Math.PI / 360));
+        valley.update(dt, cam, this.party, playing ? chain.length : 0, tr, pxScale);
+        this.effects.update(dt, pxScale);
     }
 
-    render() {
-        if (this.composer) this.composer.render();
-        else this.renderer.render(this.scene, this.camera);
+    frame(dt) {
+        if (this.state === 'pause') return;
+        this.step(Math.min(dt, 0.04), this.state === 'play');
     }
 
-    resize() {
-        const w = innerWidth;
-        const h = innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
-        this.composer?.setSize(w, h);
+    /** Ganchos de teste/captura (só com ?debug=1). */
+    exposeDebug() {
+        const game = this;
+        window.__lab = {
+            game,
+            stage: this.stage,
+            start: () => game.start(),
+            tp(x, z, yaw) {
+                const p = game.player;
+                p.pos.set(x, game.valley.groundHeight(x, z), z);
+                p.vel.set(0, 0, 0);
+                if (yaw !== undefined) p.yaw = yaw;
+                p.trailCount = 0;
+                p.lookTarget.copy(p.pos).y += 0.62;
+                game.camera.position.setFromSpherical(p.spherical).add(p.lookTarget);
+            },
+            cam(theta, phi, radius) {
+                const p = game.player;
+                if (theta !== undefined) p.desired.theta = p.spherical.theta = theta;
+                if (phi !== undefined) p.desired.phi = p.spherical.phi = phi;
+                if (radius !== undefined) p.desired.radius = p.spherical.radius = radius;
+                game.camera.position.setFromSpherical(p.spherical).add(p.lookTarget);
+            },
+            give(n = 14) {
+                game.player.berries += n;
+                game.syncHud();
+            },
+            befriend(id) {
+                for (const f of game.valley.friends) {
+                    if (f.state === 'lost' && (!id || f.id === id)) {
+                        f.state = 'follow';
+                        f.joined = performance.now();
+                        f.hop = 1;
+                        game.effects.heart(f.mesh.position, 3);
+                    }
+                }
+                game.syncHud();
+            },
+            friend: (id) => game.valley.friends.find((f) => f.id === id),
+            action: () => game.tryAction(),
+            stats: () => ({ ...game.stage.stats(), state: game.state, home: game.homeCount(), berries: game.player.berries, grass: game.valley.grass.stats(game.camera), forest: game.valley.forest.stats() }),
+            fps(seconds = 2) {
+                return new Promise((resolve) => {
+                    let n = 0;
+                    const t0 = performance.now();
+                    const tick = () => {
+                        n++;
+                        if (performance.now() - t0 < seconds * 1000) requestAnimationFrame(tick);
+                        else resolve(Math.round(n / ((performance.now() - t0) / 1000)));
+                    };
+                    requestAnimationFrame(tick);
+                });
+            }
+        };
     }
 }
 

@@ -1319,3 +1319,21 @@ input[type="range"]::-moz-range-thumb {
     max-width: 100%;
   }
 }
+
+/* --- paisagem curta (celular deitado): HUD numa linha só ---
+   Abaixo de 900px a barra "Rumo ao castelo" ia para a segunda linha e, com a
+   tela deitada, parava no meio do quadro, em cima do rio. Aqui os três painéis
+   voltam para uma linha compacta e som/pausa descem para baixo da pontuação. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "hull voyage score";
+        gap: 0.5rem;
+    }
+    .panel { padding: 0.4rem 0.6rem; border-radius: 12px; }
+    .hull-panel { min-width: 0; }
+    .voyage-panel { max-width: none; justify-self: stretch; }
+    .pip { width: 15px; height: 15px; }
+    .score-row strong { font-size: 1rem; }
+    .hud-actions { top: calc(6.1rem + var(--safe-top)); }
+}

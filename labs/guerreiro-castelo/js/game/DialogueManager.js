@@ -1,5 +1,5 @@
 /**
- * Gerenciador de diálogos contextuais discretos na parte inferior da tela em Babylon.js.
+ * Gerenciador de diálogos contextuais discretos na parte inferior da tela.
  */
 
 export class DialogueManager {
@@ -42,6 +42,15 @@ export class DialogueManager {
             this.onDone = null;
             cb?.();
         }
+    }
+
+    /** Esvazia a fila (troca de fase, reinício de checkpoint). */
+    clear() {
+        this.queue.length = 0;
+        this.current = null;
+        this.onDone = null;
+        this.blocking = false;
+        this.game.hud?.setDialogue(null);
     }
 
     advance() {

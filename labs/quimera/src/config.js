@@ -1,25 +1,10 @@
 /**
- * Quimera — catálogo de kits e âncoras do boneco.
+ * Quimera — catálogo de kits.
  *
  * Combinações = KITS.length ^ 3 (cabeça × corpo × acessório).
- * As âncoras abaixo são o contrato entre as três peças: qualquer
- * cabeça encaixa no pescoço, qualquer acessório no mesmo grip.
+ * `skin`/`iris` vão para o rosto (eixo CABEÇA); `colors` tinge as peças modeladas
+ * de cada eixo (ver heads.js, bodies.js, accessories.js).
  */
-
-export const LAYOUT = {
-    // pés em y = 0; estilo vinil chibi (cabeça grande, tronco curto)
-    HEAD_R: 0.30,
-    HEAD_Y: 1.50,
-    NECK_Y: 1.20,
-    SHOULDER_Y: 1.06,
-    SHOULDER_X: 0.36,
-    CHEST_Y: 0.84,
-    HIP_Y: 0.50,
-    GRIP: [0.52, 0.70, 0.16],
-    SHOULDER_L: [-0.38, 1.12, 0.12],
-    BACK: [0, 0.92, -0.28],
-    HEAD_TOP: [0, 0.34, 0]
-};
 
 export const STORAGE_KEY = 'quimera-mix-v1';
 

@@ -8,8 +8,11 @@
  * - IV: no castelo, colete ouro, galinha e harpa sem acordar o gigante.
  * - V: desça, pegue o machado e corte o pé (E várias vezes) antes que ele alcance.
  *
- * Física: gravidade 22, pulo 7.4, coyote 0.12 s. Subida: cilindro do caule
- * (W/S sobe/desce, A/D gira). Folhas são plataformas circulares.
+ * Física: gravidade 22, pulo 7.4, coyote 0.12 s. Subida: João abraça o feixe do
+ * caule (W/S sobe/desce, A/D gira em volta). Folhas são plataformas circulares.
+ *
+ * Atmosfera: cada capítulo escolhe um preset de `gfx/stage.js` (`sky.preset`), a
+ * hora solar e a cobertura de nuvens; o palco deriva sol, névoa, exposição e grade.
  */
 
 export const STORAGE_KEY = 'joao-pe-de-feijao-v1';
@@ -41,41 +44,22 @@ export const CAMERA = {
     lookY: 1.12
 };
 
+/**
+ * Carga por tier (o tier do palco decide sombra, pós e pixelRatio; aqui fica o
+ * que é do jogo): fração de árvores, vizinhos da feira, luzes pontuais e detalhe
+ * dos personagens secundários.
+ */
 export const QUALITY = {
-    low: {
-        id: 'low',
-        pixelRatio: 1,
-        antialias: false,
-        shadows: false,
-        shadowSize: 512,
-        trees: 0.4,
-        grass: 0.3,
-        particles: 0.35,
-        lights: false
-    },
-    medium: {
-        id: 'medium',
-        pixelRatio: 1.35,
-        antialias: true,
-        shadows: true,
-        shadowSize: 1024,
-        trees: 0.75,
-        grass: 0.7,
-        particles: 0.75,
-        lights: true
-    },
-    high: {
-        id: 'high',
-        pixelRatio: 1.75,
-        antialias: true,
-        shadows: true,
-        shadowSize: 2048,
-        trees: 1,
-        grass: 1,
-        particles: 1,
-        lights: true
-    }
+    low: { id: 'low', trees: 0.45, scatter: 0.3, villagers: 2, lights: 2, npcDetail: 0, heroDetail: 1, clouds: 48 },
+    medium: { id: 'medium', trees: 0.75, scatter: 0.7, villagers: 4, lights: 4, npcDetail: 1, heroDetail: 2, clouds: 80 },
+    high: { id: 'high', trees: 1, scatter: 1, villagers: 5, lights: 6, npcDetail: 1, heroDetail: 2, clouds: 112 }
 };
+
+/** Pé de feijão: mesma altura lógica do jogo original (topo = 72 m). */
+export const STALK = { height: 74, radius: 1.5, top: 72, x: 0.5, z: 8.5 };
+
+/** Escala do gigante: ogro de 3,2 m × 3 = 9,6 m (≈ 6× um adulto). */
+export const GIANT_SCALE = 3;
 
 export const TREASURES = [
     { id: 'gold', label: 'Saco de ouro', icon: '◉' },
@@ -93,13 +77,7 @@ export const CHAPTERS = [
         objective: 'Fale com a mãe e leve a Mimosa até o caminho da feira.',
         hint: 'A vaca pastando ao lado da cerca segue quem a chama.',
         music: 'cottage',
-        fog: { color: 0xb7d4a0, near: 28, far: 110 },
-        clear: 0x87c4e8,
-        ambient: 0xffe8c4,
-        ambientIntensity: 0.58,
-        exposure: 1.28,
-        sun: { color: 0xffe0a8, intensity: 2.4, dir: [-0.4, 0.85, 0.28] },
-        hemi: { sky: 0xd8f0ff, ground: 0x5a8a38, intensity: 1.05 }
+        sky: { preset: 'dia-claro', hour: 9.6, clouds: 0.92, clearTo: 0.36 }
     },
     {
         id: 'fair',
@@ -110,13 +88,7 @@ export const CHAPTERS = [
         objective: 'Troque a Mimosa pelos feijões mágicos do mercador.',
         hint: 'O mercador espera no fim da praça, sob o toldo violeta.',
         music: 'fair',
-        fog: { color: 0xd4c4a0, near: 22, far: 95 },
-        clear: 0xf0c878,
-        ambient: 0xffd8a0,
-        ambientIntensity: 0.62,
-        exposure: 1.22,
-        sun: { color: 0xffc878, intensity: 2.1, dir: [0.55, 0.62, 0.2] },
-        hemi: { sky: 0xffe8c0, ground: 0x7a6a40, intensity: 0.9 }
+        sky: { preset: 'dia-claro', hour: 15.4, clouds: 0.3 }
     },
     {
         id: 'night',
@@ -127,13 +99,7 @@ export const CHAPTERS = [
         objective: 'Fale com a mãe, veja o pé crescer e suba até as nuvens.',
         hint: 'Aperte-se ao caule para trepar. Pule nas folhas se preferir.',
         music: 'night',
-        fog: { color: 0x1a2840, near: 12, far: 80 },
-        clear: 0x0c1828,
-        ambient: 0x3a5080,
-        ambientIntensity: 0.42,
-        exposure: 0.95,
-        sun: { color: 0xa8c8ff, intensity: 0.45, dir: [0.15, 0.9, -0.35] },
-        hemi: { sky: 0x1c3058, ground: 0x0a180c, intensity: 0.4 }
+        sky: { preset: 'noite-lua', hour: 22.4, clouds: 0.22 }
     },
     {
         id: 'castle',
@@ -144,13 +110,7 @@ export const CHAPTERS = [
         objective: 'Roube o ouro, a galinha e a harpa sem acordar o gigante.',
         hint: 'Ande sem correr. A harpa canta alto — deixe-a por último.',
         music: 'castle',
-        fog: { color: 0xc8d8e8, near: 18, far: 90 },
-        clear: 0xb8d0e8,
-        ambient: 0xe8f0ff,
-        ambientIntensity: 0.55,
-        exposure: 1.12,
-        sun: { color: 0xfff0d0, intensity: 1.65, dir: [0.3, 0.75, 0.5] },
-        hemi: { sky: 0xf0f8ff, ground: 0x8aa0b8, intensity: 0.85 }
+        sky: { preset: 'entardecer', hour: 16.35, clouds: 0.18 }
     },
     {
         id: 'escape',
@@ -161,12 +121,6 @@ export const CHAPTERS = [
         objective: 'Desça, pegue o machado e corte o pé de feijão.',
         hint: 'Desça pelo caule. Embaixo, E no machado e depois no tronco.',
         music: 'escape',
-        fog: { color: 0xd08050, near: 20, far: 100 },
-        clear: 0xe89858,
-        ambient: 0xffc090,
-        ambientIntensity: 0.55,
-        exposure: 1.18,
-        sun: { color: 0xff8a3a, intensity: 1.85, dir: [-0.7, 0.4, 0.25] },
-        hemi: { sky: 0xffc090, ground: 0x4a3020, intensity: 0.7 }
+        sky: { preset: 'entardecer', hour: 17.55, clouds: 0.42 }
     }
 ];

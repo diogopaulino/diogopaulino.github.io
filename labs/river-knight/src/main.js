@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
+import { createStage } from '../../shared/gfx/stage.js';
 
 import {
     QUALITY,
@@ -16,23 +16,31 @@ import {
     LANDMARKS,
     STORAGE_KEY,
     BOAT
-} from './config.js?v=14';
-import { createSky, createSkyUniforms, sampleSkyPalette, applySkyPalette } from './sky.js?v=14';
-import { createWater, waterHeight } from './water.js?v=15';
-import { createTerrain } from './terrain.js?v=14';
-import { Effects } from './effects.js?v=15';
-import { Entities } from './entities.js?v=34';
-import { World } from './world.js?v=33';
-import { Player } from './player.js?v=33';
-import { createCastle, BossBarge } from './castle.js?v=44';
-import { Hud } from './hud.js?v=14';
-import { Input } from './input.js';
-import { GameAudio } from './audio.js?v=14';
-import { updateCloth } from './models.js?v=33';
-import { centerX, halfWidth } from './river.js';
-import { clamp, damp, detectMobile, detectTouch, detectSoftwareGL, formatTime, randRange } from './utils.js?v=16';
+} from './config.js?v=50';
+import { createFireLights, fireLights } from './lights.js?v=50';
+import { createWater, waterHeight } from './water.js?v=50';
+import { createTerrain } from './terrain.js?v=50';
+import { Effects } from './effects.js?v=50';
+import { Entities } from './entities.js?v=50';
+import { World } from './world.js?v=50';
+import { Player } from './player.js?v=50';
+import { createCastle } from './castle.js?v=50';
+import { BossBarge } from './boss.js?v=50';
+import { Hud } from './hud.js?v=50';
+import { Input } from './input.js?v=50';
+import { GameAudio } from './audio.js?v=50';
+import { centerX, halfWidth } from './river.js?v=50';
+import { clamp, damp, detectTouch, formatTime, randRange } from './utils.js?v=50';
 
-const WHITE = new THREE.Color(1, 1, 1);
+/**
+ * Hora solar ao longo da jornada (progresso p ∈ [0, 1]):
+ *   hora = 17,3 + 0,9·p   → tarde dourada na largada, sol rasante no desfiladeiro,
+ *   crepúsculo com tochas acesas diante do castelo.
+ * Nuvens: 0,42 + 0,3·p (o céu fecha perto de Morvain).
+ */
+const HOUR_START = 17.3;
+const HOUR_SPAN = 0.9;
+const DEBUG = new URLSearchParams(location.search).has('debug');
 
 const CAMERA_MODES = [
     { name: 'perseguição', offset: new THREE.Vector3(0, 6.35, 13.0), look: new THREE.Vector3(0, 3.05, -14) },
@@ -96,12 +104,10 @@ class Game {
         }
     }
 
-    resolveQuality() {
+    /** Tier pedido no menu ('auto' deixa o palco decidir pelo aparelho). */
+    tierChoice() {
         const choice = this.settings.quality;
-        if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile() || detectSoftwareGL()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.high : QUALITY.medium;
+        return QUALITY[choice] ? choice : 'auto';
     }
 
     /* ------------------------------------------------------------------ */
@@ -109,100 +115,68 @@ class Game {
     /* ------------------------------------------------------------------ */
 
     async init() {
-        this.hud.setLoading(0.1, 'Acordando o rio…');
+        this.hud.setLoading(0.06, 'Acordando o rio…');
 
-        const quality = this.resolveQuality();
+        // Progresso real: cada textura/modelo/HDR que chega avança a barra.
+        const manager = new THREE.LoadingManager();
+        let assetsDone = false;
+        manager.onProgress = (url, loaded, total) => {
+            if (this.state === 'loading') this.hud.setLoading(0.3 + 0.6 * (loaded / Math.max(1, total)), 'Carregando o vale…');
+        };
+        manager.onLoad = () => { assetsDone = true; };
+
+        // Palco compartilhado: renderer, céu físico, sol com sombra, pós (AO, bloom,
+        // raios, névoa de altura, grade). Devolve null sem WebGL 2 (aviso já na tela).
+        // O norte é girado para o sol da tarde ficar à frente-esquerda do rio (−Z).
+        const stage = createStage({
+            canvas: this.canvas,
+            tier: this.tierChoice(),
+            preset: 'entardecer',
+            time: HOUR_START,
+            fov: 62,
+            near: 0.4,
+            far: 3600,
+            loadingManager: manager,
+            sky: { north: new THREE.Vector3(-0.8, 0, 0.6), east: new THREE.Vector3(0.6, 0, 0.8) },
+            post: { vignette: 0.34, rays: 0.55, bloom: 0.1 }
+        });
+        if (!stage) {
+            this.hud.showError('Este laboratório precisa de WebGL 2.');
+            return;
+        }
+        this.stage = stage;
+        this.renderer = stage.renderer;
+        this.scene = stage.scene;
+        this.camera = stage.camera;
+        const quality = QUALITY[stage.tier];
         this.quality = quality;
-
-        try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: quality.antialias,
-                powerPreference: 'high-performance',
-                stencil: false
-            });
-        } catch (err) {
-            this.hud.showError('Não foi possível iniciar o WebGL neste navegador.');
-            return;
-        }
-
-        if (!this.renderer.capabilities.isWebGL2 && !this.renderer.getContext()) {
-            this.hud.showError('Este laboratório precisa de WebGL.');
-            return;
-        }
-
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
-        this.renderer.setPixelRatio(pixelRatio);
-        this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.06;
-        this.renderer.shadowMap.enabled = quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: quality.shadows });
-
-        this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.5 });
-        this.camera = new THREE.PerspectiveCamera(
-            62,
-            window.innerWidth / window.innerHeight,
-            0.4,
-            quality.drawDistance * 3.2
-        );
         this.camera.position.set(0, 12, 30);
+        // Névoa de altura nasce na água; DOF leve só desfoca o horizonte.
+        stage.pipeline.params.fogBase = 0;
+        stage.shadowRadius = quality.id === 'low' ? 46 : 70;
+        createFireLights(this.scene, quality.pointLights ? 4 : 2);
 
-        this.hud.setLoading(0.25, 'Pintando o céu…');
-        this.skyUniforms = createSkyUniforms();
-        this.sky = createSky(this.skyUniforms);
-        this.scene.add(this.sky);
-
-        this.palette = sampleSkyPalette(0);
-        applySkyPalette(this.skyUniforms, this.palette);
-        this.scene.fog = new THREE.FogExp2(this.palette.fog.getHex(), quality.fogDensity);
-
-        this.sun = new THREE.DirectionalLight(this.palette.light.getHex(), this.palette.lightIntensity);
-        this.sun.castShadow = quality.shadows;
-        if (quality.shadows) {
-            this.sun.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
-            this.sun.shadow.camera.near = 1;
-            this.sun.shadow.camera.far = 260;
-            this.sun.shadow.camera.left = -70;
-            this.sun.shadow.camera.right = 70;
-            this.sun.shadow.camera.top = 70;
-            this.sun.shadow.camera.bottom = -70;
-            this.sun.shadow.bias = -0.0012;
-            this.sun.shadow.normalBias = 0.55;
-        }
-        this.scene.add(this.sun, this.sun.target);
-
-        this.hemi = new THREE.HemisphereLight(this.palette.ambient.getHex(), 0x241a12, 0.75);
-        this.scene.add(this.hemi);
-
-        // Luz de preenchimento presa à câmera: sem ela o barco fica só silhueta
-        // quando o sol está de frente.
-        this.fill = new THREE.DirectionalLight(0xc5d8ff, 0.7);
-        this.fill.castShadow = false;
-        this.scene.add(this.fill, this.fill.target);
-
-        this.hud.setLoading(0.42, 'Escavando o vale…');
+        this.hud.setLoading(0.14, 'Escavando o vale…');
         this.terrain = createTerrain(quality);
         this.scene.add(this.terrain.mesh);
 
-        this.hud.setLoading(0.55, 'Enchendo o rio…');
-        this.water = createWater(this.skyUniforms, quality);
-        this.water.uniforms.uFogColor.value.copy(this.palette.fog);
+        this.hud.setLoading(0.18, 'Enchendo o rio…');
+        this.water = createWater(quality);
         this.scene.add(this.water.mesh);
 
-        this.hud.setLoading(0.68, 'Plantando as margens…');
+        this.hud.setLoading(0.22, 'Plantando as margens…');
         this.effects = new Effects(this.scene, quality);
         this.world = new World(this.scene, quality);
+        this.world.loadAssets().catch(() => {});
         this.entities = new Entities(this.scene, quality);
 
-        this.hud.setLoading(0.82, 'Erguendo o castelo…');
-        this.castle = createCastle(this.scene);
-        this.boss = new BossBarge(this.scene);
+        this.hud.setLoading(0.26, 'Erguendo o castelo…');
+        this.castle = createCastle(this.scene, quality);
+        this.boss = new BossBarge(this.scene, quality);
 
-        this.hud.setLoading(0.92, 'Preparando o guerreiro…');
+        this.hud.setLoading(0.3, 'Preparando o guerreiro…');
         this.player = new Player(this.scene, quality);
+        this.castle.lookAt(this.player.position);
 
         this.audio = new GameAudio();
         this.audio.enabled = !this.settings.muted;
@@ -214,61 +188,56 @@ class Game {
         this.isTouch = detectTouch();
         this.hud.setTouchVisible(false);
 
-        await this.setupPostProcessing(quality);
+        // Espera os assets (com teto de 12 s: se a rede falhar o jogo segue com fallback).
+        const t0 = performance.now();
+        while (!assetsDone && performance.now() - t0 < 12000) {
+            await new Promise((r) => setTimeout(r, 80));
+        }
 
         // Primeiro quadro "a frio" para compilar shaders antes de mostrar o menu.
         this.world.reset(0);
         this.player.reset(DIFFICULTY[this.settings.difficulty]);
         this.updateCamera(1, true);
-        this.renderer.compile(this.scene, this.camera);
-        this.render();
+        this.hud.setLoading(0.94, 'Acendendo as tochas…');
+        await stage.warmup();
 
         this.hud.setLoading(1, 'Pronto');
         setTimeout(() => this.hud.hideLoading(), 260);
 
         this.enterMenu();
-        this.lastFrame = performance.now();
-        const loop = (now) => this.frame(now);
-        if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, loop);
-        else this.renderer.setAnimationLoop(loop);
-
-        if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
-        else window.addEventListener('resize', () => this.resize());
+        // O palco cuida do laço (THREE.Timer), da pausa com a aba oculta, do
+        // redimensionamento (ResizeObserver) e de não desenhar com canvas de tamanho zero.
+        stage.start((dt) => this.frame(dt));
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'playing') this.pause();
         });
+        if (DEBUG) this.installDebug();
     }
 
-    async setupPostProcessing(quality) {
-        if (!quality.bloom) return;
-        try {
-            const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
-                import('three/addons/postprocessing/EffectComposer.js'),
-                import('three/addons/postprocessing/RenderPass.js'),
-                import('three/addons/postprocessing/UnrealBloomPass.js'),
-                import('three/addons/postprocessing/OutputPass.js')
-            ]);
-
-            const composer = new EffectComposer(this.renderer);
-            composer.setPixelRatio(this.renderer.getPixelRatio());
-            composer.setSize(window.innerWidth, window.innerHeight);
-            composer.addPass(new RenderPass(this.scene, this.camera));
-
-            const bloom = new UnrealBloomPass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.18,
-                0.7,
-                0.88
-            );
-            composer.addPass(bloom);
-            composer.addPass(new OutputPass());
-
-            this.composer = composer;
-            this.bloom = bloom;
-        } catch (err) {
-            // Sem pós-processamento o jogo continua funcionando normalmente.
-            this.composer = null;
-        }
+    /** Atalhos de depuração (`?debug=1`): teleporte, vitória rápida, estatísticas. */
+    installDebug() {
+        window.__lab = {
+            game: this,
+            /** Leva o drakkar a `meters` do início (mantém a partida em curso). */
+            goto: (meters) => {
+                const z = -meters;
+                this.player.z = z;
+                this.player.x = centerX(z);
+                this.player.distance = meters;
+                this.entities.reset();
+                this.world.reset(z);
+                this.world.nextSpawnZ = z - 70;
+                this.updateCamera(1, true);
+                return z;
+            },
+            god: () => { clearInterval(this._god); this._god = setInterval(() => { this.player.hull = this.player.maxHull; this.player.alive = true; }, 100); },
+            /** Câmera livre: posição e alvo no mundo; sem argumentos volta à câmera do jogo. */
+            cam: (...v) => { this._freeCam = v.length === 6 ? v : null; },
+            /** Congela/retoma o avanço do drakkar (para enquadrar capturas). */
+            hold: (on = true) => { this._hold = on; },
+            killBoss: () => { for (let i = 0; i < 40; i++) this.boss.hit(1, this.makeContext(0.016)); },
+            stats: () => ({ ...this.stage.stats(), state: this.state, hour: this.stage.hour })
+        };
     }
 
     /* ------------------------------------------------------------------ */
@@ -368,6 +337,8 @@ class Game {
         this.player.x = centerX(-120);
         this.world.reset(-120);
         this.menuAngle = 0;
+        this.camera.fov = 62;
+        this.camera.updateProjectionMatrix();
 
         if (this.audio.ctx) this.audio.playMusic('menu');
     }
@@ -399,9 +370,12 @@ class Game {
         this.cameraMode = 0;
         this.landmarkIndex = 0;
         this.hud.setHint(true);
+        this.camera.fov = 62;
+        this.camera.updateProjectionMatrix();
 
         this.entities.reset();
         this.boss.reset();
+        this.castle.reset?.();
         this.effects.reset();
         this.input.reset();
         this.player.reset(this.difficulty);
@@ -431,7 +405,6 @@ class Game {
         this.state = 'playing';
         this.hud.setState('playing');
         this.hud.hidePause();
-        this.lastFrame = performance.now();
     }
 
     gameOver() {
@@ -516,37 +489,18 @@ class Game {
     /* Laço                                                                */
     /* ------------------------------------------------------------------ */
 
-    frame(now) {
-        const raw = (now - this.lastFrame) / 1000;
-        this.lastFrame = now;
-        const dt = Math.min(0.05, Math.max(0.0005, raw));
-
-        this.fpsAccum += raw;
+    frame(dt) {
+        this.fpsAccum += dt;
         this.fpsFrames++;
         if (this.fpsAccum > 0.5) {
-            const fps = this.fpsFrames / this.fpsAccum;
-            this.hud.setFps(fps);
-            if (this.state === 'playing' && !this.adapted) {
-                if (fps < 38) this.fpsLowTime += 0.5;
-                else this.fpsLowTime = Math.max(0, this.fpsLowTime - 0.35);
-                if (this.fpsLowTime > 1.2) {
-                    this.adapted = true;
-                    this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.05));
-                    this.composer = null;
-                    this.hud.message('Qualidade ajustada para o rio fluir', 'gold', 2400);
-                }
-            }
+            this.hud.setFps(this.fpsFrames / this.fpsAccum);
             this.fpsAccum = 0;
             this.fpsFrames = 0;
         }
 
-        if (this.state === 'paused') {
-            this.render();
-            return;
-        }
+        if (this.state === 'paused') return;
 
         this.time += dt;
-        updateCloth(this.time);
 
         try {
             switch (this.state) {
@@ -572,7 +526,7 @@ class Game {
 
         this.effects.update(dt, this.time);
         this.updateEnvironment(dt);
-        this.render();
+        fireLights.commit(this.camera);
     }
 
     updateIdle(dt) {
@@ -594,13 +548,7 @@ class Game {
         p.root.rotation.z = Math.sin(this.time * 0.7) * 0.035;
         p.root.rotation.x = Math.sin(this.time * 0.5) * 0.02;
 
-        for (const oar of p.parts.oars) {
-            const phase = this.time * 1.8 + oar.userData.phase;
-            oar.rotation.x = Math.sin(phase) * 0.3;
-            oar.rotation.z = oar.userData.side * (0.3 + Math.sin(phase + 1.2) * 0.18);
-        }
-        p.wParts.armR.rotation.x = -0.25 + Math.sin(this.time * 1.2) * 0.08;
-        p.wParts.torso.rotation.z = Math.sin(this.time * 1.4) * 0.05;
+        p.updateMenu(dt, this.time);
 
         this.effects.wake.push(p.x, p.z + 6.5, 2.0, 0.55);
         if (Math.random() < 0.4) this.effects.splash(p.x, wy, p.z - 6.5, 2, 0.4);
@@ -667,7 +615,12 @@ class Game {
             }
         }
 
+        const holdZ = this.player.z;
         this.player.update(dt, ctx);
+        if (this._hold) {
+            this.player.z = holdZ;
+            this.player.root.position.z = holdZ;
+        }
 
         // Mira automática — a retícula segue o alvo no mundo.
         {
@@ -995,6 +948,13 @@ class Game {
 
     updateCamera(dt, instant = false) {
         const p = this.player;
+        if (this._freeCam) {
+            // depuração: câmera livre fixada por __lab.cam(...)
+            const f = this._freeCam;
+            this.camera.position.set(f[0], f[1], f[2]);
+            this.camera.lookAt(f[3], f[4], f[5]);
+            return;
+        }
         const mode = CAMERA_MODES[this.cameraMode];
 
         let offsetY = mode.offset.y;
@@ -1003,26 +963,39 @@ class Game {
         let lookZ = mode.look.z;
 
         if (this.state === 'victory-seq') {
-            // A câmera sai de trás do drakkar e se reposiciona para enquadrar,
-            // no mesmo plano, o barco atracado e a princesa na torre.
-            const raw = clamp(this.victoryTimer / 5.5, 0, 1);
-            const t = raw * raw * (3 - 2 * raw);
+            // Cena do resgate em dois planos:
+            //   0–4,4 s  plano geral — a câmera sai de trás do drakkar e abre para
+            //            enquadrar o barco atracando e a torre da princesa;
+            //   4,4–7 s  plano médio da princesa comemorando na sacada.
             const pr = this.castle.princessWorld;
+            this.lookTarget = this.lookTarget || new THREE.Vector3();
+            if (this.victoryTimer > 4.4) {
+                const k = clamp((this.victoryTimer - 4.4) / 2.6, 0, 1);
+                this.camera.position.set(pr.x - 3.2 + k * 1.2, pr.y + 0.5, pr.z + 8.5 - k * 1.5);
+                this.lookTarget.set(pr.x, pr.y + 0.25, pr.z);
+                this.camera.fov = 40;
+                this.camera.updateProjectionMatrix();
+                this.camera.lookAt(this.lookTarget);
+                return;
+            }
+            const raw = clamp(this.victoryTimer / 4, 0, 1);
+            const t = raw * raw * (3 - 2 * raw);
 
-            const desiredX = lerpNum(p.position.x, p.position.x - 17, t);
-            const desiredY = lerpNum(p.position.y + mode.offset.y, p.position.y + 13, t);
-            const desiredZ = lerpNum(p.position.z + mode.offset.z, p.position.z + 27, t);
+            // plano geral: da margem oposta, logo depois da muralha, olhando o cais e a torre
+            const cx0 = this.castle.centerX;
+            const desiredX = lerpNum(p.position.x, cx0 - 40, t);
+            const desiredY = lerpNum(p.position.y + mode.offset.y, 11, t);
+            const desiredZ = lerpNum(p.position.z + mode.offset.z, CASTLE_Z - 14, t);
 
             const lambda = instant ? 999 : 2.4;
             this.camera.position.x = damp(this.camera.position.x, desiredX, lambda, dt);
             this.camera.position.y = damp(this.camera.position.y, desiredY, lambda, dt);
             this.camera.position.z = damp(this.camera.position.z, desiredZ, lambda, dt);
 
-            this.lookTarget = this.lookTarget || new THREE.Vector3();
             this.lookTarget.set(
-                lerpNum(p.position.x, lerpNum(p.position.x, pr.x, 0.5), t),
-                lerpNum(p.position.y + 2.6, lerpNum(p.position.y + 3.0, pr.y, 0.46), t),
-                lerpNum(p.position.z - 16, lerpNum(p.position.z, pr.z, 0.5), t)
+                lerpNum(p.position.x, lerpNum(p.position.x, pr.x, 0.55), t),
+                lerpNum(p.position.y + 2.6, 15, t),
+                lerpNum(p.position.z - 16, CASTLE_Z - 31, t)
             );
             this.camera.lookAt(this.lookTarget);
             return;
@@ -1066,54 +1039,33 @@ class Game {
         }
     }
 
-    updateEnvironment(dt) {
+    updateEnvironment() {
         const progress = clamp(this.player.distance / COURSE_LENGTH, 0, 1);
-        const palette = sampleSkyPalette(progress);
-        applySkyPalette(this.skyUniforms, palette);
 
-        this.scene.fog.color.copy(palette.fog);
-        this.water.uniforms.uFogColor.value.copy(palette.fog);
-        this.sun.color.copy(palette.light);
-        this.sun.intensity = palette.lightIntensity;
-        this.hemi.color.copy(palette.ambient);
+        // A hora só é reaplicada quando muda ~1 min (refazer o céu a cada quadro é desperdício).
+        const hour = HOUR_START + HOUR_SPAN * progress;
+        if (Math.abs(hour - (this._hour ?? -1)) > 0.015) {
+            this._hour = hour;
+            this.stage.setTimeOfDay(hour);
+            this.stage.sky.setClouds(0.42 + 0.3 * progress);
+        }
 
-        // Direção do sol: mantém uma elevação mínima para as sombras ficarem legíveis.
-        const dir = palette.sunDir;
-        const sx = dir.x;
-        const sy = Math.max(dir.y, 0) + 0.45;
-        const sz = dir.z;
-        const len = Math.hypot(sx, sy, sz) || 1;
-        const cam = this.camera.position;
-        this.sun.position.set(cam.x + (sx / len) * 120, (sy / len) * 120, cam.z + (sz / len) * 120);
-        this.sun.target.position.set(cam.x, 0, cam.z - 20);
-        this.sun.target.updateMatrixWorld();
+        // Sombra centrada um pouco à frente do drakkar; foco do DOF no navio.
+        const p = this.player.position;
+        this._focus = this._focus || new THREE.Vector3();
+        this._focus.set(p.x, 0, p.z - 22);
+        this.stage.focus = this._focus;
+        const params = this.stage.pipeline.params;
+        params.dofFocus = this.camera.position.distanceTo(p) + 6;
+        params.dofRange = this.state === 'menu' ? 26 : 90;
+        params.dofMax = this.state === 'menu' ? 0.8 : 0.35;
 
-        this.fill.position.set(cam.x, cam.y + 6, cam.z + 4);
-        this.fill.target.position.set(this.player.position.x, this.player.position.y, this.player.position.z - 8);
-        this.fill.target.updateMatrixWorld();
-        this.fill.color.copy(palette.ambient).lerp(WHITE, 0.35);
-
-        this.sky.position.copy(cam);
-        this.sky.material.uniforms.uTime.value = this.time;
-        this.sky.material.uniforms.uCloud.value = 0.42 + progress * 0.42;
+        // Claridade das partículas: acompanha o sol (cai de ~1 a ~0,35 no crepúsculo).
+        this.effects.setLight(clamp(0.3 + this.stage.sky.sunDir.y * 3.2, 0.3, 1.1));
 
         this.water.update(this.time, this.camera);
         this.terrain.update(this.camera);
-    }
-
-    render() {
-        if (this.composer) this.composer.render();
-        else this.renderer.render(this.scene, this.camera);
-    }
-
-    resize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h, false);
-        this.composer?.setSize(w, h);
-        this.bloom?.setSize(w, h);
+        this.castle.setVisibleFor?.(p.z);
     }
 }
 

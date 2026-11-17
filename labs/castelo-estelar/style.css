@@ -114,14 +114,47 @@ button {
     cursor: grabbing;
 }
 
-.vignette {
+/* Barras de cinema (2,39:1) durante a abertura: altura = (100dvh − 100vw/2,39)/2, nunca negativa. */
+.letterbox {
     position: absolute;
-    inset: 0;
+    left: 0;
+    right: 0;
+    height: max(0px, calc((100dvh - 100vw / 2.39) / 2));
+    max-height: 16dvh;
+    background: #000;
     pointer-events: none;
-    background:
-        radial-gradient(ellipse at 50% 42%, transparent 38%, oklch(4% 0.03 270 / 0.62) 100%),
-        linear-gradient(to top, oklch(4% 0.03 270 / 0.4), transparent 24%);
-    z-index: 2;
+    z-index: 3;
+    transition: transform 1.4s var(--ease);
+}
+
+.letterbox--top {
+    top: 0;
+    transform: translateY(-101%);
+}
+
+.letterbox--bottom {
+    bottom: 0;
+    transform: translateY(101%);
+}
+
+body[data-state="intro"] .letterbox {
+    transform: none;
+}
+
+.load-track {
+    height: 3px;
+    border-radius: 3px;
+    background: color-mix(in oklab, var(--moon) 14%, transparent);
+    overflow: hidden;
+}
+
+.load-track i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+    transform: scaleX(0.04);
+    transform-origin: left;
+    transition: transform 0.3s var(--ease);
 }
 
 .game-shell > header {
@@ -171,7 +204,7 @@ button {
     filter: drop-shadow(0 0 10px color-mix(in oklab, var(--gold) 70%, transparent));
 }
 
-.lab-foot {
+footer.lab-foot {
     position: absolute;
     left: 0;
     right: 0;
@@ -184,6 +217,9 @@ button {
     color: var(--text-dim);
     opacity: 0.45;
     pointer-events: none;
+    justify-content: flex-end;
+    max-width: none;
+    padding-right: calc(1rem + var(--safe-right));
 }
 
 .lab-foot a {
@@ -204,7 +240,7 @@ body[data-state="intro"] .game-shell > header .app-logo {
     z-index: 14;
     text-align: center;
     pointer-events: none;
-    animation: titleIn 1.6s var(--ease) both;
+    animation: titleIn 1.6s var(--ease) both, titleOut 1.4s 7s var(--ease) forwards;
 }
 
 .title-kicker {
@@ -220,7 +256,7 @@ body[data-state="intro"] .game-shell > header .app-logo {
     margin: 0;
     font-family: 'Cinzel', Georgia, serif;
     font-weight: 700;
-    font-size: clamp(1.8rem, 5vw, 3.4rem);
+    font-size: clamp(1.3rem, 3.4vw, 2.3rem);
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--stone);
@@ -235,6 +271,10 @@ body[data-state="intro"] .game-shell > header .app-logo {
     height: 1px;
     margin: 0.85rem auto 0;
     background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+@keyframes titleOut {
+    to { opacity: 0; }
 }
 
 @keyframes titleIn {
@@ -308,7 +348,8 @@ body[data-state="intro"] .hint {
     color: var(--text-soft);
     font-size: 0.78rem;
     font-weight: 500;
-    min-height: 40px;
+    min-height: 44px;
+    min-width: 44px;
     transition: background 0.2s var(--ease), color 0.2s, border-color 0.2s;
 }
 
@@ -526,8 +567,8 @@ body[data-state="intro"] .hint {
     }
 
     .dock-btn {
-        padding: 0.4rem 0.7rem;
-        min-height: 36px;
+        padding: 0.4rem 0.8rem;
+        min-height: 44px;
         font-size: 0.72rem;
     }
 
@@ -537,6 +578,12 @@ body[data-state="intro"] .hint {
 
     .overlay {
         padding: calc(3rem + var(--safe-top)) 0.85rem calc(0.75rem + var(--safe-bottom));
+    }
+
+    /* o título do cabeçalho cobriria o cartão do menu */
+    body[data-state="menu"] .game-shell > header .app-logo,
+    body[data-state="boot"] .game-shell > header .app-logo {
+        display: none;
     }
 
     .overlay-card {
@@ -552,4 +599,10 @@ body[data-state="intro"] .hint {
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .letterbox {
+        transition: none;
+    }
 }

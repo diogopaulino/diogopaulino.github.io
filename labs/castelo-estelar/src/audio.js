@@ -1,7 +1,9 @@
 /**
  * Fanfarra original em Dó maior — brass filtrado, harpa e pad.
  * Não reproduz melodias protegidas; o contorno é uma cadência própria
- * sincronizada com a abertura de 22s.
+ * sincronizada com a abertura de 38 s:
+ *   0 s pad e harpa lenta (rasante no lago) · 8 s metais (revelação, andamento ×1,3)
+ *   13,2 s harpa em escala (voo da fada) · 23 s sinos (a estrela acende) · 24 s+ fogos
  */
 
 export class FanfareAudio {
@@ -11,6 +13,15 @@ export class FanfareAudio {
         this.volume = 0.72;
         this._started = false;
         this._played = false;
+        this._nodes = [];
+    }
+
+    /** Cancela as notas agendadas (replay/pular). */
+    stopScheduled() {
+        for (const o of this._nodes) {
+            try { o.stop(); } catch { /* já parou */ }
+        }
+        this._nodes.length = 0;
     }
 
     init() {
@@ -105,6 +116,7 @@ export class FanfareAudio {
         g.connect(this.music);
         o.start(when);
         o.stop(when + dur + 0.05);
+        this._nodes.push(o);
     }
 
     _harp(freq, when, dur = 1.6, gain = 0.07) {
@@ -121,6 +133,7 @@ export class FanfareAudio {
         g.connect(this.music);
         o.start(when);
         o.stop(when + dur + 0.02);
+        this._nodes.push(o);
     }
 
     _chime(freq, when, gain = 0.06) {
@@ -137,14 +150,20 @@ export class FanfareAudio {
         g.connect(this.sfx);
         o.start(when);
         o.stop(when + 1.5);
+        this._nodes.push(o);
     }
 
     playFanfare() {
         this.init();
         if (!this.ctx || !this.enabled) return;
         this._played = true;
-        const t = this.ctx.currentTime + 0.05;
-        // Fanfarra original em C: G–C–E–G, depois E–F–G–C
+        this.stopScheduled();
+        const t0 = this.ctx.currentTime + 0.05;
+        // harpa lenta sobre o lago
+        [261.63, 392.0, 523.25, 659.25, 523.25, 392.0, 329.63, 392.0].forEach((f, i) => this._harp(f, t0 + 0.6 + i * 0.9, 2.4, 0.04));
+        // Fanfarra original em C: G–C–E–G, depois E–F–G–C (andamento ×1,3, entra na revelação)
+        const t = t0 + 8;
+        const K = 1.3;
         const brass = [
             [196.0, 0.0, 0.7, 0.09],
             [261.63, 0.55, 0.7, 0.1],
@@ -162,19 +181,23 @@ export class FanfareAudio {
             [783.99, 15.0, 2.6, 0.12],
             [1046.5, 17.4, 3.4, 0.1]
         ];
-        for (const [f, at, d, g] of brass) this._brass(f, t + at, d, g);
+        for (const [f, at, d, g] of brass) this._brass(f, t + at * K, d * K, g);
+        // terça e quinta sob as notas longas (acorde cheio no final)
+        for (const [f, at, d] of [[329.63, 9.8, 2.4], [392.0, 15.0, 2.6], [523.25, 17.4, 3.4], [659.25, 17.4, 3.4]]) this._brass(f, t + at * K, d * K, 0.05);
 
-        const harp = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1046.5, 783.99, 659.25];
-        harp.forEach((f, i) => this._harp(f, t + 10.2 + i * 0.28, 1.5, 0.055));
-
-        [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
-            this._chime(f, t + 15.4 + i * 0.12, 0.05);
+        // escala de harpa acompanhando a fada
+        const harp = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.7, 1318.5, 1568.0, 1760.0, 2093.0];
+        harp.forEach((f, i) => this._harp(f, t0 + 13.4 + i * 0.86, 1.6, 0.045));
+        // a estrela acende
+        [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, i) => {
+            this._chime(f, t0 + 23 + i * 0.11, 0.05);
         });
     }
 
-    firework() {
+    /** Estampido de fogo; `delay` (s) = distância / 340 m/s. */
+    firework(delay = 0) {
         if (!this.ctx || !this.enabled) return;
-        const t = this.ctx.currentTime;
+        const t = this.ctx.currentTime + delay;
         const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.35, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < data.length; i++) {

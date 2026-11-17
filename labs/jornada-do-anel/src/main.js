@@ -1,23 +1,35 @@
 /**
- * A Jornada do Anel — laço principal, capítulos e câmera cinematográfica.
+ * A Jornada do Anel — laço principal, capítulos e câmera de terceira pessoa.
+ *
+ * O palco (`gfx/stage.js`) cuida de renderer, céu físico, sol com sombra, pós
+ * (AO, bloom, névoa de altura, raios, grade de cor) e resolução dinâmica; cada
+ * capítulo troca a atmosfera com `stage.setPreset` e monta o próprio mundo.
+ *
+ * Câmera (colisão): do ponto de mira acima do portador até a posição desejada
+ * são testadas 16 amostras; a primeira dentro de chão/colisor encurta a distância
+ *   d_livre = d · (i − 1)/16 − folga
+ * A distância encolhe rápido (20/s) e volta devagar (2,5/s) para não "pular".
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer } from '../../shared/cinematic.js?v=2';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { CHAPTERS, QUALITY, STORAGE_KEY } from './config.js?v=3';
-import { clamp, detectMobile, detectSoftwareGL, rendererIsSoftware, formatTime, disposeObject } from './utils.js?v=3';
-import { Input } from './input.js?v=3';
-import { GameAudio } from './audio.js?v=3';
-import { Hud, statsBlock } from './hud.js?v=3';
-import { Player } from './player.js?v=19';
-import { createSky, applyChapterSky, createLights, tickSky } from './sky.js?v=3';
-import { buildChapter } from './world.js?v=21';
-import { nearestInteractable } from './npcs.js?v=3';
-import { tickMaterials } from './models.js?v=19';
+import { createStage, PRESETS } from '../../shared/gfx/stage.js';
+import { pickTier, damp } from '../../shared/gfx/core.js';
+import { preload } from '../../shared/gfx/assets.js';
+import { CHAPTERS, ATMOSPHERES, STORAGE_KEY, CAMERA } from './config.js?v=30';
+import { clamp, lerp, formatTime, wait } from './utils.js?v=30';
+import { Input } from './input.js?v=30';
+import { GameAudio } from './audio.js?v=30';
+import { Hud, statsBlock } from './hud.js?v=30';
+import { Player } from './player.js?v=30';
+import { nearestInteractable } from './actors.js?v=30';
+import { buildChapter } from './chapters.js?v=30';
+
+Object.assign(PRESETS, ATMOSPHERES);
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
+const TMP = new THREE.Vector3();
+const DEBUG = new URLSearchParams(location.search).has('debug');
 
 class Game {
     constructor() {
@@ -36,11 +48,14 @@ class Game {
         this.fade = 1;
         this.fadeDir = -1;
         this.dialogue = null;
-        this.fpsAccum = 0;
-        this.fpsFrames = 0;
         this.hudAccum = 0;
-        this.orbit = 0;
+        this.fpsAccum = 0;
+        this.orbit = 0.6;
         this.pendingChapter = 0;
+        this.camFree = CAMERA.distance;
+        this.loadToken = 0;
+        this.fadeEl = document.getElementById('fade');
+        this.lastFade = -1;
     }
 
     loadSettings() {
@@ -65,70 +80,44 @@ class Game {
         } catch (err) { /* privado */ }
     }
 
-    resolveQuality() {
-        if (detectSoftwareGL()) return QUALITY.low;
-        const choice = this.settings.quality;
-        if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.high : QUALITY.medium;
+
+    /** Tier pedido no menu ('auto' deixa o kit decidir pelo aparelho). */
+    wantedTier() {
+        return pickTier(this.settings.quality);
     }
 
     async init() {
-        this.hud.setLoading(0.12, 'Abrindo o mapa da Terra Média…');
-        this.quality = this.resolveQuality();
-        this.mobile = detectMobile();
-
-        try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: this.quality.antialias,
-                powerPreference: 'high-performance',
-                alpha: false
-            });
-        } catch (err) {
-            this.hud.showError('Não foi possível criar o contexto WebGL.');
+        this.hud.setLoading(0.06, 'Acendendo as lanternas…');
+        const manager = new THREE.LoadingManager();
+        manager.onProgress = (url, done, total) => {
+            if (this.state === 'loading') this.hud.setLoading(0.1 + 0.8 * (done / Math.max(1, total)));
+        };
+        const stage = createStage({
+            canvas: this.canvas, tier: this.settings.quality, preset: CHAPTERS[0].atmosphere, fov: 52, near: 0.15,
+            loadingManager: manager
+        });
+        if (!stage) {
+            this.hud.showError('Não foi possível criar o contexto WebGL 2.');
             return;
         }
+        this.stage = stage;
+        this.scene = stage.scene;
+        this.camera = stage.camera;
+        this.renderer = stage.renderer;
+        this.mobile = matchMedia('(pointer: coarse)').matches;
+        stage.pipeline.params.fade = 1;
+        // o palco rebaixou o tier por desempenho: alivia a grama do capítulo atual
+        stage.onTier((tier) => this.world?.grass?.setDensity(tier === 'low' ? 0.45 : 0.75));
 
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = CHAPTERS[0].exposure ?? 1.2;
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: this.renderer.shadowMap.enabled });
-        this.renderer.setClearColor(CHAPTERS[0].clear);
-
-        if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
-            this.quality = QUALITY.low;
-            this.renderer.setPixelRatio(1);
-            this.renderer.shadowMap.enabled = false;
-        }
-
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.12, 520);
-        const pmrem = new THREE.PMREMGenerator(this.renderer);
-        const room = new RoomEnvironment();
-        this.scene.environment = pmrem.fromScene(room, 0.04).texture;
-        room.dispose?.();
-        this.scene.environmentIntensity = this.quality.id === 'low' ? 0.24 : 0.5;
-        pmrem.dispose();
-        this.sky = createSky();
-        this.scene.add(this.sky.mesh);
-
-        this.hud.setLoading(0.4, 'Erguendo as colinas do Condado…');
         this.input = new Input(this.canvas);
         this.audio = new GameAudio();
         this.player = new Player(this.scene);
         this.player.root.visible = false;
-
-        this.timer = new THREE.Timer();
-        this.timer.connect(document);
         this._bindUi();
-        window.addEventListener('resize', () => this._resize());
 
+        preload({ models: ['antique_estoc', 'wooden_lantern_01'] });
+        stage.start((dt) => this._update(dt));
+        await this.player.equip({ drawn: false });
         await this._loadChapter(0, { menu: true });
         this.hud.setLoading(1, 'A estrada espera.');
         this.hud.hideLoading();
@@ -142,8 +131,7 @@ class Game {
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
-        this._loop();
-        window.LabVisibility?.whenVisible(() => this._loop(performance.now()));
+        if (DEBUG) this._debugHooks();
     }
 
     _refreshChapterList() {
@@ -257,8 +245,9 @@ class Game {
         });
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
-            this.input.lookX += e.clientX - lx;
-            this.input.lookY += e.clientY - ly;
+            // o toque gira mais por pixel que o mouse travado (tela pequena)
+            this.input.lookX += (e.clientX - lx) * 2.2;
+            this.input.lookY += (e.clientY - ly) * 2.2;
             lx = e.clientX;
             ly = e.clientY;
         });
@@ -269,67 +258,76 @@ class Game {
         lookZone?.addEventListener('pointercancel', endLook);
 
         document.getElementById('btnInteract')?.addEventListener('click', () => {
-            this.input.interactPressed = true;
+            if (this.state === 'dialogue') this._advanceDialogue();
+            else this.input.interactPressed = true;
         });
         document.getElementById('btnAttack')?.addEventListener('click', () => {
             this.input.attackPressed = true;
         });
-        document.getElementById('btnSprint')?.addEventListener('pointerdown', () => {
-            this.input.touchSprint = true;
-        });
-        document.getElementById('btnSprint')?.addEventListener('pointerup', () => {
-            this.input.touchSprint = false;
-        });
+        const sprint = document.getElementById('btnSprint');
+        const setSprint = (v) => {
+            this.input.touchSprint = v;
+            sprint?.setAttribute('aria-pressed', v ? 'true' : 'false');
+        };
+        // alterna: no toque é difícil segurar o botão e mexer o analógico ao mesmo tempo
+        sprint?.addEventListener('click', () => setSprint(!this.input.touchSprint));
     }
 
+    /**
+     * Troca o mundo: descarta o capítulo anterior, monta o novo, aplica a
+     * atmosfera e espera texturas, modelos e impostores (o laço segue rodando,
+     * então a floresta assa os impostores enquanto a tela está em fade).
+     */
     async _loadChapter(index, { menu = false } = {}) {
+        const token = ++this.loadToken;
         const ch = CHAPTERS[index];
         this.chapterIndex = index;
         this.chapter = ch;
+        const stage = this.stage;
 
-        const world = buildChapter(ch.id, this.quality);
-        const lights = createLights(this.scene, ch, this.quality);
         if (this.world) {
-            this.scene.remove(this.world.group);
-            disposeObject(this.world.group);
+            const old = this.world;
+            this.world = null;
+            old.dispose();
         }
-        if (this.lights) this.scene.remove(this.lights.group);
-        this.world = world;
-        this.lights = lights;
-        this.scene.add(this.world.group);
-        applyChapterSky(this.sky, ch);
-        this.scene.fog = new THREE.Fog(ch.fog.color, ch.fog.near, ch.fog.far);
-        this.scene.environmentIntensity = ch.id === 'moria' ? 0.12 : ch.id === 'forest' ? 0.2 : 0.42;
-        this.renderer.setClearColor(ch.clear);
-        this.renderer.toneMappingExposure = ch.exposure ?? 1.15;
+        if (stage.tier !== this.wantedTier() && !stage.software) stage.setTier(this.wantedTier());
+        stage.setPreset(ch.atmosphere);
+        stage.sun.castShadow = PRESETS[ch.atmosphere].sun > 0;
+
+        const world = buildChapter(ch.id, { stage, tier: stage.tier });
+        world.tramplers.push(this.player.trample);
+        this.scene.add(world.group);
+        stage.follow(world.terrain || { heightAt: world.heightAt, bounds: { minY: world.fogBase ?? 0 } });
+        world.applyAtmosphere?.(stage);
         this.audio.setTheme(ch.music);
-
-        if (this.lights.dir && this.quality.shadows) {
-            this.lights.dir.target.position.set(0, 0, 0);
-        }
-
-        if (!menu) {
-            const s = this.world.spawn;
-            this.player.spawn(s.x, s.z, s.yaw, this.world.heightAt);
-            this.player.setHasRing(index > 0 || this.player.hasRing);
-            if (index > 0) this.player.setHasRing(true);
-        } else {
+        // câmera já no lugar para a grama e a floresta gerarem o que vai aparecer
+        if (menu) {
             this.player.root.visible = false;
+            this._menuCam(world);
+        } else {
+            const s = world.spawn;
+            this.player.spawn(s.x, s.z, s.yaw, world.heightAt);
+            this.player.setHasRing(index > 0);
+            this.camFree = this.player.camDist;
+            this.player.cameraPosition(CAM);
+            this.camera.position.copy(CAM);
+            this.camera.lookAt(this.player.lookAt(LOOK));
         }
+        this.world = world;
+        await Promise.all([world.ready(), this.player.equip(world.gear || {})]);
+        if (token !== this.loadToken) return false;
+        await stage.warmup();
+        return true;
     }
 
     async start(index = 0) {
+        if (this.busy) return;
+        this.busy = true;
         await this.audio.unlock();
         this.audio.setVolume(this.settings.volume / 100);
         this.audio.setMuted(this.settings.muted);
 
-        this.quality = this.resolveQuality();
-        if (rendererIsSoftware(this.renderer)) this.quality = QUALITY.low;
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-
         this.pendingChapter = index;
-        this.chapterIndex = index;
         this.elapsed = 0;
         this.pages = 0;
         this.score = 0;
@@ -342,8 +340,23 @@ class Game {
         this.hud.showMenu(false);
         this.hud.hideDialogue();
         this.hud.showPause(false);
+        this.hud.showHud(false);
 
+        await this._travel(index);
+        this.busy = false;
+    }
+
+    /** Fade para preto → carrega → abertura do capítulo. */
+    async _travel(index) {
+        this.state = 'transition';
+        this.hud.setState('transition');
+        this.input.enabled = false;
+        this.fadeDir = 1;
+        this.hud.setTravel(CHAPTERS[index]);
+        await wait(Math.max(60, (1 - this.fade) * 900));
+        this.fade = 1;
         await this._loadChapter(index);
+        this.hud.setTravel(null);
         this._beginIntro();
     }
 
@@ -353,11 +366,13 @@ class Game {
         this.introT = 0;
         this.player.root.visible = true;
         this.hud.showHud(true);
-        this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || this.mobile);
+        this.hud.setTouchVisible(this.mobile);
         this.hud.setChapter(this.chapter);
         this.hud.setHearts(this.player.health, this.player.maxHealth);
         this.hud.setRing(this.player.hasRing);
         this.hud.setPages(this.pages, CHAPTERS.length);
+        this.hud.setStealth(0);
+        this.hud.setPrompt('');
         this.hud.showChapterCard(this.chapter);
         this.hud.say(this.chapter.objective, 5);
         this.input.enabled = false;
@@ -384,19 +399,28 @@ class Game {
     }
 
     async toMenu() {
+        if (this.busy) return;
+        this.busy = true;
         this.hud.showPause(false);
         this.hud.hideDefeat();
         this.hud.hideVictory();
         this.hud.hideDialogue();
         this.hud.showHud(false);
-        this.player.root.visible = false;
         this.input.exitLock();
-        this.input.enabled = true;
+        this.state = 'transition';
+        this.hud.setState('transition');
+        this.fadeDir = 1;
+        await wait(700);
+        this.fade = 1;
+        this.player.root.visible = false;
         await this._loadChapter(0, { menu: true });
+        this.input.enabled = true;
         this._refreshChapterList();
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
+        this.fadeDir = -1;
+        this.busy = false;
     }
 
     toggleMute() {
@@ -406,49 +430,51 @@ class Game {
         this.saveSettings();
     }
 
-    _loop(timestamp) {
-        if (document.hidden) return;
-        requestAnimationFrame((t) => this._loop(t));
-        this.timer.update(timestamp);
-        const dt = Math.min(0.05, Math.max(0, this.timer.getDelta()));
-        this.time += dt;
-        this._update(dt);
-        this.renderer.render(this.scene, this.camera);
-        this.fpsFrames += 1;
-        this.fpsAccum += dt;
-        if (this.fpsAccum >= 0.5) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
-            this.fpsFrames = 0;
-            this.fpsAccum = 0;
-        }
-    }
-
     _update(dt) {
+        this.time += dt;
         this.hud.tick(dt);
         this.audio.update(dt);
-        tickMaterials(this.time);
-        tickSky(this.sky, this.time);
-        this.world?.updateFns.forEach((fn) => fn(this.time, dt));
-        for (const w of this.world?.waterMeshes || []) {
-            if (w.material.map) w.material.map.offset.x = this.time * 0.03;
-            if (w.material.normalMap) w.material.normalMap.offset.set(this.time * 0.04, this.time * 0.02);
+
+        this.fade = clamp(this.fade + this.fadeDir * dt * 1.1, 0, 1);
+        if (this.fade !== this.lastFade) {
+            this.lastFade = this.fade;
+            this.fadeEl.style.opacity = String(this.fade);
+        }
+        this.fpsAccum += dt;
+        if (this.fpsAccum >= 0.5) {
+            this.fpsAccum = 0;
+            this.hud.setFps(Math.round(this.stage.fps));
         }
 
-        this.fade = clamp(this.fade + this.fadeDir * dt * 0.85, 0, 1);
-        document.getElementById('fade').style.opacity = String(this.fade);
+        const world = this.world;
+        if (!world) return;
+        const frozen = this.state === 'pause';
+        if (!frozen) world.tick(dt, this.time, this.camera, this.player);
 
-        if (this.state === 'menu') {
-            if (this.world) this._updateMenuCam(dt);
+        if (this.state === 'menu' || this.state === 'loading') {
+            this.orbit += dt * 0.05;
+            this._menuCam(world);
             return;
         }
         if (this.state === 'intro') {
+            this.player.animate(dt, 0);
             this._updateIntro(dt);
             return;
         }
-        if (this.state === 'pause' || this.state === 'dialogue' || this.state === 'defeat' || this.state === 'victory') {
-            this._followCamera(1);
+        if (this.state === 'transition') {
+            if (this.player.root.visible) {
+                this.player.animate(dt, 0);
+                this._followCamera(dt);
+            } else this._menuCam(world);
             return;
         }
+        if (this.state === 'dialogue' || this.state === 'defeat' || this.state === 'victory' || this.state === 'scene') {
+            this.player.animate(dt, 0);
+            if (this.state === 'scene' || this.state === 'victory') this.player.camYaw += dt * 0.22;
+            this._followCamera(dt);
+            return;
+        }
+        if (frozen) return;
         if (this.state !== 'playing') return;
 
         this.elapsed += dt;
@@ -458,13 +484,13 @@ class Game {
             this.hudAccum = 0;
         }
 
-        const info = this.player.update(dt, this.input, this.world);
+        const info = this.player.update(dt, this.input, world);
         if (info.footstep) this.audio.footstep();
-        if (info.attacking) {
-            const hits = this.player.attackHit(this.world.goblins);
+        if (info.strike) {
+            const hits = this.player.attackHit(world.goblins);
             for (const g of hits) {
                 this.audio.hit();
-                if (g.hit()) {
+                if (g.hit(this.player.x, this.player.z)) {
                     this.kills += 1;
                     this.score += 40;
                 }
@@ -475,98 +501,108 @@ class Game {
         this._updateInteract();
         this._checkHazards();
         this._followCamera(dt);
-        this.sky.mesh.position.copy(this.camera.position);
-        if (this.quality.shadows && this.lights?.dir) {
-            this.lights.dir.position.set(
-                this.player.x + this.chapter.sun.dir[0] * 40,
-                this.player.y + this.chapter.sun.dir[1] * 40,
-                this.player.z + this.chapter.sun.dir[2] * 40
-            );
-            this.lights.dir.target.position.set(this.player.x, this.player.y, this.player.z);
-            this.lights.dir.target.updateMatrixWorld();
-        }
     }
 
-    _updateMenuCam(dt) {
-        this.orbit += dt * 0.12;
-        const o = this.world.overview;
-        this.camera.position.set(
-            Math.sin(this.orbit) * o.x,
-            o.y,
-            Math.cos(this.orbit) * o.z
-        );
-        this.camera.lookAt(0, 2.5, 0);
-        this.sky.mesh.position.copy(this.camera.position);
+    /** Câmera do menu: órbita lenta em volta do ponto de interesse do capítulo, sem entrar no relevo. */
+    _menuCam(world) {
+        const o = world.overview;
+        const l = world.overviewLook;
+        const r = Math.hypot(o.x, o.z);
+        const a = this.orbit + Math.atan2(o.x, o.z);
+        const x = l.x + Math.sin(a) * r;
+        const z = l.z + Math.cos(a) * r;
+        this.camera.position.set(x, Math.max(l.y + o.y, world.heightAt(x, z) + 2.4), z);
+        this.camera.lookAt(l);
     }
 
     _updateIntro(dt) {
         this.introT += dt;
-        const t = clamp(this.introT / 3.4, 0, 1);
+        const world = this.world;
+        const t = clamp(this.introT / 3.6, 0, 1);
         const e = t * t * (3 - 2 * t);
-        const o = this.world.overview;
-        this.player.cameraPosition(CAM);
+        const o = world.overview;
+        const l = world.overviewLook;
+        this.camFree = this.player.camDist;
+        this.player.cameraPosition(CAM, this._freeDistance(world));
         this.player.lookAt(LOOK);
-        this.camera.position.set(
-            lerp(o.x, CAM.x, e),
-            lerp(o.y, CAM.y, e),
-            lerp(o.z, CAM.z, e)
-        );
-        const look = new THREE.Vector3(
-            lerp(0, LOOK.x, e),
-            lerp(3, LOOK.y, e),
-            lerp(0, LOOK.z, e)
-        );
-        this.camera.lookAt(look);
+        const ox = l.x + o.x;
+        const oz = l.z + o.z;
+        const oy = Math.max(l.y + o.y, world.heightAt(ox, oz) + 2.4);
+        this.camera.position.set(lerp(ox, CAM.x, e), lerp(oy, CAM.y, e), lerp(oz, CAM.z, e));
+        TMP.set(lerp(l.x, LOOK.x, e), lerp(l.y, LOOK.y, e), lerp(l.z, LOOK.z, e));
+        this.camera.lookAt(TMP);
         if (t >= 1) {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
+            this.input.consumeAttack();
+            this.input.consumeInteract();
             this.hud.say(this.mobile ? 'Arraste na tela para olhar e use o analógico para andar.' : 'Clique no mundo para olhar com o mouse.', 3.2);
         }
     }
 
+    /** Maior distância livre entre o ponto de mira e a posição desejada da câmera. */
+    _freeDistance(world) {
+        const want = this.player.camDist;
+        const N = 16;
+        for (let i = 1; i <= N; i++) {
+            const d = (want * i) / N;
+            this.player.cameraPosition(TMP, d);
+            if (world.solidAt(TMP.x, TMP.y, TMP.z, CAMERA.skin)) return Math.max(0.9, (want * (i - 1)) / N - 0.15);
+        }
+        return want;
+    }
+
     _followCamera(dt) {
-        this.player.cameraPosition(CAM);
+        const world = this.world;
+        if (!world) return;
+        const free = this._freeDistance(world);
+        this.camFree = damp(this.camFree, free, free < this.camFree ? 20 : 2.5, dt || 0.016);
+        this.player.cameraPosition(CAM, Math.min(this.camFree, free + 0.4));
         this.player.lookAt(LOOK);
-        // Evita a câmera enterrar no chão.
-        const gy = this.world.heightAt(CAM.x, CAM.z) + 1.1;
+        const gy = world.heightAt(CAM.x, CAM.z) + CAMERA.skin;
         if (CAM.y < gy) CAM.y = gy;
-        const k = 1 - Math.exp(-10 * (dt || 0.016));
+        const k = 1 - Math.exp(-14 * (dt || 0.016));
         this.camera.position.lerp(CAM, k);
         this.camera.lookAt(LOOK);
     }
 
     _updateNpcs(dt) {
+        const world = this.world;
         let maxAlert = 0;
-        for (const r of this.world.riders) {
-            const ev = r.update(dt, this.player, this.world.heightAt);
+        for (const r of world.riders) {
+            const ev = r.update(dt, this.player, world);
             maxAlert = Math.max(maxAlert, r.alert, ev === 'chase' ? 0.85 : 0);
             if (ev === 'caught') {
-                this.caught += 1;
-                this.audio.danger();
-                this.hud.flashHit();
                 if (this.player.hurt(1)) {
+                    this.caught += 1;
+                    this.audio.danger();
+                    this.hud.flashHit();
                     this.hud.setHearts(this.player.health, this.player.maxHealth);
                     this.hud.say('Os Cavaleiros alcançaram você.', 3);
                     if (!this.player.alive) this._defeat('Os Cavaleiros levaram o portador.');
                     else {
-                        // Empurra de volta.
-                        this.player.x -= Math.sin(r.yaw) * 2.4;
-                        this.player.z -= Math.cos(r.yaw) * 2.4;
+                        // Empurra para longe do cavalo, sem atravessar árvore.
+                        const nx = this.player.x + Math.sin(r.yaw) * 2.4;
+                        const nz = this.player.z + Math.cos(r.yaw) * 2.4;
+                        if (!world.blockedAt(nx, nz, 0.42)) {
+                            this.player.x = nx;
+                            this.player.z = nz;
+                        }
                     }
                 }
             } else if (ev === 'chase' && Math.random() < dt * 0.4) {
                 this.audio.danger();
             }
         }
-        this.hud.setStealth(this.world.riders.length ? maxAlert : 0);
+        this.hud.setStealth(world.riders.length ? maxAlert : 0);
 
-        for (const g of this.world.goblins) {
-            const ev = g.update(dt, this.player, this.world.heightAt);
+        for (const g of world.goblins) {
+            const ev = g.update(dt, this.player, world);
             if (ev === 'hit') {
-                this.audio.hit();
-                this.hud.flashHit();
                 if (this.player.hurt(1)) {
+                    this.audio.hit();
+                    this.hud.flashHit();
                     this.hud.setHearts(this.player.health, this.player.maxHealth);
                     if (!this.player.alive) this._defeat('A escuridão das minas venceu.');
                 }
@@ -580,7 +616,7 @@ class Game {
         if (!near || !this.input.consumeInteract()) return;
 
         if (near.kind === 'talk') {
-            this._openDialogue(near.id === 'wizard' ? 'O Cinzento' : 'O jardineiro', near.lines, near);
+            this._openDialogue(near.speaker || 'Viajante', near.lines, near);
             return;
         }
         if (near.kind === 'page') {
@@ -608,7 +644,16 @@ class Game {
             near.done = true;
             this.audio.chime();
             this.score += 100;
-            this._completeChapter();
+            if (near.sit) {
+                // cena final: o portador se senta e a câmera gira devagar
+                this.player.x = near.sit.x;
+                this.player.z = near.sit.z;
+                this.player.y = near.sit.seatY - this.player.hero.seatHeight;
+                this.player.yaw = this.player.facing = near.sit.yaw;
+                this.player.setPose('sit');
+                this.player.sync();
+            }
+            this._completeChapter(near.sit ? 3200 : 1400);
         }
     }
 
@@ -616,6 +661,7 @@ class Game {
         this.dialogue = { speaker, lines: [...lines], item };
         this.state = 'dialogue';
         this.hud.setState('dialogue');
+        this.hud.setPrompt('');
         this.input.exitLock();
         this.input.enabled = true;
         this.hud.showDialogue(speaker, lines[0]);
@@ -634,49 +680,48 @@ class Game {
         this.hud.hideDialogue();
         this.state = 'playing';
         this.hud.setState('playing');
+        this.input.consumeAttack();
+        this.input.consumeInteract();
         if (!this.mobile) this.input.requestLock();
     }
 
     _checkHazards() {
-        if (this.chapter.id === 'moria') {
-            if (this.player.z > 72 && !this.world.balrogAwake) {
-                this.world.balrogAwake = true;
-                this.audio.roar();
-                this.hud.say('A Sombra acordou. Corra pela ponte!', 4);
-            }
-            if (this.player.y < -2) {
-                this._defeat('A fenda engoliu o portador.');
-            }
+        const world = this.world;
+        if (world.shadowZ !== undefined && this.player.z > world.shadowZ && !world.shadowAwake) {
+            world.shadowAwake = true;
+            this.audio.roar();
+            this.hud.say('A Sombra acordou. Corra pela ponte!', 4);
         }
+        if (this.player.y < world.fallY) this._defeat('A fenda engoliu o portador.');
     }
 
-    async _completeChapter() {
-        if (this.state === 'transition') return;
-        this.state = 'transition';
+    async _completeChapter(hold = 1400) {
+        if (this.state === 'transition' || this.state === 'scene') return;
+        this.state = 'scene';
         this.hud.setState('transition');
+        this.hud.setPrompt('');
         this.input.enabled = false;
         this.input.exitLock();
         this.score += 200;
-        this.fadeDir = 1;
         this.hud.say(this.chapterIndex === CHAPTERS.length - 1 ? 'A jornada segue…' : 'A estrada continua.', 2.5);
-        await wait(1400);
+        await wait(hold);
 
         const next = this.chapterIndex + 1;
-        this.settings.unlocked = Math.max(this.settings.unlocked, next);
+        this.settings.unlocked = Math.max(this.settings.unlocked, Math.min(next, CHAPTERS.length - 1));
         this.saveSettings();
 
         if (next >= CHAPTERS.length) {
             this._victory();
             return;
         }
-        await this._loadChapter(next);
-        this._beginIntro();
+        await this._travel(next);
     }
 
     _defeat(reason) {
         if (this.state === 'defeat') return;
         this.state = 'defeat';
         this.hud.setState('defeat');
+        this.hud.setPrompt('');
         this.input.exitLock();
         this.input.enabled = true;
         this.audio.danger();
@@ -685,7 +730,6 @@ class Game {
             ['Tempo', formatTime(this.elapsed)],
             ['Páginas', `${this.pages}/${CHAPTERS.length}`]
         ]));
-        document.querySelector('#gameOverOverlay .lede')?.replaceChildren();
         const p = document.querySelector('#defeatReason');
         if (p) p.textContent = reason;
     }
@@ -694,6 +738,7 @@ class Game {
         this.state = 'victory';
         this.hud.setState('victory');
         this.input.exitLock();
+        this.input.enabled = true;
         const total = this.score + this.pages * 50 + Math.max(0, 600 - Math.floor(this.elapsed));
         if (total > this.settings.best) {
             this.settings.best = total;
@@ -703,31 +748,78 @@ class Game {
             ['Glória', String(total)],
             ['Tempo', formatTime(this.elapsed)],
             ['Páginas', `${this.pages}/${CHAPTERS.length}`],
-            ['Cavaleiros evadidos', this.caught === 0 ? 'nenhum encontro fatal' : `${this.caught} vezes`]
+            ['Cavaleiros', this.caught === 0 ? 'nunca o alcançaram' : `alcançaram ${this.caught}×`]
         ]));
         this.hud.setBest(this.settings.best);
     }
 
-    _resize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
+    /** Ganchos de teste (só com ?debug=1): troca de capítulo, teleporte, câmera, medidas. */
+    _debugHooks() {
+        const g = this;
+        window.__lab = {
+            game: g,
+            stage: g.stage,
+            /** Vai direto para um capítulo (0–4) e pula a abertura. */
+            async goto(i) {
+                g.busy = false;
+                await g.start(i);
+                g.introT = 99;
+                g.fade = 0;
+                return g.chapter.id;
+            },
+            tp(x, z, yaw) {
+                g.player.x = x;
+                g.player.z = z;
+                g.player.y = g.world.heightAt(x, z);
+                if (yaw !== undefined) g.player.yaw = g.player.facing = yaw;
+                g.player.sync();
+                return [x, g.player.y, z];
+            },
+            cam(yaw, pitch = 0.18, dist = 6.4) {
+                g.player.camYaw = yaw;
+                g.player.camPitch = pitch;
+                g.player.camDist = dist;
+                g.camFree = dist;
+            },
+            /** Câmera livre: congela o jogo em 'pause' e posiciona à mão. */
+            free(px, py, pz, tx, ty, tz) {
+                g.state = 'pause';
+                g.camera.position.set(px, py, pz);
+                g.camera.lookAt(tx, ty, tz);
+            },
+            unfreeze() {
+                g.state = 'playing';
+                g.input.enabled = true;
+            },
+            hud(v) {
+                g.hud.showHud(v);
+                document.querySelector('.game-shell > header').style.display = v ? '' : 'none';
+            },
+            stats() {
+                return { ...g.stage.stats(), state: g.state, chapter: g.chapter?.id, pos: [g.player.x, g.player.y, g.player.z].map((v) => +v.toFixed(1)) };
+            },
+            /** fps médio em `s` segundos de requestAnimationFrame. */
+            fps(s = 2) {
+                return new Promise((res) => {
+                    let n = 0;
+                    const t0 = performance.now();
+                    const f = () => {
+                        n++;
+                        if (performance.now() - t0 < s * 1000) requestAnimationFrame(f);
+                        else res(Math.round(n / s));
+                    };
+                    requestAnimationFrame(f);
+                });
+            },
+            interact() {
+                g.input.interactPressed = true;
+            }
+        };
     }
-}
-
-function lerp(a, b, t) {
-    return a + (b - a) * t;
-}
-
-function wait(ms) {
-    return new Promise((r) => setTimeout(r, ms));
 }
 
 function boot() {
     const game = new Game();
-    window.__jornada = game;
     game.init().catch((err) => {
         console.error(err);
         game.hud.showError(err?.message || 'Falha ao iniciar a jornada.');

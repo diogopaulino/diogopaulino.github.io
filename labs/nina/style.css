@@ -317,8 +317,8 @@ button {
 }
 
 .icon-button {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border-radius: 50%;
     background: var(--panel-strong);
     border: 1px solid var(--line);
@@ -674,12 +674,14 @@ kbd {
 
     .quest-panel {
         grid-column: 1 / -1;
+        order: 3;
     }
 
+    /* som/pausa acima dos botões de toque: no topo eles ficavam sob o seletor de tema */
     .hud-actions {
-        top: calc(0.85rem + var(--safe-top));
         right: calc(1rem + var(--safe-right));
-        bottom: auto;
+        bottom: calc(7.4rem + var(--safe-bottom));
+        flex-direction: column;
     }
 
     .menu-grid {
@@ -698,9 +700,18 @@ kbd {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    .quest-panel {
+        order: 0;
+    }
+
+    .hud-actions {
+        bottom: calc(4.6rem + var(--safe-bottom));
+        flex-direction: row;
+    }
+
     .hud-top {
         top: calc(4.5rem + var(--safe-top));
-        right: calc(6.6rem + var(--safe-right));
+        right: calc(1rem + var(--safe-right));
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.45rem;
     }
@@ -714,9 +725,9 @@ kbd {
     }
 
     .icon-button {
-        width: 2.1rem;
-        height: 2.1rem;
-        font-size: 0.85rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 0.9rem;
     }
 
     .panel {
@@ -775,13 +786,12 @@ kbd {
     }
 
     .stick span {
-        bottom: -1.1rem;
-        font-size: 0.6rem;
+        display: none;
     }
 
     .pad {
-        width: 2.5rem;
-        height: 2.5rem;
+        width: 2.75rem;
+        height: 2.75rem;
         font-size: 0.95rem;
     }
 

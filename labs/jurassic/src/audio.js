@@ -136,6 +136,43 @@ export class ParkAudio {
         o2.stop(now + 1.7);
     }
 
+    /** Baque grave de um passo pesado; `k` 0..1 = proximidade/peso. */
+    thud(k = 1) {
+        if (!this.ctx || !this.enabled || k < 0.03) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const now = this.ctx.currentTime;
+        o.type = 'sine';
+        o.frequency.setValueAtTime(62, now);
+        o.frequency.exponentialRampToValueAtTime(26, now + 0.28);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(Math.min(0.5, 0.42 * k), now + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+        o.connect(g);
+        g.connect(this.master);
+        o.start(now);
+        o.stop(now + 0.45);
+    }
+
+    /** Trovão: ruído filtrado em passa-baixa com cauda longa. */
+    thunder(k = 1) {
+        if (!this.ctx || !this.enabled) return;
+        const n = this._noise(2);
+        const f = this.ctx.createBiquadFilter();
+        const g = this.ctx.createGain();
+        const now = this.ctx.currentTime;
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(900, now);
+        f.frequency.exponentialRampToValueAtTime(90, now + 2.4);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.5 * k, now + 0.06);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
+        n.connect(f);
+        f.connect(g);
+        g.connect(this.master);
+        n.stop(now + 3.3);
+    }
+
     spark() {
         if (!this.ctx || !this.enabled) return;
         const o = this.ctx.createOscillator();

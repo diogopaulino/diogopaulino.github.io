@@ -4,21 +4,71 @@
  */
 
 import * as THREE from 'three';
-import { headGeometry, limbGeometry } from '../../shared/realism.js?v=3';
-import {
-    buildLongship,
-    buildBanner,
-    stoneMaterial,
-    metalMaterial,
-    plainMaterial,
-    woodMaterial
-} from './models.js?v=33';
-import { centerX, halfWidth, terrainHeight } from './river.js';
-import { waterHeight, waterSlope } from './water.js?v=15';
-import { COLORS, CASTLE_Z, SCORE } from './config.js?v=14';
-import { clamp, damp, randRange } from './utils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createHero } from '../../shared/gfx/hero.js';
+import { applyWorldUV } from '../../shared/gfx/core.js';
+import { instanceModel } from '../../shared/gfx/assets.js';
+import { castleStone, slateRoof, darkWood, iron, steel, plain, glow } from './materials.js?v=50';
+import { buildFlame, bannerGeometry, bannerMaterial } from './structure-models.js?v=50';
+import { tickStructures } from './structures.js?v=50';
+import { fireLights } from './lights.js?v=50';
+import { centerX, halfWidth, terrainHeight } from './river.js?v=50';
+import { CASTLE_Z } from './config.js?v=50';
+import { damp } from './utils.js?v=50';
 
-const tmpSlope = { dx: 0, dz: 0 };
+// Materiais: tudo PBR real (materials.js). As funções abaixo só adaptam as
+// chamadas antigas do arquivo aos conjuntos de textura do kit.
+const stoneMaterial = () => castleStone();
+const woodMaterial = () => darkWood(0xb09a84);
+const metalMaterial = (color, roughness = 0.5) => (color > 0xc00000 ? steel(color, roughness) : iron(color));
+const plainMaterial = (color, roughness = 0.7, metalness = 0, emissive = 0, intensity = 1) =>
+    (emissive ? glow(emissive, intensity) : plain(color, roughness, metalness));
+const ROOF = () => slateRoof(0xb9a6a0);
+
+function buildBanner(colorA, colorB, width, height) {
+    const mesh = new THREE.Mesh(
+        bannerGeometry(width, height, { hang: true, base: new THREE.Color(colorA).getHex(), trim: new THREE.Color(colorB).getHex() }),
+        bannerMaterial()
+    );
+    mesh.userData.dynamic = true;
+    return mesh;
+}
+
+/**
+ * Funde as malhas estáticas de `root` por material (1 draw call por material)
+ * e projeta UV em metros do mundo — a textura de alvenaria fica na escala certa
+ * em qualquer peça, sem depender da UV de cada geometria.
+ * Malhas marcadas com `userData.dynamic` (ou dentro de um grupo marcado) ficam de fora.
+ */
+function bakeStatic(root) {
+    root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const byMat = new Map();
+    const remove = [];
+    root.traverse((o) => {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) return;
+        for (let p = o; p && p !== root; p = p.parent) if (p.userData.dynamic) return;
+        let g = o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+        if (g.index) g = g.toNonIndexed();
+        for (const name of Object.keys(g.attributes)) {
+            if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+        }
+        if (!g.attributes.normal) g.computeVertexNormals();
+        applyWorldUV(g, 1);
+        if (!byMat.has(o.material)) byMat.set(o.material, []);
+        byMat.get(o.material).push(g);
+        remove.push(o);
+    });
+    for (const o of remove) o.parent.remove(o);
+    for (const [material, list] of byMat) {
+        const mesh = new THREE.Mesh(mergeGeometries(list, false), material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.name = `castle:${material.name}`;
+        root.add(mesh);
+    }
+}
+
 
 /** Telhado de torre: beiral aberto e ponta mais íngreme que um cone liso. Altura e raio batem com o cone antigo. */
 const towerRoofs = new Map();
@@ -328,7 +378,7 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     if (roof) {
         const cone = new THREE.Mesh(
             towerRoofGeometry(radius),
-            plainMaterial(COLORS.roof, 0.75, 0.05)
+            ROOF()
         );
         cone.position.y = height + radius * 1.05 + 1.6;
         cone.castShadow = true;
@@ -349,117 +399,27 @@ function buildTower(radius, height, { roof = true, tint = '#8a877f' } = {}) {
     return group;
 }
 
-function buildTorch(color = 0xff9a3c, intensity = 9) {
+function buildTorch() {
     const group = new THREE.Group();
-    const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.7, 6), metalMaterial(0x4a4139, 0.6));
+    const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.7, 8), metalMaterial(0x4a4139, 0.6));
     group.add(bracket);
-    const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.26, 8, 8),
-        plainMaterial(0xffc477, 0.4, 0, 0xff7a20, 3.2)
-    );
-    flame.position.y = 0.45;
-    flame.scale.y = 1.5;
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.12, 0.2, 10), metalMaterial(0x4a4139, 0.6));
+    cup.position.y = 0.4;
+    group.add(cup);
+    const flame = buildFlame(0.7, 1.3);
+    flame.position.y = 0.5;
+    flame.userData.dynamic = true;
     group.add(flame);
-    const light = new THREE.PointLight(color, intensity, 26, 2);
-    light.position.y = 0.6;
-    group.add(light);
     group.userData.flame = flame;
-    group.userData.light = light;
     return group;
 }
 
 /** A princesa acenando na janela da torre. */
-function buildPrincess() {
-    const group = new THREE.Group();
-    const skin = plainMaterial(0xf0c9a4, 0.75, 0);
-    const hairMat = plainMaterial(0x6b3b1c, 0.8, 0);
-    const gold = metalMaterial(0xf0cf7a, 0.3);
-
-    const dress = new THREE.Mesh(new THREE.LatheGeometry([
-        new THREE.Vector2(0.08, 0),
-        new THREE.Vector2(0.46, 0.08),
-        new THREE.Vector2(0.38, 0.55),
-        new THREE.Vector2(0.2, 1.02)
-    ], 16), plainMaterial(COLORS.princess, 0.7, 0.03));
-    dress.position.y = 0.02;
-    group.add(dress);
-
-    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 14), metalMaterial(0xf3c96b, 0.45));
-    hem.rotation.x = Math.PI / 2;
-    hem.position.y = 0.08;
-    group.add(hem);
-
-    const bodice = new THREE.Mesh(new THREE.LatheGeometry([
-        new THREE.Vector2(0.16, 0),
-        new THREE.Vector2(0.2, 0.08),
-        new THREE.Vector2(0.18, 0.28),
-        new THREE.Vector2(0.14, 0.4)
-    ], 14), plainMaterial(0xb85a8a, 0.7, 0.03));
-    bodice.position.y = 1.02;
-    group.add(bodice);
-
-    const head = new THREE.Mesh(headGeometry(0.16, 'human'), skin);
-    head.position.y = 1.58;
-    group.add(head);
-
-    for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), plainMaterial(0x2a1c12, 0.5, 0));
-        eye.position.set(sx * 0.05, 1.6, 0.15);
-        group.add(eye);
-    }
-
-    const hair = new THREE.Mesh(new THREE.LatheGeometry([
-        new THREE.Vector2(0.03, 0),
-        new THREE.Vector2(0.17, 0.03),
-        new THREE.Vector2(0.18, 0.12),
-        new THREE.Vector2(0.06, 0.2)
-    ], 14), hairMat);
-    hair.position.set(0, 1.5, -0.02);
-    group.add(hair);
-
-    const braid = new THREE.Mesh(limbGeometry({
-        length: 0.85, r0: 0.055, r1: 0.02, bulge: 0.012, bulgeAt: 0.2, pinch: 0, seg: 8, rings: 6
-    }), hairMat);
-    braid.position.set(0.04, 1.55, -0.08);
-    braid.rotation.x = 0.15;
-    group.add(braid);
-
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), gold);
-    crown.position.y = 1.74;
-    group.add(crown);
-    for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.14, 5), gold);
-        spike.position.set(Math.cos(a) * 0.12, 1.84, Math.sin(a) * 0.12);
-        group.add(spike);
-    }
-
-    const arm = new THREE.Group();
-    arm.position.set(0.24, 1.38, 0.06);
-    const armMesh = new THREE.Mesh(limbGeometry({
-        length: 0.48, r0: 0.055, r1: 0.04, bulge: 0.01, bulgeAt: 0.35, pinch: 0.1, seg: 8, rings: 5
-    }), skin);
-    armMesh.position.y = 0;
-    arm.add(armMesh);
-    group.add(arm);
-
-    const scarf = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.28), new THREE.MeshStandardMaterial({
-        color: 0xffe9f2,
-        side: THREE.DoubleSide,
-        roughness: 0.9,
-        emissive: new THREE.Color(0xffc8d8),
-        emissiveIntensity: 0.25
-    }));
-    scarf.position.set(0.32, -0.44, 0.04);
-    arm.add(scarf);
-
-    group.traverse((c) => {
-        c.castShadow = true;
-    });
-
-    group.userData.arm = arm;
-    group.userData.scarf = scarf;
-    return group;
+function buildPrincess(detail) {
+    // Heroína de corpo inteiro (gfx/hero.js): acena da sacada e comemora na vitória.
+    const hero = createHero({ preset: 'princess', detail });
+    hero.object.userData.dynamic = true;
+    return hero;
 }
 
 /**
@@ -650,7 +610,8 @@ const PRINCESS_MULLION = princessMullionGeometry();
 const PRINCESS_TRANSOM = princessTransomGeometry();
 const PRINCESS_SILL = princessSillGeometry();
 
-export function createCastle(scene) {
+export function createCastle(scene, quality = null) {
+    const low = quality?.id === 'low';
     const group = new THREE.Group();
     const z = CASTLE_Z;
     const cx = centerX(z);
@@ -715,6 +676,7 @@ export function createCastle(scene) {
         spike.rotation.x = Math.PI;
         gate.add(spike);
     }
+    gate.userData.dynamic = true;
     group.add(gate);
 
     // ---- Torres ----
@@ -778,6 +740,7 @@ export function createCastle(scene) {
         plainMaterial(0xffdca8, 0.45, 0, 0xffb45c, 1.8)
     );
     glass.name = 'princessGlass';
+    glass.userData.dynamic = true;
     const mullion = new THREE.Mesh(PRINCESS_MULLION, stone);
     mullion.name = 'princessMullion';
     mullion.position.y = -0.66;
@@ -791,19 +754,12 @@ export function createCastle(scene) {
     window_.position.set(keepX, 35.6, keepZ + keepRadius - 0.2);
     group.add(window_);
 
-    const windowLight = new THREE.PointLight(0xffb45c, 30, 52, 2);
-    windowLight.position.set(keepX, 35.6, keepZ + keepRadius + 0.8);
-    group.add(windowLight);
-
-    // Luz quente só para a princesa: sem ela a torre vira silhueta no crepúsculo.
-    const princessLight = new THREE.PointLight(0xffd9a8, 22, 32, 2);
-    princessLight.position.set(keepX, 36.5, balconyZ + 3.5);
-    group.add(princessLight);
-
-    const princess = buildPrincess();
-    princess.position.set(keepX, 33.3, balconyZ + 0.2);
-    princess.scale.setScalar(1.8);
+    const princessHero = buildPrincess(low ? 1 : 2);
+    const princess = princessHero.object;
+    princess.position.set(keepX, 33.25, balconyZ + 0.5);
+    princess.scale.setScalar(1.25);
     group.add(princess);
+    const princessState = { mode: 'wave' };
 
     // ---- Corpo do castelo (blocos atrás da muralha) ----
     const hall = new THREE.Mesh(hallBodyGeometry(), stone);
@@ -814,7 +770,7 @@ export function createCastle(scene) {
 
     const roof = new THREE.Mesh(
         hallRoofGeometry(),
-        plainMaterial(COLORS.roof, 0.78, 0.04)
+        ROOF()
     );
     roof.position.set(-sideOffset - 6, 16, -26);
     roof.castShadow = true;
@@ -855,125 +811,86 @@ export function createCastle(scene) {
         group.add(dock);
     }
 
+    // Carga no cais (modelos fotogramétricos instanciados; chegam depois).
+    const cargoY = Math.max(0.5, terrainHeight(cx + hw + 6, z + 16) * 0.4) + 1.3;
+    const cargo = [];
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < 4; i++) {
+            cargo.push({ x: side * (hw + 6.5 + (i % 2) * 1.1), y: cargoY, z: 16 - 6 + i * 3.4, ry: i * 1.3, s: 1 });
+        }
+    }
+    instanceModel('wine_barrel_01', cargo.filter((_, i) => i % 2 === 0), { height: 1.1 }).then((g) => g && group.add(g));
+    instanceModel('wooden_crate_01', cargo.filter((_, i) => i % 2 === 1), { height: 0.9 }).then((g) => g && group.add(g));
+
+    bakeStatic(group);
+
     let gateOpen = 0;
     let gateTarget = 0;
+    const tmp = new THREE.Vector3();
+    const torchWorld = torches.map((t) => t.getWorldPosition(new THREE.Vector3()));
+    const windowWorld = new THREE.Vector3(cx + keepX, 35.6, z + keepZ + keepRadius + 1.2);
+    const princessWorld = new THREE.Vector3(cx + keepX, 35.2, z + balconyZ + 0.5);
+    let shipLook = null;
 
     return {
         group,
         princess,
+        princessHero,
         z,
         centerX: cx,
         gateWidth,
-        princessWorld: new THREE.Vector3(cx + keepX, 35.6, z + balconyZ + 0.2),
+        princessWorld,
         openGate() {
             gateTarget = 1;
+            princessState.mode = 'cheer';
+        },
+        /** Nova partida: grade fechada de novo. */
+        reset() {
+            gateTarget = 0;
+            gateOpen = 0;
+            gate.position.y = 0;
+            princessState.mode = 'wave';
         },
         get gateProgress() {
             return gateOpen;
         },
+        /** Liga/desliga o castelo conforme a distância do jogador (4 km de rio antes dele). */
+        setVisibleFor(playerZ) {
+            group.visible = playerZ < z + 1500;
+        },
+        /** Ponto que a princesa acompanha com o olhar (posição do drakkar). */
+        lookAt(target) {
+            shipLook = target;
+        },
         update(dt, time) {
+            if (gateTarget === 0) princessState.mode = 'wave';
+            if (!group.visible) return;
+            tickStructures(time);
             gateOpen = damp(gateOpen, gateTarget, 1.1, dt);
             gate.position.y = gateOpen * 15.5;
 
-            for (const torch of torches) {
-                const flame = torch.userData.flame;
-                const light = torch.userData.light;
-                const flicker = 0.82 + Math.sin(time * 11 + torch.position.x) * 0.12 + Math.random() * 0.06;
-                flame.scale.set(flicker, flicker * 1.5, flicker);
-                light.intensity = 9 * flicker;
+            // Tochas e janela pedem luz ao pool (lights.js); tremor = soma de senos.
+            for (let i = 0; i < torchWorld.length; i++) {
+                const p = torchWorld[i];
+                const flicker = 0.85 + Math.sin(time * 11 + i * 2.1) * 0.1 + Math.sin(time * 23 + i) * 0.05;
+                fireLights.request(p.x, p.y + 0.8, p.z + 0.6, 0xff8a3a, 70 * flicker, 30);
             }
+            fireLights.request(windowWorld.x, windowWorld.y + 1.5, windowWorld.z + 4, 0xffc27a, 22 + Math.sin(time * 3.1) * 3, 18);
 
-            windowLight.intensity = 22 + Math.sin(time * 3.1) * 3;
-
-            const arm = princess.userData.arm;
-            arm.rotation.z = -0.6 + Math.sin(time * 4.2) * 0.75;
-            princess.rotation.y = Math.sin(time * 0.8) * 0.2;
+            if (shipLook) princessHero.lookAt?.(shipLook);
+            princessHero.update(dt, princessState);
         },
         emitTorchSparks(effects) {
-            for (const torch of torches) {
+            if (!group.visible) return;
+            for (const p of torchWorld) {
                 if (Math.random() < 0.25) {
-                    const p = new THREE.Vector3();
-                    torch.getWorldPosition(p);
-                    effects.fire(p.x, p.y + 0.4, p.z, 1, 0.7);
+                    tmp.copy(p);
+                    effects.fire(tmp.x, tmp.y + 0.9, tmp.z, 1, 0.7);
                 }
             }
         }
     };
 }
-
-/* ================================================================== */
-/* Barcaça Negra (chefe)                                               */
-/* ================================================================== */
-
-/**
- * Rostro de bronze, centrado como o cone de altura 5. A ponta fica em +Y.
- * Flange de fixação, dois anéis e um bico rombo — não um cone liso.
- * Seis caneluras no haste.
- */
-function bossRamGeometry() {
-    const pts = [
-        [1.35, -2.5],
-        [1.72, -2.22],
-        [0.92, -1.82],
-        [0.58, -1.15],
-        [0.78, -0.72],
-        [0.48, 0.05],
-        [0.74, 0.55],
-        [0.44, 1.25],
-        [0.66, 1.78],
-        [0.82, 2.12],
-        [0.36, 2.36],
-        [0.18, 2.5]
-    ];
-    const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        const z = pos.getZ(i);
-        const rad = Math.hypot(x, z);
-        if (rad < 0.22 || y < -2.05 || y > 2.05) continue;
-        const flute = Math.cos(Math.atan2(z, x) * 6);
-        const depth = flute > 0 ? 0.09 * flute * flute : -0.045 * flute * flute;
-        const k = 1 + depth / rad;
-        pos.setXYZ(i, x * k, y, z * k);
-    }
-    g.computeVertexNormals();
-    return g;
-}
-
-/** Tambor da balista, centrado como o cilindro de altura 3.4. Barril com aros. */
-function ballistaDrumGeometry() {
-    const H = 3.4;
-    const pts = [];
-    const steps = 24;
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const y = (t - 0.5) * H;
-        const belly = Math.sin(t * Math.PI);
-        let r = 1.32 + belly * 0.48;
-        if (t < 0.07 || t > 0.93) r += 0.16;
-        if (Math.abs(Math.sin(t * Math.PI * 5)) > 0.86) r += 0.16;
-        pts.push(new THREE.Vector2(r, y));
-    }
-    const g = new THREE.LatheGeometry(pts, 18);
-    g.computeVertexNormals();
-    return g;
-}
-
-/** Arco da balista: prod curvo no lugar da viga reta. Corda no plano y=0. */
-function ballistaBowGeometry() {
-    const curve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(-2.15, 0, 0),
-        new THREE.Vector3(0, 0.55, 0.42),
-        new THREE.Vector3(2.15, 0, 0)
-    );
-    return new THREE.TubeGeometry(curve, 18, 0.15, 8, false);
-}
-
-const BOSS_RAM = bossRamGeometry();
-const BALLISTA_DRUM = ballistaDrumGeometry();
-const BALLISTA_BOW = ballistaBowGeometry();
 
 /**
  * Trave da grade, centrada como a caixa 0.42×16×0.42.
@@ -1026,216 +943,3 @@ function gateRailGeometry() {
 
 const GATE_BAR = gateBarGeometry();
 const GATE_RAIL = gateRailGeometry();
-
-export class BossBarge {
-    constructor(scene) {
-        const group = new THREE.Group();
-        this.group = group;
-        this.scene = scene;
-
-        const { group: hull, parts } = buildLongship({
-            length: 30,
-            beam: 8.5,
-            hullColor: 0x241a16,
-            sailBase: '#1a1420',
-            sailStripe: '#7a1220',
-            emblem: 'rune',
-            shields: true,
-            oars: true,
-            dragon: true,
-            lantern: false
-        });
-        hull.scale.set(1, 1.25, 1);
-        group.add(hull);
-        this.hullGroup = hull;
-        this.parts = parts;
-
-        // Rostro na proa (+Z), bico para a frente do rio.
-        const ram = new THREE.Mesh(BOSS_RAM, metalMaterial(0x6a5a42, 0.42));
-        ram.name = 'bossRam';
-        ram.rotation.x = -Math.PI / 2;
-        ram.position.set(0, 0.05, 16.6);
-        ram.castShadow = true;
-        group.add(ram);
-
-        // Torres de balista.
-        this.ballistae = [];
-        for (const side of [-1, 1]) {
-            const tower = new THREE.Group();
-            const base = new THREE.Mesh(BALLISTA_DRUM, woodMaterial(true, 0x2b2018));
-            base.name = 'ballistaDrum';
-            base.position.y = 1.7;
-            base.castShadow = true;
-            tower.add(base);
-
-            const bow = new THREE.Mesh(BALLISTA_BOW, woodMaterial(true, 0x3b2a1c));
-            bow.name = 'ballistaBow';
-            bow.position.y = 3.55;
-            tower.add(bow);
-
-            const brazier = new THREE.Mesh(
-                new THREE.SphereGeometry(0.55, 10, 8),
-                plainMaterial(0xff9a4a, 0.4, 0, 0xff5a10, 3)
-            );
-            brazier.position.y = 4.1;
-            tower.add(brazier);
-            tower.userData.brazier = brazier;
-
-            const light = new THREE.PointLight(0xff6a2a, 14, 30, 2);
-            light.position.y = 4.2;
-            tower.add(light);
-            tower.userData.light = light;
-
-            tower.position.set(side * 3.4, 1.4, side * 3);
-            group.add(tower);
-            this.ballistae.push(tower);
-        }
-
-        // Estandarte do vilão.
-        const banner = buildBanner('#12070c', '#c0303c', 2.4, 4.6);
-        banner.position.set(0, 9.5, 6);
-        group.add(banner);
-
-        group.visible = false;
-        scene.add(group);
-
-        this.maxHp = 20;
-        this.hp = this.maxHp;
-        this.active = false;
-        this.dying = 0;
-        this.radius = 9;
-        this.fireTimer = 0;
-        this.lane = 0;
-        this.laneTimer = 0;
-        this.z = 0;
-        this.enraged = false;
-    }
-
-    spawn(z, difficulty) {
-        this.z = z;
-        this.hp = this.maxHp;
-        this.active = true;
-        this.dying = 0;
-        this.enraged = false;
-        this.fireTimer = 2.2;
-        this.lane = 0;
-        this.laneTimer = 0;
-        this.difficulty = difficulty;
-        this.group.visible = true;
-        this.group.position.set(centerX(z), 0, z);
-        this.group.rotation.set(0, 0, 0);
-        this.group.scale.setScalar(1);
-    }
-
-    get healthRatio() {
-        return clamp(this.hp / this.maxHp, 0, 1);
-    }
-
-    update(dt, ctx) {
-        if (!this.active) return;
-        const pos = this.group.position;
-
-        if (this.dying > 0) {
-            this.dying += dt;
-            pos.y -= dt * 1.1;
-            this.group.rotation.z += dt * 0.35;
-            this.group.rotation.x += dt * 0.12;
-            if (Math.random() < 0.9) {
-                ctx.effects.fire(
-                    pos.x + randRange(-7, 7),
-                    pos.y + randRange(0, 5),
-                    pos.z + randRange(-12, 12),
-                    2,
-                    1.4
-                );
-                ctx.effects.smokePuff(pos.x + randRange(-6, 6), pos.y + 3, pos.z + randRange(-10, 10), 2, 2.4);
-            }
-            if (this.dying > 4.5) {
-                this.active = false;
-                this.group.visible = false;
-            }
-            return;
-        }
-
-        // Recua devagar em direção ao castelo conforme perde vida.
-        const retreat = (1 - this.healthRatio) * 26;
-        const targetZ = this.z - retreat;
-
-        // Persegue lateralmente o jogador para bloquear a passagem.
-        this.laneTimer -= dt;
-        if (this.laneTimer <= 0) {
-            this.laneTimer = randRange(1.1, 2.2);
-            const playerLane = (ctx.player.x - centerX(ctx.player.z)) / Math.max(1, halfWidth(ctx.player.z));
-            this.lane = clamp(playerLane * 0.85 + randRange(-0.2, 0.2), -0.55, 0.55);
-        }
-        const targetX = centerX(pos.z) + this.lane * halfWidth(pos.z) * 0.8;
-
-        pos.x = damp(pos.x, targetX, this.enraged ? 1.5 : 0.9, dt);
-        pos.z = damp(pos.z, targetZ, 0.7, dt);
-        pos.y = waterHeight(pos.x, pos.z, ctx.time) + 1.1;
-
-        waterSlope(pos.x, pos.z, ctx.time, tmpSlope);
-        this.group.rotation.z = -tmpSlope.dx * 1.2;
-        this.group.rotation.x = tmpSlope.dz * 0.9;
-
-        for (const oar of this.parts.oars) {
-            oar.rotation.x = Math.sin(ctx.time * 2.1 + oar.userData.phase) * 0.5;
-            oar.rotation.z = oar.userData.baseRoll - oar.userData.side * Math.sin(ctx.time * 2.1 + oar.userData.phase + 1.2) * 0.18;
-        }
-
-        for (const tower of this.ballistae) {
-            const b = tower.userData.brazier;
-            const s = 0.85 + Math.sin(ctx.time * 8 + tower.position.x) * 0.18;
-            b.scale.set(s, s * 1.3, s);
-            tower.userData.light.intensity = 12 * s;
-            if (Math.random() < 0.3) {
-                const p = new THREE.Vector3();
-                b.getWorldPosition(p);
-                ctx.effects.fire(p.x, p.y, p.z, 1, 0.9);
-            }
-        }
-
-        // Salvas de flechas.
-        this.fireTimer -= dt;
-        if (this.fireTimer <= 0) {
-            const rate = this.enraged ? 1.35 : 2.1;
-            this.fireTimer = rate / (this.difficulty?.enemyFireScale || 1);
-            const shots = this.enraged ? 5 : 3;
-            for (let i = 0; i < shots; i++) {
-                const spread = (i - (shots - 1) / 2) * 3.2;
-                ctx.fireArrow(pos.x + spread, pos.y + 4.5, pos.z - 12, 1.15);
-            }
-            ctx.audio.sfx('arrow');
-        }
-    }
-
-    hit(damage, ctx) {
-        if (!this.active || this.dying > 0) return false;
-        this.hp -= damage;
-        const pos = this.group.position;
-        ctx.effects.impact(pos.x + randRange(-4, 4), pos.y + randRange(1, 4), pos.z + randRange(-8, 8), 0xffb066);
-        ctx.audio.sfx('hitWood');
-
-        if (!this.enraged && this.healthRatio < 0.45) {
-            this.enraged = true;
-            ctx.onEnrage?.();
-        }
-
-        if (this.hp <= 0) {
-            this.dying = 0.001;
-            ctx.effects.explosion(pos.x, pos.y + 2, pos.z, 3.4, 0.06);
-            ctx.effects.explosion(pos.x + 5, pos.y + 3, pos.z - 6, 2.4, 0.09);
-            ctx.effects.explosion(pos.x - 5, pos.y + 1, pos.z + 6, 2.4, 0.05);
-            ctx.audio.sfx('explosion', 1.4);
-            ctx.onKill?.(SCORE.bossKill, pos);
-            return true;
-        }
-        return false;
-    }
-
-    reset() {
-        this.active = false;
-        this.dying = 0;
-        this.group.visible = false;
-    }
-}

@@ -1,229 +1,329 @@
 /**
- * Ateliê ao entardecer: pódio, lanternas, vaga-lumes e céu em degradê.
+ * Quimera — estúdio: ciclorama, plataforma giratória, luz de três pontos, poeira e faíscas.
+ *
+ * Palco: `createStage` (gfx/stage.js) no modo HDRI — o céu fotográfico entra só como luz
+ * ambiente/reflexo; o fundo é um ciclorama modelado (piso que sobe em curva até a parede).
+ * O sol do palco fica desligado: a luz é de estúdio, fixa no mundo:
+ *   principal  spot quente, 45° à esquerda e acima, com sombra
+ *   preenchimento  spot frio e fraco, à direita, na altura do peito
+ *   contraluz  dois spots por trás (recorte de ombros e cabelo), na cor do tema
+ *   fundo      spot rasante que abre um halo na parede atrás do personagem
+ * Tema claro/escuro do site troca a cor do ciclorama, o HDRI (overcast/dusk) e as luzes.
  */
-
 import * as THREE from 'three';
+import { createStage } from '../../shared/gfx/stage.js';
+import { applyHDRI, pbrSet } from '../../shared/gfx/assets.js';
+import { revolve, loop, mesh, xf } from './sculpt.js';
 
-export function buildStudio(quality = 'high') {
-    const root = new THREE.Group();
-    const skyTex = makeSky();
-    const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(28, 32, 20),
-        new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
-    );
-    sky.rotation.y = 0.4;
-    root.add(sky);
+export const PLINTH_TOP = 0.2;
 
-    const floor = new THREE.Mesh(
-        new THREE.CircleGeometry(7.5, 48),
-        new THREE.MeshStandardMaterial({
-            color: 0x3a2a38,
-            roughness: 0.92,
-            metalness: 0.04
-        })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    root.add(floor);
-
-    const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1.15, 1.28, 48),
-        new THREE.MeshStandardMaterial({
-            color: 0xc9a227,
-            roughness: 0.35,
-            metalness: 0.55,
-            emissive: 0x6a4a10,
-            emissiveIntensity: 0.25
-        })
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.012;
-    ring.receiveShadow = true;
-    root.add(ring);
-
-    const podiumGeo = new THREE.LatheGeometry([
-        new THREE.Vector2(0.001, 0.0),
-        new THREE.Vector2(1.22, 0.0),
-        new THREE.Vector2(1.20, 0.028),
-        new THREE.Vector2(1.14, 0.036),
-        new THREE.Vector2(1.11, 0.062),
-        new THREE.Vector2(1.15, 0.072),
-        new THREE.Vector2(1.14, 0.108),
-        new THREE.Vector2(1.07, 0.125),
-        new THREE.Vector2(0.001, 0.125)
-    ], 48);
-    podiumGeo.computeVertexNormals();
-    const podium = new THREE.Mesh(
-        podiumGeo,
-        new THREE.MeshPhysicalMaterial({
-            color: 0x5c3e30,
-            roughness: 0.48,
-            metalness: 0.12,
-            clearcoat: 0.35,
-            clearcoatRoughness: 0.28
-        })
-    );
-    podium.position.y = 0;
-    podium.receiveShadow = true;
-    podium.castShadow = true;
-    root.add(podium);
-
-    const ledRing = new THREE.Mesh(
-        new THREE.TorusGeometry(1.125, 0.012, 12, 48),
-        new THREE.MeshStandardMaterial({
-            color: 0xffdf9a,
-            emissive: 0xffb84d,
-            emissiveIntensity: 1.6,
-            roughness: 0.2,
-            metalness: 0.1
-        })
-    );
-    ledRing.rotation.x = Math.PI / 2;
-    ledRing.position.y = 0.052;
-    root.add(ledRing);
-
-    const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.05, 1.065, 0.036, 48),
-        new THREE.MeshPhysicalMaterial({
-            color: 0xc8a47e,
-            roughness: 0.32,
-            metalness: 0.14,
-            clearcoat: 0.55,
-            clearcoatRoughness: 0.22
-        })
-    );
-    top.position.y = 0.132;
-    top.receiveShadow = true;
-    root.add(top);
-
-    addLanterns(root);
-    const motes = addMotes(root, quality === 'low' ? 40 : quality === 'medium' ? 80 : 140);
-
-    return { root, sky, motes, podium };
-}
-
-function makeSky() {
-    const c = document.createElement('canvas');
-    c.width = 8;
-    c.height = 64;
-    const g = c.getContext('2d');
-    const grd = g.createLinearGradient(0, 0, 0, 64);
-    grd.addColorStop(0, '#1b1430');
-    grd.addColorStop(0.38, '#4a2e58');
-    grd.addColorStop(0.62, '#c4786a');
-    grd.addColorStop(0.82, '#e8b888');
-    grd.addColorStop(1, '#f0d4b0');
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 8, 64);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-}
-
-function addLanterns(root) {
-    const spots = [
-        [-2.4, 2.1, -1.6],
-        [2.6, 2.4, -1.2],
-        [-1.6, 1.8, 2.2],
-        [1.8, 2.0, 2.0],
-        [0.2, 2.6, -2.4]
-    ];
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0xf0c070,
-        emissive: 0xf0a040,
-        emissiveIntensity: 0.9,
-        roughness: 0.4,
-        metalness: 0.05
-    });
-    const cord = new THREE.MeshStandardMaterial({ color: 0x3a2a24, roughness: 0.8 });
-    spots.forEach((p, i) => {
-        const g = new THREE.Group();
-        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12 + (i % 3) * 0.02, 16, 12), mat);
-        bulb.position.set(0, 0, 0);
-        const string = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.4, 6), cord);
-        string.position.y = 0.7;
-        g.add(bulb, string);
-        g.position.set(p[0], p[1], p[2]);
-        g.userData.phase = i * 1.3;
-        g.userData.baseY = p[1];
-        root.add(g);
-        g.userData.lantern = true;
-    });
-}
-
-function addMotes(root, count) {
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(count * 3);
-    const baseX = new Float32Array(count);
-    const phase = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-        const x = (Math.random() - 0.5) * 8;
-        pos[i * 3] = x;
-        baseX[i] = x;
-        pos[i * 3 + 1] = 0.3 + Math.random() * 3.2;
-        pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
-        phase[i] = Math.random() * Math.PI * 2;
+const THEMES = {
+    dark: {
+        hdri: 'dusk', env: 0.4, exposure: 1.0, cyc: 0x3a3144, floor: 0x1d1726, key: 0xffe8cc, keyI: 44, fill: 0xa9bcff, fillI: 11,
+        rim: 0xffa25e, rimI: 120, kick: 0xb58cff, kickI: 70, wash: 0xa87ac0, washI: 140, bloom: 0.05, vignette: 0.4, dust: 0xffd9a6, sky: 0x8a78b8, ground: 0x4a3a5a, ambI: 0.55, halo: 0xa0509a, haloI: 0.3, gloss: 0x1c1626
+    },
+    light: {
+        hdri: 'overcast', env: 0.7, exposure: 0.95, cyc: 0xe9e2d6, floor: 0xd9d0c2, key: 0xfff3e2, keyI: 38, fill: 0xdfe8ff, fillI: 14,
+        rim: 0xffffff, rimI: 45, kick: 0xffe0c0, kickI: 24, wash: 0xfff6e8, washI: 30, bloom: 0.04, vignette: 0.2, dust: 0xffffff, sky: 0xffffff, ground: 0xd8cfc0, ambI: 0.5, halo: 0xffffff, haloI: 0.12, gloss: 0xd9d0c2
     }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('baseX', new THREE.BufferAttribute(baseX, 1));
-    geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
-    const mat = new THREE.PointsMaterial({
-        color: 0xffe6b0,
-        size: 0.045,
-        transparent: true,
-        opacity: 0.75,
-        depthWrite: false,
-        sizeAttenuation: true
-    });
-    const pts = new THREE.Points(geo, mat);
-    root.add(pts);
-    return pts;
+};
+
+function tiledTex(tex, rep) {
+    const t = tex.clone();
+    t.repeat.set(rep, rep);
+    if (!tex.image) {
+        t.version = 0;
+        const tick = () => {
+            if (tex.image) t.needsUpdate = true;
+            else setTimeout(tick, 120);
+        };
+        tick();
+    }
+    return t;
 }
 
-export function lightStudio(scene) {
-    const hemi = new THREE.HemisphereLight(0xf0c8b0, 0x3a2438, 0.7);
-    scene.add(hemi);
+export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingManager = null }) {
+    const stage = createStage({
+        canvas, tier, hdri: THEMES[theme].hdri, shadows: false, fov: 30, near: 0.1, far: 60, loadingManager,
+        post: { fogDensity: 0, haze: 0, rays: 0, grain: 0.01, ao: 0.75, aoRadius: 0.55, saturation: 1.05, contrast: 1.04 }
+    });
+    if (!stage) return null;
+    const { scene, renderer } = stage;
+    const low = stage.tier === 'low';
+    stage.sun.visible = false;
+    stage.fill.visible = false;
 
-    const key = new THREE.DirectionalLight(0xffe0c0, 1.35);
-    key.position.set(3.2, 6.2, 4.4);
+    // ---- ciclorama: piso (r 7 m) → curva de 2,5 m → parede → teto fechado ----
+    const plaster = pbrSet('plastered_wall_04');
+    const cycMat = new THREE.MeshStandardMaterial({ color: THEMES[theme].cyc, roughness: 0.95, metalness: 0, side: THREE.BackSide, normalMap: tiledTex(plaster.normalMap, 0.6) });
+    cycMat.normalScale.set(0.35, 0.35);
+    const cyc = mesh(revolve([
+        [0, 0], [7, 0], [8.2, 0.18], [9.1, 0.9], [9.5, 2.5], [9.5, 7], [8.5, 9.5], [5, 11], [0, 11.2]
+    ], { segs: 72, sub: 6 }), cycMat);
+    cyc.castShadow = false;
+    scene.add(cyc);
+
+    // ---- plataforma: base de pedra fixa + tampo de madeira que gira ----
+    const slate = pbrSet('slate_floor_02');
+    const stone = new THREE.MeshStandardMaterial({ color: 0xbdb6b0, roughness: 0.85, map: tiledTex(slate.map, 1.2), normalMap: tiledTex(slate.normalMap, 1.2), roughnessMap: tiledTex(slate.roughnessMap, 1.2) });
+    const base = mesh(revolve([
+        [0, 0], [1.2, 0], [1.22, 0.012], [1.21, 0.05], [1.14, 0.062], [1.1, 0.07, 1], [1.1, 0.1], [1.08, 0.112], [0, 0.112]
+    ], { segs: 96, sub: 4 }), stone);
+    const K = 0.76;   // raio final do tampo ≈ 78 cm: o personagem domina o quadro
+    base.scale.set(K, 1, K);
+    scene.add(base);
+    const oak = pbrSet('oak_wood_planks');
+    const wood = new THREE.MeshPhysicalMaterial({
+        color: 0xa88560, roughness: 0.6, clearcoat: 0.35, clearcoatRoughness: 0.25, map: tiledTex(oak.map, 0.9), normalMap: tiledTex(oak.normalMap, 0.9),
+        roughnessMap: tiledTex(oak.roughnessMap, 0.9)
+    });
+    const turntable = new THREE.Group();
+    scene.add(turntable);
+    const topG = revolve([
+        [0, 0.112], [1.0, 0.112], [1.02, 0.12], [1.03, 0.15], [1.02, 0.185], [1.0, 0.198], [0.96, PLINTH_TOP], [0, PLINTH_TOP]
+    ], { segs: 96, sub: 4 });
+    // UV planar em metros para as tábuas correrem retas no tampo
+    const tp = topG.attributes.position;
+    const tuv = topG.attributes.uv;
+    for (let i = 0; i < tp.count; i++) tuv.setXY(i, tp.getX(i), tp.getZ(i) + tp.getY(i));
+    const deck = new THREE.Group();
+    deck.scale.set(K, 1, K);
+    turntable.add(deck);
+    deck.add(mesh(topG, wood));
+    const brass = new THREE.MeshStandardMaterial({ color: 0xd4a850, metalness: 1, roughness: 0.3 });
+    deck.add(mesh(xf(loop((a) => [Math.sin(a) * 0.82, 0, Math.cos(a) * 0.82], 0.007, 96, { sx: 0.5, sz: 2 }), { p: [0, PLINTH_TOP, 0] }), brass));
+    deck.add(mesh(xf(loop((a) => [Math.sin(a) * 1.032, 0, Math.cos(a) * 1.032], 0.006, 96), { p: [0, 0.15, 0] }), brass));
+    const led = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xffb45a, emissiveIntensity: 2.2 });
+    const ledRing = mesh(xf(loop((a) => [Math.sin(a) * 1.105, 0, Math.cos(a) * 1.105], 0.005, 96), { p: [0, 0.086, 0] }), led, { shadow: false });
+    ledRing.scale.set(K, 1, K);
+    scene.add(ledRing);
+
+    // sombra de contato: disco com degradê radial sob os pés
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 128;
+    const g2 = cv.getContext('2d');
+    const grd = g2.createRadialGradient(64, 64, 4, 64, 64, 62);
+    grd.addColorStop(0, 'rgba(0,0,0,0.62)');
+    grd.addColorStop(0.45, 'rgba(0,0,0,0.3)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g2.fillStyle = grd;
+    g2.fillRect(0, 0, 128, 128);
+    const contact = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.85), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+    contact.rotation.x = -Math.PI / 2;
+    contact.position.y = PLINTH_TOP + 0.003;
+    turntable.add(contact);
+
+    // degradê radial (canvas) usado no halo de fundo e no esmaecimento do piso polido
+    const radial = (stops) => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const g = c.getContext('2d');
+        const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+        for (const [k, v] of stops) gr.addColorStop(k, `rgba(255,255,255,${v})`);
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 256, 256);
+        return new THREE.CanvasTexture(c);
+    };
+    // halo: disco aditivo sempre atrás do personagem em relação à câmera (ver update) —
+    // separa a silhueta do ciclorama sem depender do ângulo de órbita
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({
+        map: radial([[0, 1], [0.35, 0.5], [0.7, 0.12], [1, 0]]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false
+    }));
+    scene.add(halo);
+    // piso polido em volta da plataforma: reflete o HDRI e os spots e some em degradê até o piso fosco
+    const glossMat = new THREE.MeshPhysicalMaterial({
+        color: 0x2a2036, roughness: 0.3, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 0.3,
+        alphaMap: radial([[0, 1], [0.45, 0.85], [0.8, 0.3], [1, 0]]), transparent: true, depthWrite: false
+    });
+    const gloss = new THREE.Mesh(new THREE.CircleGeometry(4.2, 64), glossMat);
+    gloss.rotation.x = -Math.PI / 2;
+    gloss.position.y = 0.004;
+    gloss.receiveShadow = true;
+    scene.add(gloss);
+
+    // ---- luzes ----
+    const spot = (x, y, z, tx, ty, tz, angle, pen) => {
+        const l = new THREE.SpotLight(0xffffff, 1, 30, angle, pen, 2);
+        l.position.set(x, y, z);
+        l.target.position.set(tx, ty, tz);
+        scene.add(l, l.target);
+        return l;
+    };
+    const key = spot(-2.9, 4.3, 3.7, 0, 1.15, 0, 0.36, 0.75);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    key.shadow.camera.near = 1;
-    key.shadow.camera.far = 16;
-    key.shadow.camera.left = -4;
-    key.shadow.camera.right = 4;
-    key.shadow.camera.top = 4;
-    key.shadow.camera.bottom = -4;
-    key.shadow.bias = -0.0008;
-    scene.add(key);
+    key.shadow.mapSize.setScalar(low ? 1024 : 2048);
+    key.shadow.camera.near = 2;
+    key.shadow.camera.far = 12;
+    key.shadow.bias = -0.0003;
+    key.shadow.normalBias = 0.012;
+    key.shadow.radius = 3;
+    const fill = spot(3.6, 1.9, 3.2, 0, 1.2, 0, 0.5, 1);
+    const rim = spot(1.9, 3.6, -3.7, 0, 1.3, 0, 0.42, 0.8);
+    const kick = spot(-2.6, 2.3, -3.0, 0, 1.2, 0, 0.45, 0.9);
+    const wash = spot(0, 0.5, -3.2, 0, 3.4, -9.5, 0.75, 1);
+    // luz de ambiente do estúdio: levanta o piso e a parede do ciclorama fora dos spots
+    const amb = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+    scene.add(amb);
 
-    const rim = new THREE.DirectionalLight(0xc8a0e8, 0.55);
-    rim.position.set(-4, 3, -3);
-    scene.add(rim);
-
-    const fill = new THREE.PointLight(0xf0a060, 0.6, 8, 1.6);
-    fill.position.set(0, 2.4, 2.2);
-    scene.add(fill);
-
-    return { hemi, key, rim, fill };
-}
-
-export function updateStudio(studio, t) {
-    studio.root.children.forEach((c) => {
-        if (c.userData.lantern) {
-            c.position.y = c.userData.baseY + Math.sin(t * 0.8 + c.userData.phase) * 0.05;
-            c.rotation.z = Math.sin(t * 0.6 + c.userData.phase) * 0.04;
-        }
-    });
-    if (studio.motes) {
-        const pos = studio.motes.geometry.attributes.position;
-        const phase = studio.motes.geometry.attributes.phase;
-        const baseX = studio.motes.geometry.attributes.baseX;
-        for (let i = 0; i < pos.count; i++) {
-            const p = phase.getX(i);
-            pos.setY(i, 0.4 + ((Math.sin(t * 0.35 + p) * 0.5 + 0.5) * 3.0));
-            pos.setX(i, baseX.getX(i) + Math.sin(t * 0.2 + p) * 0.4);
-        }
-        pos.needsUpdate = true;
+    // ---- poeira na luz principal: só brilha dentro do cone do spot ----
+    const N = low ? 90 : 260;
+    const dGeo = new THREE.BufferGeometry();
+    const dp = new Float32Array(N * 3);
+    const ds = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) {
+        dp[i * 3] = (Math.random() - 0.5) * 4.4;
+        dp[i * 3 + 1] = 0.3 + Math.random() * 3.2;
+        dp[i * 3 + 2] = (Math.random() - 0.5) * 4.4;
+        ds[i * 2] = Math.random() * 6.283;
+        ds[i * 2 + 1] = 0.5 + Math.random();
     }
+    dGeo.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+    dGeo.setAttribute('aSeed', new THREE.BufferAttribute(ds, 2));
+    dGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1.5, 0), 8);
+    const dustU = {
+        uTime: { value: 0 }, uKey: { value: key.position.clone() }, uDir: { value: new THREE.Vector3().subVectors(key.target.position, key.position).normalize() },
+        uCos: { value: Math.cos(0.2) }, uColor: { value: new THREE.Color(THEMES[theme].dust) }, uScale: { value: 1 }
+    };
+    const dust = new THREE.Points(dGeo, new THREE.ShaderMaterial({
+        uniforms: dustU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        vertexShader: /* glsl */ `
+            attribute vec2 aSeed; uniform float uTime; uniform vec3 uKey; uniform vec3 uDir; uniform float uCos; uniform float uScale; varying float vA;
+            void main() {
+                // deriva lenta: seno em cada eixo com fase própria (≈ 6 cm/s)
+                vec3 p = position + vec3(sin(uTime * 0.11 + aSeed.x), sin(uTime * 0.07 + aSeed.x * 1.7) * 0.6, cos(uTime * 0.09 + aSeed.x * 2.3)) * 0.35;
+                float c = dot(normalize(p - uKey), uDir);
+                vA = smoothstep(uCos - 0.01, uCos + 0.035, c) * (0.45 + 0.55 * sin(uTime * aSeed.y + aSeed.x * 9.0));
+                vec4 mv = modelViewMatrix * vec4(p, 1.0);
+                gl_Position = projectionMatrix * mv;
+                gl_PointSize = uScale * aSeed.y * 9.0 / -mv.z;
+            }`,
+        fragmentShader: /* glsl */ `
+            uniform vec3 uColor; varying float vA;
+            void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(uColor * 1.6, smoothstep(0.5, 0.05, d) * vA * 0.5); }`
+    }));
+    scene.add(dust);
+
+    // ---- faíscas da troca de peça (poço fixo de 140, atualizado em CPU só enquanto vivas) ----
+    const SN = 140;
+    const sp = new Float32Array(SN * 3);
+    const sl = new Float32Array(SN);
+    const sv = new Float32Array(SN * 3);
+    const sGeo = new THREE.BufferGeometry();
+    sGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    sGeo.setAttribute('aLife', new THREE.BufferAttribute(sl, 1));
+    sGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1.2, 0), 6);
+    const sparkU = { uColor: { value: new THREE.Color(1.0, 0.72, 0.36) }, uScale: { value: 1 } };
+    const sparks = new THREE.Points(sGeo, new THREE.ShaderMaterial({
+        uniforms: sparkU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        vertexShader: /* glsl */ `
+            attribute float aLife; uniform float uScale; varying float vL;
+            void main() { vL = aLife; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = uScale * (6.0 + 22.0 * aLife) / -mv.z; }`,
+        fragmentShader: /* glsl */ `
+            uniform vec3 uColor; varying float vL;
+            void main() { if (vL <= 0.0) discard; float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(uColor * 4.0, smoothstep(0.5, 0.0, d) * vL); }`
+    }));
+    sparks.frustumCulled = false;
+    scene.add(sparks);
+    let sparkNext = 0;
+    let sparkLive = 0;
+    /** Solta `count` faíscas num anel de raio r à altura y (m, mundo). */
+    function burst(x, y, z, r = 0.3, count = 10) {
+        for (let i = 0; i < count; i++) {
+            const k = sparkNext;
+            sparkNext = (sparkNext + 1) % SN;
+            const a = Math.random() * 6.283;
+            sp[k * 3] = x + Math.cos(a) * r;
+            sp[k * 3 + 1] = y + (Math.random() - 0.5) * 0.05;
+            sp[k * 3 + 2] = z + Math.sin(a) * r;
+            sv[k * 3] = Math.cos(a) * (0.2 + Math.random() * 0.5);
+            sv[k * 3 + 1] = 0.3 + Math.random() * 0.8;
+            sv[k * 3 + 2] = Math.sin(a) * (0.2 + Math.random() * 0.5);
+            sl[k] = 1;
+        }
+        sparkLive = 1.2;
+    }
+
+    let current = null;
+    function setTheme(name) {
+        const T = THEMES[name] || THEMES.dark;
+        if (current === name) return;
+        current = name;
+        cycMat.color.set(T.cyc);
+        renderer.setClearColor(T.cyc, 1);
+        key.color.set(T.key);
+        key.intensity = T.keyI;
+        fill.color.set(T.fill);
+        fill.intensity = T.fillI;
+        rim.color.set(T.rim);
+        rim.intensity = T.rimI;
+        kick.color.set(T.kick);
+        kick.intensity = T.kickI;
+        wash.color.set(T.wash);
+        wash.intensity = T.washI;
+        amb.color.set(T.sky);
+        amb.groundColor.set(T.ground);
+        amb.intensity = T.ambI;
+        halo.material.color.set(T.halo).multiplyScalar(T.haloI);
+        glossMat.color.set(T.gloss);
+        dustU.uColor.value.set(T.dust);
+        dust.material.blending = name === 'light' ? THREE.NormalBlending : THREE.AdditiveBlending;
+        led.emissiveIntensity = name === 'light' ? 1.2 : 2.2;
+        applyHDRI(scene, renderer, T.hdri, { intensity: T.env }).then(() => {
+            scene.background = null;
+            scene.environmentIntensity = T.env;
+            applyPost();
+        });
+        applyPost();
+    }
+    function applyPost() {
+        const T = THEMES[current];
+        const p = stage.pipeline.params;
+        p.exposure = T.exposure;
+        p.bloom = T.bloom;
+        p.vignette = T.vignette;
+        p.fogDensity = 0;
+        p.haze = 0;
+        p.rays = 0;
+    }
+    stage.onTier(applyPost);
+    stage.ready.then(() => {
+        scene.background = null;
+        current = null;
+        setTheme(theme);
+    });
+    setTheme(theme);
+
+    return {
+        stage, scene, turntable, key, burst, setTheme,
+        /** Foco do desfoque de fundo: nítido até ~1,3 m além do personagem; o ciclorama derrete. */
+        setFocus(dist) {
+            const p = stage.pipeline.params;
+            p.dofFocus = dist;
+            p.dofRange = 3.6;
+            p.dofMax = 0.4;
+        },
+        update(dt, t) {
+            const cam = stage.camera.position;
+            const hl = Math.hypot(cam.x, cam.z) || 1;
+            halo.position.set((-cam.x / hl) * 4.5, 1.5, (-cam.z / hl) * 4.5);
+            halo.lookAt(cam.x, 1.5, cam.z);
+            dustU.uTime.value = t;
+            const h = renderer.domElement.height;
+            dustU.uScale.value = h / 720;
+            sparkU.uScale.value = h / 720;
+            if (sparkLive > 0) {
+                sparkLive -= dt;
+                for (let k = 0; k < SN; k++) {
+                    if (sl[k] <= 0) continue;
+                    sl[k] = Math.max(0, sl[k] - dt * 1.3);
+                    sv[k * 3 + 1] -= dt * 0.9;
+                    sp[k * 3] += sv[k * 3] * dt;
+                    sp[k * 3 + 1] += sv[k * 3 + 1] * dt;
+                    sp[k * 3 + 2] += sv[k * 3 + 2] * dt;
+                }
+                sGeo.attributes.position.needsUpdate = true;
+                sGeo.attributes.aLife.needsUpdate = true;
+            }
+        }
+    };
 }

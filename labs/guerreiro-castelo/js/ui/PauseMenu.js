@@ -1,5 +1,5 @@
 /**
- * Menu de pausa em Babylon.js.
+ * Menu de pausa.
  */
 
 import { CHECKPOINT_STAGE } from '../core/SceneManager.js';
@@ -14,6 +14,9 @@ export class PauseMenu {
             this.toggle(false);
             const cp = game.checkpoints.current || 'home_intro';
             const stage = CHECKPOINT_STAGE[cp] || 'home';
+            const data = game.checkpoints.load();
+            if (data) game.story.applySave(data);
+            game.player.heal();
             game.loadStage(stage, cp);
         });
         document.getElementById('btnPauseSettings')?.addEventListener('click', () => {
@@ -22,9 +25,7 @@ export class PauseMenu {
         });
         document.getElementById('btnQuitMenu')?.addEventListener('click', () => {
             this.toggle(false);
-            game.running = false;
-            game.hud.hide();
-            game.menu.show();
+            game.quitToMenu();
         });
     }
 

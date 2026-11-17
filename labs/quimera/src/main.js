@@ -1,63 +1,90 @@
 /**
  * Quimera — ateliê 3D de mix-and-match.
  * Loop, câmera, HUD e persistência (hash + localStorage).
+ *
+ * Enquadramento: a câmera mira o personagem e a projeção é deslocada (setViewOffset) para
+ * o centro da área livre da tela — o que sobra entre o cabeçalho/cartão e o painel de peças.
+ *   distância = (altura enquadrada / 2) / tan(fov/2) / (altura livre / altura da tela)
+ * Corpo inteiro: da base da plataforma ao topo do chapéu. Busto (tecla C): ombros e cabeça.
  */
-
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
 import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
-} from './config.js';
-import { Character } from './character.js?v=74';
-import { buildStudio, lightStudio, updateStudio } from './studio.js';
+} from './config.js?v=2';
+import { Character } from './character.js?v=81';
+import { createStudio, PLINTH_TOP } from './studio.js?v=81';
+import { setSculptTier } from './sculpt.js';
+import { preload } from '../../shared/gfx/assets.js';
 import { StudioAudio } from './audio.js';
 
 const $ = (sel) => document.querySelector(sel);
-
-function detectQuality() {
-    const mobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
-    const cores = navigator.hardwareConcurrency || 4;
-    try {
-        const c = document.createElement('canvas');
-        const gl = c.getContext('webgl2') || c.getContext('webgl');
-        const info = gl?.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        if (/swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name)) return 'low';
-    } catch { /* ignore */ }
-    if (mobile || cores <= 4) return 'low';
-    if (cores <= 8) return 'medium';
-    return 'high';
-}
+const QUERY = new URLSearchParams(location.search);
+const DEBUG = QUERY.has('debug');   // ?debug=1 expõe window.__lab; ?tier=low|medium|high força a qualidade
 
 class Quimera {
     constructor() {
         this.canvas = $('#scene');
-        this.quality = detectQuality();
         this.audio = new StudioAudio();
-        this.character = new Character();
         this.ids = { head: 'pirate', body: 'sailor', accessory: 'astronaut' };
         this.autoRotate = true;
         this.uiHidden = false;
-        this.t0 = performance.now();
-        this.lastT = this.t0;
+        this.frame = 'full';
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         this.pointerDown = null;
+        this.pointerSeen = -10;
+        this.yawTarget = 0;
+        this.yawHold = 0;
+        this.fit = { dist: 6, y: 1.1, dx: 0, dy: 0 };
+        this.userZoom = 1;
+        this.lookPoint = new THREE.Vector3();
     }
 
-    init() {
+    async init() {
         window.LabShell?.init();
         this._restore();
-        this._renderer();
-        this._scene();
+        const theme = window.LabTheme?.current() || 'dark';
+        this.studio = createStudio({ canvas: this.canvas, theme, tier: QUERY.get('tier') || 'auto' });
+        if (!this.studio) {
+            $('#loading')?.classList.add('is-done');
+            return;
+        }
+        const stage = this.studio.stage;
+        this.stage = stage;
+        setSculptTier(stage.tier);
+        window.LabTheme?.onChange((t) => this.studio.setTheme(t));
+
+        this.camera = stage.camera;
+        this.camera.position.set(2.2, 1.6, 5.4);
+        this.controls = new OrbitControls(this.camera, this.canvas);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = false;
+        this.controls.minPolarAngle = 0.75;
+        this.controls.maxPolarAngle = 1.6;
+        this.controls.target.set(0, 1.1, 0);
+
+        this.character = new Character({
+            parent: this.studio.turntable, detail: stage.tier === 'low' ? 1 : 2,
+            onBurst: (x, y, z, r, n) => this.studio.burst(x, y, z, r, n)
+        });
+        this.character.root.position.y = PLINTH_TOP;
+
         this._hud();
         this._events();
-        this.applyMix(this.ids, { bounce: false, silent: true });
+        // texturas e modelos usados pelas peças chegam atrás da tela de carregamento
+        await Promise.race([
+            Promise.all([stage.ready, preload({ textures: ['rusty_metal_02', 'brown_leather', 'fabric_pattern_07', 'denim_fabric', 'oak_wood_planks', 'dark_wooden_planks'] })]),
+            new Promise((r) => setTimeout(r, 6000))
+        ]);
+        this.applyMix(this.ids, { instant: true, silent: true });
+        this._layout(true);
+        await stage.warmup();
         $('#loading')?.classList.add('is-done');
-        this.loop();
-        window.LabVisibility?.whenVisible(() => this.loop());
+        stage.start((dt, t) => this.update(dt, t));
+        if (DEBUG) window.__lab = this;
     }
 
     _restore() {
@@ -85,52 +112,6 @@ class Quimera {
         } catch { /* ignore */ }
     }
 
-    _renderer() {
-        const pr = this.quality === 'high' ? 2 : this.quality === 'medium' ? 1.5 : 1;
-        this.renderer = new THREE.WebGLRenderer({
-            canvas: this.canvas,
-            antialias: this.quality !== 'low',
-            powerPreference: this.quality === 'low' ? 'low-power' : 'high-performance'
-        });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pr));
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
-        this.renderer.shadowMap.enabled = this.quality !== 'low';
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: this.quality !== 'low' });
-        this.renderer.setClearColor(0x1b1430, 1);
-    }
-
-    _scene() {
-        this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality === 'low' ? 0.22 : 0.5 });
-        this.scene.fog = new THREE.FogExp2(0x3a2438, 0.028);
-
-        this.camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 40);
-        this.camera.position.set(2.4, 1.7, 4.2);
-
-        this.controls = new OrbitControls(this.camera, this.canvas);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.06;
-        this.controls.target.set(0, 0.95, 0);
-        this.controls.minDistance = 2.4;
-        this.controls.maxDistance = 7;
-        this.controls.minPolarAngle = 0.55;
-        this.controls.maxPolarAngle = 1.42;
-        this.controls.autoRotate = this.autoRotate;
-        this.controls.autoRotateSpeed = 0.55;
-        this.controls.enablePan = false;
-
-        this.studio = buildStudio(this.quality);
-        this.scene.add(this.studio.root);
-        lightStudio(this.scene);
-
-        this.character.root.position.y = 0.15;
-        this.scene.add(this.character.root);
-    }
-
     _hud() {
         this._fillSelect('head');
         this._fillSelect('body');
@@ -141,6 +122,7 @@ class Quimera {
         $('#themeBtn').addEventListener('click', () => this.fullSet());
         $('#muteBtn').addEventListener('click', () => this.toggleMute());
         $('#rotateBtn').addEventListener('click', () => this.toggleRotate());
+        $('#frameBtn')?.addEventListener('click', () => this.toggleFrame());
         $('#fullscreen').addEventListener('click', () => this.toggleFullscreen());
 
         document.querySelectorAll('[data-step]').forEach((btn) => {
@@ -179,22 +161,28 @@ class Quimera {
         });
         $('#rotateBtn')?.setAttribute('aria-pressed', String(this.autoRotate));
         $('#muteBtn')?.setAttribute('aria-pressed', String(!this.audio.enabled));
+        $('#frameBtn')?.setAttribute('aria-pressed', String(this.frame === 'bust'));
     }
 
-    applyMix(ids, { bounce = true, silent = false } = {}) {
+    applyMix(ids, { instant = false, silent = false } = {}) {
+        const accChanged = ids.accessory !== this.character.fig?.ids.accessory;
         this.ids = { ...ids };
-        this.character.setMix(this.ids, { bounce });
+        this.character.setMix(this.ids, { instant });
+        if (accChanged) this._present(instant);
         this._persist();
         this._syncHud();
+        this._layout(instant);
         if (!silent) this.audio.pluck(1);
     }
 
     step(slot, dir) {
         const i = wrapIndex(kitIndex(this.ids[slot]) + dir);
         this.ids[slot] = KITS[i].id;
-        this.character.setMix(this.ids, { bounce: true });
+        this.character.setMix(this.ids);
+        if (slot === 'accessory') this._present(false);
         this._persist();
         this._syncHud();
+        this._layout(false);
         this.audio.pluck(slot === 'head' ? 0 : slot === 'body' ? 1 : 2);
         this.audio.resume();
     }
@@ -211,6 +199,18 @@ class Quimera {
         this.applyMix({ head: kit.id, body: kit.id, accessory: kit.id });
     }
 
+    /**
+     * Gira a plataforma para um 3/4 que mostre o acessório novo: 0,45 rad à frente da câmera para
+     * itens de mão/ombro; 2,35 rad (3/4 de costas) para mochila, jato e katana embainhada.
+     */
+    _present(snap) {
+        const cam = this.camera.position;
+        const back = this.character.fig?.view === 'back';
+        this.yawTarget = Math.atan2(cam.x, cam.z) + (back ? 2.35 : -0.45);
+        this.yawHold = snap ? 0 : 2.4;
+        if (snap) this.studio.turntable.rotation.y = this.yawTarget;
+    }
+
     toggleMute() {
         this.audio.resume();
         this.audio.setEnabled(!this.audio.enabled);
@@ -219,8 +219,15 @@ class Quimera {
 
     toggleRotate() {
         this.autoRotate = !this.autoRotate;
-        this.controls.autoRotate = this.autoRotate;
         this._syncHud();
+    }
+
+    /** Alterna corpo inteiro ↔ close no busto. */
+    toggleFrame() {
+        this.frame = this.frame === 'full' ? 'bust' : 'full';
+        this.userZoom = 1;
+        this._syncHud();
+        this._layout(false);
     }
 
     toggleFullscreen() {
@@ -228,8 +235,53 @@ class Quimera {
         else document.exitFullscreen?.();
     }
 
+    /**
+     * Área livre da tela (px CSS) e enquadramento. A área livre exclui o cabeçalho, o painel de
+     * peças e — no retrato — o cartão do título; no paisagem curto o cartão é excluído pela lateral.
+     */
+    _layout(snap) {
+        if (!this.camera) return;
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        let top = 0;
+        let bottom = H;
+        let left = 0;
+        const hidden = this.uiHidden;
+        const rect = (sel) => (hidden ? null : $(sel)?.getBoundingClientRect());
+        const head = rect('header[data-lab-header]');
+        const dock = rect('.dock');
+        const hud = rect('.hud-left');
+        if (head) top = Math.max(top, head.bottom - 30);
+        if (dock) bottom = Math.min(bottom, dock.top);
+        if (hud && hud.width > 0) {
+            if (H < 520 && W > H) left = hud.right;
+            else if (hud.width > W * 0.55) top = Math.max(top, hud.bottom);
+        }
+        const fw = Math.max(80, W - left);
+        const fh = Math.max(80, bottom - top);
+        const h = this.character.height;
+        const lo = this.frame === 'full' ? PLINTH_TOP - 0.02 : PLINTH_TOP + this.character.eyeHeight - 0.42;
+        const hi = PLINTH_TOP + h + (this.frame === 'full' ? 0.2 : 0.26);
+        const span = hi - lo;
+        const wide = this.frame === 'full' ? 1.5 : 0.9;
+        const tan = Math.tan((this.camera.fov * Math.PI) / 360);
+        this.fit.dist = Math.max(span / 2 / tan / (fh / H), wide / 2 / tan / (fw / H)) * 1.0;
+        this.fit.y = (lo + hi) / 2;
+        this.fit.dx = left + fw / 2 - W / 2;
+        this.fit.dy = top + fh / 2 - H / 2;
+        this.controls.minDistance = this.fit.dist * 0.45;
+        this.controls.maxDistance = this.fit.dist * 1.5;
+        this.camera.setViewOffset(W, H, -this.fit.dx, -this.fit.dy, W, H);
+        this.refit = snap ? 0 : 1.2;
+        if (snap) {
+            this.controls.target.set(0, this.fit.y, 0);
+            const d = this.camera.position.clone().sub(this.controls.target).setLength(this.fit.dist);
+            this.camera.position.copy(this.controls.target).add(d);
+        }
+    }
+
     _events() {
-        window.addEventListener('resize', () => this._onResize());
+        window.addEventListener('resize', () => this._layout(true));
         window.addEventListener('hashchange', () => {
             const ids = parseHash(location.hash);
             if (ids) this.applyMix(ids, { silent: true });
@@ -241,7 +293,11 @@ class Quimera {
 
         this.canvas.addEventListener('pointerdown', (e) => {
             this.pointerDown = { x: e.clientX, y: e.clientY, t: performance.now() };
+            this.refit = 0;
         });
+        this.canvas.addEventListener('wheel', () => {
+            this.refit = 0;
+        }, { passive: true });
         this.canvas.addEventListener('pointerup', (e) => {
             if (!this.pointerDown) return;
             const dx = e.clientX - this.pointerDown.x;
@@ -250,6 +306,11 @@ class Quimera {
             this.pointerDown = null;
             if (dt > 400 || dx * dx + dy * dy > 64) return;
             this._pick(e);
+        });
+        window.addEventListener('pointermove', (e) => {
+            if (e.pointerType === 'touch') return;
+            this._ndc(e);
+            this.pointerSeen = performance.now() / 1000;
         });
 
         window.addEventListener('keydown', (e) => {
@@ -266,46 +327,71 @@ class Quimera {
             else if (k === 'm') this.toggleMute();
             else if (k === 'h') this._toggleUi();
             else if (k === 'f') this.toggleFullscreen();
+            else if (k === 'c') this.toggleFrame();
         });
     }
 
     _toggleUi() {
         this.uiHidden = !this.uiHidden;
         document.body.classList.toggle('ui-hidden', this.uiHidden);
+        this._layout(false);
     }
 
-    _pick(e) {
+    _ndc(e) {
         const rect = this.canvas.getBoundingClientRect();
         this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    _pick(e) {
+        this._ndc(e);
         this.raycaster.setFromCamera(this.pointer, this.camera);
         const hits = this.raycaster.intersectObject(this.character.root, true);
-        const slot = hits.find((h) => h.object.userData.slot)?.object.userData.slot;
-        if (slot) this.step(slot, 1);
+        for (const h of hits) {
+            const slot = this.character.slotOf(h);
+            if (slot) {
+                this.step(slot, 1);
+                return;
+            }
+        }
     }
 
-    _onResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+    update(dt, t) {
+        const c = this.character;
+        // plataforma: autorrotação lenta + impulso de giro da troca de peça
+        const tt = this.studio.turntable;
+        if (this.yawHold > 0) {
+            // apresentação do acessório: vai ao 3/4 pelo caminho mais curto e segura 2,4 s antes de voltar a girar
+            this.yawHold -= dt;
+            const d = Math.atan2(Math.sin(this.yawTarget - tt.rotation.y), Math.cos(this.yawTarget - tt.rotation.y));
+            tt.rotation.y += d * (1 - Math.exp(-5 * dt));
+        } else tt.rotation.y += ((this.autoRotate ? 0.28 : 0) + c.spin) * dt;
 
-    loop() {
-        if (document.hidden) return;
-        const now = performance.now();
-        const dt = Math.min(0.05, Math.max(0, (now - this.lastT) / 1000));
-        this.lastT = now;
-        const t = (now - this.t0) / 1000;
+        // reenquadra com suavidade depois de troca/redimensionamento (até o usuário mexer)
+        if (this.refit > 0) {
+            this.refit -= dt;
+            const k = 1 - Math.exp(-5 * dt);
+            this.controls.target.y += (this.fit.y - this.controls.target.y) * k;
+            const off = this.camera.position.clone().sub(this.controls.target);
+            off.setLength(off.length() + (this.fit.dist - off.length()) * k);
+            this.camera.position.copy(this.controls.target).add(off);
+        }
         this.controls.update();
-        this.character.update(dt, t);
-        updateStudio(this.studio, t);
-        this.renderer.render(this.scene, this.camera);
-        requestAnimationFrame(() => this.loop());
+
+        // olhar: segue o cursor por 4 s depois do último movimento; senão, a câmera
+        const now = performance.now() / 1000;
+        if (now - this.pointerSeen < 4) {
+            this.raycaster.setFromCamera(this.pointer, this.camera);
+            this.lookPoint.copy(this.raycaster.ray.origin).addScaledVector(this.raycaster.ray.direction, this.fit.dist * 0.72);
+        } else this.lookPoint.copy(this.camera.position);
+        c.lookAt(this.lookPoint);
+        c.update(dt, t);
+        this.studio.update(dt, t);
+        this.studio.setFocus(this.camera.position.distanceTo(this.controls.target));
     }
 }
 
 const app = new Quimera();
-window.__quimera = app;
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => app.init(), { once: true });
 } else {

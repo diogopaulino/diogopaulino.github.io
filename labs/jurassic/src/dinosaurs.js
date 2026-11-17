@@ -1,962 +1,636 @@
 /**
- * Dinossauros construídos por código — nenhum GLB externo.
+ * Jurassic — fauna: seis espécies com esqueleto (`shared/gfx/creature.js`) e
+ * comportamento próprio.
  *
- * Corpo: elipses varridas ao longo de uma spline Catmull-Rom (silhueta orgânica).
- * Pele: albedo + normal de escamas + wrap-lighting. Animação por hierarquia
- * de ossos (coxas, canelas, mandíbula, pescoço).
+ * Cada animal tem dois níveis de detalhe (perto/longe) trocados pela distância
+ * à câmera, com histerese de 15 %. A marcha usa a velocidade real do corpo
+ * (m/s) para o pé não patinar, e `groundFn` assenta cada pata no relevo.
+ *
+ * Comportamento por espécie:
+ *   Braquiossauro  manada no lago: anda até uma frondosa e come na copa (olhar
+ *                  para o alto + mandíbula), depois desce à margem e bebe. O
+ *                  filhote segue um adulto.
+ *   Tricerátops    pastam no prado, andam poucos metros entre uma moita e outra;
+ *                  o filhote trota em volta da mãe. Jipe perto → cabeça erguida.
+ *   Estegossauro   fila indiana ao longo da crista, 10 m entre um e outro; nas
+ *                  pontas param, pastam e voltam.
+ *   Velociraptor   bando: corre até um ponto da clareira, para em alerta, fareja.
+ *                  Jipe a menos de 15 m → dispara para o lado oposto.
+ *   Tiranossauro   patrulha o paddock, ruge, acompanha o jipe por dentro da
+ *                  cerca. Se o jipe para perto do vão rompido (ou entra), ele
+ *                  sai pelo vão e persegue: a menos de 5,4 m, fim de turno.
+ *   Pteranodonte   planam em órbita em torno do farol, batendo asas em rajadas.
+ *
+ * Passo pesado: quando um pé de animal grande toca o chão (altura do osso do pé
+ * cruza um limiar com histerese) dispara `onStep(pos, peso)` — poeira, baque e
+ * tremor de câmera com força  peso / (1 + (d/12)²).
  */
 
 import * as THREE from 'three';
-import { headGeometry, limbGeometry, wingMembrane } from '../../shared/realism.js?v=3';
-import { dinoSkin } from './textures.js';
-import { patchSkin } from './shaders.js';
-import { clamp, damp, wrapPi, hash2 } from './utils.js';
-import { SPECIES } from './config.js';
+import { WORLD, SPECIES } from './config.js';
+import { clamp, damp, seeded } from '../../shared/gfx/core.js';
+import { createCreature } from '../../shared/gfx/creature.js';
+import { wrapPi } from './utils.js';
 
-const ivory = () => new THREE.MeshPhysicalMaterial({
-    color: 0xe8d8b8, roughness: 0.28, metalness: 0.1, clearcoat: 0.45, clearcoatRoughness: 0.3
-});
-const keratin = () => new THREE.MeshPhysicalMaterial({
-    color: 0xc4a070, roughness: 0.48, metalness: 0.06, clearcoat: 0.2, clearcoatRoughness: 0.55
-});
-const eyeWhite = () => new THREE.MeshPhysicalMaterial({
-    color: 0xe8dcc0, roughness: 0.18, metalness: 0.12, clearcoat: 0.6,
-    emissive: 0x221800, emissiveIntensity: 0.12
-});
-const pupilMat = () => new THREE.MeshPhysicalMaterial({
-    color: 0x0a0806, roughness: 0.15, metalness: 0.2, clearcoat: 0.4
-});
+const TAU = Math.PI * 2;
+const _v = new THREE.Vector3();
+const nextTask = () => new Promise((r) => setTimeout(r, 0));
 
-function skinMat(key, colors, quality) {
-    const maps = dinoSkin({
-        key,
-        ...colors,
-        size: quality.dinoSegs > 1.2 ? 1024 : (quality.dinoSegs > 0.75 ? 512 : 256)
-    });
-    const mat = new THREE.MeshPhysicalMaterial({
-        map: maps.map,
-        normalMap: maps.normalMap,
-        normalScale: new THREE.Vector2(1.4, 1.4),
-        bumpMap: maps.bumpMap,
-        bumpScale: maps.bumpScale ?? 0.08,
-        roughnessMap: maps.roughnessMap,
-        roughness: 0.55,
-        metalness: 0.1,
-        clearcoat: 0.12,
-        clearcoatRoughness: 0.7
-    });
-    patchSkin(mat, { belly: new THREE.Color(colors.ventral) });
-    return mat;
+/** Estado reutilizado passado a creature.update (sem alocação por quadro). */
+const makeAnim = (groundFn) => ({ mode: 'idle', speed: 0, lookAt: null, groundFn, turn: 0, jaw: undefined });
+
+class Dino {
+    /**
+     * @param {object} o  { id, preset, x, z, yaw, scale, age, seed, weight (0 = sem passo pesado), radius }
+     */
+    constructor(o, world, quality) {
+        this.id = o.id;
+        this.world = world;
+        this.preset = o.preset;
+        this.weight = o.weight ?? 0;
+        this.flyer = !!o.flyer;
+        this.rnd = seeded(o.seed * 131 + 7);
+        const base = { scale: o.scale ?? 1, age: o.age ?? 1, seed: o.seed, ...(o.opts || {}) };
+        this.near = createCreature(o.preset, { ...base, detail: quality.dinoNear });
+        this.far = createCreature(o.preset, { ...base, detail: quality.dinoFar });
+        this.lods = [this.near, this.far];
+        this.active = this.far;
+        this.near.object.visible = false;
+        this.nearDist = quality.nearDist * (o.lodScale ?? 1);
+        this.position = new THREE.Vector3(o.x, 0, o.z);
+        this.position.y = this.flyer ? o.y : world.heightAt(o.x, o.z);
+        this.yaw = o.yaw ?? 0;
+        this.pitch = 0;
+        this.roll = 0;
+        this.speed = 0;
+        this.length = this.near.length;
+        this.height = this.near.height;
+        this.focus = new THREE.Vector3();
+        this.look = new THREE.Vector3();
+        this.lookOn = 0;
+        this.anim = makeAnim(world.heightAt);
+        this.timer = this.rnd() * 6;
+        this.state = 'idle';
+        this.target = { x: o.x, z: o.z };
+        this.collider = this.flyer ? null : world.addCollider(o.x, o.z, o.radius ?? this.length * 0.14, false);
+        // pés acompanhados para o passo pesado
+        this.feet = [];
+        if (this.weight > 0) {
+            for (const lod of this.lods) {
+                lod.feet = ['footL', 'footR', 'handL', 'handR'].map((n) => lod.bones[n]).filter(Boolean)
+                    .map((bone) => ({ bone, min: Infinity, down: true }));
+            }
+        }
+        for (const lod of this.lods) {
+            lod.object.traverse((m) => {
+                if (m.isMesh) {
+                    m.castShadow = true;
+                    m.receiveShadow = true;
+                }
+            });
+        }
+        this._apply();
+    }
+
+    addTo(scene) {
+        scene.add(this.near.object, this.far.object);
+    }
+
+    _apply() {
+        const o = this.active.object;
+        o.position.copy(this.position);
+        o.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
+        o.updateMatrixWorld(true);
+        this.focus.set(this.position.x, this.position.y + (this.flyer ? 0 : this.height * 0.62), this.position.z);
+        if (this.collider) {
+            this.collider.x = this.position.x;
+            this.collider.z = this.position.z;
+        }
+    }
+
+    /** Troca de LOD com histerese; copia a fase da marcha para não dar tranco. */
+    _lod(camDist) {
+        const wantNear = camDist < (this.active === this.near ? this.nearDist * 1.15 : this.nearDist);
+        const next = wantNear ? this.near : this.far;
+        if (next === this.active) return;
+        const a = this.active.state;
+        const b = next.state;
+        if (a && b) {
+            b.mode = a.mode;
+            b.phase = a.phase;
+            b.time = a.time;
+            b.amount = a.amount;
+            b.blend = 1;
+            b.lookYaw = a.lookYaw;
+            b.lookPitch = a.lookPitch;
+        }
+        this.active.object.visible = false;
+        next.object.visible = true;
+        this.active = next;
+    }
+
+    /**
+     * Anda em direção a (tx, tz) na andadura `mode`. Devolve a distância restante.
+     *   guinada: Δψ limitado a `turnRate` rad/s; a velocidade cai quando o alvo está de lado
+     *   v = v_marcha · k · clamp(1 − |Δψ|/1,6; 0,25; 1)
+     */
+    moveTo(dt, tx, tz, mode = 'walk', k = 1, turnRate = 0.9) {
+        const dx = tx - this.position.x;
+        const dz = tz - this.position.z;
+        const dist = Math.hypot(dx, dz);
+        const want = Math.atan2(dx, dz);
+        const dy = wrapPi(want - this.yaw);
+        const step = clamp(dy, -turnRate * dt, turnRate * dt);
+        this.yaw = wrapPi(this.yaw + step);
+        const gait = this.active.gaits[mode] || this.active.gaits.walk;
+        const v = gait.speed * k * clamp(1 - Math.abs(dy) / 1.6, 0.25, 1);
+        this.speed = damp(this.speed, v, 3, dt);
+        this.position.x += Math.sin(this.yaw) * this.speed * dt;
+        this.position.z += Math.cos(this.yaw) * this.speed * dt;
+        this.position.y = this.world.heightAt(this.position.x, this.position.z);
+        this.anim.mode = mode;
+        this.anim.speed = this.speed;
+        this.anim.turn = clamp(dy * 1.2, -1, 1);
+        return dist;
+    }
+
+    /** Fica parado no modo dado (idle, eat, drink, alert, roar…), virando devagar para `faceYaw`. */
+    stay(dt, mode = 'idle', faceYaw = null, turnRate = 0.5) {
+        this.speed = damp(this.speed, 0, 5, dt);
+        if (faceYaw !== null) {
+            const dy = wrapPi(faceYaw - this.yaw);
+            this.yaw = wrapPi(this.yaw + clamp(dy, -turnRate * dt, turnRate * dt));
+        }
+        this.position.y = this.world.heightAt(this.position.x, this.position.z);
+        this.anim.mode = mode;
+        this.anim.speed = 0;
+        this.anim.turn = 0;
+    }
+
+    /** Olha para um ponto do mundo (ou para a frente, com `on` = false). */
+    lookTo(point, on) {
+        if (on && point) {
+            this.look.copy(point);
+            this.anim.lookAt = this.look;
+        } else this.anim.lookAt = null;
+    }
+
+    /** Comportamento da espécie: sobrescrito em cada instância. */
+    think() {}
+
+    update(dt, t, ctx) {
+        const camDist = this.position.distanceTo(ctx.camera.position);
+        this._lod(camDist);
+        this.anim.jaw = undefined;
+        this.think(dt, t, ctx);
+        this._apply();
+        // muito longe e fora do quadro: só reposiciona (o esqueleto fica congelado)
+        if (camDist > 190) return;
+        this.active.update(dt, this.anim);
+        if (this.weight > 0 && camDist < 110) this._steps(ctx);
+    }
+
+    /** Detecta o toque de cada pé no chão (histerese sobre a altura do osso). */
+    _steps(ctx) {
+        const feet = this.active.feet;
+        const hip = this.active.hipHeight || this.height * 0.4;
+        for (let i = 0; i < feet.length; i++) {
+            const f = feet[i];
+            f.bone.getWorldPosition(_v);
+            const rel = _v.y - this.world.heightAt(_v.x, _v.z);
+            if (rel < f.min) f.min = rel;
+            if (f.down) {
+                if (rel > f.min + hip * 0.11) f.down = false;
+            } else if (rel < f.min + hip * 0.045) {
+                f.down = true;
+                if (this.speed > 0.15) ctx.onStep?.(this, _v, this.weight);
+            }
+        }
+    }
 }
 
-function shadows(root) {
-    root.traverse((c) => {
-        if (c.isMesh) {
-            c.castShadow = true;
-            c.receiveShadow = true;
+// ─────────────────────────────── comportamentos ───────────────────────────────
+
+/** Ponto da margem do lago na direção `ang`: primeiro raio em que o chão sai 0,25 m da água. */
+function shorePoint(world, ang) {
+    const L = WORLD.lake;
+    for (let r = L.radius * 0.5; r < L.radius * 1.5; r += 0.5) {
+        const x = L.x + Math.cos(ang) * r;
+        const z = L.z + Math.sin(ang) * r;
+        if (world.heightAt(x, z) > world.lakeLevel + 0.25) return { x, z, r };
+    }
+    return { x: L.x + Math.cos(ang) * L.radius, z: L.z + Math.sin(ang) * L.radius, r: L.radius };
+}
+
+function brachioBrain(d, world, stations, start) {
+    let si = start;
+    d.state = 'walk';
+    d.think = (dt, t, ctx) => {
+        const s = stations[si];
+        const nearJeep = ctx.jeepDist(d) < 34;
+        if (d.state === 'walk') {
+            const left = d.moveTo(dt, s.x, s.z, 'walk', 1, 0.32);
+            d.lookTo(ctx.jeepHead, nearJeep);
+            if (left < 2.2) {
+                d.state = 'act';
+                d.timer = 16 + d.rnd() * 14;
+            }
+        } else {
+            d.stay(dt, s.kind === 'drink' ? 'drink' : 'idle', s.face, 0.3);
+            if (s.kind === 'browse') {
+                // come na copa: olha para um ponto que passeia entre os galhos e mastiga
+                _v.set(s.tx + Math.sin(t * 0.23 + si) * 2.2, s.ty + Math.sin(t * 0.31) * 1.6, s.tz + Math.cos(t * 0.19 + si) * 2.2);
+                d.lookTo(_v, true);
+                d.anim.jaw = 0.25 + 0.25 * Math.sin(t * 5.2) * (Math.sin(t * 0.7) > -0.3 ? 1 : 0);
+            } else d.lookTo(null, false);
+            d.timer -= dt;
+            if (d.timer <= 0) {
+                si = (si + 1 + Math.floor(d.rnd() * (stations.length - 1))) % stations.length;
+                d.state = 'walk';
+            }
         }
-    });
+    };
+}
+
+/** Filhote: mantém-se a `gap` m atrás/ao lado do adulto; quando o adulto para, pasta ou brinca. */
+function followBrain(d, parent, gap, side) {
+    d.think = (dt, t, ctx) => {
+        const ox = parent.position.x - Math.sin(parent.yaw) * gap + Math.cos(parent.yaw) * side;
+        const oz = parent.position.z - Math.cos(parent.yaw) * gap - Math.sin(parent.yaw) * side;
+        const dist = Math.hypot(ox - d.position.x, oz - d.position.z);
+        d.timer -= dt;
+        if (d.state === 'play') {
+            if (d.moveTo(dt, d.target.x, d.target.z, 'trot', 0.8, 1.8) < 1.5 || d.timer <= 0) d.state = 'idle';
+        } else if (dist > 3.2 || (d.state === 'go' && dist > 1.2)) {
+            d.state = 'go';
+            d.moveTo(dt, ox, oz, dist > 9 ? 'trot' : 'walk', 1, 1.4);
+        } else {
+            d.state = 'idle';
+            d.stay(dt, Math.sin(t * 0.21 + side) > 0 ? 'eat' : 'idle', parent.yaw + side * 0.2, 0.8);
+            if (d.timer <= 0) {
+                d.timer = 7 + d.rnd() * 9;
+                if (d.rnd() < 0.45) {
+                    const a = d.rnd() * TAU;
+                    d.target.x = parent.position.x + Math.cos(a) * (gap + 3);
+                    d.target.z = parent.position.z + Math.sin(a) * (gap + 3);
+                    d.state = 'play';
+                    d.timer = 5;
+                }
+            }
+        }
+        d.lookTo(ctx.jeepHead, ctx.jeepDist(d) < 20);
+    };
+}
+
+function grazeBrain(d, home, radius) {
+    d.state = 'graze';
+    d.think = (dt, t, ctx) => {
+        const jd = ctx.jeepDist(d);
+        d.timer -= dt;
+        if (jd < 15) {
+            // cabeça erguida, corpo virando de frente para o jipe (babado e chifres apontados)
+            d.stay(dt, 'alert', Math.atan2(ctx.jeep.x - d.position.x, ctx.jeep.z - d.position.z), 0.7);
+            d.lookTo(ctx.jeepHead, true);
+            return;
+        }
+        d.lookTo(ctx.jeepHead, jd < 26 && d.state !== 'graze');
+        if (d.state === 'walk') {
+            if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1, 0.6) < 1.8 || d.timer < -20) {
+                d.state = 'graze';
+                d.timer = 9 + d.rnd() * 12;
+            }
+        } else {
+            d.stay(dt, 'eat');
+            if (d.timer <= 0) {
+                const a = d.rnd() * TAU;
+                const r = Math.sqrt(d.rnd()) * radius;
+                d.target.x = home.x + Math.cos(a) * r;
+                d.target.z = home.z + Math.sin(a) * r;
+                d.state = 'walk';
+                d.timer = 0;
+            }
+        }
+    };
+}
+
+/** Fila indiana ao longo de um traçado (createCourse). `herd` guarda { s, dir, wait } compartilhado. */
+function fileBrain(d, course, herd, index, gap) {
+    const p = new THREE.Vector3();
+    d.think = (dt, t, ctx) => {
+        const len = course.length;
+        // posto na fila: o guia é quem vai na frente no sentido da marcha
+        const rank = herd.dir > 0 ? index : herd.count - 1 - index;
+        const own = clamp(herd.s - rank * gap * herd.dir, 3, len - 3);
+        course.pointAt(own / len, p);
+        const dist = Math.hypot(p.x - d.position.x, p.z - d.position.z);
+        d.lookTo(ctx.jeepHead, ctx.jeepDist(d) < 26);
+        if (herd.wait > 0) {
+            if (dist > 2.5) d.moveTo(dt, p.x, p.z, 'walk', 1, 0.6);
+            else d.stay(dt, 'eat');
+            return;
+        }
+        if (dist > 1.2) d.moveTo(dt, p.x, p.z, 'walk', dist > 6 ? 1.15 : 0.9, 0.7);
+        else d.stay(dt, 'idle');
+    };
+}
+
+function raptorBrain(d, pack, index) {
+    const off = [[0, 0], [2.4, -2.2], [-2.6, -2.8], [0.8, -5.2], [-1.6, -6.4]][index % 5];
+    d.think = (dt, t, ctx) => {
+        // posição na formação, girada pelo rumo do bando
+        const c = Math.cos(pack.yaw);
+        const s = Math.sin(pack.yaw);
+        const tx = pack.x + off[0] * c + off[1] * s;
+        const tz = pack.z - off[0] * s + off[1] * c;
+        const dist = Math.hypot(tx - d.position.x, tz - d.position.z);
+        const jd = ctx.jeepDist(d);
+        if (dist > 2.2 || (d.state === 'run' && dist > 0.9)) {
+            d.state = 'run';
+            d.moveTo(dt, tx, tz, dist > 7 || pack.flee ? 'run' : 'trot', pack.flee ? 1.1 : 0.9, 3.2);
+            d.lookTo(null, false);
+        } else {
+            d.state = 'stop';
+            const facing = jd < 46 ? Math.atan2(ctx.jeep.x - d.position.x, ctx.jeep.z - d.position.z) : pack.yaw + Math.sin(t * 0.3 + index * 2) * 0.9;
+            const mode = jd < 46 || Math.sin(t * 0.37 + index * 1.7) > 0.1 ? 'alert' : Math.sin(t * 0.23 + index) > 0.4 ? 'eat' : 'idle';
+            d.stay(dt, mode, facing, 2.2);
+            d.lookTo(ctx.jeepHead, jd < 46);
+        }
+    };
+}
+
+/** Elipse do paddock: < 1 dentro. */
+const inPaddock = (x, z) => Math.hypot((x - WORLD.paddock.x) / WORLD.paddock.rx, (z - WORLD.paddock.z) / WORLD.paddock.rz);
+
+function rexBrain(d, world) {
+    const P = WORLD.paddock;
+    d.state = 'patrol';
+    d.caught = false;
+    d.roarCool = 8;
+    const pick = () => {
+        const a = d.rnd() * TAU;
+        const r = 0.2 + d.rnd() * 0.5;
+        d.target.x = P.x + Math.cos(a) * P.rx * r;
+        d.target.z = P.z + Math.sin(a) * P.rz * r;
+    };
+    pick();
+    d.think = (dt, t, ctx) => {
+        const gap = world.paddockGap;
+        const jx = ctx.jeep.x;
+        const jz = ctx.jeep.z;
+        const jd = ctx.jeepDist(d);
+        const jeepIn = inPaddock(jx, jz) < 0.96;
+        const rexIn = inPaddock(d.position.x, d.position.z) < 1;
+        const gapDist = Math.hypot(jx - gap.x, jz - gap.z);
+        d.roarCool -= dt;
+        d.timer -= dt;
+        d.lookTo(ctx.jeepHead, jd < 60 && d.state !== 'roar');
+
+        // a perseguição começa quando há caminho livre: jipe dentro do paddock ou parado junto ao vão
+        const lure = ctx.playing && (jeepIn || (gapDist < 11 && jd < 45));
+        if (d.state !== 'chase' && lure) {
+            d.state = 'chase';
+            ctx.onRoar?.(d, 1.3);
+            d.timer = 1.1;
+            d.roarCool = 9;
+        }
+
+        if (d.state === 'chase') {
+            if (d.timer > 0) {
+                d.stay(dt, 'roar', Math.atan2(jx - d.position.x, jz - d.position.z), 1.6);
+                return;
+            }
+            // dentro e o jipe fora: primeiro o vão, depois o jipe
+            const viaGap = rexIn && !jeepIn && Math.hypot(d.position.x - gap.x, d.position.z - gap.z) > 3.5;
+            const tx = viaGap ? gap.x : jx;
+            const tz = viaGap ? gap.z : jz;
+            d.moveTo(dt, tx, tz, 'run', 1, 1.5);
+            if (jd < 5.4 && ctx.playing) d.caught = true;
+            if (jd > 62 || !ctx.playing) {
+                d.state = 'return';
+                d.timer = 0;
+            }
+            return;
+        }
+        if (d.state === 'return') {
+            const out = !rexIn;
+            const left = d.moveTo(dt, out ? gap.x + (P.x - gap.x) * 0.2 : P.x, out ? gap.z + (P.z - gap.z) * 0.2 : P.z, 'walk', 1.1, 0.9);
+            if (!out && left < P.rx * 0.6) {
+                d.state = 'patrol';
+                pick();
+            }
+            return;
+        }
+        if (d.state === 'roar') {
+            d.stay(dt, 'roar', Math.atan2(jx - d.position.x, jz - d.position.z), 1.2);
+            if (d.timer <= 0) d.state = 'patrol';
+            return;
+        }
+        if (jd < 40 && d.roarCool <= 0) {
+            // reage ao jipe: vira e ruge
+            d.state = 'roar';
+            d.timer = 2.6;
+            d.roarCool = 16 + d.rnd() * 10;
+            ctx.onRoar?.(d, 1);
+            return;
+        }
+        if (jd < 46) {
+            // acompanha o jipe por dentro da cerca: alvo = ponto da elipse (78 %) na direção do jipe
+            const a = Math.atan2((jz - P.z) / P.rz, (jx - P.x) / P.rx);
+            d.target.x = P.x + Math.cos(a) * P.rx * 0.78;
+            d.target.z = P.z + Math.sin(a) * P.rz * 0.78;
+            if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1.15, 0.9) < 2.5) {
+                d.stay(dt, 'alert', Math.atan2(jx - d.position.x, jz - d.position.z), 1.0);
+            }
+            return;
+        }
+        // patrulha
+        if (d.state === 'pause') {
+            d.stay(dt, d.timer > 2 ? 'alert' : 'idle');
+            if (d.timer <= 0) {
+                d.state = 'patrol';
+                pick();
+            }
+        } else if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1, 0.7) < 2.5) {
+            d.state = 'pause';
+            d.timer = 3 + d.rnd() * 5;
+            if (d.roarCool <= 0 && d.rnd() < 0.5) {
+                d.state = 'roar';
+                d.timer = 2.6;
+                d.roarCool = 22 + d.rnd() * 12;
+                ctx.onRoar?.(d, 0.7);
+            }
+        }
+    };
 }
 
 /**
- * Varre seções elípticas ao longo dos nós.
- * Cada nó: { x, y, z, rx, ry } — rx lateral, ry dorso-ventral.
- * Frames por transporte paralelo (up × tangent) para evitar torção do Frenet.
+ * Pteranodonte em órbita elíptica:
+ *   p(φ) = c + (a·cos φ, h + 2,5·sin(0,37·φ + f), b·sin φ),  φ' = v / raio médio
+ *   rolagem para dentro da curva ≈ atan(v² / (g·r)) limitada a 0,5 rad
+ * Bate asas em rajadas (2,5 s a cada 7–11 s) e quando ganha altura; no resto, plana.
  */
-export function sweepBody(knots, tubular = 48, radial = 18) {
-    const pts = knots.map((k) => new THREE.Vector3(k.x, k.y, k.z));
-    const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.28);
-    const positions = [];
-    const uvs = [];
-    const indices = [];
-    const tangent = new THREE.Vector3();
-    const side = new THREE.Vector3();
-    const binormal = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
-    let lastSide = new THREE.Vector3(1, 0, 0);
-
-    const radiiAt = (t) => {
-        const f = t * (knots.length - 1);
-        const i = Math.min(knots.length - 2, Math.floor(f));
-        const u = f - i;
-        const a = knots[i];
-        const b = knots[i + 1];
-        return { rx: a.rx + (b.rx - a.rx) * u, ry: a.ry + (b.ry - a.ry) * u };
-    };
-
-    for (let i = 0; i <= tubular; i++) {
-        const t = i / tubular;
-        const p = curve.getPointAt(Math.min(0.999, t));
-        curve.getTangentAt(Math.min(0.999, t), tangent).normalize();
-        side.crossVectors(up, tangent);
-        if (side.lengthSq() < 1e-6) side.copy(lastSide);
-        else side.normalize();
-        lastSide.copy(side);
-        binormal.crossVectors(tangent, side).normalize();
-        const { rx, ry } = radiiAt(t);
-        for (let j = 0; j <= radial; j++) {
-            const a = (j / radial) * Math.PI * 2;
-            const ca = Math.cos(a);
-            const sa = Math.sin(a);
-            const ox = side.x * ca * rx + binormal.x * sa * ry;
-            const oy = side.y * ca * rx + binormal.y * sa * ry;
-            const oz = side.z * ca * rx + binormal.z * sa * ry;
-            positions.push(p.x + ox, p.y + oy, p.z + oz);
-            uvs.push(t * 3.4, j / radial);
+function pteraBrain(d, center, o) {
+    let phi = o.phase;
+    let flap = 0;
+    let next = 3 + d.rnd() * 6;
+    d.think = (dt) => {
+        const v = o.speed;
+        const r = (o.a + o.b) / 2;
+        phi += (v / r) * dt * o.dir;
+        const y = center.y + o.h + Math.sin(phi * 0.37 + o.f) * 2.5;
+        const x = center.x + o.ox + Math.cos(phi) * o.a;
+        const z = center.z + o.oz + Math.sin(phi) * o.b;
+        const climb = (y - d.position.y) / Math.max(dt, 1e-3);
+        d.yaw = Math.atan2(x - d.position.x, z - d.position.z);
+        d.position.set(x, y, z);
+        d.pitch = damp(d.pitch, clamp(-climb * 0.12, -0.3, 0.3), 3, dt);
+        d.roll = damp(d.roll, -o.dir * clamp(Math.atan((v * v) / (9.81 * r)), 0, 0.5), 2, dt);
+        next -= dt;
+        if (next <= 0) {
+            flap = 2.5;
+            next = 7 + d.rnd() * 4;
         }
-    }
-
-    const cols = radial + 1;
-    for (let i = 0; i < tubular; i++) {
-        for (let j = 0; j < radial; j++) {
-            const a = i * cols + j;
-            const b = a + cols;
-            indices.push(a, b, a + 1, a + 1, b, b + 1);
-        }
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geo.setIndex(indices);
-    geo.computeVertexNormals();
-    return geo;
-}
-
-function segs(quality, n) {
-    return Math.max(8, Math.round(n * (quality.dinoSegs ?? 1)));
-}
-
-
-/** Crânio de réptil: esfera deslocada (focinho e órbitas), sem cápsula de focinho. */
-function organicSkull(parent, skin, {
-    cranium = [0.72, 0.58, 0.95],
-    snout = [0.48, 0.38, 1.15],
-    snoutZ = 0.95,
-    brow = null,
-    segs = 14
-} = {}) {
-    const [cw, ch, cd] = cranium;
-    const radius = Math.max(cw, ch, cd) * 0.5;
-    const skull = new THREE.Mesh(headGeometry(radius, 'dog'), skin);
-    const snoutLen = snout ? snout[2] : 1;
-    skull.scale.set(cw / radius, ch / radius, (cd / radius) * (0.85 + snoutLen * 0.15));
-    skull.position.set(0, 0.02, 0.12 + (snoutZ || 0) * 0.08);
-    parent.add(skull);
-    if (brow) {
-        const [bw, bh, bd] = brow;
-        const ridge = new THREE.Mesh(
-            limbGeometryBrow(bw, bh),
-            skin
-        );
-        ridge.rotation.z = Math.PI / 2;
-        ridge.position.set(-bw * 0.45, bh * 1.1, 0.08);
-        ridge.scale.set(1, bd / Math.max(0.08, bh), 1);
-        parent.add(ridge);
-    }
-    return skull;
-}
-
-function limbGeometryBrow(width, height) {
-    const pts = [
-        new THREE.Vector2(height * 0.35, 0),
-        new THREE.Vector2(height * 0.55, width * 0.25),
-        new THREE.Vector2(height * 0.4, width * 0.7),
-        new THREE.Vector2(height * 0.15, width)
-    ];
-    return new THREE.LatheGeometry(pts, 10);
-}
-
-function addEyes(parent, { x, y, z, s = 0.12, spread = 0.28 }) {
-    for (const sx of [-1, 1]) {
-        const g = new THREE.Group();
-        g.position.set(sx * spread, y, z);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(s, 14, 12), eyeWhite());
-        g.add(ball);
-        const pupil = new THREE.Mesh(new THREE.SphereGeometry(s * 0.48, 8, 6), pupilMat());
-        pupil.position.z = s * 0.62;
-        pupil.scale.set(0.7, 1, 0.55);
-        g.add(pupil);
-        parent.add(g);
-    }
-}
-
-function addTeeth(jaw, { count, z0, z1, y, side = 0.16, up = false, len = 0.12 }) {
-    const mat = ivory();
-    for (let i = 0; i < count; i++) {
-        const t = i / (count - 1);
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.028, len, 5), mat);
-        tooth.rotation.x = up ? Math.PI : 0;
-        tooth.position.set(side, y, z0 + (z1 - z0) * t);
-        jaw.add(tooth);
-        if (side !== 0) {
-            const t2 = tooth.clone();
-            t2.position.x = -side;
-            jaw.add(t2);
-        }
-    }
-}
-
-function makeLeg(skin, { thighLen, shinLen, thighR, shinR, toes = 3, claw = false }) {
-    const hip = new THREE.Group();
-    const thigh = new THREE.Mesh(limbGeometry({
-        length: thighLen, r0: thighR * 1.05, r1: thighR * 0.7, bulge: thighR * 0.32, bulgeAt: 0.32, seg: 10, rings: 6
-    }), skin);
-    hip.add(thigh);
-
-    const knee = new THREE.Group();
-    knee.position.y = -thighLen + 0.04;
-    hip.add(knee);
-
-    const shin = new THREE.Mesh(limbGeometry({
-        length: shinLen, r0: shinR * 1.05, r1: shinR * 0.68, bulge: shinR * 0.2, bulgeAt: 0.35, pinch: 0.15, seg: 10, rings: 6
-    }), skin);
-    knee.add(shin);
-
-    const ankle = new THREE.Group();
-    ankle.position.y = -shinLen + 0.02;
-    knee.add(ankle);
-
-    const foot = new THREE.Mesh(limbGeometry({
-        length: shinR * 2.6, r0: shinR * 1.2, r1: shinR * 0.4, bulge: shinR * 0.35, pinch: 0, seg: 8, rings: 5
-    }), skin);
-    foot.rotation.x = -Math.PI / 2;
-    foot.position.set(0, -0.02, 0.04);
-    ankle.add(foot);
-
-    for (let i = 0; i < toes; i++) {
-        const t = (i / Math.max(1, toes - 1) - 0.5) * 0.22;
-        const toe = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.04, 0.03, 0.28, 5),
-            keratin()
-        );
-        toe.rotation.x = Math.PI / 2;
-        toe.position.set(t, -0.1, 0.32);
-        ankle.add(toe);
-        const nail = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 5), keratin());
-        nail.rotation.x = Math.PI / 2;
-        nail.position.set(t, -0.1, 0.48);
-        ankle.add(nail);
-    }
-
-    if (claw) {
-        const sickle = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.28, 6), keratin());
-        sickle.rotation.set(0.4, 0, 1.1);
-        sickle.position.set(0.08, 0.02, 0.18);
-        ankle.add(sickle);
-    }
-
-    return { hip, knee, ankle };
-}
-
-function makeArm(skin, { len = 0.45, r = 0.08, fingers = 2 }) {
-    const sh = new THREE.Group();
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.8, len, 10), skin);
-    upper.position.y = -len * 0.5;
-    sh.add(upper);
-    const hand = new THREE.Group();
-    hand.position.y = -len;
-    sh.add(hand);
-    for (let i = 0; i < fingers; i++) {
-        const f = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.16, 4), keratin());
-        f.position.set((i - (fingers - 1) * 0.5) * 0.07, -0.08, 0.02);
-        f.rotation.x = 0.4;
-        hand.add(f);
-    }
-    return { sh, hand };
-}
-
-/* ------------------------------------------------------------------ */
-/* Espécies                                                            */
-/* ------------------------------------------------------------------ */
-
-export function buildTRex(quality) {
-    const skin = skinMat('trex', {
-        dorsal: 0x4a5330, ventral: 0xc4b090, stripe: 0x2a2214, stripeAmt: 0.62, scale: 16
-    }, quality);
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-
-    const geo = sweepBody([
-        { x: 0, y: 1.55, z: -7.6, rx: 0.07, ry: 0.07 },
-        { x: 0, y: 1.65, z: -5.4, rx: 0.28, ry: 0.22 },
-        { x: 0, y: 1.8, z: -3.2, rx: 0.52, ry: 0.45 },
-        { x: 0, y: 2.15, z: -0.7, rx: 1.02, ry: 1.12 },
-        { x: 0, y: 2.28, z: 0.9, rx: 1.12, ry: 1.22 },
-        { x: 0, y: 2.5, z: 2.3, rx: 0.92, ry: 1.02 },
-        { x: 0, y: 2.85, z: 3.5, rx: 0.62, ry: 0.7 },
-        { x: 0, y: 3.2, z: 4.55, rx: 0.4, ry: 0.46 }
-    ], segs(quality, 32), segs(quality, 12));
-    body.add(new THREE.Mesh(geo, skin));
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 3.15, 4.4);
-    body.add(neck);
-
-    const head = new THREE.Group();
-    head.position.set(0, 0.15, 0.55);
-    neck.add(head);
-
-    organicSkull(head, skin, {
-        cranium: [0.72, 0.58, 0.95],
-        snout: [0.48, 0.38, 1.15],
-        snoutZ: 0.95,
-        brow: [0.78, 0.16, 0.35],
-        segs: segs(quality, 16)
-    });
-    addEyes(head, { x: 0, y: 0.16, z: 0.22, s: 0.09, spread: 0.3 });
-
-    const jaw = new THREE.Group();
-    jaw.position.set(0, -0.18, 0.35);
-    head.add(jaw);
-    const jawMesh = new THREE.Mesh(limbGeometry({
-        length: 1.05, r0: 0.18, r1: 0.07, bulge: 0.04, bulgeAt: 0.3, seg: 10, rings: 8
-    }), skin);
-    jawMesh.rotation.x = -Math.PI / 2;
-    jawMesh.position.set(0, -0.02, 0.12);
-    jaw.add(jawMesh);
-    addTeeth(head, { count: 8, z0: 0.45, z1: 1.42, y: -0.18, side: 0.16, up: false, len: 0.14 });
-    addTeeth(jaw, { count: 8, z0: 0.2, z1: 1.05, y: 0.08, side: 0.14, up: true, len: 0.12 });
-
-    const lLeg = makeLeg(skin, { thighLen: 1.15, shinLen: 0.82, thighR: 0.42, shinR: 0.2, toes: 3 });
-    lLeg.hip.position.set(0.55, 2.15, -0.55);
-    body.add(lLeg.hip);
-    const rLeg = makeLeg(skin, { thighLen: 1.15, shinLen: 0.82, thighR: 0.42, shinR: 0.2, toes: 3 });
-    rLeg.hip.position.set(-0.55, 2.15, -0.55);
-    body.add(rLeg.hip);
-
-    const lArm = makeArm(skin, { len: 0.42, r: 0.07, fingers: 2 });
-    lArm.sh.position.set(0.58, 2.55, 2.85);
-    lArm.sh.rotation.z = 0.45;
-    body.add(lArm.sh);
-    const rArm = makeArm(skin, { len: 0.42, r: 0.07, fingers: 2 });
-    rArm.sh.position.set(-0.58, 2.55, 2.85);
-    rArm.sh.rotation.z = -0.45;
-    body.add(rArm.sh);
-
-    shadows(root);
-    return {
-        root, body, neck, head, jaw,
-        lHip: lLeg.hip, rHip: rLeg.hip, lKnee: lLeg.knee, rKnee: rLeg.knee,
-        lArm: lArm.sh, rArm: rArm.sh,
-        hipY: 2.15, gait: 1.55, stride: 0.72, kind: 'biped'
+        flap -= dt;
+        d.anim.mode = flap > 0 || climb > 0.9 ? 'fly' : 'glide';
+        d.speed = v;
     };
 }
 
-export function buildBrachiosaurus(quality) {
-    const skin = skinMat('brachio', {
-        dorsal: 0x6a7a58, ventral: 0xd2c4a0, stripe: 0x3a4830, stripeAmt: 0.28, scale: 10
-    }, quality);
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
+// ─────────────────────────────────── elenco ───────────────────────────────────
 
-    const geo = sweepBody([
-        { x: 0, y: 2.1, z: -9.2, rx: 0.12, ry: 0.1 },
-        { x: 0, y: 2.3, z: -6.2, rx: 0.45, ry: 0.4 },
-        { x: 0, y: 2.8, z: -3.0, rx: 1.15, ry: 1.2 },
-        { x: 0, y: 3.5, z: -0.4, rx: 1.55, ry: 1.65 },
-        { x: 0, y: 4.4, z: 2.4, rx: 1.45, ry: 1.55 },
-        { x: 0, y: 5.3, z: 4.2, rx: 0.95, ry: 1.05 },
-        { x: 0, y: 6.6, z: 5.1, rx: 0.55, ry: 0.58 },
-        { x: 0, y: 8.2, z: 5.55, rx: 0.38, ry: 0.4 },
-        { x: 0, y: 9.8, z: 5.85, rx: 0.28, ry: 0.3 },
-        { x: 0, y: 11.1, z: 6.15, rx: 0.22, ry: 0.22 }
-    ], segs(quality, 40), segs(quality, 12));
-    body.add(new THREE.Mesh(geo, skin));
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 8.4, 5.4);
-    body.add(neck);
-    const head = new THREE.Group();
-    head.position.set(0, 2.7, 0.7);
-    neck.add(head);
-    organicSkull(head, skin, {
-        cranium: [0.42, 0.32, 0.7],
-        snout: [0.28, 0.2, 0.55],
-        snoutZ: 0.48,
-        segs: segs(quality, 14)
-    });
-    addEyes(head, { y: 0.08, z: 0.05, s: 0.055, spread: 0.18 });
-
-    const fl = makeLeg(skin, { thighLen: 2.15, shinLen: 1.7, thighR: 0.48, shinR: 0.28, toes: 4 });
-    fl.hip.position.set(0.85, 4.05, 2.6);
-    body.add(fl.hip);
-    const fr = makeLeg(skin, { thighLen: 2.15, shinLen: 1.7, thighR: 0.48, shinR: 0.28, toes: 4 });
-    fr.hip.position.set(-0.85, 4.05, 2.6);
-    body.add(fr.hip);
-    const hl = makeLeg(skin, { thighLen: 1.75, shinLen: 1.35, thighR: 0.5, shinR: 0.3, toes: 4 });
-    hl.hip.position.set(0.9, 3.25, -1.4);
-    body.add(hl.hip);
-    const hr = makeLeg(skin, { thighLen: 1.75, shinLen: 1.35, thighR: 0.5, shinR: 0.3, toes: 4 });
-    hr.hip.position.set(-0.9, 3.25, -1.4);
-    body.add(hr.hip);
-
-    shadows(root);
-    return {
-        root, body, neck, head, jaw: null,
-        lHip: fl.hip, rHip: fr.hip, lKnee: fl.knee, rKnee: fr.knee,
-        hLHip: hl.hip, hRHip: hr.hip, hLKnee: hl.knee, hRKnee: hr.knee,
-        hipY: 3.15, gait: 0.85, stride: 0.38, kind: 'quad'
-    };
-}
-
-export function buildRaptor(quality) {
-    const skin = skinMat('raptor', {
-        dorsal: 0x8a6a38, ventral: 0xe0d0b0, stripe: 0x2c2010, stripeAmt: 0.72, scale: 22
-    }, quality);
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-
-    const geo = sweepBody([
-        { x: 0, y: 0.55, z: -1.85, rx: 0.04, ry: 0.04 },
-        { x: 0, y: 0.62, z: -1.1, rx: 0.12, ry: 0.1 },
-        { x: 0, y: 0.72, z: -0.35, rx: 0.22, ry: 0.24 },
-        { x: 0, y: 0.78, z: 0.25, rx: 0.26, ry: 0.28 },
-        { x: 0, y: 0.82, z: 0.75, rx: 0.18, ry: 0.2 },
-        { x: 0, y: 0.92, z: 1.15, rx: 0.12, ry: 0.13 }
-    ], segs(quality, 22), segs(quality, 10));
-    body.add(new THREE.Mesh(geo, skin));
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 0.9, 1.05);
-    body.add(neck);
-    const head = new THREE.Group();
-    head.position.set(0, 0.12, 0.28);
-    neck.add(head);
-    organicSkull(head, skin, {
-        cranium: [0.2, 0.16, 0.32],
-        snout: [0.12, 0.1, 0.28],
-        snoutZ: 0.26,
-        segs: segs(quality, 12)
-    });
-    addEyes(head, { y: 0.04, z: 0.02, s: 0.035, spread: 0.09 });
-    const jaw = new THREE.Group();
-    jaw.position.set(0, -0.05, 0.08);
-    head.add(jaw);
-    const jm = new THREE.Mesh(limbGeometry({
-        length: 0.26, r0: 0.05, r1: 0.02, bulge: 0.008, seg: 8, rings: 5
-    }), skin);
-    jm.rotation.x = -Math.PI / 2;
-    jm.position.set(0, 0, 0.02);
-    jaw.add(jm);
-
-    const lLeg = makeLeg(skin, { thighLen: 0.48, shinLen: 0.42, thighR: 0.12, shinR: 0.07, toes: 3, claw: true });
-    lLeg.hip.position.set(0.14, 0.7, -0.15);
-    body.add(lLeg.hip);
-    const rLeg = makeLeg(skin, { thighLen: 0.48, shinLen: 0.42, thighR: 0.12, shinR: 0.07, toes: 3, claw: true });
-    rLeg.hip.position.set(-0.14, 0.7, -0.15);
-    body.add(rLeg.hip);
-
-    const lArm = makeArm(skin, { len: 0.28, r: 0.045, fingers: 3 });
-    lArm.sh.position.set(0.16, 0.78, 0.55);
-    lArm.sh.rotation.z = 0.5;
-    body.add(lArm.sh);
-    const rArm = makeArm(skin, { len: 0.28, r: 0.045, fingers: 3 });
-    rArm.sh.position.set(-0.16, 0.78, 0.55);
-    rArm.sh.rotation.z = -0.5;
-    body.add(rArm.sh);
-
-    shadows(root);
-    root.scale.setScalar(1.15);
-    return {
-        root, body, neck, head, jaw,
-        lHip: lLeg.hip, rHip: rLeg.hip, lKnee: lLeg.knee, rKnee: rLeg.knee,
-        hipY: 0.7, gait: 2.4, stride: 0.85, kind: 'biped'
-    };
-}
-
-export function buildTriceratops(quality) {
-    const skin = skinMat('tri', {
-        dorsal: 0x6a5a38, ventral: 0xd0c09a, stripe: 0x3a3020, stripeAmt: 0.22, scale: 14
-    }, quality);
-    const horn = keratin();
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-
-    const geo = sweepBody([
-        { x: 0, y: 1.15, z: -4.4, rx: 0.12, ry: 0.1 },
-        { x: 0, y: 1.3, z: -2.6, rx: 0.55, ry: 0.5 },
-        { x: 0, y: 1.55, z: -0.6, rx: 1.15, ry: 1.2 },
-        { x: 0, y: 1.65, z: 1.3, rx: 1.22, ry: 1.28 },
-        { x: 0, y: 1.7, z: 2.8, rx: 0.85, ry: 0.9 },
-        { x: 0, y: 1.75, z: 3.7, rx: 0.55, ry: 0.58 }
-    ], segs(quality, 28), segs(quality, 12));
-    body.add(new THREE.Mesh(geo, skin));
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 1.75, 3.55);
-    body.add(neck);
-    const head = new THREE.Group();
-    head.position.set(0, 0.15, 0.45);
-    neck.add(head);
-
-    organicSkull(head, skin, {
-        cranium: [0.7, 0.5, 0.85],
-        snout: null,
-        segs: segs(quality, 14)
-    });
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 6), skin);
-    beak.rotation.x = Math.PI / 2;
-    beak.position.set(0, -0.05, 0.7);
-    head.add(beak);
-    const frillShape = new THREE.Shape();
-    const frillR = 1.05;
-    frillShape.moveTo(0, -0.35);
-    const frillSegs = 14;
-    for (let i = 0; i <= frillSegs; i++) {
-        const a = -Math.PI * 0.15 + (i / frillSegs) * Math.PI * 1.3;
-        const scallop = 1 + Math.sin(i * Math.PI) * 0.04;
-        frillShape.lineTo(Math.cos(a) * frillR * scallop, Math.sin(a) * frillR * 0.92 + 0.1);
-    }
-    frillShape.closePath();
-    const frillGeo = new THREE.ExtrudeGeometry(frillShape, {
-        depth: 0.14,
-        bevelEnabled: true,
-        bevelThickness: 0.035,
-        bevelSize: 0.035,
-        bevelSegments: 2,
-        curveSegments: 8
-    });
-    frillGeo.translate(0, 0, -0.07);
-    frillGeo.computeVertexNormals();
-    const frill = new THREE.Mesh(frillGeo, skin);
-    frill.name = 'triFrill';
-    frill.position.set(0, 0.25, -0.35);
-    frill.rotation.x = -0.22;
-    const osteoGeo = new THREE.ConeGeometry(0.055, 0.14, 6);
-    for (let i = 1; i < frillSegs; i++) {
-        const a = -Math.PI * 0.15 + (i / frillSegs) * Math.PI * 1.3;
-        const ox = Math.cos(a) * (frillR + 0.03);
-        const oy = Math.sin(a) * frillR * 0.92 + 0.1;
-        const osteo = new THREE.Mesh(osteoGeo, horn);
-        osteo.position.set(ox, oy, 0);
-        osteo.rotation.z = a - Math.PI / 2;
-        frill.add(osteo);
-    }
-    head.add(frill);
-
-    const nHorn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 7), horn);
-    nHorn.rotation.x = 0.9;
-    nHorn.position.set(0, 0.05, 0.55);
-    head.add(nHorn);
-    for (const sx of [-1, 1]) {
-        const h = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.95, 8), horn);
-        h.rotation.x = 0.55;
-        h.position.set(sx * 0.28, 0.35, 0.15);
-        head.add(h);
-    }
-    addEyes(head, { y: 0.12, z: 0.2, s: 0.06, spread: 0.28 });
-
-    const fl = makeLeg(skin, { thighLen: 1.05, shinLen: 0.85, thighR: 0.32, shinR: 0.2, toes: 4 });
-    fl.hip.position.set(0.7, 1.45, 1.8);
-    body.add(fl.hip);
-    const fr = makeLeg(skin, { thighLen: 1.05, shinLen: 0.85, thighR: 0.32, shinR: 0.2, toes: 4 });
-    fr.hip.position.set(-0.7, 1.45, 1.8);
-    body.add(fr.hip);
-    const hl = makeLeg(skin, { thighLen: 1.15, shinLen: 0.9, thighR: 0.36, shinR: 0.22, toes: 4 });
-    hl.hip.position.set(0.75, 1.4, -0.7);
-    body.add(hl.hip);
-    const hr = makeLeg(skin, { thighLen: 1.15, shinLen: 0.9, thighR: 0.36, shinR: 0.22, toes: 4 });
-    hr.hip.position.set(-0.75, 1.4, -0.7);
-    body.add(hr.hip);
-
-    shadows(root);
-    return {
-        root, body, neck, head, jaw: null,
-        lHip: fl.hip, rHip: fr.hip, lKnee: fl.knee, rKnee: fr.knee,
-        hLHip: hl.hip, hRHip: hr.hip, hLKnee: hl.knee, hRKnee: hr.knee,
-        hipY: 1.4, gait: 1.15, stride: 0.42, kind: 'quad'
-    };
-}
-
-export function buildStegosaurus(quality) {
-    const skin = skinMat('stego', {
-        dorsal: 0x7a6238, ventral: 0xd8c8a0, stripe: 0x4a3818, stripeAmt: 0.35, scale: 12
-    }, quality);
-    const plate = new THREE.MeshStandardMaterial({
-        color: 0xa85838, roughness: 0.65, metalness: 0.05
-    });
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-
-    const geo = sweepBody([
-        { x: 0, y: 1.05, z: -4.8, rx: 0.08, ry: 0.08 },
-        { x: 0, y: 1.15, z: -3.2, rx: 0.28, ry: 0.25 },
-        { x: 0, y: 1.45, z: -1.2, rx: 0.85, ry: 0.95 },
-        { x: 0, y: 1.7, z: 0.6, rx: 1.05, ry: 1.2 },
-        { x: 0, y: 1.55, z: 2.4, rx: 0.75, ry: 0.8 },
-        { x: 0, y: 1.25, z: 3.6, rx: 0.32, ry: 0.34 }
-    ], segs(quality, 28), segs(quality, 12));
-    body.add(new THREE.Mesh(geo, skin));
-
-    // Placa pentagonal 3D extrudada com chanfro (depth: 0.08, bevelEnabled: true)
-    const plateShape = new THREE.Shape();
-    plateShape.moveTo(-0.22, -0.35);
-    plateShape.lineTo(0.22, -0.35);
-    plateShape.lineTo(0.34, 0.08);
-    plateShape.lineTo(0, 0.56);
-    plateShape.lineTo(-0.34, 0.08);
-    plateShape.closePath();
-    const plateGeo = new THREE.ExtrudeGeometry(plateShape, {
-        depth: 0.08,
-        bevelEnabled: true,
-        bevelThickness: 0.02,
-        bevelSize: 0.02,
-        bevelSegments: 2,
-        curveSegments: 4
-    });
-    plateGeo.translate(0, 0, -0.04);
-    plateGeo.computeVertexNormals();
-
-    const zs = [-3.4, -2.4, -1.4, -0.4, 0.6, 1.5, 2.3, 3.0];
-    zs.forEach((z, i) => {
-        const h = 0.55 + (i % 2) * 0.45 + Math.sin(i) * 0.15;
-        const p = new THREE.Mesh(plateGeo, plate);
-        p.name = 'stegoPlate';
-        p.scale.set(h * 0.95, h * 1.15, 1);
-        p.position.set((i % 2 === 0 ? 0.09 : -0.09), 2.02 + (i > 2 && i < 6 ? 0.35 : 0), z);
-        p.rotation.y = Math.PI / 2;
-        p.rotation.z = (i % 2 === 0 ? -0.1 : 0.1);
-        body.add(p);
-    });
-    for (const sx of [-1, 1]) {
-        for (const z of [-4.55, -4.15]) {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.7, 6), keratin());
-            spike.position.set(sx * 0.12, 1.25, z);
-            spike.rotation.x = 2.3;
-            body.add(spike);
-        }
-    }
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 1.3, 3.4);
-    body.add(neck);
-    const head = new THREE.Group();
-    head.position.set(0, -0.05, 0.35);
-    neck.add(head);
-    organicSkull(head, skin, {
-        cranium: [0.28, 0.22, 0.45],
-        snout: [0.16, 0.12, 0.28],
-        snoutZ: 0.28,
-        segs: segs(quality, 12)
-    });
-    addEyes(head, { y: 0.04, z: 0.05, s: 0.035, spread: 0.12 });
-
-    const fl = makeLeg(skin, { thighLen: 0.85, shinLen: 0.65, thighR: 0.22, shinR: 0.14, toes: 3 });
-    fl.hip.position.set(0.55, 1.2, 1.9);
-    body.add(fl.hip);
-    const fr = makeLeg(skin, { thighLen: 0.85, shinLen: 0.65, thighR: 0.22, shinR: 0.14, toes: 3 });
-    fr.hip.position.set(-0.55, 1.2, 1.9);
-    body.add(fr.hip);
-    const hl = makeLeg(skin, { thighLen: 1.05, shinLen: 0.8, thighR: 0.3, shinR: 0.18, toes: 3 });
-    hl.hip.position.set(0.62, 1.25, -0.9);
-    body.add(hl.hip);
-    const hr = makeLeg(skin, { thighLen: 1.05, shinLen: 0.8, thighR: 0.3, shinR: 0.18, toes: 3 });
-    hr.hip.position.set(-0.62, 1.25, -0.9);
-    body.add(hr.hip);
-
-    shadows(root);
-    return {
-        root, body, neck, head, jaw: null,
-        lHip: fl.hip, rHip: fr.hip, lKnee: fl.knee, rKnee: fr.knee,
-        hLHip: hl.hip, hRHip: hr.hip, hLKnee: hl.knee, hRKnee: hr.knee,
-        hipY: 1.25, gait: 1.05, stride: 0.4, kind: 'quad'
-    };
-}
-
-export function buildPteranodon(quality) {
-    const skin = skinMat('ptera', {
-        dorsal: 0x8a6a48, ventral: 0xe8d4b0, stripe: 0x5a3820, stripeAmt: 0.2, scale: 20
-    }, quality);
-    const membrane = new THREE.MeshStandardMaterial({
-        color: 0x6a5040, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide,
-        transparent: true, opacity: 0.92
-    });
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-
-    const geo = sweepBody([
-        { x: 0, y: 0, z: -1.1, rx: 0.04, ry: 0.04 },
-        { x: 0, y: 0, z: -0.3, rx: 0.16, ry: 0.14 },
-        { x: 0, y: 0.02, z: 0.35, rx: 0.18, ry: 0.16 },
-        { x: 0, y: 0.04, z: 0.85, rx: 0.1, ry: 0.1 }
-    ], segs(quality, 16), segs(quality, 8));
-    body.add(new THREE.Mesh(geo, skin));
-
-    const neck = new THREE.Group();
-    neck.position.set(0, 0.05, 0.8);
-    body.add(neck);
-    const head = new THREE.Group();
-    head.position.set(0, 0.05, 0.35);
-    neck.add(head);
-    organicSkull(head, skin, {
-        cranium: [0.16, 0.14, 0.4],
-        snout: null,
-        segs: segs(quality, 12)
-    });
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.7, 5), keratin());
-    beak.rotation.x = Math.PI / 2;
-    beak.position.z = 0.5;
-    head.add(beak);
-    const crest = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.7, 5), new THREE.MeshStandardMaterial({
-        color: 0xc45a28, roughness: 0.55, side: THREE.DoubleSide
-    }));
-    crest.rotation.x = -0.9;
-    crest.position.set(0, 0.28, -0.05);
-    head.add(crest);
-    addEyes(head, { y: 0.02, z: 0.05, s: 0.03, spread: 0.07 });
-
-    const wings = [];
-    const sailGeo = wingMembrane({ span: 2.5, chord: 1.25 });
-    for (const sx of [-1, 1]) {
-        const arm = new THREE.Group();
-        arm.position.set(sx * 0.12, 0.06, 0.15);
-        body.add(arm);
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 2.4, 6), skin);
-        bone.rotation.z = Math.PI / 2;
-        bone.position.x = sx * 1.2;
-        arm.add(bone);
-        const sail = new THREE.Mesh(sailGeo, membrane);
-        sail.name = 'wingMembrane';
-        sail.scale.x = sx;
-        sail.rotation.x = -Math.PI / 2 + 0.18;
-        sail.position.set(0, 0, 0.04);
-        arm.add(sail);
-        wings.push(arm);
-    }
-
-    shadows(root);
-    return {
-        root, body, neck, head, jaw: null,
-        wings, hipY: 0, gait: 0, stride: 0, kind: 'flyer'
-    };
-}
-
-/* ------------------------------------------------------------------ */
-/* Animação e IA                                                       */
-/* ------------------------------------------------------------------ */
-
-function animateBiped(p, t, speed, roar = 0) {
-    const s = Math.sin(t * p.gait * 6.2) * p.stride * Math.min(1.4, 0.35 + speed);
-    const c = Math.cos(t * p.gait * 6.2) * p.stride * Math.min(1.4, 0.35 + speed);
-    if (p.lHip) p.lHip.rotation.x = s;
-    if (p.rHip) p.rHip.rotation.x = -s;
-    if (p.lKnee) p.lKnee.rotation.x = Math.max(0, -s) * 0.85;
-    if (p.rKnee) p.rKnee.rotation.x = Math.max(0, s) * 0.85;
-    if (p.lArm) p.lArm.rotation.x = -s * 0.4;
-    if (p.rArm) p.rArm.rotation.x = s * 0.4;
-    if (p.body) p.body.rotation.z = -s * 0.06;
-    if (p.neck) p.neck.rotation.x = Math.sin(t * 1.3) * 0.06 + roar * 0.35;
-    if (p.head) p.head.rotation.y = Math.sin(t * 0.7) * 0.08;
-    if (p.jaw) p.jaw.rotation.x = roar * 0.55 + Math.max(0, Math.sin(t * 2.2)) * 0.04;
-}
-
-function animateQuad(p, t, speed) {
-    const s = Math.sin(t * p.gait * 5.4) * p.stride * (0.4 + speed);
-    if (p.lHip) p.lHip.rotation.x = s;
-    if (p.rHip) p.rHip.rotation.x = -s;
-    if (p.hLHip) p.hLHip.rotation.x = -s;
-    if (p.hRHip) p.hRHip.rotation.x = s;
-    if (p.lKnee) p.lKnee.rotation.x = Math.max(0, -s) * 0.5;
-    if (p.rKnee) p.rKnee.rotation.x = Math.max(0, s) * 0.5;
-    if (p.neck) p.neck.rotation.x = Math.sin(t * 0.6) * 0.08;
-    if (p.head) p.head.rotation.y = Math.sin(t * 0.45) * 0.12;
-}
-
-function animateFlyer(p, t) {
-    const flap = Math.sin(t * 3.4) * 0.42;
-    p.wings?.forEach((w, i) => {
-        w.rotation.z = flap * (i === 0 ? 1 : -1);
-        w.rotation.x = Math.sin(t * 3.4 + 0.4) * 0.08;
-    });
-    if (p.head) p.head.rotation.x = Math.sin(t * 1.1) * 0.08;
-}
-
-export class Dino {
-    constructor({ id, parts, home, roam, cruise, chase = 0, flyer = false, heightAt }) {
-        this.id = id;
-        this.parts = parts;
-        this.root = parts.root;
-        this.home = home;
-        this.roam = roam;
-        this.cruise = cruise;
-        this.chase = chase;
-        this.flyer = flyer;
-        this.heightAt = heightAt;
-        this.yaw = Math.random() * Math.PI * 2;
-        this.phase = Math.random() * 20;
-        this.speed = 0;
-        this.roar = 0;
-        this.target = { x: home.x + (Math.random() - 0.5) * roam, z: home.z + (Math.random() - 0.5) * roam };
-        this.caught = false;
-        this.flyR = 18 + Math.random() * 10;
-        this.flyA = Math.random() * Math.PI * 2;
-        this.flyY = 16 + Math.random() * 8;
-    }
-
-    get position() {
-        return this.root.position;
-    }
-
-    update(dt, time, jeep) {
-        const t = time + this.phase;
-        if (this.flyer) {
-            this.flyA += dt * 0.22;
-            const x = this.home.x + Math.cos(this.flyA) * this.flyR;
-            const z = this.home.z + Math.sin(this.flyA) * this.flyR * 0.7;
-            const y = this.flyY + Math.sin(t * 0.8) * 1.4;
-            this.root.position.set(x, y, z);
-            this.yaw = this.flyA + Math.PI / 2;
-            this.root.rotation.set(0.12, this.yaw, Math.sin(t * 3.4) * 0.08);
-            animateFlyer(this.parts, t);
-            return;
-        }
-
-        const jx = jeep.x;
-        const jz = jeep.z;
-        const dist = Math.hypot(this.root.position.x - jx, this.root.position.z - jz);
-
-        if (this.chase && dist < this.chase && !this.caught) {
-            this.target.x = jx;
-            this.target.z = jz;
-            this.roar = damp(this.roar, 1, 3, dt);
-            if (dist < 5.4 && jeep.speed > -99) this.caught = true;
-        } else {
-            this.roar = damp(this.roar, 0, 2.2, dt);
-            if (Math.hypot(this.root.position.x - this.target.x, this.root.position.z - this.target.z) < 2.4) {
-                const a = hash2(Math.floor(t * 0.15), this.phase, 9) * Math.PI * 2;
-                const r = 4 + hash2(Math.floor(t * 0.15), this.phase, 3) * this.roam;
-                this.target.x = this.home.x + Math.cos(a) * r;
-                this.target.z = this.home.z + Math.sin(a) * r;
-            }
-        }
-
-        const dx = this.target.x - this.root.position.x;
-        const dz = this.target.z - this.root.position.z;
-        const want = Math.atan2(dx, dz);
-        this.yaw = wrapPi(this.yaw + wrapPi(want - this.yaw) * Math.min(1, dt * 1.8));
-        const moving = Math.hypot(dx, dz) > 1.2;
-        const maxV = this.chase && dist < this.chase ? this.cruise * 2.4 : this.cruise;
-        this.speed = damp(this.speed, moving ? maxV : 0.15, 2.5, dt);
-        this.root.position.x += Math.sin(this.yaw) * this.speed * dt;
-        this.root.position.z += Math.cos(this.yaw) * this.speed * dt;
-        const gy = Math.max(this.heightAt(this.root.position.x, this.root.position.z), 0.95);
-        this.root.position.y = gy;
-        this.root.rotation.y = this.yaw;
-
-        const gaitSpeed = this.speed / Math.max(0.4, this.cruise);
-        if (this.parts.kind === 'biped') animateBiped(this.parts, t, gaitSpeed, this.roar);
-        else animateQuad(this.parts, t, gaitSpeed);
-
-        if (this.parts.body) {
-            this.parts.body.position.y = Math.abs(Math.sin(t * this.parts.gait * 6)) * 0.04 * gaitSpeed;
-        }
-    }
-}
-
-export function spawnDinosaurs(scene, world, quality) {
+/**
+ * Cria toda a fauna. Devolve { list, trex, update(dt, t, ctx), nearest(x, z) }.
+ * `progress(p)` é chamado entre uma criatura e outra (a criação é pesada).
+ */
+export async function spawnDinosaurs(scene, world, quality, progress = () => {}) {
     const list = [];
+    const P = WORLD;
+    let seed = 3;
+    const total = 13 + quality.flock;
+    const make = async (o) => {
+        const d = new Dino({ seed: seed++, ...o }, world, quality);
+        d.addTo(scene);
+        list.push(d);
+        progress(list.length / total);
+        await nextTask();
+        return d;
+    };
 
-    const brachio = new Dino({
-        id: 'brachio',
-        parts: buildBrachiosaurus(quality),
-        home: { x: 6, z: 36 },
-        roam: 7,
-        cruise: 0.7,
-        heightAt: world.heightAt
-    });
-    const brachio2 = new Dino({
-        id: 'brachio',
-        parts: buildBrachiosaurus(quality),
-        home: { x: -16, z: -8 },
-        roam: 8,
-        cruise: 0.75,
-        heightAt: world.heightAt
-    });
-    brachio.root.scale.setScalar(1.08);
-    brachio2.root.scale.setScalar(0.86);
+    // braquiossauros: estações de copa (frondosas marcadas em world.browse) e de água
+    const L = P.lake;
+    const stations = [];
+    for (const tree of world.browse) {
+        const a = Math.atan2(L.z - tree.z, L.x - tree.x);
+        const x = tree.x + Math.cos(a) * 7.5;
+        const z = tree.z + Math.sin(a) * 7.5;
+        stations.push({ kind: 'browse', x, z, face: Math.atan2(tree.x - x, tree.z - z), tx: tree.x, ty: tree.y + 11.5 * tree.s * 0.78, tz: tree.z });
+    }
+    for (const ang of [0.5, 2.3, 3.9, 5.4]) {
+        const s = shorePoint(world, ang);
+        const x = L.x + Math.cos(ang) * (s.r + 4.6);
+        const z = L.z + Math.sin(ang) * (s.r + 4.6);
+        stations.push({ kind: 'drink', x, z, face: Math.atan2(L.x - x, L.z - z) });
+    }
+    const order = [stations[0], stations[4], stations[1], stations[5], stations[2], stations[6], stations[3], stations[7]];
+    const b1 = await make({ id: 'brachio', preset: 'brachiosaurus', x: order[0].x, z: order[0].z, yaw: order[0].face, scale: 1.04, weight: 1, radius: 2.6, lodScale: 1.25 });
+    const b2 = await make({ id: 'brachio', preset: 'brachiosaurus', x: order[3].x, z: order[3].z, yaw: order[3].face, scale: 0.94, weight: 0.9, radius: 2.4, lodScale: 1.25 });
+    const b3 = await make({ id: 'brachio', preset: 'brachiosaurus', x: order[0].x - 6, z: order[0].z + 7, yaw: 1, scale: 0.5, age: 0.4, weight: 0.3, radius: 1.3 });
+    brachioBrain(b1, world, order, 0);
+    b1.state = 'act';
+    b1.timer = 22;
+    brachioBrain(b2, world, order, 3);
+    b2.state = 'act';
+    b2.timer = 12;
+    followBrain(b3, b1, 9, 5);
 
-    const trexParts = buildTRex(quality);
-    trexParts.root.scale.setScalar(1.12);
-    const trex = new Dino({
-        id: 'trex',
-        parts: trexParts,
-        home: { x: 42, z: 12 },
-        roam: 14,
-        cruise: 2.4,
-        chase: 14,
-        heightAt: world.heightAt
-    });
+    // tiranossauro
+    const trex = await make({ id: 'trex', preset: 'trex', x: P.paddock.x - 6, z: P.paddock.z + 3, yaw: -1.6, scale: 1.05, weight: 1, radius: 1.9, lodScale: 1.3 });
+    rexBrain(trex, world);
 
-    const triA = new Dino({
-        id: 'triceratops',
-        parts: buildTriceratops(quality),
-        home: { x: -48, z: 38 },
-        roam: 12,
-        cruise: 1.15,
-        heightAt: world.heightAt
-    });
-    const triB = new Dino({
-        id: 'triceratops',
-        parts: buildTriceratops(quality),
-        home: { x: -40, z: 46 },
-        roam: 10,
-        cruise: 1.05,
-        heightAt: world.heightAt
-    });
-    triB.root.scale.setScalar(0.88);
+    // tricerátops: dois adultos e um filhote
+    const M = P.meadow;
+    const t1 = await make({ id: 'triceratops', preset: 'triceratops', x: M.x + 10, z: M.z - 4, yaw: 0.6, weight: 0.55, radius: 2.1 });
+    const t2 = await make({ id: 'triceratops', preset: 'triceratops', x: M.x - 2, z: M.z + 8, yaw: 2.2, scale: 0.93, weight: 0.5, radius: 2.0 });
+    const t3 = await make({ id: 'triceratops', preset: 'triceratops', x: M.x + 13, z: M.z + 1, yaw: 0.8, scale: 0.46, age: 0.25, radius: 1.0 });
+    grazeBrain(t1, { x: M.x + 6, z: M.z - 2 }, 14);
+    grazeBrain(t2, { x: M.x - 4, z: M.z + 6 }, 13);
+    followBrain(t3, t1, 4.5, 2.6);
 
-    const stego = new Dino({
-        id: 'stego',
-        parts: buildStegosaurus(quality),
-        home: { x: -38, z: -48 },
-        roam: 11,
-        cruise: 0.95,
-        heightAt: world.heightAt
-    });
+    // estegossauros em fila na crista
+    const herd = { s: 30, dir: 1, wait: 0, gap: 10, count: 3 };
+    const stegos = [];
+    for (let i = 0; i < 3; i++) {
+        const s = clamp(herd.s - i * 10, 3, world.stegoWalk.length - 3);
+        world.stegoWalk.pointAt(s / world.stegoWalk.length, _v);
+        const d = await make({ id: 'stego', preset: 'stegosaurus', x: _v.x, z: _v.z, yaw: 2.4, scale: i === 2 ? 0.8 : 1 - i * 0.05, weight: 0.5, radius: 1.9 });
+        fileBrain(d, world.stegoWalk, herd, i, 10);
+        stegos.push(d);
+    }
 
-    const raptorHomes = [
-        { x: 18, z: -52 },
-        { x: 24, z: -46 },
-        { x: 12, z: -48 }
-    ];
-    const raptors = raptorHomes.map((h, i) => new Dino({
-        id: 'raptor',
-        parts: buildRaptor(quality),
-        home: h,
-        roam: 9,
-        cruise: 2.8 + i * 0.15,
-        heightAt: world.heightAt
-    }));
+    // raptors em bando
+    const R = P.raptors;
+    const pack = { x: R.x, z: R.z, yaw: 0, timer: 4, flee: false };
+    const raptors = [];
+    for (let i = 0; i < 4; i++) {
+        const d = await make({ id: 'raptor', preset: 'velociraptor', x: R.x + (i % 2) * 3 - 1.5, z: R.z - i * 2.4, yaw: 0, scale: 1.25 + (i % 2) * 0.08, radius: 0.6 });
+        raptorBrain(d, pack, i);
+        raptors.push(d);
+    }
 
-    const ptera = new Dino({
-        id: 'ptera',
-        parts: buildPteranodon(quality),
-        home: { x: 62, z: -28 },
-        roam: 20,
-        cruise: 8,
-        flyer: true,
-        heightAt: world.heightAt
-    });
-    const ptera2 = new Dino({
-        id: 'ptera',
-        parts: buildPteranodon(quality),
-        home: { x: 70, z: -18 },
-        roam: 16,
-        cruise: 8,
-        flyer: true,
-        heightAt: world.heightAt
-    });
-    ptera2.flyY = 20;
-    ptera2.flyR = 14;
+    // pteranodontes no farol
+    const T = P.tower;
+    const towerTop = { x: T.x, y: world.heightAt(T.x, T.z) + 25, z: T.z };
+    for (let i = 0; i < quality.flock; i++) {
+        const o = {
+            a: 15 + i * 5.5, b: 13 + i * 4.5, h: 3 + i * 2.6, ox: (i % 2 ? 6 : -4), oz: (i % 3) * 4 - 4,
+            speed: 9.5 + (i % 3) * 1.2, dir: i % 2 ? -1 : 1, phase: i * 1.7, f: i * 2.1
+        };
+        const d = await make({
+            id: 'ptera', preset: 'pteranodon', flyer: true, x: towerTop.x + o.a, y: towerTop.y + o.h, z: towerTop.z, scale: 1 + (i % 2) * 0.12
+        });
+        pteraBrain(d, towerTop, o);
+    }
 
-    list.push(brachio, brachio2, trex, triA, triB, stego, ...raptors, ptera, ptera2);
-    for (const d of list) scene.add(d.root);
-    return { list, species: SPECIES, trex };
+    const rnd = seeded(91);
+    const spec = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
+    for (const d of list) d.spec = spec[d.id];
+
+    return {
+        list,
+        trex,
+        /** Estado do bando e da fila (uma vez por quadro, antes dos indivíduos). */
+        update(dt, t, ctx) {
+            // estegossauros: o ponto-guia percorre a crista; nas pontas, pausa para pastar e inverte
+            const walk = world.stegoWalk;
+            if (herd.wait > 0) {
+                herd.wait -= dt;
+                if (herd.wait <= 0) {
+                    // inverte o sentido: o último vira o guia, sem ninguém trocar de lugar
+                    herd.s -= herd.dir * (stegos.length - 1) * herd.gap;
+                    herd.dir *= -1;
+                }
+            } else {
+                herd.s += herd.dir * stegos[0].near.gaits.walk.speed * 0.9 * dt;
+                if ((herd.dir > 0 && herd.s >= walk.length - 4) || (herd.dir < 0 && herd.s <= 4)) herd.wait = 14 + rnd() * 8;
+            }
+            // raptors: novo ponto da clareira a cada parada; fogem do jipe
+            const jd = Math.hypot(ctx.jeep.x - pack.x, ctx.jeep.z - pack.z);
+            pack.timer -= dt;
+            const wasFlee = pack.flee;
+            pack.flee = jd < 15 && ctx.playing;
+            if ((pack.flee && !wasFlee) || pack.timer <= 0) {
+                let a = rnd() * TAU;
+                if (pack.flee) a = Math.atan2(R.z - ctx.jeep.z, R.x - ctx.jeep.x) + (rnd() - 0.5) * 1.2;
+                const r = pack.flee ? R.radius * 0.8 : Math.sqrt(rnd()) * R.radius * 0.85;
+                const nx = R.x + Math.cos(a) * r;
+                const nz = R.z + Math.sin(a) * r;
+                pack.yaw = Math.atan2(nx - pack.x, nz - pack.z);
+                pack.x = nx;
+                pack.z = nz;
+                pack.timer = pack.flee ? 5 : 7 + rnd() * 8;
+            }
+            for (let i = 0; i < list.length; i++) list[i].update(dt, t, ctx);
+        }
+    };
 }
+

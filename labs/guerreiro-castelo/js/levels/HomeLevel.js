@@ -1,11 +1,17 @@
 /**
- * Capítulo 1 & Epílogo: Sala da Lareira em Babylon.js.
+ * Capítulo 1 & Epílogo: Sala da Lareira.
+ * Dico conta a história ao filho Ravi diante do fogo; a câmera mergulha nas chamas e a
+ * aventura começa. No epílogo a cena volta para cá (e Teco leva o brinquedo de novo).
+ * Com checkpoint 'menu' a sala serve de fundo vivo para o menu principal.
  */
 
-import { Level } from './Level.js';
-import { buildHomeInterior, addHomeColliders } from '../world/Home.js?v=10';
-import { buildRavi, CharacterAnimator } from '../characters/builders.js?v=7';
-import { EnvironmentFX } from '../world/Environment.js?v=5';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { buildHomeInterior, addHomeColliders, HOME_MARKS } from '../world/Home.js?v=40';
+import { EnvironmentFX } from '../world/Environment.js?v=40';
+import { makeHero } from '../characters/cast.js?v=40';
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 export class HomeLevel extends Level {
     get id() {
@@ -13,49 +19,46 @@ export class HomeLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        const g = buildHomeInterior(scene);
+        const g = await buildHomeInterior(this.game);
         this.group = g;
         this.fx = new EnvironmentFX();
         this.fx.addFire(g.userData.fire);
         addHomeColliders(this.game.collision);
 
-        const ravi = buildRavi(scene);
-        ravi.root.position.set(0.55, 0, 1.55);
-        ravi.root.rotation.y = -0.6;
-        ravi.root.parent = g;
-        this.ravi = ravi;
-        this.raviAnim = new CharacterAnimator(ravi.root, ravi.clips);
-
-        const lamp = new BABYLON.PointLight('hearthPointLight', new BABYLON.Vector3(0, 1.1, -2.8), scene);
-        lamp.diffuse = new BABYLON.Color3(1.0, 0.55, 0.2);
-        lamp.intensity = 1.35;
-        lamp.range = 8;
-        lamp.parent = g;
-        this.hearthLight = lamp;
-
-        const fill = new BABYLON.PointLight('homeFillLight', new BABYLON.Vector3(1.5, 2.2, 1), scene);
-        fill.diffuse = new BABYLON.Color3(1.0, 0.78, 0.62);
-        fill.intensity = 0.35;
-        fill.range = 10;
-        fill.parent = g;
-
-        this.obstacles = g.getChildMeshes ? g.getChildMeshes() : [];
+        this.ravi = makeHero('ravi');
+        const r = HOME_MARKS.ravi;
+        this.ravi.object.position.set(r.x, 0, r.z);
+        this.ravi.object.rotation.y = r.yaw;
+        g.add(this.ravi.object);
+        this.raviAnim = { mode: 'sit', upper: undefined };
+        this.look = V(0, 0, 0);
     }
 
     enter(checkpoint) {
         const g = this.game;
+        const d = HOME_MARKS.dico;
         g.player.attachTo(this.group);
         g.teco.attachTo(this.group);
-        g.teco.root.setEnabled(false);
-        g.player.spawn(0.15, 0, 1.7, Math.PI);
+        g.teco.visible = false;
+        g.teco.root.visible = false;
+        g.player.spawn(d.x, 0, d.z, d.yaw);
+        g.player.pose = { mode: 'sit' };
+        g.player.setArmed(false);
         g.player.controller.setMode('locked');
         g.input.enabled = false;
         g.weather.apply('night');
-        g.audio.setTheme('home');
         g.storm.setIntensity(0);
         g.ocean.visible = false;
-        g.cameraRig.setObstacles(this.obstacles);
+        g.cameraRig.setWorld(g.collision, null, true);
+        g.hud.showStealth(false);
+
+        if (checkpoint === 'menu') {
+            this.menuCam = true;
+            g.cameraRig.cutscene = true;
+            return;
+        }
+        g.audio.setTheme('home');
+        g.hud.showObjective('Ouça a história');
 
         if (checkpoint === 'ending') {
             this._endingBeat();
@@ -63,11 +66,11 @@ export class HomeLevel extends Level {
         }
 
         g.cutscenes.play({
-            from: new BABYLON.Vector3(2.8, 1.6, 3.2),
-            to: new BABYLON.Vector3(1.4, 1.45, 2.6),
-            lookFrom: new BABYLON.Vector3(0, 1.1, 1.2),
-            lookTo: new BABYLON.Vector3(0.2, 1.2, 1.5),
-            duration: 4.2,
+            from: V(-2.4, 1.9, 2.9),
+            to: V(-0.5, 1.25, 1.35),
+            lookFrom: V(0.2, 0.9, -1.6),
+            lookTo: V(0.15, 0.95, -1.5),
+            duration: 4.6,
             onEnd: () => this._introDialogue()
         });
     }
@@ -88,11 +91,12 @@ export class HomeLevel extends Level {
 
     _intoFire() {
         const g = this.game;
+        const f = HOME_MARKS.fire;
         g.cutscenes.play({
-            from: new BABYLON.Vector3(1.2, 1.4, 2.4),
-            to: new BABYLON.Vector3(0.1, 0.9, -2.2),
-            lookFrom: new BABYLON.Vector3(0, 1.1, 0.4),
-            lookTo: new BABYLON.Vector3(0, 0.7, -3.1),
+            from: V(-0.5, 1.25, 1.35),
+            to: V(f.x, 0.62, f.z + 0.75),
+            lookFrom: V(0.15, 0.95, -1.5),
+            lookTo: V(f.x, 0.5, f.z),
             duration: 3.6,
             onMid: () => g.hud.showChapter('A Travessia', 'rumo ao outro lado do mar'),
             onEnd: () => {
@@ -106,14 +110,11 @@ export class HomeLevel extends Level {
 
     _endingBeat() {
         const g = this.game;
-        g.player.spawn(0.15, 0, 1.7, Math.PI);
-        g.player.controller.setMode('locked');
-        g.teco.root.setEnabled(false);
         g.cutscenes.play({
-            from: new BABYLON.Vector3(2.2, 1.5, 3),
-            to: new BABYLON.Vector3(1.3, 1.4, 2.5),
-            lookFrom: new BABYLON.Vector3(0.2, 1.2, 1.4),
-            lookTo: new BABYLON.Vector3(0.2, 1.2, 1.5),
+            from: V(-2.2, 1.7, 2.4),
+            to: V(-0.9, 1.3, 1.2),
+            lookFrom: V(0.2, 0.9, -1.4),
+            lookTo: V(0.1, 0.85, -1.3),
             duration: 2.5,
             onEnd: () => {
                 g.dialogue.play(
@@ -133,18 +134,28 @@ export class HomeLevel extends Level {
         const shiny = this.group.userData.shiny;
         g.audio.play('click');
         if (shiny) {
+            /* Teco aparece, pega o cavalinho e sai correndo pela sala. */
+            const teco = g.teco;
+            teco.visible = true;
+            teco.ai.state = 'SCRIPT';
             const startX = shiny.position.x;
-            const startY = shiny.position.y;
             let t = 0;
             this._fly = (dt) => {
                 t += dt;
-                shiny.position.x = startX + t * 1.8;
-                shiny.position.y = startY + Math.sin(t * 6) * 0.1 + t * 0.2;
+                const x = startX - 2.4 + Math.min(t, 1.2) * 2 + Math.max(0, t - 1.2) * 3.2;
+                teco.position.set(x, 0, shiny.position.z + 0.15);
+                teco.ai.facing = Math.PI / 2;
+                teco.play('Run');
                 if (t > 1.2) {
-                    shiny.setEnabled(false);
+                    shiny.position.x = x + 0.25;
+                    shiny.position.y = 0.3 + Math.sin(t * 14) * 0.03;
+                }
+                if (t > 2.3) {
+                    shiny.visible = false;
+                    teco.visible = false;
                     this._fly = null;
                     g.dialogue.say('DICO', '… Teco levou o brinquedo de novo.', 2.4);
-                    setTimeout(() => g.story.notify('the_end'), 2000);
+                    setTimeout(() => g.story.notify('the_end'), 2400);
                 }
             };
         } else {
@@ -154,19 +165,27 @@ export class HomeLevel extends Level {
 
     update(dt) {
         this.time += dt;
+        const g = this.game;
         this.fx.update(this.time);
-        this.raviAnim?.update(dt);
-        if (this.hearthLight) {
-            this.hearthLight.intensity = 1.2 + Math.sin(this.time * 9) * 0.25;
+        // quem fala gesticula; o outro escuta olhando para quem fala
+        const who = g.dialogue.current?.speaker;
+        this.raviAnim.upper = who === 'RAVI' ? 'talk' : undefined;
+        if (g.player.pose) g.player.pose.upper = who === 'DICO' ? 'talk' : undefined;
+        this.ravi.lookAt(g.player.root.getWorldPosition(this.look).setY(1.25));
+        this.ravi.update(dt, this.raviAnim);
+        if (this.menuCam) {
+            const a = this.time * 0.07;
+            g.cameraRig.setCutscenePose(
+                this.look.set(-1.6 + Math.sin(a) * 0.9, 1.5 + Math.sin(a * 1.7) * 0.12, 2.3 + Math.cos(a) * 0.5),
+                _look.set(0.1, 0.85, -1.9));
         }
         this._fly?.(dt);
     }
 
     exit() {
+        this.ravi?.dispose?.();
         super.exit();
-        this.game.ocean.visible = true;
-        this.game.player.controller.setMode('walk');
         this.game.input.enabled = true;
-        this.game.teco.root.setEnabled(true);
     }
 }
+const _look = V(0, 0, 0);

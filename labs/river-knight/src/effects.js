@@ -8,8 +8,9 @@
  */
 
 import * as THREE from 'three';
-import { sparkTexture, smokeTexture, foamTexture } from './textures.js?v=14';
-import { waterHeight } from './water.js?v=15';
+import { fireLights } from './lights.js?v=50';
+import { sparkTexture, smokeTexture, foamTexture } from './textures.js?v=50';
+import { waterHeight } from './water.js?v=50';
 
 /* ------------------------------------------------------------------ */
 /* Partículas                                                          */
@@ -47,7 +48,8 @@ class ParticleSystem {
             blending,
             uniforms: {
                 uMap: { value: texture },
-                uScale: { value: 700 }
+                uScale: { value: 520 },
+                uGain: { value: 1 }
             },
             vertexShader: /* glsl */ `
                 attribute vec3 aColor;
@@ -66,14 +68,16 @@ class ParticleSystem {
             `,
             fragmentShader: /* glsl */ `
                 uniform sampler2D uMap;
+                uniform float uGain;
                 varying vec3 vColor;
                 varying float vAlpha;
                 void main() {
                     if (vAlpha <= 0.001) discard;
                     vec4 tex = texture2D(uMap, gl_PointCoord);
-                    gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
-                    #include <tonemapping_fragment>
-                    #include <colorspace_fragment>
+                    // borda sempre macia: o sprite some antes de chegar ao limite do quadrado
+                    tex.a *= smoothstep(1.0, 0.55, length(gl_PointCoord - 0.5) * 2.0);
+                    // saída linear HDR: o pós do palco aplica exposição e ACES
+                    gl_FragColor = vec4(vColor * tex.rgb * uGain, tex.a * vAlpha);
                 }
             `
         });
@@ -190,7 +194,8 @@ class Wake {
             depthWrite: false,
             uniforms: {
                 uMap: { value: foamTexture() },
-                uTime: { value: 0 }
+                uTime: { value: 0 },
+                uGain: { value: 1 }
             },
             vertexShader: /* glsl */ `
                 attribute float aAlpha;
@@ -205,6 +210,7 @@ class Wake {
             fragmentShader: /* glsl */ `
                 uniform sampler2D uMap;
                 uniform float uTime;
+                uniform float uGain;
                 varying float vAlpha;
                 varying vec2 vUv;
                 void main() {
@@ -213,9 +219,7 @@ class Wake {
                     float f = texture2D(uMap, uv2).a;
                     float a = vAlpha * edge * (0.18 + f * 0.85);
                     if (a <= 0.005) discard;
-                    gl_FragColor = vec4(vec3(0.95, 0.97, 1.0), a);
-                    #include <tonemapping_fragment>
-                    #include <colorspace_fragment>
+                    gl_FragColor = vec4(vec3(0.95, 0.97, 1.0) * uGain, a * 0.8);
                 }
             `
         });
@@ -330,13 +334,17 @@ class RingPool {
         this.cursor = 0;
     }
 
+    setGain(g) {
+        this.gain = g;
+    }
+
     spawn(x, y, z, scale = 1, life = 0.9, color = 0xdfeaf2) {
         const item = this.items[this.cursor];
         this.cursor = (this.cursor + 1) % this.items.length;
         item.mesh.position.set(x, y, z);
         item.mesh.scale.setScalar(scale * 0.4);
         item.mesh.visible = true;
-        item.mat.color.set(color);
+        item.mat.color.set(color).multiplyScalar(this.gain ?? 1);
         item.life = life;
         item.maxLife = life;
         item.scale = scale;
@@ -393,16 +401,28 @@ export class Effects {
 
         scene.add(this.spray.points, this.embers.points, this.smoke.points, this.wake.mesh, this.rings.group);
 
-        // Luzes temporárias para explosões (pool pequeno: luzes são caras).
+        // Clarões de explosão: sem PointLight própria (ligar/desligar luz recompila
+        // todos os shaders) — cada clarão vivo pede luz ao pool de `lights.js`.
         this.flashes = [];
         const flashCount = quality.id === 'low' ? 1 : 3;
         for (let i = 0; i < flashCount; i++) {
-            const light = new THREE.PointLight(0xff8a3c, 0, 60, 2);
-            light.visible = false;
-            scene.add(light);
-            this.flashes.push({ light, life: 0, power: 0 });
+            this.flashes.push({ x: 0, y: 0, z: 0, color: 0xff8a3c, life: 0, power: 0 });
         }
         this.flashCursor = 0;
+        this.setLight(0.5);
+    }
+
+    /**
+     * Ajusta o brilho das partículas à luz da cena. As partículas não são
+     * iluminadas; `level` (0–1,5) é a claridade ambiente estimada pelo jogo:
+     *   água/espuma/fumaça ×= level      brasas/fagulhas (emissivas) = 2,2 fixo
+     */
+    setLight(level) {
+        this.spray.points.material.uniforms.uGain.value = level * 0.5;
+        this.smoke.points.material.uniforms.uGain.value = level;
+        this.embers.points.material.uniforms.uGain.value = 2.2;
+        if (this.wake.material.uniforms.uGain) this.wake.material.uniforms.uGain.value = level * 0.45;
+        this.rings.setGain(level * 0.7);
     }
 
     /** Respingo branco de água. */
@@ -427,6 +447,68 @@ export class Effects {
                 }
             );
         }
+    }
+
+    /**
+     * Coluna d'água de um tiro de canhão: jato vertical estreito + coroa.
+     * Velocidade inicial vertical 9–17 m/s·power sob g = 11 m/s² → sobe 4–13 m.
+     */
+    column(x, z, power = 1) {
+        const n = Math.round(26 * power);
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const r = Math.random() * 0.5;
+            const up = (9 + Math.random() * 8) * power;
+            this.spray.spawn(x + Math.cos(a) * r, 0.1 + Math.random() * 0.6, z + Math.sin(a) * r,
+                Math.cos(a) * r * 2.2, up, Math.sin(a) * r * 2.2, {
+                    life: 0.9 + Math.random() * 0.8,
+                    size: 0.45 + Math.random() * 0.6,
+                    color: tmpColor.setRGB(0.86, 0.92, 0.96),
+                    gravity: 11,
+                    drag: 0.35,
+                    grow: 1.9
+                });
+        }
+        this.splash(x, 0.1, z, Math.round(14 * power), 1.3 * power);
+        this.rings.spawn(x, 0.12, z, 2.6 * power, 1.3, 0xdfeaf2);
+    }
+
+    /** Boca de canhão: jato de fumaça clara na direção do tiro + fagulhas. */
+    muzzle(x, y, z, dirX, dirZ) {
+        for (let i = 0; i < 9; i++) {
+            const s = 3 + Math.random() * 9;
+            this.smoke.spawn(x + dirX * 0.3, y, z + dirZ * 0.3,
+                dirX * s + (Math.random() - 0.5) * 2, 0.6 + Math.random() * 1.6, dirZ * s + (Math.random() - 0.5) * 2, {
+                    life: 1.3 + Math.random() * 1.4,
+                    size: 0.45 + Math.random() * 0.5,
+                    color: tmpColor.setRGB(0.42, 0.41, 0.39),
+                    gravity: -0.5,
+                    drag: 2.2,
+                    grow: 3.2
+                });
+        }
+        for (let i = 0; i < 10; i++) {
+            const s = 10 + Math.random() * 16;
+            this.embers.spawn(x, y, z, dirX * s + (Math.random() - 0.5) * 5, (Math.random() - 0.3) * 5, dirZ * s + (Math.random() - 0.5) * 5, {
+                life: 0.12 + Math.random() * 0.25,
+                size: 0.14 + Math.random() * 0.2,
+                color: tmpColor.setHSL(0.09, 1, 0.65),
+                gravity: 3,
+                drag: 2
+            });
+        }
+    }
+
+    /** Rastro de projétil: um fio de fumaça que fica para trás. */
+    trail(x, y, z) {
+        this.smoke.spawn(x, y, z, 0, 0.2, 0, {
+            life: 0.55,
+            size: 0.3,
+            color: tmpColor.setRGB(0.5, 0.48, 0.46),
+            gravity: -0.3,
+            drag: 1,
+            grow: 1.4
+        });
     }
 
     /** Fagulhas de fogo (chama contínua, tochas, destroços em chamas). */
@@ -463,7 +545,7 @@ export class Effects {
                 {
                     life: 1.5 + Math.random() * 1.5,
                     size: (0.8 + Math.random() * 0.9) * power,
-                    color: tmpColor.setRGB(0.22, 0.2, 0.19),
+                    color: tmpColor.setRGB(0.34, 0.32, 0.3),
                     gravity: -0.9,
                     drag: 1.4,
                     grow: 2.6
@@ -501,11 +583,12 @@ export class Effects {
         const flash = this.flashes[this.flashCursor];
         if (flash) {
             this.flashCursor = (this.flashCursor + 1) % this.flashes.length;
-            flash.light.position.set(x, y + 1.2, z);
-            flash.light.color.setHSL(colorHue, 1, 0.55);
+            flash.x = x;
+            flash.y = y + 1.2;
+            flash.z = z;
+            flash.color = tmpColor.setHSL(colorHue, 1, 0.55).getHex();
             flash.life = 0.42;
-            flash.power = 70 * power;
-            flash.light.visible = true;
+            flash.power = 420 * power;
         }
     }
 
@@ -564,8 +647,7 @@ export class Effects {
             if (flash.life <= 0) continue;
             flash.life -= dt;
             const t = Math.max(0, flash.life / 0.42);
-            flash.light.intensity = flash.power * t * t;
-            if (flash.life <= 0) flash.light.visible = false;
+            fireLights.request(flash.x, flash.y, flash.z, flash.color, flash.power * t * t, 34);
         }
     }
 
@@ -575,9 +657,6 @@ export class Effects {
         this.smoke.reset();
         this.wake.reset();
         this.rings.reset();
-        for (const flash of this.flashes) {
-            flash.life = 0;
-            flash.light.visible = false;
-        }
+        for (const flash of this.flashes) flash.life = 0;
     }
 }

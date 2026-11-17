@@ -305,6 +305,7 @@ kbd {
     display: grid;
     place-items: center;
     background: linear-gradient(180deg, rgba(6, 8, 12, 0.72), rgba(6, 8, 12, 0.88));
+    overflow-y: auto;
     padding: calc(4.2rem + env(safe-area-inset-top, 0px)) 1.2rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
 }
 
@@ -322,8 +323,10 @@ kbd {
     max-height: min(92dvh, 900px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    width: min(40rem, 100%);
+    width: min(34rem, 100%);
+    box-sizing: border-box;
     background: rgba(12, 14, 20, 0.82);
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(212, 180, 90, 0.22);
     padding: 2rem 1.8rem;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
@@ -714,4 +717,61 @@ kbd {
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }
+}
+
+/* Menu sobre a cena viva da lareira: véu mais leve, cartão alinhado e legível. */
+.menu-overlay {
+    background: linear-gradient(90deg, rgba(6, 8, 12, 0.2), rgba(6, 8, 12, 0.5) 45%, rgba(6, 8, 12, 0.82));
+    place-items: center end;
+    padding-right: clamp(1.2rem, 6vw, 5rem);
+}
+
+.menu-head {
+    display: block;
+    text-align: left;
+}
+
+.menu-head h1 {
+    text-wrap: balance;
+}
+
+.loading-overlay {
+    background: #05060a;
+    z-index: 40;
+}
+
+.primary-button, .ghost-button, .field select {
+    min-height: 44px;
+}
+
+.ghost-button {
+    text-decoration: none;
+    text-align: center;
+}
+
+.primary-button:not(:disabled):hover { filter: brightness(1.08); }
+.ghost-button:hover { border-color: var(--gold); color: var(--gold); }
+
+@media (max-width: 768px) {
+    .menu-overlay {
+        place-items: center;
+        padding-right: 1.2rem;
+        background: linear-gradient(180deg, rgba(6, 8, 12, 0.45), rgba(6, 8, 12, 0.85));
+    }
+    .dialogue { bottom: 11.5rem; }
+    .prompt { bottom: 15.5rem; }
+    .panel { min-width: 0; padding: 0.5rem 0.7rem; }
+    .objective { font-size: 0.92rem; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .overlay { padding-top: calc(3.2rem + env(safe-area-inset-top, 0px)); padding-bottom: 0.6rem; }
+    .menu-overlay { place-items: center end; }
+    .menu-card { width: min(26rem, 100%); }
+    .menu-actions { grid-template-columns: 1fr 1fr; }
+    .lede { font-size: 0.86rem; }
+    .dialogue { bottom: 0.8rem; width: min(26rem, 46vw); }
+    .prompt { bottom: 4.6rem; }
+    .stealth { top: 7.2rem; width: min(12rem, 30vw); }
+    .panel { padding: 0.4rem 0.7rem; }
 }

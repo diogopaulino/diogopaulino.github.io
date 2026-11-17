@@ -5,9 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Claude Bros — plataforma 2D com as IAs | Diogo Paulino</title>
+  <title>Claude Bros — plataforma 3D em WebGL | Diogo Paulino</title>
   <meta name="description"
-    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
+    content="Plataforma 2.5D em WebGL: corra com o mascote Claude por ilhas modeladas em 3D, colete faíscas douradas, pule nos musgosos e chegue ao estandarte.">
   <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#5aa9e6">
@@ -18,18 +18,18 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Diogo Paulino · Labs">
-  <meta property="og:title" content="Claude Bros — plataforma 2D com as IAs | Diogo Paulino">
+  <meta property="og:title" content="Claude Bros — plataforma 3D em WebGL | Diogo Paulino">
   <meta property="og:description"
-    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
+    content="Plataforma 2.5D em WebGL: corra com o mascote Claude por ilhas modeladas em 3D, colete faíscas douradas, pule nos musgosos e chegue ao estandarte.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/claude-bros/">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta property="og:image:alt" content="Diogo Paulino">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Claude Bros — plataforma 2D com as IAs | Diogo Paulino">
+  <meta name="twitter:title" content="Claude Bros — plataforma 3D em WebGL | Diogo Paulino">
   <meta name="twitter:description"
-    content="Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.">
+    content="Plataforma 2.5D em WebGL: corra com o mascote Claude por ilhas modeladas em 3D, colete faíscas douradas, pule nos musgosos e chegue ao estandarte.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
 
   <script type="application/ld+json">
@@ -40,7 +40,7 @@
         "@type": "WebApplication",
         "name": "Claude Bros",
         "url": "https://diogopaulino.com.br/labs/claude-bros/",
-        "description": "Plataforma 2D em canvas puro: corra com o Claude, colete estrelas Gemini, pule nos rivais e chegue à bandeira.",
+        "description": "Plataforma 2.5D em WebGL: corra com o mascote Claude por ilhas modeladas em 3D, colete faíscas douradas, pule nos musgosos e chegue ao estandarte.",
         "applicationCategory": "GameApplication",
         "genre": "Platformer",
         "operatingSystem": "Any",
@@ -65,8 +65,17 @@
   }
   </script>
 
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+    }
+  }
+  </script>
+
   <link rel="stylesheet" href="/labs/shared.css?v=13">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
@@ -74,7 +83,7 @@
     <header data-lab-header data-title="Claude Bros" data-back-label="Labs">
       <template data-slot="logo">
         <div class="app-logo">
-          <span class="brand-mark" aria-hidden="true">🍄</span>
+          <span class="brand-mark" aria-hidden="true">✦</span>
           <span>Claude Bros</span>
         </div>
       </template>
@@ -84,11 +93,11 @@
     </header>
 
     <div class="stage">
-      <canvas id="stage" role="img" aria-label="Fase de plataforma com o Claude, estrelas e rivais"></canvas>
+      <canvas id="stage" role="img" aria-label="Fase de plataforma em 3D com o mascote Claude, faíscas douradas e musgosos"></canvas>
 
       <div class="hud" aria-hidden="true">
         <div class="hud-chip"><span class="hud-key">PTS</span><strong id="scoreValue">0</strong></div>
-        <div class="hud-chip"><span class="hud-key">★</span><strong id="coinValue">0</strong></div>
+        <div class="hud-chip"><span class="hud-key">✦</span><strong id="coinValue">0</strong></div>
         <div class="hud-chip"><span class="hud-key">VIDAS</span><strong id="lifeValue">❤️❤️❤️</strong></div>
         <div class="hud-chip"><span class="hud-key">TEMPO</span><strong id="timeValue">00:00</strong></div>
       </div>
@@ -96,10 +105,20 @@
       <div class="overlay" id="overlay">
         <div class="overlay-card">
           <h2 id="overlayTitle">Claude Bros</h2>
-          <p id="overlayText">Colete as estrelas, pule nos rivais e chegue à bandeira.</p>
+          <p id="overlayText">Colete as faíscas, pule nos musgosos e chegue ao estandarte.</p>
+          <div class="load-bar" id="loadBar" role="presentation"><span id="loadFill"></span></div>
           <button type="button" class="primary-btn" id="overlayButton">Começar</button>
           <p class="overlay-hint fine-only">Setas ou A/D para andar · Espaço para pular · P pausa</p>
           <p class="overlay-hint touch-only">Use os botões na base da tela</p>
+          <label class="quality-row" for="qualitySelect">
+            <span>Gráficos</span>
+            <select id="qualitySelect">
+              <option value="auto">Automático</option>
+              <option value="low">Baixo</option>
+              <option value="medium">Médio</option>
+              <option value="high">Alto</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -118,7 +137,7 @@
   </main>
 
   <script src="/labs/shared.js?v=14" defer></script>
-  <script src="main.js?v=4" defer></script>
+  <script type="module" src="src/main.js?v=5"></script>
 </body>
 
 </html>

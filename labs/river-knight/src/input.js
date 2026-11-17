@@ -5,7 +5,7 @@
  * `input.consumeFire()` — de onde veio o comando é problema deste módulo.
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=50';
 
 const KEY_MAP = {
     ArrowLeft: 'left',

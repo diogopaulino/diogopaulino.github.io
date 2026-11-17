@@ -13,7 +13,8 @@ body {
 .game-shell {
     width: 100%;
     max-width: 1200px;
-    min-height: 100dvh;
+    /* Altura fechada no viewport: header e footer ficam à vista e o palco leva o resto. */
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -39,7 +40,8 @@ body {
     width: 100%;
     border-radius: 1rem;
     overflow: hidden;
-    background: #5aa9e6;
+    /* Cor do céu do tema (o palco 3D define --stage-sky); aparece só até o primeiro quadro. */
+    background: var(--stage-sky, #8fc4ea);
     box-shadow: 0 18px 48px rgba(4, 20, 34, 0.45);
     /* Os gestos do jogo não podem virar scroll/zoom da página. */
     touch-action: none;
@@ -47,7 +49,11 @@ body {
     -webkit-user-select: none;
 }
 
+/* O canvas não pode ditar a altura do palco (o tamanho intrínseco dele muda a
+   cada resize): fica absoluto e só preenche o espaço que o flex reservou. */
 .stage canvas {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
@@ -103,10 +109,8 @@ body {
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background: rgba(6, 20, 34, 0.55);
-    /* Blur leve: o menu precisa se destacar sem apagar a fase atrás dele. */
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    /* Só um véu escuro: a fase em 3D atrás do menu é parte da apresentação. */
+    background: radial-gradient(ellipse at center, rgba(6, 20, 34, 0.5), rgba(6, 20, 34, 0.18));
     z-index: 20;
 }
 
@@ -176,6 +180,64 @@ body {
 .primary-btn:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 3px;
+}
+
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: progress;
+    transform: none;
+    filter: none;
+}
+
+/* Barra de carregamento dos assets (some quando o mundo está pronto). */
+.load-bar {
+    width: min(16rem, 100%);
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+}
+
+.load-bar[hidden] {
+    display: none;
+}
+
+.load-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #d97757, #ffc04a);
+    transform: scaleX(0.02);
+    transform-origin: left center;
+    transition: transform 0.25s ease;
+}
+
+.quality-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    color: rgba(242, 247, 251, 0.75);
+}
+
+.quality-row select {
+    min-height: var(--touch-target, 44px);
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f2f7fb;
+    font: inherit;
+    cursor: pointer;
+}
+
+.quality-row select:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.quality-row option {
+    color: #10202e;
 }
 
 /* ------------------------------------------------------ controles de toque --- */
@@ -287,6 +349,15 @@ body {
 
     .hud {
         padding: 0.35rem 0.5rem;
+    }
+
+    .overlay-card {
+        gap: 0.5rem;
+        padding: 0.9rem 1.25rem;
+    }
+
+    .overlay-card h2 {
+        font-size: 1.4rem;
     }
 }
 

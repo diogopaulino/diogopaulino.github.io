@@ -7,48 +7,55 @@
  */
 
 import * as THREE from 'three';
-import { buildLongship, buildWarrior } from './models.js?v=33';
-import { waterHeight, waterSlope } from './water.js?v=15';
-import { centerX, halfWidth } from './river.js';
-import { BOAT, CANNON } from './config.js?v=14';
-import { clamp, damp, lerp } from './utils.js';
+import { createHero } from '../../shared/gfx/hero.js';
+import { buildLongship } from './ships.js?v=50';
+import { fireLights } from './lights.js?v=50';
+import { waterHeight, waterSlope } from './water.js?v=50';
+import { centerX, halfWidth } from './river.js?v=50';
+import { BOAT, CANNON } from './config.js?v=50';
+import { clamp, damp } from './utils.js?v=50';
 
 const tmpSlope = { dx: 0, dz: 0 };
 const tmpMuzzle = new THREE.Vector3();
 const tmpMuzzleWorld = new THREE.Vector3();
+const ANIM = { rowRate: 3, speedRatio: 0, steer: 0, wind: 1 };
 
 export class Player {
     constructor(scene, quality = null) {
         this.root = new THREE.Group();
         scene.add(this.root);
+        const low = quality?.id === 'low';
 
         // O modelo é construído com a proa em +Z; o grupo interno gira 180°
         // para que o "para frente" do jogador seja -Z no mundo.
         const { group: ship, parts } = buildLongship({
             length: 15,
             beam: 3.6,
-            hullColor: 0x6b4429,
             sailBase: '#ded1b0',
             sailStripe: '#a02f2f',
             emblem: 'cross',
-            lanternLight: quality?.id !== 'low',
-            cannons: true
+            cannons: true,
+            cargo: !low,
+            tier: quality?.id || 'high',
+            crew: { presets: ['peasant', 'dwarf', 'peasant', 'elder'], rowers: low ? 2 : 6, detail: low ? 0 : 1 }
         });
         ship.rotation.y = Math.PI;
         this.root.add(ship);
         this.ship = ship;
         this.parts = parts;
 
-        const { group: warrior, parts: wParts } = buildWarrior({});
-        warrior.position.set(0, 1.08, -2.55);
-        warrior.scale.setScalar(1.42);
-        ship.add(warrior);
-        this.warrior = warrior;
-        this.wParts = wParts;
+        // Cavaleiro ao leme (popa): herói de alta fidelidade com espada e escudo.
+        this.knight = createHero({ preset: 'knight', detail: low ? 1 : 2 });
+        const helm = parts.helm || { x: 0, y: parts.deckY, z: -5.2 };
+        this.knight.object.position.set(0, parts.poopY ?? helm.y, helm.z + 0.5);
+        ship.add(this.knight.object);
+        this.knight.equip?.({ handR: 'sword', handL: 'shield' });
+        this.knightState = { mode: 'idle', speed: 0, upper: null, upperPhase: 0 };
+        this.orderT = 1;
 
-        // Bolha de escudo.
+        // Bolha de escudo (casca translúcida com brilho de borda).
         this.shieldBubble = new THREE.Mesh(
-            new THREE.SphereGeometry(5.6, 20, 14),
+            new THREE.SphereGeometry(8.2, 40, 24),
             new THREE.MeshBasicMaterial({
                 color: 0x7ec8ff,
                 transparent: true,
@@ -57,6 +64,7 @@ export class Player {
                 side: THREE.DoubleSide
             })
         );
+        this.shieldBubble.scale.set(0.55, 0.6, 1);
         this.shieldBubble.visible = false;
         this.root.add(this.shieldBubble);
 
@@ -85,7 +93,8 @@ export class Player {
         this.root.position.set(this.x, 0, 0);
         this.root.rotation.set(0, 0, 0);
         this.shieldBubble.visible = false;
-        this._setOpacity(1);
+        this.ship.visible = true;
+        this.orderT = 1;
     }
 
     get position() {
@@ -98,37 +107,6 @@ export class Player {
 
     get hasFury() {
         return this.furyTime > 0;
-    }
-
-    _setOpacity(value) {
-        if (!this._fadeMats) {
-            this._fadeMats = [];
-            this.root.traverse((child) => {
-                if (!child.material || child === this.shieldBubble) return;
-                const mats = Array.isArray(child.material) ? child.material : [child.material];
-                const next = mats.map((m) => {
-                    // Tecidos têm shader próprio; o resto é material em cache
-                    // compartilhado — clonar evita o pisca da invulnerabilidade
-                    // vazar para inimigos, torres e a princesa.
-                    if (m.userData.uniforms) return m;
-                    const clone = m.clone();
-                    clone.userData.baseOpacity = clone.opacity;
-                    clone.userData.baseTransparent = clone.transparent;
-                    this._fadeMats.push(clone);
-                    return clone;
-                });
-                child.material = Array.isArray(child.material) ? next : next[0];
-            });
-        }
-        for (const m of this._fadeMats) {
-            if (value >= 1) {
-                m.opacity = m.userData.baseOpacity;
-                m.transparent = m.userData.baseTransparent;
-            } else {
-                m.transparent = true;
-                m.opacity = m.userData.baseOpacity * value;
-            }
-        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -199,55 +177,17 @@ export class Player {
 
         const speedRatio = this.speed / BOAT.boostSpeed;
 
-        // --- remos ---
-        const rowSpeed = 2.4 + (this.speed / BOAT.boostSpeed) * 3.8;
-        for (const oar of this.parts.oars) {
-            const phase = time * rowSpeed + oar.userData.phase;
-            const dip = Math.sin(phase);
-            oar.rotation.x = dip * 0.5;
-            oar.rotation.z = oar.userData.baseRoll - oar.userData.side * Math.sin(phase + 1.3) * 0.24;
-            if (dip > 0.82 && Math.random() < 0.18 && oar.position) {
-                effects.splash(
-                    this.x + oar.userData.side * 3.6,
-                    wy + 0.02,
-                    this.z + (oar.position.z || 0) * 0.2,
-                    2,
-                    0.28 + speedRatio * 0.2
-                );
-            }
-        }
-        if (this.parts.rudder) {
-            this.parts.rudder.rotation.y = -this.yaw * 1.8;
-        }
-
-        // --- guerreiro ---
-        const sway = Math.sin(time * 1.6) * 0.05;
-        this.wParts.torso.rotation.z = sway - this.roll * 0.5;
-        this.wParts.torso.rotation.x = -this.root.rotation.x * 0.6 + Math.sin(time * 1.1) * 0.03;
-        this.wParts.head.rotation.y = clamp(-steer * 0.5, -0.5, 0.5) + Math.sin(time * 0.7) * 0.08;
-        this.wParts.armL.rotation.x = -0.35 + Math.sin(time * 1.5) * 0.06;
-        this.wParts.armL.rotation.z = 0.22;
-
-        if (this.throwAnim > 0) {
-            this.throwAnim = Math.max(0, this.throwAnim - dt * 3.6);
-            const t = 1 - this.throwAnim; // 0 → 1 ao longo do arremesso
-            const swing = t < 0.35
-                ? lerp(0, -2.2, t / 0.35)          // recuo
-                : lerp(-2.2, 0.9, (t - 0.35) / 0.65); // golpe
-            this.wParts.armR.rotation.x = swing;
-            this.wParts.torso.rotation.y = swing * 0.18;
-        } else {
-            this.wParts.armR.rotation.x = damp(this.wParts.armR.rotation.x, -0.25 + Math.sin(time * 1.4) * 0.07, 8, dt);
-            this.wParts.torso.rotation.y = damp(this.wParts.torso.rotation.y, 0, 6, dt);
-        }
-
-        // Ordem de fogo — braço aponta, canhão responde.
-        this.wParts.axe.visible = true;
-
-        // --- lanterna e brasas ---
+        // --- remos, remadores, vela, recuo dos canhões (ships.js) ---
+        // cadência da remada cresce com a velocidade: 2,2 rad/s parado → 5,4 rad/s no impulso
+        ANIM.rowRate = 2.2 + speedRatio * 3.2;
+        ANIM.speedRatio = speedRatio;
+        ANIM.steer = steer;
+        this.parts.animate(dt, time, ANIM);
+        if (this.parts.rudder) this.parts.rudder.rotation.y = -this.yaw * 1.8;
+        this._animateKnight(dt);
         if (this.parts.lanternFlame) {
-            const s = 0.85 + Math.sin(time * 8.5) * 0.15;
-            this.parts.lanternFlame.scale.set(s, s * 1.35, s);
+            this.parts.lanternFlame.getWorldPosition(tmpMuzzle);
+            fireLights.request(tmpMuzzle.x, tmpMuzzle.y, tmpMuzzle.z, 0xffa54a, 26 + Math.sin(time * 9) * 4, 9);
         }
 
         // --- espuma da proa e esteira (fora do casco, nunca sobre o convés) ---
@@ -271,14 +211,9 @@ export class Player {
         this.shieldTime = Math.max(0, this.shieldTime - dt);
         this.furyTime = Math.max(0, this.furyTime - dt);
 
-        // Piscar durante a invulnerabilidade.
-        if (this.invuln > 0 && !this.hasShield) {
-            this._setOpacity(0.35 + Math.abs(Math.sin(time * 22)) * 0.65);
-            this._faded = true;
-        } else if (this._faded) {
-            this._setOpacity(1);
-            this._faded = false;
-        }
+        // Piscar durante a invulnerabilidade: alterna a visibilidade a ~11 Hz
+        // (mais barato e robusto com SkinnedMesh do que clonar materiais para alfa).
+        this.ship.visible = !(this.invuln > 0 && !this.hasShield && Math.sin(time * 70) < -0.25);
 
         this.shieldBubble.visible = this.hasShield;
         if (this.hasShield) {
@@ -289,13 +224,34 @@ export class Player {
 
         if (this.hasFury) {
             const glow = 0.6 + Math.sin(time * 12) * 0.4;
-            this.parts.hull.material.emissive?.setRGB(glow * 0.16, glow * 0.05, 0);
+            this.parts.setEmissive(glow * 0.16, glow * 0.05, 0);
+            this._furyOn = true;
             if (Math.random() < 0.4) {
                 effects.fire(this.x, wy + 1.6, this.z + 1.2, 1, 0.7);
             }
-        } else if (this.parts.hull.material.emissive) {
-            this.parts.hull.material.emissive.setRGB(0, 0, 0);
+        } else if (this._furyOn) {
+            this.parts.setEmissive(0, 0, 0);
+            this._furyOn = false;
         }
+    }
+
+    /** Cavaleiro: parado ao leme, golpe de espada ao ordenar fogo, comemora ao atracar. */
+    _animateKnight(dt) {
+        const st = this.knightState;
+        st.mode = this.docking ? 'cheer' : 'idle';
+        this.orderT = Math.min(1, this.orderT + dt / 0.55);
+        st.upper = this.orderT < 1 ? 'attack' : null;
+        st.upperPhase = this.orderT;
+        this.knight.update(dt, st);
+    }
+
+    /** Menu: tripulação remando devagar, sem física de navegação. */
+    updateMenu(dt, time) {
+        ANIM.rowRate = 1.9;
+        ANIM.speedRatio = 0.3;
+        ANIM.steer = 0;
+        this.parts.animate(dt, time, ANIM);
+        this._animateKnight(dt);
     }
 
     /* ------------------------------------------------------------------ */
@@ -330,6 +286,7 @@ export class Player {
         if (!this.canThrow()) return false;
         this.throwTimer = this.hasFury ? BOAT.furyCooldown : BOAT.throwCooldown;
         this.throwAnim = 1;
+        this.orderT = 0;
 
         const fwd = this.forwardXZ();
         const target = entities.findCannonTarget(
@@ -423,6 +380,9 @@ export class Player {
 
             if (entities.fireShot(ox, tmpMuzzleWorld.y, oz, dirX, dirZ, speed, loft)) {
                 fired += 1;
+                this.parts.fireGun(gun);
+                fireLights.request(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, 0xffb060, 160, 16);
+                ctx.effects.muzzle?.(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, dirX, dirZ);
                 ctx.effects.explosion(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, 0.22, 0.12);
                 ctx.effects.smokePuff(tmpMuzzleWorld.x, tmpMuzzleWorld.y + 0.2, tmpMuzzleWorld.z, 5, 0.85);
                 ctx.effects.fire(tmpMuzzleWorld.x, tmpMuzzleWorld.y, tmpMuzzleWorld.z, 2, 0.9);

@@ -1,15 +1,14 @@
 /**
- * Água: ondas de Gerstner na GPU + reflexo do céu procedural.
+ * Água: ondas de Gerstner na GPU + reflexo do céu do palco (IBL).
  *
  * As mesmas ondas são avaliadas na CPU (`waterHeight`) para que o barco, os
  * destroços e a espuma acompanhem exatamente a superfície desenhada.
  */
 
 import * as THREE from 'three';
-import { buildRadialGrid } from './utils.js';
-import { RIVER_GLSL } from './river.js';
-import { SKY_GLSL, NOISE_GLSL } from './sky.js?v=14';
-import { foamTexture } from './textures.js?v=14';
+import { buildRadialGrid } from './utils.js?v=50';
+import { RIVER_GLSL } from './river.js?v=50';
+import { GLSL_NOISE } from '../../shared/gfx/core.js';
 
 /**
  * Conjunto de ondas: direção (normalizada), amplitude, comprimento, velocidade.
@@ -94,148 +93,130 @@ void rkGerstner(vec2 p, float t, out vec3 disp, out vec3 nrm, out float phase) {
 `;
 }
 
-export function createWater(skyUniforms, quality) {
-    const geometry = buildRadialGrid(
-        quality.id === 'low' ? 96 : 152,
-        quality.waterSegments,
-        2300,
-        1.1
-    );
+/**
+ * Superfície do rio: `MeshStandardMaterial` estendido — reflete o céu do palco
+ * (IBL), recebe o sol com especular e as sombras das margens e dos navios, e
+ * entra na névoa/pós como qualquer objeto.
+ *
+ *   malha      radial que segue a câmera; deslocamento Gerstner em coordenadas de mundo
+ *   normal     Gerstner + três oitavas de marola que escorrem rio abaixo (−Z)
+ *   cor        mix(raso, fundo, (profundidade/5)²) — profundidade vem de `rkHeight`
+ *   margens    perto da margem o reflexo do céu dá lugar ao "reflexo" escuro da
+ *              mata/falésia:  envMap ×= mix(0,35; 1; smoothstep(−16 m → −2 m da borda))
+ *              (aproximação: não há reflexo planar de verdade)
+ *   espuma     faixa junto à linha d'água + línguas de correnteza + cristas,
+ *              recortadas por fbm que escorre com o fluxo
+ */
+export function createWater(quality) {
+    const low = quality.id === 'low';
+    const geometry = buildRadialGrid(low ? 96 : 160, quality.waterSegments, 2300, 1.0);
+    const uniforms = { uTime: { value: 0 } };
 
-    const uniforms = {
-        ...skyUniforms,
-        uTime: { value: 0 },
-        uFoam: { value: foamTexture() },
-        uFogColor: { value: new THREE.Color(0.7, 0.7, 0.75) },
-        uFogDensity: { value: quality.fogDensity },
-        uShallow: { value: new THREE.Color(0.18, 0.42, 0.34) },
-        uDeep: { value: new THREE.Color(0.02, 0.07, 0.10) }
-    };
-
-    const material = new THREE.ShaderMaterial({
-        uniforms,
-        fog: false,
-        vertexShader: /* glsl */ `
-            varying vec3 vWorld;
-            varying vec3 vWaveNormal;
-            varying float vPhase;
-            uniform float uTime;
-            ${gerstnerGLSL()}
-
-            void main() {
-                vec3 world = (modelMatrix * vec4(position, 1.0)).xyz;
-                vec3 disp;
-                vec3 nrm;
-                float phase;
-                rkGerstner(world.xz, uTime, disp, nrm, phase);
-
-                // Ondas encolhem à distância para evitar aliasing na malha esparsa.
-                float fade = 1.0 - smoothstep(120.0, 620.0, length(world.xz - cameraPosition.xz));
-                world += disp * mix(0.25, 1.0, fade);
-
-                vWorld = world;
-                vWaveNormal = normalize(mix(vec3(0.0, 1.0, 0.0), nrm, mix(0.2, 1.0, fade)));
-                vPhase = phase;
-
-                gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
-            }
-        `,
-        fragmentShader: /* glsl */ `
-            varying vec3 vWorld;
-            varying vec3 vWaveNormal;
-            varying float vPhase;
-
-            uniform float uTime;
-            uniform sampler2D uFoam;
-            uniform vec3 uFogColor;
-            uniform float uFogDensity;
-            uniform vec3 uShallow;
-            uniform vec3 uDeep;
-
-            ${SKY_GLSL}
-            ${RIVER_GLSL}
-            ${NOISE_GLSL}
-
-            void main() {
-                vec3 N = normalize(vWaveNormal);
-
-                // Marolas de alta frequência (detalhe que a malha não resolve).
-                vec2 rp = vWorld.xz;
-                float r1 = rkValueNoise(rp * 1.15 + vec2(uTime * 0.30, -uTime * 0.22)) - 0.5;
-                float r2 = rkValueNoise(rp * 2.60 + vec2(-uTime * 0.42, uTime * 0.36)) - 0.5;
-                float r3 = rkValueNoise(rp * 5.30 + vec2(uTime * 0.55, uTime * 0.48)) - 0.5;
-                float detailFade = 1.0 - smoothstep(30.0, 180.0, length(vWorld.xz - cameraPosition.xz));
-                N = normalize(N + vec3(
-                    (r1 * 0.085 + r2 * 0.05 + r3 * 0.03) * detailFade,
-                    0.0,
-                    (r1 * 0.075 - r2 * 0.055 + r3 * 0.03) * detailFade
-                ));
-
-                vec3 V = normalize(cameraPosition - vWorld);
-                float ndv = clamp(dot(N, V), 0.0, 1.0);
-                float fres = 0.022 + 0.978 * pow(1.0 - ndv, 5.0);
-
-                vec3 R = reflect(-V, N);
-                R.y = abs(R.y) + 0.008;
-                // Água não é espelho perfeito: o reflexo perde energia e ganha
-                // difusão conforme a distância (microrrugosidade da superfície).
-                vec3 refl = rkSky(R) * 0.82;
-                float blur = smoothstep(60.0, 500.0, length(vWorld.xz - cameraPosition.xz));
-                refl = mix(refl, rkSky(normalize(vec3(R.x, R.y + 0.35, R.z))) * 0.78, blur * 0.6);
-
-                // Corpo d'água: quanto mais fundo, mais escuro e frio.
-                float bed = rkHeight(vWorld.x, vWorld.z);
-                float depth = clamp(-bed / 5.0, 0.0, 1.0);
-                vec3 body = mix(uShallow, uDeep, depth * depth);
-                float sunLit = clamp(dot(N, uSunDir) * 0.5 + 0.6, 0.0, 1.2);
-                body *= sunLit;
-                body += uSunColor * 0.06 * (1.0 - depth);
-                // Luz atravessando a crista da onda (subsurface fake).
-                body += uSunColor * uShallow * smoothstep(0.6, 1.9, vPhase) * 0.10 * (1.0 - depth * 0.65);
-
-                // Cáusticos baratos no raso — o leito do rio "pisca" com o sol.
-                float caust = rkValueNoise(rp * 1.85 + vec2(uTime * 0.18, -uTime * 0.14));
-                caust *= rkValueNoise(rp * 3.4 + vec2(-uTime * 0.11, uTime * 0.16));
-                body += uSunColor * caust * (1.0 - depth) * 0.16;
-
-                vec3 col = mix(body, refl, fres * 0.88);
-
-                // Brilho especular do sol (rio, não oceano).
-                vec3 H = normalize(V + uSunDir);
-                float spec = pow(max(dot(N, H), 0.0), 96.0);
-                float sparkle = pow(max(dot(N, H), 0.0), 48.0) *
-                    smoothstep(0.62, 1.0, rkValueNoise(rp * 2.4 + uTime * 0.45));
-                col += uSunColor * (spec * 0.55 + sparkle * 0.06);
-
-                // Espuma junto às margens e nas cristas mais altas.
-                float shore = rkShoreDist(vWorld.x, vWorld.z);
-                // smoothstep exige edge0 < edge1 (fora disso o resultado é indefinido em GLSL).
-                float band = smoothstep(-12.5, -2.8, shore) * (1.0 - smoothstep(-2.0, 1.4, shore));
-                float crest = smoothstep(1.15, 2.15, vPhase);
-                vec2 fuv = vWorld.xz * 0.038 + vec2(uTime * 0.004, uTime * 0.07);
-                float ftex = texture2D(uFoam, fuv).a;
-                float current = smoothstep(0.35, 0.85, rkValueNoise(vec2(vWorld.x * 0.08, vWorld.z * 0.025 + uTime * 0.12)));
-                float foam = clamp(band * 1.15 + crest * 0.18 + current * 0.12 * (1.0 - depth), 0.0, 1.0)
-                    * smoothstep(0.08, 0.55, ftex);
-                col = mix(col, vec3(0.88, 0.94, 0.96), clamp(foam, 0.0, 1.0) * 0.72);
-
-                // Névoa exponencial casada com o céu.
-                float dist = length(cameraPosition - vWorld);
-                float fogAmt = 1.0 - exp(-pow(dist * uFogDensity, 2.0));
-                col = mix(col, uFogColor, clamp(fogAmt, 0.0, 1.0));
-
-                gl_FragColor = vec4(col, 1.0);
-                #include <tonemapping_fragment>
-                #include <colorspace_fragment>
-            }
-        `
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.06,
+        metalness: 0.0,
+        envMapIntensity: 1.15
     });
+
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = uniforms.uTime;
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', /* glsl */ `
+                #include <common>
+                uniform float uTime;
+                varying vec3 vRkWorld;
+                varying vec3 vRkNormal;
+                varying float vRkPhase;
+                ${gerstnerGLSL()}
+            `)
+            .replace('#include <beginnormal_vertex>', /* glsl */ `
+                vec3 rkW = (modelMatrix * vec4(position, 1.0)).xyz;
+                vec3 rkDisp;
+                vec3 rkNrm;
+                float rkPhase;
+                rkGerstner(rkW.xz, uTime, rkDisp, rkNrm, rkPhase);
+                // Ondas encolhem à distância para evitar aliasing na malha esparsa.
+                float rkFade = 1.0 - smoothstep(120.0, 620.0, length(rkW.xz - cameraPosition.xz));
+                rkW += rkDisp * mix(0.25, 1.0, rkFade);
+                vec3 objectNormal = normalize(mix(vec3(0.0, 1.0, 0.0), rkNrm, mix(0.2, 1.0, rkFade)));
+                vRkNormal = objectNormal;
+                vRkWorld = rkW;
+                vRkPhase = rkPhase;
+            `)
+            .replace('#include <begin_vertex>', /* glsl */ `
+                vec3 transformed = rkW - vec3(modelMatrix[3].x, 0.0, modelMatrix[3].z);
+            `);
+
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', /* glsl */ `
+                #include <common>
+                uniform float uTime;
+                varying vec3 vRkWorld;
+                varying vec3 vRkNormal;
+                varying float vRkPhase;
+                ${RIVER_GLSL}
+                ${GLSL_NOISE}
+                vec3 rkWaterN = vec3(0.0, 1.0, 0.0);
+                float rkFoam = 0.0;
+                float rkBankRefl = 1.0;
+            `)
+            .replace('#include <color_fragment>', /* glsl */ `
+                #include <color_fragment>
+                {
+                    vec2 rp = vRkWorld.xz;
+                    float dist = length(vRkWorld - cameraPosition);
+                    // marolas: escorrem em −Z (rio abaixo) com velocidades diferentes
+                    vec2 flow = vec2(0.0, uTime);
+                    float e = 0.18;
+                    #define RK_RIP(q) (gfxNoise((q) * 0.9 + flow * 0.55) * 0.5 + gfxNoise((q) * 2.3 + flow * vec2(0.3, 0.95) + 3.1) * 0.3 + gfxNoise((q) * 5.1 + flow * 1.4) * 0.2)
+                    float r0 = RK_RIP(rp);
+                    float rx = RK_RIP(rp + vec2(e, 0.0));
+                    float rz = RK_RIP(rp + vec2(0.0, e));
+                    float detail = 1.0 - smoothstep(40.0, 260.0, dist);
+                    rkWaterN = normalize(normalize(vRkNormal) + vec3(r0 - rx, 0.0, r0 - rz) * (0.55 * detail + 0.1));
+
+                    float bed = rkHeight(rp.x, rp.y);
+                    float depth = clamp(-bed / 5.0, 0.0, 1.0);
+                    vec3 shallow = vec3(0.085, 0.16, 0.12);
+                    vec3 deep = vec3(0.012, 0.035, 0.042);
+                    vec3 body = mix(shallow, deep, depth * depth);
+                    // luz atravessando a crista (subsuperfície falsa)
+                    body += vec3(0.03, 0.07, 0.05) * smoothstep(0.6, 1.9, vRkPhase) * (1.0 - depth * 0.6);
+
+                    float shore = rkShoreDist(rp.x, rp.y);
+                    rkBankRefl = mix(0.35, 1.0, smoothstep(-2.0, -16.0, shore));
+
+                    float ftex = gfxFbm(rp * vec2(0.55, 0.3) + flow * vec2(0.02, 0.5));
+                    float band = smoothstep(-3.2, -0.2, shore);
+                    float tongue = smoothstep(0.55, 0.85, gfxNoise(vec2(rp.x * 0.09, rp.y * 0.022 + uTime * 0.16)));
+                    float crest = smoothstep(1.2, 2.2, vRkPhase);
+                    rkFoam = clamp(band * 1.25 + tongue * 0.3 * (1.0 - depth * 0.5) + crest * 0.2, 0.0, 1.0)
+                        * smoothstep(0.46, 0.68, ftex + band * 0.14);
+                    rkFoam *= 1.0 - smoothstep(300.0, 700.0, dist);
+                    diffuseColor.rgb = mix(body, vec3(0.86, 0.9, 0.9), rkFoam);
+                }
+            `)
+            .replace('#include <roughnessmap_fragment>', /* glsl */ `
+                #include <roughnessmap_fragment>
+                roughnessFactor = mix(0.07, 0.7, rkFoam);
+            `)
+            .replace('#include <normal_fragment_maps>', /* glsl */ `
+                #include <normal_fragment_maps>
+                normal = normalize((viewMatrix * vec4(rkWaterN, 0.0)).xyz);
+            `)
+            .replace('#include <lights_fragment_end>', /* glsl */ `
+                #include <lights_fragment_end>
+                // "reflexo" das margens: perto da borda o céu refletido escurece
+                reflectedLight.indirectSpecular *= rkBankRefl;
+            `);
+    };
+    material.customProgramCacheKey = () => 'river-knight-water';
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.frustumCulled = false;
-    mesh.renderOrder = 1;
     mesh.name = 'water';
-    mesh.receiveShadow = false;
+    mesh.receiveShadow = true;
 
     return {
         mesh,

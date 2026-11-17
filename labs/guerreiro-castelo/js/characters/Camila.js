@@ -1,53 +1,79 @@
 /**
- * Princesa Camila para Babylon.js.
+ * Princesa Camila: `createHero` (preset princess) + grilhões de ferro nos pulsos.
  */
 
-import { buildCamila, CharacterAnimator } from './builders.js?v=7';
-import { PrincessAI } from '../ai/PrincessAI.js';
+import * as THREE from 'three';
+import { makeHero } from './cast.js?v=40';
+import { PrincessAI } from '../ai/PrincessAI.js?v=40';
 import { angleDamp } from '../utils/math.js';
+import { mat } from '../world/Build.js?v=40';
 
 export class Camila {
-    constructor(scene) {
-        this.scene = scene;
-        const built = buildCamila(scene);
-        this.root = built.root;
-        this.parts = built.parts;
-        this.animator = new CharacterAnimator(built.root, built.clips);
-        this.position = new BABYLON.Vector3(0, 0, 0);
+    constructor() {
+        this.hero = makeHero('camila');
+        this.root = this.hero.object;
+        this.root.userData.keep = true;
+        this.root.visible = false;
+        this.position = new THREE.Vector3(0, 0, 0);
         this.facing = 0;
         this.speed = 0;
         this.active = false;
         this.freed = false;
         this.ai = new PrincessAI(this);
+        this.anim = { mode: 'idle', speed: 0 };
+        this.talkT = 0;
+
+        /* Grilhões: argola em cada pulso e três elos pendentes (toros de ferro). */
+        this.shackles = [];
+        const ring = new THREE.TorusGeometry(0.05, 0.012, 8, 16);
+        const link = new THREE.TorusGeometry(0.022, 0.007, 6, 12);
+        for (const socket of ['handL', 'handR']) {
+            const g = new THREE.Group();
+            const cuff = new THREE.Mesh(ring, mat('iron'));
+            cuff.rotation.y = Math.PI / 2;
+            cuff.position.x = socket === 'handL' ? 0.07 : -0.07;
+            g.add(cuff);
+            for (let i = 0; i < 4; i++) {
+                const l = new THREE.Mesh(link, mat('iron'));
+                l.position.set(cuff.position.x, -0.06 - i * 0.036, 0);
+                l.rotation.y = i % 2 ? Math.PI / 2 : 0;
+                g.add(l);
+            }
+            g.traverse((o) => { o.castShadow = true; });
+            this.hero.attach(socket, g, {});
+            this.shackles.push(g);
+        }
+        this.hero.guardL = false;
     }
 
     spawn(x, y, z) {
         this.position.set(x, y, z);
-        this.root.position.copyFrom(this.position);
+        this.root.position.copy(this.position);
         this.ai.reset();
     }
 
     attachTo(parent) {
-        this.root.parent = parent;
+        parent.add(this.root);
     }
 
     setShackles(on) {
-        if (this.parts.shackles) {
-            this.parts.shackles.setEnabled(on);
-        }
+        for (const s of this.shackles) s.visible = on;
     }
 
     update(dt, game) {
+        this.root.visible = this.active;
         if (!this.active) return;
         this.ai.update(dt, game);
         this.facing = angleDamp(this.facing, this.ai.facing, 10, dt);
-        this.root.position.copyFrom(this.position);
+        this.root.position.copy(this.position);
         this.root.rotation.y = this.facing;
 
-        if (this.speed > 4.5) this.animator.play('Run', 0.12);
-        else if (this.speed > 0.2) this.animator.play('Walk', 0.14);
-        else this.animator.play('Idle', 0.2);
-
-        this.animator.update(dt);
+        this.talkT = Math.max(0, this.talkT - dt);
+        const a = this.anim;
+        a.speed = this.speed;
+        if (this.speed > 4.5) a.mode = 'run';
+        else if (this.speed > 0.2) a.mode = 'walk';
+        else a.mode = game.dialogue.current?.speaker === 'CAMILA' ? 'talk' : 'idle';
+        this.hero.update(dt, a);
     }
 }

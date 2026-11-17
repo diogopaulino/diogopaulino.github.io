@@ -3,8 +3,8 @@
  * separado da lógica 3D.
  */
 
-import { formatTime } from './utils.js';
-import { DIFFICULTY } from './config.js?v=14';
+import { formatTime } from './utils.js?v=50';
+import { DIFFICULTY } from './config.js?v=50';
 
 const $ = (id) => document.getElementById(id);
 

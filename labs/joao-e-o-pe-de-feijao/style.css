@@ -797,3 +797,41 @@ kbd {
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
 }
+
+/* ----------------------------------------------------------------
+   HUD compacto em telas estreitas e em paisagem curta: o painel não
+   pode cobrir o João nem os controles de toque.
+   ---------------------------------------------------------------- */
+@media (max-width: 860px) {
+    .hud-top { gap: 0.4rem; }
+    .panel { padding: 0.4rem 0.6rem; border-radius: 12px; }
+    .score-panel { order: 2; min-width: 0; }
+    .heart-panel { order: 1; }
+    .quest-panel { order: 3; }
+    .objective { font-size: 0.86rem; line-height: 1.25; }
+    .icon-button { min-width: 44px; min-height: 44px; }
+    /* som/pausa saem de baixo dos pads: ficam no centro da base, entre o stick e os botões */
+    .hud-actions {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(0.7rem + var(--safe-bottom));
+    }
+    .fps { display: none; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.35rem;
+    }
+    .heart-panel { order: 1; }
+    .quest-panel { order: 2; grid-column: auto; justify-self: stretch; width: auto; }
+    .score-panel { order: 3; }
+    .panel { padding: 0.28rem 0.55rem; }
+    .objective { font-size: 0.78rem; }
+    .hud-label { font-size: 0.6rem; }
+    .stick span { display: none; }
+    .hud-actions { bottom: calc(0.4rem + var(--safe-bottom)); }
+}

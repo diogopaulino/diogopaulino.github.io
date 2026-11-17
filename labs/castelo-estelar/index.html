@@ -35,7 +35,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 
     <script type="importmap">
     {
@@ -106,7 +106,8 @@
 
         <section class="stage" aria-label="Abertura cinematográfica em 3D">
             <canvas id="scene" aria-label="Castelo iluminado à beira do lago, sob a lua"></canvas>
-            <div class="vignette" aria-hidden="true"></div>
+            <div class="letterbox letterbox--top" aria-hidden="true"></div>
+            <div class="letterbox letterbox--bottom" aria-hidden="true"></div>
         </section>
 
         <div id="titleCard" class="title-card" hidden>
@@ -134,7 +135,8 @@
             <div class="overlay-card compact-card">
                 <p class="eyebrow"><i></i> three.js · PBR · noite</p>
                 <h2>Acendendo<br>as torres.</h2>
-                <p class="lede">A lua sobe sobre o lago. Um instante.</p>
+                <p class="lede" id="loadText">A lua sobe sobre o lago. Um instante.</p>
+                <div class="load-track" role="progressbar" aria-label="Carregando"><i id="loadBar"></i></div>
             </div>
         </div>
 
@@ -143,11 +145,11 @@
                 <p class="eyebrow"><i></i> Abertura cinematográfica</p>
                 <h2>Castelo Estelar</h2>
                 <p class="lede">A câmera voa sobre a água sob a lua. O calcário acende, uma fada de
-                    faíscas desenha o arco dourado e os fogos estouram no céu — o prólogo dos
+                    faíscas sobe em espiral até a estrela da torre e os fogos estouram no céu — o prólogo dos
                     grandes filmes, reconstruído em three.js.</p>
                 <ul class="feature-list">
-                    <li>Castelo procedural com torres cónicas, relógio e janelas quentes</li>
-                    <li>Lago com reflexo da lua, pinheiros e fanfarra original</li>
+                    <li>Castelo original: muralha ameada, torre de menagem, capela e vitrais acesos</li>
+                    <li>Lago com reflexo do castelo, floresta, aldeia e fanfarra original</li>
                     <li>Depois da abertura, orbite o reino à vontade</li>
                 </ul>
                 <div class="settings-row">
@@ -205,7 +207,7 @@
             }
         })();
     </script>
-    <script type="module" src="src/main.js?v=5"></script>
+    <script type="module" src="src/main.js?v=7"></script>
 </body>
 
 </html>

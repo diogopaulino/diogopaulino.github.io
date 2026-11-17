@@ -1,5 +1,5 @@
 /**
- * HUD cinematográfico em Babylon.js: vida, objetivo, interação, diálogo, stealth, FPS.
+ * HUD cinematográfico: vida, objetivo, interação, diálogo, stealth, FPS.
  */
 
 export class HUD {
@@ -157,9 +157,10 @@ export class HUD {
             this.setHealth(this.game.player.health, this.game.player.maxHealth);
         }
 
-        if (this.game && this.game.engine) {
-            const fps = Math.round(this.game.engine.getFps() || 60);
-            this.setFps(fps);
+        this._fpsT = (this._fpsT || 0) + dt;
+        if (this._fpsT > 0.5 && this.game.stage) {
+            this._fpsT = 0;
+            this.setFps(Math.round(this.game.stage.fps));
         }
     }
 }

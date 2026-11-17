@@ -35,7 +35,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,500&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -104,10 +104,17 @@
             </template>
             <template data-slot="actions">
                 <button id="rotateBtn" class="icon-btn" type="button" aria-pressed="true" title="Autorrotação"
-                    aria-label="Autorrotação da câmera">
+                    aria-label="Autorrotação da plataforma">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 12a9 9 0 1 1-3-6.7" />
                         <path d="M21 3v6h-6" />
+                    </svg>
+                </button>
+                <button id="frameBtn" class="icon-btn" type="button" aria-pressed="false" title="Close no busto (C)"
+                    aria-label="Alternar entre corpo inteiro e close no busto">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M4 21a8 8 0 0 1 16 0" />
                     </svg>
                 </button>
                 <button id="muteBtn" class="icon-btn" type="button" aria-pressed="false" title="Mudo (M)"
@@ -126,7 +133,7 @@
             </template>
         </header>
 
-        <canvas id="scene" aria-label="Boneco 3D para misturar cabeça, corpo e acessórios"></canvas>
+        <canvas id="scene" aria-label="Personagem 3D para misturar cabeça, corpo e acessórios"></canvas>
 
         <div id="loading" class="loading" role="status">
             <div class="loading-orb" aria-hidden="true"></div>
@@ -189,13 +196,13 @@
         </section>
 
         <p class="hint">Clique uma peça para trocá-la · <kbd>R</kbd> surpresa · <kbd>T</kbd> conjunto ·
-            <kbd>←→</kbd> cabeça · <kbd>H</kbd> esconde UI</p>
+            <kbd>←→</kbd> cabeça · <kbd>C</kbd> close · <kbd>H</kbd> esconde UI</p>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </main>
 
     <script src="/labs/shared.js?v=14" defer></script>
-    <script type="module" src="./src/main.js?v=75"></script>
+    <script type="module" src="./src/main.js?v=81"></script>
 </body>
 
 </html>

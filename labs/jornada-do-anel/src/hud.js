@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS } from './config.js?v=3';
-import { formatTime } from './utils.js?v=3';
+import { CHAPTERS } from './config.js?v=30';
+import { formatTime } from './utils.js?v=30';
 
 const $ = (id) => document.getElementById(id);
 
@@ -48,9 +48,14 @@ export class Hud {
             volumeSlider: $('volumeSlider'),
             volumeValue: $('volumeValue'),
             chapterList: $('chapterList'),
+            chapterBlurb: $('chapterBlurb'),
             bestScore: $('bestScore'),
             defeatStats: $('defeatStats'),
-            victoryStats: $('victoryStats')
+            victoryStats: $('victoryStats'),
+            travel: $('travelCard'),
+            travelRoman: $('travelRoman'),
+            travelTitle: $('travelTitle'),
+            travelText: $('travelText')
         };
         this.messageTimer = 0;
         this.cardTimer = 0;
@@ -99,9 +104,12 @@ export class Hud {
     setPrompt(text) {
         if (!text) {
             this.el.prompt.hidden = true;
+            this.promptText = '';
             return;
         }
         this.el.prompt.hidden = false;
+        if (this.promptText === text) return;
+        this.promptText = text;
         this.el.prompt.innerHTML = `<kbd>E</kbd> ${text}`;
     }
 
@@ -169,6 +177,18 @@ export class Hud {
         }
     }
 
+    /** Cartão de viagem sobre o fade (nome do capítulo que está carregando). null esconde. */
+    setTravel(ch) {
+        const el = this.el.travel;
+        if (!el) return;
+        el.hidden = !ch;
+        if (ch) {
+            this.el.travelRoman.textContent = ch.roman;
+            this.el.travelTitle.textContent = ch.title;
+            this.el.travelText.textContent = ch.loading || 'A estrada continua…';
+        }
+    }
+
     showMenu(show) {
         this.el.menu.hidden = !show;
     }
@@ -214,8 +234,11 @@ export class Hud {
             btn.disabled = i > unlocked;
             btn.dataset.active = ch.id === currentId ? 'true' : 'false';
             btn.innerHTML = `<b>${ch.roman}</b><span>${ch.title}</span>`;
+            btn.setAttribute('aria-pressed', ch.id === currentId ? 'true' : 'false');
+            if (i > unlocked) btn.title = 'Conclua o capítulo anterior para abrir';
             btn.addEventListener('click', () => onPick(i));
             this.el.chapterList.appendChild(btn);
+            if (ch.id === currentId && this.el.chapterBlurb) this.el.chapterBlurb.textContent = ch.blurb;
         });
     }
 

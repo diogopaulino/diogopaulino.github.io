@@ -150,10 +150,17 @@ button { background: none; border: 0; cursor: pointer; }
     position: absolute;
     inset: 0;
     z-index: 5;
-    background:
-        radial-gradient(circle at 35% 48%, transparent 16%, rgb(4 8 6 / 0.82) 17.2%),
-        radial-gradient(circle at 65% 48%, transparent 16%, rgb(4 8 6 / 0.82) 17.2%);
-    box-shadow: inset 0 0 80px rgb(0 0 0 / 0.45);
+    /* duas lentes sobrepostas: o escuro só fica onde nenhuma das duas alcança */
+    --lens: min(46vh, 30vw);
+    background: rgb(3 6 5 / 0.94);
+    -webkit-mask-image:
+        radial-gradient(circle at calc(50% - var(--lens) * 0.62) 50%, transparent calc(var(--lens) - 6px), #000 var(--lens)),
+        radial-gradient(circle at calc(50% + var(--lens) * 0.62) 50%, transparent calc(var(--lens) - 6px), #000 var(--lens));
+    mask-image:
+        radial-gradient(circle at calc(50% - var(--lens) * 0.62) 50%, transparent calc(var(--lens) - 6px), #000 var(--lens)),
+        radial-gradient(circle at calc(50% + var(--lens) * 0.62) 50%, transparent calc(var(--lens) - 6px), #000 var(--lens));
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
 }
 
 .shake {
@@ -796,4 +803,177 @@ body[data-state="pause"] [data-lab-footer] {
 /* agent-responsive-768 */
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
+}
+
+/* ================================================================
+   Refeito com os gráficos novos: menus roláveis e HUD compacto
+   ================================================================ */
+
+/* O header/footer compartilhado é flex em linha: no cartão do menu o título
+   ficava espremido ao lado do texto. */
+.menu-card .menu-head {
+    display: block;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+}
+
+.menu-card .menu-head .lede {
+    max-width: 62ch;
+}
+
+/* Overlays roláveis em qualquer altura (o body tem touch-action: none). */
+.overlay {
+    display: flex;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+}
+
+.overlay > * {
+    margin: auto;
+    flex: 0 0 auto;
+    max-width: 100%;
+}
+
+.overlay .overlay-card,
+.overlay .menu-card {
+    max-height: none;
+    overflow: visible;
+}
+
+.prompt {
+    max-width: calc(100% - 2rem);
+}
+
+@media (max-width: 860px), (max-height: 520px) {
+    .hud {
+        padding: calc(3.7rem + var(--safe-top)) calc(0.6rem + var(--safe-right)) 0.6rem calc(0.6rem + var(--safe-left));
+    }
+
+    .hud-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.35rem;
+        align-items: stretch;
+    }
+
+    .radio-panel {
+        grid-column: auto;
+    }
+
+    .panel {
+        padding: 0.32rem 0.55rem;
+        border-radius: 10px;
+        font-size: 0.66rem;
+        color: var(--text-dim);
+    }
+
+    .hud-label,
+    .fps {
+        display: none;
+    }
+
+    .speed-row strong {
+        font-size: 1.3rem;
+    }
+
+    .speed-row span,
+    .meta {
+        font-size: 0.66rem;
+    }
+
+    .time-panel strong {
+        font-size: 1.1rem;
+    }
+
+    .radio {
+        font-size: 0.74rem;
+        line-height: 1.3;
+        min-height: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .catalog {
+        display: flex;
+        gap: 0.25rem;
+        margin-top: 0.35rem;
+        max-width: none;
+    }
+
+    .species {
+        padding: 0.14rem 0.42rem;
+        font-size: 0.62rem;
+        gap: 0.28rem;
+    }
+
+    .stick span {
+        display: none;
+    }
+
+    .dossier {
+        top: auto;
+        bottom: calc(8.6rem + var(--safe-bottom));
+        padding: 0.6rem 0.75rem;
+    }
+
+    .dossier .note {
+        font-size: 0.78rem;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    /* som/pausa ao lado do botão de observar, fora do caminho dos painéis */
+    .hud-actions {
+        top: auto;
+        bottom: calc(0.8rem + var(--safe-bottom));
+        right: calc(9.6rem + var(--safe-right));
+    }
+
+    .overlay {
+        padding: calc(3.5rem + var(--safe-top)) calc(0.8rem + var(--safe-right)) calc(0.6rem + var(--safe-bottom)) calc(0.8rem + var(--safe-left));
+    }
+
+    .overlay-card {
+        padding: 0.8rem 1rem;
+    }
+
+    .menu-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin: 0.6rem 0 0.7rem;
+    }
+
+    .menu-head h1,
+    .loading-card h1 {
+        font-size: 1.7rem;
+        margin: 0.2rem 0;
+    }
+
+    .menu-head .lede {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    .species-preview {
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+
+    .keys {
+        font-size: 0.72rem;
+        gap: 0.22rem;
+    }
+
+    .menu-section h2 {
+        margin-bottom: 0.35rem;
+        font-size: 1rem;
+    }
+
+    .section-note {
+        display: none;
+    }
 }
