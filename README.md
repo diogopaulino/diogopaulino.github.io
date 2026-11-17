@@ -53,7 +53,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU |
 | 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D — Mercúrio a Netuno com texturas dos planetas e os nomes reais das luas |
 | 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida hiper-realista anos 80 — moto cromada PBR, néon e synthwave |
-| ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D hiper-realista — personagens PBR, Dico e Teco até o castelo |
+| ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D em terceira pessoa — Dico e o macaco Teco cruzam o mar até o castelo |
 | ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval hiper-realista — drakkar PBR, machados e o resgate no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
@@ -64,7 +64,7 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | Projeto | O que é? |
 | :--- | :--- |
 | ♠ **[Poker](https://diogopaulino.com.br/labs/poker/)** | Texas Hold'em heads-up 3D — feltro texturizado, fichas, cartas com flip, Dealer IA e academia |
-| 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Plataforma 2D em canvas puro: colete estrelas Gemini, pule nos rivais ChatGPT e chegue à bandeira |
+| 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Plataforma 3D em WebGL: colete faíscas, pule nos musgosos e alcance o estandarte |
 | 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |

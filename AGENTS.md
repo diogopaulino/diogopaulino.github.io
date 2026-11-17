@@ -7,6 +7,7 @@ Portfólio e playground estático do Diogo Paulino. HTML, CSS e JS puro no GitHu
 - `/index.html` — home · `/assets/` — CSS/JS/imagens da home
 - `/labs/<kebab-case>/` — lab autocontido (`index.html`, CSS, JS, `assets/`)
 - `/labs/index.html` — galeria que lista todos os labs
+- `/labs/shared/gfx/` — kit 3D compartilhado (palco, terreno, personagens, criaturas, loader) · `/labs/shared/assets/` — HDRIs, texturas PBR e modelos glTF CC0 (créditos no README da pasta)
 - `/CLAUDE.md` — só `@AGENTS.md` (não escreva mais nada nele)
 - `/.github/PULL_REQUEST_TEMPLATE.md` — template de todo PR
 
