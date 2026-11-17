@@ -28,19 +28,16 @@
     <meta name="twitter:title" content="Cúpola 64 — platformer 3D hiper-realista na ilha do vitral | Diogo Paulino">
     <meta name="twitter:description" content="Ande, pule e colete estrelas numa ilha cinematográfica: câmera orbital, pulo triplo, canhão e o castelo pêssego. three.js.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
+    <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -94,7 +91,7 @@
 
 <body data-state="intro">
     <main class="game-shell">
-        <header data-lab-header data-title="Cúpola 64" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="Cúpola 64" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">★</span>
@@ -175,8 +172,8 @@
                 </header>
 
                 <div class="menu-grid">
-                    <section class="menu-section">
-                        <h2>Como jogar</h2>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>Como jogar</summary>
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar (relativo à câmera)</span>
                             <span><kbd>Espaço</kbd> pular · duplo · triplo</span>
@@ -184,9 +181,9 @@
                             <span><kbd>Q</kbd><kbd>E</kbd> ou arraste o mouse: câmera</span>
                             <span>Espaço no canhão dispara · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
-                    </section>
-                    <section class="menu-section">
-                        <h2>As sete estrelas</h2>
+                    </details>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>As sete estrelas</summary>
                         <p class="section-note">Cume, telhado, oito vermelhas, ilha no céu, gruta,
                             bomba-rei (3 stomps) e cinquenta moedas. Pule na cabeça dos fungos.</p>
                         <div class="settings-grid">
@@ -205,7 +202,7 @@
                             </label>
                         </div>
                         <p class="section-note">Melhor tempo: <b id="bestScore" class="mono">—</b></p>
-                    </section>
+                    </details>
                 </div>
 
                 <footer class="menu-foot">
@@ -271,25 +268,8 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
+    <script src="/labs/shared.js?v=15" defer></script>
+    <script type="module" src="../shared/gfx/check-webgl.js"></script>
     <script type="module" src="src/main.js?v=18"></script>
 </body>
 

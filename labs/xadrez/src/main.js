@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /**
  * Xadrez — atelier 3D em Babylon.js.
  * Cena PBR, seleção por raycast, animações em arco e o mestre comentando.
@@ -31,18 +32,7 @@ function isMobile() {
     return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
 }
 
-function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
-    } catch {
-        return true;
-    }
-}
+
 
 function pickQuality(mode) {
     if (detectSoftwareGL()) return QUALITY.low;

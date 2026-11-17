@@ -26,11 +26,9 @@
   <meta name="twitter:description"
     content="46 experimentos de Diogo Paulino: jogos 3D, ferramentas, música e inteligência artificial em HTML, CSS e JavaScript puro.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/labs/shared.css?v=13">
-  <link rel="stylesheet" href="/labs/style.css?v=6">
+  <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
+  <link rel="stylesheet" href="/labs/shared.css?v=15">
+  <link rel="stylesheet" href="/labs/style.css?v=7">
   <script type="application/ld+json">
   {
   "@context": "https://schema.org",
@@ -397,15 +395,7 @@
     <div id="projectsGrid" class="projects-grid">
       <a href="/labs/santos-orla-3d/" class="project-card" data-groups="creative,game">
         <span class="card-badge card-badge--new">Novo</span>
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 15c2.5-1.5 5-2 9-2s6.5.5 9 2" />
-            <path d="M3 18c2.5-1.2 5-1.6 9-1.6s6.5.4 9 1.6" />
-            <path d="M4 12.5l2.2-5.2a2 2 0 0 1 1.8-1.2h1.3l1.2 2.4h2.2l1-2.4h1.4a2 2 0 0 1 1.8 1.1L19.5 12" />
-            <path d="M8 7.2V5.5M12 7V4.5M16 7.2V5.8" opacity="0.7" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/santos-orla-3d.webp" width="512" height="328" alt="" decoding="async" fetchpriority="high">
         <div class="project-content">
           <h2>Santos Orla 3D</h2>
           <p>Reconstrução procedural navegável da orla: voo aéreo, walk pelos jardins e canais 1–7, do José Menino à Ponta da Praia</p>
@@ -417,18 +407,7 @@
         </div>
       </a>
       <a href="/labs/santos-1908/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 17h18" opacity="0.45" />
-            <path d="M4 17V11l2-.8V17" />
-            <path d="M8 17V8.5h8.5V17" />
-            <path d="M11.2 5.2v3.3" />
-            <path d="M10.4 5.2h1.6" />
-            <path d="M18 17v-5l2-1V17" opacity="0.8" />
-            <path d="M5 12.5c2-.8 4-.8 6 0s4 .8 6 0" opacity="0.55" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/santos-1908.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Santos, 1908</h2>
           <p>Filme 3D no navegador: o Kasato Maru atraca no Porto de Santos com 781 imigrantes japoneses</p>
@@ -441,17 +420,7 @@
       </a>
       <a href="/labs/ps5-controller/" class="project-card" data-groups="game,creative">
         <span class="card-badge card-badge--new">Novo</span>
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 12h4" />
-            <path d="M8 10v4" />
-            <path d="M14 12h4" />
-            <path d="M16 10v4" />
-            <path d="M2 12a10 10 0 0 1 20 0 10 10 0 0 1-20 0Z" />
-            <path d="M12 8v8" opacity="0.35" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/ps5-controller.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>PS5 Controller</h2>
           <p>Vitrine 3D do DualSense: três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU</p>
@@ -463,15 +432,7 @@
         </div>
       </a>
       <a href="/labs/poker/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="4" y="3" width="10" height="14" rx="1.5" transform="rotate(-8 9 10)" />
-            <rect x="9" y="5" width="10" height="14" rx="1.5" />
-            <path d="M14 9.5c0 1-.8 1.5-1.5 1.5S11 10.5 11 9.5 11.8 8 12.5 8s1.5.5 1.5 1.5z" opacity="0.7" />
-            <path d="M7.2 8.2c.1-.6.6-1 1.2-1" opacity="0.55" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/poker.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Poker</h2>
           <p>Texas Hold'em heads-up 3D: feltro texturizado, fichas, cartas com flip e IA que ensina ranking, blinds e pot odds</p>
@@ -483,17 +444,7 @@
         </div>
       </a>
       <a href="/labs/xadrez/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M8 20h8" />
-            <path d="M9 20c0-2 .8-3.2 2.2-3.8L12 12l.8 4.2C14.2 16.8 15 18 15 20" />
-            <path d="M12 12V8" />
-            <path d="M9.5 8.5 12 6l2.5 2.5" />
-            <circle cx="12" cy="4.6" r="1.2" />
-            <path d="M7 20h10" opacity="0.45" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/xadrez.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Xadrez</h2>
           <p>Atelier 3D em Babylon.js: peças Staunton de marfim e ébano, reflexos PBR e um mestre que ensina a jogar</p>
@@ -505,16 +456,7 @@
         </div>
       </a>
       <a href="/labs/rastro-vermelho/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 19l5.2-8.2 3.1 4.4 3.4-6.6L21 19H3z" opacity="0.7" />
-            <path d="M5.5 14.2c2.4-1.6 4.2-1.8 6.2-.4 1.4 1 2.6.8 4.2-.2" />
-            <path d="M8.2 12.4c.2-1.6 1.2-2.6 2.6-2.8" />
-            <circle cx="11.2" cy="8.6" r="1.1" />
-            <path d="M12.2 8.2c1.2.1 2.2.8 2.6 1.8" opacity="0.8" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/rastro-vermelho.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Rastro Vermelho</h2>
           <p>Faroeste 3D em three.js: céu físico, rochas fotogramétricas, galope por serras, cânions e pradarias</p>
@@ -526,15 +468,7 @@
         </div>
       </a>
             <a href="/labs/cupola-64/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3.2 13.4 7.4h4.4L14.6 10l1.4 4.2L12 11.6 7.99 14.2 9.4 10 6.2 7.4h4.4L12 3.2z" />
-            <path d="M7 20V12l5-3 5 3v8" opacity="0.8" />
-            <path d="M7 14h10" opacity="0.55" />
-            <path d="M4.5 20h15" opacity="0.4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/cupola-64.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Cúpola 64</h2>
           <p>Platformer 3D cinematográfico: Nico, câmera orbital, pulo triplo e sete estrelas no vitral</p>
@@ -546,17 +480,7 @@
         </div>
       </a>
       <a href="/labs/menina-da-lanterna/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3.2c.4 1.6 1.2 2.6 2.2 3.2" />
-            <rect x="9.2" y="8.2" width="5.6" height="7.2" rx="1.2" />
-            <path d="M12 8.2V6.4" />
-            <path d="M10.2 15.4h3.6v1.6H10.2z" />
-            <circle cx="12" cy="11.6" r="1.15" fill="currentColor" stroke="none" />
-            <path d="M7 19.2c1.6-2 3.2-3 5-3s3.4 1 5 3" opacity="0.7" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/menina-da-lanterna.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>A Menina da Lanterna</h2>
           <p>Conto 3D hiper-realista: casas detalhadas, Clara PBR e o primeiro sol em Vale-da-Bruma</p>
@@ -568,16 +492,7 @@
         </div>
       </a>
             <a href="/labs/nina/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="13.2" r="6.2" />
-            <path d="M8.2 8.2c-.2-2.2 1.2-4.2 3.2-4.6 2 .2 3.6 2.2 3.4 4.4" />
-            <path d="M9.4 12.4h.1M14.5 12.4h.1" />
-            <path d="M9.8 15.2c.8.8 3.6.8 4.4 0" opacity="0.75" />
-            <path d="M16.6 16.8c1.6.8 3.4.4 4.2-.8" opacity="0.55" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/nina.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Nina</h2>
           <p>Vale 3D hiper-realista: seja a raposinha, colete amoras, resgate os filhotes e leve todos ao piquenique</p>
@@ -589,16 +504,7 @@
         </div>
       </a>
             <a href="/labs/quimera/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="7.2" r="3.1" />
-            <path d="M8.2 20v-5.2c0-2 1.6-3.6 3.8-3.6s3.8 1.6 3.8 3.6V20" />
-            <path d="M5 11.2c1.2-1 2.2-1.4 3.4-1.2" opacity="0.7" />
-            <path d="M19 11.2c-1.2-1-2.2-1.4-3.4-1.2" opacity="0.7" />
-            <path d="M9.2 6.2 7.4 4.2M14.8 6.2l1.8-2" opacity="0.55" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/quimera.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Quimera</h2>
           <p>Ateliê 3D relaxante: misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros</p>
@@ -610,16 +516,7 @@
         </div>
       </a>
       <a href="/labs/castelo-estelar/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 20V11l2-1.2V20" />
-            <path d="M20 20V11l-2-1.2V20" />
-            <path d="M8 20V9l4-5 4 5v11" />
-            <path d="M10.2 11.5h3.6" opacity="0.7" />
-            <path d="M3 20h18" opacity="0.45" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/castelo-estelar.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Castelo Estelar</h2>
           <p>Abertura cinematográfica em three.js: castelo hiper-realista, lua, lago, fanfarra e fogos</p>
@@ -631,16 +528,7 @@
         </div>
       </a>
                               <a href="/labs/jurassic/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 16c2-1 3.2-4.2 6.2-4.6 1.4-.2 2.2 1 3.4 1.1 1.6.1 2.4-1.6 4.2-1.2 1.4.3 2.4 1.6 3.2 2.7" />
-            <path d="M8.2 11.4c-.2-2.2.6-4.4 2.4-5.8" />
-            <circle cx="11.4" cy="4.6" r="1.15" />
-            <path d="M6.5 16.2 5 20M10.2 16.4 9.2 20M14 16.2l.6 3.8M17.6 16.5 19 20" opacity="0.75" />
-            <path d="M3 21h18" opacity="0.4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/jurassic.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Jurassic</h2>
           <p>Safari 3D hiper-realista: jipe, dinossauros com crânios orgânicos e diário de campo</p>
@@ -652,14 +540,7 @@
         </div>
       </a>
                         <a href="/labs/grao/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <ellipse cx="12" cy="13" rx="6.2" ry="7.4" />
-            <path d="M12 6.2c1.4 1.6 1.6 3.6 0 5.4-1.6 1.8-1.4 3.8 0 5.4" />
-            <path d="M9.2 4.4c.8-.8 2.2-1.3 2.8-1.3" opacity="0.7" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/grao.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Grão</h2>
           <p>Companheiro de cafeína: registre o café, veja a curva no corpo e a que horas parar para dormir</p>
@@ -671,14 +552,7 @@
         </div>
       </a>
       <a href="/labs/orbis/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3.2" />
-            <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-18 12 12)" />
-            <path d="M12 2.8v2.2M12 19v2.2M4.2 8.5l1.8 1M18 14.5l1.8 1" opacity="0.7" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/orbis.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Orbis</h2>
           <p>Sistema Solar em 3D: Mercúrio a Netuno com texturas dos planetas e os nomes reais das luas</p>
@@ -692,16 +566,7 @@
 
       
       <a href="/labs/neon-rider/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 17h3l2-5 3 1 2-4h3" />
-            <circle cx="7" cy="18" r="2" />
-            <circle cx="17" cy="18" r="2" />
-            <path d="M12 8V4M10 5h4" opacity="0.7" />
-            <path d="M3 12h3M18 11h3" opacity="0.45" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/neon-rider.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Neon Rider</h2>
           <p>Avenida hiper-realista anos 80: moto cromada PBR, néon, synthwave e fitas VHS</p>
@@ -713,16 +578,7 @@
         </div>
       </a>
       <a href="/labs/guerreiro-castelo/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19h16" />
-            <path d="M6 19V9l6-5 6 5v10" />
-            <path d="M10 19v-5h4v5" />
-            <path d="M3 11c2-1 4.5-2 9-2s7 1 9 2" opacity="0.55" />
-            <circle cx="17.5" cy="5.2" r="1.1" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/guerreiro-castelo.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>O Guerreiro e o Castelo</h2>
           <p>Aventura 3D em terceira pessoa: Dico e o macaco Teco cruzam o mar num galeão até o castelo para resgatar Camila</p>
@@ -734,15 +590,7 @@
         </div>
       </a>
       <a href="/labs/river-knight/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2.5v9" />
-            <path d="M12 4h5.5l-1.8 2.6L17.5 9H12" />
-            <path d="M3.5 12.5h17l-2.6 4.4a3 3 0 0 1-2.6 1.5H8.7a3 3 0 0 1-2.6-1.5l-2.6-4.4z" />
-            <path d="M2 21.5c1.7 0 1.7-1.3 3.3-1.3s1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.4 1.3 1.7-1.3 3.3-1.3 1.7 1.3 3.3 1.3" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/river-knight.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>River Knight</h2>
           <p>Aventura medieval hiper-realista: drakkar PBR rio abaixo, barcos, torres e o resgate no castelo</p>
@@ -754,14 +602,7 @@
         </div>
       </a>
       <a href="/labs/jornada-do-anel/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="7.2" />
-            <circle cx="12" cy="12" r="3.1" />
-            <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22" opacity="0.55" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/jornada-do-anel.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>A Jornada do Anel</h2>
           <p>Aventura 3D em three.js inspirada no primeiro filme: o Condado, a fuga dos
@@ -774,17 +615,7 @@
         </div>
       </a>
       <a href="/labs/joao-e-o-pe-de-feijao/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22V8" />
-            <path d="M12 8c2.2-2 4.5-3.2 6-2 1.2 1-0.2 3.4-2.2 5" />
-            <path d="M12 11c-2.2-1.8-4.2-2.6-5.6-1.4-1.2 1 .2 3.2 2 4.6" />
-            <path d="M12 15c1.8-1.2 3.6-1.6 4.8-.6" />
-            <circle cx="12" cy="5.2" r="1.6" />
-            <path d="M10.4 4.2c.4-1.2 1.2-2.2 1.6-2.2s1.2 1 1.6 2.2" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/joao-e-o-pe-de-feijao.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>João e o Pé de Feijão</h2>
           <p>Conto 3D completo: venda a Mimosa, suba o pé de feijão, roube os tesouros
@@ -797,16 +628,7 @@
         </div>
       </a>
       <a href="/labs/beige-box/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="14" height="12" rx="1.5" />
-            <path d="M7 16v3h6v-3" />
-            <rect x="6" y="7" width="8" height="6" rx="0.5" />
-            <rect x="18" y="8" width="3.2" height="9" rx="0.6" />
-            <path d="M19.6 10.2h.01M19.6 12h.01" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/beige-box.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Beige Box</h2>
           <p>Quarto retrô 3D: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa</p>
@@ -818,14 +640,7 @@
         </div>
       </a>
             <a href="/labs/ravi-123/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/ravi-123.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Ravi 1·2·3</h2>
           <p>Toque os números e ajude o Ravi a montar a festa surpresa — feito para crianças pequenas.</p>
@@ -837,15 +652,7 @@
         </div>
       </a>
       <a href="/labs/rock-kombat/" class="project-card" data-groups="game,music">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l10-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="16" cy="16" r="3" />
-            <path d="M5 7 2 10l3 3M19 7l3 3-3 3" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/rock-kombat.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Rock Kombat</h2>
           <p>Luta 2D cinematográfica com lendas do rock, combos, especiais e controle touch</p>
@@ -857,16 +664,7 @@
         </div>
       </a>
       <a href="/labs/videogame/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="6" width="20" height="12" rx="2" />
-            <path d="M6 12h4" />
-            <path d="M8 10v4" />
-            <circle cx="17" cy="12" r="1" />
-            <circle cx="15" cy="12" r="1" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/videogame.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Videogame</h2>
           <p>Emulador de Mega Drive online com suporte a ROMs e efeitos CRT</p>
@@ -878,15 +676,7 @@
         </div>
       </a>
       <a href="/labs/lander/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2c0 0-3 6-3 10 0 .5.5 2 3 2s3-1.5 3-2c0-4-3-10-3-10z" />
-            <path d="M9 12h6" />
-            <path d="M5 21l3-4" />
-            <path d="M19 21l-3-4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/lander.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Lunar Lander</h2>
           <p>Réplica do clássico simulador de pouso lunar com física vetorial</p>
@@ -898,19 +688,7 @@
         </div>
       </a>
       <a href="/labs/kong-kong/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="9.2" r="3.2" />
-            <path d="M8.4 8.2c-.8-1.6.2-3.2 1.8-3.2" />
-            <path d="M15.6 8.2c.8-1.6-.2-3.2-1.8-3.2" />
-            <path d="M9 16c.8 2.4 5.2 2.4 6 0" />
-            <path d="M8 13.5c-1.4.4-2.4 1.6-2.6 3" />
-            <path d="M16 13.5c1.4.4 2.4 1.6 2.6 3" />
-            <path d="M12 12.4v2.2" />
-            <path d="M10.2 14.6h4.2" stroke-width="2.4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/kong-kong.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Kong Kong</h2>
           <p>Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco</p>
@@ -922,18 +700,7 @@
         </div>
       </a>
       <a href="/labs/jungle-run/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-7l-2-2" />
-            <path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6 6 0 0 1 6.8 8.8V8a5 5 0 0 1 10 0Z" />
-            <path d="m14 14-2 2" />
-            <path d="M4 14h1" />
-            <path d="M19 14h1" />
-            <path d="m6 18 1-1" />
-            <path d="m17 17 1 1" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/jungle-run.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Jungle Run</h2>
           <p>Aventura estilo Pitfall com gráficos PixiJS, física de plataforma e obstáculos</p>
@@ -945,16 +712,7 @@
         </div>
       </a>
       <a href="/labs/space-shooter/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-            <path
-              d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/space-shooter.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Neon Invaders</h2>
           <p>Arcade clássico com visual cyberpunk, partículas e efeitos neon</p>
@@ -966,15 +724,7 @@
         </div>
       </a>
       <a href="/labs/tetris/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 10h4v4H3z" />
-            <path d="M7 10h4v4H7z" />
-            <path d="M11 10h4v4h-4z" />
-            <path d="M7 6h4v4H7z" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/tetris.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Tetris 90s</h2>
           <p>O clássico jogo de blocos com visual retrô de Game Boy</p>
@@ -986,18 +736,7 @@
         </div>
       </a>
       <a href="/labs/claude-bros/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 20h16"></path>
-            <path d="M4 20v-4h4v4"></path>
-            <path d="M14 20v-6h6v6"></path>
-            <circle cx="9" cy="7" r="3"></circle>
-            <path d="M9 10v3"></path>
-            <path d="M7 5.5 5.5 4"></path>
-            <path d="M11 5.5 12.5 4"></path>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/claude-bros.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Claude Bros</h2>
           <p>Plataforma 3D em WebGL: colete faíscas, pule nos musgosos e alcance o estandarte no fim da fase</p>
@@ -1009,16 +748,7 @@
         </div>
       </a>
       <a href="/labs/snake/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
-            <rect x="6" y="6" width="12" height="8" rx="1" ry="1"></rect>
-            <path d="M8 18h.01"></path>
-            <path d="M12 18h.01"></path>
-            <path d="M16 18h.01"></path>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/snake.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Retro Snake</h2>
           <p>Clássico jogo da cobrinha com visual de console portátil dos anos 90</p>
@@ -1030,20 +760,7 @@
         </div>
       </a>
       <a href="/labs/minesweeper/" class="project-card" data-groups="game">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="6" fill="currentColor" fill-opacity="0.2" />
-            <path d="M12 6V3" />
-            <path d="M16.2 7.8L18.4 5.6" />
-            <path d="M18 12h3" />
-            <path d="M16.2 16.2L18.4 18.4" />
-            <path d="M12 18v3" />
-            <path d="M7.8 16.2L5.6 18.4" />
-            <path d="M6 12H3" />
-            <path d="M7.8 7.8L5.6 5.6" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/minesweeper.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Campo Minado 95</h2>
           <p>Clássico jogo de estratégia com estética retrô do Windows 95</p>
@@ -1055,15 +772,7 @@
         </div>
       </a>
       <a href="/labs/tamagotchi/" class="project-card" data-groups="game,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2C8 7 5 11.5 5 15a7 7 0 0 0 14 0c0-3.5-3-8-7-13z" />
-            <circle cx="9.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <circle cx="14.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
-            <path d="M10 18h4" stroke-width="2" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/tamagotchi.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>RakuRaku Dinokun</h2>
           <p>Réplica do Dinkie Dino de 1997 — mesmo hardware, jan-ken-po e ar-condicionado</p>
@@ -1075,16 +784,7 @@
         </div>
       </a>
       <a href="/labs/cyberos/" class="project-card" data-groups="creative,game,tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8" />
-            <path d="M12 17v4" />
-            <path d="M6 8h.01M9 8h6" />
-            <path d="M6 11h4" opacity="0.6" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/cyberos.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>CyberOS Terminal</h2>
           <p>SO retrô/hacker no browser: terminal explorável, firewall breach, Oracle e cifrador de mensagens</p>
@@ -1096,18 +796,7 @@
         </div>
       </a>
       <a href="/labs/matrix/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 3v9" />
-            <path d="M9 3v15" />
-            <path d="M14 3v7" />
-            <path d="M19 3v12" />
-            <path d="M4 15v2" opacity="0.5" />
-            <path d="M14 13v2" opacity="0.5" />
-            <path d="M19 18v2" opacity="0.5" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/matrix.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Matrix</h2>
           <p>Chuva digital fiel ao filme, com katakana espelhado, bloom CRT e controles completos</p>
@@ -1119,14 +808,7 @@
         </div>
       </a>
       <a href="/labs/aurora-flow/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
-            <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2" />
-            <path d="M19 11h2m-1 -1v2" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/aurora-flow.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Aurora Flow</h2>
           <p>Noite polar: cortinas de oxigênio, fitas de plasma e um fiorde que reflete o céu</p>
@@ -1138,15 +820,7 @@
         </div>
       </a>
       <a href="/labs/paint/" class="project-card" data-groups="creative,tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-            <path d="M2 2l7.586 7.586"></path>
-            <circle cx="11" cy="11" r="2"></circle>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/paint.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Paint Lab</h2>
           <p>Editor de arte digital completo com pincéis, formas e histórico</p>
@@ -1158,13 +832,7 @@
         </div>
       </a>
       <a href="/labs/gravity/" class="project-card" data-groups="creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="4" fill="currentColor" />
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/gravity.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Gravity</h2>
           <p>Órbitas, colisões e buracos negros — um universo de brinquedo no canvas</p>
@@ -1176,14 +844,7 @@
         </div>
       </a>
       <a href="/labs/image-optimizer/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/image-optimizer.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Image Optimizer</h2>
           <p>Minificador e conversor de imagens com suporte a múltiplos formatos</p>
@@ -1195,13 +856,7 @@
         </div>
       </a>
       <a href="/labs/image-editor/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/image-editor.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Image Editor</h2>
           <p>Editor de fotos estilo Instagram com filtros e ajustes profissionais</p>
@@ -1213,13 +868,7 @@
         </div>
       </a>
       <a href="/labs/pomodoro/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/pomodoro.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Pomodoro</h2>
           <p>Timer de foco com tarefas, estatísticas, sons e notificações do navegador</p>
@@ -1230,13 +879,7 @@
         </div>
       </a>
       <a href="/labs/english-duo/" class="project-card" data-groups="creative,tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <path d="M14 9a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
-            <path d="M18 9h1a2 2 0 0 1 2 2v8l-3-3h-6a2 2 0 0 1-2-2v-1" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/english-duo.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Talk</h2>
           <p>Aprenda idiomas de forma interativa com pronúncia por voz e múltiplas línguas</p>
@@ -1248,19 +891,7 @@
         </div>
       </a>
       <a href="/labs/calculator/" class="project-card" data-groups="tools">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="2" width="16" height="20" rx="2" />
-            <line x1="8" y1="6" x2="16" y2="6" />
-            <line x1="16" y1="14" x2="16" y2="14" />
-            <line x1="8" y1="14" x2="8" y2="14" />
-            <line x1="12" y1="14" x2="12" y2="14" />
-            <line x1="16" y1="18" x2="16" y2="18" />
-            <line x1="8" y1="18" x2="8" y2="18" />
-            <line x1="12" y1="18" x2="12" y2="18" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/calculator.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Calculator</h2>
           <p>Calculadora moderna com conversão de moedas em tempo real</p>
@@ -1272,15 +903,7 @@
         </div>
       </a>
       <a href="/labs/partitura/" class="project-card" data-groups="game,music,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="18" cy="16" r="3" />
-            <path d="M4 10h16M4 14h16M4 6h16" opacity="0.4" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/partitura.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Partitura: Maestro Quest</h2>
           <p>Aprenda a ler notas, partituras e escalas com gamificação, sintetizador de áudio e troféus interativos</p>
@@ -1292,18 +915,7 @@
         </div>
       </a>
       <a href="/labs/piano/" class="project-card" data-groups="music">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect x="3" y="5" width="18" height="15" rx="2" />
-            <path d="M7.5 5v9" />
-            <path d="M12 5v9" />
-            <path d="M16.5 5v9" />
-            <path d="M6 5v5" stroke-width="3.5" />
-            <path d="M10 5v5" stroke-width="3.5" />
-            <path d="M14.5 5v5" stroke-width="3.5" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/piano.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Piano</h2>
           <p>Piano interativo com 4 oitavas, sons ultra realistas e pedal de sustain</p>
@@ -1315,14 +927,7 @@
         </div>
       </a>
       <a href="/labs/winamp/" class="project-card" data-groups="music">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13"></path>
-            <circle cx="6" cy="18" r="3"></circle>
-            <circle cx="18" cy="16" r="3"></circle>
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/winamp.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Winamp JS</h2>
           <p>Clone do lendário player MP3 com visual clássico e equalizador</p>
@@ -1334,16 +939,7 @@
         </div>
       </a>
       <a href="/labs/pulsar/" class="project-card" data-groups="music,creative">
-        <div class="project-icon">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="2.2" />
-            <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" opacity="0.85" />
-            <path d="M12 2a10 10 0 0 1 10 10" opacity="0.5" />
-            <path d="M5.5 12A6.5 6.5 0 0 1 12 5.5" opacity="0.85" />
-            <path d="M2 12A10 10 0 0 1 12 2" opacity="0.5" />
-          </svg>
-        </div>
+        <img class="lab-preview" src="./previews/pulsar.webp" width="512" height="328" alt="" decoding="async" loading="lazy">
         <div class="project-content">
           <h2>Pulsar</h2>
           <p>Constelação musical: plante orbes — altura é nota, posição é tempo, pulso no BPM</p>
@@ -1361,7 +957,7 @@
     </div>
     <footer data-lab-footer data-home-href="/"></footer>
   </div>
-  <script src="/labs/shared.js?v=14"></script>
+  <script src="/labs/shared.js?v=15"></script>
   <script src="/labs/index.js?v=4"></script>
 </body>
 

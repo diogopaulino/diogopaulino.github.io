@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /** Utilitários numéricos, detecção de dispositivo e RNG determinístico. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
@@ -46,15 +47,4 @@ export function detectMobile() {
     return Boolean(coarse && narrow) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
-    } catch (err) {
-        return true;
-    }
-}
+export { detectSoftwareGL };

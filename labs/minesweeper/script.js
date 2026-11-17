@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initGame() {
+        endPress();
         // Set difficulty
         const difficulty = difficultySelect.value;
         const config = DIFFICULTIES[difficulty];
@@ -166,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             board.push(row);
         }
 
+        const cells = document.createDocumentFragment();
         // Render board
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
@@ -174,85 +176,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.dataset.r = r;
                 cell.dataset.c = c;
 
-                /* Um único caminho de entrada em pointer events cobre mouse,
-                   caneta e dedo. Antes eram dois (mouse* + touch*), que em
-                   navegadores que emitem os dois disparavam a jogada duas vezes. */
-                let holdTimer = null;
-                let moved = false;
-                let longPressed = false;
-
-                const cancelHold = () => {
-                    if (holdTimer) {
-                        clearTimeout(holdTimer);
-                        holdTimer = null;
-                    }
-                };
-
-                cell.addEventListener('pointerdown', (e) => {
-                    if (gameOver) return;
-                    moved = false;
-                    longPressed = false;
-                    resetBtn.innerText = '😮';
-
-                    if (e.pointerType === 'mouse' && e.button === 2) return;
-
-                    // Segurar continua marcando bandeira, para quem não usa o
-                    // botão de modo.
-                    holdTimer = setTimeout(() => {
-                        holdTimer = null;
-                        if (moved) return;
-                        longPressed = true;
-                        handleRightClick(r, c);
-                        resetBtn.innerText = '🙂';
-                    }, 450);
-                });
-
-                cell.addEventListener('pointermove', (e) => {
-                    // Um deslize pequeno é tremor de dedo, não intenção de rolar.
-                    if (Math.abs(e.movementX) + Math.abs(e.movementY) > 4) {
-                        moved = true;
-                        cancelHold();
-                    }
-                });
-
-                cell.addEventListener('pointerup', (e) => {
-                    cancelHold();
-                    if (gameOver) return;
-                    resetBtn.innerText = '🙂';
-                    if (moved || longPressed) return;
-
-                    if (e.pointerType === 'mouse' && e.button === 2) {
-                        handleRightClick(r, c);
-                        return;
-                    }
-                    if (e.button > 0) return;
-
-                    if (flagMode) handleRightClick(r, c);
-                    else handleClick(r, c);
-                });
-
-                cell.addEventListener('pointercancel', () => {
-                    cancelHold();
-                    resetBtn.innerText = '🙂';
-                });
-
-                cell.addEventListener('contextmenu', e => {
-                    e.preventDefault();
-                    if (!gameOver) handleRightClick(r, c);
-                });
-
-                /* Duplo clique/toque numa célula já revelada = "chord": revela os
-                   vizinhos quando as bandeiras ao redor batem com o número.
-                   É o atalho que torna o jogo rápido em vez de tedioso. */
-                cell.addEventListener('dblclick', (e) => {
-                    e.preventDefault();
-                    chord(r, c);
-                });
-
-                boardElement.appendChild(cell);
+                board[r][c].element = cell;
+                cells.appendChild(cell);
             }
         }
+        boardElement.appendChild(cells);
     }
+
+    // Uma interação pertence à célula onde começou. O clique direito chega
+    // como contextmenu; o pointerup não deve marcar a mesma bandeira de novo.
+    let press = null;
+    function endPress() {
+        if (!press) return;
+        clearTimeout(press.timer);
+        press = null;
+        if (!gameOver) resetBtn.innerText = '🙂';
+    }
+    boardElement.addEventListener('pointerdown', (event) => {
+        const cell = event.target.closest('.cell');
+        if (!cell || gameOver || event.button !== 0 || press) return;
+        const { r, c } = cell.dataset;
+        cell.setPointerCapture(event.pointerId);
+        press = { id: event.pointerId, r: +r, c: +c, x: event.clientX, y: event.clientY, held: false };
+        resetBtn.innerText = '😮';
+        press.timer = setTimeout(() => {
+            press.held = true;
+            handleRightClick(+r, +c);
+            resetBtn.innerText = '🙂';
+        }, 450);
+    });
+    boardElement.addEventListener('pointermove', (event) => {
+        if (press?.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 6) endPress();
+    });
+    boardElement.addEventListener('pointerup', (event) => {
+        if (press?.id !== event.pointerId) return;
+        const { r, c, held } = press;
+        endPress();
+        if (!held && !gameOver) (flagMode ? handleRightClick : handleClick)(r, c);
+    });
+    boardElement.addEventListener('lostpointercapture', (event) => {
+        if (press?.id === event.pointerId) endPress();
+    });
+    boardElement.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        const cell = event.target.closest('.cell');
+        if (cell && !gameOver && event.pointerType !== 'touch' && !press) {
+            handleRightClick(+cell.dataset.r, +cell.dataset.c);
+        }
+    });
+    boardElement.addEventListener('dblclick', (event) => {
+        const cell = event.target.closest('.cell');
+        if (cell) chord(+cell.dataset.r, +cell.dataset.c);
+    });
 
     function placeMines(excludeR, excludeC) {
         let minesPlaced = 0;
@@ -451,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function stopTimer() {
         clearInterval(timerInterval);
+        timerInterval = null;
     }
 
     function formatNumber(num) {
@@ -458,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getCellElement(r, c) {
-        return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+        return board[r][c].element;
     }
 
     resetBtn.addEventListener('click', initGame);

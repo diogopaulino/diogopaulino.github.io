@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /**
  * Beige Box — diorama 3D retrô.
  * Câmera orbital, raycast de interação, luzes PBR e pós-processamento.
@@ -22,17 +23,7 @@ function isMobile() {
 
 function detectQuality() {
     const mobile = isMobile();
-    const soft = (() => {
-        try {
-            const gl = document.createElement('canvas').getContext('webgl2')
-                || document.createElement('canvas').getContext('webgl');
-            const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
-            const r = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '';
-            return /SwiftShader|llvmpipe|Soft|microsoft basic render|\bcpu\b/i.test(r);
-        } catch {
-            return false;
-        }
-    })();
+    const soft = detectSoftwareGL();
     if (soft) {
         return { pixelRatio: 1, shadow: 0, bloom: false, aniso: 1, dust: 40, antialias: false, shadows: false };
     }

@@ -644,6 +644,7 @@ class Particle {
 function initParticles() {
     particles = [];
     for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+    document.getElementById('particleCount').textContent = particleCount;
 }
 
 function setDensity(n) {
@@ -654,6 +655,7 @@ function setDensity(n) {
         particles.length = n;
     }
     particleCount = n;
+    document.getElementById('particleCount').textContent = n;
     const el = document.getElementById('density');
     const val = document.getElementById('densityValue');
     if (el) el.value = n;
@@ -1199,8 +1201,7 @@ function animate(frameNow) {
         }
     }
 
-    const countEl = document.getElementById('particleCount');
-    if (countEl) countEl.textContent = particles.length;
+
 }
 
 function applyThemeVars() {
@@ -1420,12 +1421,14 @@ function togglePause() {
 
 document.getElementById('playPause')?.addEventListener('click', togglePause);
 
-function saveImage() {
-    const link = document.createElement('a');
-    link.download = `aurora-flow-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    showToast('Imagem salva');
+async function saveImage() {
+    try {
+        const { saveCanvas } = await import('../shared/save-canvas.js');
+        await saveCanvas(canvas, `aurora-flow-${Date.now()}.png`);
+        showToast('Imagem salva');
+    } catch {
+        showToast('Não foi possível salvar a imagem');
+    }
 }
 
 document.getElementById('saveImage')?.addEventListener('click', saveImage);

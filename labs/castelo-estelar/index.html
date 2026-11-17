@@ -29,19 +29,16 @@
     <meta name="twitter:description"
         content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
+    <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=3">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -95,7 +92,7 @@
 
 <body data-state="boot">
     <main class="game-shell">
-        <header data-lab-header data-title="Castelo Estelar" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="Castelo Estelar" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">✦</span>
@@ -188,25 +185,8 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
+    <script src="/labs/shared.js?v=15" defer></script>
+    <script type="module" src="../shared/gfx/check-webgl.js"></script>
     <script type="module" src="src/main.js?v=7"></script>
 </body>
 

@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /**
  * Orbis — observatório de sistemas estelares procedurais.
  * Renderer, câmera, picking e atelier de exoplanetas.
@@ -14,18 +15,7 @@ const QUALITY = {
     low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1, antialias: false }
 };
 
-function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
-    } catch {
-        return false;
-    }
-}
+
 
 function detectQuality() {
     const mobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;

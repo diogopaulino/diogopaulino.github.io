@@ -32,19 +32,16 @@
     <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
     <meta name="twitter:image:alt" content="Diogo Paulino">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/dm-sans/font.css">
+    <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -100,7 +97,7 @@
 
 <body>
     <main class="game-shell">
-        <header data-lab-header data-title="Santos Orla 3D" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="Santos Orla 3D" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">◈</span>
@@ -195,18 +192,18 @@
                         <div id="landmarkList" class="hotspot-list"></div>
                     </section>
 
-                    <section class="menu-section">
-                        <h2>Comandos</h2>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>Comandos</summary>
                         <div class="keys">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar</span>
                             <span><kbd>←</kbd><kbd>→</kbd>, <kbd>Q</kbd><kbd>E</kbd> ou arrastar o mouse: virar</span>
                             <span><kbd>Shift</kbd> correr · <kbd>T</kbd> modo · <kbd>L</kbd> hora do dia</span>
                             <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>Ajustes</summary>
                         <div class="settings-grid">
                             <label class="field">
                                 <span>Qualidade</span>
@@ -223,7 +220,7 @@
                             </label>
                         </div>
                         <p class="section-note">Céu físico, mar com ondas de Gerstner, sombras, pessoas com esqueleto e pós-processamento HDR — tudo procedural, sem assets baixados. Trocar a qualidade recarrega a cena.</p>
-                    </section>
+                    </details>
                 </div>
 
                 <footer class="menu-foot">
@@ -260,7 +257,7 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
+    <script src="/labs/shared.js?v=15" defer></script>
     <script type="module" src="src/main.js?v=4"></script>
 </body>
 

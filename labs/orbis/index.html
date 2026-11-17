@@ -29,19 +29,16 @@
     <meta name="twitter:description"
         content="Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno em 3D, com texturas dos planetas e luas reais.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Syne:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
+    <link rel="stylesheet" href="/assets/fonts/syne/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -177,7 +174,7 @@
 
     <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
 
-    <script src="/labs/shared.js?v=14" defer></script>
+    <script src="/labs/shared.js?v=15" defer></script>
     <script type="module" src="./src/main.js?v=5"></script>
 </body>
 

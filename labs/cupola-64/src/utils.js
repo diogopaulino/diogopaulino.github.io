@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /** Números, detecção de GPU, ruído PBR e helpers de ângulo. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
@@ -63,20 +64,7 @@ export function detectMobile() {
     return touch && (coarse || ua);
 }
 
-export function detectSoftwareGL() {
-    try {
-        const c = document.createElement('canvas');
-        const gl = c.getContext('webgl2') || c.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const renderer = info
-            ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
-            : gl.getParameter(gl.RENDERER);
-        return /swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(String(renderer));
-    } catch {
-        return true;
-    }
-}
+export { detectSoftwareGL };
 
 /**
  * Altura do terreno da Ilha da Cúpola (m).

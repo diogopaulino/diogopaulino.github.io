@@ -18,6 +18,7 @@ O nome de cada pasta é o identificador do asset no Poly Haven (`https://polyhav
   inteiro cabe em ~80 MB.
 - Os JPEG foram recomprimidos com qualidade 68 (`sips -s format jpeg -s formatOptions 68`), o que corta o
   peso pela metade sem artefato visível em albedo, normal ou `arm`.
+- No perfil leve ou com economia de dados, o carregador usa as cópias de 512 × 512 em `tex/<nome>/512/`. O albedo é WebP e os mapas de dados são JPEG 4:4:4 para preservar a resolução dos canais. Inclua as três cópias ao adicionar um conjunto.
 - Geometria e `.gltf` estão como vieram do Poly Haven.
 
 ## Como adicionar um asset

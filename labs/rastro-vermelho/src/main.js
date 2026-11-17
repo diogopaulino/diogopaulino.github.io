@@ -512,7 +512,5 @@ class RastroVermelho {
 }
 export let game = null;
 try {
-    const probe = document.createElement('canvas');
-    if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) throw new Error('WebGL indisponível.');
     game = new RastroVermelho(); window.__rastro = game;
 } catch (error) { showError(error); }

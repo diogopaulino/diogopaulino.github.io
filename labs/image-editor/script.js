@@ -255,11 +255,12 @@ function composeFrame(context, canvasEl, image, opts) {
 
     const iw = image.width * scale;
     const ih = image.height * scale;
-    const newWidth = iw * absCos + ih * absSin;
-    const newHeight = iw * absSin + ih * absCos;
+    const newWidth = Math.max(1, Math.round(iw * absCos + ih * absSin));
+    const newHeight = Math.max(1, Math.round(iw * absSin + ih * absCos));
 
-    canvasEl.width = newWidth;
-    canvasEl.height = newHeight;
+    if (canvasEl.width !== newWidth) canvasEl.width = newWidth;
+    if (canvasEl.height !== newHeight) canvasEl.height = newHeight;
+    context.clearRect(0, 0, newWidth, newHeight);
 
     context.save();
     context.translate(newWidth / 2, newHeight / 2);
@@ -333,7 +334,7 @@ function buildFiltersUI() {
         btn.dataset.filter = id;
         btn.setAttribute('aria-pressed', id === 'none' ? 'true' : 'false');
         if (id === 'none') btn.classList.add('active');
-        btn.innerHTML = `<span class="thumb-img"></span><span class="thumb-label">${def.label}</span>`;
+        btn.innerHTML = `<canvas class="thumb-img" aria-hidden="true"></canvas><span class="thumb-label">${def.label}</span>`;
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-thumb').forEach((b) => {
                 b.classList.remove('active');
@@ -349,14 +350,13 @@ function buildFiltersUI() {
     });
 }
 
-let thumbCanvas = null;
 function generateThumbnails() {
     if (!originalImage) return;
-    if (!thumbCanvas) thumbCanvas = document.createElement('canvas');
-    const thumbCtx = thumbCanvas.getContext('2d');
     const scale = THUMB_SIZE / Math.max(originalImage.width, originalImage.height);
 
     Object.keys(FILTER_DEFS).forEach((id) => {
+        const thumbCanvas = filterButtons[id].querySelector('.thumb-img');
+        const thumbCtx = thumbCanvas.getContext('2d', { willReadFrequently: !!FILTER_DEFS[id].pixel });
         composeFrame(thumbCtx, thumbCanvas, originalImage, {
             scale,
             rotate: state.rotate,
@@ -368,9 +368,6 @@ function generateThumbnails() {
             blur: 0,
             filterId: id
         });
-        const url = thumbCanvas.toDataURL('image/jpeg', 0.82);
-        const btn = filterButtons[id];
-        if (btn) btn.querySelector('.thumb-img').style.backgroundImage = `url(${url})`;
     });
 }
 
@@ -537,23 +534,23 @@ function handleFile(file) {
         return;
     }
 
-    const url = URL.createObjectURL(file);
+    loadImageFromURL(URL.createObjectURL(file), true);
+}
+
+let imageLoadId = 0;
+function loadImageFromURL(url, revoke = false) {
+    const id = ++imageLoadId;
     const img = new Image();
     img.onload = () => {
-        URL.revokeObjectURL(url);
+        if (revoke) URL.revokeObjectURL(url);
+        if (id !== imageLoadId) return;
         setUploadMessage(uploadMessageDefault);
         onImageReady(img);
     };
     img.onerror = () => {
-        URL.revokeObjectURL(url);
-        setUploadMessage('Não foi possível abrir essa imagem.');
+        if (revoke) URL.revokeObjectURL(url);
+        if (id === imageLoadId) setUploadMessage('Não foi possível abrir essa imagem.');
     };
-    img.src = url;
-}
-
-function loadImageFromURL(url) {
-    const img = new Image();
-    img.onload = () => onImageReady(img);
     img.src = url;
 }
 
@@ -565,11 +562,10 @@ function onImageReady(img) {
     previewArea.classList.add('has-image');
     controlsArea.classList.remove('disabled');
     resetEditor();
-    updateDimensionsBadge();
-    generateThumbnails();
 }
 
 function showUploadState() {
+    imageLoadId++;
     originalImage = null;
     canvas.style.display = 'none';
     previewArea.classList.remove('has-image');
@@ -618,6 +614,7 @@ function resetEditor() {
 
     updateDimensionsBadge();
     updateState();
+    generateThumbnails();
 }
 
 function exportCanvasAtFullResolution() {
@@ -627,17 +624,21 @@ function exportCanvasAtFullResolution() {
     return exportCanvas;
 }
 
-function saveImage() {
+async function saveImage() {
     if (!originalImage) return;
     const exportCanvas = exportCanvasAtFullResolution();
     const mime = exportFormatSelect ? exportFormatSelect.value : 'image/png';
     const extMap = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
     const ext = extMap[mime] || 'png';
     const quality = mime === 'image/png' ? undefined : 0.92;
-    const link = document.createElement('a');
-    link.download = `edited-image.${ext}`;
-    link.href = exportCanvas.toDataURL(mime, quality);
-    link.click();
+    try {
+        const { saveCanvas } = await import('../shared/save-canvas.js');
+        await saveCanvas(exportCanvas, `edited-image.${ext}`, mime, quality);
+    } catch {
+        const label = saveBtn;
+        label.textContent = 'Falha ao salvar';
+        setTimeout(() => { label.textContent = 'Baixar Imagem'; }, 2000);
+    }
 }
 
 async function copyImage() {

@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __esm = (fn, res, err) => function __init() {
@@ -1102,18 +1103,7 @@ var init_ProductScene = __esm({
       /** Resolves once the renderer, environment and first model are ready. */
       async init(container, onProgress) {
         const rendererOptions = {
-          antialias: (() => {
-            try {
-              const c = document.createElement('canvas');
-              const gl = c.getContext('webgl2') || c.getContext('webgl');
-              if (!gl) return false;
-              const info = gl.getExtension('WEBGL_debug_renderer_info');
-              const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-              return !/swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
-            } catch {
-              return false;
-            }
-          })(),
+          antialias: !detectSoftwareGL(),
           alpha: false,
           powerPreference: "high-performance"
         };

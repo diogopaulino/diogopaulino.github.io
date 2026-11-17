@@ -50,6 +50,7 @@ export const MODELS = [
 ];
 
 let maxAniso = 8;
+let compactTextures = false;
 let manager = THREE.DefaultLoadingManager;
 const texCache = new Map();
 const textureReady = new WeakMap();
@@ -59,7 +60,8 @@ const hdriCache = new Map();
 const pendingClones = new WeakMap(); // textura base ainda carregando → clones com repeat próprio
 
 /** Chame uma vez após criar o renderer (anisotropia) — e opcionalmente passe um LoadingManager. */
-export function configureAssets(renderer, loadingManager = null) {
+export function configureAssets(renderer, loadingManager = null, tier) {
+    compactTextures = tier === 'low' || navigator.connection?.saveData === true;
     if (renderer) maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     if (loadingManager) manager = loadingManager;
 }
@@ -94,13 +96,15 @@ function loadTexture(path, srgb) {
  * @returns {{ map, normalMap, aoMap, roughnessMap, metalnessMap }}
  */
 export function pbrSet(name) {
-    if (!setCache.has(name)) {
-        const map = loadTexture(`tex/${name}/diff.jpg`, true);
-        const normalMap = loadTexture(`tex/${name}/nor.jpg`, false);
-        const arm = loadTexture(`tex/${name}/arm.jpg`, false);
-        setCache.set(name, { map, normalMap, aoMap: arm, roughnessMap: arm, metalnessMap: arm });
+    const folder = compactTextures ? `tex/${name}/512` : `tex/${name}`;
+    if (!setCache.has(folder)) {
+        const diffuse = compactTextures ? 'diff.webp' : 'diff.jpg';
+        const map = loadTexture(`${folder}/${diffuse}`, true);
+        const normalMap = loadTexture(`${folder}/nor.jpg`, false);
+        const arm = loadTexture(`${folder}/arm.jpg`, false);
+        setCache.set(folder, { map, normalMap, aoMap: arm, roughnessMap: arm, metalnessMap: arm });
     }
-    return setCache.get(name);
+    return setCache.get(folder);
 }
 
 /**

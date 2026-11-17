@@ -28,19 +28,16 @@
     <meta name="twitter:title" content="A Menina da Lanterna — conto 3D hiper-realista | Diogo Paulino">
     <meta name="twitter:description" content="Uma historinha completa em cinco noites: aldeia hiper-realista, trilha, rio, árvore oca e o primeiro sol. three.js PBR.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/cormorant-garamond/font.css">
+    <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=4">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -94,7 +91,7 @@
 
 <body>
     <main class="game-shell">
-        <header data-lab-header data-title="A Menina da Lanterna" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="A Menina da Lanterna" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">✦</span>
@@ -201,8 +198,8 @@
                         <div id="chapterList" class="chapter-list" role="list"></div>
                     </section>
 
-                    <section class="menu-section">
-                        <h2>Comandos</h2>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>Comandos</summary>
                         <div class="keys keys--board">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
                             <span><kbd>Shift</kbd> correr · mouse olhar</span>
@@ -215,10 +212,10 @@
                             <span><b>✦</b> pulso da lanterna · <b>correr</b> acelera</span>
                             <span><b>usar</b> acende, fala e recolhe</span>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="menu-section">
-                        <h2>Ajustes</h2>
+                    <details class="menu-section menu-disclosure" open>
+                        <summary>Ajustes</summary>
                         <div class="settings-grid">
                             <label class="field">
                                 <span>Qualidade</span>
@@ -236,7 +233,7 @@
                         </div>
                         <p class="section-note">Melhor chama: <b id="bestScore" class="mono">—</b>
                             · qualidade vale na próxima noite</p>
-                    </section>
+                    </details>
                 </div>
 
                 <div class="menu-foot">
@@ -312,25 +309,8 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
-    <script>
-        (function () {
-            function hasGpu() {
-                try {
-                    var c = document.createElement('canvas');
-                    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-                } catch (e) { return false; }
-            }
-            if (!hasGpu()) {
-                document.addEventListener('DOMContentLoaded', function () {
-                    var err = document.getElementById('errorOverlay');
-                    var load = document.getElementById('loadingOverlay');
-                    if (load) load.hidden = true;
-                    if (err) err.hidden = false;
-                });
-            }
-        })();
-    </script>
+    <script src="/labs/shared.js?v=15" defer></script>
+    <script type="module" src="../shared/gfx/check-webgl.js"></script>
     <script type="module" src="src/main.js?v=20"></script>
 </body>
 

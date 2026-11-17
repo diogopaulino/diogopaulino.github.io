@@ -36,16 +36,22 @@
         crossorigin>
     <link rel="preload" href="/labs/ps5-controller/assets/draco/gltf/draco_decoder.wasm" as="fetch" crossorigin>
     <link rel="preload" href="/labs/ps5-controller/assets/models/first-light-controller.glb" as="fetch" crossorigin>
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
+    <link rel="stylesheet" href="styles/fonts.css">
+    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="style.css?v=3">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
-            "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
-            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.tsl.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/",
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.webgpu.min.js",
+            "three/webgpu": "/labs/shared/vendor/three-0.185.1/build/three.webgpu.min.js",
+            "three/tsl": "/labs/shared/vendor/three-0.185.1/build/three.tsl.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/",
             "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/index.js"
         }
     }
@@ -102,7 +108,7 @@
     <div id="app"></div>
     <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
 
-    <script src="/labs/shared.js?v=14" defer></script>
+    <script src="/labs/shared.js?v=15" defer></script>
     <script type="module" src="src/main.js?v=3"></script>
 </body>
 

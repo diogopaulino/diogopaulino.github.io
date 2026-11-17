@@ -904,11 +904,11 @@
         shockwaves.push({ x, y, r: 4, max: maxR, color, life: 1 });
     }
 
-    function drawShocks() {
+    function drawShocks(ticks) {
         for (let i = shockwaves.length - 1; i >= 0; i--) {
             const w = shockwaves[i];
-            w.r += 2.8 * timeScale;
-            w.life -= 0.018 * timeScale;
+            w.r += 2.8 * timeScale * ticks;
+            w.life -= 0.018 * timeScale * ticks;
             if (w.life <= 0 || w.r > w.max) {
                 shockwaves.splice(i, 1);
                 continue;
@@ -1586,18 +1586,32 @@
         frameCount++;
         if (now - lastFpsUpdate > 500) {
             fpsEl.textContent = String(Math.round((frameCount * 1000) / (now - lastFpsUpdate)));
+            countEl.textContent = String(particles.length);
+            bodyCountEl.textContent = String(bodies.length);
+            if (selected) updateInspectMeta();
             frameCount = 0;
             lastFpsUpdate = now;
         }
     }
 
+    let lastRender;
+    let simulationCredit = 0;
+    document.addEventListener('visibilitychange', () => { lastRender = undefined; });
+
     function animate(now) {
         now = now || performance.now();
         updateFps(now);
 
+        // Um passo físico corresponde a 1/60 s, independentemente do refresh da tela.
+        const ticks = Math.min(3, (now - (lastRender ?? now)) * 0.06);
+        lastRender = now;
         if (running) {
-            const steps = Math.max(1, Math.round(timeScale));
-            const k = timeScale / steps;
+            simulationCredit += ticks;
+            const wholeTicks = Math.floor(simulationCredit);
+            simulationCredit -= wholeTicks;
+            const substeps = Math.max(1, Math.ceil(timeScale));
+            const steps = wholeTicks * substeps;
+            const k = timeScale / substeps;
             for (let s = 0; s < steps; s++) {
                 for (let i = particles.length - 1; i >= 0; i--) {
                     particles[i].step(k);
@@ -1621,14 +1635,11 @@
             for (let i = 0; i < bodies.length; i++) bodies[i].drawTrail();
         }
         for (let i = 0; i < bodies.length; i++) bodies[i].draw();
-        drawShocks();
+        drawShocks(running ? ticks : 0);
         drawPointerField();
         drawSlingshotPreview();
 
         if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
-        countEl.textContent = String(particles.length);
-        bodyCountEl.textContent = String(bodies.length);
-        if (selected) updateInspectMeta();
     }
 
     // ---- UI ----

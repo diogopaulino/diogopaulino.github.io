@@ -68,19 +68,19 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+      "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+      "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
     }
   }
   </script>
 
-  <link rel="stylesheet" href="/labs/shared.css?v=13">
+  <link rel="stylesheet" href="/labs/shared.css?v=15">
   <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
   <main class="game-shell">
-    <header data-lab-header data-title="Claude Bros" data-back-label="Labs">
+    <header data-lab-header data-fullscreen data-title="Claude Bros" data-back-label="Labs">
       <template data-slot="logo">
         <div class="app-logo">
           <span class="brand-mark" aria-hidden="true">✦</span>
@@ -136,7 +136,7 @@
     <footer data-lab-footer data-home-href="/"></footer>
   </main>
 
-  <script src="/labs/shared.js?v=14" defer></script>
+  <script src="/labs/shared.js?v=15" defer></script>
   <script type="module" src="src/main.js?v=5"></script>
 </body>
 

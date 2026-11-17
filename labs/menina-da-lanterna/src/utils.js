@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /** Utilitários numéricos, ruído e detecção de dispositivo. */
 
 export const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
@@ -82,18 +83,7 @@ export function isSoftwareGLName(name) {
     return SOFTWARE_GL.test(String(name || ''));
 }
 
-export function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return isSoftwareGLName(name);
-    } catch (err) {
-        return true;
-    }
-}
+export { detectSoftwareGL };
 
 export function rendererIsSoftware(renderer) {
     try {

@@ -51,7 +51,7 @@ export function createStage(canvas, { quality = 'auto', loadingManager } = {}) {
     renderer.info.autoReset = false; // o pós faz várias passadas; os contadores valem para o quadro inteiro
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    configureAssets(renderer, loadingManager);
+    configureAssets(renderer, loadingManager, tier);
     configureTextures(renderer);
 
     const scene = new THREE.Scene();

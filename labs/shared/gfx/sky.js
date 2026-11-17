@@ -198,7 +198,8 @@ export function createSky({
     cloudCover = 0.42,
     glow = 0x000000,
     ground = 0x3a4038,
-    envIntensity = 1.0
+    envIntensity = 1.0,
+    generateEnvironment = true
 } = {}) {
     const noiseTex = makeNoiseTexture();
     const lutRT = new THREE.WebGLRenderTarget(512, 256, {
@@ -341,7 +342,8 @@ export function createSky({
     });
     const lutQuad = new FullScreenQuad(lutMat);
 
-    const pmrem = new THREE.PMREMGenerator(renderer);
+    const pmrem = generateEnvironment ? new THREE.PMREMGenerator(renderer) : null;
+    if (scene) scene.environmentIntensity = envIntensity;
     let envRT = null;
 
     const atm = { turbidity, rayleigh, mie };
@@ -432,13 +434,10 @@ export function createSky({
     }
 
     function bakeEnvironment() {
-        const next = pmrem.fromEquirectangular(lutRT.texture);
-        if (scene) {
-            scene.environment = next.texture;
-            scene.environmentIntensity = envIntensity;
+        if (pmrem) {
+            envRT = pmrem.fromEquirectangular(lutRT.texture, envRT);
+            if (scene) scene.environment = envRT.texture;
         }
-        envRT?.dispose();
-        envRT = next;
         state.envDirty = false;
     }
 
@@ -512,7 +511,7 @@ export function createSky({
         dispose() {
             lutRT.dispose();
             envRT?.dispose();
-            pmrem.dispose();
+            pmrem?.dispose();
             noiseTex.dispose();
             dome.geometry.dispose();
             domeMat.dispose();

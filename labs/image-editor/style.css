@@ -136,7 +136,7 @@ body {
     transform: translateY(-2px) scale(1.05);
 }
 
-canvas {
+#canvas {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -335,6 +335,8 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 .thumb-img {
+    object-fit: cover;
+    height: auto;
     display: block;
     width: 100%;
     aspect-ratio: 1;
