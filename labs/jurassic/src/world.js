@@ -1,780 +1,357 @@
 /**
- * Selva procedural, trilha, lago, cercas e vegetação instanciada.
+ * Jurassic — a ilha: relevo, trilhas, lago, mar, selva e dispersão de plantas.
+ *
+ * Tudo sobre `shared/gfx/terrain.js` (terreno PBR com splat, grama instanciada,
+ * floresta com impostores) e `shared/gfx/ocean.js` (ondas de Gerstner).
+ *
+ * RELEVO — h(x, z):
+ *   interior  = 4,2 + 13·(fbm − ½) + detalhe
+ *               achatado em platôs: lago (cota 4), prado (5), paddock (5,5), portão (3,4)
+ *               + crista dos estegossauros: 12·exp(−(d/17)²) ao longo de `stegoWalk`
+ *   costa     R(θ) = 140 + 9·sin(3θ + 1) + 5·sin(7θ + 2,3)        (linha d'água)
+ *   praia(r)  = clamp((R − r)·0,085; −7; 6)                        (1 m de subida a cada ~12 m)
+ *   h         = lerp(interior, praia, smoothstep(R − 44, R − 12, r)) + promontório do farol
+ *   as trilhas rebaixam 0,18 m (course.carve) e o lago é uma bacia (carveBasin)
+ * O mar usa a mesma R(θ) em GLSL para saber a profundidade (espuma e cor do raso).
  */
 
 import * as THREE from 'three';
 import { WORLD } from './config.js';
-import { fbm, hash2, seeded, smoothstep } from './utils.js';
+import { fbm2, smoothstep, lerp, clamp, seeded } from '../../shared/gfx/core.js';
 import {
-    grassTexture, dirtTexture, barkTexture, leafTexture, palmLeafTexture,
-    rockTexture, mistTexture
-} from './textures.js';
-import { makeWaterMaterial } from './shaders.js';
+    createCourse, carveBasin, createTerrain, createGrass, createForest, createWater, createPath, scatter, scatterModel
+} from '../../shared/gfx/terrain.js';
+import { createOcean } from '../../shared/gfx/ocean.js';
 
-const dummy = new THREE.Object3D();
+const LAKE_FLOOR = 4.0;
+const LAKE_LEVEL = LAKE_FLOOR - 0.75;
+const BEACH_SLOPE = 0.085;
 
-/** Muro do posto, centrado como a caixa 10×4.2×6.5. Talude, fiadas e vãos. */
-const STATION_WALL = (() => {
-    const g = new THREE.BoxGeometry(10, 4.2, 6.5, 6, 10, 4);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        let x = pos.getX(i);
-        let y = pos.getY(i);
-        let z = pos.getZ(i);
-        const ax = Math.abs(x);
-        const az = Math.abs(z);
-        const onX = ax > 4.9;
-        const onZ = az > 3.15;
-        const t = (y + 2.1) / 4.2;
-        if (onX) x = Math.sign(x) * (5 * (1 + (1 - t) * 0.035));
-        if (onZ) z = Math.sign(z) * (3.25 * (1 + (1 - t) * 0.035));
-        if ((onX || onZ) && y < 1.85) {
-            const course = Math.sin((y + 2.1) * Math.PI * 3.2);
-            const lip = course > 0.75 ? 0.09 : 0;
-            const bay = !onX || !onZ ? (course < -0.15 && t > 0.18 && t < 0.78 ? 0.12 : 0) : 0;
-            const quoin = onX && onZ ? 0.14 : 0;
-            if (onX) x += Math.sign(x) * (lip + quoin - (onZ ? 0 : bay));
-            if (onZ) z += Math.sign(z) * (lip + quoin - (onX ? 0 : bay));
-        }
-        pos.setXYZ(i, x, y, z);
-    }
-    g.computeVertexNormals();
-    return g;
-})();
-
-/** Duas águas: cumeeira no comprimento (X), beiral na profundidade. y=0 é a parede. */
-function stationRoofGeometry() {
-    const span = 7.6;
-    const hx = span / 2;
-    const rise = 1.55;
-    const lip = 0.38;
-    const s = new THREE.Shape();
-    s.moveTo(-hx - lip, 0);
-    s.lineTo(0, rise);
-    s.lineTo(hx + lip, 0);
-    s.lineTo(hx + lip - 0.16, -0.28);
-    s.lineTo(-(hx + lip - 0.16), -0.28);
-    s.closePath();
-    const g = new THREE.ExtrudeGeometry(s, {
-        depth: 11.4,
-        bevelEnabled: true,
-        bevelThickness: 0.04,
-        bevelSize: 0.05,
-        bevelSegments: 1,
-        curveSegments: 1
-    });
-    g.translate(0, 0, -5.7);
-    g.rotateY(Math.PI / 2);
-    g.computeVertexNormals();
-    return g;
+export function coastRadius(x, z) {
+    const th = Math.atan2(z, x);
+    return WORLD.islandRadius + 9 * Math.sin(3 * th + 1) + 5 * Math.sin(7 * th + 2.3);
 }
 
-/** Arco abatido do portão, pés em y=0, vão de 16 m. */
-function gateArchGeometry() {
-    const half = 8.05;
-    const rise = 1.65;
-    const band = 0.4;
-    const steps = 14;
-    const s = new THREE.Shape();
-    s.moveTo(-half, 0);
-    for (let i = 0; i <= steps; i++) {
-        const x = -half + (i / steps) * half * 2;
-        const u = x / half;
-        s.lineTo(x, rise * (1 - u * u) + band);
-    }
-    for (let i = steps; i >= 0; i--) {
-        const x = -half + (i / steps) * half * 2;
-        const u = x / half;
-        s.lineTo(x, rise * (1 - u * u));
-    }
-    s.closePath();
-    const g = new THREE.ExtrudeGeometry(s, { depth: 0.55, bevelEnabled: false, curveSegments: 1 });
-    g.translate(0, 0, -0.275);
-    g.computeVertexNormals();
-    return g;
-}
+const SEA_DEPTH_GLSL = /* glsl */ `
+float gfxSeaDepth(vec2 xz) {
+    float th = atan(xz.y, xz.x);
+    float R = ${WORLD.islandRadius.toFixed(1)} + 9.0 * sin(3.0 * th + 1.0) + 5.0 * sin(7.0 * th + 2.3);
+    return (length(xz) - R) * ${BEACH_SLOPE.toFixed(3)};
+}`;
 
-/** Jamba do portão, 0.25×3.4, centrada. Pé largo, canal nas faces e capitel. */
-const GATE_POST = (() => {
-    const H = 3.4;
-    const hh = H / 2;
-    const g = new THREE.BoxGeometry(0.25, H, 0.25, 6, 18, 6);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        let x = pos.getX(i);
-        const y = pos.getY(i);
-        let z = pos.getZ(i);
-        const t = (y + hh) / H;
-        const taper = 1.1 - t * 0.2;
-        x *= taper;
-        z *= taper;
-        if (t < 0.08) {
-            const u = 1 - t / 0.08;
-            x *= 1 + u * 0.85;
-            z *= 1 + u * 0.85;
-        } else if (t > 0.92) {
-            const u = (t - 0.92) / 0.08;
-            x *= 1 + u * 0.45;
-            z *= 1 + u * 0.45;
-        } else {
-            const half = 0.125 * taper;
-            if (Math.abs(x) > half * 0.82 && Math.abs(z) < half * 0.4) x *= 0.42;
-            if (Math.abs(z) > half * 0.82 && Math.abs(x) < half * 0.4) z *= 0.42;
-        }
-        pos.setXYZ(i, x, y, z);
-    }
-    g.computeVertexNormals();
-    return g;
-})();
-
-/** Placa 1.8×0.7, centrada. Cume no meio, moldura e faixa no terço de baixo. */
-const WARN_SIGN = (() => {
-    const g = new THREE.BoxGeometry(1.8, 0.7, 0.1, 18, 10, 2);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        let x = pos.getX(i);
-        let y = pos.getY(i);
-        let z = pos.getZ(i);
-        const nx = Math.abs(x) / 0.9;
-        const ny = (y + 0.35) / 0.7;
-        if (ny > 0.82) y += ((ny - 0.82) / 0.18) * (1 - nx) * 0.32;
-        const frame = nx > 0.84 || ny < 0.14 || ny > 0.78;
-        const stripe = ny > 0.36 && ny < 0.54 && nx < 0.84;
-        if (frame || stripe) z = Math.sign(z) * 0.062;
-        else if (Math.abs(z) > 0.02) z = Math.sign(z) * 0.012;
-        pos.setXYZ(i, x, y, z);
-    }
-    g.computeVertexNormals();
-    return g;
-})();
-
-/** Trilho caído, 2.4 centrado em Y. Dobra e estrangula no meio. */
-const BROKEN_RAIL = (() => {
-    const H = 2.4;
-    const half = H / 2;
-    const g = new THREE.BoxGeometry(0.16, H, 0.07, 4, 18, 2);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        let x = pos.getX(i);
-        const y = pos.getY(i);
-        let z = pos.getZ(i);
-        const t = (y + half) / H;
-        if (t > 0.58) {
-            const u = (t - 0.58) / 0.42;
-            x += u * u * 0.62;
-        }
-        if (Math.abs(t - 0.58) < 0.07) {
-            const u = 1 - Math.abs(t - 0.58) / 0.07;
-            z *= 1 - u * 0.55;
-            x *= 1 - u * 0.28;
-        }
-        pos.setXYZ(i, x, y, z);
-    }
-    g.computeVertexNormals();
-    return g;
-})();
-
-/**
- * Copa de latifólia. Calota: saia estreita e topo em sqrt(1-u²).
- * Lobo: raio *= 0.82 + 0.22 * max(0, cos(θ·lobes + seed))².
- */
-function broadleafCrown(radius, height, lobes, seed) {
-    const y0 = -height * 0.38;
-    const steps = 12;
-    const pts = [];
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const y = y0 + t * height;
-        const profile = t < 0.22
-            ? 0.38 + (t / 0.22) * 0.62
-            : Math.sqrt(Math.max(0, 1 - (((t - 0.22) / 0.78) * 0.9) ** 2));
-        pts.push(new THREE.Vector2(Math.max(0.06, radius * profile), y));
-    }
-    const g = new THREE.LatheGeometry(pts, 22);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        const z = pos.getZ(i);
-        const rad = Math.hypot(x, z);
-        if (rad < 1e-4) continue;
-        const lobe = 0.82 + 0.22 * Math.max(0, Math.cos(Math.atan2(z, x) * lobes + seed)) ** 2;
-        pos.setXYZ(i, x * lobe, y, z * lobe);
-    }
-    g.computeVertexNormals();
-    return g;
-}
-
-const BROADLEAF_CROWNS = [
-    broadleafCrown(1.85, 2.35, 5, 0.3),
-    broadleafCrown(1.25, 1.65, 4, 1.1),
-    broadleafCrown(1.15, 1.5, 5, 2.2)
-];
-
-/** Tronco de y=0 a 6.5, com alargamento e costelas. */
-const BROADLEAF_TRUNK = (() => {
-    const H = 6.5;
-    const pts = [];
-    for (let i = 0; i <= 12; i++) {
-        const t = i / 12;
-        const flare = Math.exp(-t * 5) * 0.2;
-        const collar = t > 0.88 ? (t - 0.88) * 0.45 : 0;
-        pts.push(new THREE.Vector2(0.3 - t * 0.12 + flare + collar, t * H));
-    }
-    const g = new THREE.LatheGeometry(pts, 12);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        const z = pos.getZ(i);
-        const rad = Math.hypot(x, z);
-        if (rad < 1e-4 || y < 0.2) continue;
-        const rib = Math.max(0, Math.cos(Math.atan2(z, x) * 6)) ** 2 * 0.025;
-        const k = 1 + rib / rad;
-        pos.setXYZ(i, x * k, y, z * k);
-    }
-    g.computeVertexNormals();
-    return g;
-})();
-
-/** Estipe de palmeira, centrado em Y como o cilindro de 5.4. Anéis de folha. */
-const PALM_TRUNK = (() => {
-    const H = 5.4;
-    const pts = [];
-    for (let i = 0; i <= 20; i++) {
-        const t = i / 20;
-        const y = (t - 0.5) * H;
-        const flare = Math.exp(-t * 4.5) * 0.1;
-        const scar = Math.sin(t * Math.PI * 16) > 0.45 ? 0.016 : 0;
-        pts.push(new THREE.Vector2(0.2 - t * 0.08 + flare + scar, y));
-    }
-    const g = new THREE.LatheGeometry(pts, 12);
-    g.computeVertexNormals();
-    return g;
-})();
+const nextTask = () => new Promise((r) => setTimeout(r, 0));
 
 export class World {
-    constructor(scene, quality) {
-        this.scene = scene;
-        this.quality = quality;
-        this.group = new THREE.Group();
-        scene.add(this.group);
-        this.colliders = [];
-        this.islandRadius = WORLD.islandRadius;
-        this.waterMat = null;
-        this.roadPoints = [];
-        this.sparks = [];
-        this.mist = [];
-        this.rain = null;
-        this.rainCount = 0;
-
-        this._terrain();
-        this._road();
-        this._water();
-        this._fences();
-        this._station();
-        this._vegetation();
-        this._rocks();
-        this._mist();
-        if (quality.particles > 0.4) this._rain();
+    /**
+     * @param {object} stage    retorno de createStage
+     * @param {object} quality  entrada de QUALITY
+     * @param {(p:number, text:string)=>void} progress
+     */
+    static async create(stage, quality, progress = () => {}) {
+        const w = new World(stage, quality);
+        progress(0.12, 'Levantando o relevo da ilha…');
+        await nextTask();
+        w._terrain();
+        progress(0.24, 'Abrindo as trilhas e enchendo o lago…');
+        await nextTask();
+        w._water();
+        progress(0.34, 'Plantando a selva…');
+        await nextTask();
+        w._forest();
+        progress(0.46, 'Semeando o capim…');
+        await nextTask();
+        w._grass();
+        w._scatter();
+        return w;
     }
 
-    /**
-     * Altura do solo. A ilha cai para o mar; o lago é uma bacia suave
-     * em (−14, −6). Colinas usam FBM em duas escalas.
-     */
-    heightAt = (x, z) => {
+    constructor(stage, quality) {
+        this.stage = stage;
+        this.scene = stage.scene;
+        this.quality = quality;
+        this.tier = stage.tier;
+        this.colliders = [];
+        this.dynamic = [];
+        this.lakeLevel = LAKE_LEVEL;
+        this.gateOpen = 0;
+        this._hit = { x: 0, z: 0, hit: false };
+
+        const P = WORLD;
+        this.loop = createCourse(P.loop, { width: 3.2, closed: true });
+        this.spurGate = createCourse(P.spurGate, { width: 3.2 });
+        this.spurTower = createCourse(P.spurTower, { width: 2.8 });
+        this.spurRidge = createCourse(P.spurRidge, { width: 2.8 });
+        this.stegoWalk = createCourse(P.stegoWalk, { width: 3 });
+        this.roads = [this.loop, this.spurGate, this.spurTower, this.spurRidge];
+    }
+
+    /** Relevo do interior, antes da costa. */
+    _inland(x, z) {
+        const P = WORLD;
+        const n = fbm2(x * 0.0105 + 10, z * 0.0105 + 20, 4);
+        let h = 4.2 + (n - 0.5) * 13 + (fbm2(x * 0.05, z * 0.05, 3) - 0.5) * 1.3;
+        const soft = (fbm2(x * 0.045 + 4, z * 0.045 + 1, 2) - 0.5);
+        // platô do lago: a lâmina d'água não vaza em baixadas vizinhas
+        const dl = Math.hypot(x - P.lake.x, z - P.lake.z);
+        h = lerp(h, LAKE_FLOOR + soft * 1.0, 1 - smoothstep(28, 60, dl));
+        // prado dos tricerátops
+        const dm = Math.hypot(x - P.meadow.x, z - P.meadow.z);
+        h = lerp(h, 5 + soft * 1.6, 1 - smoothstep(P.meadow.radius * 0.7, P.meadow.radius * 1.5, dm));
+        // paddock do rex (elipse)
+        const pe = Math.hypot((x - P.paddock.x) / P.paddock.rx, (z - P.paddock.z) / P.paddock.rz);
+        h = lerp(h, 5.5 + soft * 1.8, 1 - smoothstep(0.85, 1.5, pe));
+        // clareira dos raptors
+        const dr = Math.hypot(x - P.raptors.x, z - P.raptors.z);
+        h = lerp(h, 4.6 + soft * 1.4, 1 - smoothstep(P.raptors.radius * 0.6, P.raptors.radius * 1.6, dr));
+        // pátio do portão e do centro de visitantes
+        const dg = Math.min(Math.hypot(x - P.center.x, z - P.center.z), Math.hypot(x - P.gate.x, z - (P.gate.z + 8)) * 0.9);
+        h = lerp(h, 3.4, 1 - smoothstep(13, 30, dg));
+        // crista dos estegossauros
+        const ds = this.stegoWalk.dist(x, z, 60);
+        if (ds !== Infinity) h += 12 * Math.exp(-((ds / 17) ** 2));
+        return h;
+    }
+
+    heightFn = (x, z) => {
+        const P = WORLD;
         const r = Math.hypot(x, z);
-        const island = smoothstep(this.islandRadius + 8, this.islandRadius - 18, r);
-        const hills = fbm(x * 0.016, z * 0.016, 2) * 7.5;
-        const ridge = fbm(x * 0.007, z * 0.007, 8) * 11;
-        const lakeD = Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z);
-        const basin = -smoothstep(WORLD.lake.r + 8, 6, lakeD) * 2.6;
-        const coast = -smoothstep(this.islandRadius - 6, this.islandRadius + 14, r) * 6;
-        return Math.max(-1.6, (hills + ridge + basin) * island + coast);
+        const R = coastRadius(x, z);
+        let h = this._inland(x, z);
+        const beach = clamp((R - r) * BEACH_SLOPE, -7, 6) + (fbm2(x * 0.07 + 9, z * 0.07, 2) - 0.5) * 0.5;
+        h = lerp(h, beach, smoothstep(R - 44, R - 12, r));
+        // promontório rochoso do farol
+        const dt = Math.hypot(x - P.tower.x, z - P.tower.z);
+        h += 9.5 * Math.exp(-((dt / 15) ** 2)) * (1 + (fbm2(x * 0.09, z * 0.09, 2) - 0.5) * 0.3);
+        h = lerp(h, 11.6, 1 - smoothstep(3.5, 9, dt));
+        for (const road of this.roads) h = road.carve(x, z, h, { depth: 0.18, width: 2.6, bank: 2.2 });
+        return carveBasin(x, z, h, { ...P.lake, floor: LAKE_FLOOR - 3.4 });
     };
 
-    onRoad(x, z) {
-        let best = 99;
-        for (const p of this.roadPoints) {
-            const d = Math.hypot(x - p.x, z - p.z);
-            if (d < best) best = d;
-        }
-        return best < 3.4;
-    }
-
-    collide(x, z, radius) {
-        let hx = x;
-        let hz = z;
-        let hit = false;
-        for (const c of this.colliders) {
-            const dx = hx - c.x;
-            const dz = hz - c.z;
-            const d = Math.hypot(dx, dz);
-            const min = radius + c.r;
-            if (d < min && d > 1e-4) {
-                const s = min / d;
-                hx = c.x + dx * s;
-                hz = c.z + dz * s;
-                hit = true;
-            }
-        }
-        return { x: hx, z: hz, hit };
-    }
-
-    addCollider(x, z, r) {
-        this.colliders.push({ x, z, r });
-    }
-
     _terrain() {
-        const segs = this.quality.id === 'low' ? 72 : this.quality.id === 'high' ? 140 : 100;
-        const size = this.islandRadius * 2.4;
-        const geo = new THREE.PlaneGeometry(size, size, segs, segs);
-        geo.rotateX(-Math.PI / 2);
-        const pos = geo.attributes.position;
-        const colors = [];
-        const cGrass = new THREE.Color(0x4a7a32);
-        const cDirt = new THREE.Color(0x6a4a2c);
-        const cSand = new THREE.Color(0xc2b07a);
-        const cRock = new THREE.Color(0x6a665c);
-        const tmp = new THREE.Color();
-        for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i);
-            const z = pos.getZ(i);
-            const y = this.heightAt(x, z);
-            pos.setY(i, y);
-            const r = Math.hypot(x, z);
-            const lakeD = Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z);
-            tmp.copy(cGrass);
-            if (y < 0.55) tmp.lerp(cSand, 0.8);
-            else if (lakeD < WORLD.lake.r + 6) tmp.lerp(cDirt, 0.35);
-            if (y > 9) tmp.lerp(cRock, smoothstep(9, 14, y));
-            if (r > this.islandRadius - 10) tmp.lerp(cSand, 0.55);
-            colors.push(tmp.r, tmp.g, tmp.b);
-        }
-        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-        geo.computeVertexNormals();
-        const grassTex = grassTexture();
-        const mat = new THREE.MeshStandardMaterial({
-            map: grassTex,
-            bumpMap: grassTex.bumpMap,
-            bumpScale: grassTex.bumpScale ?? 0.06,
-            vertexColors: true,
-            roughness: 0.92,
-            metalness: 0.02
+        const P = WORLD;
+        this.terrain = createTerrain({
+            size: P.size,
+            heightFn: this.heightFn,
+            tier: this.tier,
+            layers: [
+                { set: 'leafy_grass', scale: 3.4, tint: 0x9cc27a },
+                { set: 'dirt_floor', scale: 3.0, tint: 0x9a9484 },
+                { set: 'cliff_side', scale: 7.0 },
+                { set: 'sand_01', scale: 3.0, tint: 0xeadfc4 }
+            ],
+            // [terra, rocha, areia, umidade]
+            splatFn: (x, z, h, slope, out) => {
+                const n = fbm2(x * 0.045 + 31, z * 0.045 + 17, 3);
+                const rock = smoothstep(0.17, 0.34, slope + (n - 0.5) * 0.14);
+                const sand = (1 - smoothstep(1.2, 2.5, h + (n - 0.5) * 0.9)) * (1 - rock);
+                const patch = smoothstep(0.6, 0.82, fbm2(x * 0.024 + 5, z * 0.024 + 2, 2)) * 0.75;
+                out[0] = clamp(patch + smoothstep(0.1, 0.2, slope) * 0.5, 0, 1) * (1 - rock) * (1 - sand);
+                out[1] = rock;
+                out[2] = sand;
+                out[3] = (1 - smoothstep(0.1, 0.7, h)) * 0.7;
+                return out;
+            }
         });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.receiveShadow = true;
-        this.group.add(mesh);
-
-        const ocean = new THREE.Mesh(
-            new THREE.CircleGeometry(WORLD.oceanRadius, 48),
-            new THREE.MeshStandardMaterial({
-                color: 0x0a3a48, roughness: 0.28, metalness: 0.22, transparent: true, opacity: 0.92
-            })
-        );
-        ocean.rotation.x = -Math.PI / 2;
-        ocean.position.y = -0.35;
-        this.group.add(ocean);
-    }
-
-    _road() {
-        const waypoints = [
-            [4, 78], [18, 62], [32, 42], [40, 22], [36, 2],
-            [22, -22], [8, -42], [-10, -58], [-28, -52], [-42, -36],
-            [-50, -12], [-48, 16], [-38, 42], [-18, 58], [-2, 72], [4, 78]
-        ];
-        const pts = waypoints.map(([x, z]) => new THREE.Vector3(x, 0, z));
-        const curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.35);
-        const samples = 180;
-        this.roadPoints = [];
-        const w = 3.1;
-        const positions = [];
-        const uvs = [];
-        const indices = [];
-        const nrm = new THREE.Vector3();
-        for (let i = 0; i <= samples; i++) {
-            const t = i / samples;
-            const p = curve.getPointAt(t);
-            const tan = curve.getTangentAt(t);
-            nrm.set(-tan.z, 0, tan.x).normalize();
-            p.y = this.heightAt(p.x, p.z) + 0.06;
-            this.roadPoints.push({ x: p.x, z: p.z });
-            const a = p.clone().addScaledVector(nrm, w);
-            const b = p.clone().addScaledVector(nrm, -w);
-            a.y = this.heightAt(a.x, a.z) + 0.07;
-            b.y = this.heightAt(b.x, b.z) + 0.07;
-            positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
-            uvs.push(0, t * 40, 1, t * 40);
-        }
-        for (let i = 0; i < samples; i++) {
-            const a = i * 2;
-            indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-        }
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-        geo.setIndex(indices);
-        geo.computeVertexNormals();
-        const dirtTex = dirtTexture();
-        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-            map: dirtTex,
-            bumpMap: dirtTex.bumpMap,
-            bumpScale: dirtTex.bumpScale ?? 0.12,
-            roughness: 0.92,
-            metalness: 0.02
-        }));
-        mesh.receiveShadow = true;
-        this.group.add(mesh);
+        this.scene.add(this.terrain.object);
+        this.stage.follow(this.terrain);
+        for (const road of this.roads) createPath({ terrain: this.terrain, course: road, ruts: true, edge: 0.8 });
+        // pátio de terra batida diante do centro de visitantes
+        this.terrain.paint({ minX: -32, maxX: 14, minZ: 96, maxZ: 126 }, (x, z, h, slope, wt) => {
+            const d = Math.hypot((x + 6) / 1.25, z - 110);
+            const k = (1 - smoothstep(9, 15, d + (fbm2(x * 0.3, z * 0.3, 2) - 0.5) * 4)) * 0.9;
+            if (k <= 0) return wt;
+            for (let i = 0; i < 3; i++) wt[i] *= 1 - k;
+            wt[0] += k;
+            return wt;
+        });
     }
 
     _water() {
-        this.waterMat = makeWaterMaterial();
-        const lake = new THREE.Mesh(new THREE.CircleGeometry(WORLD.lake.r * 0.92, 40), this.waterMat);
-        lake.rotation.x = -Math.PI / 2;
-        lake.position.set(WORLD.lake.x, 1.15, WORLD.lake.z);
-        this.group.add(lake);
-        this.lake = lake;
-    }
-
-    _post(x, z, h, mat) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, h, 6), mat);
-        m.position.set(x, this.heightAt(x, z) + h * 0.5, z);
-        m.castShadow = true;
-        this.group.add(m);
-        return m;
-    }
-
-    _fences() {
-        const steel = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.4, metalness: 0.7 });
-        const wireMat = new THREE.MeshStandardMaterial({ color: 0x9aa4ae, roughness: 0.25, metalness: 0.88 });
-        const porcelain = new THREE.MeshPhysicalMaterial({
-            color: 0xeef2f6, roughness: 0.18, metalness: 0.05, clearcoat: 0.85, clearcoatRoughness: 0.15
+        this.lake = createWater({
+            terrain: this.terrain, lake: { ...WORLD.lake, level: LAKE_LEVEL }, shallow: 0x55745a, deep: 0x10302e, shoreLayer: 3
         });
-        const warn = new THREE.MeshStandardMaterial({ color: 0xc4a018, roughness: 0.45, metalness: 0.3 });
-        const paddock = { cx: 42, cz: 14, rx: 22, rz: 18 };
-        const posts = 36;
-        const wireHeights = [0.68, 1.32, 1.96, 2.6];
-        const insulatorGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.11, 8);
-        insulatorGeo.rotateZ(Math.PI / 2);
-        const cableUnitGeo = new THREE.CylinderGeometry(0.016, 0.016, 1, 6);
-        cableUnitGeo.rotateX(Math.PI / 2);
-
-        const postCoords = [];
-        for (let i = 0; i < posts; i++) {
-            const a = (i / posts) * Math.PI * 2;
-            const x = paddock.cx + Math.cos(a) * paddock.rx;
-            const z = paddock.cz + Math.sin(a) * paddock.rz;
-            const y0 = this.heightAt(x, z);
-            const isBroken = i >= 30 && i <= 33;
-            postCoords.push({ x, z, y0, a, isBroken });
-            if (isBroken) continue;
-            this._post(x, z, 3.2, steel);
-            this.addCollider(x, z, 0.25);
-
-            // Isoladores de porcelana em cada poste
-            const nx = Math.cos(a);
-            const nz = Math.sin(a);
-            for (const wh of wireHeights) {
-                const ins = new THREE.Mesh(insulatorGeo, porcelain);
-                ins.name = 'fenceInsulator';
-                ins.position.set(x - nx * 0.1, y0 + wh, z - nz * 0.1);
-                ins.rotation.y = -a;
-                this.group.add(ins);
-            }
-        }
-
-        // Cabos horizontais eletrificados entre postes adjacentes
-        const pA = new THREE.Vector3();
-        const pB = new THREE.Vector3();
-        for (let i = 0; i < posts; i++) {
-            const cur = postCoords[i];
-            const nxt = postCoords[(i + 1) % posts];
-            if (cur.isBroken || nxt.isBroken) continue;
-            for (const wh of wireHeights) {
-                pA.set(cur.x, cur.y0 + wh, cur.z);
-                pB.set(nxt.x, nxt.y0 + wh, nxt.z);
-                const len = pA.distanceTo(pB);
-                const cable = new THREE.Mesh(cableUnitGeo, wireMat);
-                cable.name = 'fenceCable';
-                cable.position.lerpVectors(pA, pB, 0.5);
-                cable.lookAt(pB);
-                cable.scale.set(1, 1, len);
-                cable.castShadow = true;
-                this.group.add(cable);
-            }
-        }
-
-        const broken = new THREE.Mesh(BROKEN_RAIL, steel);
-        broken.name = 'brokenRail';
-        broken.position.set(paddock.cx - paddock.rx + 1, this.heightAt(paddock.cx - paddock.rx, paddock.cz) + 1.4, paddock.cz);
-        broken.rotation.z = 1.1;
-        this.group.add(broken);
-
-        for (let i = 0; i < 8; i++) {
-            const spark = new THREE.PointLight(0x88ddff, 0, 6, 2);
-            const a = (30.5 / posts) * Math.PI * 2;
-            spark.position.set(
-                paddock.cx + Math.cos(a) * paddock.rx,
-                this.heightAt(paddock.cx, paddock.cz) + 1.6 + i * 0.1,
-                paddock.cz + Math.sin(a) * paddock.rz
-            );
-            spark.userData.phase = i * 0.7;
-            this.group.add(spark);
-            this.sparks.push(spark);
-        }
-
-        const sign = new THREE.Mesh(WARN_SIGN, warn);
-        sign.name = 'warnSign';
-        sign.position.set(28, this.heightAt(28, 28) + 2.1, 28);
-        this.group.add(sign);
-        this._post(27.2, 28, 2.2, steel);
-        this._post(28.8, 28, 2.2, steel);
+        this.scene.add(this.lake.object);
+        this.ocean = createOcean({
+            tier: this.tier,
+            depthGLSL: SEA_DEPTH_GLSL,
+            surf: true,
+            surfAmp: 0.3,
+            surfK: 4.2,
+            surfSpeed: 0.7,
+            surfDepth: 1.4,
+            swash: 0.1,
+            waveScale: 0.55,
+            deep: 0x0b3944,
+            shallow: 0x4a9a8a,
+            scatter: 0x38a08e,
+            deepDepth: 6
+        });
+        this.scene.add(this.ocean.mesh);
     }
 
-    _station() {
-        const rockTex = rockTexture();
-        const concrete = new THREE.MeshStandardMaterial({
-            color: 0x8a8678, roughness: 0.8, map: rockTex, bumpMap: rockTex.bumpMap, bumpScale: rockTex.bumpScale ?? 0.12
+    /** Densidade de selva 0..1 (clareiras onde os animais vivem e onde o jipe precisa ver longe). */
+    jungle = (x, z) => {
+        const P = WORLD;
+        const c = smoothstep(0.36, 0.6, fbm2(x * 0.016 + 3, z * 0.016 + 8, 3));
+        let k = 0.22 + 0.78 * c;
+        k *= smoothstep(31, 40, Math.hypot(x - P.lake.x, z - P.lake.z));
+        k *= smoothstep(P.meadow.radius * 0.95, P.meadow.radius * 1.3, Math.hypot(x - P.meadow.x, z - P.meadow.z));
+        k *= smoothstep(0.92, 1.12, Math.hypot((x - P.paddock.x) / P.paddock.rx, (z - P.paddock.z) / P.paddock.rz));
+        k *= smoothstep(P.raptors.radius * 0.8, P.raptors.radius * 1.15, Math.hypot(x - P.raptors.x, z - P.raptors.z));
+        k *= smoothstep(19, 27, Math.hypot(x - P.center.x, z - P.center.z));
+        k *= smoothstep(8, 14, Math.hypot(x - P.gate.x, z - P.gate.z));
+        k *= smoothstep(9, 15, Math.hypot(x - P.tower.x, z - P.tower.z));
+        k *= smoothstep(5, 9, this.stegoWalk.dist(x, z, 12));
+        return k;
+    };
+
+    _forest() {
+        const q = this.quality;
+        const rnd = seeded(77);
+        const t = this.terrain;
+        const inland = scatter({
+            terrain: t, count: q.trees, minDist: 5.2, seed: 4, slopeMax: 0.3, heightMin: 2.4,
+            keepOff: this.roads, margin: 5.6, maskFn: this.jungle
+        }).map((p) => {
+            const u = rnd();
+            const species = p.y < 3.6 ? (u < 0.75 ? 'palmeira' : 'cicadacea')
+                : u < 0.3 ? 'samambaia' : u < 0.52 ? 'cicadacea' : u < 0.8 ? 'carvalho' : 'palmeira';
+            return { ...p, species };
         });
-        const rust = new THREE.MeshStandardMaterial({ color: 0x6a4030, roughness: 0.7, metalness: 0.3 });
-        const x = 4;
-        const z = 108;
-        const y = this.heightAt(x, z);
-        const hall = new THREE.Mesh(STATION_WALL, concrete);
-        hall.name = 'stationHall';
-        hall.position.set(x, y + 2.1, z);
-        hall.castShadow = true;
-        hall.receiveShadow = true;
-        this.group.add(hall);
-        this.addCollider(x, z, 4.2);
-        const roof = new THREE.Mesh(stationRoofGeometry(), rust);
-        roof.name = 'stationRoof';
-        roof.position.set(x, y + 4.2, z);
-        roof.castShadow = true;
-        this.group.add(roof);
-        const gateL = new THREE.Mesh(GATE_POST, rust);
-        gateL.name = 'gatePost';
-        gateL.position.set(-4, this.heightAt(-4, 94) + 1.7, 94);
-        gateL.castShadow = true;
-        this.group.add(gateL);
-        const gateR = gateL.clone();
-        gateR.position.set(12, this.heightAt(12, 94) + 1.7, 94);
-        this.group.add(gateR);
-        const arch = new THREE.Mesh(gateArchGeometry(), rust);
-        arch.name = 'stationArch';
-        arch.position.set(4, this.heightAt(4, 94) + 3.4, 94);
-        arch.castShadow = true;
-        this.group.add(arch);
-        const amber = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), new THREE.MeshStandardMaterial({
-            color: 0xe09020, emissive: 0xc46a10, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.1
+        // coqueiros na praia
+        const beach = scatter({
+            terrain: t, count: Math.round(q.trees * 0.14), minDist: 7, seed: 19, slopeMax: 0.3, heightMin: 1.1, heightMax: 2.4,
+            dry: false, keepOff: this.roads, margin: 4, maskFn: (x, z) => smoothstep(22, 30, Math.hypot(x - WORLD.center.x, z - WORLD.center.z))
+        }).map((p) => ({ ...p, species: 'palmeira' }));
+        // frondosas altas na margem do lago: é nelas que os braquiossauros comem
+        this.browse = [[19, 1, 1.5], [7, 21, 1.4], [-41, 13, 1.45], [-30, -33, 1.35]].map(([x, z, s]) => ({
+            x, z, y: t.heightAt(x, z), s, species: 'carvalho', browse: true
         }));
-        amber.position.set(4, y + 6.35, z);
-        this.group.add(amber);
-        this.amber = amber;
+        const near = (p, list, d) => list.some((b) => Math.hypot(p.x - b.x, p.z - b.z) < d);
+        const placements = [...inland.filter((p) => !near(p, this.browse, 9)), ...beach, ...this.browse];
+        this.forest = createForest({
+            terrain: t, renderer: this.stage.renderer, tier: this.tier, seed: 3, placements, lodDistance: q.lod, variants: 1,
+            species: [
+                { kind: 'carvalho', weight: 1, scale: [0.85, 1.2] }, { kind: 'palmeira', weight: 1 },
+                { kind: 'cicadacea', weight: 1, scale: [1.0, 1.7] }, { kind: 'samambaia', weight: 1, scale: [0.9, 1.5] }
+            ]
+        });
+        this.scene.add(this.forest.object);
+        const R = { carvalho: 0.6, palmeira: 0.34, samambaia: 0.26, cicadacea: 0.45 };
+        for (const p of placements) this.addCollider(p.x, p.z, (R[p.species] || 0.4) * (p.browse ? p.s : 1), true);
+        this.trees = placements;
     }
 
-    _makePalm() {
-        const g = new THREE.Group();
-        const barkTex = barkTexture();
-        const trunk = new THREE.Mesh(
-            PALM_TRUNK,
-            new THREE.MeshStandardMaterial({
-                map: barkTex, bumpMap: barkTex.bumpMap, bumpScale: barkTex.bumpScale ?? 0.14, color: 0xc4a070, roughness: 0.9
-            })
-        );
-        trunk.position.y = 2.7;
-        trunk.rotation.z = 0.08;
-        trunk.name = 'palmTrunk';
-        g.add(trunk);
-        const leafTex = palmLeafTexture();
-        const leafMat = new THREE.MeshStandardMaterial({
-            map: leafTex, transparent: true, alphaTest: 0.2,
-            side: THREE.DoubleSide, roughness: 0.85
+    _grass() {
+        this.grass = createGrass({
+            terrain: this.terrain,
+            tier: this.tier,
+            density: this.quality.grass,
+            range: this.quality.grassRange,
+            bladeHeight: 0.36,
+            dryness: 0.28,
+            colors: { base: 0x2f5a1c, tip: 0x8fc04a, dry: 0xb7b060 },
+            flowers: { density: 1.2, patch: 34, colors: [0xfff4d8, 0xffd04a, 0xe86a9a, 0xf2f2f2] }
         });
-        for (let i = 0; i < 9; i++) {
-            const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 3.6), leafMat);
-            leaf.position.set(0, 5.3, 0);
-            leaf.rotation.set(0.95, (i / 9) * Math.PI * 2, 0);
-            g.add(leaf);
-        }
-        g.traverse((c) => { if (c.isMesh) { c.castShadow = true; } });
-        return g;
+        this.scene.add(this.grass.object);
     }
 
-    _makeCanopy() {
-        const g = new THREE.Group();
-        g.name = 'broadleaf';
-        const barkTex = barkTexture();
-        const trunk = new THREE.Mesh(
-            BROADLEAF_TRUNK,
-            new THREE.MeshStandardMaterial({
-                map: barkTex, bumpMap: barkTex.bumpMap, bumpScale: barkTex.bumpScale ?? 0.14, roughness: 0.92
-            })
-        );
-        trunk.name = 'broadleafTrunk';
-        g.add(trunk);
-        const foliage = new THREE.MeshStandardMaterial({
-            map: leafTexture(), color: 0x3a7a28, roughness: 0.88, transparent: true, alphaTest: 0.35
-        });
-        const spots = [
-            [0, 6.55, 0, 0],
-            [0.85, 6.15, 0.4, 1],
-            [-0.7, 6.25, -0.35, 2]
-        ];
-        spots.forEach(([x, y, z, i]) => {
-            const s = new THREE.Mesh(BROADLEAF_CROWNS[i], foliage);
-            s.position.set(x, y, z);
-            if (i === 0) s.name = 'broadleafCrown';
-            g.add(s);
-        });
-        g.traverse((c) => { if (c.isMesh) c.castShadow = true; });
-        return g;
-    }
-
-    _vegetation() {
-        const rng = seeded(9041);
-        const palms = Math.round(42 * this.quality.trees);
-        const trees = Math.round(70 * this.quality.trees);
-        const palmProto = this._makePalm();
-        const treeProto = this._makeCanopy();
-
-        const scatter = (proto, count, minR, maxR, avoidLake = true) => {
-            for (let i = 0; i < count; i++) {
-                const a = rng() * Math.PI * 2;
-                const r = minR + rng() * (maxR - minR);
-                const x = Math.cos(a) * r;
-                const z = Math.sin(a) * r;
-                if (this.onRoad(x, z)) continue;
-                if (avoidLake && Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z) < WORLD.lake.r + 6) continue;
-                if (Math.hypot(x - 42, z - 14) < 18) continue;
-                if (Math.hypot(x, z - 108) < 12) continue;
-                const clone = proto.clone();
-                const s = 0.75 + rng() * 0.7;
-                clone.scale.setScalar(s);
-                clone.position.set(x, this.heightAt(x, z), z);
-                clone.rotation.y = rng() * Math.PI * 2;
-                this.group.add(clone);
-                this.addCollider(x, z, 0.55 * s);
-            }
+    _scatter() {
+        const q = this.quality;
+        const t = this.terrain;
+        const P = WORLD;
+        const add = (g) => {
+            if (!g) return;
+            this.scene.add(g);
         };
-        scatter(palmProto, palms, 28, this.islandRadius - 8);
-        scatter(treeProto, trees, 22, this.islandRadius - 6);
-        const gateSpots = [[-8, 50], [16, 52], [-10, 42], [18, 40], [11, 32], [-6, 34], [4, 44]];
-        for (const [x, z] of gateSpots) {
-            const c = palmProto.clone();
-            c.scale.setScalar(1.15);
-            c.position.set(x, this.heightAt(x, z), z);
-            c.rotation.y = hash2(x, z, 2) * 6;
-            this.group.add(c);
-            this.addCollider(x, z, 0.65);
-        }
-
-        const grassCount = Math.round(900 * this.quality.grass);
-        if (grassCount > 0) {
-            const blade = new THREE.PlaneGeometry(0.18, 0.7);
-            blade.translate(0, 0.35, 0);
-            const gmat = new THREE.MeshStandardMaterial({
-                color: 0x4a8a32, side: THREE.DoubleSide, roughness: 0.95
-            });
-            const mesh = new THREE.InstancedMesh(blade, gmat, grassCount);
-            mesh.frustumCulled = false;
-            for (let i = 0; i < grassCount; i++) {
-                const a = hash2(i, 1) * Math.PI * 2;
-                const r = 8 + hash2(i, 2) * (this.islandRadius - 16);
-                const x = Math.cos(a) * r;
-                const z = Math.sin(a) * r;
-                dummy.position.set(x, this.heightAt(x, z), z);
-                dummy.rotation.y = hash2(i, 3) * Math.PI * 2;
-                dummy.scale.setScalar(0.6 + hash2(i, 4) * 1.1);
-                dummy.updateMatrix();
-                mesh.setMatrixAt(i, dummy.matrix);
-            }
-            this.group.add(mesh);
-            this.grass = mesh;
-        }
+        const rocky = (x, z) => 0.15 + t.slopeAt(x, z) * 4 + Math.exp(-((Math.hypot(x - P.tower.x, z - P.tower.z) / 20) ** 2)) * 2
+            + Math.exp(-((this.stegoWalk.dist(x, z, 60) / 22) ** 2));
+        const off = [...this.roads, this.stegoWalk];
+        this.ready = Promise.all([
+            scatterModel({ terrain: t, preset: 'rochas', count: q.rocks, seed: 5, heightMin: 0.4, keepOff: off, margin: 3.5, maskFn: rocky })
+                .then((g) => {
+                    add(g);
+                    for (const p of g?.userData.placements || []) if (p.s > 0.75) this.addCollider(p.x, p.z, 0.7 * p.s, true);
+                }),
+            scatterModel({ terrain: t, preset: 'pedras', count: Math.round(q.rocks * 1.4), seed: 6, heightMin: 0.2, keepOff: off, margin: 3 }).then(add),
+            scatterModel({
+                terrain: t, preset: 'samambaias', count: q.ferns, seed: 7, heightMin: 2.2, keepOff: this.roads, margin: 1.6,
+                maskFn: (x, z) => this.jungle(x, z) * 0.9 + 0.06
+            }).then(add),
+            scatterModel({
+                terrain: t, preset: 'arbustos', count: q.shrubs, seed: 8, heightMin: 2.2, keepOff: off, margin: 2.6,
+                maskFn: (x, z) => this.jungle(x, z)
+            }).then(add),
+            scatterModel({
+                terrain: t, preset: 'ervas', count: Math.round(q.ferns * 0.6), seed: 12, heightMin: 2.2, keepOff: this.roads, margin: 1.2,
+                area: { x: 0, z: 30, radius: 110 }
+            }).then(add),
+            scatterModel({ terrain: t, preset: 'tocos', count: 8, seed: 10, heightMin: 2.4, keepOff: off, maskFn: this.jungle }).then(add)
+        ]).catch(() => {});
     }
 
-    _rocks() {
-        const mat = new THREE.MeshStandardMaterial({ map: rockTexture(), roughness: 0.9, color: 0x8a8680 });
-        const rng = seeded(2201);
-        for (let i = 0; i < 28; i++) {
-            const a = rng() * Math.PI * 2;
-            const r = 30 + rng() * 70;
-            const x = Math.cos(a) * r;
-            const z = Math.sin(a) * r;
-            if (this.onRoad(x, z)) continue;
-            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + rng() * 1.4, 0), mat);
-            rock.position.set(x, this.heightAt(x, z) + 0.3, z);
-            rock.rotation.set(rng() * 2, rng() * 6, rng());
-            rock.scale.set(1 + rng(), 0.55 + rng() * 0.5, 1 + rng());
-            rock.castShadow = true;
-            rock.receiveShadow = true;
-            this.group.add(rock);
-            this.addCollider(x, z, 0.9);
-        }
+    heightAt = (x, z) => this.terrain.heightAt(x, z);
+
+    /** true sobre a terra batida (laço ou ramais): aderência cheia. */
+    onRoad(x, z) {
+        for (const road of this.roads) if (road.dist(x, z, 3.2) < 2.3) return true;
+        return false;
     }
 
-    _mist() {
-        const tex = mistTexture();
-        const mat = new THREE.MeshBasicMaterial({
-            map: tex, transparent: true, depthWrite: false, opacity: 0.55, side: THREE.DoubleSide
-        });
-        for (let i = 0; i < 8; i++) {
-            const p = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), mat.clone());
-            const a = (i / 8) * Math.PI * 2;
-            p.position.set(
-                WORLD.lake.x + Math.cos(a) * 10,
-                2.2,
-                WORLD.lake.z + Math.sin(a) * 8
-            );
-            this.group.add(p);
-            this.mist.push(p);
-        }
+    /** Água funda demais para o jipe (lago ou mar). */
+    flooded(x, z) {
+        const h = this.terrain.heightAt(x, z);
+        if (h < -0.25) return true;
+        return h < LAKE_LEVEL - 0.55 && Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z) < WORLD.lake.radius * 1.4;
     }
 
-    _rain() {
-        const count = Math.round(1400 * this.quality.particles);
-        this.rainCount = count;
-        const geo = new THREE.BufferGeometry();
-        const pos = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            pos[i * 3] = (hash2(i, 1) - 0.5) * 80;
-            pos[i * 3 + 1] = hash2(i, 2) * 28;
-            pos[i * 3 + 2] = (hash2(i, 3) - 0.5) * 80;
-        }
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        const mat = new THREE.PointsMaterial({
-            color: 0xb8c8d0, size: 0.08, transparent: true, opacity: 0, depthWrite: false
-        });
-        this.rain = new THREE.Points(geo, mat);
-        this.group.add(this.rain);
+    addCollider(x, z, r, fixed = true) {
+        const c = { x, z, r, on: true };
+        (fixed ? this.colliders : this.dynamic).push(c);
+        return c;
     }
 
-    update(dt, time, jeep, raining) {
-        if (this.waterMat) this.waterMat.uniforms.uTime.value = time;
-        if (this.amber) this.amber.rotation.y = time * 0.4;
-        for (const s of this.sparks) {
-            s.intensity = (0.4 + Math.abs(Math.sin(time * 11 + (s.userData.phase || 0))) * 2.2) * 1.4;
-        }
-        for (let i = 0; i < this.mist.length; i++) {
-            const m = this.mist[i];
-            m.position.y = 1.8 + Math.sin(time * 0.35 + i) * 0.35;
-            m.material.opacity = 0.28 + Math.sin(time * 0.4 + i) * 0.12;
-            m.lookAt(jeep.x, m.position.y, jeep.z);
-        }
-        if (this.rain) {
-            this.rain.material.opacity = raining ? 0.55 : 0;
-            this.rain.position.set(jeep.x, 0, jeep.z);
-            if (raining) {
-                const pos = this.rain.geometry.attributes.position;
-                for (let i = 0; i < this.rainCount; i++) {
-                    let y = pos.getY(i) - dt * 22;
-                    if (y < 0) y = 26;
-                    pos.setY(i, y);
+    /**
+     * Empurra o círculo (x, z, radius) para fora dos obstáculos.
+     *   para cada obstáculo c: se d < radius + c.r → p = c + (p − c)·(radius + c.r)/d
+     * Devolve um objeto reutilizado { x, z, hit }.
+     */
+    collide(x, z, radius) {
+        const out = this._hit;
+        out.x = x;
+        out.z = z;
+        out.hit = false;
+        for (let pass = 0; pass < 2; pass++) {
+            const list = pass === 0 ? this.colliders : this.dynamic;
+            for (let i = 0; i < list.length; i++) {
+                const c = list[i];
+                if (!c.on) continue;
+                const dx = out.x - c.x;
+                const dz = out.z - c.z;
+                const min = radius + c.r;
+                if (Math.abs(dx) > min || Math.abs(dz) > min) continue;
+                const d = Math.hypot(dx, dz);
+                if (d < min && d > 1e-4) {
+                    const s = min / d;
+                    out.x = c.x + dx * s;
+                    out.z = c.z + dz * s;
+                    out.hit = true;
                 }
-                pos.needsUpdate = true;
             }
         }
+        return out;
+    }
+
+    /** Liga a grama/floresta a uma queda de tier (resolução dinâmica do palco). */
+    setTier(tier) {
+        this.grass?.setDensity(tier === 'low' ? 0.4 : tier === 'medium' ? 0.7 : 1);
+    }
+
+    update(dt, t, camera, tramplers) {
+        this.terrain.update(camera);
+        this.grass.update(camera, dt, tramplers);
+        this.forest.update(camera);
+        this.lake.update(dt);
+        this.ocean.update(t, camera, this.stage.sky.daylight ?? 1);
     }
 }

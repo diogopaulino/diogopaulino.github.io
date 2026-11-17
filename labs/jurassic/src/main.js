@@ -1,32 +1,38 @@
 /**
- * Jurassic — laço principal, câmera cinematográfica e diário de campo.
+ * Jurassic — laço principal, câmeras e diário de campo.
+ *
+ * Palco: `shared/gfx/stage.js` (céu físico, sol com sombra em cascata, pós com
+ * AO, névoa de altura, DOF e grade de cor). Mundo em world.js, construções em
+ * structures.js, fauna em dinosaurs.js, veículo em jeep.js, efeitos em fx.js.
+ *
+ * REGRAS DO JOGO
+ *   • Dirija pela ilha; a menos de `observe` metros de uma espécie, segure
+ *     E / botão direito / "observar" por `log` segundos para catalogá-la.
+ *   • Seis espécies catalogadas = diário completo (vitória).
+ *   • O rex persegue quem para junto ao vão rompido da cerca ou entra no
+ *     paddock; a menos de 5,4 m dele o turno acaba.
+ *
+ * CÂMERAS (tecla C): perseguição · perseguição alta · capô.
+ *   Observando: binóculo — a câmera sobe ao teto do jipe, mira o animal e fecha
+ *   o campo:  fov = clamp(2·atan(1,1·tamanho / d); 9°; 46°)  com foco (DOF) em d.
+ * TREMOR: cada passo pesado soma  peso / (1 + (d/12)²)  e decai com e^(−6·t).
  */
 
 import * as THREE from 'three';
-import { configureCinematicRenderer, applyCinematicEnvironment } from '../../shared/cinematic.js?v=2';
-import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES } from './config.js';
-import { clamp, damp, detectMobile, detectSoftwareGL, rendererIsSoftware } from './utils.js';
-import { Input } from './input.js';
-import { ParkAudio } from './audio.js';
-import { Hud } from './hud.js';
-import { World } from './world.js?v=8';
-import { Jeep } from './jeep.js?v=7';
-import { spawnDinosaurs } from './dinosaurs.js?v=3';
-import { createSky, createLights, sampleDay, applySky, applyLights } from './sky.js';
+import { createStage } from '../../shared/gfx/stage.js';
+import { clamp, damp, smoothstep } from '../../shared/gfx/core.js';
+import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS } from './config.js?v=20';
+import { Input } from './input.js?v=20';
+import { ParkAudio } from './audio.js?v=20';
+import { Hud } from './hud.js?v=20';
+import { World } from './world.js?v=20';
+import { Jeep } from './jeep.js?v=20';
+import { spawnDinosaurs } from './dinosaurs.js?v=20';
+import { buildStructures } from './structures.js?v=20';
+import { createParticles, createRain, createPuddles } from './fx.js?v=20';
 
-const TOD_LABELS = [
-    [0.18, 'Madrugada'],
-    [0.32, 'Amanhecer'],
-    [0.48, 'Manhã'],
-    [0.62, 'Meio-dia'],
-    [0.78, 'Entardecer'],
-    [1.0, 'Anoitecer']
-];
-
-function todLabel(t) {
-    for (const [k, n] of TOD_LABELS) if (t <= k) return n;
-    return 'Noite';
-}
+const DEBUG = new URLSearchParams(location.search);
+const nextTask = () => new Promise((r) => setTimeout(r, 0));
 
 class Game {
     constructor() {
@@ -34,34 +40,48 @@ class Game {
         this.canvas = document.getElementById('scene');
         this.settings = this.loadSettings();
         this.state = 'loading';
-        this.time = 0;
         this.elapsed = 0;
-        this.tod = 0.30;
+        this.tod = 0;
         this.rain = false;
+        this.wet = 0;
+        this.rainAmount = 0;
         this.logged = new Set();
-        this.observeId = null;
         this.observeT = 0;
         this.camYaw = 0;
         this.camPitch = CAMERA.defaultPitch;
         this.camDist = CAMERA.distance;
         this.camMode = 0;
-        this.fpsAccum = 0;
-        this.fpsFrames = 0;
         this.hudAccum = 0;
         this.radioAcc = 0;
-        this.shakeT = 0;
+        this.shake = 0;
+        this.flash = 0;
+        this.nextBolt = 6;
+        this.thunderIn = -1;
+        this.night = 0;
         this.hideUi = false;
+        this.touch = matchMedia('(pointer: coarse)').matches;
+        this.zoom = 0;
+        this.sparkAcc = 0;
         this._look = new THREE.Vector3();
         this._cam = new THREE.Vector3();
         this._wanted = new THREE.Vector3();
-        this._fwd = new THREE.Vector3();
+        this._v = new THREE.Vector3();
+        this.tramplers = Array.from({ length: 8 }, () => ({ x: 0, y: -999, z: 0, radius: 0.1 }));
+        this.ctx = {
+            jeep: null, jeepHead: null, camera: null, playing: false,
+            jeepDist: (d) => Math.hypot(d.position.x - this.jeep.x, d.position.z - this.jeep.z),
+            onStep: (d, p, w) => this._step(d, p, w),
+            onRoar: (d, k) => this._roar(d, k)
+        };
     }
 
     loadSettings() {
         const fallback = { quality: 'auto', volume: 70, muted: false };
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+            const s = raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+            if (s.quality === 'ultra') s.quality = 'high';
+            return s;
         } catch {
             return fallback;
         }
@@ -73,73 +93,60 @@ class Game {
         } catch { /* privado */ }
     }
 
-    resolveQuality() {
-        if (detectSoftwareGL()) return QUALITY.low;
-        const choice = this.settings.quality;
-        if (choice !== 'auto' && QUALITY[choice]) return QUALITY[choice];
-        if (detectMobile()) return QUALITY.low;
-        const big = Math.min(window.innerWidth, window.innerHeight) >= 900;
-        return big ? QUALITY.ultra : QUALITY.high;
-    }
-
     async init() {
-        this.hud.setLoading(0.1, 'Abrindo os portões do parque…');
-        this.quality = this.resolveQuality();
-        this.mobile = detectMobile();
-
-        try {
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: this.quality.antialias,
-                powerPreference: 'high-performance',
-                alpha: false
-            });
-        } catch {
-            this.hud.showError('Não foi possível criar o contexto WebGL.');
+        this.hud.setLoading(0.04, 'Acendendo os geradores…');
+        await document.fonts?.load('700 48px Barlow').catch(() => {});
+        const choice = DEBUG.get('tier') || this.settings.quality;
+        const stage = createStage({
+            canvas: this.canvas, tier: QUALITY[choice] ? choice : 'auto', preset: DAY_STOPS[0].preset, fov: 50, near: 0.3
+        });
+        if (!stage) {
+            this.hud.showError('Não foi possível criar o contexto WebGL 2.');
             return;
         }
+        this.stage = stage;
+        this.scene = stage.scene;
+        this.camera = stage.camera;
+        this.quality = QUALITY[stage.tier];
+        this.ctx.camera = this.camera;
 
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.1;
-        this.renderer.shadowMap.enabled = this.quality.shadows;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        configureCinematicRenderer(this.renderer, { shadows: this.quality.shadows });
-        this.renderer.setClearColor(0x6aa0d0);
+        const progress = (p, text) => this.hud.setLoading(p, text);
+        this.world = await World.create(stage, this.quality, progress);
+        progress(0.5, 'Concretando o portal e as cercas…');
+        await nextTask();
+        this.park = buildStructures(this.world, stage);
 
-        if (rendererIsSoftware(this.renderer) && this.quality.id !== 'low') {
-            this.quality = QUALITY.low;
-            this.renderer.setPixelRatio(1);
-            this.renderer.shadowMap.enabled = false;
-        }
+        progress(0.56, 'Despertando os dinossauros…');
+        this.dinos = await spawnDinosaurs(this.scene, this.world, this.quality, (p) => progress(0.56 + p * 0.26));
+        progress(0.84, 'Abastecendo a Unidade 4…');
+        await nextTask();
+        this.jeep = new Jeep(this.scene, this.quality);
+        this.jeep.reset(WORLD.spawn, this.world);
+        this.ctx.jeep = this.jeep;
+        this.ctx.jeepHead = this.jeep.head;
 
-        this.scene = new THREE.Scene();
-        applyCinematicEnvironment(this.scene, this.renderer, { intensity: this.quality.id === 'low' ? 0.24 : 0.58 });
-        this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.18, 520);
-        this.sky = createSky();
-        this.scene.add(this.sky.mesh);
-        this.lights = createLights(this.scene, this.quality);
-
-        this.hud.setLoading(0.35, 'Erguendo a selva e o lago…');
-        this.world = new World(this.scene, this.quality);
-
-        this.hud.setLoading(0.62, 'Despertando os dinossauros…');
-        this.dinos = spawnDinosaurs(this.scene, this.world, this.quality);
-        this.jeep = new Jeep(this.scene);
-        this.jeep.reset(WORLD.spawn);
-        this.jeep.setLights(true);
+        this.fx = createParticles(this.quality.particles);
+        this.rainFx = createRain(this.quality.rain);
+        this.puddles = createPuddles(this.world, this.quality.puddles);
+        this.scene.add(this.fx.object, this.rainFx.object, this.puddles.object);
 
         this.input = new Input(this.canvas);
         this.audio = new ParkAudio();
-        this.clock = new THREE.Clock();
-
-        if (this.quality.bloom && !rendererIsSoftware(this.renderer)) await this._bloom();
+        stage.onTier((t) => this.world.setTier(t));
+        this.world.setTier(stage.tier);
 
         this._bindUi();
         this._bindTouch();
-        window.addEventListener('resize', () => this._resize());
+        this._applyAtmosphere();
+        // faróis já acesos na compilação: evita o tranco de recompilar materiais ao abrir o portão
+        this.jeep.setLights(true, this.night);
+
+        progress(0.9, 'Carregando plantas e rochas…');
+        await Promise.race([Promise.all([this.world.ready, this.park.ready]), new Promise((r) => setTimeout(r, 12000))]);
+        progress(0.96, 'Compilando a luz da manhã…');
+        this._heroCamera(0);
+        this.world.update(0.016, 0, this.camera, this.tramplers);
+        await stage.warmup();
 
         this.hud.el.qualitySelect.value = this.settings.quality;
         this.hud.el.volumeSlider.value = String(this.settings.volume);
@@ -150,39 +157,19 @@ class Game {
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
-        this._applyAtmosphere();
-        this._heroCamera();
-        this._loop();
-        window.LabVisibility?.whenVisible(() => this._loop());
-    }
-
-    async _bloom() {
-        try {
-            const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
-                import('three/addons/postprocessing/EffectComposer.js'),
-                import('three/addons/postprocessing/RenderPass.js'),
-                import('three/addons/postprocessing/UnrealBloomPass.js'),
-                import('three/addons/postprocessing/OutputPass.js')
-            ]);
-            this.composer = new EffectComposer(this.renderer);
-            this.composer.setPixelRatio(this.renderer.getPixelRatio());
-            this.composer.setSize(window.innerWidth, window.innerHeight);
-            this.composer.addPass(new RenderPass(this.scene, this.camera));
-            this.bloom = new UnrealBloomPass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.22, 0.5, 0.82
-            );
-            this.composer.addPass(this.bloom);
-            this.composer.addPass(new OutputPass());
-        } catch {
-            this.composer = null;
-        }
+        stage.start((dt, t) => this._frame(dt, t));
+        if (DEBUG.has('debug')) this._debug();
     }
 
     _bindUi() {
         this.hud.el.qualitySelect.addEventListener('change', () => {
             this.settings.quality = this.hud.el.qualitySelect.value;
             this.saveSettings();
+            // sombra, pós e grama mudam na hora; selva e fauna no próximo carregamento
+            if (QUALITY[this.settings.quality]) {
+                this.stage.setTier(this.settings.quality);
+                this.world.setTier(this.settings.quality);
+            }
         });
         this.hud.el.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(this.hud.el.volumeSlider.value);
@@ -190,33 +177,26 @@ class Game {
             this.audio.setVolume(this.settings.volume / 100);
             this.saveSettings();
         });
-        document.getElementById('startButton').addEventListener('click', () => this.start());
-        document.getElementById('resumeButton').addEventListener('click', () => this.resume());
-        document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('retryButton').addEventListener('click', () => this.start());
-        document.getElementById('caughtMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('replayButton').addEventListener('click', () => this.start());
-        document.getElementById('victoryMenuButton').addEventListener('click', () => this.toMenu());
+        const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+        on('startButton', () => this.start());
+        on('resumeButton', () => this.resume());
+        on('pauseMenuButton', () => this.toMenu());
+        on('retryButton', () => this.start());
+        on('caughtMenuButton', () => this.toMenu());
+        on('replayButton', () => this.start());
+        on('victoryMenuButton', () => this.toMenu());
         this.hud.el.soundButton.addEventListener('click', () => this.toggleMute());
-        this.hud.el.pauseButton.addEventListener('click', () => {
+        const togglePause = () => {
             if (this.state === 'play') this.pause();
             else if (this.state === 'pause') this.resume();
-        });
-        this.input.on('pause', () => {
-            if (this.state === 'play') this.pause();
-            else if (this.state === 'pause') this.resume();
-        });
+        };
+        this.hud.el.pauseButton.addEventListener('click', togglePause);
+        this.input.on('pause', togglePause);
         this.input.on('mute', () => this.toggleMute());
         this.input.on('camera', () => { this.camMode = (this.camMode + 1) % 3; });
-        this.input.on('lights', () => this.jeep.setLights(!this.jeep.lightsOn));
-        this.input.on('tod', () => {
-            this.tod = (this.tod + 0.14) % 1;
-            this.hud.setTod(todLabel(this.tod));
-        });
-        this.input.on('rain', () => {
-            this.rain = !this.rain;
-            this.hud.setRain(this.rain);
-        });
+        this.input.on('lights', () => this.jeep.setLights(!this.jeep.lightsOn, this.night));
+        this.input.on('tod', () => this.setTod((this.tod + 1) % DAY_STOPS.length));
+        this.input.on('rain', () => this.setRain(!this.rain));
         this.input.on('hud', () => {
             this.hideUi = !this.hideUi;
             this.hud.showHud(this.state === 'play' && !this.hideUi);
@@ -235,7 +215,6 @@ class Game {
         const look = document.getElementById('lookZone');
         const observe = document.getElementById('btnObserve');
         if (!stick) return;
-
         const bindStick = (el, setter) => {
             let pid = null;
             const go = (e) => {
@@ -245,9 +224,7 @@ class Game {
                 const x = ((t.clientX - r.left) / r.width) * 2 - 1;
                 const y = ((t.clientY - r.top) / r.height) * 2 - 1;
                 setter(x, y);
-                if (knob && el === stick) {
-                    knob.style.transform = `translate(${clamp(x, -1, 1) * 22}px, ${clamp(y, -1, 1) * 22}px)`;
-                }
+                if (knob && el === stick) knob.style.transform = `translate(${clamp(x, -1, 1) * 22}px, ${clamp(y, -1, 1) * 22}px)`;
             };
             el.addEventListener('touchstart', (e) => {
                 pid = e.changedTouches[0].identifier;
@@ -263,7 +240,6 @@ class Game {
             el.addEventListener('touchend', end);
             el.addEventListener('touchcancel', end);
         };
-
         bindStick(stick, (x, y) => {
             this.input.touchMove.x = clamp(x, -1, 1);
             this.input.touchMove.y = clamp(-y, -1, 1);
@@ -276,33 +252,41 @@ class Game {
             this.input.observeHeld = true;
             this.input.observePressed = true;
             e.preventDefault();
-        });
-        observe?.addEventListener('touchend', () => { this.input.observeHeld = false; });
+        }, { passive: false });
+        const release = () => { this.input.observeHeld = false; };
+        observe?.addEventListener('touchend', release);
+        observe?.addEventListener('touchcancel', release);
     }
+
+    // ───────────────────────────── estados ─────────────────────────────
 
     start() {
         this.logged.clear();
         this.hud._fillCatalog();
         this.elapsed = 0;
-        this.observeId = null;
         this.observeT = 0;
         this.camMode = 0;
         this.camYaw = 0;
         this.camPitch = CAMERA.defaultPitch;
         this.camDist = CAMERA.distance;
-        this.shakeT = 0;
-        this.jeep.reset(WORLD.spawn);
+        this.shake = 0;
+        this.zoom = 0;
+        this.jeep.reset(WORLD.spawn, this.world);
+        this.jeep.setLights(this.night > 0.4 || this.rain || this.tod === 0, this.night);
         this._snapCamera();
         this.dinos.trex.caught = false;
+        this.dinos.trex.state = 'return';
+        this.park.closeGate(true);
+        this.park.openGate();
         this.hud.hideCaught();
         this.hud.hideVictory();
         this.hud.showMenu(false);
         this.hud.showPause(false);
-        this.hud.showHud(true);
-        this.hud.showTouch(matchMedia('(pointer: coarse)').matches || this.mobile);
+        this.hud.showHud(!this.hideUi);
+        this.hud.showTouch(matchMedia('(pointer: coarse)').matches);
         this.hud.setRain(this.rain);
-        this.hud.setTod(todLabel(this.tod));
-        this.hud.randomRadio();
+        this.hud.setTod(DAY_STOPS[this.tod].label);
+        this.hud.setRadio('Central para Unidade 4: portão liberado. Seis espécies no circuito de hoje.');
         this.state = 'play';
         this.hud.setState('play');
         this.input.enabled = true;
@@ -310,7 +294,6 @@ class Game {
         this.audio.setEnabled(!this.settings.muted);
         this.audio.resume();
         this.input.requestLock();
-        this.clock.getDelta();
     }
 
     pause() {
@@ -319,26 +302,24 @@ class Game {
         this.hud.setState('pause');
         this.hud.showPause(true);
         this.input.exitLock();
-        this.input.enabled = false;
     }
 
     resume() {
         this.hud.showPause(false);
         this.state = 'play';
         this.hud.setState('play');
-        this.input.enabled = true;
         this.input.requestLock();
-        this.clock.getDelta();
     }
 
     toMenu() {
         this.input.exitLock();
-        this.input.enabled = true;
         this.hud.hideCaught();
         this.hud.hideVictory();
         this.hud.showPause(false);
         this.hud.showHud(false);
+        this.hud.setDossier(null, false);
         this.hud.showMenu(true);
+        this.park.closeGate();
         this.state = 'menu';
         this.hud.setState('menu');
     }
@@ -351,30 +332,89 @@ class Game {
         if (!this.settings.muted) this.audio.resume();
     }
 
+    setTod(i) {
+        this.tod = i;
+        this._applyAtmosphere();
+        this.hud.setTod(DAY_STOPS[i].label);
+        if (this.jeep) this.jeep.setLights(this.jeep.lightsOn || this.night > 0.5, this.night);
+    }
+
+    setRain(on) {
+        this.rain = on;
+        this._applyAtmosphere();
+        this.hud.setRain(on);
+        this.nextBolt = 3;
+    }
+
+    /** Hora + clima → preset do palco. Chuva usa 'tempestade' mantendo a hora. */
     _applyAtmosphere() {
-        const pal = sampleDay(this.tod);
-        applySky(this.sky, pal);
-        applyLights(this.lights, pal, this.rain);
-        this.renderer.toneMappingExposure = pal.exp * (this.rain ? 0.88 : 1);
-        this.scene.fog = new THREE.FogExp2(pal.fog, this.rain ? 0.012 : 0.0075);
-        this.renderer.setClearColor(pal.fog);
-        if (this.world.waterMat) this.world.waterMat.uniforms.uSun.value.copy(pal.sunDir);
+        const stop = DAY_STOPS[this.tod];
+        const st = this.stage;
+        st.setPreset(this.rain ? 'tempestade' : stop.preset, { keepHour: true });
+        st.setTimeOfDay(stop.hour);
+        const p = st.pipeline.params;
+        if (!this.rain && stop.preset === 'neblina-floresta') {
+            // névoa úmida de manhã, mas rala o bastante para ver um braquiossauro a 80 m
+            p.fogDensity = 0.016;
+            p.fogFalloff = 0.07;
+            p.haze = 0.0022;
+        }
+        if (this.rain) {
+            p.fogDensity = 0.011;
+            p.haze = 0.0032;
+        }
+        if (!this.rain && stop.preset === 'entardecer') {
+            // sol baixo: sem reforço a sombra da mata fecha em preto
+            st.fill.intensity = Math.max(st.fill.intensity, 0.55);
+            st.scene.environmentIntensity *= 1.5;
+        }
+        if (st.sky.sunDir.y < 0) {
+            // noite: luar fraco + preenchimento, para a mata não virar silhueta preta (mais ainda sob chuva)
+            st.fill.intensity = Math.max(st.fill.intensity, this.rain ? 1.3 : 0.85);
+            st.scene.environmentIntensity *= this.rain ? 2.2 : 1.3;
+        }
+        p.dofRange = 0;
+        this.night = 1 - smoothstep(-0.08, 0.14, st.sky.sunDir.y);
+        this.baseExposure = p.exposure;
+        this.baseFill = st.fill.intensity;
+    }
+
+    // ───────────────────────────── eventos ─────────────────────────────
+
+    /** Passo pesado: poeira no pé, baque e tremor. */
+    _step(d, p, weight) {
+        const dist = Math.hypot(p.x - this.camera.position.x, p.z - this.camera.position.z);
+        const k = weight / (1 + (dist / 12) ** 2);
+        this.shake = Math.min(1, this.shake + k * 0.9);
+        this.audio.thud(Math.min(1, k * 1.6));
+        const wet = this.wet;
+        const n = Math.round(3 + weight * 5);
+        const g = this.world.heightAt(p.x, p.z);
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * 6.283;
+            const s = 0.4 + Math.random() * 1.2 * (0.5 + weight);
+            const c = 0.5 - wet * 0.25;
+            this.fx.emit(p.x + Math.cos(a) * 0.3, g + 0.15, p.z + Math.sin(a) * 0.3, Math.cos(a) * s, 0.5 + Math.random() * 0.8, Math.sin(a) * s,
+                c * 1.15, c, c * 0.8, 0.2 + weight * 0.14, 0.5 + weight * 0.6, 1.6 + weight * 1.8, 1.3 + Math.random() * 0.9, -0.15, 1.6);
+        }
+    }
+
+    _roar(d, k) {
+        const dist = this.ctx.jeepDist(d);
+        const near = clamp(1.4 - dist / 60, 0.15, 1.3);
+        this.audio.roar(k * near);
+        this.shake = Math.min(1, this.shake + 0.45 * near * k);
+        if (this.state === 'play' && dist < 60) this.hud.setRadio('Central: o rex está vocalizando. Fique longe do vão rompido, no lado sul do paddock.');
     }
 
     _nearestDino() {
         let best = null;
         let bestD = 1e9;
-        const px = this.jeep.x;
-        const pz = this.jeep.z;
         for (const d of this.dinos.list) {
-            const spec = SPECIES.find((s) => s.id === d.id);
-            if (!spec) continue;
-            const dx = d.position.x - px;
-            const dz = d.position.z - pz;
-            const dist = Math.hypot(dx, dz);
-            if (dist < spec.observe && dist < bestD) {
+            const dist = Math.hypot(d.position.x - this.jeep.x, d.position.z - this.jeep.z);
+            if (dist < d.spec.observe && dist < bestD) {
                 bestD = dist;
-                best = { dino: d, spec, dist };
+                best = d;
             }
         }
         return best;
@@ -383,28 +423,29 @@ class Game {
     _updateObserve(dt) {
         const near = this._nearestDino();
         const holding = this.input.observeHeld;
-        if (near) {
-            this.hud.setPrompt(holding ? 'Registrando…' : 'Segure E / botão direito para observar');
-            if (holding) {
-                this.observeId = near.spec.id;
-                this.observeT += dt;
-                this.hud.setDossier(near.spec, true);
-                if (this.observeT >= near.spec.log && !this.logged.has(near.spec.id)) {
-                    this.logged.add(near.spec.id);
-                    this.hud.setLogged(near.spec.id);
-                    this.hud.setRadio(`Diário: ${near.spec.common} catalogado. ${this.logged.size}/6`);
-                    if (this.logged.size >= 6) this._win();
-                }
-            } else {
-                this.observeT = 0;
-                this.hud.setDossier(near.spec, false);
-            }
-        } else {
+        if (!near) {
             this.observeT = 0;
             this.hud.setPrompt('');
             this.hud.setDossier(null, false);
+            return null;
         }
-        return near && holding ? near : null;
+        const spec = near.spec;
+        const done = this.logged.has(spec.id);
+        this.hud.setPrompt(holding ? (done ? `${spec.common} — já catalogado` : 'Registrando…') : `${spec.common} à vista — ${this.touch ? 'segure OBSERVAR' : 'segure E / botão direito para observar'}`);
+        if (!holding) {
+            this.observeT = 0;
+            this.hud.setDossier(spec, false);
+            return null;
+        }
+        this.observeT += dt;
+        this.hud.setDossier(spec, true);
+        if (this.observeT >= spec.log && !done) {
+            this.logged.add(spec.id);
+            this.hud.setLogged(spec.id);
+            this.hud.setRadio(`Diário: ${spec.common} catalogado. ${this.logged.size}/6`);
+            if (this.logged.size >= SPECIES.length) this._win();
+        }
+        return near;
     }
 
     _win() {
@@ -412,6 +453,7 @@ class Game {
         this.hud.setState('victory');
         this.input.exitLock();
         this.hud.showHud(false);
+        this.hud.setDossier(null, false);
         this.hud.showVictory(`
             <span>Espécies <b>6/6</b></span>
             <span>Tempo <b>${this.hud.el.time.textContent}</b></span>
@@ -423,6 +465,7 @@ class Game {
         this.hud.setState('caught');
         this.input.exitLock();
         this.hud.showHud(false);
+        this.hud.setDossier(null, false);
         this.hud.setShake(true);
         this.audio.roar(1.4);
         this.hud.showCaught(`
@@ -432,186 +475,303 @@ class Game {
         setTimeout(() => this.hud.setShake(false), 900);
     }
 
-    _heroCamera() {
-        const t = this.time * 0.085;
+    // ───────────────────────────── câmeras ─────────────────────────────
+
+    /** Câmera do menu: órbita lenta sobre o lago, mirando o braquiossauro. */
+    _heroCamera(t) {
+        const b = this.dinos.list[0];
+        const a = t * 0.045 + 0.7;
+        const cx = b.position.x + Math.cos(a) * 30;
+        const cz = b.position.z + Math.sin(a) * 30;
         this.camera.fov = 46;
         this.camera.updateProjectionMatrix();
-        this.camera.position.set(
-            -8 + Math.cos(t) * 32,
-            13.5,
-            8 + Math.sin(t) * 26
-        );
-        this.camera.lookAt(-12, 7.2, -4);
+        this.camera.position.set(cx, Math.max(this.world.heightAt(cx, cz) + 2.2, b.position.y + 3.4), cz);
+        this.camera.lookAt(b.position.x, b.position.y + 7.6, b.position.z);
         this._cam.copy(this.camera.position);
     }
 
     _snapCamera() {
         const yaw = this.jeep.yaw;
-        this._wanted.set(
-            this.jeep.x - Math.sin(yaw) * CAMERA.distance,
-            this.jeep.y + CAMERA.height,
-            this.jeep.z - Math.cos(yaw) * CAMERA.distance
-        );
-        this._cam.copy(this._wanted);
-        this.camera.position.copy(this._wanted);
-        this.camera.lookAt(
-            this.jeep.x + Math.sin(yaw) * CAMERA.lookAhead,
-            this.jeep.y + CAMERA.lookY,
-            this.jeep.z + Math.cos(yaw) * CAMERA.lookAhead
-        );
+        this._cam.set(this.jeep.x - Math.sin(yaw) * CAMERA.distance, this.jeep.y + CAMERA.height, this.jeep.z - Math.cos(yaw) * CAMERA.distance);
+        this.camera.position.copy(this._cam);
     }
 
-    _camera(dt, observe) {
+    _camera(dt, t, observe) {
         const look = this.input.consumeLook();
         this.camYaw -= look.x * 0.0022;
         this.camPitch = clamp(this.camPitch - look.y * 0.002, CAMERA.pitchMin, CAMERA.pitchMax);
         this.camDist = clamp(this.camDist + this.input.consumeZoom() * 0.9, CAMERA.minDistance, CAMERA.maxDistance);
+        // sem mouse travado a câmera volta devagar para trás do jipe
+        if (!this.input.locked && Math.abs(this.jeep.speed) > 1) this.camYaw = damp(this.camYaw, 0, 1.2, dt);
 
-        const modes = [
-            { dist: this.camDist, h: CAMERA.height, fov: 50 },
-            { dist: this.camDist * 1.55, h: 8.4, fov: 46 },
-            { dist: 2.1, h: 1.72, fov: 64 }
-        ];
-        const m = modes[this.camMode];
-        this.camera.fov = damp(this.camera.fov, observe ? 36 : m.fov, 6, dt);
-        this.camera.updateProjectionMatrix();
+        const j = this.jeep;
+        const p = this.stage.pipeline.params;
+        this.zoom = damp(this.zoom, observe ? 1 : 0, 5, dt);
+        let fov = this.camMode === 2 ? 62 : this.camMode === 1 ? 46 : 52;
+        const jYaw = j.yaw;
 
-        const yaw = this.jeep.yaw + this.camYaw;
-        this._fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
-        const jYaw = this.jeep.yaw;
-        const lookAt = observe
-            ? this._look.set(observe.dino.position.x, observe.dino.position.y + 3.2, observe.dino.position.z)
-            : this._look.set(
-                this.jeep.x + Math.sin(jYaw) * CAMERA.lookAhead,
-                this.jeep.y + CAMERA.lookY,
-                this.jeep.z + Math.cos(jYaw) * CAMERA.lookAhead
-            );
-
-        this._wanted.set(
-            this.jeep.x - this._fwd.x * m.dist,
-            this.jeep.y + m.h + this.camPitch * 7,
-            this.jeep.z - this._fwd.z * m.dist
-        );
-        if (this.camMode === 2 && !observe) {
-            this._wanted.set(
-                this.jeep.x + Math.sin(jYaw) * 0.35,
-                this.jeep.y + 1.78,
-                this.jeep.z + Math.cos(jYaw) * 0.35
-            );
-        }
         if (observe) {
-            const ox = observe.dino.position.x - this.jeep.x;
-            const oz = observe.dino.position.z - this.jeep.z;
-            const len = Math.hypot(ox, oz) || 1;
-            this._wanted.set(
-                this.jeep.x - (ox / len) * 8,
-                this.jeep.y + 4.2,
-                this.jeep.z - (oz / len) * 8
-            );
-        }
-
-        const ground = this.world.heightAt(this._wanted.x, this._wanted.z) + 1.4;
-        this._wanted.y = Math.max(this._wanted.y, ground);
-        this._cam.lerp(this._wanted, 1 - Math.exp(-5.5 * dt));
-        if (this.shakeT > 0) {
-            this._cam.x += (Math.random() - 0.5) * this.shakeT * 0.35;
-            this._cam.y += (Math.random() - 0.5) * this.shakeT * 0.2;
-        }
-        this.camera.position.copy(this._cam);
-        this.camera.lookAt(lookAt);
-    }
-
-    _resize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
-        this.composer?.setSize(w, h);
-        this.bloom?.setSize(w, h);
-    }
-
-    _loop = () => {
-        if (document.hidden) return;
-        requestAnimationFrame(this._loop);
-        const dt = Math.min(0.05, Math.max(0, this.clock.getDelta()));
-        this.time += dt;
-
-        if (this.state === 'menu' || this.state === 'pause' || this.state === 'victory' || this.state === 'caught') {
-            this.tod += dt * 0.003;
-            this._applyAtmosphere();
-            this.world.update(dt, this.time, this.jeep, this.rain);
-            for (const d of this.dinos.list) d.update(dt, this.time, { x: this.jeep.x, z: this.jeep.z, speed: 0 });
-            if (this.state === 'menu') this._heroCamera();
-            else this._camera(dt, null);
-            this._render();
-            return;
-        }
-
-        this.elapsed += dt;
-        this.tod += dt * 0.0045;
-        if (this.tod > 1) this.tod -= 1;
-        this._applyAtmosphere();
-
-        const jeepState = this.jeep.update(dt, this.input, this.world);
-        this.world.update(dt, this.time, this.jeep, this.rain);
-
-        for (const d of this.dinos.list) d.update(dt, this.time, jeepState);
-
-        const rexDist = Math.hypot(this.dinos.trex.position.x - this.jeep.x, this.dinos.trex.position.z - this.jeep.z);
-        if (rexDist < 22) {
-            this.shakeT = damp(this.shakeT, clamp((22 - rexDist) / 22, 0, 1), 6, dt);
-            if (rexDist < 14) this.audio.roar(1);
+            // binóculo: do teto do jipe para o animal
+            const f = observe.focus;
+            this._wanted.set(j.x, j.y + 2.55, j.z);
+            const d = this._wanted.distanceTo(f);
+            const size = observe.flyer ? 7 : Math.max(observe.height, observe.length * 0.55);
+            fov = clamp((2 * Math.atan((1.1 * size) / d) * 180) / Math.PI, 9, 46);
+            this._look.lerp(f, 1 - Math.exp(-6 * dt));
+            p.dofFocus = d;
+            p.dofRange = d * 0.35 + 4;
+            p.dofMax = 1;
+            this._cam.lerp(this._wanted, 1 - Math.exp(-9 * dt));
         } else {
-            this.shakeT = damp(this.shakeT, 0, 4, dt);
+            p.dofRange = 0;
+            const yaw = jYaw + this.camYaw;
+            const m = this.camMode;
+            const dist = m === 1 ? this.camDist * 1.7 : this.camDist;
+            if (m === 2) {
+                // capô: olho do motorista, um pouco acima do volante
+                this._wanted.set(j.x + Math.sin(jYaw) * 0.25 + Math.cos(jYaw) * 0.1, j.y + 1.86, j.z + Math.cos(jYaw) * 0.25 - Math.sin(jYaw) * 0.1);
+                this._v.set(j.x + Math.sin(yaw) * 12, j.y + 1.5 - this.camPitch * 8, j.z + Math.cos(yaw) * 12);
+            } else {
+                this._wanted.set(j.x - Math.sin(yaw) * dist, j.y + (m === 1 ? 7.4 : CAMERA.height) + this.camPitch * 7, j.z - Math.cos(yaw) * dist);
+                this._v.set(j.x + Math.sin(jYaw) * CAMERA.lookAhead, j.y + CAMERA.lookY, j.z + Math.cos(jYaw) * CAMERA.lookAhead);
+            }
+            if (m !== 2) this._avoidFoliage(this._wanted);
+            const ground = this.world.heightAt(this._wanted.x, this._wanted.z) + 1.1;
+            if (this._wanted.y < ground) this._wanted.y = ground;
+            this._cam.lerp(this._wanted, 1 - Math.exp(-(m === 2 ? 30 : 5.5) * dt));
+            this._look.lerp(this._v, 1 - Math.exp(-(m === 2 ? 20 : 9) * dt));
         }
-        this.hud.setShake(this.shakeT > 0.35);
-
-        if (this.dinos.trex.caught) {
-            this._caught();
-            this._render();
-            return;
+        this.camera.fov = damp(this.camera.fov, fov, 6, dt);
+        this.camera.updateProjectionMatrix();
+        this.camera.position.copy(this._cam);
+        // tremor: senos incomensuráveis (sem ruído branco, para não "vibrar" de quadro a quadro)
+        const s = this.shake * this.shake * (observe ? 0.35 : 1);
+        if (s > 0.0005) {
+            this.camera.position.x += Math.sin(t * 37.1) * 0.16 * s;
+            this.camera.position.y += Math.sin(t * 43.7 + 1.3) * 0.22 * s;
+            this.camera.position.z += Math.sin(t * 31.3 + 2.1) * 0.16 * s;
         }
+        this.camera.lookAt(this._look);
+    }
 
-        const observe = this._updateObserve(dt);
-        this._camera(dt, observe);
+    /**
+     * Tira a câmera de dentro das copas: sob uma frondosa ela desce para baixo dos
+     * galhos (y ≤ base + 3·s); junto a cicas e samambaias é empurrada para fora do raio da planta.
+     */
+    _avoidFoliage(p) {
+        const trees = this.world.trees;
+        for (let i = 0; i < trees.length; i++) {
+            const t = trees[i];
+            if (t.species === 'palmeira') continue;
+            const s = (t.s || 1) * 1.1;
+            const R = t.species === 'carvalho' ? 6.2 * s : 2.7 * s;
+            const dx = p.x - t.x;
+            const dz = p.z - t.z;
+            if (Math.abs(dx) > R || Math.abs(dz) > R) continue;
+            const d = Math.hypot(dx, dz);
+            if (d >= R) continue;
+            if (t.species === 'carvalho') {
+                const top = t.y + 3.0 * s;
+                if (p.y > top) p.y = top;
+                if (d < 1.2) {
+                    p.x = t.x + (dx / (d || 1)) * 1.2;
+                    p.z = t.z + (dz / (d || 1)) * 1.2;
+                }
+            } else {
+                p.x = t.x + (dx / (d || 1)) * R;
+                p.z = t.z + (dz / (d || 1)) * R;
+            }
+        }
+    }
 
+    // ───────────────────────────── quadro ─────────────────────────────
+
+    _weather(dt, t) {
+        this.rainAmount = damp(this.rainAmount, this.rain ? 1 : 0, 0.9, dt);
+        this.wet = clamp(this.wet + (this.rain ? dt / 8 : -dt / 25), 0, 1);
+        const light = 0.25 + (1 - this.night) * 0.75 + this.flash * 1.5;
+        this.rainFx.update(t, this.camera, this.rainAmount, light);
+        this.puddles.update(this.wet);
+        // relâmpago: clarão duplo (exposição + luz de preenchimento) e trovão atrasado
+        if (this.rain) {
+            this.nextBolt -= dt;
+            if (this.nextBolt <= 0) {
+                this.nextBolt = 7 + Math.random() * 12;
+                this.flash = 1;
+                this.thunderIn = 0.4 + Math.random() * 1.6;
+            }
+        }
+        if (this.thunderIn > 0) {
+            this.thunderIn -= dt;
+            if (this.thunderIn <= 0) this.audio.thunder(0.9);
+        }
+        if (this.flash > 0 || this._flashOn) {
+            this.flash = Math.max(0, this.flash - dt * 2.6);
+            const f = this.flash * this.flash * (0.6 + 0.4 * Math.sin(t * 70));
+            this.stage.pipeline.params.exposure = this.baseExposure * (1 + f * 1.4);
+            this.stage.fill.intensity = this.baseFill + f * 2.2;
+            this._flashOn = this.flash > 0;
+        }
+    }
+
+    _effects(dt, t) {
+        const j = this.jeep;
+        const sp = Math.abs(j.speed);
+        // lama/poeira nas rodas traseiras: taxa ∝ velocidade; na chuva vira respingo escuro e pesado
+        if (sp > 2.5 && this.state === 'play') {
+            const rate = (j.onRoad && this.wet < 0.2 ? 0.5 : 1.2) * sp * dt * 2.2;
+            let n = Math.floor(rate + Math.random());
+            const s = Math.sin(j.yaw);
+            const c = Math.cos(j.yaw);
+            const mud = this.wet > 0.25 || !j.onRoad;
+            while (n-- > 0) {
+                const side = Math.random() < 0.5 ? -1 : 1;
+                const x = j.x + side * 0.82 * c - 1.35 * s;
+                const z = j.z - side * 0.82 * s - 1.35 * c;
+                const back = -(0.25 + Math.random() * 0.35) * j.speed;
+                if (mud && this.wet > 0.25) {
+                    this.fx.emit(x, j.y + 0.2, z, s * back + (Math.random() - 0.5) * 1.5, 1.5 + Math.random() * 2.5, c * back + (Math.random() - 0.5) * 1.5,
+                        0.2, 0.15, 0.1, 0.75, 0.12, 0.1, 0.55 + Math.random() * 0.3, 9, 0.6);
+                } else {
+                    const k = mud ? 0.36 : 0.52;
+                    this.fx.emit(x, j.y + 0.2, z, s * back * 0.3, 0.4 + Math.random() * 0.7, c * back * 0.3,
+                        k * 1.2, k, k * 0.78, mud ? 0.3 : 0.16, 0.5, 2.6, 1.1 + Math.random() * 0.8, -0.2, 1.4);
+                }
+            }
+        }
+        // faíscas no vão rompido da cerca
+        this.sparkAcc -= dt;
+        if (this.sparkAcc <= 0) {
+            this.sparkAcc = 0.25 + Math.random() * 1.6;
+            const pts = this.park.sparkPoints;
+            const p = pts[Math.floor(Math.random() * pts.length)];
+            if (p && p.distanceTo(this.camera.position) < 90) {
+                for (let i = 0; i < 14; i++) {
+                    this.fx.emit(p.x, p.y, p.z, (Math.random() - 0.5) * 5, Math.random() * 4, (Math.random() - 0.5) * 5,
+                        1.6, 1.9, 3.2, 1, 0.07, -0.03, 0.3 + Math.random() * 0.5, 9, 0.8, true);
+                }
+                this.park.sparkLight.position.copy(p);
+                this.park.spark(1);
+                if (p.distanceTo(this.camera.position) < 45) this.audio.spark();
+            }
+        }
+        const day = 1 - this.night * 0.82;
+        this.fx.material.uniforms.uLight.value.setScalar(day * (this.rain ? 0.7 : 1) + this.flash);
+        this.fx.update(dt, this.canvas.clientHeight || 720, this.camera.fov);
+    }
+
+    _tramplers() {
+        const tr = this.tramplers;
+        tr[0].x = this.jeep.x;
+        tr[0].y = this.jeep.y;
+        tr[0].z = this.jeep.z;
+        tr[0].radius = 2.4;
+        let n = 1;
+        const list = this.dinos.list;
+        for (let i = 0; i < list.length && n < tr.length; i++) {
+            const d = list[i];
+            if (d.flyer || d.position.distanceToSquared(this.camera.position) > 3600) continue;
+            tr[n].x = d.position.x;
+            tr[n].y = d.position.y;
+            tr[n].z = d.position.z;
+            tr[n].radius = Math.max(1, d.length * 0.22);
+            n++;
+        }
+        for (; n < tr.length; n++) tr[n].y = -999;
+    }
+
+    _frame(dt, t) {
+        const playing = this.state === 'play';
+        this.ctx.playing = playing;
+        this.shake *= Math.exp(-6 * dt);
+        this.park.update(dt, t, this.night);
+        this._weather(dt, t);
+
+        if (playing) {
+            this.elapsed += dt;
+            this.jeep.update(dt, this.input, this.world, this.wet);
+        } else this.jeep.idle(dt);
+
+        if (this.state !== 'pause') this.dinos.update(dt, t, this.ctx);
+
+        let observe = null;
+        if (playing) {
+            if (this.dinos.trex.caught) this._caught();
+            else observe = this._updateObserve(dt);
+        }
+        if (this.state === 'menu') this._heroCamera(t);
+        else this._camera(dt, t, observe);
+
+        this._effects(dt, t);
+        this._tramplers();
+        this.world.update(dt, t, this.camera, this.tramplers);
+
+        if (!playing) return;
+        const rexDist = this.ctx.jeepDist(this.dinos.trex);
+        this.hud.setShake(this.dinos.trex.state === 'chase' && rexDist < 30);
         this.radioAcc += dt;
         if (this.radioAcc > 28) {
             this.radioAcc = 0;
             this.hud.randomRadio();
         }
         this.hud.tickRadio(dt);
-
-        const kmh = Math.abs(this.jeep.speed) * 3.6;
-        this.hud.setSpeed(kmh, this.jeep.onRoad);
-        this.hud.setTime(this.elapsed);
-        this.hud.setTod(todLabel(this.tod));
-
-        this.audio.update(dt, this.jeep.speed, this.rain, rexDist < 18);
-        if (this.world.sparks.length && Math.random() < dt * 2) this.audio.spark();
-
-        this.fpsAccum += dt;
-        this.fpsFrames++;
+        this.audio.update(dt, this.jeep.speed, this.rain, false);
         this.hudAccum += dt;
-        if (this.hudAccum > 0.4) {
-            this.hud.setFps(Math.round(this.fpsFrames / this.fpsAccum));
-            this.fpsAccum = 0;
-            this.fpsFrames = 0;
+        if (this.hudAccum > 0.2) {
             this.hudAccum = 0;
+            this.hud.setSpeed(Math.abs(this.jeep.speed) * 3.6, this.jeep.onRoad);
+            this.hud.setTime(this.elapsed);
+            this.hud.setFps(Math.round(this.stage.fps));
         }
+    }
 
-        this._render();
-    };
-
-    _render() {
-        if (this.composer) this.composer.render();
-        else this.renderer.render(this.scene, this.camera);
+    /** Atalhos de depuração (?debug=1): window.__lab. */
+    _debug() {
+        const g = this;
+        window.__lab = {
+            game: g,
+            stats: () => g.stage.stats(),
+            tp(x, z, yaw = 0) {
+                g.jeep.reset({ x, z, yaw }, g.world);
+                g.camYaw = 0;
+                g._snapCamera();
+            },
+            /** Leva o jipe para perto da espécie `id` (a `dist` m, olhando para ela). */
+            goto(id, dist = 18, ang = 0) {
+                const d = g.dinos.list.find((x) => x.id === id);
+                const x = d.position.x + Math.cos(ang) * dist;
+                const z = d.position.z + Math.sin(ang) * dist;
+                this.tp(x, z, Math.atan2(d.position.x - x, d.position.z - z));
+                return [Math.round(x), Math.round(z)];
+            },
+            observe(on) { g.input.observeHeld = on; },
+            tod: (i) => g.setTod(i),
+            rain: (on) => g.setRain(on),
+            cam: (m) => { g.camMode = m; },
+            /** Câmera livre: desliga a do jogo até free(false). */
+            free(x, y, z, tx, ty, tz, fov = 45) {
+                if (x === false) {
+                    g._camera = Game.prototype._camera;
+                    return;
+                }
+                g._camera = () => {
+                    g.camera.position.set(x, y, z);
+                    g.camera.fov = fov;
+                    g.camera.updateProjectionMatrix();
+                    g.camera.lookAt(tx, ty, tz);
+                };
+            },
+            dino: (id, n = 0) => g.dinos.list.filter((x) => x.id === id)[n],
+            log(id) {
+                g.logged.add(id);
+                g.hud.setLogged(id);
+                if (g.logged.size >= SPECIES.length) g._win();
+            }
+        };
     }
 }
 
 const game = new Game();
-window.__jurassic = game;
 game.init().catch((err) => {
     console.error(err);
     document.getElementById('errorOverlay').hidden = false;
