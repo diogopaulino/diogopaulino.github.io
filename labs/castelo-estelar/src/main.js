@@ -70,9 +70,11 @@ class CasteloEstelar {
     }
 
     bindUi() {
-        document.getElementById('startButton')?.addEventListener('click', () => this.start());
-        document.getElementById('replayButton')?.addEventListener('click', () => this.replay());
-        document.getElementById('skipButton')?.addEventListener('click', () => this.skip());
+        // a cena monta de forma assíncrona: ignora cliques enquanto ainda está em 'boot'
+        const ready = (fn) => () => { if (this.state !== 'boot') fn(); };
+        document.getElementById('startButton')?.addEventListener('click', ready(() => this.start()));
+        document.getElementById('replayButton')?.addEventListener('click', ready(() => this.replay()));
+        document.getElementById('skipButton')?.addEventListener('click', ready(() => this.skip()));
         document.getElementById('muteBtn')?.addEventListener('click', () => this.toggleMute());
         document.getElementById('qualitySelect')?.addEventListener('change', (e) => {
             // terreno, floresta e reflexo são montados por tier: recarrega para aplicar

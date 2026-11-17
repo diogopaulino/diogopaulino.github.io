@@ -160,7 +160,10 @@ class Game {
             this.audio.setVolume(this.settings.volume / 100);
             this.saveSettings();
         });
-        document.getElementById('startButton').addEventListener('click', () => this.start(this.pendingChapter));
+        // o mundo é montado de forma assíncrona: só começa quando o menu já está pronto
+        document.getElementById('startButton').addEventListener('click', () => {
+            if (this.state === 'menu') this.start(this.pendingChapter);
+        });
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('retryButton').addEventListener('click', () => this.start(this.chapterIndex));

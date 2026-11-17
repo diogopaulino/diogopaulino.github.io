@@ -77,7 +77,10 @@ class Nina {
         this.hud.setBest(this.settings.best);
         this.hud.setSound(!this.settings.muted);
 
-        document.getElementById('startButton').addEventListener('click', () => this.start());
+        // o vale monta de forma assíncrona: ignora o clique enquanto ainda está em 'boot'
+        document.getElementById('startButton').addEventListener('click', () => {
+            if (this.state !== 'boot') this.start();
+        });
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.enterMenu());
         document.getElementById('replayButton').addEventListener('click', () => this.start());
