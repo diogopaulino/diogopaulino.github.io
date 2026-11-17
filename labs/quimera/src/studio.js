@@ -20,11 +20,11 @@ export const PLINTH_TOP = 0.2;
 const THEMES = {
     dark: {
         hdri: 'dusk', env: 0.4, exposure: 1.0, cyc: 0x3a3144, floor: 0x1d1726, key: 0xffe8cc, keyI: 44, fill: 0xa9bcff, fillI: 11,
-        rim: 0xffa25e, rimI: 60, kick: 0xb58cff, kickI: 30, wash: 0xa87ac0, washI: 140, bloom: 0.05, vignette: 0.4, dust: 0xffd9a6, sky: 0x8a78b8, ground: 0x4a3a5a, ambI: 0.55
+        rim: 0xffa25e, rimI: 120, kick: 0xb58cff, kickI: 70, wash: 0xa87ac0, washI: 140, bloom: 0.05, vignette: 0.4, dust: 0xffd9a6, sky: 0x8a78b8, ground: 0x4a3a5a, ambI: 0.55, halo: 0xa0509a, haloI: 0.3, gloss: 0x1c1626
     },
     light: {
         hdri: 'overcast', env: 0.7, exposure: 0.95, cyc: 0xe9e2d6, floor: 0xd9d0c2, key: 0xfff3e2, keyI: 38, fill: 0xdfe8ff, fillI: 14,
-        rim: 0xffffff, rimI: 45, kick: 0xffe0c0, kickI: 24, wash: 0xfff6e8, washI: 30, bloom: 0.04, vignette: 0.2, dust: 0xffffff, sky: 0xffffff, ground: 0xd8cfc0, ambI: 0.5
+        rim: 0xffffff, rimI: 45, kick: 0xffe0c0, kickI: 24, wash: 0xfff6e8, washI: 30, bloom: 0.04, vignette: 0.2, dust: 0xffffff, sky: 0xffffff, ground: 0xd8cfc0, ambI: 0.5, halo: 0xffffff, haloI: 0.12, gloss: 0xd9d0c2
     }
 };
 
@@ -112,6 +112,34 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
     contact.rotation.x = -Math.PI / 2;
     contact.position.y = PLINTH_TOP + 0.003;
     turntable.add(contact);
+
+    // degradê radial (canvas) usado no halo de fundo e no esmaecimento do piso polido
+    const radial = (stops) => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const g = c.getContext('2d');
+        const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+        for (const [k, v] of stops) gr.addColorStop(k, `rgba(255,255,255,${v})`);
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 256, 256);
+        return new THREE.CanvasTexture(c);
+    };
+    // halo: disco aditivo sempre atrás do personagem em relação à câmera (ver update) —
+    // separa a silhueta do ciclorama sem depender do ângulo de órbita
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({
+        map: radial([[0, 1], [0.35, 0.5], [0.7, 0.12], [1, 0]]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false
+    }));
+    scene.add(halo);
+    // piso polido em volta da plataforma: reflete o HDRI e os spots e some em degradê até o piso fosco
+    const glossMat = new THREE.MeshPhysicalMaterial({
+        color: 0x2a2036, roughness: 0.3, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 0.3,
+        alphaMap: radial([[0, 1], [0.45, 0.85], [0.8, 0.3], [1, 0]]), transparent: true, depthWrite: false
+    });
+    const gloss = new THREE.Mesh(new THREE.CircleGeometry(4.2, 64), glossMat);
+    gloss.rotation.x = -Math.PI / 2;
+    gloss.position.y = 0.004;
+    gloss.receiveShadow = true;
+    scene.add(gloss);
 
     // ---- luzes ----
     const spot = (x, y, z, tx, ty, tz, angle, pen) => {
@@ -235,6 +263,8 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
         amb.color.set(T.sky);
         amb.groundColor.set(T.ground);
         amb.intensity = T.ambI;
+        halo.material.color.set(T.halo).multiplyScalar(T.haloI);
+        glossMat.color.set(T.gloss);
         dustU.uColor.value.set(T.dust);
         dust.material.blending = name === 'light' ? THREE.NormalBlending : THREE.AdditiveBlending;
         led.emissiveIntensity = name === 'light' ? 1.2 : 2.2;
@@ -273,6 +303,10 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
             p.dofMax = 0.4;
         },
         update(dt, t) {
+            const cam = stage.camera.position;
+            const hl = Math.hypot(cam.x, cam.z) || 1;
+            halo.position.set((-cam.x / hl) * 4.5, 1.5, (-cam.z / hl) * 4.5);
+            halo.lookAt(cam.x, 1.5, cam.z);
             dustU.uTime.value = t;
             const h = renderer.domElement.height;
             dustU.uScale.value = h / 720;

@@ -13,8 +13,8 @@ import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
 } from './config.js?v=2';
-import { Character } from './character.js?v=80';
-import { createStudio, PLINTH_TOP } from './studio.js?v=80';
+import { Character } from './character.js?v=81';
+import { createStudio, PLINTH_TOP } from './studio.js?v=81';
 import { setSculptTier } from './sculpt.js';
 import { preload } from '../../shared/gfx/assets.js';
 import { StudioAudio } from './audio.js';
@@ -35,6 +35,8 @@ class Quimera {
         this.pointer = new THREE.Vector2();
         this.pointerDown = null;
         this.pointerSeen = -10;
+        this.yawTarget = 0;
+        this.yawHold = 0;
         this.fit = { dist: 6, y: 1.1, dx: 0, dy: 0 };
         this.userZoom = 1;
         this.lookPoint = new THREE.Vector3();
@@ -163,8 +165,10 @@ class Quimera {
     }
 
     applyMix(ids, { instant = false, silent = false } = {}) {
+        const accChanged = ids.accessory !== this.character.fig?.ids.accessory;
         this.ids = { ...ids };
         this.character.setMix(this.ids, { instant });
+        if (accChanged) this._present(instant);
         this._persist();
         this._syncHud();
         this._layout(instant);
@@ -175,6 +179,7 @@ class Quimera {
         const i = wrapIndex(kitIndex(this.ids[slot]) + dir);
         this.ids[slot] = KITS[i].id;
         this.character.setMix(this.ids);
+        if (slot === 'accessory') this._present(false);
         this._persist();
         this._syncHud();
         this._layout(false);
@@ -192,6 +197,18 @@ class Quimera {
         this.audio.resume();
         const kit = KITS[Math.floor(Math.random() * KITS.length)];
         this.applyMix({ head: kit.id, body: kit.id, accessory: kit.id });
+    }
+
+    /**
+     * Gira a plataforma para um 3/4 que mostre o acessório novo: 0,45 rad à frente da câmera para
+     * itens de mão/ombro; 2,35 rad (3/4 de costas) para mochila, jato e katana embainhada.
+     */
+    _present(snap) {
+        const cam = this.camera.position;
+        const back = this.character.fig?.view === 'back';
+        this.yawTarget = Math.atan2(cam.x, cam.z) + (back ? 2.35 : -0.45);
+        this.yawHold = snap ? 0 : 2.4;
+        if (snap) this.studio.turntable.rotation.y = this.yawTarget;
     }
 
     toggleMute() {
@@ -234,7 +251,7 @@ class Quimera {
         const head = rect('header[data-lab-header]');
         const dock = rect('.dock');
         const hud = rect('.hud-left');
-        if (head) top = Math.max(top, head.bottom - 14);
+        if (head) top = Math.max(top, head.bottom - 30);
         if (dock) bottom = Math.min(bottom, dock.top);
         if (hud && hud.width > 0) {
             if (H < 520 && W > H) left = hud.right;
@@ -243,12 +260,12 @@ class Quimera {
         const fw = Math.max(80, W - left);
         const fh = Math.max(80, bottom - top);
         const h = this.character.height;
-        const lo = this.frame === 'full' ? PLINTH_TOP - 0.07 : PLINTH_TOP + this.character.eyeHeight - 0.42;
-        const hi = PLINTH_TOP + h + (this.frame === 'full' ? 0.24 : 0.26);
+        const lo = this.frame === 'full' ? PLINTH_TOP - 0.02 : PLINTH_TOP + this.character.eyeHeight - 0.42;
+        const hi = PLINTH_TOP + h + (this.frame === 'full' ? 0.2 : 0.26);
         const span = hi - lo;
         const wide = this.frame === 'full' ? 1.5 : 0.9;
         const tan = Math.tan((this.camera.fov * Math.PI) / 360);
-        this.fit.dist = Math.max(span / 2 / tan / (fh / H), wide / 2 / tan / (fw / H)) * 1.04;
+        this.fit.dist = Math.max(span / 2 / tan / (fh / H), wide / 2 / tan / (fw / H)) * 1.0;
         this.fit.y = (lo + hi) / 2;
         this.fit.dx = left + fw / 2 - W / 2;
         this.fit.dy = top + fh / 2 - H / 2;
@@ -342,7 +359,13 @@ class Quimera {
     update(dt, t) {
         const c = this.character;
         // plataforma: autorrotação lenta + impulso de giro da troca de peça
-        this.studio.turntable.rotation.y += ((this.autoRotate ? 0.28 : 0) + c.spin) * dt;
+        const tt = this.studio.turntable;
+        if (this.yawHold > 0) {
+            // apresentação do acessório: vai ao 3/4 pelo caminho mais curto e segura 2,4 s antes de voltar a girar
+            this.yawHold -= dt;
+            const d = Math.atan2(Math.sin(this.yawTarget - tt.rotation.y), Math.cos(this.yawTarget - tt.rotation.y));
+            tt.rotation.y += d * (1 - Math.exp(-5 * dt));
+        } else tt.rotation.y += ((this.autoRotate ? 0.28 : 0) + c.spin) * dt;
 
         // reenquadra com suavidade depois de troca/redimensionamento (até o usuário mexer)
         if (this.refit > 0) {

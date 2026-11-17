@@ -129,7 +129,7 @@ const ACC = {
         const g = tag(group(mesh([shellG, ...thr], B.paint(K.primary, 0.42, 0.5)), mesh(panel, B.paint(0x20262e, 0.25, 0.8)),
             mesh(noz, B.metal(K.secondary, 0.4)), mesh(led, B.glow(K.accent, 3), { shadow: false }), ...flames));
         hero.attach('back', g, { worldScale: false });
-        return { pose: 'free', update: (t) => {
+        return { pose: 'free', view: 'back', update: (t) => {
             flames.forEach((f, i) => {
                 const k = 1 + 0.18 * Math.sin(t * 31 + i * 2) + 0.1 * Math.sin(t * 47 + i);
                 f.scale.set(1, k, 1);
@@ -169,7 +169,7 @@ const ACC = {
         star.position.set(0, 0.055, 0);
         star.rotation.y = Math.PI / 2;
         hero.attach('handR', tag(star), { worldScale: false });
-        return { pose: 'present', update: (t) => {
+        return { pose: 'present', view: 'back', update: (t) => {
             star.rotation.x = t * 1.2;
         } };
     },
@@ -229,7 +229,7 @@ const ACC = {
         const g = tag(group(mesh([pack, pocket], B.cloth(K.secondary, { roughness: 0.9 })), mesh(flap, B.leather(K.accent, { albedo: true })),
             mesh(roll, B.cloth(0xb0603a, { denim: true })), mesh(straps, B.leather(0x3a281c))));
         hero.attach('back', g, { worldScale: false });
-        return { pose: 'hold' };
+        return { pose: 'hold', view: 'back' };
     },
     /** Laço: cinco voltas de corda levemente desencontradas e uma ponta solta com nó. */
     cowboy({ B, hero }) {

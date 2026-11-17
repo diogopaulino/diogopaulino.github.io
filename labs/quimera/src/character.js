@@ -93,7 +93,7 @@ export class Character {
         hero.sockets.handR.traverse((o) => {
             if (o.userData.upright) uprights.push(o.parent);
         });
-        return { hero, ids: { ...ids }, bank, updates, pose: acc.pose, staff: acc.staff || null, A, uprights };
+        return { hero, ids: { ...ids }, bank, updates, pose: acc.pose, view: acc.view || 'front', staff: acc.staff || null, A, uprights };
     }
 
     /** Troca a combinação. `instant` pula a varredura (primeira montagem). */
