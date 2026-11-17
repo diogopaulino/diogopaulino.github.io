@@ -309,8 +309,13 @@ header[data-lab-header] {
 }
 
 .slot-face span {
+    max-width: 100%;
+    padding-inline: 0.3rem;
     font-weight: 500;
     font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     pointer-events: none;
 }
 
@@ -413,9 +418,9 @@ footer[data-lab-footer] a {
     text-decoration: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-height: 520px) {
     footer[data-lab-footer] {
-        display: none;
+        display: none !important;
     }
 }
 
@@ -432,25 +437,46 @@ footer[data-lab-footer] a {
 @media (max-width: 900px) {
     .hud-left {
         width: min(100% - 1.6rem, 22rem);
-        padding: 0.85rem 1rem;
+        padding: 0.7rem 0.9rem;
     }
 
     .hud-left h2 {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
     }
 
+    .meta-line,
+    .readout {
+        display: none;
+    }
+
+    /* Painel compacto: cada peça numa linha (nome · ‹ · escolha · ›) para o
+       personagem ficar inteiro acima dele — o painel não passa de ~215 px. */
     .dock {
-        grid-template-columns: 1fr 1fr;
-        width: min(100% - 1rem, 28rem);
-        bottom: max(0.6rem, var(--safe-bottom));
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.35rem;
+        width: min(100% - 1rem, 30rem);
+        padding: 0.5rem;
+        bottom: max(0.5rem, var(--safe-bottom));
     }
 
-    .dock .slot:last-of-type {
-        grid-column: 1 / -1;
+    .slot {
+        display: grid;
+        grid-template-columns: 4.6rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .slot-name {
+        margin: 0;
+        text-align: left;
+        padding-left: 0.35rem;
+    }
+
+    .slot-face {
+        height: var(--touch-target, 44px);
     }
 
     .dock-actions {
-        grid-column: 1 / -1;
         flex-direction: row;
         justify-content: stretch;
     }
@@ -461,12 +487,6 @@ footer[data-lab-footer] a {
 
     .hint {
         display: none;
-    }
-}
-
-@media (max-width: 520px) {
-    .dock {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -497,6 +517,34 @@ footer[data-lab-footer] a {
         padding: 0.45rem;
         gap: 0.4rem;
         grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+        align-items: end;
+    }
+
+    .slot {
+        display: block;
+    }
+
+    .slot-name {
+        text-align: center;
+        padding-left: 0;
+    }
+
+    .dock-actions {
+        flex-direction: row;
+        gap: 0.3rem;
+    }
+
+    .dock-actions .btn {
+        flex: 0 0 auto;
+        padding-inline: 0.7rem;
+    }
+
+    .slot-face span {
+        font-size: 0.8rem;
+    }
+
+    .hud-left {
+        max-width: 42vw;
     }
 
     .slot-name {
@@ -505,7 +553,6 @@ footer[data-lab-footer] a {
     }
 
     .step {
-        height: max(2.2rem, 40px);
         font-size: 1.15rem;
     }
 
@@ -545,9 +592,45 @@ footer[data-lab-footer] a {
   }
 
   .dock {
-    max-height: min(50dvh, 340px);
+    max-height: min(46dvh, 300px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding-bottom: 0.35rem;
   }
+}
+
+/* ---- tema claro (segue o seletor do site): estúdio de papel creme ---- */
+[data-theme="light"] {
+    --void: #e9e2d6;
+    --text: oklch(24% 0.03 320);
+    --text-soft: oklch(36% 0.03 320);
+    --text-dim: oklch(48% 0.03 320);
+    --gold: oklch(56% 0.13 70);
+    --apricot: oklch(52% 0.13 50);
+    --panel: color-mix(in oklab, oklch(98% 0.01 80) 72%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(99% 0.005 80) 90%, transparent);
+    --line: color-mix(in oklab, var(--gold) 45%, transparent);
+    --line-soft: color-mix(in oklab, black 12%, transparent);
+}
+
+[data-theme="light"] header[data-lab-header] {
+    background: linear-gradient(to bottom, rgba(233, 226, 214, 0.8), transparent);
+}
+
+[data-theme="light"] .hint {
+    text-shadow: 0 2px 12px #e9e2d6;
+}
+
+[data-theme="light"] .btn {
+    color: #fff8ec;
+}
+
+[data-theme="light"] .btn.ghost {
+    color: var(--text-soft);
+}
+
+/* Cabeçalho estreito: cinco botões de 44 px não deixam espaço para o nome — fica só a marca. */
+@media (max-width: 520px) {
+    header[data-lab-header] .app-logo span:last-child {
+        display: none;
+    }
 }
