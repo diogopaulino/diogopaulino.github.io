@@ -68,7 +68,8 @@ export const QUALITY = {
  *   hour: hora solar (a lua fica oposta ao sol) · fog/falloff/haze: névoa de altura
  *   sat: saturação · exposure · gain: ganho RGB da grade · fill: luz de preenchimento
  *   tint: multiplica a cor da névoa (o céu noturno é quase preto; > 1 dá bruma leitosa)
- *   dawn (cap. V): hora final do nascer do sol quando a lanterna pousa na pedra
+ *   dawn (cap. V): hora final do nascer do sol (sol baixo, ~10° sobre o horizonte)
+ *   dawnTint: cor da névoa no fim do amanhecer (pêssego/dourado, rala)
  */
 export const CHAPTERS = [
     {
@@ -129,7 +130,7 @@ export const CHAPTERS = [
         hint: 'Suba a colina. E na pedra dourada.',
         music: 'alvorecer',
         dark: false,
-        atmos: { hour: 4.75, dawn: 7.1, clouds: 0.42, fog: [0.03, 0.02], falloff: 0.09, haze: [0.0012, 0.0006], sat: [0.72, 1.1], exposure: [2.6, 1.0], gain: [[0.92, 0.95, 1.1], [1.05, 1.0, 0.94]], fill: [1.3, 0.25], tint: [1.5, 1.6, 1.75] }
+        atmos: { hour: 4.75, dawn: 7.1, clouds: 0.42, fog: [0.03, 0.02], falloff: 0.09, haze: [0.0012, 0.0006], sat: [0.72, 1.1], exposure: [2.6, 1.0], gain: [[0.92, 0.95, 1.1], [1.05, 1.0, 0.94]], fill: [1.3, 0.22], tint: [1.5, 1.6, 1.75], dawnTint: [1.0, 0.62, 0.38] }
     }
 ];
 

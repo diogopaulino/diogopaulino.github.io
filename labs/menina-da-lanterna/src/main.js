@@ -388,11 +388,13 @@ class Game {
         P.exposure = lerp(a.exposure[0], a.exposure[1], w) / (this.stage.ldr ? 0.5 : 1);
         P.gain.setRGB(lerp(a.gain[0][0], a.gain[1][0], w), lerp(a.gain[0][1], a.gain[1][1], w), lerp(a.gain[0][2], a.gain[1][2], w));
         P.vignette = lerp(0.46, 0.3, w);
-        P.bloom = lerp(0.15, 0.12, w);
+        P.bloom = lerp(0.15, 0.12, w) - this.dawn * 0.06;
         // de dia a névoa já herda o céu claro: o reforço leitoso da noite sai com o sol
         const tk = 1 - this.dawn;
-        P.fogTint.setRGB(lerp(1, a.tint[0], tk), lerp(1, a.tint[1], tk), lerp(1, a.tint[2], tk));
-        P.fogSunGlow = 0.4 + this.dawn * 0.35;
+        const dt3 = a.dawnTint || [1, 1, 1];
+        P.fogTint.setRGB(lerp(dt3[0], a.tint[0], tk), lerp(dt3[1], a.tint[1], tk), lerp(dt3[2], a.tint[2], tk));
+        P.contrast = 1.08 + this.dawn * 0.08;
+        P.fogSunGlow = 0.4 - this.dawn * 0.28;
         P.rays = 0.25 + this.dawn * 0.75;
         this.stage.fill.intensity = lerp(a.fill[0], a.fill[1], w) * (this.stage.ldr ? 0.5 : 1);
         this.valley.motes.uniforms.uAmount.value = this.chapter.id === 'alvorecer' ? 0.6 * (1 - this.dawn) : 0.12 + 0.88 * w;
@@ -614,9 +616,10 @@ class Game {
             // reassar céu/IBL a cada quadro custa caro: 10 passos por segundo bastam
             this.hourAcc = 0;
             this.stage.setTimeOfDay(lerp(a.hour, a.dawn, e));
-            this.stage.sky.setClouds(lerp(a.clouds, 0.3, e));
+            this.stage.sky.setClouds(lerp(a.clouds, 0.36, e));
         }
         this.world.setStone(1 - e * 0.6);
+        this.valley.setDawn(e);
         this.player.lightScale = 0;
         this.valley.embers.uniforms.uAmount.value = smoothstep(0.05, 0.5, d) * (1 - smoothstep(0.85, 1, d) * 0.5);
         this.player.animate(dt, 0, d > 0.55 ? { mode: 'cheer' } : { mode: 'idle' });

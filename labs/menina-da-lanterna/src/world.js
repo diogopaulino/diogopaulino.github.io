@@ -20,7 +20,7 @@
  */
 
 import * as THREE from 'three';
-import { clamp, lerp, smoothstep, seeded, fbm2, damp } from '../../shared/gfx/core.js';
+import { clamp, lerp, smoothstep, seeded, fbm2, damp, applyWorldUV } from '../../shared/gfx/core.js';
 import {
     createCourse, carveBasin, createTerrain, createGrass, createForest, createWater, createPath, createFence,
     scatter, scatterModel
@@ -913,13 +913,26 @@ export async function createValley(stage, q, progress = () => {}) {
     zD.overview.set(14, H(HILL.x, HILL.z) + 4, -108);
     zD.needPlace = true;
     const stoneY = H(HILL.x, HILL.z);
-    const stoneTop = new THREE.Vector3(HILL.x, stoneY + 0.98, HILL.z);
-    jobs.push(loadModel('rock_face_01', { height: 1.3 }).then((g) => {
-        if (!g) return;
-        g.position.set(HILL.x, stoneY - 0.18, HILL.z);
-        g.rotation.y = 0.7;
-        scene.add(g);
-    }));
+    // Pedra da Aurora: bloco de pedra arredondado, de topo plano (a lanterna assenta nele)
+    const stoneGeo = new THREE.IcosahedronGeometry(1, 4);
+    {
+        const p = stoneGeo.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+            const x = p.getX(i);
+            const y = p.getY(i);
+            const z = p.getZ(i);
+            const n = 1 + (fbm2(x * 1.7 + y * 1.3 + 5, z * 1.7 - y * 0.9, 3) - 0.5) * 0.5;
+            p.setXYZ(i, x * 1.3 * n, Math.min(0.62, y * 0.85 * n), z * 1.05 * n);
+        }
+        stoneGeo.computeVertexNormals();
+        applyWorldUV(stoneGeo, 1.6);
+    }
+    const stoneMesh = new THREE.Mesh(stoneGeo, M.mossy);
+    stoneMesh.position.set(HILL.x, stoneY + 0.2, HILL.z);
+    stoneMesh.rotation.y = 0.7;
+    stoneMesh.castShadow = stoneMesh.receiveShadow = true;
+    scene.add(stoneMesh);
+    const stoneTop = new THREE.Vector3(HILL.x, stoneY + 0.82, HILL.z);
     // anel de runas douradas no chão
     const runeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.8, 0.3), transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const runes = new THREE.Mesh(new THREE.RingGeometry(2.3, 2.5, 48), runeMat);
@@ -928,7 +941,7 @@ export async function createValley(stage, q, progress = () => {}) {
     scene.add(runes);
     const stoneSrc = addSource(HILL.x, stoneY + 1.5, HILL.z, 0xffc070, 16, 22);
     const stoneHalo = glows.add({ x: HILL.x, y: stoneY + 1.4, z: HILL.z, size: 3.6, color: 0xffc070, intensity: 0, flicker: 0.2 });
-    zD.addCollider(HILL.x, HILL.z, 1.45, 1.3);
+    zD.addCollider(HILL.x, HILL.z, 1.5, 1.0);
     zD.addInteract({ x: HILL.x, z: HILL.z, r: 2.4, kind: 'place', label: 'Colocar a lanterna na Pedra da Aurora', done: false });
     zD.stoneTop = stoneTop;
     const nara = villager({ preset: 'elder', sex: 'f', beard: 'none', hairStyle: 'bun', hair: 0xe8e6e0, top: 'dress', sleeves: 'long', topColor: 0x6a5a7a, bottom: 'none', apron: 0xd8ceb8, cape: 'short', capeColor: 0x7a3a34, mantle: true, hat: 'scarf', hatColor: 0x8a4a3c, detail: tier === 'low' ? 1 : 2 }, HILL.x - 2.4, HILL.z - 1.4, 1.0, 'talk');
@@ -1013,7 +1026,22 @@ export async function createValley(stage, q, progress = () => {}) {
             fox.object.visible = index === 2 || index === 4;
             if (index === 4) zD.fox.free();
             embers.uniforms.uAmount.value = 0;
+            valley.setDawn(0);
             return active;
+        },
+
+        /**
+         * Amanhecer (k 0..1): as árvores distantes viram silhueta contra o sol — o impostor é
+         * escurecido e esquentado (cor × ~0,3) e a troca malha → impostor recua 3,4× (só durante o clímax: custa triângulos).
+         */
+        setDawn(k) {
+            for (const kit of forest.kits) {
+                if (!kit.set) continue;
+                if (kit.baseLod == null) kit.baseLod = kit.set.lod;
+                kit.set.lod = kit.baseLod * (1 + k * 2.4);
+                const m = kit.impostor?.material;
+                if (m) m.color.setRGB(lerp(1, 0.34, k), lerp(1, 0.27, k), lerp(1, 0.24, k));
+            }
         },
 
         /** Só cenário (menu): nenhuma sombra visível. */
