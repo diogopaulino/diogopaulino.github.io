@@ -1,21 +1,24 @@
-import { HomeLevel } from '../levels/HomeLevel.js?v=13';
-import { ShipLevel } from '../levels/ShipLevel.js?v=34';
-import { BeachLevel } from '../levels/BeachLevel.js?v=33';
-import { ForestLevel } from '../levels/ForestLevel.js?v=5';
-import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=13';
-import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=4';
-import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=33';
-import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=7';
-import { EscapeLevel } from '../levels/EscapeLevel.js?v=34';
-import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=34';
-import { EndingLevel } from '../levels/EndingLevel.js?v=16';
+/**
+ * Estágios e checkpoints. Cada estágio monta um ou mais níveis; o checkpoint diz onde
+ * o jogador renasce dentro dele ("Continuar" e "Reiniciar checkpoint" passam por aqui).
+ */
+import * as THREE from 'three';
+import { HomeLevel } from '../levels/HomeLevel.js?v=40';
+import { ShipLevel } from '../levels/ShipLevel.js?v=40';
+import { BeachLevel } from '../levels/BeachLevel.js?v=40';
+import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=40';
+import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=40';
+import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=40';
+import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=40';
+import { EscapeLevel } from '../levels/EscapeLevel.js?v=40';
+import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=40';
+import { EndingLevel } from '../levels/EndingLevel.js?v=40';
+import { ISLAND_MARKS } from '../world/Island.js?v=40';
 
 const FACTORIES = {
     home: HomeLevel,
-    homeEnd: HomeLevel,
     ship: ShipLevel,
     beach: BeachLevel,
-    forest: ForestLevel,
     castle_ext: CastleExteriorLevel,
     secret: SecretEntranceLevel,
     interior: CastleInteriorLevel,
@@ -27,9 +30,8 @@ const FACTORIES = {
 
 export const STAGES = {
     home: ['home'],
-    homeEnd: ['homeEnd'],
     ship: ['ship'],
-    island: ['beach', 'forest', 'castle_ext', 'secret'],
+    island: ['beach', 'castle_ext', 'secret'],
     interior: ['interior', 'tiger'],
     escape: ['escape'],
     shipEscape: ['shipEscape'],
@@ -62,77 +64,88 @@ export class SceneManager {
     }
 
     async load(stageId, checkpoint) {
+        const g = this.game;
         await this.unload();
         this.stageId = stageId;
         const ids = STAGES[stageId] || [stageId];
-        this.game.collision.clear();
-        this.game.interact.clear();
-        this.game.arrows.clear();
+        g.collision.clear();
+        g.interact.clear();
+        g.arrows.clear();
+        g.combat.setGuards([]);
+        g.cutscenes.blocking = false;
+        g.cameraRig.cutscene = false;
+        g.cameraRig.override = null;
+        g.player.pose = null;
+        g.player.controller.setMode('walk');
+        g.player.setTorch(false);
+        g.player.setArmed(true);
+        g.teco.visible = true;
+        g.camila.active = false;
+        g.storm.setIntensity(0);
         const levels = [];
         for (const id of ids) {
             const Ctor = FACTORIES[id];
             if (!Ctor) continue;
-            const level = new Ctor(this.game);
-            await level.build();
+            const level = new Ctor(g);
+            await level.build(levels);
+            if (level.group && !level.group.parent) g.scene.add(level.group);
             levels.push(level);
         }
         this.levels = levels;
-        this.game.levels = levels;
-        this.game.level = levels[0];
-        const obstacles = [];
-        for (const lv of levels) {
-            if (lv.obstacles) obstacles.push(...lv.obstacles);
-        }
-        this.game.cameraRig.setObstacles(obstacles);
+        g.levels = levels;
+        g.level = levels[0];
         for (const lv of levels) lv.enter(checkpoint);
         this._applyCheckpointSpawn(checkpoint);
-        this.game.cameraRig.snapToPlayer(this.game.player);
+        g.scene.updateMatrixWorld(true);
+        g.cameraRig.snapToPlayer(g.player);
+        await g.stage.warmup();
         return levels;
     }
 
     _applyCheckpointSpawn(cp) {
-        const p = this.game.player;
-        const t = this.game.teco;
+        const g = this.game;
+        const p = g.player;
+        const t = g.teco;
+        const M = ISLAND_MARKS;
+        const gy = (x, z) => g.collision.ground?.(x, z) ?? 0;
         switch (cp) {
             case 'storm_start':
-                this.game.level?.beginNight?.();
+                g.level?.beginNight?.(true);
                 break;
             case 'storm_rope':
-                this.game.level.phase = 'storm';
-                this.game.level.nightStarted = true;
-                this.game.weather.apply('storm');
-                this.game.storm.setIntensity(0.85);
-                this.game.level.ship.userData.rope.setEnabled(true);
-                this.game.level.ropeItem.enabled = true;
-                p.spawn(0, 1.44, 5, 0);
+                g.level?.beginNight?.(true);
+                g.level?.beginHelm?.();
                 break;
             case 'castle_exterior':
-                p.spawn(0, 0, -70, Math.PI);
-                t.spawn(0.6, 0, -69);
+                p.spawn(M.view.x, gy(M.view.x, M.view.z), M.view.z, Math.PI);
+                t.spawn(M.view.x + 0.6, gy(M.view.x, M.view.z), M.view.z + 1);
+                g.cameraRig.yaw = 0;
+                for (const lv of this.levels) lv.resume?.(cp);
                 break;
             case 'secret_door':
-                p.spawn(-16, 0, -92, Math.PI * 0.5);
-                t.spawn(-15, 0, -92);
+                p.spawn(M.secret.x - 2.5, gy(M.secret.x - 2.5, M.secret.z + 2), M.secret.z + 2, Math.PI * 0.6);
+                t.spawn(M.secret.x - 3, gy(M.secret.x - 3, M.secret.z + 3), M.secret.z + 3);
+                g.cameraRig.yaw = -Math.PI * 0.4;
+                for (const lv of this.levels) lv.resume?.(cp);
                 break;
             case 'princess_cell':
                 p.spawn(0, 3.2, -34, Math.PI);
                 t.spawn(0.4, 3.2, -33);
                 break;
             case 'tiger_room':
-                p.spawn(10, 3.2, -18, 0);
-                t.spawn(9.5, 3.2, -18);
+                p.spawn(3, 3.2, -18, Math.PI / 2);
+                t.spawn(2.4, 3.2, -18);
+                g.cameraRig.yaw = -Math.PI / 2;
                 break;
             case 'princess_rescued':
-                p.spawn(0, 3.2, -36, 0);
+                p.spawn(0, 3.2, -35.5, 0);
                 t.spawn(0.4, 3.2, -35);
-                this.game.camila.spawn(0.8, 3.2, -37);
-                this.game.camila.setShackles(false);
-                this.game.camila.freed = true;
-                this.game.camila.ai.follow();
-                break;
-            case 'beach_escape':
-                p.spawn(0, 0, 12, 0);
-                t.spawn(0.5, 0, 11);
+                g.cameraRig.yaw = Math.PI;
+                g.camila.spawn(0.8, 3.2, -36.6);
+                g.camila.setShackles(false);
+                g.camila.freed = true;
+                g.camila.ai.follow();
+                g.level.restoreRescue?.();
                 break;
             default:
                 break;
@@ -151,3 +164,5 @@ export class SceneManager {
         this.game.level = null;
     }
 }
+
+export { THREE };

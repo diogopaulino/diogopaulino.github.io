@@ -1,11 +1,17 @@
 /**
- * Capítulo 8: Calabouço, Furtividade & Guarda Dorminhoco em Babylon.js.
+ * Capítulo 8: Calabouço, Furtividade & Guarda Dorminhoco.
+ *
+ * O salão tem um guarda de ronda (cone de visão no chão) e o carcereiro dormindo à mesa com
+ * as chaves. Agachar (C) reduz o alcance da visão a 60 % e o ruído a 0,22; barris e caixotes
+ * escondem quem está agachado. As três chaves não abrem a cela — a certa está na sala do tigre.
+ * Depois de soltar Camila, voltar ao salão (z > −22) dispara o alarme e a fuga.
  */
 
-import { Level } from './Level.js';
-import { castleStoneTexture, woodTexture } from '../world/Textures.js';
-import { makeTorch, EnvironmentFX } from '../world/Environment.js?v=5';
-import { Guard } from '../characters/Guard.js?v=33';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { buildDungeon, UP } from '../world/Dungeon.js?v=40';
+import { Guard } from '../characters/Guard.js?v=40';
+import { Kit, block } from '../world/Build.js?v=40';
 
 export class CastleInteriorLevel extends Level {
     get id() {
@@ -13,215 +19,77 @@ export class CastleInteriorLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        this.group = new BABYLON.TransformNode('interiorGroup', scene);
-        this.fx = new EnvironmentFX();
-
-        const stoneMat = new BABYLON.StandardMaterial('dungeonStoneMat', scene);
-        stoneMat.diffuseTexture = castleStoneTexture(scene, 6, 8);
-        stoneMat.diffuseColor = new BABYLON.Color3(0.7, 0.68, 0.65);
-
-        const woodMat = new BABYLON.StandardMaterial('dungeonWoodMat', scene);
-        woodMat.diffuseTexture = woodTexture(scene, 2, 2);
-
-        const darkHoleMat = new BABYLON.StandardMaterial('dungeonDarkMat', scene);
-        darkHoleMat.diffuseColor = new BABYLON.Color3(0.05, 0.04, 0.03);
-
-        const room = (name, w, h, d, x, y, z, open = []) => {
-            const floor = BABYLON.MeshBuilder.CreateBox(`${name}_floor`, { width: w, height: 0.2, depth: d }, scene);
-            floor.position.set(x, y - 0.1, z);
-            floor.material = stoneMat;
-            floor.parent = this.group;
-            floor.receiveShadows = true;
-            this.game.collision.addFloor(x, z, w, d, y);
-
-            const ceil = BABYLON.MeshBuilder.CreateBox(`${name}_ceil`, { width: w, height: 0.2, depth: d }, scene);
-            ceil.position.set(x, y + h, z);
-            ceil.material = stoneMat;
-            ceil.parent = this.group;
-
-            if (!open.includes('-z')) this.game.collision.addWall(x, z - d / 2, w, 0.3, h, y);
-            if (!open.includes('+z')) this.game.collision.addWall(x, z + d / 2, w, 0.3, h, y);
-            if (!open.includes('-x')) this.game.collision.addWall(x - w / 2, z, 0.3, d, h, y);
-            if (!open.includes('+x')) this.game.collision.addWall(x + w / 2, z, 0.3, d, h, y);
-        };
-
-        // Salas do calabouço
-        room('roomEntry', 6, 3.4, 10, 0, 0, 0, ['-z']);
-
-        // Escadaria de pedra
-        const stairs = new BABYLON.TransformNode('dungeonStairs', scene);
-        stairs.parent = this.group;
-        for (let i = 0; i < 10; i++) {
-            const st = BABYLON.MeshBuilder.CreateBox(`stair_${i}`, { width: 2.2, height: 0.22, depth: 0.7 }, scene);
-            st.position.set(0, 0.11 + i * 0.32, -6 - i * 0.55);
-            st.material = stoneMat;
-            st.parent = stairs;
-            this.game.collision.addFloor(0, -6 - i * 0.55, 2.2, 0.7, 0.22 + i * 0.32);
-        }
-
-        room('roomCorridor', 10, 3.6, 12, 0, 3.2, -18, ['+z', '-z', '-x', '+x']);
-        room('roomCell', 8, 3.4, 10, 0, 3.2, -32, ['+z', '-z']);
-        room('roomSideLeft', 6, 3.2, 6, -10, 3.2, -18, ['+x']);
-        room('roomSideRight', 6, 3.2, 6, 12, 3.2, -18, ['-x']);
-
-        // Porta da cela: tábuas, grade e cintas. O pivô continua no centro,
-        // porque rotation.y = 1.5 abre a folha inteira.
-        const cellDoor = new BABYLON.TransformNode('cellDoor', scene);
-        cellDoor.position.set(0, 4.4, -37.1);
-        cellDoor.parent = this.group;
-        this.cellDoor = cellDoor;
-        const cellIron = new BABYLON.StandardMaterial('cellIronMat', scene);
-        cellIron.diffuseColor = new BABYLON.Color3(0.34, 0.36, 0.38);
-        cellIron.specularColor = new BABYLON.Color3(0.45, 0.45, 0.48);
-        const carveDoor = (name, shape, path, mat) => {
-            const mesh = BABYLON.MeshBuilder.ExtrudeShape(name, {
-                shape: shape.map(([x, y]) => new BABYLON.Vector3(x, y, 0)),
-                path: path.map(([x, y, z]) => new BABYLON.Vector3(x, y, z || 0)),
-                cap: BABYLON.Mesh.CAP_ALL,
-                closeShape: true,
-                sideOrientation: BABYLON.Mesh.DOUBLESIDE
-            }, scene);
-            mesh.material = mat;
-            mesh.parent = cellDoor;
-            return mesh;
-        };
-        const board = [
-            [0.02, -0.07], [-0.055, -0.065], [-0.07, -0.04],
-            [-0.07, 0.04], [-0.055, 0.065], [0.02, 0.07]
-        ];
-        const rail = [
-            [0.02, -0.08], [-0.075, -0.06], [-0.085, 0.05], [0.02, 0.08]
-        ];
-        for (const x of [-0.7, 0.7]) {
-            carveDoor('cellStile', board, [[x, -1.16, 0], [x, 1.16, 0]], woodMat);
-        }
-        carveDoor('cellRail', rail, [[-0.78, -1.12, 0], [0.78, -1.12, 0]], woodMat);
-        carveDoor('cellRail', rail, [[-0.78, 0.36, 0], [0.78, 0.36, 0]], woodMat);
-        carveDoor('cellRail', rail, [[-0.78, 1.12, 0], [0.78, 1.12, 0]], woodMat);
-        for (let i = 0; i < 6; i++) {
-            const x = -0.48 + i * 0.192;
-            carveDoor('cellPlank', board, [[x, -1.02, 0], [x, 0.26, 0]], woodMat);
-        }
-        const strap = [
-            [0.01, -0.04], [-0.06, -0.03], [-0.065, 0.03], [0.01, 0.04]
-        ];
-        for (const y of [-0.62, -0.05]) {
-            carveDoor('cellStrap', strap, [[-0.74, y, 0.02], [0.74, y, 0.02]], cellIron);
-        }
-        for (let i = 0; i < 5; i++) {
-            const bar = BABYLON.MeshBuilder.CreateCylinder('cellWindowBar', {
-                diameter: 0.035,
-                height: 0.62
-            }, scene);
-            bar.position.set(-0.36 + i * 0.18, 0.72, 0.05);
-            bar.material = cellIron;
-            bar.parent = cellDoor;
-        }
-        const ring = BABYLON.MeshBuilder.CreateTorus('cellRing', {
-            diameter: 0.18,
-            thickness: 0.028,
-            tessellation: 12
-        }, scene);
-        ring.rotation.x = Math.PI / 2;
-        ring.position.set(0.7, 0.02, 0.12);
-        ring.material = cellIron;
-        ring.parent = cellDoor;
-
-        const ironMat = new BABYLON.StandardMaterial('ironBarsMat', scene);
-        ironMat.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.35);
-
-        const bars = new BABYLON.TransformNode('cellBarsGroup', scene);
-        bars.parent = this.group;
-        for (let i = 0; i < 6; i++) {
-            const b = BABYLON.MeshBuilder.CreateCylinder(`cellBar_${i}`, { diameter: 0.06, height: 2.2 }, scene);
-            b.position.set(-0.6 + i * 0.24, 4.4, -37);
-            b.material = ironMat;
-            b.parent = bars;
-        }
-        this.bars = bars;
-
-        // Tochas do calabouço
-        const torch1 = makeTorch(scene);
-        torch1.position.set(-2.4, 1.4, -2);
-        torch1.parent = this.group;
-        this.fx.addFire(torch1);
-
-        const torch2 = makeTorch(scene);
-        torch2.position.set(2.6, 4.6, -18);
-        torch2.parent = this.group;
-        this.fx.addFire(torch2);
-
-        // Vaso de cerâmica que pode ser derrubado
-        const vase = BABYLON.MeshBuilder.CreateCylinder('dungeonVase', {
-            diameterTop: 0.24,
-            diameterBottom: 0.32,
-            height: 0.45
-        }, scene);
-        vase.position.set(3.2, 3.42, -14);
-        const vaseMat = new BABYLON.StandardMaterial('vaseMat', scene);
-        vaseMat.diffuseColor = new BABYLON.Color3(0.55, 0.32, 0.18);
-        vase.material = vaseMat;
-        vase.parent = this.group;
+        const g = this.game;
+        const d = await buildDungeon(g);
+        this.dungeon = d;
+        this.group = d.group;
+        this.fx = d.fx;
+        this.cellDoor = d.cellDoor;
+        const vase = d.vase;
 
         this.addInteract({
             object: vase,
+            offsetY: 0.3,
             interactionLabel: 'Não tocar no vaso',
-            interactionDistance: 1.6,
+            interactionDistance: 1.7,
             interact: (_p, game) => {
-                vase.rotation.z = 1.2;
-                vase.position.y = 3.22;
+                if (this.vaseDown) return;
+                this.vaseDown = true;
+                vase.rotation.z = 1.45;
+                vase.position.set(3.25, UP + 0.12, -14.9);
                 game.collision.emitNoise(3.2, -14, 1.4, 0.8);
                 game.audio.play('fail');
-                game.hud.showStealth(true, 0.8);
+                this.sleeping.ai.suspicion += 0.9;
+                this.patrol.ai.alert = Math.max(this.patrol.ai.alert, 0.7);
             }
         });
 
-        // Guarda dorminhoco
+        // Guarda dorminhoco: sentado num banco, de frente para a mesa
+        const kit = new Kit();
+        kit.put('darkwood', block(0.5, 0.06, 0.5, 0.02), 1.75, UP + 0.47, -16.6);
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) kit.put('darkwood', block(0.06, 0.44, 0.06, 0.012), 1.75 + sx * 0.19, UP + 0.22, -16.6 + sz * 0.19);
+        kit.build(this.group);
         this.sleeping = new Guard(this.group, { fat: true, sleep: true });
-        this.sleeping.spawn(1.4, 3.2, -16.5, 1.2);
-        this.game.combat.setGuards([this.sleeping]);
+        this.sleeping.spawn(1.75, UP, -16.6, Math.PI / 2);
+        g.collision.addPillar(1.75, -16.6, 0.3, 1.2, UP);
+
+        /* Ronda: salão ↔ despensa, com pausa nas pontas. */
+        const P = (x, z, wait = 0) => ({ x, z, y: UP, wait });
+        this.patrol = new Guard(this.group, {
+            viewDist: 8.5, viewAngle: 0.62,
+            patrol: [P(-3.95, -14.4, 1.6), P(-3.95, -18), P(-10.2, -18, 2.6), P(-3.95, -18), P(-3.95, -21.7, 1.6), P(-3.95, -18)]
+        });
+        this.patrol.spawn(-10.2, UP, -18, 0);
+        this.patrol.ai.patrolI = 2;
+        g.combat.setGuards([this.sleeping, this.patrol]);
 
         this.addInteract({
             object: this.sleeping.root,
+            offsetY: 0.9,
             interactionLabel: 'Pegar chaves',
-            interactionDistance: 1.8,
+            interactionDistance: 1.9,
             interact: (_p, game) => this.stealKeys(game)
         });
 
-        // Camila na cela
-        this.game.camila.attachTo(this.group);
-        this.game.camila.spawn(0, 3.2, -39.5);
-        this.game.camila.setShackles(true);
-        this.game.camila.ai.state = 'WAIT';
-        this.game.camila.root.setEnabled(true);
-        this.game.camila.active = true;
-
         this.addInteract({
-            object: this.game.camila.root,
+            object: g.camila.root,
+            offsetY: 1,
             interactionLabel: 'Conversar com Camila',
-            interactionDistance: 2.4,
+            interactionDistance: 3.4,
             interact: (_p, game) => this.talkCamila(game)
         });
 
         this.addInteract({
-            object: this.cellDoor,
+            object: this.proxy(0, UP + 1.2, -37.2),
             interactionLabel: 'Usar chave',
             interactionDistance: 2.2,
             interact: (_p, game) => this.tryCell(game)
         });
 
-        // Luz de tocha móvel com Dico
-        this.torchLight = new BABYLON.PointLight('dicoTorchLight', new BABYLON.Vector3(0, 0, 0), scene);
-        this.torchLight.diffuse = new BABYLON.Color3(1.0, 0.6, 0.2);
-        this.torchLight.intensity = 1.1;
-        this.torchLight.range = 8;
-        this.torchLight.parent = this.group;
-
-        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
-        this.keysTaken = false;
+        this.keysTaken = g.story.flags.keysTaken;
         this.cellTried = 0;
         this.alarmArmed = false;
+        this.doorOpen = 0;
     }
 
     enter() {
@@ -231,19 +99,42 @@ export class CastleInteriorLevel extends Level {
         g.camila.attachTo(this.group);
         g.player.spawn(0, 0, 3.2, Math.PI);
         g.teco.spawn(0.5, 0, 2.6);
+        g.camila.spawn(0, UP, -40.2);
+        g.camila.setShackles(true);
+        g.camila.freed = false;
+        g.camila.ai.state = 'WAIT';
+        g.camila.active = true;
         g.player.setTorch(true);
         g.weather.apply('interior');
         g.audio.setTheme('stealth');
         g.storm.setIntensity(0);
         g.ocean.visible = false;
-        g.quests.set('stealth_up');
+        if (!g.story.flags.keysTaken) g.quests.set('stealth_up');
         g.dialogue.say('DICO', 'Devagar… não faça barulho.');
         g.teco.ai.state = 'PERCHED';
-        g.cameraRig.setObstacles(this.obstacles);
+        g.cameraRig.setWorld(g.collision, null, true);
+        g.cameraRig.yaw = 0;
+        g.cameraRig.pitch = 0.25;
         g.input.enabled = true;
         g.player.controller.setMode('walk');
         g.hud.showStealth(true, 0);
-        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre.', 5);
+        g.hud.showToast('C agacha e esconde. Fique fora do cone do guarda.', 6);
+        if (g.story.flags.cellOpen) this._openCell();
+    }
+
+    _openCell() {
+        this.opening = true;
+        if (this.dungeon.cellBox) {
+            this.game.collision.removeBox(this.dungeon.cellBox);
+            this.dungeon.cellBox = null;
+        }
+    }
+
+    /** Checkpoint 'princess_rescued': cela aberta e alarme armado. */
+    restoreRescue() {
+        this._openCell();
+        this.doorOpen = 1;
+        this.alarmArmed = true;
     }
 
     stealKeys(game) {
@@ -252,18 +143,12 @@ export class CastleInteriorLevel extends Level {
         this.sleeping.hasKeys = false;
         game.audio.play('clink');
         game.dialogue.say('GUARDA', '…hmm… quem está aí…');
-        game.hud.showStealth(true, 0.7);
         game.story.notify('keys');
-        this.sleeping.ai.suspicion = 0.4;
-        this.sleeping.root.rotation.y += 0.5;
-        setTimeout(() => {
-            if (this.sleeping.ai.state === 'SLEEP') {
-                this.sleeping.root.rotation.y -= 0.5;
-            }
-        }, 1800);
+        this.sleeping.ai.suspicion = Math.max(this.sleeping.ai.suspicion, 0.4);
     }
 
     talkCamila(game) {
+        game.camila.talkT = 3;
         if (!game.story.flags.foundCamila) {
             game.dialogue.play([
                 { speaker: 'DICO', text: 'Princesa, viemos salvar você.', duration: 3 },
@@ -279,8 +164,7 @@ export class CastleInteriorLevel extends Level {
     tryCell(game) {
         if (game.story.flags.cellOpen) return;
         if (game.inventory.cellKey) {
-            this.cellDoor.rotation.y = 1.5;
-            this.bars.setEnabled(false);
+            this._openCell();
             game.audio.play('click');
             game.audio.play('door');
             game.story.notify('cell_open');
@@ -297,13 +181,19 @@ export class CastleInteriorLevel extends Level {
         const n = this.cellTried;
         if (n === 1) game.dialogue.say('DICO', 'Não é esta…');
         else if (n === 2) game.dialogue.say('DICO', 'Tampouco esta.');
-        else game.dialogue.say('DICO', 'Nenhuma das três. Teco, a fechadura é outra. Deve estar na outra sala.');
+        else {
+            game.dialogue.say('DICO', 'Nenhuma das três. Teco, a fechadura é outra. Deve estar na outra sala.');
+            if (game.quests.current.id === 'cell_key' || game.quests.current.id === 'find_camila') game.quests.set('teco_tiger');
+        }
     }
 
     tryShackles(game) {
+        if (this.shackling) return;
+        this.shackling = true;
         game.audio.play('fail');
         game.dialogue.say('DICO', 'Tentando os grilhões…');
         setTimeout(() => {
+            if (game.level !== this) return;
             game.audio.play('click');
             game.story.notify('shackles');
             this.alarmArmed = true;
@@ -312,26 +202,31 @@ export class CastleInteriorLevel extends Level {
 
     update(dt) {
         this.time += dt;
+        const g = this.game;
         this.fx.update(this.time);
-        this.sleeping.update(dt, this.game);
+        this.sleeping.update(dt, g);
+        this.patrol.update(dt, g);
+        if (this.opening) {
+            this.doorOpen = Math.min(1, this.doorOpen + dt * 0.9);
+            this.cellDoor.rotation.y = 1.45 * this.doorOpen * (2 - this.doorOpen);
+        }
 
-        const p = this.game.player.position;
-        this.torchLight.position.set(p.x + 0.3, p.y + 1.5, p.z + 0.2);
-        this.torchLight.intensity = 1.0 + Math.sin(this.time * 10) * 0.15;
+        const p = g.player.position;
+        const noise = g.player.noise || 0;
+        const near = Math.hypot(p.x - 1.75, p.z + 16.6) < 7 ? noise * 0.3 : 0;
+        g.hud.showStealth(true, Math.min(1, Math.max(this.patrol.alive ? this.patrol.ai.alert : 0, this.sleeping.ai.suspicion / 1.2 + near)));
 
-        const noise = this.game.player.noise || 0;
-        this.game.hud.showStealth(true, Math.min(1, this.sleeping.ai.suspicion + noise * 0.3));
-
-        if (this.alarmArmed && p.z > -22 && p.y > 2.5 && !this.game.story.flags.alarm) {
+        if (this.alarmArmed && p.z > -22 && p.y > 2.5 && !g.story.flags.alarm) {
             this.sleeping.ai.state = 'CHASE';
-            this.game.story.notify('alarm');
+            g.story.notify('alarm');
         }
     }
 
     exit() {
+        this.sleeping.hero.dispose?.();
+        this.patrol.hero.dispose?.();
         super.exit();
         this.game.player.setTorch(false);
         this.game.hud.showStealth(false);
-        this.game.ocean.visible = true;
     }
 }

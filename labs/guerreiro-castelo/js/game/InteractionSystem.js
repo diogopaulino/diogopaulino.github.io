@@ -1,6 +1,17 @@
 /**
- * Sistema de interação contextual por proximidade e foco da câmera em Babylon.js.
+ * Sistema de interação contextual por proximidade e foco da câmera.
+ * Cada item: { object (Object3D), interactionLabel, interactionDistance, enabled, interact(player, game) }.
+ * Pontuação: dist · (1,5 − cos do ângulo entre a câmera e o objeto) — o mais perto e mais
+ * centralizado vence. Tudo em coordenadas de mundo (o navio se move).
  */
+
+import * as THREE from 'three';
+
+const _cam = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _obj = new THREE.Vector3();
+const _to = new THREE.Vector3();
+const _pl = new THREE.Vector3();
 
 export class InteractionSystem {
     constructor(camera) {
@@ -27,33 +38,27 @@ export class InteractionSystem {
     update(player, game) {
         this.prompt = null;
         if (game.cutscenes?.blocking) return null;
+        if (player.controller.mode !== 'walk') return null;
 
-        const camPos = this.camera.position;
-        const camTarget = this.camera.getTarget ? this.camera.getTarget() : new BABYLON.Vector3(0, 0, 0);
-        const camDir = camTarget.subtract(camPos).normalize();
-
-        const playerPos = player.position;
+        this.camera.getWorldPosition(_cam);
+        this.camera.getWorldDirection(_dir);
+        player.worldPosition(_pl);
         let best = null;
         let bestScore = Infinity;
 
         for (const item of this.items) {
             if (item.enabled === false) continue;
             const obj = item.object;
-            if (!obj) continue;
+            if (!obj || !obj.parent) continue;
+            obj.getWorldPosition(_obj);
+            if (item.offsetY) _obj.y += item.offsetY;
 
-            const objPos = obj.getAbsolutePosition ? obj.getAbsolutePosition() : obj.position;
-            if (!objPos) continue;
-
-            const dx = objPos.x - playerPos.x;
-            const dy = objPos.y - playerPos.y;
-            const dz = objPos.z - playerPos.z;
-            const dist = Math.hypot(dx, dy, dz);
-
+            const dist = Math.hypot(_obj.x - _pl.x, (_obj.y - _pl.y) * (item.flat ? 0 : 1), _obj.z - _pl.z);
             const maxd = item.interactionDistance ?? 2.4;
             if (dist > maxd) continue;
 
-            const toDir = objPos.subtract(camPos).normalize();
-            const dot = BABYLON.Vector3.Dot(camDir, toDir);
+            _to.copy(_obj).sub(_cam).normalize();
+            const dot = _dir.dot(_to);
             if (dot < 0.25 && dist > 1.2) continue;
 
             const score = dist * (1.5 - dot);
@@ -69,6 +74,7 @@ export class InteractionSystem {
 
     tryInteract(player, game) {
         if (!this.prompt) return false;
+        player.interactT = 0.4;
         this.prompt.interact?.(player, game);
         return true;
     }

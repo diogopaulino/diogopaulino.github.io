@@ -1,13 +1,28 @@
 /**
- * Câmera em terceira pessoa em Babylon.js — órbita, ombro, zoom, raycast contra paredes e screen shake.
+ * Câmera em terceira pessoa (three.js) — órbita, ombro, zoom, colisão e screen shake.
+ *
+ * Posição desejada a partir do alvo T (cabeça do jogador), guinada ψ e inclinação θ:
+ *   trás = (sin ψ·cos θ, sin θ, cos ψ·cos θ)      direita = (cos ψ, 0, −sin ψ)
+ *   C = T + trás·d + direita·ombro
+ * Colisão: um raio T → C contra as caixas/terreno do nível (CollisionWorld.rayHit, no
+ * referencial local do nível); se bater, d = max(1,1; batida − 0,3). Para não enxergar
+ * através das paredes, a aproximação é imediata e o afastamento é amortecido.
  */
 
+import * as THREE from 'three';
 import { clamp, damp } from '../utils/math.js';
 
+const _t = new THREE.Vector3();
+const _d = new THREE.Vector3();
+const _o = new THREE.Vector3();
+const _c = new THREE.Vector3();
+const _inv = new THREE.Matrix4();
+const _pos = new THREE.Vector3();
+const _look = new THREE.Vector3();
+
 export class ThirdPersonCamera {
-    constructor(camera, scene) {
+    constructor(camera) {
         this.camera = camera;
-        this.scene = scene;
         this.yaw = 0;
         this.pitch = 0.32;
         this.distance = 5.4;
@@ -18,23 +33,28 @@ export class ThirdPersonCamera {
         this.pitchMax = 1.15;
         this.shoulder = 0.55;
         this.lookHeight = 1.55;
-        this.fov = 0.95; // radianos (~55 deg)
+        this.fov = 0.95; // radianos (~55°)
         this.targetFov = 0.95;
         this.shake = 0;
         this.shakeAmp = 0;
-        this._obstacles = [];
-        this.currentPos = new BABYLON.Vector3(0, 2, 6);
-        this.smoothLook = new BABYLON.Vector3(0, 1.5, 0);
+        this.currentPos = new THREE.Vector3(0, 2, 6);
+        this.smoothLook = new THREE.Vector3(0, 1.5, 0);
         this.cutscene = false;
+        /* colisão: mundo (CollisionWorld) + referencial local (Object3D) do nível */
+        this.world = null;
+        this.space = null;
+        this.collide = true;
+        this.clip = 99;
+        /* enquadramento alternativo (leme do navio): { distance, height, pitch } */
+        this.override = null;
     }
 
-    setObstacles(meshes) {
-        this._obstacles = (meshes || []).filter((m) => {
-            if (!m) return false;
-            if (m.userData?.ignoreCamera) return false;
-            if (m.name === 'shipSail') return false;
-            return true;
-        });
+    /** Liga a colisão da câmera ao mundo do nível. `space` = objeto cujo referencial local é o da colisão. */
+    setWorld(world, space = null, collide = true) {
+        this.world = world;
+        this.space = space;
+        this.collide = collide;
+        this.clip = 99;
     }
 
     addShake(amp = 0.12, time = 0.25) {
@@ -42,24 +62,47 @@ export class ThirdPersonCamera {
         this.shakeAmp = Math.max(this.shakeAmp, amp);
     }
 
+    /** Calcula a posição desejada (out) e o alvo de olhar (look), já com a colisão aplicada. */
+    _desired(player, out, look) {
+        player.worldPosition(_o);
+        const ov = this.override;
+        const h = ov ? ov.height : player.crouching ? 1.15 : this.lookHeight;
+        look.set(_o.x, _o.y + h, _o.z);
+        const pitch = ov ? Math.max(this.pitch, ov.pitch) : this.pitch;
+        const dist = ov ? ov.distance : this.distance;
+        const cosP = Math.cos(pitch);
+        _d.set(Math.sin(this.yaw) * cosP, Math.sin(pitch), Math.cos(this.yaw) * cosP);
+        const sh = ov ? 0 : this.shoulder;
+        out.copy(look).addScaledVector(_d, dist);
+        out.x += Math.cos(this.yaw) * sh;
+        out.z -= Math.sin(this.yaw) * sh;
+        if (!this.collide || !this.world) return;
+        // raio alvo → câmera no referencial local do nível
+        _t.copy(look);
+        _c.copy(out);
+        if (this.space) {
+            _inv.copy(this.space.matrixWorld).invert();
+            _t.applyMatrix4(_inv);
+            _c.applyMatrix4(_inv);
+        }
+        _c.sub(_t);
+        const len = _c.length();
+        if (len < 0.01) return;
+        _c.multiplyScalar(1 / len);
+        const hit = this.world.rayHit(_t.x, _t.y, _t.z, _c.x, _c.y, _c.z, len + 0.3);
+        const k = hit < len + 0.3 ? Math.max(1.1, hit - 0.3) / len : 1;
+        // aproxima na hora, afasta aos poucos
+        this.clip = k < this.clip ? k : Math.min(1, this.clip + 0.03);
+        if (this.clip < 1) out.sub(look).multiplyScalar(this.clip).add(look);
+    }
+
     snapToPlayer(player) {
         this.cutscene = false;
-        const origin = player.worldPosition ? player.worldPosition() : player.position;
-        this.smoothLook.set(origin.x, origin.y + this.lookHeight, origin.z);
-
-        const cosP = Math.cos(this.pitch);
-        const sinP = Math.sin(this.pitch);
-        const sinY = Math.sin(this.yaw);
-        const cosY = Math.cos(this.yaw);
-
-        this.currentPos.set(
-            origin.x + sinY * cosP * this.distance + cosY * this.shoulder,
-            origin.y + this.lookHeight + sinP * this.distance,
-            origin.z + cosY * cosP * this.distance - sinY * this.shoulder
-        );
-
-        this.camera.position.copyFrom(this.currentPos);
-        this.camera.setTarget(this.smoothLook);
+        this.clip = 99;
+        player.root.updateWorldMatrix(true, false);
+        this._desired(player, this.currentPos, this.smoothLook);
+        this.camera.position.copy(this.currentPos);
+        this.camera.lookAt(this.smoothLook);
     }
 
     update(dt, player, lookDelta, zoomDelta, sprinting) {
@@ -71,74 +114,39 @@ export class ThirdPersonCamera {
         this.distance = damp(this.distance, this.targetDistance, 8, dt);
 
         this.targetFov = sprinting ? 1.08 : 0.95;
-        this.fov = damp(this.fov, this.targetFov, 4, dt);
-        this.camera.fov = this.fov;
-
-        const origin = player.worldPosition ? player.worldPosition() : player.position;
-        const lookY = origin.y + (player.crouching ? 1.15 : this.lookHeight);
-        const targetLook = new BABYLON.Vector3(origin.x, lookY, origin.z);
-
-        const cosP = Math.cos(this.pitch);
-        const sinP = Math.sin(this.pitch);
-        const sinY = Math.sin(this.yaw);
-        const cosY = Math.cos(this.yaw);
-
-        const backX = sinY * cosP;
-        const backZ = cosY * cosP;
-        const rightX = cosY;
-        const rightZ = -sinY;
-
-        const desired = new BABYLON.Vector3(
-            targetLook.x + backX * this.distance + rightX * this.shoulder,
-            targetLook.y + sinP * this.distance,
-            targetLook.z + backZ * this.distance + rightZ * this.shoulder
-        );
-
-        // Raycast contra obstáculos
-        if (this._obstacles.length) {
-            const rayDir = desired.subtract(targetLook);
-            const rayLen = rayDir.length();
-            if (rayLen > 0.01) {
-                rayDir.normalize();
-                const ray = new BABYLON.Ray(targetLook, rayDir, rayLen);
-                let hit = null;
-                for (const obs of this._obstacles) {
-                    if (!obs || !obs.isEnabled?.()) continue;
-                    const pick = ray.intersectsMesh(obs, false);
-                    if (pick.hit && (!hit || pick.distance < hit.distance)) {
-                        hit = pick;
-                    }
-                }
-                if (hit) {
-                    const safeDist = Math.max(1.8, hit.distance - 0.35);
-                    desired.copyFrom(targetLook.add(rayDir.scale(safeDist)));
-                }
-            }
+        const fov = damp(this.fov, this.targetFov, 4, dt);
+        if (Math.abs(fov - this.fov) > 1e-4) {
+            this.fov = fov;
+            this.camera.fov = THREE.MathUtils.radToDeg(fov);
+            this.camera.updateProjectionMatrix();
         }
 
-        this.currentPos.x = damp(this.currentPos.x, desired.x, 14, dt);
-        this.currentPos.y = damp(this.currentPos.y, desired.y, 12, dt);
-        this.currentPos.z = damp(this.currentPos.z, desired.z, 14, dt);
+        this._desired(player, _pos, _look);
 
-        this.smoothLook.x = damp(this.smoothLook.x, targetLook.x, 16, dt);
-        this.smoothLook.y = damp(this.smoothLook.y, targetLook.y, 16, dt);
-        this.smoothLook.z = damp(this.smoothLook.z, targetLook.z, 16, dt);
+        this.currentPos.x = damp(this.currentPos.x, _pos.x, 14, dt);
+        this.currentPos.y = damp(this.currentPos.y, _pos.y, 12, dt);
+        this.currentPos.z = damp(this.currentPos.z, _pos.z, 14, dt);
+        if (this.collide && this.clip < 1) this.currentPos.copy(_pos); // encostado na parede: sem atraso
 
+        this.smoothLook.x = damp(this.smoothLook.x, _look.x, 16, dt);
+        this.smoothLook.y = damp(this.smoothLook.y, _look.y, 16, dt);
+        this.smoothLook.z = damp(this.smoothLook.z, _look.z, 16, dt);
+
+        this.camera.position.copy(this.currentPos);
         if (this.shake > 0) {
             this.shake -= dt;
-            const a = this.shakeAmp * (this.shake / 0.25);
-            this.currentPos.x += (Math.random() - 0.5) * a;
-            this.currentPos.y += (Math.random() - 0.5) * a * 0.6;
+            const a = this.shakeAmp * Math.max(0, this.shake / 0.25);
+            this.camera.position.x += (Math.random() - 0.5) * a;
+            this.camera.position.y += (Math.random() - 0.5) * a * 0.6;
+            if (this.shake <= 0) this.shakeAmp = 0;
         }
-
-        this.camera.position.copyFrom(this.currentPos);
-        this.camera.setTarget(this.smoothLook);
+        this.camera.lookAt(this.smoothLook);
     }
 
     setCutscenePose(pos, look) {
-        this.camera.position.copyFrom(pos);
-        this.camera.setTarget(look);
-        this.currentPos.copyFrom(pos);
-        this.smoothLook.copyFrom(look);
+        this.camera.position.copy(pos);
+        this.camera.lookAt(look);
+        this.currentPos.copy(pos);
+        this.smoothLook.copy(look);
     }
 }

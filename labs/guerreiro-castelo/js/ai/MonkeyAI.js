@@ -2,6 +2,7 @@
  * Companheiro Teco (Macaco) — IA de acompanhamento, ombro, escalada e interação.
  */
 
+import * as THREE from 'three';
 import { damp } from '../utils/math.js';
 
 export const MonkeyState = {
@@ -39,8 +40,13 @@ export class MonkeyAI {
     }
 
     command(path, { climb = false, scared = false, celebrate = false, onComplete = null } = {}) {
-        this.path = path.map((p) => p.clone ? p.clone() : new BABYLON.Vector3(p.x, p.y, p.z));
+        this.path = path.map((p) => (p.clone ? p.clone() : new THREE.Vector3(p.x, p.y, p.z)));
         this.pathI = 0;
+        /* Teco ficou para trás (Dico corre a 9 m/s): chega num pulo antes de cumprir a ordem */
+        const pl = this.teco.game?.player;
+        if (pl && this.teco.position.distanceTo(pl.position) > 9) {
+            this.teco.position.set(pl.position.x + 0.8, pl.position.y, pl.position.z + 0.8);
+        }
         this.onComplete = onComplete;
         this.state = climb ? MonkeyState.CLIMB : MonkeyState.MOVE_TO;
         this.teco.onShoulder = false;
@@ -54,12 +60,16 @@ export class MonkeyAI {
         const player = game.player;
         this.timer += dt;
 
+        /* SCRIPT: a fase controla posição e animação (cutscenes) */
+        if (this.state === 'SCRIPT') return;
+
         if (this.state === MonkeyState.PERCHED) {
-            const shoulderX = Math.cos(player.facing) * 0.22 - Math.sin(player.facing) * 0.05;
-            const shoulderZ = -Math.sin(player.facing) * 0.22 - Math.cos(player.facing) * 0.05;
+            /* ombro direito de Dico: 0,2 m para o lado e um pouco atrás; o macaco senta (modo sit) */
+            const shoulderX = -Math.cos(player.facing) * 0.2 - Math.sin(player.facing) * 0.06;
+            const shoulderZ = Math.sin(player.facing) * 0.2 - Math.cos(player.facing) * 0.06;
             teco.position.set(
                 player.position.x + shoulderX,
-                player.position.y + 1.52,
+                player.position.y + (player.crouching ? 1.05 : 1.42),
                 player.position.z + shoulderZ
             );
             this.facing = player.facing;
@@ -84,7 +94,7 @@ export class MonkeyAI {
             const dy = goal.y - teco.position.y;
             const dz = goal.z - teco.position.z;
             const dist = Math.hypot(dx, dy, dz);
-            const spd = this.state === MonkeyState.CLIMB ? 3.4 : this.speed;
+            const spd = this.state === MonkeyState.CLIMB ? 4.6 : this.speed;
             if (dist < 0.18) {
                 this.pathI++;
                 if (this.pathI >= this.path.length) {
@@ -141,7 +151,7 @@ export class MonkeyAI {
 
         if (dist > 1.4) {
             this.state = MonkeyState.FOLLOW;
-            const spd = dist > 6 ? 7 : 4.2;
+            const spd = dist > 6 ? 10.5 : 4.2;
             teco.position.x += (dx / (dist || 1)) * spd * dt;
             teco.position.z += (dz / (dist || 1)) * spd * dt;
             teco.position.y = damp(teco.position.y, targetY, 8, dt);

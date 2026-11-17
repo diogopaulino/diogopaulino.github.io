@@ -1,12 +1,14 @@
 /**
- * Capítulo 6: Aproximação do Castelo e Reconhecimento com Teco em Babylon.js.
+ * Capítulo 6: Aproximação do Castelo e Reconhecimento com Teco.
+ * Arqueiros vigiam o adarve sobre o portão; Teco sobe na árvore-mirante e acha a gruta.
  */
 
-import { Level } from './Level.js';
-import { buildCastle, addCastleColliders } from '../world/Castle.js?v=10';
-import { makeTree } from '../world/Environment.js?v=5';
-import { grassTexture } from '../world/Textures.js';
-import { buildGuard, CharacterAnimator } from '../characters/builders.js?v=7';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { ISLAND_MARKS } from '../world/Island.js?v=40';
+import { makeHero, giveBow } from '../characters/cast.js?v=40';
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 export class CastleExteriorLevel extends Level {
     get id() {
@@ -14,118 +16,98 @@ export class CastleExteriorLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        this.group = new BABYLON.TransformNode('castleExtGroup', scene);
-        this.group.position.set(0, 0, -88);
+        const g = this.game;
+        const isl = g.island;
+        this.island = isl;
+        this.group = new THREE.Group();
+        const M = ISLAND_MARKS;
 
-        const ground = BABYLON.MeshBuilder.CreateGround('castleExtGround', { width: 90, height: 70 }, scene);
-        ground.position.y = 0.02;
-        const gMat = new BABYLON.StandardMaterial('castleExtGMat', scene);
-        gMat.diffuseTexture = grassTexture(scene, 12, 10);
-        gMat.diffuseColor = new BABYLON.Color3(0.55, 0.55, 0.45);
-        ground.material = gMat;
-        ground.parent = this.group;
-        ground.receiveShadows = true;
+        this.archers = [];
+        for (const [x, y, z] of isl.castle.userData.archerSpots) {
+            const hero = makeHero('archer');
+            hero.object.position.set(x, y, z + 0.2);
+            isl.castle.add(hero.object);
+            giveBow(hero, THREE);
+            this.archers.push({ hero, anim: { mode: 'idle' } });
+        }
 
-        this.castle = buildCastle(scene);
-        this.castle.parent = this.group;
-        addCastleColliders(this.game.collision, 0, -88);
-
-        this.lookout = makeTree(Math.random, scene);
-        this.lookout.position.set(-18, 0, 4);
-        this.lookout.parent = this.group;
-
-        const gateProxy = new BABYLON.TransformNode('gateProxy', scene);
-        gateProxy.position.set(0, 1, 16);
-        gateProxy.parent = this.group;
-
+        const gy = isl.heightAt(M.gate.x, M.gate.z);
         this.addInteract({
-            object: gateProxy,
+            object: this.proxy(M.gate.x, gy + 1.4, M.gate.z - 2.4),
             interactionLabel: 'Portão (protegido)',
-            interactionDistance: 4,
+            interactionDistance: 6,
             interact: (_p, game) => {
                 game.dialogue.say('DICO', 'Não por aqui. Há arqueiros demais no portão.');
-                if (!this._viewed) {
-                    this._viewed = true;
+                if (!this.nearCastle) {
+                    this.nearCastle = true;
                     game.story.notify('castle_view');
                 }
             }
         });
 
+        const ty = isl.heightAt(M.tree.x, M.tree.z);
+        this.treeBase = V(M.tree.x, ty, M.tree.z);
         this.addInteract({
-            object: this.lookout,
+            object: this.proxy(M.tree.x, ty + 1.2, M.tree.z),
             interactionLabel: 'Mandar Teco',
-            interactionDistance: 3.5,
+            interactionDistance: 4.5,
             interact: (_p, game) => this.sendTecoTree(game)
         });
 
-        const secret = this.castle.userData.secretDoor;
-        this.addInteract({
-            object: secret,
-            interactionLabel: 'Chegar à porta',
-            interactionDistance: 2.6,
-            interact: (_p, game) => {
-                game.story.notify('at_secret');
-                game.quests.set('open_door');
-            }
-        });
-
-        this.archers = [];
-        for (let i = -2; i <= 2; i++) {
-            const a = buildGuard(scene, { archer: true });
-            a.root.position.set(i * 3.2, 18.2, 14.2);
-            a.root.parent = this.castle;
-            this.archers.push(new CharacterAnimator(a.root, a.clips));
-        }
-
-        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
         this.tecoSent = false;
         this.nearCastle = false;
+    }
+
+    /** Retomada de checkpoint: a vista do castelo já aconteceu. */
+    resume(cp) {
+        this.nearCastle = true;
+        if (cp === 'secret_door') this.tecoSent = true;
     }
 
     sendTecoTree(game) {
         if (this.tecoSent) return;
         this.tecoSent = true;
-        const base = this.lookout.getAbsolutePosition();
-        const path = [
-            new BABYLON.Vector3(base.x, 1.2, base.z),
-            new BABYLON.Vector3(base.x, 4.2, base.z),
-            new BABYLON.Vector3(base.x, 6.5, base.z)
-        ];
+        const b = this.treeBase;
+        const path = [V(b.x + 0.5, b.y + 0.3, b.z + 0.5), V(b.x + 0.35, b.y + 4.2, b.z + 0.3), V(b.x + 0.2, b.y + 7.2, b.z)];
         game.teco.ai.command(path, {
             climb: true,
             celebrate: true,
             onComplete: () => {
                 game.story.notify('teco_tree');
-                game.teco.ai.command([
-                    new BABYLON.Vector3(game.player.position.x, game.player.position.y, game.player.position.z)
-                ], { onComplete: () => {} });
+                const p = game.player.position;
+                game.teco.ai.command([V(b.x + 0.5, b.y + 0.3, b.z + 0.5), V(p.x, p.y, p.z)], { onComplete: () => {} });
             }
         });
     }
 
     update(dt) {
         this.time += dt;
-        for (const a of this.archers) a.update(dt);
+        const g = this.game;
+        const p = g.player.position;
+        for (const a of this.archers) {
+            a.hero.lookAt(g.player.root.getWorldPosition(_look).setY(_look.y + 1.5));
+            a.hero.update(dt, a.anim);
+        }
 
-        const p = this.game.player.position;
-        if (!this.nearCastle && p.z < -70) {
+        if (!this.nearCastle && p.z < ISLAND_MARKS.view.z) {
             this.nearCastle = true;
-            this.game.story.notify('castle_view');
-            this.game.cutscenes.play({
-                from: new BABYLON.Vector3(p.x + 4, p.y + 8, p.z + 10),
-                to: new BABYLON.Vector3(p.x + 8, p.y + 16, p.z + 6),
-                lookFrom: new BABYLON.Vector3(0, 12, -88),
-                lookTo: new BABYLON.Vector3(0, 20, -100),
-                duration: 3.6
+            g.story.notify('castle_view');
+            g.cutscenes.play({
+                from: V(p.x + 3, p.y + 3, p.z + 9),
+                to: V(p.x + 9, p.y + 12, p.z + 2),
+                lookFrom: V(0, 16, -44),
+                lookTo: V(0, 24, -60),
+                duration: 4.2
             });
         }
+    }
 
-        const door = this.castle.userData.secretDoor;
-        const doorPos = door.getAbsolutePosition ? door.getAbsolutePosition() : door.position;
-        if (!this._atDoor && BABYLON.Vector3.Distance(doorPos, p) < 3.2) {
-            this._atDoor = true;
-            this.game.story.notify('at_secret');
+    exit() {
+        for (const a of this.archers) {
+            a.hero.object.removeFromParent();
+            a.hero.dispose?.();
         }
+        super.exit();
     }
 }
+const _look = V(0, 0, 0);

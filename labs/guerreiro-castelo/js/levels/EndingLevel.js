@@ -1,10 +1,13 @@
 /**
- * Capítulo 12: Celebração e Pôr do Sol no Mar em Babylon.js.
+ * Capítulo 12: Celebração e Pôr do Sol no Mar.
  */
 
-import { Level } from './Level.js';
-import { buildShip } from '../world/Ship.js?v=14';
-import { buildFriend, CharacterAnimator } from '../characters/builders.js?v=7';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { buildShip, updateShip, SHIP_MARKS, deckY } from '../world/Ship.js?v=40';
+import { makeFriend } from '../characters/cast.js?v=40';
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 export class EndingLevel extends Level {
     get id() {
@@ -12,20 +15,21 @@ export class EndingLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        this.group = new BABYLON.TransformNode('endingLevelGroup', scene);
-        this.ship = buildShip(scene);
-        this.ship.parent = this.group;
+        this.group = new THREE.Group();
+        this.ship = await buildShip(this.game, { props: true });
+        this.group.add(this.ship);
+        /* proa para o poente */
+        this.group.rotation.y = -1.25;
 
         this.friends = [];
-        for (let i = 0; i < 3; i++) {
-            const f = buildFriend(scene, i);
-            f.root.position.set(-1.4 + i * 1.4, 1.44, 1.2);
-            f.root.parent = this.ship;
-            this.friends.push(new CharacterAnimator(f.root, f.clips));
-        }
-
-        this.obstacles = this.ship.getChildMeshes ? this.ship.getChildMeshes() : [];
+        SHIP_MARKS.friends.forEach((s, i) => {
+            const hero = makeFriend(i);
+            const x = -1.6 + i * 1.5;
+            hero.object.position.set(x, deckY(x, 2.4), 2.4);
+            hero.object.rotation.y = Math.PI;
+            this.ship.add(hero.object);
+            this.friends.push({ hero, anim: { mode: 'cheer' } });
+        });
     }
 
     enter() {
@@ -33,23 +37,32 @@ export class EndingLevel extends Level {
         g.player.attachTo(this.ship);
         g.teco.attachTo(this.ship);
         g.camila.attachTo(this.ship);
-        g.player.spawn(0, 1.44, 4.5, 0);
-        g.teco.spawn(0.8, 1.5, 3.8);
-        g.camila.spawn(-0.6, 1.44, 3.6);
+        const y = deckY(0, -7);
+        g.player.spawn(0.5, y, -7.2, Math.PI);
+        g.teco.spawn(1.4, y, -7.6);
+        g.teco.ai.state = 'SCRIPT';
+        g.camila.spawn(-0.5, y, -7.1);
         g.camila.setShackles(false);
         g.camila.active = true;
-        g.camila.root.setEnabled(true);
+        g.camila.ai.state = 'HOLD';
         g.player.controller.setMode('locked');
+        g.input.enabled = false;
         g.weather.apply('sunset');
         g.audio.setTheme('calm');
+        g.ocean.setMode('calm');
         g.ocean.visible = true;
+        g.cameraRig.setWorld(g.collision, this.ship, false);
+        g.hud.showObjective('Você escapou');
 
+        // câmera em coordenadas de mundo: o grupo está girado −1,25 rad (proa ≈ oeste)
+        const w = (x, yy, z) => this.group.localToWorld(V(x, yy, z));
         g.cutscenes.play({
-            from: new BABYLON.Vector3(0, 4, 14),
-            to: new BABYLON.Vector3(0, 7, 24),
-            lookFrom: new BABYLON.Vector3(0, 2.4, 0),
-            lookTo: new BABYLON.Vector3(0, 3.4, -6),
-            duration: 7.5,
+            from: w(5, y + 2.2, -1),
+            to: w(9, y + 5, 12),
+            lookFrom: w(0, y + 1.4, -7),
+            lookTo: w(0, y + 2.5, -9),
+            duration: 11,
+            midAt: 0.08,
             onMid: () => {
                 g.dialogue.play([
                     { speaker: 'CAMILA', text: 'Obrigada, guerreiro. Achei que nunca mais veria o pôr do sol assim.', duration: 4.2 },
@@ -67,10 +80,20 @@ export class EndingLevel extends Level {
 
     update(dt) {
         this.time += dt;
-        const wave = this.game.ocean.sample(0, 0, this.time);
-        this.ship.position.y = wave.y * 0.25;
-        this.ship.rotation.x = wave.pitch * 0.3;
-        this.ship.rotation.z = wave.roll * 0.3;
-        for (const f of this.friends) f.update(dt);
+        const g = this.game;
+        const wave = g.ocean.sample(0, 0);
+        this.ship.position.y = wave.y * 0.8;
+        this.ship.rotation.x = wave.pitch * 0.7;
+        this.ship.rotation.z = wave.roll * 0.7;
+        updateShip(this.ship, dt, 1, 1);
+        g.teco.play('Celebrate');
+        g.camila.ai.facing = Math.PI;
+        for (const f of this.friends) f.hero.update(dt, f.anim);
+    }
+
+    exit() {
+        for (const f of this.friends) f.hero.dispose?.();
+        super.exit();
+        this.game.input.enabled = true;
     }
 }

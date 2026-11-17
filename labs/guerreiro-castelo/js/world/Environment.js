@@ -1,244 +1,120 @@
 /**
- * Elementos do cenário: árvores, rochas, arbustos, tochas e fogo em Babylon.js.
+ * Fogo, tochas e brasas. As chamas são partículas "sem estado" de gfx/particles
+ * (posição = função do tempo, custo de CPU ~zero) em mistura aditiva com cor HDR,
+ * então o bloom do palco acende sozinho. A luz pontual tremula por soma de senos:
+ *   I(t) = I0 · (0,86 + 0,09·sin(9,1t + φ) + 0,05·sin(23,7t + 1,7φ))
  */
+import * as THREE from 'three';
+import { createParticles } from '../../../shared/gfx/particles.js';
+import { Kit, mat, block } from './Build.js';
 
-import { barkTexture, leafTexture, stoneTexture, woodTexture } from './Textures.js';
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
-/** Empurra XZ para a copa/arbusto não ficar um sólido perfeito. */
-function raggedXZ(mesh, amp = 0.22) {
-    const verts = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-    if (!verts) return mesh;
-    for (let i = 0; i < verts.length; i += 3) {
-        const n = 0.84 + Math.abs(Math.sin(verts[i] * 3.1 + verts[i + 1]) * Math.cos(verts[i + 2] * 2.6)) * amp;
-        verts[i] *= n;
-        verts[i + 2] *= n;
+/**
+ * Chama em (x,y,z) do grupo pai. `size` ≈ largura da base em metros.
+ * @returns {{ light: THREE.PointLight|null, base: number, phase: number, parts: Array, setLit(bool) }}
+ */
+export function makeFire(parent, x, y, z, { size = 0.5, light = true, intensity = 9, distance = 9, shadow = false, shadowMap = 512, color = 0xffd4a8, smoke = false } = {}) {
+    const parts = [];
+    const flame = createParticles({
+        count: Math.round(22 + size * 26), life: 0.75,
+        origin: V(x, y, z), spread: V(size * 0.32, size * 0.05, size * 0.32),
+        velocity: V(0, 0.9 + size * 0.9, 0), velocitySpread: V(0.1, 0.25, 0.1),
+        turbulence: 0.06 + size * 0.05, size: [size * 0.95, size * 0.2], color: 0xffffff, opacity: 0.55, additive: true
+    });
+    flame.uniforms.uColor.value.setRGB(2.6, 0.95, 0.22);
+    const core = createParticles({
+        count: Math.round(10 + size * 12), life: 0.45,
+        origin: V(x, y + size * 0.05, z), spread: V(size * 0.16, size * 0.03, size * 0.16),
+        velocity: V(0, 0.7 + size * 0.6, 0), velocitySpread: V(0.05, 0.15, 0.05),
+        turbulence: 0.03, size: [size * 0.55, size * 0.12], color: 0xffffff, opacity: 0.6, additive: true
+    });
+    core.uniforms.uColor.value.setRGB(3.2, 2.2, 0.9);
+    const sparks = createParticles({
+        count: Math.round(8 + size * 10), life: 1.6,
+        origin: V(x, y + size * 0.2, z), spread: V(size * 0.25, 0.05, size * 0.25),
+        velocity: V(0, 1.1 + size, 0), velocitySpread: V(0.35, 0.5, 0.35),
+        turbulence: 0.35, size: [0.035, 0.012], color: 0xffffff, opacity: 1, additive: true
+    });
+    sparks.uniforms.uColor.value.setRGB(4, 1.6, 0.4);
+    parts.push(flame, core, sparks);
+    if (smoke) {
+        const sm = createParticles({
+            count: 14, life: 3.2, origin: V(x, y + size * 0.8, z), spread: V(size * 0.2, 0.05, size * 0.2),
+            velocity: V(0, 0.8, 0), velocitySpread: V(0.1, 0.15, 0.1), turbulence: 0.25,
+            size: [size * 0.6, size * 2.2], color: 0x2a2622, opacity: 0.16
+        });
+        parts.push(sm);
     }
-    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
-    mesh.createNormals(false);
-    return mesh;
-}
-
-function raggedRock(mesh) {
-    const verts = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-    if (!verts) return mesh;
-    for (let i = 0; i < verts.length; i += 3) {
-        const x = verts[i];
-        const y = verts[i + 1];
-        const z = verts[i + 2];
-        const n = 0.76 + Math.abs(Math.sin(x * 1.8 + z * 2.2) * Math.cos(y * 2.4 + x)) * 0.4;
-        verts[i] = x * n;
-        verts[i + 1] = y * (0.68 + n * 0.28);
-        verts[i + 2] = z * n;
+    for (const p of parts) {
+        p.mesh.userData.ownGeo = true;
+        parent.add(p.mesh);
     }
-    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, verts);
-    mesh.createNormals(false);
-    return mesh;
-}
-
-export function makeTree(rng = Math.random, scene) {
-    const root = new BABYLON.TransformNode('treeRoot', scene);
-
-    const trunkH = 4 + rng() * 2;
-    const trunk = BABYLON.MeshBuilder.CreateCylinder('treeTrunk', {
-        diameterTop: 0.35,
-        diameterBottom: 0.55,
-        height: trunkH,
-        tessellation: 7
-    }, scene);
-    trunk.position.y = trunkH / 2;
-    trunk.parent = root;
-
-    const trunkMat = new BABYLON.StandardMaterial('trunkMat', scene);
-    trunkMat.diffuseTexture = barkTexture(scene, 1, 2);
-    trunkMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
-    trunk.material = trunkMat;
-
-    const foliage = new BABYLON.TransformNode('treeFoliage', scene);
-    foliage.parent = root;
-    foliage.position.y = trunkH * 0.75;
-
-    const leafMat = new BABYLON.StandardMaterial('leafMat', scene);
-    leafMat.diffuseTexture = leafTexture(scene, 2, 2);
-    leafMat.specularColor = new BABYLON.Color3(0.02, 0.02, 0.02);
-
-    const layers = 3;
-    for (let i = 0; i < layers; i++) {
-        const cone = BABYLON.MeshBuilder.CreateCylinder(`treeCone_${i}`, {
-            diameterTop: 0,
-            diameterBottom: 3.2 - i * 0.7 + rng() * 0.4,
-            height: 2.2,
-            tessellation: 7
-        }, scene);
-        raggedXZ(cone, 0.26);
-        cone.position.y = i * 1.3;
-        cone.material = leafMat;
-        cone.parent = foliage;
+    let lamp = null;
+    if (light) {
+        lamp = new THREE.PointLight(color, intensity, distance, 1.6);
+        lamp.position.set(x, y + size * 0.6, z);
+        if (shadow) {
+            lamp.castShadow = true;
+            lamp.shadow.mapSize.set(shadowMap, shadowMap);
+            lamp.shadow.bias = -0.004;
+            lamp.shadow.normalBias = 0.03;
+            lamp.shadow.camera.near = 0.15;
+            lamp.shadow.camera.far = distance;
+        }
+        parent.add(lamp);
     }
-
-    return root;
+    return {
+        light: lamp, base: intensity, phase: (x * 3.1 + z * 1.7 + y) % 6.28, parts,
+        setLit(on) {
+            for (const p of parts) p.mesh.visible = on;
+            if (lamp) lamp.visible = on;
+        }
+    };
 }
 
-export function makeRock(scale = 1, scene) {
-    const mesh = BABYLON.MeshBuilder.CreateSphere('rockMesh', {
-        diameter: scale * 2,
-        segments: 6
-    }, scene);
-    raggedRock(mesh);
-    mesh.scaling = new BABYLON.Vector3(1 + Math.random() * 0.3, 0.7 + Math.random() * 0.4, 1 + Math.random() * 0.3);
-    mesh.rotation.y = Math.random() * Math.PI * 2;
-    mesh.rotation.x = (Math.random() - 0.5) * 0.4;
-
-    const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
-    rockMat.diffuseTexture = stoneTexture(scene, 2, 2);
-    rockMat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.08);
-    mesh.material = rockMat;
-
-    return mesh;
+/**
+ * Tocha de parede: arandela de ferro (haste dobrada + copo torneado), cabo de madeira
+ * e cabeça enrolada em pano. `ry` aponta a tocha para fora da parede.
+ * A geometria vai para o Kit do nível; a chama devolvida entra no EnvironmentFX.
+ */
+export function addTorch(kit, parent, x, y, z, ry = 0, opts = {}) {
+    // peças modeladas no referencial da tocha (z = para fora da parede) e levadas ao nível por M = T·Ry
+    const M = new THREE.Matrix4().makeRotationY(ry).setPosition(x, y, z);
+    const L = new THREE.Matrix4();
+    const at = (g, lx, ly, lz, rx = 0) => g.applyMatrix4(L.makeRotationX(rx).setPosition(lx, ly, lz)).applyMatrix4(M);
+    // placa na parede, braço e copo (ferro)
+    kit.add('iron', at(block(0.12, 0.3, 0.03, 0.01), 0, 0, 0.02));
+    kit.add('iron', at(new THREE.CylinderGeometry(0.014, 0.014, 0.26, 8), 0, -0.02, 0.14, Math.PI / 2 - 0.5));
+    const cup = new THREE.LatheGeometry([[0.03, 0], [0.05, 0.02], [0.058, 0.09], [0.05, 0.1], [0.04, 0.02]].map(([a, b]) => new THREE.Vector2(a, b)), 12);
+    kit.add('iron', at(cup, 0, 0.02, 0.25, -0.32));
+    // cabo e cabeça
+    kit.add('darkwood', at(new THREE.CylinderGeometry(0.024, 0.02, 0.5, 8), 0, 0.2, 0.31, -0.32));
+    kit.add('cloth', at(new THREE.CylinderGeometry(0.05, 0.036, 0.16, 10), 0, 0.46, 0.39, -0.32));
+    const fx = x + 0.42 * Math.sin(ry);
+    const fz = z + 0.42 * Math.cos(ry);
+    return makeFire(parent, fx, y + 0.54, fz, { size: 0.3, intensity: 5, distance: 10, ...opts });
 }
 
-export function makeBush(scene) {
-    const root = new BABYLON.TransformNode('bushRoot', scene);
-    const leafMat = new BABYLON.StandardMaterial('bushLeafMat', scene);
-    leafMat.diffuseTexture = leafTexture(scene, 1, 1);
-
-    for (let i = 0; i < 4; i++) {
-        const b = BABYLON.MeshBuilder.CreateSphere(`bushPart_${i}`, {
-            diameter: 0.9 + Math.random() * 0.5,
-            segments: 6
-        }, scene);
-        raggedXZ(b, 0.34);
-        b.position.set((Math.random() - 0.5) * 0.6, 0.35 + Math.random() * 0.3, (Math.random() - 0.5) * 0.6);
-        b.material = leafMat;
-        b.parent = root;
-    }
-    return root;
-}
-
-export function makeGrassInstanced(count, radius, quality = 1, scene) {
-    const root = new BABYLON.TransformNode('grassGroup', scene);
-    const actualCount = Math.floor(count * quality);
-    if (actualCount <= 0) return root;
-
-    const blade = BABYLON.MeshBuilder.CreatePlane('grassBlade', {
-        width: 0.35,
-        height: 0.7
-    }, scene);
-    const gMat = new BABYLON.StandardMaterial('grassBladeMat', scene);
-    gMat.diffuseColor = new BABYLON.Color3(0.24, 0.46, 0.16);
-    gMat.backFaceCulling = false;
-    blade.material = gMat;
-    blade.parent = root;
-    blade.isVisible = false;
-
-    for (let i = 0; i < actualCount; i++) {
-        const inst = blade.createInstance(`grass_${i}`);
-        const r = Math.sqrt(Math.random()) * radius;
-        const theta = Math.random() * Math.PI * 2;
-        inst.position.set(Math.cos(theta) * r, 0.35, Math.sin(theta) * r);
-        inst.rotation.y = Math.random() * Math.PI * 2;
-        inst.scaling.setAll(0.7 + Math.random() * 0.6);
-        inst.parent = root;
-    }
-
-    return root;
-}
-
-export function makeTorch(scene) {
-    const root = new BABYLON.TransformNode('torchRoot', scene);
-
-    const stick = BABYLON.MeshBuilder.CreateCylinder('torchStick', {
-        diameterTop: 0.06,
-        diameterBottom: 0.04,
-        height: 0.5,
-        tessellation: 6
-    }, scene);
-    stick.position.y = 0.25;
-    stick.parent = root;
-
-    const stickMat = new BABYLON.StandardMaterial('torchWoodMat', scene);
-    stickMat.diffuseTexture = woodTexture(scene, 1, 1);
-    stick.material = stickMat;
-
-    const head = BABYLON.MeshBuilder.CreateCylinder('torchHead', {
-        diameterTop: 0.12,
-        diameterBottom: 0.08,
-        height: 0.14,
-        tessellation: 6
-    }, scene);
-    head.position.y = 0.5;
-    head.parent = root;
-
-    const headMat = new BABYLON.StandardMaterial('torchHeadMat', scene);
-    headMat.diffuseColor = new BABYLON.Color3(0.2, 0.15, 0.1);
-    head.material = headMat;
-
-    const light = new BABYLON.PointLight('torchLight', new BABYLON.Vector3(0, 0.6, 0), scene);
-    light.diffuse = new BABYLON.Color3(1.0, 0.6, 0.2);
-    light.intensity = 1.2;
-    light.range = 8;
-    light.parent = root;
-
-    root.userData = { light };
-    return root;
-}
-
-export function makeFire(scale = 1, scene) {
-    const root = new BABYLON.TransformNode('fireRoot', scene);
-
-    const fireSystem = new BABYLON.ParticleSystem('fireParticles', Math.floor(100 * scale), scene);
-
-    const c = document.createElement('canvas');
-    c.width = 32;
-    c.height = 32;
-    const ctx = c.getContext('2d');
-    const rad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    rad.addColorStop(0, 'rgba(255, 220, 120, 1)');
-    rad.addColorStop(0.4, 'rgba(255, 120, 30, 0.8)');
-    rad.addColorStop(1, 'rgba(200, 40, 10, 0)');
-    ctx.fillStyle = rad;
-    ctx.fillRect(0, 0, 32, 32);
-
-    fireSystem.particleTexture = new BABYLON.DynamicTexture('fireTex', c, scene, false);
-    fireSystem.emitter = root;
-    fireSystem.minEmitBox = new BABYLON.Vector3(-0.15 * scale, 0, -0.15 * scale);
-    fireSystem.maxEmitBox = new BABYLON.Vector3(0.15 * scale, 0.1 * scale, 0.15 * scale);
-
-    fireSystem.color1 = new BABYLON.Color4(1.0, 0.7, 0.2, 1.0);
-    fireSystem.color2 = new BABYLON.Color4(1.0, 0.3, 0.1, 0.8);
-    fireSystem.colorDead = new BABYLON.Color4(0.3, 0.05, 0.0, 0.0);
-
-    fireSystem.minSize = 0.25 * scale;
-    fireSystem.maxSize = 0.55 * scale;
-    fireSystem.minLifeTime = 0.35;
-    fireSystem.maxLifeTime = 0.7;
-
-    fireSystem.emitRate = Math.floor(45 * scale);
-    fireSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
-    fireSystem.gravity = new BABYLON.Vector3(0, 4.5, 0);
-    fireSystem.direction1 = new BABYLON.Vector3(-0.3, 1.8, -0.3);
-    fireSystem.direction2 = new BABYLON.Vector3(0.3, 2.4, 0.3);
-    fireSystem.start();
-
-    root.userData = { fireSystem };
-    return root;
-}
-
+/** Mantém as chamas vivas: relógio das partículas e tremor das luzes. */
 export class EnvironmentFX {
     constructor() {
         this.fires = [];
     }
 
-    addFire(fireNode) {
-        if (fireNode) this.fires.push(fireNode);
+    addFire(fire) {
+        if (fire) this.fires.push(fire);
+        return fire;
     }
 
     update(time) {
-        // Jitter luzes das tochas/lareira
         for (const f of this.fires) {
-            const light = f.userData?.light;
-            if (light) {
-                light.intensity = 1.0 + Math.sin(time * 12 + light.uniqueId) * 0.25;
+            for (const p of f.parts) p.update(time);
+            if (f.light) {
+                f.light.intensity = f.base * (0.86 + 0.09 * Math.sin(time * 9.1 + f.phase) + 0.05 * Math.sin(time * 23.7 + f.phase * 1.7));
             }
         }
     }
 }
+
+export { Kit, mat };

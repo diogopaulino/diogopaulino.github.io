@@ -2,6 +2,7 @@
  * Camila segue Dico com offset sem bloquear passagens estreitas.
  */
 
+import * as THREE from 'three';
 import { damp } from '../utils/math.js';
 
 export class PrincessAI {
@@ -10,7 +11,7 @@ export class PrincessAI {
         this.state = 'WAIT';
         this.facing = 0;
         this.stuck = 0;
-        this.last = new BABYLON.Vector3();
+        this.last = new THREE.Vector3();
     }
 
     reset() {
@@ -28,6 +29,10 @@ export class PrincessAI {
 
     update(dt, game) {
         const c = this.camila;
+        if (this.state === 'HOLD') {
+            c.speed = 0;
+            return;
+        }
         if (this.state === 'WAIT') {
             c.speed = 0;
             const dx = game.player.position.x - c.position.x;
@@ -70,6 +75,6 @@ export class PrincessAI {
         } else {
             this.stuck = 0;
         }
-        this.last.copyFrom(c.position);
+        this.last.copy(c.position);
     }
 }

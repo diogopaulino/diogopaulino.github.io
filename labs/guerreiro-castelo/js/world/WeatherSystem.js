@@ -1,127 +1,82 @@
 /**
- * Sistema de iluminação, sol, sombras, clima e nevoeiro em Babylon.js.
+ * Clima e iluminação por cena, sobre o palco compartilhado (labs/shared/gfx/stage.js).
+ * O palco cuida do céu físico, do sol/lua com sombra e do pós; aqui só escolhemos o
+ * preset de atmosfera de cada momento da história e ajustamos interiores.
+ *
+ *   night     sala da lareira: céu de noite na janela, quase sem luz ambiente (a luz é o fogo)
+ *   day       mar aberto, manhã clara
+ *   storm     tempestade ao cair da noite
+ *   dawn      amanhecer dourado (chegada à ilha, fuga)
+ *   interior  masmorra: sem sol, sem névoa, só tochas
+ *   sunset    pôr do sol do epílogo no mar
+ *
+ * Em interiores o sol é desligado (intensidade 0 e sem mapa de sombra — não há por que
+ * redesenhar a cena para uma luz apagada) e exposição/luz de preenchimento são fixadas
+ * à mão, porque a adaptação noturna do palco (exposição 2,6) foi calibrada para céu aberto.
  */
 
+import { PRESETS } from '../../../shared/gfx/stage.js';
+
+const BASE = PRESETS['dia-claro'];
+PRESETS['gc-casa'] = {
+    ...PRESETS['noite-lua'], hour: 22.5, clouds: 0.2, sun: 0, env: 0.5, fog: 0, haze: 0, fogGlow: 0, bloom: 0.2, rays: 0,
+    saturation: 0.9, contrast: 1.04, vignette: 0.44, gain: [1.04, 1, 0.94], lift: [0.006, 0.004, 0.004], fill: 0.02, wind: 0.2
+};
+PRESETS['gc-masmorra'] = {
+    ...PRESETS['noite-lua'], hour: 23, clouds: 0.6, sun: 0, env: 0.35, fog: 0, haze: 0, fogGlow: 0, bloom: 0.18, rays: 0,
+    saturation: 0.86, contrast: 1.05, vignette: 0.46, gain: [1.03, 1, 0.95], lift: [0.004, 0.005, 0.008], fill: 0.02, wind: 0.2
+};
+PRESETS['gc-amanhecer'] = {
+    ...PRESETS.entardecer, hour: 7.9, clouds: 0.4, exposure: 1.75, fill: 0.5, fog: 0.0034, falloff: 0.05, haze: 0.0003, fogGlow: 0.5,
+    rays: 0.7, bloom: 0.12, gain: [1.05, 1, 0.94], fogTint: [0.8, 0.72, 0.7], wind: 0.7
+};
+PRESETS['gc-tempestade'] = {
+    ...PRESETS.tempestade, hour: 17.6, exposure: 1.5, sun: 0.1, env: 1.3, fog: 0.012, haze: 0.0016, bloom: 0.1,
+    saturation: 0.72, contrast: 1.14, vignette: 0.5, gain: [0.9, 0.97, 1.08], wind: 2.8
+};
+PRESETS['gc-mar'] = { ...BASE, hour: 9.6, clouds: 0.38, haze: 0.0002, fog: 0.0012, wind: 1.1 };
+PRESETS['gc-poente'] = { ...PRESETS.entardecer, hour: 17.9, clouds: 0.5, bloom: 0.14, rays: 0.8, exposure: 1.2 };
+
+const MAP = {
+    night: { preset: 'gc-casa', interior: true, exposure: 1.35, fill: 0.55, shadowRadius: 12 },
+    interior: { preset: 'gc-masmorra', interior: true, exposure: 1.15, fill: 0.62, shadowRadius: 12 },
+    day: { preset: 'gc-mar', shadowRadius: 34 },
+    storm: { preset: 'gc-tempestade', shadowRadius: 34 },
+    dawn: { preset: 'gc-amanhecer', shadowRadius: 60 },
+    sunset: { preset: 'gc-poente', shadowRadius: 34 },
+    island: { preset: 'dia-claro', shadowRadius: 70 }
+};
+
 export class WeatherSystem {
-    constructor(scene, engine) {
-        this.scene = scene;
-        this.engine = engine;
-
-        // Luz hemisférica (ambiente)
-        this.hemi = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), scene);
-        this.hemi.intensity = 0.6;
-        this.hemi.groundColor = new BABYLON.Color3(0.2, 0.16, 0.12);
-
-        // Luz direcional (sol/lua)
-        this.dir = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-0.4, -0.8, -0.4), scene);
-        this.dir.position = new BABYLON.Vector3(40, 80, 40);
-        this.dir.intensity = 1.6;
-
-        // Gerador de sombras
-        this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.dir);
-        this.shadowGenerator.usePoissonSampling = true;
-        this.shadowGenerator.bias = 0.002;
-        this.shadowGenerator.darkness = 0.45;
-
+    constructor(game) {
+        this.game = game;
         this.preset = 'day';
-        this.exposure = 1.0;
-        this.apply('day');
+        this.flash = 0;
+        this.exposure = 1;
     }
 
-    apply(preset) {
+    apply(preset, { shadowRadius } = {}) {
+        const stage = this.game.stage;
+        const cfg = MAP[preset] || MAP.day;
         this.preset = preset;
-        const scene = this.scene;
-        scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-
-        if (preset === 'night') {
-            this.hemi.diffuse = new BABYLON.Color3(0.15, 0.2, 0.35);
-            this.hemi.groundColor = new BABYLON.Color3(0.08, 0.08, 0.12);
-            this.hemi.intensity = 0.35;
-
-            this.dir.direction = new BABYLON.Vector3(-0.3, -0.6, 0.5).normalize();
-            this.dir.diffuse = new BABYLON.Color3(0.35, 0.45, 0.7);
-            this.dir.intensity = 0.4;
-
-            scene.clearColor = new BABYLON.Color4(0.04, 0.06, 0.12, 1);
-            scene.fogColor = new BABYLON.Color3(0.04, 0.06, 0.12);
-            scene.fogDensity = 0.015;
-            this.exposure = 0.6;
-        } else if (preset === 'storm') {
-            this.hemi.diffuse = new BABYLON.Color3(0.3, 0.35, 0.4);
-            this.hemi.groundColor = new BABYLON.Color3(0.15, 0.16, 0.18);
-            this.hemi.intensity = 0.4;
-
-            this.dir.direction = new BABYLON.Vector3(0.2, -0.8, -0.3).normalize();
-            this.dir.diffuse = new BABYLON.Color3(0.5, 0.55, 0.6);
-            this.dir.intensity = 0.6;
-
-            scene.clearColor = new BABYLON.Color4(0.18, 0.22, 0.26, 1);
-            scene.fogColor = new BABYLON.Color3(0.18, 0.22, 0.26);
-            scene.fogDensity = 0.022;
-            this.exposure = 0.7;
-        } else if (preset === 'dawn') {
-            this.hemi.diffuse = new BABYLON.Color3(0.9, 0.65, 0.5);
-            this.hemi.groundColor = new BABYLON.Color3(0.3, 0.2, 0.15);
-            this.hemi.intensity = 0.65;
-
-            this.dir.direction = new BABYLON.Vector3(-0.8, -0.3, -0.2).normalize();
-            this.dir.diffuse = new BABYLON.Color3(1.0, 0.75, 0.5);
-            this.dir.intensity = 1.8;
-
-            scene.clearColor = new BABYLON.Color4(0.7, 0.5, 0.4, 1);
-            scene.fogColor = new BABYLON.Color3(0.7, 0.5, 0.4);
-            scene.fogDensity = 0.008;
-            this.exposure = 1.0;
-        } else if (preset === 'interior') {
-            this.hemi.diffuse = new BABYLON.Color3(0.25, 0.22, 0.2);
-            this.hemi.groundColor = new BABYLON.Color3(0.1, 0.08, 0.06);
-            this.hemi.intensity = 0.25;
-
-            this.dir.direction = new BABYLON.Vector3(0, -1, 0);
-            this.dir.diffuse = new BABYLON.Color3(0.8, 0.6, 0.4);
-            this.dir.intensity = 0.2;
-
-            scene.clearColor = new BABYLON.Color4(0.04, 0.03, 0.03, 1);
-            scene.fogColor = new BABYLON.Color3(0.04, 0.03, 0.03);
-            scene.fogDensity = 0.035;
-            this.exposure = 0.5;
-        } else {
-            // Day default
-            this.hemi.diffuse = new BABYLON.Color3(0.75, 0.85, 0.95);
-            this.hemi.groundColor = new BABYLON.Color3(0.35, 0.28, 0.2);
-            this.hemi.intensity = 0.75;
-
-            this.dir.direction = new BABYLON.Vector3(-0.4, -0.85, -0.35).normalize();
-            this.dir.diffuse = new BABYLON.Color3(1.0, 0.96, 0.88);
-            this.dir.intensity = 1.7;
-
-            scene.clearColor = new BABYLON.Color4(0.55, 0.72, 0.85, 1);
-            scene.fogColor = new BABYLON.Color3(0.55, 0.72, 0.85);
-            scene.fogDensity = 0.005;
-            this.exposure = 1.0;
+        stage.setPreset(cfg.preset);
+        const interior = Boolean(cfg.interior);
+        if (stage.sun.castShadow === interior) stage.sun.castShadow = !interior;
+        /* interiores: preenchimento morno e neutro (rebatida das paredes) em vez do azul do céu */
+        stage.fill.color.set(interior ? 0xc8b8a2 : 0xbfd4ff);
+        stage.fill.groundColor.set(interior ? 0x4a3e34 : 0x54483a);
+        if (interior) {
+            stage.pipeline.params.exposure = cfg.exposure;
+            stage.fill.intensity = cfg.fill;
         }
-
+        stage.shadowRadius = shadowRadius ?? cfg.shadowRadius;
+        this.exposure = stage.pipeline.params.exposure;
         return this.exposure;
     }
 
-    setShadowQuality(quality) {
-        let size = 1024;
-        if (quality === 'low') {
-            this.shadowGenerator.getShadowMap().renderList = [];
-            return;
-        } else if (quality === 'medium') {
-            size = 1024;
-            this.shadowGenerator.usePoissonSampling = true;
-        } else if (quality === 'high' || quality === 'ultra') {
-            size = 2048;
-            this.shadowGenerator.useContactHardeningShadow = true;
-            this.shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
-        }
-        this.shadowGenerator.mapSize = size;
-    }
-
-    addShadowCaster(mesh, includeChildren = true) {
-        if (!this.shadowGenerator) return;
-        this.shadowGenerator.addShadowCaster(mesh, includeChildren);
+    /** Clarão do relâmpago: exposição ×(1 + 0,6·flash). */
+    update() {
+        const p = this.game.stage.pipeline.params;
+        p.exposure = this.exposure * (1 + 0.6 * this.flash);
     }
 }

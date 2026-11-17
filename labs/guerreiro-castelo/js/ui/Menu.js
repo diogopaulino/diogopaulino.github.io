@@ -26,7 +26,7 @@ export class Menu {
         });
         document.getElementById('btnEndMenu')?.addEventListener('click', () => {
             document.getElementById('endOverlay').hidden = true;
-            this.show();
+            game.quitToMenu();
         });
 
         // Configurações
@@ -36,15 +36,7 @@ export class Menu {
             qSel.addEventListener('change', (e) => {
                 const q = QUALITY[e.target.value];
                 if (q) {
-                    game.quality = q;
-                    const pr = Math.min(window.devicePixelRatio || 1, q.pixelRatio || 1.5);
-                    game.engine?.setHardwareScalingLevel(1 / pr);
-                    if (game.camera) game.camera.maxZ = q.far || 500;
-                    if (game.pipeline) {
-                        game.pipeline.bloomEnabled = !!q.bloom;
-                        game.pipeline.fxaaEnabled = q.aa !== false;
-                    }
-                    if (game.scene) game.scene.environmentIntensity = q.id === 'low' ? 0.28 : 0.62;
+                    game.setQuality(q);
                     this._saveSettings();
                 }
             });
@@ -53,6 +45,11 @@ export class Menu {
         const volSlider = document.getElementById('volumeSlider');
         const volVal = document.getElementById('volumeValue');
         if (volSlider) {
+            if (game._volume != null) {
+                volSlider.value = game._volume;
+                if (volVal) volVal.textContent = game._volume;
+                game.audio.setBusVolume('master', game._volume / 100);
+            }
             volSlider.addEventListener('input', (e) => {
                 const v = parseInt(e.target.value, 10) / 100;
                 game.audio.setBusVolume('master', v);

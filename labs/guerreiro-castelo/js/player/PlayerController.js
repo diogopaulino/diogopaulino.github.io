@@ -31,12 +31,17 @@ export class PlayerController {
         if (this.mode === 'helm' || this.mode === 'locked') {
             this.vx = 0;
             this.vz = 0;
+            this.vy = 0;
             p.speed = 0;
+            p.sprinting = false;
+            p.crouching = false;
+            p.noise = 0.05;
+            input.move.jump = false;
             return;
         }
 
         const crouch = Boolean(input.move.crouch && p.grounded);
-        p.collider.setCrouch(crouch);
+        p.collider.height = crouch ? p.collider.crouch : p.collider.standing;
         p.crouching = crouch;
 
         let wish = this.walkSpeed;

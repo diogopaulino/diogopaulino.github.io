@@ -1,11 +1,15 @@
 /**
- * Capítulo 4: Desembarque na praia em Babylon.js.
+ * Capítulos 4 e 5: Desembarque na praia e travessia da mata.
+ * Este nível é o dono do terreno da ilha (world/Island.js): monta-o uma única vez, registra a
+ * colisão e o atualiza a cada quadro. Castelo e entrada secreta são níveis vizinhos no mesmo chão.
  */
 
-import { Level } from './Level.js';
-import { sandTexture, grassTexture } from '../world/Textures.js';
-import { makeRock, makeGrassInstanced, makeBush } from '../world/Environment.js?v=6';
-import { createMuscle } from '../../../shared/realism-bjs.js';
+import * as THREE from 'three';
+import { Level } from './Level.js?v=40';
+import { getIsland, ISLAND_MARKS } from '../world/Island.js?v=40';
+import { createCreature } from '../characters/cast.js?v=40';
+
+const _p = new THREE.Vector3();
 
 export class BeachLevel extends Level {
     get id() {
@@ -13,114 +17,66 @@ export class BeachLevel extends Level {
     }
 
     async build() {
-        const scene = this.game.scene;
-        this.group = new BABYLON.TransformNode('beachGroup', scene);
+        const g = this.game;
+        this.island = await getIsland(g);
+        g.island = this.island;
+        this.group = this.island.group;
+        this.island.addColliders(g.collision);
+        g.stage.follow(this.island.terrain);
 
-        // Disco de areia
-        const sand = BABYLON.MeshBuilder.CreateDisc('beachSand', { radius: 42, tessellation: 32 }, scene);
-        sand.rotation.x = Math.PI / 2;
-        sand.position.y = 0.02;
-        const sandMat = new BABYLON.StandardMaterial('sandMat', scene);
-        sandMat.diffuseTexture = sandTexture(scene, 8, 8);
-        sandMat.diffuseColor = new BABYLON.Color3(0.95, 0.88, 0.72);
-        sand.material = sandMat;
-        sand.parent = this.group;
-        sand.receiveShadows = true;
-
-        // Disco de grama interior
-        const grass = BABYLON.MeshBuilder.CreateDisc('beachGrass', { radius: 38, tessellation: 24 }, scene);
-        grass.rotation.x = Math.PI / 2;
-        grass.position.set(0, 0.04, -22);
-        const grassMat = new BABYLON.StandardMaterial('bGrassMat', scene);
-        grassMat.diffuseTexture = grassTexture(scene, 8, 8);
-        grass.material = grassMat;
-        grass.parent = this.group;
-        grass.receiveShadows = true;
-
-        for (let i = 0; i < 10; i++) {
-            const r = makeRock(0.8 + Math.random(), scene);
-            r.position.set((Math.random() - 0.5) * 22, 0.2, 6 + Math.random() * 10);
-            r.parent = this.group;
-        }
-
-        const wood = BABYLON.MeshBuilder.CreateBox('driftWood', { width: 1.6, height: 0.18, depth: 0.35 }, scene);
-        wood.position.set(-4, 0.12, 8);
-        wood.rotation.y = 0.4;
-        const woodMat = new BABYLON.StandardMaterial('driftWoodMat', scene);
-        woodMat.diffuseColor = new BABYLON.Color3(0.4, 0.28, 0.16);
-        wood.material = woodMat;
-        wood.parent = this.group;
-
-        const grassI = makeGrassInstanced(180, 28, this.game.quality?.vegetation || 1, scene);
-        grassI.position.z = -8;
-        grassI.parent = this.group;
-
-        for (let i = 0; i < 8; i++) {
-            const b = makeBush(scene);
-            b.position.set((Math.random() - 0.5) * 18, 0.2, -8 + Math.random() * 8);
-            b.parent = this.group;
-        }
-
-        this.game.collision.addFloor(0, -4, 70, 70, 0);
-        this.obstacles = this.group.getChildMeshes ? this.group.getChildMeshes() : [];
-
+        /* Gaivotas sobre a praia (criaturas com esqueleto, em voo planado). */
         this.gulls = [];
-        const gullMat = new BABYLON.StandardMaterial('gullMat', scene);
-        gullMat.diffuseColor = new BABYLON.Color3(0.95, 0.95, 0.92);
-
-        for (let i = 0; i < 4; i++) {
-            const gull = new BABYLON.TransformNode(`gull_${i}`, scene);
-            const body = createMuscle(scene, `gullBody_${i}`, {
-                length: 0.42, r0: 0.03, r1: 0.055, bulge: 0.02, bulgeAt: 0.42, pinch: 0.15, tessellation: 8, rings: 5
-            });
-            body.rotation.x = Math.PI / 2;
-            body.material = gullMat;
-            body.parent = gull;
-            const wings = [];
-            for (const sx of [-1, 1]) {
-                const wing = BABYLON.MeshBuilder.CreateDisc(`gullWing_${i}_${sx}`, {
-                    radius: 0.26, tessellation: 7, arc: 0.42
-                }, scene);
-                wing.material = gullMat;
-                wing.position.set(sx * 0.04, 0.02, 0);
-                wing.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
-                wing.parent = gull;
-                wings.push(wing);
-            }
-            gull.position.set(-8 + i * 5, 6 + i, 10);
-            gull.parent = this.group;
-            this.gulls.push({ m: gull, p: i, wings });
+        for (let i = 0; i < 3; i++) {
+            const c = createCreature('goose', { detail: 0, scale: 0.55, seed: i + 2, colors: { base: 0xf2f2ee, back: 0xc8ccd2 } });
+            this.group.add(c.object);
+            this.gulls.push({ c, p: i * 2.1, anim: { mode: 'glide', speed: 8 } });
         }
     }
 
     enter() {
         const g = this.game;
+        const M = ISLAND_MARKS;
+        const h = this.island.heightAt;
         g.player.attachTo(this.group);
         g.teco.attachTo(this.group);
         g.camila.attachTo(this.group);
-        g.player.spawn(0, 0, 10, Math.PI);
-        g.teco.spawn(0.7, 0, 9);
-        g.weather.apply('dawn');
+        g.player.spawn(M.spawn.x, h(M.spawn.x, M.spawn.z), M.spawn.z, Math.PI);
+        g.teco.spawn(M.spawn.x + 0.9, h(M.spawn.x + 0.9, M.spawn.z + 1), M.spawn.z + 1);
+        g.weather.apply('island');
         g.audio.setTheme('land');
         g.storm.setIntensity(0);
+        g.ocean.setMode('island');
+        g.ocean.visible = true;
         g.quests.set('reach_castle');
         g.hud.showObjective('Chegue até o castelo');
         g.input.enabled = true;
         g.player.controller.setMode('walk');
-        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre.', 5);
+        g.cameraRig.setWorld(g.collision, null, true);
+        g.cameraRig.yaw = 0;
+        g.cameraRig.pitch = 0.2;
+        g.checkpoints.save('castle_beach', g.story._saveBlob());
+        g.hud.showToast('Siga a trilha pela mata. Shift corre.', 5);
     }
 
     update(dt) {
         this.time += dt;
-        for (const g of this.gulls) {
-            g.m.position.x = Math.sin(this.time * 0.4 + g.p) * 12;
-            g.m.position.z = 8 + Math.cos(this.time * 0.3 + g.p) * 6;
-            g.m.position.y = 5 + Math.sin(this.time * 2 + g.p) * 0.6;
-            const flap = Math.sin(this.time * 6 + g.p) * 0.45;
-            if (g.wings) {
-                g.wings[0].rotation.z = flap;
-                g.wings[1].rotation.z = -flap;
-            }
+        const g = this.game;
+        const p = g.player.position;
+        this.island.update(dt, this.time, g.camera, p.x, p.y, p.z);
+        for (const gull of this.gulls) {
+            const a = this.time * 0.22 + gull.p;
+            _p.set(Math.sin(a) * 26, 14 + Math.sin(a * 2.3) * 2, 70 + Math.cos(a) * 16);
+            gull.c.object.position.copy(_p);
+            gull.c.object.rotation.y = a + Math.PI / 2;
+            gull.c.update(dt, gull.anim);
         }
+    }
+
+    exit() {
+        for (const gull of this.gulls) {
+            gull.c.object.removeFromParent();
+            gull.c.dispose?.();
+        }
+        super.exit();
     }
 }
