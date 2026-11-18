@@ -200,7 +200,6 @@
 
       <aside class="panel tray" aria-label="Partida">
         <p class="eyebrow">PARTIDA</p>
-        <p id="statusLine" class="status" aria-live="polite">Pronto</p>
         <label class="diff-field">
           <span>Nível da IA</span>
           <select id="difficulty" aria-label="Dificuldade da IA">
@@ -213,6 +212,8 @@
       </aside>
 
       <div class="action-dock">
+        <p id="statusLine" class="status" aria-live="polite">Pronto</p>
+        <div id="actions" class="actions" role="toolbar" aria-label="Ações"></div>
         <div id="sizing" class="sizing panel" hidden>
           <div class="sizing-head">
             <span id="betLabel">Aposta</span>
@@ -226,19 +227,17 @@
             <button type="button" class="size-chip" data-frac="1">Pote</button>
           </div>
         </div>
-        <div id="actions" class="actions" role="toolbar" aria-label="Ações"></div>
         <div class="dock" role="toolbar" aria-label="Modos">
           <button id="modePlay" class="dock-btn is-active" data-mode="play" type="button">Jogar</button>
           <button id="modeAcademy" class="dock-btn" data-mode="academy" type="button">Aprender</button>
           <button id="modeRanks" class="dock-btn" type="button">Ranking</button>
           <button id="btnHint" class="dock-btn accent" type="button">Dica</button>
-          <button id="btnNewHand" class="dock-btn" type="button">Nova mão</button>
           <button id="muteBtn" class="dock-btn" type="button" aria-pressed="false" title="Som (M)">Som</button>
         </div>
       </div>
     </div>
 
-    <div id="intro" class="overlay">
+    <dialog id="intro" class="overlay" aria-labelledby="introTitle">
       <div class="overlay-card">
         <div class="intro-fan" aria-hidden="true">
           <span class="fan-card fan-card--a"></span>
@@ -246,24 +245,24 @@
           <span class="fan-card fan-card--c"></span>
         </div>
         <p class="eyebrow"><i></i> Texas Hold'em</p>
-        <h1>Poker</h1>
-        <p class="lede">Mesa heads-up em 3D contra a Dealer IA — feltro, fichas e um mestre que ensina ranking, blinds e pot odds enquanto você joga.</p>
+        <h1 id="introTitle">Poker</h1>
+        <p class="lede">Você e a dealer começam com 1.000 fichas cada. Ganhe as fichas da mesa ou pratique as mãos na academia.</p>
         <div class="intro-actions">
           <button id="btnStart" class="dock-btn accent" type="button">Sentar à mesa</button>
           <button id="btnAcademyIntro" class="dock-btn" type="button">Começar aprendendo</button>
         </div>
-        <p class="intro-note">Sem fichas reais. Só prática, matemática e pressão no feltro.</p>
+        <p class="intro-note">Fichas fictícias · Blinds 5 / 10</p>
       </div>
-    </div>
+    </dialog>
 
-    <div id="ranksOverlay" class="overlay" hidden>
+    <dialog id="ranksOverlay" class="overlay" aria-labelledby="ranksTitle">
       <div class="overlay-card ranks-card">
         <p class="eyebrow"><i></i> Ranking</p>
-        <h2>Mãos do mais forte ao mais fraco</h2>
+        <h2 id="ranksTitle">Mãos do mais forte ao mais fraco</h2>
         <ol id="rankList" class="rank-list"></ol>
         <button id="ranksClose" class="dock-btn accent" type="button">Fechar</button>
       </div>
-    </div>
+    </dialog>
   </main>
 
   <footer class="lab-footer">

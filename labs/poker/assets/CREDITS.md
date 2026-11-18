@@ -1,3 +1,3 @@
-# Poker lab assets
+# Materiais da mesa
 
-Mesa, cartas e fichas em CSS puro (texturas SVG noise, flip 3D, pilhas de chips) — sem sprites externos.
+O tampo, a borda e a madeira usam as texturas CC0 fabric_pattern_07, brown_leather e dark_wooden_planks do Poly Haven. [Fontes e créditos](../../shared/assets/README.md).

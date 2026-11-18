@@ -19,7 +19,7 @@ import {
 } from './engine.js';
 import { aiThinkDelay, chooseAction } from './ai.js';
 import { HAND_RANK_CHART, LESSONS, liveTip } from './coach.js';
-import { cardElement, renderCards, revealCards } from './cards.js';
+import { renderCards, revealCards } from './cards.js';
 import { flyChips, renderChipStack } from './chips.js';
 import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin } from './audio.js';
 
@@ -33,7 +33,6 @@ const state = {
     busy: false,
     lessonIndex: 0,
     betAmount: 0,
-    showAiCards: false,
     prevBets: [0, 0],
     prevPot: 0,
     aiRevealed: false
@@ -59,24 +58,18 @@ function bindUi() {
     $('#btnAcademyIntro')?.addEventListener('click', () => {
         showIntro(false);
         setMode('academy');
+        $('#coachToggle').focus();
     });
 
-    $('#modePlay')?.addEventListener('click', () => setMode('play'));
-    $('#modeAcademy')?.addEventListener('click', () => setMode('academy'));
+    $('#modePlay')?.addEventListener('click', () => {
+        if (state.match.hand) setMode('play');
+        else beginMatch();
+    });
+    $('#modeAcademy')?.addEventListener('click', () => {
+        setMode('academy');
+        $('#coachToggle').focus();
+    });
     $('#modeRanks')?.addEventListener('click', () => openRanks(true));
-
-    $('#btnNewHand')?.addEventListener('click', () => {
-        if (state.busy) return;
-        if (!canContinue(state.match)) {
-            state.match = createMatch({
-                startingStack: 1000,
-                smallBlind: 5,
-                bigBlind: 10,
-                button: state.match.button
-            });
-        }
-        dealNewHand();
-    });
 
     $('#btnHint')?.addEventListener('click', onHint);
     $('#muteBtn')?.addEventListener('click', () => {
@@ -123,42 +116,29 @@ function bindUi() {
     $('#actions')?.addEventListener('click', onActionClick);
 
     document.addEventListener('keydown', (e) => {
-        if (e.target.matches('input, select, textarea')) return;
+        if (document.querySelector('dialog[open]') || e.repeat || e.ctrlKey || e.metaKey || e.altKey ||
+            e.target.matches('input, select, textarea')) return;
         if (e.key === 'm' || e.key === 'M') $('#muteBtn')?.click();
-        if (e.key === 'n' || e.key === 'N') $('#btnNewHand')?.click();
+        if (e.key === 'n' || e.key === 'N') $('#actions [data-action="nexthand"]')?.click();
     });
 
-    // Micro parallax leve na mesa (desktop)
-    const stage = $('.table-stage');
-    if (stage && matchMedia('(pointer: fine)').matches) {
-        stage.addEventListener('pointermove', (e) => {
-            if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-            const r = stage.getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width - 0.5) * 6;
-            const y = ((e.clientY - r.top) / r.height - 0.5) * 4;
-            const scene = $('.table-scene');
-            if (scene) {
-                scene.style.transform = `rotateX(${18 - y}deg) rotateY(${x}deg) scale(0.96)`;
-            }
-        });
-        stage.addEventListener('pointerleave', () => {
-            const scene = $('.table-scene');
-            if (scene) scene.style.transform = '';
-        });
-    }
+
 }
 
 function showIntro(show) {
     const el = $('#intro');
     if (!el) return;
-    el.hidden = !show;
+    if (show) el.showModal();
+    else el.close();
 }
 
 function openRanks(show) {
     const el = $('#ranksOverlay');
     if (!el) return;
-    el.hidden = !show;
-    if (show) renderRankChart();
+    if (show) {
+        renderRankChart();
+        el.showModal();
+    } else el.close();
 }
 
 function setMode(mode) {
@@ -169,6 +149,8 @@ function setMode(mode) {
     const academy = $('#academyPanel');
     const playCoach = $('#playCoach');
     if (mode === 'academy') {
+        $('#coachBody').hidden = false;
+        $('#coachToggle').setAttribute('aria-expanded', 'true');
         academy?.removeAttribute('hidden');
         playCoach?.setAttribute('hidden', '');
         renderAcademy();
@@ -186,23 +168,28 @@ function beginMatch() {
 }
 
 function dealNewHand() {
+    if (state.busy || (state.match.hand && state.match.hand.street !== STREET.DONE)) return;
     if (!canContinue(state.match)) {
         state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10 });
     }
+    for (const id of ['#heroCards', '#aiCards', '#board']) $(id).replaceChildren();
     startHand(state.match);
-    state.showAiCards = false;
     state.aiRevealed = false;
     state.busy = false;
     state.prevBets = [0, 0];
     state.prevPot = state.match.hand?.pot || 0;
     sfxDeal();
+    if (state.match.hand.street === STREET.DONE) {
+        onHandOver();
+        return;
+    }
     renderAll({ animateChips: true });
     maybeAiTurn();
 }
 
 async function onActionClick(e) {
     const btn = e.target.closest('[data-action]');
-    if (!btn || state.busy) return;
+    if (!btn || btn.dataset.action === 'nexthand' || state.busy) return;
     if (!heroToAct(state.match)) return;
 
     const type = btn.dataset.action;
@@ -225,12 +212,15 @@ async function onActionClick(e) {
     const result = applyAction(state.match, { type, amount });
     if (!result.ok) return;
 
+    state.busy = true;
+    renderActions();
     const afterBet = state.match.hand?.streetContrib[0] || 0;
     const delta = Math.max(0, afterBet - beforeBet);
     if (delta > 0 && type !== 'fold') {
         await animateBetFlight(0, delta);
     }
 
+    state.busy = false;
     renderAll();
     if (result.handOver) {
         onHandOver();
@@ -300,7 +290,6 @@ async function animateBetFlight(seat, amount) {
 }
 
 function onHandOver() {
-    state.showAiCards = true;
     const r = state.match.lastResult;
     if (r?.winners?.includes(0)) sfxWin();
     renderAll({ revealAi: true });
@@ -308,13 +297,14 @@ function onHandOver() {
     if (!canContinue(state.match)) {
         const heroWins = state.match.stacks[0] > 0;
         setStatus(heroWins ? 'Você zerou a IA — mesa sua!' : 'Stack zerado — nova sessão?');
-        $('#btnNewHand').textContent = 'Nova sessão';
-    } else {
-        $('#btnNewHand').textContent = 'Próxima mão';
     }
 }
 
 function onHint() {
+    if (state.mode === 'academy') setMode('play');
+    $('#coachBody').hidden = false;
+    $('#coachToggle').setAttribute('aria-expanded', 'true');
+    $('#coachToggle').focus();
     const match = state.match;
     const h = match.hand;
     if (!h || h.street === STREET.DONE) {
@@ -336,7 +326,7 @@ function onHint() {
             text += `Pot odds ${Math.round(odds * 100)}% (call ${toCall} / pote ${h.pot}). `;
             text += made.category >= 2
                 ? 'Com dois pares ou melhor, call/raise costuma ser correto.'
-                : 'Sem mão feita forte, weigh pot odds e draws antes de pagar.';
+                : 'Sem mão feita forte, compare o custo do call com suas chances de melhorar.';
         } else {
             text += made.category >= 3
                 ? 'Mão forte — considere bet para valor.'
@@ -407,8 +397,8 @@ function renderBoard() {
     const board = $('#board');
     const h = state.match.hand;
     const cards = h?.board || [];
-    renderCards(board, cards, { baseDelay: 40 });
-    for (let i = cards.length; i < 5; i++) {
+    renderCards(board, cards, { baseDelay: 40, slots: 5 });
+    for (let i = board.children.length; i < 5; i++) {
         const ph = document.createElement('div');
         ph.className = 'card card-slot';
         ph.setAttribute('aria-hidden', 'true');
@@ -434,7 +424,7 @@ function renderHoles(opts = {}) {
     const ai = h?.holes[1] || [];
     renderCards($('#heroCards'), hero, { baseDelay: 0 });
 
-    const reveal = state.showAiCards || (h && h.showdown) || (h && h.street === STREET.DONE && h.winners);
+    const reveal = h?.showdown;
     if (reveal && ai.length) {
         if (opts.revealAi && !state.aiRevealed) {
             state.aiRevealed = true;
@@ -444,9 +434,7 @@ function renderHoles(opts = {}) {
         }
     } else if (ai.length) {
         const box = $('#aiCards');
-        box.innerHTML = '';
-        box.appendChild(cardElement('?', { faceDown: true, dealDelay: 0 }));
-        box.appendChild(cardElement('?', { faceDown: true, dealDelay: 70 }));
+        renderCards(box, ['?', '?'], { faceDown: true });
     } else {
         $('#aiCards').innerHTML = '';
     }
@@ -480,8 +468,8 @@ function renderActions() {
         next.type = 'button';
         next.className = 'act-btn act-btn--accent';
         next.dataset.action = 'nexthand';
-        next.textContent = canContinue(state.match) ? 'Próxima mão' : 'Nova sessão';
-        next.addEventListener('click', () => $('#btnNewHand').click());
+        next.textContent = !h ? 'Distribuir cartas' : canContinue(state.match) ? 'Próxima mão' : 'Nova sessão';
+        next.addEventListener('click', dealNewHand);
         box.appendChild(next);
         setStatus(h?.street === STREET.DONE ? statusAfterHand() : 'Pronto para repartir');
         return;

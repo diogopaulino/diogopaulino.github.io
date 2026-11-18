@@ -49,8 +49,8 @@ export function chooseAction(match, level = 'normal') {
         const made = evaluateHand([...hole, ...board]);
         // Categoria 0–9 → base; kickers suavizam
         strength = (made.category + 1) / 10 * 0.7 + (made.ranks[0] || 0) / 12 * 0.15;
-        // Draw bonus simples: flush draw / OESD aproximado
-        strength += drawBonus(hole, board) * 0.12;
+        // Um projeto de flush só pode melhorar enquanto ainda falta carta na mesa.
+        if (board.length < 5) strength += drawBonus(hole, board) * 0.12;
         strength = Math.min(0.98, strength);
     }
 

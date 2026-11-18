@@ -97,12 +97,10 @@ body {
 .room {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
   border-radius: inherit;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 40%, #0d1a14 0%, #060a08 70%),
-    #050807;
+  background: radial-gradient(ellipse, #53392966, #100d0be6),
+    url("../shared/assets/tex/dark_wooden_planks/512/diff.webp") center / 360px;
+  pointer-events: none;
 }
 
 .room-vignette {
@@ -166,12 +164,12 @@ body {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto auto;
   gap: 0.3rem;
   min-height: min(50dvh, 420px);
   padding: 0.85rem 0.9rem 1.1rem;
   transform-style: preserve-3d;
-  transform: rotateX(18deg) scale(0.96);
+  transform: rotateX(5deg);
   transform-origin: 50% 55%;
   transition: transform 0.35s var(--ease-out);
 }
@@ -193,7 +191,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-radius: 48% / 40%;
+  border-radius: 160px / 42%;
   transform-style: preserve-3d;
 }
 
@@ -216,21 +214,9 @@ body {
 .rail-grain {
   position: absolute;
   inset: 0;
-  opacity: 0.55;
-  background:
-    repeating-linear-gradient(
-      92deg,
-      transparent 0 3px,
-      rgba(0, 0, 0, 0.1) 3px 4px,
-      transparent 4px 9px,
-      rgba(255, 220, 180, 0.06) 9px 10px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 14px,
-      rgba(0, 0, 0, 0.08) 14px 15px
-    );
-  mix-blend-mode: multiply;
+  border-radius: inherit;
+  background: url("../shared/assets/tex/brown_leather/512/diff.webp") center / 150px;
+  mix-blend-mode: soft-light;
 }
 
 .rail-edge {
@@ -260,7 +246,7 @@ body {
 
 .felt {
   position: absolute;
-  inset: 14px;
+  inset: clamp(14px, 2vw, 24px);
   border-radius: inherit;
   overflow: hidden;
   background:
@@ -273,20 +259,17 @@ body {
 .felt-nap {
   position: absolute;
   inset: 0;
-  opacity: 0.72;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.25 0 0 0 0 0.12 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
+  background: url("../shared/assets/tex/fabric_pattern_07/512/diff.webp") center / 34px;
+  opacity: .25;
   mix-blend-mode: soft-light;
   pointer-events: none;
 }
 
 .felt-weave {
   position: absolute;
-  inset: 0;
-  opacity: 0.28;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.18) 2px 3px),
-    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.05) 2px 3px);
+  inset: 12px;
+  border-radius: inherit;
+  border: 1px dashed rgba(243, 221, 150, .25);
   pointer-events: none;
 }
 
@@ -304,7 +287,7 @@ body {
   inset: 18% 14%;
   background: radial-gradient(circle, rgba(255, 250, 230, 0.1), transparent 65%);
   pointer-events: none;
-  animation: breathe 6.5s ease-in-out infinite;
+
 }
 
 .felt-crest {
@@ -716,7 +699,7 @@ body {
     linear-gradient(165deg, #fffef8 0%, #f4eee4 45%, #e8dfd0 100%);
   color: var(--ink);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto auto;
   padding: 0.26em 0.3em;
   font-family: 'Cormorant Garamond', Georgia, serif;
   transform: rotateY(0deg) translateZ(1px);
@@ -932,8 +915,8 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.85fr);
   grid-template-areas:
-    'coach tray'
-    'actions actions';
+    'actions actions'
+    'coach tray';
   gap: 0.65rem;
   align-items: start;
 }
@@ -1205,6 +1188,7 @@ body {
 }
 
 .actions {
+  min-height: var(--touch-target, 44px);
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -1298,6 +1282,14 @@ body {
 
 /* Overlays */
 .overlay {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  color: inherit;
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -1314,7 +1306,7 @@ body {
   backdrop-filter: blur(10px);
 }
 
-.overlay[hidden] {
+.overlay:not([open]) {
   display: none !important;
 }
 
@@ -1569,7 +1561,7 @@ body {
     max-height: min(28dvh, 160px);
   }
 
-  --card-w: clamp(40px, 9vw, 58px);
+  :root { --card-w: clamp(34px, 6vw, 48px); }
 
   .lab-footer {
     display: none;
@@ -1620,4 +1612,49 @@ body {
   .action-bar, .actions, .bet-row {
     flex-wrap: wrap;
   }
+}
+
+.poker-shell header[data-lab-header] { margin-bottom: 0; }
+.poker-shell [hidden] { display: none !important; }
+.table-scene { padding: 1rem clamp(.8rem, 3vw, 2.5rem) 1.8rem; }
+.table-hud { align-self: start; }
+.seat { flex-direction: row; justify-content: center; gap: clamp(.5rem, 1.8vw, 1.3rem); }
+.seat .avatar { display: none; }
+.seat.is-turn .seat-name { color: var(--gold-soft); }
+.seat-info { min-width: 5rem; }
+.seat-info .dealer-btn { left: -.8rem; top: -.3rem; }
+.seat .hole-cards { --card-w: clamp(40px, 5vw, 58px); --card-h: calc(var(--card-w) * 1.42); }
+.table-scene .board-wrap { margin-block: .4rem; }
+.table-scene .board { --card-w: clamp(46px, 7vw, 76px); --card-h: calc(var(--card-w) * 1.42); }
+.deck-pile { right: 10%; top: 42%; }
+.pot-cluster { flex-direction: row; }
+.chip { flex: none; }
+.chip::after {
+  background: repeating-conic-gradient(from 15deg, #fff8 0deg 14deg, transparent 14deg 60deg);
+  mask: radial-gradient(ellipse, transparent 50%, black 55%);
+}
+#intro .overlay-card {
+  border-top: 3px solid #d8b77a;
+  background: linear-gradient(120deg, #102d24ee, #091a15f5),
+    url("../shared/assets/tex/fabric_pattern_07/512/diff.webp") center / 130px;
+}
+#intro h1 { font-size: clamp(2.6rem, 8vw, 3.6rem); line-height: 1; }
+#btnStart { background: var(--gold-soft); color: #172018; }
+#betSlider { min-height: 44px; }
+@media (max-width: 768px) {
+  .table-scene { padding: .5rem .4rem 1.2rem; }
+  .table-scene .table-body { border-radius: 60px / 15%; }
+  .table-scene .felt { border-radius: inherit; }
+  .seat-info { min-width: 4rem; }
+  .hand-name { max-width: 6rem; white-space: normal; }
+  .table-scene .board { gap: .35rem; }
+  .action-dock .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); }
+  .action-dock .act-btn { min-width: 0; padding-inline: .3rem; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .table-scene { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: 1fr; padding: 2rem 1rem .8rem; }
+  .table-scene .seat { flex-direction: column; gap: .15rem; }
+  .table-scene .board { --card-w: clamp(32px, 5.6vw, 50px); }
+  .seat .hole-cards { --card-w: 32px; }
+  .table-stage { min-height: 0; }
 }
