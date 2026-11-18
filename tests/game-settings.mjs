@@ -10,6 +10,7 @@ export async function checkGameSettings(evaluate, reload, waitFor) {
          document.querySelector('#qualitySelect')?.offsetWidth)`;
     await waitFor(ready);
     const initial = await evaluate(`({
+        documentTime: performance.timeOrigin,
         volume: document.querySelector('#volumeSlider').value,
         quality: document.querySelector('#qualitySelect').value,
         options: Array.from(document.querySelector('#qualitySelect').options, option => option.value)
@@ -28,13 +29,18 @@ export async function checkGameSettings(evaluate, reload, waitFor) {
         }
         await set('qualitySelect', alternative, 'change');
         await delay(350);
-        await reload();
         await waitFor(ready);
+        if (await evaluate('performance.timeOrigin') === initial.documentTime) {
+            await reload();
+            await waitFor(ready);
+        }
         await waitFor(`document.querySelector('#volumeSlider').value === '37' &&
             document.querySelector('#qualitySelect').value === ${JSON.stringify(alternative)}`);
     } finally {
         await waitFor(ready);
         await set('volumeSlider', initial.volume, 'input');
         await set('qualitySelect', initial.quality, 'change');
+        await delay(350);
+        await waitFor(ready);
     }
 }

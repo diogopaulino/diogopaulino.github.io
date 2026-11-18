@@ -52,6 +52,39 @@ async function checkControls(path, evaluate, reload) {
         assert.deepEqual([...cleared], [1, 2, 3, 4]);
         assert.equal(await evaluate('__lab.game.currentLevel.id'), 5);
     }
+    if (lab === 'english-duo') {
+        const languages = await evaluate("Array.from(document.querySelectorAll('.language-card'), b => b.dataset.lang)");
+        assert.equal(languages.length, 8);
+        for (const language of languages) {
+            await evaluate(`document.querySelector('[data-lang="${language}"]').click()`);
+            for (let question = 0; question < 40; question++) {
+                if (await evaluate("!DOM.levelComplete.classList.contains('hidden')")) break;
+                await evaluate("import('/tests/lesson-controls.mjs').then(m => m.answerExercise())");
+            }
+            assert.ok(await evaluate("!DOM.levelComplete.classList.contains('hidden')"), language);
+            await evaluate('DOM.continueBtn.click(); DOM.btnBackLang.click()');
+        }
+    }
+    if (lab === 'calculator') {
+        const result = await evaluate(`(() => {
+            const keys = [...document.querySelectorAll('#calculator button')];
+            for (const label of ['AC', '9', '×', '7', '=']) keys.find(k => k.textContent.trim() === label).click();
+            return document.querySelector('#calculator .current-operand').textContent;
+        })()`);
+        assert.equal(result, '63');
+    }
+    if (lab === 'minesweeper') {
+        const endings = await evaluate("import('/tests/board-controls.mjs').then(m => m.minefield())");
+        assert.deepEqual(endings, ['😵', '😎']);
+    }
+    if (lab === 'xadrez') {
+        await waitFor("document.querySelector('#startButton').offsetWidth");
+        await evaluate("import('/tests/board-controls.mjs').then(m => m.chessMatch())");
+        await waitFor("!document.querySelector('#resultOverlay').hidden");
+        assert.equal(await evaluate("document.querySelector('#resultTitle').textContent"), 'Xeque-mate');
+        await evaluate("document.querySelector('#resultAgain').click()");
+        await waitFor("document.body.dataset.state === 'play'");
+    }
     if (lab === 'rastro-vermelho') {
         await waitFor("window.__rastro?.state === 'menu'");
         await evaluate("const start = __rastro.ui.newButton; (start.offsetWidth ? start : __rastro.ui.startButton).click()");
