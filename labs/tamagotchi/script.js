@@ -1358,7 +1358,8 @@
     }
   }
 
-  function releaseButton(element, code) {
+  function releaseButton(element, code, cancelled = false) {
+    if (!heldButtons.has(code)) return;
     element.classList.remove('pressed');
     heldButtons.delete(code);
     if (!shell.querySelector('.pressed')) shell.classList.remove('is-pressing');
@@ -1376,7 +1377,7 @@
       consumedButtons.delete(code);
       return;
     }
-    handleButton(code);
+    if (!cancelled) handleButton(code);
   }
 
   document.querySelectorAll('[data-btn]').forEach((element) => {
@@ -1395,11 +1396,16 @@
       event.preventDefault();
       releaseButton(element, code);
     });
-    element.addEventListener('pointercancel', () => releaseButton(element, code));
+    element.addEventListener('pointercancel', () => releaseButton(element, code, true));
+    element.addEventListener('click', event => {
+      if (event.detail === 0) handleButton(code);
+    });
   });
 
   document.addEventListener('keydown', (event) => {
     if (event.repeat) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'Enter' && event.target.closest?.('button,a')) return;
     const map = { ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', Escape: 'ESC', Enter: 'ENTER', c: 'CLOCK', C: 'CLOCK' };
     const code = map[event.key];
     if (!code) return;
@@ -1409,12 +1415,20 @@
   });
 
   document.addEventListener('keyup', (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'Enter' && event.target.closest?.('button,a')) return;
     const map = { ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', Escape: 'ESC', Enter: 'ENTER', c: 'CLOCK', C: 'CLOCK' };
     const code = map[event.key];
     if (!code) return;
     event.preventDefault();
     const element = document.querySelector(`[data-btn="${code}"]`);
     if (element) releaseButton(element, code);
+  });
+
+  window.addEventListener('blur', () => {
+    for (const code of heldButtons) {
+      releaseButton(document.querySelector(`[data-btn="${code}"]`), code, true);
+    }
   });
 
   resetButton.addEventListener('click', () => {

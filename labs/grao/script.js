@@ -335,20 +335,19 @@ function renderLog(now) {
         return;
     }
 
-    list.innerHTML = today.map((d) => {
+    const template = $('log-entry');
+    list.replaceChildren(...today.map((d) => {
+        const item = template.content.firstElementChild.cloneNode(true);
         const left = remainingFromDose(d.mg, d.at, now.getTime(), halfLifeMs());
-        return `
-            <li class="log-item">
-                <span class="icon" aria-hidden="true">${d.icon}</span>
-                <span class="body">
-                    <span class="name">${d.name}</span>
-                    <span class="when">${formatTime(new Date(d.at))} · restam ${left < 10 ? left.toFixed(1) : Math.round(left)} mg</span>
-                </span>
-                <span class="mg">${d.mg} mg</span>
-                <button class="remove" type="button" data-remove="${d.id}" aria-label="Remover ${d.name}">×</button>
-            </li>
-        `;
-    }).join('');
+        item.querySelector('.icon').textContent = d.icon;
+        item.querySelector('.name').textContent = d.name;
+        item.querySelector('.when').textContent = `${formatTime(new Date(d.at))} · restam ${left < 10 ? left.toFixed(1) : Math.round(left)} mg`;
+        item.querySelector('.mg').textContent = `${d.mg} mg`;
+        const remove = item.querySelector('.remove');
+        remove.dataset.remove = d.id;
+        remove.setAttribute('aria-label', `Remover ${d.name}`);
+        return item;
+    }));
 }
 
 function renderWeek(now) {

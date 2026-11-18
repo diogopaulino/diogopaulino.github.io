@@ -55,7 +55,7 @@ function startLoop() {
    -------------------------------------------------------------------------- */
 
 function onKeyDown(event) {
-  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
 
   if (event.key >= '0' && event.key <= '9') {
     event.preventDefault();
@@ -97,11 +97,11 @@ function syncSoundButton(btn, muted) {
   btn.setAttribute('aria-label', muted ? 'Ligar o som' : 'Desligar o som');
 }
 
-function toggleFullscreen() {
+async function toggleFullscreen() {
   const root = document.documentElement;
   try {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (root.requestFullscreen) root.requestFullscreen();
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (root.requestFullscreen) await root.requestFullscreen();
   } catch (_) { /* alguns navegadores bloqueiam sem gesto direto */ }
 }
 

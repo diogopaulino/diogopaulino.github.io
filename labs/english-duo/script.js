@@ -2360,7 +2360,6 @@ const gameState = {
     currentExercise: null,
     usedLessons: new Set(),
     isProcessing: false,
-    selectedWords: [],
     matchedPairs: new Set()
 };
 
@@ -2429,6 +2428,8 @@ function goBackToLanguageSelect() {
     DOM.gameScreen.classList.add('hidden');
     DOM.languageSelect.classList.remove('hidden');
     gameState.currentLang = null;
+    gameState.currentExercise = null;
+    document.onkeydown = null;
     renderDailyDashboard();
 }
 
@@ -2441,7 +2442,6 @@ function initGame() {
     gameState.questionsAnswered = 0;
     gameState.usedLessons.clear();
     gameState.isProcessing = false;
-    gameState.selectedWords = [];
     gameState.matchedPairs.clear();
 
     updateStats();
@@ -2512,7 +2512,6 @@ function loadNextExercise() {
     DOM.feedbackArea.classList.add('hidden');
     DOM.feedbackArea.classList.remove('correct', 'wrong');
     gameState.isProcessing = false;
-    gameState.selectedWords = [];
     gameState.matchedPairs.clear();
     
     if (gameState.questionsAnswered >= gameState.totalQuestions) {
@@ -2642,7 +2641,6 @@ function renderOrderWordsExercise(lesson) {
     DOM.questionText.textContent = `Monte a frase: "${lesson.sentenceTranslation}"`;
     
     const shuffledWords = [...lesson.sentenceWords].sort(() => Math.random() - 0.5);
-    gameState.selectedWords = [];
     
     DOM.optionsContainer.innerHTML = '';
     DOM.optionsContainer.className = 'order-exercise';
@@ -2661,7 +2659,7 @@ function renderOrderWordsExercise(lesson) {
         btn.textContent = word;
         btn.dataset.word = word;
         btn.dataset.index = i;
-        btn.onclick = () => toggleWord(btn, word);
+        btn.onclick = () => toggleWord(btn);
         wordBank.appendChild(btn);
     });
     
@@ -2681,7 +2679,7 @@ function renderOrderWordsExercise(lesson) {
     };
 }
 
-function toggleWord(btn, word) {
+function toggleWord(btn) {
     if (gameState.isProcessing) return;
     audio.playClick();
     
@@ -2690,12 +2688,9 @@ function toggleWord(btn, word) {
     
     if (btn.classList.contains('selected')) {
         btn.classList.remove('selected');
-        const idx = gameState.selectedWords.indexOf(word);
-        if (idx > -1) gameState.selectedWords.splice(idx, 1);
         wordBank.appendChild(btn);
     } else {
         btn.classList.add('selected');
-        gameState.selectedWords.push(word);
         selectedArea.appendChild(btn);
     }
 }
@@ -2844,7 +2839,9 @@ function selectMatchCard(btn, item) {
             exercise.selectedPair = null;
             
             if (gameState.matchedPairs.size === exercise.pairs.length) {
+                gameState.isProcessing = true;
                 setTimeout(() => {
+                    if (gameState.currentExercise !== exercise) return;
                     gameState.streak++;
                     gameState.questionsAnswered++;
                     addXp(15 + (gameState.streak * 2));
@@ -2909,9 +2906,9 @@ function checkOrderAnswer(correctOrder) {
     if (gameState.isProcessing) return;
     gameState.isProcessing = true;
     
-    const isCorrect = gameState.selectedWords.join(' ') === correctOrder.join(' ');
-    
     const selectedArea = document.getElementById('selected-words');
+    const words = Array.from(selectedArea.children, chip => chip.dataset.word);
+    const isCorrect = words.join(' ') === correctOrder.join(' ');
     if (selectedArea) {
         selectedArea.classList.add(isCorrect ? 'correct' : 'wrong');
     }
@@ -3078,6 +3075,7 @@ function setupKeyboardShortcuts(count, callback) {
     document.onkeydown = (e) => {
         if (gameState.isProcessing) {
             if (e.key === 'Enter' && !DOM.feedbackArea.classList.contains('hidden')) {
+                e.preventDefault();
                 DOM.nextBtn.click();
             }
             return;

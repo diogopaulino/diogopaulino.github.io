@@ -52,3 +52,31 @@ body {
     background: linear-gradient(to top, rgba(5, 4, 3, 0.92), transparent);
   }
 }
+
+.edition-photo {
+  width: min(88vw, 48rem);
+  max-height: 90dvh;
+  margin: auto;
+  padding: 1rem;
+  border: 1px solid #ffffff38;
+  border-radius: 1rem;
+  background: #121212;
+  color: #fafafa;
+}
+.edition-photo::backdrop { background: #000c; }
+.edition-photo img { width: 100%; max-height: 68dvh; object-fit: contain; }
+.edition-photo form { text-align: right; }
+.edition-photo button, .edition-menu-close {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 1rem;
+  color: inherit;
+  cursor: pointer;
+}
+.edition-menu-close { align-self: flex-end; font-size: 1.6rem; }
+
+.no-webgl .hero__space {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}

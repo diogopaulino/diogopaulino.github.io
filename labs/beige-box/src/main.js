@@ -626,6 +626,8 @@ class BeigeBox {
     }
 
     onKey(e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) return;
+        if (['Enter', ' '].includes(e.key) && e.target.closest?.('button, a')) return;
         if (e.repeat && e.key !== 'Backspace') return;
         if (e.key === 'm' || e.key === 'M') {
             if (this.crt.mode === 'dos' && this.crt.power) {

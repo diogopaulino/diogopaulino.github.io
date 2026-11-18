@@ -728,6 +728,7 @@ let currentClefSetting = 'treble';
 let currentTargetPitch = 'G4';
 let currentTargetBaseNote = 'G';
 let useLatinNotation = true;
+let nextNoteTimer = null;
 let arcadeTimerInterval = null;
 let arcadeEndsAt = 0;
 let onArcadeTick = null;
@@ -737,7 +738,7 @@ document.addEventListener('visibilitychange', () => {
 let arcadeTimeRemaining = 60;
 let arcadeIsRunning = false;
 let arcadeCurrentScore = 0;
-let isPlayingScale = false;
+let scaleTimer = null;
 
 // --- 6. TECLADO VIRTUAL DE FÁ2 A DÓ5 E SINCRONIA GRAVE/AGUDO ---
 function setupVirtualKeyboard() {
@@ -873,6 +874,8 @@ function updateFeedback(msg, type = 'normal') {
 }
 
 function setTargetClefAndPitch() {
+  clearTimeout(nextNoteTimer);
+  nextNoteTimer = null;
   let selectedClef = document.getElementById('clef-select')?.value || 'treble';
   currentClefSetting = selectedClef;
   
@@ -911,7 +914,7 @@ function setTargetClefAndPitch() {
 }
 
 function handleNoteInput(playedPitchOrNote, event) {
-  if (isPlayingScale) return;
+  if (scaleTimer !== null) return;
 
   const playedBaseNote = playedPitchOrNote.charAt(0);
   
@@ -933,6 +936,7 @@ function handleNoteInput(playedPitchOrNote, event) {
   }
 
   if (currentMode === 'quiz' || currentMode === 'ear' || (currentMode === 'arcade' && arcadeIsRunning)) {
+    if (nextNoteTimer !== null) return;
     const isCorrect = (playedBaseNote === currentTargetBaseNote);
 
     let clientX = window.innerWidth / 2;
@@ -965,9 +969,7 @@ function handleNoteInput(playedPitchOrNote, event) {
 
       updateFeedback(`Perfeito! É a nota <strong>${correctName}</strong> (${targetPosInfo.name})!`, 'success');
 
-      setTimeout(() => {
-        if (currentMode !== 'arcade' || arcadeIsRunning) setTargetClefAndPitch();
-      }, 850);
+      nextNoteTimer = setTimeout(setTargetClefAndPitch, 850);
 
     } else {
       synth.playSFX('error');
@@ -988,13 +990,12 @@ function handleNoteInput(playedPitchOrNote, event) {
 
 // --- 8. LAB DE ESCALAS PRO (ASCENDENTE E DESCENDENTE) ---
 function playSelectedScale(direction = 'asc') {
-  if (isPlayingScale) return;
+  if (scaleTimer !== null) return;
   const scaleSelect = document.getElementById('scale-select');
   const scaleId = scaleSelect ? scaleSelect.value : 'C-major';
   const scaleObj = MUSICAL_DATA.scales[scaleId];
   if (!scaleObj) return;
 
-  isPlayingScale = true;
   updateFeedback(`🎶 Tocando arpejo ${direction === 'asc' ? 'ascendente' : 'descendente'} de <strong>${scaleObj.name}</strong>...`, 'normal');
   renderer.renderStaff(scaleObj.clef);
   
@@ -1003,25 +1004,27 @@ function playSelectedScale(direction = 'asc') {
 
   gameManager.registerScaleExplored(scaleId);
 
-  notesToPlay.forEach((pitch, index) => {
-    setTimeout(() => {
-      synth.playNote(pitch, 0.65);
-      renderer.drawNotes(notesToPlay, index);
+  function playNext(index) {
+    const pitch = notesToPlay[index];
+    synth.playNote(pitch, 0.65);
+    renderer.drawNotes(notesToPlay, index);
 
-      const keyEl = document.querySelector(`[data-pitch="${pitch}"]`);
-      if (keyEl) {
-        keyEl.classList.add('active-key');
-        setTimeout(() => keyEl.classList.remove('active-key'), 350);
-      }
+    const keyEl = document.querySelector(`[data-pitch="${pitch}"]`);
+    if (keyEl) {
+      keyEl.classList.add('active-key');
+      setTimeout(() => keyEl.classList.remove('active-key'), 350);
+    }
 
-      if (index === notesToPlay.length - 1) {
-        setTimeout(() => {
-          isPlayingScale = false;
-          updateFeedback(`✅ Escala de ${scaleObj.name} concluída com sucesso!`, 'success');
-        }, 650);
-      }
-    }, index * 420);
-  });
+    if (index === notesToPlay.length - 1) {
+      scaleTimer = setTimeout(() => {
+        scaleTimer = null;
+        updateFeedback(`✅ Escala de ${scaleObj.name} concluída com sucesso!`, 'success');
+      }, 650);
+    } else {
+      scaleTimer = setTimeout(() => playNext(index + 1), 420);
+    }
+  }
+  playNext(0);
 }
 
 // --- 9. MODO CORRIDA 60s ---
@@ -1052,6 +1055,8 @@ function startArcadeMode() {
     clearInterval(arcadeTimerInterval);
     arcadeTimerInterval = null;
     onArcadeTick = null;
+    clearTimeout(nextNoteTimer);
+    nextNoteTimer = null;
     arcadeIsRunning = false;
     arcadeTimeRemaining = 0;
     if (timerEl) timerEl.textContent = '0s';
@@ -1148,6 +1153,22 @@ function setupTabs() {
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
+      if (currentMode === tab.dataset.mode) return;
+      clearTimeout(scaleTimer);
+      scaleTimer = null;
+      clearTimeout(nextNoteTimer);
+      nextNoteTimer = null;
+      if (arcadeIsRunning) {
+        clearInterval(arcadeTimerInterval);
+        onArcadeTick = null;
+        arcadeIsRunning = false;
+        const start = document.getElementById('btn-start-arcade');
+        start.disabled = false;
+        start.classList.add('pulse-btn');
+        start.textContent = '⚡ Iniciar Desafio';
+        document.getElementById('timer-display').textContent = '60s';
+        document.getElementById('arcade-score').textContent = '0';
+      }
       tabs.forEach(t => {
         t.classList.remove('active');
         t.setAttribute('aria-selected', 'false');
@@ -1236,6 +1257,8 @@ function setupControlBars() {
   const scaleSelect = document.getElementById('scale-select');
   if (scaleSelect) {
     scaleSelect.addEventListener('change', (e) => {
+      clearTimeout(scaleTimer);
+      scaleTimer = null;
       const scaleObj = MUSICAL_DATA.scales[e.target.value];
       if (scaleObj) {
         renderer.renderStaff(scaleObj.clef);

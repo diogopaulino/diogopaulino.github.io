@@ -1,5 +1,6 @@
 const App = {
     emulator: null,
+    launchId: 0,
     currentCore: null,
     currentRomId: null,
     isManualFullscreen: false,
@@ -64,8 +65,12 @@ const App = {
     },
 
     getStoredSetting(name, fallback, allowedValues) {
-        const stored = localStorage.getItem(`emu-${name}`);
-        return stored && allowedValues.includes(stored) ? stored : fallback;
+        try {
+            const stored = localStorage.getItem(`emu-${name}`);
+            return allowedValues.includes(stored) ? stored : fallback;
+        } catch {
+            return fallback;
+        }
     },
     setupEventListeners() {
         const { buttons, grid, searchInput, romInput } = this.ui;
@@ -252,7 +257,7 @@ const App = {
     saveSetting(name, value) {
         if (!this.isValidSetting(name, value)) return;
         this.settings[name] = value;
-        localStorage.setItem(`emu-${name}`, value);
+        try { localStorage.setItem(`emu-${name}`, value); } catch { /* Ajuste válido nesta sessão. */ }
         this.applySettings()
     },
     isValidSetting(name, value) {
@@ -296,6 +301,8 @@ const App = {
         }
     },
     async showHome() {
+        this.launchId++;
+        this.ui.loader.classList.add('hidden');
         document.body.classList.remove('game-mode');
         this.ui.home.classList.remove('hidden');
         this.ui.player.classList.add('hidden');
@@ -481,6 +488,8 @@ const App = {
         this.triggerKey(map.key, map.code, map.keyCode, e.type);
     },
     async startGame(rom, name) {
+        const id = ++this.launchId;
+        let timeout;
         const romKey = this.getRomKey(rom);
         this.currentRomId = romKey || name || `rom-${Date.now()}`;
         this.showPlayer(name || romKey || 'Jogo');
@@ -488,6 +497,7 @@ const App = {
 
         try {
             await this.stopEmulator();
+            if (id !== this.launchId) return;
             const canvas = document.createElement('canvas');
             this.ui.screen.appendChild(canvas);
 
@@ -500,26 +510,36 @@ const App = {
 
             const core = this.getCore(romKey);
 
-            this.emulator = await Promise.race([
-                Nostalgist.launch({
-                    core,
-                    rom: romToLoad,
-                    resolveCoreJs: c => `${this.basePath}lib/${c}_libretro.js`,
-                    resolveCoreWasm: c => `${this.basePath}lib/${c}_libretro.wasm`,
-                    resolveRom: resource => this.resolveRomPath(resource),
-                    element: canvas
-                }),
-                this.createTimeoutPromise(60000, 'Timeout ao carregar o jogo. Tente novamente.')
-            ]);
-
+            const launch = Nostalgist.launch({
+                core,
+                rom: romToLoad,
+                resolveCoreJs: c => `${this.basePath}lib/${c}_libretro.js`,
+                resolveCoreWasm: c => `${this.basePath}lib/${c}_libretro.wasm`,
+                resolveRom: resource => this.resolveRomPath(resource),
+                element: canvas
+            }).then(async emulator => {
+                if (id === this.launchId) return emulator;
+                await emulator.exit();
+                return null;
+            });
+            const deadline = new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(new Error('Timeout ao carregar o jogo. Tente novamente.')), 60000);
+            });
+            const emulator = await Promise.race([launch, deadline]);
+            if (id !== this.launchId) return;
+            this.emulator = emulator;
             this.currentCore = core;
             this.applySettings();
         } catch (error) {
+            if (id !== this.launchId) return;
+            this.launchId++;
+            this.ui.loader.classList.add('hidden');
             console.error('Erro ao carregar jogo:', error);
             this.currentCore = null;
             this.showScreenError(this.getFriendlyErrorMessage(error));
         } finally {
-            this.ui.loader.classList.add('hidden');
+            clearTimeout(timeout);
+            if (id === this.launchId) this.ui.loader.classList.add('hidden');
         }
     },
     getFriendlyErrorMessage(error) {
@@ -589,11 +609,6 @@ const App = {
             throw new Error(`URL do jogo inválida: ${url}`);
         }
     },
-    createTimeoutPromise(timeout, message) {
-        return new Promise((_, reject) => {
-            setTimeout(() => reject(new Error(message)), timeout);
-        });
-    },
     startGameById(id) {
         const game = this.allGames.find(g => g.id === id);
         game ? this.startGame(game.file, game.title) : console.error('Jogo não encontrado:', id)
@@ -607,16 +622,18 @@ const App = {
     },
     async saveGame() {
         if (!this.ensureEmulator('Abra um jogo para salvar.')) return;
+        const romId = this.currentRomId;
+        const emulator = this.emulator;
         try {
-            const state = await this.emulator.saveState();
+            const state = await emulator.saveState();
             if (state) {
                 const blob = new Blob([state.state]);
                 try {
-                    await this.db.put(this.currentRomId, blob);
+                    await this.db.put(romId, blob);
                     this.showToast('Jogo salvo com sucesso!', 'success');
                 } catch (e) {
                     console.warn('Save failed, attempting download...', e);
-                    await this.exportSave({ silent: true });
+                    this.downloadBlob(blob, `${romId}.sav`);
                     this.showToast('Erro ao salvar no navegador. Baixando arquivo...', 'warning');
                 }
             }
@@ -627,6 +644,7 @@ const App = {
     },
     async loadGame() {
         if (!this.ensureEmulator('Abra um jogo para carregar um save.')) return;
+        const emulator = this.emulator;
         try {
             const state = await this.db.get(this.currentRomId);
             if (state) {
@@ -642,7 +660,8 @@ const App = {
                         return;
                     }
                 }
-                await this.emulator.loadState(stateBlob);
+                if (this.emulator !== emulator) return;
+                await emulator.loadState(stateBlob);
                 this.showToast('Jogo carregado!', 'success');
             } else {
                 this.showToast('Nenhum save encontrado.', 'info');
@@ -822,16 +841,17 @@ const App = {
         }
     },
     async stopEmulator() {
-        if (this.emulator) {
-            try {
-                await this.emulator.exit()
-            } catch (e) {
-                console.warn('Erro ao encerrar emulador:', e);
-            }
-            this.emulator = null
-        }
+        const emulator = this.emulator;
+        this.emulator = null;
         this.currentCore = null;
-        this.resetScreen()
+        this.resetScreen();
+        if (emulator) {
+            try {
+                await emulator.exit();
+            } catch (error) {
+                console.warn('Erro ao encerrar emulador:', error);
+            }
+        }
     },
     getCore(f) {
         if (!f || typeof f !== 'string') return 'genesis_plus_gx';
