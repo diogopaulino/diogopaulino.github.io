@@ -746,3 +746,10 @@ footer.lab-foot a:hover {
 .menu-disclosure[open] > summary::after { transform: rotate(225deg); }
 .menu-disclosure > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .menu-disclosure[open] > summary { margin-bottom: .5rem; }
+
+@media (pointer: coarse) {
+    .menu-disclosure .keys--board { display: none; }
+}
+@media not all and (pointer: coarse) {
+    .menu-disclosure .keys--touch { display: none; }
+}

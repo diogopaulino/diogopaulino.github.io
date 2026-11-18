@@ -325,6 +325,7 @@ export function createStage({
 
     // ---------- tamanho ----------
     let pixelRatio = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+    let appliedRatio = 0;
     function resize() {
         const w = canvas.clientWidth || (canvas.isConnected ? 0 : window.innerWidth);
         const h = canvas.clientHeight || (canvas.isConnected ? 0 : window.innerHeight);
@@ -332,6 +333,8 @@ export function createStage({
             state.sizeOk = false;
             return false;
         }
+        if (state.sizeOk && state.width === w && state.height === h && appliedRatio === pixelRatio) return true;
+        appliedRatio = pixelRatio;
         state.sizeOk = true;
         state.width = w;
         state.height = h;
@@ -349,7 +352,7 @@ export function createStage({
     // ---------- desempenho ----------
     const tierListeners = new Set();
     const perf = { acc: 0, frames: 0, fps: 60, warm: 2.5, slow: 0 };
-    function setTier(next) {
+    function setTier(next, preserveResolution = false) {
         if (next === tier || !STAGE_TIERS[next]) return;
         tier = next;
         configureAssets(renderer, loadingManager, tier);
@@ -367,7 +370,8 @@ export function createStage({
             rig.sun.shadow.map = null;
         }
         stage.shadowRadius = Math.min(stage.shadowRadius, cfg.shadowRadius);
-        pixelRatio = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+        const limit = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+        pixelRatio = preserveResolution ? Math.min(pixelRatio, limit) : limit;
         resize();
         for (const fn of tierListeners) fn(tier);
     }
@@ -389,7 +393,7 @@ export function createStage({
         let next = pixelRatio;
         if (perf.fps < 42) next = Math.max(minPR, pixelRatio - 0.1);
         else if (perf.fps > 57) next = Math.min(maxPR, pixelRatio + 0.05);
-        if (Math.abs(next - pixelRatio) > 0.04) {
+        if (next !== pixelRatio) {
             pixelRatio = next;
             resize();
         }
@@ -397,7 +401,7 @@ export function createStage({
         if (perf.slow >= 6 && TIER_DOWN[tier]) {
             perf.slow = 0;
             perf.warm = 1.5;
-            setTier(TIER_DOWN[tier]);
+            setTier(TIER_DOWN[tier], true);
         }
     }
 
@@ -464,6 +468,7 @@ export function createStage({
     };
     const onRestored = () => {
         contextLost = false;
+        state.sizeOk = false;
         sky.refresh();
         resize();
     };

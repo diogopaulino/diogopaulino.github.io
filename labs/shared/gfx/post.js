@@ -141,9 +141,14 @@ void main() {
         vec3 rd = wp.xyz / wp.w - uCamPos;
         float dist = length(rd);
         rd /= max(dist, 1e-4);
-        float ky = rd.y * uFogFalloff;
-        float kk = abs(ky) < 1e-4 ? 1e-4 : ky;
-        float tau = uFogDensity * exp(-uFogFalloff * (uCamPos.y - uFogBase)) * (1.0 - exp(-dist * kk)) / kk;
+        // Integra a densidade exponencial a partir da ponta mais baixa do raio.
+        // (1-exp(-x))/x tende a 1 no horizonte e fica finito ao olhar para baixo.
+        float deltaY = rd.y * dist;
+        float x = abs(deltaY * uFogFalloff);
+        float meanDensity = x < 0.001 ? 1.0 - 0.5 * x : (1.0 - exp(-x)) / x;
+        float lowY = uCamPos.y + min(deltaY, 0.0);
+        float density = uFogDensity * exp(clamp(-uFogFalloff * (lowY - uFogBase), -60.0, 60.0));
+        float tau = density * dist * meanDensity;
         tau += uHaze * dist;
         float f = (1.0 - exp(-max(tau, 0.0))) * uFogMax;
         vec3 fogCol = gfxSkyLut(normalize(vec3(rd.x, abs(rd.y) * 0.35 + 0.035, rd.z))) * uFogTint;
@@ -331,7 +336,7 @@ export function createPipeline(renderer, { tier = 'medium', sky, software = fals
     depthTex.minFilter = depthTex.magFilter = THREE.NearestFilter;
     const sceneRT = new THREE.WebGLRenderTarget(4, 4, { ...rtOpts, depthBuffer: true, depthTexture: depthTex, samples: cfg.msaa });
     const litRT = new THREE.WebGLRenderTarget(4, 4, rtOpts);
-    const aoRT = cfg.ao ? new THREE.WebGLRenderTarget(4, 4, { ...rtOpts, type: THREE.HalfFloatType }) : null;
+    const aoRT = cfg.ao ? new THREE.WebGLRenderTarget(4, 4, rtOpts) : null;
     const aoBlurRT = cfg.ao ? new THREE.WebGLRenderTarget(4, 4, { ...rtOpts, type: THREE.UnsignedByteType }) : null;
     const raysRT = cfg.rays ? new THREE.WebGLRenderTarget(4, 4, { ...rtOpts, type: THREE.UnsignedByteType }) : null;
     const down = [];
@@ -478,17 +483,20 @@ export function createPipeline(renderer, { tier = 'medium', sky, software = fals
         if (sky) cu.uSunColor.value.copy(sky.lightColor).multiplyScalar(sky.lightIntensity * 0.5);
         pass(composeMat, litRT);
 
-        // bloom
-        let src = litRT.texture;
-        for (let i = 0; i < down.length; i++) {
-            downMats[i].uniforms.tSrc.value = src;
-            pass(downMats[i], down[i]);
-            src = down[i].texture;
-        }
-        for (let i = up.length - 1; i >= 0; i--) {
-            upMats[i].uniforms.tSrc.value = i === up.length - 1 ? down[down.length - 1].texture : up[i + 1].texture;
-            upMats[i].uniforms.tBase.value = down[i].texture;
-            pass(upMats[i], up[i]);
+        // Bloom e profundidade de campo usam a mesma pirâmide de desfoque.
+        const needsBlur = params.bloom !== 0 || (cfg.dof && params.dofRange > 0 && params.dofMax > 0);
+        if (needsBlur) {
+            let src = litRT.texture;
+            for (let i = 0; i < down.length; i++) {
+                downMats[i].uniforms.tSrc.value = src;
+                pass(downMats[i], down[i]);
+                src = down[i].texture;
+            }
+            for (let i = up.length - 1; i >= 0; i--) {
+                upMats[i].uniforms.tSrc.value = i === up.length - 1 ? down[down.length - 1].texture : up[i + 1].texture;
+                upMats[i].uniforms.tBase.value = down[i].texture;
+                pass(upMats[i], up[i]);
+            }
         }
 
         const fu = finalMat.uniforms;
@@ -511,9 +519,9 @@ export function createPipeline(renderer, { tier = 'medium', sky, software = fals
             }
         }
 
-        fu.tBloom.value = up.length ? up[0].texture : down[0].texture;
-        fu.tBlurA.value = down[0].texture;
-        fu.tBlurB.value = up.length > 1 ? up[1].texture : down[Math.min(1, down.length - 1)].texture;
+        fu.tBloom.value = needsBlur ? up[0].texture : litRT.texture;
+        fu.tBlurA.value = needsBlur ? down[0].texture : litRT.texture;
+        fu.tBlurB.value = needsBlur ? up[1].texture : litRT.texture;
         fu.uExposure.value = params.exposure;
         fu.uBloom.value = params.bloom;
         fu.uDofFocus.value = params.dofFocus;

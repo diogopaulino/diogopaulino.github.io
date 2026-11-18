@@ -56,7 +56,8 @@ const texCache = new Map();
 const textureReady = new WeakMap();
 const setCache = new Map();
 const modelCache = new Map();
-const hdriCache = new Map();
+const environments = new WeakMap(); // PMREM pertence ao contexto WebGL que o gerou.
+const environmentRequests = new WeakMap();
 const pendingClones = new WeakMap(); // textura base ainda carregando → clones com repeat próprio
 
 /** Chame uma vez após criar o renderer (anisotropia) — e opcionalmente passe um LoadingManager. */
@@ -107,6 +108,23 @@ export function pbrSet(name) {
     return setCache.get(folder);
 }
 
+/** Mapas PBR com a mesma repetição compartilham o clone e a imagem já carregada. */
+export function tiledTexture(texture, repeatX, repeatY = repeatX) {
+    if (!texture || (repeatX === 1 && repeatY === 1)) return texture;
+    const key = `${texture.uuid}:${repeatX}:${repeatY}`;
+    if (!texCache.has(key)) {
+        const clone = texture.clone();
+        clone.repeat.set(repeatX, repeatY);
+        if (!texture.image) {
+            clone.version = 0;
+            if (!pendingClones.has(texture)) pendingClones.set(texture, []);
+            pendingClones.get(texture).push(clone);
+        }
+        texCache.set(key, clone);
+    }
+    return texCache.get(key);
+}
+
 /**
  * MeshStandardMaterial (ou Physical) a partir de um conjunto PBR.
  * `repeat`: tiles por unidade de UV — clona as texturas (mesma imagem na GPU) só
@@ -127,28 +145,12 @@ export function pbrMaterial(name, {
     const base = pbrSet(name);
     const rx = Array.isArray(repeat) ? repeat[0] : repeat;
     const ry = Array.isArray(repeat) ? repeat[1] : repeat;
-    const tile = (t) => {
-        if (!t || (rx === 1 && ry === 1)) return t;
-        const key = `${t.uuid}:${rx}:${ry}`;
-        if (!texCache.has(key)) {
-            const c = t.clone();
-            c.repeat.set(rx, ry);
-            if (!t.image) {
-                // clone nasce com needsUpdate; sem imagem o renderer avisaria a cada quadro
-                c.version = 0;
-                if (!pendingClones.has(t)) pendingClones.set(t, []);
-                pendingClones.get(t).push(c);
-            }
-            texCache.set(key, c);
-        }
-        return texCache.get(key);
-    };
-    const arm = tile(base.roughnessMap);
+    const arm = tiledTexture(base.roughnessMap, rx, ry);
     const Ctor = physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
     const m = new Ctor({
         color,
-        map: tile(base.map),
-        normalMap: tile(base.normalMap),
+        map: tiledTexture(base.map, rx, ry),
+        normalMap: tiledTexture(base.normalMap, rx, ry),
         roughnessMap: arm,
         aoMap: arm,
         aoMapIntensity: ao,
@@ -169,6 +171,8 @@ export function pbrMaterial(name, {
  */
 export function loadHDRI(which, renderer) {
     const name = HDRIS[which] || which;
+    if (!environments.has(renderer)) environments.set(renderer, new Map());
+    const hdriCache = environments.get(renderer);
     if (!hdriCache.has(name)) {
         hdriCache.set(name, new Promise((resolve) => {
             new HDRLoader(manager).load(url(`hdri/${name}_1k.hdr`), (texture) => {
@@ -197,8 +201,10 @@ export async function applyHDRI(scene, renderer, which, {
     blur = 0,
     rotationY = 0
 } = {}) {
+    const request = Symbol();
+    environmentRequests.set(scene, request);
     const hdri = await loadHDRI(which, renderer);
-    if (!hdri) return null;
+    if (!hdri || environmentRequests.get(scene) !== request) return null;
     scene.environment = hdri.env;
     scene.environmentIntensity = intensity;
     scene.environmentRotation.set(0, rotationY, 0);
