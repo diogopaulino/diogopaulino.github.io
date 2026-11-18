@@ -102,6 +102,8 @@ export class Hud {
     }
 
     setPrompt(text) {
+        if (this.promptText === text) return;
+        this.promptText = text;
         if (!text) {
             this.el.prompt.hidden = true;
             return;

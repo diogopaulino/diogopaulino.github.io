@@ -249,26 +249,32 @@ export function holeStrength(hole) {
  * samples: número de boards futuros (default 120).
  */
 export function estimateEquity(heroHole, villainHole, board, samples = 120, rng = Math.random) {
-    const used = new Set([...heroHole, ...villainHole, ...board]);
-    const remaining = createDeck().filter((c) => !used.has(c));
+    function outcome(fullBoard) {
+        const hero = evaluateHand([...heroHole, ...fullBoard]);
+        const villain = evaluateHand([...villainHole, ...fullBoard]);
+        return (Math.sign(compareScores(hero, villain)) + 1) / 2;
+    }
+
     const need = 5 - board.length;
     if (need < 0) return 0.5;
+    if (need === 0) return outcome(board);
 
-    let wins = 0;
-    let ties = 0;
-    const n = Math.min(samples, 400);
-
-    for (let i = 0; i < n; i++) {
-        const pool = shuffle(remaining, rng);
-        const fill = pool.slice(0, need);
-        const full = board.concat(fill);
-        const h = evaluateHand([...heroHole, ...full]);
-        const v = evaluateHand([...villainHole, ...full]);
-        const cmp = compareScores(h, v);
-        if (cmp > 0) wins++;
-        else if (cmp === 0) ties++;
+    const used = new Set([...heroHole, ...villainHole, ...board]);
+    const remaining = createDeck().filter(card => !used.has(card));
+    const n = Math.max(1, Math.min(Math.floor(samples), 400));
+    // No turn, cada river possível tem a mesma probabilidade.
+    if (need === 1 && n >= remaining.length) {
+        let total = 0;
+        for (const river of remaining) total += outcome([...board, river]);
+        return total / remaining.length;
     }
-    return (wins + ties * 0.5) / n;
+
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+        const fill = shuffle(remaining, rng).slice(0, need);
+        total += outcome(board.concat(fill));
+    }
+    return total / n;
 }
 
 export function potOdds(toCall, pot) {
@@ -336,7 +342,7 @@ export function startHand(match) {
         bets: [0, 0],
         contrib: [0, 0],
         streetContrib: [0, 0],
-        currentBet: bbAmt,
+        currentBet: Math.max(sbAmt, bbAmt),
         minRaise: match.bigBlind,
         lastAggressor: bbSeat,
         toAct: sbSeat,
@@ -357,13 +363,10 @@ export function startHand(match) {
     hand.streetContrib[sbSeat] = sbAmt;
     hand.streetContrib[bbSeat] = bbAmt;
 
-    if (hand.allIn[0] || hand.allIn[1]) {
-        hand.acted = [true, true];
-    }
-
     match.hand = hand;
     match.lastResult = null;
     pushLog(match, `Mão #${match.handNumber} — blinds ${sbAmt}/${bbAmt}`);
+    if (bothCommittedOrAllIn(match)) runoutToShowdown(match);
     return hand;
 }
 
@@ -395,22 +398,20 @@ export function legalActions(match) {
         actions.push({ type: 'fold', label: 'Fold', amount: 0 });
         const callAmt = Math.min(stack, toCall);
         actions.push({ type: 'call', label: callAmt >= stack ? 'All-in (call)' : 'Call', amount: callAmt });
-        if (stack > toCall) {
+        if (stack > toCall && !h.allIn[1 - seat]) {
             const minRaiseTotal = h.currentBet + h.minRaise;
             const minPut = minRaiseTotal - h.streetContrib[seat];
-            if (stack > toCall) {
-                const minAmt = Math.min(stack, Math.max(toCall + 1, minPut));
-                if (minAmt < stack) {
-                    actions.push({
-                        type: 'raise',
-                        label: 'Raise',
-                        min: minAmt,
-                        max: stack,
-                        amount: minAmt
-                    });
-                }
-                actions.push({ type: 'allin', label: 'All-in', amount: stack });
+            const minAmt = Math.min(stack, Math.max(toCall + 1, minPut));
+            if (minAmt < stack) {
+                actions.push({
+                    type: 'raise',
+                    label: 'Raise',
+                    min: minAmt,
+                    max: stack,
+                    amount: minAmt
+                });
             }
+            actions.push({ type: 'allin', label: 'All-in', amount: stack });
         }
     }
     return actions;
@@ -632,6 +633,18 @@ function goShowdown(match) {
     const hand0 = evaluateHand([...h.holes[0], ...h.board]);
     const hand1 = evaluateHand([...h.holes[1], ...h.board]);
     const cmp = compareScores(hand0, hand1);
+    // Em heads-up, só o valor coberto pelos dois pode ser disputado.
+    const excess = h.contrib[0] - h.contrib[1];
+    if (excess !== 0) {
+        const seat = excess > 0 ? 0 : 1;
+        const refund = Math.abs(excess);
+        match.stacks[seat] += refund;
+        h.contrib[seat] -= refund;
+        h.streetContrib[seat] -= refund;
+        h.bets[seat] = h.streetContrib[seat];
+        h.pot -= refund;
+        pushLog(match, `${match.players[seat].name} recebe ${refund} de volta (aposta sem cobertura)`);
+    }
     const pot = h.pot;
     let winners;
     if (cmp > 0) winners = [0];

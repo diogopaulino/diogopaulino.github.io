@@ -149,11 +149,9 @@ var init_products = __esm({
     ];
     PRODUCT_INDICATOR = "PS5";
     NAV_ITEMS = [
-      { label: "Games", href: "#games" },
-      { label: "Accessories", href: "#accessories" },
-      { label: "News", href: "#news" },
-      { label: "Store", href: "#store" },
-      { label: "Support", href: "#support" }
+      { label: "Ficha técnica", href: "#specifications" },
+      { label: "Playground", href: "/labs/" },
+      { label: "Portfólio", href: "/" }
     ];
   }
 });
@@ -1111,7 +1109,11 @@ var init_ProductScene = __esm({
         let lastError = null;
         for (const forceWebGL of backends) {
           try {
-            this.renderer = new WebGPURenderer({ ...rendererOptions, forceWebGL });
+            const canvas = document.createElement("canvas");
+            if (forceWebGL && !canvas.getContext("webgl2", rendererOptions)) {
+              throw new Error("WebGL 2 indisponível");
+            }
+            this.renderer = new WebGPURenderer({ ...rendererOptions, canvas, forceWebGL });
             await this.renderer.init();
             lastError = null;
             break;
@@ -1832,26 +1834,6 @@ var psLogo = `
     <path d="M104.8 14.9c-3.6-2.7-8.6-4.3-13.4-4.3-4.6 0-7.3 1.8-7.3 4.4 0 2.2 2 3.5 8.1 5.4 9.4 2.9 13.6 6.7 13.6 13.3 0 9.3-8 15.4-19.9 15.4-7.3 0-14.1-2.3-18.6-6.1l7-9.1c3.6 3.1 8.4 5.1 13 5.1 4.2 0 6.7-1.6 6.7-4.2 0-2.3-1.9-3.6-8-5.6-9.1-2.9-13.3-6.6-13.3-13.2C72.7 6.4 80.7.4 92.4.4c6.5 0 12.4 1.9 16.8 5l-4.4 9.5Z"/>
   </g>
 </svg>`;
-var search = `
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  ${stroke("M10.8 17.6a6.8 6.8 0 1 0 0-13.6 6.8 6.8 0 0 0 0 13.6ZM15.7 15.7 20 20", 1.9)}
-</svg>`;
-var user = `
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  ${stroke("M12 12.1a3.7 3.7 0 1 0 0-7.4 3.7 3.7 0 0 0 0 7.4Z", 1.9)}
-  ${stroke("M4.9 20a7.4 7.4 0 0 1 14.2 0", 1.9)}
-</svg>`;
-var bag = `
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  ${stroke("M5.4 7.6h13.2l1 12.1a1.4 1.4 0 0 1-1.4 1.5H5.8a1.4 1.4 0 0 1-1.4-1.5Z", 1.8)}
-  ${stroke("M8.7 9.6V6.4a3.3 3.3 0 1 1 6.6 0v3.2", 1.8)}
-</svg>`;
-var cart = `
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  ${stroke("M2.6 3.4h2.6l2.3 10.9h9.8l2.1-8H6.2", 1.8)}
-  <circle cx="9.4" cy="19" r="1.7" fill="currentColor"/>
-  <circle cx="16.6" cy="19" r="1.7" fill="currentColor"/>
-</svg>`;
 var battery = `
 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
   ${stroke("M8.4 6.2h7.2a2 2 0 0 1 2 2v11.4a2 2 0 0 1-2 2H8.4a2 2 0 0 1-2-2V8.2a2 2 0 0 1 2-2Z", 1.7)}
@@ -1869,10 +1851,6 @@ var arrowLeft = `
 var arrowRight = `
 <svg class="icon" viewBox="0 0 28 16" aria-hidden="true">
   ${stroke("M2 8h24M19 1.5 26 8l-7 6.5", 2.1)}
-</svg>`;
-var play = `
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  <path d="M9 6.4 18.4 12 9 17.6Z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
 var menu = `
 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -1965,9 +1943,6 @@ var Header = class {
       </nav>
 
       <div class="header__utility">
-        <button class="utility-button" type="button" aria-label="Search">${search}</button>
-        <button class="utility-button" type="button" aria-label="Your account">${user}</button>
-        <button class="utility-button" type="button" aria-label="Cart, 0 items">${bag}</button>
         <button class="utility-button utility-button--menu" type="button"
                 aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
           ${menu}
@@ -1976,9 +1951,6 @@ var Header = class {
     `;
     this.menuButton = qs(this.element, ".utility-button--menu");
     this.menuButton.addEventListener("click", this.onMenuToggle);
-    for (const link of qsa(this.element, ".nav-pill")) {
-      link.addEventListener("click", (event) => event.preventDefault());
-    }
   }
   onMenuToggle;
   element;
@@ -2053,6 +2025,7 @@ var MobileMenu = class {
     this.element.hidden = true;
     this.element.innerHTML = `
       <div class="mobile-menu__panel" role="dialog" aria-modal="true" aria-label="Menu">
+        <button class="edition-menu-close" type="button" aria-label="Fechar menu">×</button>
         <ul class="mobile-menu__list">
           ${NAV_ITEMS.map(
       (item, index) => `
@@ -2063,10 +2036,13 @@ var MobileMenu = class {
         </ul>
       </div>
     `;
+    qs(this.element, ".edition-menu-close").addEventListener("click", this.onRequestClose);
+    this.element.addEventListener("keydown", event => {
+      if (event.key === "Escape") this.onRequestClose();
+    });
     this.items = qsa(this.element, ".mobile-menu__item");
     for (const link of qsa(this.element, "a")) {
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
+      link.addEventListener("click", () => {
         this.onRequestClose();
       });
     }
@@ -2148,8 +2124,8 @@ var ProductInfo = class {
       <p class="product-info__description"></p>
       <div class="product-info__actions">
         <button class="cta" type="button">
-          <span class="cta__icon">${cart}</span>
-          <span class="cta__label">Add to cart</span>
+          <span class="cta__icon" aria-hidden="true">⤢</span>
+          <span class="cta__label">Ampliar foto</span>
         </button>
         <p class="product-info__price"></p>
       </div>
@@ -2168,7 +2144,7 @@ var ProductInfo = class {
     this.line2.textContent = product.titleLines[1];
     this.description.textContent = product.description;
     this.price.innerHTML = `<span class="visually-hidden">Price </span>${esc(product.price)}`;
-    this.cta.setAttribute("aria-label", `Add ${product.name} to cart`);
+    this.cta.setAttribute("aria-label", `Ampliar foto de ${product.name}`);
   }
   get lines() {
     return [this.category.parentElement, this.line1, this.line2];
@@ -2448,25 +2424,19 @@ var PromoCard = class {
           <span class="promo-card__title"></span>
           <span class="promo-card__caption"></span>
         </span>
-        <span class="promo-card__play">${play}</span>
-        <span class="promo-card__duration"></span>
+        <span class="promo-card__play" aria-hidden="true">⤢</span>
       </button>
     `;
     this.title = qs(this.element, ".promo-card__title");
     this.caption = qs(this.element, ".promo-card__caption");
-    this.duration = qs(this.element, ".promo-card__duration");
     this.image = qs(this.element, ".promo-card__image");
     this.figure = qs(this.element, ".promo-card__figure");
     this.write(product);
   }
   write(product) {
     this.title.textContent = product.promo.title;
-    this.caption.textContent = product.promo.caption;
-    this.duration.textContent = product.promo.duration;
-    qs(this.element, ".promo-card__button").setAttribute(
-      "aria-label",
-      `Play ${product.promo.title} \u2014 ${product.promo.caption}, ${product.promo.duration}`
-    );
+    this.caption.textContent = "Ver o verso";
+    qs(this.element, ".promo-card__button").setAttribute("aria-label", `Ver o verso de ${product.name}`);
   }
   setArtwork(src) {
     this.image.src = src;
@@ -2582,6 +2552,23 @@ var App = class {
     this.controls = new CarouselControls(0, (direction) => this.step(direction));
     this.promo = new PromoCard(product);
     this.specs = new SpecCards(product);
+    this.specs.element.id = "specifications";
+    this.specs.element.tabIndex = -1;
+    const photo = document.createElement("dialog");
+    photo.className = "edition-photo";
+    photo.innerHTML = '<img alt=""><form method="dialog"><button type="submit">Fechar</button></form>';
+    const openPhoto = side => {
+      const current = PRODUCTS[getState().index];
+      const label = (side === "front" ? "Frente" : "Verso") + " · " + current.name;
+      photo.setAttribute("aria-label", label);
+      const image = photo.querySelector("img");
+      image.alt = label;
+      image.src = current.photography[side];
+      photo.showModal();
+    };
+    this.info.cta.addEventListener("click", () => openPhoto("front"));
+    this.promo.element.querySelector("button").addEventListener("click", () => openPhoto("back"));
+    root2.append(photo);
     const indicator = new ProductIndicator();
     const handle = el("div", "stage__handle", dragHandle);
     handle.setAttribute("aria-hidden", "true");
@@ -2679,6 +2666,20 @@ var App = class {
   goTo(index) {
     const state2 = getState();
     if (index === state2.index && state2.phase !== "loading") return;
+    if (document.body.classList.contains("no-webgl")) {
+      const product = PRODUCTS[index];
+      setState({ phase: "idle", index });
+      applyTheme(product);
+      this.info.write(product);
+      this.heroSpace.style.backgroundImage = `url("${product.photography.front}")`;
+      this.promo.write(product);
+      this.promo.setArtwork(product.photography.back);
+      this.variants.layout(index);
+      this.controls.setIndex(index);
+      this.updateDocument(product);
+      return;
+    }
+    if (!this.scene || state2.phase === "loading") return;
     if (state2.phase === "transitioning") {
       this.queued = index;
       return;
@@ -2754,7 +2755,7 @@ var App = class {
     this.scene.setHeroBand({ centreY: centre, fill });
   }
   updateDocument(product) {
-    document.title = `${product.titleLines.join(" ")} \xB7 PlayStation DualSense`;
+    document.title = `${product.titleLines.join(" ")} \xB7 PlayStation DualSense | Diogo Paulino`;
   }
   /* -------------------------------------------------------------- input -- */
   toggleMenu(force) {
@@ -2762,15 +2763,14 @@ var App = class {
     setState({ menuOpen: open });
     this.header.setMenuOpen(open);
     this.menu.toggle(open);
+    this.shell.inert = open;
+    if (!open) this.header.menuButton.focus({ preventScroll: true });
     document.body.classList.toggle("menu-open", open);
   }
   bindInput() {
     window.addEventListener("keydown", (event) => {
-      if (event.defaultPrevented) return;
-      if (event.key === "Escape" && getState().menuOpen) {
-        this.toggleMenu(false);
-        return;
-      }
+      if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      if (getState().menuOpen) return;
       const target = event.target;
       if (target && target.closest(".variants")) return;
       if (event.key === "ArrowRight") this.step(1);
@@ -2830,6 +2830,10 @@ var App = class {
     console.error("[showcase] WebGL initialisation failed", error);
     this.loader.element.remove();
     document.body.classList.add("no-webgl");
+    setState({ phase: "idle" });
+    this.heroSpace.style.backgroundImage = `url("${PRODUCTS[0].photography.front}")`;
+    this.promo.setArtwork(PRODUCTS[0].photography.back);
+    PRODUCTS.forEach((product, index) => this.variants.setArtwork(index, product.photography.front, product.name));
     const notice = el(
       "p",
       "webgl-notice",

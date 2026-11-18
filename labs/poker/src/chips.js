@@ -43,7 +43,7 @@ function expandChips(piles) {
 }
 
 export function renderChipStack(container, amount) {
-    if (!container) return;
+    if (!container || container.dataset.amount === String(amount || 0)) return;
     const denoms = decomposeChips(amount);
     container.innerHTML = denoms
         .map((d) => `<span class="chip chip--${d}" title="${d}"></span>`)

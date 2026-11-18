@@ -453,6 +453,10 @@ Dica: explore ~/secrets e ~/projects`;
     histIndex = history.length;
     print(`${termPrompt.textContent} ${line}`, 'line-cmd');
 
+    if ((line.match(/"/g) || []).length % 2) {
+      print('Feche as aspas duplas para executar o comando.');
+      return;
+    }
     const parts = line.match(/(?:[^\s"]+|"[^"]*")+/g).map((p) => p.replace(/^"|"$/g, ''));
     const cmd = parts[0].toLowerCase();
     const args = parts.slice(1);

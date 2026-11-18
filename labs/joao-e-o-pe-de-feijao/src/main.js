@@ -695,7 +695,7 @@ class Game {
             label = `Cortar o pé (${w.chop}/${w.chopNeeded})`;
         }
         this.hud.setPrompt(label);
-        if (!near || !this.input.consumeInteract()) return;
+        if (!this.input.consumeInteract() || !near) return;
 
         if (near.kind === 'talk') {
             this._openDialogue(near.speaker, near.lines, near);

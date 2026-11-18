@@ -12,7 +12,7 @@
  */
 import * as THREE from 'three';
 import { createStage } from '../../shared/gfx/stage.js';
-import { applyHDRI, pbrSet } from '../../shared/gfx/assets.js';
+import { applyHDRI, pbrSet, tiledTexture } from '../../shared/gfx/assets.js';
 import { revolve, loop, mesh, xf } from './sculpt.js';
 
 export const PLINTH_TOP = 0.2;
@@ -28,20 +28,6 @@ const THEMES = {
     }
 };
 
-function tiledTex(tex, rep) {
-    const t = tex.clone();
-    t.repeat.set(rep, rep);
-    if (!tex.image) {
-        t.version = 0;
-        const tick = () => {
-            if (tex.image) t.needsUpdate = true;
-            else setTimeout(tick, 120);
-        };
-        tick();
-    }
-    return t;
-}
-
 export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingManager = null }) {
     const stage = createStage({
         canvas, tier, hdri: THEMES[theme].hdri, shadows: false, fov: 30, near: 0.1, far: 60, loadingManager,
@@ -55,7 +41,7 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
 
     // ---- ciclorama: piso (r 7 m) → curva de 2,5 m → parede → teto fechado ----
     const plaster = pbrSet('plastered_wall_04');
-    const cycMat = new THREE.MeshStandardMaterial({ color: THEMES[theme].cyc, roughness: 0.95, metalness: 0, side: THREE.BackSide, normalMap: tiledTex(plaster.normalMap, 0.6) });
+    const cycMat = new THREE.MeshStandardMaterial({ color: THEMES[theme].cyc, roughness: 0.95, metalness: 0, side: THREE.BackSide, normalMap: tiledTexture(plaster.normalMap, 0.6) });
     cycMat.normalScale.set(0.35, 0.35);
     const cyc = mesh(revolve([
         [0, 0], [7, 0], [8.2, 0.18], [9.1, 0.9], [9.5, 2.5], [9.5, 7], [8.5, 9.5], [5, 11], [0, 11.2]
@@ -65,7 +51,7 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
 
     // ---- plataforma: base de pedra fixa + tampo de madeira que gira ----
     const slate = pbrSet('slate_floor_02');
-    const stone = new THREE.MeshStandardMaterial({ color: 0xbdb6b0, roughness: 0.85, map: tiledTex(slate.map, 1.2), normalMap: tiledTex(slate.normalMap, 1.2), roughnessMap: tiledTex(slate.roughnessMap, 1.2) });
+    const stone = new THREE.MeshStandardMaterial({ color: 0xbdb6b0, roughness: 0.85, map: tiledTexture(slate.map, 1.2), normalMap: tiledTexture(slate.normalMap, 1.2), roughnessMap: tiledTexture(slate.roughnessMap, 1.2) });
     const base = mesh(revolve([
         [0, 0], [1.2, 0], [1.22, 0.012], [1.21, 0.05], [1.14, 0.062], [1.1, 0.07, 1], [1.1, 0.1], [1.08, 0.112], [0, 0.112]
     ], { segs: 96, sub: 4 }), stone);
@@ -74,8 +60,8 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
     scene.add(base);
     const oak = pbrSet('oak_wood_planks');
     const wood = new THREE.MeshPhysicalMaterial({
-        color: 0xa88560, roughness: 0.6, clearcoat: 0.35, clearcoatRoughness: 0.25, map: tiledTex(oak.map, 0.9), normalMap: tiledTex(oak.normalMap, 0.9),
-        roughnessMap: tiledTex(oak.roughnessMap, 0.9)
+        color: 0xa88560, roughness: 0.6, clearcoat: 0.35, clearcoatRoughness: 0.25, map: tiledTexture(oak.map, 0.9), normalMap: tiledTexture(oak.normalMap, 0.9),
+        roughnessMap: tiledTexture(oak.roughnessMap, 0.9)
     });
     const turntable = new THREE.Group();
     scene.add(turntable);
@@ -270,7 +256,6 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
         led.emissiveIntensity = name === 'light' ? 1.2 : 2.2;
         applyHDRI(scene, renderer, T.hdri, { intensity: T.env }).then(() => {
             scene.background = null;
-            scene.environmentIntensity = T.env;
             applyPost();
         });
         applyPost();
@@ -288,8 +273,9 @@ export function createStudio({ canvas, theme = 'dark', tier = 'auto', loadingMan
     stage.onTier(applyPost);
     stage.ready.then(() => {
         scene.background = null;
+        const selected = current;
         current = null;
-        setTheme(theme);
+        setTheme(selected);
     });
     setTheme(theme);
 

@@ -571,6 +571,9 @@ class JungleRun {
 
     setupEventListeners() {
         window.addEventListener('keydown', (event) => {
+            if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input,select,textarea')) return;
+            if (['Enter', 'Space'].includes(event.code) && event.target.closest?.('button,a')) return;
+            if (this.state !== 'playing' && !['Escape','KeyP','Enter'].includes(event.code)) return;
             this.keys[event.code] = true;
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
                 event.preventDefault();
@@ -877,26 +880,7 @@ class JungleRun {
         await this.runCountdown();
         if (this.state !== 'countdown') return;
         
-        this.score = 0;
-        this.distance = 0;
-        this.lives = 3;
-        this.cameraX = 0;
-        this.lastSpawnX = 0;
-        this.collectCount = 0;
-        
-        this.player.x = 150;
-        this.player.y = CONFIG.GROUND_Y;
-        this.player.vx = 0;
-        this.player.vy = 0;
-        this.player.onGround = true;
-        this.player.onVine = null;
-        this.player.onTree = null;
-        
-        this.app.renderer.background.color = this.currentLevel.bgColor;
-
-        this.state = 'playing';
-        this.invincibleFrames = 90;
-        this.syncHud(true);
+        this.restartGame();
         this.announce('Expedição iniciada');
     }
 
@@ -996,6 +980,7 @@ class JungleRun {
         this.uiCache = {};
         this.syncHud(true);
         this.state = 'playing';
+        this.app.ticker.start();
         this.audio.play('select');
         this.announce('Expedição reiniciada');
     }
@@ -1026,6 +1011,9 @@ class JungleRun {
     }
 
     releaseInputs() {
+        this.releasedGrip = null;
+        this.jumpBufferFrames = 0;
+        this.player.jumpHeld = false;
         this.keys = Object.create(null);
         Object.keys(this.touch).forEach(k => { this.touch[k] = false; });
         document.querySelectorAll('.mobile-btn').forEach(b => b.classList.remove('is-active'));
@@ -1423,11 +1411,14 @@ class JungleRun {
             }
         }
 
+        const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump || this.touch.climbUp;
+        if (!grabRequested) this.releasedGrip = null;
+
         // Tree trunk climbing check
         if (!this.player.onTree && !this.player.onVine) {
-            const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump;
             if (grabRequested) {
                 for (const tree of this.trees) {
+                    if (tree === this.releasedGrip) continue;
                     const dx = Math.abs(this.player.x - tree.x);
                     const dy = this.player.y - (tree.y - tree.hitHeight / 2);
                     if (dx < 35 && Math.abs(dy) < tree.hitHeight / 2 + 20) {
@@ -1445,9 +1436,9 @@ class JungleRun {
 
         // Vine grabbing check
         if (!this.player.onVine && !this.player.onTree) {
-            const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump;
             if (grabRequested) {
                 for (const vine of this.vines) {
+                    if (vine === this.releasedGrip) continue;
                     const endX = vine.x + vine.grip.x;
                     const endY = vine.y + vine.grip.y;
                     const dx = this.player.x - endX;
@@ -1470,6 +1461,8 @@ class JungleRun {
         const vine = this.player.onVine;
         if (!vine) return;
         
+        this.releasedGrip = vine;
+        this.jumpBufferFrames = 0;
         this.player.onVine = null;
         const climbDist = vine.ropeLength * this.player.climbProgress;
         this.player.vx = Math.cos(vine.angle) * vine.angularVelocity * climbDist * 3.1;
@@ -1483,6 +1476,8 @@ class JungleRun {
         const tree = this.player.onTree;
         if (!tree) return;
         
+        this.releasedGrip = tree;
+        this.jumpBufferFrames = 0;
         this.player.onTree = null;
         this.player.vx = dir * 4.5;
         this.player.vy = -7.8;
@@ -1773,4 +1768,7 @@ class JungleRun {
     }
 }
 
-window.addEventListener('load', () => new JungleRun(), { once: true });
+window.addEventListener('load', () => {
+    const game = new JungleRun();
+    if (new URLSearchParams(location.search).has('debug')) window.__lab = { game };
+}, { once: true });

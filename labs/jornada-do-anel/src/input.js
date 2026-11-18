@@ -2,6 +2,7 @@
  * Teclado, mouse (pointer lock), toque e atalhos de HUD.
  */
 
+import { bindGameKeyboard } from '../../shared/game-keyboard.js';
 import { clamp } from './utils.js?v=30';
 
 const MOVE = {
@@ -105,26 +106,22 @@ export class Input {
     }
 
     _bind() {
-        this._onKeyDown = (e) => {
-            if (!this.enabled) return;
-            const action = ACTIONS[e.code];
-            if (action) {
-                if (action === 'confirm' && document.activeElement?.tagName === 'BUTTON') return;
-                this.emit(action);
-                if (action !== 'confirm') e.preventDefault();
+        bindGameKeyboard({
+            moves: MOVE, actions: ACTIONS, held: this.keys,
+            enabled: () => this.enabled,
+            onAction: action => this.emit(action),
+            onPress: key => {
+                if (key === 'interact') this.interactPressed = true;
+                if (key === 'attack') this.attackPressed = true;
+            },
+            onReset: () => {
+                this.interactPressed = false;
+                this.attackPressed = false;
+                this.touchMove.x = this.touchMove.y = 0;
+                this.lookX = this.lookY = this.zoomDelta = 0;
+                this.touchLook.x = this.touchLook.y = 0;
             }
-            const key = MOVE[e.code];
-            if (!key) return;
-            e.preventDefault();
-            this.keys.add(key);
-            if (key === 'interact') this.interactPressed = true;
-            if (key === 'attack') this.attackPressed = true;
-        };
-
-        this._onKeyUp = (e) => {
-            const key = MOVE[e.code];
-            if (key) this.keys.delete(key);
-        };
+        });
 
         this._onMouseMove = (e) => {
             if (!this.enabled) return;
@@ -154,8 +151,6 @@ export class Input {
 
         this._onContext = (e) => e.preventDefault();
 
-        window.addEventListener('keydown', this._onKeyDown);
-        window.addEventListener('keyup', this._onKeyUp);
         window.addEventListener('mousemove', this._onMouseMove);
         this.canvas.addEventListener('mousedown', this._onMouseDown);
         this.canvas.addEventListener('wheel', this._onWheel, { passive: false });

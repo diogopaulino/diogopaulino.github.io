@@ -105,16 +105,18 @@ export function clearChildren(node) {
 }
 
 export function renderCards(container, ids, opts = {}) {
-    clearChildren(container);
-    (ids || []).forEach((id, i) => {
-        container.appendChild(
-            cardElement(id, {
-                ...opts,
-                dealDelay: (opts.baseDelay || 0) + i * 80,
-                faceDown: opts.faceDown || id === '?',
-                flip: false
-            })
-        );
+    const cards = ids || [];
+    while (container.children.length > (opts.slots ?? cards.length)) container.lastElementChild.remove();
+    cards.forEach((id, i) => {
+        const current = container.children[i];
+        if (current?.dataset.card === id) return;
+        const card = cardElement(id, {
+            ...opts,
+            dealDelay: (opts.baseDelay || 0) + i * 80,
+            faceDown: opts.faceDown || id === '?'
+        });
+        if (current) current.replaceWith(card);
+        else container.appendChild(card);
     });
 }
 

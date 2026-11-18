@@ -141,7 +141,7 @@
         if (!meta) {
             meta = document.createElement('meta');
             meta.name = 'theme-color';
-            meta.content = html.getAttribute('data-theme') === 'dark' ? '#0a0a0a' : '#fafbfc';
+            meta.content = '#fafbfc';
             document.head.appendChild(meta);
         }
         return meta;
@@ -204,6 +204,7 @@
     const AudioAPI = (function () {
         let ctx = null;
         let master = null;
+        let noiseBuffer = null;
         let storageKey = 'labs:muted';
         let muted = false;
         let volume = 0.5;
@@ -282,13 +283,17 @@
 
             const { duration = 0.18, gain = 0.12, delay = 0, filter = 1200, type = 'lowpass' } = options || {};
             const start = audio.currentTime + delay;
-            const frames = Math.max(1, Math.floor(audio.sampleRate * duration));
-            const buffer = audio.createBuffer(1, frames, audio.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-
+            // Sorteia um trecho por efeito. Golpes simultâneos compartilham as amostras,
+            // mas cada voz tem início, filtro e envelope próprios.
+            if (!noiseBuffer || noiseBuffer.duration < duration) {
+                const frames = Math.ceil(audio.sampleRate * Math.max(1, duration));
+                noiseBuffer = audio.createBuffer(1, frames, audio.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+            }
+            const offset = Math.random() * Math.max(0, noiseBuffer.duration - duration);
             const src = audio.createBufferSource();
-            src.buffer = buffer;
+            src.buffer = noiseBuffer;
 
             const biquad = audio.createBiquadFilter();
             biquad.type = type;
@@ -299,7 +304,7 @@
             amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
             src.connect(biquad).connect(amp).connect(master);
-            src.start(start);
+            src.start(start, offset, duration);
             src.stop(start + duration + 0.02);
         }
 

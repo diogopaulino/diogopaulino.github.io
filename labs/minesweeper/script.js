@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let board = [];
     let gameOver = false;
+    let revealedCount = 0;
     let flags = 0;
     let timer = 0;
     let timerInterval = null;
@@ -87,13 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBest() {
         if (!bestTimeElement) return;
         const best = readBest()[difficultySelect.value];
-        bestTimeElement.textContent = best ? `${best}s` : '—';
+        bestTimeElement.textContent = Number.isFinite(best) ? `${best}s` : '—';
     }
 
     function recordBest() {
         const key = difficultySelect.value;
         const all = readBest();
-        if (!all[key] || timer < all[key]) {
+        if (!Number.isFinite(all[key]) || timer < all[key]) {
             all[key] = timer;
             saveBest(all);
         }
@@ -113,13 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateCellSize() {
         const available = Math.min(window.innerWidth - 48, 720);
-        /* Com o dedo, uma célula de 14px é impossível de acertar. No toque o
-           piso sobe para 26px e o tabuleiro rola dentro da janela (o Especialista
-           de 30 colunas não cabe em 375px de jeito nenhum) — melhor rolar do que
-           errar a célula. */
-        const coarse = window.matchMedia('(pointer: coarse)').matches;
-        const floor = coarse ? 26 : 14;
-        const cell = Math.max(floor, Math.min(28, Math.floor(available / COLS)));
+        // Em telas de toque o tabuleiro rola dentro da janela para preservar a área de toque.
+        const cell = window.matchMedia('(pointer: coarse)').matches
+            ? 44 : Math.max(14, Math.min(28, Math.floor(available / COLS)));
         document.documentElement.style.setProperty('--cell-size', cell + 'px');
         boardElement.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
         boardElement.style.gridTemplateRows = `repeat(${ROWS}, var(--cell-size))`;
@@ -140,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset state
         board = [];
         gameOver = false;
+        revealedCount = 0;
         flags = 0;
         timer = 0;
         firstClick = true;
@@ -171,17 +169,46 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render board
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                const cell = document.createElement('div');
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.tabIndex = r === 0 && c === 0 ? 0 : -1;
                 cell.classList.add('cell');
                 cell.dataset.r = r;
                 cell.dataset.c = c;
 
+                labelCell(cell, 'fechada');
                 board[r][c].element = cell;
                 cells.appendChild(cell);
             }
         }
         boardElement.appendChild(cells);
     }
+
+    function labelCell(cell, state) {
+        cell.setAttribute('aria-label', `Linha ${Number(cell.dataset.r) + 1}, coluna ${Number(cell.dataset.c) + 1}, ${state}`);
+    }
+
+    boardElement.addEventListener('focusin', event => {
+        const cell = event.target.closest('.cell');
+        if (!cell || cell.tabIndex === 0) return;
+        boardElement.querySelector('[tabindex="0"]').tabIndex = -1;
+        cell.tabIndex = 0;
+    });
+    boardElement.addEventListener('keydown', event => {
+        const cell = event.target.closest('.cell');
+        const step = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[event.key];
+        if (!cell || !step) return;
+        event.preventDefault();
+        board[+cell.dataset.r + step[0]]?.[+cell.dataset.c + step[1]]?.element.focus();
+    });
+    boardElement.addEventListener('click', event => {
+        const cell = event.target.closest('.cell');
+        if (!cell || event.detail !== 0 || gameOver) return;
+        const r = +cell.dataset.r, c = +cell.dataset.c;
+        if (flagMode) handleRightClick(r, c);
+        else if (board[r][c].isRevealed) chord(r, c);
+        else handleClick(r, c);
+    });
 
     // Uma interação pertence à célula onde começou. O clique direito chega
     // como contextmenu; o pointerup não deve marcar a mesma bandeira de novo.
@@ -342,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 buzz(18);
             }
         }
+        labelCell(cellElement, cellData.isFlagged ? 'bandeira' : 'fechada');
         mineCountElement.innerText = formatNumber(MINES - flags);
         announce(`${MINES - flags} minas restantes.`);
     }
@@ -351,9 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cellData = board[r][c];
         cellData.isRevealed = true;
+        revealedCount++;
 
         const cellElement = getCellElement(r, c);
         cellElement.classList.add('revealed');
+        labelCell(cellElement, cellData.neighborMines ? `minas vizinhas: ${cellData.neighborMines}` : 'vazia');
 
         if (cellData.neighborMines > 0) {
             cellElement.innerText = cellData.neighborMines;
@@ -375,25 +405,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cellElement = getCellElement(r, c);
                     if (!board[r][c].isFlagged) {
                         cellElement.innerText = '💣';
+                        labelCell(cellElement, 'mina');
                         cellElement.classList.add('revealed');
                     }
                 } else if (board[r][c].isFlagged) {
                     // Wrong flag
                     const cellElement = getCellElement(r, c);
                     cellElement.innerText = '❌';
+                    labelCell(cellElement, 'bandeira incorreta');
                 }
             }
         }
     }
 
     function checkWin() {
-        let revealedCount = 0;
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                if (board[r][c].isRevealed) revealedCount++;
-            }
-        }
-
         if (revealedCount === (ROWS * COLS) - MINES) {
             gameOver = true;
             resetBtn.innerText = '😎';
@@ -405,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         board[r][c].isFlagged = true;
                         const cellElement = getCellElement(r, c);
                         cellElement.innerText = '🚩';
+                        labelCell(cellElement, 'bandeira');
                     }
                 }
             }
@@ -462,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
        joga no notebook sem mouse. */
     document.addEventListener('keydown', (e) => {
         if (e.key === 'f' || e.key === 'F') {
-            if (e.target.closest('input, select, textarea')) return;
+            if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, select, textarea')) return;
             setFlagMode(!flagMode);
         }
     });

@@ -47,6 +47,7 @@ class Game {
         this.rainAmount = 0;
         this.logged = new Set();
         this.observeT = 0;
+        this.observeTarget = null;
         this.camYaw = 0;
         this.camPitch = CAMERA.defaultPitch;
         this.camDist = CAMERA.distance;
@@ -265,6 +266,7 @@ class Game {
         this.hud._fillCatalog();
         this.elapsed = 0;
         this.observeT = 0;
+        this.observeTarget = null;
         this.camMode = 0;
         this.camYaw = 0;
         this.camPitch = CAMERA.defaultPitch;
@@ -423,6 +425,10 @@ class Game {
     _updateObserve(dt) {
         const near = this._nearestDino();
         const holding = this.input.observeHeld;
+        if (near !== this.observeTarget) {
+            this.observeTarget = near;
+            this.observeT = 0;
+        }
         if (!near) {
             this.observeT = 0;
             this.hud.setPrompt('');

@@ -102,6 +102,8 @@ export class Hud {
     }
 
     setPrompt(text) {
+        if (this.promptText === text) return;
+        this.promptText = text;
         /* O botão "usar" do toque acende junto com o balão: no celular não há
            tecla E para procurar. */
         if (this.el.btnInteract) this.el.btnInteract.dataset.ready = text ? 'true' : 'false';

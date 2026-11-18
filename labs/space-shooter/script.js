@@ -26,7 +26,7 @@ let highScore = readHighScore();
 // Tiro contínuo: segurar espaço ou o botão dispara em cadência fixa, em vez de
 // exigir um toque por tiro (no celular isso virava tapinha frenético).
 const FIRE_INTERVAL = 0.14; // segundos entre disparos com o gatilho preso
-let fireHeld = false;
+const firingPointers = new Set();
 let fireCooldown = 0;
 let frameCount = 0;
 let enemyFireCooldown = 1.4;
@@ -214,14 +214,21 @@ window.addEventListener('keyup', e => {
     if (flag) keys[flag] = false;
 });
 
-// Touch/Mouse support for shooting
-canvas.addEventListener('pointerdown', () => {
-    if (!gameRunning) return;
-    fireHeld = true;
-    fireCooldown = 0;
-});
-window.addEventListener('pointerup', () => { fireHeld = false; });
-window.addEventListener('pointercancel', () => { fireHeld = false; });
+// Cada dedo mantém o próprio disparo até ser solto, mesmo com o direcional em uso.
+function bindFireControl(element) {
+    element.addEventListener('pointerdown', event => {
+        if (!gameRunning || event.button !== 0) return;
+        event.preventDefault();
+        element.setPointerCapture(event.pointerId);
+        firingPointers.add(event.pointerId);
+        fireCooldown = 0;
+    });
+    const release = event => firingPointers.delete(event.pointerId);
+    element.addEventListener('pointerup', release);
+    element.addEventListener('pointercancel', release);
+    element.addEventListener('lostpointercapture', release);
+}
+bindFireControl(canvas);
 
 canvas.addEventListener('pointermove', e => {
     if (!gameRunning || e.pointerType === 'mouse') return;
@@ -310,7 +317,7 @@ function update(dt) {
     }
 
     // Gatilho preso: dispara na cadência de FIRE_INTERVAL enquanto estiver ativo.
-    const fireOn = fireHeld || Boolean(keys.Space);
+    const fireOn = firingPointers.size || Boolean(keys.Space);
     fireCooldown -= dt;
     if (fireOn && fireCooldown <= 0) {
         fireBullet();
@@ -710,7 +717,7 @@ function draw() {
     ctx.globalAlpha = 1;
 
     ctx.shadowBlur = 0;
-    const fireOn = fireHeld || Boolean(keys.Space);
+    const fireOn = firingPointers.size || Boolean(keys.Space);
     drawShip(starT, fireOn);
 
     // Draw Player & Enemy Plasma Bullets
@@ -739,10 +746,21 @@ function loop(timestamp) {
 
     update(dt);
     draw();
-    animationId = requestAnimationFrame(loop);
+    if (gameRunning) animationId = requestAnimationFrame(loop);
 }
 
+function clearControls() {
+    firingPointers.clear();
+    for (const key of Object.keys(keys)) keys[key] = false;
+}
+window.addEventListener('blur', clearControls);
+
 function startGame() {
+    if (gameRunning) return;
+    clearControls();
+    fireCooldown = 0;
+    enemyDirection = 1;
+    particles = [];
     gameRunning = true;
     score = 0;
     lives = 3;
@@ -758,6 +776,7 @@ function startGame() {
     document.getElementById('gameOverScreen').classList.add('hidden');
 
     resize();
+    player.x = (gameWidth - player.width) / 2;
     initStars();
     initEnemies();
     lastTime = performance.now();
@@ -816,19 +835,7 @@ function bindHoldControl(element, keyName) {
 bindHoldControl(document.getElementById('moveLeft'), 'ArrowLeft');
 bindHoldControl(document.getElementById('moveRight'), 'ArrowRight');
 
-const shootBtn = document.getElementById('shootBtn');
-shootBtn.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    if (!gameRunning) return;
-    fireHeld = true;
-    fireCooldown = 0;
-});
-['pointerup', 'pointercancel', 'pointerleave'].forEach(evt => {
-    shootBtn.addEventListener(evt, e => {
-        e.preventDefault();
-        fireHeld = false;
-    });
-});
+bindFireControl(document.getElementById('shootBtn'));
 
 function syncSoundToggle() {
     const btn = document.getElementById('soundToggle');
@@ -860,8 +867,7 @@ function onVisibility(hidden) {
     if (!gameRunning) return;
     if (hidden) {
         cancelAnimationFrame(animationId);
-        fireHeld = false;
-        keys.ArrowLeft = keys.ArrowRight = keys.a = keys.d = false;
+        clearControls();
     } else {
         lastTime = performance.now();
         animationId = requestAnimationFrame(loop);

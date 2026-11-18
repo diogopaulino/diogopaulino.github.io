@@ -27,10 +27,13 @@ const CEILING = 30;
 const LOGICAL_WIDTH = 800;
 const LOGICAL_HEIGHT = 600;
 let dpr = 1;
+const landscape = document.createElement('canvas');
+let landscapeDirty = true;
 
 function syncHiDPI() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     if (canvas.width !== Math.round(LOGICAL_WIDTH * dpr) || canvas.height !== Math.round(LOGICAL_HEIGHT * dpr)) {
+        landscapeDirty = true;
         canvas.width = Math.round(LOGICAL_WIDTH * dpr);
         canvas.height = Math.round(LOGICAL_HEIGHT * dpr);
     }
@@ -458,6 +461,7 @@ function handleInput() {
 }
 
 function generateStars() {
+    landscapeDirty = true;
     stars = Array.from({ length: 75 }, () => ({
         x: Math.random() * LOGICAL_WIDTH,
         y: Math.random() * LOGICAL_HEIGHT * 0.78,
@@ -468,6 +472,7 @@ function generateStars() {
 }
 
 function generateTerrain() {
+    landscapeDirty = true;
     const homeY = LOGICAL_HEIGHT * 0.82;
     terrain = [
         { x: 0, y: LOGICAL_HEIGHT },
@@ -620,7 +625,7 @@ function land(pad) {
     setGameState('LANDED');
 
     setStatusMessage(
-        `SAFE LANDING<br><strong>+${landingPoints} POINTS</strong><small>Press Space for the next mission</small>`,
+        `SAFE LANDING<br><strong>+${landingPoints} POINTS</strong>`,
         'success'
     );
     setFlightStatus('LANDED', 'safe');
@@ -635,21 +640,22 @@ function crash() {
     setEngineLevel(0);
     sfx('crash');
     createCrashDebris();
-    setStatusMessage('CRASHED<br><small>Press Space to try again</small>', 'danger');
+    setStatusMessage('CRASHED', 'danger');
     setFlightStatus('HULL LOST', 'danger');
 }
 
 function setStatusMessage(html, tone) {
     const message = document.getElementById('gameOverMsg');
-    message.innerHTML = html;
+    document.getElementById('missionResult').innerHTML = html;
+    document.getElementById('btnContinue').textContent = gameState === 'LANDED' ? 'NEXT MISSION' : 'TRY AGAIN';
     message.dataset.tone = tone;
     message.classList.remove('hidden');
 }
 
 function setFlightStatus(text, tone = '') {
     const status = document.getElementById('hudStatus');
-    status.innerText = text;
-    status.dataset.tone = tone;
+    if (status.textContent !== text) status.textContent = text;
+    if (status.dataset.tone !== tone) status.dataset.tone = tone;
 }
 
 function startMission({ nextLevel = false, newGame = false } = {}) {
@@ -794,19 +800,24 @@ function setReadoutState(element, value, safeLimit) {
     element.classList.toggle('caution', ratio > 0.72 && ratio <= 1);
 }
 
+function setReadout(id, value) {
+    const el = document.getElementById(id);
+    if (el.textContent !== value) el.textContent = value;
+}
+
 function updateHUD() {
     const altitude = getCurrentAltitude();
     const angleDegrees = normalizeAngle(lander.angle) * 180 / Math.PI;
     const horizontal = lander.vx;
     const vertical = -lander.vy;
 
-    document.getElementById('hudMission').innerText = String(level).padStart(2, '0');
-    document.getElementById('hudScore').innerText = String(score).padStart(6, '0');
-    document.getElementById('hudAlt').innerText = altitude.toFixed(0);
-    document.getElementById('hudHSpeed').innerText = horizontal.toFixed(1);
-    document.getElementById('hudVSpeed').innerText = vertical.toFixed(1);
-    document.getElementById('hudAngle').innerText = `${angleDegrees >= 0 ? '+' : ''}${angleDegrees.toFixed(0)}°`;
-    document.getElementById('hudFuel').innerText = Math.max(0, lander.fuel).toFixed(0);
+    setReadout('hudMission', String(level).padStart(2, '0'));
+    setReadout('hudScore', String(score).padStart(6, '0'));
+    setReadout('hudAlt', altitude.toFixed(0));
+    setReadout('hudHSpeed', horizontal.toFixed(1));
+    setReadout('hudVSpeed', vertical.toFixed(1));
+    setReadout('hudAngle', `${angleDegrees >= 0 ? '+' : ''}${angleDegrees.toFixed(0)}°`);
+    setReadout('hudFuel', Math.max(0, lander.fuel).toFixed(0));
 
     setReadoutState(document.getElementById('hudHSpeed'), horizontal, PHYSICS.safeHorizontalSpeed);
     setReadoutState(document.getElementById('hudVSpeed'), lander.vy, PHYSICS.safeVerticalSpeed);
@@ -884,8 +895,6 @@ function drawTerrain(target) {
     target.stroke();
 
     // Plataformas de pouso metálicas em treliça 3D com luzes sinalizadoras piscantes
-    const now = performance.now();
-    const blinkOn = Math.sin(now / 160) > 0;
     landingPads.forEach(pad => {
         const pw = pad.x2 - pad.x1;
         const py = pad.y;
@@ -927,6 +936,14 @@ function drawTerrain(target) {
         target.fillStyle = pad.home ? '#e0f2fe' : '#fef08a';
         target.fillText(label, (pad.x1 + pad.x2) / 2, py + 19);
 
+    });
+    target.restore();
+}
+
+function drawBeacons(target) {
+    const blinkOn = Math.sin(performance.now() / 160) > 0;
+    landingPads.forEach(pad => {
+        const py = pad.y;
         // Luzes sinalizadoras piscantes nas extremidades da plataforma
         const beaconColor = pad.visited ? '#22c55e' : (blinkOn ? '#ef4444' : '#f59e0b');
         [pad.x1 + 1, pad.x2 - 1].forEach((bx, idx) => {
@@ -945,8 +962,6 @@ function drawTerrain(target) {
             }
         });
     });
-
-    target.restore();
 }
 
 function drawParticles(target) {
@@ -959,10 +974,19 @@ function drawParticles(target) {
 
 function draw() {
     syncHiDPI();
-    ctx.fillStyle = COLORS.background;
-    ctx.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
-    drawStars(ctx);
-    drawTerrain(ctx);
+    if (landscapeDirty) {
+        landscape.width = canvas.width;
+        landscape.height = canvas.height;
+        const background = landscape.getContext('2d');
+        background.setTransform(dpr, 0, 0, dpr, 0, 0);
+        background.fillStyle = COLORS.background;
+        background.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+        drawStars(background);
+        drawTerrain(background);
+        landscapeDirty = false;
+    }
+    ctx.drawImage(landscape, 0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+    drawBeacons(ctx);
     drawParticles(ctx);
     lander.draw(ctx);
 }
@@ -1025,6 +1049,7 @@ function stopLoop() {
 }
 
 window.addEventListener('keydown', event => {
+    if (event.code === 'Space' && event.target.closest?.('button:focus-visible')) return;
     const gameCodes = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyD'];
     if (gameCodes.includes(event.code)) event.preventDefault();
 
@@ -1070,6 +1095,10 @@ document.getElementById('btnNewGame').addEventListener('click', () => {
 
 document.getElementById('btnStart').addEventListener('click', () => {
     startMission({ newGame: true });
+});
+
+document.getElementById('btnContinue').addEventListener('click', () => {
+    startMission({ nextLevel: gameState === 'LANDED' });
 });
 
 bindButton('btnLeft', 'ArrowLeft');

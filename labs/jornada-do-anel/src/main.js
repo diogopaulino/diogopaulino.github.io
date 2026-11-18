@@ -613,7 +613,7 @@ class Game {
     _updateInteract() {
         const near = nearestInteractable(this.player, this.world.interactables);
         this.hud.setPrompt(near ? near.label : '');
-        if (!near || !this.input.consumeInteract()) return;
+        if (!this.input.consumeInteract() || !near) return;
 
         if (near.kind === 'talk') {
             this._openDialogue(near.speaker || 'Viajante', near.lines, near);

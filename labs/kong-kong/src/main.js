@@ -21,8 +21,11 @@ input.bindHold(document.getElementById('btnDown'), 'down');
 input.bindHold(document.getElementById('btnJump'), 'jump');
 input.bindHold(document.getElementById('btnRoll'), 'roll');
 
+let lastMuted;
 function syncMute() {
   const muted = audio.muted;
+  if (lastMuted === muted) return;
+  lastMuted = muted;
   muteBtn.setAttribute('aria-pressed', String(muted));
   muteBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
   muteBtn.textContent = muted ? '×' : '♪';

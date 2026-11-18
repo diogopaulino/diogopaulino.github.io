@@ -288,11 +288,22 @@ class RastroVermelho {
         this.aimTimer = Math.max(0, this.aimTimer - dt);
         this.updateHorse(simDt, steer); this.placeCamera(false, dt); this.world.update(p.x, p.z); this.updateAtmosphere(dt);
         this.updateEncounter(simDt); this.updateHooves(); this.effects.update(simDt);
-        this.hitRemaining = Math.max(0, (this.hitRemaining || 0) - simDt); if (!this.hitRemaining) this.ui.hitMarker.dataset.show = 'false';
+        if (this.hitRemaining > 0) {
+            this.hitRemaining = Math.max(0, this.hitRemaining - simDt);
+            if (!this.hitRemaining) this.ui.hitMarker.dataset.show = 'false';
+        }
         this.audio.update(dt, p.speed, worldClock(this.elapsed).hour);
-        this.messageRemaining = Math.max(0, (this.messageRemaining || 0) - dt); if (!this.messageRemaining) this.ui.message.dataset.show = 'false';
-        this.damage = Math.max(0, (this.damage || 0) - dt * 1.4); this.ui.damageVeil.style.opacity = this.damage;
-        this.ui.focusVeil.hidden = !this.focusActive; this.ui.btnFocus.setAttribute('aria-pressed', String(this.focusActive));
+        if (this.messageRemaining > 0) {
+            this.messageRemaining = Math.max(0, this.messageRemaining - dt);
+            if (!this.messageRemaining) this.ui.message.dataset.show = 'false';
+        }
+        if (this.damage > 0) {
+            this.damage = Math.max(0, this.damage - dt * 1.4);
+            this.ui.damageVeil.style.opacity = this.damage;
+        }
+        if (this.ui.focusVeil.hidden !== !this.focusActive) this.ui.focusVeil.hidden = !this.focusActive;
+        const focusPressed = String(this.focusActive);
+        if (this.ui.btnFocus.getAttribute('aria-pressed') !== focusPressed) this.ui.btnFocus.setAttribute('aria-pressed', focusPressed);
         if (this.lastHud > .1) { this.updateHud(); this.lastHud = 0; }
         if (this.lastSave > 15) { this.persist(); this.lastSave = 0; }
     }

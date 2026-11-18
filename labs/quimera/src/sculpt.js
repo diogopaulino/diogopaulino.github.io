@@ -19,7 +19,7 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
-import { pbrSet } from '../../shared/gfx/assets.js';
+import { pbrSet, tiledTexture } from '../../shared/gfx/assets.js';
 
 export const TAU = Math.PI * 2;
 export const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
@@ -424,29 +424,6 @@ export function heroMaterial(orig, bank) {
 // ---------------------------------------------------------------------------
 // Biblioteca de materiais
 // ---------------------------------------------------------------------------
-const texCache = new Map();
-/** Clone com repeat próprio de uma textura de assets.js (mesma imagem na GPU). */
-function tiled(tex, rep) {
-    if (!tex) return null;
-    const key = `${tex.uuid}:${rep}`;
-    let t = texCache.get(key);
-    if (!t) {
-        t = tex.clone();
-        t.repeat.set(rep, rep);
-        if (!tex.image) {
-            // a base ainda está chegando: o clone só sobe para a GPU quando houver imagem
-            t.version = 0;
-            const tick = () => {
-                if (tex.image) t.needsUpdate = true;
-                else setTimeout(tick, 120);
-            };
-            tick();
-        }
-        texCache.set(key, t);
-    }
-    return t;
-}
-
 let lowTier = false;
 /** No tier low o vidro perde a transmissão (um passe extra da cena) e vira transparência simples. */
 export function setSculptTier(tier) {
@@ -489,9 +466,9 @@ export function createBank(index) {
         const set = pbrSet('rusty_metal_02');
         const m = new THREE.MeshStandardMaterial({ color, metalness: 1, roughness, envMapIntensity: 1.25 });
         if (!clean) {
-            m.normalMap = tiled(set.normalMap, 5);
+            m.normalMap = tiledTexture(set.normalMap, 5);
             m.normalScale.set(0.22, 0.22);
-            m.roughnessMap = tiled(set.roughnessMap, 5);
+            m.roughnessMap = tiledTexture(set.roughnessMap, 5);
             m.roughness = Math.min(1, roughness * 1.9);
         }
         return m;
@@ -499,11 +476,11 @@ export function createBank(index) {
     bank.leather = (color = 0x6b4226, { albedo = false, roughness = 0.82 } = {}) => make(`leather:${hex(color)}:${albedo}:${roughness}`, () => {
         const set = pbrSet('brown_leather');
         const m = new THREE.MeshStandardMaterial({
-            color, roughness, metalness: 0, normalMap: tiled(set.normalMap, 6), aoMap: tiled(set.aoMap, 6),
-            roughnessMap: tiled(set.roughnessMap, 6), side: THREE.DoubleSide
+            color, roughness, metalness: 0, normalMap: tiledTexture(set.normalMap, 6), aoMap: tiledTexture(set.aoMap, 6),
+            roughnessMap: tiledTexture(set.roughnessMap, 6), side: THREE.DoubleSide
         });
         if (albedo) {
-            m.map = tiled(set.map, 6);
+            m.map = tiledTexture(set.map, 6);
             m.color.multiplyScalar(2.2);
         }
         m.normalScale.set(0.9, 0.9);
@@ -512,7 +489,7 @@ export function createBank(index) {
     bank.cloth = (color = 0x8a6a4a, { denim = false, roughness = 0.94, sheen = 0.5 } = {}) => make(`cloth:${hex(color)}:${denim}:${roughness}:${sheen}`, () => {
         const set = pbrSet(denim ? 'denim_fabric' : 'fabric_pattern_07');
         const m = new THREE.MeshPhysicalMaterial({
-            color, roughness, metalness: 0, normalMap: tiled(set.normalMap, denim ? 7 : 5), side: THREE.DoubleSide,
+            color, roughness, metalness: 0, normalMap: tiledTexture(set.normalMap, denim ? 7 : 5), side: THREE.DoubleSide,
             sheen, sheenRoughness: 0.6, sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35)
         });
         m.normalScale.set(denim ? 0.9 : 0.6, denim ? 0.9 : 0.6);
@@ -521,8 +498,8 @@ export function createBank(index) {
     bank.wood = (color = 0xffffff, { dark = false, roughness = 0.7, rep = 3 } = {}) => make(`wood:${hex(color)}:${dark}:${roughness}:${rep}`, () => {
         const set = pbrSet(dark ? 'dark_wooden_planks' : 'oak_wood_planks');
         const m = new THREE.MeshStandardMaterial({
-            color, roughness, metalness: 0, map: tiled(set.map, rep), normalMap: tiled(set.normalMap, rep),
-            roughnessMap: tiled(set.roughnessMap, rep), aoMap: tiled(set.aoMap, rep)
+            color, roughness, metalness: 0, map: tiledTexture(set.map, rep), normalMap: tiledTexture(set.normalMap, rep),
+            roughnessMap: tiledTexture(set.roughnessMap, rep), aoMap: tiledTexture(set.aoMap, rep)
         });
         m.color.multiplyScalar(dark ? 1.9 : 1.25);
         return m;
