@@ -2,6 +2,7 @@
 // e --remote-debugging-port=9222. Execute: node tests/playground-browser.mjs
 // LAB_URL e CHROME_URL permitem escolher outras portas. Slugs opcionais filtram o catálogo.
 import assert from 'node:assert/strict';
+import { checkGameSettings } from './game-settings.mjs';
 import { readdir, stat } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -23,14 +24,15 @@ const paths = filters.length ? filters.map(slug => {
     return path;
 }) : ['/', '/labs/', ...pages];
 
-async function checkControls(path, evaluate) {
+async function checkControls(path, evaluate, reload) {
     async function waitFor(expression) {
-        for (let attempt = 0; attempt < 80; attempt++) {
+        for (let attempt = 0; attempt < 240; attempt++) {
             if (await evaluate(expression)) return;
             await delay(125);
         }
         assert.fail('Controle não chegou ao estado esperado: ' + expression);
     }
+    await checkGameSettings(evaluate, reload, waitFor);
     const lab = path.split('/')[2];
     if (lab === 'jungle-run') {
         await waitFor('window.__lab?.game && document.querySelector("#startBtn")');
@@ -49,6 +51,21 @@ async function checkControls(path, evaluate) {
         }
         assert.deepEqual([...cleared], [1, 2, 3, 4]);
         assert.equal(await evaluate('__lab.game.currentLevel.id'), 5);
+    }
+    if (lab === 'rastro-vermelho') {
+        await waitFor("window.__rastro?.state === 'menu'");
+        await evaluate("const start = __rastro.ui.newButton; (start.offsetWidth ? start : __rastro.ui.startButton).click()");
+        await evaluate("import('/tests/trail-controls.mjs').then(m => { window.ride = m.trailControls(__rastro); })");
+        let journey;
+        for (let batch = 0; batch < 160; batch++) {
+            journey = await evaluate('window.ride()');
+            if (journey.state !== 'play') break;
+        }
+        assert.equal(journey.stage, 6, JSON.stringify(journey));
+        assert.equal(journey.kills, 7);
+        assert.equal(journey.state, 'end');
+        await evaluate('__rastro.ui.retryButton.click()');
+        await waitFor("__rastro.state === 'play'");
     }
     if (lab === 'rock-kombat') {
         await waitFor("!document.querySelector('#enter-button').disabled");
@@ -237,7 +254,13 @@ async function inspect(path) {
             const overflow = await evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth');
             assert.ok(overflow <= 1, width + '×' + height + ' excedeu a largura em ' + overflow + ' px');
         }
-        await checkControls(path, evaluate);
+        await send('Page.bringToFront');
+        await checkControls(path, evaluate, async () => {
+            loaded = false;
+            await send('Page.reload', { ignoreCache: true });
+            for (let i = 0; !loaded && i < 150; i++) await delay(200);
+            assert.ok(loaded, 'Tempo de recarga excedido');
+        });
         assert.deepEqual(errors, []);
     } finally {
         socket.close();

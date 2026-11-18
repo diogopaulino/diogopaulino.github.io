@@ -9,6 +9,10 @@ export function islandControls(game) {
         [-56,33],[-38,42],[-18,58],[-3,69]];
     let index = 0;
     let route = [];
+    let anchor = { x: game.jeep.x, z: game.jeep.z };
+    let still = 0;
+    let reversing = 0;
+    let reverseSteer;
     function clear(x, z) {
         return !game.world.flooded(x, z) && !game.world.collide(x, z, 2.45).hit;
     }
@@ -23,7 +27,13 @@ export function islandControls(game) {
             const j = game.jeep;
             const [x, z] = stops[index];
             const near = game._nearestDino();
-            if (near && !game.logged.has(near.id)) input(['KeyE']);
+            if (near && !game.logged.has(near.id)) {
+                still = 0;
+                input(['KeyE']);
+            } else if (reversing > 0) {
+                reversing--;
+                input(['KeyS', reverseSteer]);
+            }
             else {
                 if (Math.hypot(x - j.x, z - j.z) < 4) {
                     index = index + 1 === stops.length ? 2 : index + 1;
@@ -35,6 +45,15 @@ export function islandControls(game) {
                 const aim = route[0] || { x, z };
                 const angle = Math.atan2(aim.x - j.x, aim.z - j.z) - j.yaw;
                 const turn = Math.atan2(Math.sin(angle), Math.cos(angle));
+                if (Math.hypot(j.x - anchor.x, j.z - anchor.z) > 1.2) {
+                    anchor = { x: j.x, z: j.z };
+                    still = 0;
+                } else if (++still > 120) {
+                    reverseSteer = turn > 0 ? 'KeyD' : 'KeyA';
+                    reversing = 65;
+                    route = [];
+                    still = 0;
+                }
                 const keys = [];
                 if (Math.abs(turn) > 0.07) keys.push(turn > 0 ? 'KeyA' : 'KeyD');
                 if (j.speed < (Math.abs(turn) > 0.45 ? 3.5 : 10)) keys.push('KeyW');
