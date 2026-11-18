@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     allCards.forEach((card) => {
+        card.setAttribute('aria-label', card.querySelector('h2').textContent.trim());
         card.dataset.search = normalizeSearch(card.textContent.replace(/\s+/g, ' ').trim());
     });
 

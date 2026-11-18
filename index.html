@@ -41,7 +41,7 @@
   <meta name="twitter:image:alt" content="Foto de Diogo Paulino">
 
   <link rel="stylesheet" href="assets/css/tokens.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=2">
+  <link rel="stylesheet" href="assets/css/style.css?v=3">
   <link rel="manifest" href="/manifest.json">
 
   <!-- Preload critical scripts -->
@@ -126,7 +126,7 @@
 <body>
   <main>
     <article class="card-container minimal" itemscope itemtype="https://schema.org/Person">
-      <button class="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
+      <button class="theme-toggle" aria-pressed="false" aria-label="Alternar tema" title="Alternar tema">
         <span class="theme-toggle-icon" aria-hidden="true">
           <svg class="icon icon-sun" viewBox="0 0 24 24" role="presentation">
             <circle cx="12" cy="12" r="4" />
@@ -138,8 +138,10 @@
         </span>
         <span class="sr-only">Alternar tema</span>
       </button>
-      <img src="assets/img/diogo.jpeg" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal"
-        id="profile-pic" itemprop="image" width="771" height="771" fetchpriority="high" decoding="async">
+      <button type="button" class="profile-trigger" id="profile-pic" aria-label="Animar foto e destacar os labs">
+        <img src="assets/img/diogo-profile.webp" alt="Foto de perfil de Diogo Paulino" class="profile-pic-minimal"
+          itemprop="image" width="330" height="330" fetchpriority="high" decoding="async">
+      </button>
       <h1 class="main-name" itemprop="name">Diogo Paulino</h1>
       <div class="subtitle" itemprop="jobTitle">Tech Manager</div>
       <div class="subdesc">Design & Code lover</div>
@@ -169,7 +171,7 @@
     </article>
   </main>
   <script src="assets/js/theme.js?v=2"></script>
-  <script src="assets/js/easter-egg.js"></script>
+  <script src="assets/js/easter-egg.js?v=2"></script>
 </body>
 
 </html>

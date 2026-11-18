@@ -83,6 +83,7 @@
             ${subtitle ? `<p class="subtitle lab-shell-subtitle">${subtitle}</p>` : ''}
         `;
 
+        header.querySelector('.back-link').setAttribute('aria-label', backLabel);
         const logo = header.querySelector('.app-logo');
         if (logo && !logo.matches('h1, [role="heading"]')) {
             logo.setAttribute('role', 'heading');
