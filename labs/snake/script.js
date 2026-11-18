@@ -27,7 +27,7 @@ let snake = [];
 let food = { x: 0, y: 0 };
 let dx = 0;
 let dy = 0;
-let queuedDirection = null; // buffers one input per step so fast taps never reverse the snake
+const turns = []; // Até duas curvas antecipadas, aplicadas em passos consecutivos.
 let score = 0;
 let highScore = readHighScore();
 let stepInterval = BASE_SPEED;
@@ -141,7 +141,7 @@ function initGame() {
     ];
     dx = 1;
     dy = 0;
-    queuedDirection = null;
+    turns.length = 0;
     awaitingFirstMove = true;
     score = 0;
     stepInterval = BASE_SPEED;
@@ -216,11 +216,7 @@ function gameLoop(timestamp) {
 }
 
 function update() {
-    if (queuedDirection) {
-        dx = queuedDirection.dx;
-        dy = queuedDirection.dy;
-        queuedDirection = null;
-    }
+    if (turns.length) ({ dx, dy } = turns.shift());
 
     // Move Snake
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
@@ -469,6 +465,19 @@ function drawSnakePass(shadowPass) {
     });
 }
 
+const gridPath = (() => {
+    const grid = new Path2D();
+    for (let x = GRID_SIZE; x < canvas.width; x += GRID_SIZE) {
+        grid.moveTo(x + 0.5, 0);
+        grid.lineTo(x + 0.5, canvas.height);
+    }
+    for (let y = GRID_SIZE; y < canvas.height; y += GRID_SIZE) {
+        grid.moveTo(0, y + 0.5);
+        grid.lineTo(canvas.width, y + 0.5);
+    }
+    return grid;
+})();
+
 function draw() {
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -477,16 +486,7 @@ function draw() {
     ctx.globalAlpha = 0.07;
     ctx.strokeStyle = COLORS.snake;
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = GRID_SIZE; x < canvas.width; x += GRID_SIZE) {
-        ctx.moveTo(x + 0.5, 0);
-        ctx.lineTo(x + 0.5, canvas.height);
-    }
-    for (let y = GRID_SIZE; y < canvas.height; y += GRID_SIZE) {
-        ctx.moveTo(0, y + 0.5);
-        ctx.lineTo(canvas.width, y + 0.5);
-    }
-    ctx.stroke();
+    ctx.stroke(gridPath);
     ctx.globalAlpha = 1;
 
     if (food) drawFood();
@@ -557,21 +557,14 @@ function setPaused(paused) {
 }
 
 function queueDirection(nextDx, nextDy) {
-    // Compare against the direction that will actually be applied next step.
-    const currentDx = queuedDirection ? queuedDirection.dx : dx;
-    const currentDy = queuedDirection ? queuedDirection.dy : dy;
-    // Antes do primeiro passo, qualquer direção é válida (ainda não há "reverso"
-    // perigoso — a cobra está parada).
-    if (!awaitingFirstMove) {
-        if (nextDx === -currentDx && nextDy === -currentDy) return;
-        if (nextDx === currentDx && nextDy === currentDy) return;
-    }
-    queuedDirection = { dx: nextDx, dy: nextDy };
+    const previous = turns.at(-1);
+    const currentDx = previous?.dx ?? dx;
+    const currentDy = previous?.dy ?? dy;
+    if (nextDx === -currentDx && nextDy === -currentDy) return;
+    if (!awaitingFirstMove && nextDx === currentDx && nextDy === currentDy) return;
+    if (turns.length === 2) return;
+    turns.push({ dx: nextDx, dy: nextDy });
     if (awaitingFirstMove) {
-        // Aplica já e libera o passo fixo — o jogador pediu para andar.
-        dx = nextDx;
-        dy = nextDy;
-        queuedDirection = null;
         awaitingFirstMove = false;
         accumulator = 0;
         announce('Partida em andamento.');

@@ -102,14 +102,13 @@ export class Hud {
     }
 
     setPrompt(text) {
+        if (this.promptText === text) return;
+        this.promptText = text;
         if (!text) {
             this.el.prompt.hidden = true;
-            this.promptText = '';
             return;
         }
         this.el.prompt.hidden = false;
-        if (this.promptText === text) return;
-        this.promptText = text;
         this.el.prompt.innerHTML = `<kbd>E</kbd> ${text}`;
     }
 

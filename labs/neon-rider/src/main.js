@@ -248,6 +248,7 @@ class Game {
             onQuality: (q) => {
                 this.settings.quality = q;
                 saveSettings(this.settings);
+                if (this.resolveQuality() !== this.quality) location.reload();
             },
             onVolume: (v) => {
                 this.settings.volume = v;

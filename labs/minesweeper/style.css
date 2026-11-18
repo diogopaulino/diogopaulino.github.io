@@ -184,7 +184,10 @@ body {
     border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
 }
 
+.cell:focus-visible { outline: 2px solid #0737a5; outline-offset: -3px; }
+
 .cell {
+    padding: 0;
     width: var(--cell-size);
     height: var(--cell-size);
     background: var(--win-gray);

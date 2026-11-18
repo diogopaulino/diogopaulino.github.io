@@ -157,6 +157,7 @@ function finishMatch(winner) {
     $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU</em>`;
     $('#result-copy').textContent = winner.data.quote;
     $('#result-overline').textContent = winner === match.p1 ? 'PLAYER 1 WINS' : 'CPU WINS';
+    stopLoop();
     showScreen('results-screen');
   }, 700);
 }
@@ -350,6 +351,7 @@ function togglePause(force) {
   paused = typeof force === 'boolean' ? force : !paused;
   $('#pause-layer').hidden = !paused;
   if (paused) {
+    playerInput.clear();
     audio.stopMusic();
     stopLoop();
   } else {
@@ -454,7 +456,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (match && !paused) togglePause(true);
     stopLoop();
-  } else if (!paused) {
+  } else if (match && match.phase !== 'complete' && !paused) {
     lastTime = performance.now();
     startLoop();
   }
@@ -469,7 +471,7 @@ rosterApi = renderRoster(FIGHTERS, (p1, cpu) => {
 
 bindKeyboard(playerInput, {
   shouldIgnore: () => helpOpen(),
-  isArena: arenaActive,
+  isArena: () => arenaActive() && !paused,
   onEscape() {
     if (helpOpen()) {
       $('#help-dialog').close();
@@ -495,6 +497,7 @@ bindKeyboard(playerInput, {
       skipVersus();
       return true;
     }
+    if (event.target instanceof Element && event.target.closest('button, a, input, select')) return false;
     if (results && event.code === 'Enter') {
       $('#rematch-button').click();
       return true;
@@ -520,3 +523,7 @@ loadAssets().catch(error => {
   $('#loading span').textContent = error.message;
   console.error(error);
 });
+
+if (new URLSearchParams(location.search).has('debug')) {
+  window.__lab = { get match() { return match; }, step: fixedUpdate };
+}

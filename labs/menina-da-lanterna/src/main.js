@@ -727,7 +727,7 @@ class Game {
             label = this.chapter.hint;
         }
         this.hud.setPrompt(label);
-        if (!near || !this.input.consumeInteract()) return;
+        if (!this.input.consumeInteract() || !near) return;
 
         if (near.kind === 'talk') {
             this._openDialogue(near.speaker || 'Alguém', near.lines, near);

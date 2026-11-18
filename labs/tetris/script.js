@@ -716,6 +716,7 @@ const KEY_ACTIONS = {
 };
 
 document.addEventListener('keydown', event => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     /* Com um botão do console focado *pelo teclado*, Enter/Espaço continuam
        ativando o botão. Depois de um clique de mouse o foco não conta: ali o
        jogador espera o atalho global (Espaço = queda rápida). */
@@ -796,13 +797,13 @@ let gesture = null;
 
 if (screenEl) {
     screenEl.addEventListener('pointerdown', event => {
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        if (gesture || event.button !== 0) return;
         screenEl.setPointerCapture?.(event.pointerId);
-        gesture = { x: event.clientX, y: event.clientY, movedCols: 0, dropped: false, acted: false };
+        gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, movedCols: 0, dropped: false, acted: false };
     });
 
     screenEl.addEventListener('pointermove', event => {
-        if (!gesture || state !== 'playing') return;
+        if (gesture?.pointerId !== event.pointerId || state !== 'playing') return;
 
         const deltaX = event.clientX - gesture.x;
         const deltaY = event.clientY - gesture.y;
@@ -830,8 +831,9 @@ if (screenEl) {
         }
     });
 
-    const endGesture = () => {
-        if (gesture && !gesture.acted) {
+    const endGesture = event => {
+        if (gesture?.pointerId !== event.pointerId) return;
+        if (!gesture.acted) {
             // Toque curto: gira se estiver jogando, senão faz o papel do Start.
             if (state === 'playing') playerRotate(1);
             else toggleStartPause();
@@ -840,7 +842,11 @@ if (screenEl) {
     };
 
     screenEl.addEventListener('pointerup', endGesture);
-    screenEl.addEventListener('pointercancel', () => { gesture = null; });
+    const cancelGesture = event => {
+        if (gesture?.pointerId === event.pointerId) gesture = null;
+    };
+    screenEl.addEventListener('pointercancel', cancelGesture);
+    screenEl.addEventListener('lostpointercapture', cancelGesture);
 }
 
 if (window.LabAudio) {

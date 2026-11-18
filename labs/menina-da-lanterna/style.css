@@ -1033,16 +1033,11 @@ kbd {
 
 /* Aparelho de toque: alvos de 44px e dicas sem teclado. */
 @media (pointer: coarse) {
-    .keys--board { display: none; }
     .prompt kbd { display: none; }
     .chapter-chip { min-height: 46px; align-items: center; }
     .primary-button, .ghost-button { min-height: 46px; }
     .field select, .field input[type="range"] { min-height: 44px; }
     .dialogue-card .ghost-button { width: 100%; justify-content: center; }
-}
-
-@media (pointer: fine) {
-    .keys--touch { display: none; }
 }
 
 /* O range precisa do gesto horizontal próprio dentro do overlay que rola. */

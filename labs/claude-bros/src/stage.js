@@ -104,10 +104,7 @@ export function createStage(canvas, { quality = 'auto', loadingManager } = {}) {
         post.params.gain.setRGB(...theme.gain);
         post.params.lift.setRGB(...theme.lift);
         canvas.parentElement?.style.setProperty('--stage-sky', theme.page);
-        const mine = next;
         await applyHDRI(scene, renderer, theme.hdri, { intensity: theme.env });
-        // se o tema trocou de novo enquanto o HDRI carregava, quem chegou por último manda
-        if (mine !== themeName) await applyHDRI(scene, renderer, THEMES[themeName].hdri, { intensity: THEMES[themeName].env });
     }
 
     /** Segue o personagem. px/py em metros; `snap` reposiciona sem suavizar. */

@@ -49,9 +49,9 @@ export class Hud {
 
     _fillCatalog() {
         this.el.catalog.innerHTML = SPECIES.map((s) =>
-            `<button type="button" class="species" data-id="${s.id}" data-logged="false" title="${s.common}">
+            `<span role="listitem" class="species" data-id="${s.id}" data-logged="false" aria-label="${s.common}, a observar">
                 <i></i><span>${s.common}</span>
-            </button>`
+            </span>`
         ).join('');
     }
 
@@ -128,7 +128,10 @@ export class Hud {
 
     setLogged(id) {
         const btn = this.el.catalog.querySelector(`[data-id="${id}"]`);
-        if (btn) btn.dataset.logged = 'true';
+        if (btn) {
+            btn.dataset.logged = 'true';
+            btn.setAttribute('aria-label', btn.textContent.trim() + ', catalogado');
+        }
     }
 
     setRadio(text) {
@@ -138,20 +141,24 @@ export class Hud {
     }
 
     tickRadio(dt) {
+        if (this.radioTimer <= 0) return;
         this.radioTimer -= dt;
         if (this.radioTimer <= 0) this.el.radio.dataset.show = 'false';
     }
 
     setDossier(spec, visible) {
-        this.el.dossier.hidden = !visible;
-        this.el.binoculars.hidden = !visible;
-        if (!spec) return;
+        if (this.el.dossier.hidden !== !visible) this.el.dossier.hidden = !visible;
+        if (this.el.binoculars.hidden !== !visible) this.el.binoculars.hidden = !visible;
+        if (!spec || spec === this.dossierSpecies) return;
+        this.dossierSpecies = spec;
         this.el.dossierName.textContent = spec.common;
         this.el.dossierLatin.textContent = spec.name;
         this.el.dossierNote.textContent = spec.note;
     }
 
     setPrompt(text) {
+        if (this.promptText === text) return;
+        this.promptText = text;
         this.el.prompt.hidden = !text;
         if (text) this.el.prompt.textContent = text;
     }

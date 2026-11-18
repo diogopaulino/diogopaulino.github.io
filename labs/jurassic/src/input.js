@@ -2,6 +2,7 @@
  * Teclado, mouse (pointer lock) e toque para o jipe.
  */
 
+import { bindGameKeyboard } from '../../shared/game-keyboard.js';
 import { clamp } from './utils.js';
 
 const MOVE = {
@@ -101,29 +102,27 @@ export class Input {
     }
 
     _bind() {
-        this._onKeyDown = (e) => {
-            if (!this.enabled) return;
-            const action = ACTIONS[e.code];
-            if (action) {
-                if (action === 'confirm' && document.activeElement?.tagName === 'BUTTON') return;
-                this.emit(action);
-                if (action !== 'confirm') e.preventDefault();
+        bindGameKeyboard({
+            moves: MOVE, actions: ACTIONS, held: this.keys,
+            enabled: () => this.enabled,
+            onAction: action => this.emit(action),
+            onPress: key => {
+                if (key === 'observe') {
+                    this.observeHeld = true;
+                    this.observePressed = true;
+                }
+            },
+            onRelease: key => {
+                if (key === 'observe') this.observeHeld = false;
+            },
+            onReset: () => {
+                this.observeHeld = false;
+                this.observePressed = false;
+                this.touchMove.x = this.touchMove.y = 0;
+                this.lookX = this.lookY = this.zoomDelta = 0;
+                this.touchLook.x = this.touchLook.y = 0;
             }
-            const key = MOVE[e.code];
-            if (!key) return;
-            e.preventDefault();
-            this.keys.add(key);
-            if (key === 'observe') {
-                this.observeHeld = true;
-                this.observePressed = true;
-            }
-        };
-
-        this._onKeyUp = (e) => {
-            const key = MOVE[e.code];
-            if (key) this.keys.delete(key);
-            if (key === 'observe') this.observeHeld = false;
-        };
+        });
 
         this._onMouseMove = (e) => {
             if (!this.enabled) return;
@@ -158,8 +157,6 @@ export class Input {
 
         this._onContext = (e) => e.preventDefault();
 
-        window.addEventListener('keydown', this._onKeyDown);
-        window.addEventListener('keyup', this._onKeyUp);
         window.addEventListener('mousemove', this._onMouseMove);
         window.addEventListener('mouseup', this._onMouseUp);
         this.canvas.addEventListener('mousedown', this._onMouseDown);
