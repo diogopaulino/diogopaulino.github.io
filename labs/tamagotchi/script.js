@@ -802,7 +802,16 @@
   let animation = null;
   let rps = null;
   let frame = 0;
-  let lastFrameAt = 0;
+  const lcdGrid = document.createElement('canvas');
+  lcdGrid.width = canvas.width;
+  lcdGrid.height = canvas.height;
+  const gridContext = lcdGrid.getContext('2d');
+  gridContext.fillStyle = 'rgba(17, 29, 19, 0.055)';
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      gridContext.fillRect(x * CELL + 0.5, y * CELL + 0.5, CELL - 1, CELL - 1);
+    }
+  }
   let walkX = 8;
   let walkDirection = 1;
   let audioContext = null;
@@ -1671,8 +1680,6 @@
   }
 
   function render(timestamp) {
-    if (timestamp - lastFrameAt < 430) return;
-    lastFrameAt = timestamp;
     frame += 1;
     finishRpsReveal();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1681,12 +1688,7 @@
     lcd.classList.toggle('screen-off', screenOff);
 
     if (!screenOff || uiMode === 'clock_wait' || uiMode === 'clock_set') {
-      ctx.fillStyle = 'rgba(17, 29, 19, 0.055)';
-      for (let gy = 0; gy < GRID_H; gy += 1) {
-        for (let gx = 0; gx < GRID_W; gx += 1) {
-          ctx.fillRect(gx * CELL + 0.5, gy * CELL + 0.5, CELL - 1, CELL - 1);
-        }
-      }
+      ctx.drawImage(lcdGrid, 0, 0);
     }
     ctx.fillStyle = cachedInk;
 
@@ -1767,15 +1769,13 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) syncPet();
   });
+  const refreshDisplay = () => render(performance.now());
+  refreshDisplay();
   if (window.LabRuntime) {
-    LabRuntime.createLoop(render).start();
+    LabRuntime.createInterval(refreshDisplay, 430).start();
     LabRuntime.createInterval(syncPet, 30 * 1000).start();
   } else {
-    const fallbackLoop = (now) => {
-      render(now);
-      requestAnimationFrame(fallbackLoop);
-    };
-    requestAnimationFrame(fallbackLoop);
+    setInterval(() => { if (!document.hidden) refreshDisplay(); }, 430);
     setInterval(() => {
       if (document.hidden) return;
       syncPet();

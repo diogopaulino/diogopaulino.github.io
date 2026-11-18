@@ -119,6 +119,8 @@ function showFallback(canvas, text) {
     host.appendChild(box);
 }
 
+const hdriDirections = new WeakMap();
+
 /**
  * Direção do sol (ou da lua) num HDRI equirretangular: pixel mais brilhante do
  * hemisfério de cima. Com flipY do HDRLoader, a linha 0 dos dados é o topo (v = 1):
@@ -126,17 +128,20 @@ function showFallback(canvas, text) {
  *   d = (cos el · cos φ, sin el, cos el · sin φ)        (mesma convenção do three)
  */
 function hdriLightDir(texture, out) {
+    const cached = hdriDirections.get(texture);
+    if (cached) return out.copy(cached);
     const img = texture.image;
     const { data, width, height } = img;
     const stride = Math.round(data.length / (width * height));
     let best = -1;
     let bi = 0;
     let bj = 0;
-    // meio-float positivo preserva a ordem como inteiro: dá para comparar sem decodificar
+    // A luminância usa os canais lineares, inclusive quando armazenados em meio-float.
+    const linear = texture.type === THREE.HalfFloatType ? THREE.DataUtils.fromHalfFloat : value => value;
     for (let j = 0; j < height * 0.52; j++) {
         for (let i = 0; i < width; i++) {
             const o = (j * width + i) * stride;
-            const v = data[o] + data[o + 1] + data[o + 2];
+            const v = 0.2126 * linear(data[o]) + 0.7152 * linear(data[o + 1]) + 0.0722 * linear(data[o + 2]);
             if (v > best) {
                 best = v;
                 bi = i;
@@ -146,7 +151,9 @@ function hdriLightDir(texture, out) {
     }
     const phi = ((bi + 0.5) / width - 0.5) * Math.PI * 2;
     const el = (0.5 - (bj + 0.5) / height) * Math.PI;
-    return out.set(Math.cos(el) * Math.cos(phi), Math.sin(el), Math.cos(el) * Math.sin(phi)).normalize();
+    out.set(Math.cos(el) * Math.cos(phi), Math.sin(el), Math.cos(el) * Math.sin(phi)).normalize();
+    hdriDirections.set(texture, out.clone());
+    return out;
 }
 
 /**
@@ -201,7 +208,7 @@ export function createStage({
     renderer.shadowMap.enabled = shadows;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.info.autoReset = false;
-    configureAssets(renderer, loadingManager);
+    configureAssets(renderer, loadingManager, tier);
     configureTextures(renderer);
 
     const scene = new THREE.Scene();
@@ -209,7 +216,7 @@ export function createStage({
 
     // céu: no modo HDRI ele não entra na cena (scene: null) — só fornece o LUT da névoa e a luz
     const sky = createSky({
-        renderer, scene: hdri ? null : scene, cloudCover: 0.4, ground: 0x66707a, declination: -18, ...skyOptions
+        renderer, scene: hdri ? null : scene, generateEnvironment: !hdri, cloudCover: 0.4, ground: 0x66707a, declination: -18, ...skyOptions
     });
     const rig = createSunRig(scene, sky, {
         shadows, mapSize: cfg.shadowMap, radius: shadowRadius ?? cfg.shadowRadius, depth: 420
@@ -330,8 +337,7 @@ export function createStage({
         state.height = h;
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        renderer.setPixelRatio(pixelRatio);
-        renderer.setSize(w, h, false);
+        renderer.setDrawingBufferSize(w, h, pixelRatio);
         pipeline.setSize();
         return true;
     }
@@ -346,6 +352,7 @@ export function createStage({
     function setTier(next) {
         if (next === tier || !STAGE_TIERS[next]) return;
         tier = next;
+        configureAssets(renderer, loadingManager, tier);
         cfg = STAGE_TIERS[tier];
         const old = pipeline;
         pipeline = makePipeline();
@@ -365,7 +372,7 @@ export function createStage({
         for (const fn of tierListeners) fn(tier);
     }
     function measure(dt) {
-        if (dt > 0.2) return; // volta de aba oculta / travada de carregamento
+        if (dt <= 0) return;
         if (perf.warm > 0) {
             perf.warm -= dt;
             return;
@@ -405,7 +412,7 @@ export function createStage({
      * Desenha um quadro. Devolve false (sem tocar na GPU) se o canvas está sem
      * tamanho, a aba está oculta ou o contexto foi perdido.
      */
-    function render(dt = 1 / 60) {
+    function render(dt = 1 / 60, elapsed = dt) {
         if (disposed || contextLost || document.hidden) return false;
         if (!state.sizeOk && !resize()) return false;
         state.t += dt;
@@ -428,7 +435,7 @@ export function createStage({
         updateWind(state.t, state.wind * (0.85 + Math.sin(state.t * 0.13) * 0.3));
         renderer.info.reset();
         pipeline.render(scene, camera, dt);
-        measure(dt);
+        measure(elapsed);
         return true;
     }
 
@@ -440,9 +447,11 @@ export function createStage({
         raf = requestAnimationFrame(loop);
         timer.update(now);
         if (document.hidden) return;
-        const dt = Math.min(0.05, timer.getDelta());
+        // A física limita o passo. O orçamento da GPU precisa do tempo real do quadro.
+        const elapsed = timer.getDelta();
+        const dt = Math.min(0.05, elapsed);
         onFrame?.(dt, state.t);
-        render(dt);
+        render(dt, elapsed);
     }
     const onVisibility = () => {
         // ao voltar, descarta o intervalo em que a aba ficou oculta

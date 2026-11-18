@@ -712,3 +712,37 @@ footer.lab-foot a {
 footer.lab-foot a:hover {
     color: var(--accent, #4f8bf0);
 }
+
+@media (pointer: coarse), (max-width: 768px) {
+    .menu-card .primary-button,
+    #startButton.primary-button {
+        min-block-size: 44px;
+    }
+}
+
+.menu-disclosure > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 44px;
+    cursor: pointer;
+    list-style: none;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.menu-disclosure > summary::-webkit-details-marker { display: none; }
+.menu-disclosure > summary::after {
+    content: '';
+    width: .48rem;
+    height: .48rem;
+    border: solid currentColor;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+    margin-inline-end: .25rem;
+}
+.menu-disclosure[open] > summary::after { transform: rotate(225deg); }
+.menu-disclosure > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.menu-disclosure[open] > summary { margin-bottom: .5rem; }

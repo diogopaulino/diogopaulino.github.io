@@ -50,15 +50,18 @@ export const MODELS = [
 ];
 
 let maxAniso = 8;
+let compactTextures = false;
 let manager = THREE.DefaultLoadingManager;
 const texCache = new Map();
+const textureReady = new WeakMap();
 const setCache = new Map();
 const modelCache = new Map();
 const hdriCache = new Map();
 const pendingClones = new WeakMap(); // textura base ainda carregando → clones com repeat próprio
 
 /** Chame uma vez após criar o renderer (anisotropia) — e opcionalmente passe um LoadingManager. */
-export function configureAssets(renderer, loadingManager = null) {
+export function configureAssets(renderer, loadingManager = null, tier) {
+    compactTextures = tier === 'low' || navigator.connection?.saveData === true;
     if (renderer) maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     if (loadingManager) manager = loadingManager;
 }
@@ -68,15 +71,20 @@ const url = (path) => `${ASSET_BASE}${path}?v=${VERSION}`;
 function loadTexture(path, srgb) {
     const key = path;
     if (!texCache.has(key)) {
+        let finish;
+        const ready = new Promise((resolve) => { finish = resolve; });
         const tex = new THREE.TextureLoader(manager).load(url(path), (loaded) => {
             for (const c of pendingClones.get(loaded) || []) c.needsUpdate = true;
             pendingClones.delete(loaded);
+            finish();
         }, undefined, () => {
             console.warn(`gfx/assets: textura indisponível (${path})`);
+            finish();
         });
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.anisotropy = maxAniso;
         tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+        textureReady.set(tex, ready);
         texCache.set(key, tex);
     }
     return texCache.get(key);
@@ -88,13 +96,15 @@ function loadTexture(path, srgb) {
  * @returns {{ map, normalMap, aoMap, roughnessMap, metalnessMap }}
  */
 export function pbrSet(name) {
-    if (!setCache.has(name)) {
-        const map = loadTexture(`tex/${name}/diff.jpg`, true);
-        const normalMap = loadTexture(`tex/${name}/nor.jpg`, false);
-        const arm = loadTexture(`tex/${name}/arm.jpg`, false);
-        setCache.set(name, { map, normalMap, aoMap: arm, roughnessMap: arm, metalnessMap: arm });
+    const folder = compactTextures ? `tex/${name}/512` : `tex/${name}`;
+    if (!setCache.has(folder)) {
+        const diffuse = compactTextures ? 'diff.webp' : 'diff.jpg';
+        const map = loadTexture(`${folder}/${diffuse}`, true);
+        const normalMap = loadTexture(`${folder}/nor.jpg`, false);
+        const arm = loadTexture(`${folder}/arm.jpg`, false);
+        setCache.set(folder, { map, normalMap, aoMap: arm, roughnessMap: arm, metalnessMap: arm });
     }
-    return setCache.get(name);
+    return setCache.get(folder);
 }
 
 /**
@@ -210,13 +220,6 @@ function prepareModel(root) {
         for (const m of mats) {
             for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap']) {
                 if (m[k]) m[k].anisotropy = maxAniso;
-            }
-            // folhagem fotogramétrica vem com alpha: recorte em vez de blend (ordena certo e projeta sombra)
-            if (m.transparent || m.alphaTest > 0) {
-                m.transparent = false;
-                m.alphaTest = Math.max(m.alphaTest, 0.45);
-                m.side = THREE.DoubleSide;
-                m.depthWrite = true;
             }
         }
     });
@@ -342,7 +345,11 @@ export async function loadFox({ length = 1.1 } = {}) {
 }
 
 /** Pré-carrega em paralelo (para a tela de loading). Resolve quando tudo chegou ou falhou. */
-export function preload({ models = [], textures = [] } = {}) {
-    textures.forEach((t) => pbrSet(t));
-    return Promise.all(models.map((m) => loadGLTF(m)));
+export async function preload({ models = [], textures = [] } = {}) {
+    const maps = textures.flatMap((name) => {
+        const { map, normalMap, roughnessMap } = pbrSet(name);
+        return [map, normalMap, roughnessMap].map((texture) => textureReady.get(texture));
+    });
+    const [loadedModels] = await Promise.all([Promise.all(models.map(loadGLTF)), Promise.all(maps)]);
+    return loadedModels;
 }

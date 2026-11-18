@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 /**
  * Orbis — observatório de sistemas estelares procedurais.
  * Renderer, câmera, picking e atelier de exoplanetas.
@@ -5,27 +6,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { generateSystem, SHOWCASE, SLIDERS, moonLine } from './catalog.js?v=4';
-import { StarSystem } from './system.js?v=4';
+import { StarSystem } from './system.js?v=5';
 import { clamp, damp, hashString } from './rng.js';
 
 const QUALITY = {
     high: { planetSeg: 64, starSeg: 48, stars: 4000, asteroids: 800, bloom: true, pr: 1.5, antialias: true },
-    medium: { planetSeg: 72, starSeg: 48, stars: 4200, asteroids: 800, bloom: true, pr: 1.5, antialias: true },
+    medium: { planetSeg: 56, starSeg: 40, stars: 3000, asteroids: 600, bloom: true, pr: 1.5, antialias: true },
     low: { planetSeg: 48, starSeg: 32, stars: 2200, asteroids: 400, bloom: false, pr: 1, antialias: false }
 };
 
-function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-        return /swiftshader|llvmpipe|softpipe|microsoft basic render|\bcpu\b/i.test(name);
-    } catch {
-        return false;
-    }
-}
+
 
 function detectQuality() {
     const mobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
@@ -377,7 +367,8 @@ class Orbis {
 
     frame() {
         const now = performance.now();
-        const dt = clamp((now - this.lastTime) / 1000, 0, 0.05);
+        const elapsed = (now - this.lastTime) / 1000;
+        const dt = clamp(elapsed, 0, 0.05);
         this.lastTime = now;
         this.system.update(dt, this.paused);
 
@@ -397,7 +388,7 @@ class Orbis {
         else this.renderer.render(this.scene, this.camera);
 
         this.fpsFrames += 1;
-        this.fpsTime += dt;
+        this.fpsTime += elapsed;
         if (this.fpsTime >= 0.4) {
             const fpsEl = $('#fps');
             if (fpsEl) fpsEl.textContent = String(Math.round(this.fpsFrames / this.fpsTime));

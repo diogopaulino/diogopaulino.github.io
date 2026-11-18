@@ -28,12 +28,9 @@
         content="Uma história antes de dormir vira travessia, tempestade, stealth e fuga. Cenários PBR e personagens com esqueleto em three.js.">
     <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=13">
+    <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
+    <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="css/style.css?v=4">
 
     <script type="application/ld+json">
@@ -87,7 +84,7 @@
 
 <body>
     <main class="game-shell">
-        <header data-lab-header data-title="O Guerreiro e o Castelo" data-back-href="/labs/" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="O Guerreiro e o Castelo" data-back-href="/labs/" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">⚔</span>
@@ -254,7 +251,7 @@
             <div class="overlay-card">
                 <p class="eyebrow">o mar não abriu</p>
                 <h2>Não deu para carregar o motor 3D</h2>
-                <p class="lede">Este lab precisa de WebGL 2 e do three.js via CDN. Verifique a conexão ou a aceleração de hardware e tente de novo.</p>
+                <p class="lede">Este lab precisa de WebGL 2 e do three.js. Verifique a conexão ou a aceleração de hardware e tente de novo.</p>
                 <div class="menu-actions">
                     <button class="primary-button" type="button" onclick="location.reload()">Tentar novamente</button>
                     <a class="ghost-button" href="/labs/">Voltar aos labs</a>
@@ -265,7 +262,7 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
+    <script src="/labs/shared.js?v=16" defer></script>
     <script>
         window.guerreiroLoadError = function () {
             const loading = document.getElementById('loadingOverlay');
@@ -277,8 +274,8 @@
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>

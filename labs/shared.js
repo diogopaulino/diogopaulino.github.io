@@ -83,12 +83,37 @@
             ${subtitle ? `<p class="subtitle lab-shell-subtitle">${subtitle}</p>` : ''}
         `;
 
+        header.querySelector('.back-link').setAttribute('aria-label', backLabel);
         const logo = header.querySelector('.app-logo');
         if (logo && !logo.matches('h1, [role="heading"]')) {
             logo.setAttribute('role', 'heading');
             logo.setAttribute('aria-level', '1');
         }
 
+        if (header.hasAttribute('data-fullscreen') && document.fullscreenEnabled) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'lab-icon-btn';
+            button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>';
+            const sync = () => {
+                const full = Boolean(document.fullscreenElement);
+                button.setAttribute('aria-pressed', String(full));
+                button.title = full ? 'Sair da tela cheia' : 'Tela cheia';
+                button.setAttribute('aria-label', button.title);
+            };
+            button.addEventListener('click', async () => {
+                try {
+                    if (document.fullscreenElement) await document.exitFullscreen();
+                    else await html.requestFullscreen();
+                } catch {
+                    // O navegador pode cancelar a transição ao trocar de aba.
+                    sync();
+                }
+            });
+            document.addEventListener('fullscreenchange', sync);
+            sync();
+            header.querySelector('.header-actions').prepend(button);
+        }
         header.dataset.labReady = 'true';
     }
 
@@ -377,9 +402,8 @@
             <div class="lab-engine-notice__card">
                 <p class="lab-engine-notice__title">Não deu para carregar o ${label}</p>
                 <p class="lab-engine-notice__text">
-                    Este lab desenha em 3D com uma biblioteca que vem de um CDN, e o
-                    navegador não conseguiu buscá-la. Costuma ser conexão instável ou
-                    uma rede que bloqueia o domínio.
+                    O navegador não conseguiu carregar os arquivos gráficos deste lab.
+                    Verifique a conexão e tente novamente.
                 </p>
                 <div class="lab-engine-notice__actions">
                     <button type="button" class="lab-engine-notice__btn" data-engine-retry>Tentar de novo</button>
@@ -664,6 +688,10 @@
     function init() {
         ensureFavicon();
         initChrome();
+        document.querySelectorAll('.menu-disclosure:not([data-ready])').forEach((panel) => {
+            panel.open = !matchMedia('(max-width: 768px), (max-height: 520px)').matches;
+            panel.dataset.ready = 'true';
+        });
         ensureThemeCore();
         // Depois do load: até lá o script do CDN teve sua chance de definir o global.
         if (document.readyState === 'complete') setTimeout(checkEngines, 400);

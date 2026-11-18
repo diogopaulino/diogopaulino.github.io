@@ -388,6 +388,7 @@ function rotate(matrix, dir) {
 function playerDrop(soft = false) {
     if (state !== 'playing') return;
 
+    boardDirty = true;
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
@@ -420,6 +421,7 @@ function playerHardDrop() {
 }
 
 function lockPiece() {
+    boardDirty = true;
     merge(arena, player);
     arenaSweep();
     playerReset();
@@ -433,6 +435,7 @@ function playerMove(offset) {
     if (collide(arena, player)) {
         player.pos.x -= offset;
     } else {
+        boardDirty = true;
         sfx('move');
     }
 }
@@ -471,9 +474,11 @@ function playerRotate(dir) {
             return;
         }
     }
+    boardDirty = true;
     sfx('rotate');
 }
 
+let boardDirty = true;
 let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
@@ -492,9 +497,11 @@ function tick(time = 0) {
         handleAutoRepeat(deltaTime);
     }
 
-    clearFlash = Math.max(0, clearFlash - deltaTime / 260);
-
-    draw();
+    if (boardDirty || clearFlash > 0) {
+        clearFlash = Math.max(0, clearFlash - deltaTime / 260);
+        draw();
+        boardDirty = false;
+    }
 }
 
 const labLoop = window.LabRuntime
@@ -503,7 +510,7 @@ const labLoop = window.LabRuntime
 
 function update(time = 0) {
     tick(time);
-    rafId = requestAnimationFrame(update);
+    rafId = state === 'playing' ? requestAnimationFrame(update) : 0;
 }
 
 function startLoop() {
@@ -586,6 +593,15 @@ function setOverlay(title, text, steady = false) {
 
 function setState(next) {
     state = next;
+    if (next === 'playing') {
+        lastTime = performance.now();
+        boardDirty = true;
+        startLoop();
+    } else {
+        stopLoop();
+        Object.keys(held).forEach(releaseAction);
+        draw();
+    }
 
     if (state === 'ready') {
         setOverlay('TETRIS', 'START para jogar');
@@ -610,7 +626,6 @@ function resetGame() {
     player.next = null;
     player.matrix = null;
     dropCounter = 0;
-    setState('ready');
     playerReset();
     updateScore();
 }
@@ -704,20 +719,20 @@ document.addEventListener('keydown', event => {
     /* Com um botão do console focado *pelo teclado*, Enter/Espaço continuam
        ativando o botão. Depois de um clique de mouse o foco não conta: ali o
        jogador espera o atalho global (Espaço = queda rápida). */
-    const onConsoleButton = event.target instanceof Element
-        && event.target.closest('.controls button')?.matches(':focus-visible')
+    const onFocusedControl = event.target instanceof Element
+        && event.target.closest('button, a')?.matches(':focus-visible')
         && (event.code === 'Enter' || event.code === 'Space');
-    if (onConsoleButton) return;
+    if (onFocusedControl) return;
 
     if (event.code === 'Enter' || event.code === 'KeyP' || event.code === 'Escape') {
         event.preventDefault();
-        toggleStartPause();
+        if (!event.repeat) toggleStartPause();
         return;
     }
 
     if (event.code === 'KeyR') {
         event.preventDefault();
-        startGame();
+        if (!event.repeat) startGame();
         return;
     }
 
@@ -752,7 +767,10 @@ function bindHold(selector, action) {
     el.addEventListener('pointerleave', stop);
     /* Teclado: o botão continua acionável por Enter/Espaço via clique. */
     el.addEventListener('click', event => {
-        if (event.detail === 0) pressAction(action);
+        if (event.detail === 0) {
+            pressAction(action);
+            releaseAction(action);
+        }
     });
 }
 
@@ -845,9 +863,6 @@ document.querySelectorAll('.controls button').forEach(button => {
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         if (state === 'playing') setState('paused');
-        stopLoop();
-    } else {
-        startLoop();
     }
 });
 
@@ -904,5 +919,5 @@ if (window.LabTheme) {
 
 document.getElementById('highscore').innerText = highScore;
 resetGame();
+setState('ready');
 fitConsole();
-startLoop();

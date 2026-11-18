@@ -816,12 +816,15 @@ function resizeCanvas() {
     ui.canvas.height = Math.round(rect.height * dpr);
 }
 
+let palette;
 function visualizerColors() {
+    if (palette) return palette;
     const styles = getComputedStyle(ui.desktop);
-    return {
+    palette = {
         fg: styles.getPropertyValue("--wa-lcd-fg").trim() || "#21e654",
         bg: styles.getPropertyValue("--wa-lcd-bg").trim() || "#050a06"
     };
+    return palette;
 }
 
 function drawIdleVisualizer() {
@@ -1069,6 +1072,7 @@ function toggleWindow(key, force) {
 
 function applySkin(key) {
     ui.desktop.dataset.skin = key;
+    palette = null;
     $$(".skin-choice").forEach((choice) => {
         const selected = choice.dataset.skin === key;
         choice.classList.toggle("is-selected", selected);

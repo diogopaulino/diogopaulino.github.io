@@ -316,27 +316,6 @@
   opacity: 0.12;
 }
 
-.project-icon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: var(--bg-body);
-  border-radius: 1.25rem;
-  color: var(--accent);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: 1px solid var(--border-subtle);
-  position: relative;
-  z-index: 1;
-}
-
-.project-icon svg {
-  width: 48px;
-  height: 48px;
-}
-
 .project-card:hover .project-icon {
   background: var(--accent);
   color: #ffffff;
@@ -533,17 +512,6 @@
     gap: 0.85rem;
   }
 
-  .project-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 1rem;
-  }
-
-  .project-icon svg {
-    width: 24px;
-    height: 24px;
-  }
-
   .project-tags {
     gap: 0.4rem;
   }
@@ -594,3 +562,26 @@
     margin-bottom: 1rem;
   }
 }
+
+.empty-results {
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.empty-results p { margin-bottom: 1rem; }
+
+/* Cada card mostra o próprio lab, com a proporção reservada antes do download. */
+.projects-grid .project-card {
+  padding: 0;
+  gap: 0;
+  contain-intrinsic-size: auto 370px;
+}
+.lab-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 25 / 16;
+  object-fit: cover;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.projects-grid .project-content { padding: clamp(1rem, 2vw, 1.5rem); }

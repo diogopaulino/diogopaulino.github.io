@@ -110,7 +110,7 @@ function saveHighScore(value) {
 }
 
 function pad(value) {
-    return String(Math.min(999, value)).padStart(3, '0');
+    return String(value).padStart(3, '0');
 }
 
 // O nível é derivado da velocidade: quanto menor o intervalo entre passos,
@@ -177,18 +177,17 @@ function stopLoop() {
 }
 
 function placeFood() {
-    // Collect the free cells first: this avoids the unbounded recursion the
-    // previous version could hit once the snake filled most of the board.
-    const free = [];
-    for (let x = 0; x < TILE_COUNT_X; x++) {
-        for (let y = 0; y < TILE_COUNT_Y; y++) {
-            if (!snake.some(segment => segment.x === x && segment.y === y)) free.push({ x, y });
+    const occupied = new Set(snake.map(({ x, y }) => y * TILE_COUNT_X + x));
+    const cells = TILE_COUNT_X * TILE_COUNT_Y;
+    // Sorteia a posição entre as casas livres, com a mesma chance para cada casa.
+    let remaining = Math.floor(Math.random() * (cells - occupied.size));
+    for (let i = 0; i < cells; i++) {
+        if (!occupied.has(i) && remaining-- === 0) {
+            food = { x: i % TILE_COUNT_X, y: Math.floor(i / TILE_COUNT_X) };
+            return;
         }
     }
-    if (!free.length) return;
-    const pick = free[Math.floor(Math.random() * free.length)];
-    food.x = pick.x;
-    food.y = pick.y;
+    food = null;
 }
 
 function gameLoop(timestamp) {
@@ -264,6 +263,7 @@ function update() {
         digestPulses.push(0);
         sfxEat();
         updateHud();
+        if (!food) gameOver(true);
     } else {
         snake.pop();
     }
@@ -489,7 +489,7 @@ function draw() {
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    drawFood();
+    if (food) drawFood();
 
     // Sombra projetada da cobra no cristal líquido Nokia
     ctx.save();
@@ -517,11 +517,13 @@ function draw() {
     }
 }
 
-function gameOver() {
+function gameOver(won = false) {
     isGameRunning = false;
     isPaused = false;
-    deathFlash = 1;
-    sfxDeath();
+    deathFlash = won ? 0 : 1;
+    if (!won) sfxDeath();
+    const result = won ? 'Tabuleiro completo' : 'Fim de jogo';
+    gameOverScreen.querySelector('h2').textContent = won ? 'VITÓRIA' : 'FIM DE JOGO';
     stopLoop();
     pauseScreen.classList.add('hidden');
     finalScoreSpan.textContent = score;
@@ -529,9 +531,9 @@ function gameOver() {
     if (score > highScore) {
         highScore = score;
         saveHighScore(highScore);
-        announce(`Fim de jogo. Novo recorde: ${score} pontos.`);
+        announce(`${result}. Novo recorde: ${score} pontos.`);
     } else {
-        announce(`Fim de jogo. ${score} pontos.`);
+        announce(`${result}. ${score} pontos.`);
     }
 
     updateHud();
@@ -634,7 +636,7 @@ document.addEventListener('keydown', (e) => {
     }
     if ((e.key === 'Enter' || e.key === ' ' || e.code === 'Space') && !e.target.closest('a, button')) {
         e.preventDefault();
-        handleInput(e.key === 'Enter' ? 'Enter' : 'Space');
+        if (!e.repeat) handleInput(e.key === 'Enter' ? 'Enter' : 'Space');
     }
 });
 
@@ -646,7 +648,9 @@ document.querySelectorAll('.d-pad [data-key]').forEach(btn => {
         e.preventDefault();
         handleInput(btn.dataset.key);
     });
-    btn.addEventListener('click', (e) => e.preventDefault());
+    btn.addEventListener('click', (e) => {
+        if (e.detail === 0) handleInput(btn.dataset.key);
+    });
 });
 
 /* Deslizar na tela: no celular o d-pad desenhado tem 30px e o polegar cobre a

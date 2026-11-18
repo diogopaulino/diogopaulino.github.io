@@ -239,7 +239,8 @@ class PianoVoice {
 // ============================================================================
 
 function playNote(noteName, velocity = 0.7) {
-  if (activeNotes.has(noteName) || heldNotes.has(noteName)) return;
+  if (heldNotes.has(noteName)) return;
+  if (sustainedNotes.has(noteName)) stopNote(noteName, true);
 
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -273,38 +274,23 @@ function playNote(noteName, velocity = 0.7) {
 }
 
 function stopNote(noteName, force = false) {
-  // Comportamento igual piano real:
-  // Se sustain está pressionado, nota continua tocando até soltar o pedal
-  if (sustainActive && !force) {
-    sustainedNotes.add(noteName);
-
-    // Remove visual da tecla, mas mantém som
-    const keyElement = document.querySelector(`[data-note="${noteName}"]`);
-    if (keyElement) {
-      keyElement.classList.remove('active');
-    }
-    return;
-  }
-
   heldNotes.delete(noteName);
+  document.querySelector(`[data-note="${noteName}"]`)?.classList.remove('active');
   const voice = activeNotes.get(noteName);
   if (!voice) return;
-
-  voice.release();
-
-  // Remove após o release time
-  setTimeout(() => {
-    activeNotes.delete(noteName);
-    sustainedNotes.delete(noteName);
-  }, (sustainActive ? 2500 : 800) + 100);
-
-  const keyElement = document.querySelector(`[data-note="${noteName}"]`);
-  if (keyElement) {
-    keyElement.classList.remove('active');
+  if (sustainActive && !force) {
+    sustainedNotes.add(noteName);
+    return;
   }
+  // A cauda continua no áudio. Liberar a tecla agora permite repetir a nota
+  // enquanto os osciladores anteriores ainda estão decaindo.
+  activeNotes.delete(noteName);
+  sustainedNotes.delete(noteName);
+  voice.release();
 }
 
 function stopAllNotes() {
+  for (const note of heldNotes) document.querySelector(`[data-note="${note}"]`)?.classList.remove('active');
   heldNotes.clear();
   const notes = Array.from(activeNotes.keys());
   notes.forEach(note => stopNote(note, true));
@@ -457,53 +443,24 @@ function setupPianoGlissando(pianoElement) {
     if (!stillHeldByOther) stopNote(prevNote);
   };
 
-  // Mouse glissando
-  let mouseDown = false;
-  pianoElement.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    mouseDown = true;
-    updatePointerNote('mouse', e.clientX, e.clientY);
+  pianoElement.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    pianoElement.setPointerCapture(event.pointerId);
+    updatePointerNote(event.pointerId, event.clientX, event.clientY);
   });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!mouseDown) return;
-    updatePointerNote('mouse', e.clientX, e.clientY);
+  pianoElement.addEventListener('pointermove', (event) => {
+    if (pianoElement.hasPointerCapture(event.pointerId)) {
+      updatePointerNote(event.pointerId, event.clientX, event.clientY);
+    }
   });
-
-  window.addEventListener('mouseup', () => {
-    if (!mouseDown) return;
-    mouseDown = false;
-    releasePointer('mouse');
+  pianoElement.addEventListener('lostpointercapture', (event) => releasePointer(event.pointerId));
+  window.addEventListener('blur', () => {
+    pointerNotes.clear();
+    pressedKeys.clear();
+    toggleSustain(false);
+    stopAllNotes();
   });
-
-  // Touch glissando (multitoque + deslizar o dedo entre teclas)
-  pianoElement.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const t = e.changedTouches[i];
-      updatePointerNote(`touch-${t.identifier}`, t.clientX, t.clientY);
-    }
-  }, { passive: false });
-
-  pianoElement.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const t = e.changedTouches[i];
-      updatePointerNote(`touch-${t.identifier}`, t.clientX, t.clientY);
-    }
-  }, { passive: false });
-
-  const endTouches = (e) => {
-    e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const t = e.changedTouches[i];
-      releasePointer(`touch-${t.identifier}`);
-    }
-  };
-
-  pianoElement.addEventListener('touchend', endTouches, { passive: false });
-  pianoElement.addEventListener('touchcancel', endTouches, { passive: false });
 }
 
 // ============================================================================
@@ -552,6 +509,7 @@ function setupControls() {
     toggleSustain(true);
   }, { passive: false });
 
+  sustainBtn.addEventListener('touchcancel', () => toggleSustain(false));
   sustainBtn.addEventListener('touchend', (e) => {
     e.preventDefault();
     toggleSustain(false);

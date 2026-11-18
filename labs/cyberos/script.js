@@ -84,7 +84,7 @@ para perguntar como cada lab foi construído.`
     },
     '/home/guest/secrets/easter_eggs.log': {
       type: 'file',
-      body: `[ok] clique 5x no avatar da home → badge labs
+      body: `[ok] ative o avatar da home → destaque nos labs
 [ok] matrix cinema mode: tecla H
 [ok] cyberos: tente "neofetch", "hack", "sudo"
 [ok] cipher: envie uma mensagem ROT13 pra um amigo`
@@ -901,9 +901,9 @@ Dica: explore ~/secrets e ~/projects`;
   }
 
   function toHex(str) {
-    return Array.from(str)
-      .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
-      .join('');
+    let hex = '';
+    for (let i = 0; i < str.length; i++) hex += str.charCodeAt(i).toString(16).padStart(2, '0');
+    return hex;
   }
 
   function fromHex(hex) {
@@ -933,8 +933,17 @@ Dica: explore ~/secrets e ~/projects`;
           out = atbash(input);
           break;
         case 'xor':
-          if (enc) out = toHex(xorCipher(input));
-          else out = xorCipher(fromHex(input));
+          // Mantém o hex legado para Latin-1. O prefixo identifica bytes UTF-8.
+          if (enc && /[^\u0000-\u00ff]/.test(input)) {
+            const bytes = new TextEncoder().encode(input);
+            const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+            out = 'u8:' + toHex(xorCipher(binary));
+          } else if (!enc && input.startsWith('u8:')) {
+            const binary = xorCipher(fromHex(input.slice(3)));
+            out = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(binary, c => c.charCodeAt(0)));
+          } else {
+            out = enc ? toHex(xorCipher(input)) : xorCipher(fromHex(input));
+          }
           break;
         case 'base64':
           out = enc ? btoa(unescape(encodeURIComponent(input))) : decodeURIComponent(escape(atob(input)));

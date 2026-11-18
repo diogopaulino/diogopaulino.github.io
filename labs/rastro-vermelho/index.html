@@ -28,19 +28,16 @@
     <meta name="twitter:title" content="Rastro Vermelho — uma jornada pela fronteira | Diogo Paulino">
     <meta name="twitter:description" content="Cavalgue por um faroeste 3D de Diogo Paulino em three.js: céu físico, rochas fotogramétricas, seis destinos, emboscadas e acampamentos na fronteira.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/labs/shared.css?v=14">
+    <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
+    <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
+    <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="style.css?v=7">
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+            "three": "/labs/shared/vendor/three-0.185.1/build/three.module.min.js",
+            "three/addons/": "/labs/shared/vendor/three-0.185.1/examples/jsm/"
         }
     }
     </script>
@@ -95,7 +92,7 @@
 
 <body>
     <main class="game-shell">
-        <header data-lab-header data-title="Rastro Vermelho" data-back-label="Labs">
+        <header data-lab-header data-fullscreen data-title="Rastro Vermelho" data-back-label="Labs">
             <template data-slot="logo">
                 <div class="app-logo">
                     <span class="brand-mark" aria-hidden="true">★</span>
@@ -184,7 +181,7 @@
         <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
     </main>
 
-    <script src="/labs/shared.js?v=14" defer></script>
+    <script src="/labs/shared.js?v=16" defer></script>
     <script>
         window.rastroLoadError = function () {
             document.getElementById('loadingOverlay').hidden = true;

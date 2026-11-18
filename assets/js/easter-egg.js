@@ -54,29 +54,14 @@
     spin();
   });
 
-  let touchTimer = null;
-  let touchDur = 0;
-
-  pic.addEventListener('touchstart', () => {
-    touchDur = 0;
-    touchTimer = setInterval(() => {
-      touchDur += 100;
-      if (touchDur >= 300) {
-        clearInterval(touchTimer);
-        reveal();
-      }
-    }, 100);
-  }, { passive: true });
-
-  pic.addEventListener('touchend', () => {
-    clearInterval(touchTimer);
-    if (touchDur < 300) {
-      reveal();
-      spin();
-    }
-  }, { passive: true });
-
-  pic.addEventListener('touchcancel', () => clearInterval(touchTimer));
+  // O toque curto usa o clique nativo, inclusive para ativação por teclado.
+  let touchTimer;
+  pic.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'touch') touchTimer = setTimeout(reveal, 300);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    pic.addEventListener(type, () => clearTimeout(touchTimer));
+  }
 
   let keys = [];
   const code = ['l', 'a', 'b', 's'];

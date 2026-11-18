@@ -103,9 +103,11 @@ const App = {
             }
         });
 
+        document.getElementById('open-local-rom').addEventListener('click', () => romInput.click());
         romInput?.addEventListener('change', e => {
             const file = e.target.files[0];
-            if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''))
+            romInput.value = '';
+            if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''));
         });
         document.addEventListener('keydown', e => this.handleGlobalKeys(e));
         window.addEventListener('keydown', e => this.handleKeyRemap(e));
@@ -544,7 +546,11 @@ const App = {
         button.addEventListener('click', () => this.showHome());
 
         container.appendChild(text);
-        container.appendChild(button);
+        const localButton = document.createElement('button');
+        localButton.type = 'button';
+        localButton.textContent = 'Abrir ROM local';
+        localButton.addEventListener('click', () => this.ui.romInput.click());
+        container.append(localButton, button);
         this.ui.screen.appendChild(container);
     },
     resolveRomPath(resource) {

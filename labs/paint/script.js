@@ -10,7 +10,7 @@ let currentColor = '#000000';
 let currentOpacity = 1;
 let fillShapes = false;
 let snapshot;
-let history = [];
+const history = [];
 let historyIndex = -1;
 
 // Tools Elements
@@ -83,6 +83,7 @@ const initCanvas = () => {
     canvas.height = 600;
 
     // Fill with white background initially
+    ctx.globalAlpha = 1;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -111,10 +112,10 @@ const paintShape = () => {
 const saveState = () => {
     // Remove any redo states
     if (historyIndex < history.length - 1) {
-        history = history.slice(0, historyIndex + 1);
+        history.splice(historyIndex + 1);
     }
 
-    history.push(canvas.toDataURL());
+    history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
     historyIndex++;
 
     // Limit history
@@ -140,14 +141,9 @@ const redo = () => {
     }
 };
 
-const restoreState = (dataUrl) => {
-    const img = new Image();
-    img.src = dataUrl;
-    img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        updateUndoRedoButtons();
-    };
+const restoreState = (image) => {
+    ctx.putImageData(image, 0, 0);
+    updateUndoRedoButtons();
 };
 
 const updateUndoRedoButtons = () => {
@@ -168,7 +164,7 @@ const stopDraw = () => {
 
 // Shape drawing keeps the initial canvas snapshot while the pointer moves.
 let startX, startY;
-let strokePoints = [];
+let previousPoint;
 
 const startDrawFixed = (e) => {
     isDrawing = true;
@@ -179,7 +175,7 @@ const startDrawFixed = (e) => {
     ctx.beginPath();
     ctx.moveTo(startX, startY);
 
-    if (['rect', 'circle', 'line', 'brush'].includes(currentTool)) {
+    if (['rect', 'circle', 'line'].includes(currentTool) || (currentTool === 'brush' && currentOpacity < 1)) {
         snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
         if (currentTool === 'brush') {
             if (strokeCanvas.width !== canvas.width || strokeCanvas.height !== canvas.height) {
@@ -187,7 +183,6 @@ const startDrawFixed = (e) => {
                 strokeCanvas.height = canvas.height;
             }
             strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
-            strokePoints = [{ x: startX, y: startY }];
         }
     } else if (currentTool === 'fill') {
         floodFill(Math.floor(startX), Math.floor(startY), hexToRgba(currentColor));
@@ -195,6 +190,10 @@ const startDrawFixed = (e) => {
     } else if (currentTool === 'picker') {
         pickColor(startX, startY);
         isDrawing = false;
+    }
+    if (currentTool === 'brush' || currentTool === 'eraser') {
+        previousPoint = { x, y };
+        drawingFixed(e);
     }
 };
 
@@ -210,35 +209,28 @@ const drawingFixed = (e) => {
     ctx.lineJoin = 'round';
     ctx.globalAlpha = currentOpacity;
 
-    if (currentTool === 'brush') {
-        if (currentOpacity < 1 && snapshot) {
-            strokePoints.push({ x, y });
-            strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
-            strokeCtx.strokeStyle = currentColor;
-            strokeCtx.lineWidth = brushSize;
-            strokeCtx.lineCap = 'round';
-            strokeCtx.lineJoin = 'round';
-            strokeCtx.beginPath();
-            strokeCtx.moveTo(strokePoints[0].x, strokePoints[0].y);
-            for (let i = 1; i < strokePoints.length; i++) {
-                strokeCtx.lineTo(strokePoints[i].x, strokePoints[i].y);
-            }
-            strokeCtx.stroke();
-
+    if (currentTool === 'brush' || currentTool === 'eraser') {
+        const translucent = currentTool === 'brush' && currentOpacity < 1;
+        const ink = translucent ? strokeCtx : ctx;
+        ink.strokeStyle = ink.fillStyle = currentTool === 'eraser' ? '#ffffff' : currentColor;
+        ink.lineWidth = brushSize;
+        ink.lineCap = 'round';
+        ink.globalAlpha = 1;
+        ink.beginPath();
+        if (x === previousPoint.x && y === previousPoint.y) {
+            ink.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+            ink.fill();
+        } else {
+            ink.moveTo(previousPoint.x, previousPoint.y);
+            ink.lineTo(x, y);
+            ink.stroke();
+        }
+        previousPoint = { x, y };
+        if (translucent) {
             ctx.putImageData(snapshot, 0, 0);
-            ctx.save();
             ctx.globalAlpha = currentOpacity;
             ctx.drawImage(strokeCanvas, 0, 0);
-            ctx.restore();
-        } else {
-            ctx.lineTo(x, y);
-            ctx.stroke();
         }
-    } else if (currentTool === 'eraser') {
-        ctx.strokeStyle = '#ffffff';
-        ctx.globalAlpha = 1;
-        ctx.lineTo(x, y);
-        ctx.stroke();
     } else if (['rect', 'circle', 'line'].includes(currentTool)) {
         ctx.putImageData(snapshot, 0, 0);
         ctx.beginPath();
@@ -265,63 +257,33 @@ const floodFill = (x, y, fillColor) => {
     if (x < 0 || x >= w || y < 0 || y >= h) return;
 
     const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
+    const pixels = new Uint32Array(imageData.data.buffer);
+    const first = y * w + x;
+    const target = pixels[first];
+    // Usa a ordem de bytes nativa nos dois lados da comparação RGBA.
+    const replacement = new Uint32Array(Uint8Array.from(fillColor).buffer)[0];
+    if (target === replacement) return;
 
-    // Get target color (R, G, B, A)
-    const targetColor = getPixelColor(data, x, y);
-
-    // If target is same as fill, return
-    if (colorsMatch(targetColor, fillColor)) return;
-
-    const visited = new Uint8Array(w * h);
-    const stack = [[x, y]];
-    visited[y * w + x] = 1;
-
-    while (stack.length) {
-        const [cx, cy] = stack.pop();
-        const pixelIndex = (cy * w + cx) * 4;
-
-        if (colorsMatch(getPixelColor(data, cx, cy), targetColor)) {
-            setPixelColor(data, pixelIndex, fillColor);
-
-            const neighbors = [
-                [cx + 1, cy],
-                [cx - 1, cy],
-                [cx, cy + 1],
-                [cx, cy - 1]
-            ];
-            for (let i = 0; i < 4; i++) {
-                const nx = neighbors[i][0];
-                const ny = neighbors[i][1];
-                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                    const nIdx = ny * w + nx;
-                    if (!visited[nIdx]) {
-                        visited[nIdx] = 1;
-                        stack.push([nx, ny]);
-                    }
-                }
-            }
-        }
+    // Marca ao enfileirar: cada pixel entra uma única vez, sem criar objetos
+    // de coordenadas nem uma segunda máscara de visitados.
+    const stack = new Uint32Array(w * h);
+    let count = 0;
+    function visit(index) {
+        if (pixels[index] !== target) return;
+        pixels[index] = replacement;
+        stack[count++] = index;
     }
-
+    visit(first);
+    while (count) {
+        const index = stack[--count];
+        const column = index % w;
+        if (column > 0) visit(index - 1);
+        if (column + 1 < w) visit(index + 1);
+        if (index >= w) visit(index - w);
+        if (index + w < pixels.length) visit(index + w);
+    }
     ctx.putImageData(imageData, 0, 0);
     saveState();
-};
-
-const getPixelColor = (data, x, y) => {
-    const i = (y * canvas.width + x) * 4;
-    return [data[i], data[i + 1], data[i + 2], data[i + 3]];
-};
-
-const setPixelColor = (data, i, color) => {
-    data[i] = color[0];
-    data[i + 1] = color[1];
-    data[i + 2] = color[2];
-    data[i + 3] = color[3] ?? 255;
-};
-
-const colorsMatch = (c1, c2) => {
-    return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2] && c1[3] === c2[3];
 };
 
 const hexToRgba = (hex) => {
@@ -428,16 +390,21 @@ redoBtn.addEventListener('click', redo);
 
 clearBtn.addEventListener('click', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     saveState();
 });
 
-saveBtn.addEventListener('click', () => {
-    const link = document.createElement('a');
-    link.download = `paint-lab-${Date.now()}.png`;
-    link.href = canvas.toDataURL();
-    link.click();
+saveBtn.addEventListener('click', async () => {
+    try {
+        const { saveCanvas } = await import('../shared/save-canvas.js');
+        await saveCanvas(canvas, `paint-lab-${Date.now()}.png`);
+    } catch {
+        const label = saveBtn.querySelector('span');
+        label.textContent = 'Falha ao salvar';
+        setTimeout(() => { label.textContent = 'Salvar'; }, 2000);
+    }
 });
 
 // Keyboard Shortcuts
@@ -498,4 +465,4 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Init
-window.addEventListener('load', initCanvas);
+initCanvas();

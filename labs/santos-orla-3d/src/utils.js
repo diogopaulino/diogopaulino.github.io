@@ -1,3 +1,4 @@
+import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
 import * as THREE from 'three';
 
 export function clamp(v, a, b) {
@@ -26,19 +27,7 @@ export function detectTouch() {
     return matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 }
 
-export function detectSoftwareGL() {
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return true;
-        const info = gl.getExtension('WEBGL_debug_renderer_info');
-        if (!info) return false;
-        const renderer = gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '';
-        return /SwiftShader|llvmpipe|SoftGL|Microsoft Basic Render/i.test(renderer);
-    } catch {
-        return true;
-    }
-}
+export { detectSoftwareGL };
 
 export function seeded(seed) {
     let s = seed >>> 0;

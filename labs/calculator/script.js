@@ -374,6 +374,7 @@ modeBtns.forEach(btn => {
             wrapper.classList.add('scientific-mode');
         } else {
             currencySection.classList.add('active');
+            if (!allCurrencies.length) initCurrencyConverter();
         }
     });
 });
@@ -703,4 +704,3 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Initial load
-initCurrencyConverter();
