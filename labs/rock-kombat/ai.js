@@ -1,9 +1,12 @@
 // ==========================================================================
 // Rock Kombat — CPU AI
-// Archetype spacing, wakeup, anti-air, sticky block, dash pressure
+// MvC & MK tactical CPU:
+// - Executes Magic Series combos (Light -> Medium -> Heavy -> Launcher -> Air Rave)
+// - Performs Advancing Guard (Pushblock) under heavy block pressure
+// - Uses Hyper Combos & Stage Finishers when opponent enters FINISH HIM dizzy state
 // ==========================================================================
 
-import { AI_CONFIG, SPECIAL_COST, GROUND, BODY_WIDTH } from './constants.js';
+import { AI_CONFIG, EX_COST, HYPER_COST, PUSHBLOCK_COST, GROUND, BODY_WIDTH } from './constants.js';
 import { random } from './utils.js';
 import { moveFor } from './fighter.js';
 
@@ -12,10 +15,57 @@ export function updateCpu(match, difficulty, cpuInput) {
   const player = match.p1;
   const config = AI_CONFIG[difficulty] || AI_CONFIG.normal;
 
-  if (cpu.state === 'attack' && cpu.moveConnected && cpu.move?.cancel && Math.random() < config.attack * 0.4) {
-    if (cpu.move.cancel.includes('kick')) cpuInput.tap('kick');
-    else if (cpu.move.cancel.includes('special') && cpu.meter >= SPECIAL_COST) cpuInput.tap('special');
+  // 1. Magic Series Combo Continuation when attack connects!
+  if (cpu.state === 'attack' && cpu.moveConnected && cpu.move) {
+    const mName = cpu.move.name;
+    // Launcher jump-cancel into Air Rave!
+    if (mName === 'launcher' && Math.random() < config.airFollow) {
+      cpuInput.tap('jump');
+      return;
+    }
+    if (cpu.move.cancel && Math.random() < config.combo) {
+      if (mName === 'light' || mName === 'crouchlight') {
+        cpuInput.tap('medium');
+        return;
+      }
+      if (mName === 'medium') {
+        cpuInput.tap('heavy');
+        return;
+      }
+      if (mName === 'heavy') {
+        if (cpu.meter >= HYPER_COST && Math.random() < 0.45) {
+          cpuInput.tap('hyper');
+        } else if (Math.random() < 0.65) {
+          cpuInput.tap('launcher');
+        } else if (cpu.meter >= EX_COST) {
+          cpuInput.tap('special');
+        }
+        return;
+      }
+      if (mName === 'airlight') {
+        cpuInput.tap('medium');
+        return;
+      }
+      if (mName === 'airmedium') {
+        cpuInput.tap('heavy');
+        return;
+      }
+    }
     return;
+  }
+
+  // 2. Advancing Guard (Pushblock) when blocking repeated pressure
+  if (cpu.state === 'blockstun' && cpu.meter >= PUSHBLOCK_COST && Math.random() < config.guard * 0.25) {
+    cpuInput.tap('dash');
+    return;
+  }
+
+  // 3. Airborne chase during Air Rave
+  if (!cpu.grounded() && player.launched && Math.abs(player.x - cpu.x) < 165) {
+    if (!cpu.move && Math.random() < config.airFollow) {
+      cpuInput.tap('light');
+      return;
+    }
   }
 
   if (--match.cpuThink > 0) {
@@ -36,31 +86,48 @@ export function updateCpu(match, difficulty, cpuInput) {
   const away = toward === 'left' ? 'right' : 'left';
   const id = cpu.data.id;
 
+  // 4. FINISH HIM! Immediately go for Hyper or Heavy Finisher
+  if (player.state === 'dizzy') {
+    if (cpu.meter >= HYPER_COST && distance < 420) {
+      cpuInput.tap('hyper');
+      return;
+    }
+    if (distance > 125) {
+      cpuInput.tap('dash');
+      cpuInput.down(toward);
+      match.cpuHold = [toward];
+    } else {
+      cpuInput.tap('heavy');
+    }
+    return;
+  }
+
+  // 5. Threat detection & defense
   const incoming = player.move
-    && player.moveFrame <= player.move.startup + player.move.active + 3
-    && distance < (player.move.reach || 0) + 110;
+    && player.moveFrame <= player.move.startup + player.move.active + 4
+    && distance < (player.move.reach || 240) + 115;
 
   const projectileThreat = match.projectiles.some(p =>
-    p.owner === player && Math.abs(p.x - cpu.x) < 280 && Math.sign(p.vx) === Math.sign(cpu.x - p.x)
+    p.owner === player && Math.abs(p.x - cpu.x) < 300 && Math.sign(p.vx) === Math.sign(cpu.x - p.x)
   );
 
   if ((incoming || projectileThreat) && Math.random() < config.guard) {
     cpuInput.down(away);
     match.cpuHold = [away];
-    if ((player.move && player.move.level === 'low') || Math.random() < 0.28) {
+    if ((player.move && player.move.level === 'low') || Math.random() < 0.3) {
       cpuInput.down('down');
       match.cpuHold.push('down');
     }
-    if (projectileThreat && id !== 'axl' && cpu.meter >= SPECIAL_COST && Math.random() < 0.35) {
+    if (projectileThreat && id !== 'axl' && cpu.meter >= EX_COST && Math.random() < 0.38) {
       cpuInput.tap('special');
     }
     return;
   }
 
-  if (cpu.state === 'getup' || (cpu.invuln > 0 && cpu.state === 'idle' && distance < 140)) {
+  // 6. Wakeup reversal
+  if (cpu.state === 'getup') {
     if (Math.random() < config.punish * 0.45) {
-      cpuInput.down('down');
-      cpuInput.tap('punch');
+      cpuInput.tap('launcher');
       return;
     }
     if (Math.random() < config.guard) {
@@ -70,61 +137,54 @@ export function updateCpu(match, difficulty, cpuInput) {
     }
   }
 
-  if ((player.state === 'knockdown' || player.state === 'getup') && Math.random() < config.attack) {
-    if (distance > 160 && Math.random() < 0.4) {
-      cpuInput.down(toward);
-      cpuInput.tap('jump');
-      match.cpuHold = [toward];
-      return;
-    }
-    if (distance < 90) {
-      cpuInput.tap('punch');
-      cpuInput.tap('kick');
-      return;
-    }
-  }
-
-  if (!player.grounded() && player.y < GROUND - 70 && distance < 150 && Math.random() < config.punish) {
-    cpuInput.down('down');
-    cpuInput.tap('punch');
+  // 7. Anti-Air Launcher against jumping player
+  if (!player.grounded() && player.y < GROUND - 75 && distance < 155 && Math.random() < config.punish) {
+    cpuInput.tap('launcher');
     return;
   }
 
+  // 8. Close-range Throw mix-up against blocking player
+  if (distance <= 98 && player.grounded() && player.awayHeld(cpu) && Math.random() < config.attack * 0.55) {
+    cpuInput.tap('throw');
+    return;
+  }
+
+  // 9. Neutral offensive decision
   const roll = Math.random();
-  let intentName = 'kick';
+  let intentName = 'medium';
   let downIntent = false;
 
-  if (cpu.meter >= SPECIAL_COST && roll < (id === 'lennon' ? 0.28 : id === 'axl' ? 0.16 : 0.2)) {
-    intentName = 'special';
-  } else if (id === 'axl' && distance > 180 && distance < 360 && cpu.grounded() && Math.random() < config.dash) {
-    cpu.state = 'dash';
-    cpu.dashType = 'forward';
-    cpu.dashTimer = 12;
-    cpu.facing = player.x >= cpu.x ? 1 : -1;
+  if (cpu.meter >= HYPER_COST && roll < 0.18 && distance < 420) {
+    cpuInput.tap('hyper');
     return;
-  } else if (roll < 0.38) {
-    intentName = 'punch';
-  } else if (roll < 0.78) {
-    intentName = 'kick';
+  } else if (cpu.meter >= EX_COST && roll < (id === 'lennon' ? 0.32 : 0.22)) {
+    intentName = 'special';
+  } else if (distance > 210 && distance < 440 && cpu.grounded() && Math.random() < config.dash) {
+    cpuInput.tap('dash');
+    cpuInput.down(toward);
+    match.cpuHold = [toward];
+    return;
+  } else if (roll < 0.42) {
+    intentName = 'light';
+  } else if (roll < 0.75) {
+    intentName = 'medium';
+  } else if (roll < 0.90) {
+    intentName = 'heavy';
   } else {
-    intentName = 'kick';
+    intentName = 'medium';
     downIntent = true;
   }
 
-  const moveName = downIntent ? (intentName === 'punch' ? 'uppercut' : 'sweep') : intentName;
+  const moveName = downIntent ? 'sweep' : intentName;
   const intended = moveFor(cpu, moveName);
-  const requiredRange = (intended.reach || 220) + BODY_WIDTH;
+  const requiredRange = (intended.reach || 260) + BODY_WIDTH;
 
-  if (intentName === 'special' && intended.projectile && distance < 560 && distance > 140) {
+  if (intentName === 'special' && intended.projectile && distance < 680 && distance > 150) {
     cpuInput.tap('special');
-    if (Math.random() < config.sticky) {
-      cpuInput.down(away);
-      match.cpuHold = [away];
-    }
     return;
   }
 
-  if (distance > requiredRange + 12) {
+  if (distance > requiredRange + 14) {
     cpuInput.down(toward);
     match.cpuHold = [toward];
     return;

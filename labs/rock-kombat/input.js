@@ -1,9 +1,11 @@
+// ==========================================================================
+// Rock Kombat — Input Buffer
+// 60Hz deterministic buffer with MvC Magic Series, Dash Macros, Super Jump
+// (Down -> Up), and zero-allocation gesture detection.
+// ==========================================================================
+
 import { INPUT_BUFFER, DASH_WINDOW } from './constants.js';
 
-/**
- * Frame-aware input buffer with dash double-tap tracking.
- * Presses are stamped with the simulation frame so buffering stays stable at 60Hz.
- */
 export class InputBuffer {
   constructor() {
     this.held = new Set();
@@ -11,6 +13,7 @@ export class InputBuffer {
     this.tapHistory = [];
     this.frameNumber = 0;
     this.lastDashFrame = -99;
+    this.lastDownFrame = -99;
   }
 
   updateFrame(frame) {
@@ -21,7 +24,8 @@ export class InputBuffer {
     if (!this.held.has(action)) {
       this.pressed.set(action, this.frameNumber);
       this.tapHistory.push({ action, frame: this.frameNumber });
-      if (this.tapHistory.length > 10) this.tapHistory.shift();
+      if (this.tapHistory.length > 14) this.tapHistory.shift();
+      if (action === 'down') this.lastDownFrame = this.frameNumber;
     }
     this.held.add(action);
   }
@@ -33,7 +37,8 @@ export class InputBuffer {
   tap(action) {
     this.pressed.set(action, this.frameNumber);
     this.tapHistory.push({ action, frame: this.frameNumber });
-    if (this.tapHistory.length > 10) this.tapHistory.shift();
+    if (this.tapHistory.length > 14) this.tapHistory.shift();
+    if (action === 'down') this.lastDownFrame = this.frameNumber;
   }
 
   has(action) {
@@ -51,31 +56,60 @@ export class InputBuffer {
   }
 
   /**
-   * True on the frame a direction was double-tapped (Street Fighter dash).
-   * Consumes the gesture so it cannot retrigger until the next pair of taps.
+   * True if player tapped Down within the last 14 frames before jumping (MvC Super Jump).
+   */
+  consumeSuperJump() {
+    if (this.frameNumber - this.lastDownFrame <= 14) {
+      this.lastDownFrame = -99;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Double-tap direction or L+M Dash Macro.
    */
   consumeDash(action, window = DASH_WINDOW) {
-    if (this.frameNumber - this.lastDashFrame < 18) return false;
-    const taps = this.tapHistory.filter(t => t.action === action);
-    if (taps.length < 2) return false;
-    const latest = taps[taps.length - 1];
-    const previous = taps[taps.length - 2];
-    const recent = this.frameNumber - latest.frame <= 1;
-    const gap = latest.frame - previous.frame;
-    if (!recent || gap < 3 || gap > window) return false;
+    if (this.frameNumber - this.lastDashFrame < 15) return false;
+
+    let count = 0;
+    let latestFrame = -1;
+    let prevFrame = -1;
+    for (let i = this.tapHistory.length - 1; i >= 0; i--) {
+      if (this.tapHistory[i].action === action) {
+        if (count === 0) latestFrame = this.tapHistory[i].frame;
+        else if (count === 1) {
+          prevFrame = this.tapHistory[i].frame;
+          break;
+        }
+        count++;
+      }
+    }
+    if (count < 2) return false;
+    const recent = this.frameNumber - latestFrame <= 2;
+    const gap = latestFrame - prevFrame;
+    if (!recent || gap < 2 || gap > window) return false;
+
     this.lastDashFrame = this.frameNumber;
-    this.tapHistory = this.tapHistory.filter(t => t.action !== action);
+    for (let i = this.tapHistory.length - 1; i >= 0; i--) {
+      if (this.tapHistory[i].action === action) this.tapHistory.splice(i, 1);
+    }
     return true;
   }
 
   clearDirections() {
-    ['left', 'right', 'down', 'jump'].forEach(key => this.held.delete(key));
+    this.held.delete('left');
+    this.held.delete('right');
+    this.held.delete('down');
+    this.held.delete('jump');
   }
 
   clear() {
     this.held.clear();
     this.pressed.clear();
     this.tapHistory.length = 0;
+    this.lastDashFrame = -99;
+    this.lastDownFrame = -99;
   }
 }
 
@@ -85,10 +119,22 @@ export function bindKeyboard(playerInput, hooks = {}) {
     KeyD: 'right', ArrowRight: 'right',
     KeyS: 'down', ArrowDown: 'down',
     KeyW: 'jump', ArrowUp: 'jump',
-    KeyJ: 'punch', KeyQ: 'punch',
-    KeyK: 'kick', KeyE: 'kick',
+    // Light / Punch
+    KeyJ: 'light', KeyQ: 'light', KeyZ: 'light',
+    // Medium / Kick
+    KeyK: 'medium', KeyE: 'medium', KeyX: 'medium',
+    // Heavy / Fierce / Launcher (Down+Heavy)
+    KeyI: 'heavy', KeyF: 'heavy', KeyC: 'heavy',
+    // Dedicated Launcher shortcut
+    KeyH: 'launcher',
+    // Throw / Grab
     KeyU: 'throw', KeyO: 'throw',
-    KeyL: 'special', KeyR: 'special', Space: 'special'
+    // Special / Hyper (Down+Special or Shift+Special)
+    KeyL: 'special', KeyR: 'special', Space: 'special',
+    // Dedicated Hyper Combo button
+    KeyP: 'hyper', Enter: 'hyper',
+    // Dedicated Dash macro
+    ShiftLeft: 'dash', ShiftRight: 'dash'
   };
 
   addEventListener('keydown', event => {

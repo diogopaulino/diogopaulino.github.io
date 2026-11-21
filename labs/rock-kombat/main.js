@@ -1,26 +1,31 @@
+// ==========================================================================
+// Rock Kombat — Main Game Loop & State Orchestrator
+// Fixed 60Hz deterministic step with MvC Hyper freezes, MK FINISH HIM
+// match-point dizzy phase, and zero-GC event pipeline.
+// ==========================================================================
+
 import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY } from './constants.js';
 import { $, $$, approach } from './utils.js';
 import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
 import audio from './audio.js';
-import { Fighter } from './fighter.js?v=6';
+import { Fighter } from './fighter.js';
 import { resolveCombat, bodyPush, updateProjectiles, updateEffects, addDust } from './combat.js';
 import { updateCpu } from './ai.js';
-import { initRenderer, render } from './renderer.js?v=6';
-import { updateHud, announce, showCombo, showScreen, renderRoster, fillVersus } from './ui.js';
+import { initRenderer, render } from './renderer.js';
+import { updateHud, announce, showCombo, showCallout, showScreen, renderRoster, fillVersus } from './ui.js';
 
 let match = null;
 let paused = false;
 let selected = null;
 let selectedCpu = null;
 let stageId = 'seattle';
-/* Safari no modo privado deixa ler mas estoura ao gravar: sem esta proteção,
-   trocar a dificuldade derrubava o jogo com QuotaExceededError. */
+
 function readStored(key, fallback) {
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 }
 
 function writeStored(key, value) {
-  try { localStorage.setItem(key, value); } catch { /* armazenamento indisponível */ }
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
 let difficulty = readStored('rk-difficulty', 'normal') || 'normal';
@@ -66,19 +71,24 @@ async function loadAssets() {
 function startRound() {
   match.timerFrames = 99 * 60;
   match.phase = 'intro';
-  match.phaseFrame = 150;
+  match.phaseFrame = 135;
   match.projectiles.length = 0;
   match.effects.length = 0;
   match.rings.length = 0;
   match.damageNumbers.length = 0;
   match.events.length = 0;
-  match.cpuThink = 28;
+  match.cpuThink = 22;
   match.cpuHold = [];
   match.koSlow = 0;
   match.koZoom = 0;
   match.superFlash = 0;
-  match.p1.x = 120;
-  match.p2.x = 1160;
+  match.hyperFinish = false;
+  match.firstHitDone = false;
+  match.finishHimShown = false;
+  match.finishTimer = 0;
+
+  match.p1.x = 320;
+  match.p2.x = 1280;
   match.p1.y = GROUND;
   match.p2.y = GROUND;
   match.p1.facing = 1;
@@ -86,18 +96,23 @@ function startRound() {
   match.p1.state = 'walk';
   match.p2.state = 'walk';
 
+  renderState.camX = 800;
+  renderState.camY = 360;
+  renderState.camZoom = 1.02;
+
   $('#round-label').textContent = `ROUND ${match.round}`;
   $('#timer').textContent = '99';
   hudSignature = updateHud(match, '');
-  announce(`ROUND ${match.round}`, 900);
+  announce(`ROUND ${match.round}`, 850);
 }
 
 function koLabel() {
   const p1Dead = match.p1.health <= 0;
   const p2Dead = match.p2.health <= 0;
   if (p1Dead && p2Dead) return 'DOUBLE K.O.!';
-  if (p1Dead && match.p2.health >= 99.5) return 'PERFECT';
-  if (p2Dead && match.p1.health >= 99.5) return 'PERFECT';
+  if (match.hyperFinish) return 'HYPER K.O.!!';
+  if (p1Dead && match.p2.health >= 99.5) return 'FLAWLESS VICTORY!';
+  if (p2Dead && match.p1.health >= 99.5) return 'FLAWLESS VICTORY!';
   if (match.timerFrames <= 0) return 'TIME OVER';
   return 'K.O.!';
 }
@@ -105,16 +120,16 @@ function koLabel() {
 function beginKo() {
   if (match.phase !== 'fight') return;
   match.phase = 'ko';
-  match.koSlow = 52;
-  match.shake = Math.max(match.shake, 10);
+  match.koSlow = match.hyperFinish ? 64 : 52;
+  match.shake = Math.max(match.shake, match.hyperFinish ? 16 : 11);
   audio.sfx('ko');
-  announce(koLabel(), 1200);
+  announce(koLabel(), 1350);
 }
 
 function endRound() {
   if (match.phase !== 'fight' && match.phase !== 'ko') return;
   match.phase = 'roundEnd';
-  match.phaseFrame = 150;
+  match.phaseFrame = 140;
 
   if (match.p1.health === match.p2.health) {
     match.roundWinner = null;
@@ -129,7 +144,7 @@ function endRound() {
     winner.state = 'victory';
     winner.move = null;
     loser.state = 'knockdown';
-    loser.knockdown = 80;
+    loser.knockdown = 90;
     if (match.timerFrames <= 0 && winner.health > 0) announce('TIME OVER', 1000);
   }
 
@@ -142,8 +157,8 @@ function finishRound() {
     return;
   }
   match.round++;
-  match.p1.reset(370, true);
-  match.p2.reset(910, true);
+  match.p1.reset(560, true);
+  match.p2.reset(1040, true);
   startRound();
 }
 
@@ -156,10 +171,12 @@ function finishMatch(winner) {
     figure.style.setProperty('--sheet', `url("${winner.data.sheet}")`);
     $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU</em>`;
     $('#result-copy').textContent = winner.data.quote;
-    $('#result-overline').textContent = winner === match.p1 ? 'PLAYER 1 WINS' : 'CPU WINS';
+    $('#result-overline').textContent = match.hyperFinish
+      ? 'STAGE HYPER FINISHER · VICTORY'
+      : winner === match.p1 ? 'PLAYER 1 WINS' : 'CPU WINS';
     stopLoop();
     showScreen('results-screen');
-  }, 700);
+  }, 650);
 }
 
 function startMatch() {
@@ -178,11 +195,18 @@ function startMatch() {
     round: 1,
     timerFrames: 99 * 60,
     phase: 'intro',
-    phaseFrame: 150,
+    phaseFrame: 135,
     hitStop: 0,
     freeze: 0,
     shake: 0,
     superFlash: 0,
+    hyperText: '',
+    hyperColor: '#ff4733',
+    hyperFighter: null,
+    hyperFinish: false,
+    firstHitDone: false,
+    finishHimShown: false,
+    finishTimer: 0,
     koSlow: 0,
     koZoom: 0,
     effects: [],
@@ -190,7 +214,7 @@ function startMatch() {
     projectiles: [],
     damageNumbers: [],
     events: [],
-    cpuThink: 28,
+    cpuThink: 24,
     cpuHold: [],
     stage: STAGES[stageId],
     stageId,
@@ -216,7 +240,7 @@ function beginVersus() {
   fillVersus(selected, selectedCpu, STAGES[stageId]);
   showScreen('versus-screen');
   clearTimeout(vsTimer);
-  vsTimer = setTimeout(startMatch, 2200);
+  vsTimer = setTimeout(startMatch, 2100);
 }
 
 function skipVersus() {
@@ -226,21 +250,23 @@ function skipVersus() {
 }
 
 function flushEvents() {
-  for (const event of match.events) {
+  for (let i = 0; i < match.events.length; i++) {
+    const event = match.events[i];
     if (event.type === 'announce') announce(event.text, event.duration);
     else if (event.type === 'combo') showCombo(event.fighter, match);
+    else if (event.type === 'callout') showCallout(event.fighter, match, event.text, event.color);
     else if (event.type === 'dust') addDust(match, event.x, event.y);
   }
   match.events.length = 0;
 }
 
 function updateIntro() {
-  match.p1.x = approach(match.p1.x, 370, 5.2);
-  match.p2.x = approach(match.p2.x, 910, 5.2);
+  match.p1.x = approach(match.p1.x, 560, 6.2);
+  match.p2.x = approach(match.p2.x, 1040, 6.2);
   match.p1.facing = 1;
   match.p2.facing = -1;
-  match.p1.state = Math.abs(match.p1.x - 370) < 2 ? 'idle' : 'walk';
-  match.p2.state = Math.abs(match.p2.x - 910) < 2 ? 'idle' : 'walk';
+  match.p1.state = Math.abs(match.p1.x - 560) < 2 ? 'idle' : 'walk';
+  match.p2.state = Math.abs(match.p2.x - 1040) < 2 ? 'idle' : 'walk';
   match.p1.stateFrame++;
   match.p2.stateFrame++;
 }
@@ -277,13 +303,14 @@ function fixedUpdate() {
   if (match.hitStop > 0) {
     match.hitStop--;
     updateEffects(match);
+    flushEvents();
     return;
   }
 
   if (match.phase === 'intro') {
     updateIntro();
-    if (--match.phaseFrame === 72) {
-      announce('FIGHT!', 850);
+    if (--match.phaseFrame === 66) {
+      announce('LET\'S ROCK!', 850);
       audio.sfx('round');
     }
     if (match.phaseFrame <= 0) {
@@ -310,6 +337,14 @@ function fixedUpdate() {
 
   if (match.phase !== 'fight') return;
 
+  // FINISH HIM timer decay: if attacker doesn't finish dizzy opponent in time, opponent collapses
+  if (match.finishTimer > 0) {
+    if (--match.finishTimer <= 0) {
+      if (match.p1.state === 'dizzy') match.p1.health = 0;
+      if (match.p2.state === 'dizzy') match.p2.health = 0;
+    }
+  }
+
   updateCpu(match, difficulty, cpuInput);
   match.p1.update(match.p2);
   match.p2.update(match.p1);
@@ -322,7 +357,7 @@ function fixedUpdate() {
   updateEffects(match);
   flushEvents();
 
-  if (--match.timerFrames % 60 === 0) {
+  if (match.finishTimer <= 0 && --match.timerFrames % 60 === 0) {
     $('#timer').textContent = String(Math.max(0, Math.ceil(match.timerFrames / 60)));
   }
 
@@ -391,6 +426,14 @@ $('#enter-button').addEventListener('click', () => {
   goSelect();
 });
 
+$('#quick-fight-button')?.addEventListener('click', () => {
+  audio.ensure();
+  audio.sfx('ui');
+  if (!selected) selected = FIGHTERS[0];
+  if (!selectedCpu) selectedCpu = FIGHTERS[1];
+  beginVersus();
+});
+
 $('#select-back').addEventListener('click', () => showScreen('hero-screen'));
 $('#fight-button').addEventListener('click', beginVersus);
 $('#versus-screen').addEventListener('click', skipVersus);
@@ -398,8 +441,6 @@ $('#rematch-button').addEventListener('click', startMatch);
 
 $('#change-button').addEventListener('click', () => {
   match = null;
-  selected = null;
-  selectedCpu = null;
   rosterApi?.reset();
   refreshFightButton();
   showScreen('select-screen');
@@ -422,11 +463,6 @@ $('#help-button').addEventListener('click', () => {
 });
 
 $('#help-close').addEventListener('click', () => $('#help-dialog').close());
-$('#help-dialog').addEventListener('close', () => {
-  if (arenaActive() && paused) {
-    // keep paused after closing help during a match
-  }
-});
 
 $('#sound-button').addEventListener('click', event => {
   const muted = !audio.muted;
@@ -436,9 +472,13 @@ $('#sound-button').addEventListener('click', event => {
 });
 $('#sound-button').textContent = audio.muted ? 'SOM OFF' : 'SOM ON';
 
-$$('#stage-options .option').forEach(button => button.addEventListener('click', () => {
+$$('#stage-options [data-stage]').forEach(button => button.addEventListener('click', () => {
   stageId = button.dataset.stage;
-  $$('#stage-options .option').forEach(item => item.classList.toggle('is-active', item === button));
+  $$('#stage-options [data-stage]').forEach(item => item.classList.toggle('is-active', item === button));
+  const backdrop = $('#select-backdrop');
+  if (backdrop && STAGES[stageId]) {
+    backdrop.style.setProperty('--stage-bg', `url("${STAGES[stageId].image}")`);
+  }
   audio.sfx('ui');
 }));
 
