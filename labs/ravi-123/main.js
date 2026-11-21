@@ -2,8 +2,6 @@
    Ravi 1·2·3 — boot, loop e entrada
    --------------------------------------------------------------------------
    Um único requestAnimationFrame com delta time real e passo lógico fixo.
-   O jogo antigo somava 1/60 por frame, então rodava ao dobro da velocidade
-   em tela de 120 Hz e derrapava sempre que um frame atrasava.
    ========================================================================== */
 
 import { initScreen, fit, toBuffer } from './screen.js';
@@ -12,8 +10,8 @@ import { hitTest } from './scenes.js';
 import { initGame, update, draw, handleNumber, currentSpots, debugApi } from './game.js';
 import { buildSprites } from './sprites.js';
 
-const STEP = 1 / 60;      // passo lógico fixo
-const MAX_FRAME = 0.25;   // teto para não explodir depois de uma aba oculta
+const STEP = 1 / 60;
+const MAX_FRAME = 0.25;
 
 let ctx = null;
 let accumulator = 0;
@@ -62,11 +60,19 @@ function onKeyDown(event) {
     handleNumber(Number(event.key));
     return;
   }
+  if (event.key === ' ' || event.key === 'Enter') {
+    event.preventDefault();
+    handleNumber(-1);
+    return;
+  }
+  if (event.key === 'r' || event.key === 'R') {
+    event.preventDefault();
+    handleNumber(-2);
+    return;
+  }
   if (event.key === 'm' || event.key === 'M') {
     event.preventDefault();
     Audio.init();
-    // O atalho e o botão precisam contar a mesma história: mudo pela tecla M sem atualizar
-    // o botão deixava o rótulo e o estado do leitor de tela mentindo sobre o som.
     syncSoundButton(document.getElementById('btn-sound'), Audio.toggleMute());
     return;
   }
@@ -84,12 +90,6 @@ function onPointerDown(event) {
   handleNumber(n === null ? -1 : n);
 }
 
-/**
- * Reflete o estado do áudio no botão.
- * `aria-pressed` descreve o botão "som", então ele vale true quando o som está LIGADO.
- * Antes o atributo recebia o valor de `muted`, ou seja, o leitor de tela anunciava
- * "pressionado" justamente quando o som estava desligado — o oposto do estado real.
- */
 function syncSoundButton(btn, muted) {
   if (!btn) return;
   btn.textContent = muted ? '♪̸' : '♪';
@@ -102,7 +102,9 @@ async function toggleFullscreen() {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
     else if (root.requestFullscreen) await root.requestFullscreen();
-  } catch (_) { /* alguns navegadores bloqueiam sem gesto direto */ }
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -112,7 +114,7 @@ async function toggleFullscreen() {
 async function boot() {
   const canvas = document.getElementById('screen');
   ctx = initScreen(canvas);
-  
+
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#fff';
@@ -144,7 +146,7 @@ async function boot() {
         Audio.suspend();
       } else {
         running = true;
-        last = 0;          // descarta o intervalo em que a aba ficou oculta
+        last = 0;
         accumulator = 0;
         Audio.resume();
         startLoop();
@@ -157,8 +159,6 @@ async function boot() {
     });
     document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
 
-    // Alguns navegadores não disparam `resize` ao entrar/sair de tela cheia; sem isto a
-    // escala do canvas ficaria congelada na medida da janela antiga.
     document.addEventListener('fullscreenchange', fit);
 
     startLoop();
