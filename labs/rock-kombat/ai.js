@@ -17,9 +17,12 @@ export function updateCpu(match, difficulty, cpuInput) {
 
   // 1. Magic Series Combo Continuation when attack connects!
   if (cpu.state === 'attack' && cpu.moveConnected && cpu.move) {
+    if (match.cpuComboMove === cpu.move) return;
+    match.cpuComboMove = cpu.move;
     const mName = cpu.move.name;
+    cpuInput.clearDirections();
     // Launcher jump-cancel into Air Rave!
-    if (mName === 'launcher' && Math.random() < config.airFollow) {
+    if (mName === 'launcher' && cpu.launchConfirmed && Math.random() < config.airFollow) {
       cpuInput.tap('jump');
       return;
     }
@@ -55,17 +58,18 @@ export function updateCpu(match, difficulty, cpuInput) {
   }
 
   // 2. Advancing Guard (Pushblock) when blocking repeated pressure
-  if (cpu.state === 'blockstun' && cpu.meter >= PUSHBLOCK_COST && Math.random() < config.guard * 0.25) {
-    cpuInput.tap('dash');
+  if (cpu.state === 'blockstun') {
+    if (cpu.stateFrame === 4 && cpu.meter >= PUSHBLOCK_COST && Math.random() < config.guard * 0.6) {
+      cpuInput.tap('dash');
+    }
     return;
   }
 
   // 3. Airborne chase during Air Rave
-  if (!cpu.grounded() && player.launched && Math.abs(player.x - cpu.x) < 165) {
-    if (!cpu.move && Math.random() < config.airFollow) {
-      cpuInput.tap('light');
-      return;
-    }
+  if (!cpu.grounded() && player.launched && Math.abs(player.x - cpu.x) < 165
+    && !cpu.move && cpu.stateFrame % 5 === 0 && Math.random() < config.airFollow) {
+    cpuInput.tap('light');
+    return;
   }
 
   if (--match.cpuThink > 0) {
@@ -118,9 +122,6 @@ export function updateCpu(match, difficulty, cpuInput) {
       cpuInput.down('down');
       match.cpuHold.push('down');
     }
-    if (projectileThreat && id !== 'axl' && cpu.meter >= EX_COST && Math.random() < 0.38) {
-      cpuInput.tap('special');
-    }
     return;
   }
 
@@ -154,10 +155,10 @@ export function updateCpu(match, difficulty, cpuInput) {
   let intentName = 'medium';
   let downIntent = false;
 
-  if (cpu.meter >= HYPER_COST && roll < 0.18 && distance < 420) {
+  if (cpu.meter >= HYPER_COST && roll < 0.14 * config.attack && distance < (id === 'axl' ? 420 : 640)) {
     cpuInput.tap('hyper');
     return;
-  } else if (cpu.meter >= EX_COST && roll < (id === 'lennon' ? 0.32 : 0.22)) {
+  } else if (cpu.meter >= EX_COST && roll < config.attack * (id === 'lennon' ? 0.44 : 0.32)) {
     intentName = 'special';
   } else if (distance > 210 && distance < 440 && cpu.grounded() && Math.random() < config.dash) {
     cpuInput.tap('dash');

@@ -4,15 +4,15 @@
 // match-point dizzy phase, and zero-GC event pipeline.
 // ==========================================================================
 
-import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY } from './constants.js';
-import { $, $$, approach } from './utils.js';
+import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG } from './constants.js';
+import { $, $$, approach, clamp } from './utils.js';
 import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
 import audio from './audio.js';
 import { Fighter } from './fighter.js';
 import { resolveCombat, bodyPush, updateProjectiles, updateEffects, addDust } from './combat.js';
 import { updateCpu } from './ai.js';
 import { initRenderer, render } from './renderer.js';
-import { updateHud, announce, showCombo, showCallout, showScreen, renderRoster, fillVersus } from './ui.js';
+import { updateHud, announce, showCombo, showCallout, showScreen, renderRoster, fillVersus, resetCallouts } from './ui.js';
 
 let match = null;
 let paused = false;
@@ -28,11 +28,15 @@ function writeStored(key, value) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-let difficulty = readStored('rk-difficulty', 'normal') || 'normal';
+let difficulty = readStored('rk-difficulty', 'normal');
+if (!Object.hasOwn(AI_CONFIG, difficulty)) difficulty = 'normal';
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const canvas = $('#game');
 const images = new Map();
-let assetsReady = false;
+const assetRequests = new Map();
+let loadingMatch = false;
 let frameNumber = 0;
-let hudSignature = '';
+let controlFrame = 0;
 let lastTime = performance.now();
 let accumulator = 0;
 let vsTimer = 0;
@@ -40,7 +44,9 @@ let rosterApi = null;
 
 const playerInput = new InputBuffer();
 const cpuInput = new InputBuffer();
-const { ctx, renderState } = initRenderer($('#game'));
+const { ctx, renderState } = initRenderer(canvas, () => {
+  if (paused && match) render(ctx, match, frameNumber, images, renderState, 1, 0);
+});
 
 function arenaActive() {
   return Boolean(match) && $('#arena-screen').classList.contains('is-active');
@@ -51,44 +57,57 @@ function helpOpen() {
 }
 
 function refreshFightButton() {
-  $('#fight-button').disabled = !(selected && selectedCpu && assetsReady);
+  $('#fight-button').disabled = !(selected && selectedCpu) || loadingMatch;
+  $('#quick-fight-button').disabled = loadingMatch;
 }
 
-async function loadAssets() {
-  const paths = [...FIGHTERS.map(f => f.sheet), ...Object.values(STAGES).map(s => s.image)];
-  await Promise.all(paths.map(path => new Promise((resolve, reject) => {
+function loadImage(path) {
+  if (!assetRequests.has(path)) {
     const image = new Image();
-    image.decoding = 'async';
-    image.onload = () => { images.set(path, image); resolve(); };
-    image.onerror = () => reject(new Error(`Falha ao carregar ${path}`));
     image.src = path;
-  })));
-  assetsReady = true;
-  $('#loading').classList.add('is-ready');
-  refreshFightButton();
+    const request = image.decode().then(() => images.set(path, image)).catch(error => {
+      assetRequests.delete(path);
+      throw error;
+    });
+    assetRequests.set(path, request);
+  }
+  return assetRequests.get(path);
+}
+
+function snapshotFighters() {
+  for (const fighter of [match.p1, match.p2]) {
+    fighter.prevX = fighter.x;
+    fighter.prevY = fighter.y;
+  }
 }
 
 function startRound() {
   match.timerFrames = 99 * 60;
   match.phase = 'intro';
-  match.phaseFrame = 135;
+  match.phaseFrame = match.round === 1 ? 92 : 75;
   match.projectiles.length = 0;
   match.effects.length = 0;
   match.rings.length = 0;
   match.damageNumbers.length = 0;
   match.events.length = 0;
   match.cpuThink = 22;
+  match.cpuComboMove = null;
   match.cpuHold = [];
+  match.hitStop = 0;
+  match.freeze = 0;
+  match.shake = 0;
+  match.roundWinner = null;
   match.koSlow = 0;
   match.koZoom = 0;
   match.superFlash = 0;
   match.hyperFinish = false;
+  match.stageFinisher = '';
   match.firstHitDone = false;
   match.finishHimShown = false;
   match.finishTimer = 0;
 
-  match.p1.x = 320;
-  match.p2.x = 1280;
+  match.p1.x = 385;
+  match.p2.x = 1215;
   match.p1.y = GROUND;
   match.p2.y = GROUND;
   match.p1.facing = 1;
@@ -96,14 +115,19 @@ function startRound() {
   match.p1.state = 'walk';
   match.p2.state = 'walk';
 
+  snapshotFighters();
+  playerInput.clear();
+  cpuInput.clear();
   renderState.camX = 800;
   renderState.camY = 360;
   renderState.camZoom = 1.02;
 
+  resetCallouts();
+  $('.round-hud').classList.remove('is-finish');
   $('#round-label').textContent = `ROUND ${match.round}`;
   $('#timer').textContent = '99';
-  hudSignature = updateHud(match, '');
-  announce(`ROUND ${match.round}`, 850);
+  updateHud(match);
+  announce(`ROUND ${match.round}`, 720);
 }
 
 function koLabel() {
@@ -111,9 +135,8 @@ function koLabel() {
   const p2Dead = match.p2.health <= 0;
   if (p1Dead && p2Dead) return 'DOUBLE K.O.!';
   if (match.hyperFinish) return 'HYPER K.O.!!';
-  if (p1Dead && match.p2.health >= 99.5) return 'FLAWLESS VICTORY!';
-  if (p2Dead && match.p1.health >= 99.5) return 'FLAWLESS VICTORY!';
-  if (match.timerFrames <= 0) return 'TIME OVER';
+  if ((p1Dead && match.p2.health === 100) || (p2Dead && match.p1.health === 100)) return 'VITÓRIA PERFEITA';
+  if (match.timerFrames <= 0) return 'TEMPO ESGOTADO';
   return 'K.O.!';
 }
 
@@ -123,19 +146,21 @@ function beginKo() {
   match.koSlow = match.hyperFinish ? 64 : 52;
   match.shake = Math.max(match.shake, match.hyperFinish ? 16 : 11);
   audio.sfx('ko');
-  announce(koLabel(), 1350);
+  announce(match.stageFinisher || koLabel(), 1150);
 }
 
 function endRound() {
   if (match.phase !== 'fight' && match.phase !== 'ko') return;
   match.phase = 'roundEnd';
-  match.phaseFrame = 140;
+  match.phaseFrame = 104;
 
   if (match.p1.health === match.p2.health) {
     match.roundWinner = null;
+    match.p1.move = null;
+    match.p2.move = null;
     match.phaseFrame = 96;
-    if (match.timerFrames <= 0) announce('TIME OVER', 1000);
-    else if (match.p1.health > 0) announce('DRAW!', 1000);
+    if (match.timerFrames <= 0) announce('TEMPO ESGOTADO', 1000);
+    else if (match.p1.health > 0) announce('EMPATE', 1000);
   } else {
     const winner = match.p1.health > match.p2.health ? match.p1 : match.p2;
     const loser = winner === match.p1 ? match.p2 : match.p1;
@@ -143,12 +168,15 @@ function endRound() {
     winner.wins++;
     winner.state = 'victory';
     winner.move = null;
+    loser.move = null;
     loser.state = 'knockdown';
+    loser.y = GROUND;
+    winner.y = GROUND;
     loser.knockdown = 90;
-    if (match.timerFrames <= 0 && winner.health > 0) announce('TIME OVER', 1000);
+    if (match.timerFrames <= 0 && winner.health > 0) announce('TEMPO ESGOTADO', 1000);
   }
 
-  hudSignature = updateHud(match, '');
+  updateHud(match);
 }
 
 function finishRound() {
@@ -166,43 +194,40 @@ function finishMatch(winner) {
   match.phase = 'complete';
   audio.stopMusic();
   audio.sfx('win');
-  setTimeout(() => {
-    const figure = $('#result-figure');
-    figure.style.setProperty('--sheet', `url("${winner.data.sheet}")`);
-    $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU</em>`;
-    $('#result-copy').textContent = winner.data.quote;
-    $('#result-overline').textContent = match.hyperFinish
-      ? 'STAGE HYPER FINISHER · VICTORY'
-      : winner === match.p1 ? 'PLAYER 1 WINS' : 'CPU WINS';
-    stopLoop();
-    showScreen('results-screen');
-  }, 650);
+  const figure = $('#result-figure');
+  figure.style.setProperty('--sheet', `url("${winner.data.sheet}")`);
+  figure.style.setProperty('--winner', winner.data.color);
+  $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU</em>`;
+  $('#result-copy').textContent = winner.data.quote;
+  $('#result-score').textContent = `${match.p1.data.short} ${match.p1.wins} × ${match.p2.wins} ${match.p2.data.short}`;
+  $('#result-overline').textContent = match.stageFinisher || (match.hyperFinish
+    ? 'HYPER K.O.'
+    : winner === match.p1 ? 'VITÓRIA' : 'VITÓRIA DA CPU');
+  stopLoop();
+  showScreen('results-screen', '#rematch-button');
 }
 
 function startMatch() {
-  if (!selected || !selectedCpu || !assetsReady) return;
+  if (!selected || !selectedCpu
+    || ![selected.sheet, selectedCpu.sheet, STAGES[stageId].image].every(path => images.has(path))) return;
   clearTimeout(vsTimer);
   playerInput.clear();
   cpuInput.clear();
 
   const p1 = new Fighter(selected, playerInput, false);
   const p2 = new Fighter(selectedCpu, cpuInput, true);
-  p1.image = images.get(selected.sheet);
-  p2.image = images.get(selectedCpu.sheet);
 
   match = {
     p1, p2,
     round: 1,
     timerFrames: 99 * 60,
     phase: 'intro',
-    phaseFrame: 135,
+    phaseFrame: 0,
     hitStop: 0,
     freeze: 0,
     shake: 0,
     superFlash: 0,
-    hyperText: '',
     hyperColor: '#ff4733',
-    hyperFighter: null,
     hyperFinish: false,
     firstHitDone: false,
     finishHimShown: false,
@@ -218,7 +243,8 @@ function startMatch() {
     cpuHold: [],
     stage: STAGES[stageId],
     stageId,
-    roundWinner: null
+    roundWinner: null,
+    reducedMotion: reducedMotion.matches
   };
 
   match.p1.setMatch(match);
@@ -227,25 +253,52 @@ function startMatch() {
   accumulator = 0;
   startLoop();
   paused = false;
-  $('#pause-layer').hidden = true;
-  showScreen('arena-screen');
+  $('#pause-layer').close();
+  showScreen('arena-screen', '#game');
   audio.startMusic(stageId);
   startRound();
 }
 
-function beginVersus() {
-  if (!selected || !selectedCpu || !assetsReady) return;
+async function beginVersus() {
+  if (!selected || !selectedCpu || loadingMatch) return;
+  loadingMatch = true;
+  refreshFightButton();
   audio.ensure();
-  audio.sfx('round');
   fillVersus(selected, selectedCpu, STAGES[stageId]);
-  showScreen('versus-screen');
-  clearTimeout(vsTimer);
-  vsTimer = setTimeout(startMatch, 2100);
+  const action = $('#versus-start');
+  const status = $('#versus-status');
+  status.textContent = '';
+  action.disabled = true;
+  action.textContent = 'CARREGANDO ARENA';
+  $('#versus-back').hidden = true;
+  showScreen('versus-screen', '#versus-title');
+
+  try {
+    await Promise.all([selected.sheet, selectedCpu.sheet, STAGES[stageId].image].map(loadImage));
+    action.disabled = false;
+    action.textContent = 'IR PARA A ARENA';
+    action.focus({ preventScroll: true });
+    audio.sfx('round');
+    vsTimer = setTimeout(startMatch, 1500);
+  } catch {
+    action.disabled = false;
+    status.textContent = 'A arena não carregou.';
+    action.textContent = 'TENTAR DE NOVO';
+    $('#versus-back').hidden = false;
+    action.focus({ preventScroll: true });
+  } finally {
+    loadingMatch = false;
+    refreshFightButton();
+  }
 }
 
 function skipVersus() {
   if (!$('#versus-screen').classList.contains('is-active')) return;
-  clearTimeout(vsTimer);
+  if (loadingMatch) return;
+  if (!$('#versus-back').hidden) {
+    beginVersus();
+    return;
+  }
   startMatch();
 }
 
@@ -269,19 +322,24 @@ function updateIntro() {
   match.p2.state = Math.abs(match.p2.x - 1040) < 2 ? 'idle' : 'walk';
   match.p1.stateFrame++;
   match.p2.stateFrame++;
+  match.p1.walkCycle += 0.26;
+  match.p2.walkCycle += 0.26;
 }
 
 function updateKoPhysics() {
   for (const fighter of [match.p1, match.p2]) {
-    fighter.x += fighter.vx;
-    fighter.vx *= 0.9;
+    fighter.stateFrame++;
+    if (fighter.health <= 0) {
+      fighter.x = clamp(fighter.x + fighter.vx, LEFT_WALL, RIGHT_WALL);
+      fighter.vx *= 0.9;
+    }
     if (!fighter.grounded() || fighter.vy) {
       fighter.y += fighter.vy;
       fighter.vy += GRAVITY;
       if (fighter.y >= GROUND) {
         fighter.y = GROUND;
         fighter.vy = 0;
-        fighter.state = 'knockdown';
+        if (fighter.health <= 0) fighter.state = 'knockdown';
       }
     }
   }
@@ -290,8 +348,7 @@ function updateKoPhysics() {
 function fixedUpdate() {
   if (!match || paused) return;
   frameNumber++;
-  playerInput.updateFrame(frameNumber);
-  cpuInput.updateFrame(frameNumber);
+  snapshotFighters();
 
   if (match.freeze > 0) {
     match.freeze--;
@@ -307,10 +364,14 @@ function fixedUpdate() {
     return;
   }
 
+  controlFrame++;
+  playerInput.updateFrame(controlFrame);
+  cpuInput.updateFrame(controlFrame);
+
   if (match.phase === 'intro') {
     updateIntro();
-    if (--match.phaseFrame === 66) {
-      announce('LET\'S ROCK!', 850);
+    if (--match.phaseFrame === 34) {
+      announce('LUTEM!', 650);
       audio.sfx('round');
     }
     if (match.phaseFrame <= 0) {
@@ -323,13 +384,15 @@ function fixedUpdate() {
   }
 
   if (match.phase === 'ko') {
-    if (match.koSlow % 3 === 0) updateKoPhysics();
+    if (match.koSlow <= 28 || match.koSlow % 2 === 0) updateKoPhysics();
     if (--match.koSlow <= 0) endRound();
     updateEffects(match);
     return;
   }
 
   if (match.phase === 'roundEnd') {
+    match.p1.stateFrame++;
+    match.p2.stateFrame++;
     if (--match.phaseFrame <= 0) finishRound();
     updateEffects(match);
     return;
@@ -350,21 +413,25 @@ function fixedUpdate() {
   match.p2.update(match.p1);
   bodyPush(match);
 
-  resolveCombat(match, match.p1, match.p2);
-  resolveCombat(match, match.p2, match.p1);
+  resolveCombat(match);
 
   updateProjectiles(match);
   updateEffects(match);
   flushEvents();
 
-  if (match.finishTimer <= 0 && --match.timerFrames % 60 === 0) {
-    $('#timer').textContent = String(Math.max(0, Math.ceil(match.timerFrames / 60)));
+  $('.round-hud').classList.toggle('is-finish', match.finishTimer > 0);
+  if (match.finishTimer > 0) {
+    const tenths = (match.finishTimer / 60).toFixed(1);
+    if ($('#timer').textContent !== tenths) $('#timer').textContent = tenths;
+  } else if (--match.timerFrames % 60 === 0 || match.finishHimShown) {
+    const seconds = String(Math.max(0, Math.ceil(match.timerFrames / 60)));
+    if ($('#timer').textContent !== seconds) $('#timer').textContent = seconds;
   }
 
   if (match.p1.health <= 0 || match.p2.health <= 0) beginKo();
   else if (match.timerFrames <= 0) endRound();
 
-  if ((frameNumber & 1) === 0) hudSignature = updateHud(match, hudSignature);
+  if ((frameNumber & 1) === 0) updateHud(match);
 }
 
 let rafId = 0;
@@ -384,15 +451,18 @@ function stopLoop() {
 function togglePause(force) {
   if (!match || match.phase === 'complete') return;
   paused = typeof force === 'boolean' ? force : !paused;
-  $('#pause-layer').hidden = !paused;
+  const dialog = $('#pause-layer');
   if (paused) {
+    if (!dialog.open && !helpOpen()) dialog.showModal();
     playerInput.clear();
     audio.stopMusic();
     stopLoop();
   } else {
+    dialog.close();
+    canvas.focus({ preventScroll: true });
     lastTime = performance.now();
-    accumulator = 0;
-    audio.startMusic(stageId);
+    accumulator = STEP;
+    audio.startMusic(match.stageId);
     if (!document.hidden) startLoop();
   }
 }
@@ -402,7 +472,7 @@ function loop(now) {
     rafId = 0;
     return;
   }
-  const delta = Math.min(50, now - lastTime);
+  const delta = clamp(now - lastTime, 0, 50);
   lastTime = now;
   accumulator += delta;
   let steps = 0;
@@ -412,12 +482,13 @@ function loop(now) {
     steps++;
   }
   if (accumulator > STEP) accumulator = 0;
-  render(ctx, match, frameNumber, images, renderState);
+  if (!rafId) return;
+  render(ctx, match, frameNumber, images, renderState, accumulator / STEP, delta);
   rafId = requestAnimationFrame(loop);
 }
 
 function goSelect() {
-  showScreen('select-screen');
+  showScreen('select-screen', '.roster-portrait');
 }
 
 $('#enter-button').addEventListener('click', () => {
@@ -429,21 +500,21 @@ $('#enter-button').addEventListener('click', () => {
 $('#quick-fight-button')?.addEventListener('click', () => {
   audio.ensure();
   audio.sfx('ui');
-  if (!selected) selected = FIGHTERS[0];
-  if (!selectedCpu) selectedCpu = FIGHTERS[1];
+  rosterApi.reset();
+  stageId = 'seattle';
+  syncOptions(stageOptions, 'stage', stageId);
   beginVersus();
 });
 
-$('#select-back').addEventListener('click', () => showScreen('hero-screen'));
+$('#select-back').addEventListener('click', () => showScreen('hero-screen', '#enter-button'));
 $('#fight-button').addEventListener('click', beginVersus);
-$('#versus-screen').addEventListener('click', skipVersus);
+$('#versus-start').addEventListener('click', skipVersus);
+$('#versus-back').addEventListener('click', goSelect);
 $('#rematch-button').addEventListener('click', startMatch);
 
 $('#change-button').addEventListener('click', () => {
   match = null;
-  rosterApi?.reset();
-  refreshFightButton();
-  showScreen('select-screen');
+  goSelect();
 });
 
 $('#pause-button').addEventListener('click', () => togglePause());
@@ -451,46 +522,69 @@ $('#resume-button').addEventListener('click', () => togglePause(false));
 
 $('#quit-button').addEventListener('click', () => {
   paused = false;
-  $('#pause-layer').hidden = true;
+  $('#pause-layer').close();
   audio.stopMusic();
   match = null;
-  showScreen('select-screen');
+  goSelect();
 });
 
 $('#help-button').addEventListener('click', () => {
-  if (arenaActive() && !paused) togglePause(true);
   $('#help-dialog').showModal();
+  if (arenaActive() && !paused) togglePause(true);
+});
+
+$('#help-dialog').addEventListener('close', () => {
+  if (arenaActive() && paused && !$('#pause-layer').open) $('#pause-layer').showModal();
+});
+$('#pause-layer').addEventListener('cancel', event => {
+  event.preventDefault();
+  togglePause(false);
 });
 
 $('#help-close').addEventListener('click', () => $('#help-dialog').close());
 
-$('#sound-button').addEventListener('click', event => {
+$('#sound-button').addEventListener('click', () => {
   const muted = !audio.muted;
   audio.setMuted(muted);
-  event.currentTarget.textContent = muted ? 'SOM OFF' : 'SOM ON';
-  if (!muted) audio.ensure();
-});
-$('#sound-button').textContent = audio.muted ? 'SOM OFF' : 'SOM ON';
-
-$$('#stage-options [data-stage]').forEach(button => button.addEventListener('click', () => {
-  stageId = button.dataset.stage;
-  $$('#stage-options [data-stage]').forEach(item => item.classList.toggle('is-active', item === button));
-  const backdrop = $('#select-backdrop');
-  if (backdrop && STAGES[stageId]) {
-    backdrop.style.setProperty('--stage-bg', `url("${STAGES[stageId].image}")`);
+  updateSoundButton();
+  if (!muted) {
+    audio.ensure();
+    if (arenaActive() && !paused && match.phase !== 'complete') audio.startMusic(match.stageId);
   }
-  audio.sfx('ui');
-}));
+});
+function updateSoundButton() {
+  const button = $('#sound-button');
+  button.textContent = audio.muted ? 'SOM OFF' : 'SOM ON';
+  button.setAttribute('aria-pressed', String(!audio.muted));
+}
+updateSoundButton();
 
-$$('#difficulty-options button').forEach(button => {
-  button.classList.toggle('is-active', button.dataset.difficulty === difficulty);
+function syncOptions(selector, dataKey, value) {
+  for (const button of $$(selector)) {
+    const active = button.dataset[dataKey] === value;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
+}
+
+const stageOptions = '#stage-options button';
+for (const button of $$(stageOptions)) {
+  button.addEventListener('click', () => {
+    stageId = button.dataset.stage;
+    syncOptions(stageOptions, 'stage', stageId);
+    audio.sfx('ui');
+  });
+}
+const difficultyOptions = '#difficulty-options button';
+syncOptions(difficultyOptions, 'difficulty', difficulty);
+for (const button of $$(difficultyOptions)) {
   button.addEventListener('click', () => {
     difficulty = button.dataset.difficulty;
     writeStored('rk-difficulty', difficulty);
-    $$('#difficulty-options button').forEach(item => item.classList.toggle('is-active', item === button));
+    syncOptions(difficultyOptions, 'difficulty', difficulty);
     audio.sfx('ui');
   });
-});
+}
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
@@ -506,17 +600,13 @@ rosterApi = renderRoster(FIGHTERS, (p1, cpu) => {
   selected = p1;
   selectedCpu = cpu;
   refreshFightButton();
-  if (p1) audio.sfx('ui');
+  if ($('#select-screen').classList.contains('is-active')) audio.sfx('ui');
 });
 
 bindKeyboard(playerInput, {
-  shouldIgnore: () => helpOpen(),
+  shouldIgnore: () => helpOpen() || $('#pause-layer').open,
   isArena: () => arenaActive() && !paused,
   onEscape() {
-    if (helpOpen()) {
-      $('#help-dialog').close();
-      return;
-    }
     if ($('#versus-screen').classList.contains('is-active')) {
       skipVersus();
       return;
@@ -529,6 +619,8 @@ bindKeyboard(playerInput, {
     const versus = $('#versus-screen').classList.contains('is-active');
     const results = $('#results-screen').classList.contains('is-active');
 
+    const isActivation = event.code === 'Enter' || event.code === 'Space';
+    if (isActivation && event.target instanceof Element && event.target.closest('button, a, input, select')) return false;
     if (hero && (event.code === 'Enter' || event.code === 'Space')) {
       $('#enter-button').click();
       return true;
@@ -537,7 +629,6 @@ bindKeyboard(playerInput, {
       skipVersus();
       return true;
     }
-    if (event.target instanceof Element && event.target.closest('button, a, input, select')) return false;
     if (results && event.code === 'Enter') {
       $('#rematch-button').click();
       return true;
@@ -557,12 +648,16 @@ bindKeyboard(playerInput, {
 });
 
 addEventListener('keydown', () => audio.ensure(), { once: true });
-bindTouch(playerInput);
-
-loadAssets().catch(error => {
-  $('#loading span').textContent = error.message;
-  console.error(error);
+bindTouch(playerInput, () => arenaActive() && !paused);
+addEventListener('blur', () => playerInput.clear());
+reducedMotion.addEventListener('change', () => {
+  if (match) match.reducedMotion = reducedMotion.matches;
 });
+
+// Warm only the default matchup; other stages are decoded on demand.
+for (const path of [FIGHTERS[0].sheet, FIGHTERS[1].sheet, STAGES.seattle.image]) {
+  loadImage(path).catch(() => {});
+}
 
 if (new URLSearchParams(location.search).has('debug')) {
   window.__lab = { get match() { return match; }, step: fixedUpdate };
