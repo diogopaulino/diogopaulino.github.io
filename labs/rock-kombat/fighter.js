@@ -11,19 +11,19 @@ import {
   GROUND, LEFT_WALL, RIGHT_WALL,
   EX_COST, HYPER_COST, PUSHBLOCK_COST, MAX_METER,
   PARRY_WINDOW, PARRY_COOLDOWN,
-  MOVES, METER_GAIN, FRAME, BODY_WIDTH, THROW_RANGE,
+  MOVES, NORMAL_VARIANTS, METER_GAIN, FRAME, BODY_WIDTH, THROW_RANGE,
   GRAVITY, JUGGLE_GRAVITY, BACK_WALK, LAND_LAG, INPUT_BUFFER
 } from './constants.js';
-import { clamp } from './utils.js';
+import { approach, clamp } from './utils.js';
 import audio from './audio.js';
 import { spawnProjectile, triggerPushblock } from './combat.js';
 
 export function moveFor(fighter, name) {
   if (name !== 'special' && name !== 'hyper') {
-    return { name, ...MOVES[name] };
+    return { name, ...MOVES[name], ...NORMAL_VARIANTS[fighter.data.id]?.[name] };
   }
 
-  const isHyper = name === 'hyper' || (name === 'special' && fighter.input.has('down') && fighter.meter >= HYPER_COST);
+  const isHyper = name === 'hyper';
   const id = fighter.data.id;
 
   if (isHyper) {
@@ -63,13 +63,15 @@ export function moveFor(fighter, name) {
         startup: 9,
         active: 34,
         recovery: 24,
-        damage: 18,
+        damage: 7,
+        multiHit: 6,
+        hitInterval: 5,
         hitstun: 38,
         blockstun: 22,
         reach: 0,
         top: 290,
-        bottom: 40,
-        push: 55,
+        bottom: 75,
+        push: 20,
         hitstop: 7,
         meter: 0,
         sprite: 8,
@@ -87,7 +89,7 @@ export function moveFor(fighter, name) {
       startup: 9,
       active: 30,
       recovery: 22,
-      damage: 14,
+      damage: 8,
       hitstun: 34,
       blockstun: 20,
       reach: 0,
@@ -140,7 +142,7 @@ export function moveFor(fighter, name) {
     startup: zoner ? 10 : 9,
     active: 2,
     recovery: zoner ? 20 : 18,
-    damage: zoner ? 12 : 14,
+    damage: 8,
     hitstun: 26,
     blockstun: 15,
     reach: 0,
@@ -160,6 +162,7 @@ export function moveFor(fighter, name) {
   };
 }
 
+const COMBO_STATES = new Set(['hitstun', 'knockdown', 'dizzy']);
 const LOCKED_FACE = new Set(['attack', 'hitstun', 'blockstun', 'knockdown', 'getup', 'dash', 'backdash', 'dizzy']);
 const UNTHROWABLE = new Set(['hitstun', 'knockdown', 'getup', 'victory', 'dizzy']);
 
@@ -170,7 +173,6 @@ export class Fighter {
     this.isCpu = isCpu;
     this.wins = 0;
     this.match = null;
-    this.image = null;
     this.reset(isCpu ? 1050 : 550);
   }
 
@@ -190,6 +192,9 @@ export class Fighter {
     this.vx = 0;
     this.vy = 0;
     this.jumpVx = 0;
+    this.walkVx = 0;
+    this.walkCycle = 0;
+    this.wallBounceReady = false;
     this.facing = this.isCpu ? -1 : 1;
     this.health = 100;
     this.whiteHealth = 100;
@@ -199,6 +204,7 @@ export class Fighter {
     this.move = null;
     this.moveFrame = 0;
     this.moveConnected = false;
+    this.launchConfirmed = false;
     this.moveHit = false;
     this.moveHitsLeft = 0;
     this.hitstun = 0;
@@ -244,9 +250,9 @@ export class Fighter {
       : this.input.has('left');
   }
 
-  blocking(opponent, move) {
+  blocking(opponent, move, facing = -this.directionTo(opponent)) {
     if (move.unblockable || this.state === 'dizzy') return false;
-    if (!this.awayHeld(opponent)) return false;
+    if (!this.input.has(facing > 0 ? 'right' : 'left')) return false;
     if (!this.neutral() && this.state !== 'blockstun') return false;
     if (!this.grounded()) return true; // MvC Air Block!
     if (move.level === 'low') return this.input.has('down');
@@ -254,9 +260,9 @@ export class Fighter {
     return true;
   }
 
-  parrying(opponent) {
-    if (this.parryCooldown > 0 || this.state === 'dizzy') return false;
-    const away = this.directionTo(opponent) === 1 ? 'left' : 'right';
+  parrying(opponent, facing = -this.directionTo(opponent)) {
+    if (this.parryCooldown > 0 || !this.neutral()) return false;
+    const away = facing > 0 ? 'right' : 'left';
     return this.input.fresh(away, PARRY_WINDOW);
   }
 
@@ -281,7 +287,7 @@ export class Fighter {
       if (!canCancel) return false;
     } else if (this.landLag > 0) {
       return false;
-    } else if (this.state === 'backdash') {
+    } else if (this.state === 'backdash' || (actualName === 'throw' && !this.grounded())) {
       return false;
     } else if (this.state === 'getup') {
       if (actualName !== 'special' && actualName !== 'hyper' && actualName !== 'launcher') return false;
@@ -302,9 +308,13 @@ export class Fighter {
     this.move = next;
     this.moveFrame = 0;
     this.moveConnected = false;
+    this.launchConfirmed = false;
     this.moveHit = false;
     this.moveHitsLeft = next.multiHit || 1;
     this.state = 'attack';
+    this.stateFrame = 0;
+    this.walkVx = 0;
+    if (this.dashType === 'air') this.jumpVx = this.facing * this.data.speed;
     this.dashTimer = 0;
     this.dashType = null;
 
@@ -327,9 +337,7 @@ export class Fighter {
       this.match.freeze = 26;
       this.match.shake = 12;
       this.match.superFlash = 26;
-      this.match.hyperText = next.title || `${this.data.short} HYPER`;
       this.match.hyperColor = this.data.color;
-      this.match.hyperFighter = this;
       this.match.events.push({
         type: 'announce',
         text: next.title || 'HYPER COMBO!',
@@ -340,97 +348,63 @@ export class Fighter {
     return true;
   }
 
-  /**
-   * MvC Magic Series Action Selection:
-   * - Single button auto-chain support: tapping Light or Medium repeatedly when connected
-   *   gracefully chains Light -> Medium -> Heavy -> Launcher!
-   */
   chooseAction() {
+    const { input, move } = this;
     const grounded = this.grounded();
-    const downHeld = this.input.has('down');
+    const down = input.has('down');
 
-    // Super Jump cancel on Launcher hit!
-    if (this.move && this.move.jumpCancel && this.moveConnected && this.input.has('jump')) {
-      this.input.consume('jump');
+    if (move?.jumpCancel && this.launchConfirmed && (input.has('jump') || input.fresh('jump', INPUT_BUFFER))) {
+      input.consume('jump');
       this.move = null;
       this.startJump(true);
       return true;
     }
 
-    // Dedicated Hyper or Down+Special with 2+ bars
-    if (this.input.consume('hyper')) {
-      if (this.meter >= HYPER_COST) return this.beginMove('hyper');
-      if (this.meter >= EX_COST) return this.beginMove('special');
+    // Keep commands buffered until the first legal cancel/recovery frame.
+    if (this.meter >= HYPER_COST && input.fresh('hyper', INPUT_BUFFER)) return this.tryCommand('hyper', 'hyper');
+    if (this.meter >= EX_COST && input.fresh('special', INPUT_BUFFER)) {
+      return this.tryCommand('special', down && this.meter >= HYPER_COST ? 'hyper' : 'special');
+    }
+    if (input.fresh('launcher', INPUT_BUFFER)) return this.tryCommand('launcher', grounded ? 'launcher' : 'airheavy');
+    if (input.fresh('throw', INPUT_BUFFER)) return this.tryCommand('throw', 'throw');
+
+    // Only a real chord triggers a grab. Sequential light → medium stays a combo.
+    if (!move && this.canThrow() && input.has('light') && input.has('medium')
+      && input.fresh('light', 3) && input.fresh('medium', 3)
+      && this.beginMove('throw')) {
+      input.consume('light');
+      input.consume('medium');
+      return true;
     }
 
-    if (this.input.consume('special')) {
-      if (downHeld && this.meter >= HYPER_COST) return this.beginMove('hyper');
-      if (this.meter >= EX_COST) return this.beginMove('special');
-      // Fallback to Heavy if out of meter so button never feels dead
-      return this.beginMove(grounded ? 'heavy' : 'airheavy');
+    if (input.fresh('heavy', INPUT_BUFFER)) {
+      return this.tryCommand('heavy', grounded ? (down ? 'launcher' : 'heavy') : 'airheavy');
     }
 
-    if (this.input.consume('launcher')) {
-      return this.beginMove(grounded ? 'launcher' : 'airheavy');
+    const chain = this.moveConnected ? move?.name : null;
+    if (input.fresh('medium', INPUT_BUFFER)) {
+      const next = grounded
+        ? down ? 'sweep' : chain === 'medium' ? 'heavy' : chain === 'heavy' ? 'launcher' : 'medium'
+        : chain === 'airmedium' ? 'airheavy' : 'airmedium';
+      return this.tryCommand('medium', next);
     }
 
-    if (this.input.consume('throw')) {
-      return this.canThrow() ? this.beginMove('throw') : this.beginMove(grounded ? 'heavy' : 'airheavy');
-    }
-
-    // Chord throw: Light + Medium simultaneously at close range
-    const throwChord = this.input.has('light') && this.input.has('medium')
-      && (this.input.fresh('light', 4) || this.input.fresh('medium', 4));
-    const throwTaps = this.input.fresh('light', INPUT_BUFFER) && this.input.fresh('medium', INPUT_BUFFER);
-    if (this.canThrow() && (throwChord || throwTaps) && !this.move) {
-      this.input.consume('light');
-      this.input.consume('medium');
-      return this.beginMove('throw');
-    }
-
-    if (this.input.consume('heavy')) {
-      if (!grounded) return this.beginMove('airheavy');
-      if (downHeld) return this.beginMove('launcher');
-      return this.beginMove('heavy');
-    }
-
-    if (this.input.consume('medium')) {
-      if (!grounded) {
-        if (this.move && this.move.name === 'airmedium' && this.moveConnected) {
-          return this.beginMove('airheavy');
-        }
-        return this.beginMove('airmedium');
-      }
-      if (downHeld) return this.beginMove('sweep');
-      // Auto-chain Medium -> Heavy -> Launcher if tapping Medium after Medium connects
-      if (this.move && this.moveConnected) {
-        if (this.move.name === 'medium') return this.beginMove('heavy');
-        if (this.move.name === 'heavy') return this.beginMove('launcher');
-      }
-      return this.beginMove('medium');
-    }
-
-    if (this.input.consume('light')) {
-      if (!grounded) {
-        if (this.move && this.moveConnected) {
-          if (this.move.name === 'airlight') return this.beginMove('airmedium');
-          if (this.move.name === 'airmedium') return this.beginMove('airheavy');
-        }
-        return this.beginMove('airlight');
-      }
-      // Smart auto-chain when tapping Light rapidly (Light -> Medium -> Heavy)
-      if (this.move && this.moveConnected) {
-        if (this.move.name === 'light' || this.move.name === 'crouchlight') {
-          return this.beginMove(downHeld ? 'sweep' : 'medium');
-        }
-        if (this.move.name === 'medium') {
-          return this.beginMove(downHeld ? 'launcher' : 'heavy');
-        }
-      }
-      return this.beginMove(downHeld ? 'crouchlight' : 'light');
+    if (input.fresh('light', INPUT_BUFFER)) {
+      const next = grounded
+        ? chain === 'medium' ? (down ? 'launcher' : 'heavy')
+          : chain === 'light' || chain === 'crouchlight' ? (down ? 'sweep' : 'medium')
+            : down ? 'crouchlight' : 'light'
+        : chain === 'airlight' ? 'airmedium' : chain === 'airmedium' ? 'airheavy' : 'airlight';
+      return this.tryCommand('light', next);
     }
 
     return false;
+  }
+
+  tryCommand(action, move) {
+    if (!this.beginMove(move)) return false;
+    this.input.consume(action);
+    return true;
   }
 
   startJump(superJump = false) {
@@ -442,6 +416,8 @@ export class Fighter {
     this.vy = -(superJump ? this.data.superJump : this.data.jump);
     this.jumpVx = (superJump && held === 0 ? toward * 0.72 : held) * this.data.speed * (superJump ? 1.48 : 1.24);
     this.state = 'jump';
+    this.stateFrame = 0;
+    this.walkVx = 0;
     this.airDashesLeft = 1;
     this.scaleX = 0.86;
     this.scaleY = 1.18;
@@ -464,12 +440,10 @@ export class Fighter {
 
     const toward = this.directionTo(opponent) === 1 ? 'right' : 'left';
     const away = toward === 'right' ? 'left' : 'right';
-    const dashMacro = this.input.consume('dash');
-
     if (!grounded) {
       // MvC Air Dash!
       if (this.airDashesLeft <= 0 || this.y > GROUND - 95) return false;
-      if (dashMacro || this.input.consumeDash(toward)) {
+      if (this.input.consume('dash') || this.input.consumeDash(toward)) {
         this.airDashesLeft--;
         this.state = 'dash';
         this.dashType = 'air';
@@ -482,9 +456,11 @@ export class Fighter {
       return false;
     }
 
+    const dashMacro = this.input.consume('dash');
     if ((dashMacro && this.input.has(away)) || this.input.consumeDash(away)) {
       this.state = 'backdash';
       this.dashType = 'back';
+      this.walkVx = 0;
       this.dashTimer = 13;
       this.invuln = Math.max(this.invuln, 9);
       this.stateFrame = 0;
@@ -497,6 +473,7 @@ export class Fighter {
     if (dashMacro || this.input.consumeDash(toward)) {
       this.state = 'dash';
       this.dashType = 'forward';
+      this.walkVx = 0;
       this.dashTimer = 13;
       this.stateFrame = 0;
       this.scaleX = 1.16;
@@ -533,9 +510,10 @@ export class Fighter {
     this.stateFrame++;
     if (this.invuln > 0) this.invuln--;
     if (this.landLag > 0) this.landLag--;
-    if (this.comboClock > 0) this.comboClock--;
+    if (this.comboClock > 0 && COMBO_STATES.has(opponent.state)) this.comboClock--;
     else {
       this.combo = 0;
+      this.comboClock = 0;
       this.comboDamage = 0;
       if (opponent) {
         opponent.wallBounced = false;
@@ -565,8 +543,9 @@ export class Fighter {
       this.x += this.vx;
 
       // Wall Bounce check (Marvel vs. Capcom style!)
-      if ((this.x <= LEFT_WALL + 4 || this.x >= RIGHT_WALL - 4) && Math.abs(this.vx) >= 11 && !this.wallBounced) {
+      if ((this.x <= LEFT_WALL + 4 || this.x >= RIGHT_WALL - 4) && this.wallBounceReady && Math.abs(this.vx) >= 7 && !this.wallBounced) {
         this.wallBounced = true;
+        this.wallBounceReady = false;
         this.x = clamp(this.x, LEFT_WALL, RIGHT_WALL);
         this.vx = -this.vx * 0.68;
         this.vy = -10.5;
@@ -584,7 +563,7 @@ export class Fighter {
           this.match.events.push({
             type: 'callout',
             fighter: opponent,
-            text: 'WALL BOUNCE!',
+            text: 'REBOTE NA PAREDE',
             color: '#52b7ff'
           });
         }
@@ -601,6 +580,7 @@ export class Fighter {
           this.superJumping = false;
           if (this.launched || this.hitstun > 2) {
             this.state = 'knockdown';
+            this.stateFrame = 0;
             this.knockdown = Math.max(this.knockdown, 30);
             this.launched = false;
             this.hitstun = 0;
@@ -623,14 +603,20 @@ export class Fighter {
     if (this.state === 'blockstun') {
       // MvC Advancing Guard / Pushblock! Press Dash or L+M while blocking
       const wantPushblock = this.input.consume('dash')
-        || (this.input.has('light') && this.input.has('medium'));
+        || (this.input.fresh('light', 3) && this.input.fresh('medium', 3));
       if (wantPushblock && this.meter >= PUSHBLOCK_COST && this.match) {
+        this.input.consume('light');
+        this.input.consume('medium');
         this.meter -= PUSHBLOCK_COST;
         triggerPushblock(this.match, this, opponent);
       }
 
       this.x += this.vx;
       this.vx *= 0.82;
+      if (!this.grounded()) {
+        this.y = Math.min(GROUND, this.y + this.vy);
+        this.vy = this.grounded() ? 0 : this.vy + GRAVITY;
+      }
       if (--this.blockstun <= 0) {
         this.vx = 0;
         this.state = !this.grounded() ? 'jump' : this.input.has('down') ? 'crouch' : 'idle';
@@ -676,8 +662,9 @@ export class Fighter {
       }
 
       if (this.dashTimer <= 0 && !this.move) {
-        this.state = this.grounded() ? 'idle' : 'jump';
-        if (!this.grounded()) this.jumpVx = this.facing * this.data.speed * 1.1;
+        if (this.state !== 'crouch') this.state = this.grounded() ? 'idle' : 'jump';
+        if (this.dashType === 'air') this.jumpVx = this.facing * this.data.speed * 1.1;
+        this.dashType = null;
       }
     } else if (this.move) {
       this.moveFrame++;
@@ -690,11 +677,9 @@ export class Fighter {
       }
 
       // Multi-hit resets (for Axl's Hyper or multi-hit specials)
-      if (this.move.multiHit && this.moveHitsLeft > 1 && this.moveHit) {
-        if ((this.moveFrame - this.move.startup) % (this.move.hitInterval || 5) === 0) {
-          this.moveHit = false;
-          this.moveHitsLeft--;
-        }
+      if (this.move.multiHit && this.moveHitsLeft > 0 && this.moveHit
+        && (this.moveFrame - this.move.startup) % this.move.hitInterval === 0) {
+        this.moveHit = false;
       }
 
       // Projectile / Beam spawning
@@ -715,13 +700,6 @@ export class Fighter {
         }
       }
 
-      // Kurt's Hyper Beam hits repeatedly across active frames
-      if (this.move.beam && this.moveFrame >= this.move.startup && this.moveFrame < this.move.startup + this.move.active) {
-        if ((this.moveFrame - this.move.startup) % 4 === 0) {
-          this.moveHit = false;
-        }
-      }
-
       this.chooseAction();
 
       if (this.move && this.moveFrame >= this.move.startup + this.move.active + this.move.recovery) {
@@ -734,20 +712,17 @@ export class Fighter {
       } else if (this.chooseAction()) {
         this.x = clamp(this.x, LEFT_WALL, RIGHT_WALL);
         return;
-      } else if (this.input.consume('jump') && this.grounded() && this.landLag <= 0) {
+      } else if (this.grounded() && this.landLag <= 0 && this.input.consume('jump')) {
         const isSuper = this.input.consumeSuperJump();
         this.startJump(isSuper);
       } else if (this.grounded()) {
         const direction = (this.input.has('right') ? 1 : 0) - (this.input.has('left') ? 1 : 0);
-        if (this.input.has('down')) {
-          this.state = 'crouch';
-        } else if (direction) {
-          const backward = direction !== this.facing;
-          this.x += direction * this.data.speed * (backward ? BACK_WALK : 1);
-          this.state = 'walk';
-        } else {
-          this.state = 'idle';
-        }
+        const crouching = this.input.has('down');
+        const speed = crouching ? 0 : direction * this.data.speed * (direction === this.facing ? 1 : BACK_WALK);
+        this.walkVx = crouching ? 0 : approach(this.walkVx, speed, direction ? 2.6 : 3.8);
+        this.x += this.walkVx;
+        this.walkCycle += Math.abs(this.walkVx) * 0.043;
+        this.state = crouching ? 'crouch' : Math.abs(this.walkVx) > 0.1 ? 'walk' : 'idle';
       }
     }
 
@@ -774,12 +749,10 @@ export class Fighter {
         this.scaleX = 1.12;
         this.scaleY = 0.88;
         if (this.match) this.match.events.push({ type: 'dust', x: this.x, y: GROUND });
-        if (!this.move) this.state = 'idle';
-        else {
-          // Landing cancels air attack recovery cleanly
-          this.move = null;
-          this.state = 'idle';
-        }
+        // Touching down ends aerial recovery and applies the landing delay.
+        this.move = null;
+        this.state = 'idle';
+        this.stateFrame = 0;
       }
     }
 
@@ -787,7 +760,7 @@ export class Fighter {
   }
 
   activeBox() {
-    if (!this.move || this.move.projectile || this.moveHit) return null;
+    if (!this.move || this.move.projectile || this.moveHit || this.moveHitsLeft <= 0) return null;
     if (this.moveFrame < this.move.startup || this.moveFrame >= this.move.startup + this.move.active) return null;
 
     if (this.move.beam) {
@@ -812,7 +785,9 @@ export class Fighter {
   }
 
   hurtBox() {
-    const crouching = this.state === 'crouch' || this.state === 'getup'
+    const crouching = this.state === 'crouch'
+      || (this.state === 'blockstun' && this.grounded() && this.input.has('down'))
+      || this.state === 'getup'
       || (this.move && (this.move.name === 'sweep' || this.move.level === 'low'));
     const downed = this.state === 'knockdown';
     const dashing = this.state === 'backdash';
@@ -820,7 +795,7 @@ export class Fighter {
     return {
       left: this.x - width,
       right: this.x + width,
-      top: this.y - (downed ? 75 : crouching ? 172 : 308),
+      top: this.y - (downed ? 75 : crouching ? 195 : this.data.standingHeight),
       bottom: this.y - 4
     };
   }
@@ -832,18 +807,23 @@ export class Fighter {
     if (this.state === 'blockstun') return FRAME.block;
     if (this.neutral() && this.match) {
       const opponent = this.opponent();
-      if (opponent && this.awayHeld(opponent) && this.grounded() && opponent.move) return FRAME.block;
+      if (opponent?.move && this.awayHeld(opponent) && this.grounded() && !this.input.has('down')
+        && Math.abs(this.x - opponent.x) < (opponent.move.reach || 190) + BODY_WIDTH) return FRAME.block;
     }
-    if (this.move) return this.move.sprite;
+    if (this.move) {
+      const { startup, active, sprite, recovery, level } = this.move;
+      if (this.moveFrame < startup) return level === 'low' ? FRAME.crouch : FRAME.idleB;
+      if (this.moveFrame < startup + active + Math.min(5, recovery)) return sprite;
+      return level === 'low' ? FRAME.crouch : this.grounded() ? FRAME.idleA : FRAME.forward;
+    }
     if (this.state === 'crouch') return FRAME.crouch;
     if (this.state === 'dash') return FRAME.forward;
     if (this.state === 'backdash') return FRAME.back;
     if (this.state === 'walk') {
-      const dir = (this.input.has('right') ? 1 : 0) - (this.input.has('left') ? 1 : 0);
-      if (!dir) return FRAME.forward;
-      return this.facing * dir > 0 ? FRAME.forward : FRAME.back;
+      if (Math.sin(this.walkCycle) < -0.24) return FRAME.idleB;
+      return this.facing * this.walkVx < 0 ? FRAME.back : FRAME.forward;
     }
     if (this.state === 'jump') return this.vy < 0 ? FRAME.forward : FRAME.kick;
-    return Math.floor(this.stateFrame / 15) % 2 ? FRAME.idleB : FRAME.idleA;
+    return Math.floor(this.stateFrame / 25) % 2 ? FRAME.idleB : FRAME.idleA;
   }
 }

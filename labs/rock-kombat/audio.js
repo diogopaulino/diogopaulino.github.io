@@ -22,8 +22,15 @@ function ensure() {
     if (!AudioCtx) return null;
     context = new AudioCtx();
     master = context.createGain();
-    master.gain.value = muted ? 0 : 0.62;
-    master.connect(context.destination);
+    master.gain.value = muted ? 0 : 0.68;
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -13;
+    limiter.knee.value = 14;
+    limiter.ratio.value = 4;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.13;
+    master.connect(limiter);
+    limiter.connect(context.destination);
 
     // Pre-generate 1.2s white noise buffer once to avoid per-hit GC allocations
     const length = Math.ceil(context.sampleRate * 1.2);
@@ -33,7 +40,7 @@ function ensure() {
       data[i] = Math.random() * 2 - 1;
     }
   }
-  if (context.state === 'suspended') context.resume();
+  if (context.state === 'suspended') context.resume().catch(() => {});
   return context;
 }
 
@@ -84,7 +91,7 @@ function noise(duration, volume, when = 0, highpass = 160, lowpass = 9000) {
 }
 
 function sfx(name, strength = 1) {
-  if (muted && !context) return;
+  if (muted) return;
   if (!ensure()) return;
   const s = Math.max(0.5, Math.min(1.65, strength));
 
@@ -205,7 +212,7 @@ const stageTracks = {
 
 function startMusic(stage) {
   stopMusic();
-  if (!ensure()) return;
+  if (muted || !ensure()) return;
   musicStep = 0;
   const track = stageTracks[stage] || stageTracks.seattle;
   const tick = () => {
@@ -215,6 +222,9 @@ function startMusic(stage) {
       tone(b, 0.18, 0.042, 'sawtooth', 0, 0.95);
       tone(b * 1.5, 0.14, 0.024, 'square', 0, 0.96);
 
+      if (idx === 0 || idx === 4 || (idx === 7 && musicStep % 16 >= 8)) {
+        powerChord(b * 2, 0.13, 0.026, 0.012);
+      }
       const l = track.lead[idx];
       if (l > 0 && musicStep % 16 >= 8) {
         tone(l, 0.14, 0.022, 'triangle', 0, 1.01);
@@ -242,7 +252,8 @@ function stopMusic() {
 function setMuted(value) {
   muted = value;
   try { localStorage.setItem('rk-muted', value ? '1' : '0'); } catch { /* ignore */ }
-  if (master && context) master.gain.setTargetAtTime(value ? 0 : 0.62, context.currentTime, 0.02);
+  if (value) stopMusic();
+  if (master && context) master.gain.setTargetAtTime(value ? 0 : 0.68, context.currentTime, 0.02);
 }
 
 export default { ensure, sfx, startMusic, stopMusic, setMuted, get muted() { return muted; } };

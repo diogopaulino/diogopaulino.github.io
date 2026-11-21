@@ -1,263 +1,201 @@
-// ==========================================================================
-// Rock Kombat — UI & Arcade HUD Controller
-// SF6 / Marvel vs. Capcom / Mortal Kombat 1 Dual Showcase Selection & HUD
-// ==========================================================================
-
 import { $, $$ } from './utils.js';
 import { EX_COST, HYPER_COST, MAX_METER } from './constants.js';
 
-export function updateHud(match, hudSignature) {
-  if (!match) return hudSignature;
-
-  const p1 = match.p1;
-  const p2 = match.p2;
-
-  const nextSignature = [
-    p1.data.id, p2.data.id,
-    Math.round(p1.health * 10), Math.round(p2.health * 10),
-    Math.round(p1.whiteHealth * 10), Math.round(p2.whiteHealth * 10),
-    Math.round(p1.meter), Math.round(p2.meter), p1.wins, p2.wins,
-    match.round
-  ].join('|');
-
-  if (nextSignature === hudSignature) return hudSignature;
-
-  $('#p1-name').textContent = p1.data.short;
-  $('#p2-name').textContent = p2.data.short;
-
-  $('#p1-life').style.transform = `scaleX(${Math.max(0, p1.health) / 100})`;
-  $('#p2-life').style.transform = `scaleX(${Math.max(0, p2.health) / 100})`;
-  $('#p1-chip').style.transform = `scaleX(${Math.max(0, p1.whiteHealth) / 100})`;
-  $('#p2-chip').style.transform = `scaleX(${Math.max(0, p2.whiteHealth) / 100})`;
-
-  $('#p1-life').parentElement.classList.toggle('is-danger', p1.health > 0 && p1.health <= 24);
-  $('#p2-life').parentElement.classList.toggle('is-danger', p2.health > 0 && p2.health <= 24);
-
-  const p1Pct = (p1.meter / MAX_METER) * 100;
-  const p2Pct = (p2.meter / MAX_METER) * 100;
-  $('#p1-meter').style.width = `${p1Pct}%`;
-  $('#p2-meter').style.width = `${p2Pct}%`;
-
-  const p1Lvl = Math.floor(p1.meter / 100);
-  const p2Lvl = Math.floor(p2.meter / 100);
-
-  const meterLabel = (meter, lvl) => {
-    if (lvl >= 3) return 'MAX HYPER';
-    if (meter >= HYPER_COST) return 'HYPER PRONTO';
-    if (meter >= EX_COST) return 'ESPECIAL PRONTO';
-    return `${Math.floor(meter)}%`;
+const hud = ['p1', 'p2'].map(side => {
+  const life = $(`#${side}-life`);
+  const meter = $(`#${side}-meter`);
+  return {
+    side,
+    life,
+    healthTrack: life.parentElement,
+    chip: $(`#${side}-chip`),
+    name: $(`#${side}-name`),
+    meter,
+    meterBox: meter.closest('.meter'),
+    meterLabel: $(`#${side}-meter-label`),
+    wins: [$(`#${side}-win-1`), $(`#${side}-win-2`)],
+    combo: $(`#${side}-combo`),
+    callout: $(`#${side}-callout`)
   };
+});
+const touchSpecial = $('.touch-action .special');
+const touchHyper = $('.touch-action .hyper');
+const announcement = $('#announce');
 
-  $('#p1-meter-label').textContent = meterLabel(p1.meter, p1Lvl);
-  $('#p2-meter-label').textContent = meterLabel(p2.meter, p2Lvl);
+function putText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
+}
 
-  const p1LevelEl = $('#p1-meter-level');
-  const p2LevelEl = $('#p2-meter-level');
-  if (p1LevelEl) p1LevelEl.textContent = `LV${p1Lvl}`;
-  if (p2LevelEl) p2LevelEl.textContent = `LV${p2Lvl}`;
+export function updateHud(match) {
+  for (const view of hud) {
+    const fighter = match[view.side];
+    const state = [fighter.data.id, fighter.health, Math.round(fighter.whiteHealth * 4), Math.floor(fighter.meter), fighter.wins];
+    const key = state.join('|');
+    if (view.key === key) continue;
+    view.key = key;
 
-  const p1MeterBox = $('#p1-meter').closest('.meter');
-  const p2MeterBox = $('#p2-meter').closest('.meter');
+    const [, health, trailingHealth, meter, wins] = state;
+    const specialReady = meter >= EX_COST;
+    const hyperReady = meter >= HYPER_COST;
 
-  p1MeterBox.classList.toggle('is-ready', p1.meter >= EX_COST && p1.meter < HYPER_COST);
-  p1MeterBox.classList.toggle('is-super', p1.meter >= HYPER_COST);
-  p2MeterBox.classList.toggle('is-ready', p2.meter >= EX_COST && p2.meter < HYPER_COST);
-  p2MeterBox.classList.toggle('is-super', p2.meter >= HYPER_COST);
+    putText(view.name, fighter.data.short);
+    view.name.closest('.hud-side').style.setProperty('--fighter', fighter.data.color);
+    view.life.style.transform = `scaleX(${health / 100})`;
+    view.chip.style.transform = `scaleX(${trailingHealth / 400})`;
+    view.healthTrack.classList.toggle('is-danger', health > 0 && health <= 24);
+    view.meter.style.transform = `scaleX(${meter / MAX_METER})`;
+    view.meterBox.classList.toggle('is-ready', specialReady);
+    view.meterBox.classList.toggle('is-super', hyperReady);
+    putText(view.meterLabel, hyperReady ? 'HYPER' : specialReady ? 'EX PRONTO' : 'EX');
+    view.wins[0].classList.toggle('won', wins >= 1);
+    view.wins[1].classList.toggle('won', wins >= 2);
+    if (view.side === 'p1') {
+      touchSpecial.classList.toggle('is-ready', specialReady);
+      touchHyper.classList.toggle('is-ready', hyperReady);
+    }
+  }
+}
 
-  [1, 2].forEach(n => {
-    $(`#p1-win-${n}`).classList.toggle('won', p1.wins >= n);
-    $(`#p2-win-${n}`).classList.toggle('won', p2.wins >= n);
-  });
+export function resetCallouts() {
+  for (const view of hud) {
+    view.combo.classList.remove('show');
+    view.callout.classList.remove('show');
+  }
+}
 
-  return nextSignature;
+function replay(element) {
+  if (element.classList.contains('show')) {
+    const animation = element.getAnimations()[0];
+    if (animation) {
+      animation.currentTime = 0;
+      animation.play();
+      return;
+    }
+    element.classList.remove('show');
+  }
+  element.classList.add('show');
 }
 
 export function announce(text, duration = 900) {
-  const el = $('#announce');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
-  clearTimeout(announce.timer);
-  announce.timer = setTimeout(() => el.classList.remove('show'), duration);
+  announcement.textContent = text;
+  announcement.style.setProperty('--duration', `${duration}ms`);
+  replay(announcement);
 }
 
 export function showCombo(fighter, match) {
-  const isP1 = fighter === match.p1;
-  const el = isP1 ? $('#p1-combo') : $('#p2-combo');
-  if (!el) return;
-  el.innerHTML = `
-    <strong>${fighter.combo}</strong>
-    <small>HITS · ${fighter.comboDamage} DANO</small>
-  `;
-  el.style.setProperty('--combo-color', fighter.data.color);
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
+  const { combo } = hud[fighter === match.p1 ? 0 : 1];
+  combo.firstElementChild.textContent = fighter.combo;
+  combo.lastElementChild.textContent = `${fighter.combo} GOLPES · ${fighter.comboDamage} DANO`;
+  combo.style.setProperty('--combo-color', fighter.data.color);
+  replay(combo);
 }
 
 export function showCallout(fighter, match, text, color) {
-  const isP1 = fighter === match.p1;
-  const el = isP1 ? $('#p1-callout') : $('#p2-callout');
-  if (!el) return;
-  el.textContent = text;
-  el.style.setProperty('--callout-color', color || fighter.data.color);
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
+  const { callout } = hud[fighter === match.p1 ? 0 : 1];
+  callout.textContent = text;
+  callout.style.setProperty('--callout-color', color || fighter.data.color);
+  replay(callout);
 }
 
-export function showScreen(id) {
-  $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === id));
+export function showScreen(id, focusSelector) {
+  for (const screen of $$('.screen')) screen.classList.toggle('is-active', screen.id === id);
   document.body.dataset.screen = id;
   window.scrollTo(0, 0);
+  if (focusSelector) $(focusSelector)?.focus({ preventScroll: true });
 }
 
 export function fillVersus(p1, p2, stage) {
   $('#vs-p1-name').textContent = p1.short;
   $('#vs-p2-name').textContent = p2.short;
-  const p1Title = $('#vs-p1-title');
-  const p2Title = $('#vs-p2-title');
-  if (p1Title) p1Title.textContent = p1.title || p1.era;
-  if (p2Title) p2Title.textContent = p2.title || p2.era;
   $('#vs-stage-name').textContent = stage.name;
-  $('#vs-p1-sprite').style.setProperty('--sheet', `url("${p1.sheet}")`);
-  $('#vs-p2-sprite').style.setProperty('--sheet', `url("${p2.sheet}")`);
-  $('#vs-p1-sprite').style.setProperty('--fighter', p1.color);
-  $('#vs-p2-sprite').style.setProperty('--fighter', p2.color);
+  $('#versus-screen').style.setProperty('--versus-bg', `url("${stage.image}")`);
+
+  for (const [side, fighter] of [['p1', p1], ['p2', p2]]) {
+    const sprite = $(`#vs-${side}-sprite`);
+    sprite.style.setProperty('--sheet', `url("${fighter.sheet}")`);
+    sprite.parentElement.style.setProperty('--fighter', fighter.color);
+  }
 }
 
-function updateShowcaseSide(prefix, fighter) {
-  if (!fighter) return;
-  const box = $(`#${prefix}-showcase`);
-  if (box) box.style.setProperty('--fighter', fighter.color);
-
-  const sprite = $(`#${prefix}-showcase-sprite`);
-  if (sprite) sprite.style.setProperty('--sheet', `url("${fighter.sheet}")`);
-
-  const nameEl = $(`#${prefix}-showcase-name`);
-  if (nameEl) nameEl.textContent = fighter.name;
-
-  const eraEl = $(`#${prefix}-showcase-era`);
-  if (eraEl) eraEl.textContent = fighter.archetype || fighter.era;
-
-  const styleEl = $(`#${prefix}-showcase-style`);
-  if (styleEl) styleEl.textContent = fighter.style;
-
-  const pwrEl = $(`#${prefix}-stat-pwr`);
-  if (pwrEl) pwrEl.style.setProperty('--val', `${fighter.power}%`);
-
-  const spdEl = $(`#${prefix}-stat-spd`);
-  if (spdEl) spdEl.style.setProperty('--val', `${fighter.mobility}%`);
-
-  const defEl = $(`#${prefix}-stat-def`);
-  if (defEl) defEl.style.setProperty('--val', `${fighter.defense}%`);
-
-  const movesBox = $(`#${prefix}-moveset`);
-  if (movesBox && fighter.moveset) {
-    movesBox.innerHTML = fighter.moveset.map(m => `
-      <div class="showcase-move" title="${m.desc}">
-        <kbd>${m.cmd}</kbd>
-        <b>${m.name}</b>
-      </div>
-    `).join('');
-  }
+function updateShowcaseSide(side, fighter) {
+  $(`#${side}-showcase`).style.setProperty('--fighter', fighter.color);
+  $(`#${side}-showcase-sprite`).style.setProperty('--sheet', `url("${fighter.sheet}")`);
+  $(`#${side}-showcase-name`).textContent = fighter.name;
+  $(`#${side}-showcase-era`).textContent = fighter.archetype;
+  $(`#${side}-showcase-style`).textContent = fighter.style;
+  $(`#${side}-moveset`).innerHTML = fighter.moveset.map(move => `
+    <div class="showcase-move" title="${move.desc}">
+      <kbd>${move.cmd}</kbd> <b>${move.name}</b>
+    </div>
+  `).join('');
 }
 
 export function renderRoster(fighters, onChange) {
-  $('#roster').innerHTML = fighters.map((f, index) => `
-    <button class="roster-portrait" role="listitem" data-fighter="${f.id}" style="--fighter:${f.color}" aria-label="Selecionar ${f.name}" type="button">
-      <div class="portrait-badges">
-        <i class="p-badge key">[${index + 1}]</i>
-        <i class="p-badge p1" hidden>P1</i>
-        <i class="p-badge cpu" hidden>CPU</i>
-      </div>
-      <div class="portrait-thumb">
-        <i class="portrait-sprite" style="--sheet:url('${f.sheet}')"></i>
-      </div>
-      <div class="portrait-meta">
-        <strong>${f.short}</strong>
-        <small>${f.archetype}</small>
-      </div>
+  $('#roster').innerHTML = fighters.map((fighter, index) => `
+    <button class="roster-portrait" data-fighter="${fighter.id}" style="--fighter:${fighter.color}" aria-label="${fighter.name}" type="button">
+      <span class="portrait-thumb" aria-hidden="true">
+        <i class="portrait-sprite" style="--sheet:url('${fighter.sheet}')"></i>
+      </span>
+      <span class="portrait-meta">
+        <strong>${fighter.short}</strong>
+        <span class="portrait-badges" aria-hidden="true"><i>${index + 1}</i><i class="p1" hidden>VOCÊ</i><i class="cpu" hidden>RIVAL</i></span>
+      </span>
     </button>
   `).join('');
 
-  const state = {
-    slot: 'p1',
-    p1: fighters[0],
-    cpu: fighters[1]
-  };
+  const cards = $$('.roster-portrait');
+  const slots = $$('[data-pick]');
+  const state = { slot: 'p1', p1: fighters[0], cpu: fighters[1] };
+  let previousP1;
+  let previousCpu;
 
   function sync() {
-    $$('.roster-portrait').forEach(card => {
+    for (const card of cards) {
       const id = card.dataset.fighter;
-      card.classList.toggle('is-p1', state.p1?.id === id);
-      card.classList.toggle('is-cpu', state.cpu?.id === id);
-      card.querySelector('.p-badge.p1').hidden = state.p1?.id !== id;
-      card.querySelector('.p-badge.cpu').hidden = state.cpu?.id !== id;
-    });
-
-    $$('[data-pick]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.pick === state.slot));
-
-    $('#p1-showcase')?.classList.toggle('is-picking', state.slot === 'p1');
-    $('#cpu-showcase')?.classList.toggle('is-picking', state.slot === 'cpu');
-
-    updateShowcaseSide('p1', state.p1);
-    updateShowcaseSide('cpu', state.cpu);
-
-    const vsLabel = $('#vs-matchup-label');
-    if (vsLabel && state.p1 && state.cpu) {
-      vsLabel.textContent = `${state.p1.short} × ${state.cpu.short}`;
+      card.setAttribute('aria-pressed', String(state[state.slot].id === id));
+      card.querySelector('.p1').hidden = state.p1.id !== id;
+      card.querySelector('.cpu').hidden = state.cpu.id !== id;
     }
 
-    onChange(state.p1, state.cpu, state.slot);
+    for (const button of slots) {
+      const active = button.dataset.pick === state.slot;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
+
+    $('#p1-showcase').classList.toggle('is-picking', state.slot === 'p1');
+    $('#cpu-showcase').classList.toggle('is-picking', state.slot === 'cpu');
+    if (previousP1 !== state.p1) updateShowcaseSide('p1', state.p1);
+    if (previousCpu !== state.cpu) updateShowcaseSide('cpu', state.cpu);
+    previousP1 = state.p1;
+    previousCpu = state.cpu;
+    onChange(state.p1, state.cpu);
   }
 
-  $$('.roster-portrait').forEach(card => {
-    card.addEventListener('click', () => {
-      const fighter = fighters.find(f => f.id === card.dataset.fighter);
-      if (!fighter) return;
-      if (state.slot === 'p1') {
-        state.p1 = fighter;
-        state.slot = 'cpu';
-      } else {
-        state.cpu = fighter;
-        state.slot = 'p1';
-      }
+  function selectIndex(index) {
+    if (!fighters[index]) return;
+    state[state.slot] = fighters[index];
+    sync();
+  }
+
+  cards.forEach((card, index) => card.addEventListener('click', () => selectIndex(index)));
+  for (const button of slots) {
+    button.addEventListener('click', () => {
+      state.slot = button.dataset.pick;
       sync();
     });
-  });
+  }
 
-  $$('[data-pick]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.slot = btn.dataset.pick;
-      sync();
-    });
-  });
-
-  $('#cpu-random')?.addEventListener('click', () => {
-    const others = fighters.filter(f => f.id !== state.cpu?.id);
-    state.cpu = others[Math.floor(Math.random() * others.length)] || fighters[0];
+  $('#cpu-random').addEventListener('click', () => {
+    const others = fighters.filter(fighter => fighter !== state.cpu);
+    state.cpu = others[Math.floor(Math.random() * others.length)];
+    state.slot = 'cpu';
     sync();
   });
 
-  setTimeout(sync, 0);
-
+  sync();
   return {
-    getState: () => state,
-    selectIndex(index) {
-      const fighter = fighters[index];
-      if (!fighter) return;
-      if (state.slot === 'p1') {
-        state.p1 = fighter;
-        state.slot = 'cpu';
-      } else {
-        state.cpu = fighter;
-        state.slot = 'p1';
-      }
-      sync();
-    },
+    selectIndex,
     reset() {
       state.slot = 'p1';
       state.p1 = fighters[0];

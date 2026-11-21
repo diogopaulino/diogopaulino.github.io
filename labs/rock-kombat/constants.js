@@ -21,7 +21,7 @@ export const DASH_WINDOW = 20;
 export const PARRY_WINDOW = 4;
 export const PARRY_COOLDOWN = 26;
 export const EX_COST = 100;       // 1 Bar
-export const HYPER_COST = 200;    // 2 Bars (300 = LV3 MAX HYPER)
+export const HYPER_COST = 200;    // 2 Bars
 export const PUSHBLOCK_COST = 40; // Advancing Guard
 export const MAX_METER = 300;     // 3 Hyper Bars
 export const THROW_RANGE = 104;
@@ -46,12 +46,10 @@ export const PUSH_DISTANCE = 94;
 
 // Callouts inspired by Marvel vs. Capcom & Mortal Kombat
 export const COMBO_TIERS = [
-  { min: 3,  label: 'GOOD!' },
-  { min: 5,  label: 'GREAT!' },
-  { min: 7,  label: 'AWESOME!' },
-  { min: 10, label: 'VIEWLFUL!' },
-  { min: 13, label: 'MASTERFUL!' },
-  { min: 16, label: 'UNSTOPPABLE!!' }
+  { min: 3, label: 'BOM COMBO' },
+  { min: 5, label: 'GRANDE COMBO' },
+  { min: 7, label: 'COMBO IMPARÁVEL' },
+  { min: 10, label: 'COMBO LENDÁRIO' }
 ];
 
 export const FIGHTERS = [
@@ -62,11 +60,11 @@ export const FIGHTERS = [
     title: 'SEATTLE GRUNGE LEGEND',
     era: 'SEATTLE · GRUNGE',
     archetype: 'EQUILIBRADO · ONDA SÔNICA',
-    style: 'Combos fáceis de conectar, Feedback Wave à distância e feixe laser Nirvana Overdrive de tela inteira.',
+    style: 'Equilíbrio entre pressão de perto e controle de longe com ondas sonoras.',
     special: 'Feedback Wave',
     exSpecial: 'Feedback Wave (2 Hits · Wall Bounce)',
     hyper: 'Nirvana Overdrive',
-    finisher: 'STAGE FINISHER: SMASHED FENDER AMP',
+    finisher: 'SMASHED AMP',
     sheet: 'assets/fighter-kurt-sheet-v2.webp',
     color: '#e5b95c',
     secondary: '#52b7ff',
@@ -77,12 +75,13 @@ export const FIGHTERS = [
     power: 86,
     mobility: 78,
     defense: 82,
+    standingHeight: 334,
     quote: 'Sem bis. O amplificador explodiu no último acorde.',
     moveset: [
       { cmd: 'J → K → I', name: 'Combo Grunge', desc: 'Sequência rápida que encaixa no Especial' },
-      { cmd: 'H (ou ↓+I)', name: 'Lançar pro Alto', desc: 'Joga o rival no ar — aperte W para Combo Aéreo!' },
-      { cmd: 'Espaço (LV1)', name: 'Feedback Wave', desc: 'Onda sônica que atravessa o palco' },
-      { cmd: 'P (LV2)', name: 'Nirvana Overdrive', desc: 'Laser colossal de distorção (14 Hits!)' }
+      { cmd: 'H ou ↓ + I', name: 'Lançar pro Alto', desc: 'Joga o rival no ar — aperte W para Combo Aéreo!' },
+      { cmd: 'Espaço · 1 barra', name: 'Feedback Wave', desc: 'Onda sônica de dois impactos' },
+      { cmd: 'P · 2 barras', name: 'Nirvana Overdrive', desc: 'Feixe de distorção de até seis impactos' }
     ]
   },
   {
@@ -92,11 +91,11 @@ export const FIGHTERS = [
     title: 'JUNGLE HURRICANE',
     era: 'LOS ANGELES · HARD ROCK',
     archetype: 'VELOZ · AGRESSIVO',
-    style: 'Velocidade explosiva, investida Paradise Rush que cruza o palco e furacão multi-hit devastador.',
+    style: 'Ataques rápidos e investidas para encurtar a distância e pressionar no canto.',
     special: 'Paradise Rush',
     exSpecial: 'Paradise Rush (Investida + Wall Bounce)',
     hyper: 'Jungle Hurricane',
-    finisher: 'STAGE FINISHER: PYRO ENCORE',
+    finisher: 'PYRO ENCORE',
     sheet: 'assets/fighter-axl-sheet-v2.webp',
     color: '#ff4733',
     secondary: '#ffb338',
@@ -107,12 +106,13 @@ export const FIGHTERS = [
     power: 82,
     mobility: 96,
     defense: 70,
+    standingHeight: 347,
     quote: 'Bem-vindo à selva. O palco inteiro é meu.',
     moveset: [
       { cmd: 'J → K → I', name: 'Appetite Rush', desc: 'Combo explosivo que empurra para o canto' },
-      { cmd: 'H (ou ↓+I)', name: 'Mic Stand Upper', desc: 'Anti-aéreo invulnerável que inicia Combo Aéreo' },
-      { cmd: 'Espaço (LV1)', name: 'Paradise Rush', desc: 'Investida veloz que joga o rival na parede' },
-      { cmd: 'P (LV2)', name: 'Jungle Hurricane', desc: 'Blitz em alta velocidade com explosão (16 Hits!)' }
+      { cmd: 'H ou ↓ + I', name: 'Mic Stand Upper', desc: 'Anti-aéreo invulnerável que inicia Combo Aéreo' },
+      { cmd: 'Espaço · 1 barra', name: 'Paradise Rush', desc: 'Investida veloz que joga o rival na parede' },
+      { cmd: 'P · 2 barras', name: 'Jungle Hurricane', desc: 'Investida de até seis impactos' }
     ]
   },
   {
@@ -122,11 +122,11 @@ export const FIGHTERS = [
     title: 'ABBEY ROAD ARCHITECT',
     era: 'LONDON · CLASSIC ROCK',
     archetype: 'CONTROLE · CONTRA-ATAQUE',
-    style: 'Domínio absoluto de espaço, esfera dupla Peace Pulse e barragem psicodélica Imagine Supernova.',
+    style: 'Chutes de maior alcance e orbes para controlar o espaço e punir avanços.',
     special: 'Peace Pulse',
     exSpecial: 'Peace Pulse (Esfera Dupla Harmônica)',
     hyper: 'Imagine Supernova',
-    finisher: 'STAGE FINISHER: ABBEY ROAD REVERB',
+    finisher: 'ABBEY ROAD REVERB',
     sheet: 'assets/fighter-lennon-sheet-v2.webp',
     color: '#4de6b8',
     secondary: '#c58aff',
@@ -137,12 +137,13 @@ export const FIGHTERS = [
     power: 79,
     mobility: 74,
     defense: 94,
+    standingHeight: 323,
     quote: 'Imagine um contra-ataque sem escapatória.',
     moveset: [
       { cmd: 'J → K → I', name: 'Revolver String', desc: 'Golpes de longo alcance seguros na defesa' },
-      { cmd: 'H (ou ↓+I)', name: 'Revolution Lift', desc: 'Gancho luminoso que lança para Combo Aéreo' },
-      { cmd: 'Espaço (LV1)', name: 'Peace Pulse', desc: 'Dispara esferas duplas que controlam a arena' },
-      { cmd: 'P (LV2)', name: 'Imagine Supernova', desc: 'Chuva psicodélica de orbes sônicos (15 Hits!)' }
+      { cmd: 'H ou ↓ + I', name: 'Revolution Lift', desc: 'Gancho luminoso que lança para Combo Aéreo' },
+      { cmd: 'Espaço · 1 barra', name: 'Peace Pulse', desc: 'Dispara esferas duplas que controlam a arena' },
+      { cmd: 'P · 2 barras', name: 'Imagine Supernova', desc: 'Dispara cinco orbes em alturas diferentes' }
     ]
   }
 ];
@@ -208,7 +209,7 @@ export const MOVES = {
     damage: 4, hitstun: 14, blockstun: 9,
     reach: 96, top: 145, bottom: 15,
     push: 11, hitstop: 5, meter: 11,
-    sprite: 4, level: 'low', advance: 1.2,
+    sprite: 5, level: 'low', advance: 1.2,
     cancel: ['medium', 'sweep', 'launcher', 'special', 'hyper']
   },
   sweep: {
@@ -250,7 +251,7 @@ export const MOVES = {
     damage: 11, hitstun: 26, blockstun: 14,
     reach: 142, top: 235, bottom: 20,
     push: 26, hitstop: 11, meter: 24,
-    sprite: 8, level: 'overhead',
+    sprite: 6, level: 'overhead',
     airSlam: 15, knockdown: 48,
     cancel: ['special', 'hyper']
   },
@@ -261,6 +262,21 @@ export const MOVES = {
     push: 0, hitstop: 14, meter: 24,
     sprite: 5, level: 'throw',
     knockdown: 48, unblockable: true, wallBounce: true
+  }
+};
+
+// Character adjustments preserve the command list with distinct reach and risk.
+export const NORMAL_VARIANTS = {
+  axl: {
+    light: { startup: 3, reach: 86, advance: 2.5 },
+    medium: { startup: 5, reach: 126, advance: 4.1 },
+    heavy: { startup: 8, reach: 147, advance: 5.1 }
+  },
+  lennon: {
+    light: { reach: 108 },
+    medium: { startup: 7, reach: 151, advance: 2.4 },
+    heavy: { startup: 10, reach: 175, advance: 3.7 },
+    sweep: { reach: 172, startup: 10 }
   }
 };
 
