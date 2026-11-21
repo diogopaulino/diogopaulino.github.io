@@ -1,14 +1,15 @@
 /* ==========================================================================
-   Ravi 1·2·3 — tela virtual 320×200 (modo VGA 13h)
+   Ravi 1·2·3 — tela virtual 320×200 (modo VGA 13h do DOS)
    --------------------------------------------------------------------------
-   O jogo inteiro é desenhado num buffer fixo de 320×200. O upscale acontece
-   no CSS (image-rendering: pixelated), então o navegador escala na GPU e o
-   backing store nunca muda de tamanho — nem no resize, nem em tela cheia.
+   Proporção clássica 320×200 exatamente como no Mickey's 123 de DOS:
+   - 0..166   (STAGE_H = 166): Palco principal onde os números fazem parte do cenário
+   - 166..200 (34px): Barra de narração inferior clássica
+   O upscale acontece na GPU via CSS (image-rendering: pixelated).
    ========================================================================== */
 
 export const W = 320;
 export const H = 200;
-export const STAGE_H = 166;  // palco; o resto é a barra de fala
+export const STAGE_H = 166;
 
 let canvas = null;
 let ctx = null;
@@ -30,9 +31,8 @@ export function getContext() {
 
 /**
  * Calcula a maior escala que cabe na viewport.
- * Prefere escala inteira (pixel quadrado perfeito). Só cai para fracionária
- * quando nem 2× caberia — caso contrário um celular ficaria preso em 1× e
- * desperdiçaria quase toda a tela.
+ * Prefere escala inteira (pixel quadrado perfeito) quando >= 2×, e fluida em
+ * telas menores para ocupar toda a largura disponível sem cortar nada.
  */
 export function fit() {
   const raw = Math.min(window.innerWidth / W, window.innerHeight / H);
@@ -43,10 +43,7 @@ export function fit() {
 }
 
 /**
- * Converte coordenada de ponteiro (clientX/clientY) para pixel do buffer.
- * Usa o rect real do canvas, então funciona com qualquer escala — inteira,
- * fracionária ou em fullscreen — sem precisar saber qual foi usada.
- * Devolve null se o toque caiu fora da área do jogo (letterbox).
+ * Converte coordenada de ponteiro (clientX/clientY) para pixel do buffer 320×200.
  */
 export function toBuffer(clientX, clientY) {
   if (!canvas) return null;
@@ -58,7 +55,7 @@ export function toBuffer(clientX, clientY) {
   return { x, y };
 }
 
-/** Canvas fora de tela do tamanho do buffer, para assar fundos e sprites. */
+/** Canvas fora de tela do tamanho pedido, para assar fundos e sprites. */
 export function makeSurface(w = W, h = H) {
   const c = document.createElement('canvas');
   c.width = w;

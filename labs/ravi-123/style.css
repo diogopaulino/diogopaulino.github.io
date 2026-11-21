@@ -1,15 +1,13 @@
 /* ==========================================================================
-   Ravi 1·2·3 — apresentação
+   Ravi 1·2·3 — apresentação (320×200 VGA)
    --------------------------------------------------------------------------
-   Praticamente tudo que se vê é desenhado no canvas. O CSS só faz três
-   coisas: pintar o letterbox, escalar o buffer 320×200 com nearest-neighbor
-   e posicionar os botões de HUD (som / tela cheia).
-   Sem web fonts, sem @import, sem backdrop-filter.
+   Praticamente tudo que se vê é desenhado no canvas. O CSS pinta o letterbox,
+   escala o buffer 320×200 com nearest-neighbor e posiciona os botões de HUD.
    ========================================================================== */
 
 :root {
-  --sw: 320px;   /* largura escalada, calculada por screen.js */
-  --sh: 200px;   /* altura escalada */
+  --sw: 320px;
+  --sh: 200px;
   --hud: #f8e8a0;
   --hud-face: #1a2458;
   --hud-edge: #f0c040;
@@ -27,9 +25,9 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
-  /* Letterbox com vinheta suave — casa com a paleta navy/noite do jogo */
+  overflow-x: clip;
   background:
     radial-gradient(ellipse 80% 70% at 50% 45%, #142048 0%, #050814 70%, #000 100%);
   color: var(--hud);
@@ -40,7 +38,6 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* shared.css usa flex + padding; o jogo precisa de letterbox fullscreen preto */
 body {
   position: relative;
   padding: 0 !important;
@@ -49,7 +46,6 @@ body {
   align-items: stretch !important;
 }
 
-/* Shell compartilhado: faixa fina sobre o jogo, sem roubar cliques do canvas */
 header[data-lab-header] {
   position: absolute;
   top: 0;
@@ -94,8 +90,9 @@ header[data-lab-header] .subtitle {
 #frame {
   width: var(--sw);
   height: var(--sh);
+  max-width: 100%;
+  max-height: 100%;
   line-height: 0;
-  /* Moldura fina dourada ao redor do CRT */
   box-shadow:
     0 0 0 2px #0a1028,
     0 0 0 4px #c89830,
@@ -104,8 +101,6 @@ header[data-lab-header] .subtitle {
   border-radius: 2px;
 }
 
-/* O canvas mantém o backing store em 320×200; quem amplia é o navegador,
-   na GPU, com vizinho mais próximo. */
 #screen {
   display: block;
   width: 100%;
@@ -113,6 +108,7 @@ header[data-lab-header] .subtitle {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #000;
+  cursor: pointer;
 }
 
 #hud {
@@ -123,9 +119,6 @@ header[data-lab-header] .subtitle {
   z-index: 30;
   display: flex;
   gap: 8px;
-  /* abaixo do header compartilhado (voltar + tema). Em px porque o rem daqui
-     acompanha a fonte do jogo: em 3.1rem os botões subiam para cima do
-     seletor de tema. */
   padding: calc(60px + env(safe-area-inset-top, 0px)) 12px 10px;
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
@@ -174,12 +167,10 @@ header[data-lab-header] .subtitle {
 }
 
 .hud-btn[aria-pressed="true"] {
-  /* som ligado: nota dourada */
   color: #ffe080;
 }
 
 .hud-btn[aria-pressed="false"] {
-  /* som mudo */
   color: #7a8498;
   border-color: #4a5578;
   filter: saturate(0.7);
@@ -198,10 +189,17 @@ header[data-lab-header] .subtitle {
   text-shadow: 0 1px 2px #000;
 }
 
-/* Em celular de pé o palco 320×200 vira uma faixa estreita: vale avisar. */
 @media (max-width: 700px) and (orientation: portrait) {
   #rotate-hint {
     display: block;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  #hud {
+    top: auto;
+    bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 4px calc(8px + env(safe-area-inset-right, 0px));
   }
 }
 
@@ -211,8 +209,6 @@ header[data-lab-header] .subtitle {
   }
 }
 
-/* Região só para leitor de tela: o texto da barra de diálogo é espelhado aqui, já que o
-   jogo inteiro é pintado num canvas e nada dele chega à árvore de acessibilidade. */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -224,10 +220,7 @@ header[data-lab-header] .subtitle {
   white-space: nowrap;
   border: 0;
 }
-/* --- lab-responsive-pass --- */
-#hud { z-index: 30; }
 
-/* agent-responsive-768 */
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
   .hud, .overlay, .menu-overlay, .overlay-card {

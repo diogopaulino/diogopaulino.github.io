@@ -1,9 +1,10 @@
 /* ==========================================================================
-   Ravi 1·2·3 — elenco em pixel art (sem folhas JPEG)
+   Ravi 1·2·3 — Elenco Ilustrado com Volume e Luz (28×46)
    --------------------------------------------------------------------------
-   JPEG + chroma-key comia poses (o Ravi “dormia” andando) e deixava borda
-   suja. Aqui cada personagem é pintado na paleta VGA, com silhueta própria
-   para uma criança de 3–4 anos reconhecer de longe.
+   - Ravi: menino com cabelinho cacheado volumoso (cachinhos redondos com
+     sombra e brilho), olhos grandes expressivos, camiseta verde com gola,
+     bermuda vermelha e tênis amarelo com cadarço e sola branca.
+   - 9 Heróis do Reino com silhuetas ricas, sombreado 3-tons e rostos vivos.
    ========================================================================== */
 
 import { K } from './assets.js';
@@ -20,145 +21,220 @@ function box(pen, x, y, w, h, fill) {
 
 function eye(pen, x, y, blink) {
   if (blink) {
-    pen.col(K.BLACK).hline(x - 1, y, 3);
+    pen.col(K.BLACK).hline(x - 1, y + 1, 3);
+    pen.col(K.SKIN_D).hline(x - 1, y, 3);
     return;
   }
-  pen.col(K.WHITE).rect(x - 1, y - 1, 3, 3);
-  pen.col(K.BLACK).px(x, y);
+  pen.col(K.WHITE).rect(x - 1, y - 1, 3, 4);
+  pen.col(K.BLACK).rect(x, y, 2, 3);
+  pen.col(K.WHITE).px(x, y);
 }
 
 function smile(pen, x, y, big) {
-  pen.col(K.RED);
   if (big) {
-    pen.px(x - 2, y).px(x - 1, y + 1).px(x, y + 1).px(x + 1, y + 1).px(x + 2, y);
-    pen.col(K.WHITE).px(x - 1, y).px(x + 1, y);
+    pen.col(K.BLACK).rect(x - 2, y, 5, 3);
+    pen.col(K.RED_D).rect(x - 1, y, 3, 2);
+    pen.col(K.RED).hline(x - 1, y + 1, 3);
+    pen.col(K.WHITE).hline(x - 1, y, 3);
   } else {
-    pen.px(x - 1, y).px(x, y + 1).px(x + 1, y);
+    pen.col(K.BLACK).px(x - 2, y).hline(x - 1, y + 1, 3).px(x + 2, y);
+    pen.col(K.RED).hline(x - 1, y, 3);
   }
 }
 
-function blush(pen, x, y) {
-  pen.col(K.PINK).px(x - 5, y).px(x + 5, y);
+/**
+ * Desenha a coroa de cachinhos do Ravi ao redor da cabeça centrada em (cx, hy).
+ * Cada cachinho é uma bolinha com contorno, miolo castanho e ponto de brilho.
+ */
+function paintCurlyHairBack(pen, cx, hy) {
+  const backCurls = [
+    [cx - 8, hy + 1, 3],
+    [cx + 8, hy + 1, 3],
+    [cx - 8, hy - 3, 3],
+    [cx + 8, hy - 3, 3],
+    [cx - 6, hy - 6, 4],
+    [cx + 6, hy - 6, 4],
+    [cx - 3, hy - 8, 4],
+    [cx + 3, hy - 8, 4],
+    [cx, hy - 9, 4]
+  ];
+  for (const [qx, qy, r] of backCurls) {
+    pen.col(K.BLACK).ellipse(qx, qy, r + 1, r + 1);
+  }
+  for (const [qx, qy, r] of backCurls) {
+    pen.col(K.WOOD_XD).ellipse(qx, qy, r, r);
+    pen.col(K.WOOD_D).ellipse(qx, qy - 1, Math.max(1, r - 1), Math.max(1, r - 1));
+  }
+}
+
+function paintCurlyHairFront(pen, cx, hy) {
+  // Cachinhos frontais e do topo com anéis de luz (efeito de cacho definido)
+  const topCurls = [
+    [cx - 6, hy - 5, 3],
+    [cx - 3, hy - 7, 3],
+    [cx + 1, hy - 7, 3],
+    [cx + 5, hy - 6, 3],
+    [cx - 8, hy - 1, 2],
+    [cx + 8, hy - 1, 2]
+  ];
+  for (const [qx, qy, r] of topCurls) {
+    pen.col(K.WOOD_D).ellipse(qx, qy, r, r);
+    pen.col(K.FLOOR_D).ellipse(qx - 1, qy - 1, Math.max(1, r - 1), Math.max(1, r - 1));
+    pen.col(K.FLOOR).px(qx - 1, qy - 1).px(qx, qy - 2);
+  }
+  // Cachinhos soltos na testa (franja cacheada)
+  for (const fx of [cx - 5, cx - 2, cx + 2, cx + 5]) {
+    pen.col(K.WOOD_XD).ellipse(fx, hy - 2, 2, 2);
+    pen.col(K.WOOD_D).ellipse(fx, hy - 3, 2, 1);
+    pen.col(K.FLOOR).px(fx - 1, hy - 3);
+  }
 }
 
 /* --------------------------------------------------------------------------
-   Ravi — menino de cabelo bagunçado, camisa verde, calça vermelha, tênis amarelo
-   poses: idle, blink, walk0, walk1, wave, cheer, sleep, sit
+   Ravi — menino de cabelinho cacheado (28×46 em pé, 46×26 deitado)
    -------------------------------------------------------------------------- */
 
 export function paintRavi(pen, pose = 'idle') {
-  const blink = pose === 'blink';
-  const walk = pose === 'walk0' || pose === 'walk1';
-  const step = pose === 'walk1' ? 1 : 0;
-
   if (pose === 'sleep') {
     paintRaviSleep(pen);
     return;
   }
 
-  const jump = pose === 'cheer' ? -3 : 0;
-  const hy = 10 + jump;
+  const blink = pose === 'blink';
+  const walk = pose === 'walk0' || pose === 'walk1';
+  const step = pose === 'walk1' ? 1 : 0;
+  const cheer = pose === 'cheer';
+  const wave = pose === 'wave';
 
-  // Sombra
-  pen.col(K.BLACK).ellipse(12, 40, pose === 'cheer' ? 5 : 7, 2);
+  const jump = cheer ? -2 : 0;
+  const cx = 14;
+  const hy = 12 + jump;
 
-  // Cabelo (volume bagunçado)
-  blob(pen, 12, hy - 1, 8, 7, K.WOOD_D);
-  pen.col(K.OCHRE).ellipse(11, hy - 2, 5, 4);
-  pen.col(K.FLOOR).px(6, hy - 4).px(16, hy - 5).px(12, hy - 7);
+  // Sombra elíptica no chão
+  pen.col(K.BLACK).ellipse(cx, 43, 8, 2);
 
-  // Cabeça
-  blob(pen, 12, hy + 3, 7, 6, K.SKIN);
-  eye(pen, 9, hy + 2, blink);
-  eye(pen, 15, hy + 2, blink);
-  blush(pen, 12, hy + 4);
-  smile(pen, 12, hy + 6, pose === 'cheer' || pose === 'wave');
+  // Camada traseira dos cachos
+  paintCurlyHairBack(pen, cx, hy);
 
   // Orelhas
-  pen.col(K.SKIN).px(4, hy + 3).px(20, hy + 3);
+  blob(pen, cx - 8, hy + 4, 2, 2, K.SKIN_D);
+  blob(pen, cx + 8, hy + 4, 2, 2, K.SKIN);
 
-  if (pose === 'sit') {
-    box(pen, 7, hy + 10, 10, 8, K.GRN);
-    pen.col(K.GRN_L).hline(8, hy + 11, 8);
-    box(pen, 6, hy + 17, 12, 6, K.RED);
-    blob(pen, 6, hy + 14, 2, 2, K.SKIN);
-    blob(pen, 18, hy + 14, 2, 2, K.SKIN);
-    box(pen, 6, hy + 22, 5, 3, K.YEL);
-    box(pen, 13, hy + 22, 5, 3, K.YEL);
-    return;
-  }
+  // Rosto arredondado com sombreamento natural
+  blob(pen, cx, hy + 3, 7, 6, K.SKIN);
+  pen.col(K.SKIN_D).hline(cx - 4, hy + 8, 8).vline(cx - 6, hy + 3, 4);
+  pen.col(K.CREAM).hline(cx - 2, hy - 1, 4);
 
-  // Tronco
-  const by = hy + 10;
-  box(pen, 7, by, 10, 9, K.GRN);
-  pen.col(K.GRN_L).hline(8, by + 1, 8);
-  pen.col(K.GRN_D).rect(11, by + 3, 2, 5);
+  // Cachos frontais e volume no topo
+  paintCurlyHairFront(pen, cx, hy);
 
-  // Braços
-  if (pose === 'cheer') {
-    box(pen, 2, by - 8, 4, 8, K.GRN);
-    box(pen, 18, by - 8, 4, 8, K.GRN);
-    blob(pen, 3, by - 10, 2, 2, K.SKIN);
-    blob(pen, 21, by - 10, 2, 2, K.SKIN);
-  } else if (pose === 'wave') {
-    box(pen, 3, by + 1, 4, 7, K.GRN);
-    blob(pen, 4, by + 9, 2, 2, K.SKIN);
-    box(pen, 17, by - 7, 4, 8, K.GRN);
-    blob(pen, 19, by - 9, 2, 2, K.SKIN);
+  // Sobrancelhas, olhos com brilho, bochechas coradas e sorriso
+  pen.col(K.WOOD_XD).hline(cx - 5, hy, 3).hline(cx + 3, hy, 3);
+  eye(pen, cx - 3, hy + 2, blink);
+  eye(pen, cx + 3, hy + 2, blink);
+  pen.col(K.PINK_L).rect(cx - 6, hy + 5, 2, 1).rect(cx + 5, hy + 5, 2, 1);
+  smile(pen, cx, hy + 6, cheer || wave);
+
+  // Pescoço
+  pen.col(K.SKIN_D).rect(cx - 2, hy + 9, 4, 2);
+
+  // Camiseta verde com sombreamento, gola amarela e estrela no peito
+  const by = hy + 11;
+  box(pen, cx - 6, by, 12, 10, K.GRN);
+  pen.col(K.GRN_L).hline(cx - 5, by + 1, 10).vline(cx - 5, by + 1, 8);
+  pen.col(K.GRN_D).vline(cx + 5, by + 1, 9).hline(cx - 5, by + 9, 10);
+  pen.col(K.YEL).hline(cx - 3, by, 6);
+  pen.col(K.YEL_L).px(cx, by + 3).hline(cx - 1, by + 4, 3).px(cx, by + 5);
+
+  // Braços e mãozinhas
+  if (cheer) {
+    box(pen, cx - 10, by - 7, 4, 9, K.GRN);
+    box(pen, cx + 6, by - 7, 4, 9, K.GRN);
+    pen.col(K.GRN_L).vline(cx - 9, by - 6, 7).vline(cx + 7, by - 6, 7);
+    blob(pen, cx - 8, by - 9, 2, 2, K.SKIN);
+    blob(pen, cx + 8, by - 9, 2, 2, K.SKIN);
+  } else if (wave) {
+    box(pen, cx - 10, by + 1, 4, 8, K.GRN);
+    blob(pen, cx - 8, by + 10, 2, 2, K.SKIN);
+    box(pen, cx + 6, by - 6, 4, 8, K.GRN);
+    pen.col(K.GRN_L).vline(cx + 7, by - 5, 6);
+    blob(pen, cx + 8, by - 8, 2, 2, K.SKIN);
   } else if (walk) {
-    const swing = step ? 2 : -2;
-    box(pen, 4, by + 1 + swing, 4, 7, K.GRN);
-    box(pen, 16, by + 1 - swing, 4, 7, K.GRN);
-    blob(pen, 5, by + 9 + swing, 2, 2, K.SKIN);
-    blob(pen, 19, by + 9 - swing, 2, 2, K.SKIN);
+    const sw = step ? 2 : -2;
+    box(pen, cx - 10, by + 1 + sw, 4, 8, K.GRN);
+    box(pen, cx + 6, by + 1 - sw, 4, 8, K.GRN);
+    blob(pen, cx - 8, by + 10 + sw, 2, 2, K.SKIN);
+    blob(pen, cx + 8, by + 10 - sw, 2, 2, K.SKIN);
   } else {
-    box(pen, 3, by + 1, 4, 7, K.GRN);
-    box(pen, 17, by + 1, 4, 7, K.GRN);
-    blob(pen, 4, by + 9, 2, 2, K.SKIN);
-    blob(pen, 20, by + 9, 2, 2, K.SKIN);
+    box(pen, cx - 10, by + 1, 4, 8, K.GRN);
+    box(pen, cx + 6, by + 1, 4, 8, K.GRN);
+    pen.col(K.GRN_L).vline(cx - 9, by + 2, 6);
+    blob(pen, cx - 8, by + 10, 2, 2, K.SKIN);
+    blob(pen, cx + 8, by + 10, 2, 2, K.SKIN);
   }
 
-  // Calça + pernas
-  const ly = by + 9;
-  box(pen, 7, ly, 10, 4, K.RED);
+  // Bermuda vermelha + pernas + tênis amarelos com sola branca
+  const ly = by + 10;
+  box(pen, cx - 6, ly, 12, 4, K.RED);
+  pen.col(K.WOOD_D).hline(cx - 6, ly, 12);
+  pen.col(K.YEL).rect(cx - 1, ly, 2, 2);
+
   if (walk) {
     const a = step ? 2 : 0;
     const b = step ? 0 : 2;
-    box(pen, 7, ly + 4, 4, 6 + a, K.RED);
-    box(pen, 13, ly + 4, 4, 6 + b, K.RED);
-    box(pen, 7, ly + 10 + a, 5, 3, K.YEL);
-    box(pen, 12, ly + 10 + b, 5, 3, K.YEL);
-  } else if (pose === 'cheer') {
-    box(pen, 5, ly + 4, 5, 6, K.RED);
-    box(pen, 14, ly + 4, 5, 6, K.RED);
-    box(pen, 4, ly + 10, 6, 3, K.YEL);
-    box(pen, 14, ly + 10, 6, 3, K.YEL);
+    box(pen, cx - 5, ly + 4, 4, 6 + a, K.RED);
+    box(pen, cx + 1, ly + 4, 4, 6 + b, K.RED);
+    pen.col(K.WHITE).hline(cx - 5, ly + 9 + a, 4).hline(cx + 1, ly + 9 + b, 4);
+    box(pen, cx - 6, ly + 10 + a, 5, 3, K.YEL);
+    box(pen, cx + 1, ly + 10 + b, 5, 3, K.YEL);
+    pen.col(K.WHITE).hline(cx - 6, ly + 12 + a, 5).hline(cx + 1, ly + 12 + b, 5);
   } else {
-    box(pen, 7, ly + 4, 4, 6, K.RED);
-    box(pen, 13, ly + 4, 4, 6, K.RED);
-    box(pen, 6, ly + 10, 5, 3, K.YEL);
-    box(pen, 13, ly + 10, 5, 3, K.YEL);
+    box(pen, cx - 5, ly + 4, 4, 6, K.RED);
+    box(pen, cx + 1, ly + 4, 4, 6, K.RED);
+    pen.col(K.RED_L).vline(cx - 5, ly + 4, 5).vline(cx + 1, ly + 4, 5);
+    pen.col(K.WHITE).hline(cx - 5, ly + 9, 4).hline(cx + 1, ly + 9, 4);
+    box(pen, cx - 6, ly + 10, 5, 3, K.YEL);
+    box(pen, cx + 1, ly + 10, 5, 3, K.YEL);
+    pen.col(K.YEL_L).hline(cx - 5, ly + 10, 4).hline(cx + 2, ly + 10, 4);
+    pen.col(K.WHITE).hline(cx - 6, ly + 12, 5).hline(cx + 1, ly + 12, 5);
   }
 }
 
 function paintRaviSleep(pen) {
-  pen.col(K.BLACK).ellipse(18, 20, 10, 3);
+  // 46×26 Ravi dormindo com cabelinho cacheado no travesseiro
+  pen.col(K.BLACK).ellipse(23, 23, 18, 3);
+  blob(pen, 10, 17, 7, 4, K.CREAM);
+  pen.col(K.WHITE).ellipse(9, 16, 5, 2);
+
+  // Cachos de trás no travesseiro
+  for (const [qx, qy, r] of [[7, 10, 3], [10, 7, 4], [14, 7, 4], [17, 9, 3], [7, 13, 3]]) {
+    pen.col(K.BLACK).ellipse(qx, qy, r + 1, r + 1);
+    pen.col(K.WOOD_XD).ellipse(qx, qy, r, r);
+    pen.col(K.WOOD_D).ellipse(qx, qy - 1, r - 1, r - 1);
+    pen.col(K.FLOOR).px(qx - 1, qy - 1);
+  }
+
   // Corpo deitado
-  box(pen, 14, 10, 16, 8, K.GRN);
-  box(pen, 26, 12, 10, 6, K.RED);
-  box(pen, 34, 14, 5, 4, K.YEL);
-  // Cabeça
-  blob(pen, 10, 12, 8, 7, K.WOOD_D);
-  blob(pen, 12, 13, 6, 6, K.SKIN);
-  pen.col(K.OCHRE).ellipse(9, 10, 4, 3);
-  // Olhos fechados + sorriso
-  pen.col(K.BLACK).hline(11, 13, 3).hline(16, 13, 3);
-  pen.col(K.PINK).px(10, 15).px(18, 15);
-  pen.col(K.RED).px(13, 16).px(14, 17).px(15, 16);
+  box(pen, 17, 12, 16, 9, K.GRN);
+  pen.col(K.GRN_L).hline(18, 13, 14);
+  box(pen, 30, 14, 9, 7, K.RED);
+  box(pen, 38, 15, 5, 5, K.YEL);
+  pen.col(K.WHITE).vline(42, 15, 5);
+
+  // Rosto sereno
+  blob(pen, 14, 14, 6, 5, K.SKIN);
+  // Cachinhos da franja
+  for (const fx of [11, 14, 17]) {
+    pen.col(K.WOOD_D).ellipse(fx, 9, 2, 2);
+    pen.col(K.FLOOR).px(fx - 1, 8);
+  }
+  pen.col(K.BLACK).hline(12, 14, 3).hline(17, 14, 3);
+  pen.col(K.PINK_L).px(11, 16).px(19, 16);
+  pen.col(K.RED).hline(14, 17, 3);
 }
 
 /* --------------------------------------------------------------------------
-   Heróis — 9 silhuetas distintas, nomes curtos em PT
+   9 Heróis do Reino — 28×46 cada, com iluminação e volume
    -------------------------------------------------------------------------- */
 
 export const HERO_SPECS = [
@@ -189,187 +265,175 @@ export function paintHero(pen, spec, pose = 'idle') {
 }
 
 function paintKnight(pen, pose) {
-  const cheer = pose === 'cheer';
-  pen.col(K.BLACK).ellipse(12, 35, 7, 2);
-  // Elmo
-  box(pen, 6, 2, 12, 10, K.BLU);
-  pen.col(K.BLU_L).rect(7, 3, 10, 4);
-  pen.col(K.RED).rect(10, 0, 4, 4);
-  pen.col(K.YEL).px(12, 0);
-  // Viseira / rosto
-  blob(pen, 12, 14, 6, 5, K.SKIN);
-  eye(pen, 9, 13, false);
-  eye(pen, 15, 13, false);
-  smile(pen, 12, 16, cheer);
-  // Peitoral + capa
-  box(pen, 6, 19, 12, 10, K.BLU);
-  pen.col(K.YEL).rect(10, 21, 4, 6);
-  pen.col(K.RED_D).rect(18, 20, 4, 12);
-  // Escudo e espada
-  blob(pen, 4, 24, 3, 4, K.CYAN);
-  pen.col(K.YEL).frame(2, 21, 5, 8);
-  pen.col(K.GRAY_L).rect(20, 8, 2, 14);
-  pen.col(K.YEL).rect(19, 20, 4, 3);
-  box(pen, 6, 29, 5, 5, K.BLU_D);
-  box(pen, 13, 29, 5, 5, K.BLU_D);
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 8, 2);
+  pen.col(K.RED_D).rect(cx - 6, 20, 13, 14);
+  blob(pen, cx, 3, 3, 2, K.RED);
+  box(pen, cx - 6, 5, 12, 9, K.BLU);
+  pen.col(K.BLU_L).rect(cx - 5, 6, 10, 3);
+  pen.col(K.YEL).hline(cx - 6, 10, 12);
+  blob(pen, cx, 15, 6, 5, K.SKIN);
+  eye(pen, cx - 3, 14, false);
+  eye(pen, cx + 3, 14, false);
+  smile(pen, cx, 17, pose === 'cheer');
+  box(pen, cx - 6, 20, 12, 11, K.BLU);
+  pen.col(K.BLU_L).hline(cx - 5, 21, 10);
+  pen.col(K.YEL).rect(cx - 2, 22, 4, 7).hline(cx - 3, 24, 6);
+  blob(pen, 5, 25, 3, 5, K.CYAN);
+  pen.col(K.YEL).frame(3, 21, 5, 9);
+  box(pen, 22, 10, 2, 13, K.GRAY_L);
+  pen.col(K.WHITE).vline(22, 10, 12);
+  pen.col(K.YEL).rect(21, 22, 4, 2);
+  box(pen, cx - 6, 31, 5, 7, K.BLU_D);
+  box(pen, cx + 1, 31, 5, 7, K.BLU_D);
 }
 
-function paintNinja(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 6, 2);
-  blob(pen, 12, 8, 7, 7, K.GRAY_XD);
-  pen.col(K.RED).ellipse(12, 8, 7, 2);
-  blob(pen, 12, 10, 5, 4, K.SKIN);
-  pen.col(K.GRAY_XD).rect(7, 8, 10, 3);
-  eye(pen, 9, 11, false);
-  eye(pen, 15, 11, false);
-  box(pen, 7, 16, 10, 12, K.GRAY_XD);
-  pen.col(K.RED).hline(7, 18, 10);
-  box(pen, 3, pose === 'cheer' ? 8 : 18, 4, 8, K.GRAY_D);
-  box(pen, 17, 18, 4, 8, K.GRAY_D);
-  pen.col(K.GRAY).rect(20, 10, 2, 12);
-  box(pen, 7, 28, 4, 6, K.GRAY_XD);
-  box(pen, 13, 28, 4, 6, K.GRAY_XD);
+function paintNinja(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 7, 2);
+  pen.col(K.RED).rect(20, 9, 5, 2).rect(22, 11, 4, 2);
+  blob(pen, cx, 10, 7, 7, K.GRAY_XD);
+  pen.col(K.RED).rect(cx - 7, 8, 14, 2);
+  blob(pen, cx, 12, 5, 4, K.SKIN);
+  pen.col(K.GRAY_XD).rect(cx - 5, 10, 10, 2);
+  eye(pen, cx - 3, 12, false);
+  eye(pen, cx + 3, 12, false);
+  box(pen, cx - 5, 18, 10, 13, K.GRAY_XD);
+  pen.col(K.GRAY_D).vline(cx - 4, 19, 11);
+  pen.col(K.RED).hline(cx - 5, 25, 10);
+  box(pen, 4, 19, 4, 8, K.GRAY_D);
+  box(pen, 20, 19, 4, 8, K.GRAY_D);
+  box(pen, cx - 5, 31, 4, 7, K.GRAY_XD);
+  box(pen, cx + 1, 31, 4, 7, K.GRAY_XD);
 }
 
-function paintMage(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 7, 2);
-  // Chapéu pontudo
-  pen.col(K.BLACK).line(12, 0, 4, 12).line(12, 0, 20, 12);
-  pen.col(K.PUR).rect(5, 10, 14, 3);
-  for (let i = 0; i < 10; i++) {
-    pen.col(K.PUR).hline(12 - i, 1 + i, i * 2 + 1);
+function paintMage(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 8, 2);
+  for (let i = 0; i < 9; i++) {
+    pen.col(K.BLACK).hline(cx - i - 1, 2 + i, (i + 1) * 2 + 1);
+    pen.col(K.PUR).hline(cx - i, 2 + i, i * 2 + 1);
   }
-  pen.col(K.YEL).px(12, 1).px(4, 11).px(20, 11);
-  blob(pen, 12, 16, 6, 5, K.SKIN);
-  eye(pen, 9, 15, false);
-  eye(pen, 15, 15, false);
-  smile(pen, 12, 18, true);
-  box(pen, 6, 21, 12, 10, K.PUR);
-  pen.col(K.PUR_L).hline(7, 22, 10);
-  // Cajado
-  pen.col(K.WOOD_D).vline(3, 8, 24);
-  blob(pen, 3, 7, 3, 3, K.YEL);
-  pen.col(K.YEL_L).px(3, 6);
-  box(pen, 7, 31, 4, 4, K.PUR);
-  box(pen, 13, 31, 4, 4, K.PUR);
+  box(pen, cx - 8, 11, 16, 3, K.PUR);
+  pen.col(K.YEL).hline(cx - 6, 11, 12).px(cx, 5);
+  blob(pen, cx, 17, 6, 5, K.SKIN);
+  eye(pen, cx - 3, 16, false);
+  eye(pen, cx + 3, 16, false);
+  smile(pen, cx, 19, true);
+  box(pen, cx - 6, 22, 12, 13, K.PUR);
+  pen.col(K.PUR_L).hline(cx - 5, 23, 10).rect(cx - 1, 23, 2, 11);
+  pen.col(K.WOOD_D).vline(4, 10, 28);
+  blob(pen, 4, 9, 3, 3, K.CYAN);
+  pen.col(K.WHITE).px(3, 8);
+  box(pen, cx - 5, 35, 4, 4, K.PUR_D);
+  box(pen, cx + 1, 35, 4, 4, K.PUR_D);
 }
 
-function paintDragon(pen, pose) {
-  pen.col(K.BLACK).ellipse(13, 35, 8, 2);
-  // Corpo de dragão fofo
-  blob(pen, 12, 20, 9, 8, K.GRN);
-  pen.col(K.YEL_L).ellipse(12, 22, 5, 5);
-  blob(pen, 18, 10, 6, 6, K.GRN);
-  // Chifres
-  pen.col(K.YEL).rect(14, 2, 2, 5).rect(20, 2, 2, 5);
-  eye(pen, 17, 9, false);
-  pen.col(K.WHITE).px(19, 9);
-  smile(pen, 20, 12, true);
-  // Asas
-  pen.col(K.GRN_D).ellipse(4, 16, 5, 7);
-  pen.col(K.GRN_L).ellipse(4, 16, 3, 5);
-  // Patinhas
-  box(pen, 6, 28, 4, 5, K.GRN_D);
-  box(pen, 14, 28, 4, 5, K.GRN_D);
-  // Fogo se animado
-  if (pose === 'cheer' || pose === 'wave') {
-    pen.col(K.ORANGE).px(24, 10).px(25, 9).px(26, 10);
-    pen.col(K.YEL).px(25, 10);
-  }
+function paintDragon(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 9, 2);
+  pen.col(K.GRN_D).ellipse(5, 19, 4, 6);
+  pen.col(K.ORANGE).ellipse(5, 19, 2, 4);
+  blob(pen, cx, 24, 8, 9, K.GRN);
+  pen.col(K.YEL_L).ellipse(cx, 26, 5, 6);
+  pen.col(K.OCHRE).hline(cx - 4, 24, 8).hline(cx - 4, 27, 8);
+  blob(pen, 17, 12, 6, 6, K.GRN);
+  pen.col(K.GRN_L).ellipse(16, 10, 4, 2);
+  pen.col(K.YEL).rect(13, 4, 2, 4).rect(19, 4, 2, 4);
+  eye(pen, 16, 11, false);
+  smile(pen, 18, 14, true);
+  box(pen, 8, 33, 4, 5, K.GRN_D);
+  box(pen, 16, 33, 4, 5, K.GRN_D);
 }
 
-function paintPrincess(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 8, 2);
-  // Cabelo loiro longo
-  blob(pen, 12, 10, 8, 8, K.YEL);
-  pen.col(K.YEL_L).ellipse(12, 9, 6, 5);
-  pen.col(K.YEL).rect(4, 12, 3, 10).rect(17, 12, 3, 10);
-  // Coroa
-  pen.col(K.YEL).rect(8, 1, 8, 4);
-  pen.col(K.YEL_L).px(8, 0).px(12, 0).px(16, 0);
-  blob(pen, 12, 12, 6, 5, K.SKIN);
-  eye(pen, 9, 11, false);
-  eye(pen, 15, 11, false);
-  blush(pen, 12, 13);
-  smile(pen, 12, 15, true);
-  // Vestido
-  pen.col(K.BLACK).ellipse(12, 30, 11, 6);
-  pen.col(K.PINK).ellipse(12, 29, 10, 5);
-  box(pen, 8, 18, 8, 8, K.PINK);
-  pen.col(K.WHITE).hline(9, 20, 6);
-  blob(pen, 5, 20, 2, 2, K.SKIN);
-  blob(pen, 19, 20, 2, 2, K.SKIN);
+function paintPrincess(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 9, 2);
+  blob(pen, cx, 12, 8, 8, K.YEL);
+  pen.col(K.YEL_L).ellipse(cx, 10, 6, 4);
+  pen.col(K.OCHRE).rect(5, 13, 3, 12).rect(20, 13, 3, 12);
+  pen.col(K.YEL).rect(cx - 4, 2, 8, 4);
+  pen.col(K.RED).px(cx, 3);
+  blob(pen, cx, 14, 6, 5, K.SKIN);
+  eye(pen, cx - 3, 13, false);
+  eye(pen, cx + 3, 13, false);
+  smile(pen, cx, 17, true);
+  blob(pen, cx, 33, 10, 6, K.PINK);
+  pen.col(K.PINK_L).ellipse(cx, 32, 8, 4);
+  box(pen, cx - 4, 20, 8, 9, K.PINK);
+  pen.col(K.PINK_L).rect(cx - 2, 21, 4, 7);
+  pen.col(K.WHITE).hline(cx - 7, 37, 14);
 }
 
-function paintRobot(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 7, 2);
-  box(pen, 7, 4, 10, 8, K.GRAY);
-  pen.col(K.CYAN).rect(9, 6, 2, 2).rect(13, 6, 2, 2);
-  if (pose === 'cheer') pen.col(K.YEL).rect(9, 6, 2, 2).rect(13, 6, 2, 2);
-  pen.col(K.RED).rect(10, 9, 4, 2);
-  box(pen, 6, 13, 12, 12, K.GRAY_L);
-  pen.col(K.CYAN).rect(9, 16, 6, 5);
-  pen.col(K.YEL).px(4, 2).px(19, 2);
-  box(pen, 2, pose === 'wave' || pose === 'cheer' ? 8 : 16, 4, 8, K.GRAY);
-  box(pen, 18, 16, 4, 8, K.GRAY);
-  box(pen, 7, 25, 4, 8, K.GRAY_D);
-  box(pen, 13, 25, 4, 8, K.GRAY_D);
+function paintRobot(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 8, 2);
+  pen.col(K.GRAY_D).vline(cx, 1, 4);
+  pen.col(K.RED).rect(cx - 1, 0, 2, 2);
+  box(pen, cx - 5, 5, 10, 8, K.GRAY_L);
+  pen.col(K.WHITE).hline(cx - 4, 6, 8);
+  pen.col(K.NAVY).rect(cx - 4, 7, 8, 4);
+  pen.col(K.CYAN).rect(cx - 3, 8, 2, 2).rect(cx + 1, 8, 2, 2);
+  box(pen, cx - 6, 14, 12, 13, K.GRAY);
+  pen.col(K.GRAY_L).hline(cx - 5, 15, 10);
+  pen.col(K.NAVY).rect(cx - 4, 17, 8, 6);
+  pen.col(K.GRN_L).vline(cx - 2, 18, 4);
+  pen.col(K.YEL).vline(cx, 18, 4);
+  pen.col(K.RED_L).vline(cx + 2, 19, 3);
+  box(pen, 3, 16, 4, 9, K.GRAY_D);
+  box(pen, 21, 16, 4, 9, K.GRAY_D);
+  box(pen, cx - 5, 27, 4, 10, K.GRAY_D);
+  box(pen, cx + 1, 27, 4, 10, K.GRAY_D);
 }
 
-function paintFairy(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 6, 2);
-  // Asas
-  pen.col(K.CYAN).ellipse(4, 16, 5, 8);
-  pen.col(K.WHITE).ellipse(4, 16, 3, 5);
-  pen.col(K.CYAN).ellipse(20, 16, 5, 8);
-  pen.col(K.WHITE).ellipse(20, 16, 3, 5);
-  blob(pen, 12, 8, 6, 6, K.YEL);
-  blob(pen, 12, 10, 5, 5, K.SKIN);
-  eye(pen, 10, 9, false);
-  eye(pen, 14, 9, false);
-  smile(pen, 12, 12, true);
-  box(pen, 8, 16, 8, 8, K.GRN_L);
-  pen.col(K.GRN).hline(8, 20, 8);
-  blob(pen, 6, 18, 2, 2, K.SKIN);
-  blob(pen, 18, 18, 2, 2, K.SKIN);
-  box(pen, 8, 24, 3, 8, K.SKIN);
-  box(pen, 13, 24, 3, 8, K.SKIN);
-  if (pose === 'cheer') {
-    pen.col(K.YEL_L).px(2, 8).px(22, 6).px(12, 1);
-  }
+function paintFairy(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 7, 2);
+  pen.col(K.CYAN).ellipse(6, 19, 4, 7).ellipse(22, 19, 4, 7);
+  pen.col(K.WHITE).ellipse(6, 19, 2, 4).ellipse(22, 19, 2, 4);
+  blob(pen, cx, 10, 6, 6, K.YEL);
+  blob(pen, cx, 12, 5, 5, K.SKIN);
+  eye(pen, cx - 2, 11, false);
+  eye(pen, cx + 2, 11, false);
+  smile(pen, cx, 14, true);
+  box(pen, cx - 4, 18, 8, 9, K.GRN_L);
+  pen.col(K.GRN).hline(cx - 4, 23, 8);
+  box(pen, cx - 4, 27, 3, 9, K.SKIN);
+  box(pen, cx + 1, 27, 3, 9, K.SKIN);
 }
 
-function paintSamurai(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 7, 2);
-  box(pen, 6, 2, 12, 8, K.RED);
-  pen.col(K.YEL).rect(10, 0, 4, 3);
-  blob(pen, 12, 12, 6, 5, K.SKIN);
-  eye(pen, 9, 11, false);
-  eye(pen, 15, 11, false);
-  smile(pen, 12, 14, false);
-  box(pen, 6, 17, 12, 11, K.RED);
-  pen.col(K.BLACK).hline(6, 22, 12);
-  pen.col(K.YEL).rect(10, 18, 4, 8);
-  pen.col(K.GRAY_L).rect(19, 8, 2, 16);
-  box(pen, 6, 28, 5, 6, K.RED_D);
-  box(pen, 13, 28, 5, 6, K.RED_D);
+function paintSamurai(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 8, 2);
+  box(pen, cx - 6, 4, 12, 8, K.RED);
+  pen.col(K.RED_L).hline(cx - 5, 5, 10);
+  pen.col(K.YEL).rect(cx - 2, 1, 4, 3);
+  blob(pen, cx, 14, 6, 5, K.SKIN);
+  eye(pen, cx - 3, 13, false);
+  eye(pen, cx + 3, 13, false);
+  smile(pen, cx, 16, false);
+  box(pen, cx - 6, 19, 12, 11, K.RED);
+  pen.col(K.YEL).hline(cx - 6, 22, 12).hline(cx - 6, 26, 12);
+  pen.col(K.GRAY_L).rect(22, 9, 2, 16);
+  box(pen, cx - 6, 30, 5, 7, K.RED_D);
+  box(pen, cx + 1, 30, 5, 7, K.RED_D);
 }
 
-function paintArcher(pen, pose) {
-  pen.col(K.BLACK).ellipse(12, 35, 7, 2);
-  blob(pen, 12, 8, 7, 6, K.OCHRE);
-  blob(pen, 12, 10, 6, 5, K.SKIN);
-  eye(pen, 9, 9, false);
-  eye(pen, 15, 9, false);
-  smile(pen, 12, 12, true);
-  // Gorro
-  pen.col(K.GRN_D).ellipse(12, 4, 7, 3);
-  pen.col(K.GRN).px(18, 6);
-  box(pen, 7, 16, 10, 10, K.GRN_D);
-  pen.col(K.SAND).rect(9, 18, 6, 4);
-  // Arco
-  pen.col(K.WOOD_D).ring(4, 20, 7);
-  pen.col(K.CREAM).vline(4, 14, 13);
-  box(pen, 7, 26, 4, 7, K.WOOD_D);
-  box(pen, 13, 26, 4, 7, K.WOOD_D);
+function paintArcher(pen) {
+  const cx = 14;
+  pen.col(K.BLACK).ellipse(cx, 40, 8, 2);
+  blob(pen, cx, 10, 7, 6, K.OCHRE);
+  blob(pen, cx, 12, 6, 5, K.SKIN);
+  eye(pen, cx - 3, 11, false);
+  eye(pen, cx + 3, 11, false);
+  smile(pen, cx, 14, true);
+  pen.col(K.GRN_D).ellipse(cx, 5, 7, 3);
+  pen.col(K.RED).line(cx + 3, 5, cx + 7, 2);
+  box(pen, cx - 5, 18, 10, 10, K.GRN_D);
+  pen.col(K.GRN).rect(cx - 4, 19, 8, 8);
+  pen.col(K.WOOD_D).hline(cx - 5, 25, 10);
+  pen.col(K.WOOD_D).ring(5, 22, 7);
+  pen.col(K.CREAM).vline(5, 16, 13);
+  box(pen, cx - 5, 28, 4, 8, K.WOOD_D);
+  box(pen, cx + 1, 28, 4, 8, K.WOOD_D);
 }
