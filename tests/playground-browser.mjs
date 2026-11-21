@@ -101,15 +101,20 @@ async function checkControls(path, evaluate, reload) {
         await waitFor("__rastro.state === 'play'");
     }
     if (lab === 'rock-kombat') {
-        await waitFor("!document.querySelector('#enter-button').disabled");
+        assert.ok(await evaluate("import('/tests/fight-controls.mjs').then(m => m.checkCombat())"));
         await evaluate(`document.querySelector('#enter-button').click();
-            const fighters = document.querySelectorAll('.fighter-card');
-            fighters[0].click(); fighters[1].click();
-            document.querySelector('#fight-button').click();
-            document.querySelector('#versus-screen').click();`);
+            document.querySelectorAll('.roster-portrait')[0].click();
+            document.querySelector('[data-pick="cpu"]').click();
+            document.querySelectorAll('.roster-portrait')[1].click();
+            document.querySelector('[data-difficulty="easy"]').click();
+            document.querySelector('#fight-button').click();`);
+        await waitFor("!document.querySelector('#versus-start').disabled");
+        await evaluate("document.querySelector('#versus-start').click()");
+        await waitFor("window.__lab.match?.phase === 'intro' || window.__lab.match?.phase === 'fight'");
         const fight = await evaluate("import('/tests/fight-controls.mjs').then(m => m.fightRounds())");
         assert.deepEqual(fight, { hits: true, phase: 'complete', wins: 2 });
         await waitFor("document.querySelector('#results-screen').classList.contains('is-active')");
+        assert.match(await evaluate("document.querySelector('#result-score').textContent"), /KURT [0-2] × [0-2] AXL/);
         await evaluate("document.querySelector('#rematch-button').click()");
         await waitFor("window.__lab.match.round === 1 && document.querySelector('#arena-screen').classList.contains('is-active')");
     }
@@ -294,6 +299,24 @@ async function inspect(path) {
             for (let i = 0; !loaded && i < 150; i++) await delay(200);
             assert.ok(loaded, 'Tempo de recarga excedido');
         });
+        if (path === '/labs/rock-kombat/') {
+            for (const [width, height] of viewports.slice(0, 3)) {
+                await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true });
+                await send('Emulation.setTouchEmulationEnabled', { enabled: true });
+                await delay(120);
+                assert.ok(await evaluate(`(() => {
+                    const stage = document.querySelector('#game').getBoundingClientRect();
+                    const pause = document.querySelector('#pause-button').getBoundingClientRect();
+                    const keys = [...document.querySelectorAll('.touch-controls button')].map(button => button.getBoundingClientRect());
+                    const inside = rect => rect.width >= 44 && rect.height >= 44
+                        && rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight;
+                    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+                    return document.documentElement.scrollWidth === innerWidth && keys.length === 12
+                        && inside(pause) && keys.every(key => inside(key) && !overlaps(key, stage) && !overlaps(key, pause))
+                        && keys.every((key, i) => keys.every((other, j) => i === j || !overlaps(key, other)));
+                })()`), `Controles da arena em ${width}×${height}`);
+            }
+        }
         assert.deepEqual(errors, []);
     } finally {
         socket.close();

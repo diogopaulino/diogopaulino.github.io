@@ -19,12 +19,12 @@ export { overlap };
 
 const MAX_EFFECTS = 140;
 
-export function addImpact(match, x, y, color, heavy = false, angleBias = 0) {
-  const count = heavy ? 28 : 14;
+export function addImpact(match, x, y, color, heavy = false, angleBias = null) {
+  const count = match.reducedMotion ? 6 : heavy ? 22 : 11;
   for (let i = 0; i < count; i++) {
     if (match.effects.length >= MAX_EFFECTS) match.effects.shift();
     const spread = heavy ? Math.PI * 2 : Math.PI * 1.3;
-    const angle = angleBias ? angleBias + random(-spread * 0.5, spread * 0.5) : random(0, Math.PI * 2);
+    const angle = angleBias !== null ? angleBias + random(-spread * 0.5, spread * 0.5) : random(0, Math.PI * 2);
     const speed = random(2.8, heavy ? 15.5 : 9.5);
     match.effects.push({
       x, y,
@@ -79,7 +79,7 @@ export function addDamageNumber(match, x, y, text, color, scale = 1) {
 export function triggerPushblock(match, defender, attacker) {
   const dir = defender.directionTo(attacker);
   const pushDist = 135;
-  cornerPush(match, defender, attacker, dir * pushDist);
+  cornerPush(defender, attacker, dir * pushDist);
   attacker.vx = dir * 11;
   defender.blockstun = Math.min(defender.blockstun, 4);
   match.hitStop = 6;
@@ -87,11 +87,10 @@ export function triggerPushblock(match, defender, attacker) {
   const shieldX = defender.x + dir * 52;
   const shieldY = defender.y - 175;
   addImpact(match, shieldX, shieldY, '#52b7ff', true);
-  addDamageNumber(match, shieldX, shieldY - 45, 'ADVANCING GUARD!', '#52b7ff', 1.15);
   match.events.push({
     type: 'callout',
     fighter: defender,
-    text: 'PUSHBLOCK!',
+    text: 'REPELIR',
     color: '#52b7ff'
   });
   audio.sfx('pushblock');
@@ -109,7 +108,7 @@ function incomingFactor(defender) {
   return clamp(1 - (defender.data.defense - 75) * 0.0042, 0.82, 1.14);
 }
 
-function cornerPush(match, attacker, defender, amount) {
+function cornerPush(attacker, defender, amount) {
   const next = defender.x + amount;
   if (next <= LEFT_WALL || next >= RIGHT_WALL) {
     attacker.x -= amount * 0.88;
@@ -120,7 +119,9 @@ function cornerPush(match, attacker, defender, amount) {
   }
 }
 
-export function applyHit(match, attacker, defender, move, projectile = null) {
+export function applyHit(match, attacker, defender, move, projectile = null, clash = false) {
+  if (defender.health <= 0) return;
+  const facing = projectile ? Math.sign(projectile.vx) : attacker.facing;
   // OTG limitation: only allow 1 OTG hit per knockdown
   if (defender.state === 'knockdown') {
     if (!move.otg && !move.superMove && move.name !== 'launcher') return;
@@ -129,33 +130,34 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     match.events.push({
       type: 'callout',
       fighter: attacker,
-      text: 'OTG PICKUP!',
+      text: 'GOLPE NO CHÃO',
       color: '#e5b95c'
     });
   }
 
-  const blocked = !move.unblockable && defender.blocking(attacker, move);
-  const parry = blocked && defender.parrying(attacker);
+  const blocked = !move.unblockable && defender.blocking(attacker, move, facing);
+  const parry = blocked && defender.parrying(attacker, facing);
   const impactX = projectile ? projectile.x : lerp(attacker.x, defender.x, 0.66);
   const impactY = projectile ? projectile.y : defender.y - (move.level === 'low' ? 66 : 185);
-  const counter = !blocked && defender.state === 'attack' && defender.moveFrame <= (defender.move?.startup || 0);
-  const punish = !blocked && !counter && defender.state === 'attack' && defender.moveFrame > (defender.move?.startup || 0);
+  const counter = !blocked && !clash && defender.move && defender.moveFrame < defender.move.startup;
+  const punish = !blocked && !clash && defender.move && defender.moveFrame >= defender.move.startup + defender.move.active;
 
   if (parry) {
     defender.gainMeter(55);
-    attacker.state = 'hitstun';
-    attacker.hitstun = 16;
-    attacker.vx = -attacker.facing * 3.8;
-    attacker.move = null;
+    if (!projectile) {
+      attacker.state = 'hitstun';
+      attacker.hitstun = 16;
+      attacker.vx = -facing * 3.8;
+      attacker.move = null;
+    }
     defender.parryCooldown = PARRY_COOLDOWN;
     match.hitStop = 12;
     match.shake = 6;
     addImpact(match, impactX, impactY, '#6dffdb', true);
-    addDamageNumber(match, impactX, impactY - 42, 'PARRY!', '#6dffdb', 1.25);
     match.events.push({
       type: 'callout',
       fighter: defender,
-      text: 'ROYAL PARRY!',
+      text: 'DEFESA PERFEITA',
       color: '#6dffdb'
     });
     audio.sfx('parry');
@@ -166,10 +168,15 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     const minHealth = (move.superMove || move.exMove) ? 0 : 1;
     defender.health = clamp(defender.health - chip, minHealth, 100);
     defender.state = 'blockstun';
+    defender.stateFrame = 0;
+    defender.dashTimer = 0;
+    defender.dashType = null;
+    defender.walkVx = 0;
+    if (attacker.move === move) attacker.moveConnected = true;
     defender.blockstun = move.blockstun + (move.superMove ? 3 : 0);
-    defender.vx = attacker.facing * move.push * 0.14;
+    defender.vx = facing * move.push * 0.14;
     if (!projectile && !move.beam) {
-      cornerPush(match, attacker, defender, attacker.facing * move.push * 0.45);
+      cornerPush(attacker, defender, facing * move.push * 0.45);
     }
     attacker.gainMeter(move.meter * METER_GAIN.block);
     defender.gainMeter(Math.max(4, move.damage * METER_GAIN.guard));
@@ -180,7 +187,7 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     audio.sfx('block');
 
     if (defender.health <= 0) {
-      triggerKoState(match, attacker, defender, move);
+      triggerKoState(match, attacker, defender, move, facing);
     }
   } else {
     let damage = Math.max(1, Math.round(scaledDamage(attacker, move) * incomingFactor(defender)));
@@ -191,24 +198,25 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     if (!match.firstHitDone) {
       match.firstHitDone = true;
       attacker.gainMeter(35);
+      if (clash) defender.gainMeter(35);
       match.events.push({
         type: 'callout',
         fighter: attacker,
-        text: 'FIRST HIT!',
+        text: clash ? 'TROCA DE GOLPES' : 'PRIMEIRO GOLPE',
         color: '#ffcf6e'
       });
     } else if (counter) {
       match.events.push({
         type: 'callout',
         fighter: attacker,
-        text: 'COUNTER HIT!',
+        text: 'CONTRA-ATAQUE',
         color: '#ff5e4d'
       });
     } else if (punish) {
       match.events.push({
         type: 'callout',
         fighter: attacker,
-        text: 'PUNISH!',
+        text: 'BRECHA PUNIDA',
         color: '#ffad42'
       });
     }
@@ -220,28 +228,34 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     defender.move = null;
     defender.moveFrame = 0;
     defender.dashTimer = 0;
+    defender.dashType = null;
+    defender.walkVx = 0;
+    defender.stateFrame = 0;
+    defender.wallBounceReady = Boolean(move.wallBounce);
     defender.scaleX = 0.86;
     defender.scaleY = 1.15;
 
     if (move.launch) {
+      if (attacker.move === move) attacker.launchConfirmed = true;
       defender.launched = true;
       defender.state = 'hitstun';
       defender.hitstun = move.hitstun;
       defender.y = Math.min(defender.y, GROUND - 1);
       defender.vy = -move.launch;
-      defender.vx = attacker.facing * 2.4;
+      defender.vx = facing * 2.4;
       audio.sfx('launch');
     } else if (move.airSlam && airborne) {
       defender.launched = true;
       defender.state = 'hitstun';
-      defender.hitstun = move.hitstun;
+      defender.hitstun = Math.max(move.hitstun, 30);
+      defender.knockdown = move.knockdown;
       defender.vy = move.airSlam;
-      defender.vx = attacker.facing * 7.5;
+      defender.vx = facing * 7.5;
       match.shake = 11;
       match.events.push({
         type: 'callout',
         fighter: attacker,
-        text: 'AERIAL SLAM!',
+        text: 'QUEDA AÉREA',
         color: attacker.data.color
       });
     } else if (airborne) {
@@ -250,21 +264,21 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
       defender.state = 'hitstun';
       defender.hitstun = Math.max(22, move.hitstun);
       defender.vy = -(move.airJuggle || 6.6);
-      defender.vx = attacker.facing * (move.wallBounce ? 14.5 : 2.8);
+      defender.vx = facing * (move.wallBounce ? 14.5 : 2.8);
     } else {
       defender.launched = false;
       defender.state = move.knockdown ? 'knockdown' : 'hitstun';
       defender.hitstun = move.hitstun + (counter ? 6 : 0);
       defender.knockdown = move.knockdown || 0;
-      defender.vx = attacker.facing * (move.wallBounce && !defender.wallBounced ? 16.5 : move.push * 0.25);
+      defender.vx = facing * (move.wallBounce && !defender.wallBounced ? 16.5 : move.push * 0.25);
       if (!projectile && !move.beam && !move.wallBounce) {
-        cornerPush(match, attacker, defender, attacker.facing * move.push * 0.35);
+        cornerPush(attacker, defender, facing * move.push * 0.35);
       }
     }
 
     if (move.level === 'throw') {
-      defender.x = clamp(attacker.x + attacker.facing * 92, LEFT_WALL, RIGHT_WALL);
-      defender.vx = attacker.facing * 15.5;
+      defender.x = clamp(attacker.x + facing * 92, LEFT_WALL, RIGHT_WALL);
+      defender.vx = facing * 15.5;
       defender.vy = -7.5;
       defender.launched = true;
       defender.state = 'hitstun';
@@ -274,15 +288,15 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
 
     attacker.gainMeter(move.meter * METER_GAIN.hit);
     defender.gainMeter(Math.max(5, damage * METER_GAIN.damage));
-    attacker.moveConnected = true;
+    if (attacker.move === move) attacker.moveConnected = true;
     attacker.combo = attacker.comboClock > 0 ? attacker.combo + 1 : 1;
     attacker.comboClock = 68;
     attacker.comboDamage += damage;
 
-    match.hitStop = move.hitstop + (counter ? 3 : 0);
+    match.hitStop = Math.max(match.hitStop, move.hitstop + (counter ? 3 : 0));
     const heavyHit = damage >= 10 || move.superMove || move.wallBounce || counter;
     match.shake = Math.max(match.shake, move.superMove ? 11 : heavyHit ? 8 : 4);
-    const bias = attacker.facing > 0 ? -0.35 : Math.PI + 0.35;
+    const bias = facing > 0 ? -0.35 : Math.PI + 0.35;
     addImpact(match, impactX, impactY, attacker.data.color, heavyHit, bias);
     addDamageNumber(
       match,
@@ -314,12 +328,13 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
     if (defender.health <= 0) {
       // Mortal Kombat FINISH HIM mechanic on match point!
       const isMatchPoint = attacker.wins >= 1;
-      if (isMatchPoint && !match.finishHimShown && !wasDizzy && !move.superMove) {
+      if (isMatchPoint && !match.finishHimShown && !wasDizzy && !move.superMove && !clash) {
         match.finishHimShown = true;
         match.finishTimer = 210; // 3.5 seconds to land the finishing blow!
         defender.health = 1;
+        defender.invuln = 10;
         defender.state = 'dizzy';
-        defender.vx = attacker.facing * 3;
+        defender.vx = facing * 3;
         defender.vy = 0;
         defender.y = GROUND;
         defender.launched = false;
@@ -329,38 +344,42 @@ export function applyHit(match, attacker, defender, move, projectile = null) {
         audio.sfx('finish');
         match.events.push({
           type: 'announce',
-          text: 'FINISH HIM!',
+          text: 'FINALIZE!',
           duration: 1350
         });
       } else {
-        triggerKoState(match, attacker, defender, move, wasDizzy || move.superMove);
+        triggerKoState(match, attacker, defender, move, facing, wasDizzy);
       }
     }
   }
 
   if (projectile) {
-    if (projectile.hitsLeft > 1) {
+    if (!parry && projectile.hitsLeft > 1) {
       projectile.hitsLeft--;
       projectile.hitCooldown = 5;
     } else {
       projectile.dead = true;
     }
-  } else {
+  } else if (attacker.move === move) {
     attacker.moveHit = true;
+    attacker.moveHitsLeft--;
   }
 }
 
-function triggerKoState(match, attacker, defender, move, stageFinisher = false) {
+function triggerKoState(match, attacker, defender, move, facing, stageFinisher = false) {
   defender.health = 0;
+  defender.move = null;
+  match.finishTimer = 0;
   defender.state = 'knockdown';
   defender.knockdown = 110;
   defender.vy = move.launch ? -14 : -9.5;
-  defender.vx = attacker.facing * 9.5;
+  defender.vx = facing * 9.5;
   defender.launched = true;
   match.koZoom = stageFinisher ? 38 : 28;
   match.shake = stageFinisher ? 18 : 14;
-  match.hyperFinish = Boolean(move.superMove || stageFinisher);
-  if (match.hyperFinish) {
+  match.hyperFinish ||= Boolean(move.superMove);
+  match.stageFinisher = stageFinisher ? attacker.data.finisher : '';
+  if (match.hyperFinish || stageFinisher) {
     match.superFlash = 30;
     addImpact(match, defender.x, defender.y - 160, attacker.data.color, true);
   }
@@ -394,53 +413,74 @@ export function spawnProjectile(match, owner, move, index = 0) {
 }
 
 export function updateProjectiles(match) {
-  for (let i = match.projectiles.length - 1; i >= 0; i--) {
-    const p = match.projectiles[i];
+  const { projectiles } = match;
+  for (const p of projectiles) {
     p.x += p.vx;
-    p.y += p.vy || 0;
-    p.life--;
+    p.y += p.vy;
     if (p.hitCooldown > 0) p.hitCooldown--;
+    p.dead = --p.life <= 0 || p.x < -80 || p.x > WORLD_W + 80;
+  }
 
-    const box = {
-      left: p.x - p.radius, right: p.x + p.radius,
-      top: p.y - p.radius, bottom: p.y + p.radius
-    };
-
-    for (let j = match.projectiles.length - 1; j > i; j--) {
-      const other = match.projectiles[j];
-      if (other.owner === p.owner) continue;
+  // Resolve clashes from the same simulation frame before testing fighters.
+  for (let i = 0; i < projectiles.length; i++) {
+    const p = projectiles[i];
+    for (let j = i + 1; !p.dead && j < projectiles.length; j++) {
+      const other = projectiles[j];
+      if (other.dead || other.owner === p.owner) continue;
       const dx = p.x - other.x;
       const dy = p.y - other.y;
-      if (dx * dx + dy * dy < (p.radius + other.radius) ** 2) {
-        if (p.superMove && !other.superMove) {
-          other.dead = true;
-        } else if (other.superMove && !p.superMove) {
-          p.dead = true;
-        } else {
-          p.dead = true;
-          other.dead = true;
-        }
-        addImpact(match, (p.x + other.x) / 2, (p.y + other.y) / 2, '#fff5d6', true);
-        audio.sfx('block');
-      }
+      if (dx * dx + dy * dy >= (p.radius + other.radius) ** 2) continue;
+      p.dead = !p.superMove || Boolean(other.superMove);
+      other.dead = !other.superMove || Boolean(p.superMove);
+      addImpact(match, (p.x + other.x) / 2, (p.y + other.y) / 2, '#fff5d6', true);
+      audio.sfx('block');
     }
-
-    const defender = p.owner === match.p1 ? match.p2 : match.p1;
-    if (!p.dead && p.hitCooldown <= 0 && defender.invuln <= 0 && overlap(box, defender.hurtBox())) {
-      applyHit(match, p.owner, defender, p.move, p);
-    }
-
-    if (p.life <= 0 || p.x < -80 || p.x > WORLD_W + 80) p.dead = true;
-    if (p.dead) match.projectiles.splice(i, 1);
   }
+
+  let write = 0;
+  for (const p of projectiles) {
+    const defender = p.owner.opponent();
+    if (!p.dead && p.hitCooldown <= 0 && defender.invuln <= 0 && defender.health > 0) {
+      const box = {
+        left: Math.min(p.x, p.x - p.vx) - p.radius,
+        right: Math.max(p.x, p.x - p.vx) + p.radius,
+        top: p.y - p.radius, bottom: p.y + p.radius
+      };
+      if (overlap(box, defender.hurtBox())) applyHit(match, p.owner, defender, p.move, p);
+    }
+    if (!p.dead) projectiles[write++] = p;
+  }
+  projectiles.length = write;
 }
 
-export function resolveCombat(match, attacker, defender) {
-  if (defender.invuln > 0) return;
-  const active = attacker.activeBox();
-  if (active && overlap(active, defender.hurtBox())) {
-    applyHit(match, attacker, defender, attacker.move);
+function connectingMove(attacker, defender) {
+  if (defender.invuln > 0 || defender.health <= 0 || !attacker.move) return null;
+  if (attacker.move.level === 'throw' && !attacker.canThrow()) return null;
+  return overlap(attacker.activeBox(), defender.hurtBox()) ? attacker.move : null;
+}
+
+export function resolveCombat(match) {
+  const { p1, p2 } = match;
+  let first = connectingMove(p1, p2);
+  let second = connectingMove(p2, p1);
+
+  // Strikes beat a grab on the same frame. Two grabs break cleanly.
+  if (first && second) {
+    if (first.level === 'throw' && second.level === 'throw') {
+      p1.moveHit = p2.moveHit = true;
+      match.hitStop = 7;
+      addImpact(match, (p1.x + p2.x) / 2, GROUND - 180, '#ded7c9');
+      match.events.push({ type: 'callout', fighter: p1, text: 'AGARRÃO QUEBRADO', color: '#ded7c9' });
+      audio.sfx('block');
+      return;
+    }
+    if (first.level === 'throw') first = null;
+    if (second.level === 'throw') second = null;
   }
+
+  const trade = Boolean(first && second);
+  if (first) applyHit(match, p1, p2, first, null, trade);
+  if (second) applyHit(match, p2, p1, second, null, trade);
 }
 
 export function bodyPush(match) {
@@ -452,10 +492,10 @@ export function bodyPush(match) {
   const push = (PUSH_DISTANCE - Math.abs(gap)) / 2;
   const sign = gap >= 0 ? 1 : -1;
   const airScale = (a.grounded() && b.grounded()) ? 1 : 0.45;
-  a.x -= push * sign * airScale;
-  b.x += push * sign * airScale;
-  a.x = clamp(a.x, LEFT_WALL, RIGHT_WALL);
-  b.x = clamp(b.x, LEFT_WALL, RIGHT_WALL);
+  const pushA = Math.min(push * airScale, sign > 0 ? a.x - LEFT_WALL : RIGHT_WALL - a.x);
+  const pushB = Math.min(push * 2 * airScale - pushA, sign > 0 ? RIGHT_WALL - b.x : b.x - LEFT_WALL);
+  a.x = clamp(a.x - (push * 2 * airScale - pushB) * sign, LEFT_WALL, RIGHT_WALL);
+  b.x += pushB * sign;
 }
 
 export function updateEffects(match) {

@@ -7,11 +7,11 @@
 // - Chromatic afterimages, directional hit-slashes, dizzy stars & KO bursts
 // ==========================================================================
 
-import { W, H, WORLD_W, GROUND, SPRITE_SIZE } from './constants.js';
-import { clamp, lerp, random } from './utils.js';
+import { W, H, WORLD_W, GROUND, SPRITE_SIZE, STEP } from './constants.js';
+import { clamp, lerp } from './utils.js';
 
-export function initRenderer(canvas) {
-  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+export function initRenderer(canvas, onResize) {
+  const ctx = canvas.getContext('2d', { alpha: false });
 
   function makeGlow(inner, middle, outer = '#0000') {
     const glow = document.createElement('canvas');
@@ -60,7 +60,18 @@ export function initRenderer(canvas) {
   moteCtx.arc(5, 5, 3.5, 0, Math.PI * 2);
   moteCtx.fill();
 
-  ctx.imageSmoothingEnabled = true;
+  const resize = new ResizeObserver(([entry]) => {
+    const cssWidth = entry.contentRect.width;
+    if (!cssWidth) return;
+    const width = clamp(Math.round(cssWidth * Math.min(devicePixelRatio, 2)), 320, 1920);
+    const height = Math.round(width * entry.contentRect.height / cssWidth);
+    if (canvas.width === width && canvas.height === height) return;
+    canvas.width = width;
+    canvas.height = height;
+    ctx.imageSmoothingQuality = 'medium';
+    onResize();
+  });
+  resize.observe(canvas);
 
   return {
     ctx,
@@ -74,6 +85,7 @@ export function initRenderer(canvas) {
       camZoom: 1,
       coliseumGlow: makeGlow('rgba(255, 130, 65, 0.24)', 'rgba(235, 60, 40, 0.09)'),
       seattleGlow: makeGlow('rgba(95, 175, 255, 0.20)', 'rgba(95, 175, 255, 0.05)'),
+      contactShadow: makeGlow('#000', '#000b'),
       projectileGlows: new Map(),
       makeGlow
     }
@@ -103,14 +115,15 @@ function drawSheet(
   ctx.translate(x, y);
   ctx.scale((facing < 0 ? -1 : 1) * scaleX, scaleY);
   if (extra) extra(ctx);
-  ctx.drawImage(image, col * cellW, row * cellH, cellW, cellH, -size / 2, -size, size, size);
+  // The atlases share a foot line at 94% of the cell. Keep it planted across poses.
+  ctx.drawImage(image, col * cellW, row * cellH, cellW, cellH, -size / 2, -size * 0.94, size, size);
   ctx.restore();
 }
 
 function drawHyperBackground(ctx, match, frameNumber) {
   const color = match.hyperColor || '#ff4733';
   ctx.save();
-  ctx.fillStyle = 'rgba(5, 6, 10, 0.76)';
+  ctx.fillStyle = match.freeze > 0 ? '#080912b8' : '#08091260';
   ctx.fillRect(0, 0, W, H);
 
   ctx.globalCompositeOperation = 'screen';
@@ -129,62 +142,23 @@ function drawHyperBackground(ctx, match, frameNumber) {
   ctx.restore();
 }
 
-function drawHyperBanner(ctx, match) {
-  const progress = match.freeze / 26;
-  const fighter = match.hyperFighter;
-  if (!fighter) return;
-
-  ctx.save();
-  const bandY = H * 0.36;
-  const bandH = 128;
-
-  ctx.translate(0, bandY);
-  ctx.transform(1, -0.06, 0, 1, 0, 0);
-
-  // Glowing speed banner
-  const grad = ctx.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, '#07080ce8');
-  grad.addColorStop(0.5, fighter.data.color);
-  grad.addColorStop(1, '#07080ce8');
-
-  ctx.fillStyle = grad;
-  ctx.fillRect(-40, 0, W + 80, bandH);
-
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(-40, 4, W + 80, bandH - 8);
-
-  // Dramatic text
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'italic 900 56px Impact, "Arial Black", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = '#000';
-  ctx.shadowBlur = 16;
-  ctx.fillText(match.hyperText || 'HYPER COMBO!', W / 2 + (1 - progress) * 40, 82);
-
-  ctx.font = '900 13px "Arial Narrow", sans-serif';
-  ctx.fillStyle = '#ffe9b3';
-  ctx.fillText(`★ ${fighter.data.name.toUpperCase()} · MAXIMUM AMPLIFIER ★`, W / 2, 28);
-  ctx.restore();
-}
-
-function drawHyperBeam(ctx, fighter, frameNumber, renderState) {
+function drawHyperBeam(ctx, fighter, x, y, frameNumber, renderState) {
   const move = fighter.move;
   if (!move || !move.beam) return;
   if (fighter.moveFrame < move.startup || fighter.moveFrame >= move.startup + move.active) return;
 
-  const startX = fighter.x + fighter.facing * 68;
-  const startY = fighter.y - 172;
+  const startX = x + fighter.facing * 58;
+  const startY = y - 170;
   const length = 1220;
   const endX = startX + fighter.facing * length;
-  const pulse = Math.sin(frameNumber * 0.9) * 14;
-  const height = 96 + pulse;
+  const pulse = Math.sin(frameNumber * 0.33) * 10;
+  const height = 190 + pulse;
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
 
   // Outer energy aura
-  const grad = ctx.createLinearGradient(startX, startY - height, startX, startY + height);
+  const grad = ctx.createLinearGradient(startX, startY - height / 2, startX, startY + height / 2);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
   grad.addColorStop(0.2, fighter.data.color);
   grad.addColorStop(0.5, '#ffffff');
@@ -202,7 +176,7 @@ function drawHyperBeam(ctx, fighter, frameNumber, renderState) {
   ctx.fill();
 
   // Inner white-hot core
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#fff5e7';
   ctx.fillRect(
     Math.min(startX, endX),
     startY - (height * 0.22),
@@ -214,7 +188,7 @@ function drawHyperBeam(ctx, fighter, frameNumber, renderState) {
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
   for (let i = 0; i < 7; i++) {
-    const rx = startX + fighter.facing * (((frameNumber * 28 + i * 170) % length));
+    const rx = startX + fighter.facing * ((frameNumber * 23 + i * 170) % length);
     ctx.beginPath();
     ctx.ellipse(rx, startY, 16, height * 0.62, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -229,38 +203,72 @@ function drawHyperBeam(ctx, fighter, frameNumber, renderState) {
   ctx.restore();
 }
 
-export function render(ctx, match, frameNumber, images, renderState) {
-  ctx.fillStyle = '#07080b';
-  ctx.fillRect(0, 0, W, H);
+function drawRush(ctx, fighter, x, y, frame) {
+  const move = fighter.move;
+  if (!move?.rush || fighter.moveFrame < move.startup || fighter.moveFrame >= move.startup + move.active) return;
+  const direction = fighter.facing;
+  const count = move.superMove ? 9 : 4;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.strokeStyle = fighter.data.color;
+  for (let i = 0; i < count; i++) {
+    const offset = (frame * 18 + i * 43) % 170;
+    const height = 32 + (i * 39) % 215;
+    ctx.globalAlpha = (1 - offset / 170) * 0.62;
+    ctx.lineWidth = i % 3 + 1;
+    ctx.beginPath();
+    ctx.moveTo(x + direction * (122 - offset), y - height);
+    ctx.lineTo(x - direction * (26 + offset), y - height + 14);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+export function render(ctx, match, frameNumber, images, renderState, interpolation, delta) {
+  // Portrait renders a taller crop while keeping fighter proportions and world coordinates.
+  const scale = ctx.canvas.height / H;
+  const viewWidth = ctx.canvas.width / scale;
+  const screenOffset = (ctx.canvas.width - W * scale) / 2;
+  ctx.setTransform(scale, 0, 0, scale, screenOffset, 0);
   if (!match) return;
+  ctx.fillStyle = '#080a12';
+  ctx.fillRect(0, 0, W, H);
 
   // Dynamic Camera Tracking & Zoom (MvC / MK camera)
   const p1 = match.p1;
   const p2 = match.p2;
-  const midX = (p1.x + p2.x) * 0.5;
-  const minY = Math.min(p1.y, p2.y);
-  const dist = Math.abs(p1.x - p2.x);
+  const x1 = lerp(p1.prevX, p1.x, interpolation);
+  const x2 = lerp(p2.prevX, p2.x, interpolation);
+  const y1 = lerp(p1.prevY, p1.y, interpolation);
+  const y2 = lerp(p2.prevY, p2.y, interpolation);
+  const midX = (x1 + x2) * 0.5;
+  const dist = Math.abs(x1 - x2);
 
-  const airFollowY = clamp((GROUND - minY) * 0.28, 0, 95);
-  let targetZoom = clamp(1.13 - (dist / 1300) * 0.16, 0.98, 1.13);
-  if (match.freeze > 0) targetZoom = 1.18;
-  else if (match.koZoom > 0) targetZoom = 1.2;
+  const airFollowY = clamp((GROUND - Math.min(y1, y2)) * 0.39, 0, 125);
+  let targetZoom = clamp(1.25 - dist * 0.00027 - airFollowY * 0.001, 0.88, 1.2);
+  if (match.koZoom > 0 && !match.reducedMotion) targetZoom = Math.min(targetZoom + 0.07, 1.24);
+  const fitZoom = viewWidth / (dist + 230);
+  targetZoom = Math.min(targetZoom, fitZoom);
 
-  renderState.camX = lerp(renderState.camX, midX, 0.16);
-  renderState.camY = lerp(renderState.camY, H * 0.5 - airFollowY, 0.14);
-  renderState.camZoom = lerp(renderState.camZoom, targetZoom, 0.14);
+  // Exponential smoothing keeps the camera response consistent at 60Hz and 120Hz.
+  const follow = 1 - Math.pow(0.85, delta / STEP);
+  renderState.camX = lerp(renderState.camX, midX, follow);
+  renderState.camY = lerp(renderState.camY, H / 2 - airFollowY, follow);
+  renderState.camZoom = lerp(renderState.camZoom, targetZoom, follow);
 
-  const zoom = renderState.camZoom;
-  const halfViewW = (W * 0.5) / zoom;
-  const clampedCamX = clamp(renderState.camX, halfViewW, WORLD_W - halfViewW);
+  const zoom = Math.min(renderState.camZoom, fitZoom);
+  const halfViewW = viewWidth / (2 * zoom);
+  const cameraMargin = Math.max(0, halfViewW - dist / 2 - 98);
+  const trackedX = clamp(renderState.camX, midX - cameraMargin, midX + cameraMargin);
+  const clampedCamX = clamp(trackedX, halfViewW, WORLD_W - halfViewW);
 
   ctx.save();
 
   // Apply screen shake
-  if (match.shake > 0) {
+  if (match.shake > 0 && !match.reducedMotion) {
     ctx.translate(
-      random(-match.shake, match.shake),
-      random(-match.shake * 0.55, match.shake * 0.55)
+      Math.sin(frameNumber * 2.6) * match.shake,
+      Math.cos(frameNumber * 1.9) * match.shake * 0.35
     );
   }
 
@@ -273,11 +281,13 @@ export function render(ctx, match, frameNumber, images, renderState) {
   const stageImg = images.get(match.stage.image);
   if (stageImg) {
     const parallaxX = (clampedCamX - WORLD_W * 0.5) * 0.18;
-    ctx.drawImage(stageImg, -60 + parallaxX, -25, WORLD_W + 120, H + 40);
+    const stageWidth = WORLD_W + 220;
+    const stageHeight = stageWidth * stageImg.naturalHeight / stageImg.naturalWidth;
+    ctx.drawImage(stageImg, -110 + parallaxX, GROUND - stageHeight * 0.86, stageWidth, stageHeight);
   }
 
   // 2. Stage Atmospheric Effects
-  if (match.stageId === 'seattle') {
+  if (match.stageId === 'seattle' && !match.reducedMotion) {
     const shift = (frameNumber * 8) % H;
     ctx.drawImage(renderState.rain, clampedCamX - W * 0.5, shift);
     ctx.drawImage(renderState.rain, clampedCamX - W * 0.5, shift - H);
@@ -296,7 +306,7 @@ export function render(ctx, match, frameNumber, images, renderState) {
       ctx.drawImage(renderState.coliseumGlow, x - 120, 55, 240, 240);
     }
     ctx.restore();
-  } else {
+  } else if (!match.reducedMotion) {
     ctx.save();
     ctx.globalAlpha = 0.22;
     for (let i = 0; i < 20; i++) {
@@ -308,11 +318,12 @@ export function render(ctx, match, frameNumber, images, renderState) {
   }
 
   // Hyper Combo speedline backdrop overlay when active
-  const hyperActive = (p1.move && p1.move.superMove) || (p2.move && p2.move.superMove);
-  if (hyperActive) {
+  const hyperActive = [p1, p2].some(fighter => fighter.move?.superMove
+    && fighter.moveFrame < fighter.move.startup + fighter.move.active);
+  if (hyperActive || match.freeze > 0) {
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    drawHyperBackground(ctx, match, frameNumber);
+    ctx.setTransform(scale, 0, 0, scale, screenOffset, 0);
+    drawHyperBackground(ctx, match, match.reducedMotion ? 0 : frameNumber);
     ctx.restore();
   }
 
@@ -321,18 +332,18 @@ export function render(ctx, match, frameNumber, images, renderState) {
   ctx.fillRect(0, GROUND - 110, WORLD_W, H - (GROUND - 110));
 
   // Real-time Wet Stage Reflection of Fighters!
-  function drawReflection(fighter) {
+  function drawReflection(fighter, x, y) {
     const sheet = images.get(fighter.data.sheet);
-    const air = GROUND - fighter.y;
-    if (air > 260) return;
+    const air = GROUND - y;
+    if (air > 260 || fighter.state === 'knockdown') return;
     const frame = fighter.spriteFrame();
-    const alpha = clamp(0.18 - air * 0.0006, 0.03, 0.18);
-    const reflectY = GROUND + 14 + air * 0.35;
+    const alpha = clamp(0.22 - air * 0.0007, 0.03, 0.22);
+    const reflectY = GROUND + 2 + air * 0.36;
     drawSheet(
       ctx,
       sheet,
       frame,
-      fighter.x,
+      x,
       reflectY,
       fighter.facing,
       SPRITE_SIZE,
@@ -342,18 +353,18 @@ export function render(ctx, match, frameNumber, images, renderState) {
     );
   }
 
-  drawReflection(p1);
-  drawReflection(p2);
+  if (match.stageId === 'seattle') {
+    drawReflection(p1, x1, y1);
+    drawReflection(p2, x2, y2);
+  }
 
   // 4. Dynamic Ground Shadows & Character Rim Auras
-  function drawShadow(fighter) {
-    const air = GROUND - fighter.y;
+  function drawShadow(fighter, x, y) {
+    const air = GROUND - y;
     ctx.save();
     ctx.globalAlpha = clamp(0.54 - air * 0.0018, 0.14, 0.54);
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(fighter.x, GROUND + 5, clamp(76 - air * 0.14, 24, 76), 14, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const width = clamp(200 - air * 0.3, 85, 200);
+    ctx.drawImage(renderState.contactShadow, x - width / 2, GROUND - 19, width, 38);
 
     // Meter full ground aura ring
     if (fighter.meter >= 200 && fighter.grounded()) {
@@ -362,18 +373,18 @@ export function render(ctx, match, frameNumber, images, renderState) {
       ctx.strokeStyle = fighter.data.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.ellipse(fighter.x, GROUND + 4, 68 + Math.sin(frameNumber * 0.12) * 8, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, GROUND + 4, 68 + Math.sin(frameNumber * 0.12) * 8, 12, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
   }
 
   // 5. Fighter Sprite + Chromatic Ghost Trail + Status Indicators
-  function drawFighter(fighter) {
+  function drawFighter(fighter, x, y) {
     const sheet = images.get(fighter.data.sheet);
 
     // Chromatic afterimage trail (Dash / Super Jump / EX / Hyper)
-    if (fighter.trail && fighter.trail.length) {
+    if (!match.reducedMotion && fighter.trail.length) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (let i = 0; i < fighter.trail.length; i++) {
@@ -386,7 +397,7 @@ export function render(ctx, match, frameNumber, images, renderState) {
           ghost.y,
           ghost.facing,
           SPRITE_SIZE,
-          (ghost.life / 12) * 0.46,
+          (ghost.life / 12) * 0.24,
           1,
           1
         );
@@ -395,18 +406,36 @@ export function render(ctx, match, frameNumber, images, renderState) {
     }
 
     ctx.save();
-    if (fighter.invuln > 0 && Math.floor(fighter.invuln / 2) % 2 === 0) {
-      ctx.globalAlpha = 0.5;
-    }
-
-    const flash = fighter.hitstun > 10;
+    const flash = fighter.state === 'hitstun' && fighter.stateFrame < 3 && !match.reducedMotion;
     const frame = fighter.spriteFrame();
     const pose = inner => {
-      if (fighter.state === 'knockdown') {
-        inner.translate(0, 22);
-        inner.rotate(-0.56);
+      const move = fighter.move;
+      const time = fighter.stateFrame + interpolation;
+      if (fighter.state === 'knockdown' || fighter.state === 'getup') {
+        const rotation = fighter.state === 'knockdown'
+          ? lerp(-0.34, -1.36, clamp(time / 7, 0, 1))
+          : lerp(-1.36, 0, clamp(time / 12, 0, 1));
+        inner.rotate(rotation);
+        inner.translate(0, -Math.abs(rotation) * 16);
       } else if (fighter.state === 'dizzy') {
-        inner.rotate(Math.sin(frameNumber * 0.18) * 0.08);
+        inner.rotate(Math.sin(time * 0.14) * 0.085);
+      } else if (move) {
+        const windup = clamp((fighter.moveFrame + interpolation) / move.startup, 0, 1);
+        const recovery = clamp((fighter.moveFrame - move.startup - move.active) / move.recovery, 0, 1);
+        const anticipation = fighter.moveFrame < move.startup ? Math.sin(windup * Math.PI) : 0;
+        const extension = fighter.moveFrame >= move.startup ? 1 - recovery : 0;
+        const followThrough = move.name === 'airheavy' ? 0.29 : move.name === 'heavy' ? 0.13 : 0.045;
+        inner.rotate(-0.095 * anticipation + followThrough * extension);
+        if (move.name === 'crouchlight' && extension) inner.scale(1, 0.64);
+        inner.scale(1 - 0.045 * anticipation + extension * 0.025, 1 - 0.055 * anticipation);
+      } else if (fighter.state === 'walk') {
+        const stride = Math.sin(fighter.walkCycle);
+        inner.rotate(clamp(fighter.walkVx * fighter.facing * 0.004, -0.035, 0.035));
+        inner.scale(1, 0.982 + stride * 0.018);
+      } else if (fighter.state === 'jump' || fighter.dashType === 'air') {
+        inner.rotate(clamp(fighter.jumpVx * fighter.facing * 0.009, -0.095, 0.095));
+      } else if (fighter.state === 'idle' || fighter.state === 'victory') {
+        inner.scale(1, 1 + Math.sin(time * 0.105) * 0.014);
       }
     };
 
@@ -414,8 +443,8 @@ export function render(ctx, match, frameNumber, images, renderState) {
       ctx,
       sheet,
       frame,
-      fighter.x,
-      fighter.y,
+      x,
+      y,
       fighter.facing,
       SPRITE_SIZE,
       ctx.globalAlpha,
@@ -424,17 +453,17 @@ export function render(ctx, match, frameNumber, images, renderState) {
       pose
     );
 
-    if (flash || (fighter.move && fighter.move.superMove && (frameNumber & 1))) {
+    if (flash) {
       ctx.globalCompositeOperation = 'lighter';
       drawSheet(
         ctx,
         sheet,
         frame,
-        fighter.x,
-        fighter.y,
+        x,
+        y,
         fighter.facing,
         SPRITE_SIZE,
-        0.48,
+        0.22,
         fighter.scaleX,
         fighter.scaleY,
         pose
@@ -444,10 +473,10 @@ export function render(ctx, match, frameNumber, images, renderState) {
     // MK FINISH HIM spinning dizzy stars over head
     if (fighter.state === 'dizzy') {
       ctx.globalCompositeOperation = 'screen';
-      const headY = fighter.y - 315;
+      const headY = y - 338;
       for (let i = 0; i < 4; i++) {
         const angle = frameNumber * 0.11 + (i * Math.PI * 0.5);
-        const sx = fighter.x + Math.cos(angle) * 44;
+        const sx = x + Math.cos(angle) * 44;
         const sy = headY + Math.sin(angle) * 11;
         ctx.fillStyle = i % 2 === 0 ? '#ffcf6e' : '#ff4733';
         ctx.beginPath();
@@ -458,21 +487,25 @@ export function render(ctx, match, frameNumber, images, renderState) {
     ctx.restore();
   }
 
-  drawShadow(p1);
-  drawShadow(p2);
+  drawShadow(p1, x1, y1);
+  drawShadow(p2, x2, y2);
 
   // Draw non-attacking fighter first so attacking fighter overlaps on top
   if (p2.state === 'attack' && p1.state !== 'attack') {
-    drawFighter(p1);
-    drawFighter(p2);
+    drawFighter(p1, x1, y1);
+    drawFighter(p2, x2, y2);
   } else {
-    drawFighter(p2);
-    drawFighter(p1);
+    drawFighter(p2, x2, y2);
+    drawFighter(p1, x1, y1);
   }
 
-  // 6. Hyper Beams & Sonic Projectiles
-  drawHyperBeam(ctx, p1, frameNumber, renderState);
-  drawHyperBeam(ctx, p2, frameNumber, renderState);
+  // 6. Signature moves and sonic projectiles
+  if (!match.reducedMotion) {
+    drawRush(ctx, p1, x1, y1, frameNumber);
+    drawRush(ctx, p2, x2, y2, frameNumber);
+  }
+  drawHyperBeam(ctx, p1, x1, y1, frameNumber, renderState);
+  drawHyperBeam(ctx, p2, x2, y2, frameNumber, renderState);
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
@@ -571,11 +604,7 @@ export function render(ctx, match, frameNumber, images, renderState) {
   ctx.fillStyle = renderState.vignette;
   ctx.fillRect(0, 0, W, H);
 
-  if (match.freeze > 0) {
-    drawHyperBanner(ctx, match);
-  }
-
-  if (match.superFlash > 0) {
+  if (match.superFlash > 0 && !match.reducedMotion) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     const flashColor = match.hyperColor || '#ffffff';
@@ -586,7 +615,7 @@ export function render(ctx, match, frameNumber, images, renderState) {
   }
 
   // Hyper Combo K.O. sunburst finish (Marvel vs. Capcom signature!)
-  if (match.koZoom > 0 && match.hyperFinish) {
+  if (match.koZoom > 0 && match.hyperFinish && !match.reducedMotion) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = clamp(match.koZoom / 38, 0, 0.55);
@@ -602,7 +631,7 @@ export function render(ctx, match, frameNumber, images, renderState) {
       ctx.fill();
     }
     ctx.restore();
-  } else if (match.koZoom > 14) {
+  } else if (match.koZoom > 14 && !match.reducedMotion) {
     ctx.fillStyle = `rgba(255, 255, 255, ${(match.koZoom - 14) / 42})`;
     ctx.fillRect(0, 0, W, H);
   }
