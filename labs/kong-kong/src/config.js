@@ -51,6 +51,34 @@ export const PHYS = Object.freeze({
 export const START_LIVES = 4;
 export const BANANAS_PER_LIFE = 100;
 export const SAVE_KEY = 'kong-kong-save';
+export const EASY_KEY = 'kong-kong-easy';
+
+/**
+ * Modo fácil (padrão — pensado para crianças). Regras em relação ao Normal:
+ *
+ *   vidas iniciais          EASY.LIVES (7) em vez de START_LIVES (4)
+ *   velocidade dos bichos   v * EASY.ENEMY_SPEED
+ *   Rei Croco               EASY.BOSS_HP batidas, anda a v * EASY.BOSS_SPEED
+ *   coyote / buffer         EASY.COYOTE / EASY.JUMP_BUF (mais tolerantes)
+ *   buraco ou espinho       conta como uma batida comum (perde o lenço; sem
+ *                           lenço, perde 1 vida) e Kong volta ao último chão
+ *                           seguro — a fase NÃO recomeça do checkpoint.
+ *   perder uma vida         renasce no último chão seguro, com o lenço.
+ *
+ * No Normal, perder uma vida recomeça a fase no último checkpoint (barril K).
+ */
+export const EASY = Object.freeze({
+  LIVES: 7,
+  ENEMY_SPEED: 0.7,
+  BOSS_HP: 3,
+  BOSS_SPEED: 0.75,
+  COYOTE: 0.15,
+  JUMP_BUF: 0.18
+});
+
+/** Barris rolados pelo Rei Croco: v = ROLL_BARREL_VX (× EASY.ENEMY_SPEED no fácil), somem após ROLL_BARREL_LIFE s. */
+export const ROLL_BARREL_VX = 118;
+export const ROLL_BARREL_LIFE = 6;
 
 export const PAL = Object.freeze({
   fur: '#8a4a1e',

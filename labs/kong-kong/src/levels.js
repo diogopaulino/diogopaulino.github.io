@@ -23,7 +23,7 @@ export const LEVELS = [
     'trilha',
     'jungle',
     'Trilha do Lenço',
-    'Pule nos lagartos e role com Shift. O lenço é um hit extra!',
+    'Pule em cima dos lagartos e corra até a bandeira!',
     [
       '............................................................................',
       '................b.b.b.......................................................',
@@ -47,7 +47,7 @@ export const LEVELS = [
     'cipos',
     'canopy',
     'Cipós da Canópia',
-    'Segure cima no cipó para subir. Pule para se soltar.',
+    'No cipó, segure ▲ para subir. Pule para soltar.',
     [
       '......................................................................',
       '....b.1.K.b.b.........................................................',
@@ -73,7 +73,7 @@ export const LEVELS = [
     'canhoes',
     'ruins',
     'Canyon dos Canhões',
-    'Pule num canhão e de novo para disparar. Encadeie os barris!',
+    'Entre no canhão: ele dispara sozinho (ou aperte pular).',
     [
       '................................................................................',
       '..................................................u.............................',
@@ -97,7 +97,7 @@ export const LEVELS = [
     'mina',
     'mine',
     'Mina do Brilho',
-    'TNT explode caixas. Ouriços só caem no rolamento.',
+    'Ouriço tem espinhos: role nele em vez de pular!',
     [
       '..................................................................................',
       '....b.b.b.........................................................................',
@@ -122,7 +122,7 @@ export const LEVELS = [
     'catarata',
     'falls',
     'Catarata Carmesim',
-    'Na água, pule para nadar. Molinhas mandam você para o céu.',
+    'Na água, aperte pular para nadar. Molas jogam você para o alto!',
     [
       '..............................................................................',
       '....b.K.b.....................................................................',
@@ -148,7 +148,7 @@ export const LEVELS = [
     'trono',
     'throne',
     'Trono do Rei Croco',
-    'Role ou pise no rei. Cinco hits. Cuidado com os barris!',
+    'Pule na cabeça do Rei Croco! Pule ou role nos barris.',
     [
       '..................................................',
       '..................................................',

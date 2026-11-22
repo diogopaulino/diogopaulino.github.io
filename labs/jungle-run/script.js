@@ -1,3 +1,34 @@
+/* ==========================================================================
+   JUNGLE RUN — regras
+   --------------------------------------------------------------------------
+   • O explorador corre sozinho para a direita (autoSpeed). ←/→ (ou A/D, ◀ ▶)
+     acelera ou freia; ESPAÇO/↑/W (ou PULAR) salta. Segurar o salto pula mais
+     alto (soltar cedo corta a subida: vy *= 0.84 enquanto vy < -5).
+   • Física em "frames de 60 Hz": delta = ticker.deltaTime limitado a 2, então
+     um quadro longo (aba lenta, GC) nunca teleporta o jogador através de nada.
+     autoSpeed = min(maxSpeed, baseSpeed + distância/500) × speedMul(dificuldade)
+     Pulo: vy = JUMP_FORCE (-14.2), gravidade 0.72/frame → altura máx ≈ 140 px.
+   • Perigos: tronco rolando, jacaré e ruína tiram 1 vida ao encostar. Cair do
+     alto em cima de um tronco é "Salto Perfeito" (+50 e quica). Buraco: cair
+     tira 1 vida e o explorador reaparece no chão firme DEPOIS do buraco (nunca
+     cai duas vezes no mesmo buraco). Após dano há invencibilidade (~1,8 s).
+   • Cipós e árvores são opcionais: segure pular/↑ perto da ponta do cipó ou do
+     tronco para se agarrar; ↑/↓ sobe e desce; pular solta (o balanço dá impulso).
+   • Anti-trava: parado na árvore (~2,5 s) ou no cipó (~5 s) sem ↑/↓/←/→, o
+     explorador salta sozinho — segurar PULAR não prende mais ninguém.
+   • Pontos: moeda 50, relíquia 250, a cada 8 coletas +200, ao vencer +150 por
+     vida restante. Estrelas: 3 = ≥70% das coletas sem perder vida; 2 = ≥40%
+     das coletas ou perdeu no máximo 1 vida; 1 = chegou.
+   • Vitória: distância (m = px/10) ≥ distanceGoal da fase → bandeira de chegada.
+     Derrota: vidas = 0. Modo Infinito não tem meta (só recorde).
+   • Alcance do pulo: tempo no ar ≈ 2×14.2/0.72 ≈ 39 frames; distância ≈
+     39 × (autoSpeed + vx). Sem "air assist" um pulo parado mal passava um
+     jacaré (hitbox 76+32 px) — a criança precisava descobrir que tinha de
+     segurar →. Agora, no ar e sem ← apertado, vx tende a airAssist.
+   • Dificuldade (localStorage 'jungleRunMode'): Fácil (padrão) = 5 vidas,
+     velocidade ×0.82, troncos ×0.7, buracos 64–90 px, airAssist 1.6;
+     Normal = 3 vidas, buracos 110–160 px, airAssist 0.6.
+   ========================================================================== */
 const CONFIG = Object.freeze({
     WIDTH: 960,
     HEIGHT: 600,
@@ -11,7 +42,9 @@ const CONFIG = Object.freeze({
     SPAWN_AHEAD: 1900,
     COYOTE_FRAMES: 7,
     JUMP_BUFFER_FRAMES: 8,
-    CLIMB_SPEED: 0.018
+    CLIMB_SPEED: 0.018,
+    GRIP_IDLE_TREE: 150, // ~2,5 s parado na árvore → salta sozinho
+    GRIP_IDLE_VINE: 300  // ~5 s parado no cipó → solta sozinho
 });
 
 const LEVELS = [
@@ -66,6 +99,14 @@ const LEVELS = [
         description: 'A selva não tem fim. Corra o mais longe que conseguir neste desafio eterno.'
     }
 ];
+
+/* Dificuldade. Fácil é o padrão para que crianças consigam chegar ao fim. */
+const DIFFICULTY = Object.freeze({
+    easy: { lives: 5, speedMul: 0.82, logMul: 0.7, pitMin: 64, pitVar: 26, airAssist: 1.6 },
+    normal: { lives: 3, speedMul: 1, logMul: 1, pitMin: 110, pitVar: 50, airAssist: 0.6 }
+});
+
+const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
 
 /* Áudio via LabAudio: mudo persistido + tons sintéticos. O botão #soundBtn
    continua no chrome do lab; só a engine muda. */
@@ -133,11 +174,11 @@ class JungleRun {
         this.app = null;
         this.state = 'loading';
         this.keys = Object.create(null);
-        this.touch = { left: false, right: false, jump: false, climbUp: false, climbDown: false };
+        this.touch = { left: false, right: false, jump: false, climbUp: false, climbDown: false, tap: false };
         
         // Game stats
         this.score = 0;
-        this.lives = 3;
+        this.lives = this.maxLives;
         this.distance = 0;
         this.cameraX = 0;
         this.lastSpawnX = 0;
@@ -149,8 +190,14 @@ class JungleRun {
         
         // Level management
         this.unlockedLevel = this.readNumber('jungleRunUnlockedLevel') || 1;
-        this.selectedLevelIndex = 0;
-        this.currentLevel = LEVELS[0];
+        // Abre já na fase mais avançada liberada (Infinito nunca é o padrão).
+        this.selectedLevelIndex = Math.max(0, Math.min(this.unlockedLevel, 4) - 1);
+        this.currentLevel = LEVELS[this.selectedLevelIndex];
+        this.mode = this.readMode();
+        this.maxLives = DIFFICULTY[this.mode].lives;
+        this.lives = this.maxLives;
+        this.uiProgress = -1;
+        this.uiBiome = '';
         
         // Lists
         this.effects = [];
@@ -175,6 +222,27 @@ class JungleRun {
         } catch {
             return 0;
         }
+    }
+
+    readMode() {
+        try {
+            return localStorage.getItem('jungleRunMode') === 'normal' ? 'normal' : 'easy';
+        } catch {
+            return 'easy';
+        }
+    }
+
+    setMode(mode) {
+        this.mode = DIFFICULTY[mode] ? mode : 'easy';
+        this.maxLives = DIFFICULTY[this.mode].lives;
+        try { localStorage.setItem('jungleRunMode', this.mode); } catch {}
+        document.querySelectorAll('.mode-btn').forEach((btn) => {
+            btn.setAttribute('aria-checked', String(btn.dataset.mode === this.mode));
+        });
+    }
+
+    get diff() {
+        return DIFFICULTY[this.mode];
     }
 
     saveNumber(key, value) {
@@ -308,9 +376,13 @@ class JungleRun {
             card.type = 'button';
             card.className = `level-card ${locked ? 'locked' : ''} ${idx === this.selectedLevelIndex ? 'selected' : ''}`;
             card.disabled = locked;
+            card.setAttribute('aria-pressed', String(idx === this.selectedLevelIndex));
+            card.setAttribute('aria-label', locked
+                ? `${level.name} (bloqueada: vença a fase anterior)`
+                : `${level.name}. ${level.description}`);
             
             card.innerHTML = `
-                <span class="level-card-number">EXPEDIÇÃO 0${level.id}</span>
+                <span class="level-card-number">${level.id === 5 ? '∞' : level.id}<small>${level.id === 5 ? 'INFINITO' : 'FASE ' + level.id}</small></span>
                 <h4 class="level-card-title">${level.name}</h4>
                 <p class="level-card-desc">${level.description}</p>
                 <div class="level-card-meta">
@@ -323,12 +395,16 @@ class JungleRun {
             if (!locked) {
                 card.addEventListener('click', () => {
                     this.audio.play('select');
-                    document.querySelectorAll('.level-card').forEach(c => c.classList.remove('selected'));
+                    document.querySelectorAll('.level-card').forEach(c => {
+                        c.classList.remove('selected');
+                        c.setAttribute('aria-pressed', 'false');
+                    });
                     card.classList.add('selected');
+                    card.setAttribute('aria-pressed', 'true');
                     this.selectedLevelIndex = idx;
                     this.currentLevel = level;
                     
-                    document.getElementById('startBtn').querySelector('span').textContent = `Iniciar: ${level.name}`;
+                    this.updateStartLabel();
                 });
             }
             
@@ -336,10 +412,15 @@ class JungleRun {
         });
 
         this.currentLevel = LEVELS[this.selectedLevelIndex];
-        document.getElementById('startBtn').querySelector('span').textContent = `Iniciar: ${this.currentLevel.name}`;
+        this.updateStartLabel();
         
         const generalRecord = this.readNumber('jungleRunBestScore');
         document.getElementById('bestScore').textContent = this.pad(generalRecord, 4);
+    }
+
+    updateStartLabel() {
+        const label = document.getElementById('startBtn').querySelector('span');
+        label.textContent = this.currentLevel.id === 5 ? 'Jogar: Infinito' : `Jogar fase ${this.currentLevel.id}`;
     }
 
     createBackdrop() {
@@ -584,9 +665,10 @@ class JungleRun {
             if ((event.code === 'Escape' || event.code === 'KeyP') && !event.repeat) {
                 this.togglePause();
             }
-            if (event.code === 'Enter' && !event.repeat) {
+            if (event.code === 'Enter' && !event.repeat && performance.now() >= this.overlayLockUntil) {
                 if (this.state === 'intro') this.startExpedition();
                 else if (this.state === 'over') this.restartGame();
+                else if (this.state === 'won') this.advanceToNextLevel();
             }
         });
 
@@ -596,6 +678,7 @@ class JungleRun {
 
         window.addEventListener('blur', () => {
             if (this.state === 'playing') this.pauseGame();
+            else this.releaseInputs();
         });
 
         document.addEventListener('visibilitychange', () => {
@@ -608,14 +691,45 @@ class JungleRun {
         });
 
         document.getElementById('startBtn').addEventListener('click', () => this.startExpedition());
-        document.getElementById('restartBtn').addEventListener('click', () => this.restartGame());
+        // Telas de resultado ignoram cliques nos primeiros 600 ms: quem morre
+        // segurando ESPAÇO soltaria a tecla em cima do botão focado e pularia a tela.
+        const guarded = (fn) => () => {
+            if (performance.now() < this.overlayLockUntil) return;
+            fn();
+        };
+        this.overlayLockUntil = 0;
+        document.getElementById('restartBtn').addEventListener('click', guarded(() => this.restartGame()));
         document.getElementById('pauseRestartBtn').addEventListener('click', () => this.restartGame());
         document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
         document.getElementById('resumeBtn').addEventListener('click', () => this.resumeGame());
         document.getElementById('soundBtn').addEventListener('click', () => this.audio.toggle());
         
-        document.getElementById('nextLevelBtn').addEventListener('click', () => this.advanceToNextLevel());
-        document.getElementById('completeMenuBtn').addEventListener('click', () => this.backToMenu());
+        document.getElementById('nextLevelBtn').addEventListener('click', guarded(() => this.advanceToNextLevel()));
+        document.getElementById('completeMenuBtn').addEventListener('click', guarded(() => this.backToMenu()));
+        document.getElementById('completeReplayBtn').addEventListener('click', guarded(() => this.restartGame()));
+        document.getElementById('pauseMenuBtn').addEventListener('click', () => this.backToMenu());
+        document.getElementById('overMenuBtn').addEventListener('click', guarded(() => this.backToMenu()));
+
+        document.querySelectorAll('.mode-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.setMode(btn.dataset.mode);
+                this.audio.play('select');
+            });
+        });
+        this.setMode(this.mode);
+
+        // Toque em qualquer ponto livre da cena = pular (segurar = pulo alto).
+        // Os botões do pad ficam por cima e continuam com a própria função.
+        const tapJumpRelease = () => { this.touch.tap = false; };
+        this.canvas.addEventListener('pointerdown', (event) => {
+            if (this.state !== 'playing' || event.pointerType === 'mouse') return;
+            event.preventDefault();
+            this.touch.tap = true;
+            this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
+        });
+        this.canvas.addEventListener('pointerup', tapJumpRelease);
+        this.canvas.addEventListener('pointercancel', tapJumpRelease);
+        this.canvas.addEventListener('pointerleave', tapJumpRelease);
 
         this.bindHoldButton('leftBtn', 'left');
         this.bindHoldButton('rightBtn', 'right');
@@ -667,6 +781,12 @@ class JungleRun {
     spawnSegment(x) {
         const allowed = this.currentLevel.allowedObstacles;
         const choices = [];
+
+        // Pista livre perto da bandeira: a chegada nunca fica atrás de um buraco.
+        if (this.finishX && x > this.finishX - 420) {
+            if (x < this.finishX + 200 && Math.random() < 0.5) this.spawnCollectible(x + 120, true);
+            return;
+        }
         
         if (allowed.includes('pit') && Math.random() < 0.22) choices.push('pit');
         if (allowed.includes('crocodile') && Math.random() < 0.25) choices.push('crocodile');
@@ -726,7 +846,7 @@ class JungleRun {
     }
 
     spawnPit(x) {
-        const width = 110 + Math.random() * 50;
+        const width = this.diff.pitMin + Math.random() * this.diff.pitVar;
         const pit = new PIXI.Graphics();
         pit.rect(0, -2, width, 150).fill(0x020705);
         pit.rect(6, 12, width - 12, 126).fill({ color: 0x1b3528, alpha: 0.25 });
@@ -752,7 +872,7 @@ class JungleRun {
         croc.width = 110;
         croc.height = 45;
         croc.type = 'crocodile';
-        croc.hitWidth = 92;
+        croc.hitWidth = 76;
         croc.hitHeight = 28;
         croc.phase = Math.random() * Math.PI * 2;
         croc.startY = croc.y;
@@ -771,7 +891,7 @@ class JungleRun {
         log.type = 'log';
         log.hitWidth = 64;
         log.hitHeight = 30;
-        log.vx = -(1.2 + Math.random() * 0.9 + (this.distance / 400));
+        log.vx = -(1.2 + Math.random() * 0.9 + (this.distance / 400)) * this.diff.logMul;
         
         this.world.addChild(log);
         this.obstacles.push(log);
@@ -875,13 +995,19 @@ class JungleRun {
         if (this.state !== 'intro') return;
         this.audio.ensureContext();
         document.getElementById('startScreen').classList.add('hidden');
-        document.getElementById('mobileControls').classList.remove('is-hidden');
+        // Monta a fase escolhida ANTES da contagem, para o 3-2-1 já mostrar a pista certa.
+        this.resetRun();
         this.state = 'countdown';
+        this.app.ticker.start();
+        document.getElementById('mobileControls').classList.remove('is-hidden');
         await this.runCountdown();
         if (this.state !== 'countdown') return;
-        
-        this.restartGame();
+
+        this.state = 'playing';
+        // Aba escondida durante o 3-2-1: começa já pausado em vez de correr sozinho.
+        if (document.hidden) { this.pauseGame(); return; }
         this.announce('Expedição iniciada');
+        this.showToast(IS_TOUCH ? 'Toque em PULAR para saltar!' : 'Aperte ESPAÇO para pular!');
     }
 
     async runCountdown() {
@@ -933,19 +1059,30 @@ class JungleRun {
     }
 
     restartGame() {
+        this.resetRun();
+        this.state = 'playing';
+        this.app.ticker.start();
+        this.audio.play('select');
+        this.announce('Expedição reiniciada');
+    }
+
+    /* Zera a corrida e reconstrói o mundo da fase atual. Não muda o estado. */
+    resetRun() {
         this.score = 0;
-        this.lives = 3;
+        this.lives = this.maxLives;
         this.distance = 0;
         this.collectCount = 0;
         this.cameraX = 0;
         this.lastSpawnX = 0;
         this.invincibleFrames = 100;
         
-        this.effects.forEach(e => this.world.removeChild(e.container));
+        // destroy() (e não só removeChild) libera a geometria na GPU; as texturas
+        // compartilhadas ficam intactas porque não passamos { texture: true }.
+        this.effects.forEach(e => e.container.destroy({ children: true }));
         this.effects = [];
         
         [...this.obstacles, ...this.collectibles, ...this.vines, ...this.platforms, ...this.trees].forEach(obj => {
-            if (obj.parent) obj.parent.removeChild(obj);
+            obj.destroy({ children: true });
         });
         this.obstacles = [];
         this.collectibles = [];
@@ -965,6 +1102,7 @@ class JungleRun {
         this.world.x = 0;
         
         this.app.renderer.background.color = this.currentLevel.bgColor;
+        this.createFinishLine();
         
         this.spawnInitialContent();
         this.releaseInputs();
@@ -979,13 +1117,59 @@ class JungleRun {
         
         this.uiCache = {};
         this.syncHud(true);
-        this.state = 'playing';
-        this.app.ticker.start();
-        this.audio.play('select');
-        this.announce('Expedição reiniciada');
+    }
+
+    /* Bandeira quadriculada na meta da fase (x = 150 + meta × 10, pois 1 m = 10 px). */
+    createFinishLine() {
+        if (this.finishFlag) {
+            this.finishFlag.destroy({ children: true });
+            this.finishFlag = null;
+        }
+        const goal = this.currentLevel.distanceGoal;
+        this.finishX = goal === Infinity ? 0 : 150 + goal * 10;
+        if (!this.finishX) return;
+
+        const flag = new PIXI.Container();
+        const glow = new PIXI.Graphics();
+        glow.ellipse(0, -6, 90, 18).fill({ color: 0xf6cf69, alpha: 0.18 });
+        flag.addChild(glow);
+
+        const posts = new PIXI.Graphics();
+        // Arco de chegada: dois postes de bambu e uma faixa.
+        posts.roundRect(-70, -210, 12, 214, 5).fill(0x8a6a2c).stroke({ color: 0x3b2a0d, width: 2 });
+        posts.roundRect(58, -210, 12, 214, 5).fill(0x8a6a2c).stroke({ color: 0x3b2a0d, width: 2 });
+        posts.roundRect(-80, -222, 160, 30, 8).fill(0x1d5a35).stroke({ color: 0xf6cf69, width: 3 });
+        flag.addChild(posts);
+
+        const cloth = new PIXI.Graphics();
+        const cell = 12;
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 12; col++) {
+                cloth.rect(-72 + col * cell, -188 + row * cell, cell, cell)
+                    .fill((row + col) % 2 ? 0x0b130e : 0xfff6d8);
+            }
+        }
+        flag.addChild(cloth);
+        flag.cloth = cloth;
+
+        const label = new PIXI.Text({
+            text: 'CHEGADA',
+            style: { fontFamily: 'monospace', fontSize: 16, fontWeight: '900', fill: 0xf6cf69, letterSpacing: 3 }
+        });
+        label.anchor.set(0.5);
+        label.y = -207;
+        flag.addChild(label);
+
+        flag.x = this.finishX;
+        flag.y = CONFIG.GROUND_Y + 4;
+        // Atrás do jogador, na frente do chão.
+        this.world.addChildAt(flag, this.world.getChildIndex(this.playerShadow));
+        this.finishFlag = flag;
     }
 
     backToMenu() {
+        if (this.state === 'paused' && this.app?.ticker) this.app.ticker.start();
+        this.releaseInputs();
         ['pauseScreen', 'gameOverScreen', 'levelCompleteScreen'].forEach(id => {
             document.getElementById(id).classList.add('hidden');
             document.getElementById(id).setAttribute('aria-hidden', 'true');
@@ -994,6 +1178,7 @@ class JungleRun {
         this.state = 'intro';
         this.renderLevelSelector();
         document.getElementById('startScreen').classList.remove('hidden');
+        document.getElementById('startBtn').focus({ preventScroll: true });
         document.getElementById('hud').classList.remove('is-dimmed');
         document.getElementById('mobileControls').classList.add('is-hidden');
         this.announce('Menu principal');
@@ -1043,12 +1228,31 @@ class JungleRun {
     handleInput(delta) {
         const left = this.keys.ArrowLeft || this.keys.KeyA || this.touch.left;
         const right = this.keys.ArrowRight || this.keys.KeyD || this.touch.right;
-        const jump = this.keys.Space || this.keys.ArrowUp || this.keys.KeyW || this.touch.jump;
+        const jump = this.keys.Space || this.keys.ArrowUp || this.keys.KeyW || this.touch.jump || this.touch.tap;
         const climbUp = this.keys.KeyW || this.keys.ArrowUp || this.touch.climbUp;
         const climbDown = this.keys.KeyS || this.keys.ArrowDown || this.touch.climbDown;
 
         if (jump && !this.player.jumpHeld) this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
         this.player.jumpHeld = Boolean(jump);
+
+        // Anti-trava: quem segura PULAR sem parar se agarra numa árvore/cipó e
+        // nunca solta (o pulo só dispara ao apertar de novo). Sem ↑/↓ por
+        // GRIP_IDLE frames, o explorador salta sozinho para a frente.
+        if (this.player.onVine || this.player.onTree) {
+            if (climbUp || climbDown || left || right) this.gripIdle = 0;
+            else this.gripIdle = (this.gripIdle || 0) + delta;
+            const limit = this.player.onTree ? CONFIG.GRIP_IDLE_TREE : CONFIG.GRIP_IDLE_VINE;
+            if (this.gripIdle > limit * 0.5 && !this.gripHintShown) {
+                this.gripHintShown = true;
+                this.showToast(IS_TOUCH ? 'Toque em PULAR para soltar!' : 'Aperte ESPAÇO para soltar!');
+            }
+            if (this.gripIdle > limit) {
+                this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
+            }
+        } else {
+            this.gripIdle = 0;
+            this.gripHintShown = false;
+        }
 
         // Vine Climbing
         if (this.player.onVine) {
@@ -1064,6 +1268,7 @@ class JungleRun {
             if (right) vine.angularVelocity += 0.0006 * delta;
             
             if (this.jumpBufferFrames > 0) {
+                this.gripIdle = 0;
                 this.releaseVine();
             }
             return;
@@ -1080,6 +1285,7 @@ class JungleRun {
             }
 
             if (this.jumpBufferFrames > 0) {
+                this.gripIdle = 0;
                 this.releaseTree(left ? -1 : 1);
             }
             return;
@@ -1089,9 +1295,10 @@ class JungleRun {
         let inputVelocity = 0;
         if (left) inputVelocity -= CONFIG.MOVE_SPEED;
         if (right) inputVelocity += CONFIG.MOVE_SPEED;
+        if (!this.player.onGround && !left && !right) inputVelocity = this.diff.airAssist;
         
         this.player.vx += (inputVelocity - this.player.vx) * 0.22;
-        if (inputVelocity !== 0) this.player.facing = Math.sign(inputVelocity);
+        if (left || right) this.player.facing = Math.sign(inputVelocity) || this.player.facing;
         
         if (this.player.onGround) this.coyoteFrames = CONFIG.COYOTE_FRAMES;
         else this.coyoteFrames = Math.max(0, this.coyoteFrames - 1);
@@ -1145,7 +1352,7 @@ class JungleRun {
         const autoSpeed = Math.min(
             this.currentLevel.maxSpeed,
             this.currentLevel.baseSpeed + this.distance / 500
-        );
+        ) * this.diff.speedMul;
 
         this.player.vy += CONFIG.GRAVITY * delta;
         this.player.x += (autoSpeed + this.player.vx) * delta;
@@ -1181,7 +1388,10 @@ class JungleRun {
             if (pit) {
                 this.player.onGround = false;
                 if (this.player.y > CONFIG.GROUND_Y + 90) {
-                    this.takeDamage(pit);
+                    // Já invencível (ex.: empurrado para o buraco por um tronco):
+                    // só reaparece, sem perder outra vida e sem cair para sempre.
+                    if (this.invincibleFrames > 0) this.respawnAfterPit(pit);
+                    else this.takeDamage(pit);
                 }
             } else {
                 this.player.y = CONFIG.GROUND_Y;
@@ -1254,7 +1464,8 @@ class JungleRun {
         let targetScaleY = 1.0;
 
         if (this.player.onVine || this.player.onTree) {
-            const isClimbing = this.keys.KeyW || this.keys.ArrowUp || this.keys.KeyS || this.keys.ArrowDown;
+            const isClimbing = this.keys.KeyW || this.keys.ArrowUp || this.keys.KeyS || this.keys.ArrowDown ||
+                this.touch.climbUp || this.touch.climbDown;
             const bob = isClimbing ? Math.sin(time * 18) * 0.06 : 0;
             targetScaleX = 0.95 + bob;
             targetScaleY = 1.05 - bob;
@@ -1380,7 +1591,7 @@ class JungleRun {
                 
                 if (this.collectCount % 8 === 0) {
                     this.score += 200;
-                    this.showToast('Sequência de Relíquias +200');
+                    this.showToast('Coleção! +200');
                 }
             }
         }
@@ -1411,7 +1622,7 @@ class JungleRun {
             }
         }
 
-        const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump || this.touch.climbUp;
+        const grabRequested = this.keys.ArrowUp || this.keys.KeyW || this.keys.Space || this.touch.jump || this.touch.tap || this.touch.climbUp;
         if (!grabRequested) this.releasedGrip = null;
 
         // Tree trunk climbing check
@@ -1427,7 +1638,7 @@ class JungleRun {
                         this.player.vy = 0;
                         this.player.vx = 0;
                         this.jumpBufferFrames = 0;
-                        this.showToast('Árvore escalada · W/S para subir');
+                        this.showToast(IS_TOUCH ? 'Na árvore! ▲ ▼ sobe e desce' : 'Na árvore! ↑ ↓ sobe e desce');
                         break;
                     }
                 }
@@ -1449,7 +1660,7 @@ class JungleRun {
                         this.player.vy = 0;
                         vine.angularVelocity += this.player.vx * 0.001;
                         this.jumpBufferFrames = 0;
-                        this.showToast('Cipó agarrado · W/S para escalar');
+                        this.showToast(IS_TOUCH ? 'No cipó! PULAR para soltar' : 'No cipó! ESPAÇO para soltar');
                         break;
                     }
                 }
@@ -1511,14 +1722,25 @@ class JungleRun {
         
         this.announce(`Dano sofrido. ${this.lives} vidas restantes.`);
 
-        if (source?.type === 'pit') {
-            this.player.x = Math.max(this.cameraX + 160, source.x - 65);
-            this.player.y = CONFIG.GROUND_Y - 95;
-        }
+        if (source?.type === 'pit') this.respawnAfterPit(source);
 
         if (this.lives <= 0) {
             this.gameOver();
+        } else if (this.lives === 1) {
+            this.showToast('Cuidado: última vida!');
         }
+    }
+
+    /* Antes o jogador voltava ANTES do buraco, no ar e com recuo; com a corrida
+       automática ele caía de novo no mesmo buraco e perdia todas as vidas em
+       sequência. Agora reaparece no chão firme logo depois do buraco. */
+    respawnAfterPit(pit) {
+        this.player.x = pit.x + pit.hitWidth + 36;
+        this.player.y = CONFIG.GROUND_Y - 60;
+        this.player.vx = 0;
+        this.player.vy = -4;
+        this.player.onGround = false;
+        this.invincibleFrames = Math.max(this.invincibleFrames, 110);
     }
 
     createCollectEffect(x, y, type) {
@@ -1583,7 +1805,7 @@ class JungleRun {
                 p.vy += eff.gravity * delta;
             }
             if (eff.life <= 0) {
-                this.world.removeChild(eff.container);
+                eff.container.destroy({ children: true });
                 this.effects.splice(i, 1);
             }
         }
@@ -1599,6 +1821,7 @@ class JungleRun {
 
     completeLevel() {
         this.state = 'won';
+        this.overlayLockUntil = performance.now() + 600;
         this.releaseInputs();
         this.audio.play('victory');
         
@@ -1625,13 +1848,13 @@ class JungleRun {
         const totalCollectibles = this.spawnedCollectiblesCount || 1;
         const collectRatio = this.collectCount / totalCollectibles;
         
-        if (collectRatio >= 0.70 && this.lives === 3) stars = 3;
-        else if (collectRatio >= 0.40 || this.lives >= 2) stars = 2;
+        if (collectRatio >= 0.70 && this.lives === this.maxLives) stars = 3;
+        else if (collectRatio >= 0.40 || this.lives >= this.maxLives - 1) stars = 2;
         
         document.getElementById('completeLevelName').textContent = this.currentLevel.name;
         document.getElementById('completeScore').textContent = this.pad(this.score, 4);
         document.getElementById('completeDistance').textContent = `${this.distance}m`;
-        document.getElementById('completeLivesBonus').textContent = `${this.lives}/3 (${this.lives * 150} pts bônus)`;
+        document.getElementById('completeLivesBonus').textContent = `${this.lives}/${this.maxLives} (+${this.lives * 150})`;
         
         this.score += this.lives * 150;
         document.getElementById('completeScore').textContent = this.pad(this.score, 4);
@@ -1645,7 +1868,7 @@ class JungleRun {
             nextBtn.classList.add('hidden');
         } else {
             nextBtn.classList.remove('hidden');
-            nextBtn.querySelector('span').textContent = currentIdx === 3 ? 'Jogar Infinito' : 'Avançar';
+            nextBtn.querySelector('span').textContent = currentIdx === 3 ? 'Modo Infinito' : 'Próxima fase';
         }
 
         document.getElementById('levelCompleteScreen').classList.remove('hidden');
@@ -1659,6 +1882,7 @@ class JungleRun {
 
     gameOver() {
         this.state = 'over';
+        this.overlayLockUntil = performance.now() + 600;
         this.releaseInputs();
         
         const lvlBest = this.readLevelBestScore(this.currentLevel.id);
@@ -1677,7 +1901,13 @@ class JungleRun {
         document.getElementById('finalScore').textContent = this.pad(this.score, 4);
         document.getElementById('finalDistance').textContent = `${this.pad(this.distance, 3)}m`;
         document.getElementById('finalBest').textContent = `${this.pad(lvlBest > this.score ? lvlBest : this.score, 4)}`;
-        document.getElementById('resultEyebrow').textContent = isRecord ? 'NOVO RECORDE DA EXPEDIÇÃO!' : 'EXPEDIÇÃO FALHOU';
+        document.getElementById('resultEyebrow').textContent = isRecord ? 'NOVO RECORDE!' : 'FIM DA EXPEDIÇÃO';
+        const goal = this.currentLevel.distanceGoal;
+        document.getElementById('resultTip').textContent = goal === Infinity
+            ? `Você correu ${this.distance} m. Consegue ir mais longe?`
+            : (this.mode === 'normal'
+                ? `Você chegou a ${this.distance} de ${goal} m. Dica: experimente o modo Fácil, com 5 vidas.`
+                : `Você chegou a ${this.distance} de ${goal} m. Dica: aperte pular um pouco antes do obstáculo.`);
         
         document.getElementById('gameOverScreen').classList.remove('hidden');
         document.getElementById('gameOverScreen').setAttribute('aria-hidden', 'false');
@@ -1714,7 +1944,7 @@ class JungleRun {
     }
 
     removeFromWorld(obj, array, idx) {
-        if (obj.parent) obj.parent.removeChild(obj);
+        obj.destroy({ children: true });
         array.splice(idx, 1);
     }
 
@@ -1729,25 +1959,35 @@ class JungleRun {
             document.getElementById('score').textContent = next.score;
         }
         if (force || this.uiCache.lives !== next.lives) {
-            const hearts = Array.from({ length: 3 }, (_, idx) => idx < this.lives ? '●' : '○').join(' ');
+            const hearts = Array.from({ length: this.maxLives }, (_, idx) => idx < this.lives ? '♥' : '♡').join('');
             const el = document.getElementById('lives');
             el.textContent = hearts;
-            el.setAttribute('aria-label', `${this.lives} vidas`);
+            el.setAttribute('aria-label', `${this.lives} de ${this.maxLives} vidas`);
+            if (!force) {
+                // Microinteração: o contador "treme" ao perder vida.
+                el.classList.remove('is-hit');
+                void el.offsetWidth;
+                el.classList.add('is-hit');
+            }
         }
         if (force || this.uiCache.distance !== next.distance) {
             document.getElementById('distance').textContent = next.distance;
         }
 
+        // Só toca no DOM quando o valor muda (antes: style e texto a cada frame).
         const goal = this.currentLevel.distanceGoal;
-        if (goal !== Infinity) {
-            const pct = Math.min(100, (this.distance / goal) * 100);
-            document.getElementById('progressFill').style.width = `${pct}%`;
-        } else {
-            const pct = (this.distance % 300) / 3.0;
+        const pct = goal !== Infinity
+            ? Math.round(Math.min(100, (this.distance / goal) * 100))
+            : Math.round((this.distance % 300) / 3.0);
+        if (force || pct !== this.uiProgress) {
+            this.uiProgress = pct;
             document.getElementById('progressFill').style.width = `${pct}%`;
         }
 
-        document.getElementById('biomeLabel').textContent = this.currentLevel.name;
+        if (force || this.uiBiome !== this.currentLevel.name) {
+            this.uiBiome = this.currentLevel.name;
+            document.getElementById('biomeLabel').textContent = this.currentLevel.name;
+        }
         this.uiCache = next;
     }
 

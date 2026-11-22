@@ -3,17 +3,38 @@
  */
 
 import {
-  VIEW_W, VIEW_H, TILE, PHYS, START_LIVES, BANANAS_PER_LIFE, SAVE_KEY,
-  THEMES, clamp, lerp, aabb, hash2
-} from './config.js';
-import { LEVELS } from './levels.js';
+  VIEW_W, VIEW_H, TILE, PHYS, START_LIVES, BANANAS_PER_LIFE, SAVE_KEY, EASY_KEY, EASY,
+  ROLL_BARREL_VX, ROLL_BARREL_LIFE, THEMES, clamp, lerp, aabb, hash2
+} from './config.js?v=4';
+import { LEVELS } from './levels.js?v=4';
 import {
   drawKong, drawScarfPickup, drawBanana, drawLetter, drawBalloon, drawBarrel,
   drawEnemy, drawBoss, drawExit, drawTile, drawBackground, drawForeground,
-  drawWorldMap, drawTitle, drawHud, roundRect
-} from './sprites.js';
+  drawWorldMap, drawTitle, drawHud, drawRollBarrel, roundRect
+} from './sprites.js?v=4';
 
 const SOLID = new Set(['#', '=', '@', '*']);
+// Conjuntos fixos: evitam criar um Set novo a cada frame em overlapsTile().
+const VINE = new Set(['|']);
+const WATER = new Set(['~']);
+const SPIKES = new Set(['^']);
+const ONE_WAY = new Set(['-']);
+
+/** Tempo (s) em que telas de resultado ignoram pulo/Enter — evita pular a tela sem querer. */
+const SCREEN_LOCK = 0.5;
+
+/** Teste de sobreposição sem alocar: ator (x,y,w,h) contra caixa centrada em (cx,cy). */
+function hitCentered(a, cx, cy, w, h) {
+  return a.x < cx + w / 2 && a.x + a.w > cx - w / 2 && a.y < cy + h / 2 && a.y + a.h > cy - h / 2;
+}
+
+function loadEasy() {
+  try {
+    return localStorage.getItem(EASY_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
 
 function loadSave() {
   try {
@@ -43,7 +64,8 @@ function isSolid(ch) {
   return SOLID.has(ch);
 }
 
-function parseLevel(def) {
+function parseLevel(def, easy = false) {
+  const speed = easy ? EASY.ENEMY_SPEED : 1;
   const tiles = def.map.map((r) => r.split(''));
   const bananas = [];
   const enemies = [];
@@ -90,23 +112,24 @@ function parseLevel(def) {
           wipe();
           break;
         case 'e':
-          enemies.push({ type: 'lizard', x: p.x + 1, y: p.y + 4, w: 14, h: 12, vx: 42, vy: 0, alive: true });
+          enemies.push({ type: 'lizard', x: p.x + 1, y: p.y + 4, w: 14, h: 12, vx: 42 * speed, vy: 0, alive: true });
           wipe();
           break;
         case 'f':
           enemies.push({
-            type: 'bee', x: p.x + 1, y: p.y + 2, w: 14, h: 12, vx: 36, vy: 0,
+            type: 'bee', x: p.x + 1, y: p.y + 2, w: 14, h: 12, vx: 36 * speed, vy: 0,
             baseY: p.y + 2, alive: true, t: hash2(tx, ty) * 10
           });
           wipe();
           break;
         case 'p':
-          enemies.push({ type: 'quill', x: p.x + 1, y: p.y + 4, w: 14, h: 12, vx: 28, vy: 0, alive: true });
+          enemies.push({ type: 'quill', x: p.x + 1, y: p.y + 4, w: 14, h: 12, vx: 28 * speed, vy: 0, alive: true });
           wipe();
           break;
         case 'W':
           boss = {
-            x: p.x, y: p.y - 16, w: 36, h: 32, vx: 50, vy: 0, hp: 5,
+            x: p.x, y: p.y - 16, w: 36, h: 32, vx: 50, vy: 0, hp: easy ? EASY.BOSS_HP : 5,
+            maxHp: easy ? EASY.BOSS_HP : 5, speed: easy ? EASY.BOSS_SPEED : 1,
             state: 'walk', timer: 0, invuln: 0, alive: true
           };
           wipe();
@@ -149,7 +172,8 @@ function parseLevel(def) {
     }
   }
   return {
-    def, tiles, w: def.w, h: def.h, spawn, exit, bananas, enemies, barrels, letters, extras, boss
+    def, tiles, w: def.w, h: def.h, spawn, exit, bananas, enemies, barrels, letters, extras, boss,
+    hazards: []
   };
 }
 
@@ -179,6 +203,73 @@ export class KongGame {
     this.gotLetters = { K: false, O: false, N: false, G: false };
     this.toast = '';
     this.toastT = 0;
+    this.easy = loadEasy();
+    this.lockT = 0;
+    this.lastSafe = null;
+    this.levelBananas = 0;
+    this.camAnchorY = 0.64; // altura dos pés do Kong na tela (0 = topo, 1 = base)
+    this.hint = '';
+    this.hintT = 0;
+  }
+
+  setEasy(on) {
+    this.easy = !!on;
+    try { localStorage.setItem(EASY_KEY, String(this.easy)); } catch { /* ignore */ }
+  }
+
+  /** Troca de tela: limpa pulsos pendentes e trava a entrada por SCREEN_LOCK s. */
+  setMode(mode) {
+    this.mode = mode;
+    this.lockT = SCREEN_LOCK;
+    this.input.clearPulses();
+  }
+
+  pause() {
+    if (this.mode !== 'play') return;
+    this.mode = 'pause';
+    this.input.clearPulses();
+    this.setAnnounce('Pausa');
+  }
+
+  resume() {
+    if (this.mode !== 'pause') return;
+    this.mode = 'play';
+    this.input.clearPulses();
+  }
+
+  toMap() {
+    if (this.mode === 'title' || this.mode === 'gameover' || this.mode === 'credits') {
+      this.startRun();
+      return;
+    }
+    this.setMode('map');
+    this.cursor = clamp(this.levelIndex, 0, this.save.unlocked - 1);
+    this.setAnnounce('Mapa da Ilha do Lenço');
+  }
+
+  toTitle() {
+    this.setMode('title');
+    this.audio.stopMusic();
+  }
+
+  /** "Jogar de novo" após o fim de jogo: vidas cheias, mesma fase. */
+  retryLevel() {
+    this.lives = this.easy ? EASY.LIVES : START_LIVES;
+    this.bananas = 0;
+    this.audio.startMusic();
+    this.startLevel(this.levelIndex);
+  }
+
+  nextLevel() {
+    if (this.levelIndex < LEVELS.length - 1) this.startLevel(this.levelIndex + 1);
+  }
+
+  moveCursor(dir) {
+    const next = clamp(this.cursor + dir, 0, this.save.unlocked - 1);
+    if (next !== this.cursor) {
+      this.cursor = next;
+      this.audio.play('select');
+    }
   }
 
   setAnnounce(msg) {
@@ -191,9 +282,9 @@ export class KongGame {
   }
 
   startRun() {
-    this.lives = START_LIVES;
+    this.lives = this.easy ? EASY.LIVES : START_LIVES;
     this.bananas = 0;
-    this.mode = 'map';
+    this.setMode('map');
     this.cursor = Math.min(this.save.unlocked - 1, LEVELS.length - 1);
     this.audio.startMusic();
     this.setAnnounce('Mapa da Ilha do Lenço');
@@ -201,17 +292,22 @@ export class KongGame {
 
   startLevel(index) {
     this.levelIndex = index;
-    this.level = parseLevel(LEVELS[index]);
+    this.level = parseLevel(LEVELS[index], this.easy);
     this.checkpoint = { ...this.level.spawn };
+    this.lastSafe = { ...this.level.spawn };
+    this.levelBananas = 0;
     this.gotLetters = { K: false, O: false, N: false, G: false };
     this.scarfDrop = null;
     this.particles.length = 0;
     this.spawnPlayer(this.checkpoint, true);
-    this.mode = 'play';
+    this.setMode('play');
+    this.lockT = 0;
     this.camX = clamp(this.player.x - VIEW_W * 0.35, 0, this.level.w * TILE - VIEW_W);
     this.camY = clamp(this.player.y - VIEW_H * 0.6, 0, this.level.h * TILE - VIEW_H);
     this.setAnnounce(LEVELS[index].title + '. ' + LEVELS[index].hint);
     this.toastMsg(LEVELS[index].title);
+    this.hint = LEVELS[index].hint;
+    this.hintT = 5;
     this.audio.play('select');
   }
 
@@ -262,6 +358,7 @@ export class KongGame {
 
   addBananas(n) {
     this.bananas += n;
+    this.levelBananas += n;
     while (this.bananas >= BANANAS_PER_LIFE) {
       this.bananas -= BANANAS_PER_LIFE;
       this.lives += 1;
@@ -327,8 +424,7 @@ export class KongGame {
     }
   }
 
-  overlapsTile(actor, chs) {
-    const set = typeof chs === 'string' ? new Set(chs) : chs;
+  overlapsTile(actor, set) {
     const x0 = Math.floor(actor.x / TILE);
     const x1 = Math.floor((actor.x + actor.w - 0.001) / TILE);
     const y0 = Math.floor(actor.y / TILE);
@@ -375,9 +471,9 @@ export class KongGame {
     p.squash = Math.max(0, p.squash - dt * 7);
     if (p.rollT > 0) p.rollT -= dt;
 
-    if (this.input.consume('jump')) p.jumpBuf = PHYS.JUMP_BUF;
+    if (this.input.consume('jump')) p.jumpBuf = this.easy ? EASY.JUMP_BUF : PHYS.JUMP_BUF;
     else p.jumpBuf = Math.max(0, p.jumpBuf - dt);
-    if (p.onGround) p.coyote = PHYS.COYOTE;
+    if (p.onGround) p.coyote = this.easy ? EASY.COYOTE : PHYS.COYOTE;
     else p.coyote = Math.max(0, p.coyote - dt);
 
     if (p.inBarrel) {
@@ -385,8 +481,8 @@ export class KongGame {
       return;
     }
 
-    const vine = this.overlapsTile(p, '|');
-    const water = this.overlapsTile(p, '~');
+    const vine = this.overlapsTile(p, VINE);
+    const water = this.overlapsTile(p, WATER);
     p.swimming = !!(water && !p.onGround);
 
     if (vine && (inpt.up() || inpt.downHeld() || p.climbing) && p.rollT <= 0 && p.blastT <= 0) {
@@ -476,22 +572,32 @@ export class KongGame {
 
     const wasGrounded = p.onGround;
     const fallSpeed = p.vy;
-    this.moveActor(p, dt, { ignoreOneWay: inpt.downHeld() && p.vy >= 0 && this.overlapsTile(p, '-') });
+    this.moveActor(p, dt, { ignoreOneWay: inpt.downHeld() && p.vy >= 0 && this.overlapsTile(p, ONE_WAY) });
 
     if (!wasGrounded && p.onGround && fallSpeed > 260 && !rolling) {
       this.landingImpact(fallSpeed);
     }
 
     if (p.y > this.level.h * TILE + 8) {
-      this.hurt(true);
+      if (this.easy) this.easyFall();
+      else this.hurt(true);
       return;
     }
 
-    if (this.overlapsTile(p, '^') && p.invuln <= 0 && p.rollT <= 0) this.hurt(false);
+    const onSpikes = this.overlapsTile(p, SPIKES);
+    if (onSpikes && p.invuln <= 0 && p.rollT <= 0) {
+      if (this.easy) {
+        this.easyFall();
+        return;
+      }
+      this.hurt(false);
+    }
+    if (p.onGround && !onSpikes && !p.inBarrel) this.recordSafe(p);
 
     this.tryEnterBarrel(false);
     this.collectPickups();
     this.collideEnemies();
+    this.collideHazards();
     this.collideBoss();
 
     const boss = this.level.boss;
@@ -504,13 +610,64 @@ export class KongGame {
     }
   }
 
+  /** Guarda o último ponto de chão firme (os dois pés apoiados) — usado no modo fácil. */
+  recordSafe(p) {
+    const ty = Math.floor((p.y + p.h + 1) / TILE);
+    const l = tileChar(this.level, Math.floor((p.x - 2) / TILE), ty);
+    const r = tileChar(this.level, Math.floor((p.x + p.w + 2) / TILE), ty);
+    const firm = (ch) => isSolid(ch) || ch === '-';
+    if (!firm(l) || !firm(r)) return;
+    if (!this.lastSafe) this.lastSafe = { x: p.x, y: p.y };
+    this.lastSafe.x = p.x;
+    this.lastSafe.y = p.y;
+  }
+
+  /** Último chão seguro, se ele ainda existe (caixas quebram); senão, o checkpoint. */
+  safeSpot() {
+    const s = this.lastSafe;
+    if (!s) return this.checkpoint;
+    const ty = Math.floor((s.y + PHYS.HITBOX_H + 1) / TILE);
+    const ch = tileChar(this.level, Math.floor((s.x + PHYS.HITBOX_W / 2) / TILE), ty);
+    return isSolid(ch) || ch === '-' ? s : this.checkpoint;
+  }
+
+  placeAtSafe() {
+    const p = this.player;
+    const s = this.safeSpot();
+    p.x = s.x;
+    p.y = s.y;
+    p.vx = 0;
+    p.vy = 0;
+    p.rollT = 0;
+    p.blastT = 0;
+    p.climbing = false;
+    if (p.inBarrel) p.inBarrel.occupied = false;
+    p.inBarrel = null;
+  }
+
+  /** Modo fácil: buraco/espinho = batida comum + volta ao último chão seguro. */
+  easyFall() {
+    const p = this.player;
+    if (p.dead || p.winT > 0) return;
+    if (p.scarf) {
+      p.scarf = false;
+      this.placeAtSafe();
+      p.invuln = 1.5;
+      this.audio.play('hurt');
+      this.shake = 0.18;
+      this.hitFlash = 0.22;
+      this.toastMsg('Ops! O lenço voou');
+      return;
+    }
+    this.hurt(true);
+  }
+
   tryEnterBarrel(fromBlast) {
     const p = this.player;
     if (p.inBarrel) return;
     for (const b of this.level.barrels) {
       if (b.used || (b.cool > 0)) continue;
-      const box = { x: b.x - b.w / 2, y: b.y - b.h / 2, w: b.w, h: b.h };
-      if (!aabb(p, box)) continue;
+      if (!hitCentered(p, b.x, b.y, b.w, b.h)) continue;
       if (b.kind === 'bounce') {
         p.vy = PHYS.BOUNCE_VEL;
         p.blastT = 0;
@@ -624,7 +781,7 @@ export class KongGame {
     const p = this.player;
     for (const b of this.level.bananas) {
       if (b.taken) continue;
-      if (!aabb(p, { x: b.x - b.w / 2, y: b.y - b.h / 2, w: b.w, h: b.h })) continue;
+      if (!hitCentered(p, b.x, b.y, b.w, b.h)) continue;
       b.taken = true;
       const n = b.bunch ? 10 : 1;
       this.addBananas(n);
@@ -633,7 +790,7 @@ export class KongGame {
     }
     for (const L of this.level.letters) {
       if (L.taken) continue;
-      if (!aabb(p, { x: L.x - L.w / 2, y: L.y - L.h / 2, w: L.w, h: L.h })) continue;
+      if (!hitCentered(p, L.x, L.y, L.w, L.h)) continue;
       L.taken = true;
       this.gotLetters[L.ch] = true;
       this.audio.play('letter');
@@ -647,15 +804,15 @@ export class KongGame {
     }
     for (const e of this.level.extras) {
       if (e.taken) continue;
-      if (!aabb(p, { x: e.x - e.w / 2, y: e.y - e.h / 2, w: e.w, h: e.h })) continue;
+      if (!hitCentered(p, e.x, e.y, e.w, e.h)) continue;
       e.taken = true;
       this.lives += 1;
       this.audio.play('1up');
       this.toastMsg('1-UP!');
     }
-    if (this.scarfDrop && this.scarfDrop.alive) {
+    if (this.scarfDrop && this.scarfDrop.alive && this.scarfDrop.grabT <= 0) {
       const s = this.scarfDrop;
-      if (aabb(p, { x: s.x - 8, y: s.y - 6, w: 16, h: 12 })) {
+      if (hitCentered(p, s.x, s.y, 16, 12)) {
         p.scarf = true;
         s.alive = false;
         this.audio.play('scarf');
@@ -680,6 +837,25 @@ export class KongGame {
         p.vy = PHYS.STOMP_VEL;
         this.audio.play('stomp');
         this.hitStop = 0.045;
+        continue;
+      }
+      if (p.invuln <= 0) this.hurt(false);
+    }
+  }
+
+  /** Barris rolados pelo Rei Croco: rolar ou pisar quebra (+1 banana); encostar machuca. */
+  collideHazards() {
+    const p = this.player;
+    for (const h of this.level.hazards) {
+      if (h.life <= 0 || !aabb(p, h)) continue;
+      const stomp = p.vy > 40 && p.y + p.h - 6 < h.y + 6;
+      if (p.rollT > 0 || stomp) {
+        h.life = -2; // -2: quebrado (sem segundo estouro em updateHazards)
+        this.burst(h.x + h.w / 2, h.y + h.h / 2, 10, '#c07838', 80);
+        this.addBananas(1);
+        if (stomp) p.vy = PHYS.STOMP_VEL;
+        this.audio.play('stomp');
+        this.hitStop = 0.035;
         continue;
       }
       if (p.invuln <= 0) this.hurt(false);
@@ -741,6 +917,9 @@ export class KongGame {
         y: p.y,
         vx: p.facing * 40,
         vy: -120,
+        // Sem atraso, o lenço caía de volta em cima do Kong (ex.: preso no fosso de
+        // espinhos) e era recuperado na hora — batida sem efeito, laço infinito.
+        grabT: 0.7,
         alive: true
       };
       this.toastMsg('O lenço voou!');
@@ -757,22 +936,32 @@ export class KongGame {
 
   respawnOrOver() {
     if (this.lives < 0) {
-      this.mode = 'gameover';
+      this.setMode('gameover');
       this.setAnnounce('Fim de jogo');
       return;
     }
-    this.level = parseLevel(LEVELS[this.levelIndex]);
     this.scarfDrop = null;
-    this.spawnPlayer(this.checkpoint, true);
+    if (this.easy) {
+      // Fácil: a fase continua como estava; Kong volta ao último chão seguro.
+      this.spawnPlayer(this.safeSpot(), true);
+      this.player.invuln = 1.6;
+      this.level.hazards.length = 0;
+    } else {
+      this.level = parseLevel(LEVELS[this.levelIndex], this.easy);
+      this.lastSafe = { ...this.checkpoint };
+      this.spawnPlayer(this.checkpoint, true);
+    }
     this.mode = 'play';
-    this.toastMsg('Cuidado!');
+    this.input.clearPulses();
+    this.toastMsg(this.lives === 0 ? 'Última vida!' : 'De novo!');
   }
 
   completeLevel() {
     if (!this.save.clear.includes(this.levelIndex)) this.save.clear.push(this.levelIndex);
     this.save.unlocked = Math.max(this.save.unlocked, Math.min(LEVELS.length, this.levelIndex + 2));
     persist(this.save);
-    this.mode = this.levelIndex === LEVELS.length - 1 ? 'credits' : 'clear';
+    this.setMode(this.levelIndex === LEVELS.length - 1 ? 'credits' : 'clear');
+    if (this.mode === 'credits') this.audio.play('win');
     this.setAnnounce(this.mode === 'credits' ? 'Ilha salva!' : 'Fase concluída');
   }
 
@@ -816,7 +1005,7 @@ export class KongGame {
     } else if (b.state === 'walk') {
       const p = this.player;
       const dir = p.x > b.x ? 1 : -1;
-      b.vx = dir * (40 + (5 - b.hp) * 8);
+      b.vx = dir * (40 + (b.maxHp - b.hp) * 8) * b.speed;
       if (b.timer <= 0) {
         b.state = 'jump';
         b.vy = -380;
@@ -828,15 +1017,19 @@ export class KongGame {
         b.state = 'walk';
         b.timer = 1.6 + Math.random();
         if (Math.random() < 0.7) {
-          this.level.barrels.push({
-            kind: 'wood',
-            x: b.x + b.w / 2,
-            y: b.y + 8,
-            w: 16,
-            h: 18,
-            occupied: false,
-            fuse: 0,
-            vx: (this.player.x > b.x ? 1 : -1) * 120
+          // Antes o barril era de madeira "entrável" e afundava no chão (podia
+          // levar Kong junto). Agora é um obstáculo que rola e some sozinho.
+          const dir = this.player.x > b.x ? 1 : -1;
+          this.level.hazards.push({
+            x: b.x + b.w / 2 - 7 + dir * 14,
+            y: b.y + b.h - 16,
+            w: 14,
+            h: 14,
+            vx: dir * ROLL_BARREL_VX * (this.easy ? EASY.ENEMY_SPEED : 1),
+            vy: -140,
+            onGround: false,
+            life: ROLL_BARREL_LIFE,
+            spin: 0
           });
         }
       }
@@ -855,9 +1048,27 @@ export class KongGame {
     }
   }
 
+  updateHazards(dt) {
+    const list = this.level.hazards;
+    let w = 0;
+    for (let i = 0; i < list.length; i++) {
+      const h = list[i];
+      h.life -= dt;
+      h.vy = Math.min(PHYS.MAX_FALL, h.vy + PHYS.GRAVITY * dt);
+      const vx = h.vx;
+      this.moveActor(h, dt);
+      if (h.vx === 0) h.vx = -vx; // bateu na parede: volta rolando
+      h.spin += (vx * dt) / 7;
+      if (h.life > 0 && h.y < this.level.h * TILE) list[w++] = h;
+      else if (h.life > -1) this.burst(h.x + h.w / 2, h.y + h.h / 2, 6, '#c07838', 50);
+    }
+    list.length = w;
+  }
+
   updateScarf(dt) {
     const s = this.scarfDrop;
     if (!s || !s.alive) return;
+    if (s.grabT > 0) s.grabT -= dt;
     s.vy += 380 * dt;
     s.x += s.vx * dt;
     s.y += s.vy * dt;
@@ -872,19 +1083,26 @@ export class KongGame {
   }
 
   updateParticles(dt) {
-    for (const q of this.particles) {
+    // Compacta no lugar: sem array novo por frame.
+    const list = this.particles;
+    let w = 0;
+    for (let i = 0; i < list.length; i++) {
+      const q = list[i];
       q.life -= dt;
+      if (q.life <= 0) continue;
       q.x += q.vx * dt;
       q.y += q.vy * dt;
       q.vy += 420 * dt;
+      list[w++] = q;
     }
-    this.particles = this.particles.filter((q) => q.life > 0);
+    list.length = w;
+    if (w > 260) list.splice(0, w - 260);
   }
 
   updateCamera(dt) {
     const p = this.player;
     const tx = p.x + p.w / 2 - VIEW_W * 0.38;
-    const ty = p.y + p.h - VIEW_H * 0.64;
+    const ty = p.y + p.h - VIEW_H * this.camAnchorY;
     const k = 1 - Math.pow(0.0008, dt);
     this.camX = lerp(this.camX, clamp(tx, 0, Math.max(0, this.level.w * TILE - VIEW_W)), k);
     this.camY = lerp(this.camY, clamp(ty, 0, Math.max(0, this.level.h * TILE - VIEW_H)), k);
@@ -896,12 +1114,22 @@ export class KongGame {
   update(dt) {
     this.t += dt;
     if (this.toastT > 0) this.toastT -= dt;
+    if (this.hintT > 0 && this.mode === 'play') this.hintT -= dt;
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.audio.tick();
 
     if (this.input.consume('mute')) {
       const muted = this.audio.toggleMute();
-      this.toastMsg(muted ? 'Som off' : 'Som on');
+      this.toastMsg(muted ? 'Som desligado' : 'Som ligado');
+    }
+
+    // Telas de menu: trava curta após a troca para um pulo "atrasado" não pular a tela.
+    if (this.lockT > 0) {
+      this.lockT = Math.max(0, this.lockT - dt);
+      if (this.mode !== 'play') {
+        this.input.clearPulses();
+        return;
+      }
     }
 
     if (this.mode === 'title') {
@@ -911,26 +1139,29 @@ export class KongGame {
 
     if (this.mode === 'map') {
       if (this.input.consume('pause')) {
-        this.mode = 'title';
+        this.toTitle();
         return;
       }
       if (this.input.consume('jump') || this.input.consume('start') || this.input.consume('up')) {
         this.startLevel(this.cursor);
         return;
       }
-      if (this.input.left()) {
+      const tapL = this.input.consume('left');
+      const tapR = this.input.consume('right');
+      if (tapL || tapR) {
+        this.moveCursor(tapL ? -1 : 1);
+        this._mapHold = 0.35; // segurar: repete depois de 0,35 s
+      } else if (this.input.left()) {
         this._mapHold = (this._mapHold || 0) - dt;
         if (this._mapHold <= 0) {
-          this.cursor = Math.max(0, this.cursor - 1);
-          this._mapHold = 0.18;
-          this.audio.play('select');
+          this.moveCursor(-1);
+          this._mapHold = 0.22;
         }
       } else if (this.input.right()) {
         this._mapHold = (this._mapHold || 0) - dt;
         if (this._mapHold <= 0) {
-          this.cursor = Math.min(this.save.unlocked - 1, this.cursor + 1);
-          this._mapHold = 0.18;
-          this.audio.play('select');
+          this.moveCursor(1);
+          this._mapHold = 0.22;
         }
       } else this._mapHold = 0;
       return;
@@ -938,24 +1169,26 @@ export class KongGame {
 
     if (this.mode === 'pause') {
       if (this.input.consume('pause') || this.input.consume('start') || this.input.consume('jump')) {
-        this.mode = 'play';
+        this.resume();
       }
       return;
     }
 
     if (this.mode === 'clear') {
-      if (this.input.consume('start') || this.input.consume('jump')) {
-        this.startLevel(this.levelIndex + 1);
-      }
-      if (this.input.consume('pause')) this.mode = 'map';
+      if (this.input.consume('start') || this.input.consume('jump')) this.nextLevel();
+      else if (this.input.consume('pause')) this.toMap();
       return;
     }
 
-    if (this.mode === 'gameover' || this.mode === 'credits') {
-      if (this.input.consume('start') || this.input.consume('jump')) {
-        this.mode = 'title';
-        this.audio.stopMusic();
-      }
+    if (this.mode === 'gameover') {
+      if (this.input.consume('start') || this.input.consume('jump')) this.retryLevel();
+      else if (this.input.consume('pause')) this.toMap();
+      return;
+    }
+
+    if (this.mode === 'credits') {
+      if (this.input.consume('start') || this.input.consume('jump')) this.toMap();
+      else if (this.input.consume('pause')) this.toTitle();
       return;
     }
 
@@ -969,8 +1202,7 @@ export class KongGame {
     if (this.mode !== 'play') return;
 
     if (this.input.consume('pause') || this.input.consume('start')) {
-      this.mode = 'pause';
-      this.setAnnounce('Pausa');
+      this.pause();
       return;
     }
 
@@ -984,6 +1216,7 @@ export class KongGame {
     this.updateEnemies(dt);
     this.updateBoss(dt);
     this.updateBarrels(dt);
+    this.updateHazards(dt);
     this.updateScarf(dt);
     this.updateParticles(dt);
     this.updateCamera(dt);
@@ -992,9 +1225,6 @@ export class KongGame {
   /* ---------- render ---------- */
 
   render(ctx) {
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
     if (this.mode === 'title') {
       drawTitle(ctx, this.t);
       return;
@@ -1004,21 +1234,14 @@ export class KongGame {
       return;
     }
     if (this.mode === 'credits') {
+      // Texto e botões da vitória ficam no painel HTML (legível no celular).
       drawBackground(ctx, 'jungle', this.t * 10, 0, this.t);
-      ctx.fillStyle = 'rgba(10,20,8,0.55)';
+      ctx.fillStyle = 'rgba(10,20,8,0.35)';
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      ctx.fillStyle = '#f6d03a';
-      ctx.font = '28px "Titan One", system-ui';
-      ctx.textAlign = 'center';
-      ctx.fillText('ILHA SALVA', VIEW_W / 2, 80);
-      ctx.fillStyle = '#fff6ea';
-      ctx.font = '12px Nunito, system-ui';
-      ctx.fillText('Kong Kong recuperou as bananas.', VIEW_W / 2, 112);
-      ctx.fillText('O lenço vermelho voa ao vento da canópia.', VIEW_W / 2, 132);
-      drawKong(ctx, VIEW_W / 2, 190, { facing: 1, t: this.t, state: 'idle', scarf: true });
-      ctx.fillStyle = '#f6d03a';
-      ctx.font = '11px Titan One, system-ui';
-      ctx.fillText('ENTER — título', VIEW_W / 2, 250);
+      for (let i = 0; i < 9; i++) {
+        drawBanana(ctx, 30 + i * 52, 30 + ((this.t * 40 + i * 37) % 240), this.t, i % 3 === 0);
+      }
+      drawKong(ctx, VIEW_W / 2, 236 - Math.abs(Math.sin(this.t * 5)) * 18, { facing: 1, t: this.t, state: 'jump', scarf: true });
       return;
     }
 
@@ -1066,6 +1289,7 @@ export class KongGame {
     for (const e of level.enemies) {
       if (e.alive) drawEnemy(ctx, e, this.t);
     }
+    for (const h of level.hazards) drawRollBarrel(ctx, h.x + h.w / 2, h.y + h.h / 2, h.spin);
     if (level.boss && (level.boss.alive || level.boss.state === 'dead')) {
       if (level.boss.invuln <= 0 || Math.floor(this.t * 18) % 2 === 0) drawBoss(ctx, level.boss, this.t);
     }
@@ -1089,8 +1313,8 @@ export class KongGame {
       ctx.globalAlpha = clamp(q.life * 2, 0, 1);
       ctx.fillStyle = q.color;
       ctx.fillRect(q.x, q.y, q.size, q.size);
-      ctx.globalAlpha = 1;
     }
+    ctx.globalAlpha = 1;
 
     ctx.restore();
     drawForeground(ctx, theme, this.camX, this.t);
@@ -1101,46 +1325,66 @@ export class KongGame {
     }
 
     if (this.mode === 'play' || this.mode === 'pause' || this.mode === 'dying' || this.mode === 'clear') {
+      const boss = level.boss;
       drawHud(ctx, {
         lives: Math.max(0, this.lives),
         bananas: this.bananas,
         letters: this.gotLetters,
-        levelName: level.def.title,
         scarf: p?.scarf,
+        bossHp: boss ? Math.max(0, boss.hp) : -1,
+        bossMax: boss ? boss.maxHp : 0,
         t: this.t
       });
     }
 
-    if (this.toastT > 0) {
-      ctx.fillStyle = 'rgba(12,20,10,0.7)';
-      roundRect(ctx, VIEW_W / 2 - 90, 54, 180, 22, 8);
+    if (this.toastT > 0 && this.mode === 'play') {
+      // Aparece com um "pop" e some suavemente.
+      const a = clamp(this.toastT * 3, 0, 1);
+      const pop = 1 + Math.max(0, this.toastT - 2) * 0.6;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(VIEW_W / 2, 70);
+      ctx.scale(pop, pop);
+      ctx.font = '14px "Titan One", system-ui';
+      const w = Math.max(120, ctx.measureText(this.toast).width + 36);
+      ctx.fillStyle = 'rgba(12,20,10,0.78)';
+      roundRect(ctx, -w / 2, -14, w, 28, 14);
       ctx.fill();
+      ctx.strokeStyle = 'rgba(246,208,58,0.55)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.fillStyle = '#f6d03a';
-      ctx.font = '11px Titan One, system-ui';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(this.toast, VIEW_W / 2, 65);
+      ctx.fillText(this.toast, 0, 1);
+      ctx.restore();
     }
 
-    if (this.mode === 'pause') this.drawBanner(ctx, 'PAUSA', 'Enter para continuar');
-    if (this.mode === 'clear') this.drawBanner(ctx, 'FASE CONCLUÍDA', 'Enter — próxima  ·  Esc — mapa');
-    if (this.mode === 'gameover') this.drawBanner(ctx, 'FIM DE JOGO', 'Enter — título');
+    // Dica da fase nos primeiros segundos (frase curta, sem jargão).
+    if (this.hintT > 0 && this.mode === 'play' && this.hint) {
+      ctx.save();
+      ctx.globalAlpha = clamp(this.hintT, 0, 1);
+      ctx.font = 'bold 12px "Nunito", system-ui';
+      const w = ctx.measureText(this.hint).width + 28;
+      ctx.fillStyle = 'rgba(12,20,10,0.72)';
+      roundRect(ctx, VIEW_W / 2 - w / 2, 92, w, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#fff6ea';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.hint, VIEW_W / 2, 104.5);
+      ctx.restore();
+    }
+
+    // Pausa / fase concluída / fim de jogo: o texto e os botões vêm do painel HTML.
+    if (this.mode === 'pause' || this.mode === 'clear' || this.mode === 'gameover') {
+      ctx.fillStyle = 'rgba(8,16,8,0.5)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
     if (this.mode === 'dying') {
       ctx.fillStyle = `rgba(80,0,0,${0.25 + (1 - this.overlayTimer) * 0.3})`;
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
-  }
-
-  drawBanner(ctx, title, sub) {
-    ctx.fillStyle = 'rgba(8,16,8,0.62)';
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    ctx.fillStyle = '#f6d03a';
-    ctx.font = '28px Titan One, system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, VIEW_W / 2, VIEW_H / 2 - 8);
-    ctx.fillStyle = '#fff6ea';
-    ctx.font = '11px Nunito, system-ui';
-    ctx.fillText(sub, VIEW_W / 2, VIEW_H / 2 + 18);
   }
 
   tapMap(mx, my) {
@@ -1151,7 +1395,8 @@ export class KongGame {
       if (i >= this.save.unlocked) continue;
       const dx = mx - nodes[i];
       const dy = my - ys[i];
-      if (dx * dx + dy * dy < 22 * 22) {
+      // Raio generoso (30 px de jogo ≈ 44 px de dedo no celular).
+      if (dx * dx + dy * dy < 30 * 30) {
         this.cursor = i;
         this.startLevel(i);
         return;

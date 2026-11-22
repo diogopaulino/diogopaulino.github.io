@@ -2,9 +2,26 @@
 // Rock Kombat — Main Game Loop & State Orchestrator
 // Fixed 60Hz deterministic step with MvC Hyper freezes, MK FINISH HIM
 // match-point dizzy phase, and zero-GC event pipeline.
+//
+// Regras (resumo para quem lê o código):
+// - Luta melhor de 3: quem vencer 2 rounds leva a partida (finishMatch).
+// - Round: 99 s (99 × 60 passos). Vida chega a 0 → K.O.; no fim do tempo vence
+//   quem tem mais vida; vida igual = empate (ninguém pontua, novo round).
+//   Depois de 2 empates na mesma luta, o próximo empate vai para o jogador
+//   ("DECISÃO DOS JUÍZES"), então a luta sempre termina.
+// - Match point: o golpe que zeraria a vida deixa o rival tonto com 1 de vida
+//   (FINALIZE!) por 210 passos; se ninguém acertar, ele cai sozinho.
+// - Barra de energia: 300 = 3 barras. EX/Especial = 1 barra, Hyper = 2,
+//   Repelir = 0,4. Começa com 1 barra (Fighter.reset).
+// - Controles: A/D andar, W pular, S agachar, J soco, K chute, I forte,
+//   H lançar, U agarrar, Espaço especial, P hyper, Shift dash, Esc pausa.
+//   Toque: direcional à esquerda e botões à direita (input.js bindTouch).
+// - Dificuldade (AI_CONFIG): Fácil é o padrão — CPU lenta, 70% de dano, sem Hyper.
+// - Loop: passo fixo de 60 Hz; delta limitado a 50 ms e no máximo 3 passos por
+//   quadro, então um quadro longo nunca "teleporta" a física. Para em aba oculta.
 // ==========================================================================
 
-import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG } from './constants.js';
+import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG, DEFAULT_DIFFICULTY } from './constants.js';
 import { $, $$, approach, clamp } from './utils.js';
 import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
 import audio from './audio.js';
@@ -28,10 +45,22 @@ function writeStored(key, value) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-let difficulty = readStored('rk-difficulty', 'normal');
-if (!Object.hasOwn(AI_CONFIG, difficulty)) difficulty = 'normal';
+// New players start on Fácil (kid-friendly); a stored choice is respected.
+let difficulty = readStored('rk-difficulty', DEFAULT_DIFFICULTY);
+if (!Object.hasOwn(AI_CONFIG, difficulty)) difficulty = DEFAULT_DIFFICULTY;
+const DIFFICULTY_HINTS = {
+  easy: 'Ótimo para começar: o rival é mais lento e bate mais fraco.',
+  normal: 'Desafio equilibrado: o rival defende e faz combos.',
+  hard: 'Para quem já domina: o rival quase não erra.'
+};
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const canvas = $('#game');
+// Cached HUD nodes touched every fixed step (no querySelector inside the loop).
+const roundHud = $('.round-hud');
+const timerEl = $('#timer');
+const fightTip = $('#fight-tip');
+// Round-1 tip ("chegue perto e aperte J K I") stays until the player lands a hit or ~7 s pass.
+const TIP_FRAMES = 7 * 60;
 const images = new Map();
 const assetRequests = new Map();
 let loadingMatch = false;
@@ -75,10 +104,11 @@ function loadImage(path) {
 }
 
 function snapshotFighters() {
-  for (const fighter of [match.p1, match.p2]) {
-    fighter.prevX = fighter.x;
-    fighter.prevY = fighter.y;
-  }
+  // Runs every fixed step: no temporary arrays.
+  match.p1.prevX = match.p1.x;
+  match.p1.prevY = match.p1.y;
+  match.p2.prevX = match.p2.x;
+  match.p2.prevY = match.p2.y;
 }
 
 function startRound() {
@@ -123,9 +153,11 @@ function startRound() {
   renderState.camZoom = 1.02;
 
   resetCallouts();
-  $('.round-hud').classList.remove('is-finish');
+  roundHud.classList.remove('is-finish');
   $('#round-label').textContent = `ROUND ${match.round}`;
-  $('#timer').textContent = '99';
+  timerEl.textContent = '99';
+  match.tipFrames = match.round === 1 ? TIP_FRAMES : 0;
+  fightTip.classList.remove('show');
   updateHud(match);
   announce(`ROUND ${match.round}`, 720);
 }
@@ -154,7 +186,15 @@ function endRound() {
   match.phase = 'roundEnd';
   match.phaseFrame = 104;
 
+  const decided = match.p1.health === match.p2.health && (match.draws || 0) >= 2;
+  if (decided) {
+    // Desempate: evita rounds sem fim (inclusive duplo K.O.) quando a luta empata de novo.
+    if (match.p1.health > 0) match.p2.health = match.p1.health - 1;
+    else match.p1.health = 1;
+    announce('DECISÃO DOS JUÍZES', 1000);
+  }
   if (match.p1.health === match.p2.health) {
+    match.draws = (match.draws || 0) + 1;
     match.roundWinner = null;
     match.p1.move = null;
     match.p2.move = null;
@@ -173,7 +213,7 @@ function endRound() {
     loser.y = GROUND;
     winner.y = GROUND;
     loser.knockdown = 90;
-    if (match.timerFrames <= 0 && winner.health > 0) announce('TEMPO ESGOTADO', 1000);
+    if (!decided && match.timerFrames <= 0 && winner.health > 0) announce('TEMPO ESGOTADO', 1000);
   }
 
   updateHud(match);
@@ -194,15 +234,23 @@ function finishMatch(winner) {
   match.phase = 'complete';
   audio.stopMusic();
   audio.sfx('win');
+  fightTip.classList.remove('show');
+  const playerWon = winner === match.p1;
   const figure = $('#result-figure');
   figure.style.setProperty('--sheet', `url("${winner.data.sheet}")`);
   figure.style.setProperty('--winner', winner.data.color);
-  $('#result-title').innerHTML = `${winner.data.short} <em>VENCEU</em>`;
-  $('#result-copy').textContent = winner.data.quote;
+  $('#results-screen').classList.toggle('is-loss', !playerWon);
+  // Kid-friendly result copy: clear "you won / try again" plus one simple tip on a loss.
+  $('#result-title').innerHTML = playerWon ? 'VOCÊ <em>VENCEU!</em>' : `${winner.data.short} <em>VENCEU</em>`;
+  $('#result-copy').textContent = playerWon
+    ? winner.data.quote
+    : difficulty === 'easy'
+      ? 'Quase! Chegue bem perto e bata sem parar. Para se defender, segure para longe do rival.'
+      : 'Quase! Dica: no modo Fácil o rival é mais lento e bate mais fraco.';
   $('#result-score').textContent = `${match.p1.data.short} ${match.p1.wins} × ${match.p2.wins} ${match.p2.data.short}`;
-  $('#result-overline').textContent = match.stageFinisher || (match.hyperFinish
-    ? 'HYPER K.O.'
-    : winner === match.p1 ? 'VITÓRIA' : 'VITÓRIA DA CPU');
+  $('#result-overline').textContent = playerWon
+    ? match.stageFinisher || (match.hyperFinish ? 'HYPER K.O.' : 'VITÓRIA')
+    : 'NÃO FOI DESSA VEZ';
   stopLoop();
   showScreen('results-screen', '#rematch-button');
 }
@@ -243,6 +291,8 @@ function startMatch() {
     cpuHold: [],
     stage: STAGES[stageId],
     stageId,
+    cpuDamage: AI_CONFIG[difficulty].damage ?? 1,
+    tipFrames: 0,
     roundWinner: null,
     reducedMotion: reducedMotion.matches
   };
@@ -257,6 +307,9 @@ function startMatch() {
   showScreen('arena-screen', '#game');
   audio.startMusic(stageId);
   startRound();
+  // The versus timer can fire while "Comandos" is open or the tab is hidden:
+  // start paused instead of fighting (and playing music) behind the dialog.
+  if (helpOpen() || document.hidden) togglePause(true);
 }
 
 async function beginVersus() {
@@ -327,20 +380,23 @@ function updateIntro() {
 }
 
 function updateKoPhysics() {
-  for (const fighter of [match.p1, match.p2]) {
-    fighter.stateFrame++;
-    if (fighter.health <= 0) {
-      fighter.x = clamp(fighter.x + fighter.vx, LEFT_WALL, RIGHT_WALL);
-      fighter.vx *= 0.9;
-    }
-    if (!fighter.grounded() || fighter.vy) {
-      fighter.y += fighter.vy;
-      fighter.vy += GRAVITY;
-      if (fighter.y >= GROUND) {
-        fighter.y = GROUND;
-        fighter.vy = 0;
-        if (fighter.health <= 0) fighter.state = 'knockdown';
-      }
+  koFighter(match.p1);
+  koFighter(match.p2);
+}
+
+function koFighter(fighter) {
+  fighter.stateFrame++;
+  if (fighter.health <= 0) {
+    fighter.x = clamp(fighter.x + fighter.vx, LEFT_WALL, RIGHT_WALL);
+    fighter.vx *= 0.9;
+  }
+  if (!fighter.grounded() || fighter.vy) {
+    fighter.y += fighter.vy;
+    fighter.vy += GRAVITY;
+    if (fighter.y >= GROUND) {
+      fighter.y = GROUND;
+      fighter.vy = 0;
+      if (fighter.health <= 0) fighter.state = 'knockdown';
     }
   }
 }
@@ -419,13 +475,23 @@ function fixedUpdate() {
   updateEffects(match);
   flushEvents();
 
-  $('.round-hud').classList.toggle('is-finish', match.finishTimer > 0);
-  if (match.finishTimer > 0) {
+  const finishing = match.finishTimer > 0;
+  if (finishing !== match.finishShown) {
+    match.finishShown = finishing;
+    roundHud.classList.toggle('is-finish', finishing);
+  }
+  if (finishing) {
     const tenths = (match.finishTimer / 60).toFixed(1);
-    if ($('#timer').textContent !== tenths) $('#timer').textContent = tenths;
+    if (timerEl.textContent !== tenths) timerEl.textContent = tenths;
   } else if (--match.timerFrames % 60 === 0 || match.finishHimShown) {
     const seconds = String(Math.max(0, Math.ceil(match.timerFrames / 60)));
-    if ($('#timer').textContent !== seconds) $('#timer').textContent = seconds;
+    if (timerEl.textContent !== seconds) timerEl.textContent = seconds;
+  }
+
+  if (match.tipFrames > 0) {
+    const tipOn = --match.tipFrames > 0 && match.p2.health === 100;
+    if (!tipOn) match.tipFrames = 0;
+    if (tipOn !== fightTip.classList.contains('show')) fightTip.classList.toggle('show', tipOn);
   }
 
   if (match.p1.health <= 0 || match.p2.health <= 0) beginKo();
@@ -577,11 +643,13 @@ for (const button of $$(stageOptions)) {
 }
 const difficultyOptions = '#difficulty-options button';
 syncOptions(difficultyOptions, 'difficulty', difficulty);
+$('#difficulty-hint').textContent = DIFFICULTY_HINTS[difficulty];
 for (const button of $$(difficultyOptions)) {
   button.addEventListener('click', () => {
     difficulty = button.dataset.difficulty;
     writeStored('rk-difficulty', difficulty);
     syncOptions(difficultyOptions, 'difficulty', difficulty);
+    $('#difficulty-hint').textContent = DIFFICULTY_HINTS[difficulty];
     audio.sfx('ui');
   });
 }
@@ -622,7 +690,7 @@ bindKeyboard(playerInput, {
     const isActivation = event.code === 'Enter' || event.code === 'Space';
     if (isActivation && event.target instanceof Element && event.target.closest('button, a, input, select')) return false;
     if (hero && (event.code === 'Enter' || event.code === 'Space')) {
-      $('#enter-button').click();
+      $('#quick-fight-button').click();
       return true;
     }
     if (versus && (event.code === 'Enter' || event.code === 'Space')) {

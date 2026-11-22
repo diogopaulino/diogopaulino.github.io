@@ -14,6 +14,8 @@ export function updateCpu(match, difficulty, cpuInput) {
   const cpu = match.p2;
   const player = match.p1;
   const config = AI_CONFIG[difficulty] || AI_CONFIG.normal;
+  // Fácil never spends 2 bars on a Hyper (config.hyper === false).
+  const hyperMeter = config.hyper === false ? Infinity : HYPER_COST;
 
   // 1. Magic Series Combo Continuation when attack connects!
   if (cpu.state === 'attack' && cpu.moveConnected && cpu.move) {
@@ -36,7 +38,7 @@ export function updateCpu(match, difficulty, cpuInput) {
         return;
       }
       if (mName === 'heavy') {
-        if (cpu.meter >= HYPER_COST && Math.random() < 0.45) {
+        if (cpu.meter >= hyperMeter && Math.random() < 0.45) {
           cpuInput.tap('hyper');
         } else if (Math.random() < 0.65) {
           cpuInput.tap('launcher');
@@ -92,7 +94,7 @@ export function updateCpu(match, difficulty, cpuInput) {
 
   // 4. FINISH HIM! Immediately go for Hyper or Heavy Finisher
   if (player.state === 'dizzy') {
-    if (cpu.meter >= HYPER_COST && distance < 420) {
+    if (cpu.meter >= hyperMeter && distance < 420) {
       cpuInput.tap('hyper');
       return;
     }
@@ -155,7 +157,7 @@ export function updateCpu(match, difficulty, cpuInput) {
   let intentName = 'medium';
   let downIntent = false;
 
-  if (cpu.meter >= HYPER_COST && roll < 0.14 * config.attack && distance < (id === 'axl' ? 420 : 640)) {
+  if (cpu.meter >= hyperMeter && roll < 0.14 * config.attack && distance < (id === 'axl' ? 420 : 640)) {
     cpuInput.tap('hyper');
     return;
   } else if (cpu.meter >= EX_COST && roll < config.attack * (id === 'lennon' ? 0.44 : 0.32)) {

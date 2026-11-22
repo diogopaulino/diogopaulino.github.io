@@ -3,7 +3,7 @@
  * Origem do Kong: pés no chão, centro horizontal do hitbox.
  */
 
-import { PAL, THEMES, TILE, VIEW_W, VIEW_H, hash2 } from './config.js';
+import { PAL, THEMES, TILE, VIEW_W, VIEW_H, hash2 } from './config.js?v=4';
 
 export function roundRect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
@@ -456,6 +456,42 @@ export function drawExit(ctx, x, y, t) {
   ctx.fill();
   ctx.fillStyle = PAL.banana;
   ellipse(ctx, 0, -16, 5, 5);
+  // Bandeira vermelha + seta pulando: "o fim da fase é aqui" (fácil de ler para crianças).
+  ctx.fillStyle = '#4a2a12';
+  ctx.fillRect(15, -46, 2.5, 46);
+  const wave = Math.sin(t * 6) * 2;
+  ctx.fillStyle = PAL.scarf;
+  ctx.beginPath();
+  ctx.moveTo(17.5, -46);
+  ctx.quadraticCurveTo(26, -44 + wave, 34, -41);
+  ctx.quadraticCurveTo(26, -37 - wave, 17.5, -35);
+  ctx.closePath();
+  ctx.fill();
+  const hop = Math.abs(Math.sin(t * 4)) * 5;
+  ctx.fillStyle = '#fff6ea';
+  ctx.beginPath();
+  ctx.moveTo(-6, -48 - hop);
+  ctx.lineTo(6, -48 - hop);
+  ctx.lineTo(0, -40 - hop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Barril rolado pelo Rei Croco (obstáculo). Gira conforme anda. */
+export function drawRollBarrel(ctx, x, y, spin) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle = '#4a2a10';
+  ellipse(ctx, 0, 0, 8, 8);
+  ctx.fillStyle = '#c07838';
+  ellipse(ctx, 0, 0, 7, 7);
+  ctx.fillStyle = '#5a3418';
+  ctx.fillRect(-7, -1.2, 14, 2.4);
+  ctx.fillRect(-1.2, -7, 2.4, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ellipse(ctx, -2.5, -2.5, 2, 2);
   ctx.restore();
 }
 
@@ -552,13 +588,29 @@ export function drawTile(ctx, ch, tx, ty, theme, t) {
   }
 }
 
+// Gradiente do céu é fixo por tema: cria uma vez e reusa (antes era 1 por frame).
+let skyCtx = null;
+const skyCache = new Map();
+
+function skyGradient(ctx, themeName, theme) {
+  if (skyCtx !== ctx) {
+    skyCtx = ctx;
+    skyCache.clear();
+  }
+  let sky = skyCache.get(themeName);
+  if (!sky) {
+    sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    sky.addColorStop(0, theme.sky[0]);
+    sky.addColorStop(0.55, theme.sky[1]);
+    sky.addColorStop(1, theme.sky[2]);
+    skyCache.set(themeName, sky);
+  }
+  return sky;
+}
+
 export function drawBackground(ctx, themeName, camX, camY, t) {
   const theme = THEMES[themeName] || THEMES.jungle;
-  const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  sky.addColorStop(0, theme.sky[0]);
-  sky.addColorStop(0.55, theme.sky[1]);
-  sky.addColorStop(1, theme.sky[2]);
-  ctx.fillStyle = sky;
+  ctx.fillStyle = skyGradient(ctx, themeName, theme);
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
   if (themeName === 'jungle' || themeName === 'canopy' || themeName === 'ruins') {
@@ -688,7 +740,7 @@ export function drawWorldMap(ctx, save, cursor, t) {
     const unlocked = i < save.unlocked;
     const cleared = save.clear.includes(i);
     ctx.fillStyle = unlocked ? '#f6d03a' : '#5a5a5a';
-    ellipse(ctx, n.x, n.y, 11, 11);
+    ellipse(ctx, n.x, n.y, 12, 12);
     ctx.fillStyle = unlocked ? '#7a4a08' : '#2a2a2a';
     ctx.font = 'bold 10px "Titan One", system-ui';
     ctx.textAlign = 'center';
@@ -699,8 +751,8 @@ export function drawWorldMap(ctx, save, cursor, t) {
       ellipse(ctx, n.x + 8, n.y - 8, 4, 4);
     }
     ctx.fillStyle = '#fff6ea';
-    ctx.font = '7px "Nunito", system-ui';
-    ctx.fillText(n.name, n.x, n.y + 18);
+    ctx.font = 'bold 9px "Nunito", system-ui';
+    ctx.fillText(n.name, n.x, n.y + 20);
     if (i === cursor) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
@@ -716,90 +768,102 @@ export function drawWorldMap(ctx, save, cursor, t) {
   ctx.fillStyle = '#fff6ea';
   ctx.font = '22px "Titan One", "Lilita One", system-ui';
   ctx.textAlign = 'center';
-  ctx.fillText('ILHA DO LENÇO', 240, 36);
-  ctx.font = '9px "Nunito", system-ui';
-  ctx.fillStyle = 'rgba(255,246,234,0.8)';
-  ctx.fillText('Escolha a fase · Enter para entrar · Esc volta', 240, 52);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ILHA DO LENÇO', 240, 30);
+  ctx.font = 'bold 11px "Nunito", system-ui';
+  ctx.fillStyle = 'rgba(255,246,234,0.9)';
+  ctx.fillText('Escolha uma fase e aperte Jogar', 240, 54);
 }
 
+/** Fundo animado da tela inicial; título, regras e botões ficam no painel HTML. */
 export function drawTitle(ctx, t) {
   drawBackground(ctx, 'jungle', t * 20, 0, t);
   drawForeground(ctx, 'jungle', t * 20, t);
-
   for (let i = 0; i < 8; i++) {
     drawBanana(ctx, 40 + i * 56, 36 + Math.sin(t * 2 + i) * 6, t, i % 3 === 0);
   }
-
-  ctx.fillStyle = 'rgba(20, 40, 16, 0.45)';
-  roundRect(ctx, 70, 58, 340, 150, 16);
-  ctx.fill();
-
-  ctx.fillStyle = PAL.scarf;
-  ctx.font = '42px "Titan One", "Lilita One", system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText('KONG KONG', 242, 108);
-  ctx.fillStyle = '#f6d03a';
-  ctx.fillText('KONG KONG', 240, 106);
-
-  ctx.fillStyle = '#fff6ea';
-  ctx.font = '13px "Nunito", system-ui';
-  ctx.fillText('O macaquinho do lenço vermelho', 240, 128);
-  ctx.font = '10px "Nunito", system-ui';
-  ctx.fillStyle = 'rgba(255,246,234,0.75)';
-  ctx.fillText('Os Lagartões roubaram as bananas. Recupere o estoque.', 240, 148);
-
-  drawKong(ctx, 240, 196, { facing: 1, t, state: 'idle', scarf: true });
-
-  if (Math.sin(t * 4) > -0.2) {
-    ctx.fillStyle = '#f6d03a';
-    ctx.font = '11px "Titan One", system-ui';
-    // Em tela de toque não há Enter: a chamada precisa combinar com o aparelho.
-    const startHint = window.matchMedia?.('(pointer: coarse)').matches
-      ? 'TOQUE PARA COMEÇAR'
-      : 'APERTE ENTER';
-    ctx.fillText(startHint, 240, 248);
-  }
+  ctx.fillStyle = 'rgba(30, 70, 26, 0.9)';
+  ctx.fillRect(0, 236, VIEW_W, 34);
+  ctx.fillStyle = '#3d9a3a';
+  ctx.fillRect(0, 236, VIEW_W, 4);
+  const run = (t * 70) % (VIEW_W + 60) - 30;
+  drawKong(ctx, run, 236, { facing: 1, t, state: 'run', scarf: true });
 }
 
+/**
+ * HUD: vidas (ícone + número, cabe qualquer quantidade), bananas, letras K-O-N-G,
+ * aviso do lenço e barra de vida do Rei Croco. Fontes ≥ 12 px de jogo para ler no celular.
+ */
 export function drawHud(ctx, snap) {
-  ctx.fillStyle = 'rgba(12, 20, 10, 0.42)';
-  roundRect(ctx, 8, 8, 150, 28, 8);
+  ctx.textBaseline = 'middle';
+  // Vidas
+  ctx.fillStyle = 'rgba(12, 20, 10, 0.55)';
+  roundRect(ctx, 8, 8, 66, 28, 14);
   ctx.fill();
-  for (let i = 0; i < snap.lives; i++) {
-    ctx.save();
-    ctx.translate(22 + i * 16, 30);
-    ctx.scale(0.45, 0.45);
-    drawKong(ctx, 0, 0, { facing: 1, t: 0, state: 'idle', scarf: true });
-    ctx.restore();
+  ctx.save();
+  ctx.translate(23, 31);
+  ctx.scale(0.5, 0.5);
+  drawKong(ctx, 0, 0, { facing: 1, t: 0, state: 'idle', scarf: true });
+  ctx.restore();
+  ctx.fillStyle = '#fff6ea';
+  ctx.font = '15px "Titan One", system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillText('×' + snap.lives, 36, 23);
+
+  // Bananas
+  ctx.fillStyle = 'rgba(12, 20, 10, 0.55)';
+  roundRect(ctx, 80, 8, 70, 28, 14);
+  ctx.fill();
+  drawBanana(ctx, 96, 22, snap.t, false);
+  ctx.fillStyle = '#f6d03a';
+  ctx.font = '15px "Titan One", system-ui';
+  ctx.fillText(String(snap.bananas), 108, 23);
+
+  // Letras K O N G
+  ctx.fillStyle = 'rgba(12, 20, 10, 0.55)';
+  roundRect(ctx, 156, 8, 76, 28, 14);
+  ctx.fill();
+  const letters = ['K', 'O', 'N', 'G'];
+  ctx.textAlign = 'center';
+  ctx.font = '12px "Titan One", system-ui';
+  for (let i = 0; i < 4; i++) {
+    const on = snap.letters[letters[i]];
+    const cx = 170 + i * 16;
+    ctx.fillStyle = on ? '#f6d03a' : 'rgba(255,255,255,0.12)';
+    ellipse(ctx, cx, 22, 7, 7);
+    ctx.fillStyle = on ? '#7a4a08' : 'rgba(255,255,255,0.45)';
+    ctx.fillText(letters[i], cx, 23);
   }
 
-  ctx.fillStyle = 'rgba(12, 20, 10, 0.42)';
-  roundRect(ctx, VIEW_W / 2 - 70, 8, 140, 28, 8);
-  ctx.fill();
-  drawBanana(ctx, VIEW_W / 2 - 48, 22, snap.t, false);
-  ctx.fillStyle = '#fff6ea';
-  ctx.font = 'bold 12px "Nunito", system-ui';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(snap.bananas).padStart(3, '0'), VIEW_W / 2 - 36, 22);
-  ctx.textAlign = 'center';
-  ctx.font = '8px "Nunito", system-ui';
-  ctx.fillStyle = 'rgba(255,246,234,0.8)';
-  ctx.fillText(snap.levelName, VIEW_W / 2 + 28, 22);
-
-  const letters = ['K', 'O', 'N', 'G'];
-  letters.forEach((ch, i) => {
-    const on = snap.letters[ch];
-    ctx.fillStyle = on ? '#f6d03a' : 'rgba(255,255,255,0.18)';
-    ctx.font = 'bold 13px "Titan One", system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(ch, 20 + i * 14, 48);
-  });
-
   if (!snap.scarf) {
-    ctx.fillStyle = 'rgba(227, 27, 35, 0.9)';
-    ctx.font = '9px "Nunito", system-ui';
+    const blink = 0.65 + 0.35 * Math.sin(snap.t * 6);
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = 'rgba(227, 27, 35, 0.92)';
+    roundRect(ctx, 8, 41, 112, 18, 9);
+    ctx.fill();
+    ctx.fillStyle = '#fff6ea';
+    ctx.font = 'bold 11px "Nunito", system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText('pegue o lenço!', VIEW_W / 2, 50);
+    ctx.fillText('Pegue o lenço!', 64, 50);
+    ctx.globalAlpha = 1;
+  }
+
+  if (snap.bossHp >= 0 && snap.bossMax > 0) {
+    const w = 120;
+    const x = VIEW_W / 2 - w / 2;
+    const y = VIEW_H - 22;
+    ctx.fillStyle = 'rgba(12, 20, 10, 0.6)';
+    roundRect(ctx, x - 4, y - 4, w + 8, 16, 8);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    roundRect(ctx, x, y, w, 8, 4);
+    ctx.fill();
+    ctx.fillStyle = '#4cb05a';
+    roundRect(ctx, x, y, Math.max(0.01, (w * snap.bossHp) / snap.bossMax), 8, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff6ea';
+    ctx.font = 'bold 9px "Nunito", system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('REI CROCO', VIEW_W / 2, y - 10);
   }
 }

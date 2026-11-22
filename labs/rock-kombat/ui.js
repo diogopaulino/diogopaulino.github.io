@@ -117,6 +117,12 @@ export function fillVersus(p1, p2, stage) {
   }
 }
 
+// Keyboard command → names of the on-screen touch buttons (shown on pointer: coarse).
+const TOUCH_NAMES = [[/\bJ\b/g, 'Soco'], [/\bK\b/g, 'Chute'], [/\bI\b/g, 'Forte'], [/\bH\b/g, 'Lançar'], [/Espaço/g, 'EX'], [/\bP\b/g, 'Hyper']];
+function touchCommand(cmd) {
+  return TOUCH_NAMES.reduce((text, [pattern, name]) => text.replace(pattern, name), cmd);
+}
+
 function updateShowcaseSide(side, fighter) {
   $(`#${side}-showcase`).style.setProperty('--fighter', fighter.color);
   $(`#${side}-showcase-sprite`).style.setProperty('--sheet', `url("${fighter.sheet}")`);
@@ -125,7 +131,7 @@ function updateShowcaseSide(side, fighter) {
   $(`#${side}-showcase-style`).textContent = fighter.style;
   $(`#${side}-moveset`).innerHTML = fighter.moveset.map(move => `
     <div class="showcase-move" title="${move.desc}">
-      <kbd>${move.cmd}</kbd> <b>${move.name}</b>
+      <kbd class="for-keys">${move.cmd}</kbd><kbd class="for-touch">${touchCommand(move.cmd)}</kbd> <b>${move.name}</b>
     </div>
   `).join('');
 }

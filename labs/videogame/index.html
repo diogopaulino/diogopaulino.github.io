@@ -91,39 +91,64 @@
             </header>
             <main id="main">
                 <section id="home" class="home">
-                    <div class="panel">
-                        <div class="panel-title">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path
-                                    d="M2 13c0-3 3-5 5-5h10c2 0 5 2 5 5v3c0 1.5-1.5 3-3 3h-3l-1-2h-6l-1 2H5c-1.5 0-3-1.5-3-3v-3Z">
-                                </path>
-                                <path d="M6 12h2"></path>
-                                <path d="M7 11v2"></path>
-                                <line x1="15" y1="13" x2="15.01" y2="13"></line>
-                                <line x1="18" y1="13" x2="18.01" y2="13"></line>
-                            </svg>
-                            Controles
+                    <div class="panel intro-panel">
+                        <div class="intro-head">
+                            <h1 class="intro-title">Escolha um jogo e divirta-se</h1>
+                            <p class="intro-sub">Videogame retrô direto no navegador. Toque ou clique na capa para
+                                ligar o console.</p>
                         </div>
-                        <div class="controls-grid">
-                            <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
-                            <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A/B/C</div>
-                            <div class="control-item"><kbd>Enter</kbd> Start</div>
-                            <div class="control-item"><kbd>Shift</kbd> Select</div>
-                            <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
-                            <div class="control-item"><kbd>Esc</kbd> Sair</div>
+                        <ol class="how-steps">
+                            <li><span class="step-n">1</span><span><strong>Escolha</strong> um jogo na lista.</span></li>
+                            <li><span class="step-n">2</span><span>Quando abrir, aperte <strong>START</strong> para
+                                    começar.</span></li>
+                            <li><span class="step-n">3</span><span>Ande com as <strong>setas</strong> e use
+                                    <strong>A</strong>, <strong>B</strong> e <strong>C</strong> para pular e
+                                    atacar.</span></li>
+                            <li><span class="step-n">4</span><span>Para <strong>pausar</strong>, salvar ou sair, abra
+                                    o <strong>menu</strong>.</span></li>
+                        </ol>
+                        <div class="controls-grid controls-keys" aria-label="Controles no teclado">
+                            <div class="control-item"><kbd>↑↓←→</kbd> Andar</div>
+                            <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> A B C</div>
+                            <div class="control-item"><kbd>Enter</kbd> START</div>
+                            <div class="control-item"><kbd>Esc</kbd> <kbd>P</kbd> Menu / pausa</div>
+                            <div class="control-item"><kbd>F</kbd> Tela cheia</div>
+                            <div class="control-item"><kbd>Shift</kbd> SELECT</div>
                         </div>
-                        <p class="controls-touch">No celular o jogo abre com d-pad e botões A/B/C na
-                            tela — não precisa de teclado.</p>
+                        <p class="controls-touch">Na tela de toque: direcional à esquerda, botões A, B e C à direita e
+                            <strong>⏸</strong> para abrir o menu. Não precisa de teclado.</p>
                     </div>
-                    <div class="search-container">
-                        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    <div id="library-status" class="library-status" role="status" hidden>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
                         </svg>
-                        <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input"
-                            aria-label="Buscar jogos">
+                        <p><strong>A biblioteca online está fora do ar agora.</strong> As capas aparecem, mas os jogos
+                            não baixam. Você ainda pode jogar um arquivo seu em <em>Abrir jogo do computador</em>.</p>
+                    </div>
+                    <div class="library-toolbar">
+                        <div class="search-container">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="game-search" placeholder="Buscar jogos..." class="search-input"
+                                aria-label="Buscar jogos">
+                        </div>
+                        <button class="upload-btn-header" id="open-local-rom" type="button"
+                            title="Arquivos .md, .bin, .gen, .smd, .zip, .sfc ou .smc">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" aria-hidden="true">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Abrir jogo do computador
+                        </button>
+                        <input type="file" id="rom-file-input" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
                     </div>
                     <div id="games-grid" class="games-grid"></div>
                     <div class="bottom-section">
@@ -155,30 +180,26 @@
                                 </div>
                             </div>
                         </div>
-                        <button class="upload-btn-header" id="open-local-rom" type="button">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                            Carregar ROM Local
-                        </button>
-                        <input type="file" id="rom-file-input" accept=".md,.bin,.gen,.smd,.zip,.sfc,.smc" hidden>
                     </div>
                 </section>
                 <section id="player" class="player hidden" aria-hidden="true">
                     <div class="player-bar">
-                        <button id="btn-back" title="Voltar (Esc)">
+                        <button id="btn-back" title="Sair para a biblioteca">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <path d="M19 12H5M12 19l-7-7 7-7" />
                             </svg>
-                            Voltar
+                            Biblioteca
                         </button>
                         <span id="game-name">-</span>
                         <div class="player-controls">
-                            <button id="btn-save" title="Salvar Jogo">
+                            <button id="btn-pause" title="Pausar e abrir o menu (Esc ou P)" aria-label="Pausar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.4" stroke-linecap="round"><line x1="9" y1="5" x2="9" y2="19"></line>
+                                    <line x1="15" y1="5" x2="15" y2="19"></line></svg>
+                                Pausar
+                            </button>
+                            <button id="btn-save" title="Salvar Jogo" aria-label="Salvar jogo">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
@@ -186,7 +207,7 @@
                                     <polyline points="7 3 7 8 15 8"></polyline>
                                 </svg>
                             </button>
-                            <button id="btn-load" title="Carregar Jogo">
+                            <button id="btn-load" title="Carregar Jogo" aria-label="Carregar save">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -194,7 +215,7 @@
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
                                 </svg>
                             </button>
-                            <button id="btn-controls" title="Ver Controles">
+                            <button id="btn-controls" title="Ver Controles" aria-label="Ver controles">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path
@@ -206,7 +227,7 @@
                                     <line x1="18" y1="13" x2="18.01" y2="13"></line>
                                 </svg>
                             </button>
-                            <button id="btn-fullscreen" title="Tela cheia">
+                            <button id="btn-fullscreen" title="Tela cheia (F)" aria-label="Tela cheia">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <path
@@ -216,66 +237,62 @@
                             </button>
                         </div>
                     </div>
-                    <div id="loader" class="hidden">
+                    <div id="loader" class="hidden" role="status" aria-live="polite">
                         <div class="spinner"></div>
-                        <span>Carregando...</span>
+                        <span id="loader-text">Ligando o videogame…</span>
+                        <span id="loader-slow" class="loader-slow" hidden>Está demorando um pouco. A internet pode
+                            estar lenta.</span>
+                        <button id="loader-cancel" class="loader-cancel" type="button">Cancelar</button>
                     </div>
                     <div id="screen"></div>
-                    <div id="mobile-controls" class="mobile-controls">
-                        <div class="dpad-container">
-                            <div class="dpad-btn dpad-up" data-key="ArrowUp"></div>
-                            <div class="dpad-btn dpad-right" data-key="ArrowRight"></div>
-                            <div class="dpad-btn dpad-down" data-key="ArrowDown"></div>
-                            <div class="dpad-btn dpad-left" data-key="ArrowLeft"></div>
-                            <div class="dpad-center"></div>
+                    <div id="start-hint" class="start-hint" aria-live="polite" hidden></div>
+                    <div id="pause-menu" class="pause-menu" role="dialog" aria-modal="true"
+                        aria-labelledby="pause-title" hidden>
+                        <div class="pause-card">
+                            <p class="pause-kicker">Jogo pausado</p>
+                            <h2 id="pause-title" class="pause-title">-</h2>
+                            <button type="button" class="pause-btn primary" data-menu="resume">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
+                                Continuar
+                            </button>
+                            <div class="pause-row">
+                                <button type="button" class="pause-btn" data-menu="save">Salvar</button>
+                                <button type="button" class="pause-btn" data-menu="load">Carregar save</button>
+                            </div>
+                            <div class="pause-row">
+                                <button type="button" class="pause-btn" data-menu="full">Tela cheia</button>
+                                <button type="button" class="pause-btn" data-menu="restart">Recomeçar</button>
+                            </div>
+                            <button type="button" class="pause-btn danger" data-menu="exit">Sair para a
+                                biblioteca</button>
+                            <p class="pause-help pause-help-keys"><kbd>↑↓←→</kbd> andar · <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+                                botões A B C · <kbd>Enter</kbd> START · <kbd>Esc</kbd> volta ao jogo</p>
+                            <p class="pause-help pause-help-touch">Direcional à esquerda, botões A B C à direita.
+                                START começa o jogo.</p>
                         </div>
-
-                        <div class="start-select-container">
+                    </div>
+                    <div id="mobile-controls" class="mobile-controls">
+                        <div class="pad-bar">
+                            <button class="ctrl-btn sys-btn menu-btn" data-action="menu" aria-label="Pausar e abrir o menu">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="9" y1="5" x2="9" y2="19"></line><line x1="15" y1="5" x2="15" y2="19"></line></svg>
+                            </button>
                             <div class="game-controls-row">
                                 <button class="ctrl-btn select-btn" data-key="Shift">SELECT</button>
                                 <button class="ctrl-btn start-btn" data-key="Enter">START</button>
                             </div>
+                            <button class="ctrl-btn sys-btn full-btn" data-action="full" aria-label="Tela cheia">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                            </button>
                         </div>
-
-                        <div class="system-controls-container">
-                            <div class="system-controls-row">
-                                <button class="ctrl-btn back-btn" data-key="Escape" title="Voltar">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path d="M19 12H5M12 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                <button class="ctrl-btn save-btn" data-action="save" title="Salvar Jogo">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z">
-                                        </path>
-                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                        <polyline points="7 3 7 8 15 8"></polyline>
-                                    </svg>
-                                </button>
-                                <button class="ctrl-btn load-btn" data-action="load" title="Carregar Jogo">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                                        <path d="M3 12h18"></path>
-                                    </svg>
-                                </button>
-                                <button class="ctrl-btn full-btn" data-key="FULL" title="Tela Cheia">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path
-                                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                                        </path>
-                                    </svg>
-                                </button>
-                            </div>
+                        <div class="dpad-container" data-dpad aria-label="Direcional">
+                            <div class="dpad-btn dpad-up" data-dir="ArrowUp"></div>
+                            <div class="dpad-btn dpad-right" data-dir="ArrowRight"></div>
+                            <div class="dpad-btn dpad-down" data-dir="ArrowDown"></div>
+                            <div class="dpad-btn dpad-left" data-dir="ArrowLeft"></div>
+                            <div class="dpad-center"></div>
                         </div>
-
                         <div class="action-buttons">
-
                             <div class="action-row">
                                 <button class="action-btn btn-a" data-key="a">A</button>
                                 <button class="action-btn btn-b" data-key="z">B</button>

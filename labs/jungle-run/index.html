@@ -28,7 +28,7 @@
     <link rel="stylesheet" href="/assets/fonts/plus-jakarta-sans/font.css">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.min.js" defer></script>
     <script type="application/ld+json">
     {
@@ -159,36 +159,42 @@
                                 <span class="title-kicker">THE LOST RUN</span>
                                 <h1>JUNGLE<br><em>RUN</em></h1>
                             </div>
-                            <p class="tagline">A selva o desafia a cada passo. Escolha sua expedição:</p>
+                            <p class="tagline">Corra pela selva, <strong>pule</strong> troncos e buracos, pegue moedas e chegue até a <strong>bandeira</strong>!</p>
 
                             <div class="level-selector-container">
-                                <div class="level-grid" id="levelGrid">
+                                <p class="picker-label" id="levelPickerLabel">Escolha a fase</p>
+                                <div class="level-grid" id="levelGrid" role="group" aria-labelledby="levelPickerLabel">
                                     <!-- Populated dynamically via JS -->
                                 </div>
                             </div>
 
-                            <div class="controls-info" aria-label="Controles">
-                                <div class="control-item">
-                                    <span class="key">A</span><span class="key">D</span>
-                                    <span>Mover</span>
-                                </div>
-                                <div class="control-item">
-                                    <span class="key key-wide">ESPAÇO</span>
-                                    <span>Saltar / Soltar</span>
-                                </div>
-                                <div class="control-item">
-                                    <span class="key">W</span><span class="key">S</span>
-                                    <span>Escalar / Cipó</span>
-                                </div>
+                            <div class="mode-toggle" role="radiogroup" aria-label="Dificuldade">
+                                <button type="button" class="mode-btn" data-mode="easy" role="radio" aria-checked="true">
+                                    <strong>Fácil</strong><small>5 vidas · mais devagar</small>
+                                </button>
+                                <button type="button" class="mode-btn" data-mode="normal" role="radio" aria-checked="false">
+                                    <strong>Normal</strong><small>3 vidas</small>
+                                </button>
+                            </div>
+
+                            <div class="howto howto-keys" aria-label="Controles no teclado">
+                                <span><kbd>←</kbd><kbd>→</kbd> andar</span>
+                                <span><kbd class="key-wide">ESPAÇO</kbd> pular</span>
+                                <span><kbd>↑</kbd><kbd>↓</kbd> subir/descer cipó</span>
+                                <span><kbd>P</kbd> pausa</span>
+                            </div>
+                            <div class="howto howto-touch" aria-label="Controles por toque">
+                                <span><b class="chip">◀ ▶</b> andar</span>
+                                <span><b class="chip chip-sun">PULAR</b> pular</span>
+                                <span><b class="chip">▲ ▼</b> cipó</span>
                             </div>
 
                             <button id="startBtn" class="game-btn primary-btn" type="button" disabled>
-                                <span>Iniciar Expedição</span>
-                                <span class="btn-arrow" aria-hidden="true">→</span>
+                                <span>Carregando…</span>
+                                <span class="btn-arrow" aria-hidden="true">▶</span>
                             </button>
                             <div class="intro-meta">
-                                <span>RECORDE GERAL <strong id="bestScore">0000</strong></span>
-                                <span class="mobile-hint">Toques na tela ativados</span>
+                                <span>RECORDE <strong id="bestScore">0000</strong></span>
                             </div>
                         </div>
                     </div>
@@ -197,21 +203,25 @@
                         <div class="overlay-content pause-content">
                             <p class="eyebrow">EXPEDIÇÃO EM PAUSA</p>
                             <h2>Pausa</h2>
-                            <p>A selva observa o seu silêncio...</p>
+                            <p>Respire fundo. A selva espera por você.</p>
                             <div class="overlay-actions">
                                 <button id="resumeBtn" class="game-btn primary-btn" type="button">
-                                    <span>Continuar</span><span class="btn-arrow" aria-hidden="true">→</span>
+                                    <span>Continuar</span><span class="btn-arrow" aria-hidden="true">▶</span>
                                 </button>
-                                <button id="pauseRestartBtn" class="text-btn" type="button">Recomeçar expedição</button>
+                                <div class="text-actions">
+                                    <button id="pauseRestartBtn" class="text-btn" type="button">Recomeçar fase</button>
+                                    <button id="pauseMenuBtn" class="text-btn" type="button">Escolher fase</button>
+                                </div>
                             </div>
-                            <span class="keyboard-hint">pressione <kbd>ESC</kbd> para voltar</span>
+                            <span class="keyboard-hint">aperte <kbd>P</kbd> ou <kbd>ESC</kbd> para continuar</span>
                         </div>
                     </div>
 
                     <div id="gameOverScreen" class="overlay game-over-overlay hidden" aria-hidden="true">
                         <div class="overlay-content game-over-content">
                             <p class="eyebrow" id="resultEyebrow">FIM DA EXPEDIÇÃO</p>
-                            <h2>A selva venceu<br><em>desta vez.</em></h2>
+                            <h2>Ops! As vidas<br><em>acabaram.</em></h2>
+                            <p class="result-tip" id="resultTip">Dica: aperte pular um pouco antes do obstáculo.</p>
                             <div class="final-stats">
                                 <div class="final-stat">
                                     <span>Relíquias</span>
@@ -226,16 +236,19 @@
                                     <strong id="finalBest">000m</strong>
                                 </div>
                             </div>
-                            <button id="restartBtn" class="game-btn primary-btn" type="button">
-                                <span>Tentar novamente</span><span class="btn-arrow" aria-hidden="true">↻</span>
-                            </button>
+                            <div class="overlay-actions">
+                                <button id="restartBtn" class="game-btn primary-btn big-btn" type="button">
+                                    <span>Jogar de novo</span><span class="btn-arrow" aria-hidden="true">↻</span>
+                                </button>
+                                <button id="overMenuBtn" class="text-btn" type="button">Escolher fase</button>
+                            </div>
                         </div>
                     </div>
 
                     <div id="levelCompleteScreen" class="overlay level-complete-overlay hidden" aria-hidden="true">
                         <div class="overlay-content level-complete-content">
                             <p class="eyebrow">OBJETIVO ALCANÇADO</p>
-                            <h2>Fase Concluída!<br><em id="completeLevelName">Trilha do Alvorecer</em></h2>
+                            <h2>Você conseguiu!<br><em id="completeLevelName">Trilha do Alvorecer</em></h2>
                             <div class="stars-container" id="starsContainer">
                                 <span class="star" id="star1">★</span>
                                 <span class="star" id="idStar2">★</span>
@@ -243,7 +256,7 @@
                             </div>
                             <div class="final-stats">
                                 <div class="final-stat">
-                                    <span>Moedas/Relíquias</span>
+                                    <span>Pontos</span>
                                     <strong id="completeScore">0000</strong>
                                 </div>
                                 <div class="final-stat">
@@ -251,15 +264,18 @@
                                     <strong id="completeDistance">300m</strong>
                                 </div>
                                 <div class="final-stat">
-                                    <span>Vidas Restantes</span>
+                                    <span>Vidas</span>
                                     <strong id="completeLivesBonus">3/3</strong>
                                 </div>
                             </div>
                             <div class="overlay-actions">
-                                <button id="nextLevelBtn" class="game-btn primary-btn" type="button">
-                                    <span>Avançar</span><span class="btn-arrow" aria-hidden="true">→</span>
+                                <button id="nextLevelBtn" class="game-btn primary-btn big-btn" type="button">
+                                    <span>Próxima fase</span><span class="btn-arrow" aria-hidden="true">▶</span>
                                 </button>
-                                <button id="completeMenuBtn" class="text-btn" type="button">Voltar ao Menu</button>
+                                <div class="text-actions">
+                                    <button id="completeReplayBtn" class="text-btn" type="button">Jogar de novo</button>
+                                    <button id="completeMenuBtn" class="text-btn" type="button">Escolher fase</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -295,7 +311,7 @@
 
                 <div class="frame-bottom">
                     <span class="status-light" aria-hidden="true"></span>
-                    <p><strong>DICA</strong> Segure o salto perto de um cipó para agarrá-lo.</p>
+                    <p><strong>DICA</strong> Segure pular perto da ponta de um cipó para se pendurar. Solte para voar!</p>
                     <span class="frame-signature">DIOGO LABS</span>
                 </div>
             </section>
@@ -305,7 +321,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=8" defer></script>
+    <script src="script.js?v=9" defer></script>
 </body>
 
 </html>

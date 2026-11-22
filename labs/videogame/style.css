@@ -332,7 +332,7 @@ body.game-mode {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 2rem;
+    padding: calc(1rem + env(safe-area-inset-top)) calc(2rem + env(safe-area-inset-right)) 1rem calc(2rem + env(safe-area-inset-left));
     background: linear-gradient(to bottom, rgba(0, 0, 0, .9) 0, rgba(0, 0, 0, .5) 70%, transparent 100%);
     gap: 1rem;
     z-index: 50;
@@ -340,13 +340,16 @@ body.game-mode {
     transition: opacity .3s ease
 }
 
-.player:hover .player-bar,
+.player.bar-visible .player-bar,
 .player-bar:hover,
 .player-bar:focus-within {
     opacity: 1
 }
 
 .player-bar button {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
     padding: .6rem 1rem;
     background: rgba(255, 255, 255, .1);
     backdrop-filter: blur(8px);
@@ -446,22 +449,62 @@ body.game-mode {
 .error {
     text-align: center;
     color: #fff;
-    padding: 2rem;
-    background: rgba(255, 50, 50, .1);
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 50, 50, .2);
-    max-width: 400px
+    padding: clamp(1.25rem, 4vw, 2rem);
+    background: linear-gradient(180deg, rgba(40, 18, 22, .92), rgba(20, 12, 14, .92));
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 90, 90, .25);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+    width: min(440px, calc(100% - 2rem));
+    max-height: 100%;
+    overflow-y: auto;
+    line-height: 1.5;
+    animation: popIn .25s cubic-bezier(.2, .9, .3, 1.2)
+}
+
+.error .error-title {
+    font-size: clamp(1.15rem, 4.5vw, 1.4rem);
+    font-weight: 700;
+    margin-bottom: .5rem
+}
+
+.error p:not(.error-title) {
+    color: rgba(255, 255, 255, .8);
+    font-size: .95rem
+}
+
+.error-actions {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    margin-top: 1.25rem
 }
 
 .error button {
-    margin-top: 1rem;
-    padding: .5rem 1.5rem;
-    background: var(--accent);
-    border: none;
-    border-radius: .5rem;
+    min-height: 44px;
+    padding: .6rem 1.25rem;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: .75rem;
     color: #fff;
     cursor: pointer;
-    font-weight: 600
+    font-weight: 600;
+    font-size: .95rem;
+    transition: background .15s, transform .15s
+}
+
+.error button.primary {
+    background: var(--accent);
+    border-color: transparent
+}
+
+.error button:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, .16)
+}
+
+.error button.primary:hover {
+    background: var(--accent);
+    filter: brightness(1.1)
 }
 
 .filter-pixel {
@@ -706,4 +749,434 @@ body.game-mode {
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }
+}
+
+/* --- Home: como jogar, aviso da biblioteca e barra de busca --------------------------- */
+.intro-panel {
+    display: grid;
+    gap: 1.25rem;
+    background:
+        radial-gradient(120% 140% at 100% 0%, var(--accent-glow, rgba(59, 130, 246, .12)) 0%, transparent 55%),
+        var(--bg-card)
+}
+
+.intro-title {
+    font-size: clamp(1.3rem, 5vw, 1.75rem);
+    line-height: 1.2;
+    font-weight: 750;
+    letter-spacing: -.02em;
+    color: var(--text-primary);
+    margin: 0 0 .35rem
+}
+
+.intro-sub {
+    color: var(--text-secondary);
+    font-size: .98rem;
+    line-height: 1.5;
+    margin: 0
+}
+
+.how-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+    gap: .75rem
+}
+
+.how-steps li {
+    display: flex;
+    gap: .7rem;
+    align-items: flex-start;
+    padding: .8rem .9rem;
+    border-radius: .9rem;
+    background: var(--bg-body);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: .92rem;
+    line-height: 1.45
+}
+
+.how-steps strong {
+    color: var(--text-primary)
+}
+
+.step-n {
+    flex: none;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: .85rem;
+    color: #fff;
+    background: var(--accent)
+}
+
+.library-status {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    padding: 1rem 1.15rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(245, 158, 11, .35);
+    background: rgba(245, 158, 11, .1);
+    color: var(--text-primary);
+    font-size: .93rem;
+    line-height: 1.5
+}
+
+.library-status[hidden] {
+    display: none
+}
+
+.library-status svg {
+    flex: none;
+    color: #f59e0b;
+    margin-top: .1rem
+}
+
+.library-status p {
+    margin: 0
+}
+
+.library-toolbar {
+    display: flex;
+    gap: .75rem;
+    align-items: stretch
+}
+
+.library-toolbar .search-container {
+    flex: 1;
+    min-width: 0
+}
+
+.library-toolbar .upload-btn-header {
+    width: auto;
+    padding: 0 1.25rem;
+    min-height: 52px
+}
+
+@media (max-width: 640px) {
+    .library-toolbar {
+        flex-direction: column
+    }
+
+    .library-toolbar .upload-btn-header {
+        width: 100%;
+        white-space: normal
+    }
+}
+
+@media (max-width: 640px) {
+    .intro-panel {
+        gap: .9rem;
+        padding: 1.15rem
+    }
+
+    .intro-sub {
+        display: none
+    }
+
+    .how-steps {
+        gap: .45rem
+    }
+
+    .how-steps li {
+        padding: .55rem .7rem;
+        font-size: .9rem
+    }
+
+    .step-n {
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: .8rem
+    }
+}
+
+.game-card:focus-visible {
+    outline: none
+}
+
+.game-card:focus-visible .game-cover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow, rgba(59, 130, 246, .35)), var(--shadow-xl);
+    transform: translateY(-4px)
+}
+
+.game-card:active .game-cover {
+    transform: scale(.97)
+}
+
+.game-cover img {
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1)
+}
+
+/* Capa que não existe vira um "cartucho" com o nome do jogo (sem bloco cinza). */
+.cover-placeholder {
+    background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, .04) 0 2px, transparent 2px 6px),
+        linear-gradient(160deg, #1f2937 0%, #111827 55%, #0b1220 100%)
+}
+
+.cover-placeholder::before {
+    content: "MEGA DRIVE";
+    position: absolute;
+    top: .6rem;
+    left: .6rem;
+    right: .6rem;
+    padding: .2rem 0;
+    border-radius: .35rem;
+    font-size: .6rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    color: #fff;
+    background: linear-gradient(90deg, #dc2626, #b91c1c)
+}
+
+.cover-placeholder span {
+    color: #f3f4f6;
+    font-size: .95rem
+}
+
+/* --- Player: dica inicial, carregamento, menu de pausa ------------------------------- */
+.start-hint {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translate(-50%, -8px);
+    z-index: 60;
+    max-width: calc(100% - 32px);
+    padding: .6rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(15, 15, 20, .85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, .14);
+    color: #fff;
+    font-size: .9rem;
+    line-height: 1.4;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease, transform .25s ease
+}
+
+/* Desktop: a dica fica embaixo para não disputar espaço com a barra superior. */
+@media (pointer: fine) {
+    .start-hint {
+        top: auto;
+        bottom: calc(24px + env(safe-area-inset-bottom));
+        transform: translate(-50%, 8px)
+    }
+}
+
+.start-hint.visible {
+    opacity: 1;
+    transform: translate(-50%, 0)
+}
+
+.start-hint kbd {
+    padding: .05rem .4rem;
+    border-radius: .35rem;
+    background: rgba(255, 255, 255, .14);
+    border: 1px solid rgba(255, 255, 255, .2);
+    font-family: inherit;
+    font-size: .8rem
+}
+
+.loader-slow {
+    max-width: 280px;
+    text-align: center;
+    font-size: .88rem;
+    color: rgba(255, 255, 255, .7)
+}
+
+.loader-slow[hidden] {
+    display: none
+}
+
+.loader-cancel {
+    min-height: 44px;
+    padding: 0 1.4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.loader-cancel:hover {
+    background: rgba(255, 255, 255, .16)
+}
+
+.pause-menu {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(6px);
+    animation: fadeIn .18s ease-out
+}
+
+.pause-menu[hidden] {
+    display: none
+}
+
+.pause-card {
+    width: min(380px, 100%);
+    max-height: min(92dvh, 560px);
+    overflow-y: auto;
+    display: grid;
+    gap: .6rem;
+    padding: 1.4rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(180deg, rgba(34, 34, 42, .97), rgba(20, 20, 26, .97));
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+    color: #fff;
+    animation: popIn .22s cubic-bezier(.2, .9, .3, 1.2)
+}
+
+.pause-kicker {
+    margin: 0;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .55);
+    text-align: center
+}
+
+.pause-title {
+    margin: 0 0 .4rem;
+    font-size: clamp(1.05rem, 4vw, 1.3rem);
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere
+}
+
+.pause-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem
+}
+
+.pause-btn {
+    min-height: 46px;
+    padding: .55rem .9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: .85rem;
+    border: 1px solid rgba(255, 255, 255, .14);
+    background: rgba(255, 255, 255, .07);
+    color: #fff;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, transform .15s
+}
+
+.pause-btn:hover {
+    background: rgba(255, 255, 255, .14);
+    transform: translateY(-1px)
+}
+
+.pause-btn:active {
+    transform: scale(.97)
+}
+
+.pause-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px
+}
+
+.pause-btn.primary {
+    min-height: 54px;
+    font-size: 1.05rem;
+    background: var(--accent);
+    border-color: transparent
+}
+
+.pause-btn.primary:hover {
+    background: var(--accent);
+    filter: brightness(1.1)
+}
+
+.pause-btn.danger {
+    color: #fecaca;
+    border-color: rgba(248, 113, 113, .3);
+    background: rgba(248, 113, 113, .08)
+}
+
+.pause-help {
+    margin: .35rem 0 0;
+    text-align: center;
+    font-size: .8rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, .6)
+}
+
+.pause-help kbd {
+    display: inline-block;
+    margin: 0 .1rem;
+    padding: 0 .35rem;
+    border-radius: .3rem;
+    border: 1px solid rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .08);
+    font-family: inherit;
+    font-size: .75rem;
+    color: #fff
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .pause-card {
+        padding: 1rem;
+        gap: .45rem
+    }
+
+    .pause-btn {
+        min-height: 44px
+    }
+
+    .pause-btn.primary {
+        min-height: 46px
+    }
+
+    .pause-help {
+        display: none
+    }
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(.94)
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1)
+    }
+}
+
+/* No jogo, avisos ficam no topo: embaixo estão os controles de toque. */
+body.game-mode .toast-msg {
+    bottom: auto;
+    top: calc(16px + env(safe-area-inset-top))
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pause-menu,
+    .pause-card,
+    .error {
+        animation: none
+    }
 }
