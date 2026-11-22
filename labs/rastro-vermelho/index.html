@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
 
     <script type="importmap">
     {
@@ -147,9 +147,13 @@
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="menu-card">
-                <header class="menu-head"><p class="eyebrow"><i></i> FRONTEIRA DO NORTE · 1899</p><h1>Rastro<br><span>Vermelho</span></h1><p class="menu-tagline">Toda estrada deixa uma história.</p><p class="lede">Uma carta atravessa a fronteira. Nas suas mãos, a promessa de entregá-la. Sele o cavalo, escolha seu ritmo e descubra o que o oeste guarda.</p></header>
-                <div class="journey-preview"><span><b>06</b> destinos</span><span><b>01</b> promessa</span><span>Um oeste para explorar</span></div>
-                <div class="menu-actions"><button id="startButton" class="primary-button" type="button"><span id="startLabel">Iniciar jornada</span><i aria-hidden="true">→</i></button><button id="newButton" class="ghost-button" type="button" hidden>Nova jornada</button></div>
+                <header class="menu-head"><p class="eyebrow"><i></i> FRONTEIRA DO NORTE · 1899</p><h1>Rastro<br><span>Vermelho</span></h1><p class="menu-tagline">Toda estrada deixa uma história.</p><p class="lede">Leve uma carta a cavalo por seis destinos do velho oeste.</p></header>
+                <ol class="howto" aria-label="Como jogar">
+                    <li><b aria-hidden="true">◇</b><span><strong>Siga o losango dourado</strong><small class="only-board">W para galopar · A/D para virar</small><small class="only-touch">empurre as rédeas para frente</small></span></li>
+                    <li><b aria-hidden="true">E</b><span><strong>Pare no destino</strong><small class="only-board">aperte E para entregar</small><small class="only-touch">toque no botão que aparece</small></span></li>
+                    <li><b aria-hidden="true">✦</b><span><strong>Bandidos? Atire!</strong><small class="only-board">F ou clique · a mira ajuda</small><small class="only-touch">botão Atirar · a mira ajuda</small></span></li>
+                </ol>
+                <div class="menu-actions"><button id="startButton" class="primary-button primary-button--big" type="button"><span id="startLabel">Começar a jornada</span><i aria-hidden="true">→</i></button><button id="newButton" class="ghost-button" type="button" hidden>Nova jornada</button></div>
                 <p id="saveNote" class="section-note">O progresso é salvo em cada destino.</p>
                 <details class="settings"><summary>Controles e preferências <span>+</span></summary>
                     <div class="settings-content">
@@ -171,7 +175,7 @@
             <div class="overlay-card compact-card"><p class="eyebrow">O CAVALO ESPERA</p><h2 id="pauseTitle">Um respiro<br>na estrada.</h2><p class="lede">Sua jornada está pausada.</p><div class="card-actions"><button id="resumeButton" class="primary-button" type="button">Continuar →</button><button id="pauseMenuButton" class="ghost-button" type="button">Controles e preferências</button></div></div>
         </div>
         <div id="endOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="endTitle" hidden>
-            <div class="overlay-card compact-card"><p id="endEyebrow" class="eyebrow">A FRONTEIRA SE LEMBRA</p><h2 id="endTitle">Promessa<br>cumprida.</h2><p id="endText" class="lede"></p><div class="card-actions"><button id="retryButton" class="primary-button" type="button">Continuar explorando →</button><button id="endMenuButton" class="ghost-button" type="button">Voltar ao menu</button></div></div>
+            <div class="overlay-card compact-card"><p id="endEyebrow" class="eyebrow">A FRONTEIRA SE LEMBRA</p><h2 id="endTitle">Promessa<br>cumprida.</h2><p id="endText" class="lede"></p><div class="card-actions"><button id="retryButton" class="primary-button primary-button--big" type="button">Continuar explorando →</button><button id="endNewButton" class="ghost-button" type="button" hidden>Jogar de novo</button><button id="endMenuButton" class="ghost-button" type="button">Voltar ao menu</button></div></div>
         </div>
         <div id="errorOverlay" class="overlay" role="alert" hidden>
             <div class="overlay-card compact-card"><p class="eyebrow">A TRILHA NÃO CARREGOU</p><h2>O oeste não<br>pôde abrir.</h2><p class="lede" id="errorText">Este laboratório precisa de WebGL e de acesso aos recursos 3D. Tente novamente ou reative a aceleração de hardware do navegador.</p><button class="primary-button" type="button" onclick="location.reload()">Tentar novamente</button><a class="ghost-button" href="/labs/">Voltar aos labs</a></div>
@@ -188,6 +192,6 @@
             document.getElementById('errorOverlay').hidden = false;
         };
     </script>
-    <script type="module" src="src/main.js?v=14" onerror="rastroLoadError()"></script>
+    <script type="module" src="src/main.js?v=15" onerror="rastroLoadError()"></script>
 </body>
 </html>

@@ -23,7 +23,8 @@ import { createFolk, createTetheredHorse } from './actors.js?v=14';
 export const CHUNK_SIZE = CHUNK;
 /** pr = teto do pixel ratio; radius = blocos em cada direção; grass = tufos do anel. */
 export const PROFILES = {
-    low: { id: 'low', pr: 1.25, radius: 2, segments: 26, grass: 2200, shadowSize: 1024, shadowRadius: 34, scatter: 0.6, far: 1500 },
+    // low: miúdos (pedras/troncos fotogramétricos, ~3,5 mil triângulos cada) em 40 % — era 60 %
+    low: { id: 'low', pr: 1.25, radius: 2, segments: 26, grass: 2200, shadowSize: 1024, shadowRadius: 34, scatter: 0.4, far: 1500 },
     medium: { id: 'medium', pr: 1.5, radius: 2, segments: 40, grass: 4400, shadowSize: 2048, shadowRadius: 44, scatter: 1, far: 2600 },
     high: { id: 'high', pr: 2, radius: 3, segments: 48, grass: 7500, shadowSize: 2048, shadowRadius: 48, scatter: 1, far: 3000 }
 };
@@ -159,7 +160,7 @@ export class World {
         const shadows = this.profile.id !== 'low';
         for (const { kind, variant, items } of Object.values(lists)) {
             const cast = shadows ? kind !== 'stone' && kind !== 'bush' : kind === 'tree' || kind === 'cliff' || kind === 'cactus';
-            for (const mesh of instanced(this.scatterKits[kind][variant], items, { cast })) group.add(mesh);
+            for (const mesh of instanced(this.scatterKits[kind][variant], items, { cast })) { mesh.name = kind; group.add(mesh); }
         }
         this.scene.add(group);
         return { group, colliders };
@@ -186,7 +187,7 @@ export class World {
         }
         let count = immediate ? this.queue.length : 1;
         while (count-- > 0 && this.queue.length) { const job = this.queue.shift(); this.chunks.set(job.key, this.createChunk(job.cx, job.cz)); }
-        this.colliders = [];
+        this.colliders.length = 0; // reaproveita o array: sem lixo novo a cada quadro
         for (const o of this.staticColliders) if (Math.abs(o.x - x) < 60 + o.radius && Math.abs(o.z - z) < 60 + o.radius) this.colliders.push(o);
         for (const c of this.chunks.values()) for (const o of c.colliders) if (Math.abs(o.x - x) < 50 && Math.abs(o.z - z) < 50) this.colliders.push(o);
     }

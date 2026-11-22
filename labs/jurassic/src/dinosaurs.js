@@ -387,10 +387,13 @@ function rexBrain(d, world) {
 
         // a perseguição começa quando há caminho livre: jipe dentro do paddock ou parado junto ao vão
         const lure = ctx.playing && (jeepIn || (gapDist < 11 && jd < 45));
-        if (d.state !== 'chase' && lure) {
+        // depois de desistir, o rex só volta a caçar após 6 s (dá tempo de fugir sem ficar preso num laço)
+        d.calm = Math.max(0, (d.calm || 0) - dt);
+        if (d.state !== 'chase' && lure && d.calm <= 0) {
             d.state = 'chase';
             ctx.onRoar?.(d, 1.3);
             d.timer = 1.1;
+            d.chaseT = 0;
             d.roarCool = 9;
         }
 
@@ -404,10 +407,13 @@ function rexBrain(d, world) {
             const tx = viaGap ? gap.x : jx;
             const tz = viaGap ? gap.z : jz;
             d.moveTo(dt, tx, tz, 'run', 1, 1.5);
-            if (jd < 5.4 && ctx.playing) d.caught = true;
-            if (jd > 62 || !ctx.playing) {
+            d.chaseT = (d.chaseT || 0) + dt;
+            if (jd < 4.8 && ctx.playing) d.caught = true;
+            // perseguição curta (≤ 10 s): assusta, mas quem acelera para longe escapa
+            if (jd > 62 || !ctx.playing || d.chaseT > 10) {
                 d.state = 'return';
                 d.timer = 0;
+                d.calm = 6;
             }
             return;
         }

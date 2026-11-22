@@ -9,8 +9,14 @@
  *   • Dirija pela ilha; a menos de `observe` metros de uma espécie, segure
  *     E / botão direito / "observar" por `log` segundos para catalogá-la.
  *   • Seis espécies catalogadas = diário completo (vitória).
+ *   • Entre as espécies em alcance, a que ainda falta no diário tem prioridade
+ *     (estar perto de um já catalogado não "rouba" a observação); quem já está
+ *     na mira continua valendo até 1,2 × `observe` (histerese na borda).
+ *   • A seta-guia aponta o exemplar mais próximo de uma espécie que ainda falta:
+ *     ângulo = rumo até o animal − rumo da câmera (as duas medidas em XZ).
  *   • O rex persegue quem para junto ao vão rompido da cerca ou entra no
- *     paddock; a menos de 5,4 m dele o turno acaba.
+ *     paddock, por no máximo 10 s (depois desiste e volta); a menos de 4,8 m
+ *     dele o turno acaba. Em "Jogar de novo" ele volta para o centro do paddock.
  *
  * CÂMERAS (tecla C): perseguição · perseguição alta · capô.
  *   Observando: binóculo — a câmera sobe ao teto do jipe, mira o animal e fecha
@@ -21,15 +27,15 @@
 import * as THREE from 'three';
 import { createStage } from '../../shared/gfx/stage.js';
 import { clamp, damp, smoothstep } from '../../shared/gfx/core.js';
-import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS } from './config.js?v=20';
-import { Input } from './input.js?v=20';
-import { ParkAudio } from './audio.js?v=20';
-import { Hud } from './hud.js?v=20';
-import { World } from './world.js?v=20';
-import { Jeep } from './jeep.js?v=20';
-import { spawnDinosaurs } from './dinosaurs.js?v=20';
-import { buildStructures } from './structures.js?v=20';
-import { createParticles, createRain, createPuddles } from './fx.js?v=20';
+import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS } from './config.js?v=21';
+import { Input } from './input.js?v=21';
+import { ParkAudio } from './audio.js?v=21';
+import { Hud } from './hud.js?v=21';
+import { World } from './world.js?v=21';
+import { Jeep } from './jeep.js?v=21';
+import { spawnDinosaurs } from './dinosaurs.js?v=21';
+import { buildStructures } from './structures.js?v=21';
+import { createParticles, createRain, createPuddles } from './fx.js?v=21';
 
 const DEBUG = new URLSearchParams(location.search);
 const nextTask = () => new Promise((r) => setTimeout(r, 0));
@@ -153,13 +159,16 @@ class Game {
         this.hud.el.volumeSlider.value = String(this.settings.volume);
         this.hud.setVolumeLabel(this.settings.volume);
         this.hud.setMuted(this.settings.muted);
+        // aba oculta ou janela sem foco: pausa o turno (o palco já para de desenhar)
+        document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
+        window.addEventListener('blur', () => this.pause());
         this.hud.setLoading(1, 'O portão está aberto.');
         this.hud.hideLoading();
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
         stage.start((dt, t) => this._frame(dt, t));
-        if (DEBUG.has('debug')) this._debug();
+        if (DEBUG.has('debug') || DEBUG.has('test')) this._debug();
     }
 
     _bindUi() {
@@ -276,12 +285,14 @@ class Game {
         this.jeep.reset(WORLD.spawn, this.world);
         this.jeep.setLights(this.night > 0.4 || this.rain || this.tod === 0, this.night);
         this._snapCamera();
-        this.dinos.trex.caught = false;
-        this.dinos.trex.state = 'return';
+        this._resetRex();
         this.park.closeGate(true);
         this.park.openGate();
         this.hud.hideCaught();
         this.hud.hideVictory();
+        this.hud.setDanger(false);
+        this.hud.setObserve(0, false);
+        this.hud.setPrompt('');
         this.hud.showMenu(false);
         this.hud.showPause(false);
         this.hud.showHud(!this.hideUi);
@@ -298,15 +309,35 @@ class Game {
         this.input.requestLock();
     }
 
+    /** Rex de volta ao centro do paddock, calmo (depois de uma captura ele estaria colado no jipe). */
+    _resetRex() {
+        const rex = this.dinos.trex;
+        const P = WORLD.paddock;
+        rex.caught = false;
+        rex.state = 'patrol';
+        rex.timer = 0;
+        rex.chaseT = 0;
+        rex.calm = 0;
+        rex.roarCool = 8;
+        rex.position.set(P.x - 6, this.world.heightAt(P.x - 6, P.z + 3), P.z + 3);
+        rex.target.x = P.x;
+        rex.target.z = P.z;
+    }
+
     pause() {
         if (this.state !== 'play') return;
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
+        // solta o binóculo: com a pausa o botão de observar pode nunca receber o "soltar"
+        this.input.observeHeld = false;
+        this.hud.setDossier(null, false);
+        this.hud.setObserve(0, false);
         this.input.exitLock();
     }
 
     resume() {
+        if (this.state !== 'pause') return;
         this.hud.showPause(false);
         this.state = 'play';
         this.hud.setState('play');
@@ -410,16 +441,53 @@ class Game {
     }
 
     _nearestDino() {
+        // histerese: o animal que já está sendo observado continua válido até 1,2 × o raio
+        // (sem isso ele "piscava" na borda do alcance e a barra de observação zerava)
+        const cur = this.observeTarget;
+        if (cur && !this.logged.has(cur.spec.id)
+            && Math.hypot(cur.position.x - this.jeep.x, cur.position.z - this.jeep.z) < cur.spec.observe * 1.2) return cur;
         let best = null;
         let bestD = 1e9;
         for (const d of this.dinos.list) {
             const dist = Math.hypot(d.position.x - this.jeep.x, d.position.z - this.jeep.z);
-            if (dist < d.spec.observe && dist < bestD) {
-                bestD = dist;
+            if (dist >= d.spec.observe) continue;
+            // espécie que falta no diário vale como se estivesse 1 km mais perto
+            const score = dist - (this.logged.has(d.spec.id) ? 0 : 1000);
+            if (score < bestD) {
+                bestD = score;
                 best = d;
             }
         }
         return best;
+    }
+
+    /** Exemplar mais próximo de uma espécie que ainda falta (alvo da seta-guia). */
+    _guideTarget() {
+        let best = null;
+        let bestD = 1e9;
+        for (const d of this.dinos.list) {
+            if (this.logged.has(d.spec.id)) continue;
+            const dist = Math.hypot(d.position.x - this.jeep.x, d.position.z - this.jeep.z);
+            if (dist < bestD) {
+                bestD = dist;
+                best = d;
+            }
+        }
+        return best ? { d: best, dist: bestD } : null;
+    }
+
+    _updateGuide() {
+        const g = this._guideTarget();
+        if (!g) {
+            this.hud.setGuide(null);
+            return;
+        }
+        this.camera.getWorldDirection(this._v);
+        const heading = Math.atan2(this._v.x, this._v.z);
+        const bearing = Math.atan2(g.d.position.x - this.jeep.x, g.d.position.z - this.jeep.z);
+        const rel = Math.atan2(Math.sin(bearing - heading), Math.cos(bearing - heading));
+        const inRange = g.dist < g.d.spec.observe;
+        this.hud.setGuide(g.d.spec.common, g.dist, rel, inRange);
     }
 
     _updateObserve(dt) {
@@ -429,6 +497,7 @@ class Game {
             this.observeTarget = near;
             this.observeT = 0;
         }
+        this.hud.setObserveReady(!!near && !this.logged.has(near.spec.id));
         if (!near) {
             this.observeT = 0;
             this.hud.setPrompt('');
@@ -437,18 +506,22 @@ class Game {
         }
         const spec = near.spec;
         const done = this.logged.has(spec.id);
-        this.hud.setPrompt(holding ? (done ? `${spec.common} — já catalogado` : 'Registrando…') : `${spec.common} à vista — ${this.touch ? 'segure OBSERVAR' : 'segure E / botão direito para observar'}`);
+        this.hud.setPrompt(holding ? (done ? `${spec.common} — já está no diário` : `Observando ${spec.common}…`) : done ? `${spec.common} — já está no diário` : `${spec.common} aqui! ${this.touch ? 'Segure OBSERVAR' : 'Segure E (ou botão direito)'}`);
         if (!holding) {
             this.observeT = 0;
+            this.hud.setObserve(0, false);
             this.hud.setDossier(spec, false);
             return null;
         }
         this.observeT += dt;
+        this.hud.setObserve(done ? 1 : this.observeT / spec.log, true);
         this.hud.setDossier(spec, true);
         if (this.observeT >= spec.log && !done) {
             this.logged.add(spec.id);
             this.hud.setLogged(spec.id);
-            this.hud.setRadio(`Diário: ${spec.common} catalogado. ${this.logged.size}/6`);
+            this.hud.setRadio(`Muito bem! ${spec.common} no diário: ${this.logged.size} de 6.`);
+            this.hud.celebrate(spec.id);
+            this.audio.spark?.();
             if (this.logged.size >= SPECIES.length) this._win();
         }
         return near;
@@ -458,6 +531,7 @@ class Game {
         this.state = 'victory';
         this.hud.setState('victory');
         this.input.exitLock();
+        this.hud.setDanger(false);
         this.hud.showHud(false);
         this.hud.setDossier(null, false);
         this.hud.showVictory(`
@@ -470,13 +544,13 @@ class Game {
         this.state = 'caught';
         this.hud.setState('caught');
         this.input.exitLock();
+        this.hud.setDanger(false);
         this.hud.showHud(false);
         this.hud.setDossier(null, false);
         this.hud.setShake(true);
         this.audio.roar(1.4);
         this.hud.showCaught(`
-            <span>O rex alcançou o jipe.</span>
-            <span>Espécies <b>${this.logged.size}/6</b></span>
+            <span>Espécies no diário <b>${this.logged.size}/6</b></span>
         `);
         setTimeout(() => this.hud.setShake(false), 900);
     }
@@ -703,7 +777,10 @@ class Game {
         let observe = null;
         if (playing) {
             if (this.dinos.trex.caught) this._caught();
-            else observe = this._updateObserve(dt);
+            else {
+                observe = this._updateObserve(dt);
+                if (!observe) this.hud.setObserve(0, false);
+            }
         }
         if (this.state === 'menu') this._heroCamera(t);
         else this._camera(dt, t, observe);
@@ -714,7 +791,9 @@ class Game {
 
         if (!playing) return;
         const rexDist = this.ctx.jeepDist(this.dinos.trex);
-        this.hud.setShake(this.dinos.trex.state === 'chase' && rexDist < 30);
+        const chased = this.dinos.trex.state === 'chase';
+        this.hud.setShake(chased && rexDist < 30);
+        this.hud.setDanger(chased);
         this.radioAcc += dt;
         if (this.radioAcc > 28) {
             this.radioAcc = 0;
@@ -729,6 +808,7 @@ class Game {
             this.hud.setTime(this.elapsed);
             this.hud.setFps(Math.round(this.stage.fps));
         }
+        if (this.state === 'play') this._updateGuide();
     }
 
     /** Atalhos de depuração (?debug=1): window.__lab. */

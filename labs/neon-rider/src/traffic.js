@@ -3,7 +3,7 @@
  * Colisão é AABB no plano XZ — suficiente para um arcade.
  */
 
-import { createCar, createCassette } from './models.js?v=13';
+import { createCar, createCassette } from './models.js?v=14';
 import { hash, randRange } from './utils.js';
 
 const LANES = [-5.4, -1.8, 1.8, 5.4];
@@ -66,8 +66,31 @@ export class Traffic {
         }
     }
 
+    /** Faixas ocupadas por carros vivos a menos de `span` de z (bitmask de 4 bits). */
+    lanesNear(z, span, skip) {
+        let mask = 0;
+        for (const other of this.cars) {
+            if (!other.live || other === skip) continue;
+            if (Math.abs(other.z - z) < span) mask |= 1 << other.lane;
+        }
+        return mask;
+    }
+
+    /**
+     * Justiça: nunca fecha as quatro faixas. Num raio de 16 m (≈ 1,5 s de reação a 60 u/s)
+     * cabem no máximo 2 carros; se a faixa sorteada estiver ocupada, usa a livre mais próxima,
+     * e se o trecho já tem 2, empurra o carro 18 m para a frente.
+     */
     placeCar(car, z) {
-        const lane = Math.floor(hash(z * 13.1) * LANES.length);
+        for (let tries = 0; tries < 6; tries++) {
+            const mask = this.lanesNear(z, 16, car);
+            const busy = ((mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1));
+            if (busy < 2) break;
+            z -= 18;
+        }
+        let lane = Math.floor(hash(z * 13.1) * LANES.length);
+        const near = this.lanesNear(z, 10, car);
+        for (let k = 0; k < LANES.length && (near & (1 << lane)); k++) lane = (lane + 1) % LANES.length;
         car.lane = lane;
         car.x = LANES[lane] + (hash(z * 7.7) - 0.5) * 0.35;
         car.z = z;
@@ -77,10 +100,37 @@ export class Traffic {
         car.mesh.visible = true;
         car.mesh.position.set(car.x, 0, car.z);
         car.mesh.rotation.y = Math.PI;
+        car.targetX = car.x;
+        car.shift = false;
+    }
+
+    /**
+     * Troca de faixa ("táxi surpresa"): entre 35 e 85 unidades à frente da moto, cada carro tem
+     * chance p = 0,12 · traffic por segundo de passar para uma faixa vizinha livre, a 2,6 u/s de
+     * lado (≈ 1,4 s, com o bico virado para o lado da troca como aviso). Carro a até uma faixa da
+     * moto troca na direção dela; os outros sorteiam o lado.
+     * Sem isso o vão entre as faixas do meio era um corredor 100 % seguro e a corrida terminava
+     * sem tocar no teclado.
+     */
+    maybeShift(car, player, dt) {
+        const ahead = player.z - car.z;
+        if (car.shift || ahead < 35 || ahead > 85) return;
+        if (Math.random() > 0.12 * this.difficulty.traffic * dt) return;
+        const aim = Math.abs(car.x - player.x) < 4;
+        const toward = aim ? Math.sign(player.x - car.x) || 1 : (Math.random() < 0.5 ? -1 : 1);
+        const dir = car.lane === 0 ? 1 : car.lane === LANES.length - 1 ? -1 : toward;
+        const lane = car.lane + dir;
+        if (this.lanesNear(car.z, 12, car) & (1 << lane)) return;
+        car.lane = lane;
+        car.targetX = LANES[lane];
+        car.shift = true;
     }
 
     placeTape(tape, z) {
-        const lane = Math.floor(hash(z * 21.3) * LANES.length);
+        let lane = Math.floor(hash(z * 21.3) * LANES.length);
+        // fita nunca nasce em cima de um carro (pegar a fita não pode exigir uma batida)
+        const near = this.lanesNear(z, 9);
+        for (let k = 0; k < LANES.length && (near & (1 << lane)); k++) lane = (lane + 1) % LANES.length;
         tape.x = LANES[lane];
         tape.z = z;
         tape.live = true;
@@ -109,6 +159,18 @@ export class Traffic {
             }
             // Mesmo sentido da moto, mais lentos — o jogador os ultrapassa.
             car.z -= car.speed * dt;
+            this.maybeShift(car, player, dt);
+            if (car.shift) {
+                const dx = car.targetX - car.x;
+                const stepX = Math.sign(dx) * Math.min(Math.abs(dx), 2.6 * dt);
+                car.x += stepX;
+                // o carro vira levemente o bico para o lado da troca
+                car.mesh.rotation.y = Math.PI - stepX / Math.max(dt, 1e-3) * 0.06;
+                if (Math.abs(dx) < 0.01) {
+                    car.shift = false;
+                    car.mesh.rotation.y = Math.PI;
+                }
+            }
             car.mesh.position.set(car.x, 0, car.z);
             if (car.z > behind || car.z < ahead - 40) {
                 this.placeCar(car, ahead - randRange(8, 70));

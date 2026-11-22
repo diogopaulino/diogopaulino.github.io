@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cormorant-garamond/font.css">
     <link rel="stylesheet" href="/assets/fonts/barlow/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -128,6 +128,12 @@
             </div>
 
             <div id="catalog" class="catalog" role="list" aria-label="Diário de espécies"></div>
+            <div id="guide" class="guide" role="status" aria-live="polite" hidden>
+                <i id="guideArrow" class="guide-arrow" aria-hidden="true"></i>
+                <span><small id="guideLabel">Próximo dinossauro</small><b id="guideName">—</b></span>
+                <span id="guideDist" class="mono guide-dist">— m</span>
+            </div>
+            <div id="observeRing" class="observe-ring" hidden aria-hidden="true"><i id="observeFill"></i></div>
 
             <aside id="dossier" class="dossier" hidden>
                 <p class="hud-label">Observação</p>
@@ -137,6 +143,7 @@
             </aside>
 
             <p id="prompt" class="prompt" hidden></p>
+            <p id="danger" class="danger" role="alert" hidden>O rex está vindo! Acelere para longe!</p>
 
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
@@ -151,7 +158,7 @@
                     <span>dirigir</span>
                 </div>
                 <div id="lookZone" class="look-zone" aria-label="Olhar"></div>
-                <button type="button" id="btnObserve" class="pad">observar</button>
+                <button type="button" id="btnObserve" class="pad pad-observe">observar</button>
             </div>
         </div>
 
@@ -167,15 +174,24 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · safari · seis espécies</p>
+                    <p class="eyebrow"><i></i> Safári de jipe · seis espécies</p>
                     <h1><span>Jurassic</span></h1>
-                    <p class="lede">Um recinto tropical onde o Jurássico ainda respira. Dirija o jipe pela trilha,
-                        observe dinossauros no lago e na selva, e complete o diário de campo — sem descer do veículo.</p>
+                    <p class="lede">Dirija o jipe pela ilha e observe os seis dinossauros para completar o diário.</p>
                 </header>
-
+                <ol class="howto" aria-label="Como jogar">
+                    <li><b class="howto-icon" aria-hidden="true">➜</b><span><strong>Siga a seta</strong><small>ela aponta o próximo dinossauro</small></span></li>
+                    <li><b class="howto-icon" aria-hidden="true">◉</b><span><strong>Chegue perto e observe</strong><small class="only-board">segure E (ou botão direito)</small><small class="only-touch">segure o botão OBSERVAR</small></span></li>
+                    <li><b class="howto-icon howto-icon--danger" aria-hidden="true">!</b><span><strong>Cuidado com o rex</strong><small>não pare perto da cerca quebrada</small></span></li>
+                </ol>
+                <div class="menu-foot menu-foot--top">
+                    <button id="startButton" class="primary-button primary-button--big" type="button">
+                        <span>Começar o safári</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </div>
                 <div class="menu-grid">
-                    <section class="menu-section">
-                        <h2>Circuito</h2>
+                    <details class="menu-section menu-disclosure">
+                        <summary>Onde estão os dinossauros</summary>
                         <ul class="species-preview">
                             <li>Braquiossauro no lago</li>
                             <li>Tiranossauro no paddock</li>
@@ -184,9 +200,8 @@
                             <li>Estegossauro na crista</li>
                             <li>Pteranodontes no farol</li>
                         </ul>
-                    </section>
-
-                    <details class="menu-section menu-disclosure" open>
+                    </details>
+                    <details class="menu-section menu-disclosure">
                         <summary>Comandos</summary>
                         <div class="keys keys--board">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> dirigir</span>
@@ -196,12 +211,12 @@
                             <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Dirija com o direcional esquerdo. Arraste a cena para olhar ao redor.</span>
-                            <span>Mantenha Observar pressionado com o animal na mira.</span>
+                            <span>Dirija com o direcional da esquerda. Arraste a área da direita para olhar.</span>
+                            <span>Perto de um dinossauro, segure OBSERVAR até a barra encher.</span>
                         </div>
                     </details>
 
-                    <details class="menu-section menu-disclosure" open>
+                    <details class="menu-section menu-disclosure">
                         <summary>Ajustes</summary>
                         <div class="settings-grid">
                             <label class="field">
@@ -222,12 +237,6 @@
                     </details>
                 </div>
 
-                <footer class="menu-foot">
-                    <button id="startButton" class="primary-button" type="button">
-                        <span>Abrir os portões</span>
-                        <i aria-hidden="true">→</i>
-                    </button>
-                </footer>
             </div>
         </div>
 
@@ -247,12 +256,12 @@
         <div id="caughtOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card defeat-card">
                 <p class="eyebrow eyebrow--danger"><i></i> Contenção falhou</p>
-                <h2>O rex<br>alcançou vocês.</h2>
-                <p class="lede">O vão rompido da cerca não segurou. Protocolo: não descer, não ficar parado.</p>
+                <h2>O rex<br>alcançou o jipe!</h2>
+                <p class="lede">Ufa, foi só um susto. Dica: passe longe da cerca quebrada do rex e não fique parado perto dele.</p>
                 <div id="caughtStats" class="stats"></div>
                 <div class="card-actions">
-                    <button id="retryButton" class="primary-button" type="button">
-                        <span>Novo turno</span><i aria-hidden="true">↻</i>
+                    <button id="retryButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="caughtMenuButton" class="ghost-button" type="button">Voltar ao portão</button>
                 </div>
@@ -261,13 +270,13 @@
 
         <div id="victoryOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card victory-card">
-                <p class="eyebrow eyebrow--gold"><i></i> Diário completo</p>
-                <h2>Seis espécies.<br>Um turno limpo.</h2>
-                <p class="lede">O âmbar guarda o que a ilha ainda mostra ao vivo. A central registra o seu relatório.</p>
+                <p class="eyebrow eyebrow--gold"><i></i> Missão cumprida</p>
+                <h2>Diário<br>completo!</h2>
+                <p class="lede">Você encontrou os seis dinossauros da ilha. A central registrou o seu safári.</p>
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
-                    <button id="replayButton" class="primary-button" type="button">
-                        <span>Outro circuito</span><i aria-hidden="true">→</i>
+                    <button id="replayButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao portão</button>
                 </div>
@@ -288,7 +297,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=20"></script>
+    <script type="module" src="src/main.js?v=21"></script>
 </body>
 
 </html>

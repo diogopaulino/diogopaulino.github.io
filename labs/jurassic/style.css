@@ -977,3 +977,188 @@ body[data-state="pause"] [data-lab-footer] {
         display: none;
     }
 }
+
+/* ================================================================
+   2026-11 · safári para todas as idades: como jogar, seta-guia,
+   barra de observação, alerta do rex e botões grandes
+   ================================================================ */
+.menu-card .menu-head { text-align: center; }
+.menu-card .menu-head .eyebrow { justify-content: center; }
+.menu-card .menu-head .lede { margin-inline: auto; font-size: 1.05rem; color: var(--text); }
+
+.howto {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+.howto li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line-soft);
+    background: rgb(255 255 255 / 0.04);
+}
+.howto li > span { display: grid; gap: 0.1rem; min-width: 0; }
+.howto strong { font-size: 0.95rem; }
+.howto small { font-size: 0.78rem; color: var(--text-dim); }
+.howto-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    color: var(--amber);
+    background: color-mix(in oklab, var(--amber) 16%, transparent);
+}
+.howto-icon--danger { color: var(--blood); background: color-mix(in oklab, var(--blood) 18%, transparent); font-weight: 800; }
+@media (pointer: coarse) { .howto .only-board { display: none; } }
+@media not all and (pointer: coarse) { .howto .only-touch { display: none; } }
+
+.menu-foot--top { justify-content: center; margin: 1.1rem 0 0.3rem; }
+.primary-button--big { min-height: 56px; padding: 0.95rem 2.1rem; font-size: 1.08rem; }
+.compact-card .card-actions { justify-content: center; }
+.compact-card .lede { margin-inline: auto; }
+
+/* Seta-guia: logo abaixo do diário, sempre no centro. */
+.guide {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0.55rem auto 0;
+    padding: 0.4rem 0.95rem 0.4rem 0.45rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: 0 10px 26px rgb(0 0 0 / 0.35);
+}
+.guide[hidden] { display: none; }
+.guide-arrow {
+    flex: none;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--amber);
+    transition: transform 0.25s var(--ease);
+    position: relative;
+}
+.guide-arrow::after {
+    content: "";
+    position: absolute;
+    inset: 0.42rem;
+    background: var(--ink);
+    /* seta para cima = em frente; o JS gira o círculo inteiro */
+    clip-path: polygon(50% 0, 100% 62%, 66% 62%, 66% 100%, 34% 100%, 34% 62%, 0 62%);
+}
+.guide > span:not(.guide-dist) { display: grid; line-height: 1.15; min-width: 0; }
+.guide small { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.guide b { font-size: 1rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guide-dist { font-size: 0.95rem; color: var(--amber); white-space: nowrap; }
+.guide[data-near="true"] { border-color: var(--amber); box-shadow: 0 0 0 3px color-mix(in oklab, var(--amber) 35%, transparent), 0 10px 26px rgb(0 0 0 / 0.35); }
+.guide[data-near="true"] small { color: var(--amber); }
+
+/* Barra de observação: enche enquanto o botão é segurado. */
+.observe-ring {
+    position: absolute;
+    left: 50%;
+    bottom: calc(8.4rem + var(--safe-bottom));
+    translate: -50% 0;
+    width: min(260px, 60vw);
+    height: 12px;
+    border-radius: 99px;
+    background: rgb(0 0 0 / 0.45);
+    border: 1px solid var(--line);
+    overflow: hidden;
+}
+.observe-ring[hidden] { display: none; }
+.observe-ring i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--amber-deep), var(--amber));
+    box-shadow: 0 0 12px var(--amber);
+    transition: width 0.1s linear;
+}
+
+.danger {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    translate: -50% 0;
+    margin: 0;
+    max-width: calc(100% - 2rem);
+    padding: 0.7rem 1.2rem;
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--blood) 82%, black);
+    color: #fff;
+    font-weight: 800;
+    font-size: clamp(1rem, 3.4vw, 1.35rem);
+    text-align: center;
+    box-shadow: 0 0 0 3px rgb(255 255 255 / 0.15), 0 16px 40px rgb(0 0 0 / 0.5);
+    animation: dangerPulse 0.8s ease-in-out infinite alternate;
+}
+.danger[hidden] { display: none; }
+@keyframes dangerPulse { to { transform: scale(1.05); } }
+
+.prompt { font-size: 0.95rem; font-weight: 600; }
+
+.species.is-new { animation: logged 1.2s var(--ease); }
+@keyframes logged {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.35); background: var(--amber); color: var(--ink); }
+    100% { transform: scale(1); }
+}
+
+/* Botão Observar: alvo grande e redondo para o polegar. */
+.pad-observe {
+    width: 84px;
+    height: 84px;
+    padding: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.74rem;
+    box-shadow: 0 10px 26px rgb(196 106 18 / 0.4);
+    touch-action: none;
+}
+.pad-observe:active { transform: scale(0.93); filter: brightness(1.15); }
+
+@media (prefers-reduced-motion: reduce) {
+    .danger, .species.is-new { animation: none; }
+}
+
+@media (max-width: 640px) {
+    .howto { grid-template-columns: 1fr; gap: 0.45rem; }
+    .howto li { padding: 0.5rem 0.7rem; }
+    .guide { padding: 0.3rem 0.8rem 0.3rem 0.35rem; gap: 0.55rem; }
+    .guide-arrow { width: 2rem; height: 2rem; }
+    .guide b { font-size: 0.9rem; }
+    .observe-ring { bottom: calc(10rem + var(--safe-bottom)); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .howto { margin-top: 0.6rem; }
+    .howto li { padding: 0.4rem 0.6rem; }
+    .howto-icon { width: 2.1rem; height: 2.1rem; }
+    .menu-foot--top { margin: 0.6rem 0 0.2rem; }
+    .guide { margin-top: 0.35rem; padding: 0.2rem 0.7rem 0.2rem 0.3rem; }
+    .guide-arrow { width: 1.8rem; height: 1.8rem; }
+    .guide small { display: none; }
+    .pad-observe { width: 72px; height: 72px; }
+    .observe-ring { bottom: calc(6rem + var(--safe-bottom)); }
+    .danger { top: 50%; }
+}
+.pad-observe[data-ready] { animation: observeReady 0.9s ease-in-out infinite alternate; }
+@keyframes observeReady { to { box-shadow: 0 0 0 10px color-mix(in oklab, var(--amber) 30%, transparent), 0 10px 26px rgb(196 106 18 / 0.4); } }
+@media (prefers-reduced-motion: reduce) { .pad-observe[data-ready] { animation: none; outline: 3px solid var(--amber); } }

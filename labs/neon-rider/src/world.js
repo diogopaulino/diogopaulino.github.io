@@ -4,11 +4,12 @@
  */
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CHUNK, ROAD } from './config.js';
 import { hash, mulberry32 } from './utils.js';
 import {
     createBuilding, createLamp, createPalm, createBillboard, tintMaterials
-} from './models.js?v=13';
+} from './models.js?v=14';
 
 export function createSky() {
     const uniforms = {
@@ -183,16 +184,8 @@ export class City {
     }
 
     populateChunk(group, index) {
-        while (group.children.length) {
-            const child = group.children[0];
-            child.traverse((obj) => {
-                if (obj.userData?.signMat) {
-                    obj.userData.signMat.map?.dispose();
-                    obj.userData.signMat.dispose();
-                }
-            });
-            group.remove(child);
-        }
+        // geometrias, texturas e materiais são compartilhados (cache em models.js): só desanexa
+        while (group.children.length) group.remove(group.children[group.children.length - 1]);
 
         const rng = mulberry32((this.seed * 104729 + index * 7919) | 0);
         const density = this.quality.chunkProps;
@@ -230,6 +223,62 @@ export class City {
             board.position.set((hash(index) > 0.5 ? 1 : -1) * 9.8, 0, 0);
             group.add(board);
         }
+        this.mergeChunk(group);
+    }
+
+    /**
+     * Funde o quarteirão em uma malha por material (≈ 100 draw calls → ≈ 12 por quarteirão).
+     * Os materiais são compartilhados, então a troca de estação (tintMaterials) continua valendo.
+     * Postes viram marcadores vazios (Object3D com isLamp) para updateLights achar a posição.
+     * As geometrias fundidas são do quarteirão: liberadas na próxima reciclagem.
+     */
+    mergeChunk(group) {
+        for (const g of group.userData.merged || []) g.dispose();
+        const z = group.position.z;
+        group.position.z = 0;
+        group.updateMatrixWorld(true);
+        const buckets = new Map();
+        const lamps = [];
+        for (const child of group.children) {
+            if (child.userData.isLamp) lamps.push(child);
+            child.traverse((o) => {
+                if (!o.isMesh) return;
+                const key = `${o.material.uuid}|${o.geometry.index ? 1 : 0}`;
+                let b = buckets.get(key);
+                if (!b) buckets.set(key, (b = { material: o.material, cast: false, list: [] }));
+                b.cast ||= o.castShadow;
+                b.list.push(o.geometry.clone().applyMatrix4(o.matrixWorld));
+            });
+        }
+        while (group.children.length) group.remove(group.children[group.children.length - 1]);
+        const merged = [];
+        const add = (geo, b) => {
+            const m = new THREE.Mesh(geo, b.material);
+            m.castShadow = b.cast;
+            m.receiveShadow = true;
+            m.matrixAutoUpdate = false;
+            group.add(m);
+            merged.push(geo);
+        };
+        for (const b of buckets.values()) {
+            const geo = b.list.length === 1 ? b.list[0] : mergeGeometries(b.list, false);
+            if (geo) {
+                if (b.list.length > 1) for (const g of b.list) g.dispose();
+                add(geo, b);
+            } else {
+                // atributos incompatíveis: mantém as peças soltas (já em coordenadas do quarteirão)
+                for (const g of b.list) add(g, b);
+            }
+        }
+        for (const lamp of lamps) {
+            const marker = new THREE.Object3D();
+            marker.position.copy(lamp.position);
+            marker.userData.isLamp = true;
+            group.add(marker);
+        }
+        group.userData.merged = merged;
+        group.position.z = z;
+        group.updateMatrixWorld(true);
     }
 
     recycle(playerZ) {
@@ -245,17 +294,18 @@ export class City {
 
     updateLights(playerZ) {
         if (!this.lampLights.length) return;
-        const lamps = [];
+        // array reaproveitado entre quadros (antes: um array novo + sort com closure a cada quadro)
+        const lamps = this._lamps || (this._lamps = []);
+        lamps.length = 0;
         for (const chunk of this.chunks) {
             for (const child of chunk.children) {
-                if (child.userData.isLamp) lamps.push(child);
+                if (child.userData.isLamp) {
+                    child.userData.dz = Math.abs(chunk.position.z + child.position.z - playerZ);
+                    lamps.push(child);
+                }
             }
         }
-        lamps.sort((a, b) => {
-            const da = Math.abs(a.parent.position.z + a.position.z - playerZ);
-            const db = Math.abs(b.parent.position.z + b.position.z - playerZ);
-            return da - db;
-        });
+        lamps.sort(byDistance);
         for (let i = 0; i < this.lampLights.length; i++) {
             const lamp = lamps[i];
             const light = this.lampLights[i];
@@ -296,6 +346,10 @@ export class City {
             this.populateChunk(chunk, i);
         }
     }
+}
+
+function byDistance(a, b) {
+    return a.userData.dz - b.userData.dz;
 }
 
 function pickBillboard(index) {

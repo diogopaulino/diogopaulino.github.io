@@ -89,41 +89,50 @@ export const STATIONS = [
     }
 ];
 
+/**
+ * Dificuldades. `goal` é a distância da linha de chegada em metros do placar
+ * (placar = 2,4 m por unidade do mundo, ver main.js), escolhida para ~1,5 min de corrida
+ * na velocidade de cruzeiro: tempo ≈ goal / (maxSpeed · 2,4).
+ */
 export const DIFFICULTY = {
     cruise: {
         id: 'cruise',
         label: 'Passeio',
-        blurb: 'Trânsito leve, fitas por toda a avenida. Para curtir o néon.',
+        blurb: 'Pouco trânsito e 5 créditos. Bom para começar.',
         traffic: 0.55,
         trafficSpeed: 0.42,
         tapes: 1.35,
         lives: 5,
-        maxSpeed: 54
+        maxSpeed: 54,
+        goal: 10000
     },
     night: {
         id: 'night',
         label: 'Madrugada',
-        blurb: 'Avenida cheia, táxis surpresa e boost curto. O ritmo certo.',
+        blurb: 'Avenida cheia e 3 créditos. O ritmo certo.',
         traffic: 1,
         trafficSpeed: 0.58,
         tapes: 1,
         lives: 3,
-        maxSpeed: 66
+        maxSpeed: 66,
+        goal: 15000
     },
     turbo: {
         id: 'turbo',
         label: 'Turbo',
-        blurb: 'Nitro permanente, trânsito agressivo. Uma fita errada e acabou.',
+        blurb: 'Rápido, trânsito agressivo e só 2 créditos.',
         traffic: 1.45,
         trafficSpeed: 0.78,
         tapes: 0.75,
         lives: 2,
-        maxSpeed: 84
+        maxSpeed: 84,
+        goal: 24000
     }
 };
 
 export const QUALITY = {
     low: {
+        id: 'low',
         antialias: false,
         pixelRatio: 1,
         bloom: false,
@@ -135,6 +144,7 @@ export const QUALITY = {
         particles: 20
     },
     medium: {
+        id: 'medium',
         antialias: false,
         pixelRatio: 1.15,
         bloom: false,
@@ -146,6 +156,7 @@ export const QUALITY = {
         particles: 80
     },
     high: {
+        id: 'high',
         antialias: true,
         pixelRatio: 1.5,
         bloom: true,
@@ -160,7 +171,7 @@ export const QUALITY = {
 
 export function loadSettings() {
     const fallback = {
-        difficulty: 'night',
+        difficulty: 'cruise',
         quality: 'auto',
         volume: 72,
         muted: false,
@@ -169,7 +180,12 @@ export function loadSettings() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return fallback;
-        return { ...fallback, ...JSON.parse(raw) };
+        const saved = { ...fallback, ...JSON.parse(raw) };
+        // valor antigo/corrompido no localStorage não pode derrubar o menu
+        if (!DIFFICULTY[saved.difficulty]) saved.difficulty = fallback.difficulty;
+        if (!['auto', 'low', 'medium', 'high'].includes(saved.quality)) saved.quality = 'auto';
+        saved.volume = Number.isFinite(saved.volume) ? Math.min(100, Math.max(0, saved.volume)) : fallback.volume;
+        return saved;
     } catch (err) {
         return fallback;
     }

@@ -243,3 +243,23 @@ body[data-state="play"] .lab-foot { display: none; }
 .hud { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 12px rgba(0,0,0,.6); }
 .vital, .location > span:last-child { color: var(--paper-soft); }
 meter, meter::-webkit-meter-bar { background: rgba(10,12,11,.5); }
+
+/* --- 2026-11 · como jogar em três passos (teclado e toque) e botões grandes --- */
+.howto { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; margin: 1.6rem 0 1.1rem; padding: 1rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); list-style: none; }
+.howto li { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.howto li > b { flex: none; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid var(--line); border-radius: 50%; color: var(--gold); background: rgba(226,184,98,.08); font: 700 1rem/1 Cinzel, Georgia, serif; }
+.howto li > span { display: grid; gap: .15rem; min-width: 0; }
+.howto strong { color: var(--paper); font-size: .9rem; font-weight: 600; }
+.howto small { color: var(--paper-dim); font-size: .74rem; }
+@media (pointer: coarse) { .howto .only-board { display: none; } }
+@media not all and (pointer: coarse) { .howto .only-touch { display: none; } }
+.primary-button--big { min-height: 54px; padding: .85rem 1.7rem; font-size: .95rem; }
+@media (max-width: 760px) {
+    .howto { grid-template-columns: 1fr; gap: .55rem; margin: 1.2rem 0 .9rem; padding: .75rem 0; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+    .howto { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .6rem 0; padding: .5rem 0; }
+    .howto li > b { width: 2rem; height: 2rem; font-size: .85rem; }
+    .howto strong { font-size: .78rem; }
+    .howto small { font-size: .66rem; }
+}

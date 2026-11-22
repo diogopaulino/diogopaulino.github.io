@@ -541,24 +541,58 @@ export function createCassette(mats) {
     return g;
 }
 
-export function createPalm(mats) {
-    const g = new THREE.Group();
+/*
+ * Peças recicladas a cada quarteirão (palmeira, letreiro, outdoor) usam geometria, textura e
+ * material em cache: antes cada reciclagem criava malhas e CanvasTextures novas que nunca eram
+ * liberadas (vazamento de GPU + engasgo de upload a cada ~1 s de corrida).
+ */
+const CACHE = { palm: null, signTex: new Map(), signMat: new Map(), board: new Map(), rails: null };
+const UNIT_PLANE = new THREE.PlaneGeometry(1, 1);
+
+function palmGeometry() {
+    if (CACHE.palm) return CACHE.palm;
     const trunkPts = [];
     for (let i = 0; i <= 8; i++) {
         const t = i / 8;
         trunkPts.push(new THREE.Vector2(0.2 - t * 0.08 + Math.sin(t * 9) * 0.015, t * 4.2));
     }
-    const trunk = new THREE.Mesh(new THREE.LatheGeometry(trunkPts, 10), mats.trunk);
-    trunk.castShadow = true;
-    g.add(trunk);
     const frond = new THREE.Shape();
     frond.moveTo(0, 0);
     frond.quadraticCurveTo(0.35, 0.7, 0.08, 1.9);
     frond.quadraticCurveTo(-0.05, 1.1, -0.22, 0.15);
     frond.quadraticCurveTo(-0.08, 0.02, 0, 0);
-    const frondGeo = new THREE.ExtrudeGeometry(frond, {
-        depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1, curveSegments: 6
-    });
+    CACHE.palm = {
+        trunk: new THREE.LatheGeometry(trunkPts, 10),
+        frond: new THREE.ExtrudeGeometry(frond, {
+            depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1, curveSegments: 6
+        })
+    };
+    return CACHE.palm;
+}
+
+/** Material de letreiro por (texto, cor): no máximo |SIGN_WORDS| × 2 texturas na vida do jogo. */
+function signMaterial(word, color) {
+    const key = `${word}|${color}`;
+    let mat = CACHE.signMat.get(key);
+    if (!mat) {
+        mat = new THREE.MeshBasicMaterial({
+            map: neonSignTexture(THREE, word, color),
+            transparent: true,
+            toneMapped: false,
+            side: THREE.DoubleSide
+        });
+        CACHE.signMat.set(key, mat);
+    }
+    return mat;
+}
+
+export function createPalm(mats) {
+    const g = new THREE.Group();
+    const geo = palmGeometry();
+    const trunk = new THREE.Mesh(geo.trunk, mats.trunk);
+    trunk.castShadow = true;
+    g.add(trunk);
+    const frondGeo = geo.frond;
     for (let i = 0; i < 8; i++) {
         const leaf = new THREE.Mesh(frondGeo, mats.palm);
         leaf.position.y = 4.15;
@@ -624,14 +658,9 @@ export function createBuilding(mats, rng, density, side = 1) {
     if (rng() > 0.35) {
         const word = pick(SIGN_WORDS);
         const color = rng() > 0.5 ? 0xff2bd6 : 0x00f0ff;
-        const tex = neonSignTexture(THREE, word, hexColor(color));
-        const signMat = new THREE.MeshBasicMaterial({
-            map: tex,
-            transparent: true,
-            toneMapped: false,
-            side: THREE.DoubleSide
-        });
-        const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.9, 6.5), 1.15), signMat);
+        const signMat = signMaterial(word, hexColor(color));
+        const sign = new THREE.Mesh(UNIT_PLANE, signMat);
+        sign.scale.set(Math.min(w * 0.9, 6.5), 1.15, 1);
         sign.position.set(-side * (w / 2 + 0.12 + w * 0.016), 3.2 + rng() * (h * 0.4), 0);
         sign.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(sign);
@@ -653,14 +682,9 @@ export function createBillboard(mats, title = 'NEON RIDER') {
     g.name = 'billboard';
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, -1.6, 3.1, 0));
     g.add(mesh(CYL, mats.dark, 0.1, 6.2, 0.1, 1.6, 3.1, 0));
-    const tex = neonSignTexture(THREE, title, '#00f0ff');
-    const mat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        toneMapped: false,
-        side: THREE.DoubleSide
-    });
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.4), mat);
+    const mat = signMaterial(title, '#00f0ff');
+    const board = new THREE.Mesh(UNIT_PLANE, mat);
+    board.scale.set(5.4, 1.4, 1);
     board.name = 'boardFace';
     board.position.set(0, 6.4, 0);
     g.add(board);
@@ -677,11 +701,19 @@ export function createBillboard(mats, title = 'NEON RIDER') {
         [0.02, 7.02], [-0.05, 7.06], [-0.12, 7.14], [-0.06, 7.22],
         [-0.14, 7.30], [-0.04, 7.38], [0.05, 7.36], [0.05, 7.02]
     ];
+    // as quatro réguas da moldura são iguais em todo outdoor: geradas uma vez só
+    let railIndex = 0;
+    const rails = CACHE.rails || (CACHE.rails = []);
     const addRail = (pts, depth, rot, material, y) => {
-        const geo = railExtrude(pts, depth);
-        if (rot === 'x') geo.rotateY(Math.PI / 2);
-        else geo.rotateX(Math.PI / 2);
-        geo.computeVertexNormals();
+        let geo = rails[railIndex];
+        if (!geo) {
+            geo = railExtrude(pts, depth);
+            if (rot === 'x') geo.rotateY(Math.PI / 2);
+            else geo.rotateX(Math.PI / 2);
+            geo.computeVertexNormals();
+            rails[railIndex] = geo;
+        }
+        railIndex++;
         const m = new THREE.Mesh(geo, material);
         m.name = 'boardRail';
         if (y) m.position.y = y;

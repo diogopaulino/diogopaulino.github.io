@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/assets/fonts/share-tech-mono/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
 
     <script type="importmap">
     {
@@ -138,6 +138,11 @@
                         <strong id="livesValue" class="mono lives">■■■</strong>
                     </div>
                 </div>
+                <div class="goal-track" aria-hidden="true">
+                    <span class="goal-label">Chegada</span>
+                    <div class="goal-bar"><i id="goalFill"></i><b id="goalBike">▶</b></div>
+                    <span id="goalText" class="mono goal-text">0 / 10 km</span>
+                </div>
             </div>
 
             <p id="message" class="message" data-show="false" role="status" aria-live="polite"></p>
@@ -151,8 +156,10 @@
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
-                <div class="steer-zone" id="steerZone" aria-label="Arraste para esterçar">
-                    <span class="steer-hint">esterçar</span>
+                <div class="steer-zone" id="steerZone" role="group" aria-label="Arraste para os lados para desviar">
+                    <span class="steer-arrow" aria-hidden="true">◀</span>
+                    <i id="steerKnob" class="steer-knob" aria-hidden="true"></i>
+                    <span class="steer-arrow" aria-hidden="true">▶</span>
                 </div>
                 <div class="touch-buttons">
                     <button type="button" class="pad pad-brake" id="touchBrake" aria-label="Frear">FREIO</button>
@@ -160,7 +167,6 @@
                 </div>
             </div>
         </div>
-
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="loading-card">
                 <span class="loading-mark" aria-hidden="true">▣</span>
@@ -173,21 +179,29 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · hiper-realista · 1984</p>
+                    <p class="eyebrow"><i></i> Arcade · 1984 · meia-noite</p>
                     <h1>Neon <span>Rider</span></h1>
-                    <p class="lede">Uma avenida cinematográfica que não acaba, à meia-noite. Colete
-                        fitas VHS para retunar o néon da cidade e a rádio synthwave. Desvie do
-                        trânsito. Não olhe para o céu — o show está no asfalto.</p>
+                    <p class="lede">Pilote a moto pela avenida de néon até a linha de chegada.</p>
                 </header>
-
+                <ol class="howto" aria-label="Como jogar">
+                    <li><b class="howto-icon" aria-hidden="true">◀ ▶</b><span><strong>Desvie dos carros</strong><small class="only-board">A/D ou setas</small><small class="only-touch">arraste o dedo na faixa da esquerda</small></span></li>
+                    <li><b class="howto-icon howto-icon--tape" aria-hidden="true">▣</b><span><strong>Pegue as fitas VHS</strong><small>cada fita muda a cor da cidade</small></span></li>
+                    <li><b class="howto-icon howto-icon--flag" aria-hidden="true">⚑</b><span><strong>Chegue ao fim</strong><small>bater gasta um crédito</small></span></li>
+                </ol>
+                <section class="menu-section menu-difficulty">
+                    <h2>Dificuldade</h2>
+                    <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
+                    <p id="difficultyBlurb" class="section-note"></p>
+                </section>
+                <footer class="menu-foot">
+                    <button id="startButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar</span>
+                        <i aria-hidden="true">▶</i>
+                    </button>
+                </footer>
                 <div class="menu-grid">
-                    <section class="menu-section">
-                        <h2>Noite</h2>
-                        <div id="difficultyOptions" class="chip-row" role="radiogroup" aria-label="Dificuldade"></div>
-                        <p id="difficultyBlurb" class="section-note"></p>
-                    </section>
 
-                    <details class="menu-section menu-disclosure" open>
+                    <details class="menu-section menu-disclosure">
                         <summary>Comandos</summary>
                         <div class="keys keys--board">
                             <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> esterçar</span>
@@ -196,12 +210,13 @@
                             <span><kbd>M</kbd> mudo · <kbd>Enter</kbd> largar</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Arraste na área Esterçar para fazer as curvas.</span>
-                            <span>Segure Nitro para acelerar e Freio para reduzir a velocidade.</span>
+                            <span>Arraste o dedo na faixa da esquerda para fazer as curvas.</span>
+                            <span>Segure NITRO para acelerar e FREIO para ir mais devagar.</span>
+                            <span>II no canto pausa o jogo.</span>
                         </div>
                     </details>
 
-                    <details class="menu-section menu-disclosure" open>
+                    <details class="menu-section menu-disclosure">
                         <summary>Ajustes</summary>
                         <div class="settings-grid">
                             <label class="field">
@@ -222,12 +237,6 @@
                     </details>
                 </div>
 
-                <footer class="menu-foot">
-                    <button id="startButton" class="primary-button" type="button">
-                        <span>Insert coin</span>
-                        <i aria-hidden="true">→</i>
-                    </button>
-                </footer>
             </div>
         </div>
 
@@ -247,17 +256,32 @@
         <div id="gameOverOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card defeat-card">
                 <p class="eyebrow eyebrow--danger"><i></i> GAME OVER</p>
-                <h2>O néon<br>apagou.</h2>
+                <h2>Acabaram<br>os créditos.</h2>
+                <p class="lede">Tudo bem! Tente de novo: desvie dos carros e pegue as fitas.</p>
                 <div id="overStats" class="stats"></div>
                 <div class="card-actions">
-                    <button id="retryButton" class="primary-button" type="button">
-                        <span>Outra fita</span><i aria-hidden="true">↻</i>
+                    <button id="retryButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="overMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
                 </div>
             </div>
         </div>
 
+        <div id="winOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="winTitle" hidden>
+            <div class="overlay-card compact-card win-card">
+                <p class="eyebrow eyebrow--gold"><i></i> Linha de chegada</p>
+                <h2 id="winTitle">Você<br>chegou!</h2>
+                <p id="winText" class="lede">A avenida inteira, de ponta a ponta.</p>
+                <div id="winStats" class="stats"></div>
+                <div class="card-actions">
+                    <button id="winRetryButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
+                    </button>
+                    <button id="winMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                </div>
+            </div>
+        </div>
         <div id="errorOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
                 <p class="eyebrow eyebrow--danger"><i></i> Falha ao ligar</p>
@@ -271,7 +295,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=15"></script>
+    <script type="module" src="src/main.js?v=16"></script>
 </body>
 
 </html>

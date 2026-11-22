@@ -413,32 +413,56 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .touch-controls {
     position: absolute;
     inset: auto 0 0 0;
-    height: 42%;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    padding: 0 calc(1rem + var(--safe-left)) calc(1.2rem + var(--safe-bottom)) calc(1rem + var(--safe-right));
+    gap: 1rem;
+    padding: 0 calc(1rem + var(--safe-right)) calc(1.1rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
     pointer-events: none;
 }
 
 .touch-controls[hidden] { display: none; }
 
+/* Faixa de esterço: o dedo arrasta o botão; a posição vira o guidão (main.js#bindTouch). */
 .steer-zone {
     pointer-events: auto;
-    width: 46%;
-    height: 100%;
-    display: grid;
-    place-items: end start;
-    padding: 1rem;
+    touch-action: none;
+    position: relative;
+    width: min(46%, 300px);
+    height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
-.steer-hint {
-    font-size: 0.68rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    opacity: 0.5;
+.steer-arrow {
+    font-size: 1.3rem;
+    color: var(--neon-b);
+    opacity: 0.7;
+    text-shadow: 0 0 12px var(--neon-b);
 }
+
+.steer-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 58px;
+    height: 58px;
+    margin: -29px 0 0 -29px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff8, transparent 55%), linear-gradient(135deg, var(--neon-a), var(--neon-b));
+    box-shadow: 0 0 22px color-mix(in oklab, var(--neon-a) 60%, transparent);
+    transition: transform 0.18s var(--ease);
+}
+
+.steer-zone.is-active .steer-knob { transition: none; }
 
 .touch-buttons {
     display: flex;
@@ -464,7 +488,9 @@ body[data-state="playing"] .game-shell > header .app-logo {
     box-shadow: 0 0 24px color-mix(in oklab, var(--neon-a) 40%, transparent);
 }
 
-.pad:active { transform: scale(0.92); }
+.pad { touch-action: none; }
+.pad:active,
+.pad.is-held { transform: scale(0.92); filter: brightness(1.35); }
 
 /* overlays */
 .overlay {
@@ -815,4 +841,213 @@ kbd {
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }
+}
+
+/* --- 2026-11: menu infantil, meta de chegada, vitória ------------------------- */
+/* `.menu-head` é um <header>: o shared.css dá grid de 3 colunas a todo header. */
+.menu-card .menu-head {
+    display: block;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+.menu-card .menu-head .eyebrow { justify-content: center; }
+.menu-card .menu-head h1 { grid-area: auto; max-width: none; overflow: visible; font-size: clamp(2.2rem, 7vw, 3.4rem); }
+.menu-card .menu-head .lede { margin: 0 auto; font-size: 1.05rem; color: var(--text); }
+
+.howto {
+    list-style: none;
+    margin: 1.1rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+.howto li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line-soft);
+    min-width: 0;
+}
+.howto-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: var(--neon-b);
+    background: color-mix(in oklab, var(--neon-b) 14%, transparent);
+    text-shadow: 0 0 10px var(--neon-b);
+}
+.howto-icon--tape { color: var(--neon-a); background: color-mix(in oklab, var(--neon-a) 14%, transparent); text-shadow: 0 0 10px var(--neon-a); font-size: 1.3rem; }
+.howto-icon--flag { color: #ffd84a; background: rgba(255, 216, 74, 0.12); font-size: 1.3rem; }
+.howto li > span { display: grid; gap: 0.1rem; min-width: 0; }
+.howto strong { font-size: 0.92rem; }
+.howto small { font-size: 0.76rem; color: var(--text-dim); }
+@media (pointer: coarse) { .howto .only-board { display: none; } }
+@media not all and (pointer: coarse) { .howto .only-touch { display: none; } }
+
+.menu-foot { justify-content: center; }
+.primary-button--big {
+    min-height: 56px;
+    padding: 0.95rem 2.2rem;
+    font-size: 1.05rem;
+}
+
+/* Barra de chegada: sempre visível, logo abaixo dos painéis (última linha do grid do topo). */
+.goal-track {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(440px, 100%);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    pointer-events: none;
+}
+.goal-label {
+    font-family: var(--font-display);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #ffd84a;
+}
+.goal-bar {
+    position: relative;
+    flex: 1;
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.1);
+    background-image: linear-gradient(90deg, transparent calc(100% - 10px), rgba(255, 216, 74, 0.7) calc(100% - 10px));
+}
+.goal-bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
+    box-shadow: 0 0 10px var(--neon-b);
+}
+.goal-bar b {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    translate: -50% -50%;
+    font-size: 0.8rem;
+    color: #fff;
+    text-shadow: 0 0 8px var(--neon-a);
+}
+.goal-text { font-size: 0.8rem; color: var(--text-soft); white-space: nowrap; }
+
+.eyebrow--gold { color: #ffd84a; }
+.eyebrow--gold i { background: #ffd84a; box-shadow: 0 0 10px #ffd84a; }
+.win-card h2 { color: #ffd84a; text-shadow: 0 0 24px #ffd84a; }
+.compact-card .lede { margin: 0 auto; }
+.stats .stats-wide { grid-column: 1 / -1; }
+.compact-card .card-actions .primary-button { order: -1; }
+
+
+@media (max-width: 640px) {
+    .howto { grid-template-columns: 1fr; gap: 0.45rem; }
+    .howto li { padding: 0.5rem 0.7rem; }
+    .menu-card .menu-head h1 { font-size: 2.2rem; }
+    /* celular em pé: só o essencial no topo (velocidade, créditos), a rádio vira uma linha */
+    .radio-panel .hud-tag { display: none; }
+    .radio-panel strong { font-size: 0.85rem; }
+    .speed-num { font-size: 1.35rem; }
+    .score-panel { min-width: 0; }
+    .steer-zone { width: min(56%, 240px); height: 80px; }
+    .steer-knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
+    .pad { width: 70px; height: 70px; }
+    .pad-boost { width: 82px; height: 82px; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    /* os painéis começam abaixo dos botões do header (voltar, tela cheia, tema) */
+    .hud { padding-top: calc(3.6rem + var(--safe-top)); }
+    .menu-card .menu-head h1 { font-size: 1.8rem; margin: 0.1rem 0 0.3rem; }
+    .menu-card .menu-head .lede { font-size: 0.92rem; }
+    .howto { margin-top: 0.6rem; }
+    .howto li { padding: 0.45rem 0.6rem; }
+    .howto-icon { width: 2.1rem; height: 2.1rem; }
+    .menu-grid { margin: 0.6rem 0; }
+    .hud-top { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .radio-panel { grid-column: auto; }
+    .radio-panel .hud-tag,
+    .speed-panel .hud-label,
+    .radio-panel .hud-label { display: none; }
+    .message { top: 54%; }
+    .speed-num { font-size: 1.3rem; }
+    .steer-zone { height: 70px; width: min(40%, 260px); }
+    .steer-knob { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+    .pad { width: 62px; height: 62px; }
+    .pad-boost { width: 70px; height: 70px; }
+}
+
+/* Menu: dificuldade + Jogar logo depois do "como jogar"; comandos e ajustes recolhidos embaixo. */
+.menu-difficulty { margin: 1rem 0 0; text-align: center; }
+.menu-difficulty .chip-row { justify-content: center; }
+.menu-difficulty .chip { min-height: 44px; padding: 0.5rem 1.1rem; font-size: 0.9rem; }
+.menu-foot { margin: 0.9rem 0 0.2rem; }
+.menu-card .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0.9rem 0 0; }
+
+@media (max-width: 860px) {
+    .menu-card .menu-grid { grid-template-columns: 1fr; gap: 0.2rem; }
+}
+
+/* Celular em pé: HUD numa linha só (velocidade · rádio/nitro · placar) + barra de chegada;
+   som/pausa sobem para cima dos pedais (antes ficavam escondidos sob os botões do header). */
+@media (max-width: 560px) {
+    .hud-top { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.4rem; }
+    .radio-panel { grid-column: auto; justify-self: stretch; width: auto; padding: 0.4rem 0.5rem; }
+    .speed-panel .hud-label,
+    .radio-panel .hud-label,
+    .radio-panel .hud-tag { display: none; }
+    .speed-num { font-size: 1.3rem; }
+    .hud-unit { font-size: 0.55rem; }
+    .radio-panel strong { font-size: 0.78rem; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .score-panel { gap: 0.05rem; }
+    .score-row .hud-label { font-size: 0.48rem; letter-spacing: 0.08em; }
+    .score-row strong { font-size: 0.82rem; }
+    .hud-actions {
+        top: auto;
+        bottom: calc(1.1rem + 82px + 0.7rem + var(--safe-bottom));
+        right: calc(1rem + var(--safe-right));
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-actions {
+        position: absolute;
+        top: auto;
+        right: calc(1rem + var(--safe-right));
+        bottom: calc(1.1rem + 70px + 0.6rem + var(--safe-bottom));
+    }
+    /* o cartão começa abaixo do header; título e passos bastam (sem eyebrow/lede) */
+    .overlay { padding-top: calc(3.3rem + var(--safe-top)); padding-bottom: calc(0.6rem + var(--safe-bottom)); }
+    .menu-card .menu-head .eyebrow,
+    .menu-card .menu-head .lede,
+    .menu-difficulty h2 { display: none; }
+    .overlay-card { max-height: calc(100dvh - 4rem - var(--safe-top) - var(--safe-bottom)); }
+    .menu-difficulty { margin-top: 0.6rem; }
+    .menu-difficulty .section-note { display: none; }
+    .menu-foot { margin-top: 0.5rem; }
+    .menu-card .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (pointer: coarse) {
+    .fps { display: none; }
 }
