@@ -78,7 +78,7 @@ test('every lesson and puzzle still accepts its expected solution', () => {
 });
 
 test('all AI levels return a legal move without mutating the position', () => {
-    for (const level of ['iniciante', 'praticante', 'clube']) {
+    for (const level of ['facil', 'iniciante', 'praticante', 'clube']) {
         const g = new Chess(), m = pickMove(g, level);
         assert.ok(g.findMove(m.from, m.to, m.promo));
         assert.equal(g.fen(), START_FEN);
@@ -101,5 +101,46 @@ test('compressed sculpted assets decode within their declared bounds', () => {
         assert.equal(part.normals[1], vertices * 3);
         assert.equal(part.uvs[1], vertices * 2);
         for (let i = 0; i < part.indices[1]; i++) assert.ok(bytes.readUInt16LE(part.indices[0] + i * 2) < vertices);
+    }
+});
+
+test('threefold repetition draws, undo forgets the repeated position', () => {
+    const g = new Chess();
+    const shuffle = ['g1', 'f3', 'g8', 'f6', 'f3', 'g1', 'f6', 'g8'];
+    for (let lap = 0; lap < 2; lap++) {
+        for (let i = 0; i < shuffle.length; i += 2) {
+            assert.equal(g.status().over, false);
+            move(g, shuffle[i], shuffle[i + 1]);
+        }
+    }
+    // Posição inicial apareceu 3 vezes (início + 2 voltas).
+    assert.equal(g.status().reason, 'repetição');
+    g.undo();
+    assert.equal(g.status().over, false);
+});
+
+test('AI search does not leave repetition keys behind', () => {
+    const g = new Chess();
+    const before = g.keys.length;
+    pickMove(g, 'clube');
+    assert.equal(g.keys.length, before);
+    assert.equal(g.trackKeys, true);
+});
+
+test('AI finds mate in one at every level except the random fallback', () => {
+    const fen = '6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1';
+    for (const level of ['praticante', 'clube']) {
+        const g = new Chess(fen);
+        assert.equal(g.san(pickMove(g, level)), 'Re8#');
+    }
+});
+
+test('every puzzle key move is legal and the expected outcome holds', () => {
+    for (const pz of PUZZLES) {
+        const g = new Chess(pz.fen);
+        const m = g.findMove(parseAlg(pz.expect.from), parseAlg(pz.expect.to), pz.expect.promo || 'q');
+        g.play(m);
+        // Nenhum desafio pode deixar a peça que acabou de jogar ser tomada de graça.
+        assert.ok(!g.hanging(m.to) || g.status().over, `${pz.id}: key move hangs`);
     }
 });

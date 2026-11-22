@@ -2,7 +2,7 @@
  * Cartas hiper-realistas — faces duplas (flip 3D), textura e pip pattern.
  */
 
-import { RANK_LABEL, SUIT_SYMBOL, SUIT_COLOR, parseCard } from './engine.js';
+import { RANK_LABEL, SUIT_SYMBOL, SUIT_COLOR, parseCard } from './engine.js?v=4';
 
 const PIP_LAYOUTS = {
     '2': [1, 0, 0, 0, 1],

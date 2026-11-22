@@ -8,6 +8,10 @@
  * En passant: casa-alvo atrás do peão que andou dois; captura remove o peão.
  * Promoção: peão na última fila vira D/T/B/C (padrão Dama).
  * Mate = sem lances legais e rei em xeque; afogamento = sem lances e sem xeque.
+ * Empates automáticos: 50 lances (100 meios-lances sem peão/captura),
+ * material insuficiente e repetição tripla — a mesma posição (peças, vez,
+ * roque e casa en passant) aparece 3 vezes. A chave de posição é o FEN sem
+ * os contadores; `keys` guarda o histórico e acompanha play()/undo().
  */
 
 export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -89,7 +93,25 @@ export class Chess {
         this.half = 0;
         this.full = 1;
         this.stack = [];
+        this.keys = [];
+        // Desligado na busca da IA e no filtro de legalidade (custo de fen()).
+        this.trackKeys = true;
         this.load(fen);
+    }
+
+    /** Chave de repetição: FEN sem os contadores de meio-lance e lance. */
+    positionKey() {
+        return this.fen().split(' ').slice(0, 4).join(' ');
+    }
+
+    /** Quantas vezes a posição atual já apareceu (inclui a atual). */
+    repetitions() {
+        const key = this.keys[this.keys.length - 1];
+        let n = 0;
+        // Só posições desde o último lance irreversível podem se repetir.
+        const from = Math.max(0, this.keys.length - 1 - this.half);
+        for (let i = from; i < this.keys.length; i++) if (this.keys[i] === key) n++;
+        return n;
     }
 
     clone() {
@@ -101,6 +123,7 @@ export class Chess {
         g.half = this.half;
         g.full = this.full;
         g.stack = [];
+        g.keys = this.keys.slice();
         return g;
     }
 
@@ -132,6 +155,7 @@ export class Chess {
         this.half = Number(parts[4] || 0);
         this.full = Number(parts[5] || 1);
         this.stack = [];
+        this.keys = [this.positionKey()];
     }
 
     fen() {
@@ -376,9 +400,12 @@ export class Chess {
     }
 
     _legal(move) {
+        const track = this.trackKeys;
+        this.trackKeys = false;
         this.play(move);
         const ok = !this.inCheck(this.side === 'w' ? 'b' : 'w');
         this.undo();
+        this.trackKeys = track;
         return ok;
     }
 
@@ -457,12 +484,14 @@ export class Chess {
         if (this.side === 'b') this.full += 1;
         this.side = this.side === 'w' ? 'b' : 'w';
         this.stack.push(undo);
+        if (this.trackKeys) this.keys.push(this.positionKey());
         return undo;
     }
 
     undo() {
         const u = this.stack.pop();
         if (!u) return;
+        if (this.trackKeys && this.keys.length > 1) this.keys.pop();
         this.board[u.from] = u.piece;
         this.board[u.to] = u.flag === 'e' ? null : u.captured;
         if (u.flag === 'e' && u.epCap >= 0) this.board[u.epCap] = u.captured;
@@ -537,6 +566,9 @@ export class Chess {
         }
         if (this.half >= 100) {
             return { over: true, result: '½-½', reason: '50 lances', check, moves };
+        }
+        if (this.trackKeys && this.repetitions() >= 3) {
+            return { over: true, result: '½-½', reason: 'repetição', check, moves };
         }
         if (this._insufficient()) {
             return { over: true, result: '½-½', reason: 'material insuficiente', check, moves };

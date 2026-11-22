@@ -5,30 +5,39 @@
 
 import {
     applyAction,
+    BLIND_EVERY,
     canContinue,
     createMatch,
     describeHand,
+    equityVsRandom,
     evaluateHand,
     formatChips,
     heroToAct,
     holeStrength,
     legalActions,
     potOdds,
+    RANK_LABEL,
     startHand,
     STREET
-} from './engine.js';
-import { aiThinkDelay, chooseAction } from './ai.js';
-import { HAND_RANK_CHART, LESSONS, liveTip } from './coach.js';
-import { renderCards, revealCards } from './cards.js';
-import { flyChips, renderChipStack } from './chips.js';
+} from './engine.js?v=4';
+import { aiThinkDelay, chooseAction } from './ai.js?v=4';
+import { HAND_PLAIN, HAND_RANK_CHART, LESSONS, liveTip } from './coach.js?v=4';
+import { renderCards, revealCards } from './cards.js?v=4';
+import { flyChips, renderChipStack } from './chips.js?v=4';
 import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin } from './audio.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+const DIFFICULTY_KEY = 'poker:difficulty';
+const DIFF_LABEL = { easy: 'IA · fácil', normal: 'IA · intermediária', hard: 'IA · agressiva' };
+
 const state = {
     mode: 'play', // play | academy
-    difficulty: 'normal',
+    difficulty: readDifficulty(),
+    suggestion: null,
+    // Incrementa a cada sessão nova: laços da IA de uma sessão velha param.
+    session: 0,
     match: null,
     busy: false,
     lessonIndex: 0,
@@ -38,9 +47,31 @@ const state = {
     aiRevealed: false
 };
 
-function init() {
+function readDifficulty() {
+    try {
+        const v = localStorage.getItem(DIFFICULTY_KEY);
+        return ['easy', 'normal', 'hard'].includes(v) ? v : 'easy';
+    } catch {
+        return 'easy';
+    }
+}
+
+function setDifficulty(v) {
+    state.difficulty = ['easy', 'normal', 'hard'].includes(v) ? v : 'easy';
+    try { localStorage.setItem(DIFFICULTY_KEY, state.difficulty); } catch { /* modo privado */ }
+    $$('#difficulty, #introDifficulty').forEach((el) => { el.value = state.difficulty; });
+    renderBadges();
+}
+
+function newMatch() {
+    state.session += 1;
     state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10 });
+}
+
+function init() {
+    newMatch();
     bindUi();
+    setDifficulty(state.difficulty);
     const mute = $('#muteBtn');
     if (mute) {
         mute.setAttribute('aria-pressed', String(isMuted()));
@@ -55,6 +86,13 @@ function bindUi() {
         showIntro(false);
         beginMatch();
     });
+    $('#introDifficulty')?.addEventListener('change', (e) => setDifficulty(e.target.value));
+    $('#sessionAgain')?.addEventListener('click', () => {
+        $('#sessionOverlay').close();
+        newMatch();
+        dealNewHand();
+    });
+    $('#sessionClose')?.addEventListener('click', () => $('#sessionOverlay').close());
     $('#btnAcademyIntro')?.addEventListener('click', () => {
         showIntro(false);
         setMode('academy');
@@ -72,6 +110,7 @@ function bindUi() {
     $('#modeRanks')?.addEventListener('click', () => openRanks(true));
 
     $('#btnHint')?.addEventListener('click', onHint);
+    $('#btnHintInline')?.addEventListener('click', onHint);
     $('#muteBtn')?.addEventListener('click', () => {
         setMuted(!isMuted());
         $('#muteBtn').setAttribute('aria-pressed', String(isMuted()));
@@ -79,10 +118,7 @@ function bindUi() {
         sfxClick();
     });
 
-    $('#difficulty')?.addEventListener('change', (e) => {
-        state.difficulty = e.target.value;
-        renderBadges();
-    });
+    $('#difficulty')?.addEventListener('change', (e) => setDifficulty(e.target.value));
 
     $('#coachToggle')?.addEventListener('click', () => {
         const body = $('#coachBody');
@@ -110,7 +146,7 @@ function bindUi() {
 
     $('#betSlider')?.addEventListener('input', (e) => {
         state.betAmount = Number(e.target.value);
-        $('#betValue').textContent = formatChips(state.betAmount);
+        syncBetLabels();
     });
 
     $('#actions')?.addEventListener('click', onActionClick);
@@ -169,12 +205,12 @@ function beginMatch() {
 
 function dealNewHand() {
     if (state.busy || (state.match.hand && state.match.hand.street !== STREET.DONE)) return;
-    if (!canContinue(state.match)) {
-        state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10 });
-    }
+    if (!canContinue(state.match)) newMatch();
     for (const id of ['#heroCards', '#aiCards', '#board']) $(id).replaceChildren();
     startHand(state.match);
     state.aiRevealed = false;
+    state.suggestion = null;
+    state.betAmount = 0;
     state.busy = false;
     state.prevBets = [0, 0];
     state.prevPot = state.match.hand?.pot || 0;
@@ -211,6 +247,7 @@ async function onActionClick(e) {
     const beforeBet = state.match.hand?.streetContrib[0] || 0;
     const result = applyAction(state.match, { type, amount });
     if (!result.ok) return;
+    state.suggestion = null;
 
     state.busy = true;
     renderActions();
@@ -235,12 +272,14 @@ async function maybeAiTurn() {
     if (!h || h.street === STREET.DONE) return;
     if (h.toAct === match.heroSeat) return;
 
+    const session = state.session;
     state.busy = true;
     renderActions();
     setStatus('Dealer IA pensa…');
     await sleep(aiThinkDelay(state.difficulty));
 
     while (
+        session === state.session &&
         match.hand &&
         match.hand.street !== STREET.DONE &&
         match.hand.toAct !== match.heroSeat &&
@@ -253,7 +292,14 @@ async function maybeAiTurn() {
 
         const seat = match.hand.toAct;
         const beforeBet = match.hand.streetContrib[seat] || 0;
-        const result = applyAction(match, action);
+        let result = applyAction(match, action);
+        if (!result.ok) {
+            // Nunca travar a mesa: ação recusada vira a mais passiva possível.
+            const legal = legalActions(match);
+            const safe = legal.find((a) => a.type === 'check') || legal.find((a) => a.type === 'call') || legal[0];
+            result = safe ? applyAction(match, safe) : { ok: false };
+            if (!result.ok) break;
+        }
         const afterBet = match.hand?.streetContrib[seat] || 0;
         const delta = Math.max(0, afterBet - beforeBet);
         if (delta > 0 && action.type !== 'fold') {
@@ -293,10 +339,49 @@ function onHandOver() {
     const r = state.match.lastResult;
     if (r?.winners?.includes(0)) sfxWin();
     renderAll({ revealAi: true });
+    highlightBest();
 
     if (!canContinue(state.match)) {
         const heroWins = state.match.stacks[0] > 0;
-        setStatus(heroWins ? 'Você zerou a IA — mesa sua!' : 'Stack zerado — nova sessão?');
+        setStatus(heroWins ? 'Você ganhou todas as fichas!' : 'Suas fichas acabaram');
+        const session = state.session;
+        // Deixa ver as cartas do showdown antes do card de fim de sessão.
+        setTimeout(() => { if (session === state.session) showSessionOver(heroWins); }, r?.reason === 'showdown' ? 1600 : 700);
+    }
+}
+
+function showSessionOver(heroWins) {
+    const dlg = $('#sessionOverlay');
+    if (!dlg || dlg.open) return;
+    const m = state.match;
+    dlg.dataset.outcome = heroWins ? 'win' : 'loss';
+    $('#sessionTitle').textContent = heroWins ? 'Você venceu!' : 'A IA venceu';
+    $('#sessionText').textContent = heroWins
+        ? 'Você ganhou todas as fichas da mesa. Parabéns!'
+        : `Suas fichas acabaram. ${state.difficulty === 'easy' ? 'Na próxima, use a Dica quando estiver em dúvida.' : 'Tente a mesa fácil ou use a Dica.'}`;
+    $('#sessionStats').innerHTML = [
+        ['Mãos jogadas', m.handNumber],
+        ['Mãos que você ganhou', m.handsWon[0]],
+        ['Maior pote', formatChips(m.biggestPot)]
+    ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+    dlg.showModal();
+    $('#sessionAgain').focus();
+}
+
+/** Showdown: acende as 5 cartas da mão vencedora e apaga as outras. */
+function highlightBest() {
+    const h = state.match.hand;
+    const r = state.match.lastResult;
+    if (!h || r?.reason !== 'showdown') return;
+    const seat = r.winners.length === 1 ? r.winners[0] : 0;
+    const best = new Set(r.hands[seat].cards);
+    const boxes = [$('#board'), seat === 0 ? $('#heroCards') : $('#aiCards')];
+    for (const box of boxes) {
+        for (const el of box.querySelectorAll('.card[data-card]')) {
+            if (!el.dataset.card || el.dataset.card === '?') continue;
+            el.classList.toggle('is-best', best.has(el.dataset.card));
+            el.classList.toggle('is-dim', !best.has(el.dataset.card));
+        }
     }
 }
 
@@ -304,14 +389,25 @@ function onHint() {
     if (state.mode === 'academy') setMode('play');
     $('#coachBody').hidden = false;
     $('#coachToggle').setAttribute('aria-expanded', 'true');
-    $('#coachToggle').focus();
     const match = state.match;
     const h = match.hand;
     if (!h || h.street === STREET.DONE) {
-        setCoach('Dica', 'Comece uma mão. Eu comento pot odds, força e ruas em tempo real.');
+        setCoach('Dica', h ? 'A mão acabou. Toque em “Próxima mão” para receber cartas novas.' : 'Toque em “Distribuir cartas” para começar.');
         return;
     }
     const hero = match.heroSeat;
+    if (heroToAct(match)) {
+        // Sugestão justa: o mesmo cérebro da IA intermediária, olhando só as
+        // suas cartas e a mesa. O botão sugerido brilha.
+        const pick = chooseAction(match, 'normal');
+        if (pick) {
+            state.suggestion = pick.type === 'allin' ? 'allin' : pick.type;
+            renderActions();
+            setCoach('Sugestão', `${suggestionWhy(pick.type)} ${plainHandLine()}`);
+            sfxClick();
+            return;
+        }
+    }
     const hole = h.holes[hero];
     const strength = holeStrength(hole);
     const pct = Math.round(strength * 100);
@@ -341,6 +437,61 @@ function onHint() {
     }
     setCoach('Dica', text);
     sfxClick();
+}
+
+function suggestionWhy(type) {
+    return {
+        fold: 'Desistir: sua mão está fraca e a aposta custa caro.',
+        check: 'Passar: dá para ver a próxima carta de graça.',
+        call: 'Pagar: sua mão ainda pode ganhar e o preço é bom.',
+        bet: 'Apostar: sua mão está boa — faça a IA pagar para ver.',
+        raise: 'Aumentar: sua mão é forte, cresça o pote.',
+        allin: 'Tudo: mão forte e poucas fichas — vale arriscar.'
+    }[type] || '';
+}
+
+/** Mão do jogador em palavras simples + o que ela significa. */
+function plainHandLine() {
+    const h = state.match.hand;
+    if (!h) return '';
+    const hole = h.holes[0];
+    if (h.board.length >= 3) {
+        const made = evaluateHand([...hole, ...h.board]);
+        return `Você tem ${describeHand(made)} (${HAND_PLAIN[made.category]}).`;
+    }
+    return `Você tem ${describeHole(hole)}.`;
+}
+
+/** Duas cartas antes do flop: "Par de 8", "K e 7 do mesmo naipe". */
+function describeHole(hole) {
+    if (!hole || hole.length < 2) return '—';
+    const [a, b] = hole;
+    const la = RANK_LABEL[a[0]];
+    const lb = RANK_LABEL[b[0]];
+    if (a[0] === b[0]) return `Par de ${la}`;
+    const order = 'AKQJT98765432';
+    const [hi, lo] = order.indexOf(a[0]) < order.indexOf(b[0]) ? [la, lb] : [lb, la];
+    return `${hi} e ${lo}${a[1] === b[1] ? ' do mesmo naipe' : ''}`;
+}
+
+/**
+ * Medidor da mão do jogador (0–1): chance de vencer uma mão qualquer
+ * (equityVsRandom). Faixas: < 0,40 fraca · < 0,55 média · < 0,72 boa · forte.
+ * Recalcula só quando as cartas mudam.
+ */
+let meterKey = '';
+let meterValue = 0;
+function heroMeter() {
+    const h = state.match.hand;
+    if (!h) return null;
+    const key = h.holes[0].join('') + h.board.join('');
+    if (key !== meterKey) {
+        meterKey = key;
+        meterValue = equityVsRandom(h.holes[0], h.board, 220);
+    }
+    const v = meterValue;
+    const word = v < 0.4 ? 'fraca' : v < 0.55 ? 'média' : v < 0.72 ? 'boa' : 'forte';
+    return { v, word };
 }
 
 function renderAll(opts = {}) {
@@ -439,21 +590,63 @@ function renderHoles(opts = {}) {
         $('#aiCards').innerHTML = '';
     }
 
+    const meterEl = $('#heroMeter');
     if (h && hero.length === 2) {
-        if (h.board.length >= 3) {
-            $('#heroHandName').textContent = describeHand(evaluateHand([...hero, ...h.board]));
-        } else {
-            const s = Math.round(holeStrength(hero) * 100);
-            $('#heroHandName').textContent = `Força ~${s}%`;
+        $('#heroHandName').textContent = h.board.length >= 3
+            ? describeHand(evaluateHand([...hero, ...h.board]))
+            : describeHole(hero);
+        const meter = heroMeter();
+        if (meterEl && meter) {
+            meterEl.hidden = false;
+            meterEl.dataset.level = meter.word;
+            meterEl.style.setProperty('--v', meter.v.toFixed(3));
+            $('#heroMeterWord').textContent = `Mão ${meter.word}`;
         }
     } else {
         $('#heroHandName').textContent = '—';
+        if (meterEl) meterEl.hidden = true;
+    }
+    const aiName = $('#aiHandName');
+    if (aiName) {
+        const r = state.match.lastResult;
+        aiName.textContent = h?.street === STREET.DONE && r?.reason === 'showdown' ? describeHand(r.hands[1]) : '';
     }
 }
 
 function renderPot() {
     const h = state.match.hand;
     $('#potValue').textContent = formatChips(h?.pot || 0);
+}
+
+const ACTION_TEXT = {
+    fold: { main: () => 'Desistir', sub: 'fold' },
+    check: { main: () => 'Passar', sub: 'check' },
+    call: { main: (a, stack) => (a.amount >= stack ? `Pagar ${formatChips(a.amount)} (tudo)` : `Pagar ${formatChips(a.amount)}`), sub: 'call' },
+    allin: { main: (a) => `Tudo: ${formatChips(a.amount)}`, sub: 'all-in' }
+};
+
+function actionButton(type, main, sub) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `act-btn act-btn--${type}`;
+    btn.dataset.action = type;
+    btn.innerHTML = `<span class="act-main"></span><small class="act-sub"></small>`;
+    btn.querySelector('.act-main').textContent = main;
+    btn.querySelector('.act-sub').textContent = sub;
+    if (state.suggestion === type) btn.classList.add('is-suggested');
+    return btn;
+}
+
+/** Texto do botão de aposta acompanha o slider: "Apostar 40" / "Aumentar para 60". */
+function syncBetLabels() {
+    $('#betValue').textContent = formatChips(state.betAmount);
+    const btn = $('#actions [data-action="bet"], #actions [data-action="raise"]');
+    const h = state.match.hand;
+    if (!btn || !h) return;
+    const total = (h.streetContrib[0] || 0) + state.betAmount;
+    btn.querySelector('.act-main').textContent = btn.dataset.action === 'bet'
+        ? `Apostar ${formatChips(state.betAmount)}`
+        : `Aumentar para ${formatChips(total)}`;
 }
 
 function renderActions() {
@@ -466,10 +659,13 @@ function renderActions() {
         sizing.hidden = true;
         const next = document.createElement('button');
         next.type = 'button';
-        next.className = 'act-btn act-btn--accent';
+        next.className = 'act-btn act-btn--accent act-btn--next';
         next.dataset.action = 'nexthand';
-        next.textContent = !h ? 'Distribuir cartas' : canContinue(state.match) ? 'Próxima mão' : 'Nova sessão';
-        next.addEventListener('click', dealNewHand);
+        next.textContent = !h ? 'Distribuir cartas' : canContinue(state.match) ? 'Próxima mão' : 'Jogar de novo';
+        next.addEventListener('click', () => {
+            if (h && !canContinue(state.match)) newMatch();
+            dealNewHand();
+        });
         box.appendChild(next);
         setStatus(h?.street === STREET.DONE ? statusAfterHand() : 'Pronto para repartir');
         return;
@@ -482,17 +678,14 @@ function renderActions() {
     }
 
     const legal = legalActions(state.match);
-    let betOrRaise = legal.find((a) => a.type === 'bet' || a.type === 'raise');
+    const betOrRaise = legal.find((a) => a.type === 'bet' || a.type === 'raise');
+    const stack = state.match.stacks[state.match.heroSeat];
 
-    legal.forEach((a) => {
-        if (a.type === 'bet' || a.type === 'raise') return;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `act-btn act-btn--${a.type}`;
-        btn.dataset.action = a.type;
-        btn.textContent = a.type === 'call' ? `${a.label} ${formatChips(a.amount)}` : a.label;
-        box.appendChild(btn);
-    });
+    // Ordem fixa da esquerda para a direita: desistir · passar/pagar · apostar · tudo.
+    for (const type of ['fold', 'check', 'call']) {
+        const a = legal.find((x) => x.type === type);
+        if (a) box.appendChild(actionButton(type, ACTION_TEXT[type].main(a, stack), ACTION_TEXT[type].sub));
+    }
 
     if (betOrRaise) {
         sizing.hidden = false;
@@ -506,15 +699,8 @@ function renderActions() {
             state.betAmount = Math.min(max, Math.max(min, Math.round((min + Math.min(max, state.match.hand.pot)) / 2)));
         }
         slider.value = state.betAmount;
-        $('#betValue').textContent = formatChips(state.betAmount);
-        $('#betLabel').textContent = betOrRaise.type === 'bet' ? 'Aposta' : 'Raise';
-
-        const confirm = document.createElement('button');
-        confirm.type = 'button';
-        confirm.className = 'act-btn act-btn--bet';
-        confirm.dataset.action = betOrRaise.type;
-        confirm.textContent = betOrRaise.type === 'bet' ? 'Apostar' : 'Aumentar';
-        box.appendChild(confirm);
+        $('#betLabel').textContent = betOrRaise.type === 'bet' ? 'Quanto apostar' : 'Quanto aumentar';
+        box.appendChild(actionButton(betOrRaise.type, '', betOrRaise.type));
 
         const pot = h.pot;
         $$('.size-chip').forEach((chip) => {
@@ -523,26 +709,32 @@ function renderActions() {
             chip.onclick = () => {
                 state.betAmount = amt;
                 slider.value = amt;
-                $('#betValue').textContent = formatChips(amt);
+                syncBetLabels();
             };
         });
     } else {
         sizing.hidden = true;
     }
+    const allin = legal.find((a) => a.type === 'allin');
+    if (allin) box.appendChild(actionButton('allin', ACTION_TEXT.allin.main(allin), ACTION_TEXT.allin.sub));
+    syncBetLabels();
 
-    setStatus('Sua vez');
+    const toCall = Math.max(0, h.currentBet - h.streetContrib[0]);
+    setStatus(toCall > 0
+        ? `Sua vez · a IA apostou. Pague ${formatChips(Math.min(toCall, stack))} para continuar, aumente ou desista.`
+        : 'Sua vez · passe de graça ou aposte.');
 }
 
 function statusAfterHand() {
     const r = state.match.lastResult;
     if (!r) return 'Mão encerrada';
     if (r.reason === 'fold') {
-        return r.winners[0] === 0 ? 'Rival foldou — você leva o pot' : 'Você foldou';
+        return r.winners[0] === 0 ? `A IA desistiu — você leva ${formatChips(r.pot)}` : 'Você desistiu da mão';
     }
-    if (r.winners.length === 2) return `Split pot · ${describeHand(r.hands[0])}`;
+    if (r.winners.length === 2) return `Empate · pote dividido (${describeHand(r.hands[0])})`;
     const w = r.winners[0];
     const hand = r.hands[w];
-    return `${w === 0 ? 'Você' : 'IA'} vence com ${describeHand(hand)}`;
+    return `${w === 0 ? 'Você vence' : 'A IA vence'} com ${describeHand(hand)} · ${formatChips(r.pot)}`;
 }
 
 function setStatus(msg) {
@@ -563,11 +755,11 @@ function renderBadges() {
     $('#handNumber').textContent = state.match.handNumber
         ? `Mão #${state.match.handNumber}`
         : '—';
-    $('#diffLabel').textContent = ({
-        easy: 'IA · iniciante',
-        normal: 'IA · intermediária',
-        hard: 'IA · agressiva'
-    })[state.difficulty];
+    $('#diffLabel').textContent = DIFF_LABEL[state.difficulty];
+    const m = state.match;
+    const next = Math.floor(Math.max(0, m.handNumber - 1) / BLIND_EVERY + 1) * BLIND_EVERY + 1;
+    const blinds = $('#blindLabel');
+    if (blinds) blinds.textContent = `Blinds ${m.smallBlind}/${m.bigBlind} · sobem na mão ${next}`;
 }
 
 function updateCoachLive() {
@@ -593,6 +785,8 @@ function renderHandResult() {
     }
     banner.hidden = false;
     banner.textContent = statusAfterHand();
+    const r = state.match.lastResult;
+    banner.dataset.outcome = !r ? '' : r.winners.length === 2 ? 'split' : r.winners[0] === 0 ? 'win' : 'loss';
 }
 
 function renderAcademy() {

@@ -7,9 +7,17 @@
  * - Ruas: preflop → flop (3) → turn (1) → river (1) → showdown.
  * - Ranking (maior → menor): royal flush, straight flush, quadra, full house,
  *   flush, straight, trinca, dois pares, par, high card.
- * - Empate: split pot (chips ímpares vão ao primeiro seat no split).
- * - All-in: side pots simplificados (só 2 jogadores → pot único).
+ * - Empate: split pot. Com o refund abaixo as contribuições ficam iguais e o
+ *   pote é sempre par; se um dia sobrar ficha ímpar, ela vai para o BB.
+ * - All-in: com 2 jogadores não há side pot de verdade. No showdown, a parte
+ *   que o rival não cobriu volta para quem apostou a mais (refund) e o resto
+ *   é um pote único.
+ * - Blinds sobem: a cada BLIND_EVERY mãos o nível dobra (5/10 → 10/20 →
+ *   20/40 …). Assim toda sessão termina — alguém fica sem fichas.
+ *   nível = floor((mão − 1) / BLIND_EVERY);  SB = sb0 · 2^nível;  BB = 2 · SB.
  */
+
+export const BLIND_EVERY = 10;
 
 export const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 export const SUITS = ['s', 'h', 'd', 'c']; // spades, hearts, diamonds, clubs
@@ -76,6 +84,81 @@ export function shuffle(deck, rng = Math.random) {
  * Comparação lexicográfica de [category, ...ranks].
  */
 export function evaluateHand(cardIds) {
+    if (cardIds.length < 5) {
+        return { category: -1, ranks: [], name: '—', cards: cardIds };
+    }
+    return evaluateFast(cardIds);
+}
+
+/**
+ * Avaliação direta de 5–7 cartas, sem gerar as 21 combinações:
+ * contagem por valor e por naipe → categoria, desempates e as 5 cartas.
+ * Mesmo resultado de evaluateHandSlow (conferido nos testes), ~20× mais rápida.
+ */
+function evaluateFast(cardIds) {
+    const cards = cardIds.map(parseCard).sort((a, b) => b.value - a.value);
+    const cnt = new Array(13).fill(0);
+    const bySuit = { s: [], h: [], d: [], c: [] };
+    for (const c of cards) {
+        cnt[c.value]++;
+        bySuit[c.suit].push(c);
+    }
+    const take = (pool, value, n) => pool.filter((c) => c.value === value).slice(0, n);
+    const straightOf = (vals) => straightHighValue(vals);
+    const seq = (high) => (high === 3 ? [3, 2, 1, 0, 12] : [high, high - 1, high - 2, high - 3, high - 4]);
+    const done = (category, ranks, five) => ({ category, ranks, name: HAND_NAMES[category], cards: five.map((c) => c.id) });
+
+    const flushSuit = Object.keys(bySuit).find((k) => bySuit[k].length >= 5);
+    if (flushSuit) {
+        const suited = bySuit[flushSuit];
+        const high = straightOf(suited.map((c) => c.value));
+        if (high >= 0) return done(high === 12 ? 9 : 8, [high], seq(high).map((v) => take(suited, v, 1)[0]));
+    }
+    const valuesBy = (n) => {
+        const out = [];
+        for (let v = 12; v >= 0; v--) if (cnt[v] >= n) out.push(v);
+        return out;
+    };
+    const quads = valuesBy(4);
+    if (quads.length) {
+        const q = quads[0];
+        const kicker = cards.find((c) => c.value !== q);
+        return done(7, [q, kicker.value], [...take(cards, q, 4), kicker]);
+    }
+    const trips = valuesBy(3);
+    if (trips.length) {
+        const t = trips[0];
+        const p = valuesBy(2).find((v) => v !== t);
+        if (p !== undefined) return done(6, [t, p], [...take(cards, t, 3), ...take(cards, p, 2)]);
+    }
+    if (flushSuit) {
+        const five = bySuit[flushSuit].slice(0, 5);
+        return done(5, five.map((c) => c.value), five);
+    }
+    const high = straightOf(cards.map((c) => c.value));
+    if (high >= 0) return done(4, [high], seq(high).map((v) => take(cards, v, 1)[0]));
+    if (trips.length) {
+        const t = trips[0];
+        const kick = cards.filter((c) => c.value !== t).slice(0, 2);
+        return done(3, [t, ...kick.map((c) => c.value)], [...take(cards, t, 3), ...kick]);
+    }
+    const pairs = valuesBy(2);
+    if (pairs.length >= 2) {
+        const [p1, p2] = pairs;
+        const kicker = cards.find((c) => c.value !== p1 && c.value !== p2);
+        return done(2, [p1, p2, kicker.value], [...take(cards, p1, 2), ...take(cards, p2, 2), kicker]);
+    }
+    if (pairs.length === 1) {
+        const p = pairs[0];
+        const kick = cards.filter((c) => c.value !== p).slice(0, 3);
+        return done(1, [p, ...kick.map((c) => c.value)], [...take(cards, p, 2), ...kick]);
+    }
+    const five = cards.slice(0, 5);
+    return done(0, five.map((c) => c.value), five);
+}
+
+/** Referência lenta (todas as combinações de 5) — usada nos testes. */
+export function evaluateHandSlow(cardIds) {
     const cards = cardIds.map(parseCard);
     if (cards.length < 5) {
         return { category: -1, ranks: [], name: '—', cards: cardIds };
@@ -277,6 +360,38 @@ export function estimateEquity(heroHole, villainHole, board, samples = 120, rng 
     return total / n;
 }
 
+/**
+ * Equity contra uma mão aleatória: sorteia as 2 cartas do rival e o resto da
+ * mesa. Não espia ninguém — serve à IA e ao medidor de força do jogador.
+ * Retorna 0–1 (empate conta meio).
+ */
+export function equityVsRandom(hole, board, samples = 160, rng = Math.random) {
+    const used = new Set([...hole, ...board]);
+    const remaining = createDeck().filter((c) => !used.has(c));
+    const need = 5 - board.length;
+    let total = 0;
+    for (let i = 0; i < samples; i++) {
+        // Fisher–Yates parcial: só as 2 + need primeiras posições.
+        const pick = need + 2;
+        for (let j = 0; j < pick; j++) {
+            const k = j + Math.floor(rng() * (remaining.length - j));
+            [remaining[j], remaining[k]] = [remaining[k], remaining[j]];
+        }
+        const villain = [remaining[0], remaining[1]];
+        const full = board.concat(remaining.slice(2, pick));
+        const cmp = compareScores(evaluateHand([...hole, ...full]), evaluateHand([...villain, ...full]));
+        total += cmp > 0 ? 1 : cmp === 0 ? 0.5 : 0;
+    }
+    return total / samples;
+}
+
+/** Blinds da mão n (1-based) — ver BLIND_EVERY no topo. */
+export function blindsFor(match, handNumber) {
+    const level = Math.floor((handNumber - 1) / BLIND_EVERY);
+    const sb = match.baseSmallBlind * 2 ** level;
+    return { level, sb, bb: sb * 2 };
+}
+
 export function potOdds(toCall, pot) {
     // Fórmula: call / (pot + call). Se equity > pot odds, call +EV.
     if (toCall <= 0) return 0;
@@ -294,6 +409,9 @@ export function createMatch({
         startingStack,
         smallBlind,
         bigBlind,
+        baseSmallBlind: smallBlind,
+        biggestPot: 0,
+        handsWon: [0, 0],
         heroSeat,
         rng,
         button: 1, // AI começa no botão; hero recebe BB na 1ª mão
@@ -318,6 +436,12 @@ export function startHand(match) {
 
     match.button = match.handNumber === 0 ? match.button : 1 - match.button;
     match.handNumber += 1;
+    const blinds = blindsFor(match, match.handNumber);
+    if (blinds.bb !== match.bigBlind && match.handNumber > 1) {
+        pushLog(match, `Blinds sobem para ${blinds.sb}/${blinds.bb}`);
+    }
+    match.smallBlind = blinds.sb;
+    match.bigBlind = blinds.bb;
 
     const deck = shuffle(createDeck(), match.rng);
     const sbSeat = match.button; // HU: botão = SB
@@ -427,7 +551,15 @@ export function applyAction(match, action) {
     if (!h) return { ok: false, error: 'Sem mão' };
     const seat = h.toAct;
     const legal = legalActions(match);
-    const found = legal.find((a) => a.type === action.type);
+    let found = legal.find((a) => a.type === action.type);
+    if (!found && action.type === 'allin') {
+        // Stack curto: "tudo" pode aparecer como bet/raise com máximo = stack
+        // ou como call que já consome o stack. Mesmo efeito, outro nome.
+        const stack = match.stacks[seat];
+        found = legal.find((a) => (a.type === 'bet' || a.type === 'raise') && a.max === stack)
+            || legal.find((a) => a.type === 'call' && a.amount === stack);
+        if (found) action = { type: found.type, amount: stack };
+    }
     if (!found) return { ok: false, error: 'Ação ilegal' };
 
     let put = 0;
@@ -570,6 +702,8 @@ function finishByFold(match, winner) {
     const h = match.hand;
     const pot = h.pot;
     match.stacks[winner] += pot;
+    match.biggestPot = Math.max(match.biggestPot || 0, pot);
+    match.handsWon[winner] += 1;
     h.winners = [winner];
     h.street = STREET.DONE;
     h.showdown = false;
@@ -653,8 +787,9 @@ function goShowdown(match) {
 
     if (winners.length === 2) {
         const half = Math.floor(pot / 2);
-        match.stacks[0] += half;
-        match.stacks[1] += pot - half;
+        const odd = pot - half * 2;
+        match.stacks[h.bbSeat] += half + odd;
+        match.stacks[h.sbSeat] += half;
         pushLog(match, `Split pot ${pot} — ${describeHand(hand0)}`);
     } else {
         match.stacks[winners[0]] += pot;
@@ -663,6 +798,8 @@ function goShowdown(match) {
 
     h.winners = winners;
     h.street = STREET.DONE;
+    match.biggestPot = Math.max(match.biggestPot || 0, pot);
+    if (winners.length === 1) match.handsWon[winners[0]] += 1;
     match.lastResult = {
         winners,
         pot,

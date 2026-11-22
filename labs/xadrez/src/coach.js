@@ -181,24 +181,24 @@ export const PUZZLES = [
         title: 'Cravada',
         level: 'praticante',
         fen: '4k3/8/2q5/1B6/8/8/8/4K3 w - - 0 1',
-        text: 'A dama preta está na mesma diagonal do rei. O bispo ataca a dama — e ela não pode fugir sem deixar o rei em xeque. Isso é uma cravada absoluta.',
+        text: 'A dama preta está na mesma diagonal do rei: ela está cravada, presa na frente dele. O seu bispo já mira essa diagonal. Aproveite.',
         expect: { from: 'b5', to: 'c6' },
-        success: 'Bxc6. A dama não pode recapturar: sairia da diagonal e o rei ficaria em xeque. Cravada.'
+        success: 'Bxc6+. A dama cai com xeque. Uma peça cravada não pode fugir para outra linha sem expor o rei.'
     },
     {
         id: 'espeto',
         title: 'Espeto',
         level: 'praticante',
-        fen: 'r6k/8/3N4/8/8/8/8/4R2K w - - 0 1',
-        text: 'O espeto ataca a peça mais valiosa na frente; quando ela foge, a de trás cai. Rei e torre na oitava — o cavalo defende e8.',
-        expect: { from: 'e1', to: 'e8' },
-        success: 'Te8+. O rei sai do xeque e a torre de a8 cai no lance seguinte. Espeto na oitava.'
+        fen: '4q3/8/8/4k3/8/8/8/K6R w - - 0 1',
+        text: 'O espeto ataca a peça mais valiosa na frente; quando ela foge, a de trás cai. O rei e a dama pretos estão na mesma coluna.',
+        expect: { from: 'h1', to: 'e1' },
+        success: 'Te1+. O rei precisa sair da coluna e, e a torre toma a dama em e8 no lance seguinte. Espeto.'
     },
     {
         id: 'promocao',
         title: 'Promoção',
         level: 'iniciante',
-        fen: '3k4/4P3/8/8/8/8/8/4K3 w - - 0 1',
+        fen: '7k/4P3/8/8/8/8/8/4K3 w - - 0 1',
         text: 'Peão na sétima. Ao chegar na oitava ele vira dama, torre, bispo ou cavalo. Quase sempre dama.',
         expect: { from: 'e7', to: 'e8', promo: 'q' },
         success: 'e8=D+. Um peão que promove vale uma dama nova — por isso finais de peão decidem partidas.'
@@ -207,10 +207,10 @@ export const PUZZLES = [
         id: 'descoberto',
         title: 'Xeque descoberto',
         level: 'praticante',
-        fen: '4k3/8/8/8/8/8/4B3/4R1K1 w - - 0 1',
-        text: 'Quando uma peça sai da linha de outra, a de trás ataca de surpresa. Se a de trás dá xeque, a da frente pode capturar à vontade.',
+        fen: '4k3/8/q7/8/8/8/4B3/4R1K1 w - - 0 1',
+        text: 'Quando uma peça sai da linha de outra, a de trás ataca de surpresa. Se a de trás dá xeque, a da frente pode capturar à vontade. O bispo está na frente da torre — e a dama preta está ao alcance dele.',
         expect: { from: 'e2', to: 'a6' },
-        success: 'Ba6+. O rei está em xeque da torre. O bispo saiu da coluna e ainda ataca. Descoberta.'
+        success: 'Bxa6+. A torre dá xeque pela coluna e o bispo leva a dama de graça. Xeque descoberto.'
     },
     {
         id: 'sufocado',
