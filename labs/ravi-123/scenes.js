@@ -119,7 +119,11 @@ export function speechBar(ctx, message) {
   }
 }
 
-export function flashcard(ctx, n, pop = 1) {
+/**
+ * Cartão grande do número contado. `at` posiciona o centro superior do cartão
+ * (cada cena escolhe um canto que não cubra o que está sendo contado).
+ */
+export function flashcard(ctx, n, pop = 1, at = null) {
   if (n === null || n === undefined) return;
   const pen = getPen(ctx);
   const scale = 4;
@@ -128,10 +132,12 @@ export function flashcard(ctx, n, pop = 1) {
   const grow = bounceOut(Math.min(1, Math.max(0, pop)));
   const cw = Math.round(w * (0.55 + grow * 0.45));
   const chh = Math.round(h * (0.55 + grow * 0.45));
-  const x = Math.round((W - cw) / 2);
-  const y = Math.round(16 - (chh - h) / 2 - (1 - grow) * 12);
+  const cx = at ? at.x : W / 2;
+  const top = at ? at.y : 16;
+  const x = Math.round(cx - cw / 2);
+  const y = Math.round(top - (chh - h) / 2 - (1 - grow) * 12);
 
-  pen.col(K.BLACK).ellipse(W / 2, y + chh + 5, Math.round(cw * 0.38), 4);
+  pen.col(K.BLACK).ellipse(cx, y + chh + 5, Math.round(cw * 0.38), 4);
   pen.col(K.BLACK).rect(x + 3, y + 3, cw, chh);
   pen.bevel(x, y, cw, chh, K.CREAM, K.WHITE, K.GRAY);
   pen.col(K.WHITE).hline(x + 3, y + 3, Math.max(0, cw - 6));
@@ -379,10 +385,12 @@ export function drawMoldedMaterial(ctx, mold, x, y) {
         pen.col(K.WHITE).px(x + dx - 1, y + dy - 1);
       }
       break;
-    default: // Massa de argila/metal bruta inicial
-      pen.col(K.BLACK).ellipse(x, y, 11, 8);
-      pen.col(K.GRAY).ellipse(x, y, 10, 7);
-      pen.col(K.GRAY_L).ellipse(x - 3, y - 3, 4, 2);
+    default: // Massa de modelar crua: bolota rosa com brilho e "respiração"
+      pen.col(K.BLACK).ellipse(x, y, 12, 8);
+      pen.col(K.PINK_D).ellipse(x, y + 1, 11, 7);
+      pen.col(K.PINK).ellipse(x - 1, y, 10, 6);
+      pen.col(K.PINK_L).ellipse(x - 4, y - 3, 4, 2);
+      pen.col(K.WHITE).px(x - 5, y - 4);
       break;
   }
 }
@@ -839,4 +847,208 @@ export function drawPops(ctx, arr, t) {
     const py = Math.round(p.y + Math.sin(ang) * d - age * 18);
     pen.col(p.color).rect(px, py, 2, 2);
   }
+}
+
+/* --------------------------------------------------------------------------
+   Contagem no objeto (como no original: cada coisa contada ganha o número
+   em cima dela no instante em que é contada)
+   -------------------------------------------------------------------------- */
+
+const TAG_LIFE = 1.25;
+
+/** Etiqueta numérica que nasce em (x, y), sobe um pouco e some. */
+export function spawnTag(arr, x, y, n, t) {
+  arr.push({ x: Math.round(x), y: Math.round(y), n, born: t });
+  if (arr.length > 24) arr.splice(0, arr.length - 24);
+}
+
+export function drawTags(ctx, arr, t) {
+  const pen = getPen(ctx);
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const tag = arr[i];
+    const age = t - tag.born;
+    if (age > TAG_LIFE) {
+      arr.splice(i, 1);
+      continue;
+    }
+    // Pop: escala 1 no primeiro instante, 2 depois; sobe 6px ao longo da vida.
+    const rise = Math.round(Math.min(1, age / TAG_LIFE) * 6);
+    const scale = age < 0.07 ? 1 : 2;
+    numBadge(ctx, pen, tag.n, tag.x, tag.y - rise, scale, K.RED, K.YEL);
+  }
+}
+
+/** Número fixo e pequeno em cima de um objeto (ovelhas, convidados na foto). */
+export function smallTag(ctx, n, x, y) {
+  numBadge(ctx, getPen(ctx), n, x, y, 1, K.RED, K.YEL);
+}
+
+/* --------------------------------------------------------------------------
+   Realce de alvo: hover do mouse e dica de "toque aqui" quando a criança
+   fica parada (moldura tracejada que anda em volta do botão)
+   -------------------------------------------------------------------------- */
+
+export function drawSpotGlow(ctx, spot, t, strong = false) {
+  if (!spot) return;
+  const pen = getPen(ctx);
+  const x = spot.x - 2;
+  const y = spot.y - 2;
+  const w = spot.w + 4;
+  const h = spot.h + 4;
+  const phase = Math.floor(t * 12) % 4;
+  const a = strong ? K.WHITE : K.YEL_L;
+  const b = strong ? K.YEL : K.ORANGE;
+  // Perímetro em segmentos de 2px alternando duas cores ("formigas marchando").
+  const seg = (i) => (((i >> 1) + phase) & 1 ? a : b);
+  for (let i = 0; i < w; i++) {
+    pen.col(seg(i)).px(x + i, y);
+    pen.col(seg(i + 1)).px(x + w - 1 - i, y + h - 1);
+  }
+  for (let i = 0; i < h; i++) {
+    pen.col(seg(i + 2)).px(x + w - 1, y + i);
+    pen.col(seg(i + 3)).px(x, y + h - 1 - i);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Transição íris (abre um círculo do preto, em pixel, linha a linha)
+   -------------------------------------------------------------------------- */
+
+export function drawIris(ctx, p, cx = W / 2, cy = STAGE_H / 2) {
+  if (p >= 1) return;
+  const pen = getPen(ctx);
+  const maxR = Math.hypot(Math.max(cx, W - cx), Math.max(cy, STAGE_H - cy)) + 2;
+  const r = Math.max(0, p) * maxR;
+  pen.col(K.BLACK);
+  for (let y = 0; y < STAGE_H; y++) {
+    const dy = y + 0.5 - cy;
+    const inside = r * r - dy * dy;
+    if (inside <= 0) {
+      pen.hline(0, y, W);
+      continue;
+    }
+    const half = Math.round(Math.sqrt(inside));
+    const l = Math.round(cx) - half;
+    const rr = Math.round(cx) + half;
+    if (l > 0) pen.hline(0, y, l);
+    if (rr < W) pen.hline(rr, y, W - rr);
+  }
+}
+
+/** Sombra oval no chão sob um personagem (meio-tom com transparência). */
+export function footShadow(ctx, x, y, rx = 10) {
+  const pen = getPen(ctx);
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  pen._ci = -1;
+  pen.col(K.BLACK).ellipse(Math.round(x), Math.round(y), rx, 3);
+  ctx.restore();
+  pen._ci = -1;
+}
+
+/* --------------------------------------------------------------------------
+   Caixa do mercado: esteira do caixa + visor da registradora
+   -------------------------------------------------------------------------- */
+
+export function drawRegister(ctx, total, ringing) {
+  const pen = getPen(ctx);
+  // Corpo da registradora sobre o balcão
+  raised(pen, 196, 52, 62, 46, K.GRAY, K.GRAY_L, K.GRAY_D);
+  rivet(pen, 199, 55);
+  rivet(pen, 253, 55);
+  // Visor verde de cristal líquido com o total de itens
+  sunk(pen, 204, 58, 46, 18, K.GRN_D, K.GRN, K.BLACK);
+  const label = String(total);
+  const tw = F.measure(label, 2);
+  F.text(ctx, label, Math.round(227 - tw / 2), 60, ringing ? K.YEL_L : K.GRN_L, { scale: 2 });
+  // Teclado 3×3 da registradora (decorativo)
+  for (let i = 0; i < 9; i++) {
+    const kx = 206 + (i % 3) * 9;
+    const ky = 80 + ((i / 3) | 0) * 5;
+    pen.col(i === 4 && ringing ? K.YEL : K.CREAM).rect(kx, ky, 7, 4);
+  }
+  // Gaveta que salta quando registra
+  const drawer = ringing ? 4 : 0;
+  raised(pen, 236, 80 + drawer, 18, 14, K.OCHRE, K.YEL, K.WOOD_D);
+  pen.col(K.WOOD_D).hline(241, 86 + drawer, 8);
+}
+
+export function drawCheckoutBelt(ctx, t, running) {
+  const pen = getPen(ctx);
+  pen.col(K.BLACK).rect(40, 98, 160, 8);
+  pen.col(K.GRAY_XD).rect(41, 99, 158, 6);
+  pen.col(K.GRAY_D);
+  const shift = running ? Math.floor(t * 30) % 8 : 0;
+  for (let x = 41 + shift; x < 199; x += 8) pen.vline(x, 99, 6);
+  // Leitor (laser vermelho pisca quando passa um item)
+  raised(pen, 176, 86, 16, 12, K.GRAY_D, K.GRAY, K.BLACK);
+  if (running && Math.floor(t * 10) % 2) pen.col(K.RED_L).hline(178, 97, 12);
+}
+
+/* --------------------------------------------------------------------------
+   Xilofone da festa: barras 1..9 (afinadas em escala) + botão 0 FOTO
+   -------------------------------------------------------------------------- */
+
+const XYLO_COLORS = [K.RED, K.ORANGE, K.YEL, K.GRN, K.CYAN, K.BLU, K.PUR, K.PINK, K.RED_L];
+
+const XYLO_SPOTS = (() => {
+  const spots = [];
+  const bw = 24;
+  const gap = 3;
+  const x0 = 14;
+  for (let i = 0; i < 9; i++) {
+    // Barra mais longa = nota mais grave (como num xilofone de verdade)
+    const h = 20 - i;
+    spots.push({ n: i + 1, x: x0 + i * (bw + gap), y: 164 - h - 2, w: bw, h });
+  }
+  spots.push({ n: 0, x: 264, y: 142, w: 50, h: 20 });
+  return spots;
+})();
+
+export function xyloSpots() {
+  return XYLO_SPOTS;
+}
+
+export function drawXylophone(ctx, spots, hit, hitAge) {
+  const pen = getPen(ctx);
+  const bars = spots.filter((s) => s.n > 0);
+  const first = bars[0];
+  const last = bars[bars.length - 1];
+  // Trilhos de madeira
+  pen.col(K.BLACK).rect(first.x - 4, 150, last.x + last.w - first.x + 8, 4);
+  pen.col(K.WOOD_D).rect(first.x - 3, 151, last.x + last.w - first.x + 6, 2);
+  for (const spot of spots) {
+    if (spot.n === 0) {
+      raised(pen, spot.x, spot.y, spot.w, spot.h, K.NAVY, K.BLU, K.NIGHT);
+      F.textCenter(ctx, '0 FOTO', spot.x + spot.w / 2, spot.y + 6, K.YEL_L, { shadow: K.BLACK });
+      continue;
+    }
+    const on = spot.n === hit && hitAge < 0.25;
+    const c = XYLO_COLORS[spot.n - 1];
+    const y = spot.y + (on ? 2 : 0);
+    raised(pen, spot.x, y, spot.w, spot.h, on ? K.WHITE : c, K.WHITE, K.BLACK);
+    rivet(pen, spot.x + 2, y + 3);
+    rivet(pen, spot.x + spot.w - 4, y + 3);
+    const label = String(spot.n);
+    const tw = F.measure(label, 1);
+    F.text(ctx, label, Math.round(spot.x + (spot.w - tw) / 2), y + Math.max(2, (spot.h >> 1) - 3), on ? c : K.WHITE, {
+      shadow: K.BLACK
+    });
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Foto da festa: polaroid com a imagem capturada do palco
+   -------------------------------------------------------------------------- */
+
+export function drawPolaroid(ctx, photo, cx, top, scale = 0.5) {
+  if (!photo) return;
+  const pen = getPen(ctx);
+  const pw = Math.round(W * scale);
+  const ph = Math.round(STAGE_H * scale);
+  const x = Math.round(cx - pw / 2);
+  pen.col(K.BLACK).rect(x - 4, top - 3, pw + 10, ph + 19);
+  pen.bevel(x - 5, top - 4, pw + 10, ph + 18, K.CREAM, K.WHITE, K.SAND);
+  ctx.drawImage(photo, 0, 0, W, STAGE_H, x, top, pw, ph);
+  pen.col(K.GRAY_D).frame(x - 1, top - 1, pw + 2, ph + 2);
 }

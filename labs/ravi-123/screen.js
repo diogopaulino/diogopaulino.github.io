@@ -29,15 +29,41 @@ export function getContext() {
   return ctx;
 }
 
+const HEADER_H = 60;   // altura do header compartilhado (botão voltar + tema)
+const HUD_ROW = 48;    // linha dos botões de som/tela cheia sob o header
+const HUD_SIDE = 112;  // margem lateral mínima para os 2 botões do HUD (2×44 + gap + padding) não cobrirem a tela
+const SIDE_GUTTER = 88; // margem lateral do modo "side" (header e HUD nas laterais)
+
+/** Escala inteira (pixel quadrado perfeito) quando >= 2×; fluida abaixo disso. */
+function snap(raw) {
+  return raw >= 2 ? Math.floor(raw) : raw;
+}
+
 /**
- * Calcula a maior escala que cabe na viewport.
- * Prefere escala inteira (pixel quadrado perfeito) quando >= 2×, e fluida em
- * telas menores para ocupar toda a largura disponível sem cortar nada.
+ * Escolhe entre dois layouts e fica com o que dá a maior tela:
+ * - "top": header e HUD em cima, canvas centralizado no espaço que sobra.
+ * - "side": celular deitado; header e HUD vão para as margens laterais e o
+ *   canvas usa a altura inteira (sem nada cobrindo o palco).
  */
 export function fit() {
-  const raw = Math.min(window.innerWidth / W, window.innerHeight / H);
-  const scale = raw >= 2 ? Math.floor(raw) : raw;
+  const iw = window.innerWidth;
+  const ih = window.innerHeight;
+
+  let top = HEADER_H;
+  let sTop = snap(Math.min(iw / W, (ih - top) / H));
+  if ((iw - W * sTop) / 2 < HUD_SIDE) {
+    top = HEADER_H + HUD_ROW;
+    sTop = snap(Math.min(iw / W, (ih - top) / H));
+  }
+
+  const landscape = iw > ih;
+  const sSide = landscape ? snap(Math.min((iw - SIDE_GUTTER * 2) / W, ih / H)) : 0;
+  const side = sSide > sTop;
+  const scale = side ? sSide : sTop;
+
   const root = document.documentElement;
+  root.dataset.fit = side ? 'side' : 'top';
+  root.style.setProperty('--top', side ? '0px' : `${top}px`);
   root.style.setProperty('--sw', `${Math.round(W * scale)}px`);
   root.style.setProperty('--sh', `${Math.round(H * scale)}px`);
 }

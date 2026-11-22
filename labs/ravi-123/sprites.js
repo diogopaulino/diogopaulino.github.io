@@ -301,23 +301,48 @@ function drawVehicle(pen, v, w) {
       break;
   }
 
-  const n = v.wheels;
-  if (n === 1) {
+  if (v.wheels === 1) {
     wheel(pen, w >> 1, groundY - 8, 8);
-  } else if (n > 1) {
-    if (v.id === 'skates') {
-      for (let i = 0; i < 4; i++) wheel(pen, 6 + i * 5, wheelY, 3);
-      for (let i = 0; i < 4; i++) wheel(pen, 34 + i * 5, wheelY, 3);
-    } else {
-      const groundWheels = (v.id === 'spare' || v.id === 'van7') ? n - 1 : n;
-      const margin = r + 2;
-      const span = w - margin * 2;
-      for (let i = 0; i < groundWheels; i++) {
-        const x = margin + Math.round((i * span) / Math.max(1, groundWheels - 1));
-        wheel(pen, x, wheelY, r);
-      }
-    }
+    return;
   }
+  // Estepe (jipe/kombi) já foi desenhado na carroceria; aqui só as rodas do chão.
+  const spots = wheelSpots(v);
+  const ground = v.id === 'spare' || v.id === 'van7' ? spots.slice(0, -1) : spots;
+  const wr = v.id === 'skates' ? 3 : r;
+  for (const p of ground) wheel(pen, p.x, wheelY, wr);
+}
+
+/**
+ * Centro de cada roda no sprite do veículo, na ordem em que a criança conta
+ * (da esquerda para a direita; o estepe do jipe/kombi por último).
+ * É a mesma geometria usada em drawVehicle, para a etiqueta do número cair
+ * exatamente em cima da roda contada.
+ */
+export function wheelSpots(v) {
+  const w = v.w;
+  const groundY = 24;
+  const r = v.wheels >= 8 ? 3 : v.wheels >= 5 ? 4 : 5;
+  const wheelY = groundY - r;
+  const n = v.wheels;
+  if (n === 0) return [];
+  if (n === 1) return [{ x: w >> 1, y: groundY - 8 }];
+  if (v.id === 'skates') {
+    const out = [];
+    for (let i = 0; i < 4; i++) out.push({ x: 6 + i * 5, y: wheelY });
+    for (let i = 0; i < 4; i++) out.push({ x: 34 + i * 5, y: wheelY });
+    return out;
+  }
+  const spare = v.id === 'spare' || v.id === 'van7';
+  const groundWheels = spare ? n - 1 : n;
+  const margin = r + 2;
+  const span = w - margin * 2;
+  const out = [];
+  for (let i = 0; i < groundWheels; i++) {
+    out.push({ x: margin + Math.round((i * span) / Math.max(1, groundWheels - 1)), y: wheelY });
+  }
+  if (v.id === 'spare') out.push({ x: w >> 1, y: groundY - r - 12 + 6 });
+  if (v.id === 'van7') out.push({ x: w - 12, y: groundY - r - 15 + 6 });
+  return out;
 }
 
 function drawSheep(pen) {

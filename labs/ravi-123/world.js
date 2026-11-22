@@ -371,6 +371,81 @@ function paintMarket(pen) {
   blobFruit(pen, 40, 80, K.YEL);
   blobFruit(pen, 58, 78, K.GRN);
   blobFruit(pen, 76, 80, K.ORANGE);
+
+  // Gôndola do corredor ao fundo (latas, caixas e potes) — enche a parede
+  // atrás da vitrine e do quadro de quantidades, como um corredor de mercado.
+  gondola(pen, 100, 24, 218, 70);
+}
+
+/** Estante de mercado com 3 prateleiras de produtos coloridos. */
+function gondola(pen, x, y, w, h) {
+  pen.col(K.BLACK).rect(x, y, w, h);
+  pen.bevel(x + 1, y + 1, w - 2, h - 2, K.GRAY_L, K.WHITE, K.GRAY);
+  const rows = 3;
+  const rowH = Math.floor((h - 4) / rows);
+  const goods = [
+    [K.RED, K.RED_L], [K.YEL, K.YEL_L], [K.BLU, K.BLU_L], [K.GRN, K.GRN_L],
+    [K.ORANGE, K.GOLD_L], [K.PUR, K.PUR_L], [K.PINK, K.PINK_L], [K.CYAN, K.MINT]
+  ];
+  for (let r = 0; r < rows; r++) {
+    const sy = y + 2 + r * rowH;
+    pen.col(K.GRAY_D).rect(x + 2, sy + rowH - 3, w - 4, 3);
+    pen.col(K.WHITE).hline(x + 2, sy + rowH - 3, w - 4);
+    let gx = x + 4;
+    let k = r * 3;
+    while (gx < x + w - 10) {
+      const [c, l] = goods[k % goods.length];
+      const kind = (k * 7 + r) % 3;
+      const gh = kind === 0 ? rowH - 7 : kind === 1 ? rowH - 10 : rowH - 8;
+      const gw = kind === 0 ? 8 : kind === 1 ? 10 : 7;
+      const gy = sy + rowH - 3 - gh;
+      pen.col(K.BLACK).rect(gx, gy, gw, gh);
+      pen.col(c).rect(gx + 1, gy + 1, gw - 2, gh - 1);
+      pen.col(l).vline(gx + 1, gy + 1, gh - 2);
+      if (kind === 0) pen.col(K.CREAM).rect(gx + 2, gy + 4, gw - 4, 3); // rótulo da lata
+      if (kind === 2) pen.col(K.WHITE).rect(gx + 2, gy, gw - 4, 2); // tampa do pote
+      gx += gw + 2;
+      k++;
+    }
+  }
+}
+
+function paintCheckout(pen) {
+  pen.col(K.CREAM).rect(0, 0, W, 96);
+  pen.col(K.GOLD_L).rect(0, 78, W, 18);
+  for (let x = 0; x < W; x += 16) {
+    const isRed = (x % 32) !== 0;
+    pen.col(isRed ? K.RED : K.WHITE).rect(x, 0, 16, 12);
+    pen.col(isRed ? K.RED_D : K.GRAY_L).rect(x, 12, 16, 2);
+  }
+  pen.col(K.BLACK).hline(0, 14, W);
+
+  // Placa CAIXA pendurada
+  pen.col(K.GRAY_D).vline(150, 14, 8).vline(170, 14, 8);
+  pen.col(K.BLACK).rect(126, 21, 68, 16);
+  pen.bevel(127, 22, 66, 14, K.GRN_D, K.GRN, K.BLACK);
+  F.textCenter(pen.ctx, 'CAIXA 1', 160, 26, K.YEL_L, { shadow: K.BLACK });
+
+  gondola(pen, 4, 26, 96, 56);
+  gondola(pen, 268, 26, 48, 56);
+
+  pen.col(K.BLACK).hline(0, 95, W);
+  for (let y = 96; y < STAGE_H; y += 10) {
+    for (let x = 0; x < W; x += 10) {
+      const odd = ((((x + y) / 10) | 0) % 2) !== 0;
+      pen.col(odd ? K.BLU_L : K.WHITE).rect(x, y, 10, 10);
+      pen.col(odd ? K.BLU : K.GRAY_L).hline(x, y + 9, 10);
+    }
+  }
+
+  // Balcão do caixa (frente de madeira com faixa)
+  pen.col(K.BLACK).rect(36, 104, 230, 34);
+  pen.bevel(37, 105, 228, 32, K.FLOOR, K.SAND, K.WOOD_D);
+  pen.col(K.FLOOR_D).rect(37, 116, 228, 3);
+  pen.col(K.WOOD_D);
+  for (let x = 53; x < 265; x += 24) pen.vline(x, 120, 16);
+  // Sombra do balcão no piso
+  pen.col(K.BLU).rect(38, 138, 228, 3);
 }
 
 function paintPost(pen) {
@@ -424,6 +499,7 @@ const PAINTERS = {
   street: paintStreet,
   factory: paintFactory,
   market: paintMarket,
+  checkout: paintCheckout,
   post: paintPost,
   party: paintParty
 };
