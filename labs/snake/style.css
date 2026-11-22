@@ -152,8 +152,8 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 8px;
+    gap: 5px;
+    padding: 6px;
     background-color: var(--gb-screen-veil);
     color: var(--gb-pixel-dark);
     font-family: 'Press Start 2P', cursive;
@@ -167,7 +167,7 @@ canvas {
 
 .ui-overlay h2 {
     font-size: clamp(14px, 5.5cqw, 24px);
-    margin-bottom: 4px;
+    margin-bottom: 0;
     text-transform: uppercase;
 }
 
@@ -179,6 +179,95 @@ canvas {
 
 .ui-overlay p.steady {
     animation: none;
+}
+
+/* Botões desenhados no próprio LCD: pixel escuro sobre o verde, invertendo no
+   hover/foco como um cursor de menu de console. O aparelho é escalado por
+   `--device-scale`, então a altura mínima é dividida pelo fator para que o
+   alvo de toque continue com 44px reais. */
+.lcd-how {
+    font-size: clamp(7px, 2.8cqw, 11px) !important;
+}
+
+.lcd-hint {
+    font-size: clamp(6px, 2.4cqw, 9px) !important;
+    opacity: 0.8;
+    min-height: 1.5em;
+}
+
+.lcd-modes {
+    display: flex;
+    gap: 8px;
+}
+
+.lcd-btn {
+    appearance: none;
+    font: inherit;
+    font-size: clamp(7px, 2.8cqw, 11px);
+    line-height: 1.2;
+    color: var(--gb-pixel-dark);
+    background: transparent;
+    border: 2px solid var(--gb-pixel-dark);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 28px;
+    position: relative;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: 2px 2px 0 rgba(15, 56, 15, 0.25);
+    transition: transform 0.08s ease;
+}
+
+/* Alvo de toque invisível: o LCD não comporta botões de 44px desenhados, então
+   o ::after estende a área clicável até 44px *reais* (dividindo pelo
+   `--device-scale`), sem invadir o botão vizinho — o espaçamento entre eles é
+   maior que a expansão. */
+.lcd-btn::after {
+    content: '';
+    position: absolute;
+    top: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    bottom: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    left: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    right: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+}
+
+.lcd-btn[aria-pressed="true"],
+.lcd-btn:hover,
+.lcd-btn:focus-visible {
+    background: var(--gb-pixel-dark);
+    color: var(--gb-screen-bg);
+    outline: none;
+}
+
+.lcd-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 rgba(15, 56, 15, 0.25);
+}
+
+.lcd-btn-go {
+    font-size: clamp(8px, 3.2cqw, 12px);
+    padding: 5px 12px;
+    margin-top: 2px;
+    animation: lcd-nudge 1.2s steps(2, end) infinite;
+}
+
+.lcd-btn-small {
+    font-size: clamp(6px, 2.4cqw, 9px);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+@keyframes lcd-nudge {
+    50% {
+        transform: translateY(-1px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lcd-btn-go,
+    .ui-overlay p {
+        animation: none;
+    }
 }
 
 @keyframes blink {
@@ -288,23 +377,26 @@ canvas {
     inset: calc(var(--hit) * -1);
 }
 
-.d-pad-up::after {
+.d-pad > .d-pad-up::after {
     inset: calc(var(--hit) * -2) calc(var(--hit) * -1) 0 calc(var(--hit) * -1);
-    /* Cima e baixo vêm antes de esquerda/direita no DOM, então perdiam os
+    /* `.d-pad > ` no seletor: sem ele a regra genérica `.d-pad > button::after`
+       (mais específica) vencia, e a área de “baixo” cobria o centro da seta
+       esquerda no iPhone SE.
+       Cima e baixo vêm antes de esquerda/direita no DOM, então perdiam os
        cantos da própria área ampliada. O z-index devolve a faixa inteira. */
     z-index: 1;
 }
 
-.d-pad-down::after {
+.d-pad > .d-pad-down::after {
     inset: 0 calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1);
     z-index: 1;
 }
 
-.d-pad-left::after {
+.d-pad > .d-pad-left::after {
     inset: calc(var(--hit) * -1) 0 calc(var(--hit) * -1) calc(var(--hit) * -2);
 }
 
-.d-pad-right::after {
+.d-pad > .d-pad-right::after {
     inset: calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1) 0;
 }
 
@@ -575,4 +667,10 @@ canvas {
         width: min(560px, 100%);
         max-width: 100%;
     }
+}
+
+/* O botão secundário fica logo abaixo do principal: sem expandir para cima,
+   a área ampliada dele não rouba o toque da parte de baixo de “JOGAR DE NOVO”. */
+.lcd-btn-small::after {
+    top: 0;
 }

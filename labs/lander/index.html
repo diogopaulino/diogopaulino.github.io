@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Lunar Lander — pouso lunar com física realista | Diogo Paulino">
     <meta name="twitter:description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <link rel="stylesheet" href="/assets/fonts/vt323/font.css">
     <script type="application/ld+json">
     {
@@ -83,6 +83,24 @@
         </header>
 
         <main class="game-area">
+            <!-- Controles de toque ficam FORA do canvas: no celular retrato vão para
+                 baixo da janela; na paisagem, para as laterais. Sobre o canvas eles
+                 tapavam as plataformas de pouso, que ficam justamente embaixo. -->
+            <div class="touch-pad touch-pad-left" aria-label="Girar a nave">
+                <button id="btnLeft" class="control-btn" type="button" aria-label="Girar para a esquerda"
+                    title="Girar para a esquerda">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M14 7l-5 5 5 5V7z" />
+                    </svg>
+                </button>
+                <button id="btnRight" class="control-btn" type="button" aria-label="Girar para a direita"
+                    title="Girar para a direita">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M10 17l5-5-5-5v10z" />
+                    </svg>
+                </button>
+            </div>
+
             <!-- Windows 3.1 Window Frame -->
             <div class="win31-window">
                 <div class="title-bar">
@@ -93,8 +111,11 @@
                     </div>
                 </div>
                 <div class="menu-bar">
-                    <button id="btnNewGame" class="menu-item" type="button"><u>N</u>ew game</button>
-                    <span class="menu-help">R: restart</span>
+                    <div class="menu-items">
+                        <button id="btnNewGame" class="menu-item" type="button"><u>N</u>ovo jogo</button>
+                        <button id="btnPause" class="menu-item" type="button" disabled><u>P</u>ausa</button>
+                    </div>
+                    <span class="menu-help fine-only">R: reiniciar · P: pausa</span>
                 </div>
                 <div class="game-viewport">
                     <canvas id="gameCanvas" width="800" height="600" aria-label="Área de pouso lunar">
@@ -105,83 +126,75 @@
                     <div class="hud-layer">
                         <div class="hud-stats">
                             <div class="stat-row meta">
-                                <span class="label">Mission</span>
+                                <span class="label">Missão</span>
                                 <span class="value" id="hudMission">01</span>
                             </div>
                             <div class="stat-row meta">
-                                <span class="label">Score</span>
+                                <span class="label">Pontos</span>
                                 <span class="value" id="hudScore">000000</span>
                             </div>
                             <div class="hud-separator"></div>
-                            <div class="stat-row">
-                                <span class="label">Altitude</span>
+                            <div class="stat-row extra">
+                                <span class="label">Altura</span>
                                 <span class="value" id="hudAlt">0</span>
                             </div>
                             <div class="stat-row">
-                                <span class="label">Velocity X</span>
-                                <span class="value" id="hudHSpeed">0.00</span>
+                                <span class="label">Lado ↔</span>
+                                <span class="value" id="hudHSpeed">0.0</span>
                             </div>
                             <div class="stat-row">
-                                <span class="label">Velocity Y</span>
-                                <span class="value" id="hudVSpeed">0.00</span>
+                                <span class="label">Queda ↓</span>
+                                <span class="value" id="hudVSpeed">0.0</span>
                             </div>
-                            <div class="stat-row">
-                                <span class="label">Angle</span>
+                            <div class="stat-row extra">
+                                <span class="label">Ângulo</span>
                                 <span class="value" id="hudAngle">+0°</span>
                             </div>
-                            <div class="stat-row">
-                                <span class="label">Fuel</span>
-                                <span class="value" id="hudFuel">1000.00</span>
+                            <div class="stat-row fuel-row">
+                                <span class="label">Gás</span>
+                                <span class="fuel-bar" aria-hidden="true"><i id="hudFuelBar"></i></span>
+                                <span class="value" id="hudFuel">1000</span>
                             </div>
-                            <div id="hudStatus" class="flight-status">READY</div>
-                            <div class="safe-readout">SAFE: VX ≤ 24 · VY ≤ 34 · ±10°</div>
-                        </div>
-
-                        <!-- On-Screen Controls (Visual overlay matching screenshot) -->
-                        <div class="onscreen-controls">
-                            <div class="row">
-                                <button id="btnLeft" class="win-btn control-btn"
-                                    aria-label="Girar para a esquerda"
-                                    title="Girar para a esquerda">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M14 7l-5 5 5 5V7z" />
-                                    </svg>
-                                </button>
-                                <button id="btnRight" class="win-btn control-btn"
-                                    aria-label="Girar para a direita"
-                                    title="Girar para a direita">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M10 17l5-5-5-5v10z" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="row">
-                                <button id="btnThrust" class="win-btn control-btn"
-                                    aria-label="Propulsor principal"
-                                    title="Propulsor principal">
-                                    <!-- A down arrow with lines usually implies "Thrusting Down" (pushing up) in these old games UI -->
-                                    <div class="thrust-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 17L7 12h10l-5 5z" />
-                                        </svg>
-                                        <div class="thrust-lines">=</div>
-                                    </div>
-                                </button>
-                            </div>
+                            <div id="hudStatus" class="flight-status">PRONTO</div>
+                            <div class="safe-readout" id="safeReadout">POUSO SEGURO: ↔ ≤ 24 · ↓ ≤ 34 · ±10°</div>
                         </div>
 
                         <div id="startMsg" class="center-msg">
                             <strong>LANDER</strong>
-                            <small>↑/W/SPACE thrust · ←/→ rotate</small>
-                            <small>Land level on a marked platform</small>
-                            <button id="btnStart" class="start-button" type="button">PRESS SPACE / TAP TO START</button>
+                            <small class="lead">Pouse a nave <b>devagar</b> e <b>reta</b> numa plataforma
+                                amarela.</small>
+                            <small class="fine-only">↑ ou Espaço: motor · ← →: girar · P: pausa</small>
+                            <small class="touch-only">Segure ▲ para ligar o motor · ◀ ▶ giram a nave</small>
+                            <div class="mode-pick" role="group" aria-label="Dificuldade">
+                                <button type="button" class="mode-btn" data-mode="easy" aria-pressed="true">FÁCIL
+                                    <em>nave se endireita sozinha</em></button>
+                                <button type="button" class="mode-btn" data-mode="normal" aria-pressed="false">NORMAL
+                                    <em>física clássica</em></button>
+                            </div>
+                            <button id="btnStart" class="start-button" type="button">▶ COMEÇAR</button>
                         </div>
                         <div id="gameOverMsg" class="center-msg hidden">
                             <div id="missionResult" role="status"></div>
-                            <button id="btnContinue" class="start-button" type="button">TRY AGAIN</button>
+                            <button id="btnContinue" class="start-button" type="button">TENTAR DE NOVO</button>
+                        </div>
+                        <div id="pauseMsg" class="center-msg hidden">
+                            <strong>PAUSA</strong>
+                            <button id="btnResume" class="start-button" type="button">▶ CONTINUAR</button>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="touch-pad touch-pad-right" aria-label="Motor">
+                <button id="btnThrust" class="control-btn control-thrust" type="button"
+                    aria-label="Ligar o motor (segure)" title="Ligar o motor (segure)">
+                    <div class="thrust-icon" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 7l5 5H7l5-5z" />
+                        </svg>
+                        <span class="thrust-label">MOTOR</span>
+                    </div>
+                </button>
             </div>
         </main>
 
@@ -189,7 +202,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=6" defer></script>
+    <script src="script.js?v=7" defer></script>
 </body>
 
 </html>

@@ -18,13 +18,28 @@ const GRID_SIZE = 20;
 // um grid quadrado esticado para caber no LCD deixaria as células ovais.
 const TILE_COUNT_X = canvas.width / GRID_SIZE;
 const TILE_COUNT_Y = canvas.height / GRID_SIZE;
-const BASE_SPEED = 130; // ms per step at score 0
-const MIN_SPEED = 65;   // fastest step interval
+/* Regras ---------------------------------------------------------------------
+   · A cobra anda uma casa a cada `stepInterval` ms. Cada maçã vale 10 pontos,
+     faz a cobra crescer 1 casa e encurta o passo em `SPEED_STEP` ms, até o
+     teto de velocidade do modo: stepInterval = max(min, base − (pontos/10)·step).
+   · Normal: bater na parede ou no próprio corpo encerra a partida.
+   · Fácil (padrão, pensado para crianças): a cobra atravessa as paredes e
+     reaparece do outro lado, anda mais devagar e acelera mais suave. Só bater
+     no próprio corpo encerra.
+   · Encher o tabuleiro inteiro é vitória. */
+const MODES = {
+    easy: { base: 175, min: 100, step: 2, wrap: true },
+    normal: { base: 130, min: 65, step: 3, wrap: false }
+};
+const MODE_KEY = 'snakeMode';
+let mode = readMode();
+let BASE_SPEED = MODES[mode].base; // ms per step at score 0
+let MIN_SPEED = MODES[mode].min;   // fastest step interval
 const STORAGE_KEY = 'snakeHighScore';
 
 // Game State
 let snake = [];
-let food = { x: 0, y: 0 };
+let food = null; // nasce em initGame: antes disso não há maçã no LCD
 let dx = 0;
 let dy = 0;
 const turns = []; // Até duas curvas antecipadas, aplicadas em passos consecutivos.
@@ -91,6 +106,36 @@ function syncMuteButton() {
     muteBtn.setAttribute('aria-pressed', String(muted));
     muteBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
     muteBtn.textContent = muted ? '🔇' : '🔊';
+}
+
+function readMode() {
+    try {
+        const saved = localStorage.getItem(MODE_KEY);
+        return saved in MODES ? saved : 'easy';
+    } catch (err) {
+        return 'easy';
+    }
+}
+
+function setMode(next) {
+    if (!(next in MODES)) return;
+    mode = next;
+    BASE_SPEED = MODES[mode].base;
+    MIN_SPEED = MODES[mode].min;
+    try {
+        localStorage.setItem(MODE_KEY, mode);
+    } catch (err) {
+        /* Sem storage o modo vale só nesta visita. */
+    }
+    syncModeButtons();
+}
+
+function syncModeButtons() {
+    document.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
+    const hint = document.getElementById('modeHint');
+    if (hint) hint.textContent = MODES[mode].wrap ? 'Atravessa as paredes' : 'Parede = fim de jogo';
 }
 
 function readHighScore() {
@@ -221,13 +266,16 @@ function update() {
     // Move Snake
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
-    // Check Wall Collision
-    if (head.x < 0 || head.x >= TILE_COUNT_X || head.y < 0 || head.y >= TILE_COUNT_Y) {
+    // Check Wall Collision (no modo fácil a borda é um portal para o lado oposto)
+    if (MODES[mode].wrap) {
+        head.x = (head.x + TILE_COUNT_X) % TILE_COUNT_X;
+        head.y = (head.y + TILE_COUNT_Y) % TILE_COUNT_Y;
+    } else if (head.x < 0 || head.x >= TILE_COUNT_X || head.y < 0 || head.y >= TILE_COUNT_Y) {
         gameOver();
         return;
     }
 
-    const willGrow = head.x === food.x && head.y === food.y;
+    const willGrow = Boolean(food) && head.x === food.x && head.y === food.y;
 
     // Check Self Collision. The tail cell is free unless the snake is growing,
     // so it is skipped to avoid phantom deaths when turning into it.
@@ -253,7 +301,7 @@ function update() {
     if (willGrow) {
         score += 10;
         // Each fruit shaves a little off the step interval for a difficulty ramp.
-        stepInterval = Math.max(MIN_SPEED, BASE_SPEED - Math.floor(score / 10) * 3);
+        stepInterval = Math.max(MIN_SPEED, BASE_SPEED - Math.floor(score / 10) * MODES[mode].step);
         placeFood();
         eatPulse = 1;
         digestPulses.push(0);
@@ -445,7 +493,9 @@ function drawFood() {
 }
 
 function drawSnakePass(shadowPass) {
-    snake.forEach((segment, index) => {
+    // for clássico: roda duas vezes por frame, sem criar closure a cada quadro.
+    for (let index = 0; index < snake.length; index++) {
+        const segment = snake[index];
         const prev = snake[index - 1];
         const next = snake[index + 1];
         const fromTail = snake.length - 1 - index;
@@ -462,7 +512,7 @@ function drawSnakePass(shadowPass) {
         } else {
             bodyCell(segment.x, segment.y, prev, next, index, shadowPass);
         }
-    });
+    }
 }
 
 const gridPath = (() => {
@@ -523,6 +573,7 @@ function gameOver(won = false) {
     deathFlash = won ? 0 : 1;
     if (!won) sfxDeath();
     const result = won ? 'Tabuleiro completo' : 'Fim de jogo';
+    const finalNote = document.getElementById('finalNote');
     gameOverScreen.querySelector('h2').textContent = won ? 'VITÓRIA' : 'FIM DE JOGO';
     stopLoop();
     pauseScreen.classList.add('hidden');
@@ -531,8 +582,10 @@ function gameOver(won = false) {
     if (score > highScore) {
         highScore = score;
         saveHighScore(highScore);
+        if (finalNote) finalNote.textContent = '★ NOVO RECORDE! ★';
         announce(`${result}. Novo recorde: ${score} pontos.`);
     } else {
+        if (finalNote) finalNote.textContent = `Recorde: ${highScore}`;
         announce(`${result}. ${score} pontos.`);
     }
 
@@ -560,6 +613,19 @@ function queueDirection(nextDx, nextDy) {
     const previous = turns.at(-1);
     const currentDx = previous?.dx ?? dx;
     const currentDy = previous?.dy ?? dy;
+    // Primeiro comando “para trás” (esquerda, com a cobra virada para a
+    // direita): em vez de ignorar — a criança aperta e nada acontece —, a cobra
+    // dá meia-volta invertendo o corpo, que ainda está parado em linha reta.
+    if (awaitingFirstMove && nextDx === -currentDx && nextDy === -currentDy) {
+        snake.reverse();
+        dx = nextDx;
+        dy = nextDy;
+        awaitingFirstMove = false;
+        accumulator = 0;
+        announce('Partida em andamento.');
+        sfxTurn();
+        return;
+    }
     if (nextDx === -currentDx && nextDy === -currentDy) return;
     if (!awaitingFirstMove && nextDx === currentDx && nextDy === currentDy) return;
     if (turns.length === 2) return;
@@ -655,6 +721,8 @@ let touchStart = null;
 if (screenPlay) {
     screenPlay.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
+        // Botões dos overlays (modo, jogar, continuar) têm o próprio clique.
+        if (e.target.closest('button')) return;
         touchStart = { x: e.clientX, y: e.clientY, moved: false };
     });
 
@@ -706,14 +774,37 @@ document.getElementById('btnB').addEventListener('click', () => {
     if (isGameRunning) setPaused(!isPaused);
 });
 
-// Pause the loop while the tab is hidden so we never burn frames in background.
+// Aba oculta: pausa de verdade (overlay de PAUSA). Voltar para a aba não
+// solta a cobra andando de surpresa — o jogador escolhe quando continuar.
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+        if (isGameRunning && !isPaused) setPaused(true);
         stopLoop();
-    } else if (isGameRunning && !isPaused) {
-        accumulator = 0;
-        startLoop();
     }
+});
+
+/* Botões dentro do LCD: escolher modo, jogar, continuar, voltar ao menu. */
+document.querySelectorAll('[data-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        setMode(btn.dataset.mode);
+        sfxTurn();
+    });
+});
+
+function showMenu() {
+    gameOverScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    startScreen.querySelector('[data-action="start"]')?.focus({ preventScroll: true });
+}
+
+document.querySelectorAll('.ui-overlay [data-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (action === 'start') initGame();
+        else if (action === 'resume') setPaused(false);
+        else if (action === 'menu') showMenu();
+    });
 });
 
 // Keep the LCD palette in sync with the theme toggle.
@@ -760,6 +851,7 @@ window.addEventListener('orientationchange', fitDevice);
 window.visualViewport?.addEventListener('resize', fitDevice);
 
 // Initial Draw
+syncModeButtons();
 syncColors();
 syncMuteButton();
 updateHud();

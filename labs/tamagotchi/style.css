@@ -842,3 +842,131 @@ header {
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
 }
+
+/* --- Guia para iniciantes ------------------------------------------------- */
+.device-guide {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+  box-sizing: border-box;
+  width: min(100%, 560px);
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(74, 60, 40, 0.18);
+  border-radius: 18px;
+  color: #2c2820;
+  background: rgba(250, 247, 239, 0.86);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.75), 0 6px 16px rgba(60, 47, 28, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.guide-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  animation: guide-bob 2.4s ease-in-out infinite;
+}
+
+.guide-text {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+.guide-action {
+  min-height: var(--touch-target, 44px);
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--key-light), var(--key));
+  box-shadow: 0 3px 0 var(--key-dark), 0 6px 12px rgba(130, 23, 16, 0.25);
+  font: 600 0.92rem/1 system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+
+.guide-action:hover {
+  filter: brightness(1.06);
+}
+
+.guide-action:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--key-dark), 0 3px 6px rgba(130, 23, 16, 0.2);
+}
+
+.guide-action:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 3px;
+}
+
+.guide-action[hidden] {
+  display: none;
+}
+
+/* O ícone que resolve a necessidade atual pisca no LCD, como um segmento
+   aceso — a criança vê onde tocar. */
+.lcd-icon.needs {
+  animation: lcd-need 0.9s steps(1, end) infinite;
+}
+
+@keyframes lcd-need {
+  50% {
+    opacity: 0.98;
+    filter: drop-shadow(0 0 1px rgba(10, 22, 12, 0.45));
+  }
+}
+
+@keyframes guide-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@media (max-width: 480px) {
+  .device-guide {
+    padding: 0.6rem 0.75rem;
+    border-radius: 14px;
+  }
+
+  .guide-text {
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  .device-guide {
+    padding: 0.4rem 0.7rem;
+  }
+
+  .guide-text {
+    font-size: 0.82rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-icon,
+  .lcd-icon.needs {
+    animation: none;
+  }
+
+  .lcd-icon.needs {
+    opacity: 0.98;
+  }
+}
+
+/* Ícones do LCD têm 20px no celular: o alvo cresce para os lados (onde só há
+   vidro), sem invadir o ícone de cima ou de baixo. */
+.lcd-icon {
+  position: relative;
+}
+
+.lcd-icon::after {
+  content: '';
+  position: absolute;
+  inset: -2px -10px;
+}
