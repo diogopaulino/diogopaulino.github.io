@@ -230,6 +230,9 @@ body[data-state="playing"] .game-shell > header .app-logo {
     transition: opacity 0.5s var(--ease);
 }
 
+/* Invisível mas ainda clicável tirava o jogador do jogo: some de verdade. */
+body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none; }
+
 /* HUD */
 .hud {
     position: absolute;

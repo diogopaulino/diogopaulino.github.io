@@ -232,6 +232,9 @@ body[data-state="intro"] .game-shell > header .app-logo {
     opacity: 0;
 }
 
+/* Invisível mas ainda clicável: some de verdade durante a abertura. */
+body[data-state="intro"] .lab-foot { visibility: hidden; pointer-events: none; }
+
 .title-card {
     position: absolute;
     left: 50%;
