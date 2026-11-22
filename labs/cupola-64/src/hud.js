@@ -3,7 +3,7 @@
  */
 
 import { formatTime } from './utils.js?v=13';
-import { QUEST } from './config.js?v=12';
+import { QUEST } from './config.js?v=13';
 
 export class Hud {
     constructor() {
@@ -35,23 +35,52 @@ export class Hud {
             bestScore: document.getElementById('bestScore'),
             victoryStats: document.getElementById('victoryStats'),
             overStats: document.getElementById('defeatStats'),
-            touch: document.getElementById('touchControls')
+            touch: document.getElementById('touchControls'),
+            guideArrow: document.getElementById('guideArrow'),
+            guideDist: document.getElementById('guideDist')
         };
         this._msgTimer = 0;
+        this._guide = { deg: NaN, dist: NaN, title: '', hint: '' };
+    }
+
+    /**
+     * Bússola da próxima estrela. `deg` = ângulo na tela (0 = para a frente da câmera,
+     * positivo = horário). Só escreve no DOM quando muda (5° / 1 m / texto).
+     */
+    setGuide(deg, dist, title, hint) {
+        const g = this._guide;
+        const q = Math.round(deg / 5) * 5;
+        if (q !== g.deg) {
+            g.deg = q;
+            // a seta ➤ aponta para a direita: −90° deixa 0° apontando para cima
+            this.el.guideArrow.style.transform = `rotate(${q - 90}deg)`;
+        }
+        const m = Math.round(dist);
+        if (m !== g.dist) {
+            g.dist = m;
+            this.el.guideDist.textContent = m < 3 ? 'aqui!' : `${m} m`;
+        }
+        if (title !== g.title) {
+            g.title = title;
+            this.el.questTag.textContent = title;
+        }
+        if (hint !== g.hint) {
+            g.hint = hint;
+            this.el.objective.textContent = hint;
+        }
     }
 
     setStats({ stars, coins, reds, lives }) {
+        // chamado a cada quadro: só toca no DOM quando algum número muda
+        const key = stars * 1e6 + coins * 1e3 + reds * 10 + lives;
+        if (key === this._statsKey) return;
+        this._statsKey = key;
         this.el.stars.textContent = `${stars}/${QUEST.stars}`;
         this.el.coins.textContent = String(coins).padStart(3, '0');
         this.el.reds.textContent = `${reds}/${QUEST.redCoins}`;
         this.el.lives.textContent = `×${lives}`;
-        if (stars === 0) {
-            this.el.questTag.textContent = 'Ilha da Cúpola';
-            this.el.objective.textContent = 'Colete as sete estrelas do vitral.';
-        } else if (stars < QUEST.stars) {
-            this.el.questTag.textContent = 'As estrelas acordam';
-            this.el.objective.textContent = `Faltam ${QUEST.stars - stars} estrelas na ilha.`;
-        } else {
+        // título e dica do painel vêm da bússola (setGuide); aqui só o caso "tudo pronto"
+        if (stars >= QUEST.stars) {
             this.el.questTag.textContent = 'Cúpola completa';
             this.el.objective.textContent = 'O vitral brilha de novo.';
         }

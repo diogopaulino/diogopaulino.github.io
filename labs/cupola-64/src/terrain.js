@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { textureSet } from '../../shared/gfx/textures.js';
 import { wind } from '../../shared/gfx/flora.js';
 import { seeded, fbm2, ridged2, smoothstep, clamp, GLSL_NOISE, applyWorldUV } from '../../shared/gfx/core.js';
-import { ISLAND } from './config.js?v=12';
+import { ISLAND } from './config.js?v=13';
 import { surfaceAt, GORGE } from './utils.js?v=13';
 
 const SIZE = 124;
@@ -431,7 +431,8 @@ export function createTerrain(q, blocked = () => false) {
             flowers.push({ x: x + rnd() * 0.3, y, z: z + rnd() * 0.3, s: 0.8 + rnd() * 0.7, rot: rnd() * 6.283, kind: Math.floor(fbm2(x * 0.09, z * 0.09, 2) * 7 + rnd() * 1.4) % 4 });
         }
     }
-    const tufts = [tuftGeometry(9, 11), tuftGeometry(10, 23)];
+    // tier baixo (celular): tufos de 6–7 lâminas em vez de 9–10 — ~35 % menos triângulos de grama
+    const tufts = q.id === 'low' ? [tuftGeometry(6, 11), tuftGeometry(7, 23)] : [tuftGeometry(9, 11), tuftGeometry(10, 23)];
     const grassMat = applyBladeWind(new THREE.MeshStandardMaterial({
         vertexColors: true, side: THREE.DoubleSide, roughness: 0.78, metalness: 0, envMapIntensity: 0.55
     }), 'grass');

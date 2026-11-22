@@ -18,9 +18,9 @@ import { createOcean } from '../../shared/gfx/ocean.js';
 import { createSunRig } from '../../shared/gfx/rig.js';
 import { createTreeKit, createPalmKit, createShrubKit, instanceKit, updateWind } from '../../shared/gfx/flora.js';
 import { seeded, fbm2 } from '../../shared/gfx/core.js';
-import { ISLAND } from './config.js?v=12';
+import { ISLAND } from './config.js?v=13';
 import { heightAt, surfaceAt, HEIGHT_GLSL, clamp } from './utils.js?v=13';
-import { createTerrain, normalAt, splatAt } from './terrain.js?v=13';
+import { createTerrain, normalAt, splatAt } from './terrain.js?v=14';
 import {
     createCastle,
     createCannon,
@@ -29,7 +29,7 @@ import {
     createLedge,
     createSkyIsland,
     createCaveEntrance
-} from './models.js?v=13';
+} from './models.js?v=14';
 
 // cede a vez ao navegador entre etapas pesadas (a barra de carregamento anda de verdade)
 const nextFrame = () => new Promise((r) => setTimeout(r, 0));
@@ -90,6 +90,7 @@ export class World {
 
         this.solids = [];
         this.platforms = [];
+        this._hit = { x: 0, z: 0 };
         this.cannon = null;
         this.flag = null;
         this._n = new THREE.Vector3();
@@ -238,9 +239,11 @@ export class World {
             [16.5, 6.8, -1.5, 2.8, 0.35, 2.8],
             [20.5, 9.4, -4.2, 2.6, 0.35, 2.6],
             [24.5, 12.2, -5.5, 3.4, 0.4, 3.4],
-            [-12, 3.6, 8, 2.8, 0.3, 2.8],
-            [-14.5, 5.8, 12.5, 2.6, 0.3, 2.6],
-            [-10, 8.2, 16, 2.4, 0.3, 2.4]
+            // escada oeste até a moeda vermelha alta: decks 0,8 m maiores que os originais
+            // (2,8/2,6/2,4) — o vão de borda a borda cai de ~3 m para ~2,2 m (modo família)
+            [-12, 3.6, 8, 3.6, 0.3, 3.6],
+            [-14.5, 5.8, 12.5, 3.4, 0.3, 3.4],
+            [-10, 8.2, 16, 3.2, 0.3, 3.2]
         ];
         this.floaters = [];
         decks.forEach(([x, y, z, w, h, d], i) => {
@@ -344,7 +347,9 @@ export class World {
         this.group.add(this.cannon);
         this.cannonPos = new THREE.Vector3(x, heightAt(x, z) + 0.6, z);
         this.cannonTarget = new THREE.Vector3(28, 16.4, 2);
-        this._solid(x, z, 0.8);
+        // sólido com topo: quem está dentro do canhão (ou passa por cima) não é empurrado —
+        // sem o topo, o tiro nascia colidindo e perdia 65 % da velocidade a cada quadro
+        this.solids.push({ x, z, r: 0.8, top: heightAt(x, z) + 1.2 });
     }
 
     _solid(x, z, r) {
@@ -414,7 +419,10 @@ export class World {
             nx *= k;
             nz *= k;
         }
-        return { x: nx, z: nz };
+        // objeto reaproveitado (sem alocação por chamada): quem chama lê x/z na hora
+        this._hit.x = nx;
+        this._hit.z = nz;
+        return this._hit;
     }
 
     /** Água funda o bastante para nadar (profundidade > 0,45 m) e Nico perto da lâmina. */
@@ -459,7 +467,9 @@ export class World {
         camera.updateMatrixWorld();
         occlusion.uFocusView.value.set(focus.x, focus.y + 0.8, focus.z).applyMatrix4(camera.matrixWorldInverse);
         this.ocean.update(t, camera, this.sky.daylight);
-        const cupola = this.castle?.getObjectByName('cupolaStar');
+        // a estrela da cúpola é procurada uma vez só (getObjectByName percorre o castelo inteiro)
+        if (this._cupolaStar === undefined) this._cupolaStar = this.castle?.getObjectByName('cupolaStar') || null;
+        const cupola = this._cupolaStar;
         if (cupola) {
             cupola.rotation.y += dt * 1.6;
             cupola.position.y = 15.0 + Math.sin(t * 2) * 0.1;

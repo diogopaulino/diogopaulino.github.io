@@ -65,7 +65,7 @@ export const QUEST = {
     stars: 7,
     redCoins: 8,
     coinStar: 50,
-    lives: 4,
+    lives: 5,          // modo família: 5 vidas; cair da ilha não custa vida (volta ao último chão firme)
     kingHits: 3
 };
 

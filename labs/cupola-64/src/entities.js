@@ -6,9 +6,9 @@
  */
 
 import * as THREE from 'three';
-import { QUEST, STAR_META } from './config.js?v=12';
+import { QUEST, STAR_META } from './config.js?v=13';
 import { randRange } from './utils.js?v=13';
-import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=13';
+import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=14';
 
 const YELLOW = [
     [0, 8], [2, 10], [-2, 10], [4, 14], [-4, 14], [0, 18],
@@ -43,6 +43,11 @@ const STAR_POS = {
 };
 
 const KING_HOME = [8, -18];
+/* Raios (m, no plano xz) de pisão e de dano — o pisão é mais generoso que o dano. */
+const FUNGUS_STOMP_R = 1.0;
+const FUNGUS_HURT_R = 0.7;
+const KING_STOMP_R = 1.95;
+const KING_HURT_R = 1.4;
 
 export class Entities {
     constructor(scene, world) {
@@ -234,10 +239,11 @@ export class Entities {
         // de KING_HOME) em vez de caçar o jogador pela ilha inteira.
         k.chase = dist < 14 ? 1 : 0;
         if (k.chase) {
+            // persegue a 2,8 m/s (era 3,6): Nico anda a 7,2 — dá para fugir e voltar pulando
             if (dist > 1.6) {
                 k.facing = Math.atan2(dx, dz);
-                k.x += Math.sin(k.facing) * 3.6 * dt;
-                k.z += Math.cos(k.facing) * 3.6 * dt;
+                k.x += Math.sin(k.facing) * 2.8 * dt;
+                k.z += Math.cos(k.facing) * 2.8 * dt;
             }
         } else {
             const ang = this._spin * 0.25;
@@ -297,17 +303,18 @@ export class Entities {
             }
         }
 
+        // Modo família: pisar vale num raio maior (STOMP_R) do que o do dano (HURT_R).
         for (const f of this.fungi) {
             if (!f.alive) continue;
             const d = Math.hypot(px - f.x, pz - f.z);
-            if (d < 0.85) {
-                if (!player.grounded && player.vy < 0 && player.y > f.y + 0.35) {
+            if (d < FUNGUS_STOMP_R) {
+                if (!player.grounded && player.vy < 0 && player.y > f.y + 0.3) {
                     f.alive = false;
                     f.mesh.visible = false;
                     f.respawn = 7;
                     player.vy = 10;
                     events.push({ type: 'stomp', pos: f.mesh.position.clone() });
-                } else {
+                } else if (d < FUNGUS_HURT_R && player.invuln <= 0) {
                     events.push({ type: 'hurt', pos: f.mesh.position.clone() });
                 }
             }
@@ -316,8 +323,8 @@ export class Entities {
         const k = this.king;
         if (k.alive) {
             const d = Math.hypot(px - k.x, pz - k.z);
-            if (d < 1.7) {
-                if (!player.grounded && player.vy < 0 && player.y > k.y + 1.1 && k.hurtT <= 0) {
+            if (d < KING_STOMP_R) {
+                if (!player.grounded && player.vy < 0 && player.y > k.y + 1.0 && k.hurtT <= 0) {
                     k.hits += 1;
                     k.hurtT = 0.8;
                     player.vy = 12;
@@ -329,7 +336,7 @@ export class Entities {
                         this.kingDown = true;
                         events.push({ type: 'kingDown', pos: k.mesh.position.clone() });
                     }
-                } else if (k.hurtT <= 0) {
+                } else if (k.hurtT <= 0 && d < KING_HURT_R && player.invuln <= 0) {
                     events.push({ type: 'hurt', pos: k.mesh.position.clone() });
                 }
             }

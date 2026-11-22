@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -114,8 +114,13 @@
                 <div class="panel star-panel">
                     <span class="hud-label">Estrelas</span>
                     <strong id="starValue" class="pixel gold">0/7</strong>
+                    <!-- Bússola: a seta gira para a próxima estrela (ou objetivo) relativa à câmera. -->
+                    <div class="guide" aria-hidden="true">
+                        <span id="guideArrow" class="guide-arrow">➤</span>
+                        <span id="guideDist" class="guide-dist">—</span>
+                    </div>
                     <p id="questTag" class="quest">Ilha da Cúpola</p>
-                    <p id="objective" class="objective">Colete as sete estrelas do vitral.</p>
+                    <p id="objective" class="objective">Siga a seta até a estrela.</p>
                 </div>
                 <div class="panel coin-panel">
                     <span class="hud-label">Moedas</span>
@@ -145,10 +150,10 @@
                     <span>andar</span>
                 </div>
                 <div class="touch-buttons">
-                    <button type="button" id="btnCamL" class="pad" aria-label="Câmera esquerda">Q</button>
-                    <button type="button" id="btnCamR" class="pad" aria-label="Câmera direita">E</button>
-                    <button type="button" id="btnCrouch" class="pad" aria-label="Agachar">Z</button>
-                    <button type="button" id="btnJump" class="pad pad-jump" aria-label="Pular">A</button>
+                    <button type="button" id="btnCamL" class="pad" aria-label="Girar câmera para a esquerda">↺</button>
+                    <button type="button" id="btnCamR" class="pad" aria-label="Girar câmera para a direita">↻</button>
+                    <button type="button" id="btnCrouch" class="pad" aria-label="Agachar">⤓</button>
+                    <button type="button" id="btnJump" class="pad pad-jump" aria-label="Pular">⤒</button>
                 </div>
             </div>
         </div>
@@ -165,32 +170,33 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · PBR · câmera orbital</p>
+                    <p class="eyebrow"><i></i> Aventura 3D · 7 estrelas</p>
                     <h1>Cúpola <span>64</span></h1>
-                    <p class="lede">Uma ilha cinematográfica, um castelo pêssego e sete estrelas no vitral.
-                        Corra como Nico, encadeie o pulo triplo e deixe a câmera orbitar ao seu redor.</p>
+                    <p class="lede">Ajude o Nico a achar as <b>7 estrelas</b> da ilha!
+                        Siga a <b>seta ➤</b> no topo da tela: ela aponta para a próxima estrela.</p>
                 </header>
 
                 <div class="menu-grid">
                     <details class="menu-section menu-disclosure" open>
                         <summary>Como jogar</summary>
                         <div class="keys keys--board">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar (relativo à câmera)</span>
-                            <span><kbd>Espaço</kbd> pular · duplo · triplo</span>
-                            <span><kbd>Shift</kbd> agachar · long jump · ground pound</span>
-                            <span><kbd>Q</kbd><kbd>E</kbd> ou arraste o mouse: câmera</span>
-                            <span>Espaço no canhão dispara · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas: andar</span>
+                            <span><kbd>Espaço</kbd> pular · pule de novo ao tocar o chão para ir mais alto</span>
+                            <span>Encoste numa parede no meio do pulo para quicar e subir</span>
+                            <span><kbd>Q</kbd><kbd>E</kbd> ou arraste o mouse: girar a câmera</span>
+                            <span><kbd>Shift</kbd> agachar · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Mova Nico com o direcional esquerdo.</span>
-                            <span>Toque em A para pular e segure Z para agachar.</span>
-                            <span>Use Q e E para girar a câmera.</span>
+                            <span>Arraste o círculo da esquerda para andar.</span>
+                            <span>Toque no botão grande ⤒ para pular. Pule de novo ao cair para ir mais alto.</span>
+                            <span>↺ e ↻ giram a câmera. Arrastar a tela também gira.</span>
                         </div>
                     </details>
                     <details class="menu-section menu-disclosure" open>
                         <summary>Estrelas e ajustes</summary>
-                        <p class="section-note">Cume, telhado, oito vermelhas, ilha no céu, gruta,
-                            bomba-rei (3 stomps) e cinquenta moedas. Pule na cabeça dos fungos.</p>
+                        <p class="section-note">Topo da montanha, telhado do castelo, 8 moedas vermelhas,
+                            ilha no céu (entre no canhão), gruta, bomba-rei (pule 3 vezes na cabeça dela)
+                            e 50 moedas. Pule na cabeça dos cogumelos. Cair da ilha não tira vida.</p>
                         <div class="settings-grid">
                             <label class="field">
                                 <span>Qualidade</span>
@@ -221,8 +227,8 @@
 
         <div id="pauseOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
-                <p class="eyebrow"><i></i> PAUSE</p>
-                <h2>O vitral<br>espera.</h2>
+                <p class="eyebrow"><i></i> Pausa</p>
+                <h2>A ilha<br>espera você.</h2>
                 <div class="card-actions">
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
@@ -234,12 +240,12 @@
 
         <div id="gameOverOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card defeat-card">
-                <p class="eyebrow eyebrow--danger"><i></i> GAME OVER</p>
-                <h2>Nico caiu<br>da ilha.</h2>
+                <p class="eyebrow eyebrow--danger"><i></i> Acabaram as vidas</p>
+                <h2>Quase lá!<br>Vamos de novo?</h2>
                 <div id="defeatStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="retryButton" class="primary-button" type="button">
-                        <span>Tentar de novo</span><i aria-hidden="true">↻</i>
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="defeatMenuButton" class="ghost-button" type="button">Menu</button>
                 </div>
@@ -248,13 +254,13 @@
 
         <div id="victoryOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card victory-card">
-                <p class="eyebrow eyebrow--gold"><i></i> COURSE CLEAR</p>
-                <h2>A cúpola<br>brilha de novo.</h2>
+                <p class="eyebrow eyebrow--gold"><i></i> Ilha completa!</p>
+                <h2>Você achou<br>as 7 estrelas!</h2>
                 <p class="lede">As sete estrelas voltaram ao vitral. A ilha inteira brilha de novo.</p>
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="replayButton" class="primary-button" type="button">
-                        <span>Outra volta</span><i aria-hidden="true">↻</i>
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="victoryMenuButton" class="ghost-button" type="button">Menu</button>
                 </div>
@@ -275,7 +281,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=18"></script>
+    <script type="module" src="src/main.js?v=19"></script>
 </body>
 
 </html>

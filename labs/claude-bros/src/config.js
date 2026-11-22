@@ -13,8 +13,8 @@
  *   RUN_SPEED       210 px/s    ~6.5 tiles/s
  *
  * --- Sensação de controle ---------------------------------------------------
- *   · coyote time (100ms) — pular logo depois de sair da plataforma ainda vale
- *   · jump buffer (120ms) — apertar pulo pouco antes de pousar ainda vale
+ *   · coyote time (140ms) — pular logo depois de sair da plataforma ainda vale
+ *   · jump buffer (160ms) — apertar pulo pouco antes de pousar ainda vale
  *   · pulo variável — soltar o botão corta a subida
  *   · ápice leve — perto do topo do pulo (|vy| < APEX_SPEED) a gravidade cai
  *     para APEX_GRAVITY·g enquanto o botão está preso: dá tempo de mirar o pouso
@@ -36,8 +36,8 @@ export const AIR_ACCEL = 1150;
 export const RUN_FRICTION = 1900;
 export const AIR_FRICTION = 420;
 export const MAX_FALL = 780;
-export const COYOTE_TIME = 0.1;
-export const JUMP_BUFFER = 0.12;
+export const COYOTE_TIME = 0.14;
+export const JUMP_BUFFER = 0.16;
 export const APEX_SPEED = 70;
 export const APEX_GRAVITY = 0.62;
 export const CORNER_NUDGE = 7;
@@ -45,7 +45,21 @@ export const ENEMY_SPEED = 52;
 export const STOMP_BOUNCE = -380;
 export const FIXED_STEP = 1 / 120;
 
+/* Modo família (pensado para crianças):
+ *   LIVES        5 vidas por partida (eram 3)
+ *   HURT_INSET   o corpo do rival e das estacas "machuca" só no miolo: a caixa de
+ *                dano encolhe HURT_INSET px de cada lado — encostar de raspão não dói
+ *   STOMP_WINDOW pisar vale se os pés estão nos 75% de cima do rival (eram 60%)
+ *   RESPAWN_INVULN segundos piscando (sem dano) depois de renascer               */
+export const LIVES = 5;
+export const HURT_INSET = 5;
+export const STOMP_WINDOW = 0.75;
+export const RESPAWN_INVULN = 2;
+
 /* Mapa. Cada caractere é um tile de 32px.
+ * Nenhuma caixa '?' fica sobre a borda de um vão: bater a cabeça nela no pulo
+ * derrubava o personagem na água (armadilha injusta para criança). Pelo mesmo
+ * motivo há no máximo um rival por trecho de chão; os outros ficam nas plataformas.
  *   #  chão                    =  plataforma (degrau, ilhota ou torre)
  *   ?  caixa de faísca         o  faísca dourada
  *   e  rival (musgoso)         ^  estacas de ferro
@@ -58,11 +72,11 @@ export const LEVEL = [
     '                                        o          =======                              ',
     '                              o o      ===                                   o o o      ',
     '                    ?        =====                        o  o              =======     ',
-    '            o o                                 ?        ======                         ',
-    '           =====        e              e                              e                F',
-    '                                                     o                          ?      =',
-    '     o                       ?    o o                                  o o             =',
-    '   =====        e                =====        e            ^^        =======       e   =',
+    '            oeo                                 ?        ======                         ',
+    '           =====                                                      e                F',
+    '                                                     o                       ?         =',
+    '     o                         ?  oeo                                  o o             =',
+    '   =====        e                =====        e            ^^        =======  e        =',
     '###########   ############   #############   ########   ########   ##############   #####',
     '###########   ############   #############   ########   ########   ##############   #####',
 ];

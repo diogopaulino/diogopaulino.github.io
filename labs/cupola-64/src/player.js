@@ -13,9 +13,12 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA, ISLAND } from './config.js?v=12';
+import { PLAYER, CAMERA, ISLAND } from './config.js?v=13';
 import { clamp, damp, wrapPi, lerpAngle } from './utils.js?v=13';
-import { createNico } from './models.js?v=13';
+import { createNico } from './models.js?v=14';
+
+/** Altura máxima (m) acima do último chão que os quiques na parede alcançam. */
+const WALL_CLIMB = 9;
 
 export class Player {
     constructor(scene) {
@@ -57,6 +60,11 @@ export class Player {
         this.squash = 1;
         this.lives = 4;
         this.alive = true;
+        /** Último chão firme (fora d'água), gravado a cada SAFE_EVERY s — é onde Nico volta ao cair. */
+        this.safe = { x: 0, y: 1.6, z: 12 };
+        this._safeT = 0;
+        this.fell = false;
+        this.groundY = 1;
 
         this.camYaw = Math.PI;
         this.camPhi = CAMERA.phi;
@@ -76,6 +84,7 @@ export class Player {
         this.x = 0;
         this.z = 12;
         this.y = world ? world.groundAt(0, 12, 40) : 1.6;
+        this.groundY = this.y;
         this.vx = this.vy = this.vz = 0;
         this.facing = 0;
         this.yaw = 0;
@@ -89,6 +98,10 @@ export class Player {
         this.starPose = 0;
         this.hurtT = 0;
         this.alive = true;
+        this.safe.x = this.x;
+        this.safe.y = this.y;
+        this.safe.z = this.z;
+        this.fell = false;
         this.camYaw = this._dYaw = Math.PI;
         this.camPhi = this._dPhi = CAMERA.phi;
         this.root.visible = true;
@@ -185,6 +198,18 @@ export class Player {
             flags.step = true;
             this.stepFlag = false;
         }
+        if (this.fell) {
+            flags.fell = true;
+            this.fell = false;
+        }
+        // chão firme: parado ou andando no chão, fora d'água, longe do fundo do desfiladeiro
+        this._safeT -= dt;
+        if (this.grounded && !this.swimming && !this.inCannon && this._safeT <= 0 && this.y > ISLAND.waterY + 0.25) {
+            this._safeT = 0.5;
+            this.safe.x = this.x;
+            this.safe.y = this.y;
+            this.safe.z = this.z;
+        }
         this.sync();
 
         this.root.visible = this.invuln <= 0 || Math.sin(this.invuln * 28) > 0;
@@ -280,7 +305,11 @@ export class Player {
         if (hit.x !== nx || hit.z !== nz) {
             this.vx *= 0.35;
             this.vz *= 0.35;
-            if (!this.grounded && this.vy > 2 && mag > 0.2) {
+            /* Quique na parede: subindo contra um sólido, Nico ganha outro impulso. Encadeado,
+               ele escala — é assim que se chega ao telhado do castelo. Limite: no máximo
+               WALL_CLIMB m acima do último chão (antes não havia teto: segurando contra uma
+               árvore ou o canhão Nico subia até 150 m e despencava). */
+            if (!this.grounded && this.vy > 2 && mag > 0.2 && this.y < this.groundY + WALL_CLIMB) {
                 this.vy = PLAYER.jump * 0.82;
                 this.facing += Math.PI;
                 flags.jumped = true;
@@ -312,6 +341,7 @@ export class Player {
             if (this.pounding) flags.pounded = true;
             this.vy = 0;
             this.grounded = true;
+            this.groundY = ground;
             this.pounding = false;
             this.diving = false;
             if (wasAir) {
@@ -334,6 +364,7 @@ export class Player {
         // boia com o peito na lâmina d'água (pés 0,62 m abaixo do nível)
         this.y = damp(this.y, ISLAND.waterY - 0.62, 6, dt);
         this.grounded = false;
+        this.groundY = ISLAND.waterY - 0.62;
         this.vy *= Math.exp(-4 * dt);
         if (mag > 0.08) {
             this.vx += wishX * 18 * dt;
@@ -367,11 +398,21 @@ export class Player {
         this.vx = this.vz = this.vy = 0;
         if (world.cannon) world.cannon.rotation.y += input.axisX * dt * 1.4;
         if (input.consumeJump() && this.cannonT > 0.2) {
+            /* Tiro balístico que POUSA na ilha do céu. O tiro antigo (22 m/s na direção do
+               alvo) subia no máximo ~4 m e caía a 13 m de distância: a ilha (y ≈ 15,9) era
+               inalcançável pelo canhão. Agora:
+                 ápice H = (topo do alvo + 2,5) − y0       vy0 = √(2·g_sobe·H)
+                 T = vy0/g_sobe + √(2·2,5/g_desce)          v_xz = distância_xz / T          */
             const t = world.cannonTarget;
-            const dir = new THREE.Vector3(t.x - this.x, t.y + 4 - this.y, t.z - this.z).normalize();
-            this.vx = dir.x * 22;
-            this.vy = dir.y * 22;
-            this.vz = dir.z * 22;
+            const H = Math.max(1, t.y + 0.3 + 2.5 - this.y);
+            const vy0 = Math.sqrt(2 * PLAYER.gravity * H);
+            const T = vy0 / PLAYER.gravity + Math.sqrt((2 * 2.5) / PLAYER.fallGravity);
+            const dx = t.x - this.x;
+            const dz = t.z - this.z;
+            this.vx = dx / T;
+            this.vy = vy0;
+            this.vz = dz / T;
+            this.facing = Math.atan2(dx, dz);
             this.inCannon = false;
             this.grounded = false;
             flags.cannon = true;
@@ -379,9 +420,20 @@ export class Player {
         }
     }
 
+    /**
+     * Caiu da ilha (y < ISLAND.fallY): modo família — não perde vida; volta ao último
+     * chão firme gravado, piscando (invulnerável) por 1,5 s, com a câmera onde estava.
+     */
     _fall() {
-        this.hurt();
-        if (this.alive) this.spawn(this._world);
+        this.x = this.safe.x;
+        this.z = this.safe.z;
+        this.y = this.safe.y + 0.05;
+        this.vx = this.vy = this.vz = 0;
+        this.grounded = true;
+        this.groundY = this.y;
+        this.pounding = this.diving = false;
+        this.invuln = Math.max(this.invuln, 1.5);
+        this.fell = true;
     }
 
     /**
