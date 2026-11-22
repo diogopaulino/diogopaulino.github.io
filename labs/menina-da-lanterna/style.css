@@ -1046,3 +1046,123 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
     .pad-use[data-ready="true"] { animation: none; }
 }
+
+/* ================================================================
+   Modo infantil: bússola do próximo passo, aviso tocável, "Pular" e
+   "Como jogar" no menu.
+   ================================================================ */
+.guide {
+    position: absolute;
+    left: 50%;
+    top: calc(9rem + var(--safe-top));
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: max-content;
+    padding: 0.3rem 0.85rem 0.3rem 0.35rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    animation: guideIn 0.4s var(--ease, ease);
+}
+.guide[hidden] { display: none; }
+.guide i {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--gold) 26%, transparent), transparent 70%);
+    transition: transform 0.12s linear;
+}
+.guide i::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    translate: -50% 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 22px solid var(--gold);
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 70%, transparent));
+}
+.guide span { display: flex; flex-direction: column; line-height: 1.1; }
+.guide b {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+}
+.guide small { font-size: 0.8rem; color: var(--parchment); font-variant-numeric: tabular-nums; }
+@keyframes guideIn { from { opacity: 0; } to { opacity: 1; } }
+
+.stealth { top: calc(12rem + var(--safe-top)); }
+
+button.prompt {
+    pointer-events: auto;
+    cursor: pointer;
+    min-height: 44px;
+    font: inherit;
+    font-size: 0.95rem;
+    padding: 0.5rem 1.05rem;
+    max-width: min(92vw, 520px);
+    animation: promptPulse 1.6s ease-in-out infinite;
+}
+button.prompt[hidden] { display: none; }
+button.prompt:hover { border-color: var(--gold); }
+@keyframes promptPulse { 50% { box-shadow: 0 0 18px color-mix(in oklab, var(--gold) 40%, transparent); border-color: var(--gold); } }
+
+.skip-button {
+    position: absolute;
+    right: calc(1rem + var(--safe-right));
+    top: calc(9rem + var(--safe-top));
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    letter-spacing: 0.06em;
+    pointer-events: auto;
+}
+.skip-button[hidden] { display: none; }
+.skip-button:hover { border-color: var(--gold); color: var(--gold); }
+
+.howto-goal { margin: 0 0 0.6rem; font-size: 0.95rem; line-height: 1.45; color: var(--parchment); }
+.howto-goal b { color: var(--gold); font-weight: 700; }
+.howto-arrow { display: inline-block; rotate: -90deg; }
+.howto-note { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--text-dim); }
+@media (pointer: coarse) { .keys--board { display: none; } }
+@media (pointer: fine) { .keys--touch { display: none; } }
+
+/* Estreito/deitado: a barra de alerta já vive no fluxo do HUD; a bússola entra logo abaixo dela. */
+@media (max-width: 900px), (max-height: 560px) and (orientation: landscape) {
+    .guide {
+        position: static;
+        translate: none;
+        margin: 0.45rem auto 0;
+        animation: none;
+    }
+    /* entre o analógico e os botões de ação */
+    .skip-button { top: auto; right: auto; left: 50%; translate: -50% 0; bottom: calc(3.4rem + var(--safe-bottom)); } /* acima do rodapé (z 30) */
+    .howto { order: -1; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+    .guide { margin-top: 0.3rem; padding: 0.2rem 0.7rem 0.2rem 0.25rem; }
+    .guide i { width: 28px; height: 28px; }
+    .guide i::before { top: 3px; border-left-width: 7px; border-right-width: 7px; border-bottom-width: 18px; }
+    .skip-button { bottom: calc(2.9rem + var(--safe-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    button.prompt, .guide { animation: none; }
+}
+/* aviso tocável e "Pular" acima da zona de olhar (que cobre metade da tela no toque) */
+button.prompt, .skip-button { z-index: 4; }
+/* Rodapé invisível (opacity 0) durante o jogo ainda recebia toques: o link
+   "voltar para home" ficava sob o aviso/controles e tirava a criança do jogo. */
+body[data-state="playing"] .lab-foot,
+body[data-state="intro"] .lab-foot,
+body[data-state="cutscene"] .lab-foot,
+body[data-state="dialogue"] .lab-foot { visibility: hidden; pointer-events: none; }

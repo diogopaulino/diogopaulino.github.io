@@ -11,9 +11,9 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA } from './config.js?v=30';
+import { PLAYER, CAMERA } from './config.js?v=31';
 import { clamp, damp } from '../../shared/gfx/core.js';
-import { makeBearer, turnTo } from './actors.js?v=30';
+import { makeBearer, turnTo } from './actors.js?v=31';
 
 const ATTACK_TIME = 0.5;
 const STRIKE_AT = 0.2;

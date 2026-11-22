@@ -160,7 +160,8 @@ export class Rope {
  *             `closeR` soma mais 0,4/s. Alerta ≥ 1 → acorda ('stir').
  *   acordando: 2,2 s levantando, saindo da cadeira e urrando; depois persegue a `chaseSpeed`.
  *   perseguindo: anda reto até o João, contornando os obstáculos (`obstacles`);
- *             a menos de `catchR` → 'caught'. Cada passada emite `stomp`
+ *             a menos de `catchR` → 'caught' e fica tonto por `dazeT` = 3 s
+ *             (parado, coçando a cabeça) — o João tem tempo de fugir. Cada passada emite `stomp`
  *             (o jogo treme a câmera proporcional à distância).
  *
  * O herói é escalado por fora (`scale`), então a velocidade passada à animação
@@ -194,6 +195,7 @@ export class GiantAI {
         this.fallDir = { x: 1, z: 0 };
         this.groundFn = null;
         this.landed = false;
+        this.dazeT = 0;
     }
 
     reset(x, z, y, yaw, state = 'sleep') {
@@ -206,6 +208,7 @@ export class GiantAI {
         this.alive = true;
         this.falling = false;
         this.landed = false;
+        this.dazeT = 0;
         this.fallVy = 0;
         this.wakeT = 0;
         this.phase = 0;
@@ -278,6 +281,14 @@ export class GiantAI {
                 this.state = 'chase';
                 a.blend = 0.25;
             }
+        } else if (this.state === 'chase' && this.dazeT > 0) {
+            // tonto depois de alcançar o João: fica parado e olha em volta
+            this.dazeT = Math.max(0, this.dazeT - dt);
+            a.mode = 'idle';
+            a.speed = 0;
+            a.brow = 1;
+            a.jaw = 0.1;
+            this.yaw += dt * 0.6;
         } else if (this.state === 'chase') {
             this.alert = 1;
             const sp = this.chaseSpeed;
@@ -309,7 +320,10 @@ export class GiantAI {
                 this.steps = steps;
                 this.stomp = true;
             }
-            if (dist < this.catchR && dy < 3.2) ev = 'caught';
+            if (dist < this.catchR && dy < 3.2) {
+                ev = 'caught';
+                this.dazeT = 3;
+            }
         }
 
         this.y = heightAt ? heightAt(this.x, this.z) : this.y;

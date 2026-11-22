@@ -3,7 +3,7 @@
  */
 
 import { bindGameKeyboard } from '../../shared/game-keyboard.js';
-import { clamp } from './utils.js?v=30';
+import { clamp } from './utils.js?v=31';
 
 const MOVE = {
     KeyW: 'forward',

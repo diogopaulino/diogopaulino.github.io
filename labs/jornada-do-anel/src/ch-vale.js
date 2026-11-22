@@ -9,10 +9,10 @@
 import * as THREE from 'three';
 import { fbm2, smoothstep, lerp } from '../../shared/gfx/core.js';
 import { createCourse, carveBasin, createTerrain, createGrass, createForest, createWater, createPath, scatter, scatterModel } from '../../shared/gfx/terrain.js';
-import { ChapterWorld, own, makeRing, makePage, lightShaft, addAmbient, emitter } from './world.js?v=30';
-import { Batch, trs, block, turned, column, arch, stoneBridge, addStoneSeat, TAU } from './build.js?v=30';
-import { makeElf, makeDwarf, makeHuman, makeWizard, Extra } from './actors.js?v=30';
-import { makeStaff } from './ch-shire.js?v=30';
+import { ChapterWorld, own, makeRing, makePage, lightShaft, addAmbient, emitter } from './world.js?v=31';
+import { Batch, trs, block, turned, column, arch, stoneBridge, addStoneSeat, TAU } from './build.js?v=31';
+import { makeElf, makeDwarf, makeHuman, makeWizard, Extra } from './actors.js?v=31';
+import { makeStaff } from './ch-shire.js?v=31';
 
 /** Véu de cachoeira: faixa com estrias que descem (ruído esticado em y) e espuma embaixo. */
 function waterfall(width, height) {

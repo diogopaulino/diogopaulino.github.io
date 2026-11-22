@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
     <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 
     <script type="importmap">
     {
@@ -139,8 +139,14 @@
                 <i><b id="stealthFill"></b></i>
             </div>
 
+            <div id="guide" class="guide" hidden aria-hidden="true">
+                <i data-guide-arrow></i>
+                <span><b data-guide-name></b><small data-guide-dist>0 m</small></span>
+            </div>
+
             <p id="message" class="message" role="status" aria-live="polite" data-show="false"></p>
-            <p id="prompt" class="prompt" hidden></p>
+            <button id="prompt" class="prompt" type="button" hidden></button>
+            <button id="skipButton" class="skip-button" type="button" hidden>Pular <i aria-hidden="true">»</i></button>
 
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
@@ -159,7 +165,7 @@
                 <div class="touch-buttons">
                     <button type="button" id="btnSprint" class="pad">correr</button>
                     <button type="button" id="btnJump" class="pad pad-atk">pular</button>
-                    <button type="button" id="btnInteract" class="pad pad-use">E</button>
+                    <button type="button" id="btnInteract" class="pad pad-use" aria-label="Interagir">usar</button>
                 </div>
             </div>
         </div>
@@ -175,12 +181,12 @@
 
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
-                <header class="menu-head">
+                <div class="menu-head">
                     <p class="eyebrow"><i></i> three.js · terceira pessoa · cinco capítulos</p>
                     <h1>João e o <span>Pé de Feijão</span></h1>
                     <p class="lede">A despensa está vazia, a Mimosa é tudo o que resta, e um estranho de capa roxa
                         oferece cinco feijões. Suba, roube, desça e corte — o conto inteiro, no navegador.</p>
-                </header>
+                </div>
 
                 <div class="menu-grid">
                     <section class="menu-section">
@@ -188,20 +194,23 @@
                         <div id="chapterList" class="chapter-list" role="list"></div>
                     </section>
 
-                    <details class="menu-section menu-disclosure" open>
-                        <summary>Comandos</summary>
+                    <section class="menu-section howto" aria-labelledby="howtoTitle">
+                        <h2 id="howtoTitle">Como jogar</h2>
+                        <p class="howto-goal">Viva o conto do João em 5 capítulos. Siga a <b class="howto-arrow" aria-hidden="true">➤</b> <b>seta dourada</b> até o próximo passo e, quando chegar perto, aperte <kbd>E</kbd> ou toque no aviso.</p>
                         <div class="keys keys--board">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</span>
-                            <span><kbd>Espaço</kbd> pular · mouse olhar</span>
-                            <span><kbd>E</kbd> falar / pegar / cortar</span>
-                            <span><kbd>Shift</kbd> correr · no caule, W sobe</span>
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas: andar</span>
+                            <span><kbd>Espaço</kbd> pular · <kbd>Shift</kbd> correr</span>
+                            <span><kbd>E</kbd> falar, pegar, subir e cortar</span>
+                            <span>No caule: <kbd>W</kbd> sobe · <kbd>S</kbd> desce</span>
                             <span><kbd>P</kbd> pausa · <kbd>M</kbd> som · <kbd>C</kbd> câmera</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Ande com o direcional esquerdo. No caule, empurre para cima para subir.</span>
-                            <span>Arraste a cena para olhar. Use Pular para saltar e E para interagir.</span>
+                            <span><b>Bolinha</b> à esquerda: andar (no caule, para cima sobe)</span>
+                            <span><b>Arraste</b> a tela: olhar em volta</span>
+                            <span><b>pular</b> salta · <b>usar</b> ou o aviso: falar, pegar e cortar</span>
                         </div>
-                    </details>
+                        <p class="howto-note">Caiu ou o gigante alcançou? Só perde um coração. Sem corações, o capítulo recomeça.</p>
+                    </section>
 
                     <details class="menu-section menu-disclosure" open>
                         <summary>Ajustes</summary>
@@ -225,12 +234,12 @@
                     </details>
                 </div>
 
-                <footer class="menu-foot">
+                <div class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Começar o conto</span>
+                        <span>Jogar</span>
                         <i aria-hidden="true">→</i>
                     </button>
-                </footer>
+                </div>
             </div>
         </div>
 
@@ -279,7 +288,7 @@
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
                     <button id="replayButton" class="primary-button" type="button">
-                        <span>Ler de novo</span><i aria-hidden="true">→</i>
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao livro</button>
                 </div>
@@ -300,7 +309,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=9"></script>
+    <script type="module" src="src/main.js?v=10"></script>
 </body>
 
 </html>

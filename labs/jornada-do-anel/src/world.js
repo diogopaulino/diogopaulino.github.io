@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { clamp, smoothstep } from '../../shared/gfx/core.js';
 import { loadModel } from '../../shared/gfx/assets.js';
 import { createParticles } from '../../shared/gfx/particles.js';
-import { QUALITY } from './config.js?v=30';
+import { QUALITY } from './config.js?v=31';
 
 const _v = new THREE.Vector3();
 
@@ -120,7 +120,11 @@ export class ChapterWorld {
     }
 
     /** Carrega um modelo de assets.js e põe no chão. Não bloqueia a montagem. */
-    prop(name, x, z, { ry = 0, y = null, collider = 0, block = false, top = 2, shadow = true, parent = null, ...load } = {}) {
+    prop(name, x, z, { ry = 0, y = null, collider = 0, block = false, top = 2, shadow = null, parent = null, ...load } = {}) {
+        // Sombra própria só para o que tem tamanho para ela aparecer: abaixo de 0,45 m (cestos,
+        // taças, lanternas, baldes) — ou de 0,8 m no tier baixo — o modelo fotogramétrico de
+        // 10–20 mil triângulos era desenhado de novo no mapa de sombra por quase nada.
+        if (shadow === null) shadow = (load.height ?? 1) >= (this.low ? 0.8 : 0.45);
         const p = loadModel(name, load).then((m) => {
             if (!m || this.disposed) return null;
             m.position.set(x, y ?? this.heightAt(x, z), z);

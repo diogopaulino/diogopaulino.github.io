@@ -32,9 +32,9 @@ import {
     buildCottage, buildWell, buildGateArch, buildLampPost, buildStall, buildCart, buildFountain,
     buildWoodpile, buildGardenBeds, buildGoldBag, buildNest, buildHarp, buildCastleHall, buildStool,
     prop, HALL, MAT
-} from './models.js?v=8';
-import { createCloudRealm, createCloudCollar } from './clouds.js?v=8';
-import { CowAI, GiantAI, Rope } from './npcs.js?v=8';
+} from './models.js?v=9';
+import { createCloudRealm, createCloudCollar } from './clouds.js?v=9';
+import { CowAI, GiantAI, Rope } from './npcs.js?v=9';
 
 const HOME = { x: -2, z: 2 };
 const CABIN = { x: -8, z: -3, ry: 0.5 };
@@ -264,7 +264,10 @@ export async function createWorld(stage, quality, progress = () => {}) {
         { model: 'wicker_basket_01', x: 1.9, y: 0, z: 0.4, ry: 0.5, s: 1.8 }].forEach((g) => pushGood(g, MX - 2.6, MZ + 2.6, cart.position.y, 2.4));
     const HEIGHTS = { wooden_crate_01: 0.42, wicker_basket_01: 0.16, wine_barrel_01: 0.9, food_apple_01: 0.085 };
     // miudezas não projetam sombra (a maçã fotogramétrica tem 7 mil triângulos: a sombra dobraria o custo)
-    for (const [model, list] of Object.entries(goods)) instanceModel(model, list, { height: HEIGHTS[model], castShadow: model === 'wine_barrel_01' || model === 'wooden_crate_01' }).then(addG);
+    // Tier baixo (celular): cada barraca fica com 1 maçã em vez de 4 e só o barril faz sombra —
+    // as mercadorias instanciadas somavam ~540 mil dos ~650 mil triângulos da feira.
+    if (low && goods.food_apple_01) goods.food_apple_01 = goods.food_apple_01.filter((_, i) => i % 4 === 0);
+    for (const [model, list] of Object.entries(goods)) instanceModel(model, list, { height: HEIGHTS[model], castShadow: model === 'wine_barrel_01' || (!low && model === 'wooden_crate_01') }).then(addG);
 
     // --- pé de feijão (cresce na noite; inteiro na fuga)
     progress(0.76, 'Guardando cinco feijões…');

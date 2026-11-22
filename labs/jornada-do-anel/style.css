@@ -996,3 +996,160 @@ kbd {
 @media (min-height: 760px) and (min-width: 861px) {
     .menu-overlay { place-items: center; }
 }
+
+/* ================================================================
+   Modo infantil: bússola do objetivo, aviso tocável, "Pular" e
+   "Como jogar" no menu.
+   ================================================================ */
+.guide {
+    position: absolute;
+    left: 50%;
+    top: calc(9rem + var(--safe-top));
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.3rem 0.85rem 0.3rem 0.35rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    animation: guideIn 0.4s var(--ease);
+}
+.guide[hidden] { display: none; }
+.guide i {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--gold) 26%, transparent), transparent 70%);
+    transition: transform 0.12s linear;
+}
+.guide i::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    translate: -50% 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 22px solid var(--gold);
+    filter: drop-shadow(0 0 6px oklch(75% 0.16 82 / 0.7));
+}
+.guide span { display: flex; flex-direction: column; line-height: 1.1; }
+.guide b {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+.guide small { font-size: 0.82rem; color: var(--parchment); font-variant-numeric: tabular-nums; }
+@keyframes guideIn { from { opacity: 0; translate: -50% -6px; } to { opacity: 1; translate: -50% 0; } }
+
+.stealth { top: calc(12rem + var(--safe-top)); }
+
+button.prompt {
+    pointer-events: auto;
+    cursor: pointer;
+    min-height: 44px;
+    font: inherit;
+    font-size: 0.95rem;
+    padding: 0.5rem 1.05rem;
+    box-shadow: 0 0 0 0 oklch(75% 0.16 82 / 0.5);
+    animation: promptPulse 1.6s ease-in-out infinite;
+}
+button.prompt[hidden] { display: none; }
+button.prompt:hover { border-color: var(--gold); }
+@keyframes promptPulse { 50% { box-shadow: 0 0 0 6px oklch(75% 0.16 82 / 0); border-color: var(--gold); } }
+
+.skip-button {
+    position: absolute;
+    right: calc(1rem + var(--safe-right));
+    top: calc(9rem + var(--safe-top));
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    letter-spacing: 0.06em;
+    pointer-events: auto;
+}
+.skip-button[hidden] { display: none; }
+.skip-button:hover { border-color: var(--gold); color: var(--gold); }
+
+.howto-goal { margin: 0 0 0.6rem; font-size: 0.92rem; line-height: 1.45; color: var(--parchment); }
+.howto-goal b { color: var(--gold); font-weight: 600; }
+.howto-arrow { display: inline-block; rotate: -90deg; }
+.howto-note { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--text-dim); }
+@media (pointer: coarse) { .keys--board { display: none; } }
+@media (pointer: fine) { .keys--touch { display: none; } }
+
+@media (max-width: 860px), (max-height: 520px) and (orientation: landscape) {
+    .guide { top: calc(7.6rem + var(--safe-top)); }
+    .skip-button { top: calc(7.6rem + var(--safe-top)); right: calc(0.75rem + var(--safe-right)); }
+    .stealth { top: calc(10.6rem + var(--safe-top)); }
+    .howto { order: -1; }
+    button.prompt { font-size: 0.9rem; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+    .guide { top: calc(7.1rem + var(--safe-top)); padding: 0.2rem 0.7rem 0.2rem 0.25rem; }
+    .guide i { width: 28px; height: 28px; }
+    .guide i::before { top: 3px; border-left-width: 7px; border-right-width: 7px; border-bottom-width: 18px; }
+    .stealth { top: calc(9.7rem + var(--safe-top)); }
+    .skip-button { top: calc(7.1rem + var(--safe-top)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    button.prompt, .guide { animation: none; }
+}
+
+/* Menu: só o miolo rola; título e botão "Jogar" ficam sempre à vista
+   (sem position:sticky, que vaza conteúdo sobre a borda arredondada). */
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: calc(100dvh - 6rem - var(--safe-top) - var(--safe-bottom));
+}
+.menu-head, .menu-foot { flex: 0 0 auto; }
+.menu-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-right: 0.2rem;
+}
+.menu-foot { padding-top: 0.8rem; border-top: 1px solid var(--line-soft); }
+@media (max-height: 520px) and (orientation: landscape) {
+    .menu-card { max-height: calc(100dvh - 4.4rem - var(--safe-top) - var(--safe-bottom)); padding-top: 0.7rem; padding-bottom: 0.7rem; }
+    .menu-head .eyebrow { display: none; }
+    .menu-head h1 { font-size: 1.35rem; }
+    .menu-head .lede { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.8rem; line-height: 1.35; }
+    .menu-head { padding-bottom: 0.45rem; }
+    .menu-grid { margin: 0.55rem 0; }
+    .menu-foot { padding-top: 0.5rem; }
+    .chapter-blurb { display: none; }
+    .menu-foot .primary-button { min-height: 44px; }
+}
+/* som/pausa na linha do cabeçalho ficavam por baixo do botão de tela cheia
+   (44px + tema 64px + margens ≈ 8,6rem da borda): o "II" sumia */
+@media (max-width: 860px), (max-height: 520px) and (orientation: landscape) {
+    .hud-actions { right: calc(8.9rem + var(--safe-right)); }
+}
+/* aviso tocável e "Pular" acima da zona de olhar (que cobre metade da tela no toque) */
+button.prompt, .skip-button { z-index: 4; }
+/* Rodapé invisível (opacity 0) durante o jogo ainda recebia toques: o link
+   "voltar para home" ficava sob o aviso/controles e tirava a criança do jogo. */
+body[data-state="playing"] .lab-foot,
+body[data-state="intro"] .lab-foot,
+body[data-state="cutscene"] .lab-foot,
+body[data-state="dialogue"] .lab-foot { visibility: hidden; pointer-events: none; }
+/* Estreito/deitado: o objetivo quebra em 2–3 linhas e a altura do topo varia;
+   alerta e bússola entram no fluxo logo abaixo dele em vez de posição fixa. */
+@media (max-width: 860px), (max-height: 520px) and (orientation: landscape) {
+    .stealth { position: static; translate: none; margin: 0.5rem auto 0; }
+    .guide { position: static; translate: none; margin: 0.45rem auto 0; width: max-content; animation: none; }
+}

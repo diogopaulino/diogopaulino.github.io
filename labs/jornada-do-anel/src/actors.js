@@ -283,10 +283,13 @@ export class Rider {
         this.heroState = { mode: 'ride', speed: 1 };
         this.look = new THREE.Vector3();
         this.pauseT = 0;
+        /** s de "cegueira" depois de alcançar o portador: dá tempo de fugir (jogo infantil, sem castigo em cadeia). */
+        this.blindT = 0;
     }
 
     update(dt, player, world) {
         if (!this.alive) return null;
+        this.blindT = Math.max(0, this.blindT - dt);
         const heightAt = world.heightAt;
         const dx = player.x - this.x;
         const dz = player.z - this.z;
@@ -296,8 +299,8 @@ export class Rider {
         const facing = dist > 0.01 ? (dx * fx + dz * fz) / dist : 0;
         const k = player.sprinting ? 1.25 : 1;
         const clear = dist < this.vision * k && !sightBlocked(this.x, this.z, player.x, player.z, world.colliders);
-        const seen = clear && facing > this.fov;
-        const heard = player.sprinting && player.moving && dist < 5;
+        const seen = clear && facing > this.fov && this.blindT <= 0;
+        const heard = player.sprinting && player.moving && dist < 5 && this.blindT <= 0;
 
         if (seen || heard) {
             this.state = 'chase';
@@ -347,7 +350,14 @@ export class Rider {
         this.hero.lookAt(this.state === 'chase' || halted ? this.look.set(player.x, player.y + 1, player.z) : null);
         this.hero.update(dt, this.heroState);
 
-        if (dist < this.catchR) return 'caught';
+        if (dist < this.catchR && this.blindT <= 0) {
+            // alcançou: perde o rastro por 4 s e para para farejar (o portador escapa)
+            this.state = 'patrol';
+            this.alert = 0.4;
+            this.blindT = 4;
+            this.pauseT = 2.2;
+            return 'caught';
+        }
         if (this.state === 'chase') return 'chase';
         return null;
     }

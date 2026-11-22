@@ -101,6 +101,11 @@ export class Hud {
         this.el.objective.textContent = text;
     }
 
+    /** Toque: o aviso mostra "Toque" em vez da tecla E (o próprio aviso é o botão). */
+    setTouch(v) {
+        this.touch = Boolean(v);
+    }
+
     setPrompt(text) {
         if (this.promptText === text) return;
         this.promptText = text;
@@ -109,7 +114,7 @@ export class Hud {
             return;
         }
         this.el.prompt.hidden = false;
-        this.el.prompt.innerHTML = `<kbd>E</kbd> ${text}`;
+        this.el.prompt.innerHTML = `<kbd>${this.touch ? 'Toque' : 'E'}</kbd> ${text}`;
     }
 
     say(text, seconds = 4) {
@@ -119,6 +124,12 @@ export class Hud {
     }
 
     setMeter(label, value, danger = false) {
+        // chamado a cada quadro: só toca no DOM quando algo muda (valor em centésimos)
+        const q = Math.round(Math.min(1, value) * 100);
+        if (q === this.meterQ && label === this.meterLabel && danger === this.meterDanger) return;
+        this.meterQ = q;
+        this.meterLabel = label;
+        this.meterDanger = danger;
         const on = value > 0.02;
         this.el.stealth.hidden = !on;
         if (label) this.el.stealthLabel.textContent = label;

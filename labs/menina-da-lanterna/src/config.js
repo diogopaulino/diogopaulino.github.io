@@ -4,7 +4,8 @@
  * Clara, a última chama e cinco noites até o primeiro sol.
  * Regras da lanterna (documentadas também no player):
  *   fuel ∈ [0, 100]
- *   drain = 1.65 / s nos capítulos escuros, se não houver lampião aceso perto (< 3.4 m)
+ *   drain = 1.15 / s nos capítulos escuros, se não houver lampião aceso perto (< 3.4 m)
+ *           (era 1,65: no modo infantil a chama cheia dura ~87 s em vez de ~60 s)
  *   flash custa 14 e empurra Sombrios num raio de 6.2 m
  *   vaga-lume restaura +16
  */
@@ -20,7 +21,7 @@ export const PLAYER = {
     turnSpeed: 11,
     invuln: 1.35,
     fuelMax: 100,
-    fuelDrain: 1.65,
+    fuelDrain: 1.15,
     flashCost: 14,
     flashTime: 0.55,
     flashRadius: 6.2,

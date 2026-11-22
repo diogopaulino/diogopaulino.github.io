@@ -1,18 +1,28 @@
 /**
  * A Menina da Lanterna — laço principal, capítulos e câmera.
  * Clara acende o que a noite esqueceu. Cinco cenas, uma historinha.
+ *
+ * Modo infantil (regras de perdão):
+ *   vida          5 corações · Sombrio que encosta foge por 3 s, a Noite fica tonta 2,5 s (npcs.js)
+ *   escuro        sem chama (fuel ≤ 4) e longe de lampião: −1 coração a cada 5 s
+ *   derrota       "Acender de novo" recomeça o capítulo com as lembranças e a chama
+ *                 de quando Clara entrou nele
+ *   bússola       seta no HUD aponta o próximo passo (guide.js, _guideTarget)
+ *   dica          30 s sem se aproximar do alvo → repete a dica do capítulo
+ *   "Pular"       encerra a abertura do capítulo e o nascer do sol final
  */
 
 import * as THREE from 'three';
 import { createStage } from '../../shared/gfx/stage.js';
-import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=20';
-import { clamp, detectTouch, formatTime, lerp, damp, smoothstep } from './utils.js?v=20';
-import { Input } from './input.js?v=20';
-import { GameAudio } from './audio.js?v=20';
-import { Hud, statsBlock } from './hud.js?v=20';
-import { Player } from './player.js?v=20';
-import { createValley } from './world.js?v=20';
-import { nearestInteractable } from './npcs.js?v=20';
+import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=21';
+import { clamp, detectTouch, formatTime, lerp, damp, smoothstep } from './utils.js?v=21';
+import { Input } from './input.js?v=21';
+import { GameAudio } from './audio.js?v=21';
+import { Hud, statsBlock } from './hud.js?v=21';
+import { Player } from './player.js?v=21';
+import { createValley } from './world.js?v=21';
+import { nearestInteractable } from './npcs.js?v=21';
+import { Guide } from '../../shared/gfx/guide.js?v=1';
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
@@ -49,6 +59,12 @@ class Game {
         this.dawn = 0;
         this.dawnT = 0;
         this.fadeEl = document.getElementById('fade');
+        this.guide = new Guide(document.getElementById('guide'));
+        this.skipEl = document.getElementById('skipButton');
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+        /** Progresso ao entrar no capítulo (o "Acender de novo" volta para cá). */
+        this.checkpoint = { memories: 0, score: 0, caught: 0, lampsTotal: 0, elapsed: 0 };
     }
 
     loadSettings() {
@@ -70,6 +86,7 @@ class Game {
     async init() {
         this.hud.setLoading(0.06, 'Acendendo o pavio…');
         this.touch = detectTouch();
+        this.hud.setTouch(this.touch);
         const choice = ['low', 'medium', 'high'].includes(this.settings.quality) ? this.settings.quality : 'auto';
         // palco: renderer + céu físico + lua com sombra + pós (AO, bloom, névoa de altura, grade)
         this.stage = createStage({ canvas: this.canvas, tier: choice, preset: 'noite-lua', fov: 50, near: 0.2 });
@@ -195,11 +212,29 @@ class Game {
         document.getElementById('startButton').addEventListener('click', () => this.start(this.pendingChapter));
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('retryButton').addEventListener('click', () => this.start(this.chapterIndex));
+        document.getElementById('retryButton').addEventListener('click', () => this.retry());
         document.getElementById('defeatMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('replayButton').addEventListener('click', () => this.start(0));
         document.getElementById('victoryMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('dialogueContinue').addEventListener('click', () => this._advanceDialogue());
+        document.getElementById('dialogueContinue').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._advanceDialogue();
+        });
+        // tocar em qualquer lugar do diálogo também avança
+        this.hud.el.dialogue.addEventListener('click', () => this._advanceDialogue());
+        // o aviso "E …" é um botão: tocar nele interage
+        this.hud.el.prompt.addEventListener('click', () => {
+            if (this.state === 'playing') this.input.interactPressed = true;
+        });
+        this.skipEl?.addEventListener('click', () => this._skip());
+        // aba oculta: o palco para de desenhar e a noite pausa
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.state === 'playing') this.pause();
+        });
+        // Esc solta o mouse sem chegar como tecla: soltar o mouse jogando abre a pausa
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && this.state === 'playing' && !this.touch) this.pause();
+        });
         this.hud.el.soundButton.addEventListener('click', () => this.toggleMute());
         this.hud.el.pauseButton.addEventListener('click', () => this.pause());
 
@@ -411,7 +446,7 @@ class Game {
         this.score = 0;
         this.caught = 0;
         this.lampsTotal = 0;
-        this.player.maxHealth = 3;
+        this.player.maxHealth = 5;
         this.hud.hideDefeat();
         this.hud.hideVictory();
         this.hud.showMenu(false);
@@ -422,10 +457,30 @@ class Game {
         this._beginIntro();
     }
 
+    /** Derrota → recomeça o capítulo com o progresso de quando Clara entrou nele. */
+    async retry() {
+        const cp = { ...this.checkpoint };
+        await this.start(this.chapterIndex);
+        Object.assign(this, cp);
+        this.checkpoint = cp;
+        this.hud.setMemories(this.memories, CHAPTERS.length);
+    }
+
+    /** "Pular": encerra a abertura do capítulo ou adianta o nascer do sol final. */
+    _skip() {
+        if (this.state === 'intro') this.introT = 99;
+        else if (this.state === 'dawn') this.dawnT = Math.max(this.dawnT, 15);
+    }
+
     _beginIntro() {
         this.state = 'intro';
         this.hud.setState('intro');
         this.introT = 0;
+        this.checkpoint = { memories: this.memories, score: this.score, caught: this.caught, lampsTotal: this.lampsTotal, elapsed: this.elapsed };
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+        this.guide.hide();
+        if (this.skipEl) this.skipEl.hidden = false;
         this.player.root.visible = true;
         this.hud.showHud(true);
         this.hud.setTouchVisible(this.touch);
@@ -442,11 +497,12 @@ class Game {
 
     pause() {
         if (this.state !== 'playing') return;
+        this.guide.hide();
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
         this.input.exitLock();
-        this.input.enabled = false;
+        // o teclado segue ligado para P/Esc tirarem da pausa (o mundo não anda em 'pause')
     }
 
     resume() {
@@ -455,6 +511,7 @@ class Game {
         this.hud.setState('playing');
         this.hud.showPause(false);
         this.input.enabled = true;
+        this.input.consumeInteract();
         if (!this.touch) this.input.requestLock();
     }
 
@@ -517,6 +574,10 @@ class Game {
             return;
         }
         if (this.state === 'dialogue') {
+            // E, Espaço ou clique avançam a fala
+            if (this.input.consumeInteract() | this.input.consumeFlash()) this._advanceDialogue();
+        }
+        if (this.state === 'dialogue') {
             const talkTo = this.dialogue?.item?.npc;
             this.player.hero.lookAt(talkTo ? TMP.set(talkTo.x, this.player.y + 1.5, talkTo.z) : null);
             if (talkTo) talkTo.mode = 'talk';
@@ -555,6 +616,75 @@ class Game {
         this._checkDark(dt);
         this._refreshObjective();
         this._followCamera(dt);
+        if (this.state === 'playing') this._updateGuide(dt);
+        else this.guide.hide();
+    }
+
+    /**
+     * Próximo passo do capítulo para a bússola: { x, z, name, near } ou null.
+     *   I   Tomás → carta → lampião apagado mais perto → saída
+     *   II  lanterna apagada mais perto → moinho
+     *   III bóia apagada mais perto → Pingo (sarças) → ponte
+     *   IV  próxima raiz da canção (ouro, azul, rosa, verde) → copa
+     *   V   Pedra da Aurora
+     */
+    _guideTarget() {
+        const w = this.world;
+        const p = this.player;
+        const pending = (kind) => w.interactables.filter((i) => i.kind === kind && !i.done);
+        const at = (it, name) => (it ? { x: it.x, z: it.z, name, near: (it.r || 1.6) + 0.3 } : null);
+        const nearest = (list) => {
+            let best = null;
+            let bd = Infinity;
+            for (const it of list) {
+                const d = Math.hypot(it.x - p.x, it.z - p.z);
+                if (d < bd) {
+                    bd = d;
+                    best = it;
+                }
+            }
+            return best;
+        };
+        const unlit = () => nearest(w.lamps.filter((l) => !l.lit));
+        const id = this.chapter.id;
+        if (id === 'aldeia') {
+            if (!w.progress.talked) return at(pending('talk')[0], 'Tomás');
+            const carta = pending('memory').find((m) => m.id === 'carta');
+            if (carta) return at(carta, 'Carta');
+        }
+        if (id === 'arvore') {
+            const next = ROOT_ORDER[w.progress.crystals.length];
+            const c = next !== undefined && pending('crystal').find((it) => it.index === next);
+            if (c) return at(c, `Raiz ${ROOT_NAMES[next]}`);
+        }
+        if (id === 'alvorecer') return at(pending('place')[0], 'Pedra da Aurora');
+        if (w.progress.lampsNeeded && w.lampsLit() < w.progress.lampsNeeded) {
+            return at(unlit(), id === 'rio' ? 'Bóia' : id === 'trilha' ? 'Lanterna' : 'Lampião');
+        }
+        if (id === 'rio' && !w.progress.foxFreed) return at(pending('cage')[0], 'Pingo');
+        if (w.goal && !w.goal.done && w.readyToExit()) return at(w.goal, id === 'trilha' ? 'Moinho' : id === 'rio' ? 'Ponte' : id === 'arvore' ? 'Copa' : 'Saída');
+        return null;
+    }
+
+    _updateGuide(dt) {
+        // 10 Hz bastam (a seta tem transição no CSS) e poupam a busca do alvo a cada quadro
+        this.guideAcc = (this.guideAcc || 0) + dt;
+        if (this.guideAcc < 0.1) return;
+        dt = this.guideAcc;
+        this.guideAcc = 0;
+        const t = this._guideTarget();
+        this.guide.update(this.camera, this.player.x, this.player.z, t);
+        if (!t) return;
+        const d = Math.hypot(t.x - this.player.x, t.z - this.player.z);
+        if (d < this.bestGoalD - 3) {
+            this.bestGoalD = d;
+            this.hintT = 0;
+        }
+        this.hintT += dt;
+        if (this.hintT > 30) {
+            this.hintT = 0;
+            this.hud.say(this.chapter.hint, 5);
+        }
     }
 
     _updateMenuCam(dt) {
@@ -584,7 +714,10 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.hud.say(this.touch ? 'Arraste na tela para olhar. O botão da lanterna pulsa a chama.' : 'Clique no mundo para olhar. Espaço pulsa a lanterna.', 3.4);
+            this.input.consumeInteract();
+            this.input.consumeFlash();
+            if (this.skipEl) this.skipEl.hidden = true;
+            this.hud.say(this.touch ? 'Siga a seta dourada. O botão ✦ pulsa a chama.' : 'Siga a seta dourada. Espaço pulsa a lanterna.', 3.6);
         }
     }
 
@@ -721,6 +854,8 @@ class Game {
     }
 
     _updateInteract() {
+        // 0,6 s depois de fechar um diálogo o E é ignorado (criança aperta E repetido)
+        if (performance.now() - (this.dialogClosedAt ?? -1e4) < 600) this.input.consumeInteract();
         const near = nearestInteractable(this.player, this.world.interactables);
         let label = near ? near.label : '';
         if (near?.kind === 'goal' && !this.world.readyToExit()) {
@@ -748,7 +883,9 @@ class Game {
             return;
         }
         if (near.kind === 'cage') {
-            this.hud.say('Pulse a lanterna (Espaço) para queimar as sarças.', 3);
+            // E perto das sarças também solta a raposa (o pulso da lanterna continua valendo)
+            this.audio.flash();
+            this._freeFox(near);
             return;
         }
         if (near.kind === 'crystal') {
@@ -827,7 +964,7 @@ class Game {
             return;
         }
         this.darkHurtT += dt;
-        if (this.darkHurtT > 3.6) {
+        if (this.darkHurtT > 5) {
             this.darkHurtT = 0;
             this._shadowHit('A chama apagou. A noite ficou grande demais.');
         }
@@ -852,6 +989,7 @@ class Game {
 
     _openDialogue(speaker, lines, item) {
         this.hud.setPrompt('');
+        this.guide.hide();
         this.dialogue = { speaker, lines: [...lines], item };
         this.state = 'dialogue';
         this.hud.setState('dialogue');
@@ -877,11 +1015,13 @@ class Game {
         const end = item?.kind === 'nara-end';
         this.dialogue = null;
         this.hud.hideDialogue();
+        this.dialogClosedAt = performance.now(); // E apertado várias vezes não reabre a conversa
         if (end) {
             // "Vai. Acende o primeiro sol." — o dia nasce antes da tela de vitória
             this.state = 'dawn';
             this.hud.setState('transition');
             this.input.enabled = false;
+            if (this.skipEl) this.skipEl.hidden = false;
             this.dawnT = 0;
             this.hud.setPrompt('');
             this.hud.say('O dia lembrou o caminho.', 5);
@@ -889,11 +1029,16 @@ class Game {
         }
         this.state = 'playing';
         this.hud.setState('playing');
+        this.input.consumeInteract();
+        this.input.consumeFlash();
+        this.hintT = 0;
         if (!this.touch) this.input.requestLock();
     }
 
     async _completeChapter() {
         if (this.state === 'transition') return;
+        this.guide.hide();
+        if (this.skipEl) this.skipEl.hidden = true;
         this.state = 'transition';
         this.hud.setState('transition');
         this.input.enabled = false;
@@ -920,6 +1065,7 @@ class Game {
 
     _defeat(reason) {
         if (this.state === 'defeat') return;
+        this.guide.hide();
         this.state = 'defeat';
         this.hud.setState('defeat');
         this.input.exitLock();

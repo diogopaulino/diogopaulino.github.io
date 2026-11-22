@@ -11,9 +11,9 @@ import { fbm2, smoothstep, lerp, seeded } from '../../shared/gfx/core.js';
 import {
     createCourse, createTerrain, createGrass, createForest, createWater, createPath, createFence, scatter, scatterModel
 } from '../../shared/gfx/terrain.js';
-import { ChapterWorld, own, makeRing, lightShaft, makePage, halo, emitter, addAmbient } from './world.js?v=30';
-import { Batch, trs, block, turned, stoneBridge, addBurrow, addTent, TAU } from './build.js?v=30';
-import { makeVillager, makeWizard, Extra, Critter, createCreature } from './actors.js?v=30';
+import { ChapterWorld, own, makeRing, lightShaft, makePage, halo, emitter, addAmbient } from './world.js?v=31';
+import { Batch, trs, block, turned, stoneBridge, addBurrow, addTent, TAU } from './build.js?v=31';
+import { makeVillager, makeWizard, Extra, Critter, createCreature } from './actors.js?v=31';
 
 /** Tocas: centro da fachada (x, z), direção para onde a porta olha e cor da porta. */
 const MAIN_DEF = { x: -21.5, z: -6.5, face: Math.atan2(8, 7), door: 0x3f7f3a, H: 4.4, R: 10.5, w: 6.8 };
@@ -226,7 +226,8 @@ export function buildShire(ctx) {
     const tables = [[-4.5, 5.5, 0.5], [5.5, 4.5, -0.4], [-9, 9, 0.4], [9.5, -4.5, 1.2]];
     tables.slice(0, low ? 2 : 4).forEach(([x, z, ry], i) => {
         world.prop('WoodenTable_01', x, z, { ry, height: 0.62, collider: 0.75, top: 0.8 });
-        for (const k of [-1, 1]) {
+        // cadeira fotogramétrica = ~20 mil triângulos cada (×2 com a sombra): fora no tier baixo
+        for (const k of low ? [] : [-1, 1]) {
             world.prop('WoodenChair_01', x + Math.cos(ry) * k * 1.0, z - Math.sin(ry) * k * 1.0, { ry: ry + (k > 0 ? -Math.PI / 2 : Math.PI / 2), height: 0.74 });
         }
         if (i < 2) world.prop('brass_goblets', x, z, { ry: i, y: fy(x, z) + 0.62, height: 0.16 });

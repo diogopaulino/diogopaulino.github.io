@@ -143,7 +143,12 @@ export class ShadowWisp {
         this.body.setFear(this.state === 'chase' ? 0.5 + this.alert * 0.5 : this.alert * 0.4);
         this.body.setDrift(0, 0.05, -sp * 0.1);
 
-        if (this.state !== 'flee' && dist < this.catchR) return 'caught';
+        if (this.state !== 'flee' && dist < this.catchR) {
+            // encostou na chama: foge por 3 s (Clara tem tempo de se afastar)
+            this.fleeT = 3;
+            this.state = 'flee';
+            return 'caught';
+        }
         if (this.state === 'chase') return 'chase';
         return null;
     }
@@ -216,7 +221,10 @@ export class NightWraith {
         const v = Math.hypot(this.x - px, this.z - pz) / Math.max(dt, 1e-4);
         this.body.setDrift(0, 0.04, -Math.min(0.6, v * 0.08));
 
-        if (this.stun <= 0 && dist < this.catchR) return 'caught';
+        if (this.stun <= 0 && dist < this.catchR) {
+            this.stun = 2.5; // depois de soprar a chama, a Noite recua tonta
+            return 'caught';
+        }
         if (this.alert > 0.4) return 'chase';
         return null;
     }
