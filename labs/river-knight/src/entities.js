@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { Entity } from './entity.js?v=50';
-import { Tower, Barricade } from './structures.js?v=50';
+import { Tower, Barricade } from './structures.js?v=51';
 import { buildLongship } from './ships.js?v=50';
 import {
     buildRockGeometry,
@@ -16,10 +16,10 @@ import {
     buildArrowMesh,
     buildCannonballMesh,
     plainMaterial
-} from './models.js?v=50';
-import { waterHeight, waterSlope } from './water.js?v=50';
-import { centerX, halfWidth } from './river.js?v=50';
-import { CANNON, SCORE } from './config.js?v=50';
+} from './models.js?v=51';
+import { waterHeight, waterSlope } from './water.js?v=51';
+import { centerX, halfWidth } from './river.js?v=51';
+import { CANNON, SCORE } from './config.js?v=51';
 import { clamp, damp, randRange } from './utils.js?v=50';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -546,7 +546,7 @@ export class Entities {
 
     /** Atualiza todas as entidades ativas. */
     update(dt, ctx) {
-        for (const key of Object.keys(this.pools)) {
+        for (const key of this._poolKeys || (this._poolKeys = Object.keys(this.pools))) {
             for (const entity of this.pools[key]) {
                 if (entity.active) entity.update(dt, ctx);
             }
@@ -604,7 +604,7 @@ export class Entities {
     }
 
     reset() {
-        for (const key of Object.keys(this.pools)) {
+        for (const key of this._poolKeys || (this._poolKeys = Object.keys(this.pools))) {
             for (const entity of this.pools[key]) entity.deactivate();
         }
     }

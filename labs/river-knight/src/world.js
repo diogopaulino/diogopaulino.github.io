@@ -7,9 +7,9 @@ import * as THREE from 'three';
 import { createTreeKit } from '../../shared/gfx/terrain.js';
 import { createCreature } from '../../shared/gfx/creature.js';
 import { loadModel } from '../../shared/gfx/assets.js';
-import { buildReedGeometry, applyVegetationWind } from './models.js?v=50';
-import { centerX, halfWidth, terrainHeight } from './river.js?v=50';
-import { COURSE_LENGTH, BOSS_Z, CASTLE_Z } from './config.js?v=50';
+import { buildReedGeometry, applyVegetationWind } from './models.js?v=51';
+import { centerX, halfWidth, terrainHeight } from './river.js?v=51';
+import { COURSE_LENGTH, BOSS_Z, CASTLE_Z } from './config.js?v=51';
 import { clamp, randRange, pick } from './utils.js?v=50';
 
 const SPAWN_AHEAD = 430;

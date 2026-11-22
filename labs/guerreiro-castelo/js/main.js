@@ -3,7 +3,7 @@
  * `?debug=1` expõe `window.__lab` com atalhos de teste (pular de fase, teleportar).
  */
 
-import { Game } from './core/Game.js?v=41';
+import { Game } from './core/Game.js?v=49';
 
 const canvas = document.getElementById('scene');
 const game = new Game(canvas);

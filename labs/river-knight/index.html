@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=11">
 
     <script type="importmap">
     {
@@ -166,7 +166,7 @@
             <!-- Controles de toque -->
             <div id="touchControls" class="touch-controls" hidden>
                 <div class="steer-zone" id="steerZone" aria-label="Arraste para navegar">
-                    <span class="steer-hint">navegar</span>
+                    <span class="steer-hint">◀ arraste para virar ▶</span>
                 </div>
                 <div class="touch-buttons">
                     <button type="button" class="pad pad-boost" data-control="boost" aria-label="Acelerar">REMAR</button>
@@ -190,22 +190,33 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · ondas de Gerstner · céu físico</p>
+                    <p class="eyebrow"><i></i> uma aventura rio abaixo</p>
                     <h1>River <span>Knight</span></h1>
-                    <p class="lede">A princesa está presa na torre de Morvain. O barco já avança — você
-                        aponta, dispara e desvia. A mira trava sozinha no alvo mais próximo.</p>
+                    <p class="lede">A princesa está presa no castelo de Morvain. Leve o barco rio abaixo,
+                        derrube a Barcaça Negra e abra o portão.</p>
+                    <ul class="howto" aria-label="Como jogar">
+                        <li><b>Virar</b> <span class="k-desk"><kbd>←</kbd><kbd>→</kbd> ou <kbd>A</kbd><kbd>D</kbd></span><span class="k-touch">arraste o dedo no lado esquerdo</span></li>
+                        <li><b>Atirar</b> <span class="k-desk"><kbd>Espaço</kbd> ou clique</span><span class="k-touch">botão 🔥</span> · a mira trava sozinha</li>
+                        <li><b>Pegue</b> ❤ para consertar o barco · fuja das pedras</li>
+                    </ul>
                 </header>
 
-                <div class="menu-grid">
-                    <section class="menu-section">
-                        <h2>Jornada</h2>
+                <section class="menu-start" aria-label="Começar">
+                    <div class="menu-section">
+                        <h2>Dificuldade</h2>
                         <div id="difficultyOptions" class="chip-row" role="radiogroup"
                             aria-label="Dificuldade"></div>
                         <p id="difficultyBlurb" class="section-note"></p>
-                    </section>
+                    </div>
+                    <button id="startButton" class="primary-button primary-button--big" type="button">
+                        <span>Zarpar</span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                </section>
 
-                    <details class="menu-section menu-disclosure" open>
-                        <summary>Comandos</summary>
+                <div class="menu-grid">
+                    <details class="menu-section menu-disclosure">
+                        <summary>Todos os comandos</summary>
                         <div class="keys keys--board">
                             <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> governar o navio</span>
                             <span><kbd>W</kbd> remar forte · <kbd>S</kbd> segurar</span>
@@ -218,7 +229,7 @@
                         </div>
                     </details>
 
-                    <details class="menu-section menu-disclosure" open>
+                    <details class="menu-section menu-disclosure">
                         <summary>Ajustes</summary>
                         <div class="settings-grid">
                             <label class="field">
@@ -238,13 +249,6 @@
                         <p class="section-note">Melhor glória: <b id="bestScore" class="mono">—</b></p>
                     </details>
                 </div>
-
-                <footer class="menu-foot">
-                    <button id="startButton" class="primary-button" type="button">
-                        <span>Zarpar</span>
-                        <i aria-hidden="true">→</i>
-                    </button>
-                </footer>
             </div>
         </div>
 
@@ -267,7 +271,7 @@
                 <h2>O rio levou<br>o guerreiro.</h2>
                 <div id="defeatStats" class="stats"></div>
                 <div class="card-actions">
-                    <button id="retryButton" class="primary-button" type="button">
+                    <button id="retryButton" class="primary-button primary-button--big" type="button">
                         <span>Tentar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="defeatMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
@@ -281,8 +285,8 @@
                 <h2>A princesa<br>está livre.</h2>
                 <div id="victoryStats" class="stats"></div>
                 <div class="card-actions">
-                    <button id="replayButton" class="primary-button" type="button">
-                        <span>Nova jornada</span><i aria-hidden="true">→</i>
+                    <button id="replayButton" class="primary-button primary-button--big" type="button">
+                        <span>Jogar de novo</span><i aria-hidden="true">↻</i>
                     </button>
                     <button id="victoryMenuButton" class="ghost-button" type="button">Voltar ao porto</button>
                 </div>
@@ -302,7 +306,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=50"></script>
+    <script type="module" src="src/main.js?v=52"></script>
 </body>
 
 </html>

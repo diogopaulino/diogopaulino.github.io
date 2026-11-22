@@ -47,7 +47,7 @@ export class CastleExteriorLevel extends Level {
 
         const ty = isl.heightAt(M.tree.x, M.tree.z);
         this.treeBase = V(M.tree.x, ty, M.tree.z);
-        this.addInteract({
+        this.treeItem = this.addInteract({
             object: this.proxy(M.tree.x, ty + 1.2, M.tree.z),
             interactionLabel: 'Mandar Teco',
             interactionDistance: 4.5,
@@ -61,12 +61,17 @@ export class CastleExteriorLevel extends Level {
     /** Retomada de checkpoint: a vista do castelo já aconteceu. */
     resume(cp) {
         this.nearCastle = true;
-        if (cp === 'secret_door') this.tecoSent = true;
+        if (cp === 'secret_door' || this.game.story.flags.otherEntrance) {
+            this.tecoSent = true;
+            this.treeItem.enabled = false;
+        }
     }
 
     sendTecoTree(game) {
         if (this.tecoSent) return;
         this.tecoSent = true;
+        /* missão dada: o aviso sai (antes "Mandar Teco" ficava na tela sem fazer nada) */
+        this.treeItem.enabled = false;
         const b = this.treeBase;
         const path = [V(b.x + 0.5, b.y + 0.3, b.z + 0.5), V(b.x + 0.35, b.y + 4.2, b.z + 0.3), V(b.x + 0.2, b.y + 7.2, b.z)];
         game.teco.ai.command(path, {

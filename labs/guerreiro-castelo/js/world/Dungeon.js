@@ -27,6 +27,10 @@ import { loadModel } from '../../../shared/gfx/assets.js';
 import { Kit, block, wallGeo, vaultGeo, ribGeo, columnGeo, shadowAll } from './Build.js?v=40';
 import { addTorch, EnvironmentFX, makeFire } from './Environment.js?v=40';
 
+/* Adereços pequenos e muito densos (o baú tem ~95 mil triângulos) não projetam sombra:
+   a sombra deles mal aparece e custava um passe inteiro a mais por luz (×6 na lareira). */
+const NO_SHADOW = new Set(['treasure_chest', 'brass_goblets']);
+
 const T = 0.6;
 export const UP = 3.2;
 
@@ -167,7 +171,7 @@ export async function buildDungeon(game) {
         if (!m) return null;
         m.position.set(x, y, z);
         m.rotation.y = ry;
-        shadowAll(m);
+        shadowAll(m, !NO_SHADOW.has(name));
         g.add(m);
         if (solid) col.addPillar(x, z, solid, m.userData.size.y, y);
         props.push(m);

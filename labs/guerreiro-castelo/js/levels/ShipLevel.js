@@ -82,7 +82,7 @@ export class ShipLevel extends Level {
             }
         });
 
-        this.addInteract({
+        this.tecoItem = this.addInteract({
             object: g.teco.root,
             interactionLabel: 'Interagir com Teco',
             interactionDistance: 2.4,
@@ -129,8 +129,12 @@ export class ShipLevel extends Level {
         this.game.player.spawn(x, deckY(x, z), z, yaw);
     }
 
-    enter() {
+    enter(checkpoint) {
         const g = this.game;
+        /* Retomada na tempestade (storm_start / storm_rope): o objetivo e o checkpoint
+           ficam os da tempestade. Antes o enter regravava 'ship_start' e a segunda batida
+           na rocha mandava Dico de volta para a exploração do convés. */
+        const resumeStorm = checkpoint === 'storm_start' || checkpoint === 'storm_rope';
         g.player.attachTo(this.ship);
         g.teco.attachTo(this.ship);
         const s = SHIP_MARKS.spawn;
@@ -143,18 +147,24 @@ export class ShipLevel extends Level {
         g.storm.setIntensity(0);
         g.ocean.setMode('calm');
         g.ocean.visible = true;
-        g.quests.set('explore_ship');
-        g.checkpoints.save('ship_start', g.story._saveBlob());
+        if (!resumeStorm) {
+            g.quests.set('explore_ship');
+            g.checkpoints.save('ship_start', g.story._saveBlob());
+        }
         g.cameraRig.setWorld(g.collision, this.ship, false);
         g.cameraRig.yaw = 0;
         g.cameraRig.pitch = 0.42;
+        if (resumeStorm) return;
         g.hud.showObjective('Explore o navio');
-        g.hud.showToast('Arraste para olhar. Clique ataca, Shift corre, E interage.', 7);
+        g.hud.showToast(g.hud.isTouch ? 'Arraste a tela para olhar. Botão E fala e usa.' : 'Arraste para olhar. E fala e usa, Shift corre.', 7);
     }
 
     _storm() {
         const g = this.game;
         this.phase = 'storm';
+        /* Na tempestade o aviso "Interagir com Teco" (que não faz nada) roubava o
+           "Mandar Teco" do cabo — Teco está sempre colado em Dico. */
+        this.tecoItem.enabled = false;
         g.weather.apply('storm');
         g.ocean.setMode('storm');
         g.audio.setTheme('storm');
@@ -216,7 +226,7 @@ export class ShipLevel extends Level {
         g.cameraRig.override = { distance: 15, height: 4.5, pitch: 0.36 };
         g.cameraRig.yaw = 0;
         g.hud.showObjective('Assuma o leme — desvie da rocha');
-        g.hud.showToast('A / D ou o analógico viram o leme', 5);
+        g.hud.showToast(g.hud.isTouch ? 'Incline o analógico para virar o navio' : 'Vire o navio com A / D ou ← →', 6);
         this.shipZ = 0;
         this.shipX = 0;
         this.steer = 0;

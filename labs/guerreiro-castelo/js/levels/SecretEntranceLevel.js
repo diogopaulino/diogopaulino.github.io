@@ -28,9 +28,12 @@ export class SecretEntranceLevel extends Level {
             interactionDistance: 2.4,
             interact: (_p, game) => {
                 if (this.opened) return;
-                game.dialogue.say('DICO', 'Trancada por dentro.');
-                this.lockItem.interactionLabel = 'Pedir ajuda a Teco';
+                /* Os dois avisos ("Abrir" e "Pedir ajuda a Teco") ficam a meio metro um do
+                   outro e o "Abrir", mais perto da câmera, vencia sempre: a porta não abria
+                   nunca. Agora tentar abrir já chama Teco. */
+                game.dialogue.say('DICO', 'Trancada por dentro. Teco, passe pela fresta!');
                 this.tried = true;
+                this.sendTeco(game);
             }
         });
 
@@ -52,6 +55,7 @@ export class SecretEntranceLevel extends Level {
     sendTeco(game) {
         if (this.opened || this.sent) return;
         this.sent = true;
+        for (const item of this.interactables) item.enabled = false;
         const dest = this.island.lock.getWorldPosition(new THREE.Vector3());
         dest.x -= 0.25;
 

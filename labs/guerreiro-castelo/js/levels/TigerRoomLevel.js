@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { Level } from './Level.js?v=40';
 import { Tiger } from '../characters/Tiger.js?v=40';
 import { Kit, block } from '../world/Build.js?v=40';
-import { UP } from '../world/Dungeon.js?v=40';
+import { UP } from '../world/Dungeon.js?v=42';
 
 /* vigas: [x, y, z] relativos ao centro da sala — o caminho de Teco passa por cima delas */
 const BEAMS = [[-3, 2.6, -2], [0, 3.1, 1], [2.4, 3.4, -1], [4, 3.6, 2]];

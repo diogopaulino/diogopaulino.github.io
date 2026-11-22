@@ -33,10 +33,12 @@ export class HUD {
 
     show() {
         if (this.el.hud) this.el.hud.hidden = false;
+        document.body.dataset.playing = 'true';
     }
 
     hide() {
         if (this.el.hud) this.el.hud.hidden = true;
+        delete document.body.dataset.playing;
     }
 
     setLoading(p, text) {
@@ -107,6 +109,12 @@ export class HUD {
 
     showToast(text, seconds = 3.2) {
         if (!this.el.toast) return;
+        /* O cartão de capítulo ocupa o centro: o aviso espera ele sumir (antes os dois
+           textos se sobrepunham na chegada de cada fase). */
+        if (this._chapterT > 0) {
+            this._pendingToast = [text, seconds];
+            return;
+        }
         this.el.toast.hidden = false;
         this.el.toast.textContent = text;
         this._toastT = seconds;
@@ -114,6 +122,11 @@ export class HUD {
 
     showChapter(title, sub) {
         if (!this.el.chapter) return;
+        if (this._toastT > 0 && this.el.toast && !this.el.toast.hidden) {
+            this._pendingToast = [this.el.toast.textContent, Math.max(2.5, this._toastT)];
+            this._toastT = 0;
+            this.el.toast.hidden = true;
+        }
         this.el.chapter.hidden = false;
         if (this.el.chapterTitle) this.el.chapterTitle.textContent = title;
         if (this.el.chapterSub) this.el.chapterSub.textContent = sub || '';
@@ -150,7 +163,14 @@ export class HUD {
         }
         if (this._chapterT > 0) {
             this._chapterT -= dt;
-            if (this._chapterT <= 0 && this.el.chapter) this.el.chapter.hidden = true;
+            if (this._chapterT <= 0 && this.el.chapter) {
+                this.el.chapter.hidden = true;
+                if (this._pendingToast) {
+                    const [text, seconds] = this._pendingToast;
+                    this._pendingToast = null;
+                    this.showToast(text, seconds);
+                }
+            }
         }
 
         if (this.game && this.game.player) {

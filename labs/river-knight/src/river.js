@@ -15,7 +15,7 @@
  */
 
 /** Z do castelo — precisa ser conhecido aqui para aplainar a esplanada. */
-import { CASTLE_Z } from './config.js?v=50';
+import { CASTLE_Z } from './config.js?v=51';
 
 export const RIVER = {
     bendAmp1: 38,

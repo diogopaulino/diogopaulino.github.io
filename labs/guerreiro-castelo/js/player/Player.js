@@ -6,6 +6,10 @@
  *   agachado → sneak · no ar → jump com a fase presa ao tempo de voo
  *   golpe → `upper: 'attack'` sobreposto à locomoção, fase = 1 − attackT/0,42
  *   defesa → block (parado) ou `upper: 'block'` (andando) · leme → mãos à frente
+ *
+ * Vida (modo gentil, para crianças também): 5 corações; cada golpe tira 1 (0,35 com
+ * defesa) e dá 1,2 s de invulnerabilidade. Sem levar dano por REGEN_DELAY (5 s), Dico
+ * recupera 1 coração a cada REGEN_STEP (3 s) até encher.
  */
 
 import * as THREE from 'three';
@@ -14,6 +18,9 @@ import { makeHero } from '../characters/cast.js?v=40';
 import { angleDamp } from '../utils/math.js';
 
 const ATTACK_TIME = 0.42;
+const INVULN_TIME = 1.2;
+const REGEN_DELAY = 5;
+const REGEN_STEP = 3;
 
 export class Player {
     constructor(collision) {
@@ -93,7 +100,8 @@ export class Player {
         if (this.invuln > 0 || !this.alive) return false;
         if (this.blockT > 0) amount *= 0.35;
         this.health -= amount;
-        this.invuln = 0.9;
+        this.invuln = INVULN_TIME;
+        this.sinceHurt = 0;
         if (this.health <= 0) {
             this.health = 0;
             this.alive = false;
@@ -117,6 +125,16 @@ export class Player {
 
     update(dt, input, camYaw) {
         this.invuln = Math.max(0, this.invuln - dt);
+        this.sinceHurt = (this.sinceHurt || 0) + dt;
+        if (this.alive && this.health < this.maxHealth && this.sinceHurt > REGEN_DELAY) {
+            this.regenT = (this.regenT || 0) + dt;
+            if (this.regenT >= REGEN_STEP) {
+                this.regenT = 0;
+                this.health = Math.min(this.maxHealth, Math.ceil(this.health + 0.01));
+            }
+        } else {
+            this.regenT = 0;
+        }
         this.attackT = Math.max(0, this.attackT - dt);
         this.blockT = Math.max(0, this.blockT - dt);
         this.interactT = Math.max(0, this.interactT - dt);

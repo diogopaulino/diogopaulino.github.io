@@ -4,7 +4,7 @@
  */
 
 import { formatTime } from './utils.js?v=50';
-import { DIFFICULTY } from './config.js?v=50';
+import { DIFFICULTY } from './config.js?v=51';
 
 const $ = (id) => document.getElementById(id);
 
@@ -194,12 +194,19 @@ export class Hud {
             this.el.reticleLabel.textContent = '';
             return;
         }
-        const labels = { towers: 'Torre', enemyShips: 'Navio', barricades: 'Barricada' };
+        const labels = { towers: 'Torre', enemyShips: 'Navio', barricades: 'Barricada', boss: 'Barcaça' };
         this.el.reticleLabel.textContent = labels[lock.kind] || 'Alvo';
     }
 
-    setHint(visible) {
+    /** Dica da largada; o texto muda com o canhão automático e com o toque. */
+    setHint(visible, autoFire = false, touch = false) {
         if (!this.el.hintBar) return;
+        if (visible) {
+            const steer = touch ? 'Arraste à esquerda para virar' : 'Vire com ← →';
+            this.el.hintBar.textContent = autoFire
+                ? `${steer}. O canhão atira sozinho!`
+                : `${steer} e dispare com ${touch ? '🔥' : 'Espaço'} — a mira é automática.`;
+        }
         this.el.hintBar.classList.toggle('is-on', Boolean(visible));
     }
 

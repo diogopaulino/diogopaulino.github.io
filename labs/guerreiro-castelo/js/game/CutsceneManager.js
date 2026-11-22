@@ -47,6 +47,11 @@ export class CutsceneManager {
     skip() {
         if (!this.blocking) return;
         this.t = this.duration;
+        /* o evento do meio (cartão de capítulo, falas) ainda acontece ao pular */
+        if (!this.midFired) {
+            this.midFired = true;
+            this.onMid?.();
+        }
         this._finish();
     }
 
