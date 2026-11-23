@@ -15,6 +15,7 @@
 html {
     background: var(--ink);
     overscroll-behavior: none;
+    overflow-x: hidden;
     overflow-x: clip;
 }
 
@@ -534,6 +535,7 @@ footer a {
 @media (max-width: 900px) {
     body {
         padding: 10px;
+        overflow-x: hidden;
         overflow-x: clip;
     }
 
@@ -775,6 +777,7 @@ footer a {
     body {
         padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px))
             max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+        overflow-x: hidden;
         overflow-x: clip;
     }
 

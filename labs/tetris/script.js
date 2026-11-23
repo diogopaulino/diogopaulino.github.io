@@ -1351,7 +1351,9 @@ function cellCssSize() {
 
 if (screenEl) {
     screenEl.addEventListener('pointerdown', event => {
-        if (gesture || event.button !== 0) return;
+        // Em Safari/iOS o toque às vezes chega com button === -1; só o mouse
+        // deve filtrar botão auxiliar.
+        if (gesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
         // Botões do overlay (modo, jogar, continuar) cuidam do próprio clique.
         if (event.target.closest('button')) return;
         capturePointer(screenEl, event.pointerId);

@@ -200,6 +200,11 @@ export function createStage({
     const software = detectSoftwareGL(renderer);
     let tier = software ? 'low' : pickTier(tierChoice);
     let cfg = STAGE_TIERS[tier];
+    // iPhone/iPad: DPR 3 com pós-processamento derruba o fps; começa mais baixo
+    // e sobe só se o medidor de desempenho permitir.
+    const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
     if (forceLDR) {
         const has = renderer.extensions.has.bind(renderer.extensions);
         renderer.extensions.has = (n) => (/color_buffer_(half_)?float/.test(n) ? false : has(n));
@@ -324,7 +329,11 @@ export function createStage({
     }
 
     // ---------- tamanho ----------
-    let pixelRatio = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+    let pixelRatio = Math.min(
+        window.devicePixelRatio || 1,
+        cfg.pixelRatio,
+        appleTouch || coarse ? 1.5 : cfg.pixelRatio
+    );
     let appliedRatio = 0;
     function resize() {
         const w = canvas.clientWidth || (canvas.isConnected ? 0 : window.innerWidth);

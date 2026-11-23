@@ -1075,7 +1075,7 @@ body[data-state="paused"] .toast {
 
 /* agent-responsive-768 */
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
+  html, body { overflow-x: hidden; overflow-x: clip; }
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }

@@ -314,7 +314,8 @@ class BeigeBox {
            OrbitControls no mesmo elemento, então dá para desligar a órbita
            antes que ela comece a girar a câmera. */
         canvas.addEventListener('pointerdown', (e) => {
-            if (!e.isPrimary || e.button !== 0 || !this.crt.power || this.crt.mode !== 'win') return;
+            // Safari/iOS: toque pode chegar com button === -1.
+            if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0) || !this.crt.power || this.crt.mode !== 'win') return;
             const uv = this.screenUv(e);
             if (!uv || !this.crt.pointerDown(uv.x, uv.y)) return;
             this.screenDrag = true;

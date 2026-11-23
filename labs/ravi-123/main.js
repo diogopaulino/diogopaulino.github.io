@@ -107,10 +107,17 @@ function syncSoundButton(btn, muted) {
 }
 
 async function toggleFullscreen() {
+  // iOS Safari não tem Fullscreen API para páginas — botão some via CSS/UA.
   const root = document.documentElement;
+  const isFull = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
   try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (root.requestFullscreen) await root.requestFullscreen();
+    if (isFull()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) await exit.call(document);
+    } else {
+      const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (enter) await enter.call(root);
+    }
   } catch (_) {
     /* ignore */
   }

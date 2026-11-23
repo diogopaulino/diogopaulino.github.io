@@ -12,6 +12,7 @@
 
 html,
 body.kong-lab {
+    overflow-x: hidden;
     overflow-x: clip;
 }
 

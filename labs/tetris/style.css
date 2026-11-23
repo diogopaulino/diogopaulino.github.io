@@ -724,6 +724,7 @@ body {
 
 @media (max-width: 768px) {
     body {
+        overflow-x: hidden;
         overflow-x: clip;
         padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
         padding-right: max(0.5rem, env(safe-area-inset-right, 0px));

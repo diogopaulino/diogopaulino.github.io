@@ -20,6 +20,7 @@
 }
 
 body {
+  overflow-x: hidden;
   overflow-x: clip;
   touch-action: manipulation;
 }

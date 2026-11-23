@@ -27,6 +27,7 @@ body {
   width: 100%;
   height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
   overflow-x: clip;
   background:
     radial-gradient(ellipse 80% 70% at 50% 45%, #142048 0%, #050814 70%, #000 100%);
@@ -242,7 +243,7 @@ html[data-fit="side"] #rotate-hint {
 }
 
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
+  html, body { overflow-x: hidden; overflow-x: clip; }
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }

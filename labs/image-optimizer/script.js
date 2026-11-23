@@ -19,6 +19,34 @@ import { makeZip } from './zip.js?v=1';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+const isAppleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+/** No iPhone o atributo download falha com frequência — tenta a folha de share. */
+async function saveBlob(blob, filename) {
+    const file = typeof File !== 'undefined' ? new File([blob], filename, { type: blob.type || 'application/octet-stream' }) : null;
+    if (file && isAppleTouch && typeof navigator.share === 'function') {
+        const payload = { files: [file], title: filename };
+        if (typeof navigator.canShare !== 'function' || navigator.canShare(payload)) {
+            try {
+                await navigator.share(payload);
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+            }
+        }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 const MAX_AREA = 16777216;
 const MAX_FILES = 120;
 const MAX_BYTES = 120 * 1024 * 1024;
@@ -712,8 +740,11 @@ grid.addEventListener('click', (e) => {
     const item = items.get(Number(li && li.dataset.id));
     if (!item) return;
     const act = target.dataset.act;
-    if (act === 'download' && target.getAttribute('aria-disabled') === 'true') {
+    if (act === 'download') {
         e.preventDefault();
+        if (target.getAttribute('aria-disabled') === 'true') return;
+        const out = finalOutput(item);
+        if (out) void saveBlob(out.blob, out.name);
         return;
     }
     if (act === 'remove') removeItem(item);
@@ -779,10 +810,7 @@ downloadAllBtn.addEventListener('click', async () => {
     const outs = Array.from(items.values()).map(finalOutput).filter(Boolean);
     if (!outs.length) return;
     if (outs.length === 1) {
-        const a = document.createElement('a');
-        a.href = outs[0].url;
-        a.download = outs[0].name;
-        a.click();
+        await saveBlob(outs[0].blob, outs[0].name);
         return;
     }
     const label = downloadAllBtn.querySelector('span');
@@ -802,12 +830,7 @@ downloadAllBtn.addEventListener('click', async () => {
             return { name, blob: o.blob };
         });
         const zip = await makeZip(files);
-        const url = URL.createObjectURL(zip);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `imagens-otimizadas-${new Date().toISOString().slice(0, 10)}.zip`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        await saveBlob(zip, `imagens-otimizadas-${new Date().toISOString().slice(0, 10)}.zip`);
         notice(`ZIP com ${files.length} imagens · ${fmtBytes(zip.size)}`);
     } catch {
         notice('Não foi possível gerar o ZIP (memória insuficiente?). Baixe uma a uma.');

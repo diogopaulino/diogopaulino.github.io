@@ -90,27 +90,40 @@
             logo.setAttribute('aria-level', '1');
         }
 
-        if (header.hasAttribute('data-fullscreen') && document.fullscreenEnabled) {
+        // iOS Safari não oferece Fullscreen API para elementos de página — só
+        // vídeos com webkitEnterFullscreen. Esconder o botão evita um no-op.
+        const canFullscreen = Boolean(
+            document.fullscreenEnabled
+            || document.webkitFullscreenEnabled
+        ) && typeof (html.requestFullscreen || html.webkitRequestFullscreen) === 'function';
+        if (header.hasAttribute('data-fullscreen') && canFullscreen) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'lab-icon-btn';
             button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>';
+            const isFull = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
             const sync = () => {
-                const full = Boolean(document.fullscreenElement);
+                const full = isFull();
                 button.setAttribute('aria-pressed', String(full));
                 button.title = full ? 'Sair da tela cheia' : 'Tela cheia';
                 button.setAttribute('aria-label', button.title);
             };
             button.addEventListener('click', async () => {
                 try {
-                    if (document.fullscreenElement) await document.exitFullscreen();
-                    else await html.requestFullscreen();
+                    if (isFull()) {
+                        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                        if (exit) await exit.call(document);
+                    } else {
+                        const enter = html.requestFullscreen || html.webkitRequestFullscreen;
+                        if (enter) await enter.call(html);
+                    }
                 } catch {
                     // O navegador pode cancelar a transição ao trocar de aba.
                     sync();
                 }
             });
             document.addEventListener('fullscreenchange', sync);
+            document.addEventListener('webkitfullscreenchange', sync);
             sync();
             header.querySelector('.header-actions').prepend(button);
         }
@@ -231,13 +244,53 @@
             if (!ctx) {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
                 if (!Ctx) return null;
-                ctx = new Ctx();
+                try {
+                    ctx = new Ctx({ latencyHint: 'interactive' });
+                } catch (err) {
+                    try { ctx = new Ctx(); } catch (err2) { return null; }
+                }
+                // iOS 17+: toca mesmo com a chave de silencioso (media playback).
+                try {
+                    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+                } catch (err) { /* opcional */ }
                 master = ctx.createGain();
                 master.gain.value = volume;
                 master.connect(ctx.destination);
             }
-            if (ctx.state === 'suspended') ctx.resume();
+            if (ctx.state === 'suspended') {
+                void ctx.resume().catch(() => {});
+            }
             return ctx;
+        }
+
+        /* iOS só libera o AudioContext dentro da cadeia síncrona de um gesto.
+           Um buffer silencioso de 1 sample “desbloqueia” de vez; sem isso o
+           primeiro tom pedido num rAF/setTimeout depois do toque fica mudo. */
+        function unlockFromGesture() {
+            const audio = ensureContext();
+            if (!audio) return;
+            try {
+                const buffer = audio.createBuffer(1, 1, audio.sampleRate || 22050);
+                const src = audio.createBufferSource();
+                src.buffer = buffer;
+                src.connect(master || audio.destination);
+                src.start(0);
+            } catch (err) { /* best-effort */ }
+        }
+
+        function armGestureUnlock() {
+            const opts = { capture: true, passive: true };
+            const onGesture = () => {
+                unlockFromGesture();
+                if (ctx && ctx.state === 'running') {
+                    document.removeEventListener('pointerdown', onGesture, opts);
+                    document.removeEventListener('touchstart', onGesture, opts);
+                    document.removeEventListener('keydown', onGesture, opts);
+                }
+            };
+            document.addEventListener('pointerdown', onGesture, opts);
+            document.addEventListener('touchstart', onGesture, opts);
+            document.addEventListener('keydown', onGesture, opts);
         }
 
         /* Uma nota. `slideTo` faz o glissando usado em power-ups e quedas;
@@ -363,10 +416,15 @@
         }
 
         muted = readMuted();
+        armGestureUnlock();
 
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && ctx?.state === 'running') {
-                void ctx.suspend().catch(() => {});
+            if (!ctx) return;
+            if (document.hidden) {
+                if (ctx.state === 'running') void ctx.suspend().catch(() => {});
+            } else if (!muted && ctx.state === 'suspended') {
+                // Voltar à aba: reabre o contexto (iOS o deixa suspenso ao sair).
+                void ctx.resume().catch(() => {});
             }
         });
 
@@ -377,6 +435,7 @@
             sequence,
             mountToggle,
             setMuted,
+            unlock: unlockFromGesture,
             isMuted: () => muted,
             onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); }
         });

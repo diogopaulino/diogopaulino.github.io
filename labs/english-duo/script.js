@@ -2531,6 +2531,15 @@ class SpeechManager {
             };
 
             try { this.synth.speak(utterance); } catch { this.failed = true; return; }
+            // Safari iOS às vezes “pausa” a fila de fala sem onend — um resume
+            // periódico mantém a utterance andando.
+            if (!this._resumeTimer) {
+                this._resumeTimer = window.setInterval(() => {
+                    try {
+                        if (this.synth && this.synth.speaking && this.synth.paused) this.synth.resume();
+                    } catch { /* ignore */ }
+                }, 250);
+            }
             // Vigia: não começou → falha; começou → limpa ao fim estimado.
             this._watch = window.setTimeout(() => {
                 if (token !== this._token) return;

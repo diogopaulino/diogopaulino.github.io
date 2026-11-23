@@ -269,7 +269,8 @@ export class InputManager {
     /* Sem pointer lock o jogo continua jogável: arrastar olha, um clique
        curto ataca. A trava do cursor é opcional e só entra nesse clique. */
     onPointerDown(e) {
-        if (this.touch.active || !this.enabled || e.button !== 0) return;
+        // Safari/iOS: toque pode chegar com button === -1; com HUD de toque ativo, ignore.
+        if (this.touch.active || !this.enabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
         this._drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
     }
 

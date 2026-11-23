@@ -389,7 +389,8 @@ window.addEventListener('keyup', e => {
 // Cada dedo mantém o próprio disparo até ser solto, mesmo com o direcional em uso.
 function bindFireControl(element) {
     element.addEventListener('pointerdown', event => {
-        if (!gameRunning || paused || event.button !== 0) return;
+        // Safari/iOS: toque pode chegar com button === -1; filtre só o mouse.
+        if (!gameRunning || paused || (event.pointerType === 'mouse' && event.button !== 0)) return;
         event.preventDefault();
         capturePointer(element, event.pointerId);
         firingPointers.add(event.pointerId);
@@ -406,7 +407,7 @@ bindFireControl(canvas);
    de onde ela está — o dedo pode ficar abaixo dela, sem cobri-la. */
 const DRAG_GAIN = 1.2;
 canvas.addEventListener('pointerdown', e => {
-    if (!gameRunning || paused || e.button !== 0) return;
+    if (!gameRunning || paused || (e.pointerType === 'mouse' && e.button !== 0)) return;
     drag = { id: e.pointerId, x: e.clientX, t: performance.now() };
 });
 canvas.addEventListener('pointermove', e => {

@@ -321,7 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     boardElement.addEventListener('pointerdown', (event) => {
         const cell = event.target.closest('.cell');
-        if (!cell || gameOver || event.button !== 0 || press) return;
+        // Safari/iOS: toque pode chegar com button === -1; clique direito usa contextmenu.
+        if (!cell || gameOver || (event.pointerType === 'mouse' && event.button !== 0) || press) return;
         const r = +cell.dataset.r, c = +cell.dataset.c;
         capturePointer(cell, event.pointerId);
         press = { id: event.pointerId, r, c, x: event.clientX, y: event.clientY, held: false };

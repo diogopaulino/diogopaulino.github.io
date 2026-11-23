@@ -216,14 +216,15 @@ export function bindTouch(playerInput, isActive) {
   }
 
   controls.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || !isActive()) return;
+    // Safari/iOS: toque pode chegar com button === -1.
+    if ((event.pointerType === 'mouse' && event.button !== 0) || !isActive()) return;
     const button = event.target.closest('[data-input]');
     const directional = dpad.contains(event.target);
     if (!button && !directional) return;
     event.preventDefault();
     const pointer = { id: event.pointerId, action: button?.dataset.input, directional, actions: [] };
     pointers.set(pointer.id, pointer);
-    controls.setPointerCapture(pointer.id);
+    try { controls.setPointerCapture(pointer.id); } catch { /* ponteiro já solto */ }
     update(pointer, actionsAt(pointer, event));
   });
 

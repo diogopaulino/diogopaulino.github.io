@@ -541,7 +541,8 @@ para perguntar como cada lab foi construído.`
     // pointerdown chama preventDefault para iniciar o arraste).
     let lastDown = { t: 0, x: 0, y: 0 };
     bar.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.win-controls') || e.button !== 0) return;
+      // Safari/iOS: toque pode chegar com button === -1.
+      if (e.target.closest('.win-controls') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       const now = performance.now();
       if (now - lastDown.t < 380 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 8) {
         lastDown.t = 0;
@@ -561,7 +562,7 @@ para perguntar como cada lab foi construído.`
   let gestureRaf = 0;
 
   function startGesture(e, w, mode) {
-    if (compact || e.button !== 0) return;
+    if (compact || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (mode === 'move' && e.target.closest('.win-controls')) return;
     e.preventDefault();
     focusWindow(w);

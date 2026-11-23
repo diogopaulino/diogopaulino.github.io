@@ -176,7 +176,11 @@ export function detectSoftwareGL(renderer) {
 }
 
 export function detectMobile() {
-    return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+    // iPadOS 13+ manda UA de Macintosh; maxTouchPoints distingue do Mac real.
+    const appleTouch = /iP(hone|ad|od)/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return appleTouch
+        || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
         || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 900);
 }
 

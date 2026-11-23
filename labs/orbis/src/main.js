@@ -858,7 +858,8 @@ class Orbis {
         });
 
         this.canvas.addEventListener('pointerdown', (e) => {
-            if (e.button !== 0) return;
+            // Safari/iOS: toque pode chegar com button === -1.
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
             this.dragging = false;
             this.ptrStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
         });

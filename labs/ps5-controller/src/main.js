@@ -1214,7 +1214,8 @@ var init_ProductScene = __esm({
       }
       /* ------------------------------------------------------ direct control -- */
       onDragStart = (event) => {
-        if (this.drag.active || event.button !== 0) return;
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (this.drag.active || (event.pointerType === "mouse" && event.button !== 0)) return;
         const surface = event.currentTarget;
         this.drag.active = true;
         this.drag.pointerId = event.pointerId;
@@ -1224,7 +1225,7 @@ var init_ProductScene = __esm({
         this.drag.lastMove = performance.now();
         this.drag.velocityYaw = 0;
         this.drag.velocityPitch = 0;
-        surface.setPointerCapture(event.pointerId);
+        try { surface.setPointerCapture(event.pointerId); } catch { /* ponteiro já solto */ }
         surface.style.cursor = "grabbing";
       };
       onDragMove = (event) => {

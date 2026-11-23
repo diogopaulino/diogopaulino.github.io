@@ -662,9 +662,10 @@ class Atelier {
         this.pointerPosition(e);
         this.renderDirty = true;
         this.cameraTransition = null;
-        if (e.button !== 0 || document.body.dataset.state !== 'play' || this.busy || this.pendingPromo || this.playIsOver()) return;
+        // Safari/iOS: toque pode chegar com button === -1.
+        if ((e.pointerType === 'mouse' && e.button !== 0) || document.body.dataset.state !== 'play' || this.busy || this.pendingPromo || this.playIsOver()) return;
         this.canvas.focus({ preventScroll: true });
-        this.canvas.setPointerCapture(e.pointerId);
+        try { this.canvas.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
         this.drag = { x: e.clientX, y: e.clientY, active: true, mesh: null, origin: null, square: -1 };
         const hit = this.hit();
         const piece = this.game.board[hit];

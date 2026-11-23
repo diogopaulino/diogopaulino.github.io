@@ -204,7 +204,12 @@ class Quimera {
         $('#muteBtn').addEventListener('click', () => this.toggleMute());
         $('#rotateBtn').addEventListener('click', () => this.toggleRotate());
         $('#frameBtn')?.addEventListener('click', () => this.toggleFrame());
-        $('#fullscreen').addEventListener('click', () => this.toggleFullscreen());
+        {
+            const fsBtn = $('#fullscreen');
+            const canFs = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+            if (fsBtn && !canFs) fsBtn.hidden = true;
+            else fsBtn?.addEventListener('click', () => this.toggleFullscreen());
+        }
         $('#photoBtn')?.addEventListener('click', () => this.photo());
         $('#shareBtn')?.addEventListener('click', () => this.share());
         $('#undoBtn')?.addEventListener('click', () => this.undo());
@@ -330,8 +335,17 @@ class Quimera {
 
     toggleFullscreen() {
         // iOS Safari não tem Fullscreen API para páginas: promessa rejeitada não pode vazar
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()?.catch?.(() => {});
-        else document.exitFullscreen?.()?.catch?.(() => {});
+        const root = document.documentElement;
+        const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+        try {
+            if (isFull) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                exit?.call(document)?.catch?.(() => {});
+            } else {
+                const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+                enter?.call(root)?.catch?.(() => {});
+            }
+        } catch { /* ignore */ }
     }
 
     /** Aviso curto no rodapé (link copiado, foto salva…). */
@@ -353,10 +367,25 @@ class Quimera {
         this.audio.resume();
         this.stage.render(0);
         const name = `quimera-${toHash(this.ids)}.png`;
-        this.canvas.toBlob((blob) => {
+        this.canvas.toBlob(async (blob) => {
             if (!blob) {
                 this.toast('Não deu para salvar a foto');
                 return;
+            }
+            const file = typeof File !== 'undefined' ? new File([blob], name, { type: 'image/png' }) : null;
+            const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+                || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (file && appleTouch && typeof navigator.share === 'function') {
+                const payload = { files: [file], title: name };
+                if (typeof navigator.canShare !== 'function' || navigator.canShare(payload)) {
+                    try {
+                        await navigator.share(payload);
+                        this.toast('Foto compartilhada');
+                        return;
+                    } catch (err) {
+                        if (err && err.name === 'AbortError') return;
+                    }
+                }
             }
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -366,7 +395,7 @@ class Quimera {
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 4000);
-            this.toast('📸 Foto salva!');
+            this.toast('Foto salva');
         }, 'image/png');
         this.audio.pluck(2);
     }
