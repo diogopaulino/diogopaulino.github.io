@@ -273,7 +273,9 @@ class Nina {
         this.input.clear();
         this.target.kind = '';
         this.syncHud();
-        this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && !matchMedia('(pointer: fine)').matches);
+        this.hud.setTouchVisible(
+            matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
+        );
         this.hud.showPlay();
         this.hud.say('Siga a seta dourada ➤ até uma amora 🫐.', 3600);
         this.state = 'play';

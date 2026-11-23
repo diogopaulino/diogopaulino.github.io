@@ -60,7 +60,8 @@ class RastroVermelho {
         this.lastHud = 0; this.lastSave = 0; this.timeScale = 1; this.focusActive = false; this.aimTimer = 0; this.audio = new Soundscape();
         this.hitstop = 0; this.invuln = 0; this.shake = 0; this.shooter = null; this.enemyGap = 0; this._shake = null;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-        this.coarse = matchMedia('(pointer: coarse)').matches;
+        this.coarse = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
         this.ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false });
         this.software = detectSoftwareGL(this.renderer);

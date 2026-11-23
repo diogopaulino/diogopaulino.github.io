@@ -2830,9 +2830,8 @@ function renderIntroduceExercise(lesson) {
     DOM.questionText.append(big, mean);
     const options = shuffleArray([lesson.word, ...distractors(lesson, 'word')]);
     renderOptions(options, lesson.word, checkTranslateAnswer);
-    if (audio.enabled) setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
-    }, 350);
+    // iOS Safari: speechSynthesis fora da cadeia do gesto fica mudo — o
+    // jogador toca a palavra nas opções / “Ouvir” para ouvir.
 }
 
 function renderListenChooseExercise(lesson) {
@@ -2844,7 +2843,7 @@ function renderListenChooseExercise(lesson) {
     const listenBtn = listenButton(lesson.sentence, lang.voice);
     DOM.optionsContainer.prepend(listenBtn);
     DOM.optionsContainer.append(cantListenButton());
-    setTimeout(() => { if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice); }, 450);
+    // Sem autoplay de TTS: no iPhone o setTimeout perde o gesto do usuário.
 }
 
 function listenButton(text, voice) {
@@ -2889,9 +2888,7 @@ function renderReverseExercise(lesson) {
     DOM.questionText.textContent = `O que significa “${lesson.word}”?`;
     const options = shuffleArray([lesson.translation, ...distractors(lesson, 'translation')]);
     renderOptions(options, lesson.translation, checkTranslateAnswer);
-    if (audio.enabled) setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
-    }, 350);
+    // TTS só sob gesto (botão / toque na opção) — ver renderIntroduceExercise.
 }
 
 function renderTranslateExercise(lesson) {
@@ -3029,9 +3026,7 @@ function renderListenWriteExercise(lesson) {
     DOM.questionType.textContent = 'Ouça e escreva';
     DOM.questionText.textContent = 'Ouça a frase e escreva o que você ouviu:';
 
-    setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice);
-    }, 500);
+    // Sem autoplay: no iOS o speak após setTimeout é bloqueado. Use “Ouvir”.
 
     DOM.optionsContainer.innerHTML = '';
     DOM.optionsContainer.className = 'write-exercise';

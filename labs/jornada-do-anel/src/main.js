@@ -136,7 +136,8 @@ class Game {
         this.scene = stage.scene;
         this.camera = stage.camera;
         this.renderer = stage.renderer;
-        this.mobile = matchMedia('(pointer: coarse)').matches;
+        this.mobile = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
         this.hud.setTouch(this.mobile);
         stage.pipeline.params.fade = 1;
         // o palco rebaixou o tier por desempenho: alivia a grama do capítulo atual

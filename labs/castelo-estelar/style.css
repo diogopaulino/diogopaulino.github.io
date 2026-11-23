@@ -893,6 +893,16 @@ body[data-state="paused"] .toast {
     }
 }
 
+/* iPadOS + trackpad: pointer fine, mas ainda precisa do stick. */
+html.is-touch body[data-state="explore"] .stick-zone {
+    display: block;
+}
+
+html.is-touch .only-touch {
+    display: inline-flex;
+    align-items: center;
+}
+
 #pauseButton {
     display: inline-flex;
     align-items: center;

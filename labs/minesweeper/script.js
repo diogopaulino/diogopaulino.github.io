@@ -343,7 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 450);
     });
     boardElement.addEventListener('pointermove', (event) => {
-        if (press?.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 6) endPress();
+        // iOS jitter / micro-scroll costuma passar de 6px — 16px ainda distingue arraste de long-press.
+        if (press?.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 16) endPress();
     });
     boardElement.addEventListener('pointerup', (event) => {
         if (press?.id !== event.pointerId) return;

@@ -63,7 +63,7 @@ class Game {
         let key = this.settings.quality;
         if (key === 'auto') {
             const cores = navigator.hardwareConcurrency || 8;
-            const memory = navigator.deviceMemory || 8;
+            const memory = navigator.deviceMemory || 4;
             if (this.mobile || cores <= 4 || memory <= 4) key = 'low';
             else key = cores >= 8 && Math.min(innerWidth, innerHeight) >= 700 ? 'high' : 'medium';
         }

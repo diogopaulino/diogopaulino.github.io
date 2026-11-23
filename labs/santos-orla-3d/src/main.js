@@ -35,6 +35,8 @@ const LOAD_TIMEOUT = 35000;
 const SPAWN = { x: -100, z: WALK.spawnZ, yaw: Math.PI / 2 };
 
 const coarsePointer = () => matchMedia('(pointer: coarse)').matches;
+// iPadOS + trackpad: pointer fine, mas ainda precisa do stick.
+const wantsTouchUi = () => coarsePointer() || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
 
 function withTimeout(promise, ms, message) {
     let timer;
@@ -350,10 +352,10 @@ class App {
 
         const touch = $('touchControls');
         if (touch) {
-            const coarse = coarsePointer();
-            touch.hidden = !coarse;
-            touch.style.display = coarse ? '' : 'none';
-            document.documentElement.classList.toggle('is-touch', coarse);
+            const on = wantsTouchUi();
+            touch.hidden = !on;
+            touch.style.display = on ? '' : 'none';
+            document.documentElement.classList.toggle('is-touch', on);
         }
 
         $('landmarkList')?.addEventListener('click', (e) => {

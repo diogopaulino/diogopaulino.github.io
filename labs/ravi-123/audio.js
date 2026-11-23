@@ -273,7 +273,28 @@ function finishUtterance(gen) {
   else duck(false);
 }
 
+let speechUnlocked = false;
+
+/** iOS: speechSynthesis só libera depois de um gesto. */
+function unlockSpeech() {
+  if (speechUnlocked || !hasSpeech()) return;
+  speechUnlocked = true;
+  try {
+    const warm = new SpeechSynthesisUtterance(' ');
+    warm.volume = 0;
+    warm.rate = 2;
+    window.speechSynthesis.speak(warm);
+    window.speechSynthesis.cancel();
+  } catch (_) { /* ignore */ }
+  pump();
+}
+
 function utter(text, quick) {
+  if (!speechUnlocked) {
+    // Guarda na fila até o primeiro toque; evita “narração muda” no iPhone.
+    if (text && !queue.includes(text)) queue.unshift(text);
+    return;
+  }
   const gen = ++generation;
   speaking = true;
   duck(true);
@@ -296,7 +317,7 @@ function utter(text, quick) {
 }
 
 function pump() {
-  if (speaking || !queue.length || !window.speechSynthesis || muted) return;
+  if (!speechUnlocked || speaking || !queue.length || !window.speechSynthesis || muted) return;
   utter(queue.shift(), false);
 }
 
@@ -313,7 +334,10 @@ export const Audio = {
     ensure();
     pickVoice();
     startBgmLoop();
+    unlockSpeech();
   },
+
+  unlockSpeech,
 
   get muted() {
     return muted;

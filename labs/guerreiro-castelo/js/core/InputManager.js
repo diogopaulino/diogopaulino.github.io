@@ -63,7 +63,13 @@ export class InputManager {
      */
     setupTouch() {
         const layer = document.getElementById('touchControls');
-        if (!layer || !window.matchMedia?.('(pointer: coarse)').matches) return;
+        // iPadOS + trackpad reporta pointer: fine; maxTouchPoints ainda precisa do HUD.
+        const wantsTouch = Boolean(
+            window.matchMedia?.('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+        );
+        if (!layer || !wantsTouch) return;
+        document.documentElement.classList.add('is-touch');
 
         const on = (el, type, fn, opts) => {
             el.addEventListener(type, fn, opts);

@@ -165,6 +165,7 @@ export class Hud {
 
     setTouchVisible(on) {
         this.el.touch.hidden = !on;
+        document.documentElement.classList.toggle('is-touch', Boolean(on));
     }
 
     fail(message) {

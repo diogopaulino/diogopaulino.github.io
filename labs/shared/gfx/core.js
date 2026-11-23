@@ -194,10 +194,11 @@ export function detectTouch() {
  */
 export function pickTier(choice = 'auto') {
     if (choice === 'low' || choice === 'medium' || choice === 'high') return choice;
-    const memory = navigator.deviceMemory || 8;
-    const cores = navigator.hardwareConcurrency || 8;
+    // Safari não expõe deviceMemory — assumir 4 evita medium/high otimista no iPhone.
+    const memory = navigator.deviceMemory || 4;
+    const cores = navigator.hardwareConcurrency || 4;
     const shortSide = Math.min(window.innerWidth, window.innerHeight);
-    if (detectMobile() || memory <= 4 || cores <= 4) return 'low';
+    if (detectMobile() || detectTouch() || memory <= 4 || cores <= 4) return 'low';
     if (memory >= 8 && cores >= 8 && shortSide >= 700) return 'high';
     return 'medium';
 }

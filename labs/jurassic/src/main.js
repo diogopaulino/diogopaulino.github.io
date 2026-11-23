@@ -85,7 +85,8 @@ class Game {
         this.thunderIn = -1;
         this.night = 0;
         this.hideUi = false;
-        this.touch = matchMedia('(pointer: coarse)').matches;
+        this.touch = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.zoom = 0;
         this.sparkAcc = 0;
@@ -367,7 +368,7 @@ class Game {
         this.hud.showMenu(false);
         this.hud.showPause(false);
         this.hud.showHud(!this.hideUi);
-        this.hud.showTouch(matchMedia('(pointer: coarse)').matches);
+        this.hud.showTouch(this.touch);
         this.hud.setRain(this.rain);
         this.hud.setTod(DAY_STOPS[this.tod].label);
         this.hud.setRadio('Central para Unidade 4: portão liberado. Seis espécies no circuito de hoje.');

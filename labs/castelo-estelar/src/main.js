@@ -440,7 +440,9 @@ class CasteloEstelar {
         this.stage.pipeline.params.fade = 1;
         this.input.setEnabled(true);
         this.setState('explore');
-        const touch = matchMedia('(pointer: coarse)').matches;
+        const touch = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+        document.documentElement.classList.toggle('is-touch', touch);
         this.toast(reset
             ? (touch ? 'Polegar esquerdo anda · arraste à direita para olhar. Siga a luz dourada.' : 'WASD ou setas andam · Shift corre · arraste para olhar. Siga a luz dourada.')
             : 'De volta ao passeio.', 6500);
