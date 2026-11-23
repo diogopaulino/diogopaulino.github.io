@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=9">
 
     <script type="application/ld+json">
     {
@@ -122,9 +122,16 @@
             <p id="toast" class="toast" hidden></p>
             <p id="prompt" class="prompt" hidden></p>
 
+            <!-- Marcador do objetivo: aponta para onde ir (ui/ObjectiveMarker.js) -->
+            <div id="objMarker" class="obj-marker" data-mode="on" hidden aria-hidden="true">
+                <i class="obj-gem"></i>
+                <span id="objDist" class="obj-dist"></span>
+            </div>
+
             <div id="dialogue" class="dialogue" hidden>
                 <span id="speaker" class="speaker"></span>
                 <p id="line" class="line"></p>
+                <span class="dialogue-next" aria-hidden="true"><span class="k-desk">Espaço</span><span class="k-touch">⤴</span> continua</span>
             </div>
 
             <div class="hud-actions">
@@ -177,6 +184,11 @@
                     <p class="eyebrow">uma história antes de dormir</p>
                     <h1>O Guerreiro e o Castelo<br><span>do Outro Lado do Mar</span></h1>
                     <p class="lede">Dico atravessa o mar com Teco para resgatar Camila. Tempestade, stealth, um tigre e a fuga sob flechas.</p>
+                    <ul class="howto" aria-label="Como jogar">
+                        <li><b>Andar</b> <span class="k-desk"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas</span><span class="k-touch">analógico à esquerda</span></li>
+                        <li><b>Falar e usar</b> <span class="k-desk"><kbd>E</kbd></span><span class="k-touch">botão E</span></li>
+                        <li><b>Siga o losango</b> <i class="howto-gem" aria-hidden="true"></i> ele mostra aonde ir</li>
+                    </ul>
                 </div>
                 <div class="menu-actions">
                     <button id="btnContinue" class="primary-button" type="button" disabled>Continuar</button>
@@ -241,7 +253,7 @@
                 <h1>O Guerreiro e o Castelo<br><span>do Outro Lado do Mar</span></h1>
                 <p class="lede">Fim da história. Dico, Teco e Camila voltaram em segurança para casa.</p>
                 <div class="menu-actions">
-                    <button id="btnPlayAgain" class="primary-button" type="button">Jogar novamente</button>
+                    <button id="btnPlayAgain" class="primary-button primary-button--big" type="button">Jogar de novo</button>
                     <button id="btnEndMenu" class="ghost-button" type="button">Menu</button>
                 </div>
             </div>
@@ -279,7 +291,7 @@
         }
     }
     </script>
-    <script type="module" src="js/main.js?v=41" onerror="guerreiroLoadError()"></script>
+    <script type="module" src="js/main.js?v=49" onerror="guerreiroLoadError()"></script>
 </body>
 
 </html>

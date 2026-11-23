@@ -23,6 +23,10 @@ export function createInput() {
   function onKey(e, isDown) {
     const bind = map[e.key];
     if (!bind) return;
+    // Botões dos painéis (Jogar, Continuar…) usam Enter/Espaço nativos; o jogo não
+    // recebe a mesma tecla em dobro. Esc e setas continuam chegando ao jogo.
+    const onPanelButton = e.target instanceof Element && e.target.closest('[data-ui] button');
+    if (isDown && onPanelButton && (bind === 'jump' || bind === 'start')) return;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
       e.preventDefault();
     }
@@ -34,6 +38,9 @@ export function createInput() {
         if (bind === 'pause') pulse.pause = true;
         if (bind === 'up') pulse.up = true;
         if (bind === 'mute') pulse.mute = true;
+        // Toques rápidos (menos de 1 frame) no mapa não se perdem.
+        if (bind === 'left') pulse.left = true;
+        if (bind === 'right') pulse.right = true;
       }
       down[bind] = true;
     } else {
@@ -43,8 +50,14 @@ export function createInput() {
 
   window.addEventListener('keydown', (e) => onKey(e, true), { passive: false });
   window.addEventListener('keyup', (e) => onKey(e, false));
-  window.addEventListener('blur', () => {
+  function releaseAll() {
     for (const k of Object.keys(down)) down[k] = false;
+    for (const k of Object.keys(touch)) touch[k] = false;
+    document.querySelectorAll('.pad-btn.is-down').forEach((el) => el.classList.remove('is-down'));
+  }
+  window.addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseAll();
   });
 
   function bindHold(el, flag) {
@@ -52,6 +65,7 @@ export function createInput() {
     const start = (ev) => {
       ev.preventDefault();
       touch[flag] = true;
+      el.classList.add('is-down');
       if (flag === 'jump') pulse.jump = true;
       if (flag === 'roll') pulse.roll = true;
       if (flag === 'up') pulse.up = true;
@@ -59,6 +73,7 @@ export function createInput() {
     const end = (ev) => {
       ev.preventDefault();
       touch[flag] = false;
+      el.classList.remove('is-down');
     };
     el.addEventListener('pointerdown', start);
     el.addEventListener('pointerup', end);
@@ -71,6 +86,7 @@ export function createInput() {
     touch,
     pulse,
     bindHold,
+    releaseAll,
     left() { return !!(down.left || touch.left); },
     right() { return !!(down.right || touch.right); },
     up() { return !!(down.up || touch.up); },
@@ -89,6 +105,8 @@ export function createInput() {
       pulse.pause = false;
       pulse.up = false;
       pulse.mute = false;
+      pulse.left = false;
+      pulse.right = false;
     }
   };
 }

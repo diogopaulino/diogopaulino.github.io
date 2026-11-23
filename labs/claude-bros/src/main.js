@@ -7,7 +7,7 @@
  */
 import * as THREE from 'three';
 import { updateWind } from '../../shared/gfx/flora.js';
-import { FIXED_STEP, RUN_SPEED, STORAGE_QUALITY, WATER_LEVEL, toX, toY, U } from './config.js';
+import { FIXED_STEP, RUN_SPEED, STORAGE_QUALITY, WATER_LEVEL, WORLD_WIDTH, toX, toY, U } from './config.js';
 import { createGame } from './game.js';
 import { createStage } from './stage.js';
 import { buildTerrain, decorate, grassWind } from './terrain.js';
@@ -28,6 +28,9 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlayTitle');
 const overlayText = document.getElementById('overlayText');
 const overlayButton = document.getElementById('overlayButton');
+const overlayEmoji = document.getElementById('overlayEmoji');
+const overlayHowto = document.getElementById('overlayHowto');
+const progressFill = document.getElementById('progressFill');
 const loadBar = document.getElementById('loadBar');
 const loadFill = document.getElementById('loadFill');
 const qualitySelect = document.getElementById('qualitySelect');
@@ -35,7 +38,7 @@ const statusLive = document.getElementById('gameStatus');
 const touchLayer = document.getElementById('touchControls');
 const audio = window.LabAudio;
 const params = new URLSearchParams(location.search);
-const INTRO_TEXT = 'Colete as faíscas, pule nos musgosos e chegue ao estandarte.';
+const INTRO_TEXT = 'Leve o Claude até a bandeira 🚩 no fim da fase!';
 
 let stage = null;
 let mascot = null;
@@ -146,7 +149,7 @@ const game = createGame((name, data) => {
             stage.view.shake = 0.5;
             sfx(data.last ? 'over' : 'hurt');
             if (!data.fell) fx.chips(px(), feet() + 0.4, 12, 0.85, 0.44, 0.31, 3.6);
-            announce(data.last ? `Fim de jogo. ${game.score} pontos.` : `Você perdeu uma vida. Restam ${game.lives}.`);
+            announce(data.last ? `Acabaram as vidas. ${game.score} pontos.` : `Ops! Restam ${game.lives} vidas.`);
             break;
         case 'splash':
             sfx('splash');
@@ -157,7 +160,7 @@ const game = createGame((name, data) => {
             snapCamera = true;
             break;
         case 'over':
-            showOverlay('Fim de jogo', `${game.score} pontos · ${game.coinsTaken} faíscas`, 'Recomeçar');
+            showOverlay('Quase lá!', `Acabaram as vidas. Você fez ${game.score} pontos e pegou ${game.coinsTaken} faíscas.`, 'Jogar de novo', '💪');
             break;
         case 'win':
             sfx('win');
@@ -167,7 +170,7 @@ const game = createGame((name, data) => {
             announce(`Você venceu com ${game.score} pontos.`);
             break;
         case 'wonOverlay':
-            showOverlay('Você venceu!', `${game.score} pontos · bônus de tempo ${game.bonus}`, 'Jogar de novo');
+            showOverlay('Você chegou à bandeira!', `${game.score} pontos · ${game.coinsTaken} faíscas · bônus de tempo ${game.bonus}`, 'Jogar de novo', '🏆');
             break;
     }
 });
@@ -178,6 +181,17 @@ function updateHud() {
     hud.score.textContent = String(game.score);
     hud.coins.textContent = String(game.coinsTaken);
     hud.lives.textContent = '❤️'.repeat(Math.max(0, game.lives)) || '—';
+    hud.lives.parentElement.setAttribute('aria-label', `${game.lives} vidas`);
+}
+
+/* Barra de progresso até a bandeira: só escreve no DOM quando muda 1%. */
+let shownProgress = -1;
+function updateProgress() {
+    if (!progressFill || !game.goal) return;
+    const k = Math.round(Math.max(0, Math.min(1, (game.player.x + game.player.w) / game.goal.tileX)) * 100);
+    if (k === shownProgress) return;
+    shownProgress = k;
+    progressFill.style.transform = `scaleX(${k / 100})`;
 }
 
 let shownSecond = -1;
@@ -192,11 +206,16 @@ function announce(message) {
     if (statusLive) statusLive.textContent = message;
 }
 
-function showOverlay(title, text, button) {
+function showOverlay(title, text, button, emoji = '✦', howto = false) {
     overlayTitle.textContent = title;
     overlayText.textContent = text;
     overlayButton.textContent = button;
+    if (overlayEmoji) overlayEmoji.textContent = emoji;
+    if (overlayHowto) overlayHowto.hidden = !howto;
+    overlay.dataset.mode = game.state;
     overlay.hidden = false;
+    // foco no botão grande: Enter/Espaço/toque continuam a partida sem caçar o mouse
+    requestAnimationFrame(() => overlayButton.focus({ preventScroll: true }));
 }
 
 function hideOverlay() {
@@ -215,6 +234,7 @@ function startGame() {
     game.state = 'playing';
     shownSecond = -1;
     updateTime();
+    updateProgress();
     snapCamera = true;
     sfx('start');
     announce('Partida iniciada.');
@@ -223,7 +243,7 @@ function startGame() {
 function togglePause() {
     if (game.state === 'playing') {
         game.state = 'paused';
-        showOverlay('Pausa', 'Respire — o nível espera.', 'Continuar');
+        showOverlay('Pausa', 'A fase espera por você.', 'Continuar', '⏸', true);
         announce('Jogo pausado.');
     } else if (game.state === 'paused') {
         hideOverlay();
@@ -337,7 +357,10 @@ function frame(now) {
         game.step(FIXED_STEP);
         accumulator -= FIXED_STEP;
     }
-    if (game.state === 'playing') updateTime();
+    if (game.state === 'playing') {
+        updateTime();
+        updateProgress();
+    }
     draw(delta);
 }
 

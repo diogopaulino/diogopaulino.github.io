@@ -22,6 +22,9 @@
   const soundState = document.getElementById('soundState');
   const resetButton = document.getElementById('resetButton');
   const iconElements = Object.fromEntries(ALL_ICONS.map((id) => [id, document.querySelector(`[data-icon="${id}"]`)]));
+  const guideIcon = document.getElementById('guideIcon');
+  const guideText = document.getElementById('guideText');
+  const guideAction = document.getElementById('guideAction');
 
   function rows(source) {
     return source.trim().split('\n').map((row) => row.trim());
@@ -815,6 +818,10 @@
   let walkX = 8;
   let walkDirection = 1;
   let audioContext = null;
+  /* Áudio só depois do primeiro gesto: o alerta de “precisa de atenção” roda
+     num timer e, antes disso, criava um AudioContext bloqueado (aviso no
+     console e nenhum som). */
+  let audioUnlocked = false;
 
   function saveState() {
     try {
@@ -854,7 +861,7 @@
   }
 
   function ensureAudio() {
-    if (!state.soundOn) return null;
+    if (!state.soundOn || !audioUnlocked) return null;
     if (!audioContext) {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return null;
@@ -1210,6 +1217,7 @@
   }
 
   function handleButton(code) {
+    audioUnlocked = true;
     ensureAudio();
     if (animation) return;
 
@@ -1377,7 +1385,11 @@
       consumedButtons.delete(code);
       return;
     }
-    if (!cancelled) handleButton(code);
+    if (!cancelled) {
+      handleButton(code);
+      // Resposta imediata no LCD (o timer de 430ms deixava o toque “atrasado”).
+      refreshDisplay();
+    }
   }
 
   document.querySelectorAll('[data-btn]').forEach((element) => {
@@ -1398,7 +1410,10 @@
     });
     element.addEventListener('pointercancel', () => releaseButton(element, code, true));
     element.addEventListener('click', event => {
-      if (event.detail === 0) handleButton(code);
+      if (event.detail === 0) {
+        handleButton(code);
+        refreshDisplay();
+      }
     });
   });
 
@@ -1431,7 +1446,7 @@
     }
   });
 
-  resetButton.addEventListener('click', () => {
+  function resetDevice() {
     state = freshState();
     uiMode = 'clock_wait';
     selectedSide = null;
@@ -1445,6 +1460,83 @@
     updateSoundLabel();
     saveState();
     sound.enter();
+    refreshDisplay();
+  }
+
+  resetButton.addEventListener('click', () => {
+    audioUnlocked = true;
+    resetDevice();
+  });
+
+  /* --- Guia para iniciantes ----------------------------------------------
+     O aparelho original não explica nada: tela 12:00 piscando e cinco ícones
+     sem legenda. O guia lê o estado e diz, em uma frase, o que fazer agora —
+     na ordem de urgência (doença > fome > sede > sujeira > temperatura >
+     tristeza) — e oferece o atalho quando existe (hora certa, ovo novo).
+     Os ícones do LCD que resolvem a necessidade piscam junto. */
+  const NEED_ICON = { sick: 'medicine', food: 'food', drink: 'drink', dirty: 'bath', hot: 'ac', cold: 'ac', sad: 'play' };
+  let guideKey = '';
+
+  function guideState() {
+    if (uiMode === 'clock_wait') {
+      return { key: 'clock_wait', icon: '⏰', text: 'Primeiro, acerte o relógio: aperte Enter — ou use a hora certa.', action: 'now' };
+    }
+    if (uiMode === 'clock_set') {
+      return { key: 'clock_set', icon: '⏰', text: '◀ muda o número piscando · ▶ troca hora/minuto · Enter confirma.', action: 'now' };
+    }
+    if (uiMode === 'clock') return { key: 'clock', icon: '🕒', text: 'Esse é o relógio. Aperte Clock ou Esc para voltar ao Dino.' };
+    if (uiMode === 'food') return { key: 'food', icon: '🍔', text: '◀ ▶ escolhe a comida · Enter dá para o Dino · Esc volta.' };
+    if (uiMode === 'rps') return { key: 'rps', icon: '✊', text: 'Pedra, papel ou tesoura! ◀ ▶ escolhe a mão · Enter joga.' };
+    if (uiMode === 'stats') return { key: 'stats', icon: '📋', text: '◀ ▶ mostra humor, estudo, peso, comida, bebida e temperatura · Esc volta.' };
+    if (!state.initialized) return { key: 'none', icon: '⏰', text: 'Aperte Enter para começar.' };
+    if (!state.alive || state.ending === 'grave') {
+      return { key: 'grave', icon: '🌟', text: 'O Dino virou estrelinha. Que tal chocar um ovo novo?', action: 'egg' };
+    }
+    if (state.ending === 'angel' || state.ending === 'devil') {
+      return { key: 'ending', icon: state.ending === 'angel' ? '😇' : '😈', text: 'O Dino cresceu e partiu em aventura! Quer começar outro?', action: 'egg' };
+    }
+    if (!state.lightsOn && !isSleeping()) return { key: 'dark', icon: '💡', text: 'A luz está apagada. Toque na lâmpada para acender.', need: 'light' };
+    if (isSleeping()) {
+      return state.lightsOn
+        ? { key: 'sleep-light', icon: '💡', text: 'Ele está dormindo (21h às 9h). Apague a luz na lâmpada.', need: 'light' }
+        : { key: 'sleep', icon: '💤', text: 'Zzz… O Dino dorme até as 9h. Volte de manhã!' };
+    }
+    if (state.sick) return { key: 'sick', icon: '💊', text: 'Ele está doente! Toque no remédio (último ícone da direita).', need: 'sick' };
+    if (state.food === 0) return { key: 'food0', icon: '🍔', text: 'Ele está com fome! Toque na comida e escolha um prato.', need: 'food' };
+    if (state.drink === 0) return { key: 'drink0', icon: '🥤', text: 'Ele está com sede! Toque no copo para dar água.', need: 'drink' };
+    if (state.dirty) return { key: 'dirty', icon: '🛁', text: 'Fez sujeira! Toque na banheira para dar banho.', need: 'dirty' };
+    if (state.temperature > 30) return { key: 'hot', icon: '🥵', text: `Está calor (${Math.round(state.temperature)}°C)! Ligue o ar-condicionado.`, need: 'hot' };
+    if (state.temperature < 20) return { key: 'cold', icon: '🥶', text: `Está frio (${Math.round(state.temperature)}°C)! Desligue o ar-condicionado.`, need: 'cold' };
+    if (state.mood === 0) return { key: 'sad', icon: '🎮', text: 'Ele está triste. Brinque de pedra, papel e tesoura!', need: 'sad' };
+    return { key: 'ok', icon: '🦕', text: 'Tudo certo! Toque nos ícones da tela para cuidar do Dino.' };
+  }
+
+  function updateGuide() {
+    const g = guideState();
+    const key = `${g.key}|${g.text}`;
+    if (key === guideKey) return;
+    guideKey = key;
+    guideIcon.textContent = g.icon;
+    guideText.textContent = g.text;
+    guideAction.hidden = !g.action;
+    if (g.action === 'now') guideAction.textContent = '⏰ Usar a hora certa';
+    if (g.action === 'egg') guideAction.textContent = '🥚 Chocar ovo novo';
+    guideAction.dataset.action = g.action || '';
+    const needIcon = g.need === 'light' ? 'light' : NEED_ICON[g.need];
+    for (const id of ALL_ICONS) iconElements[id].classList.toggle('needs', id === needIcon);
+  }
+
+  guideAction.addEventListener('click', () => {
+    audioUnlocked = true;
+    if (guideAction.dataset.action === 'now') {
+      const now = new Date();
+      clockHour = now.getHours();
+      clockMinute = now.getMinutes();
+      applyClock();
+    } else if (guideAction.dataset.action === 'egg') {
+      resetDevice();
+    }
+    refreshDisplay();
   });
 
   for (const id of ALL_ICONS) {
@@ -1452,6 +1544,7 @@
     if (!el) continue;
     el.addEventListener('click', (event) => {
       event.preventDefault();
+      audioUnlocked = true;
       ensureAudio();
       if (animation || uiMode === 'clock_wait' || uiMode === 'clock_set') return;
       selectedSide = LEFT_ICONS.includes(id) ? 'left' : 'right';
@@ -1462,6 +1555,7 @@
       }
       updateIconSelection();
       executeAction(id);
+      refreshDisplay();
     });
   }
 
@@ -1695,6 +1789,7 @@
 
   function render(timestamp) {
     frame += 1;
+    updateGuide();
     finishRpsReveal();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1783,7 +1878,9 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) syncPet();
   });
-  const refreshDisplay = () => render(performance.now());
+  function refreshDisplay() {
+    render(performance.now());
+  }
   refreshDisplay();
   if (window.LabRuntime) {
     LabRuntime.createInterval(refreshDisplay, 430).start();

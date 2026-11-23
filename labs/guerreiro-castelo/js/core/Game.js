@@ -9,27 +9,28 @@ import { preload } from '../../../shared/gfx/assets.js';
 import { pickTier } from '../../../shared/gfx/core.js';
 import { QUALITY } from './QualitySettings.js?v=40';
 import { AudioManager } from './AudioManager.js';
-import { InputManager } from './InputManager.js?v=33';
+import { InputManager } from './InputManager.js?v=43';
 import { CollisionWorld } from '../world/CollisionWorld.js?v=40';
 import { WeatherSystem } from '../world/WeatherSystem.js?v=40';
 import { Ocean } from '../world/Sea.js?v=40';
 import { StormController } from '../world/StormController.js?v=40';
 import { ArrowSystem } from '../world/ArrowSystem.js?v=40';
 import { InteractionSystem } from '../game/InteractionSystem.js?v=40';
-import { CutsceneManager } from '../game/CutsceneManager.js?v=40';
+import { CutsceneManager } from '../game/CutsceneManager.js?v=42';
 import { DialogueManager } from '../game/DialogueManager.js?v=40';
-import { QuestManager } from '../game/QuestManager.js';
+import { QuestManager } from '../game/QuestManager.js?v=42';
 import { CombatSystem } from '../game/CombatSystem.js?v=33';
 import { CheckpointManager } from '../game/CheckpointManager.js';
-import { StoryDirector } from '../game/StoryDirector.js?v=40';
-import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=40';
+import { StoryDirector } from '../game/StoryDirector.js?v=43';
+import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=47';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js?v=40';
-import { Player } from '../player/Player.js?v=40';
+import { Player } from '../player/Player.js?v=42';
 import { Teco } from '../characters/Teco.js?v=40';
 import { Camila } from '../characters/Camila.js?v=40';
-import { HUD } from '../ui/HUD.js?v=40';
-import { Menu } from '../ui/Menu.js?v=40';
-import { PauseMenu } from '../ui/PauseMenu.js?v=40';
+import { HUD } from '../ui/HUD.js?v=43';
+import { Menu } from '../ui/Menu.js?v=46';
+import { PauseMenu } from '../ui/PauseMenu.js?v=47';
+import { ObjectiveMarker } from '../ui/ObjectiveMarker.js?v=49';
 import { SETTINGS_KEY } from './assets.js';
 
 /** Tudo que os cenários usam, baixado atrás da tela de carregamento. */
@@ -103,6 +104,14 @@ export class Game {
         this.hud = new HUD(this);
         this.menu = new Menu(this);
         this.pauseMenu = new PauseMenu(this);
+        this.marker = new ObjectiveMarker(this);
+
+        /* Aba escondida (ou app em segundo plano) no meio da aventura: abre a pausa.
+           O palco já para de desenhar; sem isto o jogo voltava andando sozinho. */
+        this._onVisibility = () => {
+            if (document.hidden && this.running && !this.paused && !this.loading) this.pauseMenu.toggle(true);
+        };
+        document.addEventListener('visibilitychange', this._onVisibility);
 
         // Atores principais
         this.player = new Player(this.collision);
@@ -185,6 +194,7 @@ export class Game {
             overlay.classList.add('is-active');
         }
         this.dialogue.clear();
+        this.input.lockLost = false;
         this.stageId = stageId;
         try {
             await this.sceneMgr.load(stageId, checkpoint);
@@ -223,7 +233,8 @@ export class Game {
         if (this._failing) return;
         this._failing = true;
         this.audio.play('fail');
-        this.hud.showToast(reason || 'Tente novamente');
+        /* Derrota sem castigo: volta ao último ponto salvo com a vida cheia. */
+        this.hud.showToast(`${reason || 'Ops!'} Vamos tentar de novo.`, 3);
         this.fadeTo(1.2, () => {
             this.player.heal();
             const cp = this.checkpoints.current || 'home_intro';
@@ -255,18 +266,29 @@ export class Game {
             p.hero.update(dt, p.anim);
             return;
         }
-        if (this.paused) return;
+        if (this.paused) {
+            /* Esc também tira da pausa. Antes o retorno vinha antes de ler a tecla: Esc
+               não despausava e o toque ficava guardado, pausando de novo ao continuar. */
+            this.input.consume('lockLost');
+            this.input.consume('advance'); // Espaço na pausa não pula a próxima fala
+            if (this.input.consume('pause')) this.pauseMenu.toggle(false);
+            return;
+        }
 
         this.input.update();
 
-        if (this.input.consume('pause')) {
-            this.pauseMenu.toggle();
+        /* Esc com o cursor travado: o navegador solta a trava e engole a tecla. */
+        if (this.input.consume('pause') || this.input.consume('lockLost')) {
+            this.pauseMenu.toggle(true);
             return;
         }
 
         if (this.input.consume('advance')) {
             if (this.dialogue.active) {
                 this.dialogue.advance();
+            } else if (this.cutscenes.blocking) {
+                /* Espaço / Enter / botão ⤴ pulam a câmera cinematográfica. */
+                this.cutscenes.skip();
             }
         }
 
@@ -288,6 +310,7 @@ export class Game {
 
         // Câmera
         this.cameraRig.update(dt, p, lookDelta, zoomDelta, p.sprinting);
+        this.marker.update();
 
         // Interação
         const prompt = this.interact.update(p, this);
@@ -312,6 +335,9 @@ export class Game {
 
         /* Derrota fora das flechas (guarda, tigre): reinicia do checkpoint. */
         if (!p.alive && !this._failing) this.failCheckpoint('Dico caiu…');
+        /* Rede de segurança: atravessou o chão (fresta de colisão) → volta ao checkpoint
+           em vez de cair para sempre. Todos os níveis têm o chão acima de y = −30. */
+        else if (p.position.y < -30 && !this._failing) this.failCheckpoint('Ops!');
     }
 
     start() {

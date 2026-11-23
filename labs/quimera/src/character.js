@@ -145,6 +145,14 @@ export class Character {
 
     _drop(fig) {
         this.root.remove(fig.hero.object);
+        // as peças modeladas (chapéu, roupa, acessório) são geometrias novas a cada montagem:
+        // libera os buffers da GPU. A malha do herói vem do cache do hero.js (por opções): só
+        // libera a GPU se o boneco atual não a usa — o cache a reenvia se ela voltar.
+        // (Sem isto: ~12 geometrias vazavam por troca, 25 → 559 depois de 42 trocas.)
+        const live = this.fig?.hero.mesh.geometry;
+        fig.hero.object.traverse((o) => {
+            if (o.geometry && o.geometry !== live) o.geometry.dispose();
+        });
         fig.hero.dispose();
         fig.bank.uniforms.uSweep.value.set(0, 0, 0, 0);
     }

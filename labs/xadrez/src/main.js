@@ -4,9 +4,9 @@ import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
  * Cena PBR, seleção por raycast, animações em arco e o mestre comentando.
  */
 
-import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js';
+import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js?v=5';
 
-import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js';
+import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js?v=5';
 import { createTextures } from './textures.js?v=3';
 import { PieceFactory } from './pieces.js?v=3';
 import {
@@ -16,6 +16,14 @@ import {
 import { SalonAudio } from './audio.js';
 
 const STORAGE = 'xadrez-settings';
+const LEVEL_LABEL = { facil: 'fácil', iniciante: 'iniciante', praticante: 'praticante', clube: 'clube' };
+// Fim de partida em palavras simples (o resultado aparece para crianças também).
+const DRAW_WHY = {
+    afogamento: 'Afogamento: quem tinha a vez não tinha nenhum lance, mas o rei não estava em xeque.',
+    'repetição': 'A mesma posição apareceu três vezes.',
+    '50 lances': 'Foram 50 lances de cada lado sem captura nem lance de peão.',
+    'material insuficiente': 'Ninguém tem peças suficientes para dar xeque-mate.'
+};
 const GLYPH = {
     w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
     b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' }
@@ -98,11 +106,11 @@ class Atelier {
     loadSettings() {
         try {
             return {
-                quality: 'auto', theme: 'classic', level: 'praticante',
+                quality: 'auto', theme: 'classic', level: 'facil',
                 muted: false, ...JSON.parse(localStorage.getItem(STORAGE) || '{}')
             };
         } catch {
-            return { quality: 'auto', theme: 'classic', level: 'praticante', muted: false };
+            return { quality: 'auto', theme: 'classic', level: 'facil', muted: false };
         }
     }
 
@@ -315,7 +323,9 @@ class Atelier {
             // nesse instante saem os quadros finais e o laço volta a dormir.
             const moving = this.anims.length || this.drag.active || this.cameraTransition ||
                 Math.abs(this.camera.inertialAlphaOffset) + Math.abs(this.camera.inertialBetaOffset) + Math.abs(this.camera.inertialRadiusOffset) > 0.001;
-            const pulsing = !this.reducedMotion && this.world?.marks?.check?.isVisible;
+            // Atrás do card de resultado (ou do menu) o pulso do xeque não aparece: não redesenha.
+            const pulsing = !this.reducedMotion && this.world?.marks?.check?.isVisible &&
+                document.body.dataset.state === 'play' && document.getElementById('resultOverlay').hidden;
             if (!moving && !this.renderDirty && this._verify && now - (this._verifyAt || 0) > 100) {
                 this._verifyAt = now;
                 if (this.scene.isReady()) { this._verify = false; this._dirtyFrames = 3; }
@@ -350,19 +360,35 @@ class Atelier {
     fitCameraFov() {
         if (!this.camera || !this.engine) return;
         const aspect = this.engine.getRenderWidth() / this.engine.getRenderHeight();
-        this.camera.fovMode = aspect < 1
+        const portrait = aspect < 1;
+        this.camera.fovMode = portrait
             ? window.BABYLON.Camera.FOVMODE_HORIZONTAL_FIXED
             : window.BABYLON.Camera.FOVMODE_VERTICAL_FIXED;
+        // Girou o aparelho: reenquadra a vista atual para a nova proporção.
+        if (this.portrait !== undefined && this.portrait !== portrait && this.started) this.cameraView(this.view);
+        this.portrait = portrait;
+    }
+
+    /**
+     * Enquadramento por vista. Em retrato (FOV horizontal fixo de 0,58 rad) a
+     * largura visível a uma distância d é 2·d·tan(0,29) ≈ 0,6·d; d ≈ 16
+     * mostra ~9,6 casas — o tabuleiro com moldura ocupa a tela toda e as
+     * casas ficam com ~44 px num celular de 375 px (antes: ~30 px).
+     */
+    viewPose(view) {
+        const portrait = this.engine.getRenderWidth() < this.engine.getRenderHeight();
+        if (view === 'top') return { beta: 0.02, radius: portrait ? 16.2 : 21.5 };
+        if (view === 'detail') return { beta: 1.3, radius: 16.5 };
+        return portrait ? { beta: 0.54, radius: 16.4 } : { beta: 0.9, radius: 21.5 };
     }
 
     start(resume = false) {
         if (document.body.dataset.state !== 'intro') return;
         this.applyQuality();
-        if (!resume) this.cameraView('play');
         this.audio.init();
         this.audio.setEnabled(!this.settings.muted);
         this.syncMute();
-        this.level = document.getElementById('levelSelect')?.value || 'praticante';
+        this.level = document.getElementById('levelSelect')?.value || 'facil';
         this.settings.level = this.level;
         const theme = document.getElementById('themeSelect')?.value || 'classic';
         if (theme !== this.factory.mats.theme) {
@@ -379,6 +405,8 @@ class Atelier {
         }
         this.engine.resize();
         this.fitCameraFov();
+        // Enquadra depois do resize: o palco muda de tamanho ao trocar o menu pelo HUD.
+        if (!resume) this.cameraView('play');
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
         if (!resume) this.setMode(mode);
         else { this.renderHud(); if (this.mode === 'cpu' && !this.isHumanTurn() && !this.game.status().over) this.queueAi(); }
@@ -411,7 +439,7 @@ class Atelier {
 
     speakMode() {
         if (this.mode === 'cpu') {
-            this.coach('Contra a máquina', 'Você joga de brancas. Toque uma peça e depois a casa de destino. O mestre comenta cada lance.', 'Dica destaca um bom lance. Desfazer volta o último par.');
+            this.coach('Contra a máquina', 'Você joga com as brancas. Toque numa peça: os pontos mostram para onde ela pode ir. Toque num ponto para mover. Vence quem der xeque-mate no rei.', 'Travou? Toque em Dica. Errou? Desfazer volta o lance.');
         } else if (this.mode === 'local') {
             this.coach('Dois jogadores', 'Passem o aparelho. As brancas começam. Casas legais acendem ao selecionar.', 'Vire o tabuleiro depois do lance, se quiser.');
         } else if (this.mode === 'free') {
@@ -628,9 +656,24 @@ class Atelier {
             return;
         }
         if (this.busy || this.pendingPromo) return;
-        if (hit < 0) { this.selected = -1; this.legal = []; this.refreshMarks(); return; }
-        this.onSquare(hit);
+        const square = this.resolveTap(hit);
+        if (square < 0) { this.selected = -1; this.legal = []; this.refreshMarks(); return; }
+        this.onSquare(square);
         this.updateHover();
+    }
+
+    /**
+     * Toque com peça selecionada: na câmera inclinada, a cabeça de uma peça
+     * alta cobre a casa de trás. Se o dedo caiu numa peça que não é destino,
+     * mas a casa do tabuleiro sob o dedo (ignorando peças) é um destino legal,
+     * vale o destino — é o ponto dourado que a criança está vendo.
+     */
+    resolveTap(onPiece) {
+        if (this.selected < 0) return onPiece;
+        const isTarget = (sq) => sq >= 0 && this.legal.some((m) => m.to === sq);
+        if (isTarget(onPiece)) return onPiece;
+        const onBoard = this.hit(true);
+        return isTarget(onBoard) ? onBoard : onPiece;
     }
 
     onBoardKey(e) {
@@ -708,12 +751,15 @@ class Atelier {
             this.legal = this.game.legalMovesFrom(index);
             this.refreshMarks();
             this.explainPiece(piece, index);
+            this.renderHud();
             return;
         }
+        const had = this.selected >= 0;
         this.selected = -1;
         this.hover = -1;
         this.legal = [];
         this.refreshMarks();
+        if (had) this.renderHud();
     }
 
     explainPiece(piece, index) {
@@ -957,7 +1003,7 @@ class Atelier {
         this.worker?.terminate();
         this.busy = true;
         try {
-            this.worker = new Worker(new URL('./ai-worker.js', import.meta.url), { type: 'module' });
+            this.worker = new Worker(new URL('./ai-worker.js?v=5', import.meta.url), { type: 'module' });
             const failed = () => {
                 this.worker?.terminate(); this.worker = null;
                 clearTimeout(this.aiTimeout); this.busy = false;
@@ -1072,8 +1118,7 @@ class Atelier {
         if (!this.camera) return;
         this.view = view;
         const alpha = (this.flip ? -Math.PI / 2 : Math.PI / 2) + (view === 'detail' ? -0.42 : 0);
-        const beta = view === 'top' ? 0.02 : view === 'detail' ? 1.3 : 0.9;
-        const radius = view === 'detail' ? 16.5 : 21.5;
+        const { beta, radius } = this.viewPose(view);
         this.moveCamera(alpha, beta, radius);
         this.updateDepthOfField();
         document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === view)));
@@ -1193,16 +1238,22 @@ class Atelier {
     renderHud() {
         const st = this.game.status();
         if (['academy', 'free'].includes(this.mode) && st.moves.length) st.over = false;
-        document.getElementById('opponentName').textContent = this.mode === 'cpu' ? `Máquina · ${this.level}` : this.mode === 'academy' ? `Lição ${this.lessonIndex + 1} de ${LESSONS.length}` : this.mode === 'puzzles' ? `Desafio ${this.puzzleIndex + 1} de ${PUZZLES.length}` : this.mode === 'free' ? 'Tabuleiro livre' : 'Dois jogadores';
+        document.getElementById('opponentName').textContent = this.mode === 'cpu' ? `Máquina · ${LEVEL_LABEL[this.level] || this.level}` : this.mode === 'academy' ? `Lição ${this.lessonIndex + 1} de ${LESSONS.length}` : this.mode === 'puzzles' ? `Desafio ${this.puzzleIndex + 1} de ${PUZZLES.length}` : this.mode === 'free' ? 'Tabuleiro livre' : 'Dois jogadores';
         const line = document.getElementById('statusLine');
         if (this.mode === 'academy' || this.mode === 'puzzles') {
             line.textContent = this.expect ? 'Encontre o lance' : 'Concluído · próxima lição';
             line.classList.remove('is-check');
         } else if (st.over) {
             line.textContent = st.reason === 'xeque-mate'
-                ? `Xeque-mate · ${st.result}`
+                ? `Xeque-mate · ${this.winnerLabel()}`
                 : `Empate · ${st.reason}`;
             line.classList.toggle('is-check', st.reason === 'xeque-mate');
+        } else if (this.mode === 'cpu' && this.game.side === this.player) {
+            // Frases curtas para quem está aprendendo: o que fazer agora.
+            line.textContent = st.check
+                ? 'Xeque! Salve o seu rei'
+                : this.selected >= 0 ? 'Toque num ponto dourado' : 'Sua vez · toque numa peça';
+            line.classList.toggle('is-check', st.check);
         } else {
             line.textContent = st.check
                 ? `Xeque · ${this.game.side === 'w' ? 'brancas' : 'pretas'}`
@@ -1249,6 +1300,13 @@ class Atelier {
         ol.scrollTop = ol.scrollHeight;
     }
 
+    /** Quem venceu, do ponto de vista de quem está jogando. */
+    winnerLabel() {
+        const winner = this.game.side === 'w' ? 'b' : 'w';
+        if (this.mode === 'cpu') return winner === this.player ? 'você venceu' : 'a máquina venceu';
+        return winner === 'w' ? 'brancas vencem' : 'pretas vencem';
+    }
+
     endLine(st) {
         if (st.reason === 'xeque-mate') {
             return this.game.side === 'b' ? 'As brancas venceram.' : 'As pretas venceram.';
@@ -1257,10 +1315,16 @@ class Atelier {
     }
 
     showResult(st) {
+        const mate = st.reason === 'xeque-mate';
+        const won = mate && this.mode === 'cpu' && this.game.side !== this.player;
+        const lost = mate && this.mode === 'cpu' && this.game.side === this.player;
         document.getElementById('resultOverlay').hidden = false;
-        document.getElementById('resultKicker').innerHTML = '<i></i> Fim';
-        document.getElementById('resultTitle').textContent = st.reason === 'xeque-mate' ? 'Xeque-mate' : 'Empate';
-        document.getElementById('resultText').textContent = this.endLine(st);
+        document.getElementById('resultOverlay').dataset.outcome = won ? 'win' : lost ? 'loss' : mate ? 'mate' : 'draw';
+        document.getElementById('resultKicker').innerHTML = `<i></i> ${mate ? 'Xeque-mate' : 'Empate'}`;
+        document.getElementById('resultTitle').textContent = won ? 'Você venceu!' : lost ? 'A máquina venceu' : mate ? (this.game.side === 'b' ? 'Brancas vencem' : 'Pretas vencem') : 'Empate';
+        document.getElementById('resultText').textContent = mate
+            ? `${won ? 'O rei preto' : lost ? 'Seu rei' : 'O rei'} ficou em xeque sem ter para onde fugir.${lost ? ' Tente o nível fácil ou peça uma Dica.' : ''}`
+            : DRAW_WHY[st.reason] || this.endLine(st);
         document.getElementById('resultAgain').focus();
     }
 

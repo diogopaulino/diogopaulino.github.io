@@ -8,8 +8,11 @@ body {
 }
 
 .game-area {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    align-items: center;
+    gap: 14px;
     padding: 20px;
     width: 100%;
     min-width: 0;
@@ -22,7 +25,9 @@ body {
     border: 2px solid;
     border-color: #dfdfdf #404040 #404040 #dfdfdf;
     /* Bevel */
-    width: 820px;
+    /* Cabe inteira na tela: a largura também respeita a altura disponível
+       (canvas 4:3 + cabeçalho do site + barras da janela). */
+    width: min(820px, 100%, calc((100dvh - 230px) * 4 / 3));
     max-width: 100%;
     min-width: 0;
     box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
@@ -74,6 +79,21 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.menu-items {
+    display: flex;
+    gap: 6px;
+}
+
+.menu-item:disabled {
+    color: #808080;
+    cursor: default;
+}
+
+.menu-item:disabled:hover {
+    background: transparent;
+    color: #808080;
 }
 
 .menu-item {
@@ -224,39 +244,68 @@ canvas {
     white-space: nowrap;
 }
 
-/* On-Screen Controls — só em ponteiro grosso; separados em 2 grupos ergonômicos para os polegares (esquerda: ◀ ▶ rotação; direita: ▲ propulsor). */
-.onscreen-controls {
-    position: absolute;
-    top: auto;
-    bottom: max(10px, env(safe-area-inset-bottom, 0px));
-    left: max(12px, env(safe-area-inset-left, 0px));
-    right: max(12px, env(safe-area-inset-right, 0px));
+/* Controles de toque — só em ponteiro grosso, FORA do canvas (embaixo no
+   retrato, nas laterais na paisagem) para não esconder as plataformas.
+   Esquerda: ◀ ▶ giram; direita: MOTOR. */
+.touch-pad {
     display: none;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 12px;
-    pointer-events: none;
-    z-index: 4;
+    gap: 10px;
 }
 
 @media (pointer: coarse) {
-    .onscreen-controls {
+    .game-area {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "win win"
+            "left right";
+        padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    }
+
+    .win31-window {
+        grid-area: win;
+    }
+
+    .touch-pad {
         display: flex;
+    }
+
+    .touch-pad-left {
+        grid-area: left;
+        justify-self: start;
+        padding-left: max(4px, env(safe-area-inset-left, 0px));
+    }
+
+    .touch-pad-right {
+        grid-area: right;
+        justify-self: end;
+        padding-right: max(4px, env(safe-area-inset-right, 0px));
     }
 }
 
-.onscreen-controls .row {
-    display: flex;
-    gap: 8px;
-    pointer-events: auto;
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+    .game-area {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "left win right";
+        padding: 4px max(8px, env(safe-area-inset-right, 0px)) 4px max(8px, env(safe-area-inset-left, 0px));
+    }
+
+    .win31-window {
+        width: min(100%, calc((100dvh - 120px) * 4 / 3));
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    .touch-pad-left {
+        flex-direction: column;
+    }
 }
 
 .control-btn {
-    width: 54px;
-    height: 54px;
+    width: 64px;
+    height: 64px;
     min-width: 52px;
     min-height: 52px;
+    color: #000;
+    font-family: Arial, sans-serif;
     background-color: #c0c0c0;
     border-top: 2px solid #fff;
     border-left: 2px solid #fff;
@@ -293,11 +342,15 @@ canvas {
     gap: 2px;
 }
 
-.thrust-lines {
-    width: 16px;
-    height: 2px;
-    background: #000;
-    box-shadow: 0 4px 0 #000, 0 8px 0 #000;
+.control-thrust {
+    width: 84px;
+    height: 84px;
+}
+
+.thrust-label {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
 .center-msg {
@@ -325,21 +378,110 @@ canvas {
 
 .start-button {
     appearance: none;
-    animation: blink 1s steps(1) infinite;
-    background: transparent;
-    border: 0;
+    animation: pulse 1.4s ease-in-out infinite;
+    background: rgba(0, 0, 0, 0.55);
+    border: 2px solid #ff0;
     color: #ff0;
     cursor: pointer;
     display: block;
     font: inherit;
     font-size: 22px;
-    margin-top: 16px;
-    padding: 0;
+    margin: 14px auto 0;
+    padding: 4px 18px;
     pointer-events: auto;
     text-shadow: inherit;
-    width: 100%;
-    /* A linha de texto dava 42px de altura: 2px abaixo do alvo mínimo. */
+    width: fit-content;
+    max-width: 100%;
     min-height: var(--touch-target, 44px);
+}
+
+.start-button:hover {
+    background: #ff0;
+    color: #000;
+    text-shadow: none;
+}
+
+.center-msg .lead {
+    color: #eee;
+    font-size: 19px;
+    margin: 6px 0 4px;
+}
+
+.center-msg .lead b {
+    color: #ff0;
+    font-weight: normal;
+}
+
+.mode-pick {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.mode-btn {
+    pointer-events: auto;
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: var(--touch-target, 44px);
+    padding: 4px 10px;
+    border: 2px solid #666;
+    background: rgba(0, 0, 0, 0.55);
+    color: #bbb;
+    font: 20px 'VT323', monospace;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.mode-btn em {
+    font-style: normal;
+    font-size: 14px;
+    letter-spacing: 0;
+    color: #888;
+}
+
+.mode-btn[aria-pressed="true"] {
+    border-color: #0f0;
+    color: #0f0;
+}
+
+.mode-btn[aria-pressed="true"] em {
+    color: #9f9;
+}
+
+.mode-btn:focus-visible {
+    outline: 1px dotted #ff0;
+    outline-offset: 3px;
+}
+
+/* Barra de combustível: escala por transform, sem reflow a cada frame. */
+.fuel-row {
+    align-items: center;
+}
+
+.fuel-bar {
+    width: 64px;
+    height: 9px;
+    border: 1px solid #888;
+    padding: 1px;
+}
+
+.fuel-bar i {
+    display: block;
+    height: 100%;
+    background: #0f0;
+    transform-origin: left center;
+}
+
+.fuel-bar i[data-tone="caution"] {
+    background: #ff0;
+}
+
+.fuel-bar i[data-tone="danger"] {
+    background: #f33;
 }
 
 .start-button:focus-visible {
@@ -347,8 +489,7 @@ canvas {
     outline-offset: 4px;
 }
 
-.game-viewport[data-state="start"] .hud-stats,
-.game-viewport[data-state="start"] .onscreen-controls {
+.game-viewport[data-state="start"] .hud-stats {
     display: none;
 }
 
@@ -371,9 +512,9 @@ canvas {
     font-weight: normal;
 }
 
-@keyframes blink {
+@keyframes pulse {
     50% {
-        opacity: 0.25;
+        opacity: 0.6;
     }
 }
 
@@ -535,4 +676,177 @@ canvas {
 @media (max-height: 500px) and (orientation: landscape) {
     .instructions, footer { display: none; }
     .game-viewport { max-height: calc(100dvh - 6rem); }
+}
+
+/* Celular: HUD enxuto (lado, queda, gás e status) e mensagens compactas. */
+@media (max-width: 600px) {
+    .hud-stats .extra,
+    .hud-separator,
+    .menu-help {
+        display: none;
+    }
+
+    .hud-stats {
+        font-size: 13px;
+        top: 6px;
+        right: 6px;
+        padding: 4px 6px;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    .stat-row {
+        gap: 8px;
+    }
+
+    .stat-row .value {
+        min-width: 44px;
+    }
+
+    .fuel-bar {
+        width: 40px;
+    }
+
+    .center-msg {
+        width: 94%;
+        font-size: 18px;
+    }
+
+    .center-msg > strong {
+        font-size: 24px;
+        margin-bottom: 2px;
+    }
+
+    .center-msg .lead {
+        font-size: 15px;
+    }
+
+    .mode-pick {
+        margin-top: 6px;
+    }
+
+    .mode-btn {
+        font-size: 16px;
+        padding: 2px 8px;
+    }
+
+    .mode-btn em {
+        font-size: 11px;
+    }
+
+    .start-button {
+        font-size: 18px;
+        margin-top: 8px;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-stats .extra,
+    .hud-separator,
+    .safe-readout {
+        display: none;
+    }
+
+    .hud-stats {
+        font-size: 13px;
+        top: 4px;
+        right: 6px;
+        min-width: 0;
+    }
+
+    .center-msg {
+        width: 96%;
+        font-size: 16px;
+    }
+
+    .center-msg > strong {
+        font-size: 22px;
+        margin-bottom: 0;
+    }
+
+    .center-msg .lead,
+    .center-msg small {
+        font-size: 13px;
+        margin-top: 2px;
+    }
+
+    .mode-pick {
+        margin-top: 4px;
+    }
+
+    .mode-btn {
+        font-size: 15px;
+        padding: 2px 8px;
+    }
+
+    .mode-btn em {
+        font-size: 11px;
+    }
+
+    .start-button {
+        font-size: 17px;
+        margin-top: 6px;
+        padding: 2px 14px;
+    }
+
+    .control-btn {
+        width: 56px;
+        height: 56px;
+    }
+
+    .control-thrust {
+        width: 72px;
+        height: 72px;
+    }
+}
+
+/* `.center-msg small` (display: block) vencia o `.touch-only`/`.fine-only` do
+   shared.css: as duas dicas apareciam juntas. */
+.center-msg small.touch-only {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    .center-msg small.touch-only {
+        display: block;
+    }
+
+    .center-msg small.fine-only {
+        display: none;
+    }
+}
+
+/* Paisagem curta com toque: a janela é limitada pela altura (as regras de
+   `max-width` acima forçavam 100% e o chão saía da tela). */
+@media (max-height: 520px) and (orientation: landscape) {
+    .game-area .win31-window {
+        width: min(100%, calc((100dvh - 122px) * 4 / 3));
+    }
+
+    .game-area .game-viewport {
+        max-height: none;
+    }
+}
+
+/* Botões de toque maiores para dedos pequenos (as regras de `max-width` acima
+   ainda fixavam 54px). */
+.touch-pad .control-btn {
+    width: 64px;
+    height: 64px;
+}
+
+.touch-pad .control-thrust {
+    width: 88px;
+    height: 88px;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .touch-pad .control-btn {
+        width: 58px;
+        height: 58px;
+    }
+
+    .touch-pad .control-thrust {
+        width: 76px;
+        height: 76px;
+    }
 }

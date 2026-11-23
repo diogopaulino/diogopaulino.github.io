@@ -28,7 +28,7 @@ import * as THREE from 'three';
 import { pbrSet } from '../../shared/gfx/assets.js';
 import { GLSL_NOISE } from '../../shared/gfx/core.js';
 import { buildRadialGrid } from './utils.js?v=50';
-import { RIVER_GLSL } from './river.js?v=50';
+import { RIVER_GLSL } from './river.js?v=51';
 
 function repeating(tex) {
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;

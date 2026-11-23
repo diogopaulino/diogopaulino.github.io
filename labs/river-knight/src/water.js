@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { buildRadialGrid } from './utils.js?v=50';
-import { RIVER_GLSL } from './river.js?v=50';
+import { RIVER_GLSL } from './river.js?v=51';
 import { GLSL_NOISE } from '../../shared/gfx/core.js';
 
 /**

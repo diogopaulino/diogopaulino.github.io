@@ -1,8 +1,47 @@
+/* setPointerCapture lança InvalidStateError se o ponteiro já foi solto (toque
+   muito curto, evento sintético). A captura é um bônus: sem ela o gesto segue. */
+function capturePointer(element, pointerId) {
+    try {
+        element.setPointerCapture(pointerId);
+    } catch (err) {
+        /* segue sem captura */
+    }
+}
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+/* Regras ---------------------------------------------------------------------
+   · Formação de 4×8 invasores (3×8 em tela baixa) anda de lado e desce `stepDown` px ao bater na
+     borda. Cada invasor vale 10 pontos. Limpar a formação = nova onda (nível+1).
+   · Velocidade da formação: (50 + nível·10 + pontos/200) · modo.enemySpeed px/s.
+   · Tiro inimigo: um invasor aleatório dispara a cada
+       max(0.38, 1.55 − nível·0.12) · (0.75..1.25) · modo.enemyFire  segundos.
+   · Arsenal: 500 pontos = LASER II (tiro duplo), 1500 = LASER III (triplo).
+   · Levar tiro tira 1 vida e dá 1,5 s de invencibilidade. Se a formação chega
+     à altura da nave, ela “passa”: perde-se 1 vida e a onda recomeça do topo.
+     Sem vidas = fim de jogo.
+   · Fácil (padrão, pensado para crianças): 5 vidas, tiro automático, formação
+     e tiros inimigos mais lentos. Normal: 3 vidas, arcade clássico. */
+const MODES = {
+    easy: { lives: 5, autoFire: true, enemySpeed: 0.7, enemyFire: 1.6, enemyBulletSpeed: 0.75 },
+    normal: { lives: 3, autoFire: false, enemySpeed: 1, enemyFire: 1, enemyBulletSpeed: 1 }
+};
+const MODE_KEY = 'neonInvaders:mode';
+let mode = (() => {
+    try {
+        const saved = localStorage.getItem(MODE_KEY);
+        return saved in MODES ? saved : 'easy';
+    } catch (err) {
+        return 'easy';
+    }
+})();
+
 // Game State
 let gameRunning = false;
+let paused = false;
+// Faixa “ONDA 2!” / “-1 VIDA” desenhada no canvas; some sozinha.
+const banner = { text: '', color: '#59f3ff', time: 0 };
 let score = 0;
 let lives = 3;
 let level = 1;
@@ -126,7 +165,18 @@ function resize() {
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    player.y = gameHeight - player.height - 26;
+    /* No toque, a nave fica acima dos botões na base da tela: sem isso, nas
+       bordas ela sumia embaixo do direcional e do ATIRAR. */
+    const pads = document.querySelector('.touch-controls');
+    const padsHeight = pads && pads.offsetParent ? pads.offsetHeight + 20 : 0;
+    player.y = gameHeight - player.height - Math.max(26, padsHeight);
+    // Topo livre para a formação: abaixo do HUD e da barra de recorde (celular),
+    // senão a primeira fileira nascia escondida atrás dela.
+    const hud = document.querySelector('.ui-layer');
+    const bar = document.getElementById('mobileMissionBar');
+    const barBottom = bar && getComputedStyle(bar).display !== 'none' ? bar.offsetTop + bar.offsetHeight : 0;
+    topSafe = Math.max(hud ? hud.offsetHeight : 0, barBottom) + 10;
+    buildBackdrop();
     player.x = previousWidth
         ? Math.min(gameWidth - player.width, Math.max(0, player.x * (gameWidth / previousWidth)))
         : gameWidth / 2 - player.width / 2;
@@ -146,20 +196,65 @@ function initStars() {
     }
 }
 
+/* Fundo estático (gradiente + grade em perspectiva) num canvas fora da tela:
+   refeito só no resize, em vez de um gradiente e 40 strokes por frame. */
+const backdrop = document.createElement('canvas');
+
+function buildBackdrop() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    backdrop.width = Math.max(1, Math.floor(gameWidth * dpr));
+    backdrop.height = Math.max(1, Math.floor(gameHeight * dpr));
+    const b = backdrop.getContext('2d');
+    b.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const spaceGradient = b.createLinearGradient(0, 0, 0, gameHeight);
+    spaceGradient.addColorStop(0, '#060714');
+    spaceGradient.addColorStop(.55, '#03040a');
+    spaceGradient.addColorStop(1, '#080510');
+    b.fillStyle = spaceGradient;
+    b.fillRect(0, 0, gameWidth, gameHeight);
+
+    b.strokeStyle = 'rgba(89, 243, 255, .045)';
+    b.lineWidth = 1;
+    const horizon = gameHeight * .64;
+    b.beginPath();
+    for (let y = horizon; y < gameHeight; y += 28) {
+        b.moveTo(0, y);
+        b.lineTo(gameWidth, y);
+    }
+    for (let x = -gameWidth; x < gameWidth * 2; x += 56) {
+        b.moveTo(gameWidth / 2, horizon);
+        b.lineTo(x, gameHeight);
+    }
+    b.stroke();
+}
+
+/* Passo de descida da formação: proporcional à altura, para a tela deitada
+   (300px de altura) não ser invadida em três batidas na borda. */
+let stepDown = 20;
+let topSafe = 64; // medido no resize (HUD + barra de recorde)
+
 function initEnemies() {
     enemies = [];
     const enemyPadding = Math.max(6, Math.min(ENEMY_PADDING, gameWidth * 0.025));
-    const enemyWidth = Math.max(18, Math.min(ENEMY_WIDTH, (gameWidth - 28 - (ENEMY_COLS - 1) * enemyPadding) / ENEMY_COLS));
+    // Tela baixa (celular deitado, ~250px): 3 fileiras e o topo logo abaixo do HUD.
+    const short = gameHeight < 360;
+    const rows = short ? 3 : ENEMY_ROWS;
+    const startY = Math.max(topSafe, short ? 0 : gameHeight * .1);
+    // A formação ocupa no máximo ~42% do espaço entre o topo e a nave.
+    const roomY = Math.max(56, (player.y - startY) * 0.42);
+    const fitH = (roomY - (rows - 1) * 4) / rows;
+    const enemyWidth = Math.max(16, Math.min(ENEMY_WIDTH, fitH, (gameWidth - 28 - (ENEMY_COLS - 1) * enemyPadding) / ENEMY_COLS));
     const enemyHeight = enemyWidth;
+    const padY = Math.max(4, Math.min(enemyPadding, (roomY - rows * enemyHeight) / (rows - 1)));
     const formationWidth = ENEMY_COLS * enemyWidth + (ENEMY_COLS - 1) * enemyPadding;
     const startX = Math.max(10, (gameWidth - formationWidth) / 2);
-    const startY = Math.max(64, gameHeight * .1);
+    stepDown = Math.max(10, Math.min(20, gameHeight * 0.03));
 
-    for (let row = 0; row < ENEMY_ROWS; row++) {
+    for (let row = 0; row < rows; row++) {
         for (let col = 0; col < ENEMY_COLS; col++) {
             enemies.push({
                 x: startX + col * (enemyWidth + enemyPadding),
-                y: startY + row * (enemyHeight + enemyPadding),
+                y: startY + row * (enemyHeight + padY),
                 width: enemyWidth,
                 height: enemyHeight,
                 row: row,
@@ -168,7 +263,14 @@ function initEnemies() {
             });
         }
     }
-    enemySpeed = ENEMY_SPEED_BASE + (level * 10) + (score / 200);
+    enemySpeed = (ENEMY_SPEED_BASE + (level * 10) + (score / 200)) * MODES[mode].enemySpeed;
+    enemyDirection = 1;
+}
+
+function showBanner(text, color = '#59f3ff') {
+    banner.text = text;
+    banner.color = color;
+    banner.time = 1.6;
 }
 
 function createParticles(x, y, color) {
@@ -203,6 +305,15 @@ window.addEventListener('keydown', e => {
         if (document.activeElement?.tagName !== 'BUTTON') startGame();
         return;
     }
+    if ((e.code === 'KeyP' || e.code === 'Escape') && gameRunning && !e.repeat) {
+        e.preventDefault();
+        setPaused(!paused);
+        return;
+    }
+    if (e.key === 'Enter' && paused && document.activeElement?.tagName !== 'BUTTON') {
+        setPaused(false);
+        return;
+    }
     if (flag) keys[flag] = true;
     if (flag === 'Space' && gameRunning && !e.repeat) {
         fireCooldown = 0;
@@ -217,9 +328,9 @@ window.addEventListener('keyup', e => {
 // Cada dedo mantém o próprio disparo até ser solto, mesmo com o direcional em uso.
 function bindFireControl(element) {
     element.addEventListener('pointerdown', event => {
-        if (!gameRunning || event.button !== 0) return;
+        if (!gameRunning || paused || event.button !== 0) return;
         event.preventDefault();
-        element.setPointerCapture(event.pointerId);
+        capturePointer(element, event.pointerId);
         firingPointers.add(event.pointerId);
         fireCooldown = 0;
     });
@@ -231,7 +342,7 @@ function bindFireControl(element) {
 bindFireControl(canvas);
 
 canvas.addEventListener('pointermove', e => {
-    if (!gameRunning || e.pointerType === 'mouse') return;
+    if (!gameRunning || paused || e.pointerType === 'mouse') return;
     const rect = canvas.getBoundingClientRect();
     const nextX = Math.max(0, Math.min(gameWidth - player.width, e.clientX - rect.left - player.width / 2));
     player.vx = (nextX - player.x) * 12;
@@ -316,8 +427,11 @@ function update(dt) {
         player.invuln = Math.max(0, player.invuln - dt);
     }
 
+    if (banner.time > 0) banner.time = Math.max(0, banner.time - dt);
+
     // Gatilho preso: dispara na cadência de FIRE_INTERVAL enquanto estiver ativo.
-    const fireOn = firingPointers.size || Boolean(keys.Space);
+    // No Fácil o gatilho está sempre preso (tiro automático).
+    const fireOn = MODES[mode].autoFire || firingPointers.size || Boolean(keys.Space);
     fireCooldown -= dt;
     if (fireOn && fireCooldown <= 0) {
         fireBullet();
@@ -355,11 +469,11 @@ function update(dt) {
             y: shooter.y + shooter.height,
             width: 6,
             height: 14,
-            vx: leadVx,
-            vy: 210 + Math.min(180, level * 22),
+            vx: leadVx * MODES[mode].enemyBulletSpeed,
+            vy: (210 + Math.min(180, level * 22)) * MODES[mode].enemyBulletSpeed,
             color: shooter.color || '#ff3b6b'
         });
-        enemyFireCooldown = Math.max(0.38, 1.55 - level * 0.12) * (0.75 + Math.random() * 0.5);
+        enemyFireCooldown = Math.max(0.38, 1.55 - level * 0.12) * (0.75 + Math.random() * 0.5) * MODES[mode].enemyFire;
     }
 
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
@@ -396,13 +510,13 @@ function update(dt) {
     if (hitLeft && enemyDirection === -1) {
         enemyDirection = 1;
         enemies.forEach(enemy => {
-            enemy.y += 20;
+            enemy.y += stepDown;
             enemy.x += 5; // Push away from wall
         });
     } else if (hitRight && enemyDirection === 1) {
         enemyDirection = -1;
         enemies.forEach(enemy => {
-            enemy.y += 20;
+            enemy.y += stepDown;
             enemy.x -= 5; // Push away from wall
         });
     }
@@ -433,16 +547,20 @@ function update(dt) {
                     enemyBullets = [];
                     updateHud();
                     initEnemies();
+                    enemyFireCooldown = 1.6; // respiro no começo da onda
+                    showBanner(`ONDA ${level}!`, '#b7ff4a');
                 }
 
                 // Level up bullets
                 if (score >= 500 && bulletLevel < 2) {
                     bulletLevel = 2;
                     updateHud();
+                    showBanner('LASER II!', '#00ff88');
                 }
                 if (score >= 1500 && bulletLevel < 3) {
                     bulletLevel = 3;
                     updateHud();
+                    showBanner('LASER III!', '#ff2ae6');
                 }
 
                 break;
@@ -450,18 +568,19 @@ function update(dt) {
         }
     }
 
-    // Enemy vs Player
+    // Enemy vs Player: a formação chegou na altura da nave = ela “passou”.
+    // Antes só o invasor que encostava sumia (um por frame) e as vidas evaporavam
+    // em sequência; agora custa uma vida e a mesma onda recomeça do topo.
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (e.y + e.height >= player.y + 4) {
-            enemies.splice(i, 1);
+            player.invuln = 0;
             handlePlayerHit();
             if (!gameRunning) return;
-            if (enemies.length === 0) {
-                level++;
-                updateHud();
-                initEnemies();
-            }
+            enemyBullets = [];
+            initEnemies();
+            enemyFireCooldown = 1.6;
+            showBanner('ELES PASSARAM! −1 VIDA', '#ff4fd8');
             break;
         }
     }
@@ -475,11 +594,11 @@ function update(dt) {
         if (p.life <= 0) particles.splice(i, 1);
     }
 
-    // Stars
-    stars.forEach(star => {
-        star.y += star.speed;
+    // Stars (px/s: o fator 60 mantém a velocidade antiga, que era por frame)
+    for (const star of stars) {
+        star.y += star.speed * 60 * dt;
         if (star.y > gameHeight) star.y = 0;
-    });
+    }
 }
 
 function drawPlasmaCapsule(b, isEnemy = false) {
@@ -681,28 +800,7 @@ function drawEnemy(e) {
 }
 
 function draw() {
-    const spaceGradient = ctx.createLinearGradient(0, 0, 0, gameHeight);
-    spaceGradient.addColorStop(0, '#060714');
-    spaceGradient.addColorStop(.55, '#03040a');
-    spaceGradient.addColorStop(1, '#080510');
-    ctx.fillStyle = spaceGradient;
-    ctx.fillRect(0, 0, gameWidth, gameHeight);
-
-    ctx.strokeStyle = 'rgba(89, 243, 255, .045)';
-    ctx.lineWidth = 1;
-    const horizon = gameHeight * .64;
-    for (let y = horizon; y < gameHeight; y += 28) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(gameWidth, y);
-        ctx.stroke();
-    }
-    for (let x = -gameWidth; x < gameWidth * 2; x += 56) {
-        ctx.beginPath();
-        ctx.moveTo(gameWidth / 2, horizon);
-        ctx.lineTo(x, gameHeight);
-        ctx.stroke();
-    }
+    ctx.drawImage(backdrop, 0, 0, gameWidth, gameHeight);
 
     // Draw Stars — twinkle estável (seno), não noise por frame
     const starT = performance.now() / 1000;
@@ -717,7 +815,7 @@ function draw() {
     ctx.globalAlpha = 1;
 
     ctx.shadowBlur = 0;
-    const fireOn = firingPointers.size || Boolean(keys.Space);
+    const fireOn = (gameRunning && MODES[mode].autoFire) || firingPointers.size || Boolean(keys.Space);
     drawShip(starT, fireOn);
 
     // Draw Player & Enemy Plasma Bullets
@@ -735,10 +833,25 @@ function draw() {
     });
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
+
+    // Faixa de aviso (onda nova, arsenal, vida perdida).
+    if (banner.time > 0) {
+        const alpha = Math.min(1, banner.time / 0.4);
+        const size = Math.max(12, Math.min(24, gameWidth * 0.045));
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgba(3, 4, 10, 0.72)';
+        ctx.fillRect(0, gameHeight * 0.42 - size, gameWidth, size * 2);
+        ctx.font = `${size}px 'Press Start 2P', monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = banner.color;
+        ctx.fillText(banner.text, gameWidth / 2, gameHeight * 0.42, gameWidth - 24);
+        ctx.globalAlpha = 1;
+    }
 }
 
 function loop(timestamp) {
-    if (!gameRunning) return;
+    if (!gameRunning || paused) return;
     // Teto de 1/30s: sem ele, um frame longo (troca de aba, GC) fazia os
     // inimigos pularem várias linhas e os tiros atravessarem a nave.
     const dt = Math.min((timestamp - lastTime) / 1000, 1 / 30);
@@ -755,15 +868,22 @@ function clearControls() {
 }
 window.addEventListener('blur', clearControls);
 
+let highScoreAtStart = 0;
+
 function startGame() {
     if (gameRunning) return;
     clearControls();
+    paused = false;
+    highScoreAtStart = highScore;
+    document.getElementById('pauseScreen').classList.add('hidden');
+    document.getElementById('pauseBtn').hidden = false;
+    banner.time = 0;
     fireCooldown = 0;
     enemyDirection = 1;
     particles = [];
     gameRunning = true;
     score = 0;
-    lives = 3;
+    lives = MODES[mode].lives;
     level = 1;
     bulletLevel = 1;
     bullets = [];
@@ -780,24 +900,86 @@ function startGame() {
     initStars();
     initEnemies();
     lastTime = performance.now();
+    showBanner('ONDA 1', '#59f3ff');
     loop(lastTime);
 }
 
 function gameOver() {
     gameRunning = false;
+    paused = false;
     cancelAnimationFrame(animationId);
+    clearControls();
     if (score > highScore) {
         highScore = score;
         saveHighScore(highScore);
     }
     updateHud();
+    document.getElementById('pauseBtn').hidden = true;
     document.getElementById('finalScore').innerText = formatScore(score);
+    document.getElementById('finalNote').textContent = score > highScoreAtStart && score > 0
+        ? '★ NOVO RECORDE! ★'
+        : `Onda ${level} · recorde ${formatScore(highScore)}`;
     document.getElementById('gameOverScreen').classList.remove('hidden');
+    banner.time = 0;
+    draw();
+}
+
+/* Pausa: congela o loop (nada de rAF rodando) e mostra o overlay. */
+function setPaused(next) {
+    if (!gameRunning || paused === next) return;
+    paused = next;
+    clearControls();
+    document.getElementById('pauseScreen').classList.toggle('hidden', !paused);
+    const pauseBtn = document.getElementById('pauseBtn');
+    pauseBtn.setAttribute('aria-label', paused ? 'Continuar' : 'Pausar');
+    if (paused) {
+        cancelAnimationFrame(animationId);
+        document.getElementById('resumeBtn').focus({ preventScroll: true });
+    } else {
+        lastTime = performance.now();
+        animationId = requestAnimationFrame(loop);
+    }
+}
+
+function showMenu() {
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('pauseScreen').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+    document.getElementById('startBtn').focus({ preventScroll: true });
+}
+
+function syncModeButtons() {
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
 }
 
 // Event Listeners for UI
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('menuBtn').addEventListener('click', showMenu);
+document.getElementById('pauseBtn').addEventListener('click', () => setPaused(!paused));
+document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
+document.getElementById('quitBtn').addEventListener('click', () => {
+    gameRunning = false;
+    paused = false;
+    cancelAnimationFrame(animationId);
+    clearControls();
+    document.getElementById('pauseBtn').hidden = true;
+    showMenu();
+});
+document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        mode = btn.dataset.mode;
+        try {
+            localStorage.setItem(MODE_KEY, mode);
+        } catch (err) {
+            /* Sem storage o modo vale só nesta visita. */
+        }
+        syncModeButtons();
+    });
+});
+syncModeButtons();
 
 function formatScore(value) {
     return String(value).padStart(6, '0');
@@ -806,7 +988,7 @@ function formatScore(value) {
 function updateHud() {
     document.getElementById('score').innerText = formatScore(score);
     document.getElementById('level').innerText = String(level).padStart(2, '0');
-    document.getElementById('lives').innerText = Array(lives).fill('♥').join(' ');
+    document.getElementById('lives').innerText = '♥'.repeat(Math.max(0, lives));
     const hsText = formatScore(Math.max(highScore, score));
     const weaponText = `LASER ${['I', 'II', 'III'][bulletLevel - 1]}`;
     document.getElementById('highScore').innerText = hsText;
@@ -862,15 +1044,13 @@ if (labAudio) {
 }
 syncSoundToggle();
 
-// Aba escondida: congela o jogo em vez de deixar a horda avançar sozinha.
+// Aba escondida: pausa de verdade (overlay de PAUSA). Ao voltar, o jogador
+// decide quando continuar — a horda não avança sozinha nem de surpresa.
 function onVisibility(hidden) {
     if (!gameRunning) return;
     if (hidden) {
+        setPaused(true);
         cancelAnimationFrame(animationId);
-        clearControls();
-    } else {
-        lastTime = performance.now();
-        animationId = requestAnimationFrame(loop);
     }
 }
 
@@ -886,6 +1066,8 @@ window.addEventListener('resize', () => {
     if (!gameRunning) {
         initStars();
         draw(); // Draw one frame of stars
+    } else if (paused) {
+        draw();
     }
 });
 

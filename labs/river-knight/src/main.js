@@ -16,20 +16,20 @@ import {
     LANDMARKS,
     STORAGE_KEY,
     BOAT
-} from './config.js?v=50';
+} from './config.js?v=51';
 import { createFireLights, fireLights } from './lights.js?v=50';
-import { createWater, waterHeight } from './water.js?v=50';
-import { createTerrain } from './terrain.js?v=50';
-import { Effects } from './effects.js?v=50';
-import { Entities } from './entities.js?v=50';
-import { World } from './world.js?v=50';
-import { Player } from './player.js?v=50';
-import { createCastle } from './castle.js?v=50';
-import { BossBarge } from './boss.js?v=50';
-import { Hud } from './hud.js?v=50';
+import { createWater, waterHeight } from './water.js?v=51';
+import { createTerrain } from './terrain.js?v=51';
+import { Effects } from './effects.js?v=51';
+import { Entities } from './entities.js?v=51';
+import { World } from './world.js?v=51';
+import { Player } from './player.js?v=51';
+import { createCastle } from './castle.js?v=51';
+import { BossBarge } from './boss.js?v=51';
+import { Hud } from './hud.js?v=52';
 import { Input } from './input.js?v=50';
 import { GameAudio } from './audio.js?v=50';
-import { centerX, halfWidth } from './river.js?v=50';
+import { centerX, halfWidth } from './river.js?v=51';
 import { clamp, damp, detectTouch, formatTime, randRange } from './utils.js?v=50';
 
 /**
@@ -80,8 +80,9 @@ class Game {
     /* ------------------------------------------------------------------ */
 
     loadSettings() {
+        // Primeira visita começa no Escudeiro (canhão automático): dá para jogar sem ler nada.
         const fallback = {
-            difficulty: 'warrior',
+            difficulty: 'squire',
             quality: 'auto',
             volume: 70,
             muted: false,
@@ -368,7 +369,7 @@ class Game {
         this.defeatTimer = 0;
         this.cameraMode = 0;
         this.landmarkIndex = 0;
-        this.hud.setHint(true);
+        this.hud.setHint(true, this.difficulty.autoFire, this.isTouch);
         this.camera.fov = 62;
         this.camera.updateProjectionMatrix();
 
@@ -407,6 +408,8 @@ class Game {
     }
 
     gameOver() {
+        // Pode ser pedido duas vezes no mesmo quadro (colisão + checagem de vida): só vale a primeira.
+        if (this.state !== 'playing') return;
         this.state = 'defeat';
         this.hud.setState('defeat');
         this.hud.showBoss(false);
@@ -560,25 +563,62 @@ class Game {
         this.castle.update(dt, this.time);
     }
 
+    /**
+     * Contexto passado às entidades a cada quadro. Um objeto só, reaproveitado
+     * (antes eram um objeto e quatro closures novos por chamada, várias vezes por quadro).
+     */
     makeContext(dt) {
-        return {
-            dt,
-            time: this.time,
-            input: this.input,
-            effects: this.effects,
-            audio: this.audio,
-            player: { x: this.player.x, y: this.player.position.y, z: this.player.z },
-            difficulty: this.difficulty,
-            fireArrow: (x, y, z, speedScale = 1) => this.fireArrow(x, y, z, speedScale),
-            onKill: (points, pos) => this.onKill(points, pos),
-            onEnrage: () => {
-                this.hud.message('Morvain enfurece!', 'danger', 2400);
-                this.audio.sfx('horn');
-            },
-            onScrape: () => {
-                if (Math.random() < 0.05) this.audio.sfx('hitWood');
-            }
-        };
+        let ctx = this._ctx;
+        if (!ctx) {
+            ctx = this._ctx = {
+                dt: 0,
+                time: 0,
+                input: this.input,
+                effects: this.effects,
+                audio: this.audio,
+                player: { x: 0, y: 0, z: 0 },
+                difficulty: null,
+                pull: null,
+                speedScale: 1,
+                bossLock: null,
+                fireArrow: (x, y, z, speedScale = 1) => this.fireArrow(x, y, z, speedScale),
+                onKill: (points, pos) => this.onKill(points, pos),
+                onEnrage: () => {
+                    this.hud.message('Morvain enfurece!', 'danger', 2400);
+                    this.audio.sfx('horn');
+                },
+                onScrape: () => {
+                    if (Math.random() < 0.05) this.audio.sfx('hitWood');
+                }
+            };
+        }
+        ctx.dt = dt;
+        ctx.time = this.time;
+        ctx.player.x = this.player.x;
+        ctx.player.y = this.player.position.y;
+        ctx.player.z = this.player.z;
+        ctx.difficulty = this.difficulty;
+        ctx.pull = null;
+        ctx.speedScale = 1;
+        ctx.bossLock = null;
+        return ctx;
+    }
+
+    /**
+     * Alvo "Barcaça" para a mira automática enquanto o chefe bloqueia o rio
+     * (antes a retícula ficava vazia na luta e o tiro saía reto, sem trava).
+     */
+    bossLock() {
+        const boss = this.boss;
+        if (!boss.active || boss.dying > 0 || this.gateOpened) return null;
+        const pos = boss.group.position;
+        const lock = this._bossLock || (this._bossLock = { kind: 'boss', x: 0, y: 0, z: 0, dist: 0, entity: null });
+        lock.x = pos.x;
+        lock.y = pos.y + 3;
+        lock.z = pos.z;
+        lock.dist = Math.hypot(pos.x - this.player.x, pos.z - this.player.z);
+        lock.entity = boss;
+        return lock;
     }
 
     fireArrow(x, y, z, speedScale = 1) {
@@ -602,8 +642,11 @@ class Game {
         this.computePull();
         ctx.pull = this.pullVec;
         ctx.speedScale = this.bossStarted && this.boss.active && this.boss.dying <= 0 ? 0.92 : 1;
+        ctx.bossLock = this.bossLock();
 
-        if (this.input.consumeFire() || (this.player.hasFury && this.input.firing)) {
+        // Escudeiro: o canhão dispara sozinho quando há alvo travado (só falta desviar).
+        const autoFire = this.difficulty?.autoFire && this.player.canThrow() && this.player.getAimLock(this.entities, ctx.bossLock);
+        if (this.input.consumeFire() || autoFire || (this.player.hasFury && this.input.firing)) {
             if (this.player.fireCannons(this.entities, ctx)) {
                 this.audio.sfx('cannon', this.player.hasFury ? 1.15 : 1);
                 const lock = this.player._lastLock;
@@ -621,7 +664,7 @@ class Game {
 
         // Mira automática — a retícula segue o alvo no mundo.
         {
-            const lock = this.player.getAimLock(this.entities);
+            const lock = this.player.getAimLock(this.entities, ctx.bossLock);
             if (lock) {
                 this._aimNdc.set(lock.x, lock.y, lock.z).project(this.camera);
                 const x = (this._aimNdc.x * 0.5 + 0.5) * 100;

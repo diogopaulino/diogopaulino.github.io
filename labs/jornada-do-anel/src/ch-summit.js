@@ -7,9 +7,9 @@
 import * as THREE from 'three';
 import { fbm2, smoothstep, lerp } from '../../shared/gfx/core.js';
 import { createCourse, createTerrain, createGrass, createForest, createWater, createPath, scatter, scatterModel } from '../../shared/gfx/terrain.js';
-import { ChapterWorld, own, makePage, lightShaft, addAmbient } from './world.js?v=30';
-import { Batch, trs, block, turned, column, arch, addStoneSeat, TAU } from './build.js?v=30';
-import { makeGardener, Extra } from './actors.js?v=30';
+import { ChapterWorld, own, makePage, lightShaft, addAmbient } from './world.js?v=31';
+import { Batch, trs, block, turned, column, arch, addStoneSeat, TAU } from './build.js?v=31';
+import { makeGardener, Extra } from './actors.js?v=31';
 
 export function buildSummit(ctx) {
     const world = new ChapterWorld(ctx);

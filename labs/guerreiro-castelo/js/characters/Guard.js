@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { makeHero } from './cast.js?v=40';
-import { GuardAI } from '../ai/GuardAI.js?v=40';
+import { GuardAI } from '../ai/GuardAI.js?v=42';
 import { angleDamp } from '../utils/math.js';
 
 const CALM = new THREE.Color(0x7ad0a0);

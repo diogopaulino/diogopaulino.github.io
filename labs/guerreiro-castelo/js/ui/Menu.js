@@ -18,7 +18,11 @@ export class Menu {
         document.getElementById('btnControls')?.addEventListener('click', () => this.showControls(true));
         document.getElementById('btnSettings')?.addEventListener('click', () => this.showSettings(true));
         document.getElementById('btnCloseControls')?.addEventListener('click', () => this.showControls(false));
-        document.getElementById('btnCloseSettings')?.addEventListener('click', () => this.showSettings(false));
+        document.getElementById('btnCloseSettings')?.addEventListener('click', () => {
+            this.showSettings(false);
+            /* aberto pela pausa: volta para a pausa (antes o jogo ficava pausado sem menu) */
+            if (game.paused) game.pauseMenu.show(true);
+        });
 
         document.getElementById('btnPlayAgain')?.addEventListener('click', () => {
             document.getElementById('endOverlay').hidden = true;

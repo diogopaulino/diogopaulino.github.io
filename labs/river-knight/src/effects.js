@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { fireLights } from './lights.js?v=50';
 import { sparkTexture, smokeTexture, foamTexture } from './textures.js?v=50';
-import { waterHeight } from './water.js?v=50';
+import { waterHeight } from './water.js?v=51';
 
 /* ------------------------------------------------------------------ */
 /* Partículas                                                          */

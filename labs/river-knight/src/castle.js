@@ -9,11 +9,11 @@ import { createHero } from '../../shared/gfx/hero.js';
 import { applyWorldUV } from '../../shared/gfx/core.js';
 import { instanceModel } from '../../shared/gfx/assets.js';
 import { castleStone, slateRoof, darkWood, iron, steel, plain, glow } from './materials.js?v=50';
-import { buildFlame, bannerGeometry, bannerMaterial } from './structure-models.js?v=50';
-import { tickStructures } from './structures.js?v=50';
+import { buildFlame, bannerGeometry, bannerMaterial } from './structure-models.js?v=51';
+import { tickStructures } from './structures.js?v=51';
 import { fireLights } from './lights.js?v=50';
-import { centerX, halfWidth, terrainHeight } from './river.js?v=50';
-import { CASTLE_Z } from './config.js?v=50';
+import { centerX, halfWidth, terrainHeight } from './river.js?v=51';
+import { CASTLE_Z } from './config.js?v=51';
 import { damp } from './utils.js?v=50';
 
 // Materiais: tudo PBR real (materials.js). As funções abaixo só adaptam as

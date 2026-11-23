@@ -193,6 +193,8 @@ export function applyHit(match, attacker, defender, move, projectile = null, cla
     let damage = Math.max(1, Math.round(scaledDamage(attacker, move) * incomingFactor(defender)));
     if (counter) damage = Math.round(damage * 1.18);
     else if (punish) damage = Math.round(damage * 1.10);
+    // Difficulty: CPU hits are softened on Fácil (match.cpuDamage, see AI_CONFIG).
+    if (attacker.isCpu && match.cpuDamage !== 1) damage = Math.max(1, Math.round(damage * (match.cpuDamage ?? 1)));
 
     // First Hit of the round bonus meter + callout
     if (!match.firstHitDone) {

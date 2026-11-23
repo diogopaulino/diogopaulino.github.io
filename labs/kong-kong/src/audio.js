@@ -36,6 +36,8 @@ export class KongAudio {
     this.ctx = null;
     this.muted = this.readMuted();
     this.musicOn = false;
+    this.wantMusic = false;
+    this.noiseBuf = null;
     this.step = 0;
     this.nextTime = 0;
     this.timer = 0;
@@ -74,10 +76,13 @@ export class KongAudio {
   toggleMute() {
     this.muted = !this.muted;
     this.persist();
-    if (this.muted) this.stopMusic();
-    else {
+    if (this.muted) {
+      this.musicOn = false;
+    } else {
       this.ensure();
       this.play('select');
+      // Volta a música se o jogo estava com ela ligada antes do mudo.
+      if (this.wantMusic) this.startMusic();
     }
     return this.muted;
   }
@@ -102,12 +107,15 @@ export class KongAudio {
     const ctx = this.ensure();
     if (!ctx || this.muted) return;
     const t = at ?? ctx.currentTime;
-    const n = Math.max(1, (ctx.sampleRate * dur) | 0);
-    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    // Um único buffer de ruído (0,5 s) reaproveitado — antes alocava um por batida.
+    if (!this.noiseBuf) {
+      const n = (ctx.sampleRate * 0.5) | 0;
+      this.noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const data = this.noiseBuf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    }
     const src = ctx.createBufferSource();
-    src.buffer = buf;
+    src.buffer = this.noiseBuf;
     const filter = ctx.createBiquadFilter();
     filter.type = 'highpass';
     filter.frequency.value = 800;
@@ -210,6 +218,7 @@ export class KongAudio {
   }
 
   startMusic() {
+    this.wantMusic = true;
     if (this.musicOn) return;
     const ctx = this.ensure();
     if (!ctx || this.muted) return;
@@ -219,13 +228,25 @@ export class KongAudio {
   }
 
   stopMusic() {
+    this.wantMusic = false;
     this.musicOn = false;
+  }
+
+  /** Aba oculta: congela o relógio de áudio (nada toca em segundo plano). */
+  suspend() {
+    if (this.ctx && this.ctx.state === 'running') this.ctx.suspend();
+  }
+
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
 
   tick() {
     if (!this.musicOn || this.muted || !this.ctx) return;
     const ctx = this.ctx;
     const ahead = 0.12;
+    // Se o loop ficou parado (aba oculta, travada), não "recupera" dezenas de notas de uma vez.
+    if (this.nextTime < ctx.currentTime - 0.05) this.nextTime = ctx.currentTime + 0.03;
     while (this.nextTime < ctx.currentTime + ahead) {
       const i = this.step % MELODY.length;
       const note = MELODY[i];

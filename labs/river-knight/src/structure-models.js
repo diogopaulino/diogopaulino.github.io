@@ -16,8 +16,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { applyWorldUV } from '../../shared/gfx/core.js';
 import { pbrMaterial } from '../../shared/gfx/assets.js';
 import { blockStone, darkWood, oakWood, barkWood, thatchRoof, iron, mossRock } from './materials.js?v=50';
-import { terrainHeight } from './river.js?v=50';
-import { waterHeight } from './water.js?v=50';
+import { terrainHeight } from './river.js?v=51';
+import { waterHeight } from './water.js?v=51';
 
 const TAU = Math.PI * 2;
 

@@ -50,12 +50,14 @@ export const DIFFICULTY = {
     squire: {
         id: 'squire',
         label: 'Escudeiro',
-        blurb: 'Rio calmo, inimigos raros. Ideal para conhecer o trecho.',
+        blurb: 'Fácil: o canhão atira sozinho e o casco aguenta mais. Ótimo para crianças.',
         spawnScale: 0.62,
         enemyFireScale: 0.58,
         damageScale: 1,
-        hull: 6,
-        scoreScale: 0.8
+        hull: 7,
+        scoreScale: 0.8,
+        /** Dispara sozinho quando a mira trava num alvo: o jogador só governa o navio. */
+        autoFire: true
     },
     warrior: {
         id: 'warrior',

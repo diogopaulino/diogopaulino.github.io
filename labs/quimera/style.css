@@ -223,6 +223,79 @@ header[data-lab-header] {
     gap: 1.2rem;
 }
 
+/* Foto e link: o cartão do título é "pointer-events: none"; só estes botões recebem toque. */
+.mix-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    pointer-events: auto;
+}
+
+.chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: var(--touch-target, 44px);
+    padding: 0 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: transform 0.2s var(--ease), background 0.2s, border-color 0.2s;
+}
+
+.chip-btn:hover {
+    border-color: var(--gold);
+}
+
+.chip-btn:active {
+    transform: scale(0.96);
+}
+
+.chip-btn:focus-visible,
+.btn:focus-visible,
+.step:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+/* Aviso curto (link copiado, foto salva) logo acima do painel de peças. */
+.toast {
+    position: absolute;
+    left: 50%;
+    bottom: max(10.5rem, calc(var(--safe-bottom) + 9.5rem));
+    z-index: 30;
+    max-width: min(26rem, calc(100vw - 2rem));
+    margin: 0;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 0.9rem;
+    text-align: center;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.toast[data-show="true"] {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 .readout span {
     display: grid;
     gap: 0.1rem;
@@ -449,6 +522,40 @@ footer[data-lab-footer] a {
         display: none;
     }
 
+    /* Retrato: foto e link viram dois ícones no canto do cartão do título. */
+    .hud-left {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 0.5rem;
+        align-items: center;
+    }
+
+    .hud-left .eyebrow,
+    .hud-left h2 {
+        grid-column: 1;
+    }
+
+    .mix-actions {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        margin-top: 0;
+        flex-wrap: nowrap;
+    }
+
+    .chip-btn {
+        width: var(--touch-target, 44px);
+        padding: 0;
+        justify-content: center;
+    }
+
+    .chip-label {
+        display: none;
+    }
+
+    .toast {
+        bottom: max(15rem, calc(var(--safe-bottom) + 14rem));
+    }
+
     /* Painel compacto: cada peça numa linha (nome · ‹ · escolha · ›) para o
        personagem ficar inteiro acima dele — o painel não passa de ~215 px. */
     .dock {
@@ -536,11 +643,23 @@ footer[data-lab-footer] a {
 
     .dock-actions .btn {
         flex: 0 0 auto;
-        padding-inline: 0.7rem;
+        width: var(--touch-target, 44px);
+        padding-inline: 0;
+        font-size: 1.1rem;
+    }
+
+    /* Paisagem baixa: Surpresa/Conjunto só com ícone — sobra largura para o nome das peças. */
+    .btn-label {
+        display: none;
+    }
+
+    .toast {
+        bottom: max(5.6rem, calc(var(--safe-bottom) + 5rem));
     }
 
     .slot-face span {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        padding-inline: 0.15rem;
     }
 
     .hud-left {

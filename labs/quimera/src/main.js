@@ -12,8 +12,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
     KITS, KIT_BY_ID, COMBO_TOTAL, STORAGE_KEY,
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
-} from './config.js?v=2';
-import { Character } from './character.js?v=81';
+} from './config.js?v=3';
+import { Character } from './character.js?v=82';
 import { createStudio, PLINTH_TOP } from './studio.js?v=81';
 import { setSculptTier } from './sculpt.js';
 import { preload } from '../../shared/gfx/assets.js';
@@ -124,6 +124,8 @@ class Quimera {
         $('#rotateBtn').addEventListener('click', () => this.toggleRotate());
         $('#frameBtn')?.addEventListener('click', () => this.toggleFrame());
         $('#fullscreen').addEventListener('click', () => this.toggleFullscreen());
+        $('#photoBtn')?.addEventListener('click', () => this.photo());
+        $('#shareBtn')?.addEventListener('click', () => this.share());
 
         document.querySelectorAll('[data-step]').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -235,6 +237,62 @@ class Quimera {
         else document.exitFullscreen?.();
     }
 
+    /** Aviso curto no rodapé (link copiado, foto salva…). */
+    toast(text, ms = 2200) {
+        const el = $('#toast');
+        if (!el) return;
+        el.textContent = text;
+        el.dataset.show = 'true';
+        clearTimeout(this._toastT);
+        this._toastT = setTimeout(() => { el.dataset.show = 'false'; }, ms);
+    }
+
+    /**
+     * Foto: desenha um quadro e copia o canvas na mesma tarefa — o buffer do WebGL ainda
+     * está intacto (sem preserveDrawingBuffer), e toBlob tira a cópia na hora da chamada.
+     */
+    photo() {
+        if (!this.stage) return;
+        this.audio.resume();
+        this.stage.render(0);
+        const name = `quimera-${toHash(this.ids)}.png`;
+        this.canvas.toBlob((blob) => {
+            if (!blob) {
+                this.toast('Não deu para salvar a foto');
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 4000);
+            this.toast('📸 Foto salva!');
+        }, 'image/png');
+        this.audio.pluck(2);
+    }
+
+    /** Link da combinação (o hash remonta as três peças): compartilhamento nativo ou cópia. */
+    async share() {
+        this.audio.resume();
+        const url = `${location.origin}${location.pathname}#${toHash(this.ids)}`;
+        const title = `Quimera: ${mixTitle(this.ids).title}`;
+        try {
+            if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+                await navigator.share({ title, url });
+                return;
+            }
+            await navigator.clipboard.writeText(url);
+            this.toast('🔗 Link copiado!');
+        } catch (err) {
+            if (err?.name === 'AbortError') return;
+            // sem permissão de área de transferência: mostra o link para copiar à mão
+            this.toast(url, 5000);
+        }
+    }
+
     /**
      * Área livre da tela (px CSS) e enquadramento. A área livre exclui o cabeçalho, o painel de
      * peças e — no retrato — o cartão do título; no paisagem curto o cartão é excluído pela lateral.
@@ -328,6 +386,8 @@ class Quimera {
             else if (k === 'h') this._toggleUi();
             else if (k === 'f') this.toggleFullscreen();
             else if (k === 'c') this.toggleFrame();
+            else if (k === 'p') this.photo();
+            else if (k === 'l') this.share();
         });
     }
 

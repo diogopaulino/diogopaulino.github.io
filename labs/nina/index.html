@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/fredoka/font.css">
     <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
 
     <script type="importmap">
     {
@@ -113,8 +113,15 @@
                     <strong id="friendCount" class="mono">0 / 7</strong>
                 </div>
                 <div class="panel quest-panel">
-                    <span class="hud-label" id="questTag">O vale acordou</span>
-                    <p id="objective" class="objective">Pegue amoras e chame o primeiro filhote.</p>
+                    <!-- Bússola: a seta gira para o próximo alvo (amora, filhote ou ninho) relativa à câmera. -->
+                    <div class="guide" aria-hidden="true">
+                        <span id="guideArrow" class="guide-arrow">➤</span>
+                        <span id="guideDist" class="guide-dist">—</span>
+                    </div>
+                    <div class="quest-text">
+                        <span class="hud-label" id="questTag">O vale acordou</span>
+                        <p id="objective" class="objective">Pegue amoras e chame o primeiro filhote.</p>
+                    </div>
                 </div>
                 <div class="panel berry-panel">
                     <span class="hud-label">Amoras</span>
@@ -138,8 +145,8 @@
                     <span>correr</span>
                 </div>
                 <div class="touch-buttons">
-                    <button type="button" id="btnRun" class="pad">⇧</button>
-                    <button type="button" id="btnJump" class="pad pad-magic">hop</button>
+                    <button type="button" id="btnRun" class="pad" aria-label="Segure para correr">🏃</button>
+                    <button type="button" id="btnJump" class="pad pad-magic" aria-label="Pular">pular</button>
                 </div>
             </div>
         </div>
@@ -156,26 +163,26 @@
         <div id="menuOverlay" class="overlay menu-overlay" hidden>
             <div class="overlay-card menu-card">
                 <header class="menu-head">
-                    <p class="eyebrow"><i></i> three.js · PBR · vale hiper-realista</p>
+                    <p class="eyebrow"><i></i> Aventura 3D · 7 filhotes</p>
                     <h1>Nina</h1>
-                    <p class="lede">Uma raposinha, um vale de amoras e sete filhotes que se perderam
-                        depois da chuva. Pule, ofereça uma fruta e leve todo mundo de volta ao
-                        piquenique no ninho.</p>
+                    <p class="lede">Sete filhotes se perderam depois da chuva! Pegue <b>amoras 🫐</b>,
+                        encoste num filhote para ele vir com você e leve todos ao <b>ninho</b>.
+                        A <b>seta ➤</b> no topo mostra para onde ir.</p>
                 </header>
 
                 <div class="menu-grid">
                     <details class="menu-section menu-disclosure" open>
                         <summary>Como brincar</summary>
                         <div class="keys keys--board">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> correr</span>
-                            <span><kbd>Shift</kbd> correr rápido · <kbd>Espaço</kbd> pular / chamar</span>
-                            <span>Mouse arrasta a câmera · roda aproxima</span>
-                            <span>Ofereça uma amora ao filhote e leve-o ao ninho</span>
-                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas: andar</span>
+                            <span><kbd>Shift</kbd> correr · <kbd>Espaço</kbd> pular</span>
+                            <span>Encoste no filhote com uma amora: ele vem atrás de você</span>
+                            <span>Chegou ao ninho com a fila? Eles ficam lá sozinhos</span>
+                            <span>Mouse arrasta a câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Guie a Nina com o direcional esquerdo. Use ⇧ para correr mais rápido.</span>
-                            <span>Toque em hop para pular ou chamar. Ofereça uma amora ao filhote e leve-o ao ninho.</span>
+                            <span>Arraste o círculo da esquerda para andar. Segure 🏃 para correr.</span>
+                            <span>Toque em <b>pular</b> para pular. Encoste no filhote com uma amora e leve-o ao ninho.</span>
                         </div>
                     </details>
                     <details class="menu-section menu-disclosure" open>
@@ -251,7 +258,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=21"></script>
+    <script type="module" src="src/main.js?v=22"></script>
 </body>
 
 </html>

@@ -25,7 +25,7 @@
     <meta name="twitter:title" content="RakuRaku Dinokun — pet virtual retrô | Diogo Paulino">
     <meta name="twitter:description" content="Recriação pesquisada do RakuRaku Dinokun / Dinkie Dino: carcaça, LCD, controles e ciclo de cuidado em tempo real.">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -148,6 +148,14 @@
           </div>
         </div>
 
+        <!-- Guia: diz em uma frase o que fazer agora (acertar o relógio, dar
+             comida, dar banho…) e oferece o atalho certo quando existe. -->
+        <div class="device-guide" id="guide" aria-live="polite">
+          <span class="guide-icon" id="guideIcon" aria-hidden="true">⏰</span>
+          <p class="guide-text" id="guideText">Primeiro, acerte o relógio do aparelho.</p>
+          <button class="guide-action" id="guideAction" type="button" hidden></button>
+        </div>
+
         <div class="device-actions" aria-label="Controles físicos adicionais">
           <button id="resetButton" class="reset-control" type="button" title="Botão rebaixado no verso do aparelho">
             <span aria-hidden="true"></span> reset traseiro
@@ -177,7 +185,7 @@
   </div>
 
   <script src="/labs/shared.js?v=16" defer></script>
-  <script src="script.js?v=11" defer></script>
+  <script src="script.js?v=12" defer></script>
 </body>
 
 </html>

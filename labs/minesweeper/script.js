@@ -9,7 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusLive = document.getElementById('gameStatus');
     const audio = window.LabAudio;
 
+    /* Regras ----------------------------------------------------------------
+       · Abrir um quadrado sem mina mostra quantas das 8 casas vizinhas têm mina.
+         Zero abre os vizinhos sozinho (flood fill).
+       · O primeiro toque é sempre seguro e abre uma área: as minas só são
+         sorteadas depois dele, fora do quadrado tocado e dos 8 vizinhos.
+       · Vitória: abrir todos os quadrados sem mina (bandeiras não são exigidas).
+         Derrota: abrir uma mina. O relógio conta segundos até 999.
+       · Fácil (8x8 · 6 minas) é o nível padrão, pensado para crianças. */
     const DIFFICULTIES = {
+        easy: { rows: 8, cols: 8, mines: 6 },
         beginner: { rows: 9, cols: 9, mines: 10 },
         intermediate: { rows: 16, cols: 16, mines: 40 },
         expert: { rows: 16, cols: 30, mines: 99 }
@@ -31,7 +40,47 @@ document.addEventListener('DOMContentLoaded', () => {
        bandeira — é como todo Campo Minado de celular funciona. */
     let flagMode = false;
 
+    /* setPointerCapture lança InvalidStateError se o ponteiro já foi solto (toque
+       muito curto, evento sintético). A captura é um bônus: sem ela o gesto segue. */
+    function capturePointer(element, pointerId) {
+        try {
+            element.setPointerCapture(pointerId);
+        } catch (err) {
+            /* segue sem captura */
+        }
+    }
+
     const BEST_KEY = 'minesweeper95:best';
+    const LEVEL_KEY = 'minesweeper95:difficulty';
+    const resultEl = document.getElementById('result');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultText = document.getElementById('resultText');
+    const resultIcon = document.getElementById('resultIcon');
+    const resultAgain = document.getElementById('resultAgain');
+    const resultLook = document.getElementById('resultLook');
+
+    try {
+        const savedLevel = localStorage.getItem(LEVEL_KEY);
+        difficultySelect.value = savedLevel in DIFFICULTIES ? savedLevel : 'easy';
+    } catch (err) {
+        difficultySelect.value = 'easy';
+    }
+
+    /* Caixa de resultado no estilo diálogo do Windows 95, sobre o campo. */
+    function showResult(won) {
+        resultTitle.textContent = won ? 'Você venceu!' : 'Boom!';
+        resultIcon.textContent = won ? '🎉' : '💥';
+        resultText.textContent = won
+            ? `Campo limpo em ${timer} segundo${timer === 1 ? '' : 's'}. Parabéns!`
+            : 'Você abriu uma mina. Tente de novo — o primeiro toque é sempre seguro.';
+        resultEl.dataset.tone = won ? 'win' : 'lose';
+        resultEl.hidden = false;
+        resultAgain.focus({ preventScroll: true });
+    }
+
+    function hideResult() {
+        resultEl.hidden = true;
+    }
 
     function sfx(name) {
         if (!audio) return;
@@ -113,10 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateCellSize() {
-        const available = Math.min(window.innerWidth - 48, 720);
-        // Em telas de toque o tabuleiro rola dentro da janela para preservar a área de toque.
+        // Largura útil: viewport menos padding do body e moldura da janela Win95.
+        const available = Math.min(document.documentElement.clientWidth - 72, 720);
+        const fit = Math.floor(available / COLS);
+        // No toque a célula cabe na tela até o mínimo de 30px (Fácil e Iniciante
+        // cabem inteiros num iPhone SE); abaixo disso o campo rola dentro da
+        // janela em vez de virar alvo minúsculo. Com mouse, até 36px.
         const cell = window.matchMedia('(pointer: coarse)').matches
-            ? 44 : Math.max(14, Math.min(28, Math.floor(available / COLS)));
+            ? Math.max(30, Math.min(44, fit)) : Math.max(16, Math.min(36, fit));
         document.documentElement.style.setProperty('--cell-size', cell + 'px');
         boardElement.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
         boardElement.style.gridTemplateRows = `repeat(${ROWS}, var(--cell-size))`;
@@ -124,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initGame() {
         endPress();
+        hideResult();
         // Set difficulty
         const difficulty = difficultySelect.value;
         const config = DIFFICULTIES[difficulty];
@@ -223,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = event.target.closest('.cell');
         if (!cell || gameOver || event.button !== 0 || press) return;
         const { r, c } = cell.dataset;
-        cell.setPointerCapture(event.pointerId);
+        capturePointer(cell, event.pointerId);
         press = { id: event.pointerId, r: +r, c: +c, x: event.clientX, y: event.clientY, held: false };
         resetBtn.innerText = '😮';
         press.timer = setTimeout(() => {
@@ -261,8 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
         while (minesPlaced < MINES) {
             const r = Math.floor(Math.random() * ROWS);
             const c = Math.floor(Math.random() * COLS);
+            // Zona segura 3x3 em volta do primeiro toque.
+            const nearFirst = Math.abs(r - excludeR) <= 1 && Math.abs(c - excludeC) <= 1;
 
-            if (!board[r][c].isMine && (r !== excludeR || c !== excludeC)) {
+            if (!board[r][c].isMine && !nearFirst) {
                 board[r][c].isMine = true;
                 minesPlaced++;
             }
@@ -312,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sfx('boom');
             buzz([40, 60, 120]);
             announce(`Você acertou uma mina. Fim de jogo em ${timer} segundos.`);
+            showResult(false);
         } else {
             revealCell(r, c);
             sfx('reveal');
@@ -439,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             buzz([25, 40, 25, 40, 60]);
             recordBest();
             announce(`Campo limpo em ${timer} segundos.`);
+            showResult(true);
         }
     }
 
@@ -465,8 +523,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetBtn.addEventListener('click', initGame);
     difficultySelect.addEventListener('change', () => {
+        try {
+            localStorage.setItem(LEVEL_KEY, difficultySelect.value);
+        } catch (err) {
+            /* Sem storage o nível vale só nesta visita. */
+        }
         renderBest();
         initGame();
+    });
+    resultAgain.addEventListener('click', initGame);
+    resultLook.addEventListener('click', () => {
+        hideResult();
+        resetBtn.focus({ preventScroll: true });
     });
     window.addEventListener('resize', updateCellSize);
     window.addEventListener('orientationchange', () => setTimeout(updateCellSize, 120));
@@ -487,6 +555,10 @@ document.addEventListener('DOMContentLoaded', () => {
     /* F alterna o modo pelo teclado — o equivalente do botão direito para quem
        joga no notebook sem mouse. */
     document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !resultEl.hidden) {
+            hideResult();
+            return;
+        }
         if (e.key === 'f' || e.key === 'F') {
             if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, select, textarea')) return;
             setFlagMode(!flagMode);

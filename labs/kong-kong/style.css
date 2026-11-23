@@ -212,8 +212,17 @@ body.kong-lab {
     pointer-events: none;
 }
 
+.touch-pad {
+    transition: opacity 0.2s ease;
+}
+
 .touch-pad.is-hidden {
     opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.touch-pad.is-hidden .pad-btn {
     pointer-events: none;
 }
 
@@ -231,6 +240,10 @@ body.kong-lab {
 
 .pad-btn {
     pointer-events: auto;
+    display: grid;
+    place-items: center;
+    transition: transform 0.08s ease, filter 0.08s ease, background-color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
     min-width: 52px;
     min-height: 52px;
     border: 1px solid rgba(255, 246, 234, 0.16);
@@ -261,6 +274,323 @@ body.kong-lab {
 .pad-sm {
     min-width: 44px;
     min-height: 44px;
+}
+
+/* Microinteração: o botão "afunda" enquanto o dedo está nele. */
+.pad-btn.is-down {
+    transform: scale(0.92);
+    filter: brightness(1.25);
+}
+
+.icon-btn {
+    transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(24, 44, 24, 0.75);
+}
+
+.icon-btn:active {
+    transform: scale(0.94);
+}
+
+.icon-btn:focus-visible,
+.pad-btn:focus-visible,
+.screen button:focus-visible,
+.map-bar button:focus-visible {
+    outline: 3px solid var(--sun);
+    outline-offset: 2px;
+}
+
+/* ---------- Telas (início, pausa, fim) ---------- */
+
+.screen {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    display: grid;
+    place-items: center;
+    padding: max(0.75rem, var(--safe-top)) max(0.75rem, var(--safe-right)) max(0.75rem, var(--safe-bottom)) max(0.75rem, var(--safe-left));
+    overflow-y: auto;
+    background: radial-gradient(ellipse at 50% 40%, rgba(10, 22, 10, 0.35), rgba(6, 14, 6, 0.72));
+    animation: screen-in 0.25s ease both;
+}
+
+.screen[hidden],
+.map-bar[hidden] {
+    display: none;
+}
+
+.panel {
+    width: min(100%, 31rem);
+    max-height: 100%;
+    overflow-y: auto;
+    padding: clamp(0.9rem, 3.2vw, 1.6rem);
+    border: 1px solid rgba(246, 208, 58, 0.26);
+    border-radius: 1.25rem;
+    background: linear-gradient(180deg, rgba(22, 44, 20, 0.92), rgba(12, 26, 12, 0.94));
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px rgba(255, 255, 255, 0.07);
+    text-align: center;
+    animation: panel-pop 0.32s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.kicker {
+    margin: 0 0 0.2rem;
+    color: var(--sun);
+    font: 800 0.72rem/1.2 "Nunito", system-ui, sans-serif;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.panel-h {
+    margin: 0;
+    color: var(--sun);
+    font: 400 clamp(1.7rem, 7vw, 2.7rem)/1.05 "Titan One", system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    text-shadow: 0 3px 0 var(--scarf), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.lead {
+    margin: 0.6rem auto 0;
+    max-width: 34ch;
+    color: rgba(255, 246, 234, 0.92);
+    font: 700 clamp(0.9rem, 2.6vw, 1.02rem)/1.4 "Nunito", system-ui, sans-serif;
+}
+
+.lead strong {
+    color: #ff8a8a;
+}
+
+.how {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    text-align: left;
+}
+
+.how-card {
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(255, 246, 234, 0.1);
+    border-radius: 0.85rem;
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.how-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: rgba(255, 246, 234, 0.55);
+    font: 800 0.66rem/1 "Nunito", system-ui, sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.how ul {
+    display: grid;
+    gap: 0.28rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: rgba(255, 246, 234, 0.88);
+    font: 700 0.8rem/1.25 "Nunito", system-ui, sans-serif;
+}
+
+.k {
+    display: inline-block;
+    min-width: 1.9rem;
+    margin-right: 0.3rem;
+    padding: 0.08rem 0.35rem;
+    border: 1px solid rgba(255, 246, 234, 0.2);
+    border-radius: 0.4rem;
+    background: rgba(255, 246, 234, 0.08);
+    color: var(--cream);
+    font: 800 0.72rem/1.4 "Nunito", system-ui, sans-serif;
+    text-align: center;
+}
+
+.k-red {
+    border-color: transparent;
+    background: var(--scarf);
+}
+
+.k-sun {
+    border-color: transparent;
+    background: var(--sun);
+    color: #3a2410;
+}
+
+/* No toque, as instruções de toque vêm primeiro (e vice-versa). */
+@media (pointer: fine) {
+    .how-keys {
+        order: -1;
+    }
+}
+
+.mode-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-top: 0.85rem;
+    padding: 0.25rem;
+    border-radius: 1rem;
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.mode-btn {
+    display: grid;
+    gap: 0.1rem;
+    min-height: 48px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.8rem;
+    background: transparent;
+    color: rgba(255, 246, 234, 0.7);
+    font: 400 1rem/1.1 "Titan One", system-ui, sans-serif;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.mode-btn small {
+    font: 700 0.68rem/1.2 "Nunito", system-ui, sans-serif;
+    opacity: 0.8;
+}
+
+.mode-btn[aria-pressed="true"] {
+    border-color: rgba(246, 208, 58, 0.5);
+    background: rgba(246, 208, 58, 0.16);
+    color: var(--sun);
+}
+
+.mode-btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary,
+.btn-ghost {
+    min-height: 48px;
+    border-radius: 999px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-primary {
+    width: 100%;
+    margin-top: 0.85rem;
+    padding: 0.7rem 1.4rem;
+    border: 0;
+    background: linear-gradient(180deg, #ffe066, #f6b51a);
+    color: #3a2008;
+    font: 400 clamp(1.15rem, 4vw, 1.4rem)/1 "Titan One", system-ui, sans-serif;
+    letter-spacing: 0.03em;
+    box-shadow: 0 5px 0 #b06e08, 0 12px 26px rgba(246, 181, 26, 0.28);
+}
+
+.btn-primary:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #b06e08, 0 6px 14px rgba(246, 181, 26, 0.24);
+}
+
+.btn-ghost {
+    padding: 0.55rem 1.1rem;
+    border: 1px solid rgba(255, 246, 234, 0.22);
+    background: rgba(12, 24, 12, 0.6);
+    color: var(--cream);
+    font: 800 0.95rem/1 "Nunito", system-ui, sans-serif;
+    backdrop-filter: blur(8px);
+}
+
+.btn-ghost:hover {
+    background: rgba(30, 56, 30, 0.8);
+}
+
+.btn-ghost:active {
+    transform: scale(0.96);
+}
+
+.panel-actions {
+    display: grid;
+    gap: 0.55rem;
+    justify-items: center;
+}
+
+.panel-actions .btn-ghost {
+    min-width: 9rem;
+}
+
+.stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45rem;
+    margin-top: 0.7rem;
+}
+
+.stats:empty {
+    display: none;
+}
+
+.stat {
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.28);
+    color: rgba(255, 246, 234, 0.8);
+    font: 700 0.85rem/1.2 "Nunito", system-ui, sans-serif;
+}
+
+.stat b {
+    color: var(--sun);
+    font: 400 1rem/1 "Titan One", system-ui, sans-serif;
+}
+
+/* ---------- Barra do mapa ---------- */
+
+.map-bar {
+    position: absolute;
+    left: 50%;
+    bottom: max(0.6rem, var(--safe-bottom));
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: max-content;
+    max-width: calc(100% - 1rem);
+    transform: translateX(-50%);
+    animation: screen-in 0.25s ease both;
+}
+
+.btn-round {
+    width: 48px;
+    padding: 0;
+    font-size: 1rem;
+}
+
+.btn-map {
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0.6rem 1.1rem;
+    overflow: hidden;
+    font-size: clamp(0.92rem, 3.4vw, 1.1rem);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-home {
+    padding-inline: 0.9rem;
+}
+
+@keyframes screen-in {
+    from { opacity: 0; }
+}
+
+@keyframes panel-pop {
+    from { opacity: 0; transform: translateY(10px) scale(0.96); }
 }
 
 .help {
@@ -321,13 +651,61 @@ body.kong-lab {
         height: 24px;
     }
 
+    /* Retrato: o jogo (16:9) fica em cima e a área de controles embaixo —
+       os botões nunca cobrem o que o jogador precisa ver. */
     .stage {
         aspect-ratio: auto;
-        min-height: min(58dvh, 520px);
+        min-height: max(calc((100vw - 1.2rem) * 0.5625 + 10rem), min(60dvh, 500px));
+        background: linear-gradient(180deg, #102010 0%, #0c1a0c 100%);
+    }
+
+    .hud-dock {
+        top: calc((100vw - 1.2rem) * 0.5625 + 0.5rem);
+        right: max(0.55rem, var(--safe-right));
     }
 
     .touch-pad {
         display: flex;
+        padding-bottom: max(0.8rem, var(--safe-bottom));
+    }
+
+    .pad-btn {
+        min-width: 58px;
+        min-height: 58px;
+        font-size: 1.05rem;
+    }
+
+    .pad-sm {
+        min-width: 50px;
+        min-height: 50px;
+    }
+
+    .pad-jump {
+        min-width: 78px;
+        min-height: 78px;
+    }
+
+    .pad-roll {
+        min-width: 64px;
+        min-height: 64px;
+    }
+
+    .actions {
+        gap: 0.6rem;
+    }
+
+    .map-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: calc(100% - 1rem);
+    }
+
+    .btn-map {
+        flex: 1 1 10rem;
+    }
+
+    .how ul {
+        font-size: 0.76rem;
     }
 
     .help {
@@ -377,12 +755,30 @@ body.kong-lab {
         display: flex;
     }
 
+    .stage {
+        background: #102010;
+    }
+
     .pad-btn {
+        min-width: 48px;
+        min-height: 48px;
+        font-size: 0.9rem;
+    }
+
+    .dpad .pad-btn {
+        background: rgba(16, 32, 16, 0.42);
+    }
+
+    .pad-sm {
         min-width: 44px;
         min-height: 44px;
     }
 
-    .pad-jump,
+    .pad-jump {
+        min-width: 60px;
+        min-height: 60px;
+    }
+
     .pad-roll {
         min-width: 52px;
         min-height: 52px;
@@ -392,10 +788,65 @@ body.kong-lab {
         top: max(0.3rem, var(--safe-top));
         right: max(0.35rem, var(--safe-right));
     }
+
+    .map-bar {
+        flex-wrap: nowrap;
+        width: max-content;
+    }
+
+    /* Tela inicial em duas colunas para caber em ~375 px de altura. */
+    .screen {
+        padding-block: max(0.4rem, var(--safe-top)) max(0.4rem, var(--safe-bottom));
+    }
+
+    .panel-title {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+        grid-template-areas:
+            "kicker how"
+            "h how"
+            "lead how"
+            "mode how"
+            "play how";
+        column-gap: 0.9rem;
+        align-items: center;
+        width: min(100%, 40rem);
+        padding: 0.8rem 1rem;
+    }
+
+    .panel-title .kicker { grid-area: kicker; }
+    .panel-title .panel-h { grid-area: h; font-size: 1.9rem; }
+    .panel-title .lead { grid-area: lead; margin-top: 0.3rem; font-size: 0.84rem; }
+    .panel-title .how { grid-area: how; grid-template-columns: 1fr; margin-top: 0; gap: 0.4rem; }
+    .panel-title .mode-switch { grid-area: mode; margin-top: 0.5rem; }
+    .panel-title .btn-primary { grid-area: play; margin-top: 0.55rem; }
+
+    .how ul {
+        grid-template-columns: 1fr 1fr;
+        font-size: 0.74rem;
+    }
+
+    .panel-menu {
+        padding: 0.8rem 1rem;
+    }
+
+    .panel-menu .lead {
+        font-size: 0.86rem;
+    }
+
+    .panel-menu .btn-primary {
+        margin-top: 0.6rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .ambient {
         display: none;
+    }
+
+    .screen,
+    .panel,
+    .map-bar {
+        animation: none;
     }
 }

@@ -10,10 +10,10 @@
 
 import * as THREE from 'three';
 import { smoothstep } from '../../shared/gfx/core.js';
-import { ChapterWorld, own, makePage, lightShaft, halo, addFire, addAmbient } from './world.js?v=30';
-import { Batch, mat, trs, block, column, arch, stairs, crystal, stoneBridge, addBrazier } from './build.js?v=30';
-import { makeGoblin, GoblinAI, makeWizard, turnTo, createCreature } from './actors.js?v=30';
-import { makeStaff } from './ch-shire.js?v=30';
+import { ChapterWorld, own, makePage, lightShaft, halo, addFire, addAmbient } from './world.js?v=31';
+import { Batch, mat, trs, block, column, arch, stairs, crystal, stoneBridge, addBrazier } from './build.js?v=31';
+import { makeGoblin, GoblinAI, makeWizard, turnTo, createCreature } from './actors.js?v=31';
+import { makeStaff } from './ch-shire.js?v=31';
 
 const HALF = 17; // meia largura do salão
 const LOW = -3;
@@ -39,6 +39,16 @@ export function buildMines(ctx) {
         if (z < 92) return Math.abs(x) < 1.3 ? LOW + bridge.deck(z - 83) : -40;
         return LOW;
     };
+    /* Parapeito invisível (jogo infantil): a ponte não tem corrimão e a fenda
+       engolia o portador a um passo torto. Cilindros ao longo das bordas do
+       tabuleiro (|x| = 1,3) e da boca do abismo (z = 74 e z = 92) seguram o
+       passo; o tabuleiro tem 2,6 m e o portador 0,42 m de raio. */
+    const RAIL = 0.45;
+    for (const sx of [-1, 1]) {
+        world.addWall(sx * (1.3 + RAIL), 73.4, sx * (1.3 + RAIL), 92.6, RAIL, { top: 0.4 });
+        world.addWall(sx * (1.3 + RAIL), 73.6 - RAIL, sx * 15.5, 73.6 - RAIL, RAIL, { top: 0.4 });
+        world.addWall(sx * (1.3 + RAIL), 92.4 + RAIL, sx * 15.5, 92.4 + RAIL, RAIL, { top: 0.4 });
+    }
     world.applyAtmosphere = (stage) => {
         stage.fill.intensity = 0.16;
         stage.fill.color.set(0x8a7a9a);

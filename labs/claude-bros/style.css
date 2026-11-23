@@ -100,6 +100,43 @@ body {
     font-weight: 700;
 }
 
+.hud-chip--lives strong {
+    letter-spacing: -0.12em;
+    font-size: 0.78em;
+}
+
+/* Barra de progresso até a bandeira (largura toda da linha do HUD). */
+.hud-progress {
+    position: relative;
+    /* base = linha inteira menos as margens (senão a bandeira passa da borda do palco) */
+    flex: 1 0 calc(100% - 1.6rem);
+    height: 8px;
+    margin: 0.1rem 1.4rem 0 0.2rem;
+    border-radius: 999px;
+    background: rgba(8, 26, 42, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.hud-progress span {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #d97757, #ffc04a);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.25s ease;
+}
+
+.hud-progress i {
+    position: absolute;
+    right: -1.3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-style: normal;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
 /* --------------------------------------------------------------- overlay --- */
 
 .overlay {
@@ -149,22 +186,76 @@ body {
     color: rgba(242, 247, 251, 0.82);
 }
 
+.overlay-emoji {
+    font-size: clamp(2rem, 8vw, 2.6rem);
+    line-height: 1;
+    color: #ffc04a;
+    filter: drop-shadow(0 4px 14px rgba(255, 192, 74, 0.45));
+}
+
+/* Como jogar: três linhas curtas com ícone — dá para ler antes de saber ler bem. */
+.howto {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+    text-align: left;
+    font-size: clamp(0.88rem, 3.2vw, 0.98rem);
+    color: rgba(242, 247, 251, 0.9);
+}
+
+.howto[hidden] {
+    display: none;
+}
+
+.howto li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.howto b {
+    display: inline-grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    flex: none;
+    border-radius: 0.6rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffc04a;
+}
+
 .overlay-hint {
-    font-size: 0.8rem !important;
-    opacity: 0.65;
+    font-size: 0.85rem !important;
+    opacity: 0.85;
+}
+
+.overlay-hint kbd {
+    display: inline-block;
+    min-width: 1.6em;
+    margin: 0 0.12em;
+    padding: 0.05em 0.4em;
+    border-radius: 0.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+    font: inherit;
+    font-size: 0.85em;
 }
 
 .primary-btn {
-    min-height: var(--touch-target);
-    padding: 0.75rem 2rem;
+    min-height: 52px;
+    min-width: min(14rem, 100%);
+    padding: 0.8rem 2.2rem;
     border: 0;
     border-radius: 999px;
     background: #d97757;
     color: #fff;
     font-family: inherit;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 10px 28px rgba(217, 119, 87, 0.45);
     transition: transform 0.2s ease, filter 0.2s ease;
 }
 
@@ -323,6 +414,47 @@ body {
     }
 }
 
+@media (max-width: 420px) {
+    /* No celular em pé o tempo some: pontos, faíscas e vidas cabem numa linha. */
+    .hud-chip--time {
+        display: none;
+    }
+
+    .howto {
+        font-size: 0.85rem;
+    }
+}
+
+/* Palco baixo (celular em pé com header e footer): o menu inteiro cabe sem rolar. */
+@media (max-height: 760px) and (orientation: portrait) {
+    .overlay-card {
+        gap: 0.55rem;
+        padding: 1rem 1.1rem;
+    }
+
+    .overlay-emoji {
+        display: none;
+    }
+
+    .overlay-card h2 {
+        font-size: 1.45rem;
+    }
+
+    .howto {
+        gap: 0.25rem;
+    }
+
+    .howto b {
+        width: 1.6rem;
+        height: 1.6rem;
+    }
+
+    .primary-btn {
+        min-height: 48px;
+        padding-block: 0.6rem;
+    }
+}
+
 /* Landscape curto: o header encolhe (shared.css já cuida) e os controles
    ficam mais baixos e menores para não cobrir o chão da fase. */
 @media (max-height: 520px) and (orientation: landscape) {
@@ -358,6 +490,31 @@ body {
 
     .overlay-card h2 {
         font-size: 1.4rem;
+    }
+
+    .overlay-emoji {
+        display: none;
+    }
+
+    .howto {
+        grid-template-columns: repeat(3, auto);
+        gap: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .howto b {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .hud-progress {
+        flex-basis: 30%;
+        align-self: center;
+        margin-top: 0;
+    }
+
+    .hud-chip--time {
+        display: none;
     }
 }
 

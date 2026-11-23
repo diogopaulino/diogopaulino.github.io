@@ -25,7 +25,7 @@
     <meta name="twitter:description" content="Campo Minado com visual autêntico do Windows 95, três níveis, cronômetro e recordes salvos direto no navegador.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -97,6 +97,7 @@
             <div class="window-body">
                 <div class="menu-bar">
                     <select id="difficulty-select" aria-label="Dificuldade">
+                        <option value="easy">Fácil (8x8 · 6 minas)</option>
                         <option value="beginner">Iniciante (9x9)</option>
                         <option value="intermediate">Intermediário (16x16)</option>
                         <option value="expert">Especialista (30x16)</option>
@@ -114,8 +115,31 @@
                     </div>
                     <div class="counter" id="timer">000</div>
                 </div>
-                <div class="board-scroll">
-                    <div class="game-board" id="board" role="group" aria-label="Campo minado"></div>
+                <p class="tip" id="tip">Toque num quadrado para abrir. O número diz quantas minas estão
+                    encostadas nele. Ache todos os quadrados sem mina!</p>
+                <div class="board-wrap">
+                    <div class="board-scroll">
+                        <div class="game-board" id="board" role="group" aria-label="Campo minado"></div>
+                    </div>
+                    <!-- Resultado da partida: aparece por cima do campo com o próximo passo
+                         óbvio (jogar de novo) e a opção de olhar o campo revelado. -->
+                    <div class="result" id="result" hidden>
+                        <div class="result-dialog" role="alertdialog" aria-labelledby="resultTitle"
+                            aria-describedby="resultText">
+                            <div class="title-bar">
+                                <div class="title-bar-text" id="resultTitle">Campo Minado</div>
+                            </div>
+                            <div class="result-body">
+                                <span class="result-icon" id="resultIcon" aria-hidden="true">🎉</span>
+                                <p class="result-text" id="resultText"></p>
+                                <div class="result-actions">
+                                    <button type="button" class="win-btn win-btn-primary" id="resultAgain">Jogar de
+                                        novo</button>
+                                    <button type="button" class="win-btn" id="resultLook">Ver o campo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -152,7 +176,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>

@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Neon Invaders — arcade espacial cyberpunk | Diogo Paulino">
     <meta name="twitter:description" content="Arcade espacial cyberpunk em canvas: destrua ondas inimigas, use power-ups e bata seu recorde com controles por teclado ou toque.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
     <script type="application/ld+json">
     {
@@ -102,6 +102,12 @@
                             <span class="hud-label">Vidas</span>
                             <strong id="lives">♥ ♥ ♥</strong>
                         </div>
+                        <button id="pauseBtn" class="hud-pause" type="button" aria-label="Pausar" hidden>
+                            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                                <rect x="3" y="2" width="3.5" height="12" rx="1" fill="currentColor" />
+                                <rect x="9.5" y="2" width="3.5" height="12" rx="1" fill="currentColor" />
+                            </svg>
+                        </button>
                     </div>
 
                     <div class="mobile-mission-bar" id="mobileMissionBar" aria-label="Missão">
@@ -120,10 +126,21 @@
                     <div id="startScreen" class="overlay start-overlay">
                         <div class="eyebrow">ARCADE · 01</div>
                         <h1>NEON<br><span>INVADERS</span></h1>
-                        <p class="lead">A última linha de defesa é você.</p>
-                        <div class="quick-controls" aria-label="Controles">
+                        <p class="lead">Destrua os invasores antes que eles cheguem lá embaixo!</p>
+                        <p class="how touch-only">Arraste o dedo na tela para mover a nave. Enquanto o dedo
+                            estiver na tela, ela atira.</p>
+                        <div class="quick-controls fine-only" aria-label="Controles">
                             <span><kbd>←</kbd><kbd>→</kbd> mover</span>
                             <span><kbd>ESPAÇO</kbd> disparar</span>
+                            <span><kbd>P</kbd> pausa</span>
+                        </div>
+                        <div class="mode-pick" role="group" aria-label="Dificuldade">
+                            <button type="button" class="mode-btn" data-mode="easy" aria-pressed="true">
+                                <strong>FÁCIL</strong><small>5 vidas · tiro automático</small>
+                            </button>
+                            <button type="button" class="mode-btn" data-mode="normal" aria-pressed="false">
+                                <strong>NORMAL</strong><small>3 vidas · arcade</small>
+                            </button>
                         </div>
                         <button id="startBtn" class="primary-action" type="button">
                             <span class="action-icon" aria-hidden="true">▶</span>
@@ -141,6 +158,7 @@
                         <div class="result-card">
                             <span>Pontuação final</span>
                             <strong id="finalScore">000000</strong>
+                            <em id="finalNote" class="result-note"></em>
                         </div>
                         <button id="restartBtn" class="primary-action" type="button">
                             <span class="action-icon" aria-hidden="true">↻</span>
@@ -149,6 +167,20 @@
                                 <strong>JOGAR DE NOVO</strong>
                             </span>
                         </button>
+                        <button id="menuBtn" class="secondary-action" type="button">Trocar dificuldade</button>
+                    </div>
+
+                    <div id="pauseScreen" class="overlay pause-overlay hidden">
+                        <div class="eyebrow">JOGO PAUSADO</div>
+                        <h1>PAUSA</h1>
+                        <button id="resumeBtn" class="primary-action" type="button">
+                            <span class="action-icon" aria-hidden="true">▶</span>
+                            <span class="action-copy">
+                                <small>VOLTAR PARA A BATALHA</small>
+                                <strong>CONTINUAR</strong>
+                            </span>
+                        </button>
+                        <button id="quitBtn" class="secondary-action" type="button">Recomeçar do início</button>
                     </div>
 
                     <div class="touch-controls" aria-label="Controles por toque">
@@ -205,7 +237,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=7" defer></script>
+    <script src="script.js?v=8" defer></script>
 </body>
 
 </html>

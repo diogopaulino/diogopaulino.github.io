@@ -10,9 +10,9 @@ import * as THREE from 'three';
 import { createHero } from '../../shared/gfx/hero.js';
 import { buildLongship } from './ships.js?v=50';
 import { fireLights } from './lights.js?v=50';
-import { waterHeight, waterSlope } from './water.js?v=50';
-import { centerX, halfWidth } from './river.js?v=50';
-import { BOAT, CANNON } from './config.js?v=50';
+import { waterHeight, waterSlope } from './water.js?v=51';
+import { centerX, halfWidth } from './river.js?v=51';
+import { BOAT, CANNON } from './config.js?v=51';
 import { clamp, damp } from './utils.js?v=50';
 
 const tmpSlope = { dx: 0, dz: 0 };
@@ -265,8 +265,9 @@ export class Player {
         return { x: Math.sin(this.yaw), z: -Math.cos(this.yaw) };
     }
 
-    /** Alvo atual sob a mira automática (cone largo à frente). */
-    getAimLock(entities) {
+    /** Alvo atual sob a mira automática (cone largo à frente). Na luta, o chefe tem prioridade. */
+    getAimLock(entities, bossLock = null) {
+        if (bossLock && bossLock.dist < CANNON.assistRange) return bossLock;
         const fwd = this.forwardXZ();
         return entities.findCannonTarget(
             this.x,
@@ -289,13 +290,7 @@ export class Player {
         this.orderT = 0;
 
         const fwd = this.forwardXZ();
-        const target = entities.findCannonTarget(
-            this.x,
-            this.position.y + 1.4,
-            this.z,
-            fwd.x,
-            fwd.z
-        );
+        const target = this.getAimLock(entities, ctx?.bossLock);
         this._lastLock = target;
 
         let aimX = fwd.x;

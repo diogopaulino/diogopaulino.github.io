@@ -788,3 +788,222 @@ footer a {
         display: none;
     }
 }
+
+/* --- Pausa, modos e textos de ajuda (revisão infantil) ------------------- */
+.hud-pause {
+    pointer-events: auto;
+    align-self: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    margin-left: 4px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 12px;
+    color: #fff;
+    background: rgba(7, 9, 16, .72);
+    font: 10px 'Press Start 2P', cursive;
+    letter-spacing: -.1em;
+    cursor: pointer;
+    transition: border-color .2s ease, transform .15s ease;
+}
+
+.hud-pause:hover {
+    border-color: var(--neon-blue);
+}
+
+.hud-pause:active {
+    transform: scale(.94);
+}
+
+.hud-pause[hidden] {
+    display: none;
+}
+
+.hud-pause:focus-visible,
+.mode-btn:focus-visible,
+.secondary-action:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+}
+
+/* O HUD tem um botão real agora: os três números dividem o resto da linha. */
+.ui-layer .hud-item {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.overlay {
+    overflow-y: auto;
+    justify-content: safe center;
+}
+
+.overlay .how {
+    width: min(100%, 360px);
+    margin: 12px auto 0;
+    color: var(--neon-blue);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.mode-pick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: min(100%, 330px);
+    margin-top: clamp(14px, 3vh, 24px);
+}
+
+.mode-btn {
+    min-height: 56px;
+    padding: 8px 10px;
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, .7);
+    background: rgba(255, 255, 255, .04);
+    font: 9px 'Press Start 2P', cursive;
+    cursor: pointer;
+    transition: border-color .2s ease, background .2s ease, color .2s ease, transform .15s ease;
+}
+
+.mode-btn small {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    color: rgba(255, 255, 255, .5);
+    letter-spacing: 0;
+}
+
+.mode-btn[aria-pressed="true"] {
+    color: #fff;
+    border-color: var(--neon-blue);
+    background: rgba(89, 243, 255, .12);
+    box-shadow: 0 0 22px rgba(89, 243, 255, .16);
+}
+
+.mode-btn[aria-pressed="true"] small {
+    color: rgba(255, 255, 255, .8);
+}
+
+.mode-btn:active {
+    transform: scale(.97);
+}
+
+.secondary-action {
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, .62);
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
+.secondary-action:hover {
+    color: #fff;
+}
+
+.result-note {
+    display: block;
+    margin-top: 12px;
+    color: var(--neon-blue);
+    font-size: 8px;
+    font-style: normal;
+    line-height: 1.6;
+}
+
+.pause-overlay .action-icon {
+    background: var(--neon-blue);
+    box-shadow: 0 0 18px rgba(89, 243, 255, .22);
+}
+
+/* Paisagem curta: o campo ocupa a largura toda (a lógica do jogo se adapta ao
+   tamanho do canvas) e os overlays ficam compactos para caber em ~300px. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .game-container {
+        aspect-ratio: auto;
+        width: 100%;
+        height: 100%;
+    }
+
+    .mobile-mission-bar {
+        display: none;
+    }
+
+    .ui-layer {
+        padding: 6px 12px;
+    }
+
+    .overlay {
+        padding: 10px 16px;
+    }
+
+    .overlay .eyebrow,
+    .overlay .lead {
+        display: none;
+    }
+
+    .overlay h1 {
+        font-size: 20px;
+    }
+
+    .overlay h1 br {
+        display: none;
+    }
+
+    .overlay .how {
+        margin-top: 8px;
+        font-size: 12px;
+    }
+
+    .mode-pick {
+        margin-top: 8px;
+    }
+
+    .mode-btn {
+        min-height: 46px;
+        padding: 6px;
+    }
+
+    .primary-action {
+        min-height: 48px;
+        margin-top: 8px;
+    }
+
+    .result-card {
+        margin-top: 8px;
+        padding: 10px;
+    }
+
+    .secondary-action {
+        margin-top: 4px;
+    }
+}
+
+/* Com um overlay aberto a barra de recorde/arsenal só competia com o título. */
+.game-container:has(.overlay:not(.hidden)) .mobile-mission-bar {
+    visibility: hidden;
+}
+
+/* Paisagem curta no toque: sem os botões na base. A tela deitada tem ~290px de
+   altura e os botões empurravam a nave para perto da formação; arrastar o dedo
+   no campo move e atira (e no Fácil o tiro já é automático). */
+@media (max-height: 520px) and (orientation: landscape) and (pointer: coarse) {
+    .touch-controls {
+        display: none !important;
+    }
+}
+
+.lives-board strong {
+    white-space: nowrap;
+    letter-spacing: .08em;
+}

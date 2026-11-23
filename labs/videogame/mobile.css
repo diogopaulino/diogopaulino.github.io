@@ -6,428 +6,40 @@
     pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
     touch-action: none;
 }
 
-@media (pointer: coarse) {
-
-    /* Global Mobile Adjustments */
-    .player-bar {
-        display: none !important;
-    }
-
-    #loader {
-        z-index: 200;
-    }
-
-    /* --- PORTRAIT MODE: GameBoy Style --- */
-    @media (orientation: portrait) {
-        /* Keep shared header (back button) reachable outside active play */
-        #screen {
-            position: fixed !important;
-            top: calc(56px + env(safe-area-inset-top, 0px));
-            left: 0;
-            width: 100% !important;
-            height: calc(48vh - 56px) !important;
-            background: #000;
-            z-index: 40;
-            padding: 0;
-            border-bottom: 2px solid #333;
-        }
-
-        #screen canvas {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain !important;
-        }
-
-        .mobile-controls {
-            display: block;
-            position: fixed;
-            /* Align with #screen bottom: (56px + safe) + (48vh - 56px) */
-            top: calc(48vh + env(safe-area-inset-top, 0px));
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-            z-index: 100;
-            overflow: hidden;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-        }
-
-        /* During play, hide shared chrome and reclaim the header strip */
-        body.game-mode [data-lab-header] {
-            display: none;
-        }
-
-        body.game-mode #screen {
-            top: 0;
-            height: 48vh !important;
-        }
-
-        body.game-mode .mobile-controls {
-            top: 48vh;
-        }
-
-        .controls-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: absolute;
-            top: 45%;
-            transform: translateY(-50%);
-            width: 100%;
-            padding: 0 10px;
-            pointer-events: none;
-        }
-
-        .dpad-container {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 130px;
-            height: 130px;
-            pointer-events: auto;
-        }
-
-        .action-buttons {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            pointer-events: auto;
-            align-items: flex-end;
-        }
-
-        .action-row {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-        }
-
-        .action-btn {
-            width: 52px;
-            height: 52px;
-            font-size: 1.2rem;
-        }
-
-
-
-        .start-select-container {
-            position: absolute;
-            bottom: 85px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            pointer-events: none;
-            /* Changed from auto */
-            z-index: 110;
-        }
-
-        .system-controls-container {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            pointer-events: none;
-            /* Changed from auto */
-            z-index: 110;
-            padding: 0 10px;
-        }
-
-        .start-select-container .ctrl-btn,
-        .system-controls-container .ctrl-btn {
-            pointer-events: auto;
-        }
-
-        .game-controls-row {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .game-controls-row .ctrl-btn {
-            font-size: 11px;
-            padding: 12px 20px;
-            min-width: 70px;
-        }
-
-        .system-controls-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .system-controls-row .ctrl-btn {
-            font-size: 0;
-            padding: 10px;
-            min-width: 44px;
-        }
-    }
-
-    /* --- LANDSCAPE MODE: Handheld Console Style --- */
-    @media (orientation: landscape) {
-        #screen {
-            position: fixed !important;
-            inset: 0;
-            width: 100% !important;
-            height: 100% !important;
-            background: #000;
-            z-index: 10;
-        }
-
-        #screen canvas {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain !important;
-            padding: 0;
-        }
-
-        .mobile-controls {
-            display: block;
-            pointer-events: none;
-        }
-
-        .dpad-container {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 160px;
-            height: 160px;
-            pointer-events: auto;
-            z-index: 100;
-            bottom: calc(20px + env(safe-area-inset-bottom));
-            left: calc(20px + env(safe-area-inset-left));
-        }
-
-        .action-buttons {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            pointer-events: auto;
-            gap: 16px;
-            z-index: 100;
-            bottom: calc(20px + env(safe-area-inset-bottom));
-            right: calc(20px + env(safe-area-inset-right));
-        }
-
-        .action-buttons .action-btn {
-            width: 56px;
-            height: 56px;
-        }
-
-        .system-controls-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            pointer-events: none;
-            z-index: 100;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-            align-items: flex-end;
-        }
-
-        .start-select-container {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            justify-content: center;
-            pointer-events: none;
-            z-index: 100;
-            opacity: 0.8;
-        }
-
-        .system-controls-container .ctrl-btn,
-        .start-select-container .ctrl-btn {
-            pointer-events: auto;
-        }
-
-        .system-controls-container:active,
-        .system-controls-container:hover {
-            opacity: 1;
-        }
-
-        .game-controls-row {
-            display: flex;
-            gap: 8px;
-            flex-direction: row;
-            margin-bottom: 4px;
-        }
-
-        .game-controls-row .ctrl-btn {
-            font-size: 9px;
-            padding: 8px 14px;
-            min-width: 60px;
-        }
-
-        .system-controls-row {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-
-        .system-controls-row .ctrl-btn {
-            font-size: 0;
-            padding: 8px;
-            min-width: 36px;
-            width: 36px;
-            height: 36px;
-        }
-
-        .game-controls-row .ctrl-btn {
-            background: rgba(40, 40, 40, 0.6);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            /* Pill shape */
-        }
-
-        .system-controls-container .ctrl-btn {
-            background: rgba(30, 30, 30, 0.9);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        @media (max-height: 500px) {
-            .system-controls-container {
-                top: 10px;
-                right: 10px;
-            }
-
-            .start-select-container {
-                bottom: 5px;
-            }
-
-            .game-controls-row {
-                gap: 6px;
-            }
-
-            .game-controls-row .ctrl-btn {
-                font-size: 8px;
-                padding: 6px 10px;
-                min-width: 50px;
-            }
-
-            .system-controls-row .ctrl-btn {
-                padding: 6px;
-                min-width: 32px;
-                width: 32px;
-                height: 32px;
-            }
-
-            .system-controls-row .ctrl-btn svg {
-                width: 16px;
-                height: 16px;
-            }
-
-            .dpad-container {
-                width: 140px;
-                height: 140px;
-                left: 10px;
-                bottom: 10px;
-            }
-
-            .action-buttons {
-                right: 10px;
-                bottom: 10px;
-            }
-
-            .action-buttons .action-btn {
-                width: 50px;
-                height: 50px;
-            }
-        }
-
-        @media (min-width: 800px) and (orientation: landscape) {
-            .system-controls-container {
-                top: 30px;
-                right: 30px;
-            }
-
-            .start-select-container {
-                bottom: 20px;
-                transform: translateX(-50%) scale(1.2);
-                /* Slightly larger on big screens */
-            }
-
-            .dpad-container {
-                left: 30px;
-                bottom: 30px;
-            }
-
-            .action-buttons {
-                right: 30px;
-                bottom: 30px;
-            }
-        }
-
-        @media (max-width: 700px) and (orientation: landscape) {
-            .system-controls-container {
-                top: 15px;
-                right: 15px;
-            }
-
-            .game-controls-row .ctrl-btn {
-                font-size: 8px;
-                padding: 6px 12px;
-                min-width: 55px;
-            }
-
-            .system-controls-row .ctrl-btn {
-                padding: 7px;
-                min-width: 34px;
-                width: 34px;
-                height: 34px;
-            }
-
-            .system-controls-row .ctrl-btn svg {
-                width: 16px;
-                height: 16px;
-            }
-        }
-    }
+.mobile-controls * {
+    touch-action: none;
 }
 
+/* Estilos comuns vêm antes das media queries: com a mesma especificidade, as regras de
+   retrato/paisagem abaixo precisam vencer (antes o tamanho dos botões era sobrescrito). */
 /* --- COMMON CONTROLS STYLING (Mega Drive Aesthetic) --- */
 
 .dpad-container {
-    background: rgba(40, 40, 40, 0.4);
+    background: radial-gradient(circle at 50% 45%, rgba(70, 70, 80, 0.45), rgba(30, 30, 36, 0.5));
     border-radius: 50%;
-    backdrop-filter: blur(2px);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .dpad-btn {
     position: absolute;
-    background: #151515;
-    border: 1px solid #333;
+    background: #18181c;
+    border: 1px solid #34343c;
     box-sizing: border-box;
     cursor: pointer;
     overflow: hidden;
+    pointer-events: none;
+    transition: background 0.06s;
 }
 
 .dpad-btn:active,
 .dpad-btn.active {
-    background: #333;
+    background: #3b3b46;
     box-shadow: inset 0 0 10px #000;
-    border-color: #555;
+    border-color: #60606e;
 }
 
 .dpad-left,
@@ -446,22 +58,22 @@
 
 .dpad-up {
     top: 0;
-    border-radius: 6px 6px 0 0;
+    border-radius: 8px 8px 0 0;
 }
 
 .dpad-down {
     bottom: 0;
-    border-radius: 0 0 6px 6px;
+    border-radius: 0 0 8px 8px;
 }
 
 .dpad-left {
     left: 0;
-    border-radius: 6px 0 0 6px;
+    border-radius: 8px 0 0 8px;
 }
 
 .dpad-right {
     right: 0;
-    border-radius: 0 6px 6px 0;
+    border-radius: 0 8px 8px 0;
 }
 
 .dpad-center {
@@ -473,50 +85,37 @@
     background: #111;
     border-radius: 50%;
     transform: scale(0.6);
+    pointer-events: none;
+}
+
+.dpad-btn::after {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #6b6b78;
+    font-size: 14px;
+}
+
+.dpad-btn.active::after {
+    color: #fff;
 }
 
 .dpad-up::after {
     content: '▲';
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #555;
-    font-size: 14px;
 }
 
 .dpad-down::after {
     content: '▼';
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #555;
-    font-size: 14px;
 }
 
 .dpad-left::after {
     content: '◀';
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #555;
-    font-size: 14px;
 }
 
 .dpad-right::after {
     content: '▶';
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #555;
-    font-size: 14px;
 }
 
 .action-buttons {
@@ -544,15 +143,14 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 5px 0 #000;
-    transition: transform 0.05s, box-shadow 0.05s;
+    transition: transform 0.05s, box-shadow 0.05s, filter 0.05s;
 }
 
 .action-btn:active,
 .action-btn.active {
     transform: translateY(5px);
     box-shadow: 0 0 0 #000;
-    background: #444;
-    color: #fff;
+    filter: brightness(1.25);
     border-color: #888;
 }
 
@@ -577,54 +175,48 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-
-
 .ctrl-btn {
-    background: #333;
-    border: none;
-    color: #ccc;
-    padding: 12px 18px;
-    border-radius: 20px;
-    font-size: 10px;
+    background: #2c2c34;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ddd;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 22px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
     box-shadow: 0 3px 0 #000;
-    transition: all 0.05s;
-    min-width: 60px;
+    transition: transform 0.05s, box-shadow 0.05s, filter 0.05s;
+    min-width: 64px;
 }
 
 .start-btn {
-    background: #444;
+    background: #44444f;
     color: #fff;
 }
 
-.menu-btn,
-.back-btn {
-    background: #882222;
-    color: #fff;
+.game-controls-row {
+    display: flex;
+    gap: 8px;
 }
 
-.back-btn {
+/* Botões de sistema: quadrados de 44px com ícone. */
+.sys-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px !important;
+    width: 44px;
     min-width: 44px;
-    border: 2px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(136, 34, 34, 0.4) !important;
+    height: 44px;
+    padding: 0;
+    border-radius: 14px;
+    color: #eee;
+    background: rgba(48, 48, 58, 0.95);
 }
 
-.back-btn svg {
-    width: 18px;
-    height: 18px;
-}
-
-.back-btn:active,
-.back-btn.active {
-    background: rgba(136, 34, 34, 0.95) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 0 0 rgba(136, 34, 34, 0.4) !important;
+.menu-btn {
+    background: linear-gradient(180deg, #4b4b5a, #33333f);
 }
 
 .ctrl-btn:active,
@@ -634,133 +226,249 @@
     filter: brightness(1.3);
 }
 
-.save-btn,
-.load-btn,
-.full-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px !important;
-    min-width: 44px;
-    background: rgba(40, 40, 40, 0.9) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: #ddd !important;
-    font-size: 0 !important;
-    line-height: 0;
-}
-
-.save-btn svg,
-.load-btn svg,
-.full-btn svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 2.5;
-    flex-shrink: 0;
-}
-
-.save-btn:active,
-.load-btn:active,
-.full-btn:active,
-.back-btn:active,
-.save-btn.active,
-.load-btn.active,
-.full-btn.active,
-.back-btn.active {
-    background: rgba(60, 60, 60, 0.95) !important;
-    transform: translateY(2px);
-    box-shadow: 0 0 0 #000 !important;
-    filter: brightness(1.2);
-}
-
-.save-btn.active {
-    background: rgba(50, 100, 50, 0.9) !important;
-}
-
-.load-btn.active {
-    background: rgba(50, 50, 100, 0.9) !important;
-}
-
-.back-btn:active,
-.back-btn.active {
-    background: rgba(136, 34, 34, 0.95) !important;
-}
-
-.full-btn:active,
-.full-btn.active {
-    background: rgba(60, 60, 60, 0.95) !important;
-}
-
 @media (pointer: coarse) {
-    @media (orientation: portrait) {
 
-        .save-btn,
-        .load-btn,
-        .full-btn,
-        .back-btn {
-            min-width: 50px;
-            padding: 12px !important;
+    /* Global Mobile Adjustments */
+    .player-bar {
+        display: none !important;
+    }
+
+    #loader {
+        z-index: 200;
+    }
+
+    /* Tela de erro ocupa o player inteiro: na área do jogo (≈45% da altura) os botões não cabiam. */
+    .player.has-error .mobile-controls {
+        display: none !important;
+    }
+
+    .player.has-error #screen {
+        position: fixed !important;
+        inset: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    }
+
+    /* --- PORTRAIT MODE: GameBoy Style ---
+       Tela em cima (altura = a menor entre 46% da tela e 3/4 da largura, que já é a proporção
+       do Mega Drive), controles embaixo num grid: barra (menu · SELECT/START · tela cheia)
+       e, abaixo, d-pad à esquerda e A/B/C à direita. Nada fica sobre a imagem do jogo. */
+    @media (orientation: portrait) {
+        .player {
+            --screen-h: min(46dvh, calc(100vw * 0.75));
         }
 
-        .save-btn svg,
-        .load-btn svg,
-        .full-btn svg,
-        .back-btn svg {
-            width: 20px;
-            height: 20px;
+        #screen {
+            position: fixed !important;
+            top: env(safe-area-inset-top, 0px);
+            left: 0;
+            width: 100% !important;
+            height: var(--screen-h) !important;
+            background: #000;
+            z-index: 40;
+            padding: 0;
+        }
+
+        #screen canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+        }
+
+        .mobile-controls {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-rows: auto minmax(0, 1fr);
+            grid-template-areas:
+                "bar bar"
+                "dpad act";
+            gap: 12px;
+            position: fixed;
+            top: calc(var(--screen-h) + env(safe-area-inset-top, 0px));
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 12px calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+            background: linear-gradient(180deg, #1c1c22 0%, #0d0d10 100%);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .pad-bar {
+            grid-area: bar;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .dpad-container {
+            grid-area: dpad;
+            position: relative;
+            width: min(40vw, 172px, 30dvh);
+            aspect-ratio: 1;
+            align-self: center;
+            justify-self: start;
+            pointer-events: auto;
+        }
+
+        .action-buttons {
+            grid-area: act;
+            align-self: center;
+            justify-self: end;
+            pointer-events: auto;
+        }
+
+        .action-btn {
+            width: clamp(50px, 14.5vw, 66px);
+            height: clamp(50px, 14.5vw, 66px);
+            font-size: 1.25rem;
+        }
+
+        /* Arco do controle do Mega Drive: A baixo, B no meio, C alto. */
+        .action-row {
+            gap: 8px;
+            padding: 14px 0;
+        }
+
+        .btn-a {
+            margin-top: 22px;
+        }
+
+        .btn-b {
+            margin-top: 11px;
         }
     }
-}
 
-body.is-fullscreen .mobile-controls {
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-body.is-fullscreen .mobile-controls.fullscreen-mode {
-    opacity: 0.3;
-}
-
-body.is-fullscreen .mobile-controls.fullscreen-mode:active {
-    opacity: 1;
-}
-
-@media (pointer: coarse) {
+    /* --- LANDSCAPE MODE: Handheld Console Style ---
+       Duas colunas laterais (--side) seguram os controles; o jogo fica no meio, sem nada por
+       cima. Esquerda: menu + tela cheia em cima, d-pad embaixo. Direita: SELECT/START em cima,
+       A/B/C em diagonal embaixo. */
     @media (orientation: landscape) {
-        body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container {
-            opacity: 0.7;
+        .player {
+            --side: clamp(140px, 21vw, 200px);
+            --pad: min(calc(var(--side) - 12px), 46dvh);
         }
 
-        body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container:active,
-        body.is-fullscreen .mobile-controls.fullscreen-mode .system-controls-container:hover {
-            opacity: 1;
+        #screen {
+            position: fixed !important;
+            top: env(safe-area-inset-top, 0px);
+            bottom: env(safe-area-inset-bottom, 0px);
+            left: calc(var(--side) + env(safe-area-inset-left, 0px));
+            right: calc(var(--side) + env(safe-area-inset-right, 0px));
+            width: auto !important;
+            height: auto !important;
+            background: #000;
+            z-index: 10;
         }
 
-        body.is-fullscreen .mobile-controls.fullscreen-mode .dpad-container,
-        body.is-fullscreen .mobile-controls.fullscreen-mode .action-buttons,
-        body.is-fullscreen .mobile-controls.fullscreen-mode .start-select-container {
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
+        #screen canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            padding: 0;
         }
 
-        body.is-fullscreen .mobile-controls.fullscreen-mode .dpad-container:active,
-        body.is-fullscreen .mobile-controls.fullscreen-mode .action-buttons:active,
-        body.is-fullscreen .mobile-controls.fullscreen-mode .start-select-container:active,
-        body.is-fullscreen .mobile-controls.fullscreen-mode:active .dpad-container,
-        body.is-fullscreen .mobile-controls.fullscreen-mode:active .action-buttons,
-        body.is-fullscreen .mobile-controls.fullscreen-mode:active .start-select-container {
-            opacity: 1;
-        }
-    }
-
-    @media (orientation: portrait) {
-        body.is-fullscreen .mobile-controls.fullscreen-mode {
-            opacity: 0.7;
+        .mobile-controls {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            pointer-events: none;
         }
 
-        body.is-fullscreen .mobile-controls.fullscreen-mode:active {
-            opacity: 1;
+        .pad-bar {
+            display: contents;
+        }
+
+        .pad-bar .menu-btn,
+        .pad-bar .full-btn,
+        .game-controls-row {
+            position: absolute;
+            top: calc(10px + env(safe-area-inset-top));
+            pointer-events: auto;
+        }
+
+        .pad-bar .menu-btn {
+            left: calc(8px + env(safe-area-inset-left));
+        }
+
+        .pad-bar .full-btn {
+            left: calc(60px + env(safe-area-inset-left));
+        }
+
+        .game-controls-row {
+            right: calc(6px + env(safe-area-inset-right));
+            width: calc(var(--side) - 12px);
+            justify-content: space-between;
+        }
+
+        .game-controls-row .ctrl-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 0 6px;
+        }
+
+        .dpad-container {
+            position: absolute;
+            width: var(--pad);
+            aspect-ratio: 1;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            left: calc((var(--side) - var(--pad)) / 2 + env(safe-area-inset-left));
+            pointer-events: auto;
+        }
+
+        /* A/B/C em diagonal dentro de um quadrado do tamanho do d-pad. */
+        .action-buttons {
+            position: absolute;
+            width: var(--pad);
+            aspect-ratio: 1;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            right: calc((var(--side) - var(--pad)) / 2 + env(safe-area-inset-right));
+            pointer-events: auto;
+        }
+
+        .action-row {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .action-buttons .action-btn {
+            position: absolute;
+            width: clamp(46px, calc(var(--pad) * 0.4), 64px);
+            height: clamp(46px, calc(var(--pad) * 0.4), 64px);
+            font-size: 1.15rem;
+        }
+
+        .btn-a {
+            left: 0;
+            bottom: 0;
+        }
+
+        .btn-b {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-b:active,
+        .btn-b.active {
+            transform: translate(-50%, calc(-50% + 5px));
+        }
+
+        .btn-c {
+            right: 0;
+            top: 0;
         }
     }
 }
+
 /* Aviso de controles na tela: o painel de teclas não conta a história toda
    para quem abre o lab no celular. */
 .controls-touch {
@@ -771,8 +479,19 @@ body.is-fullscreen .mobile-controls.fullscreen-mode:active {
     .controls-touch {
         display: block;
         margin: 0.75rem 0 0;
-        font-size: 0.82rem;
+        font-size: 0.88rem;
         line-height: 1.5;
-        opacity: 0.75;
+        opacity: 0.8;
+    }
+
+    .controls-keys,
+    .pause-help-keys {
+        display: none;
+    }
+}
+
+@media (pointer: fine) {
+    .pause-help-touch {
+        display: none;
     }
 }

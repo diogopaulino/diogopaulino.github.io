@@ -29,6 +29,11 @@ export class Hud {
             menu: $('menuOverlay'),
             pause: $('pauseOverlay'),
             gameOver: $('gameOverOverlay'),
+            win: $('winOverlay'),
+            winStats: $('winStats'),
+            goalFill: $('goalFill'),
+            goalBike: $('goalBike'),
+            goalText: $('goalText'),
             error: $('errorOverlay'),
             errorText: $('errorText'),
             difficultyOptions: $('difficultyOptions'),
@@ -42,6 +47,8 @@ export class Hud {
             glitch: $('glitchLayer')
         };
         this.msgTimer = 0;
+        /** Último texto escrito em cada campo: o HUD só toca o DOM quando algo muda. */
+        this._last = {};
         this.buildDifficulties('night');
     }
 
@@ -77,6 +84,10 @@ export class Hud {
         this.el.gameOver.hidden = !on;
     }
 
+    showWin(on) {
+        this.el.win.hidden = !on;
+    }
+
     showHud(on) {
         this.el.hud.hidden = !on;
     }
@@ -92,7 +103,7 @@ export class Hud {
 
     setFps(fps) {
         if (!this.el.fps) return;
-        this.el.fps.textContent = `${fps | 0} fps`;
+        this._set('fps', this.el.fps, `${fps | 0} fps`);
     }
 
     flashGlitch() {
@@ -110,15 +121,40 @@ export class Hud {
         }, ms);
     }
 
-    update({ speed, distance, tapes, lives, station, boost, time }) {
-        this.el.speed.textContent = String(Math.round(speed * 4.2)).padStart(3, '0');
-        this.el.km.textContent = formatKm(distance);
-        this.el.tapes.textContent = String(tapes).padStart(2, '0');
-        this.el.lives.textContent = '■'.repeat(lives) + '□'.repeat(Math.max(0, 5 - lives));
-        this.el.radio.textContent = station.name;
-        this.el.radioTag.textContent = station.tagline;
-        this.el.boostFill.style.width = `${Math.round(boost * 100)}%`;
+    /** Escreve só quando o valor muda (evita recalcular estilo/layout a cada quadro). */
+    _set(key, el, value, prop = 'textContent') {
+        if (this._last[key] === value) return;
+        this._last[key] = value;
+        if (prop === 'textContent') el.textContent = value;
+        else el.style[prop] = value;
+    }
+
+    update({ speed, distance, tapes, lives, station, boost, time, goal }) {
+        this._set('speed', this.el.speed, String(Math.round(speed * 4.2)).padStart(3, '0'));
+        this._set('km', this.el.km, formatKm(distance));
+        this._set('tapes', this.el.tapes, String(tapes).padStart(2, '0'));
+        this._set('lives', this.el.lives, '■'.repeat(Math.max(0, lives)) + '□'.repeat(Math.max(0, 5 - lives)));
+        this._set('radio', this.el.radio, station.name);
+        this._set('radioTag', this.el.radioTag, station.tagline);
+        this._set('boost', this.el.boostFill, `${Math.round(boost * 100)}%`, 'width');
+        if (goal) {
+            const f = Math.min(1, distance / goal);
+            const pct = `${(f * 100).toFixed(1)}%`;
+            this._set('goalFill', this.el.goalFill, pct, 'width');
+            this._set('goalBike', this.el.goalBike, pct, 'left');
+            this._set('goalText', this.el.goalText, `${(distance / 1000).toFixed(1).replace('.', ',')} / ${goal / 1000} km`);
+        }
         this._time = time;
+    }
+
+    setWinStats({ distance, tapes, time, score, lives }) {
+        this.el.winStats.innerHTML = `
+            <div><span>Distância</span><b>${formatKm(distance)}</b></div>
+            <div><span>Fitas</span><b>${tapes}</b></div>
+            <div><span>Tempo</span><b>${formatTime(time)}</b></div>
+            <div><span>Créditos sobrando</span><b>${lives}</b></div>
+            <div class="stats-wide"><span>Score</span><b>${score.toLocaleString('pt-BR')}</b></div>
+        `;
     }
 
     setBest(score) {

@@ -153,6 +153,39 @@ body:is([data-screen="arena-screen"], [data-screen="versus-screen"]) footer { di
   font-size: clamp(14px, 1.35vw, 18px);
 }
 .hero-actions, .result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-actions .cta { min-height: 52px; padding-inline: 24px; font-size: 17px; }
+.cta { transition: background-color .16s, border-color .16s, color .16s, transform .12s; }
+.cta:active:not(:disabled) { transform: scale(.97); }
+/* "Como jogar": 3 passos curtos. Teclado em ponteiro fino, toque em ponteiro grosso. */
+.how-to {
+  display: grid;
+  gap: 6px;
+  max-width: 38ch;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #ece4df;
+  font-size: clamp(13px, 1.2vw, 15px);
+}
+.how-to li { display: flex; align-items: center; gap: 9px; }
+.how-to b {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff7a5033;
+  color: #ffb08d;
+  font-size: 12px;
+}
+.how-to i, .fight-tip i { color: #ffd0a8; font-style: normal; font-weight: 800; }
+.for-touch { display: none; }
+@media (pointer: coarse) {
+  .for-keys { display: none; }
+  .for-touch { display: inline; }
+  kbd.for-touch { display: inline-block; }
+}
 .hero-lineup {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -344,6 +377,7 @@ body:is([data-screen="arena-screen"], [data-screen="versus-screen"]) footer { di
 .stage-btn[data-stage="cellar"] { --stage: url("assets/stage-cellar.webp"); }
 .stage-btn.is-active, .stage-btn:hover { border-color: var(--accent); }
 .difficulty button { flex: 1; min-width: 0; }
+.difficulty-hint { min-height: 1.4em; margin-top: 6px; color: var(--muted); font-size: 12px; }
 #fight-button { width: 100%; justify-content: space-between; }
 
 .versus {
@@ -411,6 +445,7 @@ body:is([data-screen="arena-screen"], [data-screen="versus-screen"]) footer { di
 .p2 .hud-name { flex-direction: row-reverse; }
 .hud-name strong {
   overflow: hidden;
+  padding-inline-end: .14em; /* italic Impact slants past the box: keep the last letter whole */
   color: var(--ink);
   font: italic 900 clamp(18px, 2.7vw, 34px)/1 var(--heading);
   text-overflow: ellipsis;
@@ -460,7 +495,27 @@ body:is([data-screen="arena-screen"], [data-screen="versus-screen"]) footer { di
   box-shadow: 0 0 0 1px #ffffff27, 0 15px 40px #0009;
 }
 #game { display: block; width: 100%; height: 100%; outline: none; }
-.announce, .combo, .callout { position: absolute; pointer-events: none; }
+.announce, .combo, .callout, .fight-tip { position: absolute; pointer-events: none; }
+/* Dica do round 1 para iniciantes; some ao primeiro acerto (main.js TIP_FRAMES). */
+.fight-tip {
+  z-index: 1;
+  left: 50%;
+  bottom: 5%;
+  max-width: 92%;
+  margin: 0;
+  padding: 7px 14px;
+  border: 1px solid #ffb08d66;
+  border-radius: 999px;
+  background: #11131bd9;
+  color: #fff3e6;
+  text-align: center;
+  font-size: clamp(11px, 1.6vw, 17px);
+  font-weight: 750;
+  opacity: 0;
+  translate: -50% 8px;
+  transition: opacity .3s, translate .3s;
+}
+.fight-tip.show { opacity: 1; translate: -50% 0; }
 .announce {
   z-index: 2;
   inset: 0 6%;
@@ -542,6 +597,8 @@ body:is([data-screen="arena-screen"], [data-screen="versus-screen"]) footer { di
 .result-score { margin-bottom: 8px; color: var(--ink); font-size: clamp(15px, 2.4vw, 24px); font-weight: 850; letter-spacing: .08em; }
 #result-copy { color: var(--muted); }
 .result-actions { margin-top: 16px; }
+.result-actions .cta.big { min-height: 56px; padding-inline: 28px; font-size: 19px; }
+.results.is-loss .overline { color: #9fd3ea; }
 
 dialog {
   width: min(760px, 92vw);
@@ -569,6 +626,7 @@ dialog h2 { margin-bottom: 16px; font: italic 900 clamp(28px, 5vw, 46px)/1 var(-
 .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .guide-grid article { padding: 12px; border: 1px solid var(--edge); border-radius: 6px; background: #10121a; }
 .guide-grid h3 { color: #ffac83; font-size: 14px; }
+.guide-grid .guide-basics { grid-column: 1 / -1; border-color: #ff7a5066; }
 .guide-grid p { margin-top: 7px; color: #dfd9d7; font-size: 13px; }
 .pause-layer { width: min(360px, 92vw); text-align: center; }
 .pause-layer button { display: flex; justify-content: center; width: 100%; margin-top: 8px; }
@@ -616,7 +674,21 @@ dialog h2 { margin-bottom: 16px; font: italic 900 clamp(28px, 5vw, 46px)/1 var(-
   .touch-action .heavy { background: #4a3025; border-color: #a36246; }
   .touch-action .special.is-ready { background: #244a60; border-color: #83d2f4; }
   .touch-action .hyper.is-ready { background: #6e3223; border-color: #ffa87c; }
-  .touch-controls button.is-down { background: #e5d4c0; color: #151822; }
+  .touch-controls button.is-down { background: #e5d4c0; color: #151822; scale: .95; }
+  .touch-controls button { transition: scale .08s; }
+  /* Retrato: Soco, Chute e Forte ganham a fileira de cima, maiores (o básico para crianças). */
+  .touch-action { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .touch-action button { grid-column: span 2; }
+  .touch-action :is(.light, .medium, .heavy) { min-height: 58px; font-size: clamp(12px, 3.4vw, 16px); }
+  .touch-action :is(.dash, .throw) { grid-column: span 3; }
+  .touch-action .light { order: 1; }
+  .touch-action .medium { order: 2; }
+  .touch-action .heavy { order: 3; }
+  .touch-action .special { order: 4; }
+  .touch-action .hyper { order: 5; }
+  .touch-action .launcher { order: 6; }
+  .touch-action .dash { order: 7; }
+  .touch-action .throw { order: 8; }
 }
 @media (max-width: 768px) {
   :root { --header-h: calc(48px + env(safe-area-inset-top)); --pad-x: 12px; }
@@ -631,6 +703,7 @@ dialog h2 { margin-bottom: 16px; font: italic 900 clamp(28px, 5vw, 46px)/1 var(-
   .hero h1 em { margin-left: .12em; }
   .hero-copy p { margin: 14px auto; }
   .hero-actions { justify-content: center; }
+  .how-to { width: fit-content; margin-inline: auto; text-align: left; }
   .hero-fighter { height: clamp(146px, 57vw, 330px); }
   .hero-fighter.axl { height: clamp(164px, 62vw, 365px); }
   .hero::after { background: linear-gradient(0deg, #0c0d11 2%, #10121b4d 45%, #0c0d11e5 84%); }
@@ -671,6 +744,12 @@ dialog h2 { margin-bottom: 16px; font: italic 900 clamp(28px, 5vw, 46px)/1 var(-
   .hero h1 em { margin-left: 0; }
   .hero-copy p { margin: 10px 0; }
   .hero-actions { justify-content: start; }
+  .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .hero-copy > p { display: none; }
+  .hero h1 { margin-bottom: 12px; }
+  .hero-actions :is(.cta, .secondary-cta) { min-height: 44px; padding-inline: 12px; font-size: 14px; }
+  .how-to { margin: 10px 0 0; gap: 3px; font-size: 12px; }
+  .how-to b { width: 20px; height: 20px; }
   .hero-fighter { height: min(55dvh, 280px); }
   .hero-fighter.axl { height: min(60dvh, 320px); }
   .versus { gap: 8px; }
@@ -698,7 +777,8 @@ dialog h2 { margin-bottom: 16px; font: italic 900 clamp(28px, 5vw, 46px)/1 var(-
   .touch-controls { display: contents; }
   .touch-dpad { grid-column: 1; grid-row: 2; align-self: center; --key: 44px; }
   .touch-action { grid-column: 3; grid-row: 2; align-self: center; width: 100%; grid-template-columns: repeat(2, minmax(44px, 1fr)); }
-  .touch-action button { font-size: 9px; }
+  .touch-action button, .touch-action :is(.dash, .throw) { grid-column: auto; font-size: 9px; }
+  .touch-action :is(.light, .medium, .heavy) { min-height: 44px; font-size: 10px; }
   .fight-toolbar { padding-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {

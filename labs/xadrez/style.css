@@ -102,7 +102,10 @@ kbd { font: 11px Outfit, sans-serif; color: var(--muted); opacity: .6; }
 .load-bar i { display: block; width: 8%; height: 100%; background: var(--gold); transition: width .3s; }
 #intro { inset: var(--header) 0 0 auto; display: block; width: var(--rail); padding: 30px 22px max(20px, var(--safe-bottom)); background: var(--surface); backdrop-filter: none; border-left: 1px solid var(--line); overflow: auto; }
 #intro .overlay-card { width: 100%; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
-#intro .settings-row { grid-template-columns: 1fr; gap: 16px; }
+#intro .settings-row { grid-template-columns: 1fr 1fr; gap: 14px 10px; }
+#intro .settings-row > .field:nth-child(-n+2) { grid-column: 1 / -1; }
+#intro .lede { display: none; }
+#intro .overlay-card h2 { margin-bottom: 20px; }
 #intro .card-actions > .primary-button { width: 100%; }
 #intro:has(#resumeButton:not([hidden])) #startButton { background: transparent; color: var(--gold); border-color: var(--line); }
 .quality-note { width: 100%; display: none; }
@@ -121,7 +124,10 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     .scene-caption { top: 13px; left: 15px; }
     .scene-caption > :not(span) { display: none; }
     .scene-caption { font-size: 0; }
-    .camera-bar { bottom: 8px; padding: 3px; gap: 0; }
+    /* No retrato o tabuleiro ocupa a largura toda: a barra de câmera sobe
+       para a parede do fundo e não cobre a primeira fileira. */
+    .camera-bar { top: 8px; bottom: auto; padding: 3px; gap: 0; }
+    .scene-caption { display: none; }
     .camera-bar button { min-height: 40px; padding: 7px 12px; font-size: 13px; }
     .camera-divider { margin: 0 1px; }
     .camera-help { display: none; }
@@ -149,14 +155,19 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     body:has(.coach:not(.is-collapsed))[data-state="play"] .stage { bottom: calc(300px + var(--safe-bottom)); }
     #intro { inset: auto 0 0; width: 100%; padding: 14px 18px max(14px, var(--safe-bottom)); max-height: 52dvh; border-left: 0; border-top: 1px solid var(--line); }
     #intro h2, #intro .lede, #intro .eyebrow, .asset-credit { display: none; }
+    #intro .howto { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; font-size: 12px; line-height: 1.3; }
+    #intro .howto li { padding: 26px 0 0; text-align: center; }
+    #intro .howto span { display: none; }
+    #intro .howto li::before { left: 50%; transform: translateX(-50%); width: 20px; height: 20px; font-size: 11px; }
     #intro .settings-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    #intro .settings-row > .field:nth-child(-n+2) { grid-column: auto; }
     #intro .field { gap: 3px; font-size: 12px; }
     #intro .field select { min-height: 42px; }
     #intro .card-actions { margin-top: 12px; gap: 4px; }
     #intro .primary-button { min-height: 44px; }
     #intro .learn-button { min-height: 38px; padding: 4px; }
-    body[data-state="intro"] .stage { bottom: 292px; }
-    body[data-state="intro"]:has(#resumeButton:not([hidden])) .stage { bottom: 338px; }
+    body[data-state="intro"] .stage { bottom: calc(344px + var(--safe-bottom)); }
+    body[data-state="intro"]:has(#resumeButton:not([hidden])) .stage { bottom: calc(390px + var(--safe-bottom)); }
 }
 @media (max-height: 540px) and (orientation: landscape) {
     :root { --header: 44px; --rail: 254px; }
@@ -168,14 +179,29 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     .player-avatar, .captured, .history-panel { display: none; }
     .coach-body { max-height: 160px; }
     .dock { margin-top: auto; }
-    #intro { inset: var(--header) 0 0 auto; width: var(--rail); height: auto; max-height: none; padding: 14px; }
+    #intro { inset: var(--header) 0 0 auto; width: var(--rail); height: auto; max-height: none; padding: 14px 14px max(14px, var(--safe-bottom)); }
     #intro h2, #intro .lede, #intro .eyebrow, .asset-credit { display: none; }
+    #intro .howto { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; font-size: 11px; line-height: 1.3; }
+    #intro .howto li { padding: 24px 0 0; text-align: center; }
+    #intro .howto span { display: none; }
+    #intro .howto li::before { left: 50%; transform: translateX(-50%); width: 20px; height: 20px; font-size: 11px; }
     #intro .settings-row { grid-template-columns: 1fr 1fr; }
+    #intro .settings-row > .field:nth-child(-n+2) { grid-column: auto; }
     .camera-bar { bottom: 8px; }
     .camera-bar button { padding: 8px; font-size: 12px; }
     .camera-help { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Como jogar: três passos curtos no card de abertura. */
+.howto { counter-reset: step; display: grid; gap: 10px; margin: -12px 0 24px; padding: 0; list-style: none; font-size: 14px; line-height: 1.45; color: #c9d1c6; }
+.howto li { counter-increment: step; position: relative; padding-left: 34px; }
+.howto li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #ceb78b1f; border: 1px solid #ceb78b55; color: var(--gold-bright); font-size: 12px; font-weight: 600; }
+.howto b { color: var(--text); font-weight: 600; }
+/* Resultado: vitória em dourado, derrota sóbria. */
+#resultOverlay[data-outcome="win"] .overlay-card { border-color: var(--gold); box-shadow: 0 0 0 1px #ceb78b44, 0 24px 80px #ceb78b26; }
+#resultOverlay[data-outcome="win"] h2 { color: var(--gold-bright); }
+#resultOverlay .card-actions .primary-button { flex: 1 1 200px; }
 
 /* agent-responsive-768 */
 @media (max-width: 768px) {

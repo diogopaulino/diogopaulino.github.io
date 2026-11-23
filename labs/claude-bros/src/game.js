@@ -13,7 +13,8 @@
 import {
     TILE, GRAVITY, JUMP_VELOCITY, JUMP_CUT, RUN_SPEED, RUN_ACCEL, SKID_ACCEL, AIR_ACCEL, RUN_FRICTION,
     AIR_FRICTION, MAX_FALL, COYOTE_TIME, JUMP_BUFFER, APEX_SPEED, APEX_GRAVITY, CORNER_NUDGE, ENEMY_SPEED,
-    STOMP_BOUNCE, LEVEL, COLS, ROWS, WORLD_WIDTH, WORLD_HEIGHT, GROUND_ROW, WATER_LEVEL
+    STOMP_BOUNCE, LEVEL, COLS, ROWS, WORLD_WIDTH, WORLD_HEIGHT, GROUND_ROW, WATER_LEVEL,
+    LIVES, HURT_INSET, STOMP_WINDOW, RESPAWN_INVULN
 } from './config.js';
 
 const DEAD_TIME = 0.9;
@@ -21,6 +22,11 @@ const WATER_PY = (GROUND_ROW - WATER_LEVEL) * TILE; // superfície da água dos 
 
 function overlaps(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/** Sobreposição com a caixa de `b` encolhida `inset` px de cada lado (dano generoso). */
+function overlapsInset(a, b, inset) {
+    return a.x < b.x + b.w - inset && a.x + a.w > b.x + inset && a.y < b.y + b.h && a.y + a.h > b.y + inset;
 }
 
 export function createGame(emit = () => {}) {
@@ -51,7 +57,7 @@ export function createGame(emit = () => {}) {
         state: 'ready',
         score: 0,
         coinsTaken: 0,
-        lives: 3,
+        lives: LIVES,
         elapsed: 0,
         deadTimer: 0,
         wonTimer: 0,
@@ -132,7 +138,7 @@ export function createGame(emit = () => {}) {
         buildLevel();
         game.score = 0;
         game.coinsTaken = 0;
-        game.lives = 3;
+        game.lives = LIVES;
         game.elapsed = 0;
         game.deadTimer = 0;
         game.wonTimer = 0;
@@ -213,7 +219,7 @@ export function createGame(emit = () => {}) {
                     emit('over');
                 } else {
                     placeAt(game.checkpoint);
-                    player.invuln = 1.4;
+                    player.invuln = RESPAWN_INVULN;
                     game.state = 'playing';
                     emit('respawn');
                 }
@@ -365,9 +371,9 @@ export function createGame(emit = () => {}) {
                 if (Math.sign(enemy.vx) !== away) enemy.vx = away * Math.abs(enemy.vx);
             }
 
-            if (player.invuln <= 0 && overlaps(player, enemy)) {
-                // Pisar em cima só conta caindo e vindo de cima do rival.
-                const fromAbove = player.vy > 0 && (player.y + player.h) - enemy.y < enemy.h * 0.6;
+            if (overlaps(player, enemy)) {
+                // Pisar em cima só conta caindo e vindo de cima do rival (vale até piscando).
+                const fromAbove = player.vy >= 0 && !player.grounded && (player.y + player.h) - enemy.y < enemy.h * STOMP_WINDOW;
                 if (fromAbove) {
                     enemy.alive = false;
                     enemy.squash = 1;
@@ -376,7 +382,7 @@ export function createGame(emit = () => {}) {
                     game.score += 100;
                     emit('stomp', enemy);
                     emit('hud');
-                } else {
+                } else if (player.invuln <= 0 && overlapsInset(player, enemy, HURT_INSET)) {
                     loseLife(false, Math.sign((player.x + player.w / 2) - (enemy.x + enemy.w / 2)) || -1);
                     return;
                 }
@@ -386,7 +392,7 @@ export function createGame(emit = () => {}) {
         /* --- estacas --- */
         if (player.invuln <= 0) {
             for (const spike of spikes) {
-                if (overlaps(player, spike)) { loseLife(false, -player.facing); return; }
+                if (overlapsInset(player, spike, HURT_INSET)) { loseLife(false, -player.facing); return; }
             }
         }
 

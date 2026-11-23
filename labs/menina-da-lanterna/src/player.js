@@ -19,8 +19,8 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA, LANTERN } from './config.js?v=20';
-import { clamp, damp } from './utils.js?v=20';
+import { PLAYER, CAMERA, LANTERN } from './config.js?v=21';
+import { clamp, damp } from './utils.js?v=21';
 import { createHero } from '../../shared/gfx/hero.js';
 
 const _v = new THREE.Vector3();

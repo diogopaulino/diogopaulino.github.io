@@ -22,7 +22,14 @@ const App = {
         searchInput: document.getElementById('game-search'),
         romInput: document.getElementById('rom-file-input'),
         mobileControls: document.getElementById('mobile-controls'),
+        pauseMenu: document.getElementById('pause-menu'),
+        pauseTitle: document.getElementById('pause-title'),
+        startHint: document.getElementById('start-hint'),
+        loaderSlow: document.getElementById('loader-slow'),
+        loaderCancel: document.getElementById('loader-cancel'),
+        libraryStatus: document.getElementById('library-status'),
         buttons: {
+            pause: document.getElementById('btn-pause'),
             back: document.getElementById('btn-back'),
             controls: document.getElementById('btn-controls'),
             fullscreen: document.getElementById('btn-fullscreen'),
@@ -30,7 +37,17 @@ const App = {
             load: document.getElementById('btn-load')
         }
     },
-    activeTouches: new Map(),
+    // Entrada por toque: cada dedo (touch.identifier) guarda o conjunto de teclas que segura.
+    // keyRefs conta quantos dedos seguram cada tecla, para soltar só quando o último sair.
+    touchKeys: new Map(),
+    touchOnDpad: new Set(),
+    keyRefs: new Map(),
+    userPaused: false,
+    libraryOnline: null,
+    lastLaunch: null,
+    lastCardId: null,
+    timers: { hint: 0, slow: 0, bar: 0 },
+    coarse: window.matchMedia ? window.matchMedia('(pointer: coarse)') : { matches: false },
     keyMap: {
         'ArrowUp': { code: 'ArrowUp', keyCode: 38 },
         'ArrowDown': { code: 'ArrowDown', keyCode: 40 },
@@ -44,10 +61,6 @@ const App = {
         'q': { code: 'KeyQ', keyCode: 81 },
         'w': { code: 'KeyW', keyCode: 87 },
         'e': { code: 'KeyE', keyCode: 69 },
-        'Escape': { code: 'Escape', keyCode: 27 },
-        'FULL': { code: 'F', keyCode: 70 }, // Added helper
-        'SAVE': { code: 'Save', keyCode: 0 },
-        'LOAD': { code: 'Load', keyCode: 0 },
         'z': { code: 'KeyZ', keyCode: 90 },
         'x': { code: 'KeyX', keyCode: 88 }
     },
@@ -73,14 +86,31 @@ const App = {
         }
     },
     setupEventListeners() {
-        const { buttons, grid, searchInput, romInput } = this.ui;
-        const { back, controls, fullscreen, save, load } = buttons || {};
+        const { buttons, grid, searchInput, romInput, player, pauseMenu, loaderCancel } = this.ui;
+        const { back, controls, fullscreen, save, load, pause } = buttons || {};
 
         back?.addEventListener('click', () => this.showHome());
+        pause?.addEventListener('click', () => this.openMenu());
         controls?.addEventListener('click', () => this.showControls());
         fullscreen?.addEventListener('click', () => this.toggleFullscreen());
         save?.addEventListener('click', () => this.saveGame());
         load?.addEventListener('click', () => this.loadGame());
+        loaderCancel?.addEventListener('click', () => this.showHome());
+
+        // Botões da barra não podem ficar com o foco: o Nostalgist ignora teclas cujo alvo é um
+        // <button>, e o jogo parava de responder ao teclado depois de clicar em "Salvar".
+        player?.addEventListener('click', e => {
+            const btn = e.target.closest('.player-bar button');
+            if (btn) btn.blur();
+        });
+        // Barra superior no desktop: aparece ao mexer o mouse e some sozinha para não cobrir o jogo.
+        player?.addEventListener('mousemove', () => this.flashPlayerBar());
+
+        pauseMenu?.addEventListener('click', e => {
+            const btn = e.target.closest('[data-menu]');
+            if (btn) this.handleMenuAction(btn.dataset.menu);
+            else if (e.target === pauseMenu) this.closeMenu();
+        });
 
         grid?.addEventListener('click', e => {
             const card = e.target.closest('.game-card');
@@ -95,18 +125,22 @@ const App = {
             }, 300);
         });
 
+        // Aba escondida: pausa o emulador e solta teclas presas. Ao voltar, retoma sozinho
+        // só se a pessoa não tinha pausado pelo menu.
         document.addEventListener('visibilitychange', () => {
             if (!this.emulator) return;
             try {
-                if (document.hidden && typeof this.emulator.pause === 'function') {
-                    this.emulator.pause();
-                } else if (!document.hidden && typeof this.emulator.resume === 'function') {
-                    this.emulator.resume();
+                if (document.hidden) {
+                    this.releaseAllInputs();
+                    this.emulator.pause?.();
+                } else if (!this.userPaused) {
+                    this.emulator.resume?.();
                 }
             } catch (err) {
                 console.warn('Emulador: pausa por visibilidade indisponível.', err);
             }
         });
+        window.addEventListener('blur', () => this.releaseAllInputs());
 
         document.getElementById('open-local-rom').addEventListener('click', () => romInput.click());
         romInput?.addEventListener('change', e => {
@@ -115,8 +149,9 @@ const App = {
             if (file) this.startGame(file, file.name.replace(/\.[^/.]+$/, ''));
         });
         document.addEventListener('keydown', e => this.handleGlobalKeys(e));
-        window.addEventListener('keydown', e => this.handleKeyRemap(e));
-        window.addEventListener('keyup', e => this.handleKeyRemap(e));
+        // Captura na janela: o remapeamento S/D roda antes do handler do emulador no document.
+        window.addEventListener('keydown', e => this.handleKeyRemap(e), true);
+        window.addEventListener('keyup', e => this.handleKeyRemap(e), true);
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(e => document.addEventListener(e, () => this.handleFullscreenChange()));
     },
 
@@ -143,85 +178,120 @@ const App = {
             container.addEventListener(e, evt => this.handleTouch(evt), options)
         );
         container.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+        // Mouse/caneta (tablet com ponteiro fino, testes no desktop) nos botões de sistema.
+        // No toque o touchstart já disparou a ação e o preventDefault impede este click.
+        container.addEventListener('click', e => {
+            const btn = e.target.closest('[data-action]');
+            if (btn) this.runPadAction(btn.dataset.action);
+        });
     },
 
     handleTouch(e) {
         if (e.type !== 'touchend') e.preventDefault();
 
         const touches = e.changedTouches;
+        const ending = e.type === 'touchend' || e.type === 'touchcancel';
 
         for (let i = 0; i < touches.length; i++) {
             const touch = touches[i];
             const id = touch.identifier;
+            const prev = this.touchKeys.get(id);
 
-            // Determine target functionality
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-            const btnKey = el?.closest('[data-key]');
-            const btnAction = el?.closest('[data-action]');
-
-            const keyName = btnKey?.dataset.key;
-            const actionName = btnAction?.dataset.action?.toUpperCase();
-
-            // Logic for Touch End
-            if (e.type === 'touchend' || e.type === 'touchcancel') {
-                const active = this.activeTouches.get(id);
-                if (active) {
-                    this.processButtonRelease(active);
-                    this.activeTouches.delete(id);
-                }
+            if (ending) {
+                if (prev) prev.forEach(k => this.releaseKey(k));
+                this.touchKeys.delete(id);
+                this.touchOnDpad.delete(id);
                 continue;
             }
 
-            // Logic for Start/Move
-            const current = this.activeTouches.get(id);
-            const target = actionName || keyName;
-
-            if (current !== target) {
-                if (current) this.processButtonRelease(current);
-                if (target) {
-                    this.processButtonPress(target);
-                    this.activeTouches.set(id, target);
-                } else {
-                    this.activeTouches.delete(id);
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (e.type === 'touchstart') {
+                const actionBtn = el?.closest('[data-action]');
+                if (actionBtn) {
+                    // Ações (menu, tela cheia) disparam uma vez no toque, sem virar tecla.
+                    actionBtn.classList.add('active');
+                    setTimeout(() => actionBtn.classList.remove('active'), 120);
+                    this.runPadAction(actionBtn.dataset.action);
+                    continue;
                 }
+                if (el?.closest('[data-dpad]')) this.touchOnDpad.add(id);
             }
+
+            const next = this.keysAtPoint(el, touch.clientX, touch.clientY, this.touchOnDpad.has(id));
+            if (prev) prev.forEach(k => { if (!next.includes(k)) this.releaseKey(k); });
+            next.forEach(k => { if (!prev || !prev.includes(k)) this.pressKey(k); });
+            if (next.length) this.touchKeys.set(id, next);
+            else this.touchKeys.delete(id);
         }
     },
 
-    processButtonPress(key) {
-        // Visual Feedback
-        const selector = this.keyMap[key] ? `[data-key="${key}"]` : `[data-action="${key.toLowerCase()}"]`;
-        document.querySelector(selector)?.classList.add('active');
+    /**
+     * Direcional de 8 direções: o ângulo do dedo em relação ao centro do d-pad escolhe um de
+     * 8 setores de 45° (0° = direita, sentido horário). Diagonais seguram duas setas.
+     * Zona morta central = 18% do diâmetro. O dedo que começou no d-pad continua valendo
+     * mesmo se escorregar para fora dele.
+     */
+    keysAtPoint(el, x, y, fromDpad) {
+        const dpad = fromDpad ? this.ui.mobileControls.querySelector('[data-dpad]') : null;
+        if (dpad) {
+            const r = dpad.getBoundingClientRect();
+            const dx = x - (r.left + r.width / 2);
+            const dy = y - (r.top + r.height / 2);
+            if (Math.hypot(dx, dy) < r.width * 0.18) return [];
+            const sector = (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8;
+            return this.dpadSectors[sector];
+        }
+        const name = el?.closest('[data-key]')?.getAttribute('data-key');
+        return name && this.keyMap[name] ? [name] : [];
+    },
+    dpadSectors: [
+        ['ArrowRight'], ['ArrowRight', 'ArrowDown'], ['ArrowDown'], ['ArrowLeft', 'ArrowDown'],
+        ['ArrowLeft'], ['ArrowLeft', 'ArrowUp'], ['ArrowUp'], ['ArrowRight', 'ArrowUp']
+    ],
 
-        // Logic
-        if (key === 'FULL') return this.toggleFullscreen();
-        if (key === 'SAVE') return this.saveGame();
-        if (key === 'LOAD') return this.loadGame();
-
-        const map = this.keyMap[key];
-        if (map) this.triggerKey(key, map.code, map.keyCode, 'keydown');
+    runPadAction(action) {
+        if (action === 'menu') return this.isMenuOpen() ? this.closeMenu() : this.openMenu();
+        if (action === 'full') return this.toggleFullscreen();
     },
 
-    processButtonRelease(key) {
-        // Visual Feedback
-        const selector = this.keyMap[key] ? `[data-key="${key}"]` : `[data-action="${key.toLowerCase()}"]`;
-        document.querySelector(selector)?.classList.remove('active');
+    pressKey(name) {
+        const count = (this.keyRefs.get(name) || 0) + 1;
+        this.keyRefs.set(name, count);
+        if (count > 1) return;
+        this.setKeyVisual(name, true);
+        this.hideStartHint();
+        const map = this.keyMap[name];
+        if (map) this.triggerKey(name, map.code, map.keyCode, 'keydown');
+    },
 
-        // Logic (actions trigger on press, so mostly for keys)
-        const map = this.keyMap[key];
-        if (map && key !== 'FULL' && key !== 'SAVE' && key !== 'LOAD') {
-            this.triggerKey(key, map.code, map.keyCode, 'keyup');
+    releaseKey(name) {
+        const count = (this.keyRefs.get(name) || 0) - 1;
+        if (count > 0) return this.keyRefs.set(name, count);
+        this.keyRefs.delete(name);
+        this.setKeyVisual(name, false);
+        const map = this.keyMap[name];
+        if (map) this.triggerKey(name, map.code, map.keyCode, 'keyup');
+    },
+
+    // Solta tudo (aba escondida, janela sem foco, menu aberto): evita personagem andando sozinho.
+    releaseAllInputs() {
+        for (const name of [...this.keyRefs.keys()]) {
+            this.keyRefs.set(name, 1);
+            this.releaseKey(name);
         }
+        this.touchKeys.clear();
+        this.touchOnDpad.clear();
+    },
+
+    setKeyVisual(name, on) {
+        const el = this.ui.mobileControls?.querySelector(`[data-key="${name}"], [data-dir="${name}"]`);
+        el?.classList.toggle('active', on);
     },
 
     triggerKey(key, code, keyCode, type) {
-        const targets = new Set([
-            document.activeElement && document.activeElement !== document.body ? document.activeElement : null,
-            this.ui.screen.querySelector('canvas'),
-            document,
-            window
-        ]);
-        targets.forEach(target => this.fireKeyboardEvent(target, type, key, code, keyCode));
+        // Um único evento no document: o handler do emulador escuta ali (respondToGlobalEvents).
+        // Antes o mesmo evento ia para canvas + document + window e chegava duplicado.
+        this.fireKeyboardEvent(document, type, key, code, keyCode);
     },
     fireKeyboardEvent(target, type, key, code, keyCode) {
         if (!target || typeof target.dispatchEvent !== 'function') return;
@@ -303,6 +373,11 @@ const App = {
     async showHome() {
         this.launchId++;
         this.ui.loader.classList.add('hidden');
+        this.clearLoaderTimers();
+        this.hideMenu();
+        this.hideStartHint();
+        this.releaseAllInputs();
+        document.getElementById('controls-overlay')?.remove();
         document.body.classList.remove('game-mode');
         this.ui.home.classList.remove('hidden');
         this.ui.player.classList.add('hidden');
@@ -311,6 +386,9 @@ const App = {
         this.ui.footer.style.display = 'block';
         if (this.isNativeFullscreenActive()) this.exitFullscreenSafe();
         if (this.isManualFullscreen) this.exitManualFullscreen();
+        // Devolve o foco ao último jogo escolhido (navegação por teclado não se perde).
+        const card = this.lastCardId && this.ui.grid.querySelector(`[data-id="${CSS.escape(this.lastCardId)}"]`);
+        card?.focus({ preventScroll: false });
         await this.stopEmulator()
     },
     showPlayer(name) {
@@ -320,12 +398,100 @@ const App = {
         this.ui.player.setAttribute('aria-hidden', 'false');
         this.ui.header.style.display = 'none';
         this.ui.footer.style.display = 'none';
-        this.ui.gameName.textContent = name
+        this.ui.gameName.textContent = name;
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        this.flashPlayerBar();
+    },
+    flashPlayerBar() {
+        const player = this.ui.player;
+        if (!player.classList.contains('bar-visible')) player.classList.add('bar-visible');
+        clearTimeout(this.timers.bar);
+        this.timers.bar = setTimeout(() => player.classList.remove('bar-visible'), 2600);
+    },
+
+    // --- Menu de pausa (Esc, P, botão ⏸) -------------------------------------------------
+    isMenuOpen() {
+        return !!this.ui.pauseMenu && !this.ui.pauseMenu.hidden;
+    },
+    openMenu() {
+        if (!this.emulator || this.isMenuOpen()) return;
+        document.getElementById('controls-overlay')?.remove();
+        this.releaseAllInputs();
+        this.hideStartHint();
+        this.userPaused = true;
+        try { this.emulator.pause?.(); } catch (err) { console.warn('Pausa indisponível.', err); }
+        this.ui.pauseTitle.textContent = this.ui.gameName.textContent || 'Jogo';
+        this.ui.pauseMenu.hidden = false;
+        this.ui.player.classList.add('menu-open');
+        this.ui.pauseMenu.querySelector('[data-menu="resume"]')?.focus();
+    },
+    hideMenu() {
+        if (!this.ui.pauseMenu) return;
+        // Foco preso num botão escondido do menu faria o emulador ignorar o teclado.
+        if (this.ui.pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+        this.ui.pauseMenu.hidden = true;
+        this.ui.player.classList.remove('menu-open');
+        this.userPaused = false;
+    },
+    closeMenu() {
+        if (!this.isMenuOpen()) return;
+        this.hideMenu();
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        if (!document.hidden) {
+            try { this.emulator?.resume?.(); } catch (err) { console.warn('Retomar indisponível.', err); }
+        }
+    },
+    async handleMenuAction(action) {
+        if (action === 'resume') return this.closeMenu();
+        if (action === 'exit') return this.showHome();
+        if (action === 'full') return this.toggleFullscreen();
+        if (action === 'save') return this.saveGame();
+        // O RetroArch tira a pausa sozinho ao carregar estado ou resetar, e PAUSE_TOGGLE é um
+        // "inverte": pedir resume depois deixava o jogo congelado. Por isso retoma ANTES.
+        if (action === 'load') {
+            if (!(await this.db.get(this.currentRomId))) {
+                this.showToast('Você ainda não salvou este jogo.', 'info');
+                return;
+            }
+            this.closeMenu();
+            await this.loadGame();
+            return;
+        }
+        if (action === 'restart') {
+            this.closeMenu();
+            try { this.emulator?.restart?.(); } catch (err) { console.warn('Recomeçar indisponível.', err); }
+            this.showToast('Jogo recomeçado!', 'success');
+        }
+    },
+
+    // Dica rápida ao abrir o jogo: some sozinha ou no primeiro botão apertado.
+    showStartHint() {
+        const hint = this.ui.startHint;
+        if (!hint) return;
+        hint.innerHTML = this.coarse.matches
+            ? 'Toque em <b>START</b> para começar · <b>⏸</b> pausa'
+            : 'Aperte <kbd>Enter</kbd> (START) para começar · <kbd>Esc</kbd> pausa';
+        hint.hidden = false;
+        requestAnimationFrame(() => hint.classList.add('visible'));
+        clearTimeout(this.timers.hint);
+        this.timers.hint = setTimeout(() => this.hideStartHint(), 6000);
+    },
+    hideStartHint() {
+        const hint = this.ui.startHint;
+        if (!hint || hint.hidden) return;
+        clearTimeout(this.timers.hint);
+        hint.classList.remove('visible');
+        this.timers.hint = setTimeout(() => { hint.hidden = true; }, 250);
+    },
+    clearLoaderTimers() {
+        clearTimeout(this.timers.slow);
+        if (this.ui.loaderSlow) this.ui.loaderSlow.hidden = true;
     },
     resetScreen() {
         if (!this.ui.screen) return;
         this.ui.screen.innerHTML = '';
         this.ui.screen.classList.remove('scanlines');
+        this.ui.player.classList.remove('has-error');
     },
     isSafariMobile() {
         const ua = navigator.userAgent || '';
@@ -415,12 +581,12 @@ const App = {
                 </button>
             </div>
             <div class="controls-grid">
-                <div class="control-item"><kbd>↑↓←→</kbd> Movimento</div>
+                <div class="control-item"><kbd>↑↓←→</kbd> Andar</div>
                 <div class="control-item"><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Botões A/B/C</div>
                 <div class="control-item"><kbd>Enter</kbd> Start</div>
                 <div class="control-item"><kbd>Shift</kbd> Select</div>
                 <div class="control-item"><kbd>F</kbd> Tela Cheia</div>
-                <div class="control-item"><kbd>Esc</kbd> Sair/Voltar</div>
+                <div class="control-item"><kbd>Esc</kbd> <kbd>P</kbd> Menu / pausa</div>
             </div>
             <div class="controls-actions" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;justify-content:center;">
                 <button id="btn-export-save" class="btn-secondary" style="font-size:0.9rem;padding:0.5rem 1rem;">
@@ -452,23 +618,28 @@ const App = {
         this.ui.player.appendChild(overlay)
     },
     handleGlobalKeys(e) {
-        if (e.key === 'Escape') {
+        if (this.ui.player.classList.contains('hidden')) return;
+        const key = (e.key || '').toLowerCase();
+        if (key === 'escape') {
             const overlay = document.getElementById('controls-overlay');
-            if (overlay) overlay.remove();
-            else if (this.isFullscreenActive()) this.toggleFullscreen();
-            else if (!this.ui.player.classList.contains('hidden')) this.showHome()
+            if (overlay) return overlay.remove();
+            if (this.isMenuOpen()) return this.closeMenu();
+            // Com o jogo rodando, Esc pausa (sair fica no menu) para ninguém perder o progresso sem querer.
+            if (this.emulator) return this.openMenu();
+            if (this.isFullscreenActive()) return this.toggleFullscreen();
+            return this.showHome();
         }
-        if (e.key.toLowerCase() === 'f' && !this.ui.player.classList.contains('hidden')) this.toggleFullscreen()
-        if (e.key === 'Enter' && !this.ui.player.classList.contains('hidden')) {
-            const isFullscreen = this.isFullscreenActive();
-            if (isFullscreen) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+        if (this.isMenuOpen()) return;
+        if (key === 'p' && e.isTrusted) return this.openMenu();
+        if (key === 'f' && e.isTrusted) return this.toggleFullscreen();
+        if (e.isTrusted && this.emulator) this.hideStartHint();
+        if (key === 'enter' && this.isFullscreenActive() && !(e.target instanceof HTMLButtonElement)) {
+            e.preventDefault();
+            e.stopPropagation();
         }
     },
     handleKeyRemap(e) {
-        if (this.ui.player.classList.contains('hidden')) return;
+        if (this.ui.player.classList.contains('hidden') || this.isMenuOpen()) return;
         if (!this.currentCore || !e.isTrusted) return;
 
         const key = e.key.toLowerCase();
@@ -492,8 +663,15 @@ const App = {
         let timeout;
         const romKey = this.getRomKey(rom);
         this.currentRomId = romKey || name || `rom-${Date.now()}`;
+        this.lastLaunch = { rom, name };
+        this.hideMenu();
+        this.hideStartHint();
         this.showPlayer(name || romKey || 'Jogo');
         this.ui.loader.classList.remove('hidden');
+        this.clearLoaderTimers();
+        this.timers.slow = setTimeout(() => {
+            if (id === this.launchId && this.ui.loaderSlow) this.ui.loaderSlow.hidden = false;
+        }, 9000);
 
         try {
             await this.stopEmulator();
@@ -530,48 +708,91 @@ const App = {
             this.emulator = emulator;
             this.currentCore = core;
             this.applySettings();
+            if (typeof romToLoad === 'string') this.setLibraryOnline(true);
+            this.showStartHint();
         } catch (error) {
             if (id !== this.launchId) return;
             this.launchId++;
             this.ui.loader.classList.add('hidden');
             console.error('Erro ao carregar jogo:', error);
             this.currentCore = null;
-            this.showScreenError(this.getFriendlyErrorMessage(error));
+            const remote = typeof rom === 'string' && /^https?:\/\//.test(rom);
+            if (remote && /fetch|network|load/i.test(error?.message || '')) this.setLibraryOnline(false);
+            this.showScreenError(this.getFriendlyErrorMessage(error, remote));
         } finally {
             clearTimeout(timeout);
+            if (id === this.launchId) this.clearLoaderTimers();
             if (id === this.launchId) this.ui.loader.classList.add('hidden');
         }
     },
-    getFriendlyErrorMessage(error) {
-        if (!error || !error.message) return 'Erro desconhecido ao carregar o jogo.';
+    getFriendlyErrorMessage(error, remote = false) {
+        if (!error || !error.message) return 'Não deu para abrir este jogo. Tente de novo.';
         const msg = error.message.toLowerCase();
-        if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) return 'Erro ao carregar o arquivo do jogo. Verifique sua conexão ou tente novamente.';
-        if (msg.includes('404') || msg.includes('not found')) return 'Arquivo do jogo não encontrado.';
-        if (msg.includes('cors') || msg.includes('cross-origin')) return 'Erro de permissão ao acessar o arquivo do jogo.';
-        if (msg.includes('invalid url') || msg.includes('url inválida')) return 'URL do jogo inválida.';
-        return `Erro: ${error.message}`;
+        if (msg.includes('timeout')) return 'O jogo demorou demais para carregar. Tente de novo.';
+        if (remote && this.libraryOnline === false) return 'A biblioteca online está fora do ar, então este jogo não baixou. Você pode abrir um jogo do seu computador.';
+        if (msg.includes('failed to load') || msg.includes('fetch') || msg.includes('network')) return 'Não conseguimos baixar este jogo agora. Confira a internet ou tente outro jogo.';
+        if (msg.includes('404') || msg.includes('not found')) return 'Este jogo não foi encontrado na biblioteca.';
+        if (msg.includes('cors') || msg.includes('cross-origin')) return 'A biblioteca não deixou baixar este jogo.';
+        if (msg.includes('invalid url') || msg.includes('url inválida')) return 'O endereço deste jogo está errado.';
+        return 'Este arquivo não abriu. Use um jogo de Mega Drive (.md, .bin, .gen, .smd) ou Super Nintendo (.sfc, .smc).';
     },
     showScreenError(message) {
         if (!this.ui.screen) return;
         this.resetScreen();
         const container = document.createElement('div');
         container.className = 'error';
+        container.setAttribute('role', 'alert');
 
+        const title = document.createElement('p');
+        title.className = 'error-title';
+        title.textContent = 'Ops! O jogo não abriu';
         const text = document.createElement('p');
         text.textContent = message;
 
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Voltar';
-        button.addEventListener('click', () => this.showHome());
+        const actions = document.createElement('div');
+        actions.className = 'error-actions';
+        const make = (label, cls, fn) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = cls;
+            b.textContent = label;
+            b.addEventListener('click', fn);
+            actions.appendChild(b);
+            return b;
+        };
+        const retry = make('Tentar de novo', 'primary', () => {
+            const last = this.lastLaunch;
+            if (last) this.startGame(last.rom, last.name);
+        });
+        make('Abrir jogo do computador', '', () => this.ui.romInput.click());
+        make('Voltar para a biblioteca', '', () => this.showHome());
 
-        container.appendChild(text);
-        const localButton = document.createElement('button');
-        localButton.type = 'button';
-        localButton.textContent = 'Abrir ROM local';
-        localButton.addEventListener('click', () => this.ui.romInput.click());
-        container.append(localButton, button);
+        container.append(title, text, actions);
         this.ui.screen.appendChild(container);
+        this.ui.player.classList.add('has-error');
+        retry.focus();
+    },
+
+    // Sonda leve do servidor de ROMs: um HEAD sem CORS falha (TypeError) só se o host não
+    // responder (DNS/rede). Timeout não conta como "fora do ar" para evitar falso alarme.
+    async probeLibrary() {
+        const first = this.allGames.find(g => typeof g.file === 'string');
+        if (!first || typeof fetch !== 'function') return;
+        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = setTimeout(() => ctrl?.abort(), 8000);
+        try {
+            await fetch(first.file, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: ctrl?.signal });
+            this.setLibraryOnline(true);
+        } catch (err) {
+            if (err?.name !== 'AbortError') this.setLibraryOnline(false);
+        } finally {
+            clearTimeout(timer);
+        }
+    },
+    setLibraryOnline(online) {
+        this.libraryOnline = online;
+        if (this.ui.libraryStatus) this.ui.libraryStatus.hidden = online !== false;
+        this.ui.grid?.classList.toggle('is-offline', online === false);
     },
     resolveRomPath(resource) {
         if (!resource || typeof resource !== 'string') return resource;
@@ -611,6 +832,7 @@ const App = {
     },
     startGameById(id) {
         const game = this.allGames.find(g => g.id === id);
+        this.lastCardId = id;
         game ? this.startGame(game.file, game.title) : console.error('Jogo não encontrado:', id)
     },
     ensureEmulator(message) {
@@ -663,13 +885,15 @@ const App = {
                 if (this.emulator !== emulator) return;
                 await emulator.loadState(stateBlob);
                 this.showToast('Jogo carregado!', 'success');
+                return true;
             } else {
-                this.showToast('Nenhum save encontrado.', 'info');
+                this.showToast('Você ainda não salvou este jogo.', 'info');
             }
         } catch (e) {
             console.error(e);
             this.showToast('Erro ao carregar jogo.', 'error');
         }
+        return false;
     },
     async exportSave(options = {}) {
         if (!this.ensureEmulator('Abra um jogo para baixar o save.')) return;
@@ -841,6 +1065,7 @@ const App = {
         }
     },
     async stopEmulator() {
+        this.releaseAllInputs();
         const emulator = this.emulator;
         this.emulator = null;
         this.currentCore = null;
@@ -862,7 +1087,8 @@ const App = {
         try {
             if (typeof gamesCatalog !== 'undefined') {
                 this.allGames = gamesCatalog;
-                this.renderGames(this.allGames)
+                this.renderGames(this.allGames);
+                this.probeLibrary();
             } else throw new Error('Catálogo não encontrado')
         } catch (e) {
             console.error(e);

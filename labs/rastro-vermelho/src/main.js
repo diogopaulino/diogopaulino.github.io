@@ -10,13 +10,22 @@
  *
  * Resolução adaptativa (só em qualidade automática): a cada 0,6 s mede o fps; abaixo de 48
  * reduz o pixel ratio em 10 % (piso de 60 % do teto do tier), acima de 57 devolve 5 %.
+ *
+ * REGRAS (pensadas para qualquer idade)
+ *   • Seis destinos em ordem; o losango dourado e o minimapa apontam o próximo. A menos de 13 m,
+ *     abaixo de 7 m/s e sem bandidos vivos, E / botão entrega e salva o progresso (checkpoint).
+ *   • Emboscadas (destinos III e V): bandidos com 2 de vida (foco tira 2 por tiro). Cada um avisa
+ *     (mira acesa) antes de atirar; o tiro tira 10 de vigor parado/trote e 5 a galope (> 7 m/s);
+ *     acima de 12 m/s ele erra. Fora de combate o vigor volta 3/s.
+ *   • Vigor 0 = volta ao último destino concluído com tudo cheio. Mira assistida: cone de 0,3 rad
+ *     (0,38 com foco; 0,65 no toque) até 65 m com linha de visada livre.
  */
 import * as THREE from 'three';
 import { createPipeline } from '../../shared/gfx/post.js';
 import { configureTextures } from '../../shared/gfx/textures.js';
 import { detectSoftwareGL } from '../../shared/gfx/core.js';
 import { clamp, damp, lerp, angleDelta, terrainHeight, roadX, biomeAt, LANDMARKS, freshPlayer, stepRiding, worldClock, loadSettings, saveSettings, loadJourney, saveJourney } from './simulation.js';
-import { World, PROFILES } from './world.js?v=14';
+import { World, PROFILES } from './world.js?v=15';
 import { loadKits } from './assets.js?v=14';
 import { createMount, createOutlaw } from './actors.js?v=14';
 import { Effects } from './effects.js?v=14';
@@ -176,6 +185,7 @@ class RastroVermelho {
         ui.pauseButton.addEventListener('click', () => this.togglePause()); ui.resumeButton.addEventListener('click', () => this.togglePause());
         ui.pauseMenuButton.addEventListener('click', () => this.menu()); ui.endMenuButton.addEventListener('click', () => this.menu());
         ui.retryButton.addEventListener('click', () => { if (this.player.health <= 0) this.resetToCheckpoint(false); this.start(); });
+        ui.endNewButton.addEventListener('click', () => { this.resetToCheckpoint(true); this.start(); });
         ui.soundButton.addEventListener('click', () => this.toggleSound());
         ui.qualitySelect.value = this.settings.quality;
         ui.qualitySelect.addEventListener('change', e => { this.settings.quality = e.target.value; this.applyQuality(); this.persist(); });
@@ -190,7 +200,7 @@ class RastroVermelho {
     }
     updateMenu() {
         this.ui.bestScore.textContent = `${Math.round(this.settings.best)} m`;
-        this.ui.startLabel.textContent = this.hasStarted || this.checkpoint?.stage ? 'Retomar jornada' : 'Iniciar jornada';
+        this.ui.startLabel.textContent = this.hasStarted || this.checkpoint?.stage ? 'Retomar jornada' : 'Começar a jornada';
         this.ui.newButton.hidden = !(this.hasStarted || this.checkpoint?.stage);
         this.ui.saveNote.textContent = this.stage ? `${Math.min(this.stage, 6)} de 6 destinos · progresso salvo no último destino` : 'O progresso é salvo em cada destino.';
     }
@@ -306,6 +316,8 @@ class RastroVermelho {
         if (this.ui.btnFocus.getAttribute('aria-pressed') !== focusPressed) this.ui.btnFocus.setAttribute('aria-pressed', focusPressed);
         if (this.lastHud > .1) { this.updateHud(); this.lastHud = 0; }
         if (this.lastSave > 15) { this.persist(); this.lastSave = 0; }
+        // fora de combate o cavaleiro se recupera aos poucos (3/s)
+        if (p.health > 0 && p.health < 100 && !this.liveEnemies().length) p.health = Math.min(100, p.health + 3 * dt);
     }
     updateHorse(dt, steer) {
         const p = this.player, root = this.horse.root, y = terrainHeight(p.x, p.z), ahead = terrainHeight(p.x + Math.sin(p.yaw) * 1.2, p.z + Math.cos(p.yaw) * 1.2);
@@ -375,7 +387,7 @@ class RastroVermelho {
         const p = this.player, target = this.target(), distance = Math.hypot(target.x - p.x, target.z - p.z);
         if (distance < 13 && this.stage < 6) {
             if (this.liveEnemies().length) return { label: 'Neutralize os bandidos da passagem', blocked: true };
-            if (p.speed > 4) return { label: 'Freie para interagir', blocked: true };
+            if (p.speed > 7) return { label: 'Freie para entregar (S)', blocked: true };
             return { label: target.action, mission: true };
         }
         const camp = LANDMARKS.find(l => l.id < this.stage && Math.hypot(l.x - p.x, l.z - p.z) < 12);
@@ -420,7 +432,7 @@ class RastroVermelho {
                     e.root.updateMatrixWorld(true); e.muzzleWorld(this._v); V3(p.x, terrainHeight(p.x, p.z) + 1.7, p.z, this._w);
                     this._d.subVectors(this._w, this._v).normalize(); this.effects.muzzle(this._v, this._d); this.effects.tracer(this._v, this._w, 1, .72, .42);
                     // Riding evasively mitigates damage; warnings give a deterministic reaction window.
-                    if (p.speed < 12) { p.health = Math.max(0, p.health - (p.speed > 7 ? 7 : 14)); this.damage = .6; this.audio.burst(.12, .1, 1600); }
+                    if (p.speed < 12) { p.health = Math.max(0, p.health - (p.speed > 7 ? 5 : 10)); this.damage = .6; this.audio.burst(.12, .1, 1600); }
                     if (!p.health) { this.finish(false); return; }
                 }
             }
@@ -438,7 +450,7 @@ class RastroVermelho {
         return true;
     }
     aimTarget() {
-        const p = this.player, heading = p.yaw + this.look.yaw, cone = this.coarse ? .65 : this.focusActive ? .38 : .23;
+        const p = this.player, heading = p.yaw + this.look.yaw, cone = this.coarse ? .65 : this.focusActive ? .38 : .3;
         let result = null, score = Infinity;
         for (const e of this.liveEnemies()) {
             const distance = Math.hypot(e.x - p.x, e.z - p.z), angle = Math.abs(angleDelta(heading, Math.atan2(e.x - p.x, e.z - p.z)));
@@ -473,8 +485,9 @@ class RastroVermelho {
         this.persist(); this.setState('end');
         this.ui.endEyebrow.textContent = success ? 'A FRONTEIRA SE LEMBRA' : 'A ESTRADA COBROU SEU PREÇO';
         this.ui.endTitle.innerHTML = success ? 'Promessa<br>cumprida.' : 'O rastro<br>não termina aqui.';
-        this.ui.endText.textContent = success ? `Seis destinos. ${Math.round(this.player.distance)} metros de história. $ ${this.player.money} em recompensas. O território continua aberto para você.` : 'Você volta ao último destino concluído, com o cavalo descansado e o tambor cheio.';
-        this.ui.retryButton.textContent = success ? 'Continuar explorando →' : 'Retomar do último destino →';
+        this.ui.endText.textContent = success ? `Você entregou a carta nos seis destinos! ${Math.round(this.player.distance)} metros de estrada e $\u00a0${this.player.money} em recompensas.` : 'Tudo bem! Você volta ao último destino, com o cavalo descansado e o tambor cheio. Dica: galope em zigue-zague para os bandidos errarem.';
+        this.ui.retryButton.textContent = success ? 'Continuar explorando →' : 'Tentar de novo →';
+        this.ui.endNewButton.hidden = !success;
         this.ui.retryButton.focus({ preventScroll: true });
     }
     updateHud() {

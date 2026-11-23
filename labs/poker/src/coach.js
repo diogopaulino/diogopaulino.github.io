@@ -155,13 +155,27 @@ export const LESSONS = [
     }
 ];
 
+/** O que cada categoria quer dizer, em palavras de criança (índice = categoria 0–9). */
+export const HAND_PLAIN = [
+    'nenhuma combinação, vale a carta mais alta',
+    'duas cartas iguais',
+    'dois pares de cartas iguais',
+    'três cartas iguais',
+    'cinco cartas em ordem',
+    'cinco cartas do mesmo naipe',
+    'uma trinca mais um par',
+    'quatro cartas iguais',
+    'sequência toda do mesmo naipe',
+    '10, J, Q, K e A do mesmo naipe — a melhor mão'
+];
+
 export const HAND_RANK_CHART = [
-    { name: 'Royal flush', example: 'A♠ K♠ Q♠ J♠ T♠', cat: 9 },
+    { name: 'Royal flush', example: 'A♠ K♠ Q♠ J♠ 10♠', cat: 9 },
     { name: 'Straight flush', example: '9♥ 8♥ 7♥ 6♥ 5♥', cat: 8 },
     { name: 'Quadra', example: 'K♦ K♣ K♥ K♠ 2♣', cat: 7 },
     { name: 'Full house', example: 'Q♠ Q♥ Q♦ 7♣ 7♥', cat: 6 },
     { name: 'Flush', example: 'A♦ J♦ 8♦ 4♦ 2♦', cat: 5 },
-    { name: 'Sequência', example: 'T♣ 9♦ 8♠ 7♥ 6♣', cat: 4 },
+    { name: 'Sequência', example: '10♣ 9♦ 8♠ 7♥ 6♣', cat: 4 },
     { name: 'Trinca', example: '8♠ 8♥ 8♦ K♣ 3♥', cat: 3 },
     { name: 'Dois pares', example: 'A♠ A♦ 5♣ 5♥ 9♦', cat: 2 },
     { name: 'Par', example: 'J♣ J♥ A♠ 8♦ 3♣', cat: 1 },
@@ -191,32 +205,33 @@ export function liveTip(match, legal) {
         if (!r) return { title: 'Mão encerrada', text: 'Prepare a próxima.' };
         if (r.reason === 'fold') {
             return {
-                title: 'Pot sem showdown',
-                text: 'Alguém foldou. Nem sempre a melhor mão vence — pressão e posição importam.'
+                title: 'Mão sem showdown',
+                text: 'Alguém desistiu, então ninguém mostrou as cartas. Nem sempre a melhor mão vence — apostar pressiona.'
             };
         }
         const mine = r.hands?.[hero];
+        const theirs = r.hands?.[1 - hero];
         return {
-            title: 'Showdown',
-            text: mine
-                ? `Sua mão: ${mine.name}. Compare kickers quando a categoria empatar.`
-                : 'Cartas abertas — a melhor combinação de cinco leva o pot.'
+            title: 'Showdown · cartas na mesa',
+            text: mine && theirs
+                ? `Você: ${mine.name} (${HAND_PLAIN[mine.category]}). IA: ${theirs.name}. As 5 cartas que decidiram acendem na mesa.`
+                : 'Cartas abertas — a melhor combinação de cinco leva o pote.'
         };
     }
 
     if (h.toAct !== hero) {
         return {
-            title: `${streetLabel} · aguardando`,
-            text: 'A IA está pensando. Observe o tamanho da aposta em relação ao pote — isso revela força ou blefe.'
+            title: `${streetLabel} · vez da IA`,
+            text: 'A IA está pensando. Aposta grande costuma ser mão forte — ou blefe!'
         };
     }
 
     if (h.street === 'preflop') {
         return {
-            title: 'Pré-flop',
+            title: 'Pré-flop · só as suas 2 cartas',
             text: toCall > 0
-                ? `Há ${toCall} para pagar. Pares altos e Ás-figura costumam call/raise; mãos lixo foldam.`
-                : 'Sem aposta extra. Com mão forte, considere raise para construir o pot e tomar a iniciativa.'
+                ? `Para ver as próximas cartas, pague ${toCall}. Cartas altas (A, K, Q) ou um par valem a pena; cartas baixas e soltas, desista sem medo.`
+                : 'Ninguém aumentou. Passe para ver o flop de graça, ou aposte se suas cartas forem altas.'
         };
     }
 
@@ -224,8 +239,8 @@ export function liveTip(match, legal) {
         const odds = toCall / (h.pot + toCall);
         const pct = Math.round(odds * 100);
         return {
-            title: `Pot odds ~${pct}%`,
-            text: `Call ${toCall} num pote de ${h.pot}. Você precisa de cerca de ${pct}% de chance de ganhar para o call ser equilibrado.`,
+            title: `Pagar ${toCall}? Precisa de ${pct}% de chance`,
+            text: `O pote tem ${h.pot}. Pagar ${toCall} só compensa se você ganhar pelo menos ${pct}% das vezes (pot odds). Mão boa: pague. Mão fraca: desista.`,
             potOdds: odds
         };
     }
@@ -234,8 +249,8 @@ export function liveTip(match, legal) {
     return {
         title: streetLabel,
         text: hasBet
-            ? 'Ninguém apostou. Check controla o pot; bet extrai valor ou faz foldar mãos melhores.'
-            : 'Escolha sua ação. Lembre: fold também é uma jogada vencedora a longo prazo.'
+            ? 'Ninguém apostou. Passe (check) para ver a próxima carta de graça, ou aposte se sua mão estiver boa.'
+            : 'Escolha sua ação. Desistir de uma mão fraca também é jogar bem.'
     };
 }
 

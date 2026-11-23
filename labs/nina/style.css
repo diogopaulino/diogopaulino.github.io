@@ -276,6 +276,48 @@ button {
     transform: scale(1.08);
 }
 
+/* Missão com bússola: seta dourada + distância ao lado do texto. */
+.quest-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.quest-text {
+    min-width: 0;
+}
+
+.guide {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    flex: none;
+}
+
+.guide-arrow {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff8e8, var(--gold));
+    color: #4a1838;
+    font-size: 1.1rem;
+    line-height: 1;
+    box-shadow: 0 0 14px color-mix(in oklab, var(--gold) 55%, transparent);
+    transform: rotate(-90deg);
+    transition: transform 0.18s linear;
+}
+
+.guide-dist {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .objective {
     margin: 0.25rem 0 0;
     font-size: 0.95rem;
@@ -787,6 +829,16 @@ kbd {
 
     .stick span {
         display: none;
+    }
+
+    .guide-arrow {
+        width: 1.7rem;
+        height: 1.7rem;
+        font-size: 0.9rem;
+    }
+
+    .guide-dist {
+        font-size: 0.6rem;
     }
 
     .pad {

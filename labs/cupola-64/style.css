@@ -267,6 +267,40 @@ button {
     line-height: 1.35;
 }
 
+/* Bússola da próxima estrela: seta dourada + distância. */
+.guide {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.3rem;
+    padding: 0.2rem 0.65rem 0.2rem 0.3rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--gold) 16%, transparent);
+    border: 1px solid var(--line);
+}
+
+.guide-arrow {
+    display: inline-grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff4d8, var(--gold-deep));
+    color: #3a1840;
+    font-size: 0.95rem;
+    line-height: 1;
+    transform: rotate(-90deg);
+    transition: transform 0.18s linear;
+}
+
+.guide-dist {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    min-width: 3.2em;
+}
+
 .hud-sub {
     display: block;
     margin-top: 0.35rem;
@@ -452,6 +486,7 @@ button {
 .pad-jump {
     width: 4.1rem;
     height: 4.1rem;
+    font-size: 1.5rem;
     background: radial-gradient(circle at 35% 30%, #ffe9b0, var(--coral));
     color: #3a1840;
     border-color: color-mix(in oklab, var(--gold) 50%, white);
@@ -828,11 +863,17 @@ kbd {
     }
 }
 
-/* Tela muito baixa: a lede é enfeite e custa várias linhas — sai para o miolo
-   e o botão caberem inteiros. */
+/* Tela muito baixa: a lede agora é a instrução principal (o "Como jogar" vem fechado
+   no celular) — fica, mas compacta em até 3 linhas para o botão caber inteiro. */
 @media (max-height: 620px) {
     .menu-head .lede {
-        display: none;
+        margin-top: 0.2rem;
+        font-size: 0.84rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 }
 

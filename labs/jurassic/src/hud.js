@@ -41,8 +41,18 @@ export class Hud {
             victoryStats: $('victoryStats'),
             caughtStats: $('caughtStats'),
             todLabel: $('todLabel'),
-            rainLabel: $('rainLabel')
+            rainLabel: $('rainLabel'),
+            guide: $('guide'),
+            guideArrow: $('guideArrow'),
+            guideName: $('guideName'),
+            guideLabel: $('guideLabel'),
+            guideDist: $('guideDist'),
+            observeRing: $('observeRing'),
+            observeFill: $('observeFill'),
+            danger: $('danger'),
+            observeBtn: $('btnObserve')
         };
+        this._guide = {};
         this.radioTimer = 0;
         this._fillCatalog();
     }
@@ -114,7 +124,11 @@ export class Hud {
     }
 
     setSpeed(kmh, onRoad) {
-        this.el.speed.textContent = `${Math.round(kmh)}`;
+        const v = `${Math.round(kmh)}`;
+        if (this._speed !== v) {
+            this._speed = v;
+            this.el.speed.textContent = v;
+        }
         this.el.speed.dataset.road = onRoad ? 'on' : 'off';
     }
 
@@ -173,6 +187,76 @@ export class Hud {
 
     setRain(on) {
         if (this.el.rainLabel) this.el.rainLabel.textContent = on ? 'Chuva' : 'Limpo';
+    }
+
+    /**
+     * Seta-guia: `rel` em radianos (0 = em frente, positivo = à esquerda da câmera).
+     * Só escreve no DOM quando o texto/ângulo muda de verdade (2° de tolerância).
+     */
+    setGuide(name, dist, rel, inRange) {
+        const g = this._guide;
+        const show = !!name;
+        if (g.show !== show) {
+            g.show = show;
+            this.el.guide.hidden = !show;
+        }
+        if (!show) return;
+        if (g.name !== name) {
+            g.name = name;
+            this.el.guideName.textContent = name;
+        }
+        const label = inRange ? 'Chegou! Pare e observe' : 'Próximo dinossauro';
+        if (g.label !== label) {
+            g.label = label;
+            this.el.guideLabel.textContent = label;
+            this.el.guide.dataset.near = String(inRange);
+        }
+        const d = `${Math.round(dist)} m`;
+        if (g.dist !== d) {
+            g.dist = d;
+            this.el.guideDist.textContent = d;
+        }
+        const deg = Math.round((-rel * 180) / Math.PI / 2) * 2;
+        if (g.deg !== deg) {
+            g.deg = deg;
+            this.el.guideArrow.style.transform = `rotate(${deg}deg)`;
+        }
+    }
+
+    /** Barra de observação (0–1) sob a mira enquanto o botão é segurado. */
+    setObserve(f, on) {
+        if (this._obsOn !== on) {
+            this._obsOn = on;
+            this.el.observeRing.hidden = !on;
+        }
+        if (!on) return;
+        const w = `${Math.round(Math.min(1, f) * 100)}%`;
+        if (this._obsW !== w) {
+            this._obsW = w;
+            this.el.observeFill.style.width = w;
+        }
+    }
+
+    /** Pisca a espécie recém-catalogada no diário. */
+    celebrate(id) {
+        const chip = this.el.catalog.querySelector(`[data-id="${id}"]`);
+        if (!chip) return;
+        chip.classList.remove('is-new');
+        void chip.offsetWidth;
+        chip.classList.add('is-new');
+    }
+
+    /** Botão OBSERVAR pulsa quando há uma espécie nova ao alcance. */
+    setObserveReady(on) {
+        if (this._ready === on) return;
+        this._ready = on;
+        this.el.observeBtn?.toggleAttribute('data-ready', on);
+    }
+
+    setDanger(on) {
+        if (this._danger === on) return;
+        this._danger = on;
+        this.el.danger.hidden = !on;
     }
 
     showTouch(v) {

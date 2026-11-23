@@ -23,7 +23,7 @@
   <meta property="og:description" content="Lute com Kurt Cobain, Axl Rose e John Lennon em três arenas de rock com combos aéreos e golpes especiais.">
   <meta property="og:url" content="https://diogopaulino.com.br/labs/rock-kombat/">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -89,9 +89,15 @@
           <h1 id="hero-title">ROCK<br><em>KOMBAT</em></h1>
           <p>Três lendas do rock disputam o palco. Vença dois rounds para levar o show.</p>
           <div class="hero-actions">
-            <button class="cta" id="enter-button" type="button">Escolher lutador <span aria-hidden="true">↗</span></button>
-            <button class="secondary-cta" id="quick-fight-button" type="button">Luta rápida</button>
+            <button class="cta" id="quick-fight-button" type="button">Jogar agora <span aria-hidden="true">▶</span></button>
+            <button class="secondary-cta" id="enter-button" type="button">Escolher lutador</button>
           </div>
+          <!-- Como jogar: frases curtas para crianças. Teclado ou toque aparece conforme o tipo de ponteiro. -->
+          <ol class="how-to" aria-label="Como jogar">
+            <li><b>1</b><span>Chegue perto do rival.</span></li>
+            <li><b>2</b><span class="for-keys">Bata com <kbd>J</kbd> <kbd>K</kbd> <kbd>I</kbd> e ande com <kbd>A</kbd> <kbd>D</kbd>.</span><span class="for-touch">Bata com <i>Soco</i>, <i>Chute</i> e <i>Forte</i>. Ande com as setas.</span></li>
+            <li><b>3</b><span>Esvazie a barra dele duas vezes e vença!</span></li>
+          </ol>
         </div>
         <div class="hero-lineup">
           <figure class="hero-fighter kurt"><i></i><figcaption>Kurt Cobain</figcaption></figure>
@@ -157,6 +163,7 @@
                 <button data-difficulty="normal" type="button">Normal</button>
                 <button data-difficulty="hard" type="button">Lendário</button>
               </div>
+              <p class="difficulty-hint" id="difficulty-hint"></p>
             </div>
             <button class="cta" id="fight-button" type="button" disabled>Começar luta <span aria-hidden="true">↗</span></button>
           </div>
@@ -213,6 +220,10 @@
         <div class="canvas-frame">
           <canvas id="game" width="1280" height="720" tabindex="-1" aria-label="Rock Kombat, jogo de luta 2D"></canvas>
           <div class="announce" id="announce" aria-live="polite"></div>
+          <p class="fight-tip" id="fight-tip" aria-live="polite">
+            <span class="for-keys">Chegue perto e aperte <kbd>J</kbd> <kbd>K</kbd> <kbd>I</kbd>!</span>
+            <span class="for-touch">Chegue perto e toque <i>Soco</i>, <i>Chute</i> e <i>Forte</i>!</span>
+          </p>
           <div class="combo p1" id="p1-combo"><strong></strong><small></small></div>
           <div class="combo p2" id="p2-combo"><strong></strong><small></small></div>
           <div class="callout p1" id="p1-callout"></div>
@@ -223,7 +234,7 @@
           <p class="fight-help" aria-label="Comandos rápidos">
             <span><kbd>A</kbd><kbd>D</kbd> Mover</span>
             <span><kbd>W</kbd> Pular</span>
-            <span><kbd>J</kbd><kbd>K</kbd><kbd>I</kbd> Combo</span>
+            <span><kbd>J</kbd><kbd>K</kbd><kbd>I</kbd> Soco · Chute · Forte</span>
             <span><kbd>H</kbd> Lançar</span>
             <span><kbd>Espaço</kbd> Especial</span>
             <span><kbd>P</kbd> Hyper</span>
@@ -261,7 +272,7 @@
           <p class="result-score" id="result-score"></p>
           <p id="result-copy"></p>
           <div class="result-actions">
-            <button class="cta" id="rematch-button" type="button">Revanche</button>
+            <button class="cta big" id="rematch-button" type="button">Jogar de novo <span aria-hidden="true">↻</span></button>
             <button class="secondary-cta" id="change-button" type="button">Trocar lutadores</button>
           </div>
         </div>
@@ -273,6 +284,11 @@
     <button class="dialog-close" id="help-close" type="button" aria-label="Fechar">×</button>
     <h2 id="help-title">Comandos</h2>
     <div class="guide-grid">
+      <article class="guide-basics">
+        <h3>O básico</h3>
+        <p>Chegue perto do rival e bata. Cada golpe que acerta esvazia um pouco a barra de vida dele. Quem esvaziar a barra do outro ganha o round. Ganhe <b>2 rounds</b> para vencer a luta.</p>
+        <p>Para se defender, segure a seta para <b>longe</b> do rival. No celular, use as setas à esquerda e os botões <b>Soco</b>, <b>Chute</b> e <b>Forte</b> à direita.</p>
+      </article>
       <article>
         <h3>Movimento e defesa</h3>
         <p><kbd>A</kbd><kbd>D</kbd> movem, <kbd>W</kbd> pula e <kbd>S</kbd> agacha. As setas também funcionam. Segure para longe do rival para defender e acrescente baixo para bloquear rasteiras.</p>
@@ -304,6 +320,6 @@
 
   <footer data-lab-footer data-home-href="/"></footer>
   <script src="/labs/shared.js?v=16" defer></script>
-  <script type="module" src="main.js?v=21"></script>
+  <script type="module" src="main.js?v=22"></script>
 </body>
 </html>

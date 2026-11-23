@@ -9,8 +9,8 @@
 
 import * as THREE from 'three';
 import { Level } from './Level.js?v=40';
-import { buildDungeon, UP } from '../world/Dungeon.js?v=40';
-import { Guard } from '../characters/Guard.js?v=40';
+import { buildDungeon, UP } from '../world/Dungeon.js?v=42';
+import { Guard } from '../characters/Guard.js?v=42';
 import { Kit, block } from '../world/Build.js?v=40';
 
 export class CastleInteriorLevel extends Level {
@@ -75,11 +75,12 @@ export class CastleInteriorLevel extends Level {
             object: g.camila.root,
             offsetY: 1,
             interactionLabel: 'Conversar com Camila',
-            interactionDistance: 3.4,
+            /* 4,2 m: dá para falar com ela pela grade (a 3,4 m o aviso nunca aparecia) */
+            interactionDistance: 4.2,
             interact: (_p, game) => this.talkCamila(game)
         });
 
-        this.addInteract({
+        this.cellItem = this.addInteract({
             object: this.proxy(0, UP + 1.2, -37.2),
             interactionLabel: 'Usar chave',
             interactionDistance: 2.2,
@@ -158,6 +159,8 @@ export class CastleInteriorLevel extends Level {
             game.story.notify('found_camila');
         } else if (game.story.flags.cellOpen && !game.story.flags.shacklesOpen) {
             this.tryShackles(game);
+        } else if (!game.story.flags.cellOpen) {
+            game.dialogue.say('CAMILA', game.inventory.cellKey ? 'Essa chave dourada! Abra a cela!' : 'A chave da cela não fica com os guardas…');
         }
     }
 
@@ -172,7 +175,7 @@ export class CastleInteriorLevel extends Level {
             return;
         }
         if (!game.inventory.keys) {
-            game.dialogue.say('DICO', 'Preciso de uma chave.');
+            game.dialogue.say('DICO', 'Preciso de uma chave. O guarda dorminhoco tem um molho!');
             return;
         }
         this.cellTried += 1;
@@ -204,6 +207,9 @@ export class CastleInteriorLevel extends Level {
         this.time += dt;
         const g = this.game;
         this.fx.update(this.time);
+        /* A fechadura só responde depois de falar com Camila e some com a cela aberta:
+           colada na grade, ela roubava o aviso "Conversar com Camila". */
+        this.cellItem.enabled = Boolean(g.story.flags.foundCamila || g.inventory.cellKey) && !g.story.flags.cellOpen;
         this.sleeping.update(dt, g);
         this.patrol.update(dt, g);
         if (this.opening) {

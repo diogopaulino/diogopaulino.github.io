@@ -7,7 +7,7 @@
  * Destaques: marcas finas em textura (ponto, colchetes, moldura), sem cobrir a madeira.
  */
 
-import { fileOf, rankOf } from './engine.js';
+import { fileOf, rankOf } from './engine.js?v=5';
 import { buildRoom } from './room.js?v=4';
 
 export const BOARD_Y = 0.07;

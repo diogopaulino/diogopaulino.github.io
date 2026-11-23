@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
   <link rel="stylesheet" href="/assets/fonts/titan-one/font.css">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -111,14 +111,14 @@
             <button class="icon-btn" id="pauseBtn" type="button" aria-label="Pausar">Ⅱ</button>
           </div>
 
-          <div class="touch-pad" id="touchPad" aria-label="Controles por toque">
+          <div class="touch-pad is-hidden" id="touchPad" aria-label="Controles por toque">
             <div class="dpad">
-              <button class="pad-btn" id="btnLeft" type="button" aria-label="Esquerda">←</button>
+              <button class="pad-btn" id="btnLeft" type="button" aria-label="Esquerda">◀</button>
               <div class="dpad-mid">
-                <button class="pad-btn pad-sm" id="btnUp" type="button" aria-label="Subir">▲</button>
+                <button class="pad-btn pad-sm" id="btnUp" type="button" aria-label="Subir no cipó">▲</button>
                 <button class="pad-btn pad-sm" id="btnDown" type="button" aria-label="Descer">▼</button>
               </div>
-              <button class="pad-btn" id="btnRight" type="button" aria-label="Direita">→</button>
+              <button class="pad-btn" id="btnRight" type="button" aria-label="Direita">▶</button>
             </div>
             <div class="actions">
               <button class="pad-btn pad-roll" id="btnRoll" type="button" aria-label="Rolar">
@@ -129,16 +129,70 @@
               </button>
             </div>
           </div>
+
+          <!-- Painéis HTML (texto legível em qualquer tela). O canvas segue animando atrás. -->
+          <div class="screen" id="titleScreen" data-ui>
+            <div class="panel panel-title">
+              <p class="kicker">Ilha do Lenço</p>
+              <h2 class="panel-h">Kong Kong</h2>
+              <p class="lead">Leve o macaquinho até a <strong>bandeira vermelha</strong> no fim de cada fase. Pegue bananas e pule em cima dos bichos!</p>
+              <div class="how">
+                <div class="how-card how-touch">
+                  <span class="how-label">No toque</span>
+                  <ul>
+                    <li><b class="k">◀ ▶</b> andar</li>
+                    <li><b class="k k-red">PULA</b> pular</li>
+                    <li><b class="k k-sun">ROLA</b> rolar e derrubar</li>
+                    <li><b class="k">▲</b> subir no cipó</li>
+                  </ul>
+                </div>
+                <div class="how-card how-keys">
+                  <span class="how-label">No teclado</span>
+                  <ul>
+                    <li><b class="k">← →</b> andar</li>
+                    <li><b class="k">Espaço</b> pular</li>
+                    <li><b class="k">Shift</b> rolar e derrubar</li>
+                    <li><b class="k">↑</b> subir no cipó</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="mode-switch" role="group" aria-label="Dificuldade">
+                <button type="button" class="mode-btn" id="easyBtn" aria-pressed="true">Fácil<small>7 vidas · sem susto</small></button>
+                <button type="button" class="mode-btn" id="normalBtn" aria-pressed="false">Normal<small>4 vidas · clássico</small></button>
+              </div>
+              <button type="button" class="btn-primary" id="playBtn">Jogar</button>
+            </div>
+          </div>
+
+          <div class="screen" id="menuScreen" data-ui hidden>
+            <div class="panel panel-menu" role="dialog" aria-labelledby="menuTitle">
+              <p class="kicker" id="menuKicker"></p>
+              <h2 class="panel-h" id="menuTitle"></h2>
+              <p class="lead" id="menuText"></p>
+              <div class="stats" id="menuStats"></div>
+              <div class="panel-actions">
+                <button type="button" class="btn-primary" id="menuPrimary"></button>
+                <button type="button" class="btn-ghost" id="menuSecondary"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-bar" id="mapBar" data-ui hidden>
+            <button type="button" class="btn-ghost btn-round" id="mapPrev" aria-label="Fase anterior">◀</button>
+            <button type="button" class="btn-primary btn-map" id="mapPlay">Jogar</button>
+            <button type="button" class="btn-ghost btn-round" id="mapNext" aria-label="Próxima fase">▶</button>
+            <button type="button" class="btn-ghost btn-home" id="mapHome">Início</button>
+          </div>
         </div>
 
         <div class="rail rail-bottom">
-          <p><strong>DICA</strong> O lenço vermelho é um hit extra. Role nos ouriços. Canhão: pule de novo para disparar.</p>
+          <p><strong>DICA</strong> Chegue à bandeira vermelha. O lenço protege de uma batida — se ele voar, pegue de volta!</p>
           <span class="sig">DIOGO LABS</span>
         </div>
       </section>
 
       <p class="help">
-        <kbd>A</kbd><kbd>D</kbd> mover · <kbd>espaço</kbd> pular · <kbd>shift</kbd> rolar · <kbd>W</kbd> cipó · <kbd>S</kbd> entrar no barril
+        <kbd>←</kbd><kbd>→</kbd> andar · <kbd>espaço</kbd> pular · <kbd>shift</kbd> rolar · <kbd>↑</kbd> cipó · <kbd>↓</kbd> entrar no barril · <kbd>P</kbd> pausa · <kbd>M</kbd> som
       </p>
     </main>
 
@@ -147,7 +201,7 @@
 
   <p class="sr-only" id="announcer" aria-live="assertive"></p>
   <script src="/labs/shared.js?v=16" defer></script>
-  <script type="module" src="src/main.js?v=3"></script>
+  <script type="module" src="src/main.js?v=4"></script>
 </body>
 
 </html>

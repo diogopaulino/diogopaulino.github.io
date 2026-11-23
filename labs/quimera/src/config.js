@@ -254,10 +254,10 @@ export function randomIds(preferMix = true) {
     let body = Math.floor(Math.random() * n);
     let accessory = Math.floor(Math.random() * n);
     if (preferMix) {
+        // três kits diferentes: sorteia o corpo entre os n−1 que não são a cabeça e o
+        // acessório entre os n−2 restantes (antes o acessório podia repetir o corpo)
         if (body === head) body = wrapIndex(body + 1 + Math.floor(Math.random() * (n - 1)));
-        if (accessory === head || accessory === body) {
-            accessory = wrapIndex(head + 2 + Math.floor(Math.random() * (n - 2)));
-        }
+        while (accessory === head || accessory === body) accessory = Math.floor(Math.random() * n);
     }
     return {
         head: KITS[head].id,

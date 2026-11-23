@@ -175,6 +175,122 @@ body {
     white-space: nowrap;
 }
 
+/* Dica de uma linha para quem nunca jogou. `width: 0; min-width: 100%` faz o
+   texto quebrar na largura do campo em vez de alargar a janela. */
+.tip {
+    width: 0;
+    min-width: 100%;
+    margin: 0 0 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #1f2937;
+}
+
+.board-wrap {
+    position: relative;
+}
+
+/* Resultado: diálogo Win95 por cima do campo, centralizado na área visível. */
+.result {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    animation: result-in 0.18s ease-out;
+    z-index: 2;
+}
+
+.result[hidden] {
+    display: none;
+}
+
+.result-dialog {
+    width: min(260px, 100%);
+    background: var(--win-gray);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+    padding: 3px;
+}
+
+.result[data-tone="lose"] .title-bar {
+    background: #800000;
+}
+
+.result-body {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 10px 8px 8px;
+    text-align: center;
+    color: #000;
+}
+
+.result-icon {
+    font-size: 34px;
+    line-height: 1;
+    animation: result-pop 0.5s cubic-bezier(.2, 1.6, .4, 1);
+}
+
+.result-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.win-btn {
+    min-height: var(--touch-target);
+    padding: 0 14px;
+    background: var(--win-gray);
+    color: #000;
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-black) var(--win-black) var(--win-light);
+    font: 600 13px 'Segoe UI', Tahoma, sans-serif;
+    cursor: pointer;
+}
+
+.win-btn-primary {
+    outline: 1px solid #000;
+    outline-offset: -5px;
+}
+
+.win-btn:active {
+    border-color: var(--win-black) var(--win-light) var(--win-light) var(--win-black);
+}
+
+.win-btn:focus-visible {
+    outline: 2px dotted #000;
+    outline-offset: -5px;
+}
+
+@keyframes result-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes result-pop {
+    from {
+        transform: scale(0.3);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .result,
+    .result-icon {
+        animation: none;
+    }
+}
+
 /* Game Board */
 .game-board {
     display: grid;
@@ -384,4 +500,11 @@ body {
 @media (max-height: 520px) and (orientation: landscape) {
     .title-bar .title { font-size: 12px; }
     .window { margin: 0 auto; }
+}
+
+/* Janela larga (celular deitado, tablet): o campo fica centralizado em vez de
+   colado à esquerda com uma faixa cinza vazia ao lado. */
+.game-board {
+    width: max-content;
+    margin-inline: auto;
 }

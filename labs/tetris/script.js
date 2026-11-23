@@ -1,3 +1,13 @@
+/* setPointerCapture lança InvalidStateError se o ponteiro já foi solto (toque
+   muito curto, evento sintético). A captura é um bônus: sem ela o gesto segue. */
+function capturePointer(element, pointerId) {
+    try {
+        element.setPointerCapture(pointerId);
+    } catch (err) {
+        /* segue sem captura */
+    }
+}
+
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next');
@@ -121,13 +131,52 @@ const piecesMap = {
 /* Pontuação clássica por linhas simultâneas, multiplicada pelo nível. */
 const LINE_SCORE = [0, 100, 300, 500, 800];
 const HIGHSCORE_KEY = 'tetris90s:highscore';
+const MODE_KEY = 'tetris90s:mode';
+
+/* Regras de velocidade ------------------------------------------------------
+   Nível = floor(linhas / 10) + 1. A peça desce uma linha a cada
+     dropInterval = max(min, base − (nível − 1) · passo)   [ms]
+   · Fácil (padrão, pensado para crianças): começa em 1250ms e acelera devagar.
+   · Normal: a curva clássica do console, de 1000ms até 100ms.
+   Trava com atraso (lock delay): ao encostar no chão a peça ainda espera
+   `lockDelay` ms antes de travar, e mover/girar nesse tempo reinicia a espera
+   (até LOCK_RESETS vezes) — dá para deslizar a peça para o buraco. A queda
+   rápida (Espaço / arrastar para cima) e o ↓ no chão travam na hora. */
+const MODES = {
+    easy: { base: 1250, step: 70, min: 180, lockDelay: 650, hint: 'Peças caem devagar' },
+    normal: { base: 1000, step: 90, min: 100, lockDelay: 450, hint: 'Velocidade clássica' }
+};
+const LOCK_RESETS = 15;
+
+function readMode() {
+    try {
+        const saved = localStorage.getItem(MODE_KEY);
+        return saved in MODES ? saved : 'easy';
+    } catch (err) {
+        return 'easy';
+    }
+}
+
+let mode = readMode();
 
 function createPiece(type) {
     return piecesMap[type].map(row => row.slice());
 }
 
+/* Saco de 7: cada sequência de 7 peças traz todas as formas uma vez, em ordem
+   aleatória. Evita a seca de “I” e as repetições que frustram quem está
+   aprendendo — é o sorteio usado nos Tetris modernos. */
+let bag = [];
+
 function randomPiece() {
-    return createPiece(pieces[pieces.length * Math.random() | 0]);
+    if (!bag.length) {
+        bag = pieces.split('');
+        for (let i = bag.length - 1; i > 0; i--) {
+            const j = Math.random() * (i + 1) | 0;
+            [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+    }
+    return createPiece(bag.pop());
 }
 
 function arenaSweep() {
@@ -385,6 +434,23 @@ function rotate(matrix, dir) {
     }
 }
 
+/* Encostada: a peça não desce mais uma linha. */
+function isGrounded() {
+    player.pos.y++;
+    const blocked = collide(arena, player);
+    player.pos.y--;
+    return blocked;
+}
+
+/* Movimento/giro bem-sucedido no chão devolve o tempo de trava (lock delay). */
+function refreshLock() {
+    grounded = isGrounded();
+    if (grounded && lockResets < LOCK_RESETS) {
+        lockResets++;
+        lockTimer = 0;
+    }
+}
+
 function playerDrop(soft = false) {
     if (state !== 'playing') return;
 
@@ -392,10 +458,16 @@ function playerDrop(soft = false) {
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
-        lockPiece();
-    } else if (soft) {
-        player.score += 1;
-        updateScore();
+        // ↓ no chão trava na hora; a gravidade só inicia a contagem da trava.
+        if (soft) lockPiece();
+        else grounded = true;
+    } else {
+        grounded = isGrounded();
+        lockTimer = 0;
+        if (soft) {
+            player.score += 1;
+            updateScore();
+        }
     }
     dropCounter = 0;
 }
@@ -436,6 +508,7 @@ function playerMove(offset) {
         player.pos.x -= offset;
     } else {
         boardDirty = true;
+        refreshLock();
         sfx('move');
     }
 }
@@ -450,6 +523,9 @@ function playerReset() {
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) -
         (player.matrix[0].length / 2 | 0);
+    grounded = false;
+    lockTimer = 0;
+    lockResets = 0;
 
     drawNext();
 
@@ -475,9 +551,13 @@ function playerRotate(dir) {
         }
     }
     boardDirty = true;
+    refreshLock();
     sfx('rotate');
 }
 
+let grounded = false;
+let lockTimer = 0;
+let lockResets = 0;
 let boardDirty = true;
 let dropCounter = 0;
 let dropInterval = 1000;
@@ -494,7 +574,14 @@ function tick(time = 0) {
         if (dropCounter > dropInterval) {
             playerDrop();
         }
-        handleAutoRepeat(deltaTime);
+        if (grounded && state === 'playing') {
+            lockTimer += deltaTime;
+            if (lockTimer >= MODES[mode].lockDelay) {
+                if (isGrounded()) lockPiece();
+                else grounded = false;
+            }
+        }
+        if (state === 'playing') handleAutoRepeat(deltaTime);
     }
 
     if (boardDirty || clearFlash > 0) {
@@ -538,7 +625,8 @@ function updateScore() {
     document.getElementById('score').innerText = player.score;
     document.getElementById('level').innerText = player.level;
     document.getElementById('lines').innerText = player.lines;
-    dropInterval = Math.max(100, 1000 - (player.level - 1) * 90);
+    const speed = MODES[mode];
+    dropInterval = Math.max(speed.min, speed.base - (player.level - 1) * speed.step);
 
     if (player.score > highScore) {
         highScore = player.score;
@@ -582,13 +670,41 @@ let highScore = loadHighScore();
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlayTitle');
 const overlayText = document.getElementById('overlayText');
+const overlayModes = document.getElementById('overlayModes');
+const overlayHint = document.getElementById('overlayHint');
+const overlayGo = document.getElementById('overlayGo');
+const overlayMenu = document.getElementById('overlayMenu');
 const gameStatus = document.getElementById('gameStatus');
 
-function setOverlay(title, text, steady = false) {
+/* `view`: 'menu' (escolha de modo), 'paused' ou 'over'. Cada uma mostra só os
+   botões que fazem sentido ali — um botão grande para a próxima ação. */
+function setOverlay(title, text, view = 'menu', hint = '') {
     overlayTitle.textContent = title;
     overlayText.textContent = text;
-    overlayText.classList.toggle('steady', steady);
+    overlayModes.hidden = view !== 'menu';
+    overlayMenu.hidden = view !== 'over';
+    overlayHint.textContent = view === 'menu' ? MODES[mode].hint : hint;
+    overlayHint.hidden = !overlayHint.textContent;
+    overlayGo.textContent = view === 'paused' ? '▶ CONTINUAR' : view === 'over' ? '↻ JOGAR DE NOVO' : '▶ JOGAR';
     overlay.hidden = false;
+}
+
+function setMode(next) {
+    if (!(next in MODES)) return;
+    mode = next;
+    try {
+        localStorage.setItem(MODE_KEY, mode);
+    } catch (err) {
+        /* Sem storage o modo vale só nesta visita. */
+    }
+    syncModeButtons();
+    if (state === 'ready') overlayHint.textContent = MODES[mode].hint;
+}
+
+function syncModeButtons() {
+    overlayModes.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
 }
 
 function setState(next) {
@@ -604,16 +720,18 @@ function setState(next) {
     }
 
     if (state === 'ready') {
-        setOverlay('TETRIS', 'START para jogar');
-        gameStatus.textContent = 'Pressione Start ou Enter para começar.';
+        setOverlay('TETRIS', 'Encaixe as peças e complete linhas!');
+        gameStatus.textContent = 'Escolha o modo e pressione Jogar, Start ou Enter para começar.';
     } else if (state === 'playing') {
         overlay.hidden = true;
         gameStatus.textContent = 'Partida em andamento.';
     } else if (state === 'paused') {
-        setOverlay('PAUSA', 'START p/ voltar');
+        setOverlay('PAUSA', 'Respire! A peça espera.', 'paused');
         gameStatus.textContent = 'Jogo pausado.';
     } else if (state === 'over') {
-        setOverlay('FIM DE JOGO', `${player.score} PTS · START`, true);
+        const record = player.score > highScoreAtStart;
+        setOverlay('FIM DE JOGO', `${player.score} pontos · ${player.lines} linhas`, 'over',
+            record ? '★ NOVO RECORDE! ★' : `Melhor: ${highScore}`);
         gameStatus.textContent = `Fim de jogo. ${player.score} pontos em ${player.lines} linhas.`;
     }
 }
@@ -625,12 +743,18 @@ function resetGame() {
     player.level = 1;
     player.next = null;
     player.matrix = null;
+    bag = [];
     dropCounter = 0;
     playerReset();
     updateScore();
 }
 
+/* Recorde de antes da partida: o HUD atualiza o recorde ao vivo, então o fim
+   de jogo compara com este valor para saber se houve recorde novo. */
+let highScoreAtStart = 0;
+
 function startGame() {
+    highScoreAtStart = highScore;
     resetGame();
     clearFlash = 0;
     sfx('start');
@@ -758,7 +882,7 @@ function bindHold(selector, action) {
 
     el.addEventListener('pointerdown', event => {
         event.preventDefault();
-        el.setPointerCapture?.(event.pointerId);
+        capturePointer(el, event.pointerId);
         pressAction(action);
     });
 
@@ -798,7 +922,9 @@ let gesture = null;
 if (screenEl) {
     screenEl.addEventListener('pointerdown', event => {
         if (gesture || event.button !== 0) return;
-        screenEl.setPointerCapture?.(event.pointerId);
+        // Botões do overlay (modo, jogar, continuar) cuidam do próprio clique.
+        if (event.target.closest('button')) return;
+        capturePointer(screenEl, event.pointerId);
         gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, movedCols: 0, dropped: false, acted: false };
     });
 
@@ -856,6 +982,18 @@ if (window.LabAudio) {
 
 document.querySelector('.btn-start').addEventListener('click', toggleStartPause);
 document.querySelector('.btn-select').addEventListener('click', startGame);
+
+overlayModes.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        setMode(btn.dataset.mode);
+        sfx('rotate');
+    });
+});
+overlayGo.addEventListener('click', toggleStartPause);
+overlayMenu.addEventListener('click', () => {
+    resetGame();
+    setState('ready');
+});
 
 /* Depois de um clique/toque o botão devolve o foco: senão a próxima tecla
    Espaço ativaria o botão focado em vez de soltar a peça. */
@@ -924,6 +1062,7 @@ if (window.LabTheme) {
 }
 
 document.getElementById('highscore').innerText = highScore;
+syncModeButtons();
 resetGame();
 setState('ready');
 fitConsole();

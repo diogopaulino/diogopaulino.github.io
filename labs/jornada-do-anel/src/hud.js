@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS } from './config.js?v=30';
-import { formatTime } from './utils.js?v=30';
+import { CHAPTERS } from './config.js?v=31';
+import { formatTime } from './utils.js?v=31';
 
 const $ = (id) => document.getElementById(id);
 
@@ -101,6 +101,11 @@ export class Hud {
         this.el.objective.textContent = ch.objective;
     }
 
+    /** Toque: o aviso mostra um dedo em vez da tecla E (e o próprio aviso é o botão). */
+    setTouch(v) {
+        this.touch = Boolean(v);
+    }
+
     setPrompt(text) {
         if (this.promptText === text) return;
         this.promptText = text;
@@ -109,7 +114,7 @@ export class Hud {
             return;
         }
         this.el.prompt.hidden = false;
-        this.el.prompt.innerHTML = `<kbd>E</kbd> ${text}`;
+        this.el.prompt.innerHTML = `<kbd>${this.touch ? 'Toque' : 'E'}</kbd> ${text}`;
     }
 
     say(text, seconds = 4) {
@@ -119,6 +124,10 @@ export class Hud {
     }
 
     setStealth(alert) {
+        // chamado a cada quadro: só toca no DOM quando o valor (em centésimos) muda
+        const q = Math.round(Math.min(1, alert) * 100);
+        if (q === this.lastAlert) return;
+        this.lastAlert = q;
         const on = alert > 0.02;
         this.el.stealth.hidden = !on;
         this.el.stealthFill.style.transform = `scaleX(${Math.min(1, alert)})`;

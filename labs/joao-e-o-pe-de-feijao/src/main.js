@@ -14,6 +14,15 @@
  * Câmera: órbita em volta do João (yaw/pitch/distância) suavizada com
  *   pos ← lerp(pos, alvo, 1 − e^(−10·dt)); não desce abaixo do chão + 0,5 m, é
  *   puxada para perto quando uma parede fica no meio e treme com `shake`.
+ *
+ * Modo infantil (regras de perdão):
+ *   vida           5 corações · o gigante fica tonto 3 s depois de alcançar (npcs.js)
+ *   queda          cair das nuvens custa 1 coração e volta ao último chão firme
+ *   derrota        "Tentar de novo" recomeça o capítulo com a glória de quando entrou nele
+ *   caule          perto do pé crescido, E agarra (além do pulo)
+ *   bússola        seta no HUD aponta o próximo passo do capítulo (guide.js, _guideTarget)
+ *   dica           30 s sem se aproximar do alvo → repete a dica do capítulo
+ *   cutscenes      botão "Pular" (abertura, pé crescendo, gigante acordando, pé caindo)
  */
 
 import * as THREE from 'three';
@@ -21,10 +30,11 @@ import { CHAPTERS, QUALITY, STORAGE_KEY, CAMERA } from './config.js';
 import { clamp, lerp, formatTime } from './utils.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
-import { Hud, statsBlock } from './hud.js';
-import { Player } from './player.js?v=8';
-import { createWorld } from './world.js?v=8';
-import { nearestInteractable } from './npcs.js?v=8';
+import { Hud, statsBlock } from './hud.js?v=9';
+import { Player } from './player.js?v=9';
+import { createWorld } from './world.js?v=9';
+import { nearestInteractable } from './npcs.js?v=9';
+import { Guide } from '../../shared/gfx/guide.js?v=1';
 import { createStage } from '../../shared/gfx/stage.js';
 import { pickTier, detectMobile } from '../../shared/gfx/core.js';
 
@@ -63,6 +73,14 @@ class Game {
         this.cut = null;
         this.clearing = null;
         this.envBase = 1;
+        this.guide = new Guide(document.getElementById('guide'));
+        this.skipEl = document.getElementById('skipButton');
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+        /** Último chão firme (cair das nuvens volta para cá). */
+        this.safe = { x: 0, z: 0, t: 0 };
+        /** Glória/tempo ao entrar no capítulo (o "Tentar de novo" volta para cá). */
+        this.checkpoint = { score: 0, elapsed: 0, caught: 0 };
     }
 
     loadSettings() {
@@ -84,6 +102,8 @@ class Game {
     async init() {
         this.hud.setLoading(0.05, 'Abrindo o livro do conto…');
         this.mobile = detectMobile();
+        this.touch = matchMedia('(pointer: coarse)').matches || this.mobile;
+        this.hud.setTouch(this.touch);
         const choice = QUALITY[this.settings.quality] ? this.settings.quality : 'auto';
 
         // progresso real dos downloads (texturas, glTF) na barra, entre as etapas de montagem
@@ -166,11 +186,29 @@ class Game {
         });
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('retryButton').addEventListener('click', () => this.start(this.chapterIndex));
+        document.getElementById('retryButton').addEventListener('click', () => this.retry());
         document.getElementById('defeatMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('replayButton').addEventListener('click', () => this.start(0));
         document.getElementById('victoryMenuButton').addEventListener('click', () => this.toMenu());
-        document.getElementById('dialogueContinue').addEventListener('click', () => this._advanceDialogue());
+        document.getElementById('dialogueContinue').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._advanceDialogue();
+        });
+        // tocar em qualquer lugar do diálogo também avança
+        this.hud.el.dialogue.addEventListener('click', () => this._advanceDialogue());
+        // o aviso "E …" é um botão: tocar nele interage
+        this.hud.el.prompt.addEventListener('click', () => {
+            if (this.state === 'playing') this.input.interactPressed = true;
+        });
+        this.skipEl?.addEventListener('click', () => this._skip());
+        // aba oculta: o palco para de desenhar e o conto pausa
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.state === 'playing') this.pause();
+        });
+        // Esc solta o mouse sem chegar como tecla: soltar o mouse jogando abre a pausa
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && this.state === 'playing' && !this.touch) this.pause();
+        });
         this.hud.el.soundButton.addEventListener('click', () => this.toggleMute());
         this.hud.el.pauseButton.addEventListener('click', () => this.pause());
 
@@ -355,7 +393,7 @@ class Game {
             : { gold: false, hen: false, harp: false };
         this.player.hasCow = false;
         this.player.hasAxe = false;
-        this.player.maxHealth = 3;
+        this.player.maxHealth = 5;
         this.hud.hideDefeat();
         this.hud.hideVictory();
         this.hud.showMenu(false);
@@ -366,10 +404,36 @@ class Game {
         this._beginIntro();
     }
 
+    /** Derrota → recomeça o capítulo atual com a glória e o tempo de quando entrou nele. */
+    async retry() {
+        const cp = { ...this.checkpoint };
+        await this.start(this.chapterIndex);
+        Object.assign(this, cp);
+        this.checkpoint = cp;
+    }
+
+    /** "Pular": encerra a abertura ou a cutscene atual (o pé termina de crescer na hora). */
+    _skip() {
+        if (this.state === 'intro') {
+            this.introT = 99;
+        } else if (this.state === 'cutscene' && this.cut) {
+            const w = this.world;
+            if (w.flags?.growing && !w.flags.grown) w.flags.growT = Math.max(w.flags.growT, 6.5);
+            this.cut.t = this.cut.dur;
+        }
+    }
+
     _beginIntro() {
         this.state = 'intro';
         this.hud.setState('intro');
         this.introT = 0;
+        this.checkpoint = { score: this.score, elapsed: this.elapsed, caught: this.caught };
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+        this.safe.x = this.player.x;
+        this.safe.z = this.player.z;
+        this.guide.hide();
+        if (this.skipEl) this.skipEl.hidden = false;
         this.player.setVisible(true);
         this.hud.showHud(true);
         this.hud.setTouchVisible(matchMedia('(pointer: coarse)').matches || this.mobile);
@@ -386,11 +450,12 @@ class Game {
 
     pause() {
         if (this.state !== 'playing') return;
+        this.guide.hide();
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
         this.input.exitLock();
-        this.input.enabled = false;
+        // o teclado segue ligado para P/Esc tirarem da pausa (o mundo não anda em 'pause')
     }
 
     resume() {
@@ -399,6 +464,7 @@ class Game {
         this.hud.setState('playing');
         this.hud.showPause(false);
         this.input.enabled = true;
+        this.input.consumeInteract();
         if (!this.mobile) this.input.requestLock();
     }
 
@@ -434,7 +500,11 @@ class Game {
         for (const fn of w.updateFns) fn(this.time, dt);
 
         this.fade = clamp(this.fade + this.fadeDir * dt * 0.85, 0, 1);
-        this.fadeEl.style.opacity = this.fade.toFixed(3);
+        if (this.fade !== this.lastFade) {
+            // só escreve no DOM quando o fade muda (no jogo ele fica parado em 0)
+            this.lastFade = this.fade;
+            this.fadeEl.style.opacity = this.fade.toFixed(3);
+        }
         this.shake = Math.max(0, this.shake - dt * 4);
 
         this.hudAccum += dt;
@@ -458,16 +528,20 @@ class Game {
             this.elapsed += dt;
             const info = this.player.update(dt, this.input, w);
             if (info.fell) {
-                this._defeat('João caiu das nuvens.');
+                this._fell();
             } else {
                 if (info.footstep) this.audio.footstep();
                 if (info.jumped) this.audio.chime();
+                this._trackSafe(dt);
                 this._updateNpcs(dt);
-                this._updateInteract();
-                this._updateChapterLogic();
+                if (this.state === 'playing') this._updateInteract();
+                if (this.state === 'playing') this._updateChapterLogic();
                 this._followCamera(dt);
+                if (this.state === 'playing') this._updateGuide(dt);
+                else this.guide.hide();
             }
         } else {
+            if (this.state === 'dialogue' && (this.input.consumeInteract() | this.input.consumeJump())) this._advanceDialogue();
             // pausa, diálogo, transição, derrota, vitória: o mundo respira, o João fica parado
             this.player.idle(dt, this.state === 'victory' ? 'cheer' : 'idle');
             if (w.cow && this.state !== 'pause') w.cow.update(dt, this.player, w.heightAt);
@@ -519,7 +593,11 @@ class Game {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.hud.say(this.mobile ? 'Toque para olhar e andar.' : 'Clique no mundo para olhar com o mouse.', 3.2);
+            this.input.consumeInteract();
+            this.input.consumeJump();
+            if (this.skipEl) this.skipEl.hidden = true;
+            if (this.player.climbing) this.hud.say(this.touch ? 'Puxe a bolinha para baixo para descer o caule.' : 'Segure S (ou ↓) para descer o caule.', 4.5);
+            else this.hud.say(this.touch ? 'Siga a seta dourada. Arraste a tela para olhar.' : 'Siga a seta dourada. Clique no mundo para olhar com o mouse.', 3.6);
         }
     }
 
@@ -588,7 +666,9 @@ class Game {
         this.state = 'cutscene';
         this.hud.setState('cutscene');
         this.hud.setPrompt('');
+        this.guide.hide();
         this.input.enabled = false;
+        if (this.skipEl) this.skipEl.hidden = false;
     }
 
     _updateCut(dt) {
@@ -602,6 +682,7 @@ class Game {
         this.camera.lookAt(LOOK);
         if (c.t >= c.dur) {
             this.cut = null;
+            if (this.skipEl) this.skipEl.hidden = true;
             c.end();
         }
     }
@@ -610,6 +691,101 @@ class Game {
         this.state = 'playing';
         this.hud.setState('playing');
         this.input.enabled = true;
+        this.input.consumeInteract();
+        this.input.consumeJump();
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+    }
+
+    /** Guarda o último chão firme a cada 0,5 s (fora do caule, acima do vazio). */
+    _trackSafe(dt) {
+        const p = this.player;
+        const w = this.world;
+        this.safe.t += dt;
+        if (this.safe.t < 0.5 || !p.grounded || p.climbing) return;
+        if (w.heightAt(p.x, p.z) < w.voidY + 4) return;
+        this.safe.t = 0;
+        this.safe.x = p.x;
+        this.safe.z = p.z;
+    }
+
+    /** Caiu das nuvens: −1 coração e volta ao último chão firme (só é derrota sem corações). */
+    _fell() {
+        const p = this.player;
+        const w = this.world;
+        p.hurt(1);
+        this.hud.flashHit();
+        this.hud.setHearts(p.health, p.maxHealth);
+        this.audio.danger();
+        if (!p.alive) {
+            this._defeat('João caiu das nuvens.');
+            return;
+        }
+        p.x = this.safe.x;
+        p.z = this.safe.z;
+        p.y = w.heightAt(p.x, p.z);
+        p.vy = 0;
+        p.grounded = true;
+        p.invuln = Math.max(p.invuln, 1.2);
+        p.sync();
+        this.hud.say('Ufa! Uma nuvem segurou o João. Cuidado com a beirada.', 3.2);
+    }
+
+    /**
+     * Próximo passo do capítulo para a bússola: { x, z, name, near } ou null.
+     *   I   mãe → Mimosa → arco da feira      II mercador
+     *   III mãe → feijões → caule (some subindo)
+     *   IV  ouro → galinha → harpa (a harpa por último: ela acorda o gigante)
+     *   V   (descendo: some) → machado → base do pé
+     */
+    _guideTarget() {
+        const w = this.world;
+        const p = this.player;
+        const f = w.flags || {};
+        const find = (id) => w.interactables.find((i) => i.id === id && !i.done);
+        const at = (it, name) => (it ? { x: it.x, z: it.z, name, near: it.r + 0.3 } : null);
+        switch (this.chapter.id) {
+            case 'cottage':
+                if (!f.talkedMother) return at(find('mother'), 'Mãe');
+                if (!p.hasCow) return at(find('cow'), 'Mimosa');
+                return at(find('gate'), 'Feira');
+            case 'fair':
+                return at(find('merchant'), 'Mercador');
+            case 'night':
+                if (!f.talkedMother) return at(find('mother'), 'Mãe');
+                if (!f.grown) return at(find('beans'), 'Feijões');
+                if (p.climbing || p.y > 4) return null;
+                return { x: w.stalk.x, z: w.stalk.z, name: 'Pé de feijão', near: 3 };
+            case 'castle':
+                return at(find('gold'), 'Ouro') || at(find('hen'), 'Galinha') || at(find('harp'), 'Harpa');
+            case 'escape':
+                if (p.climbing || p.y > 4) return null;
+                if (!p.hasAxe) return at(find('axe'), 'Machado');
+                return at(find('chop'), 'Pé de feijão');
+            default:
+                return null;
+        }
+    }
+
+    _updateGuide(dt) {
+        // 10 Hz bastam (a seta tem transição no CSS) e poupam a busca do alvo a cada quadro
+        this.guideAcc = (this.guideAcc || 0) + dt;
+        if (this.guideAcc < 0.1) return;
+        dt = this.guideAcc;
+        this.guideAcc = 0;
+        const t = this._guideTarget();
+        this.guide.update(this.camera, this.player.x, this.player.z, t);
+        if (!t) return;
+        const d = Math.hypot(t.x - this.player.x, t.z - this.player.z);
+        if (d < this.bestGoalD - 3) {
+            this.bestGoalD = d;
+            this.hintT = 0;
+        }
+        this.hintT += dt;
+        if (this.hintT > 30) {
+            this.hintT = 0;
+            this.hud.say(this.chapter.hint, 5);
+        }
     }
 
     _updateNpcs(dt, passive = false) {
@@ -676,6 +852,8 @@ class Game {
     }
 
     _updateInteract() {
+        // 0,6 s depois de fechar um diálogo o E é ignorado (criança aperta E repetido)
+        if (performance.now() - (this.dialogClosedAt ?? -1e4) < 600) this.input.consumeInteract();
         const w = this.world;
         const near = nearestInteractable(this.player, w.interactables);
         let label = near ? near.label : '';
@@ -694,7 +872,20 @@ class Game {
         if (near?.kind === 'chop' && this.player.hasAxe) {
             label = `Cortar o pé (${w.chop}/${w.chopNeeded})`;
         }
+        // perto do pé crescido (no chão): E agarra o caule — pular continua valendo
+        const p = this.player;
+        const canGrab = !near && this.chapter.id === 'night' && w.flags.grown && !p.climbing && p.y < 6
+            && Math.hypot(p.x - w.stalk.x, p.z - w.stalk.z) < 3;
+        if (canGrab) label = 'Subir no pé de feijão (ou pule)';
+        if (p.climbing && this.chapter.id === 'night' && !near) label = '';
         this.hud.setPrompt(label);
+        if (canGrab && this.input.consumeInteract()) {
+            p.climbing = true;
+            p.grounded = false;
+            p.vy = 0;
+            this.hud.say(this.touch ? 'Empurre a bolinha para cima para subir.' : 'Segure W (ou ↑) para subir.', 4);
+            return;
+        }
         if (!this.input.consumeInteract() || !near) return;
 
         if (near.kind === 'talk') {
@@ -911,6 +1102,7 @@ class Game {
     }
 
     _openDialogue(speaker, lines, item) {
+        this.guide.hide();
         this.dialogue = { speaker, lines: [...lines], item };
         this.state = 'dialogue';
         this.hud.setState('dialogue');
@@ -967,13 +1159,17 @@ class Game {
         }
         this.dialogue = null;
         this.hud.hideDialogue();
+        this.dialogClosedAt = performance.now(); // E apertado várias vezes não reabre a conversa
         this.state = 'playing';
         this.hud.setState('playing');
+        this.input.consumeInteract();
+        this.input.consumeJump();
         if (!this.mobile) this.input.requestLock();
     }
 
     async _completeChapter() {
         if (this.state === 'transition') return;
+        this.guide.hide();
         this.state = 'transition';
         this.hud.setState('transition');
         this.hud.setPrompt('');
@@ -1002,6 +1198,7 @@ class Game {
 
     _defeat(reason) {
         if (this.state === 'defeat') return;
+        this.guide.hide();
         this.state = 'defeat';
         this.hud.setState('defeat');
         this.hud.setPrompt('');

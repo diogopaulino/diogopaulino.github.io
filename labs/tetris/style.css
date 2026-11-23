@@ -149,6 +149,7 @@ body {
 }
 
 .label {
+    font-size: 7px;
     font-weight: bold;
     margin-bottom: 2px;
     opacity: 0.75;
@@ -207,8 +208,97 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .overlay-text {
+    .overlay-text,
+    .lcd-btn-go {
         animation: none;
+    }
+}
+
+[data-theme="dark"] .screen-overlay {
+    background-color: rgba(110, 140, 11, 0.9);
+}
+
+.overlay-text {
+    max-width: 22ch;
+}
+
+.overlay-hint {
+    font-size: 7px;
+    line-height: 1.5;
+    opacity: 0.8;
+}
+
+.overlay-hint[hidden],
+.overlay-modes[hidden],
+.lcd-btn[hidden] {
+    display: none;
+}
+
+.overlay-modes {
+    display: flex;
+    gap: 6px;
+}
+
+/* Botões desenhados no LCD. O console é escalado por `--device-scale`; dividir
+   a altura pelo fator mantém o alvo de toque com 44px reais no celular. */
+.lcd-btn {
+    appearance: none;
+    font: inherit;
+    font-size: 8px;
+    line-height: 1.2;
+    color: var(--gb-pixel-dark);
+    background: transparent;
+    border: 2px solid var(--gb-pixel-dark);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 26px;
+    position: relative;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: 2px 2px 0 rgba(15, 56, 15, 0.25);
+}
+
+/* Alvo de toque invisível: o LCD não comporta botões de 44px desenhados, então
+   o ::after estende a área clicável até 44px *reais* (dividindo pelo
+   `--device-scale`), sem invadir o botão vizinho — o espaçamento entre eles é
+   maior que a expansão. */
+.lcd-btn::after {
+    content: '';
+    position: absolute;
+    top: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    bottom: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    left: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+    right: min(0px, calc(50% - var(--touch-target, 44px) / 2 / var(--device-scale, 1)));
+}
+
+.lcd-btn[aria-pressed="true"],
+.lcd-btn:hover,
+.lcd-btn:focus-visible {
+    background: var(--gb-pixel-dark);
+    color: var(--gb-screen-bg);
+    outline: none;
+}
+
+.lcd-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 rgba(15, 56, 15, 0.25);
+}
+
+.lcd-btn-go {
+    font-size: 9px;
+    padding: 6px 12px;
+    animation: lcd-nudge 1.2s steps(2, end) infinite;
+}
+
+.lcd-btn-small {
+    font-size: 7px;
+    border-style: dashed;
+    box-shadow: none;
+}
+
+@keyframes lcd-nudge {
+    50% {
+        transform: translateY(-1px);
     }
 }
 
@@ -573,4 +663,10 @@ body {
         width: min(560px, 100%);
         max-width: 100%;
     }
+}
+
+/* O botão secundário fica logo abaixo do principal: sem expandir para cima,
+   a área ampliada dele não rouba o toque da parte de baixo de “JOGAR DE NOVO”. */
+.lcd-btn-small::after {
+    top: 0;
 }

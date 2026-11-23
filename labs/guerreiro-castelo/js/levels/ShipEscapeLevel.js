@@ -163,6 +163,7 @@ export class ShipEscapeLevel extends Level {
         g.cameraRig.override = { distance: 15, height: 4.5, pitch: 0.36 };
         g.cameraRig.yaw = 0;
         g.hud.showObjective('Saia da costa sem bater nos recifes');
+        g.hud.showToast(g.hud.isTouch ? 'Incline o analógico para desviar das pedras' : 'Desvie das pedras com A / D ou ← →', 6);
         g.dialogue.say('DICO', 'Vento nas velas! Segurem-se!');
     }
 

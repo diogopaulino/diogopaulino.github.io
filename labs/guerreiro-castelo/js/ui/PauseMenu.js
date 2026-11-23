@@ -2,7 +2,7 @@
  * Menu de pausa.
  */
 
-import { CHECKPOINT_STAGE } from '../core/SceneManager.js';
+import { CHECKPOINT_STAGE } from '../core/SceneManager.js?v=47';
 
 export class PauseMenu {
     constructor(game) {

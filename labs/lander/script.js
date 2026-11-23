@@ -8,6 +8,16 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+/* setPointerCapture lança InvalidStateError se o ponteiro já foi solto (toque
+   muito curto, evento sintético). A captura é um bônus: sem ela o gesto segue. */
+function capturePointer(element, pointerId) {
+    try {
+        element.setPointerCapture(pointerId);
+    } catch (err) {
+        /* segue sem captura */
+    }
+}
+
 const PHYSICS = Object.freeze({
     gravity: 24,
     thrust: 72,
@@ -19,6 +29,44 @@ const PHYSICS = Object.freeze({
     fixedStep: 1 / 120,
     maxFrameTime: 0.1
 });
+
+/* Regras ---------------------------------------------------------------------
+   Física (px/s, passo fixo de 1/120 s):
+     vy += gravidade·dt ;  com motor: v += (sen θ, −cos θ)·empuxo·dt
+     combustível −= queima·dt  (sem combustível o motor não empurra)
+   Pouso seguro = os dois pés numa plataforma marcada com
+     |vx| ≤ lado, 0 ≤ vy ≤ queda e |θ| ≤ ângulo (limites do modo).
+   Qualquer outro toque no chão é queda. A BASE (azul) só reabastece.
+   Pontos do pouso = 100 · multiplicador da plataforma · (1 + suavidade),
+     suavidade = 1 − vy/limiteDeQueda.
+   Fácil (padrão, pensado para crianças): a nave volta a ficar reta sozinha
+   quando nenhum giro está apertado, tem 50% mais combustível e limites de
+   pouso 40% mais folgados. Normal: física clássica sem ajuda. */
+const MODES = Object.freeze({
+    easy: { fuel: 1500, autoLevel: 1.8, slack: 1.4 },
+    normal: { fuel: 1000, autoLevel: 0, slack: 1 }
+});
+const MODE_KEY = 'lander:mode';
+let mode = (() => {
+    try {
+        const saved = localStorage.getItem(MODE_KEY);
+        return saved in MODES ? saved : 'easy';
+    } catch (err) {
+        return 'easy';
+    }
+})();
+
+/* Limites de pouso por modo, calculados uma vez (o HUD e o guia de pouso
+   consultam a cada frame). */
+const LIMITS = Object.fromEntries(Object.entries(MODES).map(([id, { slack }]) => [id, Object.freeze({
+    vx: PHYSICS.safeHorizontalSpeed * slack,
+    vy: PHYSICS.safeVerticalSpeed * slack,
+    angle: PHYSICS.safeAngle * slack
+})]));
+
+function limits() {
+    return LIMITS[mode];
+}
 
 const INITIAL_FUEL = 1000;
 const LANDER_FOOT_OFFSET = 12;
@@ -53,6 +101,7 @@ const COLORS = Object.freeze({
 });
 
 let gameState = 'START';
+let paused = false;
 let level = 1;
 let score = 0;
 let lastTime = 0;
@@ -187,7 +236,7 @@ const lander = {
         this.vx = 0;
         this.vy = 0;
         this.angle = 0;
-        this.fuel = INITIAL_FUEL;
+        this.fuel = MODES[mode].fuel;
         this.thrusting = false;
         this.engineOn = false;
         this.rotatingLeft = false;
@@ -217,6 +266,12 @@ const lander = {
 
         if (this.rotatingLeft) this.angle -= PHYSICS.rotation * dt;
         if (this.rotatingRight) this.angle += PHYSICS.rotation * dt;
+        // Fácil: sem giro apertado, a nave volta sozinha para a vertical.
+        const leveling = MODES[mode].autoLevel;
+        if (leveling && !this.rotatingLeft && !this.rotatingRight && this.angle !== 0) {
+            const step = leveling * dt;
+            this.angle = Math.abs(this.angle) <= step ? 0 : this.angle - Math.sign(this.angle) * step;
+        }
         this.angle = normalizeAngle(this.angle);
 
         this.vy += PHYSICS.gravity * dt;
@@ -588,14 +643,20 @@ function checkCollision() {
     if (footY < collisionY) return;
 
     const pad = findPadAt(lander.x);
-    const safeHorizontal = Math.abs(lander.vx) <= PHYSICS.safeHorizontalSpeed;
-    const safeVertical = lander.vy >= 0 && lander.vy <= PHYSICS.safeVerticalSpeed;
-    const safeAngle = Math.abs(normalizeAngle(lander.angle)) <= PHYSICS.safeAngle;
+    const lim = limits();
+    const safeHorizontal = Math.abs(lander.vx) <= lim.vx;
+    const safeVertical = lander.vy >= 0 && lander.vy <= lim.vy;
+    const safeAngle = Math.abs(normalizeAngle(lander.angle)) <= lim.angle;
 
     if (pad && safeHorizontal && safeVertical && safeAngle) {
         land(pad);
     } else {
-        crash();
+        // O motivo vira a dica da tela de queda: a criança aprende o que errou.
+        let reason = 'A nave estava torta: pouse reta.';
+        if (!pad) reason = 'Fora da plataforma: mire nas faixas amarelas.';
+        else if (!safeVertical) reason = 'Desceu rápido demais: segure o motor antes de chegar.';
+        else if (!safeHorizontal) reason = 'Estava indo de lado rápido demais.';
+        crash(reason);
     }
 }
 
@@ -611,13 +672,13 @@ function land(pad) {
 
     if (pad.home) {
         lander.onGround = true;
-        lander.fuel = INITIAL_FUEL;
-        setFlightStatus('REFUELED', 'safe');
+        lander.fuel = MODES[mode].fuel;
+        setFlightStatus('REABASTECIDA', 'safe');
         sfx('refuel');
         return;
     }
 
-    const softness = Math.max(0, 1 - landingVerticalSpeed / PHYSICS.safeVerticalSpeed);
+    const softness = Math.max(0, 1 - landingVerticalSpeed / limits().vy);
     const landingPoints = Math.round(100 * pad.multiplier * (1 + softness));
     score += landingPoints;
     pad.visited = true;
@@ -625,14 +686,15 @@ function land(pad) {
     setGameState('LANDED');
 
     setStatusMessage(
-        `SAFE LANDING<br><strong>+${landingPoints} POINTS</strong>`,
+        softness > 0.6 ? 'POUSO PERFEITO!' : 'POUSOU!',
+        `+${landingPoints} pontos`,
         'success'
     );
-    setFlightStatus('LANDED', 'safe');
+    setFlightStatus('POUSOU', 'safe');
     sfx('land');
 }
 
-function crash() {
+function crash(reason = '') {
     setGameState('CRASHED');
     lander.crashed = true;
     lander.thrusting = false;
@@ -640,16 +702,26 @@ function crash() {
     setEngineLevel(0);
     sfx('crash');
     createCrashDebris();
-    setStatusMessage('CRASHED', 'danger');
-    setFlightStatus('HULL LOST', 'danger');
+    setStatusMessage('A NAVE QUEBROU', reason, 'danger');
+    setFlightStatus('NAVE PERDIDA', 'danger');
 }
 
-function setStatusMessage(html, tone) {
+/* Título grande + uma linha de explicação. Montado com textContent: nada de
+   HTML vindo de string. */
+function setStatusMessage(title, detail, tone) {
     const message = document.getElementById('gameOverMsg');
-    document.getElementById('missionResult').innerHTML = html;
-    document.getElementById('btnContinue').textContent = gameState === 'LANDED' ? 'NEXT MISSION' : 'TRY AGAIN';
+    const result = document.getElementById('missionResult');
+    const heading = document.createElement('strong');
+    heading.textContent = title;
+    const small = document.createElement('small');
+    small.textContent = detail;
+    result.replaceChildren(heading, small);
+    const button = document.getElementById('btnContinue');
+    button.textContent = gameState === 'LANDED' ? '▶ PRÓXIMA MISSÃO' : '↻ TENTAR DE NOVO';
     message.dataset.tone = tone;
     message.classList.remove('hidden');
+    button.focus({ preventScroll: true });
+    syncPauseButton();
 }
 
 function setFlightStatus(text, tone = '') {
@@ -669,14 +741,56 @@ function startMission({ nextLevel = false, newGame = false } = {}) {
     if (newGame || nextLevel) generateTerrain();
 
     setGameState('PLAYING');
+    setPaused(false);
     document.getElementById('startMsg').classList.add('hidden');
     document.getElementById('gameOverMsg').classList.add('hidden');
     lander.reset();
     lander.engineOn = false;
     setEngineLevel(0);
     lowFuelWarned = false;
-    setFlightStatus('READY');
+    setFlightStatus('PRONTO');
+    syncSafeReadout();
+    syncPauseButton();
     sfx('launch');
+}
+
+/* Pausa de verdade: corta o motor, para o loop e mostra o aviso. */
+function setPaused(next) {
+    if (next && gameState !== 'PLAYING') return;
+    if (paused === next) return;
+    paused = next;
+    document.getElementById('pauseMsg').classList.toggle('hidden', !paused);
+    clearKeys();
+    if (paused) {
+        setEngineLevel(0);
+        lander.engineOn = false;
+        stopLoop();
+        draw();
+        document.getElementById('btnResume').focus({ preventScroll: true });
+    } else {
+        lastTime = 0;
+        accumulator = 0;
+        startLoop();
+    }
+    syncPauseButton();
+}
+
+function syncPauseButton() {
+    const btn = document.getElementById('btnPause');
+    btn.disabled = gameState !== 'PLAYING';
+    btn.innerHTML = paused ? '<u>C</u>ontinuar' : '<u>P</u>ausa';
+}
+
+function syncSafeReadout() {
+    const lim = limits();
+    const text = `POUSO SEGURO: ↔ ≤ ${Math.round(lim.vx)} · ↓ ≤ ${Math.round(lim.vy)} · ±${Math.round(lim.angle * 180 / Math.PI)}°`;
+    document.getElementById('safeReadout').textContent = text;
+}
+
+function syncModeButtons() {
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
 }
 
 /* Bipe único ao cruzar 15% de combustível: repetir a cada frame viraria alarme
@@ -686,11 +800,11 @@ let lowFuelWarned = false;
 
 function checkLowFuel() {
     if (gameState !== 'PLAYING') return;
-    const low = lander.fuel <= INITIAL_FUEL * LOW_FUEL_RATIO;
+    const low = lander.fuel <= MODES[mode].fuel * LOW_FUEL_RATIO;
     if (low && !lowFuelWarned) {
         lowFuelWarned = true;
         sfx('lowfuel');
-        setFlightStatus('LOW FUEL', 'danger');
+        setFlightStatus('POUCO GÁS', 'danger');
     } else if (!low) {
         lowFuelWarned = false;
     }
@@ -800,35 +914,53 @@ function setReadoutState(element, value, safeLimit) {
     element.classList.toggle('caution', ratio > 0.72 && ratio <= 1);
 }
 
+/* Elementos do HUD resolvidos uma vez: o loop só escreve quando o texto muda. */
+const hudEls = {};
+function hudEl(id) {
+    return hudEls[id] || (hudEls[id] = document.getElementById(id));
+}
+
 function setReadout(id, value) {
-    const el = document.getElementById(id);
+    const el = hudEl(id);
     if (el.textContent !== value) el.textContent = value;
 }
+
+let lastFuelRatio = -1;
 
 function updateHUD() {
     const altitude = getCurrentAltitude();
     const angleDegrees = normalizeAngle(lander.angle) * 180 / Math.PI;
     const horizontal = lander.vx;
-    const vertical = -lander.vy;
 
     setReadout('hudMission', String(level).padStart(2, '0'));
     setReadout('hudScore', String(score).padStart(6, '0'));
     setReadout('hudAlt', altitude.toFixed(0));
     setReadout('hudHSpeed', horizontal.toFixed(1));
-    setReadout('hudVSpeed', vertical.toFixed(1));
+    // “Queda”: positivo descendo, negativo subindo — o número que importa no pouso.
+    setReadout('hudVSpeed', lander.vy.toFixed(1));
     setReadout('hudAngle', `${angleDegrees >= 0 ? '+' : ''}${angleDegrees.toFixed(0)}°`);
     setReadout('hudFuel', Math.max(0, lander.fuel).toFixed(0));
 
-    setReadoutState(document.getElementById('hudHSpeed'), horizontal, PHYSICS.safeHorizontalSpeed);
-    setReadoutState(document.getElementById('hudVSpeed'), lander.vy, PHYSICS.safeVerticalSpeed);
-    setReadoutState(document.getElementById('hudAngle'), angleDegrees, PHYSICS.safeAngle * 180 / Math.PI);
+    const lim = limits();
+    setReadoutState(hudEl('hudHSpeed'), horizontal, lim.vx);
+    setReadoutState(hudEl('hudVSpeed'), Math.max(0, lander.vy), lim.vy);
+    setReadoutState(hudEl('hudAngle'), angleDegrees, lim.angle * 180 / Math.PI);
 
-    const fuel = document.getElementById('hudFuel');
-    fuel.classList.toggle('danger', lander.fuel <= 100);
-    fuel.classList.toggle('caution', lander.fuel > 100 && lander.fuel <= 250);
+    const fuelRatio = Math.max(0, lander.fuel) / MODES[mode].fuel;
+    const fuel = hudEl('hudFuel');
+    fuel.classList.toggle('danger', fuelRatio <= 0.1);
+    fuel.classList.toggle('caution', fuelRatio > 0.1 && fuelRatio <= 0.25);
+    // Barra de combustível por transform (sem reflow) e só quando muda ~0,5%.
+    if (Math.abs(fuelRatio - lastFuelRatio) > 0.005) {
+        lastFuelRatio = fuelRatio;
+        const bar = hudEl('hudFuelBar');
+        bar.style.transform = `scaleX(${fuelRatio.toFixed(3)})`;
+        bar.dataset.tone = fuelRatio <= 0.1 ? 'danger' : fuelRatio <= 0.25 ? 'caution' : '';
+    }
 
-    if (gameState === 'PLAYING' && !lander.onGround) {
-        setFlightStatus(altitude < 90 ? 'FINAL APPROACH' : 'IN FLIGHT', altitude < 90 ? 'caution' : '');
+    // “Pouco gás” tem prioridade: antes o aviso era sobrescrito no frame seguinte.
+    if (gameState === 'PLAYING' && !lander.onGround && !lowFuelWarned) {
+        setFlightStatus(altitude < 90 ? 'APROXIMAÇÃO' : 'VOANDO', altitude < 90 ? 'caution' : '');
     }
 }
 
@@ -964,6 +1096,38 @@ function drawBeacons(target) {
     });
 }
 
+/* Guia de pouso: perto do chão, um colchete sob a nave fica verde quando a
+   velocidade e o ângulo estão dentro do limite e vermelho quando não estão.
+   É a leitura do HUD traduzida para quem ainda não lê números. */
+function drawLandingGuide(target) {
+    if (gameState !== 'PLAYING' || lander.onGround || lander.crashed) return;
+    const altitude = getCurrentAltitude();
+    if (altitude > 140) return;
+    const lim = limits();
+    const ok = Math.abs(lander.vx) <= lim.vx && lander.vy <= lim.vy
+        && Math.abs(normalizeAngle(lander.angle)) <= lim.angle;
+    const pad = findPadAt(lander.x);
+    const groundY = getGroundY(lander.x);
+    const alpha = 0.35 + 0.65 * (1 - altitude / 140);
+    target.save();
+    target.globalAlpha = alpha;
+    target.strokeStyle = ok ? (pad ? '#22c55e' : '#facc15') : '#ef4444';
+    target.lineWidth = 2;
+    target.setLineDash([4, 4]);
+    target.beginPath();
+    target.moveTo(lander.x, lander.y + LANDER_FOOT_OFFSET + 4);
+    target.lineTo(lander.x, groundY - 2);
+    target.stroke();
+    target.setLineDash([]);
+    target.beginPath();
+    target.moveTo(lander.x - 16, groundY - 6);
+    target.lineTo(lander.x - 16, groundY - 1);
+    target.lineTo(lander.x + 16, groundY - 1);
+    target.lineTo(lander.x + 16, groundY - 6);
+    target.stroke();
+    target.restore();
+}
+
 function drawParticles(target) {
     particles.forEach(particle => {
         target.fillStyle = particle.color;
@@ -987,6 +1151,7 @@ function draw() {
     }
     ctx.drawImage(landscape, 0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
     drawBeacons(ctx);
+    drawLandingGuide(ctx);
     drawParticles(ctx);
     lander.draw(ctx);
 }
@@ -994,6 +1159,7 @@ function draw() {
 let rafId = 0;
 
 function frame(timestamp) {
+    if (paused) return;
     if (!lastTime) lastTime = timestamp;
     const frameTime = Math.min((timestamp - lastTime) / 1000, PHYSICS.maxFrameTime);
     lastTime = timestamp;
@@ -1053,6 +1219,16 @@ window.addEventListener('keydown', event => {
     const gameCodes = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyD'];
     if (gameCodes.includes(event.code)) event.preventDefault();
 
+    if ((event.code === 'KeyP' || event.code === 'Escape') && !event.repeat) {
+        setPaused(!paused);
+        return;
+    }
+    if (paused) {
+        if ((event.code === 'Space' || event.code === 'Enter') && !event.repeat
+            && !event.target.closest?.('button')) setPaused(false);
+        return;
+    }
+
     if (event.code === 'KeyR' && !event.repeat) {
         startMission({ newGame: true });
     } else if (event.code === 'Space' && !event.repeat && gameState !== 'PLAYING') {
@@ -1078,8 +1254,10 @@ function bindButton(id, code) {
 
     element.addEventListener('pointerdown', event => {
         event.preventDefault();
-        element.setPointerCapture?.(event.pointerId);
-        if (gameState !== 'PLAYING') {
+        capturePointer(element, event.pointerId);
+        if (paused) {
+            setPaused(false);
+        } else if (gameState !== 'PLAYING') {
             startMission({ nextLevel: gameState === 'LANDED' });
         }
         setPressed(true);
@@ -1101,6 +1279,25 @@ document.getElementById('btnContinue').addEventListener('click', () => {
     startMission({ nextLevel: gameState === 'LANDED' });
 });
 
+document.getElementById('btnPause').addEventListener('click', () => setPaused(!paused));
+document.getElementById('btnResume').addEventListener('click', () => setPaused(false));
+
+document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        mode = btn.dataset.mode;
+        try {
+            localStorage.setItem(MODE_KEY, mode);
+        } catch (err) {
+            /* Sem storage o modo vale só nesta visita. */
+        }
+        syncModeButtons();
+        syncSafeReadout();
+        lander.fuel = MODES[mode].fuel;
+        lastFuelRatio = -1;
+        updateHUD();
+    });
+});
+
 bindButton('btnLeft', 'ArrowLeft');
 bindButton('btnRight', 'ArrowRight');
 bindButton('btnThrust', 'ArrowUp');
@@ -1116,14 +1313,19 @@ if (labAudio) {
 // Aba escondida: corta o motor. O rAF pausa via LabRuntime.createLoop
 // (autoPause); sem LabRuntime, cai no listener manual.
 if (window.LabVisibility && labLoop) {
-    LabVisibility.whenHidden(() => setEngineLevel(0));
+    // Aba oculta em pleno voo = pausa (a nave não cai sozinha enquanto isso).
+    LabVisibility.whenHidden(() => {
+        setEngineLevel(0);
+        if (gameState === 'PLAYING') setPaused(true);
+    });
     LabVisibility.whenVisible(() => { lastTime = 0; });
 } else {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             setEngineLevel(0);
+            if (gameState === 'PLAYING') setPaused(true);
             stopLoop();
-        } else {
+        } else if (!paused) {
             startLoop();
         }
     });
@@ -1133,6 +1335,9 @@ generateStars();
 generateTerrain();
 lander.reset();
 setGameState('START');
-setFlightStatus('READY');
+setFlightStatus('PRONTO');
+syncModeButtons();
+syncSafeReadout();
+syncPauseButton();
 draw();
 startLoop();

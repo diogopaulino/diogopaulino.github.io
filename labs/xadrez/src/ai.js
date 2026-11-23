@@ -6,9 +6,16 @@
  *   − penalidade de rei aberto se a dama inimiga ainda está no tabuleiro.
  *
  * Dificuldade:
+ *   facil      → profundidade 1 + ruído grande (±NOISE.facil cp) e 45% de
+ *                lances ao acaso: deixa peças penduradas e não vê mates.
+ *                Feita para crianças conseguirem vencer.
  *   iniciante  → profundidade 1 + ruído (erros didáticos)
  *   praticante → profundidade 2
  *   clube      → profundidade 3
+ *
+ * Folhas (profundidade 0) não geram todos os lances: só quem está em xeque
+ * confere se é mate. Isso corta ~90% do custo sem perder o mate em 1.
+ * Mate vale ±(MATE − ply): mate mais curto pontua mais.
  */
 
 const VAL = {
@@ -78,7 +85,10 @@ const PST = {
     ]
 };
 
-const DEPTH = { iniciante: 1, praticante: 2, clube: 3 };
+const DEPTH = { facil: 1, iniciante: 1, praticante: 2, clube: 4 };
+const MATE = 99999;
+// Ruído (centipeões) somado à nota de cada lance na raiz.
+const NOISE = { facil: 650, iniciante: 60 };
 
 function pst(type, index, color) {
     const table = PST[type];
@@ -118,20 +128,26 @@ function scoreMove(m) {
     return s;
 }
 
-function minimax(game, depth, alpha, beta) {
+function minimax(game, depth, alpha, beta, ply = 1) {
+    if (depth <= 0) {
+        // Folha barata: só checa mate quando há xeque.
+        if (game.inCheck() && game.legalMoves().length === 0) {
+            return game.side === 'w' ? -MATE + ply : MATE - ply;
+        }
+        return evaluate(game);
+    }
     const st = game.status();
     if (st.over) {
-        if (st.reason === 'xeque-mate') return game.side === 'w' ? -99999 + (3 - depth) : 99999 - (3 - depth);
+        if (st.reason === 'xeque-mate') return game.side === 'w' ? -MATE + ply : MATE - ply;
         return 0;
     }
-    if (depth <= 0) return evaluate(game);
 
     const moves = order(st.moves);
     if (game.side === 'w') {
         let best = -Infinity;
         for (const m of moves) {
             game.play(m);
-            const val = minimax(game, depth - 1, alpha, beta);
+            const val = minimax(game, depth - 1, alpha, beta, ply + 1);
             game.undo();
             if (val > best) best = val;
             if (best > alpha) alpha = best;
@@ -142,7 +158,7 @@ function minimax(game, depth, alpha, beta) {
     let best = Infinity;
     for (const m of moves) {
         game.play(m);
-        const val = minimax(game, depth - 1, alpha, beta);
+        const val = minimax(game, depth - 1, alpha, beta, ply + 1);
         game.undo();
         if (val < best) best = val;
         if (best < beta) beta = best;
@@ -155,6 +171,9 @@ export function pickMove(game, level = 'praticante', rng = Math.random) {
     const moves = game.legalMoves();
     if (!moves.length) return null;
 
+    if (level === 'facil' && rng() < 0.45) {
+        return moves[Math.floor(rng() * moves.length)];
+    }
     if (level === 'iniciante' && rng() < 0.28) {
         const captures = moves.filter((m) => m.captured);
         const pool = captures.length && rng() < 0.7 ? captures : moves;
@@ -163,22 +182,30 @@ export function pickMove(game, level = 'praticante', rng = Math.random) {
 
     const depth = DEPTH[level] || 2;
     const color = game.side;
-    let best = color === 'w' ? -Infinity : Infinity;
+    const sign = color === 'w' ? 1 : -1;
+    const noise = NOISE[level] || 0;
+    const track = game.trackKeys;
+    game.trackKeys = false;
     const scored = [];
-
+    // Janela alfa-beta na raiz: lances piores que o melhor já visto são
+    // podados (o valor exato deles não importa, só a ordem).
+    let alpha = -Infinity;
+    let beta = Infinity;
     for (const m of order(moves)) {
         game.play(m);
-        const val = minimax(game, depth - 1, -Infinity, Infinity);
+        const val = noise ? minimax(game, depth - 1, -Infinity, Infinity) : minimax(game, depth - 1, alpha, beta);
         game.undo();
-        scored.push({ m, val });
-        if (color === 'w') {
-            if (val > best) best = val;
-        } else if (val < best) best = best === Infinity ? val : Math.min(best, val);
+        scored.push({ m, val: val * sign + (noise ? (rng() * 2 - 1) * noise : 0) });
+        if (!noise) {
+            if (color === 'w') alpha = Math.max(alpha, val);
+            else beta = Math.min(beta, val);
+        }
     }
+    game.trackKeys = track;
 
-    scored.sort((a, b) => (color === 'w' ? b.val - a.val : a.val - b.val));
+    scored.sort((a, b) => b.val - a.val);
     if (level === 'iniciante' && scored.length > 1 && rng() < 0.35) {
-        return scored[Math.min(1, scored.length - 1)].m;
+        return scored[1].m;
     }
     return scored[0].m;
 }

@@ -30,7 +30,7 @@
     <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -154,6 +154,11 @@
                 <p class="eyebrow">SUA PARTIDA</p>
                 <h2>À mesa.</h2>
                 <p class="lede">Um bom lugar para pensar.</p>
+                <ol class="howto" aria-label="Como jogar">
+                    <li><b>Toque numa peça.</b> <span>Pontos dourados mostram para onde ela pode ir.</span></li>
+                    <li><b>Toque num ponto.</b> <span>A peça anda e a máquina responde.</span></li>
+                    <li><b>Xeque-mate vence.</b> <span>Encurrale o rei rival até ele não ter para onde fugir.</span></li>
+                </ol>
                 <div class="settings-row">
                     <label class="field">
                         <span>Modo</span>
@@ -168,8 +173,9 @@
                     <label class="field">
                         <span>Nível</span>
                         <select id="levelSelect">
+                            <option value="facil" selected>Fácil · crianças</option>
                             <option value="iniciante">Iniciante</option>
-                            <option value="praticante" selected>Praticante</option>
+                            <option value="praticante">Praticante</option>
                             <option value="clube">Clube</option>
                         </select>
                     </label>
@@ -244,7 +250,7 @@
     <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
     
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=4"></script>
+    <script type="module" src="src/main.js?v=5"></script>
 </body>
 
 </html>

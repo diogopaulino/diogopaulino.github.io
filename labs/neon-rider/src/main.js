@@ -2,6 +2,13 @@
  * Neon Rider — laço principal.
  * Avenida infinita à noite: a moto corre no −Z, quarteirões reciclam,
  * e cada fita VHS retuna o néon e a rádio.
+ *
+ * REGRAS
+ *   • Placar de distância: distância = −z · 2,4 (cada unidade do mundo vale 2,4 m no HUD).
+ *   • Linha de chegada em z = −goal / 2,4 (goal por dificuldade, config.js): cruzar = vitória.
+ *   • Batida em carro (AABB, traffic.js) custa 1 crédito e dá 1,8 s de invulnerabilidade;
+ *     sem créditos = fim de jogo. Fitas VHS só trocam a estação (cor + rádio) e somam placar:
+ *     placar = distância + 480 · fitas.
  */
 
 import * as THREE from 'three';
@@ -11,14 +18,14 @@ import {
     QUALITY, DIFFICULTY, STATIONS, loadSettings, saveSettings
 } from './config.js';
 import { clamp, damp, detectMobile, detectSoftwareGL } from './utils.js';
-import { createSharedMaterials, tintMaterials } from './models.js?v=13';
-import { City, createSky, createRoad } from './world.js?v=13';
-import { Player } from './player.js?v=13';
-import { Traffic } from './traffic.js?v=13';
+import { createSharedMaterials, tintMaterials } from './models.js?v=14';
+import { City, createSky, createRoad } from './world.js?v=15';
+import { Player } from './player.js?v=14';
+import { Traffic } from './traffic.js?v=14';
 import { Effects } from './effects.js';
 import { GameAudio } from './audio.js';
 import { Input } from './input.js';
-import { Hud } from './hud.js';
+import { Hud } from './hud.js?v=16';
 
 const CAMERAS = [
     { name: 'perseguição', offset: new THREE.Vector3(0, 2.55, 7.4), look: new THREE.Vector3(0, 1.15, -12) },
@@ -28,6 +35,43 @@ const CAMERAS = [
 
 const LOOK = new THREE.Vector3();
 const CAM = new THREE.Vector3();
+/** Metros do placar por unidade do mundo (ver REGRAS). */
+const METERS_PER_UNIT = 2.4;
+
+/** Pórtico de chegada: dois pilares, travessa e faixa quadriculada no asfalto (5 draw calls). */
+function createFinishGate() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 32;
+    const g = c.getContext('2d');
+    for (let x = 0; x < 16; x++) for (let y = 0; y < 2; y++) {
+        g.fillStyle = (x + y) % 2 ? '#0b0614' : '#f4f0ff';
+        g.fillRect(x * 16, y * 16, 16, 16);
+    }
+    const checker = new THREE.CanvasTexture(c);
+    checker.colorSpace = THREE.SRGBColorSpace;
+    const group = new THREE.Group();
+    const glowA = new THREE.MeshBasicMaterial({ color: 0xff2bd6, toneMapped: false, fog: false });
+    const glowB = new THREE.MeshBasicMaterial({ color: 0x00f0ff, toneMapped: false, fog: false });
+    const pillar = new THREE.BoxGeometry(0.7, 7.4, 0.7);
+    const left = new THREE.Mesh(pillar, glowA);
+    left.position.set(-8.4, 3.7, 0);
+    const right = new THREE.Mesh(pillar, glowA);
+    right.position.set(8.4, 3.7, 0);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(17.5, 0.5, 0.5), glowB);
+    bar.position.set(0, 7.4, 0);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(16, 1.6), new THREE.MeshBasicMaterial({ map: checker, toneMapped: false, fog: false, side: THREE.DoubleSide }));
+    banner.position.set(0, 6.3, 0);
+    const lineTex = checker.clone();
+    lineTex.needsUpdate = true;
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(14.8, 2), new THREE.MeshBasicMaterial({ map: lineTex, toneMapped: false }));
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(0, 0.03, 0);
+    group.add(left, right, bar, banner, line);
+    group.visible = false;
+    group.userData = { glowA, glowB };
+    return group;
+}
 
 class Game {
     constructor() {
@@ -45,6 +89,7 @@ class Game {
         this.fpsFrames = 0;
         this.boostHeld = false;
         this.paletteMix = 1;
+        this.goal = 10000;
     }
 
     resolveQuality() {
@@ -139,6 +184,8 @@ class Game {
         this.scene.add(this.headlight, this.headlight.target);
 
         this.traffic = new Traffic(this.scene, this.mats, this.quality);
+        this.finish = createFinishGate();
+        this.scene.add(this.finish);
         this.effects = new Effects(this.scene, this.quality);
         this.audio = new GameAudio();
         this.audio.enabled = !this.settings.muted;
@@ -151,7 +198,8 @@ class Game {
         await this.setupPostProcessing();
 
         this.bindUi();
-        this.isTouch = detectMobile();
+        // toque = qualquer ponteiro grosso (iPad incluso, que se apresenta como Mac no UA)
+        this.isTouch = detectMobile() || matchMedia('(pointer: coarse)').matches;
 
         this.enterAttract();
         this.renderer.compile(this.scene, this.camera);
@@ -168,6 +216,10 @@ class Game {
         else window.addEventListener('resize', () => this.resize());
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden && this.state === 'playing') this.pause();
+            });
+            // trocar de janela também pausa: sem isso a moto seguia sem controle até bater
+            window.addEventListener('blur', () => {
+                if (this.state === 'playing') this.pause();
             });
         } catch (err) {
             console.error(err);
@@ -225,6 +277,10 @@ class Game {
         }
         if (this.sun) this.sun.color.setHex(st.neonB);
         if (this.mats) tintMaterials(this.mats, st);
+        if (this.finish) {
+            this.finish.userData.glowA.color.setHex(st.neonA);
+            this.finish.userData.glowB.color.setHex(st.neonB);
+        }
         this.city?.setStation(st);
         if (this.player) {
             this.player.root.userData.glow.material.color.setHex(st.neonA);
@@ -264,6 +320,8 @@ class Game {
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.enterAttract());
         document.getElementById('retryButton').addEventListener('click', () => this.start());
         document.getElementById('overMenuButton').addEventListener('click', () => this.enterAttract());
+        document.getElementById('winRetryButton').addEventListener('click', () => this.start());
+        document.getElementById('winMenuButton').addEventListener('click', () => this.enterAttract());
         hud.el.soundButton.addEventListener('click', () => this.toggleMute());
         hud.el.pauseButton.addEventListener('click', () => {
             if (this.state === 'playing') this.pause();
@@ -281,7 +339,7 @@ class Game {
         });
         this.input.on('confirm', () => {
             if (this.state === 'menu') this.start();
-            else if (this.state === 'over') this.start();
+            else if (this.state === 'over' || this.state === 'won') this.start();
             else if (this.state === 'paused') this.resume();
         });
         this.input.on('radio', () => {
@@ -292,30 +350,69 @@ class Game {
         this.bindTouch();
     }
 
+    /**
+     * Toque com Pointer Events (cancelamento e captura incluídos, para o guidão nunca
+     * ficar preso virado): a posição do dedo na faixa vira o esterço, −1 (esquerda) a 1.
+     */
     bindTouch() {
         const zone = document.getElementById('steerZone');
+        const knob = document.getElementById('steerKnob');
         const boost = document.getElementById('touchBoost');
         const brake = document.getElementById('touchBrake');
         if (!zone) return;
 
+        let steerId = null;
         const readSteer = (e) => {
-            const t = e.touches?.[0] || e.changedTouches?.[0];
-            if (!t) return;
             const r = zone.getBoundingClientRect();
-            const x = ((t.clientX - r.left) / r.width) * 2 - 1;
-            this.input.setTouchSteer(clamp(x * 1.4, -1, 1));
+            const x = clamp((((e.clientX - r.left) / r.width) * 2 - 1) * 1.35, -1, 1);
+            this.input.setTouchSteer(x);
+            knob.style.transform = `translateX(${x * r.width * 0.36}px)`;
         };
-        zone.addEventListener('touchstart', (e) => { e.preventDefault(); readSteer(e); }, { passive: false });
-        zone.addEventListener('touchmove', (e) => { e.preventDefault(); readSteer(e); }, { passive: false });
-        zone.addEventListener('touchend', () => this.input.setTouchSteer(0));
+        const endSteer = (e) => {
+            if (e && e.pointerId !== steerId) return;
+            steerId = null;
+            this.input.setTouchSteer(0);
+            knob.style.transform = '';
+            zone.classList.remove('is-active');
+        };
+        zone.addEventListener('pointerdown', (e) => {
+            if (steerId !== null) return;
+            steerId = e.pointerId;
+            zone.setPointerCapture?.(e.pointerId);
+            zone.classList.add('is-active');
+            readSteer(e);
+            e.preventDefault();
+        });
+        zone.addEventListener('pointermove', (e) => { if (e.pointerId === steerId) readSteer(e); });
+        for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) zone.addEventListener(type, endSteer);
 
         const hold = (el, setter) => {
-            el.addEventListener('touchstart', (e) => { e.preventDefault(); setter(true); }, { passive: false });
-            el.addEventListener('touchend', () => setter(false));
-            el.addEventListener('touchcancel', () => setter(false));
+            let id = null;
+            el.addEventListener('pointerdown', (e) => {
+                id = e.pointerId;
+                el.setPointerCapture?.(e.pointerId);
+                el.classList.add('is-held');
+                setter(true);
+                e.preventDefault();
+            });
+            const up = (e) => {
+                if (e.pointerId !== id) return;
+                id = null;
+                el.classList.remove('is-held');
+                setter(false);
+            };
+            for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(type, up);
+            el.addEventListener('contextmenu', (e) => e.preventDefault());
         };
         hold(boost, (v) => this.input.setTouchBoost(v));
         hold(brake, (v) => this.input.setTouchBrake(v));
+        this.releaseTouch = () => {
+            endSteer({ pointerId: steerId });
+            this.input.setTouchBoost(false);
+            this.input.setTouchBrake(false);
+            boost.classList.remove('is-held');
+            brake.classList.remove('is-held');
+        };
     }
 
     toggleMute() {
@@ -339,7 +436,9 @@ class Game {
         this.hud.showMenu(true);
         this.hud.showPause(false);
         this.hud.showGameOver(false);
+        this.hud.showWin(false);
         this.hud.setTouchVisible(false);
+        this.releaseTouch?.();
         this.resetRun(true);
         this.player.auto = true;
     }
@@ -351,10 +450,13 @@ class Game {
         this.hud.setState('playing');
         this.hud.showMenu(false);
         this.hud.showGameOver(false);
+        this.hud.showWin(false);
         this.hud.showPause(false);
         this.hud.showHud(true);
         this.hud.setTouchVisible(this.isTouch);
-        this.hud.message('NOITE AFORA', 1400);
+        this.releaseTouch?.();
+        this.hud.message('VALENDO!', 1400);
+        this.lastFrame = performance.now();
     }
 
     resetRun(attract) {
@@ -367,6 +469,10 @@ class Game {
         this.applyStation(this.station(), true);
         this.player.reset({ maxSpeed: diff.maxSpeed });
         this.player.auto = attract;
+        this.goal = diff.goal || 10000;
+        this.finishZ = -this.goal / METERS_PER_UNIT;
+        this.finish.position.set(0, 0, this.finishZ);
+        this.finish.visible = false;
         this.city.reset((Math.random() * 9999) | 0);
         this.traffic.setDifficulty(diff);
         this.traffic.reset(this.player.z);
@@ -378,6 +484,8 @@ class Game {
         this.state = 'paused';
         this.hud.setState('paused');
         this.hud.showPause(true);
+        this.releaseTouch?.();
+        document.getElementById('resumeButton').focus({ preventScroll: true });
     }
 
     resume() {
@@ -407,7 +515,30 @@ class Game {
         this.hud.showGameOver(true);
         this.hud.showHud(false);
         this.hud.setTouchVisible(false);
+        this.releaseTouch?.();
         this.hud.setState('over');
+        document.getElementById('retryButton').focus({ preventScroll: true });
+    }
+
+    /** Cruzou a linha de chegada: placar, recorde e "Jogar de novo". */
+    win() {
+        this.state = 'won';
+        this.player.alive = false;
+        this.distance = this.goal;
+        const score = Math.floor(this.distance + this.tapes * 480);
+        if (this.distance > (this.settings.best || 0)) {
+            this.settings.best = Math.floor(this.distance);
+            saveSettings(this.settings);
+            this.hud.setBest(this.settings.best);
+        }
+        this.audio.collect();
+        this.hud.setWinStats({ distance: this.distance, tapes: this.tapes, time: this.time, score, lives: this.lives });
+        this.hud.showWin(true);
+        this.hud.showHud(false);
+        this.hud.setTouchVisible(false);
+        this.releaseTouch?.();
+        this.hud.setState('won');
+        document.getElementById('winRetryButton').focus({ preventScroll: true });
     }
 
     frame(now) {
@@ -458,7 +589,13 @@ class Game {
 
         if (playing) {
             this.time += dt;
-            this.distance += this.player.speed * dt * 2.4;
+            this.distance = Math.max(0, -this.player.z * METERS_PER_UNIT);
+            // o pórtico só entra na cena quando está ao alcance da vista (não custa draw call antes)
+            this.finish.visible = this.player.z - this.finishZ < this.quality.drawDistance * 1.5;
+            if (this.player.z <= this.finishZ) {
+                this.win();
+                return;
+            }
 
             const collected = this.traffic.collectTapes(this.player);
             if (collected.length) {
@@ -510,7 +647,8 @@ class Game {
                 lives: this.lives,
                 station: this.station(),
                 boost: this.player.boost,
-                time: this.time
+                time: this.time,
+                goal: this.goal
             });
         }
 

@@ -7,7 +7,8 @@
  * e a cabeça do jogador (1,5 m em pé · 0,85 m agachado) — agachar atrás de um caixote esconde.
  *
  * Alerta (0…1), mostrado no cone e na barra de "Silêncio":
- *   vendo:      alerta += dt · (0,9 + 1,6·(1 − dist/viewDist))     (de perto enche em ~0,4 s)
+ *   vendo:      alerta += dt · 0,65 · (0,9 + 1,6·(1 − dist/viewDist))  (de perto enche em ~0,6 s,
+ *               de longe em ~1,7 s — dá tempo de agachar atrás de um caixote)
  *   ouvindo:    alerta += dt · 0,5
  *   sem sinal:  alerta −= dt · 0,35
  * Ao chegar a 1 o guarda persegue (CHASE); perto o bastante, ataca (ATTACK, 1 de dano a
@@ -16,6 +17,9 @@
 
 import * as THREE from 'three';
 import { damp } from '../utils/math.js';
+
+/** Fator do enchimento do alerta quando o guarda vê Dico (modo gentil). */
+const SEEN_RATE = 0.65;
 
 export class GuardAI {
     constructor(guard, opts = {}) {
@@ -112,7 +116,7 @@ export class GuardAI {
         const seen = game.player.alive && this.canSee(game);
         const heard = game.player.alive && this.hear(game) && game.player.noise > 0.7;
 
-        if (seen) this.alert += dt * (0.9 + 1.6 * (1 - Math.min(1, dist / this.viewDist)));
+        if (seen) this.alert += dt * SEEN_RATE * (0.9 + 1.6 * (1 - Math.min(1, dist / this.viewDist)));
         else if (heard) this.alert += dt * 0.5;
         else if (this.state !== 'CHASE' && this.state !== 'ATTACK') this.alert -= dt * 0.35;
         this.alert = Math.max(0, Math.min(1, this.alert));
@@ -121,6 +125,7 @@ export class GuardAI {
             this.state = 'CHASE';
             this.lostT = 0;
             game.audio?.play('fail');
+            game.hud?.showToast('O guarda viu você! Lute ou fuja e agache atrás de um caixote.', 4);
         }
 
         if (this.state === 'CHASE' || this.state === 'ATTACK') {

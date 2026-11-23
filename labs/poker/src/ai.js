@@ -3,25 +3,31 @@
  *
  * Heurística (não é solver GTO):
  * - Pré-flop: holeStrength → fold / call / raise por faixas.
- * - Pós-flop: equity Monte Carlo leve vs hole do vilão quando conhecida
- *   (no play normal a IA NÃO vê as cartas do herói; usa força da própria
- *   mão + board texture + pot odds).
- * - Pot odds: call se equityEstimada >= toCall/(pot+toCall) com margem.
+ * - Pós-flop: equity Monte Carlo contra uma mão ALEATÓRIA (equityVsRandom,
+ *   ~140 sorteios, < 15 ms). A IA nunca vê as cartas do herói.
+ *   Diante de aposta grande a equity é descontada: quem aposta forte costuma
+ *   ter mão melhor que a média →  eq' = eq − 0,15 · min(1, call/pote).
+ * - Pot odds: call se eq' >= toCall/(pot+toCall) + margem.
+ * - Fácil (mesa das crianças): "generosa" — aposta pouco (size 0,5×),
+ *   blefa pequeno com frequência (45%) (quem sempre paga ganha esses potes),
+ *   esconde mão forte com check (slowplay 70%), nunca aumenta, não empurra
+ *   all-in curto e desiste com facilidade (margem +0,20). Testada contra um
+ *   jogador que só paga/passa: a criança vence a maioria das sessões.
  */
 
 import {
+    equityVsRandom,
     estimateEquity,
-    evaluateHand,
     holeStrength,
     legalActions,
     potOdds,
     STREET
-} from './engine.js';
+} from './engine.js?v=4';
 
 const DIFFICULTY = {
-    easy: { aggression: 0.55, bluff: 0.06, callMargin: 0.08, thinkMs: [450, 900] },
-    normal: { aggression: 0.75, bluff: 0.12, callMargin: 0.03, thinkMs: [500, 1100] },
-    hard: { aggression: 0.95, bluff: 0.18, callMargin: -0.02, thinkMs: [400, 800] }
+    easy: { aggression: 0.4, bluff: 0.45, callMargin: 0.2, raiseAt: 2, noise: 0.12, size: 0.5, slowplay: 0.7, shove: false, thinkMs: [550, 950] },
+    normal: { aggression: 0.75, bluff: 0.1, callMargin: 0.03, raiseAt: 0.78, noise: 0.04, size: 1, slowplay: 0.1, shove: true, thinkMs: [500, 1000] },
+    hard: { aggression: 0.95, bluff: 0.16, callMargin: -0.02, raiseAt: 0.7, noise: 0, size: 1, slowplay: 0.05, shove: true, thinkMs: [400, 800] }
 };
 
 export function getDifficulty(level = 'normal') {
@@ -46,13 +52,11 @@ export function chooseAction(match, level = 'normal') {
     if (h.street === STREET.PREFLOP || board.length === 0) {
         strength = holeStrength(hole);
     } else {
-        const made = evaluateHand([...hole, ...board]);
-        // Categoria 0–9 → base; kickers suavizam
-        strength = (made.category + 1) / 10 * 0.7 + (made.ranks[0] || 0) / 12 * 0.15;
-        // Um projeto de flush só pode melhorar enquanto ainda falta carta na mesa.
-        if (board.length < 5) strength += drawBonus(hole, board) * 0.12;
-        strength = Math.min(0.98, strength);
+        strength = equityVsRandom(hole, board, 140, match.rng);
+        if (toCall > 0) strength -= 0.15 * Math.min(1, toCall / Math.max(1, pot - toCall));
     }
+    if (cfg.noise) strength += (match.rng() * 2 - 1) * cfg.noise;
+    strength = Math.max(0, Math.min(0.98, strength));
 
     // Bluff ocasional em spot de check/bet
     const roll = match.rng();
@@ -67,18 +71,18 @@ export function chooseAction(match, level = 'normal') {
 
     // All-in curto: commit se stack <= 8 BB e strength decente
     const bb = match.bigBlind;
-    if (stack <= bb * 8 && strength >= 0.55 && allin) {
+    if (cfg.shove && stack <= bb * 8 && strength >= 0.55 && allin) {
         return { type: 'allin', amount: allin.amount };
     }
 
     if (toCall <= 0) {
         // Opção de check ou bet
         if (wantBluff && bet) {
-            return sizeBet(bet, pot, stack, 0.45);
+            return sizeBet(bet, pot, stack, 0.45 * cfg.size);
         }
-        if (strength >= 0.62 * (1.1 - cfg.aggression * 0.2) && bet) {
+        if (strength >= 0.62 * (1.1 - cfg.aggression * 0.2) && bet && !(check && match.rng() < cfg.slowplay)) {
             const frac = strength > 0.8 ? 0.75 : 0.55;
-            return sizeBet(bet, pot, stack, frac);
+            return sizeBet(bet, pot, stack, frac * cfg.size);
         }
         if (check) return { type: 'check', amount: 0 };
         if (bet) return sizeBet(bet, pot, stack, 0.4);
@@ -94,7 +98,7 @@ export function chooseAction(match, level = 'normal') {
         if (fold && !wantBluff) return { type: 'fold', amount: 0 };
     }
 
-    if ((strength >= 0.72 || wantBluff) && raise && equity >= threshold - 0.05) {
+    if ((strength >= cfg.raiseAt || wantBluff) && raise && equity >= threshold - 0.05) {
         return sizeRaise(raise, pot, toCall, stack, strength > 0.85 ? 1.0 : 0.7);
     }
 
@@ -120,17 +124,6 @@ function sizeRaise(raiseAction, pot, toCall, stack, mult) {
     const amt = Math.min(raiseAction.max, Math.max(raiseAction.min, target));
     if (amt >= stack * 0.85) return { type: 'allin', amount: stack };
     return { type: 'raise', amount: amt };
-}
-
-/** Flush draw (4 do mesmo naipe) ou quase sequência — bônus 0–1 */
-function drawBonus(hole, board) {
-    const all = [...hole, ...board].map((id) => ({ rank: id[0], suit: id[1] }));
-    const bySuit = {};
-    for (const c of all) bySuit[c.suit] = (bySuit[c.suit] || 0) + 1;
-    let bonus = 0;
-    if (Object.values(bySuit).some((n) => n === 4)) bonus += 0.7;
-    if (Object.values(bySuit).some((n) => n >= 5)) bonus += 0.2;
-    return Math.min(1, bonus);
 }
 
 export function aiThinkDelay(level = 'normal') {

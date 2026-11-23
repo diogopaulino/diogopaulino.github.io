@@ -20,6 +20,7 @@ export const QUEST_ORDER = [
     { id: 'teco_tiger', text: 'Peça ajuda a Teco' },
     { id: 'back_camila', text: 'Volte para Camila' },
     { id: 'free_camila', text: 'Liberte Camila' },
+    { id: 'leave_cell', text: 'Volte ao salão com Camila' },
     { id: 'flee', text: 'FUJA DO CASTELO' },
     { id: 'reach_ship', text: 'Chegue ao navio' },
     { id: 'untie', text: 'Solte as amarras' },

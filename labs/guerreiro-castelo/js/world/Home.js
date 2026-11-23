@@ -16,6 +16,10 @@ import { pbrMaterial } from '../../../shared/gfx/assets.js';
 import { Kit, block, wallGeo, mat, shadowAll } from './Build.js?v=40';
 import { makeFire } from './Environment.js?v=40';
 
+/* Adereços pequenos e muito densos (o baú tem ~95 mil triângulos) não projetam sombra:
+   a sombra deles mal aparece e custava um passe inteiro a mais por luz (×6 na lareira). */
+const NO_SHADOW = new Set(['treasure_chest', 'brass_goblets', 'marble_bust_01', 'vintage_oil_lamp', 'wooden_bucket_01', 'horse_statue_01']);
+
 const W = 3.5; // meia-largura interna (x)
 const D = 3.6; // meia-profundidade interna (z)
 const H = 2.9;
@@ -116,7 +120,7 @@ export async function buildHomeInterior(game) {
         if (!m) return null;
         m.position.set(x, y, z);
         m.rotation.y = ry;
-        shadowAll(m);
+        shadowAll(m, !NO_SHADOW.has(name));
         g.add(m);
         return m;
     };

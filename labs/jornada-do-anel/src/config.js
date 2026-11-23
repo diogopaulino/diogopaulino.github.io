@@ -85,12 +85,14 @@ export const ATMOSPHERES = {
 
 /**
  * Cinco capítulos da jornada. Textos originais — nenhum diálogo copiado.
+ * `goalName` é o rótulo curto da bússola do HUD (guide.js).
  */
 export const CHAPTERS = [
     {
         id: 'shire',
         roman: 'I',
         title: 'O Condado',
+        goalName: 'Toca',
         subtitle: 'A toca redonda',
         blurb: 'Colinas verdes, a árvore da festa e um anel que não deveria existir.',
         objective: 'Encontre a toca de porta verde e pegue o Anel.',
@@ -103,6 +105,7 @@ export const CHAPTERS = [
         id: 'forest',
         roman: 'II',
         title: 'A Fuga',
+        goalName: 'Vau do rio',
         subtitle: 'Cavaleiros na estrada',
         blurb: 'A floresta fecha. Capas negras farejam o Anel. Não seja visto.',
         objective: 'Alcance o vau do rio sem ser pego pelos Cavaleiros.',
@@ -115,6 +118,7 @@ export const CHAPTERS = [
         id: 'vale',
         roman: 'III',
         title: 'O Vale Élfico',
+        goalName: 'Conselho',
         subtitle: 'O conselho',
         blurb: 'Quedas d’água, pedra clara e um círculo de pedras. Alguém precisa levar o Anel.',
         objective: 'Entre no círculo do conselho e aceite a jornada.',
@@ -127,6 +131,7 @@ export const CHAPTERS = [
         id: 'mines',
         roman: 'IV',
         title: 'As Minas',
+        goalName: 'Saída',
         subtitle: 'A ponte',
         blurb: 'Pilares sem fim, tambores na escuridão e uma fenda que não perdoa.',
         objective: 'Atravesse o salão e a ponte antes que a Sombra chegue.',
@@ -139,6 +144,7 @@ export const CHAPTERS = [
         id: 'summit',
         roman: 'V',
         title: 'O Monte da Visão',
+        goalName: 'Trono',
         subtitle: 'A partida',
         blurb: 'Ruínas no alto, o grande rio abaixo. A companhia se parte — e a jornada continua.',
         objective: 'Sente-se no trono de pedra e escolha seguir adiante.',

@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { Level } from './Level.js?v=40';
-import { buildHomeInterior, addHomeColliders, HOME_MARKS } from '../world/Home.js?v=40';
+import { buildHomeInterior, addHomeColliders, HOME_MARKS } from '../world/Home.js?v=42';
 import { EnvironmentFX } from '../world/Environment.js?v=40';
 import { makeHero } from '../characters/cast.js?v=40';
 
@@ -155,7 +155,8 @@ export class HomeLevel extends Level {
                     teco.visible = false;
                     this._fly = null;
                     g.dialogue.say('DICO', '… Teco levou o brinquedo de novo.', 2.4);
-                    setTimeout(() => g.story.notify('the_end'), 2400);
+                    /* só fecha a história se ninguém saiu para o menu nesse meio-tempo */
+                    setTimeout(() => { if (g.level === this && g.running) g.story.notify('the_end'); }, 2400);
                 }
             };
         } else {

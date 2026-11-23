@@ -1658,3 +1658,221 @@ body {
   .seat .hole-cards { --card-w: 32px; }
   .table-stage { min-height: 0; }
 }
+
+/* —— Jogo simples para todas as idades ——
+   Botões dizem a ação em português (com o termo de poker embaixo), a mão do
+   jogador tem medidor de força, a Dica acende o botão sugerido e o showdown
+   destaca as 5 cartas que decidiram. */
+.act-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  line-height: 1.15;
+}
+.act-main { font-size: 0.95rem; font-weight: 620; }
+.act-sub {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.62;
+  font-weight: 500;
+}
+.act-btn--next { min-height: 52px; font-size: 1rem; font-weight: 650; }
+.act-btn.is-suggested {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.85), 0 0 24px rgba(212, 175, 55, 0.45);
+  animation: suggestPulse 1.5s ease-in-out infinite;
+}
+.act-btn.is-suggested .act-sub::before { content: '★ dica · '; color: var(--gold-soft); }
+@keyframes suggestPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.85), 0 0 14px rgba(212, 175, 55, 0.3); }
+  50% { box-shadow: 0 0 0 2px rgba(212, 175, 55, 1), 0 0 28px rgba(212, 175, 55, 0.6); }
+}
+
+.hand-meter {
+  --v: 0.5;
+  --meter: #d9a441;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--meter);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.hand-meter i {
+  position: relative;
+  width: 3.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.hand-meter i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--v) * 100%);
+  border-radius: inherit;
+  background: var(--meter);
+  transition: width 0.5s var(--ease-out), background 0.3s;
+}
+.hand-meter[data-level="fraca"] { --meter: #e0806f; }
+.hand-meter[data-level="média"] { --meter: #e0b45a; }
+.hand-meter[data-level="boa"] { --meter: #8fd08a; }
+.hand-meter[data-level="forte"] { --meter: #5fe0a0; }
+.hand-name--ai:empty { display: none; }
+
+.card.is-best .card-inner {
+  transform: translateY(-5px) rotateZ(var(--tilt)) scale(1.04);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(212, 175, 55, 0.6), 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+.card.is-dim { filter: brightness(0.5) saturate(0.5); transition: filter 0.45s; }
+
+.result-banner { font-weight: 600; }
+.result-banner[data-outcome="win"] {
+  border-color: var(--gold);
+  color: var(--gold-soft);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5), 0 0 30px rgba(212, 175, 55, 0.35), 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.result-banner[data-outcome="loss"] { border-color: rgba(196, 92, 74, 0.6); }
+
+.howto {
+  counter-reset: step;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.howto li { counter-increment: step; position: relative; padding-left: 2rem; opacity: 0.92; }
+.howto li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: var(--gold-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.howto b { color: var(--gold-soft); font-weight: 600; }
+.intro-diff { margin: 0 0 1rem; }
+
+.session-card { text-align: center; }
+.session-card .intro-actions { justify-content: center; }
+.session-card .dock-btn { flex: 1 1 9rem; min-height: 48px; font-size: 0.95rem; }
+#sessionOverlay[data-outcome="win"] .overlay-card {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.4), 0 0 60px rgba(212, 175, 55, 0.22), 0 28px 70px rgba(0, 0, 0, 0.55);
+}
+#sessionOverlay[data-outcome="win"] h2 { color: var(--gold-soft); }
+.session-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 1.2rem;
+}
+.session-stats div {
+  padding: 0.6rem 0.3rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+.session-stats dt { font-size: 0.66rem; opacity: 0.7; line-height: 1.25; }
+.session-stats dd { margin: 0.2rem 0 0; font-size: 1.25rem; font-weight: 700; color: var(--gold-soft); font-variant-numeric: tabular-nums; }
+
+.status { font-size: clamp(1rem, 2.6vw, 1.15rem); line-height: 1.3; }
+
+@media (max-width: 768px) {
+  .blind-line { display: none; }
+  .action-dock .actions { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); }
+  .act-main { font-size: 0.86rem; }
+  .act-sub { font-size: 0.56rem; }
+  .act-btn.is-suggested .act-sub::before { content: '★ '; }
+  .hand-meter i { width: 2.6rem; }
+}
+
+/* Landscape curto: mesa à esquerda, ações à direita — tudo numa tela só. */
+@media (max-height: 520px) and (orientation: landscape) {
+  html, body { height: 100%; }
+  body { min-height: 0; overflow: hidden; }
+  .poker-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(14.5rem, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    width: 100%;
+    gap: 0.4rem 0.6rem;
+    padding-bottom: max(0.4rem, var(--safe-bottom));
+  }
+  .poker-shell > header { grid-column: 1 / -1; }
+  .table-stage { grid-column: 1; grid-row: 2; min-height: 0; height: 100%; padding: 0.25rem; }
+  .table-scene { min-height: 100%; height: 100%; padding: 1.6rem 0.6rem 0.6rem; }
+  .hud {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.15rem;
+  }
+  .action-dock { order: -1; gap: 0.4rem; }
+  .status { font-size: 0.92rem; }
+  .action-dock .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem; }
+  .act-btn { min-width: 0; padding: 0.35rem 0.3rem; }
+  .act-main { font-size: 0.82rem; }
+  .sizing { padding: 0.45rem 0.55rem; }
+  .size-row { margin-top: 0.25rem; }
+  .coach, .tray { max-height: none; overflow: visible; }
+  .meta-line { font-size: 0.66rem; }
+  .blind-line { display: none; }
+  .hand-meter { margin-top: 0.1rem; font-size: 0.62rem; }
+  .hand-meter i { width: 2.2rem; }
+  .result-banner { font-size: 0.74rem; padding: 0.3rem 0.55rem; }
+}
+
+/* Dica sempre à mão, ao lado de "Sua vez". */
+.status-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.status-row .status { flex: 1; min-width: 0; }
+.hint-pill {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.3), rgba(212, 175, 55, 0.1));
+  color: var(--gold-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+}
+.hint-pill:hover { transform: translateY(-1px); background: rgba(212, 175, 55, 0.3); }
+@media (max-height: 520px) and (orientation: landscape) {
+  .hint-pill { padding-inline: 0.65rem; font-size: 0.76rem; }
+}
+
+/* Cormorant + letter-spacing desloca o acento de "ê" no Chrome ("Você"). */
+.seat-name,
+.overlay-card h1,
+.overlay-card h2 { letter-spacing: 0; }
+.size-chip { min-height: 44px; }

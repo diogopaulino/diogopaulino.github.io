@@ -280,11 +280,16 @@ export const NORMAL_VARIANTS = {
   }
 };
 
+// CPU difficulty. `think` = frames between decisions; the rest are probabilities.
+// `damage` scales every hit the CPU lands (final = round(base × damage), min 1),
+// `hyper` lets it spend 2 bars. Fácil is the kid-friendly default: slower, softer
+// CPU that never fires a Hyper, so a first match is winnable by just pressing J K I.
 export const AI_CONFIG = {
-  easy:   { think: [18, 32], guard: 0.26, attack: 0.38, punish: 0.18, combo: 0.28, dash: 0.08, airFollow: 0.15 },
-  normal: { think: [7, 14],  guard: 0.62, attack: 0.74, punish: 0.60, combo: 0.68, dash: 0.24, airFollow: 0.60 },
-  hard:   { think: [3, 7],   guard: 0.85, attack: 0.92, punish: 0.88, combo: 0.92, dash: 0.42, airFollow: 0.90 }
+  easy:   { think: [22, 38], guard: 0.18, attack: 0.32, punish: 0.12, combo: 0.2, dash: 0.05, airFollow: 0.1, damage: 0.7, hyper: false },
+  normal: { think: [7, 14],  guard: 0.62, attack: 0.74, punish: 0.60, combo: 0.68, dash: 0.24, airFollow: 0.60, damage: 1, hyper: true },
+  hard:   { think: [3, 7],   guard: 0.85, attack: 0.92, punish: 0.88, combo: 0.92, dash: 0.42, airFollow: 0.90, damage: 1, hyper: true }
 };
+export const DEFAULT_DIFFICULTY = 'easy';
 
 export const FRAME = {
   idleA: 0, idleB: 1, forward: 2, back: 3,

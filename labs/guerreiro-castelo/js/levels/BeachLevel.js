@@ -33,7 +33,7 @@ export class BeachLevel extends Level {
         }
     }
 
-    enter() {
+    enter(checkpoint) {
         const g = this.game;
         const M = ISLAND_MARKS;
         const h = this.island.heightAt;
@@ -47,15 +47,20 @@ export class BeachLevel extends Level {
         g.storm.setIntensity(0);
         g.ocean.setMode('island');
         g.ocean.visible = true;
-        g.quests.set('reach_castle');
-        g.hud.showObjective('Chegue até o castelo');
         g.input.enabled = true;
         g.player.controller.setMode('walk');
         g.cameraRig.setWorld(g.collision, null, true);
         g.cameraRig.yaw = 0;
         g.cameraRig.pitch = 0.2;
+        /* Retomada no castelo ou na gruta: mantém o objetivo e o checkpoint de lá (antes
+           voltavam para "Chegue até o castelo" e o save regredia para a praia). */
+        if (checkpoint === 'castle_exterior' || checkpoint === 'secret_door') {
+            g.quests.set(checkpoint === 'secret_door' ? 'open_door' : g.story.flags.otherEntrance ? 'hidden_door' : 'other_entrance');
+            return;
+        }
+        g.quests.set('reach_castle');
         g.checkpoints.save('castle_beach', g.story._saveBlob());
-        g.hud.showToast('Siga a trilha pela mata. Shift corre.', 5);
+        g.hud.showToast(g.hud.isTouch ? 'Siga o losango dourado pela trilha.' : 'Siga o losango dourado pela trilha. Shift corre.', 5);
     }
 
     update(dt) {

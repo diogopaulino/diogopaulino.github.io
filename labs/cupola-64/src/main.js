@@ -13,14 +13,14 @@ import * as THREE from 'three';
 import { createPipeline } from '../../shared/gfx/post.js';
 import { configureTextures } from '../../shared/gfx/textures.js';
 import { detectSoftwareGL as softwareGL } from '../../shared/gfx/core.js';
-import { STORAGE_KEY, QUALITY, QUEST, QUOTES } from './config.js?v=12';
+import { STORAGE_KEY, QUALITY, QUEST, QUOTES, STAR_META } from './config.js?v=13';
 import { detectMobile, pick, formatTime } from './utils.js?v=13';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
-import { Hud } from './hud.js?v=12';
-import { World } from './world.js?v=15';
-import { Player } from './player.js?v=13';
-import { Entities } from './entities.js?v=14';
+import { Hud } from './hud.js?v=13';
+import { World } from './world.js?v=17';
+import { Player } from './player.js?v=14';
+import { Entities } from './entities.js?v=15';
 import { Effects } from './effects.js?v=13';
 
 class Game {
@@ -117,6 +117,20 @@ class Game {
             crouch: document.getElementById('btnCrouch'),
             camL: document.getElementById('btnCamL'),
             camR: document.getElementById('btnCamR')
+        });
+
+        // Enter/Espaço começam (menu) ou recomeçam (fim de jogo/vitória) sem caçar o botão;
+        // Enter/Espaço com foco num botão ficam com o próprio botão.
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat || (e.code !== 'Enter' && e.code !== 'Space')) return;
+            if (e.target.closest?.('button, select, input, summary, a')) return;
+            if (this.state === 'menu' || this.state === 'over' || this.state === 'win') {
+                e.preventDefault();
+                this.start();
+            } else if (this.state === 'pause') {
+                e.preventDefault();
+                this.resume();
+            }
         });
 
         if (window.LabRuntime) LabRuntime.debounceResize(() => this.resize());
@@ -327,6 +341,7 @@ class Game {
         }
         if (flags.landed && !flags.pounded && !this.player.swimming) this.effects.dust(this.player.position, 0.8);
         if (flags.step) this.effects.step(this.player.position, Math.sin(this.player.yaw), Math.cos(this.player.yaw));
+        if (flags.fell) this.hud.say('Ops! Nico voltou para o chão firme.');
 
         const events = this.entities.update(dt, this.player);
         for (const ev of events) {
@@ -341,6 +356,8 @@ class Game {
                 this.audio.star();
                 this.effects.burst(ev.pos, 26);
                 this.player.celebrate();
+                // como no clássico: cada estrela devolve as vidas cheias (modo família)
+                this.player.lives = Math.max(this.player.lives, QUEST.lives);
                 this.hud.showStarGet(ev.meta.title);
                 this.hud.say(pick(QUOTES.star), 3200);
                 if (this.entities.starCount >= QUEST.stars) {
@@ -358,6 +375,14 @@ class Game {
                 this.hud.say('A estrela do rei apareceu!');
             } else if (ev.type === 'hurt') {
                 if (this.player.hurt()) {
+                    // empurrão para longe de quem bateu (sem ele, a bomba-rei acertava de novo
+                    // assim que a invulnerabilidade acabava)
+                    const p = this.player;
+                    const ax = p.x - ev.pos.x;
+                    const az = p.z - ev.pos.z;
+                    const al = Math.hypot(ax, az) || 1;
+                    p.vx = (ax / al) * 7;
+                    p.vz = (az / al) * 7;
                     this.audio.hurt();
                     this.effects.dust(this.player.position);
                     this.hud.say(pick(QUOTES.hurt));
@@ -383,7 +408,58 @@ class Game {
             reds: this.entities.redCount,
             lives: this.player.lives
         });
+        this.guide();
         this.effects.applyShake();
+    }
+
+    /**
+     * Bússola (modo família): escolhe o alvo mais próximo entre as estrelas visíveis;
+     * sem nenhuma visível, aponta para o que destrava a próxima (moeda vermelha, bomba-rei,
+     * moeda dourada). A estrela do céu aponta para o canhão enquanto Nico está embaixo.
+     *   ângulo na tela = atan2(d·direita, d·frente),  frente = (−sin yaw, −cos yaw), direita = (cos yaw, −sin yaw)
+     */
+    guide() {
+        const p = this.player;
+        const E = this.entities;
+        if (E.starCount >= QUEST.stars) return;
+        let tx = 0;
+        let tz = 0;
+        let best = Infinity;
+        let title = '';
+        let hint = '';
+        const consider = (x, z, t, h) => {
+            const d = Math.hypot(x - p.x, z - p.z);
+            if (d < best) {
+                best = d;
+                tx = x;
+                tz = z;
+                title = t;
+                hint = h;
+            }
+        };
+        for (const s of E.stars) {
+            if (s.taken || !s.mesh.visible) continue;
+            if (s.id === 'sky' && p.y < 12 && !p.inCannon) {
+                const c = this.world.cannonPos;
+                consider(c.x, c.z, s.meta.title, 'Entre no canhão e aperte pular.');
+            } else consider(s.x, s.z, s.meta.title, s.meta.hint);
+        }
+        if (best === Infinity) {
+            if (E.redCount < QUEST.redCoins) {
+                for (const c of E.reds) if (!c.taken) consider(c.x, c.z, STAR_META[2].title, `Moedas vermelhas: ${E.redCount}/${QUEST.redCoins}`);
+            }
+            if (E.king.alive) consider(E.king.x, E.king.z, STAR_META[5].title, `Pule na cabeça dela: ${E.kingHits}/${QUEST.kingHits}`);
+            if (best === Infinity && E.coinCount < QUEST.coinStar) {
+                for (const c of E.coins) if (!c.taken) consider(c.x, c.z, STAR_META[6].title, `Moedas: ${E.coinCount}/${QUEST.coinStar}`);
+            }
+        }
+        if (best === Infinity) return;
+        const dx = tx - p.x;
+        const dz = tz - p.z;
+        const s = Math.sin(p.camYaw);
+        const c = Math.cos(p.camYaw);
+        const deg = Math.atan2(c * dx - s * dz, -s * dx - c * dz) * 180 / Math.PI;
+        this.hud.setGuide(deg, best, title, hint);
     }
 
     /** Mede fps e ajusta o pixel ratio (ver cabeçalho). */

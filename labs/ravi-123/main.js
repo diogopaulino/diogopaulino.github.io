@@ -7,7 +7,7 @@
 import { initScreen, fit, toBuffer } from './screen.js';
 import { Audio } from './audio.js';
 import { hitTest } from './scenes.js';
-import { initGame, update, draw, handleNumber, currentSpots, debugApi } from './game.js';
+import { initGame, update, draw, handleNumber, currentSpots, debugApi, setHover } from './game.js';
 import { buildSprites } from './sprites.js';
 
 const STEP = 1 / 60;
@@ -90,6 +90,14 @@ function onPointerDown(event) {
   handleNumber(n === null ? -1 : n);
 }
 
+/** Mouse sobre um botão numerado: o jogo desenha a moldura de destaque. */
+function onPointerMove(event) {
+  if (event.pointerType !== 'mouse') return;
+  const point = toBuffer(event.clientX, event.clientY);
+  const n = point ? hitTest(currentSpots(), point.x, point.y, 0) : null;
+  setHover(n !== null && n >= 0 ? n : null);
+}
+
 function syncSoundButton(btn, muted) {
   if (!btn) return;
   btn.textContent = muted ? '♪̸' : '♪';
@@ -128,6 +136,8 @@ async function boot() {
 
     window.addEventListener('keydown', onKeyDown);
     canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerleave', () => setHover(null));
 
     let resizeTimer = 0;
     window.addEventListener('resize', () => {

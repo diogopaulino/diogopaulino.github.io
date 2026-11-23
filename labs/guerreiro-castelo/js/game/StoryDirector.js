@@ -104,7 +104,8 @@ export class StoryDirector {
             case 'keys':
                 this.flags.keysTaken = true;
                 g.inventory.keys = 3;
-                g.quests.set('find_camila');
+                /* quem já falou com Camila vai direto para a fechadura */
+                g.quests.set(this.flags.foundCamila ? 'cell_key' : 'find_camila');
                 g.hud.showToast('3 chaves encontradas');
                 g.checkpoints.save('sleeping_guard', this._saveBlob());
                 break;
@@ -134,6 +135,7 @@ export class StoryDirector {
                 g.camila.ai.follow();
                 g.dialogue.say('CAMILA', 'Obrigada!');
                 g.dialogue.say('DICO', 'Agora precisamos sair daqui.');
+                g.quests.set('leave_cell');
                 g.checkpoints.save('princess_rescued', this._saveBlob());
                 break;
             case 'alarm':

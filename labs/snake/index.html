@@ -26,7 +26,7 @@
         content="Snake retrô em um console portátil 8-bit: colete frutas, ganhe velocidade e bata o seu recorde.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/snake/">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
     <script type="application/ld+json">
     {
@@ -102,16 +102,26 @@
                                 aria-label="Tabuleiro do jogo Snake"></canvas>
                             <div class="ui-overlay" id="startScreen">
                                 <h2>SNAKE</h2>
-                                <p>Toque a tela ou Start</p>
+                                <p class="steady lcd-how">Coma as maçãs e cresça!</p>
+                                <div class="lcd-modes" role="group" aria-label="Dificuldade">
+                                    <button type="button" class="lcd-btn" data-mode="easy"
+                                        aria-pressed="true">FÁCIL</button>
+                                    <button type="button" class="lcd-btn" data-mode="normal"
+                                        aria-pressed="false">NORMAL</button>
+                                </div>
+                                <p class="steady lcd-hint" id="modeHint">Atravessa as paredes</p>
+                                <button type="button" class="lcd-btn lcd-btn-go" data-action="start">▶ JOGAR</button>
                             </div>
                             <div class="ui-overlay hidden" id="pauseScreen">
                                 <h2>PAUSA</h2>
-                                <p>Start p/ voltar</p>
+                                <button type="button" class="lcd-btn lcd-btn-go" data-action="resume">▶ CONTINUAR</button>
                             </div>
                             <div class="ui-overlay hidden" id="gameOverScreen">
                                 <h2>FIM DE JOGO</h2>
                                 <p class="steady">Pontos: <span id="finalScore">0</span></p>
-                                <p>Pressione Start</p>
+                                <p class="steady lcd-hint" id="finalNote"></p>
+                                <button type="button" class="lcd-btn lcd-btn-go" data-action="start">↻ JOGAR DE NOVO</button>
+                                <button type="button" class="lcd-btn lcd-btn-small" data-action="menu">TROCAR MODO</button>
                             </div>
                             <div class="scanlines"></div>
                         </div>
@@ -167,10 +177,10 @@
             <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
 
             <div class="instructions">
-                <p class="touch-only"><strong>Deslize na tela</strong> para virar · <strong>toque</strong> para
-                    jogar/pausar</p>
-                <p>Use as <strong>Setas</strong> ou o <strong>D-Pad</strong> para mover</p>
-                <p>Pressione <strong>Enter</strong> ou <strong>Start</strong> para Jogar/Pausar</p>
+                <p class="touch-only"><strong>Deslize o dedo na tela</strong> para virar a cobra ·
+                    <strong>toque</strong> para pausar</p>
+                <p class="fine-only"><strong>Setas</strong>, <strong>WASD</strong> ou o <strong>D-Pad</strong> viram a cobra</p>
+                <p class="fine-only"><strong>Enter</strong>, <strong>Espaço</strong> ou <strong>Start</strong> jogam e pausam</p>
             </div>
         </main>
 
@@ -178,7 +188,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=8" defer></script>
+    <script src="script.js?v=9" defer></script>
 </body>
 
 </html>

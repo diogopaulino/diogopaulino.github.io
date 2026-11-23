@@ -22,11 +22,11 @@ import {
     CATAPULT_RELEASED,
     fxTime,
     hash
-} from './structure-models.js?v=50';
+} from './structure-models.js?v=51';
 import { blockStone, darkWood, barkWood, oakWood } from './materials.js?v=50';
 import { fireLights } from './lights.js?v=50';
-import { waterHeight, waterSlope } from './water.js?v=50';
-import { centerX, terrainHeight } from './river.js?v=50';
+import { waterHeight, waterSlope } from './water.js?v=51';
+import { centerX, terrainHeight } from './river.js?v=51';
 import { randRange } from './utils.js?v=50';
 
 const tmpSlope = { dx: 0, dz: 0 };

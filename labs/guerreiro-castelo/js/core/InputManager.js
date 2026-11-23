@@ -34,6 +34,14 @@ export class InputManager {
         this._onWheel = this.onWheel.bind(this);
         this._onLockChange = this.onLockChange.bind(this);
         this._onContext = (e) => e.preventDefault();
+        /* Janela perdeu o foco (alt-tab, notificação): solta as teclas, senão Dico
+           continua andando sozinho porque o keyup nunca chega. */
+        this._onBlur = () => {
+            for (const k in this.keys) this.keys[k] = false;
+            this._rmb = false;
+            this._drag = null;
+        };
+        this.lockLost = false;
         window.addEventListener('keydown', this._onKeyDown);
         window.addEventListener('keyup', this._onKeyUp);
         document.addEventListener('mousemove', this._onMouseMove);
@@ -45,6 +53,7 @@ export class InputManager {
         dom.addEventListener('wheel', this._onWheel, { passive: false });
         document.addEventListener('pointerlockchange', this._onLockChange);
         dom.addEventListener('contextmenu', this._onContext);
+        window.addEventListener('blur', this._onBlur);
         this.setupTouch();
     }
 
@@ -195,7 +204,12 @@ export class InputManager {
 
     requestLock() {
         if (this.locked || this.touch.active) return;
-        this.dom.requestPointerLock?.();
+        /* Sem gesto do usuário (Esc para sair da pausa) o Chrome recusa a trava com uma
+           promessa rejeitada — o jogo segue com arrastar-para-olhar, sem erro no console. */
+        try {
+            const req = this.dom.requestPointerLock?.();
+            req?.catch?.(() => {});
+        } catch { /* navegador sem trava de cursor */ }
     }
 
     exitLock() {
@@ -203,7 +217,10 @@ export class InputManager {
     }
 
     onLockChange() {
+        const was = this.locked;
         this.locked = document.pointerLockElement === this.dom;
+        /* Esc com o cursor travado não chega como keydown: o jogo pausa por aqui. */
+        if (was && !this.locked) this.lockLost = true;
     }
 
     onKeyDown(e) {
@@ -337,6 +354,7 @@ export class InputManager {
         this.dom.removeEventListener('wheel', this._onWheel);
         document.removeEventListener('pointerlockchange', this._onLockChange);
         this.dom.removeEventListener('contextmenu', this._onContext);
+        window.removeEventListener('blur', this._onBlur);
         this._touchCleanup.forEach((off) => off());
         this._touchCleanup.length = 0;
     }

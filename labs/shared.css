@@ -441,6 +441,21 @@ footer a:hover {
     }
 }
 
+/* Celular estreito: com back + ações (tela cheia, som, tema) sobra pouco para o
+   título, que era cortado com reticências ("Campo Minado 9…"). Deixa quebrar em
+   até 2 linhas, ainda dentro dos 44px do header. */
+@media (max-width: 420px) {
+    header h1,
+    header .app-logo {
+        white-space: normal;
+        line-height: 1.1;
+        text-align: center;
+        font-size: clamp(0.9rem, 4.2vw, 1.1rem);
+        max-height: 2.3em;
+        overflow-wrap: anywhere;
+    }
+}
+
 /* Landscape curto (celular deitado, ~667x375): o chrome do lab não pode comer a
    altura útil do canvas. Encolhe header/footer e mantém os insets laterais do notch. */
 @media (max-height: 520px) and (orientation: landscape) {

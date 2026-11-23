@@ -30,9 +30,12 @@ export class Hud {
             volumeValue: document.getElementById('volumeValue'),
             bestScore: document.getElementById('bestScore'),
             victoryStats: document.getElementById('victoryStats'),
-            touch: document.getElementById('touchControls')
+            touch: document.getElementById('touchControls'),
+            guideArrow: document.getElementById('guideArrow'),
+            guideDist: document.getElementById('guideDist')
         };
         this._msgTimer = 0;
+        this._guide = { deg: NaN, dist: NaN };
         this.buildPips(TOTAL_FRIENDS);
     }
 
@@ -52,15 +55,34 @@ export class Hud {
         });
         if (home === 0 && following === 0) {
             this.el.questTag.textContent = 'O vale acordou';
-            this.el.objective.textContent = 'Pegue amoras e chame o primeiro filhote.';
+            this.el.objective.textContent = berries < 1 ? 'Pegue uma amora 🫐 (siga a seta).' : `Leve a amora para ${hint}.`;
         } else if (home < TOTAL_FRIENDS) {
             this.el.questTag.textContent = following ? 'Fila fofa' : 'Filhotes perdidos';
             this.el.objective.textContent = following
                 ? `Leve ${following === 1 ? 'o amigo' : 'os amigos'} ao ninho do piquenique.`
-                : `Encontre ${hint}.`;
+                : berries < 1 ? 'Pegue uma amora 🫐 (siga a seta).' : `Encontre ${hint}.`;
         } else {
             this.el.questTag.textContent = 'Piquenique!';
             this.el.objective.textContent = 'Todos chegaram. A festa é no ninho.';
+        }
+    }
+
+    /**
+     * Bússola do próximo alvo. `deg` = ângulo na tela (0 = para a frente da câmera, positivo =
+     * horário); dist em metros (null esconde). Só escreve no DOM quando muda (5° / 1 m).
+     */
+    setGuide(deg, dist) {
+        const g = this._guide;
+        const q = dist == null ? NaN : Math.round(deg / 5) * 5;
+        if (q !== g.deg && !(Number.isNaN(q) && Number.isNaN(g.deg))) {
+            g.deg = q;
+            // a seta ➤ aponta para a direita: −90° deixa 0° apontando para cima
+            this.el.guideArrow.style.transform = Number.isNaN(q) ? '' : `rotate(${q - 90}deg)`;
+        }
+        const m = dist == null ? -1 : Math.round(dist);
+        if (m !== g.dist) {
+            g.dist = m;
+            this.el.guideDist.textContent = m < 0 ? '♥' : m < 3 ? 'aqui!' : `${m} m`;
         }
     }
 

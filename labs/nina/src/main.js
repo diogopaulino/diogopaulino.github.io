@@ -17,7 +17,7 @@ import { Valley } from './world.js?v=20';
 import { Player } from './player.js?v=20';
 import { Effects } from './effects.js?v=20';
 import { Input } from './input.js?v=20';
-import { Hud } from './hud.js?v=20';
+import { Hud } from './hud.js?v=21';
 import { NinaAudio } from './audio.js?v=20';
 import { updateFriend } from './animals.js?v=20';
 import {
@@ -28,6 +28,11 @@ const STORAGE = 'nina-settings';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 /** Fração das lâminas de grama por tier quando a qualidade muda com o jogo aberto. */
 const GRASS_K = { low: 0.45, medium: 0.75, high: 1 };
+/**
+ * Modo família: encostar (AUTO_R m) num filhote com amora já faz amizade, e chegar ao ninho
+ * (HOME_R) com a fila deixa todos lá — Espaço continua valendo, mas não é obrigatório.
+ */
+const AUTO_R = 1.7;
 
 class Nina {
     constructor() {
@@ -43,6 +48,7 @@ class Nina {
         this.tramplers = Array.from({ length: 8 }, () => ({ x: 0, y: -999, z: 0, radius: 0 }));
         this.focus = new THREE.Vector3();
         this.tmp = new THREE.Vector3();
+        this.guideDir = new THREE.Vector3();
         this.friendCtx = { valley: null, nina: null, ninaHead: null, ninaYaw: 0, trail: null, index: 0, t: 0, party: false };
         this.chain = [];
         this.bindUi();
@@ -121,6 +127,19 @@ class Nina {
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'play') this.pause();
+        });
+
+        // Enter/Espaço começam no menu e na vitória e retomam a pausa (botão focado cuida de si)
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat || (e.code !== 'Enter' && e.code !== 'Space')) return;
+            if (e.target.closest?.('button, select, input, summary, a')) return;
+            if (this.state === 'menu' || this.state === 'victory') {
+                e.preventDefault();
+                this.start();
+            } else if (this.state === 'pause') {
+                e.preventDefault();
+                this.resume();
+            }
         });
     }
 
@@ -222,6 +241,7 @@ class Nina {
         this.party = 0;
         clearTimeout(this.winTimer);
         this.valley.reset();
+        for (const f of this.valley.friends) f.asked = false;
         this.player.reset(this.valley);
         this.effects.clear();
         this.syncHud();
@@ -334,15 +354,7 @@ class Nina {
                 this.audio.hop();
                 return;
             }
-            this.player.berries--;
-            nearest.state = 'follow';
-            nearest.joined = performance.now();
-            nearest.hop = 1;
-            this.effects.heart(nearest.mesh.position, 3);
-            this.effects.burst(nearest.mesh.position, 0xffe066, 12);
-            this.audio.friend();
-            this.hud.say(`${nearest.name} veio com você! Leve ao ninho.`);
-            this.syncHud();
+            this.befriend(nearest);
             return;
         }
 
@@ -353,6 +365,67 @@ class Nina {
         }
 
         if (this.player.tryJump()) this.audio.hop();
+    }
+
+    /** Gasta uma amora e o filhote entra na fila. */
+    befriend(friend) {
+        this.player.berries--;
+        friend.state = 'follow';
+        friend.joined = performance.now();
+        friend.hop = 1;
+        this.effects.heart(friend.mesh.position, 3);
+        this.effects.burst(friend.mesh.position, 0xffe066, 12);
+        this.audio.friend();
+        this.hud.say(`${friend.name} veio com você! Leve ao ninho.`);
+        this.syncHud();
+    }
+
+    /** Modo família (ver AUTO_R): amizade por contato e entrega automática no ninho. */
+    autoAct() {
+        const p = this.player.pos;
+        for (const f of this.valley.friends) {
+            if (f.state !== 'lost') continue;
+            const d = Math.hypot(p.x - f.mesh.position.x, p.z - f.mesh.position.z);
+            if (d < AUTO_R) {
+                if (this.player.berries >= 1) this.befriend(f);
+                else if (!f.asked) {
+                    f.asked = true;
+                    this.hud.say(`${f.name} quer uma amora 🫐. Pegue uma e volte!`);
+                }
+            } else if (d > 5) f.asked = false;
+        }
+        if (Math.hypot(p.x - HOME.x, p.z - HOME.z) < HOME_R && this.followers().length) this.dropOff();
+    }
+
+    /**
+     * Bússola: com fila → ninho; sem amora → amora mais próxima; senão → filhote perdido mais
+     * próximo. Ângulo na tela = atan2(d·direita, d·frente), direita = (−frente.z, frente.x).
+     */
+    guide() {
+        const p = this.player.pos;
+        let tx = HOME.x;
+        let tz = HOME.z;
+        let dist = null;
+        if (this.followers().length) dist = Math.hypot(tx - p.x, tz - p.z);
+        else if (this.player.berries < 1) {
+            for (const b of this.valley.berries) {
+                if (b.taken) continue;
+                const d = Math.hypot(b.x - p.x, b.z - p.z);
+                if (dist === null || d < dist) { dist = d; tx = b.x; tz = b.z; }
+            }
+        }
+        if (dist === null) {
+            const lost = this.nearestLost();
+            if (lost) { dist = this.nearestLostD; tx = lost.mesh.position.x; tz = lost.mesh.position.z; }
+        }
+        if (dist === null) { this.hud.setGuide(0, null); return; }
+        const f = this.camera.getWorldDirection(this.guideDir);
+        const fl = Math.hypot(f.x, f.z) || 1;
+        const fx = f.x / fl;
+        const fz = f.z / fl;
+        const dx = tx - p.x;
+        const dz = tz - p.z;
+        this.hud.setGuide(Math.atan2(-fz * dx + fx * dz, fx * dx + fz * dz) * 180 / Math.PI, dist);
     }
 
     dropOff() {
@@ -420,6 +493,10 @@ class Nina {
             player.update(dt, this.input, look, valley);
             if (this.input.consumeJump()) this.tryAction();
             this.collectBerries();
+            if (this.state === 'play') {
+                this.autoAct();
+                this.guide();
+            }
         } else {
             this.input.consumeJump();
             player.idle(dt, valley);

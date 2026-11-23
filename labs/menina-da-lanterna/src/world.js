@@ -32,10 +32,10 @@ import { createParticles } from '../../shared/gfx/particles.js';
 import {
     Batch, materials, trs, addHouse, glassMaterial, addWell, addLanternPost, bridgeBatch, bridgeDeckY, BRIDGE,
     wheelGeometry, setLowDetail, brambleGeometry, rootCradle, buttressRoots, hollowArch, hollowCore
-} from './build.js?v=20';
-import { createGlows, createFlameKit, createMotes, createShadowBody, createBeacon, revealMaterial, FX_TIME } from './fx.js?v=20';
-import { ShadowWisp, NightWraith, FoxCompanion } from './npcs.js?v=20';
-import { ROOT_COLORS, STORY } from './config.js?v=20';
+} from './build.js?v=21';
+import { createGlows, createFlameKit, createMotes, createShadowBody, createBeacon, revealMaterial, FX_TIME } from './fx.js?v=21';
+import { ShadowWisp, NightWraith, FoxCompanion } from './npcs.js?v=21';
+import { ROOT_COLORS, STORY } from './config.js?v=21';
 
 const VILLAGE = { x: 0, z: 120 };
 const TREE = { x: 40, z: -62 };
@@ -774,7 +774,7 @@ export async function createValley(stage, q, progress = () => {}) {
     cageMesh.position.set(CAGE.x, H(CAGE.x, CAGE.z), CAGE.z);
     cageMesh.castShadow = true;
     scene.add(cageMesh);
-    const cage = { x: CAGE.x, z: CAGE.z, r: 1.9, kind: 'cage', label: 'Libertar Pingo (pulse a lanterna perto)', done: false, burnT: 0, burn() { cage.done = true; cage.burnT = 0.001; } };
+    const cage = { x: CAGE.x, z: CAGE.z, r: 1.9, kind: 'cage', label: 'Libertar Pingo', done: false, burnT: 0, burn() { cage.done = true; cage.burnT = 0.001; } };
     zR.addInteract(cage);
     const cageCol = { x: CAGE.x, z: CAGE.z, r: 1.0, h: 1.4 };
     zR.colliders.push(cageCol);
